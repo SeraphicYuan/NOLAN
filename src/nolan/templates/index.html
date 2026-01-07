@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN - Video Essay Viewer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #333; }
+        h1 { font-size: 24px; color: #00d4ff; }
+        .tabs { display: flex; gap: 10px; margin: 20px 0; }
+        .tab { padding: 10px 20px; background: #2a2a4a; border: none; color: #aaa; cursor: pointer; border-radius: 5px; }
+        .tab.active { background: #00d4ff; color: #000; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .script-content { background: #2a2a4a; padding: 20px; border-radius: 10px; line-height: 1.8; white-space: pre-wrap; }
+        .scene-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .scene-card { background: #2a2a4a; border-radius: 10px; overflow: hidden; }
+        .scene-header { padding: 15px; background: #3a3a5a; display: flex; justify-content: space-between; }
+        .scene-id { font-weight: bold; color: #00d4ff; }
+        .scene-time { color: #888; }
+        .scene-body { padding: 15px; }
+        .scene-type { display: inline-block; padding: 3px 8px; background: #4a4a6a; border-radius: 3px; font-size: 12px; margin-bottom: 10px; }
+        .scene-desc { color: #ccc; margin-bottom: 10px; }
+        .scene-narration { font-style: italic; color: #888; font-size: 14px; padding: 10px; background: #1a1a2e; border-radius: 5px; }
+        .asset-preview { margin-top: 10px; }
+        .asset-preview img { max-width: 100%; border-radius: 5px; }
+        .asset-preview video { max-width: 100%; border-radius: 5px; }
+        .summary { background: #2a2a4a; padding: 20px; border-radius: 10px; }
+        .summary-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #3a3a5a; }
+        .loading { text-align: center; padding: 50px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NOLAN Video Essay Viewer</h1>
+            <div id="duration">Loading...</div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" data-panel="script">Script</button>
+            <button class="tab" data-panel="scenes">Scenes</button>
+            <button class="tab" data-panel="summary">Summary</button>
+        </div>
+
+        <div id="script" class="panel active">
+            <div class="script-content" id="script-content">Loading script...</div>
+        </div>
+
+        <div id="scenes" class="panel">
+            <div class="scene-grid" id="scene-grid">Loading scenes...</div>
+        </div>
+
+        <div id="summary" class="panel">
+            <div class="summary" id="summary-content">Loading summary...</div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.panel).classList.add('active');
+            });
+        });
+
+        // Load script
+        fetch('/api/script')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('script-content').textContent = data.content;
+            });
+
+        // Load scenes
+        fetch('/api/scenes')
+            .then(r => r.json())
+            .then(data => {
+                const grid = document.getElementById('scene-grid');
+                grid.innerHTML = '';
+
+                let totalScenes = 0;
+                let assetsMatched = 0;
+                let assetsGenerated = 0;
+
+                for (const [section, scenes] of Object.entries(data.sections)) {
+                    for (const scene of scenes) {
+                        totalScenes++;
+                        if (scene.matched_asset) assetsMatched++;
+                        if (scene.generated_asset) assetsGenerated++;
+
+                        const card = document.createElement('div');
+                        card.className = 'scene-card';
+                        card.innerHTML = `
+                            <div class="scene-header">
+                                <span class="scene-id">${scene.id}</span>
+                                <span class="scene-time">${scene.start} (${scene.duration})</span>
+                            </div>
+                            <div class="scene-body">
+                                <span class="scene-type">${scene.visual_type}</span>
+                                <p class="scene-desc">${scene.visual_description}</p>
+                                <div class="scene-narration">"${scene.narration_excerpt}"</div>
+                                ${scene.generated_asset ? `<div class="asset-preview"><img src="/assets/generated/${scene.generated_asset}" alt="Generated"></div>` : ''}
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                    }
+                }
+
+                // Update summary
+                document.getElementById('summary-content').innerHTML = `
+                    <div class="summary-item"><span>Total Scenes</span><span>${totalScenes}</span></div>
+                    <div class="summary-item"><span>Library Matches</span><span>${assetsMatched}</span></div>
+                    <div class="summary-item"><span>Generated Images</span><span>${assetsGenerated}</span></div>
+                    <div class="summary-item"><span>Assets Needed</span><span>${totalScenes - assetsMatched - assetsGenerated}</span></div>
+                `;
+            });
+    </script>
+</body>
+</html>
