@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "Skill(superpowers:*)",
+      "Bash(D:\\env\\nolan\\python.exe:*)",
+      "Bash(D:\\env\\nolan\\python.exe)",
+      "Bash(D:\\env\\nolan\\Scripts\\pip.exe:*)",
+      "Bash(D:\\env\\nolan\\Scripts\\pip.exe)",
+      "Bash(D:\\env\\nolan\\Scripts\\pytest.exe:*)",
+      "Bash(D:\\env\\nolan\\Scripts\\pytest.exe)",
+      "Bash(git:*)",
+      "Bash(git init)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(cd:*)",
+      "Bash(type:*)",
+      "Bash(copy:*)",
+      "Bash(move:*)",
+      "Bash(del:*)",
+      "Bash(rmdir:*)",
+      "Bash(pytest:*)",
+      "Bash(python:*)",
+      "Bash(pip:*)",
+      "Write(D:\\ClaudeProjects\\NOLAN\\**)",
+      "Edit(D:\\ClaudeProjects\\NOLAN\\**)",
+      "Read(D:\\ClaudeProjects\\NOLAN\\**)",
+      "Bash(D:/env/nolan/Scripts/pip.exe install:*)",
+      "Bash(D:/env/nolan/python.exe:*)"
+    ]
+  }
+}
