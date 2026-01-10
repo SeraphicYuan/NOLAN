@@ -33,13 +33,23 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 - **Transcript Alignment** - SRT/VTT/Whisper JSON support
 - **Segment Analyzer** - LLM fusion of visual + audio with inferred context
 
-### Whisper Integration (NEW)
+### Whisper Integration
 - **Auto-Transcription** - Generate transcripts for videos without them
   - Uses faster-whisper (4x faster than openai-whisper)
   - Multiple model sizes: tiny, base, small, medium, large-v2, large-v3
+  - GPU acceleration (CUDA) with automatic CPU fallback
   - Voice activity detection (VAD) filtering
 - **Audio Extraction** - Automatic via ffmpeg
 - **Caching** - Saves generated transcripts as .whisper.json files
+
+### Hybrid Inference
+- **LLM Fusion** - Combines vision + transcript for richer understanding
+- **Inferred Context** - Best guesses for:
+  - People (named characters, speakers)
+  - Location (setting identification)
+  - Story context (narrative description)
+  - Objects (notable items)
+  - Confidence level (high/medium/low)
 
 ### Integrations
 - **ComfyUI Client** - Image generation via local ComfyUI API
@@ -50,6 +60,7 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 |---------|-------------|
 | `nolan process <essay.md>` | Full pipeline: essay → script → scenes |
 | `nolan index <video_folder>` | Index video library for snippet matching |
+| `nolan export <video>` | Export indexed segments to JSON |
 | `nolan serve` | Launch local viewer to review outputs |
 | `nolan generate` | Generate images via ComfyUI |
 
@@ -62,11 +73,18 @@ pip install -e ".[dev]"
 # Process an essay
 nolan process path/to/essay.md -o ./output
 
-# Index video library
+# Index video library (Ollama vision - local)
 nolan index path/to/videos --recursive
 
-# Index with auto-transcription (requires ffmpeg)
-nolan index path/to/videos --whisper --whisper-model base
+# Index with Gemini vision (cloud - faster)
+nolan index path/to/videos --vision gemini
+
+# Index with Whisper auto-transcription (GPU accelerated)
+nolan index path/to/videos --vision gemini --whisper --whisper-model base
+
+# Export indexed segments to JSON
+nolan export video.mp4 -o segments.json
+nolan export --all -o library.json
 
 # Launch viewer
 nolan serve -p ./output
@@ -131,13 +149,21 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
+- **Scene Clustering** - Group continuous segments into story moments
+  - Cluster adjacent segments with same characters/location
+  - LLM-based story boundary detection
+  - Cluster-level summaries for deeper narrative understanding
+  - Better asset matching (30s clips vs 3s fragments)
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - Internet asset collection (Pexels, Pixabay integration)
 
 ## Recently Completed
 
-- ✅ **Whisper integration** - Auto-generate transcripts using faster-whisper (4x faster, 50% less VRAM)
+- ✅ **Export command** - `nolan export` for full JSON output with all fields
+- ✅ **Gemini vision CLI** - `--vision gemini` option for cloud-based frame analysis (3-4x faster)
+- ✅ **GPU Whisper** - CUDA acceleration with automatic CPU fallback
+- ✅ **Hybrid inference** - LLM fusion of vision + transcript with inferred context (people, location, story)
+- ✅ **Whisper integration** - Auto-generate transcripts using faster-whisper
 - ✅ **Local VLM support** - Ollama integration with qwen3-vl:8b (switchable to other models)
 - ✅ **Smart sampling** - 4 strategies (fixed, scene change, perceptual hash, hybrid)
-- ✅ **Hybrid indexing** - Visual + transcript fusion with inferred context
 - ✅ **Transcript support** - SRT, VTT, Whisper JSON loading and alignment
