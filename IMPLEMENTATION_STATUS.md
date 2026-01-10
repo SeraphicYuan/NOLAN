@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-07
+**Last Updated:** 2026-01-10
 
 ## Summary
 
@@ -21,7 +21,7 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 - **Video Indexer** - SQLite-backed video library indexing with visual analysis
 - **Asset Matcher** - Matches scenes to indexed video library
 
-### Hybrid Indexing (NEW)
+### Hybrid Indexing
 - **Vision Provider** - Switchable vision models (Ollama/Gemini)
   - Default: qwen3-vl:8b via Ollama
   - Configurable host/port/model
@@ -32,6 +32,14 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
   - Hybrid (recommended - combines time bounds with scene detection)
 - **Transcript Alignment** - SRT/VTT/Whisper JSON support
 - **Segment Analyzer** - LLM fusion of visual + audio with inferred context
+
+### Whisper Integration (NEW)
+- **Auto-Transcription** - Generate transcripts for videos without them
+  - Uses faster-whisper (4x faster than openai-whisper)
+  - Multiple model sizes: tiny, base, small, medium, large-v2, large-v3
+  - Voice activity detection (VAD) filtering
+- **Audio Extraction** - Automatic via ffmpeg
+- **Caching** - Saves generated transcripts as .whisper.json files
 
 ### Integrations
 - **ComfyUI Client** - Image generation via local ComfyUI API
@@ -57,13 +65,16 @@ nolan process path/to/essay.md -o ./output
 # Index video library
 nolan index path/to/videos --recursive
 
+# Index with auto-transcription (requires ffmpeg)
+nolan index path/to/videos --whisper --whisper-model base
+
 # Launch viewer
 nolan serve -p ./output
 ```
 
 ## Test Coverage
 
-81 tests covering all modules:
+98 tests covering all modules:
 - Configuration: 3 tests
 - LLM Client: 2 tests
 - Parser: 3 tests
@@ -75,10 +86,11 @@ nolan serve -p ./output
 - Viewer Server: 3 tests
 - CLI: 4 tests
 - Integration: 2 tests
-- Vision Provider: 9 tests (NEW)
-- Sampler: 11 tests (NEW)
-- Transcript: 15 tests (NEW)
-- Analyzer: 10 tests (NEW)
+- Vision Provider: 9 tests
+- Sampler: 11 tests
+- Transcript: 15 tests
+- Analyzer: 10 tests
+- Whisper: 17 tests (NEW)
 
 ## Project Structure
 
@@ -97,13 +109,14 @@ NOLAN/
 │   ├── matcher.py       # Asset matching
 │   ├── comfyui.py       # ComfyUI integration
 │   ├── viewer.py        # Viewer server
-│   ├── vision.py        # Vision providers (Ollama, Gemini) [NEW]
-│   ├── sampler.py       # Smart frame sampling [NEW]
-│   ├── transcript.py    # Transcript loading/alignment [NEW]
-│   ├── analyzer.py      # Segment analysis + inference [NEW]
+│   ├── vision.py        # Vision providers (Ollama, Gemini)
+│   ├── sampler.py       # Smart frame sampling
+│   ├── transcript.py    # Transcript loading/alignment
+│   ├── analyzer.py      # Segment analysis + inference
+│   ├── whisper.py       # Whisper auto-transcription [NEW]
 │   └── templates/
 │       └── index.html   # Viewer UI
-├── tests/               # Test suite (81 tests)
+├── tests/               # Test suite (98 tests)
 ├── pyproject.toml       # Package configuration
 └── .env                 # API keys (not committed)
 ```
@@ -112,16 +125,18 @@ NOLAN/
 
 - Python 3.10+
 - Gemini API key (set `GEMINI_API_KEY` in .env)
+- Ollama (optional, for local vision model)
+- ffmpeg (optional, for Whisper auto-transcription)
 - ComfyUI (optional, for image generation)
 
 ## Next Steps (Backlog)
 
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
-- **Whisper integration** - Auto-generate transcripts for videos without them
 - Internet asset collection (Pexels, Pixabay integration)
 
 ## Recently Completed
 
+- ✅ **Whisper integration** - Auto-generate transcripts using faster-whisper (4x faster, 50% less VRAM)
 - ✅ **Local VLM support** - Ollama integration with qwen3-vl:8b (switchable to other models)
 - ✅ **Smart sampling** - 4 strategies (fixed, scene change, perceptual hash, hybrid)
 - ✅ **Hybrid indexing** - Visual + transcript fusion with inferred context

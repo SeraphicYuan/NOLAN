@@ -374,6 +374,7 @@ class HybridVideoIndexer:
         index: VideoIndex,
         sampler=None,
         llm_client=None,
+        whisper_transcriber=None,
         enable_transcript: bool = True,
         enable_inference: bool = True
     ):
@@ -384,6 +385,7 @@ class HybridVideoIndexer:
             index: VideoIndex for storage.
             sampler: FrameSampler for smart sampling (optional, uses hybrid by default).
             llm_client: LLM client for fusion/inference (optional, needed if enable_inference=True).
+            whisper_transcriber: WhisperTranscriber for auto-generating transcripts.
             enable_transcript: Whether to look for and use transcripts.
             enable_inference: Whether to run LLM fusion and inference.
         """
@@ -391,6 +393,7 @@ class HybridVideoIndexer:
         self.index = index
         self.sampler = sampler
         self.llm = llm_client
+        self.whisper = whisper_transcriber
         self.enable_transcript = enable_transcript
         self.enable_inference = enable_inference
 
@@ -451,9 +454,20 @@ class HybridVideoIndexer:
         if self.enable_transcript:
             from nolan.transcript import find_transcript_for_video, TranscriptLoader
             transcript_path = find_transcript_for_video(video_path)
+
+            # Try loading existing transcript
             if transcript_path:
                 try:
                     transcript = TranscriptLoader.load(transcript_path)
+                except Exception:
+                    pass  # Continue without transcript
+
+            # Generate transcript with Whisper if none found
+            if transcript is None and self.whisper is not None:
+                try:
+                    generated_path = self.whisper.transcribe_video(video_path)
+                    if generated_path:
+                        transcript = TranscriptLoader.load(generated_path)
                 except Exception:
                     pass  # Continue without transcript
 

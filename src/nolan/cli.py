@@ -119,8 +119,13 @@ async def _process_essay(config, essay_path, output_path, skip_scenes, skip_asse
               help='Scan subdirectories.')
 @click.option('--frame-interval', default=5, type=int,
               help='Seconds between sampled frames.')
+@click.option('--whisper/--no-whisper', default=False,
+              help='Auto-generate transcripts with Whisper for videos without them.')
+@click.option('--whisper-model', default='base',
+              type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']),
+              help='Whisper model size (larger = better quality, slower).')
 @click.pass_context
-def index(ctx, directory, recursive, frame_interval):
+def index(ctx, directory, recursive, frame_interval, whisper, whisper_model):
     """Index a video directory for asset matching.
 
     DIRECTORY is the path to your video library folder.
@@ -128,6 +133,9 @@ def index(ctx, directory, recursive, frame_interval):
     This scans video files, samples frames, and uses AI to describe
     what's in each segment. The index is stored locally for fast
     searching during the process command.
+
+    Use --whisper to auto-generate transcripts for videos without them.
+    This requires ffmpeg to be installed for audio extraction.
     """
     config = ctx.obj['config']
     directory_path = Path(directory)
@@ -136,10 +144,10 @@ def index(ctx, directory, recursive, frame_interval):
     click.echo(f"Recursive: {recursive}")
     click.echo(f"Frame interval: {frame_interval}s")
 
-    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval))
+    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, whisper, whisper_model))
 
 
-async def _index_videos(config, directory, recursive, frame_interval):
+async def _index_videos(config, directory, recursive, frame_interval, whisper_enabled=False, whisper_model='base'):
     """Async implementation of index command."""
     from nolan.indexer import HybridVideoIndexer, VideoIndex
     from nolan.vision import create_vision_provider, VisionConfig
@@ -178,6 +186,23 @@ async def _index_videos(config, directory, recursive, frame_interval):
     sampler = create_sampler(sampler_config)
     click.echo(f"Sampling strategy: {config.indexing.sampling_strategy}")
 
+    # Initialize Whisper transcriber (if enabled)
+    whisper_transcriber = None
+    if whisper_enabled:
+        try:
+            from nolan.whisper import WhisperTranscriber, WhisperConfig, check_ffmpeg
+            if not check_ffmpeg():
+                click.echo("Warning: ffmpeg not found. Whisper transcription disabled.")
+            else:
+                whisper_config = WhisperConfig(model_size=whisper_model)
+                whisper_transcriber = WhisperTranscriber(whisper_config)
+                click.echo(f"Whisper: enabled (model: {whisper_model})")
+        except ImportError as e:
+            click.echo(f"Warning: Whisper unavailable ({e}). Transcription disabled.")
+
+    if not whisper_transcriber:
+        click.echo("Whisper: disabled")
+
     # Initialize LLM for inference (if enabled)
     llm = None
     if config.indexing.enable_inference and config.gemini.api_key:
@@ -197,6 +222,7 @@ async def _index_videos(config, directory, recursive, frame_interval):
         index=index,
         sampler=sampler,
         llm_client=llm,
+        whisper_transcriber=whisper_transcriber,
         enable_transcript=config.indexing.enable_transcript,
         enable_inference=config.indexing.enable_inference
     )

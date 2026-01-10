@@ -30,5 +30,10 @@ After completing any new feature, update the corresponding documentation:
 - Only ask for approval if the command is NOT covered by existing permissions
 
 # Claude Domaine
-- Strictly stay within this folder 
+- Strictly stay within this folder
+
+# Notification Rule
+- When requiring user approval for any action, play a notification sound first
+- Use PowerShell to play a 3-tone ascending sound: `powershell -c "[console]::beep(1000,200); [console]::beep(1200,200); [console]::beep(1500,300)"`
+- This helps alert the user that attention is needed
 

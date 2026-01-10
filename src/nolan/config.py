@@ -38,6 +38,16 @@ class VisionConfig:
 
 
 @dataclass
+class WhisperConfig:
+    """Whisper transcription configuration."""
+    enabled: bool = False  # Off by default (requires faster-whisper + ffmpeg)
+    model_size: str = "base"  # tiny, base, small, medium, large-v2, large-v3
+    device: str = "auto"  # auto, cpu, cuda
+    compute_type: str = "auto"  # auto, int8, float16, float32
+    language: Optional[str] = None  # None for auto-detect
+
+
+@dataclass
 class IndexingConfig:
     """Video indexing configuration."""
     frame_interval: int = 5
@@ -63,6 +73,7 @@ class NolanConfig:
     gemini: GeminiConfig = field(default_factory=GeminiConfig)
     comfyui: ComfyUIConfig = field(default_factory=ComfyUIConfig)
     vision: VisionConfig = field(default_factory=VisionConfig)
+    whisper: WhisperConfig = field(default_factory=WhisperConfig)
     indexing: IndexingConfig = field(default_factory=IndexingConfig)
     defaults: DefaultsConfig = field(default_factory=DefaultsConfig)
 
@@ -103,6 +114,11 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
             for key, value in overrides["vision"].items():
                 if hasattr(config.vision, key):
                     setattr(config.vision, key, value)
+
+        if "whisper" in overrides:
+            for key, value in overrides["whisper"].items():
+                if hasattr(config.whisper, key):
+                    setattr(config.whisper, key, value)
 
         if "indexing" in overrides:
             for key, value in overrides["indexing"].items():
