@@ -14,12 +14,12 @@ def populated_index(tmp_path):
     index = VideoIndex(tmp_path / "test.db")
 
     index.add_video("/videos/city.mp4", 120.0, "abc")
-    index.add_segment("/videos/city.mp4", 10.0, "Aerial view of city skyline at sunset")
-    index.add_segment("/videos/city.mp4", 30.0, "Busy street with cars and pedestrians")
+    index.add_segment("/videos/city.mp4", 10.0, 20.0, "Aerial view of city skyline at sunset")
+    index.add_segment("/videos/city.mp4", 30.0, 40.0, "Busy street with cars and pedestrians")
 
     index.add_video("/videos/nature.mp4", 60.0, "def")
-    index.add_segment("/videos/nature.mp4", 5.0, "Waterfall in tropical rainforest")
-    index.add_segment("/videos/nature.mp4", 15.0, "Birds flying over mountains")
+    index.add_segment("/videos/nature.mp4", 5.0, 10.0, "Waterfall in tropical rainforest")
+    index.add_segment("/videos/nature.mp4", 15.0, 20.0, "Birds flying over mountains")
 
     return index
 

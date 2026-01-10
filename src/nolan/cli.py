@@ -141,22 +141,71 @@ def index(ctx, directory, recursive, frame_interval):
 
 async def _index_videos(config, directory, recursive, frame_interval):
     """Async implementation of index command."""
-    from nolan.indexer import VideoIndexer, VideoIndex
+    from nolan.indexer import HybridVideoIndexer, VideoIndex
+    from nolan.vision import create_vision_provider, VisionConfig
+    from nolan.sampler import create_sampler, SamplerConfig, SamplingStrategy
     from nolan.llm import GeminiClient
 
-    # Initialize
+    # Initialize database
     db_path = Path(config.indexing.database).expanduser()
     index = VideoIndex(db_path)
 
-    llm = GeminiClient(
-        api_key=config.gemini.api_key,
-        model=config.gemini.model
+    # Initialize vision provider
+    vision_config = VisionConfig(
+        provider=config.vision.provider,
+        model=config.vision.model,
+        host=config.vision.host,
+        port=config.vision.port,
+        timeout=config.vision.timeout,
+        api_key=config.gemini.api_key if config.vision.provider == "gemini" else None
+    )
+    vision = create_vision_provider(vision_config)
+
+    # Check vision provider connection
+    click.echo(f"\nVision provider: {config.vision.provider} ({config.vision.model})")
+    if not await vision.check_connection():
+        click.echo(f"Error: Cannot connect to {config.vision.provider}. Is it running?")
+        return
+
+    # Initialize sampler
+    sampler_config = SamplerConfig(
+        strategy=SamplingStrategy(config.indexing.sampling_strategy),
+        fixed_interval=float(frame_interval),
+        min_interval=config.indexing.min_interval,
+        max_interval=config.indexing.max_interval,
+        scene_threshold=config.indexing.scene_threshold,
+    )
+    sampler = create_sampler(sampler_config)
+    click.echo(f"Sampling strategy: {config.indexing.sampling_strategy}")
+
+    # Initialize LLM for inference (if enabled)
+    llm = None
+    if config.indexing.enable_inference and config.gemini.api_key:
+        llm = GeminiClient(
+            api_key=config.gemini.api_key,
+            model=config.gemini.model
+        )
+        click.echo("Inference: enabled (using Gemini)")
+    else:
+        click.echo("Inference: disabled")
+
+    click.echo(f"Transcript: {'enabled' if config.indexing.enable_transcript else 'disabled'}")
+
+    # Create indexer
+    indexer = HybridVideoIndexer(
+        vision_provider=vision,
+        index=index,
+        sampler=sampler,
+        llm_client=llm,
+        enable_transcript=config.indexing.enable_transcript,
+        enable_inference=config.indexing.enable_inference
     )
 
-    indexer = VideoIndexer(llm, index, frame_interval=frame_interval)
+    def progress(current, total, message):
+        click.echo(f"  [{current}/{total}] {message}")
 
     click.echo("\nScanning for videos...")
-    stats = await indexer.index_directory(directory, recursive=recursive)
+    stats = await indexer.index_directory(directory, recursive=recursive, progress_callback=progress)
 
     click.echo(f"\nIndexing complete:")
     click.echo(f"  Videos found: {stats['total']}")

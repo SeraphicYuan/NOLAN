@@ -124,6 +124,129 @@ nolan index /path/to/your/videos --recursive
 3. **Analyzes with Gemini** - each frame gets a visual description
 4. **Stores locally** - SQLite database with video metadata and descriptions
 
+#### Smart Sampling Approaches (Backlog)
+
+Fixed interval sampling wastes API calls on static content. Here are smarter approaches to implement:
+
+**Approach 1: Scene Change Detection (OpenCV)**
+```python
+import cv2
+
+def detect_scene_changes(video_path, threshold=30.0):
+    """Only sample when content actually changes."""
+    cap = cv2.VideoCapture(video_path)
+    prev_frame = None
+    keyframes = []
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        if prev_frame is not None:
+            diff = cv2.absdiff(prev_frame, gray)
+            change_score = diff.mean()
+
+            if change_score > threshold:  # Scene changed!
+                keyframes.append((cap.get(cv2.CAP_PROP_POS_MSEC), frame))
+        else:
+            keyframes.append((0, frame))  # First frame
+
+        prev_frame = gray
+
+    return keyframes
+```
+
+**Approach 2: FFmpeg Keyframe Extraction (Fastest)**
+```bash
+# Extract only I-frames (natural cut points)
+ffmpeg -i video.mp4 -vf "select=eq(pict_type\,I)" -vsync vfr keyframe_%04d.jpg
+
+# With timestamps
+ffprobe -select_streams v -show_frames -show_entries frame=pict_type,pts_time -of csv video.mp4 | grep ",I,"
+```
+
+**Approach 3: Perceptual Hashing (Skip Duplicates)**
+```python
+import imagehash
+from PIL import Image
+
+def is_duplicate(frame1, frame2, threshold=5):
+    """Skip frames that look nearly identical."""
+    hash1 = imagehash.phash(Image.fromarray(frame1))
+    hash2 = imagehash.phash(Image.fromarray(frame2))
+    return abs(hash1 - hash2) < threshold
+
+# Use with fixed sampling to skip similar frames
+def sample_with_dedup(video_path, interval=2.0, hash_threshold=5):
+    frames = extract_at_interval(video_path, interval)
+    unique_frames = []
+    last_hash = None
+
+    for timestamp, frame in frames:
+        current_hash = imagehash.phash(Image.fromarray(frame))
+        if last_hash is None or abs(current_hash - last_hash) >= hash_threshold:
+            unique_frames.append((timestamp, frame))
+            last_hash = current_hash
+
+    return unique_frames
+```
+
+**Approach 4: Hybrid (Recommended)**
+```python
+def smart_sample(video_path, min_interval=1.0, max_interval=30.0, change_threshold=25.0):
+    """
+    Combines time bounds with scene detection:
+    - Never sample more than once per min_interval
+    - Always sample at least once per max_interval
+    - Sample immediately on scene changes (within bounds)
+    """
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    prev_gray = None
+    last_sample_time = -max_interval
+    keyframes = []
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        current_time = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        should_sample = False
+        time_since_last = current_time - last_sample_time
+
+        # Always sample if max_interval exceeded
+        if time_since_last >= max_interval:
+            should_sample = True
+        # Check for scene change if min_interval passed
+        elif time_since_last >= min_interval and prev_gray is not None:
+            diff = cv2.absdiff(prev_gray, gray).mean()
+            if diff > change_threshold:
+                should_sample = True
+
+        if should_sample:
+            keyframes.append((current_time, frame))
+            last_sample_time = current_time
+
+        prev_gray = gray
+
+    return keyframes
+```
+
+**Expected API call reduction:**
+
+| Video Type | Fixed 5s | Smart Sampling | Reduction |
+|------------|----------|----------------|-----------|
+| Talking head | 120 calls | 15-20 calls | ~85% |
+| Documentary | 120 calls | 30-40 calls | ~70% |
+| Action/fast cuts | 120 calls | 80-100 calls | ~25% |
+| Slideshow | 120 calls | 10-15 calls | ~90% |
+
 **Index structure (per video):**
 ```json
 {
@@ -146,6 +269,133 @@ nolan index /path/to/your/videos --recursive
 - Indexing is one-time per video (cached)
 - Only re-indexes if file changes (checksum comparison)
 - Estimated: ~$0.01-0.02 per minute of video indexed
+
+#### Hybrid Indexing (Visual + Transcript) (Backlog)
+
+When transcripts are available, combine visual descriptions with audio to create richer segment metadata.
+
+**Enhanced Segment Model:**
+```json
+{
+  "timestamp_start": "00:00:05",
+  "timestamp_end": "00:00:15",
+  "frame_description": "Man in dark suit walking through ornate hallway with marble floors",
+  "transcript": "The President made his way through the West Wing, preparing for the most important speech of his career.",
+  "combined_summary": "President walking through West Wing hallway before major speech",
+  "inferred_context": {
+    "people": ["President (unnamed, male)"],
+    "location": "West Wing, White House",
+    "story_context": "Preparation for significant political address",
+    "confidence": "high"
+  }
+}
+```
+
+**Key Insight: Inferred Context**
+
+The LLM can make educated guesses about objects, people, or story elements when evidence from both sources supports it - but only when available, not forced:
+
+```python
+async def analyze_segment(
+    frame_desc: str,
+    transcript: str,
+    llm: LLMClient
+) -> dict:
+    prompt = f"""Analyze this video segment based on visual and audio information.
+
+VISUAL: {frame_desc}
+AUDIO: {transcript}
+
+Provide:
+1. combined_summary: A 1-2 sentence description capturing both visual and audio
+2. inferred_context: ONLY if evidence supports it (don't guess without basis):
+   - people: Named or identifiable individuals (with evidence source)
+   - location: Specific place if identifiable
+   - story_context: What's happening narratively
+   - objects: Notable items relevant to the content
+   - confidence: "high" (explicit mention), "medium" (strong implication), "low" (educated guess)
+
+If there's insufficient evidence for any field, omit it entirely.
+Return as JSON."""
+
+    response = await llm.generate(prompt)
+    return json.loads(response)
+```
+
+**Inference Examples:**
+
+| Visual | Transcript | Inferred |
+|--------|------------|----------|
+| "Man at podium with American flags" | "...and that's why I'm announcing today..." | people: ["speaker (political figure)"], location: "press briefing room" |
+| "Close-up of hands typing on laptop" | "Sarah had been coding for 12 hours straight" | people: ["Sarah"], story_context: "extended coding session" |
+| "Aerial shot of factory buildings" | "Tesla's Gigafactory produces..." | location: "Tesla Gigafactory", objects: ["factory buildings"] |
+| "Person walking on beach" | "[ambient waves, no speech]" | (minimal inference - only visual description) |
+
+**Transcript Alignment:**
+
+```python
+def align_transcript_to_frames(
+    frames: list[dict],
+    transcript: list[dict]
+) -> list[dict]:
+    """
+    Align timestamped transcript chunks to frame sample windows.
+
+    frames: [{"timestamp": 5.0, "description": "..."}]
+    transcript: [{"start": 3.2, "end": 4.8, "text": "..."}, ...]
+    """
+    segments = []
+
+    for i, frame in enumerate(frames):
+        start = frame["timestamp"]
+        end = frames[i + 1]["timestamp"] if i + 1 < len(frames) else start + 10
+
+        # Collect transcript chunks within this time window
+        text_chunks = [
+            t["text"] for t in transcript
+            if t["start"] >= start and t["start"] < end
+        ]
+
+        segments.append({
+            "timestamp_start": start,
+            "timestamp_end": end,
+            "frame_description": frame["description"],
+            "transcript": " ".join(text_chunks) if text_chunks else None
+        })
+
+    return segments
+```
+
+**Workflow:**
+
+```
+Video File
+    │
+    ├──► Frame Sampling ──► Vision LLM ──► frame_description
+    │
+    └──► Audio Extract ──► Whisper ──► transcript (with timestamps)
+                                            │
+                                            ▼
+                              Align transcript to frame windows
+                                            │
+                                            ▼
+                    ┌───────────────────────┴───────────────────────┐
+                    │                                               │
+                    ▼                                               ▼
+          LLM Fusion + Inference                          Embedding Model
+                    │                                               │
+                    ▼                                               ▼
+          combined_summary                                   vector embedding
+          inferred_context                                  (for semantic search)
+```
+
+**Search Benefits:**
+
+With hybrid indexing, searches can match on:
+- Visual content: "aerial city shot"
+- Spoken content: "President's speech"
+- Inferred context: "White House", "Tesla factory"
+- Combined: "interview about climate change" (person talking + topic mentioned)
 
 ---
 

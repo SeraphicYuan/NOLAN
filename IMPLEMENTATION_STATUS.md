@@ -21,6 +21,18 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 - **Video Indexer** - SQLite-backed video library indexing with visual analysis
 - **Asset Matcher** - Matches scenes to indexed video library
 
+### Hybrid Indexing (NEW)
+- **Vision Provider** - Switchable vision models (Ollama/Gemini)
+  - Default: qwen3-vl:8b via Ollama
+  - Configurable host/port/model
+- **Smart Sampling** - 4 strategies for frame extraction:
+  - Fixed interval
+  - Scene change detection (OpenCV)
+  - Perceptual hashing (skip duplicates)
+  - Hybrid (recommended - combines time bounds with scene detection)
+- **Transcript Alignment** - SRT/VTT/Whisper JSON support
+- **Segment Analyzer** - LLM fusion of visual + audio with inferred context
+
 ### Integrations
 - **ComfyUI Client** - Image generation via local ComfyUI API
 - **Viewer Server** - FastAPI-based local viewer for reviewing outputs
@@ -51,7 +63,7 @@ nolan serve -p ./output
 
 ## Test Coverage
 
-36 tests covering all modules:
+81 tests covering all modules:
 - Configuration: 3 tests
 - LLM Client: 2 tests
 - Parser: 3 tests
@@ -63,6 +75,10 @@ nolan serve -p ./output
 - Viewer Server: 3 tests
 - CLI: 4 tests
 - Integration: 2 tests
+- Vision Provider: 9 tests (NEW)
+- Sampler: 11 tests (NEW)
+- Transcript: 15 tests (NEW)
+- Analyzer: 10 tests (NEW)
 
 ## Project Structure
 
@@ -77,13 +93,17 @@ NOLAN/
 │   ├── parser.py        # Essay parsing
 │   ├── script.py        # Script conversion
 │   ├── scenes.py        # Scene design
-│   ├── indexer.py       # Video indexing
+│   ├── indexer.py       # Video indexing + HybridVideoIndexer
 │   ├── matcher.py       # Asset matching
 │   ├── comfyui.py       # ComfyUI integration
 │   ├── viewer.py        # Viewer server
+│   ├── vision.py        # Vision providers (Ollama, Gemini) [NEW]
+│   ├── sampler.py       # Smart frame sampling [NEW]
+│   ├── transcript.py    # Transcript loading/alignment [NEW]
+│   ├── analyzer.py      # Segment analysis + inference [NEW]
 │   └── templates/
 │       └── index.html   # Viewer UI
-├── tests/               # Test suite
+├── tests/               # Test suite (81 tests)
 ├── pyproject.toml       # Package configuration
 └── .env                 # API keys (not committed)
 ```
@@ -96,8 +116,13 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
-- **Local VLM support** - Ollama integration (Moondream, LLaVA, Llama Vision) for free local video indexing
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
-- **Smart sampling** - Scene change detection instead of fixed intervals (reduce API calls by 60-90%)
+- **Whisper integration** - Auto-generate transcripts for videos without them
 - Internet asset collection (Pexels, Pixabay integration)
-- Transcript indexing for audio/speech search in videos
+
+## Recently Completed
+
+- ✅ **Local VLM support** - Ollama integration with qwen3-vl:8b (switchable to other models)
+- ✅ **Smart sampling** - 4 strategies (fixed, scene change, perceptual hash, hybrid)
+- ✅ **Hybrid indexing** - Visual + transcript fusion with inferred context
+- ✅ **Transcript support** - SRT, VTT, Whisper JSON loading and alignment

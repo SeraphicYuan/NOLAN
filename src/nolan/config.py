@@ -28,10 +28,26 @@ class ComfyUIConfig:
 
 
 @dataclass
+class VisionConfig:
+    """Vision provider configuration."""
+    provider: str = "ollama"  # ollama, gemini
+    model: str = "qwen3-vl:8b"
+    host: str = "127.0.0.1"  # Use IP, not hostname (Windows httpx issue)
+    port: int = 11434
+    timeout: float = 60.0
+
+
+@dataclass
 class IndexingConfig:
     """Video indexing configuration."""
     frame_interval: int = 5
     database: str = "~/.nolan/library.db"
+    sampling_strategy: str = "hybrid"  # fixed, scene_change, perceptual_hash, hybrid
+    min_interval: float = 1.0
+    max_interval: float = 30.0
+    scene_threshold: float = 25.0
+    enable_transcript: bool = True
+    enable_inference: bool = True
 
 
 @dataclass
@@ -46,6 +62,7 @@ class NolanConfig:
     """Main configuration container."""
     gemini: GeminiConfig = field(default_factory=GeminiConfig)
     comfyui: ComfyUIConfig = field(default_factory=ComfyUIConfig)
+    vision: VisionConfig = field(default_factory=VisionConfig)
     indexing: IndexingConfig = field(default_factory=IndexingConfig)
     defaults: DefaultsConfig = field(default_factory=DefaultsConfig)
 
@@ -81,6 +98,11 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
             for key, value in overrides["comfyui"].items():
                 if hasattr(config.comfyui, key):
                     setattr(config.comfyui, key, value)
+
+        if "vision" in overrides:
+            for key, value in overrides["vision"].items():
+                if hasattr(config.vision, key):
+                    setattr(config.vision, key, value)
 
         if "indexing" in overrides:
             for key, value in overrides["indexing"].items():

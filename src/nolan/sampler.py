@@ -1,0 +1,382 @@
+"""Smart frame sampling strategies for video indexing."""
+
+import cv2
+import numpy as np
+from abc import ABC, abstractmethod
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Iterator, Optional
+from enum import Enum
+
+
+class SamplingStrategy(str, Enum):
+    """Available sampling strategies."""
+    FIXED = "fixed"
+    SCENE_CHANGE = "scene_change"
+    KEYFRAME = "keyframe"
+    PERCEPTUAL_HASH = "perceptual_hash"
+    HYBRID = "hybrid"
+
+
+@dataclass
+class SampledFrame:
+    """A sampled frame from a video."""
+    timestamp: float  # seconds
+    frame: np.ndarray  # BGR image
+    reason: str  # why this frame was sampled
+
+
+@dataclass
+class SamplerConfig:
+    """Configuration for frame sampling."""
+    strategy: SamplingStrategy = SamplingStrategy.HYBRID
+    # Fixed interval settings
+    fixed_interval: float = 5.0  # seconds
+    # Scene change settings
+    scene_threshold: float = 30.0  # mean pixel difference
+    # Hybrid settings
+    min_interval: float = 1.0  # minimum seconds between samples
+    max_interval: float = 30.0  # maximum seconds between samples
+    # Perceptual hash settings
+    hash_threshold: int = 5  # hamming distance threshold
+
+
+class FrameSampler(ABC):
+    """Abstract base class for frame samplers."""
+
+    @abstractmethod
+    def sample(self, video_path: Path) -> Iterator[SampledFrame]:
+        """Sample frames from a video.
+
+        Args:
+            video_path: Path to video file.
+
+        Yields:
+            SampledFrame objects.
+        """
+        pass
+
+    def _open_video(self, video_path: Path) -> cv2.VideoCapture:
+        """Open video file and return capture object."""
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            raise ValueError(f"Could not open video: {video_path}")
+        return cap
+
+    def _get_video_info(self, cap: cv2.VideoCapture) -> dict:
+        """Get video metadata."""
+        return {
+            "fps": cap.get(cv2.CAP_PROP_FPS),
+            "frame_count": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
+            "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+        }
+
+
+class FixedIntervalSampler(FrameSampler):
+    """Sample frames at fixed time intervals."""
+
+    def __init__(self, interval: float = 5.0):
+        """Initialize fixed interval sampler.
+
+        Args:
+            interval: Seconds between samples.
+        """
+        self.interval = interval
+
+    def sample(self, video_path: Path) -> Iterator[SampledFrame]:
+        """Sample frames at fixed intervals."""
+        cap = self._open_video(video_path)
+        info = self._get_video_info(cap)
+        fps = info["fps"]
+
+        if fps <= 0:
+            cap.release()
+            return
+
+        frame_skip = int(fps * self.interval)
+        frame_num = 0
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_num % frame_skip == 0:
+                timestamp = frame_num / fps
+                yield SampledFrame(
+                    timestamp=timestamp,
+                    frame=frame,
+                    reason="fixed_interval"
+                )
+
+            frame_num += 1
+
+        cap.release()
+
+
+class SceneChangeSampler(FrameSampler):
+    """Sample frames when scene content changes significantly."""
+
+    def __init__(self, threshold: float = 30.0, min_interval: float = 0.5):
+        """Initialize scene change sampler.
+
+        Args:
+            threshold: Mean pixel difference threshold.
+            min_interval: Minimum seconds between samples.
+        """
+        self.threshold = threshold
+        self.min_interval = min_interval
+
+    def sample(self, video_path: Path) -> Iterator[SampledFrame]:
+        """Sample frames on scene changes."""
+        cap = self._open_video(video_path)
+        info = self._get_video_info(cap)
+        fps = info["fps"]
+
+        if fps <= 0:
+            cap.release()
+            return
+
+        prev_gray = None
+        last_sample_time = -self.min_interval
+        frame_num = 0
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            current_time = frame_num / fps
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            should_sample = False
+            reason = ""
+
+            if prev_gray is None:
+                # First frame
+                should_sample = True
+                reason = "first_frame"
+            elif current_time - last_sample_time >= self.min_interval:
+                # Check for scene change
+                diff = cv2.absdiff(prev_gray, gray)
+                change_score = diff.mean()
+
+                if change_score > self.threshold:
+                    should_sample = True
+                    reason = f"scene_change (score={change_score:.1f})"
+
+            if should_sample:
+                yield SampledFrame(
+                    timestamp=current_time,
+                    frame=frame,
+                    reason=reason
+                )
+                last_sample_time = current_time
+
+            prev_gray = gray
+            frame_num += 1
+
+        cap.release()
+
+
+class PerceptualHashSampler(FrameSampler):
+    """Sample frames using perceptual hashing to skip duplicates."""
+
+    def __init__(self, interval: float = 2.0, hash_threshold: int = 5):
+        """Initialize perceptual hash sampler.
+
+        Args:
+            interval: Base interval for sampling candidates.
+            hash_threshold: Hamming distance threshold for similarity.
+        """
+        self.interval = interval
+        self.hash_threshold = hash_threshold
+
+    def _compute_phash(self, frame: np.ndarray, hash_size: int = 8) -> int:
+        """Compute perceptual hash of a frame.
+
+        Args:
+            frame: BGR image.
+            hash_size: Size of hash (hash_size^2 bits).
+
+        Returns:
+            Integer hash value.
+        """
+        # Resize to hash_size+1 x hash_size (for gradient)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        resized = cv2.resize(gray, (hash_size + 1, hash_size))
+
+        # Compute gradient (difference between adjacent pixels)
+        diff = resized[:, 1:] > resized[:, :-1]
+
+        # Convert to integer
+        return sum(2**i for i, v in enumerate(diff.flatten()) if v)
+
+    def _hamming_distance(self, hash1: int, hash2: int) -> int:
+        """Compute Hamming distance between two hashes."""
+        return bin(hash1 ^ hash2).count('1')
+
+    def sample(self, video_path: Path) -> Iterator[SampledFrame]:
+        """Sample frames, skipping perceptually similar ones."""
+        cap = self._open_video(video_path)
+        info = self._get_video_info(cap)
+        fps = info["fps"]
+
+        if fps <= 0:
+            cap.release()
+            return
+
+        frame_skip = int(fps * self.interval)
+        frame_num = 0
+        last_hash = None
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_num % frame_skip == 0:
+                current_hash = self._compute_phash(frame)
+                timestamp = frame_num / fps
+
+                should_sample = False
+                reason = ""
+
+                if last_hash is None:
+                    should_sample = True
+                    reason = "first_frame"
+                else:
+                    distance = self._hamming_distance(current_hash, last_hash)
+                    if distance >= self.hash_threshold:
+                        should_sample = True
+                        reason = f"content_changed (distance={distance})"
+
+                if should_sample:
+                    yield SampledFrame(
+                        timestamp=timestamp,
+                        frame=frame,
+                        reason=reason
+                    )
+                    last_hash = current_hash
+
+            frame_num += 1
+
+        cap.release()
+
+
+class HybridSampler(FrameSampler):
+    """Combines time bounds with scene detection for optimal sampling."""
+
+    def __init__(
+        self,
+        min_interval: float = 1.0,
+        max_interval: float = 30.0,
+        scene_threshold: float = 25.0
+    ):
+        """Initialize hybrid sampler.
+
+        Args:
+            min_interval: Minimum seconds between samples.
+            max_interval: Maximum seconds between samples.
+            scene_threshold: Scene change threshold.
+        """
+        self.min_interval = min_interval
+        self.max_interval = max_interval
+        self.scene_threshold = scene_threshold
+
+    def sample(self, video_path: Path) -> Iterator[SampledFrame]:
+        """Sample using hybrid strategy.
+
+        - Never sample more than once per min_interval
+        - Always sample at least once per max_interval
+        - Sample on scene changes (within bounds)
+        """
+        cap = self._open_video(video_path)
+        info = self._get_video_info(cap)
+        fps = info["fps"]
+
+        if fps <= 0:
+            cap.release()
+            return
+
+        prev_gray = None
+        last_sample_time = -self.max_interval
+        frame_num = 0
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            current_time = frame_num / fps
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            should_sample = False
+            reason = ""
+            time_since_last = current_time - last_sample_time
+
+            # Always sample if max_interval exceeded
+            if time_since_last >= self.max_interval:
+                should_sample = True
+                reason = "max_interval"
+            # Check for scene change if min_interval passed
+            elif time_since_last >= self.min_interval and prev_gray is not None:
+                diff = cv2.absdiff(prev_gray, gray)
+                change_score = diff.mean()
+                if change_score > self.scene_threshold:
+                    should_sample = True
+                    reason = f"scene_change (score={change_score:.1f})"
+            # First frame
+            elif prev_gray is None:
+                should_sample = True
+                reason = "first_frame"
+
+            if should_sample:
+                yield SampledFrame(
+                    timestamp=current_time,
+                    frame=frame,
+                    reason=reason
+                )
+                last_sample_time = current_time
+
+            prev_gray = gray
+            frame_num += 1
+
+        cap.release()
+
+
+def create_sampler(config: SamplerConfig) -> FrameSampler:
+    """Factory function to create frame sampler.
+
+    Args:
+        config: Sampler configuration.
+
+    Returns:
+        Configured FrameSampler instance.
+    """
+    samplers = {
+        SamplingStrategy.FIXED: lambda: FixedIntervalSampler(
+            interval=config.fixed_interval
+        ),
+        SamplingStrategy.SCENE_CHANGE: lambda: SceneChangeSampler(
+            threshold=config.scene_threshold,
+            min_interval=config.min_interval
+        ),
+        SamplingStrategy.PERCEPTUAL_HASH: lambda: PerceptualHashSampler(
+            interval=config.fixed_interval,
+            hash_threshold=config.hash_threshold
+        ),
+        SamplingStrategy.HYBRID: lambda: HybridSampler(
+            min_interval=config.min_interval,
+            max_interval=config.max_interval,
+            scene_threshold=config.scene_threshold
+        ),
+    }
+
+    factory = samplers.get(config.strategy)
+    if factory is None:
+        raise ValueError(f"Unknown sampling strategy: {config.strategy}. "
+                        f"Available: {list(samplers.keys())}")
+
+    return factory()

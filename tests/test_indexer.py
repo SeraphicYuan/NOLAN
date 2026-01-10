@@ -41,14 +41,18 @@ def test_video_index_stores_and_retrieves_segments(temp_db):
 
     index.add_segment(
         video_path="/videos/test.mp4",
-        timestamp=5.0,
-        description="A person walking in a park"
+        timestamp_start=5.0,
+        timestamp_end=10.0,
+        frame_description="A person walking in a park"
     )
 
     segments = index.get_segments("/videos/test.mp4")
 
     assert len(segments) == 1
     assert segments[0].description == "A person walking in a park"
+    assert segments[0].frame_description == "A person walking in a park"
+    assert segments[0].timestamp_start == 5.0
+    assert segments[0].timestamp_end == 10.0
 
 
 def test_video_index_search_returns_matches(temp_db):
@@ -56,11 +60,11 @@ def test_video_index_search_returns_matches(temp_db):
     index = VideoIndex(temp_db)
 
     index.add_video("/videos/city.mp4", 60.0, "def456")
-    index.add_segment("/videos/city.mp4", 10.0, "Aerial view of city skyline at dusk")
-    index.add_segment("/videos/city.mp4", 20.0, "Close-up of traffic lights")
+    index.add_segment("/videos/city.mp4", 10.0, 15.0, "Aerial view of city skyline at dusk")
+    index.add_segment("/videos/city.mp4", 20.0, 25.0, "Close-up of traffic lights")
 
     index.add_video("/videos/nature.mp4", 60.0, "ghi789")
-    index.add_segment("/videos/nature.mp4", 5.0, "Forest with tall trees")
+    index.add_segment("/videos/nature.mp4", 5.0, 10.0, "Forest with tall trees")
 
     results = index.search("city skyline aerial")
 
