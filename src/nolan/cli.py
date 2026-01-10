@@ -438,6 +438,192 @@ def _export_all_videos(index, output_path):
 
 
 @main.command()
+@click.argument('video', type=click.Path(exists=True), required=False)
+@click.option('--output', '-o', type=click.Path(), help='Output JSON file path.')
+@click.option('--all', 'cluster_all', is_flag=True, help='Cluster all indexed videos.')
+@click.option('--summarize/--no-summarize', default=True,
+              help='Generate cluster summaries using LLM.')
+@click.option('--refine/--no-refine', default=False,
+              help='Use LLM to detect story boundaries within clusters (slower but more accurate).')
+@click.option('--max-gap', default=2.0, type=float,
+              help='Maximum time gap (seconds) between segments to consider clustering.')
+@click.pass_context
+def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap):
+    """Cluster video segments into story moments.
+
+    VIDEO is the path to an indexed video file.
+
+    Clustering groups continuous segments that share:
+    - Same characters/people
+    - Same location
+    - Related story context
+
+    Examples:
+        nolan cluster video.mp4 -o clusters.json
+        nolan cluster --all -o all_clusters.json
+        nolan cluster video.mp4 --refine  # Use LLM for better boundaries
+    """
+    config = ctx.obj['config']
+    db_path = Path(config.indexing.database).expanduser()
+
+    if not db_path.exists():
+        click.echo(f"Error: Database not found at {db_path}")
+        click.echo("Run 'nolan index' first to index videos.")
+        return
+
+    if cluster_all:
+        asyncio.run(_cluster_all_videos(config, db_path, output, summarize, refine, max_gap))
+    elif video:
+        asyncio.run(_cluster_video(config, db_path, Path(video), output, summarize, refine, max_gap))
+    else:
+        click.echo("Error: Provide a VIDEO path or use --all flag.")
+
+
+async def _cluster_video(config, db_path, video_path, output_path, summarize, refine, max_gap):
+    """Cluster segments for a single video."""
+    import json
+    from nolan.indexer import VideoIndex
+    from nolan.clustering import cluster_segments, ClusterAnalyzer, StoryBoundaryDetector
+
+    index = VideoIndex(db_path)
+
+    # Find segments
+    segments = index.get_segments(str(video_path))
+    if not segments:
+        segments = index.get_segments(str(video_path.resolve()))
+    if not segments:
+        # Try matching by filename
+        import sqlite3
+        with sqlite3.connect(index.db_path) as conn:
+            for row in conn.execute('SELECT path FROM videos'):
+                if video_path.name in row[0]:
+                    segments = index.get_segments(row[0])
+                    break
+
+    if not segments:
+        click.echo(f"Error: No indexed segments found for {video_path}")
+        return
+
+    click.echo(f"Found {len(segments)} segments")
+
+    # Cluster segments
+    click.echo("Clustering segments...")
+    clusters = cluster_segments(segments, max_gap=max_gap)
+    click.echo(f"Created {len(clusters)} clusters")
+
+    # Refine with LLM story boundary detection
+    if refine and config.gemini.api_key:
+        click.echo("Refining clusters with LLM story boundary detection...")
+        from nolan.llm import GeminiClient
+        llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
+        detector = StoryBoundaryDetector(llm)
+        clusters = await detector.refine_clusters(clusters)
+        click.echo(f"Refined to {len(clusters)} clusters")
+
+    # Generate summaries
+    if summarize and config.gemini.api_key:
+        click.echo("Generating cluster summaries...")
+        from nolan.llm import GeminiClient
+        llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
+        analyzer = ClusterAnalyzer(llm)
+        clusters = await analyzer.analyze_clusters(clusters)
+
+    # Build output
+    output = {
+        'video': {
+            'path': str(video_path),
+            'name': video_path.name
+        },
+        'clustering': {
+            'max_gap': max_gap,
+            'refined': refine,
+            'summarized': summarize
+        },
+        'clusters': [c.to_dict() for c in clusters]
+    }
+
+    # Determine output path
+    if output_path is None:
+        output_path = video_path.with_suffix('.clusters.json')
+    else:
+        output_path = Path(output_path)
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
+    click.echo(f"\nExported {len(clusters)} clusters to {output_path}")
+
+    # Print summary
+    for c in clusters:
+        click.echo(f"  Cluster {c.id}: {c.timestamp_formatted} ({len(c.segments)} segments, {c.duration:.1f}s)")
+
+
+async def _cluster_all_videos(config, db_path, output_path, summarize, refine, max_gap):
+    """Cluster all indexed videos."""
+    import json
+    import sqlite3
+    from nolan.indexer import VideoIndex
+    from nolan.clustering import cluster_segments, ClusterAnalyzer, StoryBoundaryDetector
+
+    index = VideoIndex(db_path)
+
+    with sqlite3.connect(db_path) as conn:
+        videos = [row[0] for row in conn.execute('SELECT path FROM videos')]
+
+    if not videos:
+        click.echo("No indexed videos found.")
+        return
+
+    # Setup LLM if needed
+    llm = None
+    if (summarize or refine) and config.gemini.api_key:
+        from nolan.llm import GeminiClient
+        llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
+
+    output = {'videos': []}
+
+    for video_path in videos:
+        click.echo(f"\nProcessing: {Path(video_path).name}")
+        segments = index.get_segments(video_path)
+
+        if not segments:
+            click.echo("  No segments found, skipping")
+            continue
+
+        # Cluster
+        clusters = cluster_segments(segments, max_gap=max_gap)
+        click.echo(f"  Created {len(clusters)} clusters from {len(segments)} segments")
+
+        # Refine
+        if refine and llm:
+            detector = StoryBoundaryDetector(llm)
+            clusters = await detector.refine_clusters(clusters)
+
+        # Summarize
+        if summarize and llm:
+            analyzer = ClusterAnalyzer(llm)
+            clusters = await analyzer.analyze_clusters(clusters)
+
+        video_data = {
+            'path': video_path,
+            'name': Path(video_path).name,
+            'clusters': [c.to_dict() for c in clusters]
+        }
+        output['videos'].append(video_data)
+
+    # Save
+    if output_path is None:
+        output_path = 'library_clusters.json'
+    output_path = Path(output_path)
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
+    total_clusters = sum(len(v['clusters']) for v in output['videos'])
+    click.echo(f"\nExported {len(videos)} videos ({total_clusters} clusters) to {output_path}")
+
+
+@main.command()
 @click.option('--scene', type=str, help='Generate for a specific scene ID.')
 @click.option('--project', '-p', type=click.Path(exists=True), default='./output',
               help='Project directory with scene_plan.json.')

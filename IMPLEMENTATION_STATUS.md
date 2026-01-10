@@ -51,6 +51,20 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
   - Objects (notable items)
   - Confidence level (high/medium/low)
 
+### Scene Clustering
+- **Segment Grouping** - Cluster continuous segments into story moments
+  - Groups by shared characters/people
+  - Groups by shared location
+  - Groups by similar story context
+  - Configurable time gap threshold
+- **LLM Story Boundary Detection** - Optional refinement using LLM
+  - Detects narrative beat changes
+  - Splits clusters at story boundaries
+- **Cluster Summaries** - LLM-generated summaries for each cluster
+  - Captures what's happening in the story moment
+  - Identifies key characters/elements
+  - Describes emotional/narrative significance
+
 ### Integrations
 - **ComfyUI Client** - Image generation via local ComfyUI API
 - **Viewer Server** - FastAPI-based local viewer for reviewing outputs
@@ -61,6 +75,7 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 | `nolan process <essay.md>` | Full pipeline: essay → script → scenes |
 | `nolan index <video_folder>` | Index video library for snippet matching |
 | `nolan export <video>` | Export indexed segments to JSON |
+| `nolan cluster <video>` | Cluster segments into story moments |
 | `nolan serve` | Launch local viewer to review outputs |
 | `nolan generate` | Generate images via ComfyUI |
 
@@ -86,13 +101,18 @@ nolan index path/to/videos --vision gemini --whisper --whisper-model base
 nolan export video.mp4 -o segments.json
 nolan export --all -o library.json
 
+# Cluster segments into story moments
+nolan cluster video.mp4 -o clusters.json
+nolan cluster video.mp4 --refine  # Use LLM for better boundaries
+nolan cluster --all -o all_clusters.json
+
 # Launch viewer
 nolan serve -p ./output
 ```
 
 ## Test Coverage
 
-98 tests covering all modules:
+132 tests covering all modules:
 - Configuration: 3 tests
 - LLM Client: 2 tests
 - Parser: 3 tests
@@ -108,7 +128,8 @@ nolan serve -p ./output
 - Sampler: 11 tests
 - Transcript: 15 tests
 - Analyzer: 10 tests
-- Whisper: 17 tests (NEW)
+- Whisper: 17 tests
+- Clustering: 34 tests (NEW)
 
 ## Project Structure
 
@@ -131,10 +152,11 @@ NOLAN/
 │   ├── sampler.py       # Smart frame sampling
 │   ├── transcript.py    # Transcript loading/alignment
 │   ├── analyzer.py      # Segment analysis + inference
-│   ├── whisper.py       # Whisper auto-transcription [NEW]
+│   ├── whisper.py       # Whisper auto-transcription
+│   ├── clustering.py    # Scene clustering [NEW]
 │   └── templates/
 │       └── index.html   # Viewer UI
-├── tests/               # Test suite (98 tests)
+├── tests/               # Test suite (132 tests)
 ├── pyproject.toml       # Package configuration
 └── .env                 # API keys (not committed)
 ```
@@ -149,16 +171,15 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
-- **Scene Clustering** - Group continuous segments into story moments
-  - Cluster adjacent segments with same characters/location
-  - LLM-based story boundary detection
-  - Cluster-level summaries for deeper narrative understanding
-  - Better asset matching (30s clips vs 3s fragments)
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - Internet asset collection (Pexels, Pixabay integration)
 
 ## Recently Completed
 
+- ✅ **Scene Clustering** - `nolan cluster` command for grouping segments into story moments
+  - Groups by shared characters, location, and story context
+  - Optional LLM-based story boundary detection (`--refine`)
+  - Cluster-level summaries for deeper narrative understanding
 - ✅ **Export command** - `nolan export` for full JSON output with all fields
 - ✅ **Gemini vision CLI** - `--vision gemini` option for cloud-based frame analysis (3-4x faster)
 - ✅ **GPU Whisper** - CUDA acceleration with automatic CPU fallback
