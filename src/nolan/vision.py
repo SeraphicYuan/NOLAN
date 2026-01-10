@@ -135,7 +135,7 @@ class GeminiVision(VisionProvider):
             config: Vision configuration.
         """
         self.api_key = config.api_key
-        self.model = config.model or "gemini-2.0-flash"
+        self.model = config.model or "gemini-3-flash-preview"
         self._client = None
 
     def _get_client(self):

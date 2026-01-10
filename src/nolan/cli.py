@@ -1,9 +1,15 @@
 """Command-line interface for NOLAN."""
 
 import asyncio
+import sys
 from pathlib import Path
 
 import click
+
+# Fix Windows console encoding for Unicode filenames
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 from nolan import __version__
 from nolan.config import load_config
@@ -119,13 +125,16 @@ async def _process_essay(config, essay_path, output_path, skip_scenes, skip_asse
               help='Scan subdirectories.')
 @click.option('--frame-interval', default=5, type=int,
               help='Seconds between sampled frames.')
+@click.option('--vision', default='ollama',
+              type=click.Choice(['ollama', 'gemini']),
+              help='Vision provider for frame analysis.')
 @click.option('--whisper/--no-whisper', default=False,
               help='Auto-generate transcripts with Whisper for videos without them.')
 @click.option('--whisper-model', default='base',
               type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']),
               help='Whisper model size (larger = better quality, slower).')
 @click.pass_context
-def index(ctx, directory, recursive, frame_interval, whisper, whisper_model):
+def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_model):
     """Index a video directory for asset matching.
 
     DIRECTORY is the path to your video library folder.
@@ -144,10 +153,10 @@ def index(ctx, directory, recursive, frame_interval, whisper, whisper_model):
     click.echo(f"Recursive: {recursive}")
     click.echo(f"Frame interval: {frame_interval}s")
 
-    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, whisper, whisper_model))
+    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, vision, whisper, whisper_model))
 
 
-async def _index_videos(config, directory, recursive, frame_interval, whisper_enabled=False, whisper_model='base'):
+async def _index_videos(config, directory, recursive, frame_interval, vision_provider='ollama', whisper_enabled=False, whisper_model='base'):
     """Async implementation of index command."""
     from nolan.indexer import HybridVideoIndexer, VideoIndex
     from nolan.vision import create_vision_provider, VisionConfig
@@ -158,21 +167,29 @@ async def _index_videos(config, directory, recursive, frame_interval, whisper_en
     db_path = Path(config.indexing.database).expanduser()
     index = VideoIndex(db_path)
 
+    # Determine vision model based on provider
+    if vision_provider == "gemini":
+        vision_model = "gemini-3-flash-preview"
+        api_key = config.gemini.api_key
+    else:
+        vision_model = config.vision.model
+        api_key = None
+
     # Initialize vision provider
     vision_config = VisionConfig(
-        provider=config.vision.provider,
-        model=config.vision.model,
+        provider=vision_provider,
+        model=vision_model,
         host=config.vision.host,
         port=config.vision.port,
         timeout=config.vision.timeout,
-        api_key=config.gemini.api_key if config.vision.provider == "gemini" else None
+        api_key=api_key
     )
     vision = create_vision_provider(vision_config)
 
     # Check vision provider connection
-    click.echo(f"\nVision provider: {config.vision.provider} ({config.vision.model})")
+    click.echo(f"\nVision provider: {vision_provider} ({vision_model})")
     if not await vision.check_connection():
-        click.echo(f"Error: Cannot connect to {config.vision.provider}. Is it running?")
+        click.echo(f"Error: Cannot connect to {vision_provider}. Is it running?")
         return
 
     # Initialize sampler
@@ -194,9 +211,26 @@ async def _index_videos(config, directory, recursive, frame_interval, whisper_en
             if not check_ffmpeg():
                 click.echo("Warning: ffmpeg not found. Whisper transcription disabled.")
             else:
-                whisper_config = WhisperConfig(model_size=whisper_model)
-                whisper_transcriber = WhisperTranscriber(whisper_config)
-                click.echo(f"Whisper: enabled (model: {whisper_model})")
+                # Try CUDA first, fall back to CPU
+                whisper_config = WhisperConfig(
+                    model_size=whisper_model,
+                    device='cuda',
+                    compute_type='float16'
+                )
+                try:
+                    whisper_transcriber = WhisperTranscriber(whisper_config)
+                    # Test if CUDA works by accessing the model
+                    _ = whisper_transcriber.model
+                    click.echo(f"Whisper: enabled (model: {whisper_model}, device: cuda)")
+                except Exception:
+                    # Fall back to CPU
+                    whisper_config = WhisperConfig(
+                        model_size=whisper_model,
+                        device='cpu',
+                        compute_type='int8'
+                    )
+                    whisper_transcriber = WhisperTranscriber(whisper_config)
+                    click.echo(f"Whisper: enabled (model: {whisper_model}, device: cpu)")
         except ImportError as e:
             click.echo(f"Warning: Whisper unavailable ({e}). Transcription disabled.")
 
