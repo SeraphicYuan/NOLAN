@@ -295,6 +295,149 @@ def serve(project, host, port):
 
 
 @main.command()
+@click.argument('video', type=click.Path(exists=True), required=False)
+@click.option('--output', '-o', type=click.Path(), help='Output JSON file path.')
+@click.option('--all', 'export_all', is_flag=True, help='Export all indexed videos.')
+@click.pass_context
+def export(ctx, video, output, export_all):
+    """Export indexed video segments to JSON.
+
+    VIDEO is the path to an indexed video file.
+
+    Examples:
+        nolan export video.mp4 -o segments.json
+        nolan export --all -o library.json
+    """
+    import json
+    from nolan.indexer import VideoIndex
+
+    config = ctx.obj['config']
+    db_path = Path(config.indexing.database).expanduser()
+
+    if not db_path.exists():
+        click.echo(f"Error: Database not found at {db_path}")
+        click.echo("Run 'nolan index' first to index videos.")
+        return
+
+    index = VideoIndex(db_path)
+
+    if export_all:
+        # Export all videos
+        _export_all_videos(index, output)
+    elif video:
+        # Export single video
+        _export_single_video(index, Path(video), output)
+    else:
+        click.echo("Error: Provide a VIDEO path or use --all flag.")
+        return
+
+
+def _export_single_video(index, video_path: Path, output_path):
+    """Export segments for a single video."""
+    import json
+
+    # Try both absolute and relative paths
+    segments = index.get_segments(str(video_path))
+    if not segments:
+        segments = index.get_segments(str(video_path.resolve()))
+    if not segments:
+        # Try matching by filename
+        import sqlite3
+        with sqlite3.connect(index.db_path) as conn:
+            for row in conn.execute('SELECT path FROM videos'):
+                if video_path.name in row[0]:
+                    segments = index.get_segments(row[0])
+                    break
+
+    if not segments:
+        click.echo(f"Error: No indexed segments found for {video_path}")
+        return
+
+    output = {
+        'video': {
+            'path': str(video_path),
+            'name': video_path.name
+        },
+        'segments': []
+    }
+
+    for seg in segments:
+        segment_data = {
+            'timestamp_start': seg.timestamp_start,
+            'timestamp_end': seg.timestamp_end,
+            'timestamp_formatted': seg.timestamp_formatted,
+            'duration': seg.duration,
+            'frame_description': seg.frame_description,
+            'transcript': seg.transcript,
+            'combined_summary': seg.combined_summary,
+            'inferred_context': seg.inferred_context.to_dict() if seg.inferred_context else None,
+            'sample_reason': seg.sample_reason
+        }
+        output['segments'].append(segment_data)
+
+    # Determine output path
+    if output_path is None:
+        output_path = video_path.with_suffix('.segments.json')
+    else:
+        output_path = Path(output_path)
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
+    click.echo(f"Exported {len(segments)} segments to {output_path}")
+
+
+def _export_all_videos(index, output_path):
+    """Export all indexed videos."""
+    import json
+    import sqlite3
+
+    with sqlite3.connect(index.db_path) as conn:
+        videos = [row[0] for row in conn.execute('SELECT path FROM videos')]
+
+    if not videos:
+        click.echo("No indexed videos found.")
+        return
+
+    output = {'videos': []}
+
+    for video_path in videos:
+        segments = index.get_segments(video_path)
+        video_data = {
+            'path': video_path,
+            'name': Path(video_path).name,
+            'segments': []
+        }
+
+        for seg in segments:
+            segment_data = {
+                'timestamp_start': seg.timestamp_start,
+                'timestamp_end': seg.timestamp_end,
+                'timestamp_formatted': seg.timestamp_formatted,
+                'duration': seg.duration,
+                'frame_description': seg.frame_description,
+                'transcript': seg.transcript,
+                'combined_summary': seg.combined_summary,
+                'inferred_context': seg.inferred_context.to_dict() if seg.inferred_context else None,
+                'sample_reason': seg.sample_reason
+            }
+            video_data['segments'].append(segment_data)
+
+        output['videos'].append(video_data)
+
+    # Determine output path
+    if output_path is None:
+        output_path = 'library_export.json'
+    output_path = Path(output_path)
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
+    total_segments = sum(len(v['segments']) for v in output['videos'])
+    click.echo(f"Exported {len(videos)} videos ({total_segments} segments) to {output_path}")
+
+
+@main.command()
 @click.option('--scene', type=str, help='Generate for a specific scene ID.')
 @click.option('--project', '-p', type=click.Path(exists=True), default='./output',
               help='Project directory with scene_plan.json.')
