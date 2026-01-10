@@ -98,5 +98,6 @@ NOLAN/
 
 - **Local VLM support** - Ollama integration (Moondream, LLaVA, Llama Vision) for free local video indexing
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
+- **Smart sampling** - Scene change detection instead of fixed intervals (reduce API calls by 60-90%)
 - Internet asset collection (Pexels, Pixabay integration)
 - Transcript indexing for audio/speech search in videos
