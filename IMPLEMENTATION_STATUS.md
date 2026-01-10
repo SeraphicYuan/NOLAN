@@ -171,6 +171,12 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
+- **Video Index Viewer** - Web UI for browsing indexed video library
+  - Browse videos and their segments
+  - View frame descriptions, transcripts, inferred context
+  - View clusters with summaries
+  - Video preview playback at timestamps
+  - Full-text search across segments
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - Internet asset collection (Pexels, Pixabay integration)
 
