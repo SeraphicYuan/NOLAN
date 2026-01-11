@@ -354,20 +354,121 @@ nolan render project/timed_scene_plan.json project/voiceover.mp3 -o project/fina
 nolan produce essay_script.md project/voiceover.mp3 --srt project/voiceover.srt -o project/
 ```
 
-## SRT Transcript Benefits
+## SRT as the Sync Backbone
 
-Using SRT (SubRip) format provides:
+The SRT transcript is the **central timing source** that drives everything:
 
-| Benefit | Description |
-|---------|-------------|
-| **Precise timestamps** | Word/phrase-level timing from TTS or transcription |
-| **Scene matching** | Fuzzy match `narration_excerpt` to SRT cues |
-| **Natural boundaries** | Scene transitions at subtitle boundaries |
-| **Fallback to Whisper** | Generate SRT if not provided |
-| **Existing support** | NOLAN already has `transcript.py` for SRT parsing |
+```
+                              voiceover.srt
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        │                           │                           │
+        ▼                           ▼                           ▼
+   Scene Timing              Visual Sync                 Animations
+        │                           │                           │
+        ├── Scene boundaries        ├── Show asset when         ├── Kinetic typography
+        ├── Asset transitions       │   words are spoken        │   (word-by-word reveal)
+        └── Duration calc           ├── B-roll cuts on          ├── Text overlays timed
+                                    │   key phrases             │   to speech
+                                    └── Infographic             ├── Lower thirds sync
+                                        element reveals         └── Progress indicators
+```
 
-**SRT sources:**
-- TTS services (ElevenLabs, Azure, etc.) often output SRT
-- Transcription services (Whisper, AssemblyAI, etc.)
-- Manual creation for precise control
-- `nolan` can generate via Whisper if missing
+### SRT-Driven Features
+
+| Feature | How SRT Drives It |
+|---------|-------------------|
+| **Subtitles/Captions** | Display SRT cues as on-screen text |
+| **Scene transitions** | Cut to new visual when cue mentions scene topic |
+| **Kinetic typography** | Animate words as they're spoken |
+| **Text overlays** | Show key phrases at exact moment spoken |
+| **Infographic reveals** | Reveal data points as narrator explains them |
+| **B-roll timing** | Switch footage on key words/phrases |
+| **Lower thirds** | Show speaker name when introduced in narration |
+| **Chapter markers** | Insert chapter cards at section transitions |
+
+### Animation Sync Examples
+
+**Kinetic Typography (Motion Canvas):**
+```json
+{
+  "engine": "motion-canvas",
+  "data": {
+    "kinetic": {
+      "phrases": [
+        {"text": "The real story", "start": 2.5, "hold": 0.7},
+        {"text": "is in the data", "start": 3.4, "hold": 0.7}
+      ]
+    }
+  }
+}
+```
+↑ `start` times come directly from SRT cue timestamps
+
+**Infographic Reveal (Remotion):**
+```json
+{
+  "engine": "remotion",
+  "data": {
+    "items": [
+      {"label": "Step 1", "reveal_at": 5.2},
+      {"label": "Step 2", "reveal_at": 8.1},
+      {"label": "Step 3", "reveal_at": 11.4}
+    ]
+  }
+}
+```
+↑ `reveal_at` synced to when narrator says "first", "second", "third"
+
+**Caption Overlay:**
+```json
+{
+  "engine": "remotion",
+  "data": {
+    "captions": {
+      "enabled": true,
+      "style": "bottom-center",
+      "cues": [/* from SRT */]
+    }
+  }
+}
+```
+
+### Alignment Data Flow
+
+```
+scene_plan.json                    voiceover.srt
+       │                                 │
+       │  narration_excerpt:             │  00:00:05,200 --> 00:00:08,100
+       │  "GDP grew by 15%"              │  GDP grew by fifteen percent
+       │                                 │
+       └─────────────┬───────────────────┘
+                     │
+                     ▼
+              TimingAligner
+                     │
+                     ├── Fuzzy match: "GDP grew by 15%" ≈ "GDP grew by fifteen percent"
+                     ├── Scene starts at 5.2s
+                     ├── Scene ends at 8.1s (next cue or silence)
+                     │
+                     ▼
+           timed_scene_plan.json
+                     │
+                     ├── scene.start_seconds = 5.2
+                     ├── scene.end_seconds = 8.1
+                     ├── scene.subtitle_cues = [cue]
+                     └── scene.animation_sync = {
+                           "infographic_reveal": 5.2,
+                           "highlight_15_percent": 6.8
+                         }
+```
+
+### SRT Sources
+
+| Source | Quality | Notes |
+|--------|---------|-------|
+| TTS services (ElevenLabs, Azure) | High | Often output SRT with audio |
+| Whisper transcription | High | Word-level timestamps |
+| AssemblyAI, Deepgram | High | Speaker diarization available |
+| Manual creation | Perfect | Full control, labor intensive |
+| Auto-generate via `nolan` | Good | Whisper fallback if no SRT |
