@@ -71,6 +71,7 @@ class InfographicClient:
         width: Optional[int] = None,
         height: Optional[int] = None,
         theme: Optional[str] = None,
+        engine_mode: Optional[str] = None,
     ) -> RenderJob:
         """Submit a render job.
 
@@ -84,6 +85,7 @@ class InfographicClient:
             width: Output width in pixels.
             height: Output height in pixels.
             theme: Color theme (default, dark, warm, cool).
+            engine_mode: Force rendering engine mode (auto, antv, svg).
 
         Returns:
             RenderJob with job_id and initial status.
@@ -106,6 +108,8 @@ class InfographicClient:
             payload["height"] = height
         if theme:
             payload["theme"] = theme
+        if engine_mode:
+            payload["engine_mode"] = engine_mode
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
@@ -213,6 +217,7 @@ class InfographicClient:
         width: Optional[int] = None,
         height: Optional[int] = None,
         theme: Optional[str] = None,
+        engine_mode: Optional[str] = None,
         progress_callback: Optional[Callable[[float], None]] = None
     ) -> Path:
         """Submit job and wait for completion.
@@ -229,6 +234,7 @@ class InfographicClient:
             width: Output width in pixels.
             height: Output height in pixels.
             theme: Color theme (default, dark, warm, cool).
+            engine_mode: Force rendering engine mode (auto, antv, svg).
             progress_callback: Optional callback(progress: float).
 
         Returns:
@@ -243,7 +249,8 @@ class InfographicClient:
             style_prompt=style_prompt,
             width=width,
             height=height,
-            theme=theme
+            theme=theme,
+            engine_mode=engine_mode
         )
         completed = await self.wait_for_completion(
             job.job_id,

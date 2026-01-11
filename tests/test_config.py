@@ -22,7 +22,7 @@ def test_config_has_defaults():
     assert config.gemini.model == "gemini-3-flash-preview"
     assert config.defaults.words_per_minute == 150
     assert config.comfyui.host == "127.0.0.1"
-    assert config.comfyui.port == 8188
+    assert config.comfyui.port == 8002
     assert config.indexing.frame_interval == 5
 
 

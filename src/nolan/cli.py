@@ -1034,6 +1034,98 @@ async def _infographic(spec_file, template, theme, title, items, output, width, 
         click.echo(f"Timeout: {e}")
 
 
+@main.command('render-infographics')
+@click.option('--project', '-p', type=click.Path(exists=True), default='./output',
+              help='Project directory with scene_plan.json.')
+@click.option('--host', default='127.0.0.1', help='Render service host.')
+@click.option('--port', default=3010, type=int, help='Render service port.')
+@click.option('--engine-mode', type=click.Choice(['auto', 'antv', 'svg']),
+              default='auto', help='Force render engine mode.')
+@click.option('--force', is_flag=True, help='Re-render even if infographic already exists.')
+@click.pass_context
+def render_infographics(ctx, project, host, port, engine_mode, force):
+    """Render infographic scenes from a scene plan.
+
+    Reads scene_plan.json and renders scenes with visual_type=infographic.
+    Saves outputs into assets/infographics and updates scene_plan.json.
+    """
+    asyncio.run(_render_infographics(project, host, port, engine_mode, force))
+
+
+async def _render_infographics(project, host, port, engine_mode, force):
+    """Async implementation of render-infographics."""
+    import shutil
+    from pathlib import Path
+    from nolan.scenes import ScenePlan
+    from nolan.infographic_client import InfographicClient, Engine
+
+    project_path = Path(project)
+    plan_path = project_path / "scene_plan.json"
+    if not plan_path.exists():
+        click.echo("Error: scene_plan.json not found. Run 'nolan process' first.")
+        return
+
+    output_dir = project_path / "assets" / "infographics"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    plan = ScenePlan.load(str(plan_path))
+    scenes = [s for s in plan.all_scenes if s.visual_type == "infographic" or s.infographic]
+
+    if not scenes:
+        click.echo("No infographic scenes found.")
+        return
+
+    client = InfographicClient(host=host, port=port)
+    click.echo(f"Connecting to render service at {host}:{port}...")
+    if not await client.health_check():
+        click.echo("Error: Cannot connect to render service. Is it running?")
+        click.echo("Start it with: cd render-service && npm run dev")
+        return
+
+    rendered = 0
+    for scene in scenes:
+        if scene.infographic_asset and not force:
+            continue
+
+        spec = scene.infographic or {}
+        template = spec.get("template", "list")
+        theme = spec.get("theme", "default")
+        data = spec.get("data", {})
+
+        if not data:
+            data = {
+                "title": scene.visual_description or scene.id,
+                "items": [],
+            }
+
+        click.echo(f"Rendering {scene.id} ({template}, {theme})...")
+
+        try:
+            job = await client.submit(
+                engine=Engine.INFOGRAPHIC,
+                data=data,
+                template=template,
+                theme=theme,
+                engine_mode=engine_mode,
+            )
+
+            completed = await client.wait_for_completion(job.job_id)
+            output_path = Path(completed.video_path)
+            if not output_path.exists():
+                click.echo(f"  Failed: output not found for {scene.id}")
+                continue
+
+            dest = output_dir / f"{scene.id}.svg"
+            shutil.copy(output_path, dest)
+            scene.infographic_asset = f"infographics/{dest.name}"
+            rendered += 1
+        except Exception as e:
+            click.echo(f"  Error rendering {scene.id}: {e}")
+
+    plan.save(str(plan_path))
+    click.echo(f"Rendered {rendered} infographic(s). Scene plan updated.")
+
+
 @main.command('image-search')
 @click.argument('query')
 @click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'all']),

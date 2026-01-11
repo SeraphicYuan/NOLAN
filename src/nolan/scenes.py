@@ -3,7 +3,7 @@
 import json
 import re
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from nolan.script import ScriptSection
 
@@ -17,10 +17,11 @@ NARRATION:
 
 Design a sequence of visual scenes to accompany this narration. For each scene, specify:
 - When it starts and how long it lasts
-- What type of visual (b-roll, graphic, text-overlay, generated-image)
+- What type of visual (b-roll, graphic, text-overlay, generated-image, infographic)
 - What should appear on screen
 - Search terms for finding stock footage
 - A prompt for AI image generation (if applicable)
+- For infographics, provide an infographic spec with template/theme/data
 
 Return a JSON array of scenes with this structure:
 [
@@ -29,12 +30,23 @@ Return a JSON array of scenes with this structure:
     "start": "M:SS",
     "duration": "Xs",
     "narration_excerpt": "the specific words being spoken",
-    "visual_type": "b-roll|graphic|text-overlay|generated-image",
+    "visual_type": "b-roll|graphic|text-overlay|generated-image|infographic",
     "visual_description": "detailed description of what appears on screen",
     "asset_suggestions": {{
       "search_query": "keywords for stock footage search",
       "comfyui_prompt": "detailed prompt for AI image generation",
       "library_match": true
+    }},
+    "infographic": {{
+      "template": "steps|list|comparison",
+      "theme": "default|dark|warm|cool",
+      "data": {{
+        "title": "infographic title",
+        "items": [
+          {{"label": "Step 1", "desc": "Short detail"}},
+          {{"label": "Step 2", "desc": "Short detail"}}
+        ]
+      }}
     }}
   }}
 ]
@@ -57,6 +69,8 @@ class Scene:
     skip_generation: bool = False
     matched_asset: Optional[str] = None
     generated_asset: Optional[str] = None
+    infographic: Optional[Dict[str, Any]] = None
+    infographic_asset: Optional[str] = None
 
 
 @dataclass
@@ -142,6 +156,7 @@ class SceneDesigner:
 
         scenes = []
         for scene_data in scenes_data:
+            asset_suggestions = scene_data.get("asset_suggestions", {})
             scene = Scene(
                 id=scene_data["id"],
                 start=scene_data["start"],
@@ -149,9 +164,10 @@ class SceneDesigner:
                 narration_excerpt=scene_data["narration_excerpt"],
                 visual_type=scene_data["visual_type"],
                 visual_description=scene_data["visual_description"],
-                search_query=scene_data["asset_suggestions"]["search_query"],
-                comfyui_prompt=scene_data["asset_suggestions"]["comfyui_prompt"],
-                library_match=scene_data["asset_suggestions"].get("library_match", True)
+                search_query=asset_suggestions.get("search_query", ""),
+                comfyui_prompt=asset_suggestions.get("comfyui_prompt", ""),
+                library_match=asset_suggestions.get("library_match", True),
+                infographic=scene_data.get("infographic"),
             )
             scenes.append(scene)
 

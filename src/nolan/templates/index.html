@@ -28,6 +28,12 @@
         .asset-preview { margin-top: 10px; }
         .asset-preview img { max-width: 100%; border-radius: 5px; }
         .asset-preview video { max-width: 100%; border-radius: 5px; }
+        .infographic-block { margin-top: 12px; padding: 10px; background: #1f1f3a; border-radius: 6px; border: 1px dashed #3a3a5a; }
+        .infographic-block h4 { font-size: 12px; text-transform: uppercase; color: #9aa0b4; margin-bottom: 6px; }
+        .infographic-meta { font-size: 12px; color: #c2c7d6; margin-bottom: 6px; }
+        .infographic-items { font-size: 12px; color: #9aa0b4; }
+        .infographic-preview { margin-top: 10px; }
+        .infographic-preview img { max-width: 100%; border-radius: 5px; background: #fff; }
         .summary { background: #2a2a4a; padding: 20px; border-radius: 10px; }
         .summary-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #3a3a5a; }
         .loading { text-align: center; padding: 50px; color: #666; }
@@ -77,6 +83,34 @@
                 document.getElementById('script-content').textContent = data.content;
             });
 
+        function renderInfographicSpec(scene) {
+            if (!scene.infographic) return '';
+
+            const spec = scene.infographic;
+            const template = escapeHtml(spec.template || 'list');
+            const theme = escapeHtml(spec.theme || 'default');
+            const title = escapeHtml((spec.data && spec.data.title) || scene.visual_description || scene.id);
+            const itemCount = (spec.data && spec.data.items) ? spec.data.items.length : 0;
+
+            return `
+                <div class="infographic-block">
+                    <h4>Infographic</h4>
+                    <div class="infographic-meta">Template: ${template} &bull; Theme: ${theme}</div>
+                    <div class="infographic-meta">Title: ${title}</div>
+                    <div class="infographic-items">Items: ${itemCount}</div>
+                </div>
+            `;
+        }
+
+        function renderInfographicPreview(scene) {
+            if (!scene.infographic_asset) return '';
+            return `
+                <div class="infographic-preview">
+                    <img src="/assets/${scene.infographic_asset}" alt="Infographic preview">
+                </div>
+            `;
+        }
+
         // Load scenes
         fetch('/api/scenes')
             .then(r => r.json())
@@ -87,12 +121,20 @@
                 let totalScenes = 0;
                 let assetsMatched = 0;
                 let assetsGenerated = 0;
+                let infographicScenes = 0;
+                let infographicsRendered = 0;
 
                 for (const [section, scenes] of Object.entries(data.sections)) {
                     for (const scene of scenes) {
                         totalScenes++;
                         if (scene.matched_asset) assetsMatched++;
                         if (scene.generated_asset) assetsGenerated++;
+                        if (scene.visual_type === 'infographic' || scene.infographic) {
+                            infographicScenes++;
+                        }
+                        if (scene.infographic_asset) {
+                            infographicsRendered++;
+                        }
 
                         const card = document.createElement('div');
                         card.className = 'scene-card';
@@ -106,6 +148,8 @@
                                 <p class="scene-desc">${scene.visual_description}</p>
                                 <div class="scene-narration">"${scene.narration_excerpt}"</div>
                                 ${scene.generated_asset ? `<div class="asset-preview"><img src="/assets/generated/${scene.generated_asset}" alt="Generated"></div>` : ''}
+                                ${renderInfographicSpec(scene)}
+                                ${renderInfographicPreview(scene)}
                             </div>
                         `;
                         grid.appendChild(card);
@@ -118,6 +162,8 @@
                     <div class="summary-item"><span>Library Matches</span><span>${assetsMatched}</span></div>
                     <div class="summary-item"><span>Generated Images</span><span>${assetsGenerated}</span></div>
                     <div class="summary-item"><span>Assets Needed</span><span>${totalScenes - assetsMatched - assetsGenerated}</span></div>
+                    <div class="summary-item"><span>Infographic Scenes</span><span>${infographicScenes}</span></div>
+                    <div class="summary-item"><span>Infographics Rendered</span><span>${infographicsRendered}</span></div>
                 `;
             });
     </script>

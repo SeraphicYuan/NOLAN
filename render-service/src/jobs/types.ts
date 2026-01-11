@@ -12,6 +12,11 @@ export interface RenderSpec {
   duration?: number;
   audio?: string;
   style_prompt?: string;
+  width?: number;
+  height?: number;
+  theme?: string;
+  engine_mode?: 'auto' | 'antv' | 'svg';
+  markup?: string;
 }
 
 // A render job with its current state

@@ -1,5 +1,5 @@
 // render-service/src/engines/types.ts
-
+import type { RenderSpec } from '../jobs/types.js';
 /**
  * Result from a render operation
  */
@@ -23,5 +23,5 @@ export interface RenderEngine {
    * @param outputDir - Directory to save output files
    * @returns Promise resolving to RenderResult
    */
-  render(spec: Record<string, unknown>, outputDir: string): Promise<RenderResult>;
+  render(spec: RenderSpec, outputDir: string): Promise<RenderResult>;
 }

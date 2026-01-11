@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-01-11
 
 ## Summary
 
@@ -238,22 +238,36 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
-- **Motion Canvas & Remotion Engines** - Animated infographics for render-service
-  - Motion Canvas - Vector animations synced to voice-over
-  - Remotion - Final composition and video rendering
-  - LLM integration to detect data points in scripts and suggest infographic placement
+- **LLM infographic placement** - Detect data points in scripts and suggest infographic placement
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - **Image search browser display** - View image search results in web UI
 - **Vision model image selection** - Auto-select best matching images using vision model
 
 ## Recently Completed
 
+- ✅ **Motion Canvas Engine** - Render-service can export MP4s via Motion Canvas + FFmpeg
+  - Generates a temporary Motion Canvas project (project, scene, render entry, spec)
+  - Uses Vite + @motion-canvas/vite-plugin + @motion-canvas/ffmpeg for rendering
+  - Launches headless Chromium to execute the render pipeline and writes MP4s to output
+  - Supports basic spec fields (title, subtitle, items, width, height, duration, theme)
+- ✅ **Remotion Engine** - Render-service can export MP4s via Remotion renderer
+  - Bundles a temporary Remotion project for each job and renders via @remotion/renderer
+  - Infographic composition supports title, subtitle, items, and theme colors
 - ✅ **AntV Infographic Engine Enablement** - render-service now supports @antv/infographic via headless Chromium
   - Uses bundled `infographic.min.js` with Puppeteer for SVG extraction
   - Added template aliasing so `steps/list/comparison` map to real AntV templates
   - Added `INFOGRAPHIC_ENGINE` and `engine_mode` to force AntV vs SVG fallback
   - Added `PUPPETEER_EXECUTABLE_PATH`/`CHROME_PATH` support for local Chrome/Edge
   - Debug logging is gated behind `INFOGRAPHIC_DEBUG=1`
+- ✅ **Render Service Engine Coverage** - Motion Canvas and Remotion engines now render MP4s
+  - Processor wiring routes motion-canvas and remotion jobs to live engines
+- ✅ **Infographic Scene Integration** - Scene designer supports infographic suggestions
+  - Prompt updated to allow infographic visual_type and spec payloads
+  - Scene model stores infographic specs and rendered assets
+- ✅ **Infographic Batch Rendering** - `nolan render-infographics` renders infographic scenes
+  - Writes SVGs to assets/infographics and updates scene_plan.json
+- ✅ **Viewer Infographic Review** - project viewer displays infographic specs and previews
+  - Summary now includes infographic counts and render status
 
 - ✅ **Infographic CLI Integration** - `nolan infographic` command for generating infographics
   - Connects Python CLI to Node.js render-service via HTTP

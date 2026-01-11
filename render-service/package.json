@@ -5,7 +5,7 @@
   "description": "Infographic & Animation Render Service for NOLAN",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "nodemon --watch src --ext ts --exec \"node --loader ts-node/esm src/server.ts\"",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
@@ -16,9 +16,19 @@
   "license": "ISC",
   "dependencies": {
     "@antv/infographic": "^0.2.7",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
+    "@motion-canvas/2d": "^3.17.2",
+    "@motion-canvas/core": "^3.17.2",
+    "@motion-canvas/ffmpeg": "^3.17.2",
+    "@motion-canvas/ui": "^3.17.2",
+    "@remotion/bundler": "^4.0.404",
+    "@remotion/renderer": "^4.0.404",
+    "@rollup/rollup-win32-x64-msvc": "^4.55.1",
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "puppeteer": "^24.34.0",
+    "remotion": "^4.0.404",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -26,10 +36,13 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.6",
     "@types/uuid": "^10.0.0",
+    "esbuild": "0.25.0",
     "nodemon": "^3.1.11",
     "patch-package": "^8.0.1",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "esbuild": "0.25.0"
   }
 }

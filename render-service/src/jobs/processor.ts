@@ -3,13 +3,16 @@ import * as path from 'path';
 import { jobQueue } from './queue.js';
 import { RenderJob } from './types.js';
 import { InfographicEngine } from '../engines/infographic.js';
+import { MotionCanvasEngine } from '../engines/motion-canvas.js';
+import { RemotionEngine } from '../engines/remotion.js';
 import { RenderEngine } from '../engines/types.js';
 
 const OUTPUT_DIR = path.join(process.cwd(), 'output');
 
 const engines: Record<string, RenderEngine> = {
   infographic: new InfographicEngine(),
-  // TODO: Add motion-canvas and remotion engines
+  'motion-canvas': new MotionCanvasEngine(),
+  remotion: new RemotionEngine(),
 };
 
 export async function processJob(job: RenderJob): Promise<void> {
@@ -30,9 +33,19 @@ export async function processJob(job: RenderJob): Promise<void> {
   jobQueue.updateJob(job.id, { progress: 0.3 });
 
   console.log('[Processor] Calling engine.render() for engine:', engine.name);
-  // Pass the full spec (including template, theme, width, height, data)
-  const result = await engine.render(spec as unknown as Record<string, unknown>, OUTPUT_DIR);
-  console.log('[Processor] engine.render() returned:', result);
+  let result;
+  try {
+    result = await engine.render(spec, OUTPUT_DIR);
+    console.log('[Processor] engine.render() returned:', result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[Processor] engine.render() threw:', message);
+    jobQueue.updateJob(job.id, {
+      status: 'error',
+      error: message,
+    });
+    return;
+  }
 
   if (result.success) {
     jobQueue.updateJob(job.id, {
