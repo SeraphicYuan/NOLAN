@@ -73,6 +73,8 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 ### CLI Commands
 | Command | Description |
 |---------|-------------|
+| `nolan script <essay.md>` | Step 1: Convert essay to narration script |
+| `nolan design <script.json>` | Step 2: Design visual scenes from script |
 | `nolan process <essay.md>` | Full pipeline: essay → script → scenes |
 | `nolan index <video_folder>` | Index video library for snippet matching |
 | `nolan export <video>` | Export indexed segments to JSON |
@@ -113,7 +115,17 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 # Install in development mode
 pip install -e ".[dev]"
 
-# Process an essay
+# === Video Production Workflow ===
+
+# Step 1: Convert essay to script
+nolan script path/to/essay.md -o ./output
+# Outputs: script.md (human-readable), script.json (for design)
+
+# Step 2: Design scenes from script
+nolan design ./output/script.json
+# Outputs: scene_plan.json
+
+# Or run full pipeline in one command
 nolan process path/to/essay.md -o ./output
 
 # Index video library (Ollama vision - local)
@@ -245,6 +257,11 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Standalone Script & Design Commands** - Split workflow into separate steps
+  - `nolan script` converts essay to script.md + script.json
+  - `nolan design` generates scene_plan.json from script.json
+  - Script class now supports JSON export/import for workflow persistence
+  - Enables review/editing between steps before committing to scene design
 - ✅ **Scene Workflow Data Model** - Enhanced Scene dataclass for 5-step video pipeline
   - `SyncPoint` dataclass for word-to-action synchronization (trigger → action at precise time)
   - `Layer` dataclass for complex multi-element scenes (background, overlay, caption)
