@@ -13,13 +13,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@antv/infographic": "^0.2.7",
     "cors": "^2.8.5",
     "express": "^5.2.1",
+    "jsdom": "^27.4.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsdom": "^27.0.0",
     "@types/node": "^25.0.6",
     "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.11",
