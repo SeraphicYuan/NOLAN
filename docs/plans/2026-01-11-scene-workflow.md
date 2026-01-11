@@ -68,6 +68,162 @@ The scene workflow transforms a written script into a complete video by coordina
 
 ---
 
+## Scene Data Model
+
+The Scene class is a **holder** that gets progressively enriched across steps:
+
+```python
+@dataclass
+class SyncPoint:
+    """Word-to-action synchronization point."""
+    trigger: str                    # Word/phrase to match in SRT
+    action: str                     # reveal, highlight, zoom, show_lower_third, animate
+    target: Optional[Any] = None    # Item index, element id, coordinates, etc.
+    time: Optional[float] = None    # None in Step 1, populated in Step 4
+
+@dataclass
+class Layer:
+    """A visual layer within a scene."""
+    type: str                       # background, overlay, caption, lower_third
+    asset: Optional[str] = None     # Path to asset
+    style: Optional[Dict] = None    # Position, opacity, animation params
+    sync_point: Optional[SyncPoint] = None  # When to show/animate this layer
+
+@dataclass
+class Scene:
+    """Visual scene - progressively enriched across workflow steps."""
+
+    # === Identity ===
+    id: str
+
+    # === Timing (estimated in Step 1, precise after Step 4) ===
+    start: str                              # "0:15" - LLM estimate
+    duration: str                           # "5s" - LLM estimate
+    start_seconds: Optional[float] = None   # Precise, from SRT (Step 4)
+    end_seconds: Optional[float] = None     # Precise, from SRT (Step 4)
+
+    # === Content ===
+    narration_excerpt: str                  # Key phrase for SRT matching
+    visual_type: str                        # b-roll, graphic, text-overlay, generated-image, infographic
+    visual_description: str                 # What appears on screen
+
+    # === Asset Sources (Step 1 hints) ===
+    search_query: str                       # Stock footage keywords
+    comfyui_prompt: str                     # AI image generation prompt
+    library_match: bool                     # Try indexed library first
+
+    # === Animation (Step 1 hints, refined in Step 4/5) ===
+    animation_type: Optional[str] = None    # static, zoom, pan, reveal, kinetic
+    animation_params: Optional[Dict] = None # {zoom_from, zoom_to, focus_x, focus_y, direction}
+    transition: Optional[str] = None        # cut, fade, dissolve, wipe
+
+    # === Sync Points (Step 1 hints trigger/action, Step 4 adds time) ===
+    sync_points: List[SyncPoint] = field(default_factory=list)
+
+    # === Layers for complex scenes ===
+    layers: List[Layer] = field(default_factory=list)
+
+    # === Infographic spec (if visual_type == "infographic") ===
+    infographic: Optional[Dict] = None
+
+    # === Text overlay style (if visual_type == "text-overlay") ===
+    text_style: Optional[Dict] = None       # {position, font_size, color, animation}
+
+    # === Asset Results (populated in Step 2) ===
+    skip_generation: bool = False
+    matched_asset: Optional[str] = None
+    generated_asset: Optional[str] = None
+    infographic_asset: Optional[str] = None
+
+    # === SRT Cues (attached in Step 4) ===
+    subtitle_cues: List[Any] = field(default_factory=list)  # SubtitleCue objects
+```
+
+### Field Population by Step
+
+| Field | Step 1 (Design) | Step 2 (Assets) | Step 4 (Timing) | Step 5 (Render) |
+|-------|-----------------|-----------------|-----------------|-----------------|
+| `id`, `narration_excerpt` | ✅ LLM | - | - | - |
+| `start`, `duration` | ✅ LLM estimate | - | - | - |
+| `visual_type`, `visual_description` | ✅ LLM | - | - | - |
+| `search_query`, `comfyui_prompt` | ✅ LLM | - | - | - |
+| `animation_type`, `animation_params` | ⚪ LLM hint | - | ⚪ Refine | ✅ Finalize |
+| `sync_points[].trigger/action` | ✅ LLM | - | - | - |
+| `sync_points[].time` | - | - | ✅ From SRT | - |
+| `layers` | ⚪ LLM hint | ✅ Assets added | - | - |
+| `infographic` | ✅ LLM | - | - | - |
+| `matched_asset`, `generated_asset` | - | ✅ Populated | - | - |
+| `start_seconds`, `end_seconds` | - | - | ✅ From SRT | - |
+| `subtitle_cues` | - | - | ✅ Attached | - |
+
+✅ = Populated, ⚪ = Optional/Hint, - = Not applicable
+
+### Layers Example
+
+Complex scene with b-roll background + infographic overlay + caption:
+
+```json
+{
+  "id": "scene_007",
+  "visual_type": "layered",
+  "visual_description": "Statistics overlay on office footage",
+  "layers": [
+    {
+      "type": "background",
+      "asset": "assets/broll/office_workers.mp4",
+      "style": {"opacity": 0.7, "filter": "blur(2px)"}
+    },
+    {
+      "type": "overlay",
+      "asset": "assets/infographics/revenue_chart.svg",
+      "style": {"position": "center", "scale": 0.8},
+      "sync_point": {"trigger": "revenue grew", "action": "fade_in", "time": null}
+    },
+    {
+      "type": "caption",
+      "style": {"position": "bottom", "font_size": 24}
+    }
+  ]
+}
+```
+
+### Sync Points Example
+
+```json
+{
+  "id": "scene_012",
+  "visual_type": "infographic",
+  "narration_excerpt": "three phases: research, development, and launch",
+  "infographic": {
+    "template": "steps",
+    "data": {
+      "title": "Growth Phases",
+      "items": [
+        {"label": "Research", "desc": "Market analysis"},
+        {"label": "Development", "desc": "Product build"},
+        {"label": "Launch", "desc": "Go to market"}
+      ]
+    }
+  },
+  "sync_points": [
+    {"trigger": "research", "action": "reveal_item", "target": 0, "time": null},
+    {"trigger": "development", "action": "reveal_item", "target": 1, "time": null},
+    {"trigger": "launch", "action": "reveal_item", "target": 2, "time": null}
+  ]
+}
+```
+
+After Step 4 (timing alignment), `time` fields are populated:
+```json
+"sync_points": [
+  {"trigger": "research", "action": "reveal_item", "target": 0, "time": 12.4},
+  {"trigger": "development", "action": "reveal_item", "target": 1, "time": 14.1},
+  {"trigger": "launch", "action": "reveal_item", "target": 2, "time": 15.8}
+]
+```
+
+---
+
 ## Existing Components
 
 | Component | File | Status |
