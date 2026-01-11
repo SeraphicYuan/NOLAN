@@ -1,7 +1,8 @@
 """Script conversion for NOLAN."""
 
-from dataclasses import dataclass, field
-from typing import List
+import json
+from dataclasses import dataclass, field, asdict
+from typing import List, Dict, Any
 from pathlib import Path
 
 from nolan.parser import Section
@@ -81,6 +82,43 @@ class Script:
             lines.append("\n")
 
         return "\n".join(lines)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Export script as dictionary."""
+        return {
+            "total_duration": self.total_duration,
+            "sections": [asdict(s) for s in self.sections]
+        }
+
+    def to_json(self, indent: int = 2) -> str:
+        """Export script as JSON string."""
+        return json.dumps(self.to_dict(), indent=indent)
+
+    def save_json(self, path: str) -> None:
+        """Save script to JSON file."""
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(self.to_json())
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Script":
+        """Load script from dictionary."""
+        script = cls()
+        for section_data in data.get("sections", []):
+            script.sections.append(ScriptSection(
+                title=section_data["title"],
+                narration=section_data["narration"],
+                start_time=section_data["start_time"],
+                end_time=section_data["end_time"],
+                word_count=section_data["word_count"],
+            ))
+        return script
+
+    @classmethod
+    def load_json(cls, path: str) -> "Script":
+        """Load script from JSON file."""
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return cls.from_dict(data)
 
 
 class ScriptConverter:
