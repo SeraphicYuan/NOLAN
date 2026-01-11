@@ -29,7 +29,10 @@ export async function processJob(job: RenderJob): Promise<void> {
 
   jobQueue.updateJob(job.id, { progress: 0.3 });
 
-  const result = await engine.render(spec.data as Record<string, unknown>, OUTPUT_DIR);
+  console.log('[Processor] Calling engine.render() for engine:', engine.name);
+  // Pass the full spec (including template, theme, width, height, data)
+  const result = await engine.render(spec as unknown as Record<string, unknown>, OUTPUT_DIR);
+  console.log('[Processor] engine.render() returned:', result);
 
   if (result.success) {
     jobQueue.updateJob(job.id, {

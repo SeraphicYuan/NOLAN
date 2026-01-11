@@ -68,6 +68,7 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 ### Integrations
 - **ComfyUI Client** - Image generation via local ComfyUI API
 - **Viewer Server** - FastAPI-based local viewer for reviewing outputs
+- **Library Viewer** - Web UI for browsing indexed video library (`nolan browse`)
 
 ### CLI Commands
 | Command | Description |
@@ -76,8 +77,34 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 | `nolan index <video_folder>` | Index video library for snippet matching |
 | `nolan export <video>` | Export indexed segments to JSON |
 | `nolan cluster <video>` | Cluster segments into story moments |
+| `nolan browse` | Browse indexed video library in web UI |
 | `nolan serve` | Launch local viewer to review outputs |
 | `nolan generate` | Generate images via ComfyUI |
+| `nolan generate-test` | Quick single-image generation for testing |
+| `nolan image-search` | Search for images from web/stock photo APIs |
+
+### ComfyUI Integration
+- **Custom Workflows** - Load any ComfyUI workflow (API format)
+- **Auto-detection** - Finds prompt nodes automatically
+- **Explicit Node Selection** - `-n "node_id"` for reliable prompt injection
+- **Parameter Overrides** - `-s "node_id:param=value"` for any workflow parameter
+- **Config File** - `nolan.yaml` for port and other settings
+
+### Image Search
+- **Multi-Provider Support** - Extensible provider system
+  - DuckDuckGo (no API key required)
+  - Pexels (requires API key)
+  - Pixabay (requires API key)
+  - Wikimedia Commons (no API key, public domain/CC)
+  - Smithsonian Open Access (requires API key, CC0)
+  - Library of Congress (no API key, public domain)
+- **JSON Output** - Results saved with URLs, thumbnails, dimensions, license
+- **Search All** - Query multiple sources at once with `--source all`
+- **Vision Model Scoring** - Score images by relevance using AI
+  - Gemini vision model (cloud, fast)
+  - Ollama vision model (local, requires running Ollama)
+  - Scores from 0-10 with explanations
+  - Results sorted by relevance
 
 ## Usage
 
@@ -106,8 +133,30 @@ nolan cluster video.mp4 -o clusters.json
 nolan cluster video.mp4 --refine  # Use LLM for better boundaries
 nolan cluster --all -o all_clusters.json
 
-# Launch viewer
+# Browse indexed library in web UI
+nolan browse
+
+# Launch viewer for project outputs
 nolan serve -p ./output
+
+# Generate images with custom ComfyUI workflow
+nolan generate-test "a dragon" -w workflow_api.json
+nolan generate-test "a dragon" -w workflow.json -n "26:24"  # explicit prompt node
+nolan generate-test "a dragon" -w workflow.json -s "13:width=1536" -s "3:steps=40"
+
+# Search for images from web/stock photos
+nolan image-search "sunset mountains"
+nolan image-search "sunset mountains" -s pexels -n 20  # Pexels (needs API key)
+nolan image-search "sunset mountains" -s all -o results.json  # all sources
+
+# Search public domain sources
+nolan image-search "Hugo Chavez" -s wikimedia  # Wikimedia Commons
+nolan image-search "Abraham Lincoln" -s loc     # Library of Congress
+nolan image-search "dinosaur" -s smithsonian    # Smithsonian (needs API key)
+
+# Score images by relevance using vision model
+nolan image-search "sunset mountains" --score --vision gemini
+nolan image-search "sunset mountains" --score --vision ollama -c "for a travel documentary"
 ```
 
 ## Test Coverage
@@ -153,10 +202,20 @@ NOLAN/
 │   ├── transcript.py    # Transcript loading/alignment
 │   ├── analyzer.py      # Segment analysis + inference
 │   ├── whisper.py       # Whisper auto-transcription
-│   ├── clustering.py    # Scene clustering [NEW]
+│   ├── clustering.py    # Scene clustering
+│   ├── library_viewer.py # Library browser server
+│   ├── image_search.py  # Image search providers
 │   └── templates/
-│       └── index.html   # Viewer UI
+│       ├── index.html   # Viewer UI
+│       └── library.html # Library browser UI
 ├── tests/               # Test suite (132 tests)
+├── render-service/      # Node.js microservice for infographics/animations
+│   ├── src/
+│   │   ├── server.ts    # Express API server
+│   │   ├── routes/      # API endpoints (health, render)
+│   │   ├── jobs/        # Job queue and types
+│   │   └── engines/     # Render engines (infographic, etc.)
+│   └── package.json
 ├── pyproject.toml       # Package configuration
 └── .env                 # API keys (not committed)
 ```
@@ -168,20 +227,61 @@ NOLAN/
 - Ollama (optional, for local vision model)
 - ffmpeg (optional, for Whisper auto-transcription)
 - ComfyUI (optional, for image generation)
+- Node.js 18+ (optional, for Infographic & Animation Render Service)
 
 ## Next Steps (Backlog)
 
-- **Video Index Viewer** - Web UI for browsing indexed video library
-  - Browse videos and their segments
+- **Infographic & Animation Render Service** - TypeScript microservice for animated infographics
+  - @antv/infographic - Template-based static infographics
+  - Motion Canvas - Vector animations synced to voice-over
+  - Remotion - Final composition and video rendering
+  - LLM integration to detect data points in scripts and suggest infographic placement
+  - Unified API: NOLAN sends JSON spec, service returns MP4
+- **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
+- **Image search browser display** - View image search results in web UI
+- **Vision model image selection** - Auto-select best matching images using vision model
+
+## Recently Completed
+
+- ✅ **Job Processor** - Connect infographic engine to job queue for render-service
+  - Job processor polls for pending jobs and processes them through appropriate engines
+  - Real-time status and progress updates during rendering
+  - Error handling with detailed error messages stored in job
+  - Singleton processor started with server
+- ✅ **Infographic Engine** - SVG template-based rendering engine for render-service
+  - RenderEngine interface abstraction for pluggable engines
+  - InfographicEngine with native SVG template generation
+  - Multiple templates: steps/sequence, list, comparison
+  - Theme support: default, dark, warm, cool color schemes
+  - SVG output with gradients, shadows, and proper styling
+  - Note: Replaced @antv/infographic due to browser-only limitations
+- ✅ **Public Domain Image Sources** - New providers for public domain images
+  - Wikimedia Commons (100M+ images, no API key, CC licenses)
+  - Library of Congress (historical photos, no API key, public domain)
+  - Smithsonian Open Access (2.8M+ images, API key from api.data.gov, CC0)
+- ✅ **Image Search Scoring** - Vision model scoring for image relevance
+  - Score images from 0-10 with explanations
+  - Support for Gemini (cloud) and Ollama (local) vision models
+  - Quality scoring (0-10) based on resolution and aspect ratio
+  - Combined sorting: relevance first, quality as tiebreaker
+  - Fallback download: thumbnail → main URL if thumbnail fails
+  - Optional context for better scoring (e.g., "for a documentary")
+- ✅ **Image Search** - `nolan image-search` command for finding images from web/stock photos
+  - DuckDuckGo search (no API key required)
+  - Pexels and Pixabay stock photo APIs (optional, with API keys)
+  - JSON output with URLs, thumbnails, dimensions
+  - Extensible provider system for adding more sources
+- ✅ **ComfyUI Custom Workflows** - Full workflow customization support
+  - Load any ComfyUI workflow exported in API format
+  - Explicit prompt node selection (`--prompt-node`)
+  - Generic parameter overrides (`--set "node:param=value"`)
+  - Auto-detection fallback for common workflow patterns
+- ✅ **Video Index Viewer** - `nolan browse` command for browsing indexed video library
+  - Browse videos and their segments in web UI
   - View frame descriptions, transcripts, inferred context
   - View clusters with summaries
   - Video preview playback at timestamps
   - Full-text search across segments
-- **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
-- Internet asset collection (Pexels, Pixabay integration)
-
-## Recently Completed
-
 - ✅ **Scene Clustering** - `nolan cluster` command for grouping segments into story moments
   - Groups by shared characters, location, and story context
   - Optional LLM-based story boundary detection (`--refine`)
