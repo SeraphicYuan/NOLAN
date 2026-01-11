@@ -68,6 +68,9 @@ class InfographicClient:
         duration: Optional[float] = None,
         audio: Optional[str] = None,
         style_prompt: Optional[str] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        theme: Optional[str] = None,
     ) -> RenderJob:
         """Submit a render job.
 
@@ -78,6 +81,9 @@ class InfographicClient:
             duration: Duration in seconds.
             audio: Path to audio file for sync.
             style_prompt: Style customization prompt.
+            width: Output width in pixels.
+            height: Output height in pixels.
+            theme: Color theme (default, dark, warm, cool).
 
         Returns:
             RenderJob with job_id and initial status.
@@ -94,6 +100,12 @@ class InfographicClient:
             payload["audio"] = audio
         if style_prompt:
             payload["style_prompt"] = style_prompt
+        if width:
+            payload["width"] = width
+        if height:
+            payload["height"] = height
+        if theme:
+            payload["theme"] = theme
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(
@@ -198,6 +210,9 @@ class InfographicClient:
         duration: Optional[float] = None,
         audio: Optional[str] = None,
         style_prompt: Optional[str] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        theme: Optional[str] = None,
         progress_callback: Optional[Callable[[float], None]] = None
     ) -> Path:
         """Submit job and wait for completion.
@@ -211,6 +226,9 @@ class InfographicClient:
             duration: Duration in seconds.
             audio: Path to audio file for sync.
             style_prompt: Style customization prompt.
+            width: Output width in pixels.
+            height: Output height in pixels.
+            theme: Color theme (default, dark, warm, cool).
             progress_callback: Optional callback(progress: float).
 
         Returns:
@@ -222,7 +240,10 @@ class InfographicClient:
             template=template,
             duration=duration,
             audio=audio,
-            style_prompt=style_prompt
+            style_prompt=style_prompt,
+            width=width,
+            height=height,
+            theme=theme
         )
         completed = await self.wait_for_completion(
             job.job_id,

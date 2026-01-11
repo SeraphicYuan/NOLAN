@@ -82,6 +82,7 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 | `nolan generate` | Generate images via ComfyUI |
 | `nolan generate-test` | Quick single-image generation for testing |
 | `nolan image-search` | Search for images from web/stock photo APIs |
+| `nolan infographic` | Generate infographics via render-service |
 
 ### ComfyUI Integration
 - **Custom Workflows** - Load any ComfyUI workflow (API format)
@@ -157,6 +158,12 @@ nolan image-search "dinosaur" -s smithsonian    # Smithsonian (needs API key)
 # Score images by relevance using vision model
 nolan image-search "sunset mountains" --score --vision gemini
 nolan image-search "sunset mountains" --score --vision ollama -c "for a travel documentary"
+
+# Generate infographics (requires render-service running)
+nolan infographic --title "My Process" -i "Step 1:First" -i "Step 2:Second"
+nolan infographic --template list --theme dark --title "Features" -i "Fast:Blazing speed"
+nolan infographic --template comparison --theme warm --title "A vs B" -i "Option A:Pro A" -i "Option B:Pro B"
+nolan infographic spec.json -o my_infographic.svg  # From JSON spec file
 ```
 
 ## Test Coverage
@@ -231,18 +238,21 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
-- **Infographic & Animation Render Service** - TypeScript microservice for animated infographics
-  - @antv/infographic - Template-based static infographics
+- **Motion Canvas & Remotion Engines** - Animated infographics for render-service
   - Motion Canvas - Vector animations synced to voice-over
   - Remotion - Final composition and video rendering
   - LLM integration to detect data points in scripts and suggest infographic placement
-  - Unified API: NOLAN sends JSON spec, service returns MP4
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - **Image search browser display** - View image search results in web UI
 - **Vision model image selection** - Auto-select best matching images using vision model
 
 ## Recently Completed
 
+- ✅ **Infographic CLI Integration** - `nolan infographic` command for generating infographics
+  - Connects Python CLI to Node.js render-service via HTTP
+  - Three input modes: command-line options, JSON file, stdin pipe
+  - Support for templates (steps, list, comparison) and themes (default, dark, warm, cool)
+  - Configurable output size and location
 - ✅ **Job Processor** - Connect infographic engine to job queue for render-service
   - Job processor polls for pending jobs and processes them through appropriate engines
   - Real-time status and progress updates during rendering

@@ -528,6 +528,36 @@ async def _cluster_video(config, db_path, video_path, output_path, summarize, re
         analyzer = ClusterAnalyzer(llm)
         clusters = await analyzer.analyze_clusters(clusters)
 
+    # Save clusters to database
+    import sqlite3
+    # Find video in database by matching path
+    video_id = None
+    with sqlite3.connect(index.db_path) as conn:
+        for row in conn.execute('SELECT id, path FROM videos'):
+            if video_path.name in row[1] or str(video_path) == row[1]:
+                video_id = row[0]
+                break
+
+    if video_id:
+        # Clear existing clusters for this video
+        with sqlite3.connect(index.db_path) as conn:
+            conn.execute("DELETE FROM clusters WHERE video_id = ?", (video_id,))
+            conn.commit()
+
+        # Add new clusters
+        click.echo("Saving clusters to database...")
+        for i, c in enumerate(clusters):
+            index.add_cluster(
+                video_id=video_id,
+                cluster_index=i,
+                timestamp_start=c.timestamp_start,
+                timestamp_end=c.timestamp_end,
+                cluster_summary=c.cluster_summary,
+                people=c.people,
+                locations=c.locations,
+                segment_ids=None
+            )
+
     # Build output
     output = {
         'video': {
@@ -604,6 +634,27 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
             analyzer = ClusterAnalyzer(llm)
             clusters = await analyzer.analyze_clusters(clusters)
 
+        # Save clusters to database
+        video_id = index.get_video_id_by_path(video_path)
+        if video_id:
+            # Clear existing clusters for this video
+            with sqlite3.connect(db_path) as conn:
+                conn.execute("DELETE FROM clusters WHERE video_id = ?", (video_id,))
+                conn.commit()
+
+            # Add new clusters
+            for i, c in enumerate(clusters):
+                index.add_cluster(
+                    video_id=video_id,
+                    cluster_index=i,
+                    timestamp_start=c.timestamp_start,
+                    timestamp_end=c.timestamp_end,
+                    cluster_summary=c.cluster_summary,
+                    people=c.people,
+                    locations=c.locations,
+                    segment_ids=None  # Could track segment IDs if needed
+                )
+
         video_data = {
             'path': video_path,
             'name': Path(video_path).name,
@@ -624,27 +675,72 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
 
 
 @main.command()
+@click.option('--host', default='127.0.0.1', help='Server host.')
+@click.option('--port', default=8001, type=int, help='Server port.')
+@click.pass_context
+def browse(ctx, host, port):
+    """Browse your indexed video library in a web UI.
+
+    Opens a browser to explore indexed videos, segments, and clusters.
+    Search across all segments and preview videos at specific timestamps.
+
+    Requires running 'nolan index' first to populate the library.
+    """
+    from nolan.library_viewer import run_library_server
+
+    config = ctx.obj['config']
+    db_path = Path(config.indexing.database).expanduser()
+
+    if not db_path.exists():
+        click.echo(f"Error: Database not found at {db_path}")
+        click.echo("Run 'nolan index <folder>' first to index videos.")
+        return
+
+    click.echo(f"Database: {db_path}")
+    click.echo(f"Opening: http://{host}:{port}")
+
+    run_library_server(db_path, host=host, port=port)
+
+
+@main.command()
 @click.option('--scene', type=str, help='Generate for a specific scene ID.')
 @click.option('--project', '-p', type=click.Path(exists=True), default='./output',
               help='Project directory with scene_plan.json.')
+@click.option('--workflow', '-w', type=click.Path(exists=True),
+              help='Custom ComfyUI workflow JSON file.')
+@click.option('--prompt-node', '-n', type=str, default=None,
+              help='Node ID for prompt injection (overrides auto-detection).')
+@click.option('--set', '-s', 'overrides', multiple=True,
+              help='Override workflow param: "node_id:param=value". Can be used multiple times.')
 @click.pass_context
-def generate(ctx, scene, project):
+def generate(ctx, scene, project, workflow, prompt_node, overrides):
     """Generate images via ComfyUI for scenes.
 
     Reads the scene plan and generates images for scenes
     marked as 'generated-image' type.
+
+    Use --workflow to specify a custom ComfyUI workflow file.
+    Use --prompt-node to specify which node receives the prompt.
+    Use --set to override any workflow parameter.
     """
     config = ctx.obj['config']
     project_path = Path(project)
+    workflow_path = Path(workflow) if workflow else None
 
     click.echo(f"Project: {project_path}")
     if scene:
         click.echo(f"Scene: {scene}")
+    if workflow_path:
+        click.echo(f"Workflow: {workflow_path}")
+    if prompt_node:
+        click.echo(f"Prompt node: {prompt_node}")
+    if overrides:
+        click.echo(f"Overrides: {', '.join(overrides)}")
 
-    asyncio.run(_generate_images(config, project_path, scene))
+    asyncio.run(_generate_images(config, project_path, scene, workflow_path, prompt_node, list(overrides)))
 
 
-async def _generate_images(config, project_path, scene_id):
+async def _generate_images(config, project_path, scene_id, workflow_path=None, prompt_node=None, overrides=None):
     """Async implementation of generate command."""
     from nolan.scenes import ScenePlan
     from nolan.comfyui import ComfyUIClient
@@ -663,7 +759,10 @@ async def _generate_images(config, project_path, scene_id):
         port=config.comfyui.port,
         width=config.comfyui.width,
         height=config.comfyui.height,
-        steps=config.comfyui.steps
+        steps=config.comfyui.steps,
+        workflow_file=workflow_path,
+        prompt_node=prompt_node,
+        node_overrides=overrides
     )
 
     # Check connection
@@ -703,6 +802,369 @@ async def _generate_images(config, project_path, scene_id):
     # Save updated plan
     plan.save(str(plan_path))
     click.echo(f"\nScene plan updated: {plan_path}")
+
+
+@main.command('generate-test')
+@click.argument('prompt')
+@click.option('--output', '-o', type=click.Path(), default='./test_output.png',
+              help='Output path for generated image.')
+@click.option('--workflow', '-w', type=click.Path(exists=True),
+              help='Custom ComfyUI workflow JSON file.')
+@click.option('--prompt-node', '-n', type=str, default=None,
+              help='Node ID for prompt injection (overrides auto-detection).')
+@click.option('--set', '-s', 'overrides', multiple=True,
+              help='Override workflow param: "node_id:param=value". Can be used multiple times.')
+@click.pass_context
+def generate_test(ctx, prompt, output, workflow, prompt_node, overrides):
+    """Generate a single test image via ComfyUI.
+
+    PROMPT is the text description for image generation.
+
+    Use this to quickly test ComfyUI connection and workflow
+    without needing a full scene plan.
+
+    Examples:
+
+      nolan generate-test "a cat" -w workflow.json
+
+      nolan generate-test "a cat" -w workflow.json -n "26:24"
+
+      nolan generate-test "a cat" -w workflow.json -s "3:steps=40" -s "13:width=1536"
+    """
+    config = ctx.obj['config']
+    output_path = Path(output)
+    workflow_path = Path(workflow) if workflow else None
+
+    if workflow_path:
+        click.echo(f"Workflow: {workflow_path}")
+    if prompt_node:
+        click.echo(f"Prompt node: {prompt_node}")
+    if overrides:
+        click.echo(f"Overrides: {', '.join(overrides)}")
+    click.echo(f"Prompt: {prompt[:80]}...")
+    click.echo(f"Output: {output_path}")
+
+    asyncio.run(_generate_test_image(config, prompt, output_path, workflow_path, prompt_node, list(overrides)))
+
+
+async def _generate_test_image(config, prompt, output_path, workflow_path=None, prompt_node=None, overrides=None):
+    """Async implementation of generate-test command."""
+    from nolan.comfyui import ComfyUIClient
+
+    # Initialize ComfyUI client
+    client = ComfyUIClient(
+        host=config.comfyui.host,
+        port=config.comfyui.port,
+        width=config.comfyui.width,
+        height=config.comfyui.height,
+        steps=config.comfyui.steps,
+        workflow_file=workflow_path,
+        prompt_node=prompt_node,
+        node_overrides=overrides
+    )
+
+    # Check connection
+    if not await client.check_connection():
+        click.echo("Error: Cannot connect to ComfyUI. Is it running?")
+        return
+
+    click.echo("\nGenerating image...")
+    try:
+        await client.generate(prompt, output_path)
+        click.echo(f"Success! Image saved to: {output_path}")
+    except Exception as e:
+        click.echo(f"Error: {e}")
+
+
+@main.command()
+@click.argument('spec_file', type=click.Path(exists=True), required=False)
+@click.option('--template', '-t', type=click.Choice(['steps', 'list', 'comparison']),
+              default='steps', help='Infographic template type.')
+@click.option('--theme', type=click.Choice(['default', 'dark', 'warm', 'cool']),
+              default='default', help='Color theme.')
+@click.option('--title', type=str, help='Infographic title.')
+@click.option('--items', '-i', multiple=True, help='Items as "label:description". Can be used multiple times.')
+@click.option('--output', '-o', type=click.Path(), help='Output path for generated SVG.')
+@click.option('--width', type=int, default=1920, help='Output width in pixels.')
+@click.option('--height', type=int, default=1080, help='Output height in pixels.')
+@click.option('--host', default='127.0.0.1', help='Render service host.')
+@click.option('--port', default=3010, type=int, help='Render service port.')
+@click.pass_context
+def infographic(ctx, spec_file, template, theme, title, items, output, width, height, host, port):
+    """Generate an infographic using the render service.
+
+    You can provide data in three ways:
+
+    1. From a JSON spec file:
+       nolan infographic spec.json
+
+    2. From command line options:
+       nolan infographic --title "My Process" --items "Step 1:First" --items "Step 2:Second"
+
+    3. From stdin (pipe JSON):
+       echo '{"title": "Test", "items": [...]}' | nolan infographic -
+
+    Templates:
+      - steps: Sequential process with numbered circles (default)
+      - list: Vertical list with bullets
+      - comparison: Side-by-side comparison
+
+    Themes:
+      - default: Blue/green professional look
+      - dark: Dark background with light text
+      - warm: Orange/red warm tones
+      - cool: Purple/cyan cool tones
+
+    Examples:
+
+      nolan infographic --title "How to Code" -i "Learn:Start basics" -i "Practice:Build projects"
+
+      nolan infographic spec.json -o my_infographic.svg
+
+      nolan infographic --template list --theme dark --title "Features" -i "Fast:Blazing speed" -i "Easy:Simple API"
+    """
+    asyncio.run(_infographic(spec_file, template, theme, title, items, output, width, height, host, port))
+
+
+async def _infographic(spec_file, template, theme, title, items, output, width, height, host, port):
+    """Async implementation of infographic command."""
+    import json
+    from nolan.infographic_client import InfographicClient, Engine
+
+    # Build data from sources
+    data = {}
+
+    if spec_file:
+        # Load from JSON file
+        if spec_file == '-':
+            # Read from stdin
+            import sys
+            spec_text = sys.stdin.read()
+        else:
+            with open(spec_file, 'r', encoding='utf-8') as f:
+                spec_text = f.read()
+
+        spec = json.loads(spec_text)
+        data = spec.get('data', spec)  # Support both {data: {...}} and flat format
+        template = spec.get('template', template)
+        theme = spec.get('theme', theme)
+        width = spec.get('width', width)
+        height = spec.get('height', height)
+        if not output:
+            output = spec.get('output')
+    else:
+        # Build from command line options
+        if title:
+            data['title'] = title
+
+        if items:
+            data['items'] = []
+            for item in items:
+                if ':' in item:
+                    label, desc = item.split(':', 1)
+                    data['items'].append({'label': label.strip(), 'description': desc.strip()})
+                else:
+                    data['items'].append({'label': item.strip(), 'description': ''})
+
+    if not data:
+        click.echo("Error: No data provided. Use --title/--items or provide a spec file.")
+        return
+
+    # Initialize client
+    client = InfographicClient(host=host, port=port)
+
+    # Check connection
+    click.echo(f"Connecting to render service at {host}:{port}...")
+    if not await client.health_check():
+        click.echo("Error: Cannot connect to render service. Is it running?")
+        click.echo("Start it with: cd render-service && npm run dev")
+        return
+
+    click.echo(f"Template: {template}")
+    click.echo(f"Theme: {theme}")
+    click.echo(f"Size: {width}x{height}")
+
+    # Build full spec
+    full_data = {
+        'title': data.get('title', 'Infographic'),
+        'items': data.get('items', [])
+    }
+
+    # Submit job
+    click.echo("\nSubmitting render job...")
+
+    def progress_callback(progress: float):
+        pct = int(progress * 100)
+        click.echo(f"  Progress: {pct}%")
+
+    try:
+        # The render expects: engine, data, template, etc at top level
+        # We need to send: {engine, template, theme, width, height, data: {title, items}}
+        job = await client.submit(
+            engine=Engine.INFOGRAPHIC,
+            data=full_data,
+            template=template,
+            theme=theme,
+            width=width,
+            height=height,
+        )
+        click.echo(f"Job ID: {job.job_id}")
+
+        # Wait for completion
+        completed = await client.wait_for_completion(
+            job.job_id,
+            progress_callback=progress_callback
+        )
+
+        output_path = completed.video_path
+        click.echo(f"\nSuccess! Infographic saved to: {output_path}")
+
+        # Copy to user-specified output if provided
+        if output:
+            import shutil
+            from pathlib import Path
+            dest = Path(output)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(output_path, dest)
+            click.echo(f"Copied to: {dest}")
+
+    except RuntimeError as e:
+        click.echo(f"Error: {e}")
+    except TimeoutError as e:
+        click.echo(f"Timeout: {e}")
+
+
+@main.command('image-search')
+@click.argument('query')
+@click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'all']),
+              default='ddgs', help='Image source to search.')
+@click.option('--output', '-o', type=click.Path(), default='./image_search_results.json',
+              help='Output JSON file for results.')
+@click.option('--max-results', '-n', type=int, default=10,
+              help='Maximum number of results per source.')
+@click.option('--score/--no-score', default=False,
+              help='Score images by relevance using vision model.')
+@click.option('--vision', type=click.Choice(['gemini', 'ollama']),
+              default='gemini', help='Vision provider for scoring.')
+@click.option('--context', '-c', type=str, default=None,
+              help='Additional context for scoring (e.g., "for a documentary about history").')
+@click.pass_context
+def image_search(ctx, query, source, output, max_results, score, vision, context):
+    """Search for images from various sources.
+
+    QUERY is the search term for finding images.
+
+    Sources:
+      - ddgs: DuckDuckGo image search (no API key needed)
+      - pexels: Pexels stock photos (requires PEXELS_API_KEY)
+      - pixabay: Pixabay stock photos (requires PIXABAY_API_KEY)
+      - wikimedia: Wikimedia Commons (no API key needed, public domain)
+      - smithsonian: Smithsonian Open Access (requires SMITHSONIAN_API_KEY, CC0)
+      - loc: Library of Congress (no API key needed, public domain)
+      - all: Search all available sources
+
+    Scoring:
+      Use --score to rank images by relevance using a vision model.
+      Use --vision to choose between 'gemini' or 'ollama' for scoring.
+
+    Examples:
+
+      nolan image-search "sunset mountains"
+
+      nolan image-search "sunset mountains" -s wikimedia -n 20
+
+      nolan image-search "historical photographs" -s loc
+
+      nolan image-search "sunset mountains" -s all -o results.json
+
+      nolan image-search "sunset mountains" --score --vision gemini
+    """
+    config = ctx.obj['config']
+    output_path = Path(output)
+
+    from nolan.image_search import ImageSearchClient, ImageScorer
+
+    # Initialize client with API keys from config
+    client = ImageSearchClient(
+        pexels_api_key=config.image_sources.pexels_api_key,
+        pixabay_api_key=config.image_sources.pixabay_api_key,
+        smithsonian_api_key=config.image_sources.smithsonian_api_key,
+    )
+
+    # Show available providers
+    available = client.get_available_providers()
+    click.echo(f"Available sources: {', '.join(available)}")
+
+    if source != "all" and source not in available:
+        click.echo(f"Error: Source '{source}' is not available. Check API keys.")
+        return
+
+    click.echo(f"Searching '{query}' on {source}...")
+
+    try:
+        results = client.search(query, source, max_results)
+        click.echo(f"Found {len(results)} results")
+
+        # Score images if requested
+        if score:
+            click.echo(f"\nScoring images with {vision}...")
+
+            # Configure vision provider
+            if vision == "gemini":
+                vision_config = {"api_key": config.gemini.api_key}
+            else:  # ollama
+                vision_config = {
+                    "host": config.vision.host,
+                    "port": config.vision.port,
+                    "model": config.vision.model,
+                }
+
+            scorer = ImageScorer(vision_provider=vision, vision_config=vision_config)
+
+            def progress(current, total, result):
+                score_str = f"{result.score:.1f}" if result.score else "?"
+                quality_str = f" Q:{result.quality_score:.0f}" if result.quality_score is not None else ""
+                click.echo(f"  [{current}/{total}] Score: {score_str}{quality_str} - {result.title[:40] if result.title else 'No title'}...")
+
+            results = scorer.score_results(results, query, context=context, progress_callback=progress)
+            click.echo(f"\nScoring complete. Results sorted by relevance.")
+
+        # Save results to JSON
+        import json
+        output_data = {
+            "query": query,
+            "source": source,
+            "count": len(results),
+            "scored": score,
+            "scored_by": vision if score else None,
+            "context": context,
+            "results": [r.to_dict() for r in results],
+        }
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(output_data, f, indent=2, ensure_ascii=False)
+
+        click.echo(f"\nResults saved to: {output_path}")
+
+        # Show results
+        for i, r in enumerate(results[:5]):
+            score_str = f" (Score: {r.score:.1f}" if r.score is not None else ""
+            if score_str and r.quality_score is not None:
+                score_str += f", Quality: {r.quality_score:.0f}/10)"
+            elif score_str:
+                score_str += ")"
+            click.echo(f"  {i+1}. [{r.source}]{score_str} {r.title[:50] if r.title else 'No title'}...")
+            if r.score_reason:
+                click.echo(f"     Relevance: {r.score_reason}")
+            if r.quality_reason:
+                click.echo(f"     Quality: {r.quality_reason}")
+            click.echo(f"     {r.url[:80]}...")
+
+        if len(results) > 5:
+            click.echo(f"  ... and {len(results) - 5} more")
+
+    except Exception as e:
+        click.echo(f"Error: {e}")
 
 
 if __name__ == '__main__':
