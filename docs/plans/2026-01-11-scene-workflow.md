@@ -45,14 +45,15 @@ The scene workflow transforms a written script into a complete video by coordina
 │                                                                         │
 │  Step 3: Voiceover Recording (external)                                 │
 │  ──────────────────────────────────────                                 │
-│  Final script.md → Human/TTS → voiceover.mp3                            │
+│  Final script.md → Human/TTS → voiceover.mp3 + voiceover.srt            │
 │                                                                         │
-│  Step 4: Precise Timing (audio-driven)                                  │
-│  ─────────────────────────────────────                                  │
-│  voiceover.mp3 → TimingAligner                                          │
+│  Step 4: Precise Timing (SRT + audio-driven)                            │
+│  ───────────────────────────────────────────                            │
+│  voiceover.srt + voiceover.mp3 → TimingAligner                          │
 │                       │                                                 │
-│                       ├── Silence detection (FFmpeg)                    │
-│                       ├── Word-level alignment (Whisper)                │
+│                       ├── SRT parsing (word/phrase timestamps)          │
+│                       ├── Silence detection (FFmpeg, for gaps)          │
+│                       ├── Narration-to-scene matching                   │
 │                       ├── Scene boundary markers                        │
 │                       └── timed_scene_plan.json                         │
 │                                                                         │
@@ -127,29 +128,34 @@ class AssetPreparer:
 
 ### 2. TimingAligner (`src/nolan/timing.py`)
 
-Aligns scene boundaries to voiceover audio.
+Aligns scene boundaries to voiceover using SRT transcript and audio analysis.
 
 ```python
 class TimingAligner:
-    """Aligns scenes to voiceover timing."""
+    """Aligns scenes to voiceover timing using SRT + audio."""
 
     def __init__(self, infographic_client: InfographicClient):
         ...
 
-    async def detect_markers(self, audio_path: Path,
-                             threshold_db: float = -35,
-                             min_silence_ms: int = 400) -> AudioMarkers:
-        """Detect silence-based markers in audio."""
+    def load_srt(self, srt_path: Path) -> List[SubtitleCue]:
+        """Load SRT file with timestamps."""
         ...
 
-    async def transcribe_with_timing(self, audio_path: Path) -> WordTimings:
-        """Get word-level timings using Whisper."""
+    async def detect_silences(self, audio_path: Path,
+                              threshold_db: float = -35,
+                              min_silence_ms: int = 400) -> AudioMarkers:
+        """Detect silence gaps in audio (for scene boundaries)."""
+        ...
+
+    def match_narration_to_scenes(self, plan: ScenePlan,
+                                   cues: List[SubtitleCue]) -> List[SceneMatch]:
+        """Match scene narration_excerpt to SRT cues using fuzzy matching."""
         ...
 
     def align_scenes(self, plan: ScenePlan,
-                     markers: AudioMarkers,
-                     word_timings: WordTimings) -> TimedScenePlan:
-        """Align scene boundaries to audio markers."""
+                     cues: List[SubtitleCue],
+                     silences: AudioMarkers) -> TimedScenePlan:
+        """Align scene boundaries using SRT timestamps + silence gaps."""
         ...
 ```
 
@@ -157,23 +163,43 @@ class TimingAligner:
 
 ```python
 @dataclass
+class SubtitleCue:
+    """Single SRT cue with timestamp."""
+    index: int
+    start: float      # seconds
+    end: float        # seconds
+    text: str
+
+@dataclass
 class AudioMarkers:
     duration_seconds: float
     silences: List[SilenceRegion]
-    markers_seconds: List[float]  # Scene boundary candidates
+    markers_seconds: List[float]  # Silence-based boundary candidates
 
 @dataclass
-class WordTiming:
-    word: str
-    start: float
-    end: float
+class SceneMatch:
+    """Match between scene narration and SRT cue."""
+    scene_id: str
+    narration_excerpt: str
+    matched_cue: SubtitleCue
+    confidence: float  # 0-1 fuzzy match score
 
 @dataclass
 class TimedScene(Scene):
     start_seconds: float
     end_seconds: float
-    word_timings: List[WordTiming]  # Words spoken during this scene
+    subtitle_cues: List[SubtitleCue]  # SRT cues during this scene
 ```
+
+**Alignment strategy:**
+
+1. Parse SRT → `List[SubtitleCue]` with precise timestamps
+2. Detect silences → `AudioMarkers` for natural break points
+3. Fuzzy match `scene.narration_excerpt` → SRT cues
+4. Set scene boundaries:
+   - `start_seconds` = matched cue start time
+   - `end_seconds` = next scene start OR silence gap OR cue end
+5. Attach relevant `subtitle_cues` to each `TimedScene`
 
 ---
 
@@ -245,9 +271,9 @@ class SceneWorkflow:
 |---------|-------------|------|
 | `nolan design <script.md>` | Design scenes from script | 1 |
 | `nolan prepare-assets <scene_plan.json>` | Prepare all assets | 2 |
-| `nolan align <scene_plan.json> <voiceover.mp3>` | Align timing | 4 |
+| `nolan align <scene_plan.json> <voiceover.srt>` | Align timing using SRT | 4 |
 | `nolan render <timed_plan.json> <voiceover.mp3>` | Final render | 5 |
-| `nolan produce <script.md> <voiceover.mp3>` | Full pipeline (steps 1,2,4,5) | All |
+| `nolan produce <script.md> <voiceover.mp3> --srt <voiceover.srt>` | Full pipeline | All |
 
 ---
 
@@ -259,6 +285,7 @@ project_output/
 ├── scene_plan.json              # Scene design (Step 1 output)
 ├── timed_scene_plan.json        # With audio timing (Step 4 output)
 ├── voiceover.mp3                # Recorded narration
+├── voiceover.srt                # Transcript with timestamps (from TTS/transcription)
 ├── audio_markers.json           # Silence detection results
 ├── assets/
 │   ├── broll/
@@ -313,14 +340,34 @@ nolan design essay_script.md -o project/
 # Step 2: Prepare assets (can run while recording voiceover)
 nolan prepare-assets project/scene_plan.json
 
-# Step 3: Record voiceover externally, save as project/voiceover.mp3
+# Step 3: Record voiceover externally
+#   → Save audio as project/voiceover.mp3
+#   → Save transcript as project/voiceover.srt (from TTS or transcription service)
 
-# Step 4: Align timing to voiceover
-nolan align project/scene_plan.json project/voiceover.mp3
+# Step 4: Align timing using SRT transcript
+nolan align project/scene_plan.json project/voiceover.srt
 
 # Step 5: Render final video
 nolan render project/timed_scene_plan.json project/voiceover.mp3 -o project/final.mp4
 
-# Or do it all at once (after voiceover is ready)
-nolan produce essay_script.md project/voiceover.mp3 -o project/
+# Or do it all at once (after voiceover + SRT are ready)
+nolan produce essay_script.md project/voiceover.mp3 --srt project/voiceover.srt -o project/
 ```
+
+## SRT Transcript Benefits
+
+Using SRT (SubRip) format provides:
+
+| Benefit | Description |
+|---------|-------------|
+| **Precise timestamps** | Word/phrase-level timing from TTS or transcription |
+| **Scene matching** | Fuzzy match `narration_excerpt` to SRT cues |
+| **Natural boundaries** | Scene transitions at subtitle boundaries |
+| **Fallback to Whisper** | Generate SRT if not provided |
+| **Existing support** | NOLAN already has `transcript.py` for SRT parsing |
+
+**SRT sources:**
+- TTS services (ElevenLabs, Azure, etc.) often output SRT
+- Transcription services (Whisper, AssemblyAI, etc.)
+- Manual creation for precise control
+- `nolan` can generate via Whisper if missing
