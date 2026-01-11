@@ -245,6 +245,14 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Scene Workflow Data Model** - Enhanced Scene dataclass for 5-step video pipeline
+  - `SyncPoint` dataclass for word-to-action synchronization (trigger → action at precise time)
+  - `Layer` dataclass for complex multi-element scenes (background, overlay, caption)
+  - Scene fields for timing alignment: `start_seconds`, `end_seconds`, `subtitle_cues`
+  - Animation fields: `animation_type`, `animation_params`, `transition`
+  - Progressive enrichment pattern: Scene is a "holder" filled across workflow steps
+  - Updated LLM prompt to request sync_points, layers, animation specs
+  - Full plan documented in `docs/plans/2026-01-11-scene-workflow.md`
 - ✅ **Motion Canvas Engine** - Render-service can export MP4s via Motion Canvas + FFmpeg
   - Generates a temporary Motion Canvas project (project, scene, render entry, spec)
   - Uses Vite + @motion-canvas/vite-plugin + @motion-canvas/ffmpeg for rendering
