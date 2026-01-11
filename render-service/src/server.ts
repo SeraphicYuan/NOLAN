@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import healthRouter from './routes/health';
 import renderRouter from './routes/render';
+import { startProcessor } from './jobs/processor';
 
 const app = express();
 const PORT = process.env.PORT || 3010;
@@ -13,6 +14,10 @@ app.use(express.json());
 // Routes
 app.use('/health', healthRouter);
 app.use('/render', renderRouter);
+
+// Start job processor
+startProcessor();
+console.log('Job processor started');
 
 app.listen(PORT, () => {
   console.log(`Render service running on http://localhost:${PORT}`);

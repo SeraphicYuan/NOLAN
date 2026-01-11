@@ -1,0 +1,59 @@
+// render-service/src/jobs/processor.ts
+import * as path from 'path';
+import { jobQueue } from './queue';
+import { RenderJob } from './types';
+import { InfographicEngine } from '../engines/infographic';
+import { RenderEngine } from '../engines/types';
+
+const OUTPUT_DIR = path.join(process.cwd(), 'output');
+
+const engines: Record<string, RenderEngine> = {
+  infographic: new InfographicEngine(),
+  // TODO: Add motion-canvas and remotion engines
+};
+
+export async function processJob(job: RenderJob): Promise<void> {
+  const { spec } = job;
+
+  // Update status to rendering
+  jobQueue.updateJob(job.id, { status: 'rendering', progress: 0.1 });
+
+  const engine = engines[spec.engine];
+  if (!engine) {
+    jobQueue.updateJob(job.id, {
+      status: 'error',
+      error: `Unknown engine: ${spec.engine}`
+    });
+    return;
+  }
+
+  jobQueue.updateJob(job.id, { progress: 0.3 });
+
+  const result = await engine.render(spec.data as Record<string, unknown>, OUTPUT_DIR);
+
+  if (result.success) {
+    jobQueue.updateJob(job.id, {
+      status: 'done',
+      progress: 1.0,
+      videoPath: result.outputPath,
+      completedAt: new Date()
+    });
+  } else {
+    jobQueue.updateJob(job.id, {
+      status: 'error',
+      error: result.error
+    });
+  }
+}
+
+export function startProcessor(): void {
+  // Simple polling processor - check for pending jobs every second
+  setInterval(async () => {
+    const jobs = jobQueue.listJobs();
+    const pending = jobs.filter(j => j.status === 'pending');
+
+    for (const job of pending) {
+      await processJob(job);
+    }
+  }, 1000);
+}
