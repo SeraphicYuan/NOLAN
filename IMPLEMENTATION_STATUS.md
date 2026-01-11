@@ -248,6 +248,13 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **AntV Infographic Engine Enablement** - render-service now supports @antv/infographic via headless Chromium
+  - Uses bundled `infographic.min.js` with Puppeteer for SVG extraction
+  - Added template aliasing so `steps/list/comparison` map to real AntV templates
+  - Added `INFOGRAPHIC_ENGINE` and `engine_mode` to force AntV vs SVG fallback
+  - Added `PUPPETEER_EXECUTABLE_PATH`/`CHROME_PATH` support for local Chrome/Edge
+  - Debug logging is gated behind `INFOGRAPHIC_DEBUG=1`
+
 - ✅ **Infographic CLI Integration** - `nolan infographic` command for generating infographics
   - Connects Python CLI to Node.js render-service via HTTP
   - Three input modes: command-line options, JSON file, stdin pipe

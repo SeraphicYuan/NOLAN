@@ -1,68 +1,354 @@
 // render-service/src/engines/infographic.ts
 import * as fs from 'fs';
 import * as path from 'path';
+import puppeteer from 'puppeteer';
 import { RenderEngine, RenderResult } from './types.js';
 
+type EngineMode = 'auto' | 'antv' | 'svg';
+
 /**
- * Simple SVG-based infographic engine
- * Generates infographics using native SVG templates
- * Note: @antv/infographic had browser-only limitations, so we use direct SVG generation
+ * Infographic engine with @antv/infographic (browser) and SVG fallback.
  */
 export class InfographicEngine implements RenderEngine {
   name = 'infographic';
 
   async render(spec: Record<string, unknown>, outputDir: string): Promise<RenderResult> {
-    console.log('[InfographicEngine] Starting SVG render...');
+    console.log('[InfographicEngine] Starting render...');
 
+    const mode = this.getEngineMode(spec);
+    if (mode !== 'svg') {
+      const antvResult = await this.renderWithAntv(spec, outputDir);
+      if (antvResult.success || mode === 'antv') {
+        return antvResult;
+      }
+      console.warn('[InfographicEngine] AntV failed, falling back to SVG:', antvResult.error);
+    }
+
+    return this.renderWithSvg(spec, outputDir);
+  }
+
+  private getEngineMode(spec: Record<string, unknown>): EngineMode {
+    const specMode = (spec.engine_mode ?? spec.engineMode ?? spec.mode) as string | undefined;
+    const envMode = process.env.INFOGRAPHIC_ENGINE;
+    const raw = (specMode || envMode || 'auto').toLowerCase();
+    if (raw === 'antv' || raw === 'svg' || raw === 'auto') {
+      return raw as EngineMode;
+    }
+    return 'auto';
+  }
+
+  private async renderWithAntv(spec: Record<string, unknown>, outputDir: string): Promise<RenderResult> {
     try {
       const width = (spec.width as number) || 1920;
       const height = (spec.height as number) || 1080;
-      const template = (spec.template as string) || 'steps';
-      const data = spec.data as Record<string, unknown> | undefined;
-      const theme = (spec.theme as string) || 'default';
+      const markup = this.getMarkup(spec);
 
-      // Get theme colors
-      const colors = this.getThemeColors(theme);
+      const svgContent = await this.renderMarkupWithPuppeteer(markup, width, height);
 
-      // Generate SVG based on template
-      let svgContent: string;
-      switch (template) {
-        case 'steps':
-        case 'sequence-steps-simple':
-          svgContent = this.generateStepsSVG(data, width, height, colors);
-          break;
-        case 'list':
-        case 'list-row-simple':
-          svgContent = this.generateListSVG(data, width, height, colors);
-          break;
-        case 'comparison':
-          svgContent = this.generateComparisonSVG(data, width, height, colors);
-          break;
-        default:
-          // Default to steps template
-          svgContent = this.generateStepsSVG(data, width, height, colors);
-      }
-
-      // Ensure output directory exists
       fs.mkdirSync(outputDir, { recursive: true });
-
-      // Save SVG file
       const outputPath = path.join(outputDir, `infographic_${Date.now()}.svg`);
       fs.writeFileSync(outputPath, svgContent, 'utf8');
 
-      console.log('[InfographicEngine] SVG saved to:', outputPath);
+      console.log('[InfographicEngine] AntV SVG saved to:', outputPath);
 
       return {
         success: true,
         outputPath,
       };
     } catch (error) {
-      console.error('[InfographicEngine] Error:', error);
+      console.error('[InfographicEngine] AntV error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  private async renderMarkupWithPuppeteer(markup: string, width: number, height: number): Promise<string> {
+    const bundlePath = this.getInfographicBundlePath();
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_PATH;
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    let page: puppeteer.Page | null = null;
+    const debugEnabled = process.env.INFOGRAPHIC_DEBUG === '1';
+    const consoleMessages: string[] = [];
+    try {
+      page = await browser.newPage();
+      await page.setViewport({ width, height, deviceScaleFactor: 1 });
+      if (debugEnabled) {
+        page.on('console', (msg) => consoleMessages.push(`[console.${msg.type()}] ${msg.text()}`));
+        page.on('pageerror', (err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          consoleMessages.push(`[pageerror] ${message}`);
+        });
+      }
+
+      const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; }
+      #container { width: ${width}px; height: ${height}px; }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+  </body>
+</html>`;
+
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
+      await page.addScriptTag({ path: bundlePath });
+
+      if (debugEnabled) {
+        await page.evaluate(() => {
+          (window as any).INFOGRAPHIC_DEBUG = true;
+        });
+      }
+
+      const renderDiagnostics = await page.evaluate(
+        async ({ markupText, widthPx, heightPx }) => {
+          const container = document.getElementById('container');
+          if (!container) {
+            throw new Error('Infographic container not found');
+          }
+          const lib = (window as any).AntVInfographic || (window as any).InfographicLib;
+          const Infographic = lib?.Infographic || (window as any).Infographic;
+          if (!Infographic) {
+            throw new Error('Infographic export not found on window');
+          }
+
+          const errors: string[] = [];
+          const warnings: string[] = [];
+          let parseErrors: string[] = [];
+          let parseWarnings: string[] = [];
+          let parsedOptionsSummary: Record<string, unknown> | null = null;
+          const enableDebug = (window as any).INFOGRAPHIC_DEBUG === true;
+          if (lib?.parseSyntax) {
+            const parsed = lib.parseSyntax(markupText);
+            parseErrors = (parsed?.errors || []).map((e: unknown) =>
+              e instanceof Error ? e.message : String(e)
+            );
+            parseWarnings = (parsed?.warnings || []).map((w: unknown) =>
+              w instanceof Error ? w.message : String(w)
+            );
+            const options = parsed?.options || {};
+            const data = options.data || {};
+            const templateName = options.template || null;
+            if (enableDebug) {
+              const templateList =
+                typeof lib?.getTemplates === 'function' ? lib.getTemplates() : null;
+              const templateKeys = Array.isArray(templateList) ? templateList : [];
+              parsedOptionsSummary = {
+                hasDesign: Boolean(options.design),
+                hasData: Boolean(options.data),
+                itemCount: Array.isArray(data.items) ? data.items.length : 0,
+                template: templateName,
+                templateExists: templateName && typeof lib?.getTemplate === 'function'
+                  ? Boolean(lib.getTemplate(templateName))
+                  : null,
+                templateKeysSample: templateKeys.slice(0, 20),
+              };
+            }
+          }
+          const infographic = new Infographic({
+            container: '#container',
+            width: widthPx,
+            height: heightPx,
+          });
+          if (typeof infographic.on === 'function') {
+            infographic.on('error', (err: unknown) => {
+              const message = err instanceof Error ? err.message : String(err);
+              errors.push(message);
+            });
+            infographic.on('warning', (warn: unknown) => {
+              const message = warn instanceof Error ? warn.message : String(warn);
+              warnings.push(message);
+            });
+          }
+          const result = infographic.render(markupText);
+          if (result && typeof (result as Promise<unknown>).then === 'function') {
+            await result;
+          }
+          return {
+            errors,
+            warnings,
+            containerHTML: enableDebug ? container.innerHTML.slice(0, 2000) : null,
+            parseErrors,
+            parseWarnings,
+            parsedOptionsSummary,
+          };
+        },
+        { markupText: markup, widthPx: width, heightPx: height }
+      );
+
+      if (renderDiagnostics.parseErrors.length || renderDiagnostics.errors.length) {
+        const details = [
+          renderDiagnostics.parseErrors.length
+            ? `Parse errors: ${renderDiagnostics.parseErrors.join('; ')}`
+            : null,
+          renderDiagnostics.parseWarnings.length
+            ? `Parse warnings: ${renderDiagnostics.parseWarnings.join('; ')}`
+            : null,
+          renderDiagnostics.errors.length
+            ? `Render errors: ${renderDiagnostics.errors.join('; ')}`
+            : null,
+          renderDiagnostics.warnings.length
+            ? `Render warnings: ${renderDiagnostics.warnings.join('; ')}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' | ');
+        const summary = renderDiagnostics.parsedOptionsSummary
+          ? `Parsed options: ${JSON.stringify(renderDiagnostics.parsedOptionsSummary)}`
+          : null;
+        const message = [details, summary].filter(Boolean).join(' | ');
+        if (message) {
+          throw new Error(message);
+        }
+      }
+
+      await page.waitForSelector('svg', { timeout: 15000 });
+      const svg = await page.$eval('svg', (el) => el.outerHTML);
+
+      await page.close();
+      return svg;
+    } catch (error) {
+      const debugDetails: string[] = [];
+      if (debugEnabled && consoleMessages.length) {
+        debugDetails.push(`Console:\n${consoleMessages.join('\n')}`);
+      }
+      if (page && debugEnabled) {
+        try {
+          const debugSnapshot = await page.evaluate(() => {
+            const container = document.getElementById('container');
+            const svg = document.querySelector('svg');
+            const lib = (window as any).AntVInfographic || (window as any).InfographicLib;
+            return {
+              hasContainer: Boolean(container),
+              containerChildren: container ? container.children.length : 0,
+              containerHTML: container ? container.innerHTML.slice(0, 2000) : null,
+              hasSvg: Boolean(svg),
+              bodyHTML: document.body.innerHTML.slice(0, 2000),
+              libKeys: lib ? Object.keys(lib) : [],
+            };
+          });
+          debugDetails.push(`Snapshot:\n${JSON.stringify(debugSnapshot, null, 2)}`);
+        } catch {
+          // ignore debug extraction failures
+        }
+      }
+      const detailText = debugDetails.length ? `\n${debugDetails.join('\n\n')}` : '';
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`${message}${detailText}`);
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private getInfographicBundlePath(): string {
+    const bundlePath = path.join(
+      process.cwd(),
+      'node_modules',
+      '@antv',
+      'infographic',
+      'dist',
+      'infographic.min.js'
+    );
+
+    if (!fs.existsSync(bundlePath)) {
+      throw new Error('Infographic bundle not found. Run npm install in render-service.');
+    }
+
+    return bundlePath;
+  }
+
+  private getMarkup(spec: Record<string, unknown>): string {
+    if (typeof spec.markup === 'string' && spec.markup.trim()) {
+      return spec.markup;
+    }
+    return this.buildMarkup(spec);
+  }
+
+  private buildMarkup(spec: Record<string, unknown>): string {
+    const template = this.resolveAntvTemplate((spec.template as string) || 'list-row-simple');
+    const data = (spec.data as Record<string, unknown>) || {};
+    const title = (data.title as string) || '';
+    const items = this.normalizeItems(data.items);
+
+    let markup = `infographic ${template}\n`;
+    markup += 'data\n';
+
+    if (title) {
+      markup += `  title ${this.normalizeText(title)}\n`;
+    }
+
+    if (items.length) {
+      markup += '  items\n';
+      for (const item of items) {
+        markup += `    - label ${this.normalizeText(item.label || '')}\n`;
+        if (item.desc) {
+          markup += `      desc ${this.normalizeText(item.desc)}\n`;
+        }
+        if (item.value !== undefined) {
+          markup += `      value ${this.normalizeText(String(item.value))}\n`;
+        }
+      }
+    }
+
+    return markup;
+  }
+
+  private resolveAntvTemplate(template: string): string {
+    const normalized = template.trim();
+    if (!normalized) {
+      return 'list-row-horizontal-icon-arrow';
+    }
+
+    const aliasMap: Record<string, string> = {
+      steps: 'sequence-steps-simple',
+      'sequence-steps-simple': 'sequence-steps-simple',
+      list: 'list-row-horizontal-icon-arrow',
+      'list-row-simple': 'list-row-horizontal-icon-arrow',
+      comparison: 'compare-binary-horizontal-simple-vs',
+    };
+
+    return aliasMap[normalized] || normalized;
+  }
+
+  private normalizeItems(
+    rawItems: unknown
+  ): Array<{ label?: string; desc?: string; value?: string | number }> {
+    if (!Array.isArray(rawItems)) {
+      return [];
+    }
+
+    return rawItems.map((item) => {
+      if (typeof item === 'string' || typeof item === 'number') {
+        return { label: String(item) };
+      }
+
+      if (typeof item === 'object' && item !== null) {
+        const obj = item as Record<string, unknown>;
+        return {
+          label: typeof obj.label === 'string' ? obj.label : undefined,
+          desc:
+            typeof obj.desc === 'string'
+              ? obj.desc
+              : typeof obj.description === 'string'
+                ? obj.description
+                : undefined,
+          value: typeof obj.value === 'string' || typeof obj.value === 'number' ? obj.value : undefined,
+        };
+      }
+
+      return {};
+    });
   }
 
   private getThemeColors(theme: string): { primary: string; secondary: string; text: string; bg: string; accent: string } {
@@ -108,6 +394,58 @@ export class InfographicEngine implements RenderEngine {
       .replace(/'/g, '&apos;');
   }
 
+  private normalizeText(text: string): string {
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  private async renderWithSvg(spec: Record<string, unknown>, outputDir: string): Promise<RenderResult> {
+    console.log('[InfographicEngine] Starting SVG fallback render...');
+
+    try {
+      const width = (spec.width as number) || 1920;
+      const height = (spec.height as number) || 1080;
+      const template = (spec.template as string) || 'steps';
+      const data = spec.data as Record<string, unknown> | undefined;
+      const theme = (spec.theme as string) || 'default';
+
+      const colors = this.getThemeColors(theme);
+
+      let svgContent: string;
+      switch (template) {
+        case 'steps':
+        case 'sequence-steps-simple':
+          svgContent = this.generateStepsSVG(data, width, height, colors);
+          break;
+        case 'list':
+        case 'list-row-simple':
+          svgContent = this.generateListSVG(data, width, height, colors);
+          break;
+        case 'comparison':
+          svgContent = this.generateComparisonSVG(data, width, height, colors);
+          break;
+        default:
+          svgContent = this.generateStepsSVG(data, width, height, colors);
+      }
+
+      fs.mkdirSync(outputDir, { recursive: true });
+      const outputPath = path.join(outputDir, `infographic_${Date.now()}.svg`);
+      fs.writeFileSync(outputPath, svgContent, 'utf8');
+
+      console.log('[InfographicEngine] SVG saved to:', outputPath);
+
+      return {
+        success: true,
+        outputPath,
+      };
+    } catch (error) {
+      console.error('[InfographicEngine] SVG fallback error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
   /**
    * Generate a steps/sequence infographic
    */
@@ -117,7 +455,7 @@ export class InfographicEngine implements RenderEngine {
     height: number,
     colors: { primary: string; secondary: string; text: string; bg: string; accent: string }
   ): string {
-    const items = (data?.items as Array<{ label?: string; desc?: string }>) || [];
+    const items = this.normalizeItems(data?.items);
     const title = (data?.title as string) || '';
 
     const padding = 60;
@@ -208,7 +546,7 @@ export class InfographicEngine implements RenderEngine {
     height: number,
     colors: { primary: string; secondary: string; text: string; bg: string; accent: string }
   ): string {
-    const items = (data?.items as Array<{ label?: string; desc?: string; value?: string | number }>) || [];
+    const items = this.normalizeItems(data?.items);
     const title = (data?.title as string) || '';
 
     const padding = 60;
@@ -284,7 +622,7 @@ export class InfographicEngine implements RenderEngine {
     height: number,
     colors: { primary: string; secondary: string; text: string; bg: string; accent: string }
   ): string {
-    const items = (data?.items as Array<{ label?: string; desc?: string }>) || [];
+    const items = this.normalizeItems(data?.items);
     const title = (data?.title as string) || 'Comparison';
 
     const padding = 60;
