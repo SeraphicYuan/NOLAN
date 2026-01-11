@@ -1,7 +1,7 @@
 // render-service/src/routes/render.ts
 import { Router } from 'express';
-import { jobQueue } from '../jobs/queue';
-import { RenderSpec } from '../jobs/types';
+import { jobQueue } from '../jobs/queue.js';
+import { RenderSpec } from '../jobs/types.js';
 
 const router = Router();
 

@@ -1,3 +1,3 @@
 // render-service/src/engines/index.ts
-export * from './types';
-export { InfographicEngine } from './infographic';
+export * from './types.js';
+export { InfographicEngine } from './infographic.js';

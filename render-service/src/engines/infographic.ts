@@ -2,7 +2,7 @@
 import { JSDOM } from 'jsdom';
 import * as fs from 'fs';
 import * as path from 'path';
-import { RenderEngine, RenderResult } from './types';
+import { RenderEngine, RenderResult } from './types.js';
 
 /**
  * Infographic rendering engine using @antv/infographic with JSDOM

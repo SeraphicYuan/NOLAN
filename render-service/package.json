@@ -1,13 +1,15 @@
 {
   "name": "render-service",
   "version": "1.0.0",
+  "type": "module",
   "description": "Infographic & Animation Render Service for NOLAN",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon --exec ts-node src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "jest"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "postinstall": "patch-package"
   },
   "keywords": [],
   "author": "",
@@ -25,8 +27,11 @@
     "@types/jsdom": "^27.0.0",
     "@types/node": "^25.0.6",
     "@types/uuid": "^10.0.0",
+    "esbuild": "^0.27.2",
     "nodemon": "^3.1.11",
+    "patch-package": "^8.0.1",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }

@@ -1,9 +1,9 @@
 // render-service/src/jobs/processor.ts
 import * as path from 'path';
-import { jobQueue } from './queue';
-import { RenderJob } from './types';
-import { InfographicEngine } from '../engines/infographic';
-import { RenderEngine } from '../engines/types';
+import { jobQueue } from './queue.js';
+import { RenderJob } from './types.js';
+import { InfographicEngine } from '../engines/infographic.js';
+import { RenderEngine } from '../engines/types.js';
 
 const OUTPUT_DIR = path.join(process.cwd(), 'output');
 

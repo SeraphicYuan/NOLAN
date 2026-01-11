@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { RenderJob, RenderSpec } from './types';
+import { RenderJob, RenderSpec } from './types.js';
 
 /**
  * In-memory job queue for managing render jobs.

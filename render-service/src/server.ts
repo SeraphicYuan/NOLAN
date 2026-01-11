@@ -1,9 +1,9 @@
 // render-service/src/server.ts
 import express from 'express';
 import cors from 'cors';
-import healthRouter from './routes/health';
-import renderRouter from './routes/render';
-import { startProcessor } from './jobs/processor';
+import healthRouter from './routes/health.js';
+import renderRouter from './routes/render.js';
+import { startProcessor } from './jobs/processor.js';
 
 const app = express();
 const PORT = process.env.PORT || 3010;
