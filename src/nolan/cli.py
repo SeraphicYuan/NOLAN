@@ -197,22 +197,27 @@ async def _convert_script(config, essay_path, output_path):
 @click.argument('script_file', type=click.Path(exists=True))
 @click.option('--output', '-o', type=click.Path(), default=None,
               help='Output directory (defaults to same as script file).')
+@click.option('--beats-only', is_flag=True,
+              help='Run Pass 1 only: detect beats and visual categories for review.')
 @click.pass_context
-def design(ctx, script_file, output):
-    """Design visual scenes from a script.
+def design(ctx, script_file, output, beats_only):
+    """Design visual scenes from a script (two-pass approach).
 
     SCRIPT_FILE is the path to script.json (from 'nolan script' command).
 
-    This command will:
-    1. Load the narration script
-    2. Design visual scenes for each section using AI
-    3. Output scene_plan.json with visual specifications
+    TWO-PASS WORKFLOW:
+    Pass 1 (--beats-only): Break narration into beats, assign visual categories.
+           Outputs beats.json and av_script.txt for human review.
 
-    Each scene includes:
-    - Visual type (b-roll, infographic, generated-image, etc.)
-    - Search queries for stock footage
-    - AI image generation prompts
-    - Animation hints and sync points
+    Pass 2 (default): Enrich beats with category-specific details.
+           Outputs full scene_plan.json.
+
+    VISUAL CATEGORIES:
+    - b-roll: Stock/archival footage
+    - graphics: Infographics, charts, text overlays
+    - a-roll: Primary footage of subject
+    - generated: AI-generated images
+    - host: Face-to-camera moments
     """
     config = ctx.obj['config']
     script_path = Path(script_file)
@@ -225,12 +230,15 @@ def design(ctx, script_file, output):
 
     click.echo(f"Designing scenes from: {script_path.name}")
     click.echo(f"Output: {output_path}")
+    if beats_only:
+        click.echo("Mode: Pass 1 only (beats detection)")
 
-    asyncio.run(_design_scenes(config, script_path, output_path))
+    asyncio.run(_design_scenes(config, script_path, output_path, beats_only))
 
 
-async def _design_scenes(config, script_path, output_path):
+async def _design_scenes(config, script_path, output_path, beats_only=False):
     """Async implementation of design command."""
+    import json
     from nolan.script import Script
     from nolan.scenes import SceneDesigner
     from nolan.llm import GeminiClient
@@ -250,33 +258,73 @@ async def _design_scenes(config, script_path, output_path):
     click.echo(f"  Sections: {len(script.sections)}")
     click.echo(f"  Duration: {script.total_duration:.0f}s")
 
-    # Step 2: Design scenes
-    click.echo("\n[2/2] Designing scenes...")
     designer = SceneDesigner(llm)
-    plan = await designer.design_full_plan(script.sections)
 
-    # Save scene plan
-    plan_path = output_path / "scene_plan.json"
-    plan.save(str(plan_path))
+    if beats_only:
+        # Pass 1 only: Detect beats
+        click.echo("\n[2/2] Pass 1: Detecting beats...")
+        beat_plans = await designer.design_full_beats(script.sections)
 
-    # Count scene types
-    type_counts = {}
-    sync_point_count = 0
-    for scene in plan.all_scenes:
-        vtype = scene.visual_type
-        type_counts[vtype] = type_counts.get(vtype, 0) + 1
-        sync_point_count += len(scene.sync_points)
+        # Save beats JSON
+        beats_data = {"sections": [bp.to_dict() for bp in beat_plans]}
+        beats_path = output_path / "beats.json"
+        with open(beats_path, 'w', encoding='utf-8') as f:
+            json.dump(beats_data, f, indent=2)
 
-    click.echo(f"\n  Scene plan: {plan_path}")
-    click.echo(f"  Total scenes: {len(plan.all_scenes)}")
-    click.echo(f"  Sync points: {sync_point_count}")
-    click.echo(f"  Scene types:")
-    for vtype, count in sorted(type_counts.items()):
-        click.echo(f"    - {vtype}: {count}")
+        # Save A/V script for human review
+        av_script_path = output_path / "av_script.txt"
+        with open(av_script_path, 'w', encoding='utf-8') as f:
+            for bp in beat_plans:
+                f.write(bp.to_av_script())
+                f.write("\n\n")
 
-    click.echo(f"\nDone! Next steps:")
-    click.echo(f"  1. Review scene_plan.json")
-    click.echo(f"  2. Run: nolan prepare-assets {plan_path}")
+        # Summary
+        total_beats = sum(len(bp.beats) for bp in beat_plans)
+        visual_holes = sum(1 for bp in beat_plans for b in bp.beats if b.has_visual_hole)
+        categories = {}
+        for bp in beat_plans:
+            for beat in bp.beats:
+                categories[beat.category] = categories.get(beat.category, 0) + 1
+
+        click.echo(f"\n  Beats JSON: {beats_path}")
+        click.echo(f"  A/V Script: {av_script_path}")
+        click.echo(f"  Total beats: {total_beats}")
+        if visual_holes:
+            click.echo(f"  ⚠️  Visual holes: {visual_holes}")
+        click.echo(f"  Categories:")
+        for cat, count in sorted(categories.items()):
+            click.echo(f"    - {cat}: {count}")
+
+        click.echo(f"\nDone! Review the A/V script, then run:")
+        click.echo(f"  nolan design {script_path}  # (without --beats-only)")
+
+    else:
+        # Full two-pass design
+        click.echo("\n[2/2] Designing scenes (Pass 1 + Pass 2)...")
+        plan = await designer.design_full_plan(script.sections, enrich=True)
+
+        # Save scene plan
+        plan_path = output_path / "scene_plan.json"
+        plan.save(str(plan_path))
+
+        # Count scene types
+        type_counts = {}
+        sync_point_count = 0
+        for scene in plan.all_scenes:
+            vtype = scene.visual_type
+            type_counts[vtype] = type_counts.get(vtype, 0) + 1
+            sync_point_count += len(scene.sync_points)
+
+        click.echo(f"\n  Scene plan: {plan_path}")
+        click.echo(f"  Total scenes: {len(plan.all_scenes)}")
+        click.echo(f"  Sync points: {sync_point_count}")
+        click.echo(f"  Scene types:")
+        for vtype, count in sorted(type_counts.items()):
+            click.echo(f"    - {vtype}: {count}")
+
+        click.echo(f"\nDone! Next steps:")
+        click.echo(f"  1. Review scene_plan.json")
+        click.echo(f"  2. Run: nolan prepare-assets {plan_path}")
 
 
 @main.command()

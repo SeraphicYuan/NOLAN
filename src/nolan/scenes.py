@@ -9,6 +9,21 @@ from nolan.script import ScriptSection
 
 
 @dataclass
+class Beat:
+    """A beat is a distinct unit of thought in the narration.
+
+    Pass 1 output: structural backbone of the A/V script.
+    """
+    id: str
+    narration: str                          # The exact words for this beat
+    category: str                           # b-roll, graphics, a-roll, generated, host
+    mode: str                               # see-say, counterpoint
+    visual_intent: str                      # Brief description of visual need
+    has_visual_hole: bool = False           # True if abstract concept with no obvious visual
+    sync_word: Optional[str] = None         # Key word that triggers visual change
+
+
+@dataclass
 class SyncPoint:
     """Word-to-action synchronization point.
 
@@ -33,71 +48,166 @@ class Layer:
     sync_point: Optional[SyncPoint] = None  # When to show/animate this layer
 
 
-SCENE_DESIGN_PROMPT = """You are designing visual scenes for a YouTube video essay.
+# =============================================================================
+# PASS 1: Beat Detection & Visual Assignment
+# =============================================================================
+# Break narration into "beats" (distinct thought units) and assign visual categories.
+# This is the structural pass - no details yet, just the backbone.
+
+PASS1_BEAT_PROMPT = """You are an A/V script writer for video essays.
 
 SECTION: {title}
 TIMESTAMP: {timestamp}
 NARRATION:
 {narration}
 
-Design a sequence of visual scenes to accompany this narration. For each scene, specify:
-- When it starts and how long it lasts (estimate)
-- What type of visual (b-roll, graphic, text-overlay, generated-image, infographic, layered)
-- What should appear on screen
-- Search terms for finding stock footage
-- A prompt for AI image generation (if applicable)
-- For infographics, provide an infographic spec with template/theme/data
-- For animations, specify animation_type and params
-- For sync points, specify trigger words that should trigger visual actions
-- For layered scenes, define multiple layers (background, overlay, caption)
+Break this narration into BEATS. A beat is a distinct unit of thought - it could be:
+- A single sentence making one point
+- A phrase introducing a new concept
+- A rhetorical question
+- A transition moment
 
-Return a JSON array of scenes with this structure:
+For each beat, decide:
+1. What VISUAL CATEGORY should accompany it?
+   - b-roll: Illustrative footage (stock, archival, metaphorical imagery)
+   - graphics: Charts, diagrams, infographics, animated text
+   - a-roll: Primary footage of the subject being discussed (if we have it)
+   - generated: AI-generated image for concepts with no real footage
+   - host: Face-to-camera moment (rare, for emphasis)
+
+2. Is this SEE-SAY or COUNTERPOINT?
+   - see-say: Visual directly illustrates what's being said
+   - counterpoint: Visual adds meaning NOT in the narration (more sophisticated)
+
+3. Is there a VISUAL HOLE? (Abstract concept with no obvious visual)
+
+Return a JSON array:
 [
   {{
-    "id": "scene_XXX",
-    "start": "M:SS",
-    "duration": "Xs",
-    "narration_excerpt": "the specific words being spoken",
-    "visual_type": "b-roll|graphic|text-overlay|generated-image|infographic|layered",
-    "visual_description": "detailed description of what appears on screen",
-    "asset_suggestions": {{
-      "search_query": "keywords for stock footage search",
-      "comfyui_prompt": "detailed prompt for AI image generation",
-      "library_match": true
-    }},
-    "animation": {{
-      "type": "static|zoom|pan|reveal|kinetic",
-      "params": {{"zoom_from": 1.0, "zoom_to": 1.2, "direction": "left-to-right"}},
-      "transition": "cut|fade|dissolve|wipe"
-    }},
-    "sync_points": [
-      {{"trigger": "word or phrase", "action": "reveal|highlight|zoom|animate", "target": 0}}
-    ],
-    "layers": [
-      {{"type": "background|overlay|caption|lower_third", "style": {{}}}},
-    ],
-    "infographic": {{
-      "template": "steps|list|comparison",
-      "theme": "default|dark|warm|cool",
-      "data": {{
-        "title": "infographic title",
-        "items": [
-          {{"label": "Step 1", "desc": "Short detail"}},
-          {{"label": "Step 2", "desc": "Short detail"}}
-        ]
-      }}
-    }},
-    "text_style": {{
-      "position": "center|bottom|top",
-      "font_size": 32,
-      "color": "#ffffff",
-      "animation": "fade|typewriter|none"
-    }}
+    "id": "beat_001",
+    "narration": "the exact words for this beat",
+    "category": "b-roll|graphics|a-roll|generated|host",
+    "mode": "see-say|counterpoint",
+    "visual_intent": "brief description of what this beat needs visually",
+    "has_visual_hole": false,
+    "sync_word": "optional key word that should trigger a visual change"
   }}
 ]
 
-IMPORTANT: Return ONLY the JSON array, no other text.
-NOTE: animation, sync_points, layers, infographic, and text_style are optional - include only when relevant."""
+GUIDELINES:
+- Every sentence or distinct thought = one beat
+- Don't over-split: keep phrases that flow together as one beat
+- Flag visual_hole=true for abstract concepts (e.g., "freedom", "economic anxiety")
+- sync_word is optional - only include for impactful moments
+
+IMPORTANT: Return ONLY the JSON array, no other text."""
+
+
+# =============================================================================
+# PASS 2: Category-Specific Details
+# =============================================================================
+# For each beat, generate details appropriate to its visual category.
+
+PASS2_BROLL_PROMPT = """You are sourcing B-roll footage for a video essay beat.
+
+BEAT: {beat_id}
+NARRATION: "{narration}"
+VISUAL INTENT: {visual_intent}
+MODE: {mode}
+
+Generate search queries and visual details for this beat.
+
+Return JSON:
+{{
+  "search_queries": ["primary search terms", "alternative search", "abstract/metaphorical option"],
+  "visual_description": "detailed description of ideal footage",
+  "mood": "energetic|calm|tense|hopeful|somber|neutral",
+  "motion": "static|slow|dynamic",
+  "suggested_duration": "Xs"
+}}
+
+IMPORTANT: Return ONLY the JSON object, no other text."""
+
+
+PASS2_GRAPHICS_PROMPT = """You are designing a graphic/infographic for a video essay beat.
+
+BEAT: {beat_id}
+NARRATION: "{narration}"
+VISUAL INTENT: {visual_intent}
+
+Determine what type of graphic best serves this beat.
+
+Return JSON:
+{{
+  "graphic_type": "infographic|chart|text-overlay|diagram|timeline|comparison",
+  "spec": {{
+    "template": "steps|list|comparison|bar-chart|timeline",
+    "theme": "default|dark|warm|cool",
+    "title": "optional title",
+    "items": [
+      {{"label": "Item 1", "desc": "Detail or value"}},
+      {{"label": "Item 2", "desc": "Detail or value"}}
+    ]
+  }},
+  "text_overlay": {{
+    "text": "key phrase to display (if text-overlay type)",
+    "position": "center|bottom|top",
+    "animation": "fade|typewriter|none"
+  }},
+  "sync_points": [
+    {{"trigger": "word", "action": "reveal_item", "target": 0}}
+  ],
+  "suggested_duration": "Xs"
+}}
+
+NOTE: Include only relevant fields based on graphic_type.
+IMPORTANT: Return ONLY the JSON object, no other text."""
+
+
+PASS2_GENERATED_PROMPT = """You are creating an AI image generation prompt for a video essay beat.
+
+BEAT: {beat_id}
+NARRATION: "{narration}"
+VISUAL INTENT: {visual_intent}
+MODE: {mode}
+
+This beat needs a generated image because no stock footage exists for this concept.
+
+Return JSON:
+{{
+  "comfyui_prompt": "detailed prompt for Stable Diffusion / FLUX image generation",
+  "negative_prompt": "things to avoid in the image",
+  "style": "photorealistic|illustration|abstract|cinematic|documentary",
+  "aspect_ratio": "16:9|4:3|1:1",
+  "visual_description": "what the final image should look like",
+  "suggested_duration": "Xs"
+}}
+
+IMPORTANT: Return ONLY the JSON object, no other text."""
+
+
+PASS2_AROLL_PROMPT = """You are matching primary footage (A-roll) for a video essay beat.
+
+BEAT: {beat_id}
+NARRATION: "{narration}"
+VISUAL INTENT: {visual_intent}
+
+This beat should show footage of the actual subject being discussed.
+
+Return JSON:
+{{
+  "search_terms": ["terms to search in video library"],
+  "visual_description": "what specific footage we need",
+  "timestamp_hint": "if discussing a specific scene/moment, describe it",
+  "framing": "wide|medium|close-up|detail",
+  "suggested_duration": "Xs"
+}}
+
+IMPORTANT: Return ONLY the JSON object, no other text."""
+
+
+# Legacy prompt for backward compatibility
+SCENE_DESIGN_PROMPT = PASS1_BEAT_PROMPT
 
 
 @dataclass
@@ -264,8 +374,60 @@ class ScenePlan:
         return scenes
 
 
+@dataclass
+class BeatPlan:
+    """Pass 1 output: structural backbone of the A/V script."""
+    section_title: str
+    beats: List[Beat] = field(default_factory=list)
+
+    def to_av_script(self) -> str:
+        """Export as human-readable two-column A/V script."""
+        lines = [f"# A/V SCRIPT: {self.section_title}\n"]
+        lines.append("=" * 80)
+        lines.append(f"{'VISUAL':<40} | {'AUDIO':<38}")
+        lines.append("-" * 40 + "-+-" + "-" * 38)
+
+        for beat in self.beats:
+            # Truncate narration for display
+            narration = beat.narration[:35] + "..." if len(beat.narration) > 38 else beat.narration
+            visual = f"[{beat.category.upper()}] {beat.visual_intent[:25]}"
+            if beat.has_visual_hole:
+                visual = f"⚠️ {visual}"
+
+            lines.append(f"{visual:<40} | {narration:<38}")
+
+        lines.append("=" * 80)
+
+        # Summary
+        categories = {}
+        visual_holes = 0
+        for beat in self.beats:
+            categories[beat.category] = categories.get(beat.category, 0) + 1
+            if beat.has_visual_hole:
+                visual_holes += 1
+
+        lines.append(f"\nSummary: {len(self.beats)} beats")
+        for cat, count in sorted(categories.items()):
+            lines.append(f"  - {cat}: {count}")
+        if visual_holes:
+            lines.append(f"  - ⚠️ Visual holes: {visual_holes}")
+
+        return "\n".join(lines)
+
+    def to_dict(self) -> Dict:
+        """Export as dictionary."""
+        return {
+            "section_title": self.section_title,
+            "beats": [asdict(b) for b in self.beats]
+        }
+
+
 class SceneDesigner:
-    """Designs visual scenes for script sections."""
+    """Designs visual scenes for script sections using a two-pass approach.
+
+    Pass 1: Beat detection - break narration into thought units, assign visual categories
+    Pass 2: Detail enrichment - add category-specific details (search queries, specs, etc.)
+    """
 
     def __init__(self, llm_client):
         """Initialize the designer.
@@ -275,95 +437,220 @@ class SceneDesigner:
         """
         self.llm = llm_client
 
-    async def design_section(self, section: ScriptSection) -> List[Scene]:
-        """Design scenes for a single script section.
+    # =========================================================================
+    # PASS 1: Beat Detection
+    # =========================================================================
+
+    async def detect_beats(self, section: ScriptSection) -> BeatPlan:
+        """Pass 1: Break narration into beats and assign visual categories.
 
         Args:
-            section: The script section to design for.
+            section: The script section to analyze.
 
         Returns:
-            List of Scene objects.
+            BeatPlan with structural backbone.
         """
-        prompt = SCENE_DESIGN_PROMPT.format(
+        prompt = PASS1_BEAT_PROMPT.format(
             title=section.title,
             timestamp=section.timestamp,
             narration=section.narration
         )
 
         response = await self.llm.generate(prompt)
+        beats_data = self._parse_json_array(response)
 
-        # Parse JSON response
-        try:
-            scenes_data = json.loads(response.strip())
-        except json.JSONDecodeError:
-            # Try to extract JSON from response
-            match = re.search(r'\[.*\]', response, re.DOTALL)
-            if match:
-                scenes_data = json.loads(match.group())
-            else:
-                raise ValueError(f"Could not parse scene JSON from response: {response[:200]}")
+        beats = []
+        for beat_data in beats_data:
+            beats.append(Beat(
+                id=beat_data.get("id", f"beat_{len(beats)+1:03d}"),
+                narration=beat_data.get("narration", ""),
+                category=beat_data.get("category", "b-roll"),
+                mode=beat_data.get("mode", "see-say"),
+                visual_intent=beat_data.get("visual_intent", ""),
+                has_visual_hole=beat_data.get("has_visual_hole", False),
+                sync_word=beat_data.get("sync_word"),
+            ))
 
+        return BeatPlan(section_title=section.title, beats=beats)
+
+    # =========================================================================
+    # PASS 2: Detail Enrichment
+    # =========================================================================
+
+    async def enrich_beat(self, beat: Beat) -> Scene:
+        """Pass 2: Add category-specific details to a beat.
+
+        Args:
+            beat: The beat to enrich.
+
+        Returns:
+            Fully detailed Scene object.
+        """
+        # Select the appropriate prompt based on category
+        if beat.category == "b-roll":
+            details = await self._enrich_broll(beat)
+        elif beat.category == "graphics":
+            details = await self._enrich_graphics(beat)
+        elif beat.category == "generated":
+            details = await self._enrich_generated(beat)
+        elif beat.category == "a-roll":
+            details = await self._enrich_aroll(beat)
+        else:
+            # host or unknown - minimal enrichment
+            details = {
+                "visual_description": beat.visual_intent,
+                "suggested_duration": "3s"
+            }
+
+        # Convert to Scene
+        return self._beat_to_scene(beat, details)
+
+    async def _enrich_broll(self, beat: Beat) -> Dict:
+        """Enrich a b-roll beat with search queries."""
+        prompt = PASS2_BROLL_PROMPT.format(
+            beat_id=beat.id,
+            narration=beat.narration,
+            visual_intent=beat.visual_intent,
+            mode=beat.mode
+        )
+        response = await self.llm.generate(prompt)
+        return self._parse_json_object(response)
+
+    async def _enrich_graphics(self, beat: Beat) -> Dict:
+        """Enrich a graphics beat with spec details."""
+        prompt = PASS2_GRAPHICS_PROMPT.format(
+            beat_id=beat.id,
+            narration=beat.narration,
+            visual_intent=beat.visual_intent
+        )
+        response = await self.llm.generate(prompt)
+        return self._parse_json_object(response)
+
+    async def _enrich_generated(self, beat: Beat) -> Dict:
+        """Enrich a generated-image beat with AI prompts."""
+        prompt = PASS2_GENERATED_PROMPT.format(
+            beat_id=beat.id,
+            narration=beat.narration,
+            visual_intent=beat.visual_intent,
+            mode=beat.mode
+        )
+        response = await self.llm.generate(prompt)
+        return self._parse_json_object(response)
+
+    async def _enrich_aroll(self, beat: Beat) -> Dict:
+        """Enrich an a-roll beat with library search terms."""
+        prompt = PASS2_AROLL_PROMPT.format(
+            beat_id=beat.id,
+            narration=beat.narration,
+            visual_intent=beat.visual_intent
+        )
+        response = await self.llm.generate(prompt)
+        return self._parse_json_object(response)
+
+    def _beat_to_scene(self, beat: Beat, details: Dict) -> Scene:
+        """Convert a beat + details into a Scene object."""
+        # Map category to visual_type
+        category_to_type = {
+            "b-roll": "b-roll",
+            "graphics": details.get("graphic_type", "infographic"),
+            "generated": "generated-image",
+            "a-roll": "a-roll",
+            "host": "host",
+        }
+
+        # Extract search queries
+        search_queries = details.get("search_queries", [])
+        search_query = search_queries[0] if search_queries else ""
+
+        # Extract sync points for graphics
+        sync_points = []
+        for sp in details.get("sync_points", []):
+            sync_points.append(SyncPoint(
+                trigger=sp.get("trigger", ""),
+                action=sp.get("action", "reveal"),
+                target=sp.get("target"),
+            ))
+
+        # Add sync_word as a sync point if present
+        if beat.sync_word:
+            sync_points.append(SyncPoint(
+                trigger=beat.sync_word,
+                action="cut",
+                target=None,
+            ))
+
+        # Build infographic spec if graphics type
+        infographic = None
+        if beat.category == "graphics" and details.get("spec"):
+            infographic = details["spec"]
+
+        # Build text_style if text-overlay
+        text_style = None
+        if details.get("text_overlay"):
+            text_style = details["text_overlay"]
+
+        return Scene(
+            id=beat.id.replace("beat_", "scene_"),
+            start="0:00",  # Will be refined in timing pass
+            duration=details.get("suggested_duration", "5s"),
+            narration_excerpt=beat.narration,
+            visual_type=category_to_type.get(beat.category, "b-roll"),
+            visual_description=details.get("visual_description", beat.visual_intent),
+            search_query=search_query,
+            comfyui_prompt=details.get("comfyui_prompt", ""),
+            library_match=(beat.category in ["b-roll", "a-roll"]),
+            sync_points=sync_points,
+            infographic=infographic,
+            text_style=text_style,
+        )
+
+    # =========================================================================
+    # Main API
+    # =========================================================================
+
+    async def design_section(self, section: ScriptSection, enrich: bool = True) -> List[Scene]:
+        """Design scenes for a single script section using two-pass approach.
+
+        Args:
+            section: The script section to design for.
+            enrich: If True, run Pass 2 for details. If False, return basic scenes.
+
+        Returns:
+            List of Scene objects.
+        """
+        # Pass 1: Detect beats
+        beat_plan = await self.detect_beats(section)
+
+        if not enrich:
+            # Return basic scenes without enrichment
+            return [self._beat_to_scene(beat, {"visual_description": beat.visual_intent})
+                    for beat in beat_plan.beats]
+
+        # Pass 2: Enrich each beat
         scenes = []
-        for scene_data in scenes_data:
-            asset_suggestions = scene_data.get("asset_suggestions", {})
-            animation = scene_data.get("animation", {})
-
-            # Parse sync points
-            sync_points = []
-            for sp_data in scene_data.get("sync_points", []):
-                sync_points.append(SyncPoint(
-                    trigger=sp_data.get("trigger", ""),
-                    action=sp_data.get("action", "reveal"),
-                    target=sp_data.get("target"),
-                    time=sp_data.get("time"),  # None in Step 1
-                ))
-
-            # Parse layers
-            layers = []
-            for layer_data in scene_data.get("layers", []):
-                layer_sync = None
-                if layer_data.get("sync_point"):
-                    sp = layer_data["sync_point"]
-                    layer_sync = SyncPoint(
-                        trigger=sp.get("trigger", ""),
-                        action=sp.get("action", "fade_in"),
-                        target=sp.get("target"),
-                        time=sp.get("time"),
-                    )
-                layers.append(Layer(
-                    type=layer_data.get("type", "overlay"),
-                    asset=layer_data.get("asset"),
-                    style=layer_data.get("style"),
-                    sync_point=layer_sync,
-                ))
-
-            scene = Scene(
-                id=scene_data["id"],
-                start=scene_data["start"],
-                duration=scene_data["duration"],
-                narration_excerpt=scene_data.get("narration_excerpt", ""),
-                visual_type=scene_data.get("visual_type", "b-roll"),
-                visual_description=scene_data.get("visual_description", ""),
-                search_query=asset_suggestions.get("search_query", ""),
-                comfyui_prompt=asset_suggestions.get("comfyui_prompt", ""),
-                library_match=asset_suggestions.get("library_match", True),
-                animation_type=animation.get("type"),
-                animation_params=animation.get("params"),
-                transition=animation.get("transition"),
-                sync_points=sync_points,
-                layers=layers,
-                infographic=scene_data.get("infographic"),
-                text_style=scene_data.get("text_style"),
-            )
+        for beat in beat_plan.beats:
+            scene = await self.enrich_beat(beat)
             scenes.append(scene)
 
         return scenes
 
-    async def design_full_plan(self, sections: List[ScriptSection]) -> ScenePlan:
+    async def design_section_beats_only(self, section: ScriptSection) -> BeatPlan:
+        """Run only Pass 1 to get beat structure for review.
+
+        Args:
+            section: The script section to analyze.
+
+        Returns:
+            BeatPlan for human review before enrichment.
+        """
+        return await self.detect_beats(section)
+
+    async def design_full_plan(self, sections: List[ScriptSection], enrich: bool = True) -> ScenePlan:
         """Design scenes for all script sections.
 
         Args:
             sections: List of script sections.
+            enrich: If True, run full two-pass. If False, beats only.
 
         Returns:
             Complete ScenePlan.
@@ -371,7 +658,46 @@ class SceneDesigner:
         plan = ScenePlan()
 
         for section in sections:
-            scenes = await self.design_section(section)
+            scenes = await self.design_section(section, enrich=enrich)
             plan.sections[section.title] = scenes
 
         return plan
+
+    async def design_full_beats(self, sections: List[ScriptSection]) -> List[BeatPlan]:
+        """Run Pass 1 on all sections, returning beat plans for review.
+
+        Args:
+            sections: List of script sections.
+
+        Returns:
+            List of BeatPlans (one per section).
+        """
+        beat_plans = []
+        for section in sections:
+            beat_plan = await self.detect_beats(section)
+            beat_plans.append(beat_plan)
+        return beat_plans
+
+    # =========================================================================
+    # JSON Parsing Helpers
+    # =========================================================================
+
+    def _parse_json_array(self, response: str) -> List[Dict]:
+        """Parse a JSON array from LLM response."""
+        try:
+            return json.loads(response.strip())
+        except json.JSONDecodeError:
+            match = re.search(r'\[.*\]', response, re.DOTALL)
+            if match:
+                return json.loads(match.group())
+            raise ValueError(f"Could not parse JSON array from response: {response[:200]}")
+
+    def _parse_json_object(self, response: str) -> Dict:
+        """Parse a JSON object from LLM response."""
+        try:
+            return json.loads(response.strip())
+        except json.JSONDecodeError:
+            match = re.search(r'\{.*\}', response, re.DOTALL)
+            if match:
+                return json.loads(match.group())
+            raise ValueError(f"Could not parse JSON object from response: {response[:200]}")
