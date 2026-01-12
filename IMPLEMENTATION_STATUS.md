@@ -257,6 +257,13 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Two-Pass Scene Design** - Professional A/V script workflow based on video essay research
+  - Pass 1 (`--beats-only`): Break narration into beats, assign visual categories
+  - Pass 2 (default): Enrich beats with category-specific details
+  - Visual categories: b-roll, graphics, a-roll, generated, host
+  - Identifies "visual holes" (abstract concepts needing creative solutions)
+  - Outputs A/V script format (av_script.txt) for human review
+  - Based on "The Architecture of the Digital Argument" research
 - ✅ **Standalone Script & Design Commands** - Split workflow into separate steps
   - `nolan script` converts essay to script.md + script.json
   - `nolan design` generates scene_plan.json from script.json
