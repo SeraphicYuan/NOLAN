@@ -206,6 +206,58 @@ Return JSON:
 IMPORTANT: Return ONLY the JSON object, no other text."""
 
 
+# =============================================================================
+# PASS 2: Flexible Beat → Scene Mapping
+# =============================================================================
+# LLM sees ALL beats and decides how to map them to scenes.
+
+PASS2_SCENES_PROMPT = """You are converting beats into visual scenes for a video essay.
+
+SECTION: {section_title}
+BEATS:
+{beats_json}
+
+Convert these beats into SCENES. You have flexibility in the mapping:
+- 1 beat → 1 scene (most common)
+- 1 beat → multiple scenes (for montage/quick cuts)
+- Multiple beats → 1 scene (when one visual spans multiple thoughts, e.g., infographic with reveals)
+
+For each scene, provide full visual specifications based on the beat's category.
+
+Return JSON array:
+[
+  {{
+    "id": "scene_001",
+    "covers_beats": ["beat_001"],
+    "visual_type": "b-roll|graphics|a-roll|generated|host",
+    "visual_description": "detailed description of what appears on screen",
+    "narration_excerpt": "the key phrase from covered beats for timing alignment",
+    "duration": "Xs",
+    "search_queries": ["for b-roll/a-roll: search terms"],
+    "comfyui_prompt": "for generated: AI image prompt",
+    "infographic": {{
+      "template": "steps|list|comparison",
+      "theme": "default|dark|warm|cool",
+      "data": {{"title": "...", "items": [...]}}
+    }},
+    "sync_points": [
+      {{"trigger": "word", "action": "reveal|highlight|cut", "target": 0}}
+    ],
+    "mood": "energetic|calm|tense|hopeful|somber|neutral",
+    "transition": "cut|fade|dissolve"
+  }}
+]
+
+GUIDELINES:
+- Include only relevant fields per visual_type
+- For graphics with multiple data points, use sync_points to reveal items on trigger words
+- For montage (1 beat → N scenes), create quick sequential scenes
+- For sustained visual (N beats → 1 scene), combine narration_excerpt from all beats
+- narration_excerpt should be the KEY PHRASE for SRT timestamp matching
+
+IMPORTANT: Return ONLY the JSON array, no other text."""
+
+
 # Legacy prompt for backward compatibility
 SCENE_DESIGN_PROMPT = PASS1_BEAT_PROMPT
 
@@ -214,7 +266,7 @@ SCENE_DESIGN_PROMPT = PASS1_BEAT_PROMPT
 class Scene:
     """A single visual scene - progressively enriched across workflow steps.
 
-    Step 1 (Design): id, start/duration (estimates), narration_excerpt, visual_type,
+    Step 1 (Design): id, covers_beats, narration_excerpt, visual_type,
                      visual_description, search_query, comfyui_prompt, animation hints,
                      sync_points (trigger/action only), layers hints, infographic spec
     Step 2 (Assets): matched_asset, generated_asset, infographic_asset, layer assets
@@ -223,10 +275,11 @@ class Scene:
     """
     # === Identity ===
     id: str
+    covers_beats: List[str] = field(default_factory=list)  # Beat IDs this scene covers
 
     # === Timing (estimated in Step 1, precise after Step 4) ===
-    start: str                              # "0:15" - LLM estimate
-    duration: str                           # "5s" - LLM estimate
+    start: str = "0:00"                     # Placeholder, refined in Step 4
+    duration: str = "5s"                    # LLM estimate
     start_seconds: Optional[float] = None   # Precise, from SRT (Step 4)
     end_seconds: Optional[float] = None     # Precise, from SRT (Step 4)
 
@@ -341,8 +394,9 @@ class ScenePlan:
         # Build scene with parsed nested objects
         return Scene(
             id=data["id"],
-            start=data["start"],
-            duration=data["duration"],
+            covers_beats=data.get("covers_beats", []),
+            start=data.get("start", "0:00"),
+            duration=data.get("duration", "5s"),
             start_seconds=data.get("start_seconds"),
             end_seconds=data.get("end_seconds"),
             narration_excerpt=data.get("narration_excerpt", ""),
@@ -474,134 +528,78 @@ class SceneDesigner:
         return BeatPlan(section_title=section.title, beats=beats)
 
     # =========================================================================
-    # PASS 2: Detail Enrichment
+    # PASS 2: Flexible Beat → Scene Mapping
     # =========================================================================
 
-    async def enrich_beat(self, beat: Beat) -> Scene:
-        """Pass 2: Add category-specific details to a beat.
+    async def beats_to_scenes(self, beat_plan: BeatPlan) -> List[Scene]:
+        """Pass 2: Convert beats to scenes with flexible mapping.
+
+        The LLM sees ALL beats and decides:
+        - 1 beat → 1 scene (common)
+        - 1 beat → N scenes (montage)
+        - N beats → 1 scene (sustained visual)
 
         Args:
-            beat: The beat to enrich.
+            beat_plan: BeatPlan from Pass 1.
 
         Returns:
-            Fully detailed Scene object.
+            List of Scene objects with flexible mapping.
         """
-        # Select the appropriate prompt based on category
-        if beat.category == "b-roll":
-            details = await self._enrich_broll(beat)
-        elif beat.category == "graphics":
-            details = await self._enrich_graphics(beat)
-        elif beat.category == "generated":
-            details = await self._enrich_generated(beat)
-        elif beat.category == "a-roll":
-            details = await self._enrich_aroll(beat)
-        else:
-            # host or unknown - minimal enrichment
-            details = {
-                "visual_description": beat.visual_intent,
-                "suggested_duration": "3s"
-            }
+        # Format beats as JSON for the prompt
+        beats_json = json.dumps([asdict(b) for b in beat_plan.beats], indent=2)
 
-        # Convert to Scene
-        return self._beat_to_scene(beat, details)
-
-    async def _enrich_broll(self, beat: Beat) -> Dict:
-        """Enrich a b-roll beat with search queries."""
-        prompt = PASS2_BROLL_PROMPT.format(
-            beat_id=beat.id,
-            narration=beat.narration,
-            visual_intent=beat.visual_intent,
-            mode=beat.mode
+        prompt = PASS2_SCENES_PROMPT.format(
+            section_title=beat_plan.section_title,
+            beats_json=beats_json
         )
+
         response = await self.llm.generate(prompt)
-        return self._parse_json_object(response)
+        scenes_data = self._parse_json_array(response)
 
-    async def _enrich_graphics(self, beat: Beat) -> Dict:
-        """Enrich a graphics beat with spec details."""
-        prompt = PASS2_GRAPHICS_PROMPT.format(
-            beat_id=beat.id,
-            narration=beat.narration,
-            visual_intent=beat.visual_intent
-        )
-        response = await self.llm.generate(prompt)
-        return self._parse_json_object(response)
+        return [self._parse_scene_data(s) for s in scenes_data]
 
-    async def _enrich_generated(self, beat: Beat) -> Dict:
-        """Enrich a generated-image beat with AI prompts."""
-        prompt = PASS2_GENERATED_PROMPT.format(
-            beat_id=beat.id,
-            narration=beat.narration,
-            visual_intent=beat.visual_intent,
-            mode=beat.mode
-        )
-        response = await self.llm.generate(prompt)
-        return self._parse_json_object(response)
-
-    async def _enrich_aroll(self, beat: Beat) -> Dict:
-        """Enrich an a-roll beat with library search terms."""
-        prompt = PASS2_AROLL_PROMPT.format(
-            beat_id=beat.id,
-            narration=beat.narration,
-            visual_intent=beat.visual_intent
-        )
-        response = await self.llm.generate(prompt)
-        return self._parse_json_object(response)
-
-    def _beat_to_scene(self, beat: Beat, details: Dict) -> Scene:
-        """Convert a beat + details into a Scene object."""
-        # Map category to visual_type
-        category_to_type = {
-            "b-roll": "b-roll",
-            "graphics": details.get("graphic_type", "infographic"),
-            "generated": "generated-image",
-            "a-roll": "a-roll",
-            "host": "host",
-        }
-
+    def _parse_scene_data(self, data: Dict) -> Scene:
+        """Parse scene data from Pass 2 LLM response."""
         # Extract search queries
-        search_queries = details.get("search_queries", [])
+        search_queries = data.get("search_queries", [])
         search_query = search_queries[0] if search_queries else ""
 
-        # Extract sync points for graphics
+        # Extract sync points
         sync_points = []
-        for sp in details.get("sync_points", []):
+        for sp in data.get("sync_points", []):
             sync_points.append(SyncPoint(
                 trigger=sp.get("trigger", ""),
                 action=sp.get("action", "reveal"),
                 target=sp.get("target"),
             ))
 
-        # Add sync_word as a sync point if present
-        if beat.sync_word:
-            sync_points.append(SyncPoint(
-                trigger=beat.sync_word,
-                action="cut",
-                target=None,
-            ))
+        return Scene(
+            id=data.get("id", "scene_001"),
+            covers_beats=data.get("covers_beats", []),
+            duration=data.get("duration", "5s"),
+            narration_excerpt=data.get("narration_excerpt", ""),
+            visual_type=data.get("visual_type", "b-roll"),
+            visual_description=data.get("visual_description", ""),
+            search_query=search_query,
+            comfyui_prompt=data.get("comfyui_prompt", ""),
+            library_match=(data.get("visual_type") in ["b-roll", "a-roll"]),
+            transition=data.get("transition"),
+            sync_points=sync_points,
+            infographic=data.get("infographic"),
+        )
 
-        # Build infographic spec if graphics type
-        infographic = None
-        if beat.category == "graphics" and details.get("spec"):
-            infographic = details["spec"]
-
-        # Build text_style if text-overlay
-        text_style = None
-        if details.get("text_overlay"):
-            text_style = details["text_overlay"]
-
+    def _beat_to_basic_scene(self, beat: Beat) -> Scene:
+        """Convert a beat to a basic scene (for --beats-only mode)."""
         return Scene(
             id=beat.id.replace("beat_", "scene_"),
-            start="0:00",  # Will be refined in timing pass
-            duration=details.get("suggested_duration", "5s"),
+            covers_beats=[beat.id],
+            duration="5s",
             narration_excerpt=beat.narration,
-            visual_type=category_to_type.get(beat.category, "b-roll"),
-            visual_description=details.get("visual_description", beat.visual_intent),
-            search_query=search_query,
-            comfyui_prompt=details.get("comfyui_prompt", ""),
+            visual_type=beat.category,
+            visual_description=beat.visual_intent,
+            search_query="",
+            comfyui_prompt="",
             library_match=(beat.category in ["b-roll", "a-roll"]),
-            sync_points=sync_points,
-            infographic=infographic,
-            text_style=text_style,
         )
 
     # =========================================================================
@@ -613,7 +611,7 @@ class SceneDesigner:
 
         Args:
             section: The script section to design for.
-            enrich: If True, run Pass 2 for details. If False, return basic scenes.
+            enrich: If True, run Pass 2 with flexible mapping. If False, basic 1:1 scenes.
 
         Returns:
             List of Scene objects.
@@ -622,15 +620,12 @@ class SceneDesigner:
         beat_plan = await self.detect_beats(section)
 
         if not enrich:
-            # Return basic scenes without enrichment
-            return [self._beat_to_scene(beat, {"visual_description": beat.visual_intent})
-                    for beat in beat_plan.beats]
+            # Return basic scenes without enrichment (1:1 mapping)
+            return [self._beat_to_basic_scene(beat) for beat in beat_plan.beats]
 
-        # Pass 2: Enrich each beat
-        scenes = []
-        for beat in beat_plan.beats:
-            scene = await self.enrich_beat(beat)
-            scenes.append(scene)
+        # Pass 2: Flexible beat → scene mapping
+        # LLM sees all beats and decides the mapping
+        scenes = await self.beats_to_scenes(beat_plan)
 
         return scenes
 

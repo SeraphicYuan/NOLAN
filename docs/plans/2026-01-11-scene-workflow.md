@@ -24,14 +24,28 @@ The scene workflow transforms a written script into a complete video by coordina
 │                         NOLAN Video Pipeline                            │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  Step 1: Scene Design (text-based, no audio needed)                     │
-│  ─────────────────────────────────────────────────                      │
-│  Essay → Script → SceneDesigner → scene_plan.json                       │
-│                                        │                                │
-│                                        ├── visual_type per scene        │
-│                                        ├── asset suggestions            │
-│                                        ├── infographic specs            │
-│                                        └── estimated timings            │
+│  Step 1: Scene Design (two-pass approach)                               │
+│  ────────────────────────────────────────                               │
+│  Essay → Script → SceneDesigner (Pass 1 + Pass 2) → scene_plan.json     │
+│                                                                         │
+│  Pass 1: Narration → Beats (structural backbone)                        │
+│          - Break narration into thought units                           │
+│          - Assign visual category (b-roll, graphics, a-roll, etc.)      │
+│          - Identify see-say vs counterpoint                             │
+│          - Flag visual holes                                            │
+│                                                                         │
+│  Pass 2: Beats → Scenes (flexible mapping)                              │
+│          - LLM sees ALL beats in section                                │
+│          - Decides: 1 beat → 1 scene (common)                           │
+│                     1 beat → N scenes (montage)                         │
+│                     N beats → 1 scene (sustained visual)                │
+│          - Adds category-specific details                               │
+│                                                                         │
+│  Output: scene_plan.json                                                │
+│          ├── visual_type per scene                                      │
+│          ├── asset suggestions                                          │
+│          ├── infographic specs                                          │
+│          └── sync points                                                │
 │                                                                         │
 │  Step 2: Asset Preparation (parallel, no audio needed)                  │
 │  ─────────────────────────────────────────────────────                  │
@@ -68,6 +82,211 @@ The scene workflow transforms a written script into a complete video by coordina
 
 ---
 
+## Two-Pass Scene Design
+
+Based on professional A/V script methodology from video essay research.
+
+### Concepts
+
+**Beat**: A distinct unit of thought in the narration. Not arbitrary time - a beat is where
+the topic shifts, a new point is introduced, or a rhetorical moment occurs.
+
+**Scene**: A visual specification with all details needed for asset preparation and rendering.
+The basic unit for all subsequent pipeline steps.
+
+**Visual Categories**:
+| Category | Description | Example |
+|----------|-------------|---------|
+| `b-roll` | Stock/archival footage | Aerial landscape, historical clips |
+| `graphics` | Infographics, charts, text overlays | Data visualization, kinetic typography |
+| `a-roll` | Primary footage of subject | Interview clip, documentary footage |
+| `generated` | AI-generated images | Conceptual illustration, abstract visual |
+| `host` | Face-to-camera | Narrator speaking directly |
+
+**Visual Modes**:
+| Mode | Description |
+|------|-------------|
+| `see-say` | Visual directly illustrates narration |
+| `counterpoint` | Visual adds meaning NOT in the narration |
+
+### Pass 1: Beat Detection
+
+**Input**: Section narration (text)
+**Output**: List of beats (structural backbone)
+
+```
+SECTION: "The Economic Crisis"
+NARRATION: "Venezuela was once the richest country in South America.
+            Oil revenues funded massive social programs. But when oil
+            prices crashed in 2014, everything changed."
+
+                    ↓ Pass 1 (LLM)
+
+BEATS:
+┌────────┬─────────────────────────────────────┬──────────┬──────────┐
+│ ID     │ Narration                           │ Category │ Mode     │
+├────────┼─────────────────────────────────────┼──────────┼──────────┤
+│ beat_1 │ "Venezuela was once the richest..." │ b-roll   │ see-say  │
+│ beat_2 │ "Oil revenues funded massive..."    │ graphics │ see-say  │
+│ beat_3 │ "But when oil prices crashed..."    │ graphics │ see-say  │
+└────────┴─────────────────────────────────────┴──────────┴──────────┘
+```
+
+**Pass 1 Prompt Focus**:
+- Break at topic shifts
+- Assign visual category
+- Identify see-say vs counterpoint
+- Flag "visual holes" (abstract concepts with no obvious visual)
+
+### Pass 2: Beats to Scenes (Flexible Mapping)
+
+**Input**: ALL beats from the section
+**Output**: Scenes with flexible mapping
+
+**Key Insight**: LLM sees all beats at once and decides the mapping:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ FLEXIBLE BEAT → SCENE MAPPING                                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Common: 1 beat → 1 scene                                           │
+│  ┌─────────┐      ┌───────────┐                                     │
+│  │ beat_1  │ ──── │ scene_001 │                                     │
+│  └─────────┘      └───────────┘                                     │
+│                                                                     │
+│  Montage: 1 beat → N scenes (quick cuts)                            │
+│  ┌─────────┐      ┌───────────┐                                     │
+│  │ beat_2  │ ──┬─ │ scene_002 │  (wide shot)                        │
+│  └─────────┘  │   └───────────┘                                     │
+│               ├─  ┌───────────┐                                     │
+│               │   │ scene_003 │  (detail shot)                      │
+│               │   └───────────┘                                     │
+│               └─  ┌───────────┐                                     │
+│                   │ scene_004 │  (reaction shot)                    │
+│                   └───────────┘                                     │
+│                                                                     │
+│  Sustained: N beats → 1 scene (single visual spans multiple beats)  │
+│  ┌─────────┐                                                        │
+│  │ beat_3  │ ──┐                                                    │
+│  └─────────┘   │   ┌───────────┐                                    │
+│  ┌─────────┐   ├── │ scene_005 │  (infographic with reveals)        │
+│  │ beat_4  │ ──┘   └───────────┘                                    │
+│  └─────────┘                                                        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Pass 2 Output Structure**:
+```json
+{
+  "scenes": [
+    {
+      "id": "scene_001",
+      "covers_beats": ["beat_1"],
+      "visual_type": "b-roll",
+      "visual_description": "Aerial shot of Caracas skyline",
+      "search_queries": ["caracas aerial", "venezuela cityscape"],
+      ...
+    },
+    {
+      "id": "scene_002",
+      "covers_beats": ["beat_2", "beat_3"],
+      "visual_type": "graphics",
+      "visual_description": "Oil price chart with annotations",
+      "infographic": {...},
+      "sync_points": [
+        {"trigger": "oil revenues", "action": "reveal_item", "target": 0},
+        {"trigger": "crashed", "action": "highlight", "target": 1}
+      ],
+      ...
+    }
+  ]
+}
+```
+
+### Processing Flow (Per Section)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Per-Section Processing                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Script Section                                                     │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────┐                        │
+│  │ Pass 1: Beat Detection                  │                        │
+│  │ - Input: section.narration              │                        │
+│  │ - Output: List[Beat] (10-20 beats)      │                        │
+│  │ - Context: ~1,000 tokens (small)        │                        │
+│  └─────────────────────────────────────────┘                        │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────┐                        │
+│  │ Pass 2: Beats → Scenes                  │                        │
+│  │ - Input: ALL beats from section         │                        │
+│  │ - Output: List[Scene] (flexible count)  │                        │
+│  │ - LLM decides mapping                   │                        │
+│  └─────────────────────────────────────────┘                        │
+│       │                                                             │
+│       ▼                                                             │
+│  Scenes for this section                                            │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+                    ↓ Repeat for each section
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  scene_plan.json                                                    │
+│  {                                                                  │
+│    "sections": {                                                    │
+│      "Introduction": [scene_001, scene_002, ...],                   │
+│      "The Problem": [scene_010, scene_011, ...],                    │
+│      "Conclusion": [scene_020, scene_021, ...]                      │
+│    }                                                                │
+│  }                                                                  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### CLI Workflow
+
+```bash
+# Full two-pass design (default)
+nolan design script.json -o ./output
+# Output: scene_plan.json
+
+# Pass 1 only (for human review)
+nolan design script.json --beats-only -o ./output
+# Output: beats.json, av_script.txt
+
+# Review av_script.txt, then run full design
+nolan design script.json -o ./output
+```
+
+### A/V Script Format (Human Review)
+
+Pass 1 outputs `av_script.txt` in industry-standard two-column format:
+
+```
+# A/V SCRIPT: Introduction
+================================================================================
+VISUAL                                   | AUDIO
+-----------------------------------------+---------------------------------------
+[B-ROLL] Aerial shot of Caracas          | Venezuela was once the richest
+[GRAPHICS] Oil revenue chart             | Oil revenues funded massive social
+⚠️ [GENERATED] Economic collapse concept  | But when oil prices crashed...
+================================================================================
+Summary: 12 beats
+  - b-roll: 5
+  - graphics: 4
+  - generated: 2
+  - a-roll: 1
+  - ⚠️ Visual holes: 2
+```
+
+---
+
 ## Scene Data Model
 
 The Scene class is a **holder** that gets progressively enriched across steps:
@@ -90,11 +309,24 @@ class Layer:
     sync_point: Optional[SyncPoint] = None  # When to show/animate this layer
 
 @dataclass
+class Beat:
+    """A distinct unit of thought in the narration (Pass 1 output)."""
+    id: str
+    narration: str                          # The exact words for this beat
+    category: str                           # b-roll, graphics, a-roll, generated, host
+    mode: str                               # see-say, counterpoint
+    visual_intent: str                      # Brief description of visual need
+    has_visual_hole: bool = False           # True if abstract concept
+    sync_word: Optional[str] = None         # Key word that triggers visual change
+
+
+@dataclass
 class Scene:
     """Visual scene - progressively enriched across workflow steps."""
 
     # === Identity ===
     id: str
+    covers_beats: List[str] = field(default_factory=list)  # Beat IDs this scene covers
 
     # === Timing (estimated in Step 1, precise after Step 4) ===
     start: str                              # "0:15" - LLM estimate
@@ -103,7 +335,7 @@ class Scene:
     end_seconds: Optional[float] = None     # Precise, from SRT (Step 4)
 
     # === Content ===
-    narration_excerpt: str                  # Key phrase for SRT matching
+    narration_excerpt: str                  # Key phrase for SRT matching (from covered beats)
     visual_type: str                        # b-roll, graphic, text-overlay, generated-image, infographic
     visual_description: str                 # What appears on screen
 
@@ -143,7 +375,8 @@ class Scene:
 
 | Field | Step 1 (Design) | Step 2 (Assets) | Step 4 (Timing) | Step 5 (Render) |
 |-------|-----------------|-----------------|-----------------|-----------------|
-| `id`, `narration_excerpt` | ✅ LLM | - | - | - |
+| `id`, `covers_beats` | ✅ LLM | - | - | - |
+| `narration_excerpt` | ✅ LLM (from beats) | - | - | - |
 | `start`, `duration` | ✅ LLM estimate | - | - | - |
 | `visual_type`, `visual_description` | ✅ LLM | - | - | - |
 | `search_query`, `comfyui_prompt` | ✅ LLM | - | - | - |
@@ -425,7 +658,9 @@ class SceneWorkflow:
 
 | Command | Description | Step |
 |---------|-------------|------|
-| `nolan design <script.md>` | Design scenes from script | 1 |
+| `nolan script <essay.md>` | Convert essay to narration script | Pre-1 |
+| `nolan design <script.json>` | Design scenes (full two-pass) | 1 |
+| `nolan design <script.json> --beats-only` | Pass 1 only (for review) | 1a |
 | `nolan prepare-assets <scene_plan.json>` | Prepare all assets | 2 |
 | `nolan align <scene_plan.json> <voiceover.srt>` | Align timing using SRT | 4 |
 | `nolan render <timed_plan.json> <voiceover.mp3>` | Final render | 5 |

@@ -12,68 +12,78 @@ def create_mock_llm():
     """Create a mock LLM that responds appropriately to different prompts."""
     client = Mock()
 
-    # Track call count to return different responses
-    call_count = [0]
-
     async def smart_generate(prompt):
-        call_count[0] += 1
-
         # Pass 1: Beat detection (returns array of beats)
         if "Break this narration into BEATS" in prompt:
             return json.dumps([
                 {
                     "id": "beat_001",
-                    "narration": "Venezuela. A land of stunning beauty.",
+                    "narration": "Venezuela was once the richest country.",
                     "category": "b-roll",
                     "mode": "see-say",
-                    "visual_intent": "Aerial shot of Venezuelan landscape",
+                    "visual_intent": "Aerial shot of Caracas skyline",
                     "has_visual_hole": False,
                     "sync_word": "Venezuela"
                 },
                 {
                     "id": "beat_002",
-                    "narration": "cascading waterfalls",
-                    "category": "b-roll",
+                    "narration": "Oil revenues funded massive social programs.",
+                    "category": "graphics",
                     "mode": "see-say",
-                    "visual_intent": "Angel Falls waterfall footage",
+                    "visual_intent": "Chart showing oil revenue growth",
                     "has_visual_hole": False,
-                    "sync_word": "waterfalls"
+                    "sync_word": "revenues"
+                },
+                {
+                    "id": "beat_003",
+                    "narration": "But when oil prices crashed, everything changed.",
+                    "category": "graphics",
+                    "mode": "see-say",
+                    "visual_intent": "Chart showing price crash",
+                    "has_visual_hole": False,
+                    "sync_word": "crashed"
                 }
             ])
 
-        # Pass 2: B-roll enrichment (returns object)
-        if "sourcing B-roll footage" in prompt:
-            return json.dumps({
-                "search_queries": ["venezuela landscape aerial", "south america mountains"],
-                "visual_description": "Aerial shot of Venezuelan landscape with mountains",
-                "mood": "energetic",
-                "motion": "dynamic",
-                "suggested_duration": "5s"
-            })
-
-        # Pass 2: Graphics enrichment
-        if "designing a graphic" in prompt:
-            return json.dumps({
-                "graphic_type": "infographic",
-                "spec": {
-                    "template": "steps",
-                    "theme": "default",
-                    "title": "Test",
-                    "items": [{"label": "Step 1", "desc": "Detail"}]
+        # Pass 2: Flexible beat → scene mapping (returns array of scenes)
+        if "Convert these beats into SCENES" in prompt:
+            return json.dumps([
+                {
+                    "id": "scene_001",
+                    "covers_beats": ["beat_001"],
+                    "visual_type": "b-roll",
+                    "visual_description": "Aerial shot of Caracas skyline with modern buildings",
+                    "narration_excerpt": "Venezuela was once the richest country.",
+                    "duration": "5s",
+                    "search_queries": ["caracas aerial", "venezuela cityscape"],
+                    "mood": "hopeful",
+                    "transition": "fade"
                 },
-                "suggested_duration": "10s"
-            })
-
-        # Pass 2: Generated image enrichment
-        if "AI image generation prompt" in prompt:
-            return json.dumps({
-                "comfyui_prompt": "aerial photography, venezuela, mountains, cinematic",
-                "negative_prompt": "blurry, low quality",
-                "style": "photorealistic",
-                "aspect_ratio": "16:9",
-                "visual_description": "Stunning aerial view of Venezuela",
-                "suggested_duration": "5s"
-            })
+                {
+                    "id": "scene_002",
+                    "covers_beats": ["beat_002", "beat_003"],  # Multiple beats → 1 scene
+                    "visual_type": "graphics",
+                    "visual_description": "Oil price chart with two phases: growth and crash",
+                    "narration_excerpt": "Oil revenues funded massive social programs. But when oil prices crashed",
+                    "duration": "12s",
+                    "infographic": {
+                        "template": "comparison",
+                        "theme": "default",
+                        "data": {
+                            "title": "Oil Revenue",
+                            "items": [
+                                {"label": "Peak", "desc": "$100B"},
+                                {"label": "Crash", "desc": "$20B"}
+                            ]
+                        }
+                    },
+                    "sync_points": [
+                        {"trigger": "revenues", "action": "reveal_item", "target": 0},
+                        {"trigger": "crashed", "action": "highlight", "target": 1}
+                    ],
+                    "transition": "cut"
+                }
+            ])
 
         # Default fallback
         return json.dumps([])
@@ -92,6 +102,7 @@ def test_scene_has_required_fields():
     """Scene object contains all required fields."""
     scene = Scene(
         id="scene_001",
+        covers_beats=["beat_001"],
         start="0:00",
         duration="10s",
         narration_excerpt="Test narration",
@@ -103,6 +114,7 @@ def test_scene_has_required_fields():
     )
 
     assert scene.id == "scene_001"
+    assert scene.covers_beats == ["beat_001"]
     assert scene.visual_type == "b-roll"
 
 
@@ -149,48 +161,81 @@ async def test_detect_beats(mock_llm):
     designer = SceneDesigner(llm_client=mock_llm)
     section = ScriptSection(
         title="Hook",
-        narration="Venezuela. A land of stunning beauty - cascading waterfalls.",
+        narration="Venezuela was once the richest country. Oil revenues funded massive social programs.",
         start_time=0.0,
         end_time=45.0,
-        word_count=8
+        word_count=12
     )
 
     beat_plan = await designer.detect_beats(section)
 
     assert beat_plan.section_title == "Hook"
-    assert len(beat_plan.beats) == 2
+    assert len(beat_plan.beats) == 3
     assert beat_plan.beats[0].category == "b-roll"
     assert beat_plan.beats[0].sync_word == "Venezuela"
 
 
 @pytest.mark.asyncio
+async def test_beats_to_scenes_flexible_mapping(mock_llm):
+    """Pass 2: Flexible beat → scene mapping (N beats → 1 scene)."""
+    designer = SceneDesigner(llm_client=mock_llm)
+
+    # Create a beat plan
+    beats = [
+        Beat(id="beat_001", narration="Venezuela was once the richest country.",
+             category="b-roll", mode="see-say", visual_intent="Aerial shot"),
+        Beat(id="beat_002", narration="Oil revenues funded massive social programs.",
+             category="graphics", mode="see-say", visual_intent="Chart"),
+        Beat(id="beat_003", narration="But when oil prices crashed, everything changed.",
+             category="graphics", mode="see-say", visual_intent="Chart"),
+    ]
+    beat_plan = BeatPlan(section_title="Test", beats=beats)
+
+    scenes = await designer.beats_to_scenes(beat_plan)
+
+    # Should have 2 scenes (3 beats mapped flexibly)
+    assert len(scenes) == 2
+
+    # First scene covers 1 beat
+    assert scenes[0].id == "scene_001"
+    assert scenes[0].covers_beats == ["beat_001"]
+    assert scenes[0].visual_type == "b-roll"
+
+    # Second scene covers 2 beats (sustained visual)
+    assert scenes[1].id == "scene_002"
+    assert scenes[1].covers_beats == ["beat_002", "beat_003"]
+    assert scenes[1].visual_type == "graphics"
+    assert len(scenes[1].sync_points) == 2
+
+
+@pytest.mark.asyncio
 async def test_design_section_full(mock_llm):
-    """Full two-pass design produces scenes."""
+    """Full two-pass design produces scenes with flexible mapping."""
     designer = SceneDesigner(llm_client=mock_llm)
     section = ScriptSection(
         title="Hook",
-        narration="Venezuela. A land of stunning beauty - cascading waterfalls.",
+        narration="Venezuela was once the richest country. Oil revenues funded massive social programs.",
         start_time=0.0,
         end_time=45.0,
-        word_count=8
+        word_count=12
     )
 
     scenes = await designer.design_section(section, enrich=True)
 
+    # Should have 2 scenes (from flexible mapping)
     assert len(scenes) == 2
     assert scenes[0].id == "scene_001"
     assert scenes[0].visual_type == "b-roll"
-    # Check enrichment happened
-    assert scenes[0].search_query != ""
+    assert scenes[1].covers_beats == ["beat_002", "beat_003"]
 
 
 @pytest.mark.asyncio
 async def test_design_section_beats_only(mock_llm):
-    """Pass 1 only produces basic scenes without enrichment."""
+    """Pass 1 only produces basic 1:1 scenes without enrichment."""
     designer = SceneDesigner(llm_client=mock_llm)
     section = ScriptSection(
         title="Hook",
-        narration="Venezuela. A land of stunning beauty.",
+        narration="Venezuela was once the richest country.",
         start_time=0.0,
         end_time=30.0,
         word_count=5
@@ -198,7 +243,9 @@ async def test_design_section_beats_only(mock_llm):
 
     scenes = await designer.design_section(section, enrich=False)
 
-    assert len(scenes) == 2
+    # Without enrichment, should be 1:1 mapping (3 beats → 3 scenes)
+    assert len(scenes) == 3
+    assert scenes[0].covers_beats == ["beat_001"]
     # Without enrichment, search_query should be empty
     assert scenes[0].search_query == ""
 
@@ -223,3 +270,21 @@ async def test_scene_plan_exports_to_json(mock_llm):
 
     assert "Hook" in parsed["sections"]
     assert len(parsed["sections"]["Hook"]) == 2
+
+
+def test_scene_with_covers_beats_serialization():
+    """Scene with covers_beats serializes correctly."""
+    scene = Scene(
+        id="scene_001",
+        covers_beats=["beat_001", "beat_002"],
+        duration="10s",
+        narration_excerpt="Test",
+        visual_type="graphics",
+        visual_description="Test chart",
+    )
+
+    plan = ScenePlan(sections={"Test": [scene]})
+    json_output = plan.to_json()
+    parsed = json.loads(json_output)
+
+    assert parsed["sections"]["Test"][0]["covers_beats"] == ["beat_001", "beat_002"]
