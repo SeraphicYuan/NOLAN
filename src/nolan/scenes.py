@@ -310,11 +310,12 @@ class Scene:
     # === Text overlay style (if visual_type == "text-overlay") ===
     text_style: Optional[Dict] = None       # {position, font_size, color, animation}
 
-    # === Asset Results (populated in Step 2) ===
+    # === Asset Results (populated in Step 2/3) ===
     skip_generation: bool = False
-    matched_asset: Optional[str] = None
-    generated_asset: Optional[str] = None
-    infographic_asset: Optional[str] = None
+    matched_asset: Optional[str] = None      # Downloaded b-roll image
+    generated_asset: Optional[str] = None    # AI-generated image
+    infographic_asset: Optional[str] = None  # Static SVG infographic
+    rendered_clip: Optional[str] = None      # Pre-rendered MP4 clip (highest priority)
 
     # === SRT Cues (attached in Step 4) ===
     subtitle_cues: List[Any] = field(default_factory=list)  # SubtitleCue objects
@@ -654,9 +655,21 @@ class SceneDesigner:
 
         for section in sections:
             scenes = await self.design_section(section, enrich=enrich)
+            # Prefix scene IDs with section name to ensure global uniqueness
+            section_prefix = self._sanitize_section_name(section.title)
+            for scene in scenes:
+                scene.id = f"{section_prefix}_{scene.id}"
             plan.sections[section.title] = scenes
 
         return plan
+
+    def _sanitize_section_name(self, name: str) -> str:
+        """Sanitize section name for use in IDs (remove spaces, special chars)."""
+        import re
+        # Remove special chars, replace spaces with underscores
+        sanitized = re.sub(r'[^\w\s-]', '', name)
+        sanitized = re.sub(r'[\s-]+', '_', sanitized)
+        return sanitized.strip('_')
 
     async def design_full_beats(self, sections: List[ScriptSection]) -> List[BeatPlan]:
         """Run Pass 1 on all sections, returning beat plans for review.

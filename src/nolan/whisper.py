@@ -33,6 +33,15 @@ class TranscriptSegment:
     text: str
 
 
+@dataclass
+class WordTimestamp:
+    """A single word with its timestamp."""
+    word: str
+    start: float
+    end: float
+    probability: float = 1.0
+
+
 class WhisperTranscriber:
     """Generate transcripts from video/audio using faster-whisper."""
 
@@ -123,6 +132,45 @@ class WhisperTranscriber:
 
         return result
 
+    def transcribe_words(
+        self,
+        audio_path: Path,
+        progress_callback: Optional[Callable[[float], None]] = None,
+    ) -> List[WordTimestamp]:
+        """Transcribe audio file to word-level timestamps.
+
+        Args:
+            audio_path: Path to audio file.
+            progress_callback: Optional callback for progress updates (0.0-1.0).
+
+        Returns:
+            List of words with timestamps.
+        """
+        segments, info = self.model.transcribe(
+            str(audio_path),
+            language=self.config.language,
+            beam_size=self.config.beam_size,
+            vad_filter=self.config.vad_filter,
+            word_timestamps=True,  # Enable word-level timestamps
+        )
+
+        result = []
+        for segment in segments:
+            if segment.words:
+                for word in segment.words:
+                    result.append(WordTimestamp(
+                        word=word.word.strip(),
+                        start=word.start,
+                        end=word.end,
+                        probability=word.probability,
+                    ))
+
+            if progress_callback and info.duration > 0:
+                progress = min(1.0, segment.end / info.duration)
+                progress_callback(progress)
+
+        return result
+
     def transcribe_video(
         self,
         video_path: Path,
@@ -198,6 +246,55 @@ class WhisperTranscriber:
             # Cleanup temp audio
             if tmp_audio.exists():
                 tmp_audio.unlink()
+
+
+def format_srt_timestamp(seconds: float) -> str:
+    """Format seconds as SRT timestamp (HH:MM:SS,mmm).
+
+    Args:
+        seconds: Time in seconds.
+
+    Returns:
+        Formatted timestamp string.
+    """
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    millis = int((seconds % 1) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+
+def segments_to_srt(segments: List[TranscriptSegment]) -> str:
+    """Convert transcript segments to SRT format.
+
+    Args:
+        segments: List of transcript segments.
+
+    Returns:
+        SRT formatted string.
+    """
+    lines = []
+    for i, segment in enumerate(segments, 1):
+        start = format_srt_timestamp(segment.start)
+        end = format_srt_timestamp(segment.end)
+        lines.append(f"{i}")
+        lines.append(f"{start} --> {end}")
+        lines.append(segment.text)
+        lines.append("")  # Blank line between entries
+    return "\n".join(lines)
+
+
+def save_srt(segments: List[TranscriptSegment], output_path: Path) -> None:
+    """Save transcript segments as SRT file.
+
+    Args:
+        segments: List of transcript segments.
+        output_path: Path to save SRT file.
+    """
+    srt_content = segments_to_srt(segments)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(srt_content)
 
 
 def check_ffmpeg() -> bool:

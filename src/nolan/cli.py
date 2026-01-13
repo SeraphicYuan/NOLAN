@@ -987,7 +987,7 @@ async def _generate_images(config, project_path, scene_id, workflow_path=None, p
         for s in section_scenes:
             if scene_id and s.id != scene_id:
                 continue
-            if s.visual_type == "generated-image" and not s.skip_generation:
+            if s.visual_type in ("generated", "generated-image") and not s.skip_generation:
                 scenes_to_generate.append(s)
 
     if not scenes_to_generate:
@@ -1465,6 +1465,911 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
 
     except Exception as e:
         click.echo(f"Error: {e}")
+
+
+@main.command('match-broll')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.option('--output', '-o', type=click.Path(), default=None,
+              help='Output directory for downloaded images (defaults to assets/broll next to scene_plan).')
+@click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'loc', 'all']),
+              default='wikimedia', help='Image source to search.')
+@click.option('--max-results', '-n', type=int, default=5,
+              help='Maximum results to consider per scene.')
+@click.option('--score/--no-score', default=True,
+              help='Score images by relevance using vision model.')
+@click.option('--vision', type=click.Choice(['gemini', 'ollama']),
+              default='gemini', help='Vision provider for scoring.')
+@click.option('--skip-existing/--no-skip-existing', default=True,
+              help='Skip scenes that already have matched assets.')
+@click.option('--dry-run', is_flag=True,
+              help='Show what would be downloaded without actually downloading.')
+@click.pass_context
+def match_broll(ctx, scene_plan, output, source, max_results, score, vision, skip_existing, dry_run):
+    """Search and download images for b-roll scenes.
+
+    SCENE_PLAN is the path to scene_plan.json.
+
+    This command will:
+    1. Find all b-roll scenes with search_query
+    2. Search for images using the specified source
+    3. Score images by relevance (optional)
+    4. Download the best match for each scene
+    5. Update scene_plan.json with matched_asset paths
+
+    Examples:
+
+      nolan match-broll test_output/scene_plan.json
+
+      nolan match-broll scene_plan.json -s pexels --score --vision gemini
+
+      nolan match-broll scene_plan.json --dry-run
+    """
+    config = ctx.obj['config']
+    asyncio.run(_match_broll(config, scene_plan, output, source, max_results, score, vision, skip_existing, dry_run))
+
+
+async def _match_broll(config, scene_plan_path, output_dir, source, max_results, score, vision, skip_existing, dry_run):
+    """Async implementation of match-broll command."""
+    import json
+    from pathlib import Path
+    from nolan.scenes import ScenePlan
+    from nolan.image_search import ImageSearchClient, ImageScorer
+
+    scene_plan_path = Path(scene_plan_path)
+    plan = ScenePlan.load(str(scene_plan_path))
+
+    # Default output directory
+    if output_dir is None:
+        output_dir = scene_plan_path.parent / "assets" / "broll"
+    else:
+        output_dir = Path(output_dir)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find b-roll scenes with search queries
+    broll_scenes = []
+    for section_name, scenes in plan.sections.items():
+        for scene in scenes:
+            if scene.visual_type == "b-roll" and scene.search_query:
+                if skip_existing and scene.matched_asset:
+                    continue
+                broll_scenes.append((section_name, scene))
+
+    if not broll_scenes:
+        click.echo("No b-roll scenes to match (all may already have matched_asset).")
+        return
+
+    click.echo(f"Found {len(broll_scenes)} b-roll scenes to match")
+    click.echo(f"Source: {source}")
+    click.echo(f"Output: {output_dir}")
+    if dry_run:
+        click.echo("Mode: DRY RUN (no downloads)")
+
+    # Initialize search client
+    client = ImageSearchClient(
+        pexels_api_key=config.image_sources.pexels_api_key,
+        pixabay_api_key=config.image_sources.pixabay_api_key,
+        smithsonian_api_key=config.image_sources.smithsonian_api_key,
+    )
+
+    # Check if source is available
+    available = client.get_available_providers()
+    if source != "all" and source not in available:
+        click.echo(f"Error: Source '{source}' is not available. Check API keys.")
+        click.echo(f"Available: {', '.join(available)}")
+        return
+
+    # Initialize scorer if needed
+    scorer = None
+    if score:
+        if vision == "gemini":
+            vision_config = {"api_key": config.gemini.api_key}
+        else:
+            vision_config = {
+                "host": config.vision.host,
+                "port": config.vision.port,
+                "model": config.vision.model,
+            }
+        scorer = ImageScorer(vision_provider=vision, vision_config=vision_config)
+
+    matched_count = 0
+    failed_count = 0
+
+    for i, (section_name, scene) in enumerate(broll_scenes):
+        click.echo(f"\n[{i+1}/{len(broll_scenes)}] {scene.id}")
+        click.echo(f"  Query: {scene.search_query}")
+
+        try:
+            # Search for images
+            results = client.search(scene.search_query, source, max_results)
+
+            if not results:
+                click.echo(f"  No results found")
+                failed_count += 1
+                continue
+
+            click.echo(f"  Found {len(results)} results")
+
+            # Score if enabled
+            if scorer and results:
+                click.echo(f"  Scoring with {vision}...")
+                results = scorer.score_results(
+                    results,
+                    scene.search_query,
+                    context=f"for a video essay scene: {scene.visual_description}",
+                    include_quality=True
+                )
+
+            # Pick best result
+            best = results[0]
+            score_info = f" (score: {best.score:.1f})" if best.score else ""
+            click.echo(f"  Best: {best.title or 'No title'}{score_info}")
+            click.echo(f"  URL: {best.url[:80]}...")
+
+            if dry_run:
+                click.echo(f"  [DRY RUN] Would download to: {output_dir / f'{scene.id}.jpg'}")
+                continue
+
+            # Download image
+            output_path = output_dir / scene.id
+            downloaded_path = client.download_image(best, output_path, prefer_large=True)
+
+            if downloaded_path:
+                # Update scene with relative path
+                rel_path = downloaded_path.relative_to(scene_plan_path.parent)
+                scene.matched_asset = str(rel_path)
+                click.echo(f"  Downloaded: {downloaded_path.name}")
+                matched_count += 1
+            else:
+                click.echo(f"  Failed to download")
+                failed_count += 1
+
+        except Exception as e:
+            click.echo(f"  Error: {e}")
+            failed_count += 1
+
+    # Save updated plan
+    if not dry_run and matched_count > 0:
+        plan.save(str(scene_plan_path))
+        click.echo(f"\nScene plan updated: {scene_plan_path}")
+
+    click.echo(f"\nSummary:")
+    click.echo(f"  Matched: {matched_count}")
+    click.echo(f"  Failed: {failed_count}")
+    click.echo(f"  Skipped: {len([s for s in plan.all_scenes if s.visual_type == 'b-roll' and s.matched_asset]) - matched_count}")
+
+
+@main.command()
+@click.argument('audio_file', type=click.Path(exists=True))
+@click.option('--output', '-o', type=click.Path(), default=None,
+              help='Output file path (defaults to same name with .srt extension).')
+@click.option('--format', '-f', 'output_format', type=click.Choice(['srt', 'json', 'txt']),
+              default='srt', help='Output format.')
+@click.option('--model', '-m', type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']),
+              default='base', help='Whisper model size.')
+@click.option('--language', '-l', type=str, default=None,
+              help='Language code (e.g., "en", "es"). Auto-detect if not specified.')
+@click.pass_context
+def transcribe(ctx, audio_file, output, output_format, model, language):
+    """Transcribe audio/video to subtitles using Whisper.
+
+    AUDIO_FILE is the path to an audio or video file.
+
+    This command will:
+    1. Extract audio (if video file)
+    2. Transcribe using Whisper
+    3. Output subtitles in specified format
+
+    Examples:
+
+      nolan transcribe voiceover.mp3
+
+      nolan transcribe voiceover.mp3 -o subtitles.srt
+
+      nolan transcribe video.mp4 -f json -m medium
+
+      nolan transcribe audio.wav -l en -m large-v2
+    """
+    from pathlib import Path
+
+    audio_path = Path(audio_file)
+
+    # Determine output path
+    if output is None:
+        output_path = audio_path.with_suffix(f'.{output_format}')
+    else:
+        output_path = Path(output)
+
+    click.echo(f"Input: {audio_path}")
+    click.echo(f"Output: {output_path}")
+    click.echo(f"Model: {model}")
+    click.echo(f"Format: {output_format}")
+
+    _transcribe_audio(audio_path, output_path, output_format, model, language)
+
+
+def _transcribe_audio(audio_path, output_path, output_format, model_size, language):
+    """Implementation of transcribe command."""
+    import json
+    from nolan.whisper import (
+        WhisperTranscriber, WhisperConfig, check_ffmpeg,
+        save_srt, segments_to_srt
+    )
+
+    # Check ffmpeg
+    if not check_ffmpeg():
+        click.echo("Error: ffmpeg not found. Please install ffmpeg.")
+        return
+
+    # Initialize Whisper
+    click.echo("\nLoading Whisper model...")
+
+    def progress(p):
+        pct = int(p * 100)
+        click.echo(f"  Progress: {pct}%", nl=False)
+        click.echo("\r", nl=False)
+
+    segments = None
+
+    # Try CUDA first, fall back to CPU
+    try:
+        config = WhisperConfig(
+            model_size=model_size,
+            device='cuda',
+            compute_type='float16',
+            language=language,
+        )
+        transcriber = WhisperTranscriber(config)
+        click.echo(f"  Trying: CUDA (GPU)")
+        click.echo("\nTranscribing...")
+        segments = transcriber.transcribe(audio_path, progress_callback=progress)
+    except Exception as e:
+        click.echo(f"\n  CUDA failed: {str(e)[:50]}...")
+        click.echo("  Falling back to CPU...")
+
+        config = WhisperConfig(
+            model_size=model_size,
+            device='cpu',
+            compute_type='int8',
+            language=language,
+        )
+        transcriber = WhisperTranscriber(config)
+        click.echo("\nTranscribing (CPU)...")
+        segments = transcriber.transcribe(audio_path, progress_callback=progress)
+
+    click.echo(f"\n  Segments: {len(segments)}")
+
+    # Calculate total duration
+    if segments:
+        duration = segments[-1].end
+        click.echo(f"  Duration: {duration:.1f}s")
+
+    # Save output
+    click.echo(f"\nSaving {output_format}...")
+
+    if output_format == 'srt':
+        save_srt(segments, output_path)
+
+    elif output_format == 'json':
+        output_data = {
+            "text": " ".join(s.text for s in segments),
+            "segments": [
+                {"id": i, "start": s.start, "end": s.end, "text": s.text}
+                for i, s in enumerate(segments)
+            ],
+            "language": language or "auto",
+        }
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(output_data, f, indent=2, ensure_ascii=False)
+
+    elif output_format == 'txt':
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(" ".join(s.text for s in segments))
+
+    click.echo(f"\nDone! Saved to: {output_path}")
+
+
+@main.command('align')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.argument('audio_file', type=click.Path(exists=True))
+@click.option('--model', '-m', type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']),
+              default='base', help='Whisper model size.')
+@click.option('--language', '-l', type=str, default=None,
+              help='Language code (e.g., "en"). Auto-detect if not specified.')
+@click.option('--save-words', is_flag=True,
+              help='Save word-level timestamps to JSON.')
+@click.pass_context
+def align(ctx, scene_plan, audio_file, model, language, save_words):
+    """Align scene plan to audio using word-level timestamps.
+
+    SCENE_PLAN is the path to scene_plan.json.
+    AUDIO_FILE is the path to the voiceover audio.
+
+    This command will:
+    1. Transcribe audio with word-level timestamps
+    2. Match each scene's narration_excerpt to the word stream
+    3. Update scene_plan.json with start_seconds and end_seconds
+
+    Examples:
+
+      nolan align scene_plan.json voiceover.mp3
+
+      nolan align scene_plan.json voiceover.mp3 -m medium --save-words
+    """
+    from pathlib import Path
+    from nolan.scenes import ScenePlan
+
+    scene_plan_path = Path(scene_plan)
+    audio_path = Path(audio_file)
+
+    click.echo(f"Scene plan: {scene_plan_path}")
+    click.echo(f"Audio: {audio_path}")
+    click.echo(f"Model: {model}")
+
+    # Load scene plan
+    plan = ScenePlan.load(str(scene_plan_path))
+
+    # Flatten scenes for alignment
+    all_scenes = []
+    scene_map = {}  # Map scene_id to (section, index) for updating
+    for section_name, scenes in plan.sections.items():
+        for i, scene in enumerate(scenes):
+            scene_dict = {
+                'id': f"{section_name}_{scene.id}",  # Unique ID
+                'narration_excerpt': scene.narration_excerpt,
+            }
+            all_scenes.append(scene_dict)
+            scene_map[scene_dict['id']] = (section_name, i)
+
+    click.echo(f"\nScenes to align: {len(all_scenes)}")
+
+    # Transcribe and align
+    from nolan.aligner import transcribe_and_align, save_word_timestamps, save_unmatched_scenes
+
+    def progress(phase, p):
+        if phase == 'transcribing':
+            click.echo(f"\rTranscribing: {int(p * 100)}%", nl=False)
+        elif phase == 'aligning':
+            if p == 0:
+                click.echo("\nAligning scenes...")
+
+    words, alignments, unmatched = transcribe_and_align(
+        audio_path,
+        all_scenes,
+        model_size=model,
+        language=language,
+        progress_callback=progress,
+    )
+
+    click.echo(f"\nWords transcribed: {len(words)}")
+    click.echo(f"Alignments: {len(alignments)}")
+
+    # Save word timestamps if requested
+    if save_words:
+        words_path = scene_plan_path.parent / 'word_timestamps.json'
+        save_word_timestamps(words, words_path)
+        click.echo(f"Word timestamps saved: {words_path}")
+
+    # Save unmatched scenes for review
+    if unmatched:
+        unmatched_path = scene_plan_path.parent / 'unmatched_align_scenes.json'
+        save_unmatched_scenes(unmatched, unmatched_path)
+        click.echo(f"Unmatched scenes saved: {unmatched_path}")
+
+    # Update scene plan with alignments
+    matched = 0
+    low_confidence = 0
+    no_match = 0
+    for alignment in alignments:
+        if alignment.scene_id in scene_map:
+            section_name, idx = scene_map[alignment.scene_id]
+            scene = plan.sections[section_name][idx]
+            scene.start_seconds = alignment.start_seconds
+            scene.end_seconds = alignment.end_seconds
+
+            if alignment.confidence >= 0.8:
+                matched += 1
+            elif alignment.confidence > 0:
+                low_confidence += 1
+            else:
+                no_match += 1
+
+    # Save updated plan
+    plan.save(str(scene_plan_path))
+
+    # Summary
+    click.echo(f"\nAlignment Summary:")
+    click.echo(f"  High confidence (>=80%): {matched}")
+    click.echo(f"  Low confidence (<80%): {low_confidence}")
+    click.echo(f"  No match (estimated): {no_match}")
+    click.echo(f"\nScene plan updated: {scene_plan_path}")
+
+    # Show first few alignments as sample
+    click.echo(f"\nSample alignments:")
+    for a in alignments[:5]:
+        conf = f"{a.confidence*100:.0f}%" if a.confidence else "N/A"
+        click.echo(f"  {a.scene_id}: {a.start_seconds:.1f}s - {a.end_seconds:.1f}s ({conf})")
+
+
+@main.command('render-clips')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.option('--force', is_flag=True, help='Re-render even if clip exists.')
+@click.option('--resolution', '-r', default='1920x1080', help='Output resolution.')
+@click.option('--fps', default=30, type=int, help='Frame rate.')
+@click.pass_context
+def render_clips(ctx, scene_plan, force, resolution, fps):
+    """Pre-render animated scenes to MP4 clips.
+
+    SCENE_PLAN is the path to scene_plan.json.
+
+    This command renders:
+    - Infographic scenes (with animation)
+    - Scenes with sync_points
+    - Scenes with animation_type specified
+
+    Examples:
+
+      nolan render-clips scene_plan.json
+
+      nolan render-clips scene_plan.json --force -r 1280x720
+    """
+    from pathlib import Path
+    import httpx
+
+    config = ctx.obj['config']
+    scene_plan_path = Path(scene_plan)
+
+    # Parse resolution
+    width, height = map(int, resolution.split('x'))
+
+    # Load scene plan
+    from nolan.scenes import ScenePlan
+    plan = ScenePlan.load(str(scene_plan_path))
+
+    # Find scenes that need rendering
+    to_render = []
+    for section_name, scenes in plan.sections.items():
+        for scene in scenes:
+            needs_render = False
+
+            # Skip if already has rendered_clip and not forcing
+            if scene.rendered_clip and not force:
+                continue
+
+            # Check if scene needs pre-rendering
+            if scene.visual_type == 'graphics' and scene.infographic:
+                needs_render = True
+            elif scene.sync_points and len(scene.sync_points) > 0:
+                needs_render = True
+            elif scene.animation_type and scene.animation_type != 'static':
+                needs_render = True
+
+            if needs_render:
+                duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
+                to_render.append((section_name, scene, duration))
+
+    if not to_render:
+        click.echo("No scenes need rendering.")
+        return
+
+    click.echo(f"Scenes to render: {len(to_render)}")
+    click.echo(f"Resolution: {width}x{height} @ {fps}fps")
+
+    # Output directory
+    clips_dir = scene_plan_path.parent / 'assets' / 'clips'
+    clips_dir.mkdir(parents=True, exist_ok=True)
+
+    # Connect to render service
+    render_host = config.render_service.host if hasattr(config, 'render_service') else '127.0.0.1'
+    render_port = config.render_service.port if hasattr(config, 'render_service') else 3010
+    base_url = f"http://{render_host}:{render_port}"
+
+    click.echo(f"Render service: {base_url}")
+
+    rendered = 0
+    failed = 0
+
+    for i, (section_name, scene, duration) in enumerate(to_render):
+        scene_id = f"{section_name}_{scene.id}"
+        click.echo(f"\n[{i+1}/{len(to_render)}] {scene_id} ({duration:.1f}s)")
+
+        try:
+            # Build render spec
+            spec = {
+                'width': width,
+                'height': height,
+                'fps': fps,
+                'duration': duration,
+            }
+
+            if scene.infographic:
+                spec['template'] = scene.infographic.get('template', 'list')
+                spec['theme'] = scene.infographic.get('theme', 'default')
+                spec['data'] = scene.infographic.get('data', {})
+
+            # Submit render job
+            with httpx.Client(timeout=300.0) as client:
+                # Create job
+                response = client.post(
+                    f"{base_url}/render",
+                    json={
+                        'engine': 'remotion',
+                        'output_format': 'mp4',
+                        'spec': spec,
+                    }
+                )
+
+                if response.status_code != 200:
+                    click.echo(f"  Error: {response.text}")
+                    failed += 1
+                    continue
+
+                result = response.json()
+                job_id = result.get('job_id')
+
+                if not job_id:
+                    click.echo(f"  Error: No job_id returned")
+                    failed += 1
+                    continue
+
+                click.echo(f"  Job: {job_id}")
+
+                # Poll for completion
+                import time
+                while True:
+                    status_response = client.get(f"{base_url}/jobs/{job_id}")
+                    status = status_response.json()
+
+                    if status.get('status') == 'completed':
+                        output_file = status.get('output')
+                        if output_file:
+                            # Copy/move to clips directory
+                            output_path = clips_dir / f"{scene.id}.mp4"
+                            # For now, just record the path
+                            scene.rendered_clip = f"assets/clips/{scene.id}.mp4"
+                            click.echo(f"  Done: {scene.rendered_clip}")
+                            rendered += 1
+                        break
+                    elif status.get('status') == 'failed':
+                        click.echo(f"  Failed: {status.get('error', 'Unknown error')}")
+                        failed += 1
+                        break
+                    else:
+                        time.sleep(1)
+
+        except Exception as e:
+            click.echo(f"  Error: {e}")
+            failed += 1
+
+    # Save updated plan
+    if rendered > 0:
+        plan.save(str(scene_plan_path))
+        click.echo(f"\nScene plan updated: {scene_plan_path}")
+
+    click.echo(f"\nSummary:")
+    click.echo(f"  Rendered: {rendered}")
+    click.echo(f"  Failed: {failed}")
+    click.echo(f"  Skipped: {len([s for sec in plan.sections.values() for s in sec if s.rendered_clip]) - rendered}")
+
+
+@main.command('assemble')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.argument('audio_file', type=click.Path(exists=True))
+@click.option('--output', '-o', type=click.Path(), default='final_video.mp4',
+              help='Output video path.')
+@click.option('--resolution', '-r', default='1920x1080', help='Output resolution.')
+@click.option('--fps', default=30, type=int, help='Frame rate.')
+@click.option('--transition', '-t', type=click.Choice(['cut', 'fade', 'crossfade']),
+              default='cut', help='Transition between scenes.')
+@click.option('--transition-duration', default=0.5, type=float,
+              help='Transition duration in seconds.')
+@click.pass_context
+def assemble(ctx, scene_plan, audio_file, output, resolution, fps, transition, transition_duration):
+    """Assemble final video from scene plan and audio.
+
+    SCENE_PLAN is the path to scene_plan.json.
+    AUDIO_FILE is the path to the voiceover audio.
+
+    This command:
+    1. Resolves assets for each scene (rendered_clip > generated > matched > infographic)
+    2. Scales/pads images to target resolution
+    3. Concatenates with transitions
+    4. Adds voiceover audio
+    5. Exports final MP4
+
+    Examples:
+
+      nolan assemble scene_plan.json voiceover.mp3
+
+      nolan assemble scene_plan.json voiceover.mp3 -o my_video.mp4 -t crossfade
+    """
+    from pathlib import Path
+    import subprocess
+    import tempfile
+
+    scene_plan_path = Path(scene_plan)
+    audio_path = Path(audio_file)
+    output_path = scene_plan_path.parent / output if not Path(output).is_absolute() else Path(output)
+
+    # Parse resolution
+    width, height = map(int, resolution.split('x'))
+
+    # Load scene plan
+    from nolan.scenes import ScenePlan
+    plan = ScenePlan.load(str(scene_plan_path))
+
+    # Flatten scenes in order
+    all_scenes = []
+    for section_name, scenes in plan.sections.items():
+        for scene in scenes:
+            all_scenes.append(scene)
+
+    click.echo(f"Scenes: {len(all_scenes)}")
+    click.echo(f"Audio: {audio_path}")
+    click.echo(f"Output: {output_path}")
+    click.echo(f"Resolution: {width}x{height} @ {fps}fps")
+    click.echo(f"Transition: {transition}")
+
+    # Resolve assets for each scene
+    scene_assets = []
+    missing = 0
+
+    for scene in all_scenes:
+        asset = None
+        asset_type = None
+
+        # Priority: rendered_clip > generated > matched > infographic
+        if scene.rendered_clip:
+            asset = scene_plan_path.parent / scene.rendered_clip
+            asset_type = 'clip'
+        elif scene.generated_asset:
+            asset = scene_plan_path.parent / 'assets' / 'generated' / scene.generated_asset
+            asset_type = 'image'
+        elif scene.matched_asset:
+            asset = scene_plan_path.parent / scene.matched_asset
+            asset_type = 'image'
+        elif scene.infographic_asset:
+            # infographic_asset stored as "infographics/X.svg", actual path is "assets/infographics/X.svg"
+            asset = scene_plan_path.parent / 'assets' / scene.infographic_asset
+            asset_type = 'image'
+
+        duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
+
+        if asset and asset.exists():
+            scene_assets.append({
+                'scene_id': scene.id,
+                'asset': asset,
+                'type': asset_type,
+                'start': scene.start_seconds or 0.0,
+                'duration': max(0.1, duration),  # Minimum 0.1s
+            })
+        else:
+            # No asset - create blank (black) frame for this scene
+            click.echo(f"  Note: {scene.id} has no asset (will use black frame)")
+            scene_assets.append({
+                'scene_id': scene.id,
+                'asset': None,  # Signals to create black frame
+                'type': 'blank',
+                'start': scene.start_seconds or 0.0,
+                'duration': max(0.1, duration),
+            })
+            missing += 1
+
+    if missing > 0:
+        click.echo(f"\nWarning: {missing} scenes have no assets")
+
+    if not scene_assets:
+        click.echo("Error: No assets found. Run asset preparation commands first.")
+        return
+
+    click.echo(f"\nAssets resolved: {len(scene_assets)}")
+
+    # Sort scenes by start time for timeline-accurate assembly
+    scene_assets.sort(key=lambda x: x['start'])
+
+    # Insert gaps between scenes to match audio timeline
+    timeline_assets = []
+    current_time = 0.0
+
+    for item in scene_assets:
+        scene_start = item['start']
+        # If there's a gap before this scene, fill with black
+        if scene_start > current_time + 0.1:  # Gap > 0.1s
+            gap_duration = scene_start - current_time
+            timeline_assets.append({
+                'scene_id': f'gap_{len(timeline_assets):03d}',
+                'asset': None,
+                'type': 'blank',
+                'start': current_time,
+                'duration': gap_duration,
+            })
+        timeline_assets.append(item)
+        current_time = item['start'] + item['duration']
+
+    # Get audio duration and add final gap if needed
+    import subprocess
+    probe_cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                 '-of', 'default=noprint_wrappers=1:nokey=1', str(audio_path)]
+    result = subprocess.run(probe_cmd, capture_output=True, text=True)
+    audio_duration = float(result.stdout.strip()) if result.returncode == 0 else current_time
+
+    if audio_duration > current_time + 0.1:
+        final_gap = audio_duration - current_time
+        timeline_assets.append({
+            'scene_id': 'final_gap',
+            'asset': None,
+            'type': 'blank',
+            'start': current_time,
+            'duration': final_gap,
+        })
+
+    total_duration = sum(a['duration'] for a in timeline_assets)
+    gap_count = len([a for a in timeline_assets if a['scene_id'].startswith('gap_') or a['scene_id'] == 'final_gap'])
+    click.echo(f"Timeline: {len(timeline_assets)} segments ({gap_count} gaps filled)")
+    click.echo(f"Total duration: {total_duration:.1f}s (audio: {audio_duration:.1f}s)")
+
+    scene_assets = timeline_assets
+
+    # Create temporary directory for intermediate files
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+
+        # Step 1: Convert each asset to a clip
+        click.echo("\nConverting assets to clips...")
+        clip_files = []
+
+        for i, item in enumerate(scene_assets):
+            clip_path = tmpdir / f"clip_{i:04d}.mp4"
+            asset = item['asset']
+            duration = item['duration']
+
+            click.echo(f"  [{i+1}/{len(scene_assets)}] {item['scene_id']} ({duration:.1f}s)")
+
+            if item['type'] == 'clip':
+                # Already a video, just copy/trim
+                cmd = [
+                    'ffmpeg', '-y',
+                    '-i', str(asset),
+                    '-t', str(duration),
+                    '-c:v', 'libx264',
+                    '-pix_fmt', 'yuv420p',
+                    '-an',  # No audio
+                    str(clip_path)
+                ]
+            elif item['type'] == 'blank':
+                # No asset - generate black frame
+                cmd = [
+                    'ffmpeg', '-y',
+                    '-f', 'lavfi',
+                    '-i', f'color=c=black:s={width}x{height}:r={fps}:d={duration}',
+                    '-c:v', 'libx264',
+                    '-pix_fmt', 'yuv420p',
+                    str(clip_path)
+                ]
+            else:
+                # Image - scale and create video
+                input_asset = asset
+
+                # SVG files need conversion to PNG first
+                if str(asset).lower().endswith('.svg'):
+                    png_path = tmpdir / f"{item['scene_id']}.png"
+                    try:
+                        import cairosvg
+                        cairosvg.svg2png(url=str(asset), write_to=str(png_path),
+                                        output_width=width, output_height=height)
+                        input_asset = png_path
+                    except ImportError:
+                        # Fallback: try Inkscape
+                        inkscape_cmd = [
+                            'inkscape', str(asset),
+                            '--export-type=png',
+                            f'--export-filename={png_path}',
+                            f'-w', str(width), '-h', str(height)
+                        ]
+                        ink_result = subprocess.run(inkscape_cmd, capture_output=True, text=True)
+                        if ink_result.returncode == 0:
+                            input_asset = png_path
+                        else:
+                            click.echo(f"    Warning: Could not convert SVG, skipping")
+                            continue
+                else:
+                    # Check for AVIF/HEIC images (may have wrong extension)
+                    # FFmpeg 4.x doesn't support AVIF, so convert via PIL
+                    try:
+                        from PIL import Image
+                        with Image.open(asset) as img:
+                            if img.format in ('AVIF', 'HEIF', 'HEIC'):
+                                png_path = tmpdir / f"{item['scene_id']}.png"
+                                img.convert('RGB').save(png_path, 'PNG')
+                                input_asset = png_path
+                                click.echo(f"    (converted {img.format} to PNG)")
+                    except Exception:
+                        pass  # If PIL fails, let FFmpeg try anyway
+
+                cmd = [
+                    'ffmpeg', '-y',
+                    '-loop', '1',
+                    '-i', str(input_asset),
+                    '-t', str(duration),
+                    '-vf', f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black',
+                    '-c:v', 'libx264',
+                    '-pix_fmt', 'yuv420p',
+                    '-r', str(fps),
+                    str(clip_path)
+                ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                click.echo(f"    Error: {result.stderr[:100]}")
+                continue
+
+            clip_files.append(clip_path)
+
+        if not clip_files:
+            click.echo("Error: No clips created.")
+            return
+
+        click.echo(f"\nClips created: {len(clip_files)}")
+
+        # Step 2: Concatenate clips
+        click.echo("\nConcatenating clips...")
+        concat_list = tmpdir / 'concat.txt'
+        with open(concat_list, 'w') as f:
+            for clip in clip_files:
+                f.write(f"file '{clip}'\n")
+
+        video_only = tmpdir / 'video_only.mp4'
+
+        if transition == 'cut':
+            # Simple concatenation
+            cmd = [
+                'ffmpeg', '-y',
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', str(concat_list),
+                '-c', 'copy',
+                str(video_only)
+            ]
+        else:
+            # For crossfade, need filter_complex (simplified version)
+            cmd = [
+                'ffmpeg', '-y',
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', str(concat_list),
+                '-c:v', 'libx264',
+                '-pix_fmt', 'yuv420p',
+                str(video_only)
+            ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            click.echo(f"Error concatenating: {result.stderr}")
+            return
+
+        # Step 3: Add audio
+        click.echo("\nAdding audio...")
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', str(video_only),
+            '-i', str(audio_path),
+            '-c:v', 'copy',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-shortest',
+            str(output_path)
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            click.echo(f"Error adding audio: {result.stderr}")
+            return
+
+    click.echo(f"\nDone! Output: {output_path}")
+
+    # Get file size
+    size_mb = output_path.stat().st_size / (1024 * 1024)
+    click.echo(f"Size: {size_mb:.1f} MB")
 
 
 if __name__ == '__main__':

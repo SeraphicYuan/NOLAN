@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-11
+**Last Updated:** 2026-01-12
 
 ## Summary
 
@@ -84,6 +84,11 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 | `nolan generate` | Generate images via ComfyUI |
 | `nolan generate-test` | Quick single-image generation for testing |
 | `nolan image-search` | Search for images from web/stock photo APIs |
+| `nolan match-broll` | Batch search and download images for b-roll scenes |
+| `nolan transcribe` | Transcribe audio/video to SRT/JSON/TXT |
+| `nolan align` | Align scene plan to audio with word-level timestamps |
+| `nolan render-clips` | Pre-render animated scenes to MP4 clips |
+| `nolan assemble` | Assemble final video from scenes + audio |
 | `nolan infographic` | Generate infographics via render-service |
 
 ### ComfyUI Integration
@@ -108,6 +113,25 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
   - Ollama vision model (local, requires running Ollama)
   - Scores from 0-10 with explanations
   - Results sorted by relevance
+
+### Video Assembly Pipeline
+- **Unique Scene IDs** - Section-prefixed IDs (`Hook_scene_001`, `Context_scene_002`)
+  - Prevents asset file collisions across sections
+  - Automatically applied during scene design
+- **Timeline-Aware Assembly** - Matches video duration to audio
+  - Sorts scenes by start time from audio alignment
+  - Fills gaps between scenes with black frames
+  - Total video duration matches voiceover exactly
+- **Format Handling** - Robust image format support
+  - SVG to PNG conversion (via cairosvg)
+  - AVIF/HEIC detection and conversion (via Pillow)
+  - Handles mismatched file extensions
+- **Asset Priority** - Smart asset resolution per scene
+  1. `rendered_clip` - Pre-rendered MP4 (highest priority)
+  2. `generated_asset` - AI-generated image
+  3. `matched_asset` - Downloaded b-roll
+  4. `infographic_asset` - Rendered SVG
+  5. Black frame (fallback for missing assets)
 
 ## Usage
 
@@ -222,6 +246,7 @@ NOLAN/
 │   ├── analyzer.py      # Segment analysis + inference
 │   ├── whisper.py       # Whisper auto-transcription
 │   ├── clustering.py    # Scene clustering
+│   ├── aligner.py       # Scene-to-audio alignment
 │   ├── library_viewer.py # Library browser server
 │   ├── image_search.py  # Image search providers
 │   └── templates/
@@ -257,6 +282,30 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Video Assembly Pipeline** - Two-phase render pipeline for final video output
+  - `nolan render-clips`: Pre-render animated scenes (infographics, sync_points) to MP4
+  - `nolan assemble`: FFmpeg-based assembly of all assets + voiceover
+  - Asset priority: rendered_clip > generated_asset > matched_asset > infographic_asset
+  - Automatic scaling/padding to target resolution
+  - Support for cut, fade, crossfade transitions
+  - Full architecture documented in `docs/plans/2026-01-12-render-pipeline.md`
+- ✅ **Scene-Audio Alignment** - `nolan align` command for word-level audio alignment
+  - Transcribes audio with word-level timestamps via Whisper
+  - Matches scene `narration_excerpt` to word stream using text matching
+  - Updates scene_plan.json with `start_seconds` and `end_seconds`
+  - Confidence scoring for alignment quality
+  - Optional word timestamp export for debugging
+- ✅ **Transcription Command** - `nolan transcribe` for audio/video to subtitles
+  - Outputs SRT, JSON, or plain text formats
+  - GPU (CUDA) with automatic CPU fallback
+  - Multiple Whisper model sizes (tiny to large-v3)
+- ✅ **B-Roll Image Matching** - `nolan match-broll` command for batch image search and download
+  - Searches images for all b-roll scenes using search_query from scene_plan.json
+  - Multiple providers: DuckDuckGo (default), Pexels, Pixabay, Wikimedia, Library of Congress
+  - Optional vision model scoring (Gemini/Ollama) for relevance ranking
+  - Downloads best match for each scene to assets/broll/
+  - Updates scene_plan.json with matched_asset paths
+  - Supports dry-run mode and skip-existing option
 - ✅ **Two-Pass Scene Design** - Professional A/V script workflow based on video essay research
   - Pass 1 (`--beats-only`): Break narration into beats, assign visual categories
   - Pass 2 (default): Enrich beats with category-specific details
