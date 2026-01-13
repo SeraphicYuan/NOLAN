@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN - Scene Plan Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: #16213e;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #0f3460;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #e94560;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .filter-select {
+            background: #0f3460;
+            color: #eee;
+            border: 1px solid #1a1a2e;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .stats {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* Audio Player */
+        .audio-container {
+            background: #0f3460;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .audio-container audio {
+            height: 32px;
+        }
+
+        .audio-time {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #e94560;
+            min-width: 60px;
+        }
+
+        .playback-range {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-left: 1rem;
+            padding-left: 1rem;
+            border-left: 1px solid #1a1a2e;
+        }
+
+        .range-label {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        #rangeInfo {
+            font-family: monospace;
+            color: #4ecdc4;
+            font-size: 0.85rem;
+        }
+
+        .loop-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: #888;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .loop-toggle input {
+            cursor: pointer;
+        }
+
+        .stop-range-btn {
+            background: #e94560;
+            color: #fff;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .stop-range-btn:hover {
+            background: #d63651;
+        }
+
+        /* Main Content */
+        .main {
+            padding: 1rem 2rem;
+        }
+
+        /* Scene Grid */
+        .scene-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .scene-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            background: #16213e;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #0f3460;
+            transition: border-color 0.2s;
+        }
+
+        .scene-row:hover {
+            border-color: #e94560;
+        }
+
+        .scene-row.active {
+            border-color: #e94560;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.2);
+        }
+
+        .scene-row.missing-asset {
+            border-left: 3px solid #ff6b6b;
+        }
+
+        /* Left Column - Scene Details */
+        .scene-details {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .scene-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .scene-id {
+            font-weight: 600;
+            color: #e94560;
+            font-size: 1rem;
+        }
+
+        .scene-timing {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #888;
+            cursor: pointer;
+        }
+
+        .scene-timing:hover {
+            color: #e94560;
+        }
+
+        .scene-type {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .scene-type.b-roll { background: #0f3460; color: #4ecdc4; }
+        .scene-type.graphics { background: #0f3460; color: #ffe66d; }
+        .scene-type.generated { background: #0f3460; color: #ff6b6b; }
+        .scene-type.a-roll { background: #0f3460; color: #95e1d3; }
+        .scene-type.host { background: #0f3460; color: #dfe6e9; }
+
+        .scene-narration {
+            font-size: 0.9rem;
+            color: #ccc;
+            line-height: 1.5;
+            background: #0f3460;
+            padding: 0.75rem;
+            border-radius: 4px;
+            border-left: 3px solid #e94560;
+        }
+
+        .scene-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .meta-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .meta-label {
+            color: #888;
+            min-width: 80px;
+        }
+
+        .meta-value {
+            color: #ccc;
+            word-break: break-word;
+        }
+
+        .scene-status {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .status-badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .status-badge.matched { background: #2d6a4f; color: #95d5b2; }
+        .status-badge.generated { background: #7b2cbf; color: #e0aaff; }
+        .status-badge.infographic { background: #1d3557; color: #a8dadc; }
+        .status-badge.missing { background: #9d0208; color: #ffccd5; }
+        .status-badge.rendered { background: #006d77; color: #83c5be; }
+
+        /* Expandable details */
+        .scene-expand {
+            margin-top: 0.5rem;
+        }
+
+        .expand-btn {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 0.25rem 0;
+        }
+
+        .expand-btn:hover {
+            color: #e94560;
+        }
+
+        .scene-full-details {
+            display: none;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #0f3460;
+        }
+
+        .scene-full-details.expanded {
+            display: block;
+        }
+
+        .detail-section {
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-section-title {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+
+        .detail-section-content {
+            font-size: 0.85rem;
+            color: #ccc;
+            background: #0f3460;
+            padding: 0.5rem;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Right Column - Asset Preview */
+        .asset-preview {
+            background: #0f3460;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            position: relative;
+        }
+
+        .asset-preview img,
+        .asset-preview video {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            cursor: pointer;
+        }
+
+        .asset-preview img:hover {
+            opacity: 0.9;
+        }
+
+        .asset-placeholder {
+            color: #555;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .asset-placeholder-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .asset-path {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            color: #888;
+            text-align: center;
+            font-family: monospace;
+        }
+
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+
+        /* Section Divider */
+        .section-divider {
+            background: #e94560;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            color: #888;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .scene-row {
+                grid-template-columns: 1fr;
+            }
+
+            .asset-preview {
+                min-height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Scene Plan Viewer</h1>
+        <div class="header-controls">
+            <select id="sectionFilter" class="filter-select">
+                <option value="all">All Sections</option>
+            </select>
+            <select id="statusFilter" class="filter-select">
+                <option value="all">All Status</option>
+                <option value="matched">Matched</option>
+                <option value="generated">Generated</option>
+                <option value="infographic">Infographic</option>
+                <option value="missing">Missing</option>
+            </select>
+            <div class="stats" id="stats">Loading...</div>
+        </div>
+    </header>
+
+    <div class="audio-container" id="audioContainer" style="display: none;">
+        <span class="audio-time" id="audioTime">0:00</span>
+        <audio id="audioPlayer" controls></audio>
+        <div class="playback-range" id="playbackRange" style="display: none;">
+            <span class="range-label">Playing:</span>
+            <span id="rangeInfo">--</span>
+            <label class="loop-toggle">
+                <input type="checkbox" id="loopCheckbox"> Loop
+            </label>
+            <button class="stop-range-btn" onclick="stopRangePlayback()">Stop</button>
+        </div>
+    </div>
+
+    <main class="main">
+        <div class="scene-list" id="sceneList">
+            <div class="loading">Loading scene plan...</div>
+        </div>
+    </main>
+
+    <div class="lightbox" id="lightbox">
+        <span class="lightbox-close">&times;</span>
+        <img id="lightboxImg" src="" alt="Full size">
+    </div>
+
+    <script>
+        let allScenes = [];
+        let sections = [];
+        let currentSection = 'all';
+        let currentStatus = 'all';
+
+        // Range playback state
+        let playbackRange = null;  // { start, end, sceneId }
+
+        // Format seconds to MM:SS
+        function formatTime(seconds) {
+            if (!seconds && seconds !== 0) return '--:--';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Get asset status for a scene
+        function getAssetStatus(scene) {
+            if (scene.rendered_clip) return 'rendered';
+            if (scene.generated_asset) return 'generated';
+            if (scene.matched_asset) return 'matched';
+            if (scene.infographic_asset) return 'infographic';
+            return 'missing';
+        }
+
+        // Get asset path for a scene
+        function getAssetPath(scene) {
+            if (scene.rendered_clip) return scene.rendered_clip;
+            if (scene.generated_asset) return `assets/generated/${scene.generated_asset}`;
+            if (scene.matched_asset) return scene.matched_asset;
+            if (scene.infographic_asset) return `assets/${scene.infographic_asset}`;
+            return null;
+        }
+
+        // Render a single scene row
+        function renderScene(scene, index) {
+            const status = getAssetStatus(scene);
+            const assetPath = getAssetPath(scene);
+            const duration = (scene.end_seconds || 0) - (scene.start_seconds || 0);
+
+            const isVideo = assetPath && (assetPath.endsWith('.mp4') || assetPath.endsWith('.webm'));
+            const isSvg = assetPath && assetPath.endsWith('.svg');
+
+            let assetHtml = '';
+            if (assetPath) {
+                if (isVideo) {
+                    assetHtml = `<video src="/${assetPath}" controls></video>`;
+                } else {
+                    assetHtml = `<img src="/${assetPath}" alt="${scene.id}" onclick="openLightbox('/${assetPath}')">`;
+                }
+                assetHtml += `<div class="asset-path">${assetPath}</div>`;
+            } else {
+                assetHtml = `
+                    <div class="asset-placeholder">
+                        <div class="asset-placeholder-icon">?</div>
+                        <div>No asset</div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="scene-row ${status === 'missing' ? 'missing-asset' : ''}"
+                     data-section="${scene._section}"
+                     data-status="${status}"
+                     data-start="${scene.start_seconds || 0}"
+                     data-end="${scene.end_seconds || 0}"
+                     id="scene-${index}">
+                    <div class="scene-details">
+                        <div class="scene-header">
+                            <span class="scene-id">${scene.id}</span>
+                            <span class="scene-timing" onclick="seekTo(${scene.start_seconds || 0}, ${scene.end_seconds || 0}, '${scene.id}')" title="Click to play this scene's audio">
+                                ${formatTime(scene.start_seconds)} - ${formatTime(scene.end_seconds)} (${duration.toFixed(1)}s)
+                            </span>
+                        </div>
+
+                        <div class="scene-status">
+                            <span class="scene-type ${scene.visual_type || 'unknown'}">${scene.visual_type || 'unknown'}</span>
+                            <span class="status-badge ${status}">${status}</span>
+                        </div>
+
+                        ${scene.narration_excerpt ? `
+                            <div class="scene-narration">"${scene.narration_excerpt}"</div>
+                        ` : ''}
+
+                        <div class="scene-meta">
+                            ${scene.search_query ? `
+                                <div class="meta-row">
+                                    <span class="meta-label">Query:</span>
+                                    <span class="meta-value">${scene.search_query}</span>
+                                </div>
+                            ` : ''}
+                            ${scene.comfyui_prompt ? `
+                                <div class="meta-row">
+                                    <span class="meta-label">Prompt:</span>
+                                    <span class="meta-value">${scene.comfyui_prompt.substring(0, 100)}${scene.comfyui_prompt.length > 100 ? '...' : ''}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="scene-expand">
+                            <button class="expand-btn" onclick="toggleExpand(${index})">+ Show more details</button>
+                            <div class="scene-full-details" id="details-${index}">
+                                ${scene.visual_description ? `
+                                    <div class="detail-section">
+                                        <div class="detail-section-title">Visual Description</div>
+                                        <div class="detail-section-content">${scene.visual_description}</div>
+                                    </div>
+                                ` : ''}
+                                ${scene.sync_points && scene.sync_points.length > 0 ? `
+                                    <div class="detail-section">
+                                        <div class="detail-section-title">Sync Points</div>
+                                        <div class="detail-section-content">${JSON.stringify(scene.sync_points, null, 2)}</div>
+                                    </div>
+                                ` : ''}
+                                ${scene.infographic ? `
+                                    <div class="detail-section">
+                                        <div class="detail-section-title">Infographic Spec</div>
+                                        <div class="detail-section-content">${JSON.stringify(scene.infographic, null, 2)}</div>
+                                    </div>
+                                ` : ''}
+                                <div class="detail-section">
+                                    <div class="detail-section-title">Section</div>
+                                    <div class="detail-section-content">${scene._section}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="asset-preview">
+                        ${assetHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Toggle expand/collapse
+        function toggleExpand(index) {
+            const details = document.getElementById(`details-${index}`);
+            const btn = details.previousElementSibling;
+            if (details.classList.contains('expanded')) {
+                details.classList.remove('expanded');
+                btn.textContent = '+ Show more details';
+            } else {
+                details.classList.add('expanded');
+                btn.textContent = '- Hide details';
+            }
+        }
+
+        // Render all scenes
+        function renderScenes() {
+            const list = document.getElementById('sceneList');
+            let html = '';
+            let visibleCount = 0;
+            let lastSection = null;
+
+            allScenes.forEach((scene, index) => {
+                // Filter by section
+                if (currentSection !== 'all' && scene._section !== currentSection) return;
+
+                // Filter by status
+                const status = getAssetStatus(scene);
+                if (currentStatus !== 'all' && status !== currentStatus) return;
+
+                // Add section divider
+                if (scene._section !== lastSection) {
+                    html += `<div class="section-divider">${scene._section}</div>`;
+                    lastSection = scene._section;
+                }
+
+                html += renderScene(scene, index);
+                visibleCount++;
+            });
+
+            list.innerHTML = html || '<div class="loading">No scenes match the filter.</div>';
+
+            // Update stats
+            const matched = allScenes.filter(s => getAssetStatus(s) === 'matched').length;
+            const generated = allScenes.filter(s => getAssetStatus(s) === 'generated').length;
+            const infographic = allScenes.filter(s => getAssetStatus(s) === 'infographic').length;
+            const missing = allScenes.filter(s => getAssetStatus(s) === 'missing').length;
+
+            document.getElementById('stats').textContent =
+                `${visibleCount}/${allScenes.length} scenes | ${matched} matched | ${generated} generated | ${infographic} infographic | ${missing} missing`;
+        }
+
+        // Open lightbox
+        function openLightbox(src) {
+            const lightbox = document.getElementById('lightbox');
+            const img = document.getElementById('lightboxImg');
+            img.src = src;
+            lightbox.classList.add('active');
+        }
+
+        // Close lightbox
+        document.getElementById('lightbox').addEventListener('click', function() {
+            this.classList.remove('active');
+        });
+
+        // Seek audio to time and set range
+        function seekTo(start, end, sceneId) {
+            const audio = document.getElementById('audioPlayer');
+            if (audio.src) {
+                // Set playback range
+                playbackRange = { start, end, sceneId };
+
+                // Show range UI
+                const rangeContainer = document.getElementById('playbackRange');
+                const rangeInfo = document.getElementById('rangeInfo');
+                rangeContainer.style.display = 'flex';
+                rangeInfo.textContent = `${formatTime(start)} - ${formatTime(end)} (${sceneId})`;
+
+                // Seek and play
+                audio.currentTime = start;
+                audio.play();
+            }
+        }
+
+        // Stop range playback
+        function stopRangePlayback() {
+            const audio = document.getElementById('audioPlayer');
+            audio.pause();
+            playbackRange = null;
+            document.getElementById('playbackRange').style.display = 'none';
+        }
+
+        // Update audio time display and highlight current scene
+        function updateAudioTime() {
+            const audio = document.getElementById('audioPlayer');
+            const timeDisplay = document.getElementById('audioTime');
+            const currentTime = audio.currentTime;
+
+            timeDisplay.textContent = formatTime(currentTime);
+
+            // Check range playback
+            if (playbackRange && currentTime >= playbackRange.end) {
+                const loopCheckbox = document.getElementById('loopCheckbox');
+                if (loopCheckbox.checked) {
+                    // Loop back to start
+                    audio.currentTime = playbackRange.start;
+                } else {
+                    // Stop at end
+                    audio.pause();
+                    playbackRange = null;
+                    document.getElementById('playbackRange').style.display = 'none';
+                }
+            }
+
+            // Highlight current scene
+            document.querySelectorAll('.scene-row').forEach(row => {
+                const start = parseFloat(row.dataset.start);
+                const end = parseFloat(row.dataset.end);
+                if (currentTime >= start && currentTime < end) {
+                    row.classList.add('active');
+                    // Scroll into view if not visible
+                    if (!isElementInViewport(row)) {
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                } else {
+                    row.classList.remove('active');
+                }
+            });
+        }
+
+        function isElementInViewport(el) {
+            const rect = el.getBoundingClientRect();
+            return (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+        }
+
+        // Load data
+        async function loadData() {
+            try {
+                // Load scenes
+                const scenesRes = await fetch('/api/scenes/flat');
+                const scenesData = await scenesRes.json();
+                allScenes = scenesData.scenes;
+                sections = scenesData.sections;
+
+                // Populate section filter
+                const sectionFilter = document.getElementById('sectionFilter');
+                sections.forEach(section => {
+                    const option = document.createElement('option');
+                    option.value = section;
+                    option.textContent = section;
+                    sectionFilter.appendChild(option);
+                });
+
+                renderScenes();
+
+                // Load audio
+                const audioRes = await fetch('/api/audio-info');
+                const audioData = await audioRes.json();
+                if (audioData.exists) {
+                    const audioContainer = document.getElementById('audioContainer');
+                    const audioPlayer = document.getElementById('audioPlayer');
+                    audioPlayer.src = audioData.path;
+                    audioContainer.style.display = 'flex';
+                    audioPlayer.addEventListener('timeupdate', updateAudioTime);
+                }
+
+            } catch (err) {
+                console.error('Failed to load data:', err);
+                document.getElementById('sceneList').innerHTML =
+                    '<div class="loading">Error loading scene plan.</div>';
+            }
+        }
+
+        // Filter handlers
+        document.getElementById('sectionFilter').addEventListener('change', function() {
+            currentSection = this.value;
+            renderScenes();
+        });
+
+        document.getElementById('statusFilter').addEventListener('change', function() {
+            currentStatus = this.value;
+            renderScenes();
+        });
+
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>

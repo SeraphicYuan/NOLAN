@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-12
+**Last Updated:** 2026-01-13
 
 ## Summary
 
@@ -69,6 +69,12 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 - **ComfyUI Client** - Image generation via local ComfyUI API
 - **Viewer Server** - FastAPI-based local viewer for reviewing outputs
 - **Library Viewer** - Web UI for browsing indexed video library (`nolan browse`)
+- **Scene Plan Viewer** - A/B column viewer for scene plan review (`/scenes` route)
+  - Left column: Scene details (ID, timing, narration, type, query/prompt)
+  - Right column: Asset preview (image/video with lightbox)
+  - Section and status filters
+  - Audio sync with range playback (play single scene, loop option)
+  - Click timestamp to play that scene's audio range
 
 ### CLI Commands
 | Command | Description |
@@ -251,6 +257,7 @@ NOLAN/
 │   ├── image_search.py  # Image search providers
 │   └── templates/
 │       ├── index.html   # Viewer UI
+│       ├── scenes.html  # Scene plan A/B viewer
 │       └── library.html # Library browser UI
 ├── tests/               # Test suite (132 tests)
 ├── render-service/      # Node.js microservice for infographics/animations
