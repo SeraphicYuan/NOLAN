@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-15
 
 ## Summary
 
@@ -20,6 +20,10 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 - **Gemini LLM Client** - Async client for Gemini API
 - **Video Indexer** - SQLite-backed video library indexing with visual analysis
 - **Asset Matcher** - Matches scenes to indexed video library
+- **Project Registry** - Organize videos by project with human-friendly slugs
+  - Projects have unique IDs (internal) and slugs (CLI-facing)
+  - Index videos scoped to specific projects
+  - Search and filter by project
 
 ### Hybrid Indexing
 - **Vision Provider** - Switchable vision models (Ollama/Gemini)
@@ -99,6 +103,10 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 | `nolan yt-download` | Download YouTube videos using yt-dlp |
 | `nolan yt-search` | Search YouTube for videos |
 | `nolan yt-info` | Get information about a YouTube video |
+| `nolan projects create` | Create a new project with slug |
+| `nolan projects list` | List all registered projects |
+| `nolan projects info` | Show project details and videos |
+| `nolan projects delete` | Remove a project from registry |
 
 ### ComfyUI Integration
 - **Custom Workflows** - Load any ComfyUI workflow (API format)
@@ -242,6 +250,25 @@ nolan yt-download "https://youtube.com/watch?v=xxxxx" -f "bestvideo[height<=1080
 # Get video info without downloading
 nolan yt-info "https://youtube.com/watch?v=xxxxx"                          # Show video metadata
 nolan yt-info "https://youtube.com/watch?v=xxxxx" -o video_info.json       # Save to JSON
+
+# === Project Management ===
+
+# Create a new project
+nolan projects create "Venezuela Documentary" -d "Documentary about Hugo Chavez"
+nolan projects create "My Project" -s custom-slug -p projects/my-project   # Custom slug and path
+
+# List all projects
+nolan projects list                                                         # Shows slug, name, video count
+
+# View project details
+nolan projects info venezuela                                               # Show project info and videos
+
+# Index videos scoped to a project
+nolan index path/to/videos --project venezuela                              # Associate videos with project
+
+# Delete a project
+nolan projects delete venezuela                                             # Remove from registry only
+nolan projects delete venezuela --delete-videos                             # Also delete indexed videos
 ```
 
 ## Test Coverage
@@ -318,6 +345,9 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
+- **Adaptive indexing for long videos** - Target fixed frame count regardless of video duration
+  - Proposed approaches: dynamic intervals, scene detection, two-pass (sparse → dense), batch API
+- **yt-fts transcript search integration** - Use YouTube transcript search for full-text search
 - **LLM infographic placement** - Detect data points in scripts and suggest infographic placement
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - **Image search browser display** - View image search results in web UI
@@ -325,6 +355,16 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Project Registry** - Organize videos by project with human-friendly slugs
+  - `nolan projects create/list/info/delete` commands for project management
+  - Projects have internal UUIDs and CLI-facing slugs (e.g., `venezuela`)
+  - `nolan index --project <slug>` scopes videos to a project
+  - Auto-generated slugs from project names (URL-safe)
+  - Database schema v4 with projects table
+- ✅ **YouTube Video Download** - Download and organize YouTube videos with yt-dlp
+  - Single video, batch, or playlist download
+  - Automatic subtitle download (configurable languages)
+  - Project-based folder organization
 - ✅ **Video Assembly Pipeline** - Two-phase render pipeline for final video output
   - `nolan render-clips`: Pre-render animated scenes (infographics, sync_points) to MP4
   - `nolan assemble`: FFmpeg-based assembly of all assets + voiceover
