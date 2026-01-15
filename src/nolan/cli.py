@@ -341,8 +341,10 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
 @click.option('--whisper-model', default='base',
               type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']),
               help='Whisper model size (larger = better quality, slower).')
+@click.option('--project', '-p', type=str, default=None,
+              help='Project ID to associate indexed videos with.')
 @click.pass_context
-def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_model):
+def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_model, project):
     """Index a video directory for asset matching.
 
     DIRECTORY is the path to your video library folder.
@@ -353,6 +355,9 @@ def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_mo
 
     Use --whisper to auto-generate transcripts for videos without them.
     This requires ffmpeg to be installed for audio extraction.
+
+    Use --project to associate indexed videos with a specific project.
+    This allows filtering search results by project later.
     """
     config = ctx.obj['config']
     directory_path = Path(directory)
@@ -360,11 +365,13 @@ def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_mo
     click.echo(f"Indexing: {directory_path}")
     click.echo(f"Recursive: {recursive}")
     click.echo(f"Frame interval: {frame_interval}s")
+    if project:
+        click.echo(f"Project: {project}")
 
-    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, vision, whisper, whisper_model))
+    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, vision, whisper, whisper_model, project))
 
 
-async def _index_videos(config, directory, recursive, frame_interval, vision_provider='ollama', whisper_enabled=False, whisper_model='base'):
+async def _index_videos(config, directory, recursive, frame_interval, vision_provider='ollama', whisper_enabled=False, whisper_model='base', project_id=None):
     """Async implementation of index command."""
     from nolan.indexer import HybridVideoIndexer, VideoIndex
     from nolan.vision import create_vision_provider, VisionConfig
@@ -466,7 +473,8 @@ async def _index_videos(config, directory, recursive, frame_interval, vision_pro
         llm_client=llm,
         whisper_transcriber=whisper_transcriber,
         enable_transcript=config.indexing.enable_transcript,
-        enable_inference=config.indexing.enable_inference
+        enable_inference=config.indexing.enable_inference,
+        project_id=project_id
     )
 
     def progress(current, total, message):
