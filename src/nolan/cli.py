@@ -342,7 +342,7 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
               type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']),
               help='Whisper model size (larger = better quality, slower).')
 @click.option('--project', '-p', type=str, default=None,
-              help='Project ID to associate indexed videos with.')
+              help='Project slug to associate indexed videos with.')
 @click.pass_context
 def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_model, project):
     """Index a video directory for asset matching.
@@ -357,18 +357,31 @@ def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_mo
     This requires ffmpeg to be installed for audio extraction.
 
     Use --project to associate indexed videos with a specific project.
-    This allows filtering search results by project later.
+    Create a project first with: nolan projects create "My Project"
     """
     config = ctx.obj['config']
     directory_path = Path(directory)
 
+    # Resolve project slug to ID
+    project_id = None
+    if project:
+        from nolan.indexer import VideoIndex
+        db_path = Path(config.indexing.database).expanduser()
+        idx = VideoIndex(db_path)
+        proj = idx.get_project(project)
+        if not proj:
+            click.echo(f"Error: Project '{project}' not found.")
+            click.echo("Create it with: nolan projects create \"Project Name\"")
+            click.echo("Or list existing: nolan projects list")
+            return
+        project_id = proj['id']
+        click.echo(f"Project: {proj['name']} ({proj['slug']})")
+
     click.echo(f"Indexing: {directory_path}")
     click.echo(f"Recursive: {recursive}")
     click.echo(f"Frame interval: {frame_interval}s")
-    if project:
-        click.echo(f"Project: {project}")
 
-    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, vision, whisper, whisper_model, project))
+    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, vision, whisper, whisper_model, project_id))
 
 
 async def _index_videos(config, directory, recursive, frame_interval, vision_provider='ollama', whisper_enabled=False, whisper_model='base', project_id=None):
@@ -2636,6 +2649,178 @@ def yt_info(ctx, url, output):
 
     except Exception as e:
         click.echo(f"Error: {e}")
+
+
+# ==================== Project Management Commands ====================
+
+@main.group()
+def projects():
+    """Manage projects for organizing video assets.
+
+    Projects help organize your video library into separate collections.
+    Each project has a slug (e.g., 'venezuela') for easy reference.
+    """
+    pass
+
+
+@projects.command('create')
+@click.argument('name')
+@click.option('--slug', '-s', type=str, default=None,
+              help='Custom slug (auto-generated from name if not provided).')
+@click.option('--description', '-d', type=str, default=None,
+              help='Project description.')
+@click.option('--path', '-p', type=click.Path(), default=None,
+              help='Project directory path.')
+@click.pass_context
+def projects_create(ctx, name, slug, description, path):
+    """Create a new project.
+
+    NAME is the human-readable project name.
+
+    Examples:
+
+      nolan projects create "Venezuela Documentary"
+
+      nolan projects create "Tutorial Series" -s tutorials -d "Python tutorials"
+
+      nolan projects create "My Project" -p ./projects/my-project
+    """
+    config = ctx.obj['config']
+    from nolan.indexer import VideoIndex
+
+    db_path = Path(config.indexing.database).expanduser()
+    index = VideoIndex(db_path)
+
+    try:
+        project = index.create_project(name, slug=slug, description=description, path=path)
+        click.echo(f"Created project:")
+        click.echo(f"  Name: {project['name']}")
+        click.echo(f"  Slug: {project['slug']}")
+        click.echo(f"  ID:   {project['id']}")
+        if project['path']:
+            click.echo(f"  Path: {project['path']}")
+        click.echo(f"\nUse this slug when indexing videos:")
+        click.echo(f"  nolan index <videos> --project {project['slug']}")
+    except ValueError as e:
+        click.echo(f"Error: {e}")
+
+
+@projects.command('list')
+@click.pass_context
+def projects_list(ctx):
+    """List all projects.
+
+    Shows project slug, name, and video count.
+    """
+    config = ctx.obj['config']
+    from nolan.indexer import VideoIndex
+
+    db_path = Path(config.indexing.database).expanduser()
+    index = VideoIndex(db_path)
+
+    projects = index.list_projects()
+
+    if not projects:
+        click.echo("No projects found.")
+        click.echo("Create one with: nolan projects create \"My Project\"")
+        return
+
+    click.echo(f"{'SLUG':<20} {'NAME':<30} {'VIDEOS':<8}")
+    click.echo("-" * 60)
+    for p in projects:
+        click.echo(f"{p['slug']:<20} {p['name'][:28]:<30} {p['video_count']:<8}")
+
+
+@projects.command('info')
+@click.argument('slug')
+@click.pass_context
+def projects_info(ctx, slug):
+    """Show project details.
+
+    SLUG is the project slug or ID.
+
+    Examples:
+
+      nolan projects info venezuela
+
+      nolan projects info fcaa7aa9
+    """
+    config = ctx.obj['config']
+    from nolan.indexer import VideoIndex
+
+    db_path = Path(config.indexing.database).expanduser()
+    index = VideoIndex(db_path)
+
+    project = index.get_project(slug)
+
+    if not project:
+        click.echo(f"Project not found: {slug}")
+        return
+
+    click.echo(f"Name:        {project['name']}")
+    click.echo(f"Slug:        {project['slug']}")
+    click.echo(f"ID:          {project['id']}")
+    click.echo(f"Description: {project['description'] or '(none)'}")
+    click.echo(f"Path:        {project['path'] or '(none)'}")
+    click.echo(f"Created:     {project['created_at']}")
+
+    # Get video count
+    videos = index.get_videos_by_project(project['id'])
+    click.echo(f"\nVideos: {len(videos)}")
+    for v in videos[:5]:
+        path = Path(v['path']).name if v['path'] else 'Unknown'
+        click.echo(f"  - {path}")
+    if len(videos) > 5:
+        click.echo(f"  ... and {len(videos) - 5} more")
+
+
+@projects.command('delete')
+@click.argument('slug')
+@click.option('--delete-videos', is_flag=True,
+              help='Also delete indexed videos from database.')
+@click.option('--force', '-f', is_flag=True,
+              help='Skip confirmation prompt.')
+@click.pass_context
+def projects_delete(ctx, slug, delete_videos, force):
+    """Delete a project.
+
+    SLUG is the project slug or ID.
+
+    By default, only removes the project entry. Videos remain in the index
+    but become unassociated. Use --delete-videos to also remove videos.
+
+    Examples:
+
+      nolan projects delete my-project
+
+      nolan projects delete my-project --delete-videos -f
+    """
+    config = ctx.obj['config']
+    from nolan.indexer import VideoIndex
+
+    db_path = Path(config.indexing.database).expanduser()
+    index = VideoIndex(db_path)
+
+    project = index.get_project(slug)
+    if not project:
+        click.echo(f"Project not found: {slug}")
+        return
+
+    if not force:
+        videos = index.get_videos_by_project(project['id'])
+        msg = f"Delete project '{project['name']}'?"
+        if delete_videos and videos:
+            msg += f" This will also delete {len(videos)} indexed video(s)."
+        if not click.confirm(msg):
+            click.echo("Cancelled.")
+            return
+
+    if index.delete_project(slug, delete_videos=delete_videos):
+        click.echo(f"Deleted project: {project['name']}")
+        if delete_videos:
+            click.echo("Associated videos were also deleted from index.")
+    else:
+        click.echo("Failed to delete project.")
 
 
 if __name__ == '__main__':

@@ -82,7 +82,7 @@ class VideoIndex:
     """SQLite-backed video index with content-based fingerprints."""
 
     # Schema version for migrations
-    SCHEMA_VERSION = 3
+    SCHEMA_VERSION = 4
 
     def __init__(self, db_path: Path):
         """Initialize the index.
@@ -107,6 +107,8 @@ class VideoIndex:
                 self._migrate_to_v2(conn, current_version)
             if current_version < 3:
                 self._migrate_to_v3(conn)
+            if current_version < 4:
+                self._migrate_to_v4(conn)
 
             # Create tables with new schema
             conn.execute("""
@@ -150,10 +152,21 @@ class VideoIndex:
                     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS projects (
+                    id TEXT PRIMARY KEY,
+                    slug TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    path TEXT,
+                    created_at TEXT
+                )
+            """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_segments_video ON segments(video_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_clusters_video ON clusters(video_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_videos_fingerprint ON videos(fingerprint)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_videos_project ON videos(project_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug)")
             conn.commit()
 
     def _migrate_to_v2(self, conn: sqlite3.Connection, from_version: int) -> None:
@@ -255,6 +268,30 @@ class VideoIndex:
         if "project_id" not in columns:
             conn.execute("ALTER TABLE videos ADD COLUMN project_id TEXT")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_videos_project ON videos(project_id)")
+
+        # Update schema version
+        conn.execute("DELETE FROM schema_version")
+        conn.execute("INSERT INTO schema_version (version) VALUES (?)", (3,))
+        conn.commit()
+
+    def _migrate_to_v4(self, conn: sqlite3.Connection) -> None:
+        """Migrate to v4 schema (add projects table)."""
+        # Check if projects table exists
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='projects'"
+        )
+        if cursor.fetchone() is None:
+            conn.execute("""
+                CREATE TABLE projects (
+                    id TEXT PRIMARY KEY,
+                    slug TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    path TEXT,
+                    created_at TEXT
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug)")
 
         # Update schema version
         conn.execute("DELETE FROM schema_version")
@@ -387,6 +424,243 @@ class VideoIndex:
                 (project_id, video_id)
             )
             conn.commit()
+
+    # ==================== Project Registry Methods ====================
+
+    @staticmethod
+    def generate_slug(name: str) -> str:
+        """Generate a URL-safe slug from a project name.
+
+        Args:
+            name: Project name.
+
+        Returns:
+            URL-safe slug (lowercase, hyphens, no special chars).
+        """
+        import re
+        # Convert to lowercase
+        slug = name.lower()
+        # Replace spaces and underscores with hyphens
+        slug = re.sub(r'[\s_]+', '-', slug)
+        # Remove special characters
+        slug = re.sub(r'[^\w\-]', '', slug)
+        # Remove multiple consecutive hyphens
+        slug = re.sub(r'-+', '-', slug)
+        # Strip leading/trailing hyphens
+        slug = slug.strip('-')
+        return slug
+
+    @staticmethod
+    def generate_project_id() -> str:
+        """Generate a unique project ID.
+
+        Returns:
+            8-character hex string.
+        """
+        import uuid
+        return uuid.uuid4().hex[:8]
+
+    def create_project(
+        self,
+        name: str,
+        slug: Optional[str] = None,
+        description: Optional[str] = None,
+        path: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Create a new project in the registry.
+
+        Args:
+            name: Human-readable project name.
+            slug: URL-safe identifier (auto-generated from name if not provided).
+            description: Optional project description.
+            path: Optional path to project directory.
+
+        Returns:
+            Dictionary with project details (id, slug, name, etc.).
+
+        Raises:
+            ValueError: If slug already exists.
+        """
+        project_id = self.generate_project_id()
+        if slug is None:
+            slug = self.generate_slug(name)
+
+        created_at = datetime.now().isoformat()
+
+        with sqlite3.connect(self.db_path) as conn:
+            try:
+                conn.execute("""
+                    INSERT INTO projects (id, slug, name, description, path, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (project_id, slug, name, description, path, created_at))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                raise ValueError(f"Project with slug '{slug}' already exists")
+
+        return {
+            "id": project_id,
+            "slug": slug,
+            "name": name,
+            "description": description,
+            "path": path,
+            "created_at": created_at,
+        }
+
+    def get_project(self, slug_or_id: str) -> Optional[Dict[str, Any]]:
+        """Get a project by slug or ID.
+
+        Args:
+            slug_or_id: Project slug or ID.
+
+        Returns:
+            Project dictionary or None if not found.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            # Try by slug first (more common), then by ID
+            cursor = conn.execute("""
+                SELECT id, slug, name, description, path, created_at
+                FROM projects
+                WHERE slug = ? OR id = ?
+            """, (slug_or_id, slug_or_id))
+            row = cursor.fetchone()
+
+            if row:
+                return {
+                    "id": row[0],
+                    "slug": row[1],
+                    "name": row[2],
+                    "description": row[3],
+                    "path": row[4],
+                    "created_at": row[5],
+                }
+            return None
+
+    def get_project_id_by_slug(self, slug: str) -> Optional[str]:
+        """Get project ID by slug.
+
+        Args:
+            slug: Project slug.
+
+        Returns:
+            Project ID or None if not found.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT id FROM projects WHERE slug = ?", (slug,)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    def list_projects(self) -> List[Dict[str, Any]]:
+        """List all projects with video counts.
+
+        Returns:
+            List of project dictionaries with video_count.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT p.id, p.slug, p.name, p.description, p.path, p.created_at,
+                       COUNT(v.id) as video_count
+                FROM projects p
+                LEFT JOIN videos v ON v.project_id = p.id
+                GROUP BY p.id
+                ORDER BY p.created_at DESC
+            """)
+            return [
+                {
+                    "id": row[0],
+                    "slug": row[1],
+                    "name": row[2],
+                    "description": row[3],
+                    "path": row[4],
+                    "created_at": row[5],
+                    "video_count": row[6],
+                }
+                for row in cursor.fetchall()
+            ]
+
+    def update_project(
+        self,
+        slug_or_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        path: Optional[str] = None
+    ) -> bool:
+        """Update a project's details.
+
+        Args:
+            slug_or_id: Project slug or ID.
+            name: New name (optional).
+            description: New description (optional).
+            path: New path (optional).
+
+        Returns:
+            True if updated, False if project not found.
+        """
+        project = self.get_project(slug_or_id)
+        if not project:
+            return False
+
+        updates = []
+        params = []
+        if name is not None:
+            updates.append("name = ?")
+            params.append(name)
+        if description is not None:
+            updates.append("description = ?")
+            params.append(description)
+        if path is not None:
+            updates.append("path = ?")
+            params.append(path)
+
+        if not updates:
+            return True  # Nothing to update
+
+        params.append(project["id"])
+
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                f"UPDATE projects SET {', '.join(updates)} WHERE id = ?",
+                params
+            )
+            conn.commit()
+        return True
+
+    def delete_project(self, slug_or_id: str, delete_videos: bool = False) -> bool:
+        """Delete a project from the registry.
+
+        Args:
+            slug_or_id: Project slug or ID.
+            delete_videos: If True, also delete associated videos from index.
+
+        Returns:
+            True if deleted, False if project not found.
+        """
+        project = self.get_project(slug_or_id)
+        if not project:
+            return False
+
+        with sqlite3.connect(self.db_path) as conn:
+            if delete_videos:
+                # Delete videos and their segments (CASCADE will handle segments)
+                conn.execute("DELETE FROM videos WHERE project_id = ?", (project["id"],))
+
+            # Delete the project
+            conn.execute("DELETE FROM projects WHERE id = ?", (project["id"],))
+            conn.commit()
+        return True
+
+    def resolve_project(self, slug_or_id: str) -> Optional[str]:
+        """Resolve a slug or ID to a project ID.
+
+        Args:
+            slug_or_id: Project slug or ID.
+
+        Returns:
+            Project ID or None if not found.
+        """
+        project = self.get_project(slug_or_id)
+        return project["id"] if project else None
 
     def add_segment(
         self,
