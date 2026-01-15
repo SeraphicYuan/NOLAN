@@ -96,6 +96,9 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 | `nolan render-clips` | Pre-render animated scenes to MP4 clips |
 | `nolan assemble` | Assemble final video from scenes + audio |
 | `nolan infographic` | Generate infographics via render-service |
+| `nolan yt-download` | Download YouTube videos using yt-dlp |
+| `nolan yt-search` | Search YouTube for videos |
+| `nolan yt-info` | Get information about a YouTube video |
 
 ### ComfyUI Integration
 - **Custom Workflows** - Load any ComfyUI workflow (API format)
@@ -138,6 +141,21 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
   3. `matched_asset` - Downloaded b-roll
   4. `infographic_asset` - Rendered SVG
   5. Black frame (fallback for missing assets)
+
+### YouTube Integration
+- **Video Download** - Download YouTube videos using yt-dlp
+  - Single video, batch from file, or entire playlists
+  - Configurable quality formats (default: 720p)
+  - Automatic subtitle download (configurable languages)
+  - Progress tracking with callbacks
+- **YouTube Search** - Search for videos without downloading
+  - Returns video metadata (title, duration, views, channel)
+  - Export results to JSON
+  - Optional: download first result directly
+- **Video Info** - Get detailed metadata for a single video
+  - Title, description, tags, categories
+  - Duration, views, upload date
+  - Channel information
 
 ## Usage
 
@@ -206,6 +224,24 @@ nolan infographic --title "My Process" -i "Step 1:First" -i "Step 2:Second"
 nolan infographic --template list --theme dark --title "Features" -i "Fast:Blazing speed"
 nolan infographic --template comparison --theme warm --title "A vs B" -i "Option A:Pro A" -i "Option B:Pro B"
 nolan infographic spec.json -o my_infographic.svg  # From JSON spec file
+
+# === YouTube Operations ===
+
+# Search YouTube for videos
+nolan yt-search "python tutorial" -n 5          # Search and show top 5 results
+nolan yt-search "documentary" -o results.json   # Export results to JSON
+nolan yt-search "cooking tips" --download       # Search and download first result
+
+# Download YouTube videos
+nolan yt-download "https://youtube.com/watch?v=xxxxx"                      # Single video
+nolan yt-download urls.txt -o ./videos                                     # From file (one URL per line)
+nolan yt-download "https://youtube.com/playlist?list=xxxxx" --playlist     # Entire playlist
+nolan yt-download "https://youtube.com/playlist?list=xxxxx" --limit 10     # First 10 from playlist
+nolan yt-download "https://youtube.com/watch?v=xxxxx" -f "bestvideo[height<=1080]+bestaudio"  # Custom quality
+
+# Get video info without downloading
+nolan yt-info "https://youtube.com/watch?v=xxxxx"                          # Show video metadata
+nolan yt-info "https://youtube.com/watch?v=xxxxx" -o video_info.json       # Save to JSON
 ```
 
 ## Test Coverage
