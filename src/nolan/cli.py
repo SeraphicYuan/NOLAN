@@ -343,8 +343,10 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
               help='Whisper model size (larger = better quality, slower).')
 @click.option('--project', '-p', type=str, default=None,
               help='Project slug to associate indexed videos with.')
+@click.option('--concurrency', '-c', default=10, type=int,
+              help='Max concurrent API calls (default 10). Use 2-3 for free tier, 10-15 for pay-as-you-go.')
 @click.pass_context
-def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_model, project):
+def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_model, project, concurrency):
     """Index a video directory for asset matching.
 
     DIRECTORY is the path to your video library folder.
@@ -358,6 +360,9 @@ def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_mo
 
     Use --project to associate indexed videos with a specific project.
     Create a project first with: nolan projects create "My Project"
+
+    Use --concurrency to control parallel API calls (default 10).
+    Lower values for rate-limited accounts, higher for paid tiers.
     """
     config = ctx.obj['config']
     directory_path = Path(directory)
@@ -380,11 +385,12 @@ def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_mo
     click.echo(f"Indexing: {directory_path}")
     click.echo(f"Recursive: {recursive}")
     click.echo(f"Frame interval: {frame_interval}s")
+    click.echo(f"Concurrency: {concurrency}")
 
-    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, vision, whisper, whisper_model, project_id))
+    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, vision, whisper, whisper_model, project_id, concurrency))
 
 
-async def _index_videos(config, directory, recursive, frame_interval, vision_provider='ollama', whisper_enabled=False, whisper_model='base', project_id=None):
+async def _index_videos(config, directory, recursive, frame_interval, vision_provider='ollama', whisper_enabled=False, whisper_model='base', project_id=None, concurrency=10):
     """Async implementation of index command."""
     from nolan.indexer import HybridVideoIndexer, VideoIndex
     from nolan.vision import create_vision_provider, VisionConfig
@@ -487,7 +493,8 @@ async def _index_videos(config, directory, recursive, frame_interval, vision_pro
         whisper_transcriber=whisper_transcriber,
         enable_transcript=config.indexing.enable_transcript,
         enable_inference=config.indexing.enable_inference,
-        project_id=project_id
+        project_id=project_id,
+        concurrency=concurrency
     )
 
     def progress(current, total, message):

@@ -1,5 +1,6 @@
 """Video library indexing for NOLAN."""
 
+import asyncio
 import sqlite3
 import hashlib
 import json
@@ -1141,7 +1142,8 @@ class HybridVideoIndexer:
         whisper_transcriber=None,
         enable_transcript: bool = True,
         enable_inference: bool = True,
-        project_id: Optional[str] = None
+        project_id: Optional[str] = None,
+        concurrency: int = 10
     ):
         """Initialize the hybrid indexer.
 
@@ -1154,6 +1156,10 @@ class HybridVideoIndexer:
             enable_transcript: Whether to look for and use transcripts.
             enable_inference: Whether to run LLM fusion and inference.
             project_id: Optional project ID to associate indexed videos with.
+            concurrency: Max concurrent API calls (default 10). Adjust based on rate limits:
+                         - Free tier (15 RPM): use 2-3
+                         - Pay-as-you-go (360 RPM): use 10-15
+                         - Higher tiers: use 30-50
         """
         self.vision = vision_provider
         self.index = index
@@ -1163,6 +1169,7 @@ class HybridVideoIndexer:
         self.enable_transcript = enable_transcript
         self.enable_inference = enable_inference
         self.project_id = project_id
+        self.concurrency = concurrency
 
         # Lazy import analyzer
         self._analyzer = None
@@ -1269,60 +1276,109 @@ class HybridVideoIndexer:
             for i, text in enumerate(aligned_texts):
                 frames_data[i]["transcript"] = text
 
-        # Process each frame
-        segments_added = 0
+        # Process frames concurrently with semaphore for rate limiting
         total = len(frames_data)
         analyzer = self._get_analyzer()
+        semaphore = asyncio.Semaphore(self.concurrency)
 
-        for i, frame_data in enumerate(frames_data):
-            if progress_callback:
-                progress_callback(i + 1, total, f"Frame at {frame_data['timestamp']:.1f}s")
+        # Track progress
+        completed_count = 0
+        completed_lock = asyncio.Lock()
 
-            # Save frame temporarily
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
-                cv2.imwrite(tmp.name, frame_data["frame"])
-                tmp_path = Path(tmp.name)
+        async def process_frame(idx: int, frame_data: dict) -> dict:
+            """Process a single frame with rate limiting."""
+            nonlocal completed_count
 
-            try:
-                # Get frame description from vision model
-                frame_description = await self.vision.describe_image(
-                    tmp_path,
-                    "Describe this video frame in one sentence. Focus on the main subject, action, and setting."
-                )
-                frame_description = frame_description.strip()
+            async with semaphore:
+                # Save frame temporarily
+                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                    cv2.imwrite(tmp.name, frame_data["frame"])
+                    tmp_path = Path(tmp.name)
 
-                # Get transcript for this segment
-                segment_transcript = frame_data.get("transcript")
-
-                # Run fusion and inference if enabled
-                combined_summary = None
-                inferred_context = None
-
-                if self.enable_inference and analyzer and segment_transcript:
-                    from nolan.analyzer import AnalysisResult
-                    result = await analyzer.analyze(
-                        frame_description=frame_description,
-                        transcript=segment_transcript,
-                        timestamp=frame_data["timestamp"]
+                try:
+                    # Get frame description from vision model
+                    frame_description = await self.vision.describe_image(
+                        tmp_path,
+                        "Describe this video frame in one sentence. Focus on the main subject, action, and setting."
                     )
-                    combined_summary = result.combined_summary
-                    inferred_context = result.inferred_context
+                    frame_description = frame_description.strip()
 
-                # Add segment to index
+                    # Get transcript for this segment
+                    segment_transcript = frame_data.get("transcript")
+
+                    # Run fusion and inference if enabled
+                    combined_summary = None
+                    inferred_context = None
+
+                    if self.enable_inference and analyzer and segment_transcript:
+                        result = await analyzer.analyze(
+                            frame_description=frame_description,
+                            transcript=segment_transcript,
+                            timestamp=frame_data["timestamp"]
+                        )
+                        combined_summary = result.combined_summary
+                        inferred_context = result.inferred_context
+
+                    # Update progress
+                    async with completed_lock:
+                        completed_count += 1
+                        if progress_callback:
+                            progress_callback(completed_count, total, f"Frame at {frame_data['timestamp']:.1f}s")
+
+                    return {
+                        "idx": idx,
+                        "timestamp_start": frame_data["timestamp"],
+                        "timestamp_end": frame_data["end"],
+                        "frame_description": frame_description,
+                        "transcript": segment_transcript,
+                        "combined_summary": combined_summary,
+                        "inferred_context": inferred_context,
+                        "sample_reason": frame_data["reason"],
+                        "error": None
+                    }
+
+                except Exception as e:
+                    async with completed_lock:
+                        completed_count += 1
+                        if progress_callback:
+                            progress_callback(completed_count, total, f"Error at {frame_data['timestamp']:.1f}s")
+
+                    return {
+                        "idx": idx,
+                        "timestamp_start": frame_data["timestamp"],
+                        "timestamp_end": frame_data["end"],
+                        "frame_description": f"Error: {str(e)}",
+                        "transcript": frame_data.get("transcript"),
+                        "combined_summary": None,
+                        "inferred_context": None,
+                        "sample_reason": frame_data["reason"],
+                        "error": str(e)
+                    }
+
+                finally:
+                    tmp_path.unlink(missing_ok=True)
+
+        # Launch all frame processing tasks concurrently
+        tasks = [process_frame(i, fd) for i, fd in enumerate(frames_data)]
+        results = await asyncio.gather(*tasks)
+
+        # Sort by original index and save to database (sequential, fast)
+        results.sort(key=lambda r: r["idx"])
+        segments_added = 0
+
+        for result in results:
+            if result["error"] is None:
                 self.index.add_segment(
                     video_id=video_id,
-                    timestamp_start=frame_data["timestamp"],
-                    timestamp_end=frame_data["end"],
-                    frame_description=frame_description,
-                    transcript=segment_transcript,
-                    combined_summary=combined_summary,
-                    inferred_context=inferred_context,
-                    sample_reason=frame_data["reason"]
+                    timestamp_start=result["timestamp_start"],
+                    timestamp_end=result["timestamp_end"],
+                    frame_description=result["frame_description"],
+                    transcript=result["transcript"],
+                    combined_summary=result["combined_summary"],
+                    inferred_context=result["inferred_context"],
+                    sample_reason=result["sample_reason"]
                 )
                 segments_added += 1
-
-            finally:
-                tmp_path.unlink(missing_ok=True)
 
         return segments_added
 
