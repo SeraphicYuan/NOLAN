@@ -332,7 +332,10 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
 @click.option('--recursive/--no-recursive', default=True,
               help='Scan subdirectories.')
 @click.option('--frame-interval', default=5, type=int,
-              help='Seconds between sampled frames.')
+              help='Seconds between sampled frames (for fixed sampler).')
+@click.option('--sampler', '-s', default=None,
+              type=click.Choice(['ffmpeg_scene', 'hybrid', 'fixed', 'scene_change']),
+              help='Frame sampling strategy. ffmpeg_scene (default) is 10-50x faster.')
 @click.option('--vision', default='ollama',
               type=click.Choice(['ollama', 'gemini']),
               help='Vision provider for frame analysis.')
@@ -346,7 +349,7 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
 @click.option('--concurrency', '-c', default=10, type=int,
               help='Max concurrent API calls (default 10). Use 2-3 for free tier, 10-15 for pay-as-you-go.')
 @click.pass_context
-def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_model, project, concurrency):
+def index(ctx, directory, recursive, frame_interval, sampler, vision, whisper, whisper_model, project, concurrency):
     """Index a video directory for asset matching.
 
     DIRECTORY is the path to your video library folder.
@@ -383,15 +386,18 @@ def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_mo
         project_id = proj['id']
         click.echo(f"Project: {proj['name']} ({proj['slug']})")
 
+    # Use CLI sampler or fall back to config default
+    sampling_strategy = sampler or config.indexing.sampling_strategy
+
     click.echo(f"Indexing: {directory_path}")
     click.echo(f"Recursive: {recursive}")
-    click.echo(f"Frame interval: {frame_interval}s")
+    click.echo(f"Sampler: {sampling_strategy}")
     click.echo(f"Concurrency: {concurrency}")
 
-    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, vision, whisper, whisper_model, project_id, concurrency))
+    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, sampling_strategy, vision, whisper, whisper_model, project_id, concurrency))
 
 
-async def _index_videos(config, directory, recursive, frame_interval, vision_provider='ollama', whisper_enabled=False, whisper_model='base', project_id=None, concurrency=10):
+async def _index_videos(config, directory, recursive, frame_interval, sampling_strategy, vision_provider='ollama', whisper_enabled=False, whisper_model='base', project_id=None, concurrency=10):
     """Async implementation of index command."""
     from nolan.indexer import HybridVideoIndexer, VideoIndex
     from nolan.vision import create_vision_provider, VisionConfig
@@ -429,14 +435,15 @@ async def _index_videos(config, directory, recursive, frame_interval, vision_pro
 
     # Initialize sampler
     sampler_config = SamplerConfig(
-        strategy=SamplingStrategy(config.indexing.sampling_strategy),
+        strategy=SamplingStrategy(sampling_strategy),
         fixed_interval=float(frame_interval),
         min_interval=config.indexing.min_interval,
         max_interval=config.indexing.max_interval,
         scene_threshold=config.indexing.scene_threshold,
+        ffmpeg_scene_threshold=getattr(config.indexing, 'ffmpeg_scene_threshold', 0.3),
     )
     sampler = create_sampler(sampler_config)
-    click.echo(f"Sampling strategy: {config.indexing.sampling_strategy}")
+    click.echo(f"Sampling strategy: {sampling_strategy}")
 
     # Initialize Whisper transcriber (if enabled)
     whisper_transcriber = None

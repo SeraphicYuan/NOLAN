@@ -52,10 +52,11 @@ class IndexingConfig:
     """Video indexing configuration."""
     frame_interval: int = 5
     database: str = "~/.nolan/library.db"
-    sampling_strategy: str = "hybrid"  # fixed, scene_change, perceptual_hash, hybrid
+    sampling_strategy: str = "ffmpeg_scene"  # ffmpeg_scene (fast), hybrid, fixed, scene_change
     min_interval: float = 1.0
     max_interval: float = 30.0
-    scene_threshold: float = 25.0
+    scene_threshold: float = 25.0  # For hybrid/scene_change samplers
+    ffmpeg_scene_threshold: float = 0.3  # For ffmpeg_scene sampler (0-1)
     enable_transcript: bool = True
     enable_inference: bool = True
 
@@ -68,6 +69,14 @@ class DefaultsConfig:
 
 
 @dataclass
+class ImageSourcesConfig:
+    """Image search sources configuration."""
+    pexels_api_key: str = ""
+    pixabay_api_key: str = ""
+    smithsonian_api_key: str = ""  # Get from api.data.gov
+
+
+@dataclass
 class NolanConfig:
     """Main configuration container."""
     gemini: GeminiConfig = field(default_factory=GeminiConfig)
@@ -76,6 +85,7 @@ class NolanConfig:
     whisper: WhisperConfig = field(default_factory=WhisperConfig)
     indexing: IndexingConfig = field(default_factory=IndexingConfig)
     defaults: DefaultsConfig = field(default_factory=DefaultsConfig)
+    image_sources: ImageSourcesConfig = field(default_factory=ImageSourcesConfig)
 
 
 def load_config(config_path: Optional[Path] = None) -> NolanConfig:
@@ -92,8 +102,19 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
 
     config = NolanConfig()
 
-    # Load API key from environment
+    # Load API keys from environment
     config.gemini.api_key = os.getenv("GEMINI_API_KEY", "")
+    config.image_sources.pexels_api_key = os.getenv("PEXELS_API_KEY", "")
+    config.image_sources.pixabay_api_key = os.getenv("PIXABAY_API_KEY", "")
+    config.image_sources.smithsonian_api_key = os.getenv("SMITHSONIAN_API_KEY", "")
+
+    # Auto-detect config file if not provided
+    if config_path is None:
+        for name in ["nolan.yaml", "nolan.yml"]:
+            candidate = Path(name)
+            if candidate.exists():
+                config_path = candidate
+                break
 
     # Load YAML overrides if provided
     if config_path and config_path.exists():
@@ -129,5 +150,10 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
             for key, value in overrides["defaults"].items():
                 if hasattr(config.defaults, key):
                     setattr(config.defaults, key, value)
+
+        if "image_sources" in overrides:
+            for key, value in overrides["image_sources"].items():
+                if hasattr(config.image_sources, key):
+                    setattr(config.image_sources, key, value)
 
     return config
