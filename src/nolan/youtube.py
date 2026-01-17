@@ -214,18 +214,26 @@ class YouTubeClient:
     def _cleanup_temp_files(self, title: str) -> None:
         """Clean up temporary files left by yt-dlp after download.
 
-        Removes .webm fragments, .temp.* files, and other intermediates
-        that may be left behind after merge (especially on merge failure).
+        Only removes yt-dlp fragment/intermediate files, NOT legitimate videos.
+        Fragment files have patterns like: .f247.webm, .f251-11.webm, .part, .temp.mp4
 
         Args:
             title: Video title to match files against.
         """
+        import re
+
         if not self.output_dir.exists():
             return
 
-        # Patterns to clean up (match by title prefix)
-        cleanup_extensions = ['.webm', '.m4a', '.part', '.ytdl']
-        cleanup_patterns = ['.temp.', '.f247.', '.f248.', '.f251', '.f140.']
+        # Pattern for yt-dlp fragment files (must match to delete)
+        # e.g., .f247.webm, .f251-11.webm, .f140.m4a
+        fragment_pattern = re.compile(r'\.f\d+(-\d+)?\.(webm|m4a|mp4)$')
+
+        # Other temp file extensions (always delete if matched)
+        temp_extensions = ['.part', '.ytdl']
+
+        # Temp file patterns in filename
+        temp_patterns = ['.temp.']
 
         for file_path in self.output_dir.iterdir():
             if not file_path.is_file():
@@ -241,27 +249,34 @@ class YouTubeClient:
             # Match if first few title words appear in filename
             matches_title = all(word in filename_lower for word in title_words if len(word) > 2)
 
-            if matches_title:
-                # Check if it's a temp file to clean
+            if not matches_title:
+                continue
+
+            should_delete = False
+
+            # Check for yt-dlp fragment pattern (e.g., .f247.webm)
+            if fragment_pattern.search(filename):
+                should_delete = True
+
+            # Check temp extensions (.part, .ytdl)
+            if any(filename.endswith(ext) for ext in temp_extensions):
+                should_delete = True
+
+            # Check temp patterns (.temp.)
+            if any(pattern in filename for pattern in temp_patterns):
+                should_delete = True
+
+            # Safety: Never delete final outputs
+            if filename.endswith('.mp4') and not fragment_pattern.search(filename):
+                should_delete = False
+            if filename.endswith('.srt') or filename.endswith('.vtt'):
                 should_delete = False
 
-                # Check extensions
-                if any(filename.endswith(ext) for ext in cleanup_extensions):
-                    should_delete = True
-
-                # Check patterns in filename
-                if any(pattern in filename for pattern in cleanup_patterns):
-                    should_delete = True
-
-                # Don't delete the final video or subtitles
-                if filename.endswith('.mp4') or filename.endswith('.srt') or filename.endswith('.vtt'):
-                    should_delete = False
-
-                if should_delete:
-                    try:
-                        file_path.unlink()
-                    except Exception:
-                        pass  # Ignore cleanup errors
+            if should_delete:
+                try:
+                    file_path.unlink()
+                except Exception:
+                    pass  # Ignore cleanup errors
 
     def download(
         self,
