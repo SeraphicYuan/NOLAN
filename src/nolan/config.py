@@ -30,7 +30,7 @@ class ComfyUIConfig:
 @dataclass
 class VisionConfig:
     """Vision provider configuration."""
-    provider: str = "ollama"  # ollama, gemini
+    provider: str = "gemini"  # gemini, ollama
     model: str = "qwen3-vl:8b"
     host: str = "127.0.0.1"  # Use IP, not hostname (Windows httpx issue)
     port: int = 11434
