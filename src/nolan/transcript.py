@@ -254,6 +254,11 @@ class TranscriptLoader:
 def find_transcript_for_video(video_path: Path) -> Optional[Path]:
     """Find transcript file for a video (same name, different extension).
 
+    Handles:
+    - Direct extension: video.srt, video.vtt, video.json
+    - Language-coded: video.en.srt, video.es.vtt (from yt-dlp)
+    - Whisper output: video.whisper.json
+
     Args:
         video_path: Path to video file.
 
@@ -261,15 +266,32 @@ def find_transcript_for_video(video_path: Path) -> Optional[Path]:
         Path to transcript file if found, None otherwise.
     """
     transcript_extensions = [".srt", ".vtt", ".json"]
+    video_stem = video_path.stem
+    video_dir = video_path.parent
 
+    # Check direct extensions: video.srt, video.vtt, video.json
     for ext in transcript_extensions:
         transcript_path = video_path.with_suffix(ext)
         if transcript_path.exists():
             return transcript_path
 
-    # Also check for whisper output pattern: video.whisper.json
+    # Check whisper output: video.whisper.json
     whisper_path = video_path.with_suffix(".whisper.json")
     if whisper_path.exists():
         return whisper_path
+
+    # Check language-coded subtitles: video.en.srt, video.es.vtt, etc.
+    # Pattern: {video_stem}.{lang_code}.{ext}
+    for ext in [".srt", ".vtt"]:
+        # Look for files matching pattern
+        pattern = f"{video_stem}.*{ext}"
+        matches = list(video_dir.glob(pattern))
+        if matches:
+            # Prefer English if available
+            for match in matches:
+                if ".en." in match.name or ".eng." in match.name:
+                    return match
+            # Otherwise return first match
+            return matches[0]
 
     return None
