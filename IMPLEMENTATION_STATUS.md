@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-16
 
 ## Summary
 
@@ -187,8 +187,13 @@ nolan process path/to/essay.md -o ./output
 # Index video library (Ollama vision - local)
 nolan index path/to/videos --recursive
 
-# Index with Gemini vision (cloud - faster)
+# Index with Gemini vision (cloud - faster, async)
 nolan index path/to/videos --vision gemini
+
+# Control concurrency for rate limits
+nolan index path/to/videos --vision gemini --concurrency 3   # free tier
+nolan index path/to/videos --vision gemini --concurrency 10  # pay-as-you-go (default)
+nolan index path/to/videos --vision gemini --concurrency 30  # higher tiers
 
 # Index with Whisper auto-transcription (GPU accelerated)
 nolan index path/to/videos --vision gemini --whisper --whisper-model base
@@ -355,6 +360,10 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Async Batch Indexing** - ~10x faster video indexing with concurrent API calls
+  - Process multiple frames in parallel using asyncio with semaphore
+  - `--concurrency` CLI option to control parallelism (default 10)
+  - Rate limit friendly: use 2-3 for free tier, 10-15 for pay-as-you-go
 - ✅ **Project Registry** - Organize videos by project with human-friendly slugs
   - `nolan projects create/list/info/delete` commands for project management
   - Projects have internal UUIDs and CLI-facing slugs (e.g., `venezuela`)
