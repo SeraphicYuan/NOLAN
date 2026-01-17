@@ -1286,7 +1286,12 @@ class HybridVideoIndexer:
         completed_lock = asyncio.Lock()
 
         async def process_frame(idx: int, frame_data: dict) -> dict:
-            """Process a single frame with rate limiting."""
+            """Process a single frame with rate limiting.
+
+            Uses combined vision+inference call (1 API call) when available,
+            falling back to separate calls (2 API calls) for providers that
+            don't support combined analysis.
+            """
             nonlocal completed_count
 
             async with semaphore:
@@ -1296,28 +1301,33 @@ class HybridVideoIndexer:
                     tmp_path = Path(tmp.name)
 
                 try:
-                    # Get frame description from vision model
-                    frame_description = await self.vision.describe_image(
-                        tmp_path,
-                        "Describe this video frame in one sentence. Focus on the main subject, action, and setting."
-                    )
-                    frame_description = frame_description.strip()
-
-                    # Get transcript for this segment
                     segment_transcript = frame_data.get("transcript")
 
-                    # Run fusion and inference if enabled
-                    combined_summary = None
-                    inferred_context = None
-
-                    if self.enable_inference and analyzer and segment_transcript:
-                        result = await analyzer.analyze(
-                            frame_description=frame_description,
+                    # Use combined analyze_frame for single API call (50% faster)
+                    # This works for Gemini; other providers fall back to simple description
+                    if self.enable_inference:
+                        from nolan.vision import FrameAnalysisResult
+                        result = await self.vision.analyze_frame(
+                            tmp_path,
                             transcript=segment_transcript,
                             timestamp=frame_data["timestamp"]
                         )
+
+                        frame_description = result.frame_description
                         combined_summary = result.combined_summary
-                        inferred_context = result.inferred_context
+                        inferred_context = result.to_inferred_context() if any([
+                            result.people, result.location,
+                            result.story_context, result.objects
+                        ]) else None
+                    else:
+                        # Inference disabled - just get frame description
+                        frame_description = await self.vision.describe_image(
+                            tmp_path,
+                            "Describe this video frame in one sentence. Focus on the main subject, action, and setting."
+                        )
+                        frame_description = frame_description.strip()
+                        combined_summary = None
+                        inferred_context = None
 
                     # Update progress
                     async with completed_lock:

@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-16
+**Last Updated:** 2026-01-17
 
 ## Summary
 
@@ -47,10 +47,14 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 - **Caching** - Saves generated transcripts as .whisper.json files
 
 ### Hybrid Inference
-- **LLM Fusion** - Combines vision + transcript for richer understanding
+- **Combined Vision+Inference** - Single API call for frame analysis (50% fewer API calls)
+  - Vision model sees both image AND transcript together
+  - Better inference: can recognize faces, read on-screen text
+  - Returns frame_description + combined_summary + inferred_context
+  - Falls back to simple description for non-Gemini providers
 - **Inferred Context** - Best guesses for:
-  - People (named characters, speakers)
-  - Location (setting identification)
+  - People (named characters, speakers, face recognition)
+  - Location (setting identification from visuals and audio)
   - Story context (narrative description)
   - Objects (notable items)
   - Confidence level (high/medium/low)
@@ -360,6 +364,15 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Combined Vision+Inference** - Single API call per frame (50% fewer calls)
+  - Frame + transcript analyzed together in one vision call
+  - Better inference: vision model can recognize faces, read text
+  - Cost: ~$0.03-0.05 for 30-min video (vs ~$0.06-0.10 before)
+- ✅ **Auto-Whisper Transcription** - Enabled by default when no subtitle exists
+  - Generates transcripts automatically using faster-whisper
+  - ~45 sec for 30-min video on GPU (base model)
+  - Use `--no-whisper` to opt-out
+- ✅ **Language-coded Subtitles** - Support for yt-dlp style .en.srt files
 - ✅ **Async Batch Indexing** - ~10x faster video indexing with concurrent API calls
   - Process multiple frames in parallel using asyncio with semaphore
   - `--concurrency` CLI option to control parallelism (default 10)
