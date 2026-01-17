@@ -387,11 +387,13 @@ class FFmpegSceneSampler(FrameSampler):
         import re
 
         # FFmpeg command using -vf filter (better path handling than movie filter)
+        # Scale down to 320px width for faster processing (4-5x speedup)
+        # Scene detection only needs to detect overall frame changes, not fine detail
         # showinfo outputs frame details including pts_time
         cmd = [
             "ffmpeg",
             "-i", str(video_path),
-            "-vf", f"select='gt(scene,{self.scene_threshold})',showinfo",
+            "-vf", f"scale=320:-1,select='gt(scene,{self.scene_threshold})',showinfo",
             "-f", "null",
             "-"
         ]

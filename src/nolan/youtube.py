@@ -71,10 +71,17 @@ class DownloadResult:
 class YouTubeClient:
     """Client for YouTube operations using yt-dlp."""
 
+    # Prefer H.264 (avc1) over AV1 - H.264 is 5x faster to decode for scene detection
+    # Falls back to any codec if H.264 not available at desired resolution
+    DEFAULT_FORMAT = (
+        "bestvideo[height<=720][vcodec^=avc1]+bestaudio/best[height<=720]"
+        "/bestvideo[height<=720]+bestaudio/best[height<=720]"
+    )
+
     def __init__(
         self,
         output_dir: Optional[Path] = None,
-        format: str = "bestvideo[height<=720]+bestaudio/best[height<=720]",
+        format: str = None,
         download_subtitles: bool = True,
         subtitle_langs: List[str] = None,
     ):
@@ -82,12 +89,12 @@ class YouTubeClient:
 
         Args:
             output_dir: Directory to save downloaded videos.
-            format: yt-dlp format string (default: 720p or best available).
+            format: yt-dlp format string (default: H.264 720p, fallback to any codec).
             download_subtitles: Whether to download subtitles.
             subtitle_langs: Subtitle languages to download (default: ['en']).
         """
         self.output_dir = Path(output_dir) if output_dir else Path.cwd()
-        self.format = format
+        self.format = format or self.DEFAULT_FORMAT
         self.download_subtitles = download_subtitles
         self.subtitle_langs = subtitle_langs or ['en']
 
