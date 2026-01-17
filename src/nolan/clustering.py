@@ -374,17 +374,21 @@ Respond with ONLY the summary, no additional formatting."""
 
 
 class StoryBoundaryDetector:
-    """Detects story boundaries using LLM with smart batch processing."""
+    """Detects story boundaries using LLM with parallel batch processing."""
 
-    def __init__(self, llm_client, chunk_size: int = 30):
+    def __init__(self, llm_client, chunk_size: int = 50, overlap: int = 15, concurrency: int = 10):
         """Initialize detector.
 
         Args:
             llm_client: LLM client for analysis.
             chunk_size: Number of segments to process per LLM call.
+            overlap: Number of overlapping segments between chunks for edge handling.
+            concurrency: Max concurrent LLM calls.
         """
         self.llm = llm_client
         self.chunk_size = chunk_size
+        self.overlap = overlap
+        self.concurrency = concurrency
 
     async def detect_boundaries_batch(self, segments: List[VideoSegment]) -> List[int]:
         """Detect all story boundaries within a batch of segments.
@@ -449,15 +453,70 @@ JSON array:"""
         except Exception:
             return []
 
+    def _create_overlapping_chunks(self, total_segments: int) -> List[tuple]:
+        """Create overlapping chunk ranges for parallel processing.
+
+        Args:
+            total_segments: Total number of segments.
+
+        Returns:
+            List of (start, end) tuples representing chunk ranges.
+        """
+        chunks = []
+        stride = self.chunk_size - self.overlap
+        start = 0
+
+        while start < total_segments:
+            end = min(start + self.chunk_size, total_segments)
+            chunks.append((start, end))
+
+            if end >= total_segments:
+                break
+            start += stride
+
+        return chunks
+
+    def _merge_boundaries(self, chunk_results: List[tuple], total_segments: int) -> List[int]:
+        """Merge boundaries from overlapping chunks, deduplicating near-duplicates.
+
+        Args:
+            chunk_results: List of (chunk_start, boundaries) tuples.
+            total_segments: Total number of segments.
+
+        Returns:
+            Deduplicated list of global boundary indices.
+        """
+        # Convert all to global indices
+        all_boundaries = []
+        for chunk_start, local_boundaries in chunk_results:
+            for local_idx in local_boundaries:
+                global_idx = chunk_start + local_idx
+                if 0 <= global_idx < total_segments - 1:
+                    all_boundaries.append(global_idx)
+
+        if not all_boundaries:
+            return []
+
+        # Sort and deduplicate nearby boundaries (within 2 segments = same boundary)
+        all_boundaries.sort()
+        deduped = [all_boundaries[0]]
+
+        for boundary in all_boundaries[1:]:
+            # If this boundary is more than 2 segments away from the last, it's new
+            if boundary - deduped[-1] > 2:
+                deduped.append(boundary)
+
+        return deduped
+
     async def detect_all_boundaries(
         self,
         segments: List[VideoSegment],
         progress_callback=None
     ) -> List[int]:
-        """Detect all story boundaries using smart adaptive chunking.
+        """Detect all story boundaries using parallel processing with overlapping chunks.
 
-        Uses smart chunking: each batch starts right after the last detected
-        boundary, ensuring no boundaries are missed at chunk edges.
+        Runs all chunks in parallel for speed, using overlap to handle edge cases.
+        Boundaries detected in overlapping regions are deduplicated.
 
         Args:
             segments: All segments to analyze.
@@ -469,46 +528,47 @@ JSON array:"""
         if len(segments) <= 1:
             return []
 
-        all_boundaries = []
-        start = 0
-        batch_num = 0
-        total_batches_est = (len(segments) // self.chunk_size) + 1
+        # Create overlapping chunks
+        chunks = self._create_overlapping_chunks(len(segments))
+        total_chunks = len(chunks)
 
-        while start < len(segments) - 1:
-            end = min(start + self.chunk_size, len(segments))
-            chunk = segments[start:end]
+        if progress_callback:
+            progress_callback(0, total_chunks, f"Processing {total_chunks} chunks in parallel...")
 
-            batch_num += 1
-            if progress_callback:
-                progress_callback(
-                    batch_num, total_batches_est,
-                    f"Analyzing segments {start}-{end-1}"
-                )
+        # Process all chunks in parallel with concurrency limit
+        semaphore = asyncio.Semaphore(self.concurrency)
+        completed = 0
+        completed_lock = asyncio.Lock()
 
-            # Get boundaries in this chunk (relative indices)
-            chunk_boundaries = await self.detect_boundaries_batch(chunk)
+        async def process_chunk(chunk_start: int, chunk_end: int) -> tuple:
+            nonlocal completed
+            async with semaphore:
+                chunk_segments = segments[chunk_start:chunk_end]
+                local_boundaries = await self.detect_boundaries_batch(chunk_segments)
 
-            # Convert to global indices
-            for idx in chunk_boundaries:
-                global_idx = start + idx
-                all_boundaries.append(global_idx)
+                async with completed_lock:
+                    completed += 1
+                    if progress_callback:
+                        progress_callback(
+                            completed, total_chunks,
+                            f"Chunk {chunk_start}-{chunk_end-1} done"
+                        )
 
-            if chunk_boundaries:
-                # Smart chunking: start next batch right after last boundary
-                last_boundary_global = start + chunk_boundaries[-1]
-                start = last_boundary_global + 1
-            else:
-                # No boundaries found, move to end of chunk
-                start = end
+                return (chunk_start, local_boundaries)
 
-        return sorted(set(all_boundaries))
+        # Run all chunks in parallel
+        tasks = [process_chunk(start, end) for start, end in chunks]
+        chunk_results = await asyncio.gather(*tasks)
+
+        # Merge and deduplicate boundaries
+        return self._merge_boundaries(chunk_results, len(segments))
 
     async def refine_clusters(
         self,
         clusters: List[SceneCluster],
         progress_callback=None
     ) -> List[SceneCluster]:
-        """Refine clusters by detecting story boundaries using smart batching.
+        """Refine clusters by detecting story boundaries using parallel processing.
 
         Args:
             clusters: Initial clusters (typically 1 big cluster).

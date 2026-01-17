@@ -693,10 +693,12 @@ def _export_all_videos(index, output_path):
               help='Maximum time gap (seconds) between segments to consider clustering.')
 @click.option('--concurrency', '-c', default=10, type=int,
               help='Max concurrent API calls for summary generation (default 10).')
-@click.option('--chunk-size', default=30, type=int,
-              help='Segments per batch for boundary detection (default 30).')
+@click.option('--chunk-size', default=50, type=int,
+              help='Segments per batch for boundary detection (default 50).')
+@click.option('--overlap', default=15, type=int,
+              help='Overlap between chunks for boundary detection (default 15).')
 @click.pass_context
-def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap, concurrency, chunk_size):
+def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap, concurrency, chunk_size, overlap):
     """Cluster video segments into story moments.
 
     VIDEO is the path to an indexed video file.
@@ -721,14 +723,14 @@ def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap, concurr
         return
 
     if cluster_all:
-        asyncio.run(_cluster_all_videos(config, db_path, output, summarize, refine, max_gap, concurrency, chunk_size))
+        asyncio.run(_cluster_all_videos(config, db_path, output, summarize, refine, max_gap, concurrency, chunk_size, overlap))
     elif video:
-        asyncio.run(_cluster_video(config, db_path, Path(video), output, summarize, refine, max_gap, concurrency, chunk_size))
+        asyncio.run(_cluster_video(config, db_path, Path(video), output, summarize, refine, max_gap, concurrency, chunk_size, overlap))
     else:
         click.echo("Error: Provide a VIDEO path or use --all flag.")
 
 
-async def _cluster_video(config, db_path, video_path, output_path, summarize, refine, max_gap, concurrency, chunk_size):
+async def _cluster_video(config, db_path, video_path, output_path, summarize, refine, max_gap, concurrency, chunk_size, overlap):
     """Cluster segments for a single video."""
     import json
     from nolan.indexer import VideoIndex
@@ -765,7 +767,7 @@ async def _cluster_video(config, db_path, video_path, output_path, summarize, re
         click.echo(f"Detecting story boundaries (chunk_size={chunk_size})...")
         from nolan.llm import GeminiClient
         llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
-        detector = StoryBoundaryDetector(llm, chunk_size=chunk_size)
+        detector = StoryBoundaryDetector(llm, chunk_size=chunk_size, overlap=overlap)
 
         def refine_progress(current, total, msg):
             click.echo(f"  [{current}/{total}] {msg}")
@@ -845,7 +847,7 @@ async def _cluster_video(config, db_path, video_path, output_path, summarize, re
         click.echo(f"  Cluster {c.id}: {c.timestamp_formatted} ({len(c.segments)} segments, {c.duration:.1f}s)")
 
 
-async def _cluster_all_videos(config, db_path, output_path, summarize, refine, max_gap, concurrency, chunk_size):
+async def _cluster_all_videos(config, db_path, output_path, summarize, refine, max_gap, concurrency, chunk_size, overlap):
     """Cluster all indexed videos."""
     import json
     import sqlite3
@@ -869,7 +871,7 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
         from nolan.llm import GeminiClient
         llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
         if refine:
-            detector = StoryBoundaryDetector(llm, chunk_size=chunk_size)
+            detector = StoryBoundaryDetector(llm, chunk_size=chunk_size, overlap=overlap)
         if summarize:
             analyzer = ClusterAnalyzer(llm, concurrency=concurrency)
 
