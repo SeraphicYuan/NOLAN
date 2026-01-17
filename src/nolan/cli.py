@@ -336,11 +336,11 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
 @click.option('--vision', default='ollama',
               type=click.Choice(['ollama', 'gemini']),
               help='Vision provider for frame analysis.')
-@click.option('--whisper/--no-whisper', default=False,
-              help='Auto-generate transcripts with Whisper for videos without them.')
+@click.option('--whisper/--no-whisper', default=True,
+              help='Auto-generate transcripts with Whisper when no subtitle file exists (default: enabled).')
 @click.option('--whisper-model', default='base',
               type=click.Choice(['tiny', 'base', 'small', 'medium', 'large-v2', 'large-v3']),
-              help='Whisper model size (larger = better quality, slower).')
+              help='Whisper model size (default: base). Larger = better quality, slower.')
 @click.option('--project', '-p', type=str, default=None,
               help='Project slug to associate indexed videos with.')
 @click.option('--concurrency', '-c', default=10, type=int,
@@ -355,8 +355,9 @@ def index(ctx, directory, recursive, frame_interval, vision, whisper, whisper_mo
     what's in each segment. The index is stored locally for fast
     searching during the process command.
 
-    Use --whisper to auto-generate transcripts for videos without them.
-    This requires ffmpeg to be installed for audio extraction.
+    Transcripts are automatically generated with Whisper when no subtitle
+    file (.srt, .vtt) exists. Use --no-whisper to disable this.
+    Requires ffmpeg for audio extraction.
 
     Use --project to associate indexed videos with a specific project.
     Create a project first with: nolan projects create "My Project"
