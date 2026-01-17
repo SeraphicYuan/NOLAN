@@ -687,8 +687,8 @@ def _export_all_videos(index, output_path):
 @click.option('--all', 'cluster_all', is_flag=True, help='Cluster all indexed videos.')
 @click.option('--summarize/--no-summarize', default=True,
               help='Generate cluster summaries using LLM.')
-@click.option('--refine/--no-refine', default=False,
-              help='Use LLM to detect story boundaries within clusters (slower but more accurate).')
+@click.option('--refine/--no-refine', default=True,
+              help='Use LLM to detect story boundaries (default: enabled). Use --no-refine to skip.')
 @click.option('--max-gap', default=2.0, type=float,
               help='Maximum time gap (seconds) between segments to consider clustering.')
 @click.option('--concurrency', '-c', default=10, type=int,
@@ -709,8 +709,8 @@ def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap, concurr
     Examples:
         nolan cluster video.mp4 -o clusters.json
         nolan cluster --all -o all_clusters.json
-        nolan cluster video.mp4 --refine  # Use LLM for better boundaries
-        nolan cluster video.mp4 --refine -c 15 --chunk-size 40  # Custom settings
+        nolan cluster video.mp4 --no-refine  # Skip LLM boundary detection (faster)
+        nolan cluster video.mp4 -c 15 --chunk-size 40  # Custom settings
     """
     config = ctx.obj['config']
     db_path = Path(config.indexing.database).expanduser()
