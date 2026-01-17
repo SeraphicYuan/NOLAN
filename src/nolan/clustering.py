@@ -59,7 +59,14 @@ class SceneCluster:
         locations = set()
         for seg in self.segments:
             if seg.inferred_context and seg.inferred_context.location:
-                locations.add(seg.inferred_context.location)
+                loc = seg.inferred_context.location
+                # Handle location as list or string
+                if isinstance(loc, list):
+                    for item in loc:
+                        if item:
+                            locations.add(str(item))
+                elif loc:
+                    locations.add(str(loc))
         return sorted(locations)
 
     @property
@@ -125,13 +132,25 @@ def _people_overlap(people1: List[str], people2: List[str]) -> float:
     return len(intersection) / len(union)
 
 
-def _location_similar(loc1: Optional[str], loc2: Optional[str]) -> bool:
+def _normalize_location(loc) -> Optional[str]:
+    """Normalize location to string (handles list or string input)."""
+    if loc is None:
+        return None
+    if isinstance(loc, list):
+        # Join list items into single string
+        loc = " ".join(str(item) for item in loc if item)
+    if not isinstance(loc, str):
+        loc = str(loc)
+    return loc.lower().strip() if loc else None
+
+
+def _location_similar(loc1, loc2) -> bool:
     """Check if two locations are similar."""
+    loc1 = _normalize_location(loc1)
+    loc2 = _normalize_location(loc2)
+
     if not loc1 or not loc2:
         return False
-
-    loc1 = loc1.lower().strip()
-    loc2 = loc2.lower().strip()
 
     # Exact match
     if loc1 == loc2:
