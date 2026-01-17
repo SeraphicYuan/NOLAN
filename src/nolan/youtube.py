@@ -211,6 +211,58 @@ class YouTubeClient:
             except Exception as e:
                 raise RuntimeError(f"Failed to get video info: {e}")
 
+    def _cleanup_temp_files(self, title: str) -> None:
+        """Clean up temporary files left by yt-dlp after download.
+
+        Removes .webm fragments, .temp.* files, and other intermediates
+        that may be left behind after merge (especially on merge failure).
+
+        Args:
+            title: Video title to match files against.
+        """
+        if not self.output_dir.exists():
+            return
+
+        # Patterns to clean up (match by title prefix)
+        cleanup_extensions = ['.webm', '.m4a', '.part', '.ytdl']
+        cleanup_patterns = ['.temp.', '.f247.', '.f248.', '.f251', '.f140.']
+
+        for file_path in self.output_dir.iterdir():
+            if not file_path.is_file():
+                continue
+
+            filename = file_path.name
+
+            # Check if this file belongs to the downloaded video
+            # (title may have special chars replaced, so be flexible)
+            title_words = title.lower().split()[:3]  # First 3 words
+            filename_lower = filename.lower()
+
+            # Match if first few title words appear in filename
+            matches_title = all(word in filename_lower for word in title_words if len(word) > 2)
+
+            if matches_title:
+                # Check if it's a temp file to clean
+                should_delete = False
+
+                # Check extensions
+                if any(filename.endswith(ext) for ext in cleanup_extensions):
+                    should_delete = True
+
+                # Check patterns in filename
+                if any(pattern in filename for pattern in cleanup_patterns):
+                    should_delete = True
+
+                # Don't delete the final video or subtitles
+                if filename.endswith('.mp4') or filename.endswith('.srt') or filename.endswith('.vtt'):
+                    should_delete = False
+
+                if should_delete:
+                    try:
+                        file_path.unlink()
+                    except Exception:
+                        pass  # Ignore cleanup errors
+
     def download(
         self,
         url: str,
@@ -231,6 +283,7 @@ class YouTubeClient:
 
         # Track the actual output file
         downloaded_file = None
+        video_title = None
 
         def track_filename(d):
             nonlocal downloaded_file
@@ -243,10 +296,13 @@ class YouTubeClient:
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             try:
-                info = ydl.extract_info(url, download=True)
-
+                # Get info first (for cleanup on failure)
+                info = ydl.extract_info(url, download=False)
                 video_id = info.get('id', '')
-                title = info.get('title', 'Unknown')
+                video_title = info.get('title', 'Unknown')
+
+                # Now download
+                info = ydl.extract_info(url, download=True)
 
                 # Determine output path
                 if downloaded_file:
@@ -255,7 +311,7 @@ class YouTubeClient:
                     if not output_path.exists():
                         output_path = output_path.with_suffix('.mp4')
                 else:
-                    output_path = self.output_dir / f"{title}.mp4"
+                    output_path = self.output_dir / f"{video_title}.mp4"
 
                 # Check for subtitles
                 subtitles_path = None
@@ -268,19 +324,27 @@ class YouTubeClient:
                     if subtitles_path:
                         break
 
+                # Clean up temp files
+                if video_title:
+                    self._cleanup_temp_files(video_title)
+
                 return DownloadResult(
                     success=True,
                     video_id=video_id,
-                    title=title,
+                    title=video_title,
                     output_path=output_path if output_path.exists() else None,
                     subtitles_path=subtitles_path,
                 )
 
             except Exception as e:
+                # Still try to clean up on failure
+                if video_title:
+                    self._cleanup_temp_files(video_title)
+
                 return DownloadResult(
                     success=False,
                     video_id='',
-                    title='',
+                    title=video_title or '',
                     error=str(e),
                 )
 
