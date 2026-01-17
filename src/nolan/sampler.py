@@ -377,23 +377,23 @@ class FFmpegSceneSampler(FrameSampler):
     def _detect_scene_timestamps(self, video_path: Path) -> list[tuple[float, str]]:
         """Use FFmpeg to detect scene change timestamps.
 
+        Uses ffmpeg -vf with select and showinfo filters, which handles
+        paths with special characters better than ffprobe's movie filter.
+
         Returns:
             List of (timestamp, reason) tuples.
         """
         import subprocess
         import re
 
-        # FFmpeg command to detect scene changes
-        # Uses select filter with scene detection, outputs timestamp for each selected frame
+        # FFmpeg command using -vf filter (better path handling than movie filter)
+        # showinfo outputs frame details including pts_time
         cmd = [
-            "ffprobe",
-            "-v", "quiet",
-            "-show_entries", "frame=pts_time",
-            "-select_streams", "v:0",
-            "-of", "csv=p=0",
-            "-f", "lavfi",
-            f"movie='{str(video_path).replace(chr(92), '/').replace(':', r'\\:')}',"
-            f"select='gt(scene,{self.scene_threshold})'"
+            "ffmpeg",
+            "-i", str(video_path),
+            "-vf", f"select='gt(scene,{self.scene_threshold})',showinfo",
+            "-f", "null",
+            "-"
         ]
 
         try:
@@ -404,18 +404,24 @@ class FFmpegSceneSampler(FrameSampler):
                 timeout=300,
             )
 
+            # Parse pts_time from showinfo output (in stderr)
             timestamps = []
-            for line in result.stdout.strip().split('\n'):
-                if line:
-                    try:
-                        ts = float(line.strip())
-                        timestamps.append((ts, f"scene_change (ffmpeg)"))
-                    except ValueError:
-                        continue
+            # Pattern matches: pts_time:123.456
+            pattern = re.compile(r'pts_time:([\d.]+)')
+
+            for line in result.stderr.split('\n'):
+                if 'showinfo' in line and 'pts_time' in line:
+                    match = pattern.search(line)
+                    if match:
+                        try:
+                            ts = float(match.group(1))
+                            timestamps.append((ts, "scene_change (ffmpeg)"))
+                        except ValueError:
+                            continue
 
             return timestamps
 
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        except (subprocess.TimeoutExpired, FileNotFoundError):
             # FFmpeg not available, return empty list
             return []
 

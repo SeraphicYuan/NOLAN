@@ -1410,10 +1410,24 @@ class HybridVideoIndexer:
         """
         video_extensions = {'.mp4', '.mov', '.avi', '.mkv', '.webm'}
 
+        # Patterns for yt-dlp intermediate/fragment files to exclude
+        # e.g., video.f247.webm, video.f251-11.webm, video.part
+        import re
+        fragment_pattern = re.compile(r'\.f\d+(-\d+)?\.|\.(part|temp)\.')
+
+        def is_valid_video(p: Path) -> bool:
+            """Check if path is a valid video (not a fragment/temp file)."""
+            if p.suffix.lower() not in video_extensions:
+                return False
+            # Exclude yt-dlp fragment files
+            if fragment_pattern.search(p.name):
+                return False
+            return True
+
         pattern = '**/*' if recursive else '*'
         videos = [
             p for p in directory.glob(pattern)
-            if p.suffix.lower() in video_extensions
+            if is_valid_video(p)
         ]
 
         stats = {'total': len(videos), 'indexed': 0, 'skipped': 0, 'segments': 0}
