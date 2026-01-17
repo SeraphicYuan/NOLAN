@@ -683,8 +683,12 @@ def _export_all_videos(index, output_path):
               help='Use LLM to detect story boundaries within clusters (slower but more accurate).')
 @click.option('--max-gap', default=2.0, type=float,
               help='Maximum time gap (seconds) between segments to consider clustering.')
+@click.option('--concurrency', '-c', default=10, type=int,
+              help='Max concurrent API calls for summary generation (default 10).')
+@click.option('--chunk-size', default=30, type=int,
+              help='Segments per batch for boundary detection (default 30).')
 @click.pass_context
-def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap):
+def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap, concurrency, chunk_size):
     """Cluster video segments into story moments.
 
     VIDEO is the path to an indexed video file.
@@ -698,6 +702,7 @@ def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap):
         nolan cluster video.mp4 -o clusters.json
         nolan cluster --all -o all_clusters.json
         nolan cluster video.mp4 --refine  # Use LLM for better boundaries
+        nolan cluster video.mp4 --refine -c 15 --chunk-size 40  # Custom settings
     """
     config = ctx.obj['config']
     db_path = Path(config.indexing.database).expanduser()
@@ -708,14 +713,14 @@ def cluster(ctx, video, output, cluster_all, summarize, refine, max_gap):
         return
 
     if cluster_all:
-        asyncio.run(_cluster_all_videos(config, db_path, output, summarize, refine, max_gap))
+        asyncio.run(_cluster_all_videos(config, db_path, output, summarize, refine, max_gap, concurrency, chunk_size))
     elif video:
-        asyncio.run(_cluster_video(config, db_path, Path(video), output, summarize, refine, max_gap))
+        asyncio.run(_cluster_video(config, db_path, Path(video), output, summarize, refine, max_gap, concurrency, chunk_size))
     else:
         click.echo("Error: Provide a VIDEO path or use --all flag.")
 
 
-async def _cluster_video(config, db_path, video_path, output_path, summarize, refine, max_gap):
+async def _cluster_video(config, db_path, video_path, output_path, summarize, refine, max_gap, concurrency, chunk_size):
     """Cluster segments for a single video."""
     import json
     from nolan.indexer import VideoIndex
@@ -745,24 +750,32 @@ async def _cluster_video(config, db_path, video_path, output_path, summarize, re
     # Cluster segments
     click.echo("Clustering segments...")
     clusters = cluster_segments(segments, max_gap=max_gap)
-    click.echo(f"Created {len(clusters)} clusters")
+    click.echo(f"Created {len(clusters)} initial clusters")
 
-    # Refine with LLM story boundary detection
+    # Refine with LLM story boundary detection (smart chunking)
     if refine and config.gemini.api_key:
-        click.echo("Refining clusters with LLM story boundary detection...")
+        click.echo(f"Detecting story boundaries (chunk_size={chunk_size})...")
         from nolan.llm import GeminiClient
         llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
-        detector = StoryBoundaryDetector(llm)
-        clusters = await detector.refine_clusters(clusters)
+        detector = StoryBoundaryDetector(llm, chunk_size=chunk_size)
+
+        def refine_progress(current, total, msg):
+            click.echo(f"  [{current}/{total}] {msg}")
+
+        clusters = await detector.refine_clusters(clusters, progress_callback=refine_progress)
         click.echo(f"Refined to {len(clusters)} clusters")
 
-    # Generate summaries
+    # Generate summaries (async batch processing)
     if summarize and config.gemini.api_key:
-        click.echo("Generating cluster summaries...")
+        click.echo(f"Generating cluster summaries (concurrency={concurrency})...")
         from nolan.llm import GeminiClient
         llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
-        analyzer = ClusterAnalyzer(llm)
-        clusters = await analyzer.analyze_clusters(clusters)
+        analyzer = ClusterAnalyzer(llm, concurrency=concurrency)
+
+        def summary_progress(current, total, msg):
+            click.echo(f"  [{current}/{total}] {msg}")
+
+        clusters = await analyzer.analyze_clusters(clusters, progress_callback=summary_progress)
 
     # Save clusters to database
     import sqlite3
@@ -824,7 +837,7 @@ async def _cluster_video(config, db_path, video_path, output_path, summarize, re
         click.echo(f"  Cluster {c.id}: {c.timestamp_formatted} ({len(c.segments)} segments, {c.duration:.1f}s)")
 
 
-async def _cluster_all_videos(config, db_path, output_path, summarize, refine, max_gap):
+async def _cluster_all_videos(config, db_path, output_path, summarize, refine, max_gap, concurrency, chunk_size):
     """Cluster all indexed videos."""
     import json
     import sqlite3
@@ -842,9 +855,15 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
 
     # Setup LLM if needed
     llm = None
+    detector = None
+    analyzer = None
     if (summarize or refine) and config.gemini.api_key:
         from nolan.llm import GeminiClient
         llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
+        if refine:
+            detector = StoryBoundaryDetector(llm, chunk_size=chunk_size)
+        if summarize:
+            analyzer = ClusterAnalyzer(llm, concurrency=concurrency)
 
     output = {'videos': []}
 
@@ -858,17 +877,17 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
 
         # Cluster
         clusters = cluster_segments(segments, max_gap=max_gap)
-        click.echo(f"  Created {len(clusters)} clusters from {len(segments)} segments")
+        click.echo(f"  Created {len(clusters)} initial clusters from {len(segments)} segments")
 
-        # Refine
-        if refine and llm:
-            detector = StoryBoundaryDetector(llm)
+        # Refine with smart chunking
+        if refine and detector:
             clusters = await detector.refine_clusters(clusters)
+            click.echo(f"  Refined to {len(clusters)} clusters")
 
-        # Summarize
-        if summarize and llm:
-            analyzer = ClusterAnalyzer(llm)
+        # Summarize with async batch processing
+        if summarize and analyzer:
             clusters = await analyzer.analyze_clusters(clusters)
+            click.echo(f"  Generated {len(clusters)} summaries")
 
         # Save clusters to database
         video_id = index.get_video_id_by_path(video_path)

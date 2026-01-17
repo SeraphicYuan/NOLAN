@@ -1,5 +1,6 @@
 """Scene clustering for grouping continuous segments into story moments."""
 
+import asyncio
 import json
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
@@ -259,13 +260,15 @@ def cluster_segments(segments: List[VideoSegment],
 class ClusterAnalyzer:
     """Generates summaries for scene clusters using LLM."""
 
-    def __init__(self, llm_client):
+    def __init__(self, llm_client, concurrency: int = 10):
         """Initialize cluster analyzer.
 
         Args:
             llm_client: LLM client for text generation.
+            concurrency: Max concurrent API calls for batch processing.
         """
         self.llm = llm_client
+        self.concurrency = concurrency
 
     async def generate_cluster_summary(self, cluster: SceneCluster) -> str:
         """Generate a summary for a scene cluster.
@@ -308,110 +311,232 @@ Respond with ONLY the summary, no additional formatting."""
             summaries = [s.combined_summary or s.frame_description for s in cluster.segments]
             return " ".join(summaries[:3]) + "..."
 
-    async def analyze_clusters(self, clusters: List[SceneCluster]) -> List[SceneCluster]:
-        """Generate summaries for all clusters.
+    async def analyze_clusters(
+        self,
+        clusters: List[SceneCluster],
+        progress_callback=None
+    ) -> List[SceneCluster]:
+        """Generate summaries for all clusters using async batch processing.
 
         Args:
             clusters: List of clusters to analyze.
+            progress_callback: Optional callback(current, total, message).
 
         Returns:
             Same clusters with summaries populated.
         """
+        if not clusters:
+            return clusters
+
+        semaphore = asyncio.Semaphore(self.concurrency)
+        completed = 0
+        completed_lock = asyncio.Lock()
+
+        async def process_cluster(cluster: SceneCluster) -> tuple:
+            nonlocal completed
+            async with semaphore:
+                summary = await self.generate_cluster_summary(cluster)
+                async with completed_lock:
+                    completed += 1
+                    if progress_callback:
+                        progress_callback(completed, len(clusters), f"Cluster {cluster.id}")
+                return (cluster.id, summary)
+
+        # Process all clusters concurrently
+        tasks = [process_cluster(c) for c in clusters]
+        results = await asyncio.gather(*tasks)
+
+        # Apply summaries (results may be out of order)
+        summary_map = {cid: summary for cid, summary in results}
         for cluster in clusters:
-            cluster.cluster_summary = await self.generate_cluster_summary(cluster)
+            cluster.cluster_summary = summary_map.get(cluster.id, "")
+
         return clusters
 
 
 class StoryBoundaryDetector:
-    """Detects story boundaries using LLM for more nuanced clustering."""
+    """Detects story boundaries using LLM with smart batch processing."""
 
-    def __init__(self, llm_client):
+    def __init__(self, llm_client, chunk_size: int = 30):
         """Initialize detector.
 
         Args:
             llm_client: LLM client for analysis.
+            chunk_size: Number of segments to process per LLM call.
         """
         self.llm = llm_client
+        self.chunk_size = chunk_size
 
-    async def detect_boundary(self, seg1: VideoSegment, seg2: VideoSegment) -> bool:
-        """Detect if there's a story boundary between two segments.
+    async def detect_boundaries_batch(self, segments: List[VideoSegment]) -> List[int]:
+        """Detect all story boundaries within a batch of segments.
 
         Args:
-            seg1: First segment.
-            seg2: Second segment.
+            segments: List of consecutive segments to analyze.
 
         Returns:
-            True if there's a story boundary between them.
+            List of indices where boundaries occur (boundary AFTER that index).
+            E.g., [5, 12] means boundaries after segments 5 and 12.
         """
-        summary1 = seg1.combined_summary or seg1.frame_description
-        summary2 = seg2.combined_summary or seg2.frame_description
+        if len(segments) <= 1:
+            return []
 
-        prompt = f"""Analyze these two consecutive video segments and determine if they represent a story boundary (scene change, topic shift, new narrative beat).
+        # Build segment summaries for prompt
+        segment_lines = []
+        for i, seg in enumerate(segments):
+            summary = seg.combined_summary or seg.frame_description
+            transcript_preview = (seg.transcript or "")[:100]
+            segment_lines.append(
+                f"{i}. [{seg.timestamp_formatted}] {summary[:150]}"
+                + (f" | \"{transcript_preview}...\"" if transcript_preview else "")
+            )
 
-SEGMENT 1 ({seg1.timestamp_formatted}):
-Visual: {summary1}
-Transcript: {seg1.transcript or "(none)"}
+        prompt = f"""Analyze these consecutive video segments and identify where STORY BOUNDARIES occur.
 
-SEGMENT 2 ({seg2.timestamp_formatted}):
-Visual: {summary2}
-Transcript: {seg2.transcript or "(none)"}
+A story boundary is where there's a significant change in:
+- Scene/location change
+- Topic or subject shift
+- New character introduction
+- Narrative beat change
+- Time jump
 
-Is there a significant story boundary between these segments?
-Consider: scene change, topic shift, character change, location change, narrative beat change.
+SEGMENTS ({len(segments)} total):
+{chr(10).join(segment_lines)}
 
-Respond with only "YES" or "NO"."""
+Return ONLY a JSON array of segment indices where boundaries occur.
+The boundary is AFTER that segment index.
+Example: [3, 8, 15] means story changes after segments 3, 8, and 15.
+If no clear boundaries, return [].
+
+JSON array:"""
 
         try:
             response = await self.llm.generate(prompt)
-            return response.strip().upper().startswith("YES")
-        except Exception:
-            return False
+            response = response.strip()
 
-    async def refine_clusters(self, clusters: List[SceneCluster]) -> List[SceneCluster]:
-        """Refine clusters by detecting story boundaries within them.
+            # Extract JSON array from response
+            if "[" in response and "]" in response:
+                start = response.index("[")
+                end = response.rindex("]") + 1
+                json_str = response[start:end]
+                boundaries = json.loads(json_str)
+
+                # Validate indices
+                valid = [
+                    int(b) for b in boundaries
+                    if isinstance(b, (int, float)) and 0 <= int(b) < len(segments) - 1
+                ]
+                return sorted(set(valid))
+            return []
+        except Exception:
+            return []
+
+    async def detect_all_boundaries(
+        self,
+        segments: List[VideoSegment],
+        progress_callback=None
+    ) -> List[int]:
+        """Detect all story boundaries using smart adaptive chunking.
+
+        Uses smart chunking: each batch starts right after the last detected
+        boundary, ensuring no boundaries are missed at chunk edges.
 
         Args:
-            clusters: Initial clusters.
+            segments: All segments to analyze.
+            progress_callback: Optional callback(current, total, message).
 
         Returns:
-            Refined clusters with story boundaries detected.
+            List of global indices where boundaries occur.
         """
-        refined = []
-        cluster_id = 0
+        if len(segments) <= 1:
+            return []
 
-        for cluster in clusters:
-            if len(cluster.segments) <= 1:
-                cluster.id = cluster_id
-                refined.append(cluster)
-                cluster_id += 1
-                continue
+        all_boundaries = []
+        start = 0
+        batch_num = 0
+        total_batches_est = (len(segments) // self.chunk_size) + 1
 
-            # Check for boundaries within cluster
-            current_segments = [cluster.segments[0]]
+        while start < len(segments) - 1:
+            end = min(start + self.chunk_size, len(segments))
+            chunk = segments[start:end]
 
-            for i in range(1, len(cluster.segments)):
-                has_boundary = await self.detect_boundary(
-                    cluster.segments[i - 1],
-                    cluster.segments[i]
+            batch_num += 1
+            if progress_callback:
+                progress_callback(
+                    batch_num, total_batches_est,
+                    f"Analyzing segments {start}-{end-1}"
                 )
 
-                if has_boundary:
-                    # Split here
-                    refined.append(SceneCluster(
-                        id=cluster_id,
-                        segments=current_segments
-                    ))
-                    cluster_id += 1
-                    current_segments = [cluster.segments[i]]
-                else:
-                    current_segments.append(cluster.segments[i])
+            # Get boundaries in this chunk (relative indices)
+            chunk_boundaries = await self.detect_boundaries_batch(chunk)
 
-            # Add remaining
-            if current_segments:
+            # Convert to global indices
+            for idx in chunk_boundaries:
+                global_idx = start + idx
+                all_boundaries.append(global_idx)
+
+            if chunk_boundaries:
+                # Smart chunking: start next batch right after last boundary
+                last_boundary_global = start + chunk_boundaries[-1]
+                start = last_boundary_global + 1
+            else:
+                # No boundaries found, move to end of chunk
+                start = end
+
+        return sorted(set(all_boundaries))
+
+    async def refine_clusters(
+        self,
+        clusters: List[SceneCluster],
+        progress_callback=None
+    ) -> List[SceneCluster]:
+        """Refine clusters by detecting story boundaries using smart batching.
+
+        Args:
+            clusters: Initial clusters (typically 1 big cluster).
+            progress_callback: Optional callback for progress updates.
+
+        Returns:
+            Refined clusters split at detected story boundaries.
+        """
+        # Flatten all segments from all clusters
+        all_segments = []
+        for cluster in clusters:
+            all_segments.extend(cluster.segments)
+
+        if len(all_segments) <= 1:
+            return clusters
+
+        # Sort by timestamp
+        all_segments.sort(key=lambda s: s.timestamp_start)
+
+        # Detect all boundaries using smart chunking
+        boundaries = await self.detect_all_boundaries(
+            all_segments,
+            progress_callback=progress_callback
+        )
+
+        # Split segments at boundaries
+        refined = []
+        cluster_id = 0
+        current_segments = []
+
+        for i, seg in enumerate(all_segments):
+            current_segments.append(seg)
+
+            # Check if there's a boundary after this segment
+            if i in boundaries:
                 refined.append(SceneCluster(
                     id=cluster_id,
                     segments=current_segments
                 ))
                 cluster_id += 1
+                current_segments = []
+
+        # Add final cluster
+        if current_segments:
+            refined.append(SceneCluster(
+                id=cluster_id,
+                segments=current_segments
+            ))
 
         return refined
