@@ -2,12 +2,52 @@
 import { Router } from 'express';
 import { jobQueue } from '../jobs/queue.js';
 import { RenderSpec } from '../jobs/types.js';
+import { hasEffect, transformToEngineData } from '../effects/index.js';
 
 const router = Router();
 
 // POST /render - Submit a new render job
+// Supports two formats:
+// 1. Effect-based: { effect: "image-ken-burns", params: { ... } }
+// 2. Direct engine: { engine: "remotion", data: { ... } }
 router.post('/', (req, res) => {
-  const spec: RenderSpec = req.body;
+  const body = req.body;
+
+  // Check if this is an effect-based request
+  if (body.effect) {
+    const effectId = body.effect as string;
+    const params = body.params || {};
+
+    if (!hasEffect(effectId)) {
+      return res.status(400).json({ error: `Unknown effect: ${effectId}` });
+    }
+
+    const transformed = transformToEngineData(effectId, params);
+    if (!transformed) {
+      return res.status(500).json({ error: 'Failed to transform effect params' });
+    }
+
+    const spec: RenderSpec = {
+      engine: transformed.engine as 'remotion' | 'motion-canvas' | 'infographic',
+      data: transformed.data,
+      width: body.width,
+      height: body.height,
+      duration: body.duration,
+    };
+
+    const job = jobQueue.createJob(spec);
+
+    return res.status(202).json({
+      job_id: job.id,
+      status: job.status,
+      effect: effectId,
+      engine: transformed.engine,
+      poll_url: `/render/status/${job.id}`,
+    });
+  }
+
+  // Direct engine format (original behavior)
+  const spec: RenderSpec = body;
 
   if (!spec.engine) {
     return res.status(400).json({ error: 'engine is required' });
@@ -19,13 +59,10 @@ router.post('/', (req, res) => {
 
   const job = jobQueue.createJob(spec);
 
-  // TODO: Actually start rendering (Phase 2)
-  // For now, just create the job
-
   res.status(202).json({
     job_id: job.id,
     status: job.status,
-    poll_url: `/render/status/${job.id}`
+    poll_url: `/render/status/${job.id}`,
   });
 });
 

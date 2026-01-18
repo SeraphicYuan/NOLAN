@@ -2,7 +2,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import puppeteer from 'puppeteer';
+import type { RenderSpec } from '../jobs/types.js';
 import { RenderEngine, RenderResult } from './types.js';
+import { ensureDir } from './utils.js';
+import { EXTENDED_THEMES, INFOGRAPHIC_THEME_PRESETS } from '../themes.js';
 
 type EngineMode = 'auto' | 'antv' | 'svg';
 
@@ -12,11 +15,17 @@ type EngineMode = 'auto' | 'antv' | 'svg';
 export class InfographicEngine implements RenderEngine {
   name = 'infographic';
 
-  async render(spec: Record<string, unknown>, outputDir: string): Promise<RenderResult> {
+  async render(spec: RenderSpec, outputDir: string): Promise<RenderResult> {
     console.log('[InfographicEngine] Starting render...');
 
     const mode = this.getEngineMode(spec);
-    if (mode !== 'svg') {
+    const data = spec.data as Record<string, unknown> | undefined;
+    const items = this.normalizeItems(data?.items);
+    const hasItems = items.length > 0;
+    if (!hasItems && mode !== 'svg') {
+      console.warn('[InfographicEngine] No items provided; skipping AntV and using SVG fallback.');
+    }
+    if (mode !== 'svg' && hasItems) {
       const antvResult = await this.renderWithAntv(spec, outputDir);
       if (antvResult.success || mode === 'antv') {
         return antvResult;
@@ -27,8 +36,9 @@ export class InfographicEngine implements RenderEngine {
     return this.renderWithSvg(spec, outputDir);
   }
 
-  private getEngineMode(spec: Record<string, unknown>): EngineMode {
-    const specMode = (spec.engine_mode ?? spec.engineMode ?? spec.mode) as string | undefined;
+  private getEngineMode(spec: RenderSpec): EngineMode {
+    const specAny = spec as unknown as Record<string, unknown>;
+    const specMode = (spec.engine_mode ?? specAny.engineMode ?? specAny.mode) as string | undefined;
     const envMode = process.env.INFOGRAPHIC_ENGINE;
     const raw = (specMode || envMode || 'auto').toLowerCase();
     if (raw === 'antv' || raw === 'svg' || raw === 'auto') {
@@ -37,19 +47,31 @@ export class InfographicEngine implements RenderEngine {
     return 'auto';
   }
 
-  private async renderWithAntv(spec: Record<string, unknown>, outputDir: string): Promise<RenderResult> {
+  private async renderWithAntv(spec: RenderSpec, outputDir: string): Promise<RenderResult> {
     try {
       const width = (spec.width as number) || 1920;
       const height = (spec.height as number) || 1080;
       const markup = this.getMarkup(spec);
+      const formats = this.resolveOutputFormats(spec);
+      console.log('[InfographicEngine] Output formats:', formats.join(', '));
 
       const svgContent = await this.renderMarkupWithPuppeteer(markup, width, height);
 
-      fs.mkdirSync(outputDir, { recursive: true });
-      const outputPath = path.join(outputDir, `infographic_${Date.now()}.svg`);
-      fs.writeFileSync(outputPath, svgContent, 'utf8');
+      ensureDir(outputDir);
+      const baseName = `infographic_${Date.now()}`;
+      const svgPath = path.join(outputDir, `${baseName}.svg`);
+      if (formats.includes('svg')) {
+        fs.writeFileSync(svgPath, svgContent, 'utf8');
+      }
+      let pngPath: string | null = null;
+      if (formats.includes('png')) {
+        const pngBuffer = await this.renderSvgToPng(svgContent, width, height);
+        pngPath = path.join(outputDir, `${baseName}.png`);
+        fs.writeFileSync(pngPath, pngBuffer);
+      }
 
-      console.log('[InfographicEngine] AntV SVG saved to:', outputPath);
+      const outputPath = formats.includes('svg') ? svgPath : pngPath ?? svgPath;
+      console.log('[InfographicEngine] AntV output saved to:', outputPath);
 
       return {
         success: true,
@@ -268,20 +290,25 @@ export class InfographicEngine implements RenderEngine {
     return bundlePath;
   }
 
-  private getMarkup(spec: Record<string, unknown>): string {
+  private getMarkup(spec: RenderSpec): string {
     if (typeof spec.markup === 'string' && spec.markup.trim()) {
       return spec.markup;
     }
     return this.buildMarkup(spec);
   }
 
-  private buildMarkup(spec: Record<string, unknown>): string {
-    const template = this.resolveAntvTemplate((spec.template as string) || 'list-row-simple');
+  private buildMarkup(spec: RenderSpec): string {
+    const template = this.resolveTemplate(spec);
     const data = (spec.data as Record<string, unknown>) || {};
     const title = (data.title as string) || '';
-    const items = this.normalizeItems(data.items);
+    const theme = this.resolveThemeName(spec, data);
+    const themeConfig = this.resolveThemeConfig(spec, data);
+    const items = this.prepareItemsForTemplate(template, this.normalizeItems(data.items));
 
     let markup = `infographic ${template}\n`;
+    if (themeConfig || (theme && theme !== 'default')) {
+      markup += this.buildThemeMarkup(theme, themeConfig);
+    }
     markup += 'data\n';
 
     if (title) {
@@ -291,17 +318,118 @@ export class InfographicEngine implements RenderEngine {
     if (items.length) {
       markup += '  items\n';
       for (const item of items) {
-        markup += `    - label ${this.normalizeText(item.label || '')}\n`;
+        if (item.label) {
+          markup += `    - label ${this.normalizeText(item.label)}\n`;
+        } else {
+          markup += '    -\n';
+        }
         if (item.desc) {
           markup += `      desc ${this.normalizeText(item.desc)}\n`;
         }
         if (item.value !== undefined) {
           markup += `      value ${this.normalizeText(String(item.value))}\n`;
         }
+        if (item.children && item.children.length) {
+          markup += '      children\n';
+          for (const child of item.children) {
+            if (child.label) {
+              markup += `        - label ${this.normalizeText(child.label)}\n`;
+            } else {
+              markup += '        -\n';
+            }
+            if (child.desc) {
+              markup += `          desc ${this.normalizeText(child.desc)}\n`;
+            }
+            if (child.value !== undefined) {
+              markup += `          value ${this.normalizeText(String(child.value))}\n`;
+            }
+          }
+        }
       }
     }
 
     return markup;
+  }
+
+  private resolveOutputFormats(spec: RenderSpec): string[] {
+    const data = (spec.data as Record<string, unknown>) || {};
+    const specAny = spec as unknown as Record<string, unknown>;
+    const raw =
+      (Array.isArray(data.output_formats) ? data.output_formats : null) ??
+      (Array.isArray(specAny.output_formats) ? specAny.output_formats : null);
+    const exportPng =
+      typeof data.export_png === 'boolean'
+        ? data.export_png
+        : typeof specAny.export_png === 'boolean'
+          ? specAny.export_png
+          : false;
+    const formats = new Set<string>();
+    if (Array.isArray(raw)) {
+      for (const entry of raw) {
+        if (typeof entry === 'string') {
+          formats.add(entry.toLowerCase());
+        }
+      }
+    }
+    if (exportPng) {
+      formats.add('png');
+    }
+    if (formats.size === 0) {
+      formats.add('svg');
+    }
+    return Array.from(formats);
+  }
+
+  private resolveTemplate(spec: RenderSpec): string {
+    const specAny = spec as unknown as Record<string, unknown>;
+    const data = (spec.data as Record<string, unknown>) || {};
+    const rawTemplate =
+      typeof spec.template === 'string'
+        ? spec.template
+        : typeof specAny.template === 'string'
+          ? specAny.template
+          : '';
+    const normalized = rawTemplate.trim().toLowerCase();
+    if (normalized && normalized !== 'auto') {
+      return this.resolveAntvTemplate(rawTemplate);
+    }
+    const inferred = this.inferTemplateFromData(data);
+    return this.resolveAntvTemplate(inferred);
+  }
+
+  private inferTemplateFromData(data: Record<string, unknown>): string {
+    const typeHint =
+      typeof data.template_type === 'string'
+        ? data.template_type.toLowerCase()
+        : typeof data.type === 'string'
+          ? data.type.toLowerCase()
+          : '';
+    if (typeHint.includes('compare') || typeHint.includes('comparison')) {
+      return 'comparison';
+    }
+    if (typeHint.includes('timeline')) {
+      return 'timeline';
+    }
+    const items = this.normalizeItems(data.items);
+    if (items.length === 2 && (typeHint.includes('vs') || typeHint.includes('compare'))) {
+      return 'comparison';
+    }
+    const hasDates = Array.isArray(data.items)
+      ? data.items.some((item) => {
+          if (typeof item === 'object' && item !== null) {
+            const record = item as Record<string, unknown>;
+            return typeof record.date === 'string' || typeof record.year === 'string';
+          }
+          return false;
+        })
+      : false;
+    if (hasDates) {
+      return 'timeline';
+    }
+    if (items.length <= 4) {
+      return 'steps';
+    }
+    return 'list';
   }
 
   private resolveAntvTemplate(template: string): string {
@@ -313,9 +441,10 @@ export class InfographicEngine implements RenderEngine {
     const aliasMap: Record<string, string> = {
       steps: 'sequence-steps-simple',
       'sequence-steps-simple': 'sequence-steps-simple',
-      list: 'list-row-horizontal-icon-arrow',
-      'list-row-simple': 'list-row-horizontal-icon-arrow',
+      list: 'list-row-simple-horizontal-arrow',
+      'list-row-simple': 'list-row-simple-horizontal-arrow',
       comparison: 'compare-binary-horizontal-simple-vs',
+      timeline: 'sequence-steps-simple',
     };
 
     return aliasMap[normalized] || normalized;
@@ -323,7 +452,7 @@ export class InfographicEngine implements RenderEngine {
 
   private normalizeItems(
     rawItems: unknown
-  ): Array<{ label?: string; desc?: string; value?: string | number }> {
+  ): Array<{ label?: string; desc?: string; value?: string | number; children?: Array<{ label?: string; desc?: string; value?: string | number }> }> {
     if (!Array.isArray(rawItems)) {
       return [];
     }
@@ -335,6 +464,7 @@ export class InfographicEngine implements RenderEngine {
 
       if (typeof item === 'object' && item !== null) {
         const obj = item as Record<string, unknown>;
+        const children = this.normalizeItems(obj.children);
         return {
           label: typeof obj.label === 'string' ? obj.label : undefined,
           desc:
@@ -344,6 +474,7 @@ export class InfographicEngine implements RenderEngine {
                 ? obj.description
                 : undefined,
           value: typeof obj.value === 'string' || typeof obj.value === 'number' ? obj.value : undefined,
+          children: children.length ? children : undefined,
         };
       }
 
@@ -351,38 +482,51 @@ export class InfographicEngine implements RenderEngine {
     });
   }
 
+  private prepareItemsForTemplate(
+    template: string,
+    items: Array<{ label?: string; desc?: string; value?: string | number; children?: Array<{ label?: string; desc?: string; value?: string | number }> }>
+  ): Array<{ label?: string; desc?: string; value?: string | number; children?: Array<{ label?: string; desc?: string; value?: string | number }> }> {
+    if (!template.startsWith('compare-')) {
+      return items;
+    }
+    if (items.some((item) => Array.isArray(item.children) && item.children.length)) {
+      return items;
+    }
+    if (items.length === 0) {
+      return items;
+    }
+
+    const leftChildren: typeof items = [];
+    const rightChildren: typeof items = [];
+    items.forEach((item, index) => {
+      if (index % 2 === 0) {
+        leftChildren.push(item);
+      } else {
+        rightChildren.push(item);
+      }
+    });
+
+    return [
+      {
+        label: leftChildren[0]?.label || 'Group A',
+        children: leftChildren,
+      },
+      {
+        label: rightChildren[0]?.label || 'Group B',
+        children: rightChildren,
+      },
+    ];
+  }
+
   private getThemeColors(theme: string): { primary: string; secondary: string; text: string; bg: string; accent: string } {
-    const themes: Record<string, { primary: string; secondary: string; text: string; bg: string; accent: string }> = {
-      default: {
-        primary: '#3498db',
-        secondary: '#2ecc71',
-        text: '#2c3e50',
-        bg: '#ffffff',
-        accent: '#e74c3c',
-      },
-      dark: {
-        primary: '#9b59b6',
-        secondary: '#1abc9c',
-        text: '#ecf0f1',
-        bg: '#2c3e50',
-        accent: '#e74c3c',
-      },
-      warm: {
-        primary: '#e67e22',
-        secondary: '#f39c12',
-        text: '#34495e',
-        bg: '#fdf6e3',
-        accent: '#c0392b',
-      },
-      cool: {
-        primary: '#2980b9',
-        secondary: '#27ae60',
-        text: '#2c3e50',
-        bg: '#ecf0f1',
-        accent: '#8e44ad',
-      },
+    const t = EXTENDED_THEMES[theme] ?? EXTENDED_THEMES.default;
+    return {
+      primary: t.primary,
+      secondary: t.secondary,
+      text: t.text,
+      bg: t.background,
+      accent: t.accent ?? '#e74c3c',
     };
-    return themes[theme] || themes.default;
   }
 
   private escapeXml(text: string): string {
@@ -398,40 +542,176 @@ export class InfographicEngine implements RenderEngine {
     return text.replace(/\s+/g, ' ').trim();
   }
 
-  private async renderWithSvg(spec: Record<string, unknown>, outputDir: string): Promise<RenderResult> {
+  private resolveThemeName(spec: RenderSpec, data: Record<string, unknown> | undefined): string {
+    const specAny = spec as unknown as Record<string, unknown>;
+    const dataRecord = data ?? {};
+    const raw =
+      typeof spec.theme === 'string'
+        ? spec.theme
+        : typeof dataRecord.theme === 'string'
+          ? dataRecord.theme
+          : typeof dataRecord.palette === 'string'
+            ? dataRecord.palette
+            : typeof specAny.theme === 'string'
+              ? specAny.theme
+              : '';
+    return raw ? raw : 'default';
+  }
+
+  private resolveThemeConfig(
+    spec: RenderSpec,
+    data: Record<string, unknown> | undefined
+  ): Record<string, unknown> | null {
+    const specAny = spec as unknown as Record<string, unknown>;
+    const dataRecord = data ?? {};
+    const ref =
+      typeof specAny.theme_config_ref === 'string'
+        ? specAny.theme_config_ref
+        : typeof specAny.themeConfigRef === 'string'
+          ? specAny.themeConfigRef
+          : typeof dataRecord.theme_config_ref === 'string'
+            ? dataRecord.theme_config_ref
+            : typeof dataRecord.themeConfigRef === 'string'
+              ? dataRecord.themeConfigRef
+              : null;
+    if (ref && INFOGRAPHIC_THEME_PRESETS[ref]) {
+      return INFOGRAPHIC_THEME_PRESETS[ref];
+    }
+    const raw =
+      typeof specAny.theme_config === 'object'
+        ? specAny.theme_config
+        : typeof specAny.themeConfig === 'object'
+          ? specAny.themeConfig
+          : typeof dataRecord.theme_config === 'object'
+            ? dataRecord.theme_config
+            : typeof dataRecord.themeConfig === 'object'
+              ? dataRecord.themeConfig
+              : null;
+    if (!raw || Array.isArray(raw)) {
+      return null;
+    }
+    return raw as Record<string, unknown>;
+  }
+
+  private buildThemeMarkup(theme: string, themeConfig: Record<string, unknown> | null): string {
+    const lines: string[] = ['theme'];
+    if (theme) {
+      lines.push(`  type ${this.normalizeText(theme)}`);
+    }
+    if (themeConfig) {
+      this.appendThemeLines(lines, themeConfig, 1);
+    }
+    return `${lines.join('\n')}\n`;
+  }
+
+  private appendThemeLines(lines: string[], value: Record<string, unknown>, depth: number): void {
+    const indent = '  '.repeat(depth);
+    for (const [key, raw] of Object.entries(value)) {
+      if (raw === null || raw === undefined) {
+        continue;
+      }
+      if (Array.isArray(raw)) {
+        const list = raw.filter((entry) => entry !== null && entry !== undefined);
+        if (!list.length) {
+          continue;
+        }
+        const formatted = list.map((entry) => String(entry)).join(', ');
+        lines.push(`${indent}${key} ${formatted}`);
+        continue;
+      }
+      if (typeof raw === 'object') {
+        lines.push(`${indent}${key}`);
+        this.appendThemeLines(lines, raw as Record<string, unknown>, depth + 1);
+        continue;
+      }
+      lines.push(`${indent}${key} ${this.normalizeText(String(raw))}`);
+    }
+  }
+
+  private async renderSvgToPng(svgContent: string, width: number, height: number): Promise<Buffer> {
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_PATH;
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+      const page = await browser.newPage();
+      await page.setViewport({ width, height, deviceScaleFactor: 1 });
+      const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; }
+      svg { width: ${width}px; height: ${height}px; display: block; }
+    </style>
+  </head>
+  <body>
+    ${svgContent}
+  </body>
+</html>`;
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
+      const buffer = await page.screenshot({ type: 'png' });
+      await page.close();
+      return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private async renderWithSvg(spec: RenderSpec, outputDir: string): Promise<RenderResult> {
     console.log('[InfographicEngine] Starting SVG fallback render...');
 
     try {
       const width = (spec.width as number) || 1920;
       const height = (spec.height as number) || 1080;
-      const template = (spec.template as string) || 'steps';
       const data = spec.data as Record<string, unknown> | undefined;
-      const theme = (spec.theme as string) || 'default';
+      const template = this.resolveTemplate(spec);
+      const theme = this.resolveThemeName(spec, data);
+      const formats = this.resolveOutputFormats(spec);
+      console.log('[InfographicEngine] Output formats:', formats.join(', '));
 
       const colors = this.getThemeColors(theme);
+      const items = this.normalizeItems(data?.items);
 
       let svgContent: string;
-      switch (template) {
-        case 'steps':
-        case 'sequence-steps-simple':
-          svgContent = this.generateStepsSVG(data, width, height, colors);
-          break;
-        case 'list':
-        case 'list-row-simple':
-          svgContent = this.generateListSVG(data, width, height, colors);
-          break;
-        case 'comparison':
-          svgContent = this.generateComparisonSVG(data, width, height, colors);
-          break;
-        default:
-          svgContent = this.generateStepsSVG(data, width, height, colors);
+      if (items.length === 0) {
+        svgContent = this.generateTitleCardSVG(data, width, height, colors);
+      } else {
+        switch (template) {
+          case 'steps':
+          case 'sequence-steps-simple':
+            svgContent = this.generateStepsSVG(data, width, height, colors);
+            break;
+          case 'list':
+          case 'list-row-simple':
+            svgContent = this.generateListSVG(data, width, height, colors);
+            break;
+          case 'comparison':
+            svgContent = this.generateComparisonSVG(data, width, height, colors);
+            break;
+          default:
+            svgContent = this.generateStepsSVG(data, width, height, colors);
+        }
       }
 
-      fs.mkdirSync(outputDir, { recursive: true });
-      const outputPath = path.join(outputDir, `infographic_${Date.now()}.svg`);
-      fs.writeFileSync(outputPath, svgContent, 'utf8');
+      ensureDir(outputDir);
+      const baseName = `infographic_${Date.now()}`;
+      const svgPath = path.join(outputDir, `${baseName}.svg`);
+      if (formats.includes('svg')) {
+        fs.writeFileSync(svgPath, svgContent, 'utf8');
+      }
+      let pngPath: string | null = null;
+      if (formats.includes('png')) {
+        const pngBuffer = await this.renderSvgToPng(svgContent, width, height);
+        pngPath = path.join(outputDir, `${baseName}.png`);
+        fs.writeFileSync(pngPath, pngBuffer);
+      }
+      const outputPath = formats.includes('svg') ? svgPath : pngPath ?? svgPath;
 
-      console.log('[InfographicEngine] SVG saved to:', outputPath);
+      console.log('[InfographicEngine] SVG output saved to:', outputPath);
 
       return {
         success: true,
@@ -662,5 +942,36 @@ export class InfographicEngine implements RenderEngine {
 </svg>`;
 
     return svg;
+  }
+
+  /**
+   * Generate a title card for text-only scenes.
+   */
+  private generateTitleCardSVG(
+    data: Record<string, unknown> | undefined,
+    width: number,
+    height: number,
+    colors: { primary: string; secondary: string; text: string; bg: string; accent: string }
+  ): string {
+    const title = (data?.title as string) || 'Title';
+    const fontSize = Math.min(120, Math.max(64, Math.round(width * 0.06)));
+    const sublineY = Math.round(height * 0.6);
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+  <defs>
+    <linearGradient id="titleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:${colors.primary};stop-opacity:1" />
+      <stop offset="100%" style="stop-color:${colors.secondary};stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="${width}" height="${height}" fill="${colors.bg}"/>
+  <text x="${width / 2}" y="${height / 2}" font-family="Arial, sans-serif" font-size="${fontSize}"
+        font-weight="700" fill="${colors.text}" text-anchor="middle" dominant-baseline="middle">
+    ${this.escapeXml(title)}
+  </text>
+  <line x1="${width * 0.3}" y1="${sublineY}" x2="${width * 0.7}" y2="${sublineY}"
+        stroke="url(#titleGradient)" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
+</svg>`;
   }
 }

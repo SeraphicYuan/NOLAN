@@ -7,6 +7,8 @@ import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import type { RenderSpec } from '../jobs/types.js';
 import { RenderEngine, RenderResult } from './types.js';
+import { ensureDir, toNumber, toString } from './utils.js';
+import { THEMES } from '../themes.js';
 
 type RemotionPayload = {
   data: Record<string, unknown>;
@@ -25,18 +27,6 @@ const DEFAULT_WIDTH = 1920;
 const DEFAULT_HEIGHT = 1080;
 const DEFAULT_DURATION = 6;
 const DEFAULT_FPS = 30;
-
-function ensureDir(dir: string): void {
-  fs.mkdirSync(dir, { recursive: true });
-}
-
-function toNumber(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-function toString(value: unknown, fallback: string): string {
-  return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
-}
 
 function resolveDuration(spec: RenderSpec): number {
   const data = spec.data ?? {};
@@ -72,10 +62,13 @@ function resolveImagePath(spec: RenderSpec): string | null {
   const data = spec.data ?? {};
   const dataRecord = data as Record<string, unknown>;
   const specAny = spec as unknown as Record<string, unknown>;
+  // Check nested image_focus.image_path (used by Ken Burns preset)
+  const imageFocus = dataRecord.image_focus as Record<string, unknown> | undefined;
   const candidate =
     (typeof dataRecord.image_path === 'string' && dataRecord.image_path) ||
     (typeof dataRecord.image === 'string' && dataRecord.image) ||
     (typeof specAny.image_path === 'string' && specAny.image_path) ||
+    (imageFocus && typeof imageFocus.image_path === 'string' && imageFocus.image_path) ||
     '';
   return candidate ? String(candidate) : null;
 }
@@ -212,6 +205,7 @@ type Theme = {
 };
 
 const themes: Record<string, Theme> = {
+  // Legacy themes for backward compatibility
   default: {
     background: '#f8fafc',
     primary: '#1d4ed8',
@@ -240,6 +234,84 @@ const themes: Record<string, Theme> = {
     text: '#0f172a',
     muted: '#475569',
   },
+  // Essay Style themes - mapped from EssayStyle definitions
+  'noir-essay': {
+    background: '#0f0f0f',
+    primary: '#ffffff',
+    secondary: '#a3a3a3',
+    text: '#ffffff',
+    muted: '#737373',
+  },
+  'cold-data': {
+    background: '#0a1628',
+    primary: '#38bdf8',
+    secondary: '#06b6d4',
+    text: '#e2e8f0',
+    muted: '#64748b',
+  },
+  'modern-creator': {
+    background: '#18181b',
+    primary: '#f472b6',
+    secondary: '#a855f7',
+    text: '#fafafa',
+    muted: '#a1a1aa',
+  },
+  'academic-paper': {
+    background: '#fffbf5',
+    primary: '#1e3a5f',
+    secondary: '#8b4513',
+    text: '#1a1a1a',
+    muted: '#6b7280',
+  },
+  'documentary': {
+    background: '#1c1917',
+    primary: '#fbbf24',
+    secondary: '#f59e0b',
+    text: '#f5f5f4',
+    muted: '#a8a29e',
+  },
+  'podcast-visual': {
+    background: '#581c87',
+    primary: '#e879f9',
+    secondary: '#c084fc',
+    text: '#faf5ff',
+    muted: '#d8b4fe',
+  },
+  'retro-synthwave': {
+    background: '#0c0a1d',
+    primary: '#f472b6',
+    secondary: '#22d3ee',
+    text: '#fdf4ff',
+    muted: '#c084fc',
+  },
+  'breaking-news': {
+    background: '#dc2626',
+    primary: '#ffffff',
+    secondary: '#fef08a',
+    text: '#ffffff',
+    muted: '#fecaca',
+  },
+  'minimalist-white': {
+    background: '#ffffff',
+    primary: '#171717',
+    secondary: '#525252',
+    text: '#171717',
+    muted: '#737373',
+  },
+  'true-crime': {
+    background: '#1a0a0a',
+    primary: '#991b1b',
+    secondary: '#b91c1c',
+    text: '#fef2f2',
+    muted: '#a1a1aa',
+  },
+  'nature-documentary': {
+    background: '#022c22',
+    primary: '#34d399',
+    secondary: '#10b981',
+    text: '#ecfdf5',
+    muted: '#6ee7b7',
+  },
 };
 
 const normalizeItems = (items: unknown): Item[] => {
@@ -261,6 +333,8 @@ type TitleCard = {
   title?: string;
   subtitle?: string;
   duration?: number;
+  background?: string;
+  color?: string;
 };
 
 type LowerThird = {
@@ -268,6 +342,8 @@ type LowerThird = {
   role?: string;
   show_from?: number;
   show_to?: number;
+  position?: 'left' | 'center' | 'right';
+  color?: string;
 };
 
 type Chapter = {
@@ -384,35 +460,75 @@ const OverlayElements: React.FC<{
             justifyContent: 'center',
             textAlign: 'center',
             opacity: titleOpacity,
+            background: (titleCard as any).background || 'transparent',
           }}
         >
-          <div style={{ fontSize: 64, fontWeight: 700, color: colors.text }}>
-            {titleCard.title}
-          </div>
+          {/* Render accented text segments if available */}
+          {(titleCard as any).titleSegments ? (
+            <div style={{
+              fontSize: (titleCard as any).fontSize || 64,
+              fontWeight: (titleCard as any).fontWeight || 700,
+              fontFamily: (titleCard as any).fontFamily || 'Inter, sans-serif',
+            }}>
+              {((titleCard as any).titleSegments as Array<{text: string; color: string}>).map((seg, i) => (
+                <span key={i} style={{ color: seg.color }}>{seg.text}</span>
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              fontSize: (titleCard as any).fontSize || 64,
+              fontWeight: (titleCard as any).fontWeight || 700,
+              fontFamily: (titleCard as any).fontFamily || 'Inter, sans-serif',
+              color: titleCard.color || colors.text,
+            }}>
+              {titleCard.title}
+            </div>
+          )}
           {titleCard.subtitle ? (
-            <div style={{ marginTop: 12, fontSize: 30, color: colors.muted }}>
+            <div style={{
+              marginTop: 12,
+              fontSize: (titleCard as any).subtitleSize || 30,
+              fontFamily: (titleCard as any).fontFamily || 'Inter, sans-serif',
+              color: (titleCard as any).subtitleColor || titleCard.color || colors.muted,
+              opacity: 0.8,
+            }}>
               {titleCard.subtitle}
             </div>
           ) : null}
         </AbsoluteFill>
       ) : null}
       {lowerThird?.name ? (
-        <AbsoluteFill style={{ alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+        <AbsoluteFill style={{
+          alignItems: lowerThird.position === 'center' ? 'center' : lowerThird.position === 'right' ? 'flex-end' : 'flex-start',
+          justifyContent: 'flex-end'
+        }}>
           <div
             style={{
-              marginLeft: 60,
+              marginLeft: lowerThird.position === 'right' ? 0 : 60,
+              marginRight: lowerThird.position === 'right' ? 60 : 0,
               marginBottom: 60,
               padding: '16px 22px',
               borderRadius: 14,
-              background: 'rgba(15, 23, 42, 0.8)',
-              color: '#f8fafc',
+              background: (lowerThird as any).background || 'rgba(15, 23, 42, 0.8)',
+              color: (lowerThird as any).nameColor || '#f8fafc',
               opacity: lowerOpacity,
               transform: 'translateY(' + lowerOffset + 'px)',
+              borderLeft: lowerThird.position !== 'right' ? '4px solid ' + ((lowerThird as any).accentColor || lowerThird.color || colors.primary) : 'none',
+              borderRight: lowerThird.position === 'right' ? '4px solid ' + ((lowerThird as any).accentColor || lowerThird.color || colors.primary) : 'none',
             }}
           >
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{lowerThird.name}</div>
+            <div style={{
+              fontSize: (lowerThird as any).fontSize || 28,
+              fontWeight: 700,
+              fontFamily: (lowerThird as any).fontFamily || 'Inter, sans-serif',
+            }}>{lowerThird.name}</div>
             {lowerThird.role ? (
-              <div style={{ marginTop: 4, fontSize: 18, color: '#cbd5f5' }}>{lowerThird.role}</div>
+              <div style={{
+                marginTop: 4,
+                fontSize: (lowerThird as any).roleSize || 18,
+                fontFamily: (lowerThird as any).fontFamily || 'Inter, sans-serif',
+                color: (lowerThird as any).roleColor || '#cbd5e1',
+              }}>{lowerThird.role}</div>
             ) : null}
           </div>
         </AbsoluteFill>
@@ -482,6 +598,35 @@ const OverlayElements: React.FC<{
           </div>
         </AbsoluteFill>
       ) : null}
+      {/* Texture overlays - grain, vignette */}
+      {(() => {
+        const texture = (data as any).texture;
+        if (!texture) return null;
+        const grainOpacity = typeof texture.grainOpacity === 'number' ? texture.grainOpacity : 0;
+        const vignette = texture.vignette === true;
+        return (
+          <>
+            {vignette ? (
+              <AbsoluteFill
+                style={{
+                  background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%)',
+                  pointerEvents: 'none',
+                }}
+              />
+            ) : null}
+            {grainOpacity > 0 ? (
+              <AbsoluteFill
+                style={{
+                  backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\\'0 0 200 200\\' xmlns=\\'http://www.w3.org/2000/svg\\'%3E%3Cfilter id=\\'noise\\'%3E%3CfeTurbulence type=\\'fractalNoise\\' baseFrequency=\\'0.65\\' numOctaves=\\'3\\' stitchTiles=\\'stitch\\'/%3E%3C/filter%3E%3Crect width=\\'100%25\\' height=\\'100%25\\' filter=\\'url(%23noise)\\'/%3E%3C/svg%3E")',
+                  opacity: grainOpacity,
+                  mixBlendMode: 'overlay',
+                  pointerEvents: 'none',
+                }}
+              />
+            ) : null}
+          </>
+        );
+      })()}
     </AbsoluteFill>
   );
 };
@@ -665,14 +810,20 @@ type MapPoint = {
   zoom?: number;
 };
 
+type MapPointWithLabel = MapPoint & { label?: string };
+
 export const MapFlyover: React.FC<{
   mapImageName: string;
   data?: Record<string, unknown>;
   theme?: string;
 }> = ({ mapImageName, data, theme }) => {
   const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
-  const points = Array.isArray((data as any)?.map_points) ? (data as any).map_points as MapPoint[] : [];
+  const { durationInFrames, fps, width, height } = useVideoConfig();
+  const points = Array.isArray((data as any)?.map_points) ? (data as any).map_points as MapPointWithLabel[] : [];
+  const showLabels = (data as any)?.show_map_labels !== false;
+  const showMarker = (data as any)?.show_marker !== false;
+  const showTrail = (data as any)?.show_trail !== false;
+  const markerColor = typeof (data as any)?.marker_color === 'string' ? (data as any).marker_color : '#ef4444';
   const safePoints = points.length >= 2 ? points : [
     { x: 0.4, y: 0.5, zoom: 1.05 },
     { x: 0.6, y: 0.5, zoom: 1.15 },
@@ -693,6 +844,40 @@ export const MapFlyover: React.FC<{
   const scale = interpolate(local, [0, 1], [zoomFrom, zoomTo]);
   const transformOrigin = Math.round(x * 100) + '% ' + Math.round(y * 100) + '%';
 
+  // Calculate marker position in screen coordinates
+  // The marker follows the path on the map image
+  const markerX = x * width;
+  const markerY = y * height;
+
+  // Build trail path - all points up to current position
+  const trailPoints: string[] = [];
+  for (let i = 0; i <= index; i++) {
+    const pt = safePoints[i];
+    trailPoints.push((pt.x * width) + ',' + (pt.y * height));
+  }
+  // Add current interpolated position
+  trailPoints.push(markerX + ',' + markerY);
+  const trailPath = trailPoints.join(' ');
+
+  // Pulsing effect for marker
+  const pulse = Math.sin(frame * 0.3) * 0.3 + 1;
+
+  // Calculate which point's label to show and its opacity
+  const framesPerPoint = durationInFrames / safePoints.length;
+  const currentPointIndex = Math.min(safePoints.length - 1, Math.floor(frame / framesPerPoint));
+  const currentPoint = safePoints[currentPointIndex];
+  const pointStartFrame = currentPointIndex * framesPerPoint;
+  const pointEndFrame = (currentPointIndex + 1) * framesPerPoint;
+  const fadeFrames = Math.min(10, framesPerPoint * 0.15);
+  const labelOpacity = showLabels && currentPoint?.label
+    ? interpolate(
+        frame,
+        [pointStartFrame, pointStartFrame + fadeFrames, pointEndFrame - fadeFrames, pointEndFrame],
+        [0, 1, 1, 0],
+        { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+      )
+    : 0;
+
   return (
     <AbsoluteFill style={{ backgroundColor: '#000000' }}>
       <AbsoluteFill style={{ transform: 'scale(' + scale + ')', transformOrigin }}>
@@ -700,7 +885,104 @@ export const MapFlyover: React.FC<{
           src={staticFile(mapImageName)}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
+        {/* Trail line */}
+        {showTrail && trailPoints.length >= 2 ? (
+          <svg width={width} height={height} style={{ position: 'absolute', top: 0, left: 0 }}>
+            <polyline
+              points={trailPath}
+              fill="none"
+              stroke={markerColor}
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.8}
+            />
+            {/* Draw dots at visited points */}
+            {safePoints.slice(0, index + 1).map((pt, i) => (
+              <circle
+                key={i}
+                cx={pt.x * width}
+                cy={pt.y * height}
+                r={8}
+                fill={markerColor}
+                opacity={0.9}
+              />
+            ))}
+          </svg>
+        ) : null}
+        {/* Animated marker */}
+        {showMarker ? (
+          <div
+            style={{
+              position: 'absolute',
+              left: markerX,
+              top: markerY,
+              transform: 'translate(-50%, -50%) scale(' + pulse + ')',
+            }}
+          >
+            {/* Outer glow */}
+            <div
+              style={{
+                position: 'absolute',
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                background: markerColor,
+                opacity: 0.3,
+                transform: 'translate(-50%, -50%)',
+                left: '50%',
+                top: '50%',
+              }}
+            />
+            {/* Inner dot */}
+            <div
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                background: markerColor,
+                border: '3px solid white',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+              }}
+            />
+          </div>
+        ) : null}
       </AbsoluteFill>
+      {showLabels && currentPoint?.label ? (
+        <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 80 }}>
+          <div
+            style={{
+              padding: '16px 32px',
+              background: 'rgba(15, 23, 42, 0.85)',
+              borderRadius: 12,
+              opacity: labelOpacity,
+              transform: 'translateY(' + interpolate(labelOpacity, [0, 1], [20, 0]) + 'px)',
+            }}
+          >
+            <div style={{ fontSize: 36, fontWeight: 600, color: '#ffffff' }}>
+              {currentPoint.label}
+            </div>
+          </div>
+        </AbsoluteFill>
+      ) : null}
+      <OverlayElements data={data ?? {}} theme={theme ?? 'default'} />
+    </AbsoluteFill>
+  );
+};
+
+// Generic overlay-only component for title cards, lower thirds, chapters, etc.
+// Just renders a background with OverlayElements - no infographic content
+export const OverlayOnly: React.FC<{
+  data?: Record<string, unknown>;
+  theme?: string;
+}> = ({ data, theme }) => {
+  const colors = themes[theme ?? 'default'] ?? themes.default;
+  const titleCard = (data as any)?.title_card;
+  // Use title_card background if available, otherwise use theme background
+  const bgColor = titleCard?.background || colors.background;
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: bgColor }}>
       <OverlayElements data={data ?? {}} theme={theme ?? 'default'} />
     </AbsoluteFill>
   );
@@ -710,7 +992,7 @@ export const MapFlyover: React.FC<{
   const rootTsx = `import React from 'react';
 import { Composition } from 'remotion';
 import spec from './spec.json';
-import { Infographic, MapFlyover, ZoomImage } from './Infographic';
+import { Infographic, MapFlyover, ZoomImage, OverlayOnly } from './Infographic';
 
 const width = typeof (spec as any).width === 'number' ? (spec as any).width : ${DEFAULT_WIDTH};
 const height = typeof (spec as any).height === 'number' ? (spec as any).height : ${DEFAULT_HEIGHT};
@@ -754,9 +1036,16 @@ const zoomTo =
       : undefined;
 const useMap = mapImageName.length > 0;
 const useImage = imageName.length > 0;
+// Detect overlay-only effects (no base infographic content needed)
+const useOverlayOnly = !!(
+  (data as any)?.title_card ||
+  (data as any)?.lower_third ||
+  (Array.isArray((data as any)?.chapters) && (data as any).chapters.length > 0) ||
+  (Array.isArray((data as any)?.quotes) && (data as any).quotes.length > 0)
+);
 
 export const RemotionRoot: React.FC = () => {
-  const Component = useMap ? MapFlyover : useImage ? ZoomImage : Infographic;
+  const Component = useMap ? MapFlyover : useImage ? ZoomImage : useOverlayOnly ? OverlayOnly : Infographic;
   return (
     <Composition
       id="NolanInfographic"

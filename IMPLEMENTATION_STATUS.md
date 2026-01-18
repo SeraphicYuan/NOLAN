@@ -473,6 +473,7 @@ NOLAN/
 | [Fair Use Transforms](docs/FAIR_USE_TRANSFORMS.md) | Strategies for transforming third-party clips to reduce copyright detection |
 | [Motion Effects](docs/MOTION_EFFECTS.md) | Motion effects library for video essays |
 | [TTS Integration](docs/TTS_INTEGRATION.md) | Voiceover generation with MiniMax and Chatterbox |
+| [LLM Content Authoring](render-service/docs/LLM_CONTENT_AUTHORING.md) | Guide for LLMs writing content with style markup |
 
 ## Next Steps (Backlog)
 
@@ -676,3 +677,31 @@ NOLAN/
 - ✅ **Local VLM support** - Ollama integration with qwen3-vl:8b (switchable to other models)
 - ✅ **Smart sampling** - 5 strategies (ffmpeg_scene, hybrid, fixed, scene_change, perceptual_hash)
 - ✅ **Transcript support** - SRT, VTT, Whisper JSON loading and alignment
+- ✅ **Essay Style System** - Consistent visual branding across video essay motion effects
+  - **EssayStyle type** - Complete style definition with colors, typography, layout, motion, texture
+  - **11 flagship styles** - noir-essay, cold-data, modern-creator, academic-paper, documentary, podcast-visual, retro-synthwave, breaking-news, minimalist-white, true-crime, nature-documentary
+  - **Accent markup** - `**word**` syntax for emphasizing key terms in quotes and titles
+  - **Auto-accent detection** - Numbers, dates, percentages, money auto-detected per style rules
+  - **Style-driven presets** - All effect presets now support style parameter:
+    - Title, quote, text (highlight, typewriter, glitch, bounce, scramble, gradient, pop, citation)
+    - Chart (bar, line, pie, donut), statistic (counter, comparison, percentage)
+    - Image (ken-burns, zoom-focus, parallax, photo-frame, document-reveal)
+    - Overlay (picture-in-picture, vhs-retro, film-grain, light-leak, camera-shake, screen-frame, audio-waveform, data-ticker, social-media-post, video-frame-stack)
+    - Transition (slide, wipe, dissolve, zoom, blur, glitch)
+    - Progress, annotation, comparison, timeline, countdown, map
+  - **Backward compatible** - Style parameter is optional; legacy color params still work
+  - **Styles API** - Full REST API for styles:
+    - `GET /styles` - List all available styles
+    - `GET /styles/:id` - Get full style definition
+    - `POST /styles/:id/resolve-accent` - Test accent resolution
+    - `POST /styles/:id/preview` - Generate style preview with sample content
+  - **Validation helper** - `validateSceneContent()` checks content against style accent rules
+  - **LLM Authoring Guide** - Documentation for LLMs on how to write styled content (`render-service/docs/LLM_CONTENT_AUTHORING.md`)
+  - **Texture rendering** - Grain, vignette, and gradient overlays rendered in Motion-Canvas engine
+  - **Remotion style integration** - All 11 EssayStyles mapped to Remotion themes with texture support
+  - **Font loading** - Inter, Georgia, Playfair Display loaded in Motion-Canvas for style fonts
+  - **Style parameter convention** - Use `style` param when possible; use `essayStyle` when another `style` param exists (e.g., animation style, frame style)
+  - **Known limitations**:
+    - Layout properties (marginX, marginY, maxTextWidth, align) not yet applied in engines
+    - Motion timing (enterFrames, exitFrames, easing) not yet derived from style; uses per-effect defaults
+    - Helper functions (getTextureSettings, getFontProps, getSafeArea) available but not fully utilized
