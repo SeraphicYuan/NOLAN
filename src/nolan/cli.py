@@ -27,14 +27,32 @@ def main(ctx):
     ctx.obj['config'] = load_config()
 
 
+def _get_project_output_path(project: str = None, output: str = None, essay_path: Path = None) -> Path:
+    """Determine output path from project name or output option.
+
+    Priority: --output > --project > derived from essay name
+    """
+    if output:
+        return Path(output)
+    if project:
+        return Path("projects") / project
+    if essay_path:
+        # Derive project name from essay filename
+        project_name = essay_path.stem.lower().replace(" ", "-").replace("_", "-")
+        return Path("projects") / project_name
+    return Path("projects") / "default"
+
+
 @main.command()
 @click.argument('essay', type=click.Path(exists=True))
-@click.option('--output', '-o', type=click.Path(), default='./output',
-              help='Output directory for generated files.')
+@click.option('--project', '-p', type=str, default=None,
+              help='Project name (outputs to projects/<name>/).')
+@click.option('--output', '-o', type=click.Path(), default=None,
+              help='Output directory (overrides --project).')
 @click.option('--skip-scenes', is_flag=True, help='Skip scene design step.')
 @click.option('--skip-assets', is_flag=True, help='Skip asset matching step.')
 @click.pass_context
-def process(ctx, essay, output, skip_scenes, skip_assets):
+def process(ctx, essay, project, output, skip_scenes, skip_assets):
     """Process an essay through the full pipeline.
 
     ESSAY is the path to your markdown essay file.
@@ -44,13 +62,19 @@ def process(ctx, essay, output, skip_scenes, skip_assets):
     2. Design visual scenes for each section
     3. Match scenes to your video library
     4. Generate images via ComfyUI (if configured)
+
+    Examples:
+
+        nolan process essay.md --project venezuela
+
+        nolan process my-essay.md  # outputs to projects/my-essay/
     """
     config = ctx.obj['config']
-    output_path = Path(output)
     essay_path = Path(essay)
+    output_path = _get_project_output_path(project, output, essay_path)
 
     click.echo(f"Processing: {essay_path.name}")
-    click.echo(f"Output: {output_path}")
+    click.echo(f"Project: {output_path}")
 
     asyncio.run(_process_essay(config, essay_path, output_path, skip_scenes, skip_assets))
 
@@ -121,10 +145,12 @@ async def _process_essay(config, essay_path, output_path, skip_scenes, skip_asse
 
 @main.command()
 @click.argument('essay', type=click.Path(exists=True))
-@click.option('--output', '-o', type=click.Path(), default='./output',
-              help='Output directory for generated files.')
+@click.option('--project', '-p', type=str, default=None,
+              help='Project name (outputs to projects/<name>/).')
+@click.option('--output', '-o', type=click.Path(), default=None,
+              help='Output directory (overrides --project).')
 @click.pass_context
-def script(ctx, essay, output):
+def script(ctx, essay, project, output):
     """Convert an essay to a narration script.
 
     ESSAY is the path to your markdown essay file.
@@ -140,11 +166,11 @@ def script(ctx, essay, output):
     - Run 'nolan design script.json' to generate scene plans
     """
     config = ctx.obj['config']
-    output_path = Path(output)
     essay_path = Path(essay)
+    output_path = _get_project_output_path(project, output, essay_path)
 
     click.echo(f"Converting: {essay_path.name}")
-    click.echo(f"Output: {output_path}")
+    click.echo(f"Project: {output_path}")
 
     asyncio.run(_convert_script(config, essay_path, output_path))
 
@@ -195,12 +221,14 @@ async def _convert_script(config, essay_path, output_path):
 
 @main.command()
 @click.argument('script_file', type=click.Path(exists=True))
+@click.option('--project', '-p', type=str, default=None,
+              help='Project name (outputs to projects/<name>/).')
 @click.option('--output', '-o', type=click.Path(), default=None,
-              help='Output directory (defaults to same as script file).')
+              help='Output directory (overrides --project).')
 @click.option('--beats-only', is_flag=True,
               help='Run Pass 1 only: detect beats and visual categories for review.')
 @click.pass_context
-def design(ctx, script_file, output, beats_only):
+def design(ctx, script_file, project, output, beats_only):
     """Design visual scenes from a script (two-pass approach).
 
     SCRIPT_FILE is the path to script.json (from 'nolan script' command).
@@ -222,14 +250,16 @@ def design(ctx, script_file, output, beats_only):
     config = ctx.obj['config']
     script_path = Path(script_file)
 
-    # Default output to script file's directory
-    if output is None:
-        output_path = script_path.parent
-    else:
+    # Priority: --output > --project > script file's directory
+    if output:
         output_path = Path(output)
+    elif project:
+        output_path = Path("projects") / project
+    else:
+        output_path = script_path.parent
 
     click.echo(f"Designing scenes from: {script_path.name}")
-    click.echo(f"Output: {output_path}")
+    click.echo(f"Project: {output_path}")
     if beats_only:
         click.echo("Mode: Pass 1 only (beats detection)")
 
@@ -328,9 +358,9 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
 
 
 @main.command()
-@click.argument('directory', type=click.Path(exists=True))
+@click.argument('path', type=click.Path(exists=True))
 @click.option('--recursive/--no-recursive', default=True,
-              help='Scan subdirectories.')
+              help='Scan subdirectories (only applies to directories).')
 @click.option('--frame-interval', default=5, type=int,
               help='Seconds between sampled frames (for fixed sampler).')
 @click.option('--sampler', '-s', default=None,
@@ -346,13 +376,15 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
               help='Whisper model size (default: base). Larger = better quality, slower.')
 @click.option('--project', '-p', type=str, default=None,
               help='Project slug to associate indexed videos with.')
-@click.option('--concurrency', '-c', default=10, type=int,
-              help='Max concurrent API calls (default 10). Use 2-3 for free tier, 10-15 for pay-as-you-go.')
+@click.option('--concurrency', '-c', default=None, type=int,
+              help='Max concurrent API calls (defaults to config.indexing.concurrency).')
+@click.option('--force', is_flag=True, default=False,
+              help='Force reindexing even if video is already indexed.')
 @click.pass_context
-def index(ctx, directory, recursive, frame_interval, sampler, vision, whisper, whisper_model, project, concurrency):
-    """Index a video directory for asset matching.
+def index(ctx, path, recursive, frame_interval, sampler, vision, whisper, whisper_model, project, concurrency, force):
+    """Index videos for asset matching.
 
-    DIRECTORY is the path to your video library folder.
+    PATH can be a video file or a directory containing videos.
 
     This scans video files, samples frames, and uses AI to describe
     what's in each segment. The index is stored locally for fast
@@ -365,11 +397,17 @@ def index(ctx, directory, recursive, frame_interval, sampler, vision, whisper, w
     Use --project to associate indexed videos with a specific project.
     Create a project first with: nolan projects create "My Project"
 
-    Use --concurrency to control parallel API calls (default 10).
+    Use --concurrency to control parallel API calls (defaults to config.indexing.concurrency).
     Lower values for rate-limited accounts, higher for paid tiers.
     """
     config = ctx.obj['config']
-    directory_path = Path(directory)
+    input_path = Path(path)
+
+    if concurrency is None:
+        concurrency = config.indexing.concurrency
+
+    # Detect if input is a file or directory
+    is_single_file = input_path.is_file()
 
     # Resolve project slug to ID
     project_id = None
@@ -389,15 +427,20 @@ def index(ctx, directory, recursive, frame_interval, sampler, vision, whisper, w
     # Use CLI sampler or fall back to config default
     sampling_strategy = sampler or config.indexing.sampling_strategy
 
-    click.echo(f"Indexing: {directory_path}")
-    click.echo(f"Recursive: {recursive}")
+    if is_single_file:
+        click.echo(f"Indexing file: {input_path.name}")
+    else:
+        click.echo(f"Indexing directory: {input_path}")
+        click.echo(f"Recursive: {recursive}")
     click.echo(f"Sampler: {sampling_strategy}")
     click.echo(f"Concurrency: {concurrency}")
+    if force:
+        click.echo("Force reindex: enabled")
 
-    asyncio.run(_index_videos(config, directory_path, recursive, frame_interval, sampling_strategy, vision, whisper, whisper_model, project_id, concurrency))
+    asyncio.run(_index_videos(config, input_path, recursive, frame_interval, sampling_strategy, vision, whisper, whisper_model, project_id, concurrency, force, is_single_file))
 
 
-async def _index_videos(config, directory, recursive, frame_interval, sampling_strategy, vision_provider='ollama', whisper_enabled=False, whisper_model='base', project_id=None, concurrency=10):
+async def _index_videos(config, input_path, recursive, frame_interval, sampling_strategy, vision_provider='ollama', whisper_enabled=False, whisper_model='base', project_id=None, concurrency=10, force=False, is_single_file=False):
     """Async implementation of index command."""
     from nolan.indexer import HybridVideoIndexer, VideoIndex
     from nolan.vision import create_vision_provider, VisionConfig
@@ -440,7 +483,8 @@ async def _index_videos(config, directory, recursive, frame_interval, sampling_s
         min_interval=config.indexing.min_interval,
         max_interval=config.indexing.max_interval,
         scene_threshold=config.indexing.scene_threshold,
-        ffmpeg_scene_threshold=getattr(config.indexing, 'ffmpeg_scene_threshold', 0.3),
+        ffmpeg_scene_threshold=getattr(config.indexing, 'ffmpeg_scene_threshold', None),  # None = adaptive 5σ
+        ffmpeg_adaptive_sigma=getattr(config.indexing, 'ffmpeg_adaptive_sigma', 5.0),
     )
     sampler = create_sampler(sampler_config)
     click.echo(f"Sampling strategy: {sampling_strategy}")
@@ -502,14 +546,27 @@ async def _index_videos(config, directory, recursive, frame_interval, sampling_s
         enable_transcript=config.indexing.enable_transcript,
         enable_inference=config.indexing.enable_inference,
         project_id=project_id,
-        concurrency=concurrency
+        concurrency=concurrency,
+        force_reindex=force
     )
 
     def progress(current, total, message):
         click.echo(f"  [{current}/{total}] {message}")
 
-    click.echo("\nScanning for videos...")
-    stats = await indexer.index_directory(directory, recursive=recursive, progress_callback=progress)
+    if is_single_file:
+        # Index single video file
+        click.echo(f"\nIndexing single video...")
+        segments = await indexer.index_video(input_path, progress_callback=progress)
+        stats = {
+            'total': 1,
+            'indexed': 1 if segments > 0 else 0,
+            'skipped': 0 if segments > 0 else 1,
+            'segments': segments
+        }
+    else:
+        # Index directory
+        click.echo("\nScanning for videos...")
+        stats = await indexer.index_directory(input_path, recursive=recursive, progress_callback=progress)
 
     click.echo(f"\nIndexing complete:")
     click.echo(f"  Videos found: {stats['total']}")
@@ -517,6 +574,34 @@ async def _index_videos(config, directory, recursive, frame_interval, sampling_s
     click.echo(f"  Skipped (unchanged): {stats['skipped']}")
     click.echo(f"  Segments added: {stats['segments']}")
     click.echo(f"\nDatabase: {db_path}")
+
+    # Auto-sync vectors if any videos were indexed
+    if stats['indexed'] > 0:
+        click.echo("\n[Auto] Syncing vectors for semantic search...")
+        try:
+            from nolan.vector_search import VectorSearch
+            vector_db_path = db_path.parent / "vectors"
+            vector_search = VectorSearch(vector_db_path, index=index)
+
+            # Only sync the newly indexed videos (incremental sync handles this via fingerprints)
+            def vec_progress(current, total, msg):
+                click.echo(f"\r  [{current}/{total}] {msg[:50]:<50}", nl=False)
+
+            result = vector_search.sync_from_index(
+                project_id=project_id,
+                progress_callback=vec_progress,
+                incremental=True
+            )
+            click.echo()  # newline
+
+            skipped = result.get('skipped', 0)
+            if skipped > 0:
+                click.echo(f"  Vectors: {result['segments']} segments, {result['clusters']} clusters (skipped {skipped} unchanged)")
+            else:
+                click.echo(f"  Vectors: {result['segments']} segments, {result['clusters']} clusters")
+        except Exception as e:
+            click.echo(f"  Warning: Vector sync failed: {e}")
+            click.echo("  Run 'nolan sync-vectors' manually to enable semantic search.")
 
 
 @main.command()
@@ -969,8 +1054,8 @@ def browse(ctx, host, port):
 
 @main.command()
 @click.option('--scene', type=str, help='Generate for a specific scene ID.')
-@click.option('--project', '-p', type=click.Path(exists=True), default='./output',
-              help='Project directory with scene_plan.json.')
+@click.option('--project', '-p', type=click.Path(exists=True), required=True,
+              help='Project directory with scene_plan.json (e.g., projects/venezuela).')
 @click.option('--workflow', '-w', type=click.Path(exists=True),
               help='Custom ComfyUI workflow JSON file.')
 @click.option('--prompt-node', '-n', type=str, default=None,
@@ -987,6 +1072,12 @@ def generate(ctx, scene, project, workflow, prompt_node, overrides):
     Use --workflow to specify a custom ComfyUI workflow file.
     Use --prompt-node to specify which node receives the prompt.
     Use --set to override any workflow parameter.
+
+    Examples:
+
+        nolan generate --project projects/venezuela
+
+        nolan generate --project projects/venezuela --scene scene-01
     """
     config = ctx.obj['config']
     project_path = Path(project)
@@ -1300,8 +1391,8 @@ async def _infographic(spec_file, template, theme, title, items, output, width, 
 
 
 @main.command('render-infographics')
-@click.option('--project', '-p', type=click.Path(exists=True), default='./output',
-              help='Project directory with scene_plan.json.')
+@click.option('--project', '-p', type=click.Path(exists=True), required=True,
+              help='Project directory with scene_plan.json (e.g., projects/venezuela).')
 @click.option('--host', default='127.0.0.1', help='Render service host.')
 @click.option('--port', default=3010, type=int, help='Render service port.')
 @click.option('--engine-mode', type=click.Choice(['auto', 'antv', 'svg']),
@@ -1313,6 +1404,10 @@ def render_infographics(ctx, project, host, port, engine_mode, force):
 
     Reads scene_plan.json and renders scenes with visual_type=infographic.
     Saves outputs into assets/infographics and updates scene_plan.json.
+
+    Examples:
+
+        nolan render-infographics --project projects/venezuela
     """
     asyncio.run(_render_infographics(project, host, port, engine_mode, force))
 
@@ -1713,6 +1808,171 @@ async def _match_broll(config, scene_plan_path, output_dir, source, max_results,
     click.echo(f"  Matched: {matched_count}")
     click.echo(f"  Failed: {failed_count}")
     click.echo(f"  Skipped: {len([s for s in plan.all_scenes if s.visual_type == 'b-roll' and s.matched_asset]) - matched_count}")
+
+
+@main.command('match-clips')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.option('--candidates', '-c', type=int, default=None,
+              help='Candidates per scene (overrides config, default: 3).')
+@click.option('--min-similarity', type=float, default=None,
+              help='Minimum similarity threshold 0-1 (overrides config, default: 0.5).')
+@click.option('--project', '-p', type=str, default=None,
+              help='Filter to clips from this project.')
+@click.option('--skip-existing/--no-skip-existing', default=True,
+              help='Skip scenes that already have matched_clip.')
+@click.option('--dry-run', is_flag=True,
+              help='Show matches without saving to scene plan.')
+@click.option('--search-level', type=click.Choice(['segments', 'clusters', 'both']),
+              default=None, help='Search level (overrides config).')
+@click.option('--concurrency', '-C', type=int, default=None,
+              help='Parallel scene matches (defaults to config.clip_matching.concurrency).')
+@click.pass_context
+def match_clips(ctx, scene_plan, candidates, min_similarity, project, skip_existing, dry_run, search_level, concurrency):
+    """Match scenes to video library clips using semantic search.
+
+    SCENE_PLAN is the path to scene_plan.json.
+
+    This command will:
+    1. Search indexed video library for relevant clips
+    2. Use LLM to select best candidate for each scene
+    3. Apply smart clip tailoring for optimal start/end points
+    4. Update scene_plan.json with matched_clip field
+
+    The matched_clip includes video_path, clip_start, clip_end, and reasoning.
+
+    Examples:
+
+      nolan match-clips scene_plan.json
+
+      nolan match-clips scene_plan.json -p venezuela --candidates 5
+
+      nolan match-clips scene_plan.json --min-similarity 0.6 --dry-run
+    """
+    config = ctx.obj['config']
+    asyncio.run(_match_clips(config, scene_plan, candidates, min_similarity, project, skip_existing, dry_run, search_level, concurrency))
+
+
+async def _match_clips(config, scene_plan_path, candidates, min_similarity, project, skip_existing, dry_run, search_level, concurrency):
+    """Async implementation of match-clips command."""
+    from pathlib import Path
+    from nolan.scenes import ScenePlan
+    from nolan.clip_matcher import ClipMatcher
+    from nolan.vector_search import VectorSearch
+    from nolan.indexer import VideoIndex
+    from nolan.llm import GeminiClient
+    from nolan.config import ClipMatchingConfig
+
+    scene_plan_path = Path(scene_plan_path)
+    plan = ScenePlan.load(str(scene_plan_path))
+
+    # Build config with CLI overrides
+    match_config = ClipMatchingConfig(
+        candidates_per_scene=candidates if candidates is not None else config.clip_matching.candidates_per_scene,
+        min_similarity=min_similarity if min_similarity is not None else config.clip_matching.min_similarity,
+        search_level=search_level if search_level is not None else config.clip_matching.search_level,
+        skip_edge_percent=config.clip_matching.skip_edge_percent,
+        concurrency=concurrency if concurrency is not None else config.clip_matching.concurrency
+    )
+
+    # Count scenes
+    total_scenes = len(plan.all_scenes)
+    scenes_with_query = sum(1 for s in plan.all_scenes if s.search_query or s.visual_description or s.narration_excerpt)
+
+    click.echo(f"Scene plan: {scene_plan_path.name}")
+    click.echo(f"Total scenes: {total_scenes}")
+    click.echo(f"Matchable scenes: {scenes_with_query}")
+    click.echo(f"Candidates per scene: {match_config.candidates_per_scene}")
+    click.echo(f"Min similarity: {match_config.min_similarity}")
+    click.echo(f"Search level: {match_config.search_level}")
+    click.echo(f"Concurrency: {match_config.concurrency}")
+    if project:
+        click.echo(f"Project filter: {project}")
+    if dry_run:
+        click.echo("Mode: DRY RUN (no changes saved)")
+
+    # Initialize components
+    db_path = Path(config.indexing.database).expanduser()
+
+    # Check if database exists
+    if not db_path.exists():
+        click.echo(f"\nError: Video library not found at {db_path}")
+        click.echo("Run 'nolan index <video_folder>' first to index your library")
+        return
+
+    index = VideoIndex(db_path)
+
+    # Initialize vector search
+    vector_db_path = db_path.parent / "vectors"
+    vector_search = VectorSearch(db_path=vector_db_path, index=index)
+
+    # Check vector DB has content
+    stats = vector_search.get_stats()
+    if stats["segments"] == 0 and stats["clusters"] == 0:
+        click.echo(f"\nError: Vector search database is empty")
+        click.echo("Run 'nolan sync-vectors' first to build the search index")
+        return
+
+    click.echo(f"\nVector DB: {stats['segments']} segments, {stats['clusters']} clusters")
+
+    # Resolve project slug to ID if provided
+    project_id = None
+    if project:
+        proj = index.get_project(project)
+        if not proj:
+            click.echo(f"\nWarning: Project '{project}' not found. Searching all projects.")
+        else:
+            project_id = proj['id']
+
+    # Initialize LLM
+    llm = GeminiClient(
+        api_key=config.gemini.api_key,
+        model=config.gemini.model
+    )
+
+    # Initialize matcher
+    matcher = ClipMatcher(vector_search, llm, match_config)
+
+    # Progress callback
+    def progress(current, total, message):
+        click.echo(f"[{current}/{total}] {message}")
+
+    # Match scenes
+    click.echo("\nMatching scenes to library clips...")
+    result = await matcher.match_plan(
+        plan,
+        project_id=project_id,
+        skip_existing=skip_existing,
+        progress_callback=progress
+    )
+
+    # Show results
+    click.echo(f"\nResults:")
+    click.echo(f"  Matched: {result['matched']}")
+    click.echo(f"  No match found: {result['no_match']}")
+    click.echo(f"  Skipped (existing): {result['skipped']}")
+
+    # Show matches in dry-run mode
+    if dry_run and result['matched'] > 0:
+        click.echo("\nMatched clips (DRY RUN - not saved):")
+        for scene in plan.all_scenes:
+            if scene.matched_clip:
+                mc = scene.matched_clip
+                video_name = Path(mc['video_path']).name if mc.get('video_path') else 'Unknown'
+                click.echo(f"\n  {scene.id}:")
+                click.echo(f"    Video: {video_name}")
+                click.echo(f"    Clip: {mc['clip_start']:.1f}s - {mc['clip_end']:.1f}s")
+                click.echo(f"    Confidence: {mc['confidence']:.2f}")
+                reason = mc.get('match_reasoning', '')[:80]
+                if len(mc.get('match_reasoning', '')) > 80:
+                    reason += "..."
+                click.echo(f"    Reason: {reason}")
+
+    # Save updated plan (unless dry-run)
+    if not dry_run and result['matched'] > 0:
+        plan.save(str(scene_plan_path))
+        click.echo(f"\nScene plan updated: {scene_plan_path}")
+    elif not dry_run:
+        click.echo("\nNo changes to save.")
 
 
 @main.command()
@@ -2857,6 +3117,363 @@ def projects_delete(ctx, slug, delete_videos, force):
             click.echo("Associated videos were also deleted from index.")
     else:
         click.echo("Failed to delete project.")
+
+
+# ==================== Semantic Search Commands ====================
+
+@main.command('sync-vectors')
+@click.option('--project', '-p', type=str, default=None,
+              help='Only sync videos from this project slug.')
+@click.option('--clear', is_flag=True,
+              help='Clear existing vectors before syncing.')
+@click.option('--force', '-f', is_flag=True,
+              help='Force full sync, ignoring fingerprints (re-embed everything).')
+@click.pass_context
+def sync_vectors(ctx, project, clear, force):
+    """Sync video index to vector database for semantic search.
+
+    This command populates ChromaDB with embeddings from your indexed
+    video segments and clusters, enabling semantic search.
+
+    By default, uses incremental sync - only re-embeds videos whose
+    fingerprints have changed since last sync. Use --force to re-embed all.
+
+    This is automatically called after 'nolan index' completes.
+
+    Examples:
+
+      nolan sync-vectors
+
+      nolan sync-vectors --project venezuela
+
+      nolan sync-vectors --clear
+
+      nolan sync-vectors --force  # Re-embed everything
+    """
+    config = ctx.obj['config']
+    _sync_vectors_impl(config, project, clear, force)
+
+
+def _sync_vectors_impl(config, project=None, clear=False, force=False, quiet=False):
+    """Implementation of vector sync (shared by CLI and auto-sync)."""
+    from nolan.indexer import VideoIndex
+    from nolan.vector_search import VectorSearch
+
+    db_path = Path(config.indexing.database).expanduser()
+    if not db_path.exists():
+        if not quiet:
+            click.echo(f"Error: Database not found at {db_path}")
+        return False
+
+    index = VideoIndex(db_path)
+
+    # Vector DB path alongside SQLite
+    vector_db_path = db_path.parent / "vectors"
+    if not quiet:
+        click.echo(f"SQLite: {db_path}")
+        click.echo(f"Vector DB: {vector_db_path}")
+
+    # Resolve project
+    project_id = None
+    if project:
+        proj = index.get_project(project)
+        if not proj:
+            if not quiet:
+                click.echo(f"Error: Project '{project}' not found.")
+            return False
+        project_id = proj['id']
+        if not quiet:
+            click.echo(f"Project: {proj['name']} ({proj['slug']})")
+
+    # Initialize vector search
+    vector_search = VectorSearch(vector_db_path, index=index)
+
+    # Clear if requested
+    if clear:
+        if not quiet:
+            click.echo("Clearing existing vectors...")
+        vector_search.clear()
+
+    # Show current stats
+    stats = vector_search.get_stats()
+    if not quiet:
+        click.echo(f"Current vectors: {stats['segments']} segments, {stats['clusters']} clusters")
+
+    # Sync
+    if not quiet:
+        click.echo("\nSyncing to vector database...")
+        if stats['segments'] == 0:
+            click.echo("(First run will download embedding model ~440MB)")
+
+    def progress(current, total, msg):
+        if not quiet:
+            click.echo(f"\r  [{current}/{total}] {msg[:50]:<50}", nl=False)
+
+    result = vector_search.sync_from_index(
+        project_id=project_id,
+        progress_callback=progress,
+        incremental=not force
+    )
+    if not quiet:
+        click.echo()  # newline after progress
+
+    skipped = result.get('skipped', 0)
+    if not quiet:
+        if skipped > 0:
+            click.echo(f"\nSynced: {result['segments']} segments, {result['clusters']} clusters (skipped {skipped} unchanged)")
+        else:
+            click.echo(f"\nSynced: {result['segments']} segments, {result['clusters']} clusters")
+
+    # Final stats
+    stats = vector_search.get_stats()
+    if not quiet:
+        click.echo(f"Total vectors: {stats['segments']} segments, {stats['clusters']} clusters")
+
+    return True
+
+
+@main.command('semantic-search')
+@click.argument('query')
+@click.option('--limit', '-n', type=int, default=10,
+              help='Maximum number of results.')
+@click.option('--level', '-l', type=click.Choice(['segments', 'clusters', 'both']),
+              default='both', help='Search level: segments, clusters, or both.')
+@click.option('--project', '-p', type=str, default=None,
+              help='Filter by project slug.')
+@click.option('--output', '-o', type=click.Path(), default=None,
+              help='Output JSON file for results.')
+@click.pass_context
+def semantic_search(ctx, query, limit, level, project, output):
+    """Semantic search across your video library.
+
+    QUERY is a natural language description of what you're looking for.
+
+    Unlike keyword search, semantic search understands meaning:
+    - "person looking worried" finds "anxious expression", "concerned face"
+    - "establishing shot of city" finds "urban skyline", "downtown aerial"
+
+    Run 'nolan sync-vectors' first to populate the vector database.
+
+    Examples:
+
+      nolan semantic-search "person speaking to camera"
+
+      nolan semantic-search "dramatic landscape" --level clusters
+
+      nolan semantic-search "historical footage" --project venezuela -n 20
+
+      nolan semantic-search "emotional moment" -o results.json
+    """
+    import json
+    config = ctx.obj['config']
+    from nolan.indexer import VideoIndex
+    from nolan.vector_search import VectorSearch
+
+    db_path = Path(config.indexing.database).expanduser()
+    if not db_path.exists():
+        click.echo(f"Error: Database not found at {db_path}")
+        return
+
+    vector_db_path = db_path.parent / "vectors"
+    if not vector_db_path.exists():
+        click.echo(f"Error: Vector database not found at {vector_db_path}")
+        click.echo("Run 'nolan sync-vectors' first to create embeddings.")
+        return
+
+    index = VideoIndex(db_path)
+    vector_search = VectorSearch(vector_db_path, index=index)
+
+    # Check if vectors exist
+    stats = vector_search.get_stats()
+    if stats['segments'] == 0 and stats['clusters'] == 0:
+        click.echo("Error: Vector database is empty.")
+        click.echo("Run 'nolan sync-vectors' first to create embeddings.")
+        return
+
+    # Resolve project
+    project_id = None
+    if project:
+        proj = index.get_project(project)
+        if not proj:
+            click.echo(f"Error: Project '{project}' not found.")
+            return
+        project_id = proj['id']
+        click.echo(f"Project: {proj['name']}")
+
+    click.echo(f"Query: \"{query}\"")
+    click.echo(f"Level: {level}")
+    click.echo(f"Searching...")
+
+    # Perform search
+    results = vector_search.search(
+        query=query,
+        limit=limit,
+        search_level=level,
+        project_id=project_id
+    )
+
+    if not results:
+        click.echo("No results found.")
+        return
+
+    click.echo(f"\nFound {len(results)} results:\n")
+
+    # Display results
+    for i, r in enumerate(results, 1):
+        score_pct = f"{r.score * 100:.1f}%"
+        time_str = f"{int(r.timestamp_start // 60):02d}:{int(r.timestamp_start % 60):02d}"
+        video_name = Path(r.video_path).name if r.video_path else "Unknown"
+
+        type_badge = f"[{r.content_type.upper()}]"
+        click.echo(f"  {i}. {type_badge} {score_pct} @ {time_str}")
+        click.echo(f"     Video: {video_name[:50]}")
+
+        desc = r.description[:100] + "..." if len(r.description or "") > 100 else (r.description or "")
+        click.echo(f"     {desc}")
+
+        if r.people:
+            click.echo(f"     People: {', '.join(r.people[:3])}")
+        if r.location:
+            click.echo(f"     Location: {r.location}")
+        click.echo()
+
+    # Save to JSON if requested
+    if output:
+        output_path = Path(output)
+        output_data = {
+            "query": query,
+            "level": level,
+            "project": project,
+            "results": [
+                {
+                    "score": r.score,
+                    "content_type": r.content_type,
+                    "video_path": r.video_path,
+                    "timestamp_start": r.timestamp_start,
+                    "timestamp_end": r.timestamp_end,
+                    "description": r.description,
+                    "transcript": r.transcript,
+                    "people": r.people,
+                    "location": r.location,
+                    "objects": r.objects,
+                }
+                for r in results
+            ]
+        }
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, indent=2, ensure_ascii=False)
+        click.echo(f"Results saved to: {output_path}")
+
+
+@main.command()
+@click.option('--host', default='127.0.0.1', help='Host to bind to.')
+@click.option('--port', default=8001, type=int, help='Port to bind to.')
+@click.pass_context
+def showcase(ctx, host, port):
+    """Launch the Motion Effects Showcase UI.
+
+    Browse and generate motion effects for video essays.
+    Requires the render service to be running for generating effects.
+
+    Examples:
+
+      nolan showcase
+
+      nolan showcase --port 8002
+    """
+    from nolan.showcase import run_showcase
+
+    click.echo(f"Starting Motion Effects Showcase at http://{host}:{port}")
+    click.echo("Render service should be running at http://127.0.0.1:3010")
+    click.echo("Press Ctrl+C to stop.\n")
+
+    run_showcase(host=host, port=port)
+
+
+@main.command()
+@click.option('--host', default='127.0.0.1', help='Host to bind to.')
+@click.option('--port', default=8000, type=int, help='Port to bind to.')
+@click.pass_context
+def library(ctx, host, port):
+    """Launch the Video Library Viewer UI.
+
+    Browse your indexed video library with visual search.
+
+    Examples:
+
+      nolan library
+
+      nolan library --port 8080
+    """
+    config = ctx.obj['config']
+    db_path = Path(config.indexing.database).expanduser()
+
+    if not db_path.exists():
+        click.echo(f"Error: Database not found at {db_path}")
+        click.echo("Run 'nolan index' first to index videos.")
+        return
+
+    from nolan.library_viewer import create_library_app
+    import uvicorn
+
+    click.echo(f"Starting Library Viewer at http://{host}:{port}")
+    click.echo(f"Database: {db_path}")
+    click.echo("Press Ctrl+C to stop.\n")
+
+    app = create_library_app(db_path)
+    uvicorn.run(app, host=host, port=port)
+
+
+@main.command()
+@click.option('--projects', '-p', type=click.Path(), default='projects',
+              help='Directory containing projects (default: projects/).')
+@click.option('--host', default='127.0.0.1', help='Host to bind to.')
+@click.option('--port', default=8001, type=int, help='Port to bind to.')
+@click.pass_context
+def hub(ctx, projects, host, port):
+    """Launch the unified NOLAN Hub UI.
+
+    A unified interface combining:
+    - Video Library: Browse indexed videos, segments, and clusters
+    - Motion Effects Showcase: Generate motion effects for video essays
+    - Scene Viewer: Review scene plans with A/V script layout
+
+    Projects are auto-discovered from the projects directory (default: ./projects).
+    Each subdirectory containing a scene_plan.json is shown as a project.
+
+    Examples:
+
+      nolan hub
+
+      nolan hub --projects /path/to/projects
+
+      nolan hub --port 8080
+    """
+    config = ctx.obj['config']
+    db_path = Path(config.indexing.database).expanduser()
+    projects_dir = Path(projects) if projects else None
+
+    from nolan.hub import create_hub_app, scan_projects
+    import uvicorn
+
+    click.echo(f"Starting NOLAN Hub at http://{host}:{port}")
+    if db_path.exists():
+        click.echo(f"Database: {db_path}")
+    else:
+        click.echo(f"Database not found - Library features will be limited")
+    if projects_dir and projects_dir.exists():
+        found_projects = scan_projects(projects_dir)
+        click.echo(f"Projects directory: {projects_dir} ({len(found_projects)} projects found)")
+    else:
+        click.echo("Projects directory not found - Scene viewer will show no projects")
+    click.echo("Render service should be running at http://127.0.0.1:3010")
+    click.echo("Press Ctrl+C to stop.\n")
+
+    app = create_hub_app(
+        db_path=db_path if db_path.exists() else None,
+        projects_dir=projects_dir,
+    )
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == '__main__':

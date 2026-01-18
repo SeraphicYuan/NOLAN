@@ -129,6 +129,24 @@ Return JSON:
 IMPORTANT: Return ONLY the JSON object, no other text."""
 
 
+INFOGRAPHIC_TEMPLATE_REGISTRY = """
+High-value AntV templates (use exact names):
+- sequence-steps-simple: steps/process. data.items: [{label, desc?}]
+- sequence-timeline-simple: timeline. data.items: [{label, desc?}]
+- list-row-simple-horizontal-arrow: list of points. data.items: [{label, desc?}]
+- list-grid-simple: grid list. data.items: [{label, desc?}]
+- compare-binary-horizontal-simple-vs: A vs B. data.items: ["A label", "B label"] or
+  [{label, children:[{label, desc?}]}] for multi-row comparisons.
+- chart-column-simple: bar/column chart. data.items: [{label, value}]
+- chart-line-plain-text: line chart. data.items: [{label, value}]
+- chart-pie-plain-text: pie chart. data.items: [{label, value}]
+- sequence-roadmap-vertical-simple: vertical roadmap. data.items: [{label, desc?}]
+- list-pyramid-compact-card: pyramid hierarchy. data.items: [{label, desc?}]
+
+Theme presets (reference only):
+- theme_config_ref: docu-dark-minimal | docu-warm-soft
+""".strip()
+
 PASS2_GRAPHICS_PROMPT = """You are designing a graphic/infographic for a video essay beat.
 
 BEAT: {beat_id}
@@ -137,16 +155,20 @@ VISUAL INTENT: {visual_intent}
 
 Determine what type of graphic best serves this beat.
 
+TEMPLATE CATALOG:
+{template_catalog}
+
 Return JSON:
 {{
   "graphic_type": "infographic|chart|text-overlay|diagram|timeline|comparison",
   "spec": {{
-    "template": "steps|list|comparison|bar-chart|timeline",
+    "template": "pick from the catalog above",
     "theme": "default|dark|warm|cool",
+    "theme_config_ref": "docu-dark-minimal|docu-warm-soft (optional)",
     "title": "optional title",
     "items": [
-      {{"label": "Item 1", "desc": "Detail or value"}},
-      {{"label": "Item 2", "desc": "Detail or value"}}
+      {{"label": "Item 1", "desc": "Detail or value", "icon_keyword": "optional icon hint"}},
+      {{"label": "Item 2", "desc": "Detail or value", "icon_keyword": "optional icon hint"}}
     ]
   }},
   "text_overlay": {{
@@ -224,6 +246,9 @@ Convert these beats into SCENES. You have flexibility in the mapping:
 
 For each scene, provide full visual specifications based on the beat's category.
 
+TEMPLATE CATALOG:
+{template_catalog}
+
 Return JSON array:
 [
   {{
@@ -236,9 +261,10 @@ Return JSON array:
     "search_queries": ["for b-roll/a-roll: search terms"],
     "comfyui_prompt": "for generated: AI image prompt",
     "infographic": {{
-      "template": "steps|list|comparison",
+      "template": "pick from catalog",
       "theme": "default|dark|warm|cool",
-      "data": {{"title": "...", "items": [...]}}
+      "theme_config_ref": "docu-dark-minimal|docu-warm-soft (optional)",
+      "data": {{"title": "...", "items": [{"label": "...", "icon_keyword": "optional"}]}}
     }},
     "sync_points": [
       {{"trigger": "word", "action": "reveal|highlight|cut", "target": 0}}
@@ -315,7 +341,9 @@ class Scene:
     matched_asset: Optional[str] = None      # Downloaded b-roll image
     generated_asset: Optional[str] = None    # AI-generated image
     infographic_asset: Optional[str] = None  # Static SVG infographic
+    infographic_asset_png: Optional[str] = None  # PNG preview for infographics
     rendered_clip: Optional[str] = None      # Pre-rendered MP4 clip (highest priority)
+    matched_clip: Optional[Dict[str, Any]] = None  # Video library clip match
 
     # === SRT Cues (attached in Step 4) ===
     subtitle_cues: List[Any] = field(default_factory=list)  # SubtitleCue objects
@@ -417,6 +445,9 @@ class ScenePlan:
             matched_asset=data.get("matched_asset"),
             generated_asset=data.get("generated_asset"),
             infographic_asset=data.get("infographic_asset"),
+            infographic_asset_png=data.get("infographic_asset_png"),
+            rendered_clip=data.get("rendered_clip"),
+            matched_clip=data.get("matched_clip"),
             subtitle_cues=data.get("subtitle_cues", []),
         )
 
@@ -551,7 +582,8 @@ class SceneDesigner:
 
         prompt = PASS2_SCENES_PROMPT.format(
             section_title=beat_plan.section_title,
-            beats_json=beats_json
+            beats_json=beats_json,
+            template_catalog=INFOGRAPHIC_TEMPLATE_REGISTRY,
         )
 
         response = await self.llm.generate(prompt)

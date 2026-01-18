@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-17
+**Last Updated:** 2026-01-18
 
 ## Summary
 
@@ -74,10 +74,54 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
   - Identifies key characters/elements
   - Describes emotional/narrative significance
 
+### Semantic Search
+- **Vector Database** - ChromaDB for semantic similarity search
+  - Stores embeddings for segments and clusters separately
+  - Persistent storage alongside SQLite database
+
+## Recent Indexing Improvements (2026-01-17)
+- **Concurrency Default** - Indexing defaults to 25 concurrent calls (configurable via `indexing.concurrency`).
+- **Bulk Segment Inserts** - Segments are inserted per video in batch for faster DB writes.
+- **Frame Analysis Cache** - Cached results by `(fingerprint, timestamp, transcript_hash, inference_enabled)` to reuse on reindex.
+- **Transcript Alignment Cache** - Cached aligned transcript slices per `(fingerprint, transcript_hash, timestamps_hash)`.
+- **Rate-Limit Backoff** - Short exponential backoff on Gemini rate-limit errors (429/resource_exhausted).
+- **FFmpeg Batch Extraction** - FFmpeg scene sampler extracts frames in batches per process for fewer spawns.
+- **Path Refresh** - Video path/project is updated even when reindex is skipped.
+
+## Recent Clip Matching Improvements (2026-01-17)
+- **Parallel Matching** - Scene matching runs with bounded concurrency (`clip_matching.concurrency`).
+- **Rate-Limit Backoff** - Retries LLM selection on 429/resource_exhausted errors.
+- **Better Selection Context** - LLM prompt now includes the merged search query.
+- **Deterministic Fallback** - LLM parse failures fall back to highest-similarity candidate.
+- **No-Match Logging** - Clear messages when candidates are filtered out by similarity.
+- **Two-Stage Search** - Cluster-first search narrows segment results when `search_level=both`.
+- **Candidate Deduping** - Removes duplicate segment candidates across sources.
+- **Dominant-Match Fast Path** - Skips LLM when top similarity is clearly ahead.
+- **Deterministic Tie-Breaking** - Pre-LLM ranking uses similarity, transcript presence, and duration fit.
+- **LLM Selection Cache** - Per-run cache for scene+candidates avoids repeated LLM calls.
+  - Project-level filtering support
+- **BGE Embeddings** - BAAI/bge-base-en-v1.5 model (768 dimensions)
+  - Query-document asymmetry support for better retrieval
+  - Local inference (~440MB model download)
+  - Combines visual descriptions, transcripts, and context
+- **Search Levels** - Configurable granularity
+  - `segments` - Individual video segments
+  - `clusters` - Story moment clusters
+  - `both` - Combined results (default)
+- **Incremental Sync** - Only re-embeds changed videos
+  - Uses `indexed_at` timestamps to detect re-indexing
+  - Auto-triggered after `nolan index` completes
+  - Use `--force` to re-embed everything
+- **CLI Commands**
+  - `nolan sync-vectors` - Sync SQLite index to ChromaDB
+  - `nolan semantic-search <query>` - Natural language search
+
 ### Integrations
 - **ComfyUI Client** - Image generation via local ComfyUI API
 - **Viewer Server** - FastAPI-based local viewer for reviewing outputs
 - **Library Viewer** - Web UI for browsing indexed video library (`nolan browse`)
+  - Keyword and semantic search modes with toggle
+  - Project filtering support
 - **Scene Plan Viewer** - A/B column viewer for scene plan review (`/scenes` route)
   - Left column: Scene details (ID, timing, narration, type, query/prompt)
   - Right column: Asset preview (image/video with lightbox)
@@ -100,6 +144,7 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 | `nolan generate-test` | Quick single-image generation for testing |
 | `nolan image-search` | Search for images from web/stock photo APIs |
 | `nolan match-broll` | Batch search and download images for b-roll scenes |
+| `nolan match-clips` | Match scenes to video library clips using semantic search |
 | `nolan transcribe` | Transcribe audio/video to SRT/JSON/TXT |
 | `nolan align` | Align scene plan to audio with word-level timestamps |
 | `nolan render-clips` | Pre-render animated scenes to MP4 clips |
@@ -112,6 +157,11 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 | `nolan projects list` | List all registered projects |
 | `nolan projects info` | Show project details and videos |
 | `nolan projects delete` | Remove a project from registry |
+| `nolan sync-vectors` | Sync video index to ChromaDB for semantic search |
+| `nolan semantic-search` | Semantic search across video library |
+| `nolan showcase` | Launch Motion Effects Showcase UI |
+| `nolan library` | Launch Video Library Viewer UI |
+| `nolan hub` | Launch unified NOLAN Hub (Library + Showcase + Scenes) |
 
 ### ComfyUI Integration
 - **Custom Workflows** - Load any ComfyUI workflow (API format)
@@ -154,6 +204,51 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
   3. `matched_asset` - Downloaded b-roll
   4. `infographic_asset` - Rendered SVG
   5. Black frame (fallback for missing assets)
+
+### Motion Effects Library
+- **Effects Registry** - Centralized catalog of motion effects for video essays
+  - Organized by category: image, quote, statistic, chart, title, map, etc.
+  - Each effect maps to underlying engine (Remotion, Motion Canvas, Infographic)
+  - LLM-friendly descriptions for automated scene generation
+- **Effect Presets** - Ready-to-use motion patterns with sensible defaults
+  - `image-ken-burns` - Classic documentary pan/zoom
+  - `image-zoom-focus` - Zoom to detail reveal
+  - `image-parallax` - 2.5D depth parallax layers
+  - `quote-fade-center` - Elegant centered text
+  - `quote-kinetic` - Kinetic typography sequences
+  - `chart-bar-race` - Animated bar charts
+  - `stat-counter-roll` - Number counter animation
+  - `title-card` - Full-screen title cards
+  - `map-flyover` - Geographic pan/zoom
+  - `light-leak` - Organic light leak and film burn overlay
+  - `camera-shake` - Handheld camera shake for tension/urgency
+  - `compare-before-after` - Before/after slider wipe transition
+  - `text-pop` - Word-by-word text reveal animation
+  - `source-citation` - Citation cards for sources
+  - `screen-frame` - Browser/phone/laptop mockup frames
+  - `audio-waveform` - Animated audio visualization
+  - `zoom-blur` - Speed zoom with radial motion blur
+  - `glitch-transition` - Digital glitch with RGB split
+  - `data-ticker` - CNN-style scrolling news ticker
+  - `social-media-post` - Twitter/social media post mockup
+  - `video-frame-stack` - Grid/stack of video thumbnails
+- **Showcase UI** - Web interface for browsing and generating effects
+  - Gallery view with category filtering
+  - Live parameter form for each effect
+  - Image upload support
+  - Preview generation with render service
+  - Accessible at `nolan showcase` or via unified hub
+- **Unified Hub** - Single entry point at `nolan hub` combining:
+  - Video Library browser (`/library`)
+  - Motion Effects Showcase (`/showcase`)
+  - Scene Plan Viewer (`/scenes`) with dynamic project selection
+  - Landing page shows all projects as clickable cards
+  - Projects auto-discovered from `--projects` directory (default: `projects/`)
+  - Project dropdown in scenes viewer for quick switching
+- **API Endpoints**
+  - `GET /effects` - List all effects with parameters
+  - `GET /effects/:id` - Get specific effect details
+  - `POST /render` - Render with `{effect, params}` format
 
 ### YouTube Integration
 - **Video Download** - Download YouTube videos using yt-dlp
@@ -219,6 +314,19 @@ nolan cluster --all -o all_clusters.json
 
 # Browse indexed library in web UI
 nolan browse
+
+# === Semantic Search ===
+
+# Sync index to vector database (first time or after new indexing)
+nolan sync-vectors
+nolan sync-vectors --project venezuela  # Only sync specific project
+nolan sync-vectors --clear              # Clear and rebuild
+
+# Semantic search with natural language
+nolan semantic-search "person looking worried"
+nolan semantic-search "dramatic landscape" --level clusters
+nolan semantic-search "Hugo Chavez speaking" --project venezuela --level segments
+nolan semantic-search "emotional moment" -n 20 -o results.json
 
 # Launch viewer for project outputs
 nolan serve -p ./output
@@ -358,10 +466,20 @@ NOLAN/
 - ComfyUI (optional, for image generation)
 - Node.js 18+ (optional, for Infographic & Animation Render Service)
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Fair Use Transforms](docs/FAIR_USE_TRANSFORMS.md) | Strategies for transforming third-party clips to reduce copyright detection |
+| [Motion Effects](docs/MOTION_EFFECTS.md) | Motion effects library for video essays |
+| [TTS Integration](docs/TTS_INTEGRATION.md) | Voiceover generation with MiniMax and Chatterbox |
+
 ## Next Steps (Backlog)
 
-- **Adaptive indexing for long videos** - Target fixed frame count regardless of video duration
-  - Proposed approaches: dynamic intervals, scene detection, two-pass (sparse → dense), batch API
+- **TTS Voiceover Generation** - `nolan voiceover` command with MiniMax API and Chatterbox local fallback
+- **End-to-End Orchestrator** - `nolan make-video` single command for full pipeline automation
+- **Fair Use Transform Presets** - Implement `--fair-use-transform` flag for automated clip transformation
+- **AI Clip Regeneration** - `nolan regenerate-clips` using LTX-2 / Wan I2V to create new AI videos from key frames
 - **yt-fts transcript search integration** - Use YouTube transcript search for full-text search
 - **LLM infographic placement** - Detect data points in scripts and suggest infographic placement
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
@@ -370,11 +488,41 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Video Library Clip Matching** - `nolan match-clips` command for matching scenes to library clips
+  - Semantic search using ChromaDB vector database finds relevant clips
+  - LLM selection picks best candidate considering visual relevance, narrative fit, and duration
+  - Smart clip tailoring algorithm: skips first 7% (avoid transitions), ratio-based centering
+  - Combines `narration_excerpt + visual_description + search_query` for rich search queries
+  - Configurable via `clip_matching` section in nolan.yaml:
+    - `candidates_per_scene`: Top N candidates (default: 3)
+    - `min_similarity`: Threshold 0-1 (default: 0.5)
+    - `search_level`: segments, clusters, or both
+  - Updates `matched_clip` field in scene_plan.json with video_path, clip_start, clip_end, reasoning
+  - Supports --dry-run, --project filter, --skip-existing options
+- ✅ **Semantic Search UI** - Toggle between keyword and semantic search in library viewer
+  - Search mode toggle button (Keyword/Semantic) in web UI
+  - Semantic scores displayed as percentage badges (e.g., "69.3%")
+  - Fields dropdown hidden in semantic mode (not applicable)
+  - `/api/search/semantic` API endpoint for programmatic access
+- ✅ **Adaptive Scene Detection** - Automatic threshold tuning per video
+  - Uses statistical analysis (mean + 5σ) to find significant scene changes
+  - Adapts to different editing styles: fast cuts get higher threshold, slow pacing gets lower
+  - Example: Fast-cut video (10.8 segments/min) vs slow video (5.1 segments/min)
+  - Runs FFmpeg once to collect all scores, then filters - no repeated processing
+  - Configurable sigma multiplier (default 5.0) in SamplerConfig
+  - Falls back to fixed threshold if specified (for backwards compatibility)
+  - **Score caching**: Saves frame scores to `video.scores.json` for instant reindexing
+    - Skips FFmpeg on reindex if video unchanged (checks mtime + size)
+    - ~100s savings on 40-min video reindex
+  - **FFmpeg frame extraction**: Uses FFmpeg with input seeking instead of CV2
+    - 3.7x faster frame extraction (190ms vs 700ms per frame)
+    - Uses libdav1d for AV1 videos (faster decoder)
 - ✅ **FFmpeg Scene Detection** - 10-50x faster frame sampling (new default)
   - Uses FFmpeg's hardware-accelerated scene detection filter
   - Only decodes frames at detected scene changes (vs every frame)
   - Respects min/max interval constraints for coverage
   - 30-min video: ~5 seconds (vs 3-8 minutes with Python-based hybrid)
+  - Codec-aware decoder selection (libdav1d for AV1, native for others)
   - Use `--sampler hybrid` to fall back to Python-based detection
 - ✅ **Combined Vision+Inference** - Single API call per frame (50% fewer calls)
   - Frame + transcript analyzed together in one vision call
@@ -459,6 +607,11 @@ NOLAN/
   - Debug logging is gated behind `INFOGRAPHIC_DEBUG=1`
 - ✅ **Render Service Engine Coverage** - Motion Canvas and Remotion engines now render MP4s
   - Processor wiring routes motion-canvas and remotion jobs to live engines
+- ✅ **Render Service Code Quality Refactor** - Cleaned up engine and preset code
+  - Extracted common utilities (`ensureDir`, `toNumber`, `toString`) to `engines/utils.ts`
+  - Centralized theme definitions in `themes.ts` (used by all 3 engines)
+  - Fixed inconsistent null handling: changed 70+ `||` to `??` for numeric params
+  - Prevents bugs where falsy values like `0` incorrectly trigger fallbacks
 - ✅ **Infographic Scene Integration** - Scene designer supports infographic suggestions
   - Prompt updated to allow infographic visual_type and spec payloads
   - Scene model stores infographic specs and rendered assets

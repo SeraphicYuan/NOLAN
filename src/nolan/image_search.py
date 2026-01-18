@@ -715,7 +715,8 @@ class ImageScorer:
             raise RuntimeError("Gemini API key not configured")
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model_name = self.vision_config.get("model", "gemini-3-flash-preview")
+        model = genai.GenerativeModel(model_name)
 
         # Load image
         image = Image.open(io.BytesIO(image_data))

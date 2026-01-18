@@ -41,7 +41,8 @@ class SamplerConfig:
     # Perceptual hash settings
     hash_threshold: int = 5  # hamming distance threshold
     # FFmpeg scene detection settings
-    ffmpeg_scene_threshold: float = 0.3  # FFmpeg scene score (0-1), lower = more sensitive
+    ffmpeg_scene_threshold: float = None  # None = adaptive (5 sigma), or fixed value 0-1
+    ffmpeg_adaptive_sigma: float = 5.0  # Sigma multiplier for adaptive threshold
 
 
 class FrameSampler(ABC):
@@ -358,74 +359,291 @@ class FFmpegSceneSampler(FrameSampler):
 
     def __init__(
         self,
-        scene_threshold: float = 0.3,
+        scene_threshold: float = None,
         min_interval: float = 1.0,
-        max_interval: float = 30.0
+        max_interval: float = 30.0,
+        adaptive_sigma: float = 5.0,
+        progress_callback=None
     ):
         """Initialize FFmpeg scene sampler.
 
         Args:
-            scene_threshold: FFmpeg scene change threshold (0-1).
-                            Lower = more sensitive. Default 0.3 works well.
+            scene_threshold: FFmpeg scene change threshold (0-1), or None for adaptive.
+                            When None, uses adaptive_sigma to calculate threshold.
             min_interval: Minimum seconds between samples.
             max_interval: Maximum seconds between samples (fallback).
+            adaptive_sigma: Sigma multiplier for adaptive threshold (default 5.0).
+                           Threshold = mean + adaptive_sigma * stdev of all scores.
+            progress_callback: Optional callback(message) for status updates.
         """
-        self.scene_threshold = scene_threshold
+        self.scene_threshold = scene_threshold  # None = adaptive mode
         self.min_interval = min_interval
         self.max_interval = max_interval
+        self.adaptive_sigma = adaptive_sigma
+        self.progress_callback = progress_callback
+        self._last_detection_result = None  # Store result for reporting
 
-    def _detect_scene_timestamps(self, video_path: Path) -> list[tuple[float, str]]:
-        """Use FFmpeg to detect scene change timestamps.
+    def _log(self, message: str):
+        """Log a message via callback if available."""
+        if self.progress_callback:
+            self.progress_callback(message)
 
-        Uses ffmpeg -vf with select and showinfo filters, which handles
-        paths with special characters better than ffprobe's movie filter.
+    def _get_scores_cache_path(self, video_path: Path) -> Path:
+        """Get the path to the scores cache file for a video."""
+        return video_path.with_suffix(video_path.suffix + ".scores.json")
+
+    def _load_scores_cache(self, video_path: Path) -> Optional[list[tuple[float, float]]]:
+        """Load cached frame scores if valid.
 
         Returns:
-            List of (timestamp, reason) tuples.
+            List of (timestamp, score) tuples, or None if cache invalid/missing.
+        """
+        import json
+
+        cache_path = self._get_scores_cache_path(video_path)
+        if not cache_path.exists():
+            return None
+
+        try:
+            # Check if video has been modified since cache was created
+            video_mtime = video_path.stat().st_mtime
+            video_size = video_path.stat().st_size
+
+            with open(cache_path, 'r') as f:
+                cache = json.load(f)
+
+            # Validate cache
+            if cache.get('video_mtime') != video_mtime:
+                self._log("Video modified since cache created, re-analyzing...")
+                return None
+            if cache.get('video_size') != video_size:
+                self._log("Video size changed, re-analyzing...")
+                return None
+
+            frames = cache.get('frames', [])
+            if len(frames) < 10:
+                return None
+
+            self._log(f"Loaded {len(frames)} cached frame scores")
+            return [(f[0], f[1]) for f in frames]
+
+        except (json.JSONDecodeError, KeyError, TypeError):
+            return None
+
+    def _save_scores_cache(
+        self,
+        video_path: Path,
+        frames: list[tuple[float, float]]
+    ) -> None:
+        """Save frame scores to cache file.
+
+        Args:
+            video_path: Path to video file.
+            frames: List of (timestamp, score) tuples.
+        """
+        import json
+
+        cache_path = self._get_scores_cache_path(video_path)
+
+        try:
+            cache = {
+                'video_mtime': video_path.stat().st_mtime,
+                'video_size': video_path.stat().st_size,
+                'frame_count': len(frames),
+                'frames': [[ts, score] for ts, score in frames]
+            }
+
+            with open(cache_path, 'w') as f:
+                json.dump(cache, f)
+
+            self._log(f"Saved {len(frames)} frame scores to cache")
+
+        except Exception as e:
+            # Cache save failure is not critical
+            self._log(f"Warning: Could not save scores cache: {e}")
+
+    def _detect_video_codec(self, video_path: Path) -> Optional[str]:
+        """Detect the video codec using ffprobe."""
+        import subprocess
+        cmd = [
+            "ffprobe", "-v", "quiet",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=codec_name",
+            "-of", "csv=p=0",
+            str(video_path)
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            return result.stdout.strip().lower()
+        except Exception:
+            return None
+
+    def _detect_scene_timestamps(
+        self,
+        video_path: Path,
+        duration: float
+    ) -> tuple[list[tuple[float, str]], Optional[str]]:
+        """Use FFmpeg to detect scene change timestamps.
+
+        Uses adaptive thresholding (mean + N*sigma) to find statistically
+        significant scene changes, or a fixed threshold if specified.
+
+        Args:
+            video_path: Path to video file.
+            duration: Video duration in seconds (for timeout calculation).
+
+        Returns:
+            Tuple of (timestamps list, error message or None).
         """
         import subprocess
         import re
+        import statistics
 
-        # FFmpeg command using -vf filter (better path handling than movie filter)
-        # Scale down to 320px width for faster processing (4-5x speedup)
-        # Scene detection only needs to detect overall frame changes, not fine detail
-        # showinfo outputs frame details including pts_time
+        # Calculate dynamic timeout: 15 seconds per minute of video, minimum 60 seconds
+        timeout_seconds = max(60, int(duration / 60 * 15))
+
+        # Detect codec to use appropriate decoder
+        codec = self._detect_video_codec(video_path)
+        decoder_args = []
+
+        # Use libdav1d for AV1 (3-5x faster than libaom)
+        if codec in ('av1', 'av01'):
+            decoder_args = ["-c:v", "libdav1d"]
+            self._log(f"Detected AV1 codec, using libdav1d decoder (faster)")
+
+        # Determine if we need adaptive mode
+        use_adaptive = self.scene_threshold is None
+
+        if use_adaptive:
+            # Check for cached scores first
+            cached_frames = self._load_scores_cache(video_path)
+            if cached_frames is not None:
+                # Use cached scores - skip FFmpeg entirely
+                scores = [f[1] for f in cached_frames]
+                mean = statistics.mean(scores)
+                stdev = statistics.stdev(scores)
+                threshold = mean + self.adaptive_sigma * stdev
+
+                self._log(f"Adaptive threshold: {threshold:.4f} (mean={mean:.4f}, stdev={stdev:.4f}, {self.adaptive_sigma}sigma)")
+
+                # Filter frames above threshold
+                timestamps = [
+                    (ts, "scene_change (adaptive)")
+                    for ts, score in cached_frames
+                    if score > threshold
+                ]
+
+                self._log(f"Detected {len(timestamps)} scene changes (from cache)")
+                return timestamps, None
+
+            # No cache - get ALL scene scores for adaptive threshold calculation
+            filter_expr = "scale=320:-1,select='gte(scene,0)',metadata=print:file=-"
+            self._log(f"Analyzing scene scores for adaptive threshold...")
+        else:
+            # Fixed threshold mode
+            filter_expr = f"scale=320:-1,select='gt(scene,{self.scene_threshold})',showinfo"
+
+        # Build FFmpeg command
         cmd = [
             "ffmpeg",
+            "-hide_banner",
+            "-loglevel", "info",
+        ]
+        cmd.extend(decoder_args)
+        cmd.extend([
             "-i", str(video_path),
-            "-vf", f"scale=320:-1,select='gt(scene,{self.scene_threshold})',showinfo",
+            "-vf", filter_expr,
             "-f", "null",
             "-"
-        ]
+        ])
+
+        duration_str = f"{int(duration // 60)}:{int(duration % 60):02d}"
+        self._log(f"Running FFmpeg scene detection (video: {duration_str}, timeout: {timeout_seconds}s)...")
 
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300,
+                timeout=timeout_seconds,
             )
 
-            # Parse pts_time from showinfo output (in stderr)
-            timestamps = []
-            # Pattern matches: pts_time:123.456
-            pattern = re.compile(r'pts_time:([\d.]+)')
+            # Check for FFmpeg errors
+            if result.returncode != 0 and "Error" in result.stderr:
+                for line in result.stderr.split('\n'):
+                    if 'Error' in line or 'error' in line:
+                        return [], f"FFmpeg error: {line.strip()}"
 
-            for line in result.stderr.split('\n'):
-                if 'showinfo' in line and 'pts_time' in line:
-                    match = pattern.search(line)
-                    if match:
-                        try:
-                            ts = float(match.group(1))
-                            timestamps.append((ts, "scene_change (ffmpeg)"))
-                        except ValueError:
+            output = result.stdout + result.stderr
+
+            if use_adaptive:
+                # Parse all frame scores and timestamps for adaptive mode
+                frame_pattern = re.compile(r'frame:(\d+)\s+pts:(\d+)\s+pts_time:([\d.]+)')
+                score_pattern = re.compile(r'lavfi\.scene_score=([\d.]+)')
+
+                frames = []  # List of (timestamp, score)
+                lines = output.split('\n')
+
+                i = 0
+                while i < len(lines):
+                    frame_match = frame_pattern.search(lines[i])
+                    if frame_match and i + 1 < len(lines):
+                        score_match = score_pattern.search(lines[i + 1])
+                        if score_match:
+                            ts = float(frame_match.group(3))
+                            score = float(score_match.group(1))
+                            frames.append((ts, score))
+                            i += 2
                             continue
+                    i += 1
 
-            return timestamps
+                if len(frames) < 10:
+                    return [], f"Not enough frames analyzed ({len(frames)})"
 
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            # FFmpeg not available, return empty list
-            return []
+                # Save scores to cache for future reindexing
+                self._save_scores_cache(video_path, frames)
+
+                # Calculate adaptive threshold
+                scores = [f[1] for f in frames]
+                mean = statistics.mean(scores)
+                stdev = statistics.stdev(scores)
+                threshold = mean + self.adaptive_sigma * stdev
+
+                self._log(f"Adaptive threshold: {threshold:.4f} (mean={mean:.4f}, stdev={stdev:.4f}, {self.adaptive_sigma}sigma)")
+
+                # Filter frames above threshold
+                timestamps = [
+                    (ts, "scene_change (adaptive)")
+                    for ts, score in frames
+                    if score > threshold
+                ]
+
+                self._log(f"Detected {len(timestamps)} scene changes")
+                return timestamps, None
+
+            else:
+                # Fixed threshold mode - parse pts_time from showinfo output
+                timestamps = []
+                pattern = re.compile(r'pts_time:([\d.]+)')
+
+                for line in result.stderr.split('\n'):
+                    if 'showinfo' in line and 'pts_time' in line:
+                        match = pattern.search(line)
+                        if match:
+                            try:
+                                ts = float(match.group(1))
+                                timestamps.append((ts, "scene_change (ffmpeg)"))
+                            except ValueError:
+                                continue
+
+                return timestamps, None
+
+        except subprocess.TimeoutExpired:
+            return [], f"FFmpeg timed out after {timeout_seconds}s"
+        except FileNotFoundError:
+            return [], "FFmpeg not found in PATH"
+        except Exception as e:
+            return [], f"FFmpeg failed: {str(e)}"
 
     def _get_video_duration(self, video_path: Path) -> float:
         """Get video duration using ffprobe."""
@@ -499,27 +717,172 @@ class FFmpegSceneSampler(FrameSampler):
             filled.append((fill_time, "max_interval"))
             prev_time = fill_time
 
-        return sorted(set(filled), key=lambda x: x[0])
+        deduped = {}
+        for ts, reason in sorted(filled, key=lambda x: x[0]):
+            if ts not in deduped:
+                deduped[ts] = reason
+            elif deduped[ts] == "max_interval" and reason != "max_interval":
+                deduped[ts] = reason
+
+        return [(ts, deduped[ts]) for ts in sorted(deduped)]
 
     def _extract_frame_at_timestamp(
         self,
         video_path: Path,
-        timestamp: float
+        timestamp: float,
+        codec: Optional[str] = None
     ) -> Optional[np.ndarray]:
-        """Extract a single frame at the given timestamp using cv2.
+        """Extract a single frame at the given timestamp.
+
+        Uses FFmpeg with input seeking for faster extraction, especially
+        for AV1 videos where cv2 seeking is slow.
 
         Args:
             video_path: Path to video file.
             timestamp: Timestamp in seconds.
+            codec: Video codec (for decoder selection). If None, auto-detects.
 
         Returns:
-            Frame as numpy array, or None if extraction failed.
+            Frame as numpy array (BGR), or None if extraction failed.
         """
-        cap = cv2.VideoCapture(str(video_path))
-        cap.set(cv2.CAP_PROP_POS_MSEC, timestamp * 1000)
-        ret, frame = cap.read()
-        cap.release()
-        return frame if ret else None
+        import subprocess
+        import tempfile
+        import os
+
+        # Build FFmpeg command with input seeking (-ss before -i)
+        decoder_args = []
+        if codec in ('av1', 'av01'):
+            decoder_args = ['-c:v', 'libdav1d']
+
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+                out_path = f.name
+
+            cmd = [
+                'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
+            ]
+            cmd.extend(decoder_args)
+            cmd.extend([
+                '-ss', str(timestamp),
+                '-i', str(video_path),
+                '-frames:v', '1',
+                '-q:v', '2',
+                out_path
+            ])
+
+            result = subprocess.run(cmd, capture_output=True, timeout=30)
+
+            if result.returncode == 0 and os.path.exists(out_path):
+                frame = cv2.imread(out_path)
+                os.unlink(out_path)
+                return frame
+            else:
+                if os.path.exists(out_path):
+                    os.unlink(out_path)
+                return None
+
+        except Exception:
+            return None
+
+    def _extract_frames_batch(
+        self,
+        video_path: Path,
+        timestamps: list[float],
+        codec: Optional[str] = None,
+        epsilon: float = 0.01
+    ) -> list[Optional[np.ndarray]]:
+        """Extract multiple frames in a single FFmpeg run."""
+        import subprocess
+        import tempfile
+        import os
+
+        if not timestamps:
+            return []
+
+        decoder_args = []
+        if codec in ('av1', 'av01'):
+            decoder_args = ['-c:v', 'libdav1d']
+
+        parts = []
+        for ts in timestamps:
+            start = max(0.0, ts - epsilon)
+            end = ts + epsilon
+            parts.append(f"between(t,{start:.3f},{end:.3f})")
+
+        filter_expr = "+".join(parts)
+
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output_pattern = os.path.join(tmpdir, "%06d.png")
+                cmd = [
+                    'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
+                ]
+                cmd.extend(decoder_args)
+                cmd.extend([
+                    '-i', str(video_path),
+                    '-vf', f"select='{filter_expr}',setpts=N/FRAME_RATE/TB",
+                    '-vsync', '0',
+                    output_pattern
+                ])
+
+                result = subprocess.run(cmd, capture_output=True, timeout=60)
+                if result.returncode != 0:
+                    return [None] * len(timestamps)
+
+                files = sorted(
+                    f for f in os.listdir(tmpdir)
+                    if f.lower().endswith(".png")
+                )
+                frames = []
+                for fname in files:
+                    frame = cv2.imread(os.path.join(tmpdir, fname))
+                    frames.append(frame)
+
+                if len(frames) < len(timestamps):
+                    frames.extend([None] * (len(timestamps) - len(frames)))
+                return frames[:len(timestamps)]
+        except Exception:
+            return [None] * len(timestamps)
+
+    def list_timestamps(self, video_path: Path) -> list[tuple[float, str]]:
+        """Return timestamps and reasons without extracting frames."""
+        duration = self._get_video_duration(video_path)
+        if duration <= 0:
+            self._log("Warning: Could not determine video duration")
+            return []
+
+        scene_timestamps, error = self._detect_scene_timestamps(video_path, duration)
+
+        if error:
+            self._log(f"Scene detection failed: {error}")
+            self._log(f"Falling back to {self.max_interval}s interval sampling")
+            scene_timestamps = []
+        elif len(scene_timestamps) == 0:
+            self._log(f"No scene changes detected (threshold={self.scene_threshold})")
+            self._log(f"Using {self.max_interval}s interval sampling")
+        else:
+            self._log(f"Detected {len(scene_timestamps)} scene changes")
+
+        self._last_detection_result = {
+            "scene_changes": len(scene_timestamps),
+            "error": error,
+            "duration": duration
+        }
+
+        return self._add_interval_samples(scene_timestamps, duration)
+
+    def extract_frames(self, video_path: Path, timestamps: list[tuple[float, str]]) -> list[Optional[np.ndarray]]:
+        """Extract frames for a list of timestamps with reasons."""
+        codec = self._detect_video_codec(video_path)
+        frames = []
+        batch_size = 150
+
+        for start in range(0, len(timestamps), batch_size):
+            batch = timestamps[start:start + batch_size]
+            batch_times = [ts for ts, _ in batch]
+            frames.extend(self._extract_frames_batch(video_path, batch_times, codec=codec))
+
+        return frames
 
     def sample(self, video_path: Path) -> Iterator[SampledFrame]:
         """Sample frames using FFmpeg scene detection.
@@ -529,20 +892,14 @@ class FFmpegSceneSampler(FrameSampler):
         2. Only selected frames are decoded, not every frame
         3. Scene detection runs in native code
         """
-        # Get video duration
-        duration = self._get_video_duration(video_path)
-        if duration <= 0:
+        timestamps_with_reasons = self.list_timestamps(video_path)
+        if not timestamps_with_reasons:
             return
 
-        # Detect scene changes using FFmpeg
-        scene_timestamps = self._detect_scene_timestamps(video_path)
+        self._log(f"Extracting {len(timestamps_with_reasons)} frames...")
 
-        # Add interval samples to fill gaps
-        all_timestamps = self._add_interval_samples(scene_timestamps, duration)
-
-        # Extract frames at each timestamp
-        for timestamp, reason in all_timestamps:
-            frame = self._extract_frame_at_timestamp(video_path, timestamp)
+        frames = self.extract_frames(video_path, timestamps_with_reasons)
+        for (timestamp, reason), frame in zip(timestamps_with_reasons, frames):
             if frame is not None:
                 yield SampledFrame(
                     timestamp=timestamp,
@@ -580,7 +937,8 @@ def create_sampler(config: SamplerConfig) -> FrameSampler:
         SamplingStrategy.FFMPEG_SCENE: lambda: FFmpegSceneSampler(
             scene_threshold=config.ffmpeg_scene_threshold,
             min_interval=config.min_interval,
-            max_interval=config.max_interval
+            max_interval=config.max_interval,
+            adaptive_sigma=config.ffmpeg_adaptive_sigma
         ),
     }
 

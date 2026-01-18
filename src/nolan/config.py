@@ -56,9 +56,10 @@ class IndexingConfig:
     min_interval: float = 1.0
     max_interval: float = 30.0
     scene_threshold: float = 25.0  # For hybrid/scene_change samplers
-    ffmpeg_scene_threshold: float = 0.3  # For ffmpeg_scene sampler (0-1)
+    ffmpeg_scene_threshold: Optional[float] = None  # None = adaptive (5σ), or fixed 0-1
     enable_transcript: bool = True
     enable_inference: bool = True
+    concurrency: int = 25
 
 
 @dataclass
@@ -77,6 +78,18 @@ class ImageSourcesConfig:
 
 
 @dataclass
+class ClipMatchingConfig:
+    """Clip matching configuration for matching scenes to video library."""
+    candidates_per_scene: int = 3     # Top N candidates from vector search
+    min_similarity: float = 0.5       # Minimum similarity threshold (0-1)
+    search_level: str = "segments"    # segments, clusters, both
+    skip_edge_percent: float = 0.07   # Skip first 7% of clip (avoid transitions)
+    concurrency: int = 5             # Parallel scene matching (LLM calls)
+    fast_path_min_similarity: float = 0.75  # Auto-accept very strong matches
+    fast_path_margin: float = 0.15          # Min gap between top-2 to skip LLM
+
+
+@dataclass
 class NolanConfig:
     """Main configuration container."""
     gemini: GeminiConfig = field(default_factory=GeminiConfig)
@@ -86,6 +99,7 @@ class NolanConfig:
     indexing: IndexingConfig = field(default_factory=IndexingConfig)
     defaults: DefaultsConfig = field(default_factory=DefaultsConfig)
     image_sources: ImageSourcesConfig = field(default_factory=ImageSourcesConfig)
+    clip_matching: ClipMatchingConfig = field(default_factory=ClipMatchingConfig)
 
 
 def load_config(config_path: Optional[Path] = None) -> NolanConfig:
@@ -155,5 +169,10 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
             for key, value in overrides["image_sources"].items():
                 if hasattr(config.image_sources, key):
                     setattr(config.image_sources, key, value)
+
+        if "clip_matching" in overrides:
+            for key, value in overrides["clip_matching"].items():
+                if hasattr(config.clip_matching, key):
+                    setattr(config.clip_matching, key, value)
 
     return config
