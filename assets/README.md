@@ -49,6 +49,42 @@ icons = asset_manager.list_assets("noir-essay", category="icons")
 1. `assets/styles/{style_id}/{asset_name}` - Style-specific version
 2. `assets/common/{asset_name}` - Common fallback
 
+## Variant Support
+
+Assets can have variants for different visual styles:
+
+```
+icons/
+  arrow.svg           # Default arrow
+  arrow-ribbon.svg    # Ribbon variant
+  arrow-3d.svg        # 3D variant
+```
+
+**Usage:**
+```python
+# Get default
+path = asset_manager.get_icon("noir-essay", "arrow")
+
+# Get specific variant
+path = asset_manager.get_icon("noir-essay", "arrow", variant="ribbon")
+
+# List available variants
+variants = asset_manager.list_variants("noir-essay", "icons/arrow.svg")
+# Returns: ["ribbon", "3d"]
+```
+
+## Render Service API
+
+The render service exposes an assets API at `/assets`:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /assets/icons` | List all available icons |
+| `GET /assets/icons/:name` | Get icon SVG content |
+| `GET /assets/icons/:name?style=noir-essay` | Get style-specific icon |
+| `GET /assets/icons/:name?color=%23ff0000` | Get icon with color applied |
+| `GET /assets/check/:styleId/*` | Check if asset exists |
+
 ## Adding New Assets
 
 ### Common Icons
