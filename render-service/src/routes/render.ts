@@ -3,12 +3,13 @@ import { Router } from 'express';
 import { jobQueue } from '../jobs/queue.js';
 import { RenderSpec } from '../jobs/types.js';
 import { hasEffect, transformToEngineData } from '../effects/index.js';
+import { resolveLayout, isLayoutTemplate, type LayoutSpec } from '../layout/index.js';
 
 const router = Router();
 
 // POST /render - Submit a new render job
 // Supports two formats:
-// 1. Effect-based: { effect: "image-ken-burns", params: { ... } }
+// 1. Effect-based: { effect: "image-ken-burns", params: { ... }, layout?: "center" | {...} }
 // 2. Direct engine: { engine: "remotion", data: { ... } }
 router.post('/', (req, res) => {
   const body = req.body;
@@ -17,6 +18,7 @@ router.post('/', (req, res) => {
   if (body.effect) {
     const effectId = body.effect as string;
     const params = body.params || {};
+    const layout = body.layout as LayoutSpec | undefined;
 
     if (!hasEffect(effectId)) {
       return res.status(400).json({ error: `Unknown effect: ${effectId}` });
@@ -27,9 +29,15 @@ router.post('/', (req, res) => {
       return res.status(500).json({ error: 'Failed to transform effect params' });
     }
 
+    // Add layout to engine data if specified
+    const engineData = {
+      ...transformed.data,
+      ...(layout ? { layout } : {}),
+    };
+
     const spec: RenderSpec = {
       engine: transformed.engine as 'remotion' | 'motion-canvas' | 'infographic',
-      data: transformed.data,
+      data: engineData,
       width: body.width,
       height: body.height,
       duration: body.duration,
@@ -42,6 +50,7 @@ router.post('/', (req, res) => {
       status: job.status,
       effect: effectId,
       engine: transformed.engine,
+      layout: layout || 'center',
       poll_url: `/render/status/${job.id}`,
     });
   }
@@ -112,6 +121,20 @@ router.delete('/job/:id', (req, res) => {
   }
 
   res.json({ deleted: true });
+});
+
+// GET /render/layouts - List available layout templates
+router.get('/layouts', (req, res) => {
+  const { getLayoutTemplates, getTemplateRegions, TEMPLATES } = require('../layout/index.js');
+  const templates = getLayoutTemplates();
+
+  res.json({
+    templates: templates.map((name: string) => ({
+      name,
+      regions: getTemplateRegions(name),
+      definition: TEMPLATES[name],
+    })),
+  });
 });
 
 export default router;

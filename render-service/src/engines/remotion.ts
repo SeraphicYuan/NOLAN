@@ -9,6 +9,14 @@ import type { RenderSpec } from '../jobs/types.js';
 import { RenderEngine, RenderResult } from './types.js';
 import { ensureDir, toNumber, toString } from './utils.js';
 import { THEMES } from '../themes.js';
+import {
+  resolveLayout,
+  getMainRegion,
+  regionToRemotionStyle,
+  type Region,
+  type LayoutSpec,
+  type RegionStyle,
+} from '../layout/index.js';
 
 type RemotionPayload = {
   data: Record<string, unknown>;
@@ -42,12 +50,39 @@ function resolveFps(spec: RenderSpec): number {
 
 function buildPayload(spec: RenderSpec, outputName: string): RemotionPayload {
   const data = spec.data ?? {};
+  const dataRecord = data as Record<string, unknown>;
   const theme = toString(
-    spec.theme ?? (data as Record<string, unknown>).theme,
+    spec.theme ?? dataRecord.theme,
     'default'
   );
+
+  // Resolve layout at build time (not in React component)
+  // This avoids bundling issues with the layout module
+  const layoutSpec = dataRecord.layout as LayoutSpec | undefined;
+  const resolved = resolveLayout(layoutSpec);
+  const region = getMainRegion(resolved);
+  const layoutStyle = regionToRemotionStyle(region);
+
+  // Add resolved layout style to data
+  const dataWithLayout = {
+    ...data,
+    _layoutStyle: {
+      position: layoutStyle.position,
+      left: layoutStyle.left,
+      top: layoutStyle.top,
+      width: layoutStyle.width,
+      height: layoutStyle.height,
+      display: layoutStyle.display,
+      alignItems: layoutStyle.alignItems,
+      justifyContent: layoutStyle.justifyContent,
+      padding: layoutStyle.padding,
+      boxSizing: layoutStyle.boxSizing,
+      flexDirection: 'column',
+    },
+  };
+
   return {
-    data,
+    data: dataWithLayout,
     width: toNumber(spec.width, DEFAULT_WIDTH),
     height: toNumber(spec.height, DEFAULT_HEIGHT),
     duration: resolveDuration(spec),
@@ -335,7 +370,35 @@ type TitleCard = {
   duration?: number;
   background?: string;
   color?: string;
+  layout?: LayoutSpec;
 };
+
+/**
+ * Get layout region style from engine data.
+ * Uses pre-resolved _layoutStyle if available (passed from buildPayload).
+ * Falls back to centered layout if not specified.
+ */
+function getLayoutStyle(data: Record<string, unknown>): React.CSSProperties {
+  // Use pre-resolved layout style if available (passed from buildPayload)
+  const preResolved = data._layoutStyle as React.CSSProperties | undefined;
+  if (preResolved) {
+    return preResolved;
+  }
+
+  // Fallback: centered layout (shouldn't normally reach here)
+  return {
+    position: 'absolute',
+    left: '10%',
+    top: '10%',
+    width: '80%',
+    height: '80%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+    flexDirection: 'column',
+  };
+}
 
 type LowerThird = {
   name?: string;
@@ -451,14 +514,18 @@ const OverlayElements: React.FC<{
   const progressHeight = typeof progressBar.height === 'number' ? progressBar.height : 6;
   const progressMargin = typeof progressBar.margin === 'number' ? progressBar.margin : 32;
 
+  // Get layout style from data (uses 'center' template by default)
+  const layoutStyle = getLayoutStyle(data as Record<string, unknown>);
+
   return (
     <AbsoluteFill>
       {titleCard?.title ? (
-        <AbsoluteFill
+        <div
           style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center',
+            ...layoutStyle,
+            textAlign: layoutStyle.justifyContent === 'flex-start' ? 'left'
+                     : layoutStyle.justifyContent === 'flex-end' ? 'right'
+                     : 'center',
             opacity: titleOpacity,
             background: (titleCard as any).background || 'transparent',
           }}
@@ -495,7 +562,7 @@ const OverlayElements: React.FC<{
               {titleCard.subtitle}
             </div>
           ) : null}
-        </AbsoluteFill>
+        </div>
       ) : null}
       {lowerThird?.name ? (
         <AbsoluteFill style={{

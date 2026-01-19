@@ -702,6 +702,27 @@ NOLAN/
   - **Font loading** - Inter, Georgia, Playfair Display loaded in Motion-Canvas for style fonts
   - **Style parameter convention** - Use `style` param when possible; use `essayStyle` when another `style` param exists (e.g., animation style, frame style)
   - **Known limitations**:
-    - Layout properties (marginX, marginY, maxTextWidth, align) not yet applied in engines
     - Motion timing (enterFrames, exitFrames, easing) not yet derived from style; uses per-effect defaults
     - Helper functions (getTextureSettings, getFontProps, getSafeArea) available but not fully utilized
+- ✅ **Layout System** - Region-based positioning for effect placement
+  - **Region type** - Position defined by `{ x, y, w, h, align, valign, padding }` (all percentage-based 0-1)
+  - **11 layout templates** - Predefined region configurations for video essays:
+    - `center` - Single centered region (default)
+    - `full` - Full bleed with safe margins
+    - `lower-third` - Bottom bar for names, citations
+    - `upper-third` - Top bar for chapter titles
+    - `split` - Left/right 50-50 comparison
+    - `split-60-40` / `split-40-60` - Asymmetric left/right emphasis
+    - `thirds` - Three equal columns
+    - `split-with-lower` - Two columns + bottom bar
+    - `presenter` - Main content + lower third
+    - `grid-2x2` - Four equal quadrants
+  - **Render API integration** - `POST /render` accepts `layout` parameter:
+    - Template name: `{ layout: "lower-third" }`
+    - Custom regions: `{ layout: { regions: { main: { x: 0.1, y: 0.8, w: 0.5, h: 0.15 } } } }`
+  - **Engine integration** - Layouts resolved before bundling, passed as CSS styles to components
+  - **Layouts endpoint** - `GET /render/layouts` returns all templates with region definitions
+  - **Remotion CSS conversion** - `regionToRemotionStyle()` converts regions to CSS flexbox properties
+  - **Motion Canvas support** - `regionToMotionCanvas()` converts to center-based coordinates
+  - **Style layout merge** - `applyStyleToRegion()` merges EssayStyle.layout with region defaults
+  - **Extensible architecture** - Phase 1 (templates) complete; designed for Phase 2 (composition) and Phase 3 (full CSS)
