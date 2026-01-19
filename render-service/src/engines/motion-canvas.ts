@@ -189,32 +189,45 @@ const staircaseItems = isProgressStaircase ? chartItemsRaw.map((item: unknown, i
     icon: typeof record.icon === 'string' ? record.icon : 'check',
   };
 }) : [];
-const staircaseStepCount = staircaseItems.length;
-// Calculate staircase geometry - arrow goes from bottom-left to top-right
-const staircaseMargin = 120;
-const staircaseWidth = width - staircaseMargin * 2;
-const staircaseHeight = height * 0.5;
-const staircaseBaseY = height * 0.75;
-const staircaseStepWidth = staircaseStepCount > 1 ? staircaseWidth / staircaseStepCount : staircaseWidth;
-const staircaseStepHeight = staircaseStepCount > 1 ? staircaseHeight / staircaseStepCount : staircaseHeight;
-// Generate staircase points (creates a step pattern going up-right)
+const staircaseStepCount = staircaseItems.length || 1;
+// Calculate staircase geometry - Motion Canvas uses CENTER-BASED coordinates!
+// (0,0) is center of canvas, positive Y goes down, positive X goes right
+const halfW = width / 2;
+const halfH = height / 2;
+const staircaseMarginX = 80;
+const staircaseMarginTop = 180; // Leave room for title
+const staircaseMarginBottom = 80;
+// Staircase goes from bottom-left to top-right
+const staircaseStartX = -halfW + staircaseMarginX;
+const staircaseEndX = halfW - staircaseMarginX;
+const staircaseStartY = halfH - staircaseMarginBottom;  // Bottom
+const staircaseEndY = -halfH + staircaseMarginTop;       // Top
+const staircaseTotalWidth = staircaseEndX - staircaseStartX;
+const staircaseTotalHeight = staircaseStartY - staircaseEndY;
+const staircaseStepWidth = staircaseTotalWidth / staircaseStepCount;
+const staircaseStepHeight = staircaseTotalHeight / staircaseStepCount;
+// Generate staircase points (step pattern: horizontal then vertical)
 const staircasePoints: Array<{x: number; y: number}> = [];
 for (let i = 0; i <= staircaseStepCount; i++) {
-  const x = staircaseMargin + i * staircaseStepWidth;
-  const y = staircaseBaseY - i * staircaseStepHeight;
-  // Add horizontal then vertical for step pattern
+  const x = staircaseStartX + i * staircaseStepWidth;
+  const y = staircaseStartY - i * staircaseStepHeight;
   if (i > 0) {
-    staircasePoints.push({ x, y: staircaseBaseY - (i - 1) * staircaseStepHeight });
+    // Horizontal segment first (same y as previous step)
+    staircasePoints.push({ x, y: staircaseStartY - (i - 1) * staircaseStepHeight });
   }
+  // Then vertical endpoint
   staircasePoints.push({ x, y });
 }
-// Card positions alternate above/below the steps
+// Card positions - at the "elbow" (corner) of each step, alternating above/below
 const staircaseCardPositions = staircaseItems.map((_, index) => {
-  const x = staircaseMargin + (index + 0.5) * staircaseStepWidth;
-  const stepY = staircaseBaseY - index * staircaseStepHeight - staircaseStepHeight / 2;
+  // Position at the corner where horizontal meets vertical
+  const cornerX = staircaseStartX + (index + 1) * staircaseStepWidth;
+  const cornerY = staircaseStartY - index * staircaseStepHeight;
   const isAbove = index % 2 === 0;
-  const cardY = isAbove ? stepY - 100 : stepY + 80;
-  return { x, y: cardY, isAbove };
+  // Offset cards away from the arrow
+  const cardOffsetX = -staircaseStepWidth * 0.3;
+  const cardOffsetY = isAbove ? -90 : 90;
+  return { x: cornerX + cardOffsetX, y: cornerY + cardOffsetY, isAbove };
 });
 const kinetic =
   typeof (data as any).kinetic === 'object' && (data as any).kinetic !== null
@@ -3444,7 +3457,7 @@ export default makeScene2D(function* (view) {
             />
           ))}
         </Layout>
-      ) : isPieChart && chartEnabled ? null : (
+      ) : (isPieChart || isProgressStaircase) && chartEnabled ? null : (
         <Layout layout direction="column" gap={16}>
           {safeItems.map((item, index) => (
             <Txt
@@ -3538,7 +3551,7 @@ export default makeScene2D(function* (view) {
 
     view.add(
       <Layout layout={false} width={width} height={height}>
-        {/* Staircase arrow - 3D effect with shadow and gradient */}
+        {/* Staircase arrow - shadow layer */}
         <Line
           points={arrowPoints}
           stroke={staircaseArrowColor}
@@ -3548,6 +3561,7 @@ export default makeScene2D(function* (view) {
           opacity={0.3}
           offsetY={8}
         />
+        {/* Staircase arrow - main layer */}
         <Line
           ref={staircaseArrowRef}
           points={arrowPoints}
