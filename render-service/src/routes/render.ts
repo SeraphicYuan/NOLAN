@@ -16,7 +16,7 @@ const router = Router();
 
 // POST /render - Submit a new render job
 // Supports two formats:
-// 1. Effect-based: { effect: "image-ken-burns", params: { ... }, layout?: "center" | {...} }
+// 1. Effect-based: { effect: "image-ken-burns", params: { ... }, layout?: "center" | {...}, region?: "left" }
 // 2. Direct engine: { engine: "remotion", data: { ... } }
 router.post('/', (req, res) => {
   const body = req.body;
@@ -26,9 +26,22 @@ router.post('/', (req, res) => {
     const effectId = body.effect as string;
     const params = body.params || {};
     const layout = body.layout as LayoutSpec | undefined;
+    const region = body.region as string | undefined;
 
     if (!hasEffect(effectId)) {
       return res.status(400).json({ error: `Unknown effect: ${effectId}` });
+    }
+
+    // Validate region exists in the layout if specified
+    if (layout && region) {
+      const resolved = resolveLayout(layout);
+      if (!resolved.regions[region]) {
+        const availableRegions = Object.keys(resolved.regions);
+        return res.status(400).json({
+          error: `Region "${region}" not found in layout`,
+          available_regions: availableRegions,
+        });
+      }
     }
 
     const transformed = transformToEngineData(effectId, params);
@@ -36,10 +49,11 @@ router.post('/', (req, res) => {
       return res.status(500).json({ error: 'Failed to transform effect params' });
     }
 
-    // Add layout to engine data if specified
+    // Add layout and region to engine data if specified
     const engineData = {
       ...transformed.data,
       ...(layout ? { layout } : {}),
+      ...(region ? { _targetRegion: region } : {}),
     };
 
     const spec: RenderSpec = {
@@ -58,6 +72,7 @@ router.post('/', (req, res) => {
       effect: effectId,
       engine: transformed.engine,
       layout: layout || 'center',
+      region: region || 'main',
       poll_url: `/render/status/${job.id}`,
     });
   }

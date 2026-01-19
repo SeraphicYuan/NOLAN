@@ -2,6 +2,20 @@
  * Layout System
  *
  * Resolves layout specifications to regions and converts to engine-specific formats.
+ *
+ * ## Engine Support
+ *
+ * | Engine       | Layout Support | Notes |
+ * |--------------|----------------|-------|
+ * | Remotion     | ✅ Full        | Uses CSS positioning via regionToRemotionStyle() |
+ * | Motion Canvas| ⚠️ Partial     | Has internal Layout component but ignores layout parameter |
+ * | Infographic  | ❌ None        | SVG generation uses fixed positioning |
+ *
+ * ## Future Work
+ *
+ * - Motion Canvas: Add regionToMotionCanvas() integration
+ * - Infographic: Support layout for title positioning
+ * - Composition endpoint: Render multiple effects in different regions
  */
 
 import type {
@@ -28,6 +42,38 @@ export type {
 
 // Re-export template utilities
 export { TEMPLATES, DEFAULT_TEMPLATE, isLayoutTemplate };
+
+/**
+ * Validate a region's values are within 0-1 range.
+ *
+ * @param region - Region to validate
+ * @returns Validated region with clamped values
+ */
+function validateRegion(region: Region): Region {
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  return {
+    ...region,
+    x: clamp(region.x),
+    y: clamp(region.y),
+    w: clamp(region.w),
+    h: clamp(region.h),
+    padding: region.padding !== undefined ? clamp(region.padding) : undefined,
+  };
+}
+
+/**
+ * Validate all regions in a layout.
+ *
+ * @param regions - Regions to validate
+ * @returns Validated regions
+ */
+function validateRegions(regions: Record<string, Region>): Record<string, Region> {
+  const validated: Record<string, Region> = {};
+  for (const [name, region] of Object.entries(regions)) {
+    validated[name] = validateRegion(region);
+  }
+  return validated;
+}
 
 /**
  * Resolve a layout specification to concrete regions.
@@ -60,10 +106,10 @@ export function resolveLayout(layout?: LayoutSpec): ResolvedLayout {
     };
   }
 
-  // Custom layout with regions
+  // Custom layout with regions - validate values
   if (typeof layout === 'object' && layout.regions) {
     return {
-      regions: layout.regions,
+      regions: validateRegions(layout.regions),
     };
   }
 

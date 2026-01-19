@@ -13,10 +13,12 @@ import {
   resolveLayout,
   getMainRegion,
   regionToRemotionStyle,
+  applyStyleToRegion,
   type Region,
   type LayoutSpec,
   type RegionStyle,
 } from '../layout/index.js';
+import { getStyle } from '../styles/index.js';
 
 type RemotionPayload = {
   data: Record<string, unknown>;
@@ -60,7 +62,25 @@ function buildPayload(spec: RenderSpec, outputName: string): RemotionPayload {
   // This avoids bundling issues with the layout module
   const layoutSpec = dataRecord.layout as LayoutSpec | undefined;
   const resolved = resolveLayout(layoutSpec);
-  const region = getMainRegion(resolved);
+
+  // Get target region (default to main if not specified)
+  const targetRegionName = dataRecord._targetRegion as string | undefined;
+  let region: Region;
+  if (targetRegionName && resolved.regions[targetRegionName]) {
+    region = resolved.regions[targetRegionName];
+  } else {
+    region = getMainRegion(resolved);
+  }
+
+  // Apply EssayStyle.layout settings if a style is specified
+  const styleId = dataRecord.style as string | undefined;
+  if (styleId) {
+    const style = getStyle(styleId);
+    if (style) {
+      region = applyStyleToRegion(region, style.layout);
+    }
+  }
+
   const layoutStyle = regionToRemotionStyle(region);
 
   // Add resolved layout style to data
