@@ -495,6 +495,19 @@ NOLAN/
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - **Image search browser display** - View image search results in web UI
 - **Vision model image selection** - Auto-select best matching images using vision model
+- **Lottie Player Integration** - Play Lottie JSON animations in Remotion engine
+  - Enable LottieFiles and After Effects Bodymovin exports as motion assets
+  - Bridge format for converting external motion graphics templates
+- **Motion Pattern Library** - Documented timing/easing presets from professional templates
+  - Catalog of common motion patterns (reveal, emphasis, exit)
+  - Frame-accurate timing and easing curves for each pattern
+  - JSON format for easy consumption by render engines
+- **Template Analysis Tool** - CLI to help document animation timing from reference
+  - `nolan analyze-template <video>` to measure keyframes and timing
+  - Export structured motion specs from reference videos
+- **SVG Animation Import** - Parse animated SVGs (SMIL) to Motion Canvas code
+  - Convert SMIL animations to Motion Canvas generator functions
+  - Preserve timing, easing, and transform sequences
 
 ## Recently Completed
 

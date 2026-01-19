@@ -120,6 +120,111 @@ Note: Don't use directly; build custom versions
 
 ---
 
+## Converting External Templates to NOLAN
+
+### Why Direct Conversion Doesn't Work
+
+| Format | What It Is | Problem |
+|--------|-----------|---------|
+| `.mogrt` | Compiled After Effects composition | Proprietary binary, can't be decompiled |
+| `.aep` | After Effects project | Proprietary, requires AE to open |
+| `.prproj` | Premiere Pro project | Proprietary, no export path |
+| NOLAN | Motion Canvas / Remotion | Needs JavaScript/TypeScript code |
+
+MOGRTs and After Effects templates are "black boxes" - you can customize exposed parameters but can't extract the underlying animation logic.
+
+### Available Conversion Paths
+
+#### Path 1: Use as Reference (Recommended - No Tools Required)
+```
+1. Preview template in Premiere Pro / After Effects
+2. Study the animation:
+   - Timing (duration of enter/hold/exit)
+   - Easing curves (ease-in, ease-out, bounce, etc.)
+   - Composition (layout, spacing, hierarchy)
+   - Colors and typography
+3. Recreate in Motion Canvas/Remotion code
+4. Document as reusable effect preset
+```
+
+#### Path 2: Lottie Bridge (Requires After Effects + Bodymovin)
+```
+Prerequisites:
+- After Effects
+- Bodymovin plugin (free): aescripts.com/bodymovin
+- Original .aep source file (not .mogrt)
+
+Workflow:
+1. Open .aep in After Effects
+2. Install Bodymovin plugin
+3. Export composition as Lottie JSON
+4. Use @lottiefiles/react-lottie-player in Remotion
+5. Or use lottie-web directly
+
+Limitations:
+- Only works for vector animations
+- No 3D, complex effects, or expressions
+- Some features don't translate (masks, mattes)
+```
+
+#### Path 3: Export Static Elements (Requires After Effects)
+```
+Workflow:
+1. Open template in After Effects
+2. Isolate individual layers:
+   - Background shapes
+   - Text containers/boxes
+   - Decorative elements
+   - Icons/symbols
+3. Export each as:
+   - SVG (vector elements) - File > Export > SVG
+   - PNG with transparency (complex elements)
+4. Import into NOLAN assets folder
+5. Animate with code (Motion Canvas/Remotion)
+
+Best for: Lower thirds, title cards, frames
+```
+
+#### Path 4: Screen Record + Analyze
+```
+Workflow:
+1. Screen record template preview at high FPS
+2. Import into video editor
+3. Step through frame-by-frame
+4. Document:
+   - Enter animation duration (frames/seconds)
+   - Hold duration
+   - Exit animation duration
+   - Easing type (estimate from motion)
+5. Recreate timing in code
+```
+
+### Common Motion Patterns to Recreate
+
+| Pattern | Typical Timing | Easing | NOLAN Effect |
+|---------|---------------|--------|--------------|
+| Slide in from left | 0.3-0.5s | ease-out | `enterFrames: 15, easing: 'easeOutCubic'` |
+| Fade in | 0.2-0.4s | linear | `opacity: 0→1` |
+| Scale pop | 0.2-0.3s | ease-out-back | `scale: 0.8→1, easing: 'easeOutBack'` |
+| Counter roll | 1-2s | ease-out | `stat-counter-roll` |
+| Typewriter | 0.05s/char | linear | `text-typewriter` |
+| Bar grow | 0.4-0.6s | ease-out | `chart-bar` animation |
+| Wipe reveal | 0.3-0.5s | ease-in-out | `clip-path` animation |
+| Bounce settle | 0.4-0.6s | ease-out-bounce | `easing: 'easeOutBounce'` |
+
+### Backlog: Template Conversion Tools
+
+The following features are planned to make template conversion easier:
+
+1. **Lottie Player Integration** - Play Lottie JSON in Remotion engine
+2. **Motion Pattern Library** - Documented timing/easing presets
+3. **Template Analysis Tool** - CLI to help document animation timing
+4. **SVG Animation Import** - Parse animated SVGs (SMIL) to code
+
+See `IMPLEMENTATION_STATUS.md` backlog for implementation status.
+
+---
+
 ---
 
 ## Asset Categories Overview
