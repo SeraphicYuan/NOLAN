@@ -142,7 +142,8 @@ const chartItems = chartItemsRaw.map((item: unknown, index: number) => {
   }
   return { label: 'Item ' + (index + 1), value: 0 };
 });
-const chartEnabled = (chartType === 'bar' || chartType === 'line' || chartType === 'pie') && chartItems.length > 0;
+const isProgressStaircase = chartType === 'progress-staircase';
+const chartEnabled = (chartType === 'bar' || chartType === 'line' || chartType === 'pie' || isProgressStaircase) && chartItems.length > 0;
 const isLineChart = chartType === 'line';
 const isBarChart = chartType === 'bar';
 const isPieChart = chartType === 'pie';
@@ -172,6 +173,48 @@ const pieItemsWithAngles = chartItems.map((item, index) => {
   const percentage = (item.value / pieTotalValue) * 100;
   const angle = (item.value / pieTotalValue) * 360;
   return { ...item, color, percentage, angle };
+});
+// Progress staircase chart variables
+const staircaseArrowColor = chart && typeof chart.arrowColor === 'string' ? chart.arrowColor : '#22c55e';
+const staircaseCardBg = chart && typeof chart.cardBackground === 'string' ? chart.cardBackground : '#ffffff';
+const staircaseLabelColor = chart && typeof chart.labelColor === 'string' ? chart.labelColor : '#1f2937';
+const staircaseDescColor = chart && typeof chart.descColor === 'string' ? chart.descColor : '#6b7280';
+const staircaseValueColor = chart && typeof chart.valueColor === 'string' ? chart.valueColor : '#22c55e';
+const staircaseItems = isProgressStaircase ? chartItemsRaw.map((item: unknown, index: number) => {
+  const record = item as Record<string, unknown>;
+  return {
+    label: typeof record.label === 'string' ? record.label : 'Step ' + (index + 1),
+    desc: typeof record.desc === 'string' ? record.desc : '',
+    value: typeof record.value === 'number' ? record.value : undefined,
+    icon: typeof record.icon === 'string' ? record.icon : 'check',
+  };
+}) : [];
+const staircaseStepCount = staircaseItems.length;
+// Calculate staircase geometry - arrow goes from bottom-left to top-right
+const staircaseMargin = 120;
+const staircaseWidth = width - staircaseMargin * 2;
+const staircaseHeight = height * 0.5;
+const staircaseBaseY = height * 0.75;
+const staircaseStepWidth = staircaseStepCount > 1 ? staircaseWidth / staircaseStepCount : staircaseWidth;
+const staircaseStepHeight = staircaseStepCount > 1 ? staircaseHeight / staircaseStepCount : staircaseHeight;
+// Generate staircase points (creates a step pattern going up-right)
+const staircasePoints: Array<{x: number; y: number}> = [];
+for (let i = 0; i <= staircaseStepCount; i++) {
+  const x = staircaseMargin + i * staircaseStepWidth;
+  const y = staircaseBaseY - i * staircaseStepHeight;
+  // Add horizontal then vertical for step pattern
+  if (i > 0) {
+    staircasePoints.push({ x, y: staircaseBaseY - (i - 1) * staircaseStepHeight });
+  }
+  staircasePoints.push({ x, y });
+}
+// Card positions alternate above/below the steps
+const staircaseCardPositions = staircaseItems.map((_, index) => {
+  const x = staircaseMargin + (index + 0.5) * staircaseStepWidth;
+  const stepY = staircaseBaseY - index * staircaseStepHeight - staircaseStepHeight / 2;
+  const isAbove = index % 2 === 0;
+  const cardY = isAbove ? stepY - 100 : stepY + 80;
+  return { x, y: cardY, isAbove };
 });
 const kinetic =
   typeof (data as any).kinetic === 'object' && (data as any).kinetic !== null
@@ -768,6 +811,10 @@ const locationPinRef = createRef<Layout>();
 const locationPinBodyRef = createRef<Circle>();
 const locationPinPulseRef = createRef<Circle>();
 const locationPinLabelRef = createRef<Txt>();
+// Progress staircase refs
+const staircaseArrowRef = createRef<Line>();
+const staircaseCardRefs = staircaseItems.map(() => createRef<Layout>());
+const staircaseValueRefs = staircaseItems.map(() => createRef<Txt>());
 
 // New effect refs
 const lightLeakRef = createRef<Rect>();
@@ -3484,6 +3531,122 @@ export default makeScene2D(function* (view) {
     );
   }
 
+  // Progress staircase chart layout
+  if (isProgressStaircase && chartEnabled) {
+    // Convert staircase points to Vector2 array
+    const arrowPoints = staircasePoints.map(p => new Vector2(p.x, p.y));
+
+    view.add(
+      <Layout layout={false} width={width} height={height}>
+        {/* Staircase arrow - 3D effect with shadow and gradient */}
+        <Line
+          points={arrowPoints}
+          stroke={staircaseArrowColor}
+          lineWidth={50}
+          lineCap="round"
+          lineJoin="round"
+          opacity={0.3}
+          offsetY={8}
+        />
+        <Line
+          ref={staircaseArrowRef}
+          points={arrowPoints}
+          stroke={staircaseArrowColor}
+          lineWidth={50}
+          lineCap="round"
+          lineJoin="round"
+          end={0}
+        />
+        {/* Arrow head at the end */}
+        <Layout
+          x={staircasePoints[staircasePoints.length - 1]?.x || 0}
+          y={staircasePoints[staircasePoints.length - 1]?.y || 0}
+          rotation={-45}
+          opacity={0}
+        >
+          <Line
+            points={[new Vector2(-30, 20), new Vector2(0, 0), new Vector2(-30, -20)]}
+            stroke={staircaseArrowColor}
+            lineWidth={50}
+            lineCap="round"
+            lineJoin="round"
+          />
+        </Layout>
+
+        {/* Info cards at each step */}
+        {staircaseItems.map((item, index) => {
+          const pos = staircaseCardPositions[index];
+          const cardWidth = 260;
+          const cardHeight = item.desc ? 90 : 60;
+
+          return (
+            <Layout
+              ref={staircaseCardRefs[index]}
+              x={pos.x}
+              y={pos.y}
+              opacity={0}
+              scale={0.8}
+            >
+              {/* Card background with shadow */}
+              <Rect
+                width={cardWidth}
+                height={cardHeight}
+                fill={staircaseCardBg}
+                radius={12}
+                shadowColor="rgba(0,0,0,0.15)"
+                shadowBlur={20}
+                shadowOffsetY={4}
+              />
+              {/* Icon circle */}
+              <Circle
+                x={-cardWidth / 2 + 35}
+                y={0}
+                size={36}
+                fill={staircaseArrowColor + '20'}
+                stroke={staircaseArrowColor}
+                lineWidth={2}
+              />
+              {/* Label */}
+              <Txt
+                x={-cardWidth / 2 + 75}
+                y={item.desc ? -15 : 0}
+                text={item.label}
+                fontSize={20}
+                fontWeight={700}
+                fill={staircaseLabelColor}
+                fontFamily={chartFontFamily}
+              />
+              {/* Description */}
+              {item.desc ? (
+                <Txt
+                  x={-cardWidth / 2 + 75}
+                  y={15}
+                  text={item.desc.length > 30 ? item.desc.substring(0, 30) + '...' : item.desc}
+                  fontSize={14}
+                  fill={staircaseDescColor}
+                  fontFamily={chartFontFamily}
+                />
+              ) : null}
+              {/* Value */}
+              {item.value !== undefined ? (
+                <Txt
+                  ref={staircaseValueRefs[index]}
+                  x={cardWidth / 2 - 35}
+                  y={0}
+                  text={'0'}
+                  fontSize={28}
+                  fontWeight={700}
+                  fill={staircaseValueColor}
+                  fontFamily={chartFontFamily}
+                />
+              ) : null}
+            </Layout>
+          );
+        })}
+      </Layout>
+    );
+  }
+
   if (titleRef()) {
     yield* titleRef().opacity(1, 0.6);
   }
@@ -3556,6 +3719,46 @@ export default makeScene2D(function* (view) {
       // Show percentage label after segment appears
       if (pieShowPercentages && pieLabelRefs[index] && pieLabelRefs[index]()) {
         yield* pieLabelRefs[index]().opacity(1, 0.2);
+      }
+    }
+  } else if (isProgressStaircase && chartEnabled) {
+    // Animate progress staircase: draw arrow progressively, reveal cards at each step
+    const totalSteps = staircaseItems.length;
+    const arrowDrawTime = 0.8; // Time to draw each step of the arrow
+    const cardRevealTime = 0.4;
+    const valueCountTime = 0.5;
+
+    // Draw arrow progressively, revealing cards as arrow reaches each step
+    if (staircaseArrowRef()) {
+      for (let step = 0; step < totalSteps; step++) {
+        // Calculate progress for this step (each step is a portion of the total path)
+        const stepProgress = (step + 1) / totalSteps;
+
+        // Draw arrow to this step
+        yield* staircaseArrowRef().end(stepProgress, arrowDrawTime, easeOutCubic);
+
+        // Reveal the card for this step
+        const cardRef = staircaseCardRefs[step];
+        if (cardRef && cardRef()) {
+          yield* all(
+            cardRef().opacity(1, cardRevealTime, easeOutCubic),
+            cardRef().scale(1, cardRevealTime, easeOutCubic),
+          );
+
+          // Animate the value counter if present
+          const valueRef = staircaseValueRefs[step];
+          const item = staircaseItems[step];
+          if (valueRef && valueRef() && item.value !== undefined) {
+            const targetValue = item.value;
+            // Counter animation
+            const steps = 20;
+            for (let i = 1; i <= steps; i++) {
+              const currentValue = Math.round((i / steps) * targetValue);
+              valueRef().text(String(currentValue));
+              yield* waitFor(valueCountTime / steps);
+            }
+          }
+        }
       }
     }
   } else {

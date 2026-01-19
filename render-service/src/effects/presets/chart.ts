@@ -560,4 +560,152 @@ export const chartPie: EffectPreset = {
   },
 };
 
-export const chartPresets = [chartBarRace, chartBarCallout, chartLine, chartPie];
+export const chartProgressStaircase: EffectPreset = {
+  id: 'chart-progress-staircase',
+  name: 'Progress Staircase',
+  category: 'chart',
+  description: 'Animated staircase arrow chart with info cards revealing at each step. For showing growth journey, milestones, or sequential achievements.',
+  engine: 'motion-canvas',
+  parameters: [
+    {
+      name: 'items',
+      type: 'items',
+      label: 'Steps',
+      description: 'Steps in the staircase (each gets an info card)',
+      required: true,
+      itemSchema: [
+        {
+          name: 'label',
+          type: 'string',
+          label: 'Label',
+          description: 'Step title',
+          required: true,
+        },
+        {
+          name: 'desc',
+          type: 'string',
+          label: 'Description',
+          description: 'Step description',
+          required: false,
+        },
+        {
+          name: 'value',
+          type: 'number',
+          label: 'Value',
+          description: 'Numeric value/score to display',
+          required: false,
+        },
+        {
+          name: 'icon',
+          type: 'string',
+          label: 'Icon',
+          description: 'Icon type (brand, growth, code, data, service, innovation, check, star)',
+          required: false,
+          default: 'check',
+        },
+      ],
+    },
+    {
+      name: 'title',
+      type: 'string',
+      label: 'Title',
+      description: 'Chart title',
+      required: false,
+    },
+    {
+      name: 'subtitle',
+      type: 'string',
+      label: 'Subtitle',
+      description: 'Chart subtitle',
+      required: false,
+    },
+    {
+      name: 'duration',
+      type: 'duration',
+      label: 'Duration',
+      description: 'Total animation duration',
+      required: false,
+      default: 8,
+      min: 4,
+      max: 20,
+    },
+    {
+      name: 'arrowColor',
+      type: 'color',
+      label: 'Arrow Color',
+      description: 'Color of the staircase arrow',
+      required: false,
+      default: '#22c55e',
+    },
+    {
+      name: 'style',
+      type: 'select',
+      label: 'Style',
+      description: 'Visual style preset',
+      required: false,
+      default: 'custom',
+      options: ['custom', 'noir-essay', 'cold-data', 'modern-creator', 'academic-paper', 'documentary', 'podcast-visual', 'retro-synthwave', 'breaking-news', 'minimalist-white', 'true-crime', 'nature-documentary'],
+    },
+  ],
+  defaults: {
+    duration: 8,
+    style: 'custom',
+    arrowColor: '#22c55e',
+  },
+  preview: '/previews/chart-progress-staircase.mp4',
+
+  toEngineData(params) {
+    const style = resolveStyleParam(params);
+    const items = (params.items as Array<{
+      label: string;
+      desc?: string;
+      value?: number;
+      icon?: string;
+    }>) || [];
+
+    if (style) {
+      return {
+        duration: params.duration ?? 8,
+        style: style.id,
+        title: params.title || '',
+        subtitle: params.subtitle || '',
+        background: style.colors.background,
+        chart: {
+          type: 'progress-staircase',
+          arrowColor: params.arrowColor || style.colors.accent,
+          cardBackground: style.colors.background,
+          labelColor: style.colors.primaryText,
+          descColor: style.colors.secondaryText,
+          valueColor: style.colors.accent,
+          items: items.map(item => ({
+            label: item.label,
+            desc: item.desc || '',
+            value: item.value,
+            icon: item.icon || 'check',
+          })),
+          fontFamily: style.typography.bodyFont,
+          texture: style.texture,
+        },
+      };
+    }
+
+    // Legacy mode
+    return {
+      duration: params.duration ?? 8,
+      title: params.title || '',
+      subtitle: params.subtitle || '',
+      chart: {
+        type: 'progress-staircase',
+        arrowColor: params.arrowColor || '#22c55e',
+        items: items.map(item => ({
+          label: item.label,
+          desc: item.desc || '',
+          value: item.value,
+          icon: item.icon || 'check',
+        })),
+      },
+    };
+  },
+};
+
+export const chartPresets = [chartBarRace, chartBarCallout, chartLine, chartPie, chartProgressStaircase];
