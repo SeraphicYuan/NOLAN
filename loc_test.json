@@ -1,0 +1,54 @@
+{
+  "query": "Abraham Lincoln",
+  "source": "loc",
+  "count": 5,
+  "scored": false,
+  "scored_by": null,
+  "context": null,
+  "results": [
+    {
+      "url": "https://tile.loc.gov/storage-services/service/pnp/cph/3a40000/3a48000/3a48800/3a48868r.jpg",
+      "thumbnail_url": "https://tile.loc.gov/storage-services/service/pnp/cph/3a40000/3a48000/3a48800/3a48868_150px.jpg",
+      "title": "\"Up a tree\"",
+      "source": "loc",
+      "source_url": "https://www.loc.gov/pictures/item/2006685725/",
+      "license": "Public Domain (Library of Congress)"
+    },
+    {
+      "url": "https://tile.loc.gov/storage-services/service/pnp/highsm/59100/59112r.jpg",
+      "thumbnail_url": "https://tile.loc.gov/storage-services/service/pnp/highsm/59100/59112_150px.jpg",
+      "title": "The Vala Family of Springfield, Illinois, left an unusual explanation for this incomplete mural near the Lincoln Depot, where U.S. president-elect Abraham Lincoln gave his farewell address before departing for Washington. \"Much as the life of Abraham Lincoln ended abruptly,\"  the family wrote on a sign (left), \"so did thimural\"",
+      "source": "loc",
+      "source_url": "https://www.loc.gov/pictures/item/2020721308/",
+      "photographer": "Highsmith, Carol M., 1946-",
+      "license": "Public Domain (Library of Congress)"
+    },
+    {
+      "url": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/19300/19305r.jpg",
+      "thumbnail_url": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/19300/19305_150px.jpg",
+      "title": "[Abraham Lincoln, three-quarter length portrait, seated, facing right; hair parted on Lincoln's right side]",
+      "source": "loc",
+      "source_url": "https://www.loc.gov/pictures/item/2009630693/",
+      "photographer": "Berger, Anthony",
+      "license": "Public Domain (Library of Congress)"
+    },
+    {
+      "url": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/19100/19190r.jpg",
+      "thumbnail_url": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/19100/19190_150px.jpg",
+      "title": "[Abraham Lincoln, three-quarter length portrait, seated, facing right; hair parted on Lincoln's right side]",
+      "source": "loc",
+      "source_url": "https://www.loc.gov/pictures/item/2008680969/",
+      "photographer": "Berger, Anthony",
+      "license": "Public Domain (Library of Congress)"
+    },
+    {
+      "url": "https://tile.loc.gov/storage-services/service/pnp/cph/3a00000/3a07000/3a07400/3a07486r.jpg",
+      "thumbnail_url": "https://tile.loc.gov/storage-services/service/pnp/cph/3a00000/3a07000/3a07400/3a07486_150px.jpg",
+      "title": "[Abraham Lincoln, three-quarter length portrait, seated, facing right; hair parted on Lincoln's right side]",
+      "source": "loc",
+      "source_url": "https://www.loc.gov/pictures/item/96524282/",
+      "photographer": "Berger, Anthony",
+      "license": "Public Domain (Library of Congress)"
+    }
+  ]
+}

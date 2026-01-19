@@ -1,0 +1,123 @@
+{
+  "count": 13,
+  "description": "Scenes with no match (confidence=0) or low confidence (<80%)",
+  "scenes": [
+    {
+      "scene_id": "Hook_scene_006",
+      "confidence": 36.8,
+      "narration_excerpt": "She says, 'We are tired. Tired of the empty promises, the shortages, and the constant struggle just to survive.'",
+      "matched_text": "She says, we are tired. Tired of",
+      "estimated_start": 21.84,
+      "estimated_end": 29.98,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Hook_scene_007",
+      "confidence": 70.6,
+      "narration_excerpt": "this is all happening in a country sitting on one of the world's largest oil reserves",
+      "matched_text": "This is all happening in a country sitting on one of the",
+      "estimated_start": 31.62,
+      "estimated_end": 33.86,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Hook_scene_010",
+      "confidence": 0.0,
+      "narration_excerpt": "That’s exactly what we’re going to explore together",
+      "matched_text": "",
+      "estimated_start": 46.66,
+      "estimated_end": 50.78,
+      "status": "no_match"
+    },
+    {
+      "scene_id": "Context_scene_003",
+      "confidence": 0.0,
+      "narration_excerpt": "Arawak people... Carib groups dominated the east",
+      "matched_text": "",
+      "estimated_start": 61.06,
+      "estimated_end": 68.52,
+      "status": "no_match"
+    },
+    {
+      "scene_id": "Context_scene_007",
+      "confidence": 66.7,
+      "narration_excerpt": "legendary Simon Bolivar",
+      "matched_text": "legendary Simone Bolivar.",
+      "estimated_start": 88.44,
+      "estimated_end": 90.42,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Context_scene_014",
+      "confidence": 66.7,
+      "narration_excerpt": "deep-seated challenges that would define Venezuela's future",
+      "matched_text": "deep -seated challenges that would define",
+      "estimated_start": 130.94,
+      "estimated_end": 133.1,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Context_scene_015",
+      "confidence": 75.0,
+      "narration_excerpt": "influence almost every single part of Venezuelan life",
+      "matched_text": "influence almost every single part of",
+      "estimated_start": 138.12,
+      "estimated_end": 140.84,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Evidence 1_scene_005",
+      "confidence": 46.2,
+      "narration_excerpt": "Take José Antonio Páez, for example... leadership style was typical for the time",
+      "matched_text": "Take Jose Antonio Pias, for example. He was a hero of the",
+      "estimated_start": 221.22,
+      "estimated_end": 225.54,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Evidence 1_scene_018",
+      "confidence": 20.0,
+      "narration_excerpt": "problems in Venezuelan society were just too deep to overcome",
+      "matched_text": "problems in",
+      "estimated_start": 297.72,
+      "estimated_end": 298.48,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Evidence 1_scene_019",
+      "confidence": 69.2,
+      "narration_excerpt": "Even in 1976, when the oil industry was nationalized... the results were disappointing",
+      "matched_text": "Even in 1976, when the oil industry was nationalized",
+      "estimated_start": 302.16,
+      "estimated_end": 305.88,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Evidence 2_scene_012",
+      "confidence": 50.0,
+      "narration_excerpt": "capitalized on the public's discontent",
+      "matched_text": "capitalized on the",
+      "estimated_start": 384.7,
+      "estimated_end": 385.74,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Evidence 3_scene_006",
+      "confidence": 20.0,
+      "narration_excerpt": "Under Nicolás Maduro’s leadership, the situation only got worse",
+      "matched_text": "Under Nicolas",
+      "estimated_start": 467.76,
+      "estimated_end": 468.36,
+      "status": "low_confidence"
+    },
+    {
+      "scene_id": "Conclusion_scene_002",
+      "confidence": 37.5,
+      "narration_excerpt": "contrast to the nation’s massive natural wealth",
+      "matched_text": "contrast to the",
+      "estimated_start": 524.32,
+      "estimated_end": 525.4,
+      "status": "low_confidence"
+    }
+  ]
+}

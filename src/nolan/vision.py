@@ -199,6 +199,11 @@ class GeminiVision(VisionProvider):
             )
         return self._client
 
+    @staticmethod
+    def _is_rate_limit_error(error: Exception) -> bool:
+        message = str(error).lower()
+        return any(token in message for token in ("429", "rate limit", "resource_exhausted"))
+
     async def describe_image(self, image_path: Path, prompt: str) -> str:
         """Describe an image using Gemini.
 
@@ -302,6 +307,8 @@ Respond ONLY with valid JSON, no other text."""
             response = await client.generate_with_image(prompt, str(image_path))
             return self._parse_analysis_response(response, transcript)
         except Exception as e:
+            if self._is_rate_limit_error(e):
+                raise
             # Fallback to simple description
             try:
                 simple_desc = await self.describe_image(

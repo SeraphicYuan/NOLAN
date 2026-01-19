@@ -1,0 +1,315 @@
+{
+  "video": {
+    "path": "asset\\＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm",
+    "name": "＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm"
+  },
+  "indexing": {
+    "vision_provider": "gemini-3-flash-preview",
+    "whisper_model": "base",
+    "device": "cuda",
+    "hybrid_inference": true
+  },
+  "segments": [
+    {
+      "timestamp_start": 0.0,
+      "timestamp_end": 6.5065,
+      "timestamp_formatted": "00:00",
+      "duration": 6.5065,
+      "frame_description": "A man with a serious expression looks off-camera while inside an industrial-looking aircraft with an open hatch revealing a bright, cloudy sky.",
+      "transcript": "But what are we, a team? No, no, no, we're a chemical mixture that makes chaos. We're a time bomb.",
+      "combined_summary": "Inside an industrial aircraft with an open hatch, a man looks off-camera with a serious expression as he describes his group as a volatile 'chemical mixture that makes chaos' and a 'time bomb' rather than a team.",
+      "inferred_context": {
+        "people": [
+          "male speaker",
+          "Bruce Banner"
+        ],
+        "location": "interior of an industrial aircraft",
+        "story_context": "A character expresses deep skepticism about the stability and cohesion of his group, comparing their dynamic to a dangerous chemical reaction or a ticking time bomb.",
+        "objects": [
+          "industrial aircraft",
+          "open hatch"
+        ],
+        "confidence": "high"
+      },
+      "sample_reason": "max_interval"
+    },
+    {
+      "timestamp_start": 6.5065,
+      "timestamp_end": 9.968291666666666,
+      "timestamp_formatted": "00:06",
+      "duration": 3.4617916666666657,
+      "frame_description": "Nick Fury, Captain America, and Tony Stark stand together in a high-tech laboratory, looking intently toward something off-camera.",
+      "transcript": "We're a time bomb. You need to step away. Why shouldn't a guy let off a little steam?",
+      "combined_summary": "Nick Fury, Captain America, and Tony Stark stand in a high-tech laboratory as tensions flare, with Stark questioning the need to restrain himself despite being told the group is a 'time bomb.'",
+      "inferred_context": {
+        "people": [
+          "Nick Fury",
+          "Captain America",
+          "Tony Stark"
+        ],
+        "location": "high-tech laboratory",
+        "story_context": "The group is experiencing internal conflict and debating their stability and individual behavior during a tense confrontation.",
+        "objects": [],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=49.5)"
+    },
+    {
+      "timestamp_start": 9.968291666666666,
+      "timestamp_end": 18.810458333333333,
+      "timestamp_formatted": "00:09",
+      "duration": 8.842166666666667,
+      "frame_description": "Tony Stark gestures while speaking to a stoic Steve Rogers inside a high-tech laboratory.",
+      "transcript": "Why shouldn't a guy let off a little steam? You know, Dan Well-Wide, back off. Oh, I'm starting to want you to make me. Yeah, big man and a pseudo armor.",
+      "combined_summary": "In a high-tech laboratory, Tony Stark and Steve Rogers engage in a heated verbal confrontation where Stark dismissively defends his actions while Rogers challenges his character and reliance on his armor.",
+      "inferred_context": {
+        "people": [
+          "Tony Stark",
+          "Steve Rogers"
+        ],
+        "location": "High-tech laboratory",
+        "story_context": "A tense argument is unfolding between Tony Stark and Steve Rogers, highlighting their personal friction and ideological clash.",
+        "objects": [
+          "High-tech equipment",
+          "armor"
+        ],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=33.1)"
+    },
+    {
+      "timestamp_start": 18.810458333333333,
+      "timestamp_end": 20.353666666666665,
+      "timestamp_formatted": "00:18",
+      "duration": 1.5432083333333324,
+      "frame_description": "A man in a blue tactical uniform is depicted speaking with a serious expression in a blurred, high-tech setting.",
+      "transcript": "Yeah, big man and a pseudo armor. Take that off, what are you?",
+      "combined_summary": "In a high-tech setting, a man in a blue tactical uniform challenges another's character, asking what they are without their 'pseudo armor'.",
+      "inferred_context": {
+        "people": [
+          "male speaker in blue tactical uniform",
+          "an unseen 'big man' wearing armor"
+        ],
+        "location": "high-tech setting",
+        "story_context": "A tense confrontation where one character questions the identity and personal value of another person who relies on advanced technology.",
+        "objects": [
+          "blue tactical uniform",
+          "pseudo armor"
+        ],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=38.9)"
+    },
+    {
+      "timestamp_start": 20.353666666666665,
+      "timestamp_end": 22.81445833333333,
+      "timestamp_formatted": "00:20",
+      "duration": 2.4607916666666654,
+      "frame_description": "A close-up captures Tony Stark looking intensely off-camera with a serious expression in a dimly lit, indistinct setting.",
+      "transcript": "Take that off, what are you? Genius billionaire playboy philanthropist.",
+      "combined_summary": "In a dimly lit setting, Tony Stark looks intensely off-camera while responding to a challenge about his identity, famously describing himself as a 'genius billionaire playboy philanthropist.'",
+      "inferred_context": {
+        "people": [
+          "Tony Stark",
+          "off-camera speaker"
+        ],
+        "location": null,
+        "story_context": "Tony Stark is being challenged to define his identity and worth outside of his superhero persona or armor.",
+        "objects": [],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=30.9)"
+    },
+    {
+      "timestamp_start": 22.81445833333333,
+      "timestamp_end": 24.691333333333333,
+      "timestamp_formatted": "00:22",
+      "duration": 1.8768750000000018,
+      "frame_description": "Inside a high-tech laboratory, Black Widow and Thor stand together while gazing intently at something off-camera.",
+      "transcript": "Genius billionaire playboy philanthropist. I know guys with none of that worth ten of you.",
+      "combined_summary": "Inside a high-tech laboratory, Black Widow and Thor watch a tense confrontation as Steve Rogers criticizes Tony Stark's character and worth.",
+      "inferred_context": {
+        "people": [
+          "Black Widow",
+          "Thor",
+          "Captain America (speaker)",
+          "Tony Stark (referenced)"
+        ],
+        "location": "High-tech laboratory",
+        "story_context": "The Avengers are engaged in a heated argument aboard the SHIELD Helicarrier, where Steve Rogers challenges Tony Stark's superficial status and heroism.",
+        "objects": [],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=41.6)"
+    },
+    {
+      "timestamp_start": 24.691333333333333,
+      "timestamp_end": 30.363666666666663,
+      "timestamp_formatted": "00:24",
+      "duration": 5.672333333333331,
+      "frame_description": "A man with a serious expression and short blond hair, wearing a dark blue tactical suit, speaks to someone in a high-tech facility with blurred golden circular structures in the background.",
+      "transcript": "I know guys with none of that worth ten of you. I've seen the footage. The only thing you really fight for is yourself.",
+      "combined_summary": "A man in a dark blue tactical suit delivers a stern rebuke in a high-tech facility, asserting that the person he is speaking to only fights for themselves.",
+      "inferred_context": {
+        "people": [
+          "Steve Rogers",
+          "male speaker"
+        ],
+        "location": "high-tech facility",
+        "story_context": "A confrontation where the speaker challenges another character's morality and self-interest.",
+        "objects": [
+          "dark blue tactical suit"
+        ],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=39.3)"
+    },
+    {
+      "timestamp_start": 30.363666666666663,
+      "timestamp_end": 31.69833333333333,
+      "timestamp_formatted": "00:30",
+      "duration": 1.3346666666666671,
+      "frame_description": "Nick Fury, wearing his signature eyepatch and a black leather jacket, stands and looks thoughtfully off to the side inside a high-tech command center.",
+      "transcript": "The only thing you really fight for is yourself.",
+      "combined_summary": "Nick Fury stands thoughtfully in a high-tech command center while a voiceover states that the only thing a person truly fights for is themselves.",
+      "inferred_context": {
+        "people": [
+          "Nick Fury"
+        ],
+        "location": "High-tech command center",
+        "story_context": "Nick Fury is reflecting on or confronting someone about their individual motivations and selfishness.",
+        "objects": [
+          "eyepatch",
+          "black leather jacket"
+        ],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=40.3)"
+    },
+    {
+      "timestamp_start": 31.69833333333333,
+      "timestamp_end": 33.78375,
+      "timestamp_formatted": "00:31",
+      "duration": 2.085416666666667,
+      "frame_description": "A man with a goatee and a somber expression stares intently at another person in a dimly lit indoor environment.",
+      "transcript": "The only thing you really fight for is yourself. You're not the guy to make the sacrifice play,",
+      "combined_summary": "A somber man with a goatee stares intently while a speaker off-screen accuses him of being selfish and incapable of making a sacrifice play.",
+      "inferred_context": {
+        "people": [
+          "man with a goatee",
+          "male speaker off-screen"
+        ],
+        "location": "dimly lit indoor environment",
+        "story_context": "A tense confrontation where one character's morality and willingness to sacrifice himself for others is being questioned.",
+        "objects": [],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=40.8)"
+    },
+    {
+      "timestamp_start": 33.78375,
+      "timestamp_end": 38.621916666666664,
+      "timestamp_formatted": "00:33",
+      "duration": 4.838166666666666,
+      "frame_description": "A serious-looking Captain America gazes intently at another person while speaking in a high-tech indoor environment.",
+      "transcript": "You're not the guy to make the sacrifice play, to lay down on a wire, or let the other guy crawl over you. I think I would just cut the wire.",
+      "combined_summary": "In a high-tech setting, a serious Captain America tells another person they aren't the type to make a sacrifice play, prompting a retort about simply cutting the wire.",
+      "inferred_context": {
+        "people": [
+          "Captain America",
+          "Tony Stark"
+        ],
+        "location": "S.H.I.E.L.D. Helicarrier",
+        "story_context": "Captain America and Tony Stark are engaged in a heated ideological argument about heroism and self-sacrifice.",
+        "objects": [],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=26.0)"
+    },
+    {
+      "timestamp_start": 38.621916666666664,
+      "timestamp_end": 40.24854166666666,
+      "timestamp_formatted": "00:38",
+      "duration": 1.626624999999997,
+      "frame_description": "A man with a serious expression gazes intently at another person during a conversation in a dimly lit, technological setting.",
+      "transcript": "I think I would just cut the wire.",
+      "combined_summary": "In a dimly lit technological setting, a man with a serious expression intently tells another person that he would solve a problem by simply cutting the wire.",
+      "inferred_context": {
+        "people": [
+          "male speaker"
+        ],
+        "location": "dimly lit technological setting",
+        "story_context": "The speaker is proposing a direct, possibly simplified solution to a complex or high-stakes problem during a serious conversation.",
+        "objects": [
+          "wire"
+        ],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=27.2)"
+    },
+    {
+      "timestamp_start": 40.24854166666666,
+      "timestamp_end": 41.624916666666664,
+      "timestamp_formatted": "00:40",
+      "duration": 1.376375000000003,
+      "frame_description": "A man in a purple shirt looks thoughtfully toward the side while sitting in a high-tech, futuristic setting with a view of clouds through a window.",
+      "transcript": "I think I would just cut the wire.",
+      "combined_summary": "A man in a purple shirt sits in a futuristic room overlooking clouds and states that he would simply cut the wire to solve a situation.",
+      "inferred_context": {
+        "people": [
+          "male speaker"
+        ],
+        "location": "futuristic, high-tech setting with a window view of clouds",
+        "story_context": "The speaker is discussing a problem-solving strategy, possibly responding to a hypothetical or technical dilemma.",
+        "objects": [
+          "window",
+          "purple shirt"
+        ],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=42.8)"
+    },
+    {
+      "timestamp_start": 41.624916666666664,
+      "timestamp_end": 46.88016666666666,
+      "timestamp_formatted": "00:41",
+      "duration": 5.255249999999997,
+      "frame_description": "A man wearing a dark blue hoodie speaks to another person in an indoor setting.",
+      "transcript": "I think I would just cut the wire. You know, you may not be a threat, but you better stop pretending to be a hero.",
+      "combined_summary": "A man in a dark blue hoodie confronts another person, telling them to stop pretending to be a hero and suggesting they would just 'cut the wire.'",
+      "inferred_context": {
+        "people": [
+          "Steve Rogers",
+          "Tony Stark"
+        ],
+        "location": "S.H.I.E.L.D. Helicarrier laboratory",
+        "story_context": "A heated argument between Steve Rogers and Tony Stark regarding their differing perspectives on heroism and personal sacrifice.",
+        "objects": [
+          "dark blue hoodie"
+        ],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=44.5)"
+    },
+    {
+      "timestamp_start": 46.88016666666666,
+      "timestamp_end": 74.40766666666666,
+      "timestamp_formatted": "00:46",
+      "duration": 27.527499999999996,
+      "frame_description": "A man with a goatee stares intently at another person in a dimly lit indoor setting.",
+      "transcript": "but you better stop pretending to be a hero. A hero? Like you? You're a laboratory experiment, Rogers. Everything special about you came on a bottle.",
+      "combined_summary": "A man with a goatee stares intensely at Steve Rogers during a confrontation where he dismisses Rogers' status as a hero, calling him a 'laboratory experiment' whose abilities came from a bottle.",
+      "inferred_context": {
+        "people": [
+          "Rogers",
+          "man with a goatee"
+        ],
+        "location": "dimly lit indoor setting",
+        "story_context": "A tense verbal confrontation where one character challenges the nature of another's heroism and origins.",
+        "objects": [],
+        "confidence": "high"
+      },
+      "sample_reason": "scene_change (score=31.5)"
+    }
+  ]
+}

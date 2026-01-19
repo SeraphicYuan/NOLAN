@@ -422,6 +422,9 @@
     <header class="header">
         <h1>Scene Plan Viewer</h1>
         <div class="header-controls">
+            <select id="projectFilter" class="filter-select" style="min-width: 150px;">
+                <option value="">Select Project...</option>
+            </select>
             <select id="sectionFilter" class="filter-select">
                 <option value="all">All Sections</option>
             </select>
@@ -463,11 +466,30 @@
     <script>
         let allScenes = [];
         let sections = [];
+        let projects = [];
+        let currentProject = '';
         let currentSection = 'all';
         let currentStatus = 'all';
 
         // Range playback state
         let playbackRange = null;  // { start, end, sceneId }
+
+        // Get project from URL
+        function getProjectFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('project') || '';
+        }
+
+        // Update URL with project
+        function updateUrl(project) {
+            const url = new URL(window.location);
+            if (project) {
+                url.searchParams.set('project', project);
+            } else {
+                url.searchParams.delete('project');
+            }
+            window.history.replaceState({}, '', url);
+        }
 
         // Format seconds to MM:SS
         function formatTime(seconds) {
@@ -733,35 +755,87 @@
             );
         }
 
-        // Load data
-        async function loadData() {
+        // Load projects list
+        async function loadProjects() {
             try {
+                const res = await fetch('/scenes/api/projects');
+                const data = await res.json();
+                projects = data.projects || [];
+
+                const projectFilter = document.getElementById('projectFilter');
+                projectFilter.innerHTML = '<option value="">Select Project...</option>';
+
+                projects.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.name;
+                    option.textContent = `${p.name} (${p.scene_count} scenes)`;
+                    projectFilter.appendChild(option);
+                });
+
+                // Set from URL or auto-select if only one project
+                currentProject = getProjectFromUrl();
+                if (!currentProject && projects.length === 1) {
+                    currentProject = projects[0].name;
+                    updateUrl(currentProject);
+                }
+
+                if (currentProject) {
+                    projectFilter.value = currentProject;
+                    await loadSceneData();
+                } else if (projects.length === 0) {
+                    document.getElementById('sceneList').innerHTML =
+                        '<div class="loading">No projects found. Run <code>nolan process essay.md</code> to create one.</div>';
+                } else {
+                    document.getElementById('sceneList').innerHTML =
+                        '<div class="loading">Select a project from the dropdown above.</div>';
+                }
+            } catch (err) {
+                console.error('Failed to load projects:', err);
+                document.getElementById('sceneList').innerHTML =
+                    '<div class="loading">Error loading projects.</div>';
+            }
+        }
+
+        // Load scene data for current project
+        async function loadSceneData() {
+            if (!currentProject) return;
+
+            try {
+                document.getElementById('sceneList').innerHTML =
+                    '<div class="loading">Loading scene plan...</div>';
+
                 // Load scenes
-                const scenesRes = await fetch('/api/scenes/flat');
+                const scenesRes = await fetch(`/scenes/api/scenes/flat?project=${encodeURIComponent(currentProject)}`);
                 const scenesData = await scenesRes.json();
                 allScenes = scenesData.scenes;
                 sections = scenesData.sections;
 
-                // Populate section filter
+                // Reset and populate section filter
                 const sectionFilter = document.getElementById('sectionFilter');
+                sectionFilter.innerHTML = '<option value="all">All Sections</option>';
                 sections.forEach(section => {
                     const option = document.createElement('option');
                     option.value = section;
                     option.textContent = section;
                     sectionFilter.appendChild(option);
                 });
+                currentSection = 'all';
 
                 renderScenes();
 
                 // Load audio
-                const audioRes = await fetch('/api/audio-info');
+                const audioRes = await fetch(`/scenes/api/audio-info?project=${encodeURIComponent(currentProject)}`);
                 const audioData = await audioRes.json();
+                const audioContainer = document.getElementById('audioContainer');
+                const audioPlayer = document.getElementById('audioPlayer');
+
                 if (audioData.exists) {
-                    const audioContainer = document.getElementById('audioContainer');
-                    const audioPlayer = document.getElementById('audioPlayer');
                     audioPlayer.src = audioData.path;
                     audioContainer.style.display = 'flex';
                     audioPlayer.addEventListener('timeupdate', updateAudioTime);
+                } else {
+                    audioContainer.style.display = 'none';
+                    audioPlayer.src = '';
                 }
 
             } catch (err) {
@@ -772,6 +846,20 @@
         }
 
         // Filter handlers
+        document.getElementById('projectFilter').addEventListener('change', function() {
+            currentProject = this.value;
+            updateUrl(currentProject);
+            if (currentProject) {
+                loadSceneData();
+            } else {
+                allScenes = [];
+                sections = [];
+                document.getElementById('sceneList').innerHTML =
+                    '<div class="loading">Select a project from the dropdown above.</div>';
+                document.getElementById('audioContainer').style.display = 'none';
+            }
+        });
+
         document.getElementById('sectionFilter').addEventListener('change', function() {
             currentSection = this.value;
             renderScenes();
@@ -783,7 +871,7 @@
         });
 
         // Initialize
-        loadData();
+        loadProjects();
     </script>
 </body>
 </html>

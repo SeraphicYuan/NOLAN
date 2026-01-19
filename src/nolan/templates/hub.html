@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #0ea5e9;
+            --accent-hover: #38bdf8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --purple: #a78bfa;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 48px 24px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        h1 {
+            font-size: 56px;
+            font-weight: 700;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+
+        /* Section headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            margin-top: 48px;
+        }
+        .section-header:first-of-type {
+            margin-top: 0;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+        .section-line {
+            flex: 1;
+            height: 1px;
+            background: var(--bg-tertiary);
+        }
+
+        /* Cards grid */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 28px;
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            border: 1px solid var(--bg-tertiary);
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        .card:hover::before {
+            opacity: 1;
+        }
+        .card.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .card.project::before {
+            background: linear-gradient(90deg, var(--purple), transparent);
+        }
+        .card.project:hover {
+            border-color: var(--purple);
+        }
+        .card-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+        }
+        .card-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .card-desc {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .card-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 16px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+        .card-badge.success {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+        .card-badge.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+        .card-badge.accent {
+            background: rgba(14, 165, 233, 0.15);
+            color: var(--accent);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+        .empty-state p {
+            margin-bottom: 8px;
+        }
+        .empty-state code {
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 64px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>NOLAN</h1>
+            <p class="subtitle">Video Essay Production Pipeline</p>
+        </div>
+
+        <!-- Tools Section -->
+        <div class="section-header">
+            <span class="section-title">Tools</span>
+            <span class="section-line"></span>
+        </div>
+        <div class="cards">
+            <a href="/library" class="card" id="library-card">
+                <span class="card-icon">📚</span>
+                <div class="card-title">Video Library</div>
+                <div class="card-desc">Browse your indexed video library with keyword and semantic search.</div>
+                <div class="card-meta">
+                    <span class="card-badge" id="library-status">Checking...</span>
+                </div>
+            </a>
+
+            <a href="/showcase" class="card" id="showcase-card">
+                <span class="card-icon">🎬</span>
+                <div class="card-title">Motion Effects</div>
+                <div class="card-desc">Generate Ken Burns, kinetic typography, animated charts, and more.</div>
+                <div class="card-meta">
+                    <span class="card-badge" id="showcase-status">Checking...</span>
+                </div>
+            </a>
+        </div>
+
+        <!-- Projects Section -->
+        <div class="section-header">
+            <span class="section-title">Projects</span>
+            <span class="section-line"></span>
+        </div>
+        <div class="cards" id="projects-cards">
+            <div class="empty-state" id="projects-loading">
+                <p>Loading projects...</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Render service: <a href="http://127.0.0.1:3010/health" target="_blank">127.0.0.1:3010</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Load hub status
+        async function loadStatus() {
+            try {
+                const resp = await fetch('/api/status');
+                const data = await resp.json();
+
+                // Update library status
+                if (data.library.available) {
+                    // Fetch actual stats
+                    try {
+                        const statsResp = await fetch('/library/api/stats');
+                        const stats = await statsResp.json();
+                        const status = document.getElementById('library-status');
+                        status.textContent = `${stats.video_count} videos`;
+                        status.classList.add('success');
+                    } catch (e) {
+                        const status = document.getElementById('library-status');
+                        status.textContent = 'Available';
+                        status.classList.add('success');
+                    }
+                } else {
+                    document.getElementById('library-card').classList.add('disabled');
+                    const status = document.getElementById('library-status');
+                    status.textContent = 'No database';
+                    status.classList.add('warning');
+                }
+
+                // Render projects
+                renderProjects(data.projects);
+
+            } catch (err) {
+                console.error('Failed to load status:', err);
+                document.getElementById('projects-loading').innerHTML =
+                    '<p>Failed to load projects</p>';
+            }
+        }
+
+        function renderProjects(projects) {
+            const container = document.getElementById('projects-cards');
+
+            if (!projects || projects.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No projects found</p>
+                        <p>Create a project with <code>nolan process essay.md</code></p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = projects.map(p => `
+                <a href="/scenes?project=${encodeURIComponent(p.name)}" class="card project">
+                    <span class="card-icon">🎯</span>
+                    <div class="card-title">${escapeHtml(p.name)}</div>
+                    <div class="card-desc">${p.sections.slice(0, 3).map(s => escapeHtml(s)).join(', ')}${p.sections.length > 3 ? '...' : ''}</div>
+                    <div class="card-meta">
+                        <span class="card-badge accent">${p.scene_count} scenes</span>
+                        ${p.has_audio ? '<span class="card-badge success">Audio</span>' : ''}
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        // Check render service
+        async function checkRenderService() {
+            try {
+                const resp = await fetch('/showcase/api/effects');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const status = document.getElementById('showcase-status');
+                    status.textContent = `${data.effects?.length || 0} effects`;
+                    status.classList.add('success');
+                } else {
+                    throw new Error('Not OK');
+                }
+            } catch (e) {
+                const status = document.getElementById('showcase-status');
+                status.textContent = 'Render service offline';
+                status.classList.add('warning');
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        loadStatus();
+        checkRenderService();
+    </script>
+</body>
+</html>

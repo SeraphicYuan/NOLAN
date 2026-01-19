@@ -1,0 +1,104 @@
+{
+  "video": {
+    "path": "D:\\ClaudeProjects\\NOLAN\\asset\\＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm",
+    "name": "＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm"
+  },
+  "segments": [
+    {
+      "timestamp_start": 0,
+      "timestamp_end": 6.5065,
+      "timestamp_formatted": "00:00",
+      "duration": 6.5065,
+      "frame_description": "A man in a dark purple shirt stands under an industrial metal bridge structure, gazing thoughtfully toward a body of water with a distant ship visible in the blurred background.",
+      "sample_reason": "max_interval"
+    },
+    {
+      "timestamp_start": 6.5065,
+      "timestamp_end": 9.968291666666666,
+      "timestamp_formatted": "00:06",
+      "duration": 3.4617916666666657,
+      "frame_description": "Tony Stark, Steve Rogers in his Captain America suit, and Nick Fury stand together in a high - tech laboratory filled with industrial equipment and glass display cases.",
+      "sample_reason": "scene_change (score=49.5)"
+    },
+    {
+      "timestamp_start": 9.968291666666666,
+      "timestamp_end": 18.810458333333333,
+      "timestamp_formatted": "00:09",
+      "duration": 8.842166666666667,
+      "frame_description": "In a high-tech laboratory, Tony Stark gestures while speaking to Steve Rogers, who stands attentively in his Captain America suit.",
+      "sample_reason": "scene_change (score=33.1)"
+    },
+    {
+      "timestamp_start": 18.810458333333333,
+      "timestamp_end": 20.353666666666665,
+      "timestamp_formatted": "00:18",
+      "duration": 1.5432083333333324,
+      "frame_description": "A man in a blue uniform with a white shoulder stripe speaks with his mouth open in an indoor setting with blurred golden circular structures in the background.",
+      "sample_reason": "scene_change (score=38.9)"
+    },
+    {
+      "timestamp_start": 20.353666666666665,
+      "timestamp_end": 22.81445833333333,
+      "timestamp_formatted": "00:20",
+      "duration": 2.4607916666666654,
+      "frame_description": "A man with dark hair, a goatee, and a black shirt is shown in profile, looking intently at another person in a dimly lit indoor setting.",
+      "sample_reason": "scene_change (score=30.9)"
+    },
+    {
+      "timestamp_start": 22.81445833333333,
+      "timestamp_end": 24.691333333333333,
+      "timestamp_formatted": "00:22",
+      "duration": 1.8768750000000018,
+      "frame_description": "Thor and Black Widow stand side by side in a high-tech control room, both facing the same direction with serious expressions.",
+      "sample_reason": "scene_change (score=41.6)"
+    },
+    {
+      "timestamp_start": 24.691333333333333,
+      "timestamp_end": 30.363666666666663,
+      "timestamp_formatted": "00:24",
+      "duration": 5.672333333333331,
+      "frame_description": "A man in a blue polo shirt is engaged in a conversation with another person in a dimly lit, high-tech indoor setting featuring blurred golden machinery in the background.",
+      "sample_reason": "scene_change (score=39.3)"
+    },
+    {
+      "timestamp_start": 30.363666666666663,
+      "timestamp_end": 31.69833333333333,
+      "timestamp_formatted": "00:30",
+      "duration": 1.3346666666666671,
+      "frame_description": "Nick Fury, identifiable by his black eye patch and leather jacket, stands in a modern industrial interior with fluorescent lighting and surveillance equipment.",
+      "sample_reason": "scene_change (score=40.3)"
+    },
+    {
+      "timestamp_start": 31.69833333333333,
+      "timestamp_end": 40.24854166666666,
+      "timestamp_formatted": "00:31",
+      "duration": 8.55020833333333,
+      "frame_description": "Robert Downey Jr., portraying Tony Stark, intently converses with an unseen individual in a dimly lit indoor setting.",
+      "sample_reason": "scene_change (score=40.8)"
+    },
+    {
+      "timestamp_start": 40.24854166666666,
+      "timestamp_end": 41.624916666666664,
+      "timestamp_formatted": "00:40",
+      "duration": 1.376375000000003,
+      "frame_description": "A man in a dark purple shirt stands indoors within an industrial setting, facing forward with a serious expression, framed by metallic structural beams and a blurred view of a cloudy sky or water through a large opening behind him.",
+      "sample_reason": "scene_change (score=42.8)"
+    },
+    {
+      "timestamp_start": 41.624916666666664,
+      "timestamp_end": 46.88016666666666,
+      "timestamp_formatted": "00:41",
+      "duration": 5.255249999999997,
+      "frame_description": "A person in a dark blue hoodie speaks to another individual in a dimly lit indoor setting with blurred background elements.",
+      "sample_reason": "scene_change (score=44.5)"
+    },
+    {
+      "timestamp_start": 46.88016666666666,
+      "timestamp_end": 74.40766666666666,
+      "timestamp_formatted": "00:46",
+      "duration": 27.527499999999996,
+      "frame_description": "In a dimly lit indoor setting, Robert Downey Jr. (as Tony Stark) looks intently at another person during a conversation.",
+      "sample_reason": "scene_change (score=31.5)"
+    }
+  ]
+}

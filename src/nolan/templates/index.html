@@ -102,14 +102,15 @@
             `;
         }
 
-        function renderInfographicPreview(scene) {
-            if (!scene.infographic_asset) return '';
-            return `
-                <div class="infographic-preview">
-                    <img src="/assets/${scene.infographic_asset}" alt="Infographic preview">
-                </div>
-            `;
-        }
+            function renderInfographicPreview(scene) {
+                const asset = scene.infographic_asset_png || scene.infographic_asset;
+                if (!asset) return '';
+                return `
+                    <div class="infographic-preview">
+                        <img src="/assets/${asset}" alt="Infographic preview">
+                    </div>
+                `;
+            }
 
         // Load scenes
         fetch('/api/scenes')

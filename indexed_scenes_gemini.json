@@ -1,0 +1,108 @@
+{
+  "video": {
+    "path": "asset\\＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm",
+    "name": "＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm"
+  },
+  "provider": "gemini-3-flash-preview",
+  "whisper_model": "base",
+  "segments": [
+    {
+      "timestamp_start": 0.0,
+      "timestamp_end": 6.5065,
+      "frame_description": "A man with dark, wavy hair and a serious expression stares thoughtfully off-camera while seated within a high-tech, industrial interior.",
+      "transcript": null,
+      "sample_reason": "max_interval"
+    },
+    {
+      "timestamp_start": 6.5065,
+      "timestamp_end": 9.968291666666666,
+      "frame_description": "Tony Stark, Captain America, and Nick Fury stand in a high-tech laboratory looking forward with stern expressions.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=49.5)"
+    },
+    {
+      "timestamp_start": 9.968291666666666,
+      "timestamp_end": 18.810458333333333,
+      "frame_description": "Tony Stark gestures while speaking to a stoic Captain America inside a high-tech laboratory.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=33.1)"
+    },
+    {
+      "timestamp_start": 18.810458333333333,
+      "timestamp_end": 20.353666666666665,
+      "frame_description": "A man in a blue tactical suit speaks with a serious expression in a dimly lit, high-tech indoor environment.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=38.9)"
+    },
+    {
+      "timestamp_start": 20.353666666666665,
+      "timestamp_end": 22.81445833333333,
+      "frame_description": "A close-up shows Tony Stark looking off-camera with a serious expression in a dimly lit indoor setting.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=30.9)"
+    },
+    {
+      "timestamp_start": 22.81445833333333,
+      "timestamp_end": 24.691333333333333,
+      "frame_description": "Black Widow and Thor stand in a high-tech laboratory, looking off-camera with serious expressions.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=41.6)"
+    },
+    {
+      "timestamp_start": 24.691333333333333,
+      "timestamp_end": 30.363666666666663,
+      "frame_description": "A man in a dark blue tactical suit speaks with an intense and serious expression to another person within a blurred, high-tech setting.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=39.3)"
+    },
+    {
+      "timestamp_start": 30.363666666666663,
+      "timestamp_end": 31.69833333333333,
+      "frame_description": "Nick Fury, wearing his iconic eyepatch and a black leather jacket, stands inside a futuristic command center and looks off-camera.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=40.3)"
+    },
+    {
+      "timestamp_start": 31.69833333333333,
+      "timestamp_end": 33.78375,
+      "frame_description": "A man with a goatee looks intensely at another person, whose back is to the camera, in a dimly lit indoor setting.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=40.8)"
+    },
+    {
+      "timestamp_start": 33.78375,
+      "timestamp_end": 38.621916666666664,
+      "frame_description": "A man with a serious expression, wearing a dark blue suit, looks intently at another person in a high-tech indoor setting with blurred mechanical structures in the background.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=26.0)"
+    },
+    {
+      "timestamp_start": 38.621916666666664,
+      "timestamp_end": 40.24854166666666,
+      "frame_description": "A man in a blue tactical suit looks intently at another person during a serious conversation in a dimly lit indoor setting.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=27.2)"
+    },
+    {
+      "timestamp_start": 40.24854166666666,
+      "timestamp_end": 41.624916666666664,
+      "frame_description": "A man in a purple shirt looks off-camera with a serious expression while standing inside a high-tech facility with a cloudy sky visible through the windows in the background.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=42.8)"
+    },
+    {
+      "timestamp_start": 41.624916666666664,
+      "timestamp_end": 46.88016666666666,
+      "frame_description": "A man in a blue suit speaks with another person in an indoor setting.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=44.5)"
+    },
+    {
+      "timestamp_start": 46.88016666666666,
+      "timestamp_end": 74.40766666666666,
+      "frame_description": "In a dimly lit indoor setting, Tony Stark gazes intensely with a concerned expression at someone just out of focus.",
+      "transcript": null,
+      "sample_reason": "scene_change (score=31.5)"
+    }
+  ]
+}

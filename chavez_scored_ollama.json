@@ -1,0 +1,70 @@
+{
+  "query": "Venezuela president Chavez",
+  "source": "ddgs",
+  "count": 5,
+  "scored": true,
+  "scored_by": "ollama",
+  "context": null,
+  "results": [
+    {
+      "url": "https://media.cnn.com/api/v1/images/stellar/prod/gettyimages-1853385395.jpg?c=original&q=w_1093,c_fill",
+      "thumbnail_url": "https://tse1.explicit.bing.net/th?id=OIF.rO/NkXstSSyikE3Zm3FqEw&pid=Api",
+      "title": "History of US-Venezuela relations | CNN",
+      "source": "ddgs",
+      "source_url": "https://edition.cnn.com/2025/12/31/americas/venezuela-us-history-trump-strike-latam-intl?Profile=CNN,CNN+International",
+      "width": 1093,
+      "height": 760,
+      "score": 0.0,
+      "score_reason": "Scoring failed: Client error '404 Not Found' for url 'http://127.0.0.1:11434/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+      "scored_by": "ollama"
+    },
+    {
+      "url": "https://www.jsonline.com/gcdn/authoring/authoring-images/2026/01/03/USAT/88005992007-nicolas-maduro-04.jpg?width=1320&height=904&fit=crop&format=pjpg&auto=webp",
+      "thumbnail_url": "https://tse2.mm.bing.net/th?id=OIF.9NZ3+7de0ea83qAmvIm58w&pid=Api",
+      "title": "Maduro captured: See photos of Venezuelan president",
+      "source": "ddgs",
+      "source_url": "https://www.jsonline.com/picture-gallery/news/nation-world/2026/01/03/maduro-captured-photos-venezuelan-president/88010690007/",
+      "width": 1320,
+      "height": 904,
+      "score": 0.0,
+      "score_reason": "Failed to download image",
+      "scored_by": "ollama"
+    },
+    {
+      "url": "https://content.api.news/v3/images/bin/352b9259a2e2276a64d339f0803735d3",
+      "thumbnail_url": "https://tse1.mm.bing.net/th/id/OIF.yfbqOMIrE2t6j6F66KRb8w?pid=Api",
+      "title": "NSW candidate worked for Venezuela institute behind Maduro party | The ...",
+      "source": "ddgs",
+      "source_url": "https://www.weeklytimesnow.com.au/news/national/australian-political-candidate-worked-for-think-tank-that-shaped-venezuelan-socialist-regime/news-story/e228548138c93e64acbb54a819f54690",
+      "width": 1024,
+      "height": 768,
+      "score": 0.0,
+      "score_reason": "Scoring failed: Client error '404 Not Found' for url 'http://127.0.0.1:11434/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+      "scored_by": "ollama"
+    },
+    {
+      "url": "https://menafn.com/updates/pr/2026-01/05/TC_dc0cdimage_story.jpg",
+      "thumbnail_url": "https://tse3.mm.bing.net/th/id/OIF.FyNAIlj5c9HaIMEf7tySvA?pid=Api",
+      "title": "Before Toppling Maduro, The US Spent Decades Pressuring Venezuelan ...",
+      "source": "ddgs",
+      "source_url": "https://menafn.com/1110554640/Before-Toppling-Maduro-The-US-Spent-Decades-Pressuring-Venezuelan-Leaders-Over-Its-Oil-Wealth",
+      "width": 960,
+      "height": 703,
+      "score": 0.0,
+      "score_reason": "Scoring failed: Client error '404 Not Found' for url 'http://127.0.0.1:11434/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+      "scored_by": "ollama"
+    },
+    {
+      "url": "https://www.hindustantimes.com/ht-img/img/2026/01/07/original/im-10900811_1767766603773.jpg",
+      "thumbnail_url": "https://tse1.mm.bing.net/th/id/OIF.qelhv9gHwSDwa4LxXthG0w?pid=Api",
+      "title": "The Brutal Maduro Enforcer Standing in Trump's Way in Venezuela | World ...",
+      "source": "ddgs",
+      "source_url": "https://www.hindustantimes.com/world-news/the-brutal-maduro-enforcer-standing-in-trump-s-way-in-venezuela-101767766558163.html",
+      "width": 1280,
+      "height": 866,
+      "score": 0.0,
+      "score_reason": "Scoring failed: Client error '404 Not Found' for url 'http://127.0.0.1:11434/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+      "scored_by": "ollama"
+    }
+  ]
+}

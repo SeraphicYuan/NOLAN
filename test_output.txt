@@ -1,0 +1,10 @@
+Starting test...
+Imports successful
+App created, starting server on port 8099...
+
+=== TEST RESULTS ===
+PASS: http://127.0.0.1:8099/ -> 200
+PASS: http://127.0.0.1:8099/showcase -> 200
+FAIL: http://127.0.0.1:8099/showcase/api/effects -> 500 Internal Server Error
+
+All tests passed: False

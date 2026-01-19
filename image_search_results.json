@@ -1,0 +1,34 @@
+{
+  "query": "sunset",
+  "source": "ddgs",
+  "count": 3,
+  "results": [
+    {
+      "url": "https://images.pexels.com/photos/635279/pexels-photo-635279.jpeg?auto=compress&cs=tinysrgb&dpr=3&h=750&w=1260",
+      "thumbnail_url": "https://tse3.mm.bing.net/th/id/OIP.j6fg6IbFSWnUcAjfxnSeJQHaE6?pid=Api",
+      "title": "Beach During Sunset · Free Stock Photo",
+      "source": "ddgs",
+      "source_url": "https://www.pexels.com/photo/beach-during-sunset-635279/",
+      "width": 3387,
+      "height": 2250
+    },
+    {
+      "url": "https://wallpaperaccess.com/full/8975119.jpg",
+      "thumbnail_url": "https://tse4.mm.bing.net/th/id/OIP.cvgor0eEoXSThiaYuOlHUQHaEK?pid=Api",
+      "title": "Beach and Sunset Wallpapers - Top Free Beach and Sunset Backgrounds ...",
+      "source": "ddgs",
+      "source_url": "https://wallpaperaccess.com/beach-and-sunset",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://images.pexels.com/photos/8101/sea-sky-sunset-water.jpg?cs=srgb&dl=sea-sky-sunset-8101.jpg&fm=jpg",
+      "thumbnail_url": "https://tse4.mm.bing.net/th/id/OIP.HL9Bzss-3yRnY9Liw0lWrAHaE7?pid=Api",
+      "title": "Sunset pictures · Pexels · Free Stock Photos",
+      "source": "ddgs",
+      "source_url": "https://www.pexels.com/search/sunset/",
+      "width": 4013,
+      "height": 2675
+    }
+  ]
+}

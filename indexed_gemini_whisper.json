@@ -1,0 +1,104 @@
+{
+  "video": "asset\\＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm",
+  "provider": "gemini-3-flash-preview + whisper-base (cuda)",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 6.5065,
+      "vision": "A man with a serious expression looks off-camera while inside an industrial-looking aircraft with an open hatch revealing a bright, cloudy sky.",
+      "whisper": "But what are we, a team? No, no, no, we're a chemical mixture that makes chaos. We're a time bomb.",
+      "reason": "max_interval"
+    },
+    {
+      "start": 6.5065,
+      "end": 9.968291666666666,
+      "vision": "Nick Fury, Captain America, and Tony Stark stand together in a high-tech laboratory, looking intently toward something off-camera.",
+      "whisper": "We're a time bomb. You need to step away. Why shouldn't a guy let off a little steam?",
+      "reason": "scene_change (score=49.5)"
+    },
+    {
+      "start": 9.968291666666666,
+      "end": 18.810458333333333,
+      "vision": "Tony Stark gestures while speaking to a stoic Steve Rogers inside a high-tech laboratory.",
+      "whisper": "Why shouldn't a guy let off a little steam? You know, Dan Well-Wide, back off. Oh, I'm starting to want you to make me. Yeah, big man and a pseudo armor.",
+      "reason": "scene_change (score=33.1)"
+    },
+    {
+      "start": 18.810458333333333,
+      "end": 20.353666666666665,
+      "vision": "A man in a blue tactical uniform is depicted speaking with a serious expression in a blurred, high-tech setting.",
+      "whisper": "Yeah, big man and a pseudo armor. Take that off, what are you?",
+      "reason": "scene_change (score=38.9)"
+    },
+    {
+      "start": 20.353666666666665,
+      "end": 22.81445833333333,
+      "vision": "A close-up captures Tony Stark looking intensely off-camera with a serious expression in a dimly lit, indistinct setting.",
+      "whisper": "Take that off, what are you? Genius billionaire playboy philanthropist.",
+      "reason": "scene_change (score=30.9)"
+    },
+    {
+      "start": 22.81445833333333,
+      "end": 24.691333333333333,
+      "vision": "Inside a high-tech laboratory, Black Widow and Thor stand together while gazing intently at something off-camera.",
+      "whisper": "Genius billionaire playboy philanthropist. I know guys with none of that worth ten of you.",
+      "reason": "scene_change (score=41.6)"
+    },
+    {
+      "start": 24.691333333333333,
+      "end": 30.363666666666663,
+      "vision": "A man with a serious expression and short blond hair, wearing a dark blue tactical suit, speaks to someone in a high-tech facility with blurred golden circular structures in the background.",
+      "whisper": "I know guys with none of that worth ten of you. I've seen the footage. The only thing you really fight for is yourself.",
+      "reason": "scene_change (score=39.3)"
+    },
+    {
+      "start": 30.363666666666663,
+      "end": 31.69833333333333,
+      "vision": "Nick Fury, wearing his signature eyepatch and a black leather jacket, stands and looks thoughtfully off to the side inside a high-tech command center.",
+      "whisper": "The only thing you really fight for is yourself.",
+      "reason": "scene_change (score=40.3)"
+    },
+    {
+      "start": 31.69833333333333,
+      "end": 33.78375,
+      "vision": "A man with a goatee and a somber expression stares intently at another person in a dimly lit indoor environment.",
+      "whisper": "The only thing you really fight for is yourself. You're not the guy to make the sacrifice play,",
+      "reason": "scene_change (score=40.8)"
+    },
+    {
+      "start": 33.78375,
+      "end": 38.621916666666664,
+      "vision": "A serious-looking Captain America gazes intently at another person while speaking in a high-tech indoor environment.",
+      "whisper": "You're not the guy to make the sacrifice play, to lay down on a wire, or let the other guy crawl over you. I think I would just cut the wire.",
+      "reason": "scene_change (score=26.0)"
+    },
+    {
+      "start": 38.621916666666664,
+      "end": 40.24854166666666,
+      "vision": "A man with a serious expression gazes intently at another person during a conversation in a dimly lit, technological setting.",
+      "whisper": "I think I would just cut the wire.",
+      "reason": "scene_change (score=27.2)"
+    },
+    {
+      "start": 40.24854166666666,
+      "end": 41.624916666666664,
+      "vision": "A man in a purple shirt looks thoughtfully toward the side while sitting in a high-tech, futuristic setting with a view of clouds through a window.",
+      "whisper": "I think I would just cut the wire.",
+      "reason": "scene_change (score=42.8)"
+    },
+    {
+      "start": 41.624916666666664,
+      "end": 46.88016666666666,
+      "vision": "A man wearing a dark blue hoodie speaks to another person in an indoor setting.",
+      "whisper": "I think I would just cut the wire. You know, you may not be a threat, but you better stop pretending to be a hero.",
+      "reason": "scene_change (score=44.5)"
+    },
+    {
+      "start": 46.88016666666666,
+      "end": 74.40766666666666,
+      "vision": "A man with a goatee stares intently at another person in a dimly lit indoor setting.",
+      "whisper": "but you better stop pretending to be a hero. A hero? Like you? You're a laboratory experiment, Rogers. Everything special about you came on a bottle.",
+      "reason": "scene_change (score=31.5)"
+    }
+  ]
+}

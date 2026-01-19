@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN Library Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f3460;
+            --text-primary: #eaeaea;
+            --text-secondary: #a0a0a0;
+            --accent: #e94560;
+            --accent-hover: #ff6b6b;
+            --border: #2a2a4a;
+            --success: #4ade80;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .search-box button {
+            padding: 8px 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .search-box button:hover {
+            background: var(--accent-hover);
+        }
+
+        .search-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .search-type-select,
+        .project-select {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 12px;
+        }
+
+        .project-select {
+            max-width: 140px;
+        }
+
+        .search-mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            transition: all 0.2s;
+        }
+
+        .search-mode-toggle:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .search-mode-toggle.semantic {
+            background: rgba(233, 69, 96, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .search-mode-toggle .icon {
+            font-size: 14px;
+        }
+
+        .semantic-score {
+            display: inline-block;
+            padding: 2px 6px;
+            background: rgba(233, 69, 96, 0.2);
+            color: var(--accent);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .field-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .field-toggle input {
+            cursor: pointer;
+        }
+
+        .field-toggle.active {
+            color: var(--text-primary);
+        }
+
+        .fields-dropdown {
+            position: relative;
+        }
+
+        .fields-btn {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .fields-btn:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .fields-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            min-width: 180px;
+            z-index: 100;
+            margin-top: 4px;
+        }
+
+        .fields-menu.show {
+            display: block;
+        }
+
+        .fields-menu label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .fields-menu label:hover {
+            color: var(--text-primary);
+        }
+
+        .fields-menu hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 6px 0;
+        }
+
+        .stats {
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 16px;
+        }
+
+        .stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .video-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .video-item {
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            transition: background 0.2s;
+        }
+
+        .video-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .video-item.active {
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--accent);
+        }
+
+        .video-item-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .video-item-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .main-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .tab {
+            padding: 6px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .tab:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Segments Panel */
+        .segments-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .segment-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .segment-card:hover {
+            border-color: var(--accent);
+        }
+
+        .segment-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .segment-time {
+            background: var(--bg-tertiary);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: monospace;
+            color: var(--accent);
+        }
+
+        .segment-duration {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .segment-reason {
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: var(--bg-primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: auto;
+        }
+
+        .segment-description {
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .segment-transcript {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .segment-context {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .context-tag {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: var(--bg-tertiary);
+        }
+
+        .context-tag.people {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+        }
+
+        .context-tag.location {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .context-tag.objects {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        /* Cluster Card */
+        .cluster-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .cluster-header {
+            padding: 16px;
+            background: var(--bg-tertiary);
+            cursor: pointer;
+        }
+
+        .cluster-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .cluster-id {
+            background: var(--accent);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .cluster-time {
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .cluster-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .cluster-summary {
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .cluster-segments {
+            padding: 12px;
+        }
+
+        .cluster-segment {
+            padding: 8px 12px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .cluster-segment:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .cluster-segment-time {
+            color: var(--accent);
+            font-family: monospace;
+            margin-right: 8px;
+        }
+
+        /* Video Player Panel */
+        .player-panel {
+            width: 400px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .player-panel.hidden {
+            display: none;
+        }
+
+        .player-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .player-header h3 {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .player-type-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .player-type-badge.segment {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+        }
+
+        .player-type-badge.cluster {
+            background: rgba(233, 69, 96, 0.2);
+            color: var(--accent);
+        }
+
+        .player-controls {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loop-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .loop-toggle input {
+            cursor: pointer;
+        }
+
+        .loop-toggle.active {
+            color: var(--success);
+        }
+
+        .close-player {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .player-time-range {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            font-size: 12px;
+            font-family: monospace;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .player-time-range .current {
+            color: var(--accent);
+        }
+
+        .video-container {
+            background: black;
+            aspect-ratio: 16/9;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+        }
+
+        .player-info {
+            padding: 16px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .player-segment-info {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .player-segment-info h4 {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .player-segment-info h4:first-child {
+            margin-top: 0;
+        }
+
+        /* Search Results */
+        .search-results-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-results-header h3 {
+            font-size: 14px;
+        }
+
+        .clear-search {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .clear-search:hover {
+            border-color: var(--text-secondary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 32px;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            color: var(--text-secondary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>NOLAN Library</h1>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search...">
+                    <button onclick="performSearch()">Search</button>
+                </div>
+                <div class="search-options">
+                    <select id="projectFilter" class="project-select" onchange="filterByProject()">
+                        <option value="">All Projects</option>
+                    </select>
+                    <button id="searchModeToggle" class="search-mode-toggle" onclick="toggleSearchMode()" title="Toggle between keyword and semantic search">
+                        <span class="icon">&#128269;</span>
+                        <span id="searchModeLabel">Keyword</span>
+                    </button>
+                    <select id="searchType" class="search-type-select">
+                        <option value="all">All</option>
+                        <option value="segments">Segments</option>
+                        <option value="clusters">Clusters</option>
+                    </select>
+                    <div class="fields-dropdown" id="fieldsDropdown">
+                        <button class="fields-btn" onclick="toggleFieldsMenu()">Fields</button>
+                        <div class="fields-menu" id="fieldsMenu">
+                            <strong style="font-size: 11px; color: var(--text-secondary);">Segment Fields</strong>
+                            <label><input type="checkbox" value="frame_description" checked> Description</label>
+                            <label><input type="checkbox" value="transcript" checked> Transcript</label>
+                            <label><input type="checkbox" value="combined_summary" checked> Summary</label>
+                            <label><input type="checkbox" value="people" checked> People</label>
+                            <label><input type="checkbox" value="location" checked> Location</label>
+                            <label><input type="checkbox" value="story_context" checked> Story</label>
+                            <label><input type="checkbox" value="objects" checked> Objects</label>
+                            <hr>
+                            <strong style="font-size: 11px; color: var(--text-secondary);">Cluster Fields</strong>
+                            <label><input type="checkbox" value="cluster_summary" checked> Summary</label>
+                            <label><input type="checkbox" value="locations" checked> Locations</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="stats" id="stats">
+                <span>Loading...</span>
+            </div>
+            <div class="video-list" id="videoList">
+                <div class="loading">Loading videos...</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="main-header" id="mainHeader">
+                <h2 id="currentTitle">Select a video</h2>
+                <div class="tabs">
+                    <button class="tab active" data-tab="segments" onclick="switchTab('segments')">Segments</button>
+                    <button class="tab" data-tab="clusters" onclick="switchTab('clusters')">Clusters</button>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <div class="segments-panel" id="contentPanel">
+                    <div class="empty-state">
+                        <h3>No video selected</h3>
+                        <p>Select a video from the sidebar to view its segments</p>
+                    </div>
+                </div>
+
+                <div class="player-panel hidden" id="playerPanel">
+                    <div class="player-header">
+                        <h3>Preview</h3>
+                        <span class="player-type-badge segment" id="playerTypeBadge">Segment</span>
+                        <div class="player-controls">
+                            <label class="loop-toggle" id="loopToggle">
+                                <input type="checkbox" id="loopCheckbox" checked onchange="toggleLoop()">
+                                <span>Loop</span>
+                            </label>
+                            <button class="close-player" onclick="closePlayer()">&times;</button>
+                        </div>
+                    </div>
+                    <div class="player-time-range" id="playerTimeRange">
+                        <span>Range:</span>
+                        <span id="timeRangeStart">00:00</span>
+                        <span>-</span>
+                        <span id="timeRangeEnd">00:00</span>
+                        <span>|</span>
+                        <span>Current: <span class="current" id="timeCurrent">00:00</span></span>
+                    </div>
+                    <div class="video-container">
+                        <video id="videoPlayer" controls></video>
+                    </div>
+                    <div class="player-info">
+                        <div class="player-segment-info" id="playerInfo"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // State
+        let currentVideo = null;
+        let currentTab = 'segments';
+        let currentSegments = [];
+        let currentClusters = [];
+        let isSearchMode = false;
+        let currentProject = '';  // Current project filter
+        let isSemanticSearch = false;  // Semantic vs keyword search mode
+
+        // Playback state
+        let playbackStart = 0;
+        let playbackEnd = 0;
+        let isLooping = true;
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadProjects();
+            loadVideos();
+
+            // Enter key for search
+            document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
+
+            // Video timeupdate for looping
+            const video = document.getElementById('videoPlayer');
+            video.addEventListener('timeupdate', () => {
+                // Update current time display
+                document.getElementById('timeCurrent').textContent = formatTime(video.currentTime);
+
+                // Loop if enabled and past end time
+                if (isLooping && video.currentTime >= playbackEnd) {
+                    video.currentTime = playbackStart;
+                }
+            });
+
+            // Initialize loop toggle as active
+            document.getElementById('loopToggle').classList.add('active');
+        });
+
+        // Format time as MM:SS
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Toggle loop
+        function toggleLoop() {
+            isLooping = document.getElementById('loopCheckbox').checked;
+            const toggle = document.getElementById('loopToggle');
+            toggle.classList.toggle('active', isLooping);
+        }
+
+        // Toggle search mode (keyword vs semantic)
+        function toggleSearchMode() {
+            isSemanticSearch = !isSemanticSearch;
+            const btn = document.getElementById('searchModeToggle');
+            const label = document.getElementById('searchModeLabel');
+            const fieldsDropdown = document.getElementById('fieldsDropdown');
+
+            if (isSemanticSearch) {
+                btn.classList.add('semantic');
+                label.textContent = 'Semantic';
+                btn.title = 'Semantic search enabled - understands meaning, not just keywords';
+                // Hide fields dropdown for semantic search (not applicable)
+                fieldsDropdown.style.display = 'none';
+            } else {
+                btn.classList.remove('semantic');
+                label.textContent = 'Keyword';
+                btn.title = 'Keyword search - exact word matching';
+                fieldsDropdown.style.display = 'block';
+            }
+        }
+
+        // Toggle fields menu
+        function toggleFieldsMenu() {
+            const menu = document.getElementById('fieldsMenu');
+            menu.classList.toggle('show');
+        }
+
+        // Close fields menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('fieldsMenu');
+            const btn = e.target.closest('.fields-dropdown');
+            if (!btn && menu) {
+                menu.classList.remove('show');
+            }
+        });
+
+        // Get selected search fields
+        function getSelectedFields() {
+            const checkboxes = document.querySelectorAll('#fieldsMenu input[type="checkbox"]:checked');
+            const fields = Array.from(checkboxes).map(cb => cb.value);
+            return fields.length > 0 ? fields : null;
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const resp = await fetch('/library/api/stats');
+                const data = await resp.json();
+                document.getElementById('stats').innerHTML = `
+                    <span>${data.video_count} videos</span>
+                    <span>${data.segment_count} segments</span>
+                    <span>${data.total_duration_formatted} total</span>
+                `;
+            } catch (err) {
+                console.error('Failed to load stats:', err);
+            }
+        }
+
+        // Load projects
+        async function loadProjects() {
+            try {
+                const resp = await fetch('/library/api/projects');
+                const data = await resp.json();
+                const select = document.getElementById('projectFilter');
+
+                // Clear existing options except "All Projects"
+                select.innerHTML = '<option value="">All Projects</option>';
+
+                // Add project options
+                data.projects.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.slug;
+                    option.textContent = `${p.name} (${p.video_count})`;
+                    select.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Failed to load projects:', err);
+            }
+        }
+
+        // Filter by project
+        function filterByProject() {
+            currentProject = document.getElementById('projectFilter').value;
+            loadVideos();
+
+            // Clear current video selection when switching projects
+            if (currentVideo) {
+                currentVideo = null;
+                document.getElementById('currentTitle').textContent = 'Select a video';
+                document.getElementById('contentPanel').innerHTML = `
+                    <div class="empty-state">
+                        <h3>No video selected</h3>
+                        <p>Select a video from the sidebar to view its segments</p>
+                    </div>
+                `;
+                closePlayer();
+            }
+        }
+
+        // Load video list
+        async function loadVideos() {
+            try {
+                let url = '/library/api/videos';
+                if (currentProject) {
+                    url += `?project=${encodeURIComponent(currentProject)}`;
+                }
+                const resp = await fetch(url);
+                const data = await resp.json();
+                const list = document.getElementById('videoList');
+
+                if (data.videos.length === 0) {
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <p>No indexed videos found</p>
+                            <p>Run: nolan index &lt;folder&gt;</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = data.videos.map((v, i) => `
+                    <div class="video-item" data-index="${i}" data-path="${encodeURIComponent(v.path)}">
+                        <div class="video-item-name">${escapeHtml(v.name)}</div>
+                        <div class="video-item-meta">
+                            <span>${v.duration_formatted}</span>
+                            <span>${v.segment_count} segments</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Store videos for click handler
+                window._videos = data.videos;
+
+                // Add click handlers
+                list.querySelectorAll('.video-item').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const idx = parseInt(el.dataset.index);
+                        selectVideo(window._videos[idx].path);
+                    });
+                });
+            } catch (err) {
+                document.getElementById('videoList').innerHTML = `
+                    <div class="empty-state">
+                        <p>Failed to load videos</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Select video
+        async function selectVideo(path) {
+            isSearchMode = false;
+            currentVideo = path;
+
+            // Update UI - compare with encoded path
+            const encodedPath = encodeURIComponent(path);
+            document.querySelectorAll('.video-item').forEach(el => {
+                el.classList.toggle('active', el.dataset.path === encodedPath);
+            });
+
+            const name = path.split(/[/\\]/).pop();
+            document.getElementById('currentTitle').textContent = name;
+
+            // Load data
+            await Promise.all([
+                loadSegments(path),
+                loadClusters(path)
+            ]);
+
+            renderContent();
+        }
+
+        // Load segments
+        async function loadSegments(path) {
+            try {
+                const resp = await fetch(`/library/api/videos/${encodeURIComponent(path)}/segments`);
+                const data = await resp.json();
+                currentSegments = data.segments;
+            } catch (err) {
+                console.error('Failed to load segments:', err);
+                currentSegments = [];
+            }
+        }
+
+        // Load clusters
+        async function loadClusters(path) {
+            try {
+                const resp = await fetch(`/library/api/videos/${encodeURIComponent(path)}/clusters`);
+                const data = await resp.json();
+                currentClusters = data.clusters;
+            } catch (err) {
+                console.error('Failed to load clusters:', err);
+                currentClusters = [];
+            }
+        }
+
+        // Switch tab
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(el => {
+                el.classList.toggle('active', el.dataset.tab === tab);
+            });
+            renderContent();
+        }
+
+        // Render content
+        function renderContent() {
+            const panel = document.getElementById('contentPanel');
+
+            if (isSearchMode) {
+                renderSearchResults();
+                return;
+            }
+
+            if (!currentVideo) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No video selected</h3>
+                        <p>Select a video from the sidebar to view its segments</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (currentTab === 'segments') {
+                renderSegments();
+            } else {
+                renderClusters();
+            }
+        }
+
+        // Render segments
+        function renderSegments() {
+            const panel = document.getElementById('contentPanel');
+
+            if (currentSegments.length === 0) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No segments</h3>
+                        <p>This video has no indexed segments</p>
+                    </div>
+                `;
+                return;
+            }
+
+            panel.innerHTML = currentSegments.map((s, i) => `
+                <div class="segment-card" onclick="playSegment(${i})">
+                    <div class="segment-header">
+                        <span class="segment-time">${s.timestamp_formatted}</span>
+                        <span class="segment-duration">${s.duration.toFixed(1)}s</span>
+                        ${s.sample_reason ? `<span class="segment-reason">${escapeHtml(s.sample_reason)}</span>` : ''}
+                    </div>
+                    <div class="segment-description">${escapeHtml(s.combined_summary || s.frame_description)}</div>
+                    ${s.transcript ? `<div class="segment-transcript">"${escapeHtml(s.transcript)}"</div>` : ''}
+                    ${renderContextTags(s.inferred_context)}
+                </div>
+            `).join('');
+        }
+
+        // Render clusters
+        function renderClusters() {
+            const panel = document.getElementById('contentPanel');
+
+            if (currentClusters.length === 0) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No clusters</h3>
+                        <p>Unable to create clusters from segments</p>
+                    </div>
+                `;
+                return;
+            }
+
+            panel.innerHTML = currentClusters.map(c => `
+                <div class="cluster-card">
+                    <div class="cluster-header" onclick="playCluster(${c.id})">
+                        <div class="cluster-title">
+                            <span class="cluster-id">Scene ${c.id + 1}</span>
+                            <span class="cluster-time">${c.timestamp_formatted}</span>
+                        </div>
+                        <div class="cluster-meta">
+                            ${c.segment_count} segments &bull; ${c.duration.toFixed(1)}s
+                            ${c.people.length ? ' &bull; ' + c.people.join(', ') : ''}
+                        </div>
+                    </div>
+                    ${c.cluster_summary ? `<div class="cluster-summary">${escapeHtml(c.cluster_summary)}</div>` : ''}
+                    <div class="cluster-segments">
+                        ${c.segments.map((s, i) => `
+                            <div class="cluster-segment" onclick="event.stopPropagation(); playClusterSegment(${c.id}, ${i})">
+                                <span class="cluster-segment-time">${s.timestamp_formatted}</span>
+                                ${escapeHtml((s.combined_summary || s.frame_description).substring(0, 100))}...
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render context tags
+        function renderContextTags(ctx) {
+            if (!ctx) return '';
+
+            const tags = [];
+
+            if (ctx.people && ctx.people.length) {
+                ctx.people.forEach(p => tags.push(`<span class="context-tag people">${escapeHtml(p)}</span>`));
+            }
+            if (ctx.location) {
+                tags.push(`<span class="context-tag location">${escapeHtml(ctx.location)}</span>`);
+            }
+            if (ctx.objects && ctx.objects.length) {
+                ctx.objects.slice(0, 3).forEach(o => tags.push(`<span class="context-tag objects">${escapeHtml(o)}</span>`));
+            }
+
+            return tags.length ? `<div class="segment-context">${tags.join('')}</div>` : '';
+        }
+
+        // Search
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+
+            isSearchMode = true;
+            const searchType = document.getElementById('searchType').value;
+            const modeLabel = isSemanticSearch ? 'Semantic' : 'Keyword';
+            document.getElementById('currentTitle').textContent = `${modeLabel} Search: "${query}"`;
+
+            const panel = document.getElementById('contentPanel');
+            panel.innerHTML = '<div class="loading">Searching...</div>';
+
+            try {
+                if (isSemanticSearch) {
+                    await performSemanticSearch(query, searchType);
+                } else {
+                    await performKeywordSearch(query, searchType);
+                }
+            } catch (err) {
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Search failed</h3>
+                        <p>${err.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Keyword search (existing)
+        async function performKeywordSearch(query, searchType) {
+            const params = new URLSearchParams({
+                q: query,
+                limit: '100',
+                search_type: searchType
+            });
+
+            if (currentProject) {
+                params.set('project', currentProject);
+            }
+
+            const fields = getSelectedFields();
+            if (fields && fields.length < 9) {
+                params.set('fields', fields.join(','));
+            }
+
+            const resp = await fetch(`/library/api/search?${params}`);
+
+            if (!resp.ok) {
+                const error = await resp.json();
+                throw new Error(error.detail || 'Keyword search failed');
+            }
+
+            const data = await resp.json();
+
+            currentSegments = data.segments || [];
+            currentSearchClusters = data.clusters || [];
+
+            renderSearchResults(searchType);
+        }
+
+        // Semantic search
+        async function performSemanticSearch(query, searchType) {
+            // Map 'all' to 'both' for semantic search API
+            const semanticType = searchType === 'all' ? 'both' : searchType;
+
+            const params = new URLSearchParams({
+                q: query,
+                limit: '50',
+                search_type: semanticType
+            });
+
+            if (currentProject) {
+                params.set('project', currentProject);
+            }
+
+            const resp = await fetch(`/library/api/search/semantic?${params}`);
+
+            if (!resp.ok) {
+                const error = await resp.json();
+                throw new Error(error.detail || 'Semantic search failed');
+            }
+
+            const data = await resp.json();
+
+            // Convert semantic results to segment/cluster format
+            currentSegments = [];
+            currentSearchClusters = [];
+
+            for (const r of data.results) {
+                if (r.content_type === 'segment') {
+                    currentSegments.push({
+                        video_path: r.video_path,
+                        video_name: r.video_name,
+                        timestamp_start: r.timestamp_start,
+                        timestamp_end: r.timestamp_end,
+                        timestamp_formatted: r.timestamp_formatted,
+                        duration: r.timestamp_end - r.timestamp_start,
+                        combined_summary: r.description,
+                        frame_description: r.description,
+                        transcript: r.transcript,
+                        inferred_context: {
+                            people: r.people,
+                            location: r.location,
+                            objects: r.objects
+                        },
+                        // Semantic search specific
+                        semantic_score: r.score,
+                        semantic_score_percent: r.score_percent
+                    });
+                } else {
+                    currentSearchClusters.push({
+                        video_path: r.video_path,
+                        timestamp_start: r.timestamp_start,
+                        timestamp_end: r.timestamp_end,
+                        cluster_summary: r.description,
+                        people: r.people,
+                        locations: r.location ? [r.location] : [],
+                        // Semantic search specific
+                        semantic_score: r.score,
+                        semantic_score_percent: r.score_percent
+                    });
+                }
+            }
+
+            renderSearchResults(searchType, true);
+        }
+
+        // Search cluster results storage
+        let currentSearchClusters = [];
+
+        // Render search results
+        function renderSearchResults(searchType = 'all', isSemantic = false) {
+            const panel = document.getElementById('contentPanel');
+            const hasSegments = currentSegments.length > 0;
+            const hasClusters = currentSearchClusters.length > 0;
+
+            if (!hasSegments && !hasClusters) {
+                let message = 'No matches found for your search';
+                if (isSemantic) {
+                    message = 'No semantic matches found. Try different terms or run "nolan sync-vectors" to update embeddings.';
+                }
+                panel.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No results</h3>
+                        <p>${message}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const modeLabel = isSemantic ? '(Semantic)' : '';
+            let html = `
+                <div class="search-results-header">
+                    <h3>${currentSegments.length} segments, ${currentSearchClusters.length} clusters ${modeLabel}</h3>
+                    <button class="clear-search" onclick="clearSearch()">Clear</button>
+                </div>
+            `;
+
+            // Render cluster results first
+            if (hasClusters && (searchType === 'all' || searchType === 'clusters' || searchType === 'both')) {
+                html += `<h4 style="padding: 16px 16px 8px; color: var(--text-secondary); font-size: 12px;">CLUSTERS</h4>`;
+                html += currentSearchClusters.map((c, i) => `
+                    <div class="cluster-card" style="margin: 0 16px 12px;">
+                        <div class="cluster-header" onclick="playSearchCluster(${i})">
+                            <div class="cluster-title">
+                                ${c.semantic_score_percent ? `<span class="semantic-score">${c.semantic_score_percent}</span>` : ''}
+                                <span class="cluster-id">Cluster</span>
+                                <span class="cluster-time">${formatTimeRange(c.timestamp_start, c.timestamp_end)}</span>
+                            </div>
+                            <div class="cluster-meta">
+                                ${c.video_path ? c.video_path.split(/[/\\]/).pop() : ''}
+                                ${c.people && c.people.length ? ' &bull; ' + c.people.join(', ') : ''}
+                            </div>
+                        </div>
+                        ${c.cluster_summary ? `<div class="cluster-summary">${escapeHtml(c.cluster_summary)}</div>` : ''}
+                    </div>
+                `).join('');
+            }
+
+            // Render segment results
+            if (hasSegments && (searchType === 'all' || searchType === 'segments' || searchType === 'both')) {
+                html += `<h4 style="padding: 16px 16px 8px; color: var(--text-secondary); font-size: 12px;">SEGMENTS</h4>`;
+                html += currentSegments.map((s, i) => `
+                    <div class="segment-card" onclick="playSearchResult(${i})" style="margin: 0 16px 12px;">
+                        <div class="segment-header">
+                            ${s.semantic_score_percent ? `<span class="semantic-score">${s.semantic_score_percent}</span>` : ''}
+                            <span class="segment-time">${s.timestamp_formatted}</span>
+                            <span class="segment-duration">${s.video_name}</span>
+                        </div>
+                        <div class="segment-description">${escapeHtml(s.combined_summary || s.frame_description)}</div>
+                        ${s.transcript ? `<div class="segment-transcript">"${escapeHtml(s.transcript)}"</div>` : ''}
+                        ${renderContextTags(s.inferred_context)}
+                    </div>
+                `).join('');
+            }
+
+            panel.innerHTML = html;
+        }
+
+        // Format time range
+        function formatTimeRange(start, end) {
+            const formatT = (t) => {
+                const m = Math.floor(t / 60);
+                const s = Math.floor(t % 60);
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            };
+            return `${formatT(start)} - ${formatT(end)}`;
+        }
+
+        // Play search cluster result
+        function playSearchCluster(index) {
+            const cluster = currentSearchClusters[index];
+            if (!cluster) return;
+
+            // Create a fake segment for the player
+            const fakeSegment = {
+                timestamp_start: cluster.timestamp_start,
+                timestamp_end: cluster.timestamp_end,
+                combined_summary: cluster.cluster_summary,
+                frame_description: cluster.cluster_summary || '',
+                transcript: null,
+                inferred_context: {
+                    people: cluster.people,
+                    location: cluster.locations ? cluster.locations[0] : null,
+                    story_context: null,
+                    objects: []
+                }
+            };
+
+            // Show player with cluster info
+            showPlayer(cluster.video_path, fakeSegment, {
+                timestamp_start: cluster.timestamp_start,
+                timestamp_end: cluster.timestamp_end,
+                cluster_summary: cluster.cluster_summary
+            });
+        }
+
+        // Clear search
+        function clearSearch() {
+            isSearchMode = false;
+            document.getElementById('searchInput').value = '';
+            currentSegments = [];
+
+            if (currentVideo) {
+                selectVideo(currentVideo);
+            } else {
+                document.getElementById('currentTitle').textContent = 'Select a video';
+                renderContent();
+            }
+        }
+
+        // Play segment
+        function playSegment(index) {
+            const segment = currentSegments[index];
+            if (!segment) return;
+
+            showPlayer(currentVideo, segment);
+        }
+
+        // Play cluster
+        function playCluster(clusterId) {
+            const cluster = currentClusters.find(c => c.id === clusterId);
+            if (!cluster || !cluster.segments.length) return;
+
+            showPlayer(currentVideo, cluster.segments[0], cluster);
+        }
+
+        // Play cluster segment
+        function playClusterSegment(clusterId, segmentIndex) {
+            const cluster = currentClusters.find(c => c.id === clusterId);
+            if (!cluster || !cluster.segments[segmentIndex]) return;
+
+            showPlayer(currentVideo, cluster.segments[segmentIndex]);
+        }
+
+        // Play search result
+        function playSearchResult(index) {
+            const segment = currentSegments[index];
+            if (!segment) return;
+
+            showPlayer(segment.video_path, segment);
+        }
+
+        // Show player
+        function showPlayer(videoPath, segment, cluster = null) {
+            const panel = document.getElementById('playerPanel');
+            const video = document.getElementById('videoPlayer');
+            const info = document.getElementById('playerInfo');
+            const badge = document.getElementById('playerTypeBadge');
+
+            panel.classList.remove('hidden');
+
+            // Set type badge
+            if (cluster) {
+                badge.textContent = 'Cluster';
+                badge.className = 'player-type-badge cluster';
+                // For cluster, use the cluster's time range
+                playbackStart = cluster.timestamp_start;
+                playbackEnd = cluster.timestamp_end;
+            } else {
+                badge.textContent = 'Segment';
+                badge.className = 'player-type-badge segment';
+                // For segment, use segment's time range
+                playbackStart = segment.timestamp_start;
+                playbackEnd = segment.timestamp_end;
+            }
+
+            // Update time range display
+            document.getElementById('timeRangeStart').textContent = formatTime(playbackStart);
+            document.getElementById('timeRangeEnd').textContent = formatTime(playbackEnd);
+            document.getElementById('timeCurrent').textContent = formatTime(playbackStart);
+
+            // Set video source and seek
+            const videoUrl = `/library/video/${encodeURIComponent(videoPath)}`;
+            if (video.src !== location.origin + videoUrl) {
+                video.src = videoUrl;
+            }
+
+            video.currentTime = playbackStart;
+            video.play().catch(() => {}); // Autoplay may be blocked
+
+            // Show info
+            let html = `
+                <h4>Description</h4>
+                <p>${escapeHtml(segment.combined_summary || segment.frame_description)}</p>
+            `;
+
+            if (segment.transcript) {
+                html += `
+                    <h4>Transcript</h4>
+                    <p style="font-style: italic;">"${escapeHtml(segment.transcript)}"</p>
+                `;
+            }
+
+            if (segment.inferred_context) {
+                const ctx = segment.inferred_context;
+                if (ctx.people && ctx.people.length) {
+                    html += `<h4>People</h4><p>${ctx.people.map(escapeHtml).join(', ')}</p>`;
+                }
+                if (ctx.location) {
+                    html += `<h4>Location</h4><p>${escapeHtml(ctx.location)}</p>`;
+                }
+                if (ctx.story_context) {
+                    html += `<h4>Story Context</h4><p>${escapeHtml(ctx.story_context)}</p>`;
+                }
+                if (ctx.objects && ctx.objects.length) {
+                    html += `<h4>Objects</h4><p>${ctx.objects.map(escapeHtml).join(', ')}</p>`;
+                }
+            }
+
+            if (cluster && cluster.cluster_summary) {
+                html += `
+                    <h4>Scene Summary</h4>
+                    <p>${escapeHtml(cluster.cluster_summary)}</p>
+                `;
+            }
+
+            info.innerHTML = html;
+        }
+
+        // Close player
+        function closePlayer() {
+            const panel = document.getElementById('playerPanel');
+            const video = document.getElementById('videoPlayer');
+
+            panel.classList.add('hidden');
+            video.pause();
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,975 @@
+{
+  "sections": [
+    {
+      "section_title": "Hook",
+      "beats": [
+        {
+          "id": "beat_001",
+          "narration": "Venezuela.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A wide, cinematic aerial shot of the Venezuelan landscape or a minimalist map of the country being highlighted.",
+          "has_visual_hole": false,
+          "sync_word": "Venezuela"
+        },
+        {
+          "id": "beat_002",
+          "narration": "It\u2019s a land of stunning beauty\u2014home to cascading waterfalls, vibrant rainforests, and sun-drenched coastlines.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A rapid, high-saturation montage of Angel Falls, the Amazon basin, and the Caribbean shore.",
+          "has_visual_hole": false,
+          "sync_word": "beauty"
+        },
+        {
+          "id": "beat_003",
+          "narration": "But these idyllic images are often met with a much harsher reality.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "A sharp 'glitch' transition or film burn that shifts the vibrant colors to a gritty, desaturated urban environment.",
+          "has_visual_hole": true,
+          "sync_word": "harsher"
+        },
+        {
+          "id": "beat_004",
+          "narration": "Today, we see widespread poverty, political unrest, and a nation that seems to be perpetually on the brink.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Handheld archival footage of street protests and people waiting in long lines for basic goods.",
+          "has_visual_hole": false,
+          "sync_word": "brink"
+        },
+        {
+          "id": "beat_005",
+          "narration": "Take the words of Maria Rodriguez, a resident of Caracas.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A candid shot of an everyday person walking through a Caracas market, or a street-level view of the city's skyline.",
+          "has_visual_hole": false,
+          "sync_word": "Maria"
+        },
+        {
+          "id": "beat_006",
+          "narration": "She says, 'We are tired. Tired of the empty promises, the shortages, and the constant struggle just to survive.'",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "Kinetic typography of the quote appearing in a stark, clean font over a dark, out-of-focus background.",
+          "has_visual_hole": false,
+          "sync_word": "tired"
+        },
+        {
+          "id": "beat_007",
+          "narration": "And here\u2019s the key insight: this is all happening in a country sitting on one of the world's largest oil reserves.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "A 3D bar chart or map comparison showing Venezuela's oil reserves versus other global powers.",
+          "has_visual_hole": false,
+          "sync_word": "oil"
+        },
+        {
+          "id": "beat_008",
+          "narration": "In theory, that resource should guarantee prosperity for everyone.",
+          "category": "generated",
+          "mode": "counterpoint",
+          "visual_intent": "A conceptual, idealized image of a futuristic, wealthy Caracas (illustrating the 'theory' vs reality).",
+          "has_visual_hole": true,
+          "sync_word": "theory"
+        },
+        {
+          "id": "beat_009",
+          "narration": "So, how did this happen?",
+          "category": "host",
+          "mode": "see-say",
+          "visual_intent": "A quick punch-in to the host's face-to-camera, breaking the fourth wall for engagement.",
+          "has_visual_hole": false,
+          "sync_word": "how"
+        },
+        {
+          "id": "beat_010",
+          "narration": "How did a nation so rich become so fractured?",
+          "category": "graphics",
+          "mode": "counterpoint",
+          "visual_intent": "A visual of a gold-colored map of Venezuela literally cracking or splintering into pieces.",
+          "has_visual_hole": true,
+          "sync_word": "fractured"
+        },
+        {
+          "id": "beat_011",
+          "narration": "That\u2019s exactly what we\u2019re going to explore together.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "The series title or video essay title card fades in as the background blurs out.",
+          "has_visual_hole": false,
+          "sync_word": "explore"
+        }
+      ]
+    },
+    {
+      "section_title": "Context",
+      "beats": [
+        {
+          "id": "beat_001",
+          "narration": "To understand the complexities of modern Venezuela, we first need to look at its history.",
+          "category": "graphics",
+          "mode": "counterpoint",
+          "visual_intent": "A fast-paced montage of modern Caracas street life fading into a sepia-toned, parchment-style map of the region.",
+          "has_visual_hole": true,
+          "sync_word": "history"
+        },
+        {
+          "id": "beat_002",
+          "narration": "Long before Europeans arrived, this land was home to many diverse indigenous groups.",
+          "category": "generated",
+          "mode": "see-say",
+          "visual_intent": "Lush, untouched South American jungle landscapes with stylistic silhouettes of indigenous dwellings.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_003",
+          "narration": "In the west, you had the Arawak people, while the Carib groups dominated the east.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "Animated map of Venezuela with regions highlighting and text labels for 'Arawak' and 'Carib' appearing in their respective territories.",
+          "has_visual_hole": false,
+          "sync_word": "east"
+        },
+        {
+          "id": "beat_004",
+          "narration": "These societies had their own unique languages and customs, and they shaped the landscape for centuries before the first explorers ever set foot here.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Close-up shots of pre-Columbian artifacts, pottery patterns, and ancient agricultural terracing.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_005",
+          "narration": "Everything changed when Spanish colonizers arrived.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A dramatic 18th-century painting or engraving of Spanish galleons anchored off a tropical coast.",
+          "has_visual_hole": false,
+          "sync_word": "Spanish"
+        },
+        {
+          "id": "beat_006",
+          "narration": "After centuries of colonial rule, a fire for independence began to spread across South America.",
+          "category": "generated",
+          "mode": "counterpoint",
+          "visual_intent": "Abstract visual of a spark traveling across a map of the continent, igniting different regions in a glowing amber light.",
+          "has_visual_hole": true,
+          "sync_word": "fire"
+        },
+        {
+          "id": "beat_007",
+          "narration": "Venezuela became a central player in this fight, led by the legendary Sim\u00f3n Bol\u00edvar.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A grand, heroic oil portrait of Sim\u00f3n Bol\u00edvar in military uniform.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_008",
+          "narration": "Following years of intense struggle, the country finally declared its independence from Spain in 1821.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Historical footage or high-quality reenactment imagery of the signing of a declaration or a decisive battle scene (Battle of Carabobo).",
+          "has_visual_hole": false,
+          "sync_word": "1821"
+        },
+        {
+          "id": "beat_009",
+          "narration": "This victory turned Bol\u00edvar into a national hero, a title he still holds today.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Modern-day footage of a massive bronze statue of Bol\u00edvar in a public square with flowers at its base.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_010",
+          "narration": "But while independence promised a fresh start, economic realities were about to reshape the nation once again.",
+          "category": "graphics",
+          "mode": "counterpoint",
+          "visual_intent": "Text graphic 'Economic Realities' appearing over a simplified, dusty sketch of 19th-century Venezuelan farmland.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_011",
+          "narration": "In the early 20th century, Venezuela\u2019s story took a massive turn.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "A horizontal timeline sliding rapidly from the 1820s to the 1910s.",
+          "has_visual_hole": false,
+          "sync_word": "20th"
+        },
+        {
+          "id": "beat_012",
+          "narration": "The discovery of huge oil reserves transformed the country.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Archival black-and-white film of an oil 'gusher' erupting from a wooden derrick.",
+          "has_visual_hole": false,
+          "sync_word": "oil"
+        },
+        {
+          "id": "beat_013",
+          "narration": "It went from a quiet farming society to a nation heavily dependent on petroleum exports.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "A split-screen comparison: on the left, an icon of a coffee bean; on the right, an icon of an oil barrel which grows to take over the whole screen.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_014",
+          "narration": "Now, here's the key insight: while this shift brought wealth at first, it also created the deep-seated challenges that would define Venezuela\u2019s future.",
+          "category": "host",
+          "mode": "counterpoint",
+          "visual_intent": "The narrator leans into the camera for a serious, direct address to emphasize the gravity of the 'resource curse'.",
+          "has_visual_hole": true,
+          "sync_word": "insight"
+        },
+        {
+          "id": "beat_015",
+          "narration": "From that point on, this one commodity would go on to influence almost every single part of Venezuelan life.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A rapid-fire montage of refineries, gas stations, government buildings, and urban skylines all connected by the thread of the oil industry.",
+          "has_visual_hole": false,
+          "sync_word": null
+        }
+      ]
+    },
+    {
+      "section_title": "Thesis",
+      "beats": [
+        {
+          "id": "beat_001",
+          "narration": "Venezuela has incredible potential wealth from its natural resources, yet its society stands starkly divided.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A split-screen contrast: Lush drone footage of Angel Falls or oil fields on one side, juxtaposed with high-contrast shots of urban barricades or divided neighborhoods on the other.",
+          "has_visual_hole": false,
+          "sync_word": "divided"
+        },
+        {
+          "id": "beat_002",
+          "narration": "In this video, we\u2019re going to explore why.",
+          "category": "graphics",
+          "mode": "counterpoint",
+          "visual_intent": "A large, bold question mark or the word 'WHY?' appearing over a stylized map of Venezuela.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_003",
+          "narration": "Here\u2019s the core of the issue: these deep divisions stem from a mix of historical baggage, flawed economic policies, and conflicting political ideologies.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "An infographic showing three gears or pillars being labeled: 'History', 'Economics', and 'Ideology'.",
+          "has_visual_hole": true,
+          "sync_word": "core"
+        },
+        {
+          "id": "beat_004",
+          "narration": "Together, these factors have fueled constant polarization and instability.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Fast-paced montage of news headlines, flickering lights, and abstract shots of a compass spinning wildly to represent instability.",
+          "has_visual_hole": true,
+          "sync_word": "instability"
+        },
+        {
+          "id": "beat_005",
+          "narration": "To understand how this happened, we\u2019ll look at three key areas.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "A numbered list (1, 2, 3) appearing on screen with a clean, minimalist background.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_006",
+          "narration": "First, we'll see how the legacy of colonialism and early power struggles shaped social hierarchies.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Archival sketches or oil paintings from the colonial era showing Spanish governors and stratified social classes.",
+          "has_visual_hole": false,
+          "sync_word": "colonialism"
+        },
+        {
+          "id": "beat_007",
+          "narration": "Second, we'll examine how oil dependence and economic mismanagement made inequality worse.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Rhythmic shots of oil pumpjacks nodding, transitioning into shots of long lines at grocery stores or empty shelves.",
+          "has_visual_hole": false,
+          "sync_word": "oil"
+        },
+        {
+          "id": "beat_008",
+          "narration": "And third, we\u2019ll look at how competing political visions pushed the nation even further apart.",
+          "category": "graphics",
+          "mode": "counterpoint",
+          "visual_intent": "An animation of two different colored arrows (red and blue) pulling a silhouette of Venezuela in opposite directions until it cracks.",
+          "has_visual_hole": true,
+          "sync_word": "apart"
+        },
+        {
+          "id": "beat_009",
+          "narration": "Just a quick note\u2014this isn\u2019t a political statement, but an analysis of the causes.",
+          "category": "host",
+          "mode": "see-say",
+          "visual_intent": "The narrator or host appears on camera, using an open-handed gesture to signal transparency and neutrality.",
+          "has_visual_hole": false,
+          "sync_word": "analysis"
+        }
+      ]
+    },
+    {
+      "section_title": "Evidence 1",
+      "beats": [
+        {
+          "id": "beat_001",
+          "narration": "To understand the deep divisions in Venezuela today, we have to look way back\u2014long before the late 20th century.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Contemporary footage of a divided Caracas street or split-screen showing different social classes in modern Venezuela.",
+          "has_visual_hole": false,
+          "sync_word": "divisions"
+        },
+        {
+          "id": "beat_002",
+          "narration": "After gaining independence from Spain, the country spent over a century struggling under the rule of 'caudillos.'",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "Animated timeline moving rapidly backward from the present to the 1800s, stopping at a map of Gran Colombia/Venezuela.",
+          "has_visual_hole": false,
+          "sync_word": "independence"
+        },
+        {
+          "id": "beat_003",
+          "narration": "These were powerful regional strongmen who ruled through force and personal favors.",
+          "category": "generated",
+          "mode": "see-say",
+          "visual_intent": "Stylized, dramatic AI-generated portraits of generic 19th-century military figures in ornate uniforms.",
+          "has_visual_hole": true,
+          "sync_word": "strongmen"
+        },
+        {
+          "id": "beat_004",
+          "narration": "These leaders were often military figures who spent their time in constant power struggles, which made it impossible to build stable institutions.",
+          "category": "graphics",
+          "mode": "counterpoint",
+          "visual_intent": "An infographic showing a 'foundation' of a building labeled 'Institutions' cracking and crumbling under the weight of swords.",
+          "has_visual_hole": true,
+          "sync_word": "impossible"
+        },
+        {
+          "id": "beat_005",
+          "narration": "Take Jos\u00e9 Antonio P\u00e1ez, for example.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Historical archival painting or lithograph of Jos\u00e9 Antonio P\u00e1ez.",
+          "has_visual_hole": false,
+          "sync_word": "P\u00e1ez"
+        },
+        {
+          "id": "beat_006",
+          "narration": "He was a hero of the independence movement, but his leadership style was typical for the time.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Paintings showing P\u00e1ez in battle, transitioning to him sitting in a position of political power.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_007",
+          "narration": "He and other leaders prioritized their own regional interests and personal gain over national unity.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "A map of Venezuela highlighting different regions in different colors, pulling away from each other.",
+          "has_visual_hole": true,
+          "sync_word": "regional"
+        },
+        {
+          "id": "beat_008",
+          "narration": "This established a pattern of fragmented power that would plague Venezuela for decades.",
+          "category": "generated",
+          "mode": "counterpoint",
+          "visual_intent": "Abstract imagery of a chain where every link is a different shape and size, failing to hold together.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_009",
+          "narration": "Now, let's look at the early 20th century, when everything changed with the discovery of oil.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Vintage black and white archival footage of an oil gusher or early drilling site.",
+          "has_visual_hole": false,
+          "sync_word": "oil"
+        },
+        {
+          "id": "beat_010",
+          "narration": "Under the dictatorship of Juan Vicente G\u00f3mez, oil production accelerated rapidly.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Archival photo of Juan Vicente G\u00f3mez overlaid with a rising line graph of oil barrel production.",
+          "has_visual_hole": false,
+          "sync_word": "G\u00f3mez"
+        },
+        {
+          "id": "beat_011",
+          "narration": "But here\u2019s the key insight: while oil revenue poured into the country, the benefits were not shared.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "Animation showing a massive flow of gold/coins going into a small funnel (the elite) while a large empty bowl (the public) remains dry.",
+          "has_visual_hole": true,
+          "sync_word": "shared"
+        },
+        {
+          "id": "beat_012",
+          "narration": "G\u00f3mez used that wealth to consolidate his own power and enrich his allies.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Archival footage of lavish parties or high-society gatherings in Caracas from the early 1900s.",
+          "has_visual_hole": false,
+          "sync_word": "allies"
+        },
+        {
+          "id": "beat_013",
+          "narration": "This only made existing inequalities worse and fueled resentment among everyone else who was left out.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Contrast shots: Archival footage of impoverished rural workers or slums appearing alongside the previous 'wealth' footage.",
+          "has_visual_hole": false,
+          "sync_word": "resentment"
+        },
+        {
+          "id": "beat_014",
+          "narration": "This concentration of wealth really laid the groundwork for future social and political conflict.",
+          "category": "generated",
+          "mode": "counterpoint",
+          "visual_intent": "A low-angle shot of a pressure cooker or a storm cloud gathering over a Venezuelan flag.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_015",
+          "narration": "By the mid-20th century, there were attempts to fix these issues through democratic reforms.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Archival footage of people voting for the first time or political rallies with hopeful crowds.",
+          "has_visual_hole": false,
+          "sync_word": "democratic"
+        },
+        {
+          "id": "beat_016",
+          "narration": "Leaders like R\u00f3mulo Betancourt tried to diversify the economy and implement social programs to address inequality.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Footage or photos of R\u00f3mulo Betancourt speaking; cut to archival clips of new schools or hospitals being built.",
+          "has_visual_hole": false,
+          "sync_word": "Betancourt"
+        },
+        {
+          "id": "beat_017",
+          "narration": "While these efforts showed some promise, they hit a wall.",
+          "category": "host",
+          "mode": "see-say",
+          "visual_intent": "Host on camera looking directly at the lens to signal a pivot in the narrative.",
+          "has_visual_hole": false,
+          "sync_word": "wall"
+        },
+        {
+          "id": "beat_018",
+          "narration": "They faced massive resistance from powerful interest groups, and the structural problems in Venezuelan society were just too deep to overcome.",
+          "category": "graphics",
+          "mode": "counterpoint",
+          "visual_intent": "A 3D diagram showing 'Social Programs' as a thin layer of paint trying to cover deep, jagged cracks in a stone foundation.",
+          "has_visual_hole": true,
+          "sync_word": "deep"
+        },
+        {
+          "id": "beat_019",
+          "narration": "Even in 1976, when the oil industry was nationalized under Carlos Andr\u00e9s P\u00e9rez, the results were disappointing.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Footage of Carlos Andr\u00e9s P\u00e9rez at a podium or the 'PDVSA' logo being unveiled for the first time.",
+          "has_visual_hole": false,
+          "sync_word": "nationalized"
+        },
+        {
+          "id": "beat_020",
+          "narration": "It was supposed to give the people control over their resources, but instead, it just became another avenue for political maneuvering and corruption.",
+          "category": "generated",
+          "mode": "counterpoint",
+          "visual_intent": "A metaphorical image of an oil pump jack where the oil is turning into ink for a politician's pen.",
+          "has_visual_hole": true,
+          "sync_word": "corruption"
+        }
+      ]
+    },
+    {
+      "section_title": "Evidence 2",
+      "beats": [
+        {
+          "id": "beat_001",
+          "narration": "Back in the 1970s, Venezuela was experiencing an unprecedented economic boom.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Archival footage of 1970s Caracas, bustling streets, and modern skyscrapers of the era.",
+          "has_visual_hole": false,
+          "sync_word": "boom"
+        },
+        {
+          "id": "beat_002",
+          "narration": "It was fueled, of course, by soaring oil prices.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "Line graph showing the sharp upward trajectory of global oil prices in the 1970s.",
+          "has_visual_hole": false,
+          "sync_word": "soaring"
+        },
+        {
+          "id": "beat_003",
+          "narration": "The government poured money into infrastructure, social programs, and industrial development.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Montage of construction sites, new highways being built, and 70s-era industrial factories.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_004",
+          "narration": "For a while, there was a real sense of widespread prosperity.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Candid shots of middle-class families in parks or shopping, contrasting the industrial focus of the previous beat.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_005",
+          "narration": "But here\u2019s the problem: relying on a single commodity turned out to be a house of cards.",
+          "category": "generated",
+          "mode": "see-say",
+          "visual_intent": "Stylized animation of a house of cards made of oil barrels collapsing.",
+          "has_visual_hole": false,
+          "sync_word": "cards"
+        },
+        {
+          "id": "beat_006",
+          "narration": "When oil prices crashed in the 1980s, the Venezuelan economy buckled under the pressure.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "The previous oil price graph plummeting sharply into the 1980s.",
+          "has_visual_hole": false,
+          "sync_word": "crashed"
+        },
+        {
+          "id": "beat_007",
+          "narration": "The government tried to fight the crisis with austerity measures, but these policies hit the poor and marginalized the hardest.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Grim archival shots of growing shantytowns (barrios) on the hillsides of Caracas.",
+          "has_visual_hole": true,
+          "sync_word": "hardest"
+        },
+        {
+          "id": "beat_008",
+          "narration": "Instead of fixing things, they just made existing inequalities even worse.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "A split screen or infographic showing the widening wealth gap between the elite and the poor.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_009",
+          "narration": "Everything finally boiled over in 1989 with the Caracazo riots.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Grainy, high-energy archival footage of the 1989 riots, smoke in the streets, and crowds.",
+          "has_visual_hole": false,
+          "sync_word": "boiled"
+        },
+        {
+          "id": "beat_010",
+          "narration": "This was a spontaneous explosion of social unrest in response to those austerity cuts.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Clips of protestors clashing with police or breaking storefronts.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_011",
+          "narration": "It was a clear sign of the deep-seated anger simmering beneath the surface of society.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Slow motion close-ups of angry or desperate faces from the archival riot footage.",
+          "has_visual_hole": true,
+          "sync_word": "anger"
+        },
+        {
+          "id": "beat_012",
+          "narration": "This volatile environment was the perfect stage for Hugo Ch\u00e1vez.",
+          "category": "a-roll",
+          "mode": "see-say",
+          "visual_intent": "First appearance of Hugo Ch\u00e1vez in military uniform, perhaps his famous 'por ahora' televised surrender.",
+          "has_visual_hole": false,
+          "sync_word": "Ch\u00e1vez"
+        },
+        {
+          "id": "beat_013",
+          "narration": "He capitalized on the public's discontent with the political order.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "News clips of traditional politicians looking out of touch or under fire from the press.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_014",
+          "narration": "By 1998, he rose to power on a platform of radical change.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Footage of Ch\u00e1vez\u2019s 1998 election victory, huge crowds cheering, him wearing the presidential sash.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_015",
+          "narration": "His 'Bolivarian Revolution' was inspired by the vision of Sim\u00f3n Bol\u00edvar.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Panning shot of a statue of Sim\u00f3n Bol\u00edvar or a portrait of him.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_016",
+          "narration": "It promised to redistribute wealth and finally empower the poor.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "Animated text or icons showing money moving from a 'central vault' to 'the people'.",
+          "has_visual_hole": true,
+          "sync_word": "redistribute"
+        },
+        {
+          "id": "beat_017",
+          "narration": "But while his policies were initially popular, they ended up polarizing the country even further.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Split screen: Pro-Ch\u00e1vez march on one side, Anti-Ch\u00e1vez march on the other.",
+          "has_visual_hole": true,
+          "sync_word": "polarizing"
+        },
+        {
+          "id": "beat_018",
+          "narration": "A failed coup attempt in 2002 revealed just how deep the divisions in the nation had become.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "News footage from April 2002: tanks in the streets, chaotic newsroom broadcasts.",
+          "has_visual_hole": false,
+          "sync_word": "coup"
+        },
+        {
+          "id": "beat_019",
+          "narration": "In response, Ch\u00e1vez moved to consolidate his power.",
+          "category": "a-roll",
+          "mode": "see-say",
+          "visual_intent": "Ch\u00e1vez on his TV show 'Al\u00f3 Presidente' pointing aggressively or giving orders.",
+          "has_visual_hole": true,
+          "sync_word": "consolidate"
+        },
+        {
+          "id": "beat_020",
+          "narration": "He created parallel social programs that bypassed traditional institutions, which made the public more dependent on the state.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Footage of 'Misiones' (social programs) like neighborhood food markets with Ch\u00e1vez's face on signs.",
+          "has_visual_hole": false,
+          "sync_word": "dependent"
+        },
+        {
+          "id": "beat_021",
+          "narration": "These actions were meant to alleviate poverty, but they also served a political purpose: they entrenched his power base and pushed his opponents to the margins.",
+          "category": "host",
+          "mode": "see-say",
+          "visual_intent": "Host direct-to-camera, using hands to emphasize the 'pushing to the margins' movement.",
+          "has_visual_hole": true,
+          "sync_word": "margins"
+        }
+      ]
+    },
+    {
+      "section_title": "Evidence 3",
+      "beats": [
+        {
+          "id": "beat_001",
+          "narration": "While the seeds of division were sown long ago, everything truly came to a head in 2014 when oil prices collapsed.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "A line graph showing the steep 2014 drop in global oil prices with a highlighted marker.",
+          "has_visual_hole": false,
+          "sync_word": "collapsed"
+        },
+        {
+          "id": "beat_002",
+          "narration": "The nation had become so reliant on this single commodity that the economic fallout was swift and merciless.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Archival footage of massive oil refineries contrasted with a shuttered business or 'closed' sign.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_003",
+          "narration": "Hyperinflation spiraled out of control, making the Bolivar practically worthless.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Close-up of Venezuelan currency being used as scrap paper or littering the streets.",
+          "has_visual_hole": false,
+          "sync_word": "worthless"
+        },
+        {
+          "id": "beat_004",
+          "narration": "Suddenly, even basic essentials like food and medicine became hard to find.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Handheld footage of bare grocery store shelves and long pharmacy lines.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_005",
+          "narration": "Faced with this impossible situation, millions of Venezuelans made the heartbreaking choice to leave their homes, searching for stability and opportunity elsewhere.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Drone shot or wide angle of a line of migrants carrying suitcases across a bridge or border.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_006",
+          "narration": "Under Nicol\u00e1s Maduro\u2019s leadership, the situation only got worse.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "News footage of Nicol\u00e1s Maduro speaking from a podium or at a military rally.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_007",
+          "narration": "The political landscape fractured even further as opposition movements gained ground.",
+          "category": "graphics",
+          "mode": "counterpoint",
+          "visual_intent": "A map of Venezuela cracking or splitting into two distinct colors representing political factions.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_008",
+          "narration": "This is when figures like Juan Guaid\u00f3 emerged, claiming the presidency and winning recognition from several international powers.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Footage of Juan Guaid\u00f3 taking an oath of office in a public square surrounded by supporters.",
+          "has_visual_hole": false,
+          "sync_word": "Guaid\u00f3"
+        },
+        {
+          "id": "beat_009",
+          "narration": "Instead of resolving the crisis, this only deepened the chasm within Venezuelan society.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A split screen showing pro-government and anti-government protesters shouting in different directions.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_010",
+          "narration": "But here\u2019s the key insight: the ultimate spark for all this disunity may have been the pervasive corruption within the government.",
+          "category": "generated",
+          "mode": "counterpoint",
+          "visual_intent": "An abstract, moody image of a golden government seal slowly eroding or melting away.",
+          "has_visual_hole": true,
+          "sync_word": "corruption"
+        },
+        {
+          "id": "beat_011",
+          "narration": "There was a growing reality that while the average person suffered, officials were enriching themselves.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Quick cuts between a person searching for food in trash and a luxury vehicle or high-end estate in Caracas.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_012",
+          "narration": "This ignited a deep sense of resentment and created a stark divide: those who benefited from government connections, and those who were left to struggle in their wake.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Close-up of an angry or tearful face during a protest, transitioning to a shot of a line of people waiting for rations.",
+          "has_visual_hole": true,
+          "sync_word": null
+        },
+        {
+          "id": "beat_013",
+          "narration": "In the end, this environment of corruption and economic pain completely broke the social fabric of Venezuela.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "A slow-motion, melancholic shot of an abandoned street with a tattered Venezuelan flag blowing in the wind.",
+          "has_visual_hole": true,
+          "sync_word": null
+        }
+      ]
+    },
+    {
+      "section_title": "Conclusion",
+      "beats": [
+        {
+          "id": "beat_001",
+          "narration": "To wrap things up, we\u2019ve explored the deep divisions within Venezuela.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Montage of split-screen footage showing the physical divides in Caracas (slums vs. luxury high-rises).",
+          "has_visual_hole": false,
+          "sync_word": "divisions"
+        },
+        {
+          "id": "beat_002",
+          "narration": "It\u2019s a stark contrast to the nation\u2019s massive natural wealth.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "Sweeping cinematic drone shots of the Orinoco Mining Arc or Angel Falls to emphasize scale of beauty/wealth.",
+          "has_visual_hole": false,
+          "sync_word": "wealth"
+        },
+        {
+          "id": "beat_003",
+          "narration": "We looked at three main reasons for this.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "On-screen text list appearing: 1. History, 2. Oil, 3. Politics.",
+          "has_visual_hole": false,
+          "sync_word": "three"
+        },
+        {
+          "id": "beat_004",
+          "narration": "First, the legacy of colonialism and the era of the \"caudillos\" set a pattern of instability and inequality that we still see today.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Archival sketches of colonial era transitioned into a statue of a 19th-century strongman.",
+          "has_visual_hole": false,
+          "sync_word": "caudillos"
+        },
+        {
+          "id": "beat_005",
+          "narration": "Second, there\u2019s the dependence on oil.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Close-up of a nodding donkey pumpjack in an oil field.",
+          "has_visual_hole": false,
+          "sync_word": "oil"
+        },
+        {
+          "id": "beat_006",
+          "narration": "While it brought prosperity at first, it eventually created huge vulnerabilities and made existing disparities even worse.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "Line graph showing the volatility of oil prices overlayed with Venezuelan GDP decline.",
+          "has_visual_hole": true,
+          "sync_word": "vulnerabilities"
+        },
+        {
+          "id": "beat_007",
+          "narration": "Finally, we saw how political fragmentation\u2014driven by clashing ideologies and widespread corruption\u2014has deepened the rifts in society even further.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "News footage of rival political rallies (Red vs. Blue) to show societal rift.",
+          "has_visual_hole": true,
+          "sync_word": "fragmentation"
+        },
+        {
+          "id": "beat_008",
+          "narration": "As we\u2019ve seen, Venezuela's story is really one of unfulfilled potential.",
+          "category": "generated",
+          "mode": "counterpoint",
+          "visual_intent": "An artistic, slightly surreal image of a golden city partially obscured by fog or crumbling.",
+          "has_visual_hole": true,
+          "sync_word": "potential"
+        },
+        {
+          "id": "beat_009",
+          "narration": "It\u2019s a place where history, flawed policies, and political ideologies have worked together to create a divided nation, despite its abundance of resources.",
+          "category": "graphics",
+          "mode": "see-say",
+          "visual_intent": "A complex Venn diagram or web showing 'History', 'Policy', and 'Ideology' intersecting over a map of Venezuela.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_010",
+          "narration": "Overcoming these divisions to reach real stability remains a daunting task.",
+          "category": "b-roll",
+          "mode": "counterpoint",
+          "visual_intent": "A person viewed from behind, looking out over a vast, hazy horizon of the Venezuelan plains.",
+          "has_visual_hole": true,
+          "sync_word": "daunting"
+        },
+        {
+          "id": "beat_011",
+          "narration": "But here\u2019s the key insight: understanding these complexities is the first step toward finding a solution.",
+          "category": "host",
+          "mode": "see-say",
+          "visual_intent": "Direct to camera, earnest expression to emphasize importance.",
+          "has_visual_hole": false,
+          "sync_word": "insight"
+        },
+        {
+          "id": "beat_012",
+          "narration": "I encourage you to dive deeper into the history, politics, and culture of this fascinating country.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Fast montage of books, maps, and cultural festivals (Dancing Devils of Yare).",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_013",
+          "narration": "Seek out different perspectives and stay informed.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "A person scrolling through various international news headlines on a tablet.",
+          "has_visual_hole": false,
+          "sync_word": null
+        },
+        {
+          "id": "beat_014",
+          "narration": "Advocate for policies that promote dialogue and sustainable development.",
+          "category": "generated",
+          "mode": "counterpoint",
+          "visual_intent": "Stylized illustration of hands reaching out to plant a tree in a city setting.",
+          "has_visual_hole": true,
+          "sync_word": "dialogue"
+        },
+        {
+          "id": "beat_015",
+          "narration": "By educating ourselves and taking action, we can contribute to a future where Venezuela finally reaches its potential\u2014and where its people can thrive in unity and prosperity.",
+          "category": "b-roll",
+          "mode": "see-say",
+          "visual_intent": "Slow-motion shot of a diverse group of Venezuelans smiling or walking together, fading to a bright, hopeful cityscape.",
+          "has_visual_hole": true,
+          "sync_word": "unity"
+        }
+      ]
+    }
+  ]
+}

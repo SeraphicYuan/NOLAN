@@ -282,9 +282,12 @@ def find_transcript_for_video(video_path: Path) -> Optional[Path]:
 
     # Check language-coded subtitles: video.en.srt, video.es.vtt, etc.
     # Pattern: {video_stem}.{lang_code}.{ext}
+    # Use glob.escape() to handle special characters like & in filenames
+    import glob as glob_module
+    escaped_stem = glob_module.escape(video_stem)
     for ext in [".srt", ".vtt"]:
         # Look for files matching pattern
-        pattern = f"{video_stem}.*{ext}"
+        pattern = f"{escaped_stem}.*{ext}"
         matches = list(video_dir.glob(pattern))
         if matches:
             # Prefer English if available

@@ -1,0 +1,2869 @@
+{
+  "video": {
+    "path": "projects\\venezuela\\source\\videos\\Why The US & Venezuela Are On The Brink of War.mp4",
+    "name": "Why The US & Venezuela Are On The Brink of War.mp4"
+  },
+  "clustering": {
+    "max_gap": 2.0,
+    "refined": true,
+    "summarized": true
+  },
+  "clusters": [
+    {
+      "id": 0,
+      "timestamp_start": 0,
+      "timestamp_end": 30.032906389935317,
+      "timestamp_formatted": "00:00 - 00:30",
+      "duration": 30.032906389935317,
+      "segment_count": 1,
+      "cluster_summary": "Two massive cargo ships are docked at a sprawling industrial port defined by its storage domes and towering smokestacks. This moment captures the immense scale of global maritime logistics and the heavy industrial presence established alongside the coastal waters. The scene serves to emphasize themes of trade, productivity, and the vast infrastructure required for modern commerce.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 0,
+          "timestamp_end": 30.032906389935317,
+          "frame_description": "Two large cargo ships are docked at an industrial port featuring storage domes and smokestacks, viewed across a stretch of turquoise and deep blue water.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "timestamp_start": 30.032906389935317,
+      "timestamp_end": 107.89846613121045,
+      "timestamp_formatted": "00:30 - 01:47",
+      "duration": 77.86555974127513,
+      "segment_count": 4,
+      "cluster_summary": "A graphic illustrates the strategic positioning of three U.S. guided missile destroyers in the Caribbean Sea off the coast of Venezuela, followed by footage of the naval vessels and their advanced radar systems at sea. These ships, equipped for surveillance and combat, represent a significant display of American military presence and projection of power in the region. The moment captures the heightened geopolitical tensions between the two nations through this focused naval deployment.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 30.032906389935317,
+          "timestamp_end": 60.06581277987063,
+          "frame_description": "A graphic map highlights Venezuela in red and illustrates the positioning of three U.S. guided missile destroyers in the Caribbean Sea off the country's northern coast.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 60.06581277987063,
+          "timestamp_end": 75.66559101570829,
+          "frame_description": "A naval destroyer cruises through the open ocean, leaving a white wake as it sails alongside another ship.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 75.66559101570829,
+          "timestamp_end": 77.86555974127513,
+          "frame_description": "A gray military ship tower stands tall next to a helicopter on the deck under a cloudy sky.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 77.86555974127513,
+          "timestamp_end": 107.89846613121045,
+          "frame_description": "The superstructure of a U.S. naval vessel, featuring a large rotating radar antenna and various communication masts, is shown under a cloudy, overcast sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "timestamp_start": 107.89846613121045,
+      "timestamp_end": 137.9313725211458,
+      "timestamp_formatted": "01:47 - 02:17",
+      "duration": 30.032906389935334,
+      "segment_count": 1,
+      "cluster_summary": "A digital map illustrates the strategic deployment of United States naval and marine forces throughout the Caribbean Sea near the Venezuelan coastline. This visual overview highlights the specific locations and density of military assets positioned within the region. The map conveys a sense of heightened geopolitical tension and the significance of American military oversight in this area.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 107.89846613121045,
+          "timestamp_end": 137.9313725211458,
+          "frame_description": "This digital map displays various US naval and marine assets strategically positioned in the Caribbean Sea off the coast of Venezuela.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "timestamp_start": 137.9313725211458,
+      "timestamp_end": 165.89764162342738,
+      "timestamp_formatted": "02:17 - 02:45",
+      "duration": 27.966269102281586,
+      "segment_count": 1,
+      "cluster_summary": "A lone surfer sits patiently on their board near a rugged cliffside, watching the horizon for a wave beneath a moody, overcast sky. This scene captures a quiet moment of solitude and anticipation, highlighting the contemplative relationship between the individual and the vast power of the ocean.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 137.9313725211458,
+          "timestamp_end": 165.89764162342738,
+          "frame_description": "A lone surfer sits in the water near a rocky cliff, waiting for a wave under an overcast sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "timestamp_start": 165.89764162342738,
+      "timestamp_end": 195.9305480133627,
+      "timestamp_formatted": "02:45 - 03:15",
+      "duration": 30.032906389935334,
+      "segment_count": 1,
+      "cluster_summary": "Nicolás Maduro delivers a formal address from a podium at the National Assembly, gesturing emphatically while wearing his presidential sash. Flanked by uniformed guards, the scene captures a moment of official state business and the formal exercise of executive power. This appearance underscores his political authority and the ceremonial weight of his communication with the legislative body.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 165.89764162342738,
+          "timestamp_end": 195.9305480133627,
+          "frame_description": "Wearing a presidential sash, Nicolás Maduro speaks and gestures from a podium at the National Assembly while flanked by uniformed guards.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "timestamp_start": 195.9305480133627,
+      "timestamp_end": 255.99636079323335,
+      "timestamp_formatted": "03:15 - 04:15",
+      "duration": 60.06581277987064,
+      "segment_count": 2,
+      "cluster_summary": "This sequence illustrates the heightened geopolitical tension between the United States and Venezuela, focusing on the U.S. government's pursuit of President Nicolas Maduro and his top officials. Visual graphics display \"wanted\" posters for these leaders over a map of Venezuela, juxtaposed with icons of U.S. naval vessels positioned in the surrounding waters. The imagery conveys a sense of direct military and legal pressure, framing the Venezuelan leadership as global fugitives under the watchful eye of American maritime power.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 195.9305480133627,
+          "timestamp_end": 225.96345440329802,
+          "frame_description": "A map highlights Venezuela in red while displaying \"WANTED\" posters for Nicolas Maduro and several notorious global figures, alongside icons representing U.S. naval assets in the region.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 225.96345440329802,
+          "timestamp_end": 255.99636079323335,
+          "frame_description": "A digital graphic shows a map of Venezuela featuring \"wanted\" posters for its top officials alongside icons of US military vessels positioned in the surrounding sea.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "timestamp_start": 255.99636079323335,
+      "timestamp_end": 286.02926718316866,
+      "timestamp_formatted": "04:15 - 04:46",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "This sequence presents an expansive view of a densely populated hillside community where homes built of brick and corrugated metal stretch down toward a valley. The shot captures the immense scale of the urban sprawl set against the rugged beauty of distant mountains. It serves as a powerful establishing moment that grounds the narrative in a specific socio-economic environment, emphasizing the lived reality of this vast, interconnected neighborhood.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 255.99636079323335,
+          "timestamp_end": 286.02926718316866,
+          "frame_description": "A sprawling, densely populated hillside community of brick and corrugated metal houses stretches down towards a valley against a backdrop of distant mountains.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "timestamp_start": 286.02926718316866,
+      "timestamp_end": 346.09507996303927,
+      "timestamp_formatted": "04:46 - 05:46",
+      "duration": 60.06581277987061,
+      "segment_count": 2,
+      "cluster_summary": "Infographic maps detail the intricate drug trafficking routes linking Mexican and Venezuelan cartels, specifically highlighting the operations of the Cartel of the Suns across the Americas. The narrative underscores a global geopolitical divide, contrasting nations that designate the group as a terrorist organization against Venezuela's official denial of its existence. This visualization emphasizes the significant scale and contentious political nature of international drug smuggling operations.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 286.02926718316866,
+          "timestamp_end": 316.06217357310396,
+          "frame_description": "An infographic map of the Americas illustrates drug trafficking routes and the connections between major cartels in Mexico and Venezuela using glowing lines and various smuggling icons.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 316.06217357310396,
+          "timestamp_end": 346.09507996303927,
+          "frame_description": "This world map displays the recognition status of the Cartel of the Suns, highlighting countries in green that designate it as a terrorist organization and Venezuela in red for denying its existence.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "timestamp_start": 346.09507996303927,
+      "timestamp_end": 350.59501599260784,
+      "timestamp_formatted": "05:46 - 05:50",
+      "duration": 4.499936029568573,
+      "segment_count": 1,
+      "cluster_summary": "A woman in a professional white suit delivers a formal address from behind a podium in the White House briefing room. This moment highlights a scene of official public communication, emphasizing her role as an authoritative figure conveying significant information to the press and the public.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 346.09507996303927,
+          "timestamp_end": 350.59501599260784,
+          "frame_description": "A woman in a white suit delivers a speech from behind a podium in the White House briefing room.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "timestamp_start": 350.59501599260784,
+      "timestamp_end": 358.0615765157438,
+      "timestamp_formatted": "05:50 - 05:58",
+      "duration": 7.466560523135968,
+      "segment_count": 1,
+      "cluster_summary": "Venezuelan President Nicolás Maduro, adorned in formal presidential regalia, stands solemnly alongside his wife Cilia Flores in front of a bronze bust of the national hero Simón Bolívar. This moment emphasizes Maduro's position of authority and serves as a symbolic gesture linking his administration to the historical legacy of Venezuela's liberator.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 350.59501599260784,
+          "timestamp_end": 358.0615765157438,
+          "frame_description": "Venezuelan President Nicolás Maduro, wearing a presidential sash and collar, stands alongside his wife Cilia Flores in front of a bronze bust of Simón Bolívar.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "timestamp_start": 358.0615765157438,
+      "timestamp_end": 388.0944829056791,
+      "timestamp_formatted": "05:58 - 06:28",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "Claudia Sheinbaum delivers an official address from a podium, positioned prominently in front of the Mexican flag and the national government logo. This moment captures a significant act of political leadership and formal communication, emphasizing her role within the Mexican government. The setting conveys a sense of authority and national importance as she speaks to the public.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 358.0615765157438,
+          "timestamp_end": 388.0944829056791,
+          "frame_description": "Claudia Sheinbaum stands at a podium to deliver a speech in front of the Mexican flag and the \"Gobierno de México\" logo.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "timestamp_start": 388.0944829056791,
+      "timestamp_end": 396.0277034615111,
+      "timestamp_formatted": "06:28 - 06:36",
+      "duration": 7.933220555832008,
+      "segment_count": 1,
+      "cluster_summary": "A civilian official and a high-ranking military officer stand behind podiums during a formal press briefing set against the backdrop of an American flag. Their joint appearance suggests a significant announcement or update regarding national security or state affairs. The scene emphasizes a sense of gravity and unified leadership between civilian and military sectors.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 388.0944829056791,
+          "timestamp_end": 396.0277034615111,
+          "frame_description": "A civilian official and a high-ranking military officer stand behind podiums during a formal press briefing in front of an American flag.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "timestamp_start": 396.0277034615111,
+      "timestamp_end": 422.06066671405216,
+      "timestamp_formatted": "06:36 - 07:02",
+      "duration": 26.032963252541037,
+      "segment_count": 2,
+      "cluster_summary": "A smaller U.S. Coast Guard response boat cruises alongside a larger cutter during a patrol on the open sea under a bright, cloudy sky. The sequence features the iconic United States Coast Guard flag waving in the wind, showcasing the \"Semper Paratus\" motto. This moment emphasizes the agency's maritime presence and their enduring commitment to being \"Always Ready\" for service and security.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 396.0277034615111,
+          "timestamp_end": 402.42761248134195,
+          "frame_description": "A smaller U.S. Coast Guard response boat cruises alongside a larger cutter on the open sea under a blue, cloudy sky.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 402.42761248134195,
+          "timestamp_end": 422.06066671405216,
+          "frame_description": "A white United States Coast Guard flag, featuring its eagle emblem and the motto \"Semper Paratus,\" waves in the wind.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "timestamp_start": 422.06066671405216,
+      "timestamp_end": 452.09357310398747,
+      "timestamp_formatted": "07:02 - 07:32",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A man wearing a presidential sash leads a formal procession along a red carpet, flanked by a military honor guard and an official entourage. This moment depicts a significant state event, likely an inauguration or ceremonial arrival, underscoring the leader's formal authority and the weight of national tradition. The scene conveys a sense of solemnity and institutional power through its highly choreographed display of statehood.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 422.06066671405216,
+          "timestamp_end": 452.09357310398747,
+          "frame_description": "A man wearing a presidential sash walks along a red carpet accompanied by several people and flanked by a military honor guard.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "timestamp_start": 452.09357310398747,
+      "timestamp_end": 458.39348354538345,
+      "timestamp_formatted": "07:32 - 07:38",
+      "duration": 6.29991044139598,
+      "segment_count": 1,
+      "cluster_summary": "Nicolás Maduro delivers a formal address from a podium, flanked by civilian and military officials against a backdrop featuring the colors of the Venezuelan flag. This moment illustrates Maduro's position of authority and the symbolic union between his administration and the national military. The scene conveys a sense of official state business and political command within the Venezuelan government.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 452.09357310398747,
+          "timestamp_end": 458.39348354538345,
+          "frame_description": "Nicolás Maduro delivers a speech from a podium, flanked by civilian and military officials against a backdrop featuring the colors of the Venezuelan flag.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "timestamp_start": 458.39348354538345,
+      "timestamp_end": 465.46004975478,
+      "timestamp_formatted": "07:38 - 07:45",
+      "duration": 7.066566209396569,
+      "segment_count": 1,
+      "cluster_summary": "President Nicolás Maduro delivers a formal address from an ornate podium, flanked by seated government officials and a prominent portrait of his predecessor, Hugo Chávez. This moment underscores the narrative of political continuity and Maduro's exercise of institutional authority within the Venezuelan state. The scene conveys a sense of official gravity and the enduring influence of the Bolivarian Revolution's legacy.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 458.39348354538345,
+          "timestamp_end": 465.46004975478,
+          "frame_description": "President Nicolás Maduro delivers a speech from a podium in a formal, ornate hall, with government officials seated behind him and a portrait of Hugo Chávez displayed to the left.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "timestamp_start": 465.46004975478,
+      "timestamp_end": 500.2595550501101,
+      "timestamp_formatted": "07:45 - 08:20",
+      "duration": 34.79950529533011,
+      "segment_count": 2,
+      "cluster_summary": "Venezuelan soldiers in camouflage uniforms and maroon berets march in precise formation during an outdoor military parade while carrying their rifles. The scene highlights a moment of disciplined coordination and formal pageantry, showcasing the strength and unity of the military forces.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 465.46004975478,
+          "timestamp_end": 470.2266486601748,
+          "frame_description": "A large group of soldiers in camouflage uniforms and various headgear, including maroon berets, march in formation with their rifles during an outdoor military parade.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 470.2266486601748,
+          "timestamp_end": 500.2595550501101,
+          "frame_description": "A large group of Venezuelan soldiers in camouflage uniforms are marching in formation outdoors while holding their rifles.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "timestamp_start": 500.2595550501101,
+      "timestamp_end": 520.792596488734,
+      "timestamp_formatted": "08:20 - 08:40",
+      "duration": 20.53304143862391,
+      "segment_count": 1,
+      "cluster_summary": "A motorcycle rider navigates a neon-lit, futuristic city street from a first-person perspective while carrying a rocket launcher strapped to their back. This moment establishes a high-stakes, action-oriented tone, suggesting the protagonist is moving toward a dangerous mission or urban confrontation.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 500.2595550501101,
+          "timestamp_end": 520.792596488734,
+          "frame_description": "From a first-person perspective, a person on a motorcycle rides through a futuristic city street while carrying a rocket launcher on their back.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "timestamp_start": 520.792596488734,
+      "timestamp_end": 524.392545312389,
+      "timestamp_formatted": "08:40 - 08:44",
+      "duration": 3.599948823654927,
+      "segment_count": 2,
+      "cluster_summary": "A series of oil pump jacks, including orange and red-and-black models, are shown operating under a bright, hazy sky. This moment highlights the constant, rhythmic motion of industrial resource extraction within a vast landscape. It underscores the pervasive and mechanical presence of heavy machinery in the energy sector.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 520.792596488734,
+          "timestamp_end": 522.4925723221266,
+          "frame_description": "An orange Lufkin oil pump jack operates against a pale, hazy blue sky.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 522.4925723221266,
+          "timestamp_end": 524.392545312389,
+          "frame_description": "A red and black oil pump jack stands tall against a bright, hazy sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "timestamp_start": 524.392545312389,
+      "timestamp_end": 541.9256293979671,
+      "timestamp_formatted": "08:44 - 09:01",
+      "duration": 17.53308408557814,
+      "segment_count": 1,
+      "cluster_summary": "The mechanical framework of an amusement park ride is captured through the mesh of a chain-link fence, framed by trees and a building in the background. This perspective highlights the dormant complexity of the attraction and creates a sense of physical separation from the park's interior. The scene evokes a quiet, atmospheric moment of observation, suggesting a sense of anticipation or a view into a restricted recreational space.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 524.392545312389,
+          "timestamp_end": 541.9256293979671,
+          "frame_description": "An amusement park ride's mechanical framework is viewed through a chain-link fence in an outdoor setting with a building and trees visible in the background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "timestamp_start": 541.9256293979671,
+      "timestamp_end": 553.7587945127585,
+      "timestamp_formatted": "09:01 - 09:13",
+      "duration": 11.833165114791427,
+      "segment_count": 5,
+      "cluster_summary": "This sequence highlights the historical Zumaque 1 oil well site, showcasing commemorative plaques and an oil pumpjack situated behind a chain-link fence. The presence of the Shell logo and industrial equipment on the platform underscores the site's significance as a preserved landmark of the energy industry. Set against a vast green landscape, the scene captures a moment of historical reflection on the region's oil-producing heritage.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 541.9256293979671,
+          "timestamp_end": 543.2256109176203,
+          "frame_description": "A commemorative plaque for the Zumaque oil well, featuring the Shell logo, is positioned behind a chain-link fence in an outdoor area.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 543.2256109176203,
+          "timestamp_end": 544.2589295614471,
+          "frame_description": "A black commemorative plaque for the Zumaque 1 oil well, featuring the Shell logo and Spanish text, is visible behind a chain-link fence in an outdoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 544.2589295614471,
+          "timestamp_end": 545.8255739569265,
+          "frame_description": "A commemorative plaque for the Zumaque I oil well stands behind a chain-link fence at an outdoor historical site.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 545.8255739569265,
+          "timestamp_end": 548.7588655910157,
+          "frame_description": "Behind a chain-link fence, a commemorative plaque and an oil pumpjack are situated on a colorful platform in an outdoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 548.7588655910157,
+          "timestamp_end": 553.7587945127585,
+          "frame_description": "An oil pump and industrial equipment sit on a fenced concrete pad painted with the Shell logo, overlooking a vast, green landscape.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "timestamp_start": 553.7587945127585,
+      "timestamp_end": 587.7249783211315,
+      "timestamp_formatted": "09:13 - 09:47",
+      "duration": 33.96618380837299,
+      "segment_count": 2,
+      "cluster_summary": "A tan minivan pulls up to a pump at a PDV gas station, where the digital display remains set to zero for both the liter volume and the price in Bolívares. This moment captures the quiet, early stage of the refueling process, highlighting the routine logistical preparation required for a journey. The focus on the specific currency and the state-run station anchors the scene in a distinct regional context, emphasizing the essential nature of fuel in daily transit.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 553.7587945127585,
+          "timestamp_end": 557.6920719311962,
+          "frame_description": "A close-up of a gas pump display at a gas station shows the sale amount in Bolívares and the volume in liters both set to zero.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 557.6920719311962,
+          "timestamp_end": 587.7249783211315,
+          "frame_description": "A tan minivan is parked at a PDV gas station.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "timestamp_start": 587.7249783211315,
+      "timestamp_end": 599.9581377496623,
+      "timestamp_formatted": "09:47 - 09:59",
+      "duration": 12.233159428530826,
+      "segment_count": 1,
+      "cluster_summary": "An infographic map illustrates the historical flow of oil exports from Venezuela to refineries along the United States' Gulf Coast during the 1990s. This visual data highlights the deep economic and energy-based interdependence that characterized the relationship between the two nations during this period. It serves as a narrative backdrop to establish the scale of Venezuela’s former role as a primary fuel supplier for American industry.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 587.7249783211315,
+          "timestamp_end": 599.9581377496623,
+          "frame_description": "An infographic map illustrates the flow of oil exports from Venezuela to various refineries on the United States' Gulf Coast during the 1990s.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "timestamp_start": 599.9581377496623,
+      "timestamp_end": 629.9910441395976,
+      "timestamp_formatted": "09:59 - 10:29",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "An oil pumpjack operates in the heart of an urban environment, positioned starkly beside a city street and beneath an elevated roadway. This juxtaposition of heavy industrial extraction within a bustling cityscape, underscored by a gloomy overcast sky, highlights the pervasive and often invisible presence of resource industries in everyday life.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 599.9581377496623,
+          "timestamp_end": 629.9910441395976,
+          "frame_description": "An oil pumpjack is situated in an urban environment, positioned near a city street and an elevated roadway under an overcast sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "timestamp_start": 629.9910441395976,
+      "timestamp_end": 660.023950529533,
+      "timestamp_formatted": "10:29 - 11:00",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A lone person in a dark jacket cautiously approaches a rusty metal barrel resting in a puddle amidst a vast field of dry grass. This quiet moment of discovery in a desolate landscape suggests a search for resources or the location of a clandestine meeting point. The imagery creates an atmosphere of isolation and suspense, marking a somber moment of curiosity within a neglected environment.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 629.9910441395976,
+          "timestamp_end": 660.023950529533,
+          "frame_description": "A person in a dark jacket approaches a rusty metal barrel lying in a puddle of water within a field of dry grass.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "timestamp_start": 660.023950529533,
+      "timestamp_end": 676.7570459876324,
+      "timestamp_formatted": "11:00 - 11:16",
+      "duration": 16.733095458099456,
+      "segment_count": 1,
+      "cluster_summary": "A shirtless man wearing a white head covering stands prominently in front of a wall covered in Spanish graffiti while holding a large Venezuelan flag. This striking scene serves as a powerful symbol of national identity and resilience, suggesting a moment of defiance or pride within an urban setting.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 660.023950529533,
+          "timestamp_end": 676.7570459876324,
+          "frame_description": "A shirtless man with a white head covering holds a large Venezuelan flag in front of a wall covered in Spanish graffiti.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "timestamp_start": 676.7570459876324,
+      "timestamp_end": 677.9570289288506,
+      "timestamp_formatted": "11:16 - 11:17",
+      "duration": 1.1999829412181953,
+      "segment_count": 1,
+      "cluster_summary": "A group of people sits in a row against a gridded wall in an urban setting, captured through a blurred and reflective surface. This visual distortion creates a sense of detachment and abstraction, framing a quiet moment of stillness within a city environment. The indirect perspective emphasizes the anonymous and transient nature of public life.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 676.7570459876324,
+          "timestamp_end": 677.9570289288506,
+          "frame_description": "A group of people sits in a row against a gridded wall in an urban setting, seen through a blurred, reflective surface.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "timestamp_start": 677.9570289288506,
+      "timestamp_end": 682.7236278342455,
+      "timestamp_formatted": "11:17 - 11:22",
+      "duration": 4.766598905394858,
+      "segment_count": 3,
+      "cluster_summary": "Hugo Chávez, dressed in a formal blue suit and red tie, moves through a dense crowd gathered in front of a large stone building. He actively engages with the public by waving and speaking as he walks, illustrating a moment of high-profile political visibility. This sequence captures the leader's direct interaction with the people, emphasizing a sense of public accessibility and charismatic leadership.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 677.9570289288506,
+          "timestamp_end": 679.2903433079821,
+          "frame_description": "Hugo Chávez, wearing a blue suit and red tie, walks through a crowd of people in front of a stone building.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 679.2903433079821,
+          "timestamp_end": 681.2903148766792,
+          "frame_description": "Hugo Chávez, wearing a blue suit and red tie, waves his hand and speaks while surrounded by people in front of a stone building.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 681.2903148766792,
+          "timestamp_end": 682.7236278342455,
+          "frame_description": "Hugo Chávez, wearing a suit and red tie, walks through a crowd in front of a large stone building.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "timestamp_start": 682.7236278342455,
+      "timestamp_end": 698.656734664866,
+      "timestamp_formatted": "11:22 - 11:38",
+      "duration": 15.933106830620545,
+      "segment_count": 1,
+      "cluster_summary": "Hugo Chavez, dressed in a professional blue suit, navigates through a dense outdoor crowd of supporters and active photographers. This moment captures the intense media scrutiny and high level of public engagement that defined his political career. The scene underscores his role as a prominent and often polarizing figure on the world stage, highlighting the spectacle that accompanied his public appearances.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 682.7236278342455,
+          "timestamp_end": 698.656734664866,
+          "frame_description": "Hugo Chavez, dressed in a blue suit, walks through a crowd of people and photographers in an outdoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "timestamp_start": 698.656734664866,
+      "timestamp_end": 708.1232667566991,
+      "timestamp_formatted": "11:38 - 11:48",
+      "duration": 9.466532091833074,
+      "segment_count": 1,
+      "cluster_summary": "Two men stand at podiums in a modern, glass-walled building to deliver a formal address to a crowd of journalists. This scene captures a high-stakes public announcement or press conference, emphasizing a moment of professional communication and transparency. The sophisticated setting and the presence of the media highlight the narrative importance of the information being shared with the public.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 698.656734664866,
+          "timestamp_end": 708.1232667566991,
+          "frame_description": "Two men stand at podiums on a stage, addressing an audience of journalists in a modern, glass-walled building.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "timestamp_start": 708.1232667566991,
+      "timestamp_end": 738.1561731466344,
+      "timestamp_formatted": "11:48 - 12:18",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A group of people, including a man in a red shirt and beret, gather on a city street at night amidst a sea of scattered papers. The scene depicts a lively and celebratory atmosphere, suggesting that a significant public event or festive gathering has just reached a peak. This moment highlights a sense of communal spirit and the vibrant, chaotic energy of nighttime urban life.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 708.1232667566991,
+          "timestamp_end": 738.1561731466344,
+          "frame_description": "A group of people, including a man in a red shirt and beret, are gathered on a city street at night during a lively event where papers are scattered across the ground.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "timestamp_start": 738.1561731466344,
+      "timestamp_end": 753.4226227876892,
+      "timestamp_formatted": "12:18 - 12:33",
+      "duration": 15.266449641054805,
+      "segment_count": 1,
+      "cluster_summary": "Protesters gather in front of a modern office building to demonstrate their political stance, highlighted by a man holding a sign about the PDVSA revolution and another wearing a red beret while on a phone call. This moment captures an atmosphere of civil activism and ideological fervor, emphasizing the public engagement and organizational efforts behind movements concerning nationalized industries and government policy.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 738.1561731466344,
+          "timestamp_end": 753.4226227876892,
+          "frame_description": "In front of a large modern office building, several men participate in a political protest, including one holding a sign about the PDVSA revolution and another wearing a red beret while talking on a phone.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "timestamp_start": 753.4226227876892,
+      "timestamp_end": 770.789042575876,
+      "timestamp_formatted": "12:33 - 12:50",
+      "duration": 17.366419788186818,
+      "segment_count": 1,
+      "cluster_summary": "A sign featuring an oil pumpjack icon and the text \"VENEZUELA ES TUYA\" stands prominently in a vast, grassy field under a cloudy sky. This imagery emphasizes the strong connection between Venezuela’s national identity and its natural oil resources, framing the industry as a point of patriotic ownership. The scene captures a powerful symbolic moment that reflects the intersection of the country's economic landscape and its national pride.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 753.4226227876892,
+          "timestamp_end": 770.789042575876,
+          "frame_description": "A sign featuring an oil pumpjack icon and the text \"VENEZUELA ES TUYA\" stands in a vast, grassy field under a cloudy blue sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "timestamp_start": 770.789042575876,
+      "timestamp_end": 773.2223413177909,
+      "timestamp_formatted": "12:50 - 12:53",
+      "duration": 2.433298741914882,
+      "segment_count": 1,
+      "cluster_summary": "A woman in a red shirt walks through a doorway set into a wall adorned with murals of Simón Bolívar and Hugo Chávez, grounding her journey in a specific political and historical context. This scene emphasizes the pervasive presence of these national icons in the local environment and the symbolic weight they lend to everyday actions. The moment captures a transition through a space defined by revolutionary legacy and national identity.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 770.789042575876,
+          "timestamp_end": 773.2223413177909,
+          "frame_description": "A woman in a red shirt walks through a doorway set into a wall featuring murals of Simón Bolívar and Hugo Chávez.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "timestamp_start": 773.2223413177909,
+      "timestamp_end": 775.8889700760537,
+      "timestamp_formatted": "12:53 - 12:55",
+      "duration": 2.6666287582628456,
+      "segment_count": 1,
+      "cluster_summary": "A large red arrow containing a blue cross is painted on a decaying, graffiti-strewn wall that stands behind a massive heap of trash in a derelict urban setting. This stark imagery emphasizes a theme of societal collapse and abandonment, where cryptic symbols provide the only sense of direction within a desolate wasteland. The scene conveys a grim and haunting atmosphere, highlighting the remnants of order in an otherwise ruined world.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 773.2223413177909,
+          "timestamp_end": 775.8889700760537,
+          "frame_description": "A large red arrow featuring a blue cross is painted on a crumbling, graffiti-covered wall positioned behind a massive heap of trash in a derelict outdoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "timestamp_start": 775.8889700760537,
+      "timestamp_end": 811.0218039661667,
+      "timestamp_formatted": "12:55 - 13:31",
+      "duration": 35.13283389011292,
+      "segment_count": 3,
+      "cluster_summary": "This sequence captures aging industrial infrastructure, including power substations and pipelines, being slowly overtaken by encroaching vines and foliage. Key elements like a rusted \"PELIGRO\" warning sign and barbed wire emphasize the hazardous yet neglected nature of these utility sites. The shots create an atmospheric sense of abandonment, highlighting the persistent tension between man-made structures and the reclaiming power of the natural world.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 775.8889700760537,
+          "timestamp_end": 778.3222688179685,
+          "frame_description": "An electrical substation with complex power line structures and machinery stands under a hazy twilight sky, viewed through a foreground of green leaves and tangled vines.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 778.3222688179685,
+          "timestamp_end": 780.9888975762314,
+          "frame_description": "A rusted \"PELIGRO\" warning sign is attached to a chain-link fence topped with barbed wire, overlooking an industrial facility with a network of silver pipelines.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 780.9888975762314,
+          "timestamp_end": 811.0218039661667,
+          "frame_description": "A tall, vine-covered metal tower and several power lines are captured from a low angle against a backdrop of a cloudy blue sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "timestamp_start": 811.0218039661667,
+      "timestamp_end": 818.9883573814769,
+      "timestamp_formatted": "13:31 - 13:38",
+      "duration": 7.966553415310273,
+      "segment_count": 1,
+      "cluster_summary": "A man wearing a shirt adorned with the colors and stars of the Venezuelan flag addresses an audience from an outdoor stage during a public gathering. His prominent use of national symbols suggests a moment of significant political or social expression aimed at mobilizing or informing the community. This scene captures the gravity of a public address, emphasizing the speaker's role in conveying a message of national importance.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 811.0218039661667,
+          "timestamp_end": 818.9883573814769,
+          "frame_description": "A man wearing a shirt featuring the colors and stars of the Venezuelan flag speaks into a microphone while standing on an outdoor stage during a public event.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "timestamp_start": 818.9883573814769,
+      "timestamp_end": 837.1214329376643,
+      "timestamp_formatted": "13:38 - 13:57",
+      "duration": 18.13307555618735,
+      "segment_count": 2,
+      "cluster_summary": "In a bustling outdoor city market, vendors display fresh produce like pineapples and potatoes while crowds of shoppers navigate through a sea of colorful stalls and umbrellas. This sequence captures the vibrant energy and daily rhythm of local commerce in a busy urban environment. The scene emphasizes the lively, community-focused atmosphere of a traditional street market.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 818.9883573814769,
+          "timestamp_end": 825.0216049470466,
+          "frame_description": "In a bustling outdoor street market, a vendor stands behind large displays of pineapples and potatoes with handwritten price signs while people shop in the background.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 825.0216049470466,
+          "timestamp_end": 837.1214329376643,
+          "frame_description": "A crowd of people walks through a busy outdoor market lined with colorful stalls and umbrellas along a city street.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "timestamp_start": 837.1214329376643,
+      "timestamp_end": 874.1209069585614,
+      "timestamp_formatted": "13:57 - 14:34",
+      "duration": 36.99947402089708,
+      "segment_count": 3,
+      "cluster_summary": "Protesters equipped with helmets, backpacks, and shields gather on a modern urban bridge to establish a defensive line against distant armored vehicles. The scene captures a high-stakes standoff between civilians and authorities, highlighting an atmosphere of escalating tension and civil unrest. The transition from gathering to taking defensive positions signals a pivotal moment of confrontation within the urban landscape.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 837.1214329376643,
+          "timestamp_end": 838.1880844409694,
+          "frame_description": "A group of protesters wearing helmets and carrying backpacks are gathered on an urban bridge against a backdrop of modern city buildings.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 838.1880844409694,
+          "timestamp_end": 844.0880005686261,
+          "frame_description": "A group of individuals wearing helmets and masks are gathered on an urban bridge, some carrying large objects and others crouched, with modern skyscrapers and mountains visible in the distance.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 844.0880005686261,
+          "timestamp_end": 874.1209069585614,
+          "frame_description": "A group of protesters wearing helmets and carrying shields take defensive positions on an urban street near a bridge entrance, with armored vehicles visible in the distance.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "timestamp_start": 874.1209069585614,
+      "timestamp_end": 887.387385030919,
+      "timestamp_formatted": "14:34 - 14:47",
+      "duration": 13.266478072357586,
+      "segment_count": 1,
+      "cluster_summary": "Donald Trump addresses an audience from a podium in a formal indoor setting, speaking emphatically into a microphone. This scene captures a moment of official communication, likely during a political event or press briefing, where he serves as the central focus. The formal atmosphere underscores the authoritative and public nature of the statement he is delivering.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 874.1209069585614,
+          "timestamp_end": 887.387385030919,
+          "frame_description": "Donald Trump is speaking into a microphone in a formal indoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "timestamp_start": 887.387385030919,
+      "timestamp_end": 896.0539284952732,
+      "timestamp_formatted": "14:47 - 14:56",
+      "duration": 8.666543464354277,
+      "segment_count": 1,
+      "cluster_summary": "A group of protesters gathers in an urban setting to chant and display signs, including a prominent banner depicting Nicolas Maduro behind bars. This demonstration reflects deep political discontent and a collective call for justice, highlighting the intensity of the civil unrest. The scene captures the activists' demand for accountability and their resolve for significant political change.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 887.387385030919,
+          "timestamp_end": 896.0539284952732,
+          "frame_description": "A group of protesters chants and holds up flags and signs, including a large banner depicting Nicolas Maduro behind bars, during a demonstration in an urban setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "timestamp_start": 896.0539284952732,
+      "timestamp_end": 898.4538943777098,
+      "timestamp_formatted": "14:56 - 14:58",
+      "duration": 2.399965882436618,
+      "segment_count": 1,
+      "cluster_summary": "Two women are seated at a desk within a room prominently featuring a mural of Hugo Chávez and the Venezuelan flag. This setting underscores a clear political context, highlighting the enduring influence of Chávez’s legacy within official or administrative environments in Venezuela. The scene suggests a moment of formal discussion or governance conducted under the symbols of national and revolutionary identity.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 896.0539284952732,
+          "timestamp_end": 898.4538943777098,
+          "frame_description": "Two women sit at a desk in a room featuring a large mural of Hugo Chávez and a Venezuelan flag.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "timestamp_start": 898.4538943777098,
+      "timestamp_end": 928.4868007676451,
+      "timestamp_formatted": "14:58 - 15:28",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A long row of wooden chairs sits empty against a green and white wall in a brightly lit, deserted hallway. This scene emphasizes a sense of profound stillness and institutional isolation, highlighting the absence of people in a space typically meant for waiting. The sterile environment evokes a reflective or eerie narrative tone, suggesting a quiet pause in an institutional setting.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 898.4538943777098,
+          "timestamp_end": 928.4868007676451,
+          "frame_description": "A long row of wooden chairs is lined up against a green and white wall in a brightly lit, empty hallway.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "timestamp_start": 928.4868007676451,
+      "timestamp_end": 946.553210604876,
+      "timestamp_formatted": "15:28 - 15:46",
+      "duration": 18.06640983723082,
+      "segment_count": 1,
+      "cluster_summary": "Donald Trump delivers an emphatic speech in an indoor setting, using expansive hand gestures to drive home his points. He stands before a large digital display screen, framing him as the central figure of a formal presentation. The moment captures his characteristic energetic communication style and the high-stakes atmosphere of a public address.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 928.4868007676451,
+          "timestamp_end": 946.553210604876,
+          "frame_description": "Donald Trump gestures with his hands and speaks emphatically in an indoor setting with a digital display screen in the background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "timestamp_start": 946.553210604876,
+      "timestamp_end": 987.185966308906,
+      "timestamp_formatted": "15:46 - 16:27",
+      "duration": 40.632755704030046,
+      "segment_count": 3,
+      "cluster_summary": "Mike Pompeo represents the United States at a formal United Nations Security Council meeting, addressing an assembly of international delegates and reviewing documents from his seat at the horseshoe-shaped table. The scene captures the serious, high-stakes atmosphere of global diplomacy as representatives from various nations listen intently to the proceedings. This moment highlights the official role of U.S. leadership and the gravity of international governance during a formal diplomatic assembly.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 946.553210604876,
+          "timestamp_end": 950.4531551638354,
+          "frame_description": "A group of delegates are seated around a large, horseshoe-shaped table in a formal meeting room during an official assembly.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 950.4531551638354,
+          "timestamp_end": 957.1530599189707,
+          "frame_description": "At a United Nations Security Council meeting, Mike Pompeo sits at the \"United States\" desk and addresses the assembly while representatives from other nations listen and take notes.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 957.1530599189707,
+          "timestamp_end": 987.185966308906,
+          "frame_description": "Mike Pompeo sits behind a \"UNITED STATES\" nameplate with his hands clasped while reviewing documents during a formal meeting at the United Nations.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "timestamp_start": 987.185966308906,
+      "timestamp_end": 997.7858156230009,
+      "timestamp_formatted": "16:27 - 16:37",
+      "duration": 10.599849314094854,
+      "segment_count": 1,
+      "cluster_summary": "An infographic map illustrates the severance of oil trade routes between Venezuela and refineries on the United States Gulf Coast, using red crosses to mark the interrupted shipping lanes. This visual representation highlights a significant breakdown in energy logistics and the resulting economic impact on regional trade. The imagery underscores the narrative weight of a collapsing geopolitical and commercial relationship.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 987.185966308906,
+          "timestamp_end": 997.7858156230009,
+          "frame_description": "An infographic map illustrates the disruption of oil trade routes between Venezuela and refineries on the United States Gulf Coast, indicated by red crosses over dotted lines connecting the two regions.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "timestamp_start": 997.7858156230009,
+      "timestamp_end": 1005.4523733030065,
+      "timestamp_formatted": "16:37 - 16:45",
+      "duration": 7.666557680005667,
+      "segment_count": 1,
+      "cluster_summary": "A large, bright orange flame erupts from a tall industrial gas flare stack, casting a stark glow against a dark and moody sky. This moment emphasizes the raw power and intensity of industrial energy production through a solitary, mechanical display. The absence of people underscores the imposing nature of the machinery and the volatile environmental impact of the flaring process.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 997.7858156230009,
+          "timestamp_end": 1005.4523733030065,
+          "frame_description": "A large, bright orange flame erupts from a tall industrial gas flare stack against a dark, moody sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "timestamp_start": 1005.4523733030065,
+      "timestamp_end": 1035.485279692942,
+      "timestamp_formatted": "16:45 - 17:15",
+      "duration": 30.03290638993542,
+      "segment_count": 1,
+      "cluster_summary": "Two men linger near a set of gas pumps that have been cordoned off with yellow caution tape at a service station. Their presence amidst the restricted equipment suggests a moment of stagnation or disruption, highlighting an atmosphere of waiting or inactivity in a normally bustling environment.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1005.4523733030065,
+          "timestamp_end": 1035.485279692942,
+          "frame_description": "Two men stand and sit near gas pumps cordoned off with yellow caution tape at a gas station.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "timestamp_start": 1035.485279692942,
+      "timestamp_end": 1050.9183936313882,
+      "timestamp_formatted": "17:15 - 17:30",
+      "duration": 15.43311393844624,
+      "segment_count": 2,
+      "cluster_summary": "A person handles currency at an ATM against a backdrop of graphics illustrating Venezuela's economic trends, followed by a scene of citizens queuing outside a Banesco bank. This sequence connects abstract financial data with the physical reality of the country's economic crisis, highlighting the daily struggle of the population to access basic banking services. It emphasizes the human impact of macro-economic instability on the routine lives and survival of the Venezuelan people.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1035.485279692942,
+          "timestamp_end": 1038.2185741701612,
+          "frame_description": "A pair of hands handles paper currency in front of an ATM machine as an informational graphic illustrating Venezuela's economic trends is superimposed over the scene.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1038.2185741701612,
+          "timestamp_end": 1050.9183936313882,
+          "frame_description": "A group of people is standing in a line outside the entrance of a Banesco bank.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "timestamp_start": 1050.9183936313882,
+      "timestamp_end": 1057.8849612623499,
+      "timestamp_formatted": "17:30 - 17:37",
+      "duration": 6.966567630961663,
+      "segment_count": 1,
+      "cluster_summary": "An older man dressed in a grey shirt and black pants is seen diligently sweeping debris from a sidewalk on a city street lined with buildings. This moment captures a quiet, purposeful routine of urban maintenance, reflecting a sense of personal responsibility or care for his environment.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1050.9183936313882,
+          "timestamp_end": 1057.8849612623499,
+          "frame_description": "An older man in a grey shirt and black pants is sweeping debris off a sidewalk on a street lined with buildings.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "timestamp_start": 1057.8849612623499,
+      "timestamp_end": 1062.1515672755704,
+      "timestamp_formatted": "17:37 - 17:42",
+      "duration": 4.266606013220553,
+      "segment_count": 1,
+      "cluster_summary": "A cashier efficiently manages a transaction at a bustling grocery store checkout while a queue of customers waits with their items. This scene captures the routine hustle of daily commerce, highlighting the steady, focused pace of the service industry during a busy shift.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1057.8849612623499,
+          "timestamp_end": 1062.1515672755704,
+          "frame_description": "A cashier processes a transaction at a busy grocery store checkout counter while several customers wait in line with their items.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "timestamp_start": 1062.1515672755704,
+      "timestamp_end": 1068.7848063117492,
+      "timestamp_formatted": "17:42 - 17:48",
+      "duration": 6.633239036178793,
+      "segment_count": 1,
+      "cluster_summary": "A person is seen organizing various food supplies, including bags and a tin can, across a metallic counter. This moment captures a quiet, routine act of preparation or storage, emphasizing the practical and domestic nature of the task. The focus on the tactile interaction with the groceries grounds the narrative in a realistic, everyday setting.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1062.1515672755704,
+          "timestamp_end": 1068.7848063117492,
+          "frame_description": "A person is seen handling bags of food and a tin can on a metallic counter.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "timestamp_start": 1068.7848063117492,
+      "timestamp_end": 1083.6845944985428,
+      "timestamp_formatted": "17:48 - 18:03",
+      "duration": 14.899788186793558,
+      "segment_count": 1,
+      "cluster_summary": "A crowd of people lines a sunny city street, waiting patiently despite the intense heat. Individuals use umbrellas and improvised cardboard shields to protect themselves from the sun, highlighting the physical toll and duration of their wait. The scene captures a moment of shared endurance as the group braves the elements for an unspoken purpose.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1068.7848063117492,
+          "timestamp_end": 1083.6845944985428,
+          "frame_description": "A crowd of people stands in a line along a sunny city street, some using umbrellas and cardboard pieces to shield themselves from the heat.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "timestamp_start": 1083.6845944985428,
+      "timestamp_end": 1090.017837799417,
+      "timestamp_formatted": "18:03 - 18:10",
+      "duration": 6.333243300874301,
+      "segment_count": 1,
+      "cluster_summary": "A man in a yellow jacket and sunglasses holds a PSUV sign while standing in the middle of a crowded outdoor demonstration. This scene highlights an individual’s participation in a large-scale political rally, emphasizing the atmosphere of public activism. The moment conveys a sense of collective purpose and support for the political movement represented.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1083.6845944985428,
+          "timestamp_end": 1090.017837799417,
+          "frame_description": "A man in a yellow jacket and sunglasses holds a PSUV sign while standing amidst a crowded outdoor demonstration.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "timestamp_start": 1090.017837799417,
+      "timestamp_end": 1126.2506560523136,
+      "timestamp_formatted": "18:10 - 18:46",
+      "duration": 36.23281825289655,
+      "segment_count": 2,
+      "cluster_summary": "A Metrobús pulls up to an urban shelter where a group of commuters waits to board against a backdrop of towering city buildings. This scene captures a typical moment of public transit, illustrating the daily rhythm and routine of city life. It emphasizes the importance of shared transportation in connecting people across a busy metropolitan landscape.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1090.017837799417,
+          "timestamp_end": 1096.2177496623783,
+          "frame_description": "A Metrobús is stopped at an urban bus shelter as a group of people wait on the sidewalk to board.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1096.2177496623783,
+          "timestamp_end": 1126.2506560523136,
+          "frame_description": "A group of people is waiting at an outdoor bus stop in an urban setting with tall buildings in the background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "timestamp_start": 1126.2506560523136,
+      "timestamp_end": 1138.3504840429312,
+      "timestamp_formatted": "18:46 - 18:58",
+      "duration": 12.099827990617541,
+      "segment_count": 1,
+      "cluster_summary": "An infographic map visualizes the massive scale of the Venezuelan refugee crisis, charting migration routes that have spread across North and South America since 2014. By illustrating the broad geographic reach of these journeys, the sequence emphasizes the profound humanitarian and geopolitical impact of the displacement.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1126.2506560523136,
+          "timestamp_end": 1138.3504840429312,
+          "frame_description": "An infographic map depicts the Venezuelan refugee crisis, showing migration routes from Venezuela to various countries across North and South America since 2014.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "timestamp_start": 1138.3504840429312,
+      "timestamp_end": 1149.5836576871134,
+      "timestamp_formatted": "18:58 - 19:09",
+      "duration": 11.233173644182216,
+      "segment_count": 1,
+      "cluster_summary": "Nicolás Maduro delivers an official address from a wood-paneled office, seated at a desk positioned in front of the Venezuelan flag. Speaking directly into a microphone, he conveys a sense of formal leadership and political authority during a moment of national communication. The scene underscores his role as a central figure in the country's governance and the gravity of his televised message.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1138.3504840429312,
+          "timestamp_end": 1149.5836576871134,
+          "frame_description": "In a wood-paneled office featuring the Venezuelan flag, Nicolás Maduro sits at a desk and speaks into a microphone.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "timestamp_start": 1149.5836576871134,
+      "timestamp_end": 1179.6165640770487,
+      "timestamp_formatted": "19:09 - 19:39",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A large, diverse crowd marches determinedly down a sunlit highway, waving flags as they participate in a public demonstration. This moment underscores a powerful sense of unity and collective purpose, illustrating the significant scale of the social movement and the shared resolve of the participants.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1149.5836576871134,
+          "timestamp_end": 1179.6165640770487,
+          "frame_description": "A large crowd of people is marching down a sunlit highway, with some individuals carrying flags during what appears to be a demonstration.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "timestamp_start": 1179.6165640770487,
+      "timestamp_end": 1209.649470466984,
+      "timestamp_formatted": "19:39 - 20:09",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "An infographic features a \"Wanted\" poster of Nicolás Maduro over a map of Venezuela, highlighting the regime's strategic alliances with Russia, Cuba, Iran, and China. This visual framing underscores Maduro's status as an international fugitive while identifying the specific geopolitical bloc that sustains his administration against global pressure. The segment emphasizes the narrative of a leader under legal indictment who remains bolstered by a network of powerful international partners.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1179.6165640770487,
+          "timestamp_end": 1209.649470466984,
+          "frame_description": "An infographic features a \"Wanted\" poster of Nicolás Maduro over a map of Venezuela, depicting the nation's international alliances with countries such as Russia, Cuba, Iran, and China.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "timestamp_start": 1209.649470466984,
+      "timestamp_end": 1236.5824209254388,
+      "timestamp_formatted": "20:09 - 20:36",
+      "duration": 26.932950458454798,
+      "segment_count": 1,
+      "cluster_summary": "An informational map illustrates the intricate drug trafficking networks spanning the Americas and the Caribbean, highlighting the logistical connections between Mexican and Venezuelan cartels. Using dashed lines and narcotics icons, the visual traces the flow of illicit goods to emphasize the vast, organized reach of these criminal organizations. This sequence serves to frame the drug trade as a complex and significant geopolitical challenge involving coordinated international operations.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1209.649470466984,
+          "timestamp_end": 1236.5824209254388,
+          "frame_description": "An informational map displays drug trafficking routes across the Americas and Caribbean, connecting Mexican and Venezuelan cartels using dashed lines and icons representing narcotics.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "timestamp_start": 1236.5824209254388,
+      "timestamp_end": 1275.815196531381,
+      "timestamp_formatted": "20:36 - 21:15",
+      "duration": 39.23277560594215,
+      "segment_count": 3,
+      "cluster_summary": "Venezuelan President Nicolás Maduro presides over a formal state ceremony, observing the proceedings alongside his wife and military leadership before delivering a speech from a podium. Clad in his presidential sash and surrounded by high-ranking officials, Maduro’s public address serves as a demonstration of national authority and government unity. This moment captures a significant display of state leadership and military-political alignment during an official public event.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1236.5824209254388,
+          "timestamp_end": 1243.5823214158788,
+          "frame_description": "Venezuelan President Nicolás Maduro sits in a grandstand wearing his presidential sash while observing a formal ceremony alongside his wife and military officials.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1243.5823214158788,
+          "timestamp_end": 1245.7822901414456,
+          "frame_description": "Nicolás Maduro, wearing a presidential sash, delivers a speech at a podium while surrounded by officials and military personnel during a formal outdoor ceremony.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1245.7822901414456,
+          "timestamp_end": 1275.815196531381,
+          "frame_description": "A man wearing a presidential sash and suit delivers a speech into microphones during a formal public ceremony.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "timestamp_start": 1275.815196531381,
+      "timestamp_end": 1287.0817030350415,
+      "timestamp_formatted": "21:15 - 21:27",
+      "duration": 11.266506503660594,
+      "segment_count": 1,
+      "cluster_summary": "During a Venezuelan National Electoral Council (CNE) event for the 2025 elections, a woman at the head table presents an official document to a large audience. This gesture marks a significant procedural step in the country's electoral timeline, signaling the formal commencement or certification of a key phase in the voting process. The scene carries considerable political and administrative weight as it underscores the public transparency involved in organizing the upcoming national vote.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1275.815196531381,
+          "timestamp_end": 1287.0817030350415,
+          "frame_description": "At a Venezuelan National Electoral Council (CNE) event for the 2025 elections, a woman at the head table holds up a document before a large, seated audience.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "timestamp_start": 1287.0817030350415,
+      "timestamp_end": 1317.1146094249768,
+      "timestamp_formatted": "21:27 - 21:57",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "Nicolás Maduro holds up a voting receipt while standing beside a ballot box at a polling station, documenting his participation in the electoral process. This moment emphasizes a public display of civic duty and political legitimacy as the leader participates in the act of voting. The scene captures a significant narrative beat of leadership within the context of a national election.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1287.0817030350415,
+          "timestamp_end": 1317.1146094249768,
+          "frame_description": "Nicolás Maduro holds up a voting receipt while standing next to a ballot box in what appears to be a polling station.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "timestamp_start": 1317.1146094249768,
+      "timestamp_end": 1368.0805515672755,
+      "timestamp_formatted": "21:57 - 22:48",
+      "duration": 50.96594214229867,
+      "segment_count": 2,
+      "cluster_summary": "These detailed maps illustrate the intense territorial dispute between Venezuela and Guyana over the Essequibo region, specifically highlighting the overlapping land and maritime claims near lucrative offshore oil fields. By visualizing the contested borders, the segment emphasizes the geopolitical tensions and the high economic stakes involving the region's natural resources. This informative overview captures the complexity of a long-standing conflict centered on sovereignty and regional control.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1317.1146094249768,
+          "timestamp_end": 1347.1475158149121,
+          "frame_description": "A map of northern South America illustrates the territorial dispute between Venezuela and Guyana, highlighting the contested Essequibo region with yellow and green stripes.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1347.1475158149121,
+          "timestamp_end": 1368.0805515672755,
+          "frame_description": "An informative map displays the disputed Essequibo region and offshore oil fields between Venezuela and Guyana, illustrating the complex territorial and maritime claims in the area.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "timestamp_start": 1368.0805515672755,
+      "timestamp_end": 1393.3801919112943,
+      "timestamp_formatted": "22:48 - 23:13",
+      "duration": 25.299640344018826,
+      "segment_count": 1,
+      "cluster_summary": "US Senators and high-level officials are gathered for a formal diplomatic meeting at a long conference table in an ornate room. Flanked by the American and Saudi Arabian flags, the participants engage in high-stakes international dialogue that signifies a moment of critical strategic cooperation between the two nations. The formal setting emphasizes the gravity and procedural importance of this high-level foreign policy engagement.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1368.0805515672755,
+          "timestamp_end": 1393.3801919112943,
+          "frame_description": "A group of officials, including US Senators, are seated at a long conference table during a formal meeting in an ornate room featuring American and Saudi Arabian flags.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "timestamp_start": 1393.3801919112943,
+      "timestamp_end": 1407.4466586111307,
+      "timestamp_formatted": "23:13 - 23:27",
+      "duration": 14.066466699836383,
+      "segment_count": 1,
+      "cluster_summary": "Nicolás Maduro stands at attention alongside several officials during a formal military ceremony in an outdoor field setting. Surrounded by camouflage netting and tents, military personnel salute in the background, underscoring the strong presence of the armed forces. This moment serves as a display of Maduro's leadership and the symbolic unity between his government and the military in a field operations context.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1393.3801919112943,
+          "timestamp_end": 1407.4466586111307,
+          "frame_description": "Nicolás Maduro and several officials stand at attention in an outdoor field while military personnel salute behind them, with tents and camouflage netting in the background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "timestamp_start": 1407.4466586111307,
+      "timestamp_end": 1423.7464268960125,
+      "timestamp_formatted": "23:27 - 23:43",
+      "duration": 16.299768284881793,
+      "segment_count": 1,
+      "cluster_summary": "An individual is captured casting their ballot into an official voting box marked with the \"CNE PODER ELECTORAL\" logo, signifying participation in a Venezuelan election. This brief moment highlights the critical act of civic engagement and the procedural reality of the democratic process. The focused shot on the hand and the ballot box underscores the weight of each individual vote within the national political landscape.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1407.4466586111307,
+          "timestamp_end": 1423.7464268960125,
+          "frame_description": "A person's hand is shown casting a ballot into a voting box marked with the \"CNE PODER ELECTORAL\" logo in an indoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "timestamp_start": 1423.7464268960125,
+      "timestamp_end": 1438.5795493638495,
+      "timestamp_formatted": "23:43 - 23:58",
+      "duration": 14.833122467837029,
+      "segment_count": 1,
+      "cluster_summary": "A delegation of military personnel and political figures conducts a walk-through of an outdoor field while surrounded by active media camera crews. This scene depicts a formal public relations or inspection event, highlighting the intersection of government oversight and military operations. The prominent press presence underscores the narrative significance of the visit as a moment of public transparency or strategic communication.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1423.7464268960125,
+          "timestamp_end": 1438.5795493638495,
+          "frame_description": "A group of military personnel and civilians, including political figures, walk through an outdoor field while being filmed by several media camera crews.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 68,
+      "timestamp_start": 1438.5795493638495,
+      "timestamp_end": 1486.145539839363,
+      "timestamp_formatted": "23:58 - 24:46",
+      "duration": 47.565990475513445,
+      "segment_count": 4,
+      "cluster_summary": "A man stands at a podium holding a Venezuelan flag as a large, passionate crowd gathers on a city street to participate in a public demonstration. Protesters dressed in national colors shout and clap with intense fervor, signaling a moment of collective political activism and public outcry. This sequence captures the high emotional stakes and unified spirit of a mass movement centered on Venezuelan issues.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1438.5795493638495,
+          "timestamp_end": 1468.6124557537848,
+          "frame_description": "A man in a dark jacket holds up a Venezuelan flag while standing at a podium in front of a white building.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1468.6124557537848,
+          "timestamp_end": 1469.6457743976116,
+          "frame_description": "A large crowd of protesters wearing the colors of the Venezuelan flag gather and clap on a busy city street during a public demonstration.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1469.6457743976116,
+          "timestamp_end": 1470.7124259009167,
+          "frame_description": "A man in a red shirt and glasses shouts with his hands cupped around his mouth while participating in an outdoor rally with a crowd of people.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1470.7124259009167,
+          "timestamp_end": 1486.145539839363,
+          "frame_description": "A young man wearing glasses and a red shirt shouts passionately with his arm raised while participating in a crowded outdoor demonstration.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 69,
+      "timestamp_start": 1486.145539839363,
+      "timestamp_end": 1516.1784462292983,
+      "timestamp_formatted": "24:46 - 25:16",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A man and two women in white shirts stand at a podium, raising their joined hands in a collective gesture of victory before a large outdoor crowd. This triumphant moment signifies a major achievement or successful outcome for the group, highlighting their unity and shared leadership in a public setting. The celebratory atmosphere and the presence of the audience underscore the narrative significance of this milestone within their campaign or cause.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1486.145539839363,
+          "timestamp_end": 1516.1784462292983,
+          "frame_description": "A man and two women in white shirts raise their joined hands in a gesture of victory while standing at a podium during an outdoor public gathering surrounded by a crowd.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "timestamp_start": 1516.1784462292983,
+      "timestamp_end": 1546.2113526192336,
+      "timestamp_formatted": "25:16 - 25:46",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "Donald Trump stands at the doorway of Air Force One, waving to a crowd as he prepares for departure or arrives at a destination. This scene captures the formal pageantry of presidential travel and the public engagement central to his political persona. The moment underscores the visibility and ceremony associated with his role as a leader on the national stage.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1516.1784462292983,
+          "timestamp_end": 1546.2113526192336,
+          "frame_description": "Donald Trump waves to a crowd while standing at the doorway of Air Force One.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 71,
+      "timestamp_start": 1546.2113526192336,
+      "timestamp_end": 1570.644338616817,
+      "timestamp_formatted": "25:46 - 26:10",
+      "duration": 24.4329859975835,
+      "segment_count": 1,
+      "cluster_summary": "A political infographic displays a \"WANTED\" poster of Nicolás Maduro over a map of Venezuela, illustrating the country's strategic ties with allies like Russia, Cuba, Iran, and China. The presentation highlights the geopolitical tension surrounding Maduro's regime by framing his leadership as criminal while showcasing the global powers that support him. This visual underscores the high-stakes international conflict and political isolation facing the Venezuelan government.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1546.2113526192336,
+          "timestamp_end": 1570.644338616817,
+          "frame_description": "A political infographic displays a \"WANTED\" poster of Nicolás Maduro over a map of Venezuela, illustrating its geopolitical relationships with countries like Russia, Cuba, Iran, and China.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 72,
+      "timestamp_start": 1570.644338616817,
+      "timestamp_end": 1585.5441268036107,
+      "timestamp_formatted": "26:10 - 26:25",
+      "duration": 14.899788186793558,
+      "segment_count": 1,
+      "cluster_summary": "A tall flare stack at an industrial refinery releases a continuous plume of fire, burning off excess gas against a backdrop of numerous smokestacks and a heavy, overcast sky. This moment captures the scale and intensity of industrial operations, emphasizing the constant, rhythmic output of the manufacturing sector. The stark contrast between the flickering flame and the somber environment evokes a sense of industrial weight and environmental gravity.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1570.644338616817,
+          "timestamp_end": 1585.5441268036107,
+          "frame_description": "A tall flare stack at an industrial refinery burns off excess gas against a backdrop of numerous smokestacks and an overcast sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "timestamp_start": 1585.5441268036107,
+      "timestamp_end": 1593.8773416731822,
+      "timestamp_formatted": "26:25 - 26:33",
+      "duration": 8.33321486957152,
+      "segment_count": 2,
+      "cluster_summary": "A dark-haired woman leads a political demonstration in an urban setting, addressing a crowd of protesters through a megaphone while they hold various signs. This moment captures the energy of civic activism and the role of leadership in grassroots movements. It emphasizes the collective determination of the group as they gather publicly to voice their message.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1585.5441268036107,
+          "timestamp_end": 1587.2774354964815,
+          "frame_description": "A woman speaks into a megaphone during a political protest in an outdoor urban setting surrounded by people holding signs.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1587.2774354964815,
+          "timestamp_end": 1593.8773416731822,
+          "frame_description": "A woman with dark hair speaks into a megaphone while standing among a crowd of protesters holding various political signs in an outdoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 74,
+      "timestamp_start": 1593.8773416731822,
+      "timestamp_end": 1604.7438538631031,
+      "timestamp_formatted": "26:33 - 26:44",
+      "duration": 10.866512189920968,
+      "segment_count": 1,
+      "cluster_summary": "A yellow Chevron Texaco pipeline sign stands in an outdoor industrial area, framed against a backdrop of tall chimneys. This establishing shot highlights the scale of corporate infrastructure, setting a tone of industrial activity and energy production. The visual focus on the facility's signage emphasizes the presence of major utility operations within the landscape.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1593.8773416731822,
+          "timestamp_end": 1604.7438538631031,
+          "frame_description": "A yellow industrial sign for a Chevron Texaco pipeline stands in an outdoor area with tall chimneys in the background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 75,
+      "timestamp_start": 1604.7438538631031,
+      "timestamp_end": 1657.4431046982727,
+      "timestamp_formatted": "26:44 - 27:37",
+      "duration": 52.69925083516955,
+      "segment_count": 2,
+      "cluster_summary": "A group of passengers dressed in uniform grey sweatsuits disembarks from a Venezuelan aircraft labeled \"PLAN VUELTA A LA PATRIA\" at night, met by numerous security personnel on the airport tarmac. This moment represents an official government repatriation process, highlighting the controlled and organized nature of their return to the country. The scene captures the somber significance of these individuals completing a journey back to their homeland under official supervision.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1604.7438538631031,
+          "timestamp_end": 1627.4101983083374,
+          "frame_description": "A group of passengers dressed in grey sweatsuits disembarks from a Venezuelan aircraft onto an airport tarmac at night, where they are met by numerous security personnel.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1627.4101983083374,
+          "timestamp_end": 1657.4431046982727,
+          "frame_description": "A group of passengers descends the stairs of a white airplane labeled \"PLAN VUELTA A LA PATRIA\" onto an airport tarmac at night.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 76,
+      "timestamp_start": 1657.4431046982727,
+      "timestamp_end": 1687.476011088208,
+      "timestamp_formatted": "27:37 - 28:07",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "Donald Trump addresses an audience from a podium positioned in front of a blue backdrop titled \"PURSUING PEACE.\" A spectator records the speech on a smartphone, highlighting the public engagement and the specific diplomatic messaging of the political event. This moment captures a focused narrative on peace and leadership within the context of his public address.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1657.4431046982727,
+          "timestamp_end": 1687.476011088208,
+          "frame_description": "Donald Trump speaks at a podium against a blue backdrop that reads \"PURSUING PEACE\" while an audience member records him on a smartphone.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 77,
+      "timestamp_start": 1687.476011088208,
+      "timestamp_end": 1705.2424251901343,
+      "timestamp_formatted": "28:07 - 28:25",
+      "duration": 17.76641410192633,
+      "segment_count": 2,
+      "cluster_summary": "A digital graphic illustrates a strategic U.S. military deployment surrounding Venezuela, featuring a \"wanted\" poster for President Nicolas Maduro to signify escalating international pressure. In the following scene, Maduro is shown preparing to address the situation from his formal office, framed by significant national and historical symbols. This sequence captures a moment of intense geopolitical confrontation and the defiant stance of the Venezuelan leadership against U.S. military and legal threats.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1687.476011088208,
+          "timestamp_end": 1695.4758973629966,
+          "frame_description": "A digital graphic illustrates a strategic U.S. military deployment of naval vessels and marine units in the Caribbean Sea surrounding Venezuela, which is marked with a \"wanted\" poster for its president, Nicolas Maduro.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1695.4758973629966,
+          "timestamp_end": 1705.2424251901343,
+          "frame_description": "Nicolas Maduro stands behind a desk in a formal wood-paneled office, leaning over to arrange items near a microphone while positioned between the Venezuelan flag and a large historical portrait.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 78,
+      "timestamp_start": 1705.2424251901343,
+      "timestamp_end": 1708.8423740137891,
+      "timestamp_formatted": "28:25 - 28:28",
+      "duration": 3.599948823654813,
+      "segment_count": 1,
+      "cluster_summary": "A man wearing a \"CONTRA BANDAS\" baseball cap and a green shirt speaks into a microphone while standing before a large pile of rubble and debris. This moment appears to be a news report or formal statement documenting the aftermath of significant destruction or an ongoing cleanup effort. The scene conveys a sense of urgency and gravity, focusing on the human response to the surrounding devastation.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1705.2424251901343,
+          "timestamp_end": 1708.8423740137891,
+          "frame_description": "A man wearing a \"CONTRA BANDAS\" baseball cap and a green shirt speaks into a microphone in front of a large pile of rubble and debris.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 79,
+      "timestamp_start": 1708.8423740137891,
+      "timestamp_end": 1714.4089615466628,
+      "timestamp_formatted": "28:28 - 28:34",
+      "duration": 5.566587532873655,
+      "segment_count": 3,
+      "cluster_summary": "Uniformed officials wearing protective blue gloves handle large, bright green rectangular packages while on the deck of a boat at sea. This moment captures a maritime law enforcement operation, likely a seizure of illicit cargo or a high-stakes inspection. The scene conveys a sense of professional urgency and the significant scale of efforts to combat smuggling on the open water.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1708.8423740137891,
+          "timestamp_end": 1710.0756898144857,
+          "frame_description": "A uniformed individual wearing blue gloves holds two large, bright green rectangular packages while on a boat at sea.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1710.0756898144857,
+          "timestamp_end": 1712.4756556969223,
+          "frame_description": "A uniformed official wearing blue gloves handles a bright green package while on a boat at sea.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1712.4756556969223,
+          "timestamp_end": 1714.4089615466628,
+          "frame_description": "A uniformed individual wearing blue gloves works on the deck of a boat at sea.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 80,
+      "timestamp_start": 1714.4089615466628,
+      "timestamp_end": 1744.441867936598,
+      "timestamp_formatted": "28:34 - 29:04",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A bag of white crystalline chunks is discovered hidden among ordinary sacks of produce, suggesting a clandestine smuggling operation. The juxtaposition of potential contraband with everyday groceries underscores a moment of high-stakes criminal activity and narrative tension. This visual evidence indicates that illegal substances are being transported under the guise of legitimate commerce.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1714.4089615466628,
+          "timestamp_end": 1744.441867936598,
+          "frame_description": "A clear plastic bag filled with white crystalline chunks is shown sitting among other bags of produce.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 81,
+      "timestamp_start": 1744.441867936598,
+      "timestamp_end": 1750.5751140806026,
+      "timestamp_formatted": "29:04 - 29:10",
+      "duration": 6.133246144004488,
+      "segment_count": 1,
+      "cluster_summary": "Two large industrial oil pumpjacks are shown in operation against a peaceful backdrop of rolling green fields and a blue sky. This scene captures the constant, mechanical rhythm of energy extraction as it persists within a serene natural landscape. The moment highlights the stark contrast and coexistence between heavy industrial machinery and the pastoral beauty of the environment.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1744.441867936598,
+          "timestamp_end": 1750.5751140806026,
+          "frame_description": "Two large industrial oil pumpjacks are shown in operation against a backdrop of rolling green fields and a blue sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 82,
+      "timestamp_start": 1750.5751140806026,
+      "timestamp_end": 1762.308280616959,
+      "timestamp_formatted": "29:10 - 29:22",
+      "duration": 11.73316653635652,
+      "segment_count": 1,
+      "cluster_summary": "Venezuelan President Nicolás Maduro and Russian President Vladimir Putin participate in a formal virtual meeting, appearing together via split-screen in front of their respective national flags. This high-level exchange underscores the diplomatic ties and strategic partnership between the two nations. The formal setting highlights the official nature of their communication and their continued geopolitical cooperation.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1750.5751140806026,
+          "timestamp_end": 1762.308280616959,
+          "frame_description": "Venezuelan President Nicolás Maduro and Russian President Vladimir Putin appear on a split-screen during a virtual meeting, both seated in formal attire with their national flags in the background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 83,
+      "timestamp_start": 1762.308280616959,
+      "timestamp_end": 1772.574801336271,
+      "timestamp_formatted": "29:22 - 29:32",
+      "duration": 10.266520719311984,
+      "segment_count": 1,
+      "cluster_summary": "Venezuelan President Nicolás Maduro and Russian Foreign Minister Sergey Lavrov share a formal handshake while standing between the national flags of their respective countries. This meeting underscores the strong diplomatic ties and strategic partnership between Venezuela and Russia. The moment serves as a significant display of bilateral cooperation and mutual support on the international stage.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1762.308280616959,
+          "timestamp_end": 1772.574801336271,
+          "frame_description": "Venezuelan President Nicolás Maduro and Russian Foreign Minister Sergey Lavrov shake hands in a formal setting between the flags of their respective nations.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 84,
+      "timestamp_start": 1772.574801336271,
+      "timestamp_end": 1815.6408557822162,
+      "timestamp_formatted": "29:32 - 30:15",
+      "duration": 43.066054445945156,
+      "segment_count": 10,
+      "cluster_summary": "A large group of soldiers in camouflage and red berets march through a city street with Arabic signage, carrying yellow flags and raising their fists in a defiant display of force. A leader wearing a bright yellow sash rallies the surrounding crowd with fervent shouts, underscoring the organized and high-stakes nature of the demonstration. The scene conveys a powerful sense of collective resolve and ideological unity during a significant moment of public mobilization.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1772.574801336271,
+          "timestamp_end": 1775.0414329376642,
+          "frame_description": "A group of uniformed individuals marches down a city street while carrying a large white banner with green graphics.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1775.0414329376642,
+          "timestamp_end": 1776.641410192622,
+          "frame_description": "A large group of men in military camouflage and maroon berets march down an urban street with their fists raised, carrying yellow flags past buildings with Arabic signage.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1776.641410192622,
+          "timestamp_end": 1778.741380339754,
+          "frame_description": "A group of men in camouflage uniforms and red berets march down a wet city street while raising their fists and carrying yellow flags.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1778.741380339754,
+          "timestamp_end": 1779.808031843059,
+          "frame_description": "A large group of soldiers in camouflage uniforms and red berets march down a city street with Arabic signage, raising their fists and carrying yellow flags.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1779.808031843059,
+          "timestamp_end": 1780.9746819247991,
+          "frame_description": "A man in a camouflage jacket and a yellow sash raises his fist and shouts while standing among a crowd of people on a street.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1780.9746819247991,
+          "timestamp_end": 1782.008000568626,
+          "frame_description": "A man in a camouflage uniform and a yellow sash raises his arm in a fist while surrounded by a crowd in an outdoor street setting.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1782.008000568626,
+          "timestamp_end": 1783.174650650366,
+          "frame_description": "A man in a camouflage jacket and a yellow sash raises his fist and shouts while standing in a crowded street with stone buildings in the background.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1783.174650650366,
+          "timestamp_end": 1784.574630748454,
+          "frame_description": "A man in camouflage military clothing and a yellow sash raises his arm while standing with a group of people on a city street.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1784.574630748454,
+          "timestamp_end": 1785.6079493922807,
+          "frame_description": "A man in a camouflage uniform and a yellow sash raises his fist amidst a crowd of people on a city street.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1785.6079493922807,
+          "timestamp_end": 1815.6408557822162,
+          "frame_description": "A man in a camouflage uniform and a bright yellow sash raises his fist in the air amidst a crowd of people in a street setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 85,
+      "timestamp_start": 1815.6408557822162,
+      "timestamp_end": 1843.640457743976,
+      "timestamp_formatted": "30:15 - 30:43",
+      "duration": 27.99960196175971,
+      "segment_count": 1,
+      "cluster_summary": "This sequence presents a map visualizing the hypothetical operational reach of a Shahed-136 drone when launched from Venezuela. By illustrating how the drone could strike strategic locations like the Panama Canal and Puerto Rico, the moment highlights a potential geopolitical threat to regional stability and Western interests.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1815.6408557822162,
+          "timestamp_end": 1843.640457743976,
+          "frame_description": "A map illustrates the hypothetical operational range of a Shahed-136 drone launched from Venezuela, encompassing strategic locations like the Panama Canal and Puerto Rico.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 86,
+      "timestamp_start": 1843.640457743976,
+      "timestamp_end": 1859.4402331366834,
+      "timestamp_formatted": "30:43 - 30:59",
+      "duration": 15.799775392707488,
+      "segment_count": 3,
+      "cluster_summary": "A group of soldiers in full camouflage gear assembles on a grassy field near a building during the transitional light of dawn or dusk. The scene depicts a mix of readiness and fatigue as some soldiers stand watch while others rest on the ground, suggesting a moment of pause during a tactical operation. This sequence conveys the quiet tension and weary vigilance experienced by personnel in the field between mission phases.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1843.640457743976,
+          "timestamp_end": 1848.9403824010235,
+          "frame_description": "Four soldiers in full camouflage gear stand together on a grassy field next to a building at twilight.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1848.9403824010235,
+          "timestamp_end": 1850.740356812851,
+          "frame_description": "Several figures in military-style tactical gear are positioned on a grassy lawn next to a large building, with some standing in a group while others sit or lie on the ground.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1850.740356812851,
+          "timestamp_end": 1859.4402331366834,
+          "frame_description": "A soldier in camouflage gear stands outdoors, looking toward a distant building and road during the dim light of dawn or dusk.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 87,
+      "timestamp_start": 1859.4402331366834,
+      "timestamp_end": 1867.2734551140804,
+      "timestamp_formatted": "30:59 - 31:07",
+      "duration": 7.833221977396988,
+      "segment_count": 1,
+      "cluster_summary": "In a crowded outdoor setting, a man wearing a red and black baseball cap and a green jacket smiles warmly while looking at someone or something off-camera. This moment captures a sense of genuine enjoyment and engagement, suggesting he is partaking in a positive social experience or public event. His lighthearted expression conveys a brief but meaningful connection to the lively atmosphere surrounding him.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1859.4402331366834,
+          "timestamp_end": 1867.2734551140804,
+          "frame_description": "A man wearing a red and black baseball cap and a green jacket smiles while looking off-camera in a crowded outdoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 88,
+      "timestamp_start": 1867.2734551140804,
+      "timestamp_end": 1870.9067367972136,
+      "timestamp_formatted": "31:07 - 31:10",
+      "duration": 3.633281683133191,
+      "segment_count": 1,
+      "cluster_summary": "Several people are seen walking and riding bicycles through a paved area in front of a Panama border crossing building. This moment captures the routine flow of movement at an international boundary, highlighting the themes of travel and migration. It serves to establish the geographical setting and the continuous transition of individuals across borders.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1867.2734551140804,
+          "timestamp_end": 1870.9067367972136,
+          "frame_description": "In front of a Panama border crossing building, several people are seen riding bicycles and walking through a paved area.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 89,
+      "timestamp_start": 1870.9067367972136,
+      "timestamp_end": 1872.9067083659108,
+      "timestamp_formatted": "31:10 - 31:12",
+      "duration": 1.9999715686972195,
+      "segment_count": 1,
+      "cluster_summary": "Pedestrians, motorcyclists, and cyclists navigate through a bustling outdoor street market filled with various vendor stalls. This lively scene highlights the dense movement and diverse modes of transportation typical of a local commercial hub. The moment captures the vibrant, everyday energy and communal rhythm of life in a busy urban marketplace.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1870.9067367972136,
+          "timestamp_end": 1872.9067083659108,
+          "frame_description": "Pedestrians and people on motorbikes and bicycles move through a busy outdoor street market lined with stalls.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 90,
+      "timestamp_start": 1872.9067083659108,
+      "timestamp_end": 1876.1399957353044,
+      "timestamp_formatted": "31:12 - 31:16",
+      "duration": 3.2332873693935653,
+      "segment_count": 1,
+      "cluster_summary": "A man and a young person carry their belongings while walking past a stone wall and vibrant greenery, suggesting they are arriving at or departing from a destination. This brief moment captures a transitional phase in their journey, emphasizing a shared sense of purpose and movement through a peaceful outdoor setting.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1872.9067083659108,
+          "timestamp_end": 1876.1399957353044,
+          "frame_description": "A man and a young person carrying bags are walking outdoors past lush greenery and a stone wall.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 91,
+      "timestamp_start": 1876.1399957353044,
+      "timestamp_end": 1894.0064084156656,
+      "timestamp_formatted": "31:16 - 31:34",
+      "duration": 17.866412680361236,
+      "segment_count": 1,
+      "cluster_summary": "A cameraman records a man standing outside a building while holding a rifle, capturing a focused moment of preparation or documentation. This scene highlights the professional filming process involving an armed subject, suggesting a sense of narrative tension or newsgathering. The presence of the weapon in an everyday outdoor setting emphasizes the gravity of the scene being staged or recorded.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1876.1399957353044,
+          "timestamp_end": 1894.0064084156656,
+          "frame_description": "A cameraman films a man holding a rifle while standing outside a building.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 92,
+      "timestamp_start": 1894.0064084156656,
+      "timestamp_end": 1924.039314805601,
+      "timestamp_formatted": "31:34 - 32:04",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A protester stands on a highway amidst a large group of demonstrators, prominently holding up a Venezuelan flag to signal their cause. This moment captures a scene of public dissent and civic activism, illustrating the intensity and collective resolve of those gathered. The use of the national flag underscores the patriotic nature of the protest and the narrative of political struggle being portrayed.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1894.0064084156656,
+          "timestamp_end": 1924.039314805601,
+          "frame_description": "A person prominently holds up a Venezuelan flag while standing on a highway amidst a group of protesters.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 93,
+      "timestamp_start": 1924.039314805601,
+      "timestamp_end": 1938.3057786623071,
+      "timestamp_formatted": "32:04 - 32:18",
+      "duration": 14.266463856706196,
+      "segment_count": 3,
+      "cluster_summary": "A community gathers among the extensive wreckage of heavily damaged and collapsed multi-story buildings in a sunlit residential area. Surrounded by piles of concrete debris and palm trees, the large groups of people stand as witnesses to the catastrophic destruction of their urban environment. The moment captures the somber aftermath of a devastating event, highlighting the scale of displacement and structural loss.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1924.039314805601,
+          "timestamp_end": 1926.3392821096027,
+          "frame_description": "A crowd of people stands among the extensive rubble and debris of heavily damaged and collapsed buildings in a residential area.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1926.3392821096027,
+          "timestamp_end": 1931.2058795934322,
+          "frame_description": "A multi-story concrete building stands partially destroyed, surrounded by piles of rubble and debris in an outdoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 1931.2058795934322,
+          "timestamp_end": 1938.3057786623071,
+          "frame_description": "A large group of men gathers and stands among piles of rubble and destroyed buildings in a sunny urban setting with palm trees.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 94,
+      "timestamp_start": 1938.3057786623071,
+      "timestamp_end": 1968.3386850522425,
+      "timestamp_formatted": "32:18 - 32:48",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "Maria Corina Machado and Edmundo González Urrutia stand with their hands joined and raised high in a powerful show of unity before a massive, cheering crowd at an outdoor rally. This moment captures a critical display of political alliance and public support as the surrounding crowd documents the event on their mobile devices. The scene reflects the momentum and shared purpose of their movement during a significant narrative peak in their campaign.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1938.3057786623071,
+          "timestamp_end": 1968.3386850522425,
+          "frame_description": "Maria Corina Machado and Edmundo González Urrutia stand with their hands joined and raised high while surrounded by a large crowd taking photos and videos during an outdoor rally.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 95,
+      "timestamp_start": 1968.3386850522425,
+      "timestamp_end": 1998.3715914421778,
+      "timestamp_formatted": "32:48 - 33:18",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A digital map illustrates the strategic deployment of U.S. naval and marine forces surrounding Venezuela, which is highlighted alongside a \"WANTED\" poster for Nicolás Maduro. This sequence signals a high-stakes escalation of international pressure and military posturing directed at the Venezuelan leader. The visual representation conveys a sense of imminent confrontation and the gravity of the U.S. government's stance against Maduro.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1968.3386850522425,
+          "timestamp_end": 1998.3715914421778,
+          "frame_description": "A digital map illustrates the strategic deployment of various U.S. naval and marine forces surrounding Venezuela, which is highlighted in red and marked with a \"WANTED\" poster for Nicolás Maduro.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 96,
+      "timestamp_start": 1998.3715914421778,
+      "timestamp_end": 2004.471504726704,
+      "timestamp_formatted": "33:18 - 33:24",
+      "duration": 6.0999132845263375,
+      "segment_count": 1,
+      "cluster_summary": "Donald Trump stands in a blue suit before a large, packed crowd of uniformed military service members. This moment captures a formal interaction between the leader and the armed forces, emphasizing a sense of unity and authority. The scene signifies a high-profile address or appearance intended to show support for and command over the military.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 1998.3715914421778,
+          "timestamp_end": 2004.471504726704,
+          "frame_description": "Donald Trump stands in a blue suit before a large, packed crowd of uniformed military service members.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 97,
+      "timestamp_start": 2004.471504726704,
+      "timestamp_end": 2034.5044111166394,
+      "timestamp_formatted": "33:24 - 33:54",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "Two men navigate the vast field of rubble and skeletal buildings that now define a once-populated, war-torn city. This somber trek highlights the overwhelming scale of destruction and the grim reality of life in the aftermath of total conflict. Their journey through the ruins serves as a poignant visual testament to the desolation and loss experienced within a broken landscape.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2004.471504726704,
+          "timestamp_end": 2034.5044111166394,
+          "frame_description": "Two men walk through the extensive rubble of a war-torn city surrounded by heavily damaged buildings.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 98,
+      "timestamp_start": 2034.5044111166394,
+      "timestamp_end": 2051.1375079963036,
+      "timestamp_formatted": "33:54 - 34:11",
+      "duration": 16.63309687966421,
+      "segment_count": 1,
+      "cluster_summary": "A large plume of dark smoke billows into the sky following an explosion in a rural area characterized by palm trees and scattered buildings. This moment highlights the sudden intrusion of violence or catastrophe into a residential landscape, signifying significant destruction and potential loss. The visual weight of the rising smoke underscores the severity of the event and its immediate impact on the surrounding environment.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2034.5044111166394,
+          "timestamp_end": 2051.1375079963036,
+          "frame_description": "A large plume of dark smoke billows into the sky from an explosion in a rural area with scattered buildings and palm trees.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 99,
+      "timestamp_start": 2051.1375079963036,
+      "timestamp_end": 2054.737456819959,
+      "timestamp_formatted": "34:11 - 34:14",
+      "duration": 3.599948823655268,
+      "segment_count": 1,
+      "cluster_summary": "A group of soldiers in green uniforms and helmets stand in formation with their rifles around an armored vehicle in a vast, hilly field. This moment highlights the tactical coordination between the ground troops and their equipment as they prepare for a potential mission or training exercise. The scene conveys a strong sense of military readiness and discipline within a quiet, rural landscape.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2051.1375079963036,
+          "timestamp_end": 2054.737456819959,
+          "frame_description": "A group of soldiers in green uniforms and helmets stand in formation with their rifles on and around a green armored vehicle in a grassy, hilly field.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "timestamp_start": 2054.737456819959,
+      "timestamp_end": 2084.770363209894,
+      "timestamp_formatted": "34:14 - 34:44",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A large grey naval ship navigates through a harbor channel, passing a red and white striped lighthouse situated on a rocky breakwater. This scene depicts a critical transitional moment as the vessel either embarks on a mission or returns safely to port under the watchful guidance of the maritime landmark. The sight of the massive ship against the coastal backdrop evokes a sense of solemn duty and the strategic precision of naval movement.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2054.737456819959,
+          "timestamp_end": 2084.770363209894,
+          "frame_description": "A large grey naval ship navigates through a harbor channel, passing a red and white striped lighthouse situated on a rocky breakwater.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "timestamp_start": 2084.770363209894,
+      "timestamp_end": 2114.8032695998295,
+      "timestamp_formatted": "34:44 - 35:14",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "Four fighter jets navigate a clear blue sky in a disciplined, staggered formation, demonstrating remarkable aerial coordination and precision. This display of military power conveys a sense of readiness and strength, suggesting a mission or routine patrol in progress across the vast expanse.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2084.770363209894,
+          "timestamp_end": 2114.8032695998295,
+          "frame_description": "Four fighter jets fly in a staggered formation across a clear blue sky.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "timestamp_start": 2114.8032695998295,
+      "timestamp_end": 2144.836175989765,
+      "timestamp_formatted": "35:14 - 35:44",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "An infographic map illustrates the strategic deployment of United States naval and aerial forces surrounding Venezuela, punctuated by a \"WANTED\" poster for President Nicolás Maduro. This visual highlights a period of intense geopolitical confrontation and military posturing by the U.S. government intended to pressure the Venezuelan leadership. The imagery underscores the high-stakes nature of the conflict, framing Maduro as a target in an escalating international standoff.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2114.8032695998295,
+          "timestamp_end": 2144.836175989765,
+          "frame_description": "An infographic map of the Caribbean illustrates the strategic deployment of United States naval and aerial forces surrounding Venezuela, alongside a \"WANTED\" poster for President Nicolás Maduro.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "timestamp_start": 2144.836175989765,
+      "timestamp_end": 2159.2693041438624,
+      "timestamp_formatted": "35:44 - 35:59",
+      "duration": 14.43312815409763,
+      "segment_count": 1,
+      "cluster_summary": "The sequence showcases a large Iranian government building adorned with national flags and portraits of religious leaders, situated behind a landscaped plaza. This visual establishes the political and cultural setting, emphasizing the influence of religious authority and state power in the region. The scene serves as a foundational establishing shot that grounds the narrative in its specific geographic and ideological context.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2144.836175989765,
+          "timestamp_end": 2159.2693041438624,
+          "frame_description": "A large, beige government building featuring Iranian flags on its roof and portraits of religious leaders on its facade stands behind a landscaped plaza and a roadway.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "timestamp_start": 2159.2693041438624,
+      "timestamp_end": 2189.3022105337977,
+      "timestamp_formatted": "35:59 - 36:29",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "Venezuelan President Nicolás Maduro, dressed in a signature red shirt, greets an enthusiastic crowd of military personnel and civilians during a large outdoor event filled with Venezuelan flags. The scene illustrates a public display of national unity and support, emphasizing Maduro's connection to both the armed forces and the public. This moment serves to reinforce the leader's authority and project an image of political strength and stability.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2159.2693041438624,
+          "timestamp_end": 2189.3022105337977,
+          "frame_description": "Venezuelan President Nicolás Maduro, wearing a red shirt, greets a crowd of military personnel and civilians during an outdoor event surrounded by Venezuelan flags.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "timestamp_start": 2189.3022105337977,
+      "timestamp_end": 2203.468675812069,
+      "timestamp_formatted": "36:29 - 36:43",
+      "duration": 14.166465278271062,
+      "segment_count": 2,
+      "cluster_summary": "Nicolás Maduro delivers a formal presentation in Caracas before an audience of military officers and civilians, using a chart to detail regional drug trafficking routes. Standing before a Republic of Venezuela backdrop, he uses the platform to highlight his administration's active role in national security and counter-narcotics operations. The moment underscores the government’s efforts to project state authority and public focus on addressing regional law enforcement challenges.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2189.3022105337977,
+          "timestamp_end": 2191.902173573104,
+          "frame_description": "A man in a suit stands before a backdrop for the Republic of Venezuela while being observed and recorded by a crowd of military officers and civilians.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 2191.902173573104,
+          "timestamp_end": 2203.468675812069,
+          "frame_description": "Nicolás Maduro points a pen toward a chart detailing regional drug trafficking routes during a formal presentation in Caracas.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "timestamp_start": 2203.468675812069,
+      "timestamp_end": 2213.2352036392067,
+      "timestamp_formatted": "36:43 - 36:53",
+      "duration": 9.766527827137907,
+      "segment_count": 1,
+      "cluster_summary": "A man in a tan blazer and a decorated military official stand in attentive silence during a formal indoor ceremony. This moment conveys a sense of solemnity and mutual respect, highlighting a high-level event such as a military commendation or an official state gathering.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2203.468675812069,
+          "timestamp_end": 2213.2352036392067,
+          "frame_description": "A man in a tan blazer and a decorated military official stand attentively during a formal ceremony in an indoor setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "timestamp_start": 2213.2352036392067,
+      "timestamp_end": 2230.5016248489587,
+      "timestamp_formatted": "36:53 - 37:10",
+      "duration": 17.266421209752025,
+      "segment_count": 1,
+      "cluster_summary": "A highly decorated military officer in a green uniform sits in an ornate, formal setting while delivering a serious address or statement. The prestigious environment and the officer's extensive decorations emphasize his significant authority and the official nature of the communication. This moment carries a sense of gravity and institutional importance, suggesting a key development in the narrative’s political or military landscape.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2213.2352036392067,
+          "timestamp_end": 2230.5016248489587,
+          "frame_description": "A highly decorated military officer in a green uniform is sitting and speaking in a formal, ornate setting.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "timestamp_start": 2230.5016248489587,
+      "timestamp_end": 2231.5682763522636,
+      "timestamp_formatted": "37:10 - 37:11",
+      "duration": 1.0666515033049109,
+      "segment_count": 1,
+      "cluster_summary": "A sequence of overlapping news website windows featuring Donald Trump recedes into a dark, infinite background in a cascading perspective. This visual representation highlights the overwhelming volume and persistence of media coverage surrounding the political figure. The receding windows suggest a sense of media saturation, illustrating how constant news cycles can create an inescapable and infinite digital landscape.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2230.5016248489587,
+          "timestamp_end": 2231.5682763522636,
+          "frame_description": "A series of overlapping news website windows, featuring an image of Donald Trump in the foreground, recede into a dark, infinite background in a cascading perspective.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "timestamp_start": 2231.5682763522636,
+      "timestamp_end": 2241.634799914706,
+      "timestamp_formatted": "37:11 - 37:21",
+      "duration": 10.066523562442399,
+      "segment_count": 2,
+      "cluster_summary": "A series of blue and red digital panels featuring stylized halftone images recedes into a symmetrical perspective, creating an immersive tunnel of data. These screens cascade across a dark void to represent a high-speed flow of information or a transition into a virtual environment. This abstract sequence visually captures the complexity and depth of a digital landscape or a technological process.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2231.5682763522636,
+          "timestamp_end": 2232.6015949960906,
+          "frame_description": "In a dark digital setting, rows of vertical panels featuring stylized blue and red halftone images recede into the distance, forming a symmetrical tunnel of perspective.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 2232.6015949960906,
+          "timestamp_end": 2241.634799914706,
+          "frame_description": "A series of blue-toned digital screens showcasing various images cascades across a dark background alongside a blurred red graphic.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "timestamp_start": 2241.634799914706,
+      "timestamp_end": 2247.0347231501883,
+      "timestamp_formatted": "37:21 - 37:27",
+      "duration": 5.39992323548222,
+      "segment_count": 1,
+      "cluster_summary": "A mouse cursor navigates a news aggregator to select the \"Right\" political bias filter, specifically showcasing headlines about State Farm's exit from the California home insurance market. This action highlights the categorization of significant economic news through an ideological lens, illustrating how audiences seek out specific partisan interpretations of corporate and state-level crises.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2241.634799914706,
+          "timestamp_end": 2247.0347231501883,
+          "frame_description": "A mouse cursor selects the \"Right\" political bias filter on a news aggregation website that displays headlines about State Farm's decision to stop home insurance applications in California.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "timestamp_start": 2247.0347231501883,
+      "timestamp_end": 2255.2346065818465,
+      "timestamp_formatted": "37:27 - 37:35",
+      "duration": 8.199883431658236,
+      "segment_count": 1,
+      "cluster_summary": "A smartphone screen displays a variety of colorful application icons against a minimalist dark background, showcasing a clean and modern digital interface. This moment highlights the central role of mobile technology as a primary tool for connectivity, organization, and information in contemporary life. The vibrant icons against the dark void emphasize the constant presence and accessibility of the digital world within the narrative.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2247.0347231501883,
+          "timestamp_end": 2255.2346065818465,
+          "frame_description": "A smartphone displays several colorful application icons on its screen against a plain dark background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 112,
+      "timestamp_start": 2255.2346065818465,
+      "timestamp_end": 2258.434561091762,
+      "timestamp_formatted": "37:35 - 37:38",
+      "duration": 3.199954509915642,
+      "segment_count": 1,
+      "cluster_summary": "A desktop monitor displays a news report on Ground News about State Farm's decision to stop offering home insurance in California. The segment emphasizes the importance of media transparency by highlighting the platform's bias analysis and source information regarding this significant economic shift.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2255.2346065818465,
+          "timestamp_end": 2258.434561091762,
+          "frame_description": "A desktop computer monitor displays a news article on the Ground News website about State Farm's decision to stop offering home insurance in California, featuring media bias analysis and source information against a plain dark background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "timestamp_start": 2258.434561091762,
+      "timestamp_end": 2261.934511336982,
+      "timestamp_formatted": "37:38 - 37:41",
+      "duration": 3.4999502452196793,
+      "segment_count": 1,
+      "cluster_summary": "A computer monitor displays a blurred digital interface with colorful icons and text set against a dark background. This brief focus on the screen highlights a technological or data-driven context within the scene. The obscured imagery suggests a sense of mystery or emphasizes the complexity of the information being accessed.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2258.434561091762,
+          "timestamp_end": 2261.934511336982,
+          "frame_description": "A computer monitor displays a blurred digital interface with text and various colorful icons against a dark background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 114,
+      "timestamp_start": 2261.934511336982,
+      "timestamp_end": 2273.367682138034,
+      "timestamp_formatted": "37:41 - 37:53",
+      "duration": 11.433170801052256,
+      "segment_count": 1,
+      "cluster_summary": "A digital dashboard presents an analytical \"Ownership\" sunburst chart that visualizes the breakdown of news source categories alongside related articles. This interface serves as a data-driven tool for examining media influence and the concentration of control within the journalism industry. It emphasizes a narrative of transparency, allowing viewers to see the underlying structures behind the information they consume.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2261.934511336982,
+          "timestamp_end": 2273.367682138034,
+          "frame_description": "A digital dashboard displays a colorful sunburst chart titled \"Ownership\" that illustrates the breakdown of news source categories next to related news articles.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 115,
+      "timestamp_start": 2273.367682138034,
+      "timestamp_end": 2303.4005885279694,
+      "timestamp_formatted": "37:53 - 38:23",
+      "duration": 30.032906389935306,
+      "segment_count": 1,
+      "cluster_summary": "A digital interface presents a comparative analysis of news reports regarding Venezuela's accusations that the United States seized a fishing boat in the Caribbean. The segment highlights the diplomatic friction between the two nations by showcasing how different media outlets frame the international incident. This analysis underscores the complexity of information delivery and geopolitical narratives during high-stakes cross-border disputes.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2273.367682138034,
+          "timestamp_end": 2303.4005885279694,
+          "frame_description": "The image displays a digital interface comparing news reports from different sources regarding Venezuela's accusations against the United States for seizing a fishing boat in the Caribbean.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 116,
+      "timestamp_start": 2303.4005885279694,
+      "timestamp_end": 2322.9336441822447,
+      "timestamp_formatted": "38:23 - 38:42",
+      "duration": 19.53305565427536,
+      "segment_count": 5,
+      "cluster_summary": "The sequence showcases the Ground News digital interface across various devices, demonstrating its ability to aggregate headlines and analyze the political bias of news coverage through detailed charts. By highlighting major stories like the Supreme Court ruling on Roe v. Wade alongside bias distribution infographics, the visuals emphasize the platform's role in promoting media literacy. This narrative focuses on empowering users to navigate polarized information and understand diverse perspectives during significant social events.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2303.4005885279694,
+          "timestamp_end": 2306.8672059137107,
+          "frame_description": "The image displays a digital interface of a news aggregator website, showcasing several news headlines accompanied by images and bar charts that analyze the political bias of the coverage for each story.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 2306.8672059137107,
+          "timestamp_end": 2314.1004364204987,
+          "frame_description": "A modern smartphone, angled against a dark gray background, displays a news application featuring a grid of diverse topic tiles such as world leaders and global events.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 2314.1004364204987,
+          "timestamp_end": 2319.267029639633,
+          "frame_description": "A silver laptop displays a news webpage about a Supreme Court draft ruling on Roe v. Wade, featuring a photograph of protesters and a media bias distribution chart, set against a dark background.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 2319.267029639633,
+          "timestamp_end": 2321.6336626625916,
+          "frame_description": "The video frame displays a split-screen view featuring a woman in a red top at a protest with signs on the left and an infographic analyzing media bias distribution on the right.",
+          "transcript": null,
+          "combined_summary": null
+        },
+        {
+          "timestamp_start": 2321.6336626625916,
+          "timestamp_end": 2322.9336441822447,
+          "frame_description": "A digital interface from Ground News displays a political bias distribution chart next to a photograph of people holding signs at an outdoor protest.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    },
+    {
+      "id": 117,
+      "timestamp_start": 2322.9336441822447,
+      "timestamp_end": 2344.7999999999997,
+      "timestamp_formatted": "38:42 - 39:04",
+      "duration": 21.866355817754993,
+      "segment_count": 1,
+      "cluster_summary": "The segment features the black Ground News logo displayed prominently against a light, subtly patterned background for the duration of the clip. This visual acts as a branding element, establishing the identity of the news platform and providing a professional frame for the content. Its minimalist presentation serves as a clear marker for the start or end of a news-related story moment.",
+      "people": [],
+      "locations": [],
+      "combined_transcript": "",
+      "segments": [
+        {
+          "timestamp_start": 2322.9336441822447,
+          "timestamp_end": 2344.7999999999997,
+          "frame_description": "The black \"Ground News\" logo is displayed on a light, subtly patterned background.",
+          "transcript": null,
+          "combined_summary": null
+        }
+      ]
+    }
+  ]
+}

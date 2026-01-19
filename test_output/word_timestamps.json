@@ -1,0 +1,8970 @@
+{
+  "word_count": 1494,
+  "duration": 605.1,
+  "words": [
+    {
+      "word": "Venezuela.",
+      "start": 0.0,
+      "end": 0.5,
+      "probability": 0.88
+    },
+    {
+      "word": "It's",
+      "start": 1.18,
+      "end": 1.34,
+      "probability": 0.962
+    },
+    {
+      "word": "a",
+      "start": 1.34,
+      "end": 1.36,
+      "probability": 0.971
+    },
+    {
+      "word": "land",
+      "start": 1.36,
+      "end": 1.54,
+      "probability": 0.998
+    },
+    {
+      "word": "of",
+      "start": 1.54,
+      "end": 1.68,
+      "probability": 0.999
+    },
+    {
+      "word": "stunning",
+      "start": 1.68,
+      "end": 1.94,
+      "probability": 0.996
+    },
+    {
+      "word": "beauty,",
+      "start": 1.94,
+      "end": 2.34,
+      "probability": 0.999
+    },
+    {
+      "word": "home",
+      "start": 2.64,
+      "end": 2.74,
+      "probability": 0.969
+    },
+    {
+      "word": "to",
+      "start": 2.74,
+      "end": 2.86,
+      "probability": 0.872
+    },
+    {
+      "word": "cascading",
+      "start": 2.86,
+      "end": 3.32,
+      "probability": 0.989
+    },
+    {
+      "word": "waterfalls,",
+      "start": 3.32,
+      "end": 4.02,
+      "probability": 0.984
+    },
+    {
+      "word": "vibrant",
+      "start": 4.48,
+      "end": 4.82,
+      "probability": 0.998
+    },
+    {
+      "word": "rainforests,",
+      "start": 4.82,
+      "end": 5.7,
+      "probability": 0.886
+    },
+    {
+      "word": "and",
+      "start": 5.9,
+      "end": 5.98,
+      "probability": 0.998
+    },
+    {
+      "word": "sun",
+      "start": 5.98,
+      "end": 6.3,
+      "probability": 0.681
+    },
+    {
+      "word": "-drenched",
+      "start": 6.3,
+      "end": 6.6,
+      "probability": 0.886
+    },
+    {
+      "word": "coastlines.",
+      "start": 6.6,
+      "end": 7.2,
+      "probability": 0.962
+    },
+    {
+      "word": "But",
+      "start": 7.72,
+      "end": 7.8,
+      "probability": 0.99
+    },
+    {
+      "word": "these",
+      "start": 7.8,
+      "end": 8.0,
+      "probability": 0.982
+    },
+    {
+      "word": "idyllic",
+      "start": 8.0,
+      "end": 8.5,
+      "probability": 0.991
+    },
+    {
+      "word": "images",
+      "start": 8.5,
+      "end": 8.8,
+      "probability": 0.995
+    },
+    {
+      "word": "are",
+      "start": 8.8,
+      "end": 9.42,
+      "probability": 0.986
+    },
+    {
+      "word": "often",
+      "start": 9.42,
+      "end": 9.76,
+      "probability": 0.998
+    },
+    {
+      "word": "met",
+      "start": 9.76,
+      "end": 9.96,
+      "probability": 0.999
+    },
+    {
+      "word": "with",
+      "start": 9.96,
+      "end": 10.12,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 10.12,
+      "end": 10.2,
+      "probability": 0.997
+    },
+    {
+      "word": "much",
+      "start": 10.2,
+      "end": 10.56,
+      "probability": 0.997
+    },
+    {
+      "word": "harsher",
+      "start": 10.56,
+      "end": 10.98,
+      "probability": 0.951
+    },
+    {
+      "word": "reality.",
+      "start": 10.98,
+      "end": 11.46,
+      "probability": 0.999
+    },
+    {
+      "word": "Today,",
+      "start": 12.16,
+      "end": 12.34,
+      "probability": 0.984
+    },
+    {
+      "word": "we",
+      "start": 12.56,
+      "end": 12.62,
+      "probability": 0.998
+    },
+    {
+      "word": "see",
+      "start": 12.62,
+      "end": 12.84,
+      "probability": 0.999
+    },
+    {
+      "word": "widespread",
+      "start": 12.84,
+      "end": 13.28,
+      "probability": 0.996
+    },
+    {
+      "word": "poverty,",
+      "start": 13.28,
+      "end": 13.92,
+      "probability": 0.997
+    },
+    {
+      "word": "political",
+      "start": 14.28,
+      "end": 14.58,
+      "probability": 0.999
+    },
+    {
+      "word": "unrest,",
+      "start": 14.58,
+      "end": 14.9,
+      "probability": 0.999
+    },
+    {
+      "word": "and",
+      "start": 15.4,
+      "end": 15.56,
+      "probability": 0.981
+    },
+    {
+      "word": "a",
+      "start": 15.56,
+      "end": 15.66,
+      "probability": 0.992
+    },
+    {
+      "word": "nation",
+      "start": 15.66,
+      "end": 15.92,
+      "probability": 0.996
+    },
+    {
+      "word": "that",
+      "start": 15.92,
+      "end": 16.1,
+      "probability": 0.994
+    },
+    {
+      "word": "seems",
+      "start": 16.1,
+      "end": 16.3,
+      "probability": 0.998
+    },
+    {
+      "word": "to",
+      "start": 16.3,
+      "end": 16.52,
+      "probability": 0.999
+    },
+    {
+      "word": "be",
+      "start": 16.52,
+      "end": 16.64,
+      "probability": 0.993
+    },
+    {
+      "word": "perpetually",
+      "start": 16.64,
+      "end": 17.5,
+      "probability": 0.992
+    },
+    {
+      "word": "on",
+      "start": 17.5,
+      "end": 17.74,
+      "probability": 0.995
+    },
+    {
+      "word": "the",
+      "start": 17.74,
+      "end": 17.86,
+      "probability": 0.996
+    },
+    {
+      "word": "brink.",
+      "start": 17.86,
+      "end": 18.2,
+      "probability": 0.995
+    },
+    {
+      "word": "Take",
+      "start": 18.68,
+      "end": 18.8,
+      "probability": 0.977
+    },
+    {
+      "word": "the",
+      "start": 18.8,
+      "end": 18.94,
+      "probability": 0.998
+    },
+    {
+      "word": "words",
+      "start": 18.94,
+      "end": 19.08,
+      "probability": 0.984
+    },
+    {
+      "word": "of",
+      "start": 19.08,
+      "end": 19.28,
+      "probability": 0.996
+    },
+    {
+      "word": "Maria",
+      "start": 19.28,
+      "end": 19.5,
+      "probability": 0.969
+    },
+    {
+      "word": "Rodriguez,",
+      "start": 19.5,
+      "end": 19.92,
+      "probability": 0.965
+    },
+    {
+      "word": "a",
+      "start": 20.42,
+      "end": 20.5,
+      "probability": 0.969
+    },
+    {
+      "word": "resident",
+      "start": 20.5,
+      "end": 20.82,
+      "probability": 0.997
+    },
+    {
+      "word": "of",
+      "start": 20.82,
+      "end": 21.06,
+      "probability": 0.998
+    },
+    {
+      "word": "Caracas.",
+      "start": 21.06,
+      "end": 21.44,
+      "probability": 0.82
+    },
+    {
+      "word": "She",
+      "start": 21.84,
+      "end": 21.98,
+      "probability": 0.989
+    },
+    {
+      "word": "says,",
+      "start": 21.98,
+      "end": 22.24,
+      "probability": 0.992
+    },
+    {
+      "word": "we",
+      "start": 22.8,
+      "end": 23.0,
+      "probability": 0.07
+    },
+    {
+      "word": "are",
+      "start": 23.0,
+      "end": 23.1,
+      "probability": 0.972
+    },
+    {
+      "word": "tired.",
+      "start": 23.1,
+      "end": 23.54,
+      "probability": 0.991
+    },
+    {
+      "word": "Tired",
+      "start": 29.78,
+      "end": 29.98,
+      "probability": 0.983
+    },
+    {
+      "word": "of",
+      "start": 29.98,
+      "end": 29.98,
+      "probability": 0.997
+    },
+    {
+      "word": "here's",
+      "start": 29.98,
+      "end": 30.4,
+      "probability": 0.444
+    },
+    {
+      "word": "the",
+      "start": 30.4,
+      "end": 30.5,
+      "probability": 0.974
+    },
+    {
+      "word": "key",
+      "start": 30.5,
+      "end": 30.68,
+      "probability": 0.987
+    },
+    {
+      "word": "insight.",
+      "start": 30.68,
+      "end": 31.18,
+      "probability": 0.983
+    },
+    {
+      "word": "This",
+      "start": 31.62,
+      "end": 31.74,
+      "probability": 0.9
+    },
+    {
+      "word": "is",
+      "start": 31.74,
+      "end": 31.86,
+      "probability": 0.958
+    },
+    {
+      "word": "all",
+      "start": 31.86,
+      "end": 32.06,
+      "probability": 0.993
+    },
+    {
+      "word": "happening",
+      "start": 32.06,
+      "end": 32.42,
+      "probability": 0.996
+    },
+    {
+      "word": "in",
+      "start": 32.42,
+      "end": 32.58,
+      "probability": 0.985
+    },
+    {
+      "word": "a",
+      "start": 32.58,
+      "end": 32.66,
+      "probability": 0.994
+    },
+    {
+      "word": "country",
+      "start": 32.66,
+      "end": 32.92,
+      "probability": 0.992
+    },
+    {
+      "word": "sitting",
+      "start": 32.92,
+      "end": 33.3,
+      "probability": 0.972
+    },
+    {
+      "word": "on",
+      "start": 33.3,
+      "end": 33.48,
+      "probability": 0.996
+    },
+    {
+      "word": "one",
+      "start": 33.48,
+      "end": 33.66,
+      "probability": 0.976
+    },
+    {
+      "word": "of",
+      "start": 33.66,
+      "end": 33.76,
+      "probability": 0.989
+    },
+    {
+      "word": "the",
+      "start": 33.76,
+      "end": 33.86,
+      "probability": 0.988
+    },
+    {
+      "word": "world's",
+      "start": 33.86,
+      "end": 34.36,
+      "probability": 0.983
+    },
+    {
+      "word": "largest",
+      "start": 34.36,
+      "end": 34.8,
+      "probability": 0.996
+    },
+    {
+      "word": "oil",
+      "start": 34.8,
+      "end": 35.14,
+      "probability": 0.994
+    },
+    {
+      "word": "reserves.",
+      "start": 35.14,
+      "end": 35.8,
+      "probability": 0.996
+    },
+    {
+      "word": "In",
+      "start": 36.24,
+      "end": 36.78,
+      "probability": 0.941
+    },
+    {
+      "word": "theory,",
+      "start": 36.78,
+      "end": 37.26,
+      "probability": 0.997
+    },
+    {
+      "word": "that",
+      "start": 37.76,
+      "end": 37.92,
+      "probability": 0.981
+    },
+    {
+      "word": "resource",
+      "start": 37.92,
+      "end": 38.4,
+      "probability": 0.99
+    },
+    {
+      "word": "should",
+      "start": 38.4,
+      "end": 38.72,
+      "probability": 0.997
+    },
+    {
+      "word": "guarantee",
+      "start": 38.72,
+      "end": 39.2,
+      "probability": 0.997
+    },
+    {
+      "word": "prosperity",
+      "start": 39.2,
+      "end": 39.94,
+      "probability": 0.994
+    },
+    {
+      "word": "for",
+      "start": 39.94,
+      "end": 40.52,
+      "probability": 0.992
+    },
+    {
+      "word": "everyone.",
+      "start": 40.52,
+      "end": 41.18,
+      "probability": 0.988
+    },
+    {
+      "word": "So,",
+      "start": 41.64,
+      "end": 41.86,
+      "probability": 0.927
+    },
+    {
+      "word": "how",
+      "start": 42.28,
+      "end": 42.56,
+      "probability": 0.992
+    },
+    {
+      "word": "did",
+      "start": 42.56,
+      "end": 42.68,
+      "probability": 0.993
+    },
+    {
+      "word": "this",
+      "start": 42.68,
+      "end": 42.84,
+      "probability": 0.995
+    },
+    {
+      "word": "happen?",
+      "start": 42.84,
+      "end": 43.2,
+      "probability": 0.994
+    },
+    {
+      "word": "How",
+      "start": 43.64,
+      "end": 43.82,
+      "probability": 0.994
+    },
+    {
+      "word": "did",
+      "start": 43.82,
+      "end": 43.98,
+      "probability": 0.997
+    },
+    {
+      "word": "a",
+      "start": 43.98,
+      "end": 44.08,
+      "probability": 0.996
+    },
+    {
+      "word": "nation",
+      "start": 44.08,
+      "end": 44.42,
+      "probability": 0.997
+    },
+    {
+      "word": "so",
+      "start": 44.42,
+      "end": 44.8,
+      "probability": 0.995
+    },
+    {
+      "word": "rich",
+      "start": 44.8,
+      "end": 45.14,
+      "probability": 0.998
+    },
+    {
+      "word": "become",
+      "start": 45.14,
+      "end": 45.52,
+      "probability": 0.971
+    },
+    {
+      "word": "so",
+      "start": 45.52,
+      "end": 45.94,
+      "probability": 0.998
+    },
+    {
+      "word": "fractured?",
+      "start": 45.94,
+      "end": 46.66,
+      "probability": 0.997
+    },
+    {
+      "word": "That's",
+      "start": 46.98,
+      "end": 47.26,
+      "probability": 0.992
+    },
+    {
+      "word": "exactly",
+      "start": 47.26,
+      "end": 47.66,
+      "probability": 0.997
+    },
+    {
+      "word": "what",
+      "start": 47.66,
+      "end": 47.94,
+      "probability": 0.998
+    },
+    {
+      "word": "we're",
+      "start": 47.94,
+      "end": 48.16,
+      "probability": 0.987
+    },
+    {
+      "word": "going",
+      "start": 48.16,
+      "end": 48.28,
+      "probability": 0.629
+    },
+    {
+      "word": "to",
+      "start": 48.28,
+      "end": 48.36,
+      "probability": 0.997
+    },
+    {
+      "word": "explore",
+      "start": 48.36,
+      "end": 48.68,
+      "probability": 0.997
+    },
+    {
+      "word": "together.",
+      "start": 48.68,
+      "end": 49.12,
+      "probability": 0.998
+    },
+    {
+      "word": "To",
+      "start": 49.9,
+      "end": 50.06,
+      "probability": 0.965
+    },
+    {
+      "word": "understand",
+      "start": 50.06,
+      "end": 50.56,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 50.56,
+      "end": 50.78,
+      "probability": 0.998
+    },
+    {
+      "word": "complexities",
+      "start": 50.78,
+      "end": 51.46,
+      "probability": 0.996
+    },
+    {
+      "word": "of",
+      "start": 51.46,
+      "end": 51.82,
+      "probability": 0.999
+    },
+    {
+      "word": "modern",
+      "start": 51.82,
+      "end": 52.1,
+      "probability": 0.994
+    },
+    {
+      "word": "Venezuela,",
+      "start": 52.1,
+      "end": 52.6,
+      "probability": 0.909
+    },
+    {
+      "word": "we",
+      "start": 53.12,
+      "end": 53.24,
+      "probability": 0.996
+    },
+    {
+      "word": "first",
+      "start": 53.24,
+      "end": 53.62,
+      "probability": 0.991
+    },
+    {
+      "word": "need",
+      "start": 53.62,
+      "end": 53.88,
+      "probability": 0.999
+    },
+    {
+      "word": "to",
+      "start": 53.88,
+      "end": 54.04,
+      "probability": 0.998
+    },
+    {
+      "word": "look",
+      "start": 54.04,
+      "end": 54.28,
+      "probability": 0.999
+    },
+    {
+      "word": "at",
+      "start": 54.28,
+      "end": 54.7,
+      "probability": 0.995
+    },
+    {
+      "word": "its",
+      "start": 54.7,
+      "end": 54.92,
+      "probability": 0.948
+    },
+    {
+      "word": "history.",
+      "start": 54.92,
+      "end": 55.46,
+      "probability": 1.0
+    },
+    {
+      "word": "Long",
+      "start": 55.46,
+      "end": 56.24,
+      "probability": 0.593
+    },
+    {
+      "word": "before",
+      "start": 56.24,
+      "end": 56.58,
+      "probability": 0.984
+    },
+    {
+      "word": "Europeans",
+      "start": 56.58,
+      "end": 57.06,
+      "probability": 0.985
+    },
+    {
+      "word": "arrived,",
+      "start": 57.06,
+      "end": 57.52,
+      "probability": 0.995
+    },
+    {
+      "word": "this",
+      "start": 58.04,
+      "end": 58.2,
+      "probability": 0.991
+    },
+    {
+      "word": "land",
+      "start": 58.2,
+      "end": 58.46,
+      "probability": 0.994
+    },
+    {
+      "word": "was",
+      "start": 58.46,
+      "end": 58.64,
+      "probability": 0.995
+    },
+    {
+      "word": "home",
+      "start": 58.64,
+      "end": 58.94,
+      "probability": 0.947
+    },
+    {
+      "word": "to",
+      "start": 58.94,
+      "end": 59.1,
+      "probability": 0.995
+    },
+    {
+      "word": "many",
+      "start": 59.1,
+      "end": 59.46,
+      "probability": 0.993
+    },
+    {
+      "word": "diverse",
+      "start": 59.46,
+      "end": 59.9,
+      "probability": 0.981
+    },
+    {
+      "word": "indigenous",
+      "start": 59.9,
+      "end": 60.5,
+      "probability": 0.718
+    },
+    {
+      "word": "groups.",
+      "start": 60.5,
+      "end": 61.06,
+      "probability": 0.997
+    },
+    {
+      "word": "In",
+      "start": 61.42,
+      "end": 61.62,
+      "probability": 0.992
+    },
+    {
+      "word": "the",
+      "start": 61.62,
+      "end": 61.74,
+      "probability": 0.985
+    },
+    {
+      "word": "west,",
+      "start": 61.74,
+      "end": 62.1,
+      "probability": 0.493
+    },
+    {
+      "word": "you",
+      "start": 62.4,
+      "end": 62.6,
+      "probability": 0.989
+    },
+    {
+      "word": "had",
+      "start": 62.6,
+      "end": 62.76,
+      "probability": 0.969
+    },
+    {
+      "word": "the",
+      "start": 62.76,
+      "end": 62.94,
+      "probability": 0.977
+    },
+    {
+      "word": "Aeroac",
+      "start": 62.94,
+      "end": 63.36,
+      "probability": 0.604
+    },
+    {
+      "word": "people,",
+      "start": 63.36,
+      "end": 63.78,
+      "probability": 0.968
+    },
+    {
+      "word": "while",
+      "start": 64.12,
+      "end": 64.34,
+      "probability": 0.993
+    },
+    {
+      "word": "the",
+      "start": 64.34,
+      "end": 64.54,
+      "probability": 0.996
+    },
+    {
+      "word": "Corrib",
+      "start": 64.54,
+      "end": 64.96,
+      "probability": 0.549
+    },
+    {
+      "word": "groups",
+      "start": 64.96,
+      "end": 65.36,
+      "probability": 0.925
+    },
+    {
+      "word": "dominated",
+      "start": 65.36,
+      "end": 65.9,
+      "probability": 0.996
+    },
+    {
+      "word": "the",
+      "start": 65.9,
+      "end": 66.2,
+      "probability": 0.996
+    },
+    {
+      "word": "east.",
+      "start": 66.2,
+      "end": 66.62,
+      "probability": 0.717
+    },
+    {
+      "word": "These",
+      "start": 67.24,
+      "end": 67.4,
+      "probability": 0.963
+    },
+    {
+      "word": "societies",
+      "start": 67.4,
+      "end": 67.88,
+      "probability": 0.984
+    },
+    {
+      "word": "had",
+      "start": 67.88,
+      "end": 68.08,
+      "probability": 0.978
+    },
+    {
+      "word": "their",
+      "start": 68.08,
+      "end": 68.26,
+      "probability": 0.998
+    },
+    {
+      "word": "own",
+      "start": 68.26,
+      "end": 68.52,
+      "probability": 0.999
+    },
+    {
+      "word": "unique",
+      "start": 68.52,
+      "end": 68.92,
+      "probability": 0.994
+    },
+    {
+      "word": "languages",
+      "start": 68.92,
+      "end": 69.36,
+      "probability": 0.993
+    },
+    {
+      "word": "and",
+      "start": 69.36,
+      "end": 69.58,
+      "probability": 0.993
+    },
+    {
+      "word": "customs,",
+      "start": 69.58,
+      "end": 69.96,
+      "probability": 0.998
+    },
+    {
+      "word": "and",
+      "start": 70.4,
+      "end": 70.48,
+      "probability": 0.996
+    },
+    {
+      "word": "they",
+      "start": 70.48,
+      "end": 70.58,
+      "probability": 0.989
+    },
+    {
+      "word": "shaped",
+      "start": 70.58,
+      "end": 70.9,
+      "probability": 0.942
+    },
+    {
+      "word": "the",
+      "start": 70.9,
+      "end": 71.08,
+      "probability": 0.993
+    },
+    {
+      "word": "landscape",
+      "start": 71.08,
+      "end": 71.52,
+      "probability": 0.993
+    },
+    {
+      "word": "for",
+      "start": 71.52,
+      "end": 71.8,
+      "probability": 0.996
+    },
+    {
+      "word": "centuries",
+      "start": 71.8,
+      "end": 72.26,
+      "probability": 0.997
+    },
+    {
+      "word": "before",
+      "start": 72.26,
+      "end": 72.66,
+      "probability": 0.939
+    },
+    {
+      "word": "the",
+      "start": 72.66,
+      "end": 72.84,
+      "probability": 0.989
+    },
+    {
+      "word": "first",
+      "start": 72.84,
+      "end": 73.14,
+      "probability": 0.973
+    },
+    {
+      "word": "explorers",
+      "start": 73.14,
+      "end": 73.78,
+      "probability": 0.978
+    },
+    {
+      "word": "ever",
+      "start": 73.78,
+      "end": 74.12,
+      "probability": 0.987
+    },
+    {
+      "word": "set",
+      "start": 74.12,
+      "end": 74.36,
+      "probability": 0.978
+    },
+    {
+      "word": "foot",
+      "start": 74.36,
+      "end": 74.66,
+      "probability": 0.999
+    },
+    {
+      "word": "here.",
+      "start": 74.66,
+      "end": 74.94,
+      "probability": 0.99
+    },
+    {
+      "word": "Everything",
+      "start": 75.5,
+      "end": 75.82,
+      "probability": 0.993
+    },
+    {
+      "word": "changed",
+      "start": 75.82,
+      "end": 76.48,
+      "probability": 0.996
+    },
+    {
+      "word": "when",
+      "start": 76.48,
+      "end": 76.62,
+      "probability": 0.991
+    },
+    {
+      "word": "Spanish",
+      "start": 76.62,
+      "end": 77.0,
+      "probability": 0.988
+    },
+    {
+      "word": "colonizers",
+      "start": 77.0,
+      "end": 77.64,
+      "probability": 0.985
+    },
+    {
+      "word": "arrived.",
+      "start": 77.64,
+      "end": 78.16,
+      "probability": 0.997
+    },
+    {
+      "word": "After",
+      "start": 78.76,
+      "end": 79.04,
+      "probability": 0.993
+    },
+    {
+      "word": "centuries",
+      "start": 79.04,
+      "end": 79.54,
+      "probability": 0.999
+    },
+    {
+      "word": "of",
+      "start": 79.54,
+      "end": 79.78,
+      "probability": 0.561
+    },
+    {
+      "word": "colonial",
+      "start": 79.78,
+      "end": 80.28,
+      "probability": 0.821
+    },
+    {
+      "word": "rule,",
+      "start": 80.28,
+      "end": 80.64,
+      "probability": 0.997
+    },
+    {
+      "word": "a",
+      "start": 81.02,
+      "end": 81.12,
+      "probability": 0.99
+    },
+    {
+      "word": "fire",
+      "start": 81.12,
+      "end": 81.52,
+      "probability": 0.992
+    },
+    {
+      "word": "for",
+      "start": 81.52,
+      "end": 81.76,
+      "probability": 0.997
+    },
+    {
+      "word": "independence",
+      "start": 81.76,
+      "end": 82.26,
+      "probability": 0.897
+    },
+    {
+      "word": "began",
+      "start": 82.26,
+      "end": 82.64,
+      "probability": 0.997
+    },
+    {
+      "word": "to",
+      "start": 82.64,
+      "end": 82.78,
+      "probability": 0.998
+    },
+    {
+      "word": "spread",
+      "start": 82.78,
+      "end": 83.08,
+      "probability": 0.998
+    },
+    {
+      "word": "across",
+      "start": 83.08,
+      "end": 83.44,
+      "probability": 0.995
+    },
+    {
+      "word": "South",
+      "start": 83.44,
+      "end": 83.88,
+      "probability": 0.981
+    },
+    {
+      "word": "America.",
+      "start": 83.88,
+      "end": 84.22,
+      "probability": 0.999
+    },
+    {
+      "word": "Venezuela",
+      "start": 85.0,
+      "end": 85.34,
+      "probability": 0.987
+    },
+    {
+      "word": "became",
+      "start": 85.34,
+      "end": 85.9,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 85.9,
+      "end": 86.1,
+      "probability": 0.995
+    },
+    {
+      "word": "central",
+      "start": 86.1,
+      "end": 86.54,
+      "probability": 0.943
+    },
+    {
+      "word": "player",
+      "start": 86.54,
+      "end": 86.94,
+      "probability": 0.991
+    },
+    {
+      "word": "in",
+      "start": 86.94,
+      "end": 87.12,
+      "probability": 0.987
+    },
+    {
+      "word": "this",
+      "start": 87.12,
+      "end": 87.28,
+      "probability": 0.995
+    },
+    {
+      "word": "fight,",
+      "start": 87.28,
+      "end": 87.6,
+      "probability": 0.995
+    },
+    {
+      "word": "led",
+      "start": 87.96,
+      "end": 88.1,
+      "probability": 0.983
+    },
+    {
+      "word": "by",
+      "start": 88.1,
+      "end": 88.28,
+      "probability": 0.999
+    },
+    {
+      "word": "the",
+      "start": 88.28,
+      "end": 88.44,
+      "probability": 0.985
+    },
+    {
+      "word": "legendary",
+      "start": 88.44,
+      "end": 89.12,
+      "probability": 0.979
+    },
+    {
+      "word": "Simone",
+      "start": 89.12,
+      "end": 89.66,
+      "probability": 0.224
+    },
+    {
+      "word": "Bolivar.",
+      "start": 89.66,
+      "end": 90.42,
+      "probability": 0.936
+    },
+    {
+      "word": "Following",
+      "start": 91.02,
+      "end": 91.28,
+      "probability": 0.995
+    },
+    {
+      "word": "years",
+      "start": 91.28,
+      "end": 91.74,
+      "probability": 0.996
+    },
+    {
+      "word": "of",
+      "start": 91.74,
+      "end": 92.04,
+      "probability": 0.999
+    },
+    {
+      "word": "intense",
+      "start": 92.04,
+      "end": 92.38,
+      "probability": 0.999
+    },
+    {
+      "word": "struggle,",
+      "start": 92.38,
+      "end": 92.92,
+      "probability": 0.997
+    },
+    {
+      "word": "the",
+      "start": 93.34,
+      "end": 93.42,
+      "probability": 0.993
+    },
+    {
+      "word": "country",
+      "start": 93.42,
+      "end": 93.74,
+      "probability": 0.998
+    },
+    {
+      "word": "finally",
+      "start": 93.74,
+      "end": 94.26,
+      "probability": 0.993
+    },
+    {
+      "word": "declared",
+      "start": 94.26,
+      "end": 94.6,
+      "probability": 0.998
+    },
+    {
+      "word": "its",
+      "start": 94.6,
+      "end": 94.84,
+      "probability": 0.954
+    },
+    {
+      "word": "independence",
+      "start": 94.84,
+      "end": 95.32,
+      "probability": 0.993
+    },
+    {
+      "word": "from",
+      "start": 95.32,
+      "end": 95.58,
+      "probability": 0.989
+    },
+    {
+      "word": "Spain",
+      "start": 95.58,
+      "end": 95.96,
+      "probability": 0.998
+    },
+    {
+      "word": "in",
+      "start": 95.96,
+      "end": 96.2,
+      "probability": 0.993
+    },
+    {
+      "word": "1821.",
+      "start": 96.2,
+      "end": 97.3,
+      "probability": 0.989
+    },
+    {
+      "word": "This",
+      "start": 97.96,
+      "end": 98.14,
+      "probability": 0.991
+    },
+    {
+      "word": "victory",
+      "start": 98.14,
+      "end": 98.5,
+      "probability": 0.992
+    },
+    {
+      "word": "turned",
+      "start": 98.5,
+      "end": 98.84,
+      "probability": 0.978
+    },
+    {
+      "word": "Bolivar",
+      "start": 98.84,
+      "end": 99.42,
+      "probability": 0.992
+    },
+    {
+      "word": "into",
+      "start": 99.42,
+      "end": 99.7,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 99.7,
+      "end": 99.92,
+      "probability": 0.995
+    },
+    {
+      "word": "national",
+      "start": 99.92,
+      "end": 100.42,
+      "probability": 0.923
+    },
+    {
+      "word": "hero.",
+      "start": 100.42,
+      "end": 100.92,
+      "probability": 0.997
+    },
+    {
+      "word": "A",
+      "start": 101.38,
+      "end": 101.5,
+      "probability": 0.992
+    },
+    {
+      "word": "title",
+      "start": 101.5,
+      "end": 101.76,
+      "probability": 0.993
+    },
+    {
+      "word": "he",
+      "start": 101.76,
+      "end": 102.0,
+      "probability": 0.98
+    },
+    {
+      "word": "still",
+      "start": 102.0,
+      "end": 102.28,
+      "probability": 0.986
+    },
+    {
+      "word": "holds",
+      "start": 102.28,
+      "end": 102.72,
+      "probability": 0.998
+    },
+    {
+      "word": "today.",
+      "start": 102.72,
+      "end": 103.16,
+      "probability": 0.994
+    },
+    {
+      "word": "But",
+      "start": 103.56,
+      "end": 103.76,
+      "probability": 0.993
+    },
+    {
+      "word": "while",
+      "start": 103.76,
+      "end": 104.0,
+      "probability": 0.904
+    },
+    {
+      "word": "independence",
+      "start": 104.0,
+      "end": 104.58,
+      "probability": 0.833
+    },
+    {
+      "word": "promised",
+      "start": 104.58,
+      "end": 105.0,
+      "probability": 0.982
+    },
+    {
+      "word": "a",
+      "start": 105.0,
+      "end": 105.18,
+      "probability": 0.937
+    },
+    {
+      "word": "fresh",
+      "start": 105.18,
+      "end": 105.38,
+      "probability": 0.996
+    },
+    {
+      "word": "start,",
+      "start": 105.38,
+      "end": 105.86,
+      "probability": 0.999
+    },
+    {
+      "word": "economic",
+      "start": 106.24,
+      "end": 106.54,
+      "probability": 0.999
+    },
+    {
+      "word": "realities",
+      "start": 106.54,
+      "end": 107.22,
+      "probability": 0.994
+    },
+    {
+      "word": "were",
+      "start": 107.22,
+      "end": 107.46,
+      "probability": 0.996
+    },
+    {
+      "word": "about",
+      "start": 107.46,
+      "end": 107.68,
+      "probability": 0.997
+    },
+    {
+      "word": "to",
+      "start": 107.68,
+      "end": 107.88,
+      "probability": 0.998
+    },
+    {
+      "word": "reshape",
+      "start": 107.88,
+      "end": 108.38,
+      "probability": 0.979
+    },
+    {
+      "word": "the",
+      "start": 108.38,
+      "end": 108.58,
+      "probability": 0.997
+    },
+    {
+      "word": "nation",
+      "start": 108.58,
+      "end": 108.88,
+      "probability": 0.972
+    },
+    {
+      "word": "once",
+      "start": 108.88,
+      "end": 109.2,
+      "probability": 0.237
+    },
+    {
+      "word": "again.",
+      "start": 109.2,
+      "end": 109.56,
+      "probability": 0.989
+    },
+    {
+      "word": "In",
+      "start": 110.06,
+      "end": 110.24,
+      "probability": 0.949
+    },
+    {
+      "word": "the",
+      "start": 110.24,
+      "end": 110.34,
+      "probability": 0.991
+    },
+    {
+      "word": "early",
+      "start": 110.34,
+      "end": 110.56,
+      "probability": 0.982
+    },
+    {
+      "word": "20th",
+      "start": 110.56,
+      "end": 111.02,
+      "probability": 0.971
+    },
+    {
+      "word": "century,",
+      "start": 111.02,
+      "end": 111.42,
+      "probability": 0.967
+    },
+    {
+      "word": "Venezuela's",
+      "start": 111.88,
+      "end": 112.5,
+      "probability": 0.944
+    },
+    {
+      "word": "story",
+      "start": 112.5,
+      "end": 112.74,
+      "probability": 0.994
+    },
+    {
+      "word": "took",
+      "start": 112.74,
+      "end": 112.94,
+      "probability": 0.994
+    },
+    {
+      "word": "a",
+      "start": 112.94,
+      "end": 113.1,
+      "probability": 0.992
+    },
+    {
+      "word": "massive",
+      "start": 113.1,
+      "end": 113.46,
+      "probability": 0.993
+    },
+    {
+      "word": "turn.",
+      "start": 113.46,
+      "end": 113.94,
+      "probability": 0.994
+    },
+    {
+      "word": "The",
+      "start": 114.2,
+      "end": 114.6,
+      "probability": 0.975
+    },
+    {
+      "word": "discovery",
+      "start": 114.6,
+      "end": 115.08,
+      "probability": 0.987
+    },
+    {
+      "word": "of",
+      "start": 115.08,
+      "end": 115.32,
+      "probability": 0.998
+    },
+    {
+      "word": "huge",
+      "start": 115.32,
+      "end": 115.74,
+      "probability": 0.984
+    },
+    {
+      "word": "oil",
+      "start": 115.74,
+      "end": 116.1,
+      "probability": 0.953
+    },
+    {
+      "word": "reserves",
+      "start": 116.1,
+      "end": 116.8,
+      "probability": 0.999
+    },
+    {
+      "word": "transformed",
+      "start": 116.8,
+      "end": 117.7,
+      "probability": 0.984
+    },
+    {
+      "word": "the",
+      "start": 117.7,
+      "end": 118.04,
+      "probability": 0.993
+    },
+    {
+      "word": "country.",
+      "start": 118.04,
+      "end": 118.46,
+      "probability": 0.994
+    },
+    {
+      "word": "It",
+      "start": 119.04,
+      "end": 119.16,
+      "probability": 0.988
+    },
+    {
+      "word": "went",
+      "start": 119.16,
+      "end": 119.32,
+      "probability": 0.996
+    },
+    {
+      "word": "from",
+      "start": 119.32,
+      "end": 119.52,
+      "probability": 0.996
+    },
+    {
+      "word": "a",
+      "start": 119.52,
+      "end": 119.64,
+      "probability": 0.995
+    },
+    {
+      "word": "quiet",
+      "start": 119.64,
+      "end": 120.02,
+      "probability": 0.981
+    },
+    {
+      "word": "farming",
+      "start": 120.02,
+      "end": 120.38,
+      "probability": 0.969
+    },
+    {
+      "word": "society",
+      "start": 120.38,
+      "end": 120.88,
+      "probability": 0.993
+    },
+    {
+      "word": "to",
+      "start": 120.88,
+      "end": 121.16,
+      "probability": 0.996
+    },
+    {
+      "word": "a",
+      "start": 121.16,
+      "end": 121.26,
+      "probability": 0.998
+    },
+    {
+      "word": "nation",
+      "start": 121.26,
+      "end": 121.6,
+      "probability": 0.977
+    },
+    {
+      "word": "heavily",
+      "start": 121.6,
+      "end": 122.26,
+      "probability": 0.983
+    },
+    {
+      "word": "dependent",
+      "start": 122.26,
+      "end": 122.82,
+      "probability": 0.97
+    },
+    {
+      "word": "on",
+      "start": 122.82,
+      "end": 123.1,
+      "probability": 0.996
+    },
+    {
+      "word": "petroleum",
+      "start": 123.1,
+      "end": 123.66,
+      "probability": 0.997
+    },
+    {
+      "word": "exports.",
+      "start": 123.66,
+      "end": 124.34,
+      "probability": 0.991
+    },
+    {
+      "word": "Now,",
+      "start": 125.14,
+      "end": 125.32,
+      "probability": 0.859
+    },
+    {
+      "word": "here's",
+      "start": 125.64,
+      "end": 126.16,
+      "probability": 0.981
+    },
+    {
+      "word": "the",
+      "start": 126.16,
+      "end": 126.24,
+      "probability": 0.99
+    },
+    {
+      "word": "key",
+      "start": 126.24,
+      "end": 126.42,
+      "probability": 0.997
+    },
+    {
+      "word": "insight.",
+      "start": 126.42,
+      "end": 126.84,
+      "probability": 0.982
+    },
+    {
+      "word": "While",
+      "start": 127.46,
+      "end": 127.6,
+      "probability": 0.984
+    },
+    {
+      "word": "this",
+      "start": 127.6,
+      "end": 127.76,
+      "probability": 0.896
+    },
+    {
+      "word": "shift",
+      "start": 127.76,
+      "end": 128.12,
+      "probability": 0.992
+    },
+    {
+      "word": "brought",
+      "start": 128.12,
+      "end": 128.52,
+      "probability": 0.999
+    },
+    {
+      "word": "wealth",
+      "start": 128.52,
+      "end": 128.88,
+      "probability": 0.997
+    },
+    {
+      "word": "at",
+      "start": 128.88,
+      "end": 129.04,
+      "probability": 0.989
+    },
+    {
+      "word": "first,",
+      "start": 129.04,
+      "end": 129.42,
+      "probability": 0.998
+    },
+    {
+      "word": "it",
+      "start": 129.98,
+      "end": 130.08,
+      "probability": 0.994
+    },
+    {
+      "word": "also",
+      "start": 130.08,
+      "end": 130.3,
+      "probability": 0.98
+    },
+    {
+      "word": "created",
+      "start": 130.3,
+      "end": 130.72,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 130.72,
+      "end": 130.94,
+      "probability": 0.992
+    },
+    {
+      "word": "deep",
+      "start": 130.94,
+      "end": 131.32,
+      "probability": 0.982
+    },
+    {
+      "word": "-seated",
+      "start": 131.32,
+      "end": 131.74,
+      "probability": 0.815
+    },
+    {
+      "word": "challenges",
+      "start": 131.74,
+      "end": 132.3,
+      "probability": 0.995
+    },
+    {
+      "word": "that",
+      "start": 132.3,
+      "end": 132.62,
+      "probability": 0.99
+    },
+    {
+      "word": "would",
+      "start": 132.62,
+      "end": 132.74,
+      "probability": 0.989
+    },
+    {
+      "word": "define",
+      "start": 132.74,
+      "end": 133.1,
+      "probability": 0.995
+    },
+    {
+      "word": "Venezuela's",
+      "start": 133.1,
+      "end": 133.84,
+      "probability": 0.985
+    },
+    {
+      "word": "future.",
+      "start": 133.84,
+      "end": 134.14,
+      "probability": 0.999
+    },
+    {
+      "word": "From",
+      "start": 134.14,
+      "end": 134.56,
+      "probability": 0.399
+    },
+    {
+      "word": "that",
+      "start": 134.56,
+      "end": 134.78,
+      "probability": 0.981
+    },
+    {
+      "word": "point",
+      "start": 134.78,
+      "end": 135.06,
+      "probability": 0.998
+    },
+    {
+      "word": "on,",
+      "start": 135.06,
+      "end": 135.46,
+      "probability": 0.979
+    },
+    {
+      "word": "this",
+      "start": 135.84,
+      "end": 136.08,
+      "probability": 0.985
+    },
+    {
+      "word": "one",
+      "start": 136.08,
+      "end": 136.42,
+      "probability": 0.949
+    },
+    {
+      "word": "commodity",
+      "start": 136.42,
+      "end": 136.94,
+      "probability": 0.996
+    },
+    {
+      "word": "would",
+      "start": 136.94,
+      "end": 137.48,
+      "probability": 0.969
+    },
+    {
+      "word": "go",
+      "start": 137.48,
+      "end": 137.7,
+      "probability": 0.978
+    },
+    {
+      "word": "on",
+      "start": 137.7,
+      "end": 137.98,
+      "probability": 0.95
+    },
+    {
+      "word": "to",
+      "start": 137.98,
+      "end": 138.12,
+      "probability": 0.983
+    },
+    {
+      "word": "influence",
+      "start": 138.12,
+      "end": 138.56,
+      "probability": 0.995
+    },
+    {
+      "word": "almost",
+      "start": 138.56,
+      "end": 138.98,
+      "probability": 0.983
+    },
+    {
+      "word": "every",
+      "start": 138.98,
+      "end": 139.58,
+      "probability": 0.99
+    },
+    {
+      "word": "single",
+      "start": 139.58,
+      "end": 140.06,
+      "probability": 0.961
+    },
+    {
+      "word": "part",
+      "start": 140.06,
+      "end": 140.52,
+      "probability": 0.996
+    },
+    {
+      "word": "of",
+      "start": 140.52,
+      "end": 140.84,
+      "probability": 0.991
+    },
+    {
+      "word": "Venezuela",
+      "start": 140.84,
+      "end": 141.08,
+      "probability": 0.758
+    },
+    {
+      "word": "in",
+      "start": 141.08,
+      "end": 141.46,
+      "probability": 0.417
+    },
+    {
+      "word": "life.",
+      "start": 141.46,
+      "end": 141.8,
+      "probability": 0.997
+    },
+    {
+      "word": "Venezuela",
+      "start": 142.36,
+      "end": 143.0,
+      "probability": 0.954
+    },
+    {
+      "word": "has",
+      "start": 143.0,
+      "end": 143.48,
+      "probability": 0.998
+    },
+    {
+      "word": "incredible",
+      "start": 143.48,
+      "end": 144.12,
+      "probability": 0.986
+    },
+    {
+      "word": "potential",
+      "start": 144.12,
+      "end": 144.7,
+      "probability": 0.989
+    },
+    {
+      "word": "wealth",
+      "start": 144.7,
+      "end": 145.06,
+      "probability": 0.902
+    },
+    {
+      "word": "from",
+      "start": 145.06,
+      "end": 145.26,
+      "probability": 0.982
+    },
+    {
+      "word": "its",
+      "start": 145.26,
+      "end": 145.44,
+      "probability": 0.991
+    },
+    {
+      "word": "natural",
+      "start": 145.44,
+      "end": 145.76,
+      "probability": 0.998
+    },
+    {
+      "word": "resources,",
+      "start": 145.76,
+      "end": 146.5,
+      "probability": 0.999
+    },
+    {
+      "word": "yet",
+      "start": 146.82,
+      "end": 147.16,
+      "probability": 0.975
+    },
+    {
+      "word": "its",
+      "start": 147.16,
+      "end": 147.54,
+      "probability": 0.613
+    },
+    {
+      "word": "society",
+      "start": 147.54,
+      "end": 148.04,
+      "probability": 0.994
+    },
+    {
+      "word": "stands",
+      "start": 148.04,
+      "end": 148.52,
+      "probability": 0.945
+    },
+    {
+      "word": "starkly",
+      "start": 148.52,
+      "end": 149.18,
+      "probability": 0.974
+    },
+    {
+      "word": "divided.",
+      "start": 149.18,
+      "end": 149.66,
+      "probability": 0.995
+    },
+    {
+      "word": "In",
+      "start": 150.06,
+      "end": 150.22,
+      "probability": 0.981
+    },
+    {
+      "word": "this",
+      "start": 150.22,
+      "end": 150.4,
+      "probability": 0.993
+    },
+    {
+      "word": "video,",
+      "start": 150.4,
+      "end": 150.74,
+      "probability": 0.998
+    },
+    {
+      "word": "we're",
+      "start": 151.06,
+      "end": 151.14,
+      "probability": 0.914
+    },
+    {
+      "word": "going",
+      "start": 151.14,
+      "end": 151.32,
+      "probability": 0.986
+    },
+    {
+      "word": "to",
+      "start": 151.32,
+      "end": 151.48,
+      "probability": 0.993
+    },
+    {
+      "word": "explore",
+      "start": 151.48,
+      "end": 151.88,
+      "probability": 0.996
+    },
+    {
+      "word": "why.",
+      "start": 151.88,
+      "end": 152.38,
+      "probability": 0.973
+    },
+    {
+      "word": "Here's",
+      "start": 153.02,
+      "end": 153.42,
+      "probability": 0.97
+    },
+    {
+      "word": "the",
+      "start": 153.42,
+      "end": 153.5,
+      "probability": 0.982
+    },
+    {
+      "word": "core",
+      "start": 153.5,
+      "end": 153.7,
+      "probability": 0.992
+    },
+    {
+      "word": "of",
+      "start": 153.7,
+      "end": 153.86,
+      "probability": 0.997
+    },
+    {
+      "word": "the",
+      "start": 153.86,
+      "end": 153.94,
+      "probability": 0.979
+    },
+    {
+      "word": "issue.",
+      "start": 153.94,
+      "end": 154.26,
+      "probability": 0.997
+    },
+    {
+      "word": "These",
+      "start": 154.64,
+      "end": 154.86,
+      "probability": 0.982
+    },
+    {
+      "word": "deep",
+      "start": 154.86,
+      "end": 155.2,
+      "probability": 0.973
+    },
+    {
+      "word": "divisions",
+      "start": 155.2,
+      "end": 155.56,
+      "probability": 0.965
+    },
+    {
+      "word": "stem",
+      "start": 155.56,
+      "end": 155.9,
+      "probability": 0.997
+    },
+    {
+      "word": "from",
+      "start": 155.9,
+      "end": 156.1,
+      "probability": 0.978
+    },
+    {
+      "word": "a",
+      "start": 156.1,
+      "end": 156.24,
+      "probability": 0.996
+    },
+    {
+      "word": "mix",
+      "start": 156.24,
+      "end": 156.44,
+      "probability": 0.998
+    },
+    {
+      "word": "of",
+      "start": 156.44,
+      "end": 156.64,
+      "probability": 0.995
+    },
+    {
+      "word": "historical",
+      "start": 156.64,
+      "end": 157.12,
+      "probability": 0.995
+    },
+    {
+      "word": "baggage,",
+      "start": 157.12,
+      "end": 157.58,
+      "probability": 0.998
+    },
+    {
+      "word": "flawed",
+      "start": 158.16,
+      "end": 158.38,
+      "probability": 0.99
+    },
+    {
+      "word": "economic",
+      "start": 158.38,
+      "end": 158.84,
+      "probability": 0.998
+    },
+    {
+      "word": "policies,",
+      "start": 158.84,
+      "end": 159.4,
+      "probability": 0.993
+    },
+    {
+      "word": "and",
+      "start": 159.64,
+      "end": 159.72,
+      "probability": 0.996
+    },
+    {
+      "word": "conflicting",
+      "start": 159.72,
+      "end": 160.24,
+      "probability": 0.991
+    },
+    {
+      "word": "political",
+      "start": 160.24,
+      "end": 160.74,
+      "probability": 0.154
+    },
+    {
+      "word": "ideologies.",
+      "start": 160.74,
+      "end": 161.7,
+      "probability": 0.995
+    },
+    {
+      "word": "Together,",
+      "start": 162.22,
+      "end": 162.6,
+      "probability": 0.986
+    },
+    {
+      "word": "these",
+      "start": 163.18,
+      "end": 163.34,
+      "probability": 0.992
+    },
+    {
+      "word": "factors",
+      "start": 163.34,
+      "end": 163.82,
+      "probability": 0.997
+    },
+    {
+      "word": "have",
+      "start": 163.82,
+      "end": 164.12,
+      "probability": 0.993
+    },
+    {
+      "word": "fueled",
+      "start": 164.12,
+      "end": 164.44,
+      "probability": 0.967
+    },
+    {
+      "word": "constant",
+      "start": 164.44,
+      "end": 165.1,
+      "probability": 0.997
+    },
+    {
+      "word": "polarization",
+      "start": 165.1,
+      "end": 165.6,
+      "probability": 0.983
+    },
+    {
+      "word": "and",
+      "start": 165.6,
+      "end": 166.24,
+      "probability": 0.996
+    },
+    {
+      "word": "instability.",
+      "start": 166.24,
+      "end": 166.8,
+      "probability": 0.995
+    },
+    {
+      "word": "To",
+      "start": 167.42,
+      "end": 167.52,
+      "probability": 0.985
+    },
+    {
+      "word": "understand",
+      "start": 167.52,
+      "end": 167.94,
+      "probability": 0.998
+    },
+    {
+      "word": "how",
+      "start": 167.94,
+      "end": 168.28,
+      "probability": 0.993
+    },
+    {
+      "word": "this",
+      "start": 168.28,
+      "end": 168.46,
+      "probability": 0.99
+    },
+    {
+      "word": "happened,",
+      "start": 168.46,
+      "end": 168.92,
+      "probability": 0.994
+    },
+    {
+      "word": "we'll",
+      "start": 169.36,
+      "end": 169.58,
+      "probability": 0.961
+    },
+    {
+      "word": "look",
+      "start": 169.58,
+      "end": 169.76,
+      "probability": 0.99
+    },
+    {
+      "word": "at",
+      "start": 169.76,
+      "end": 169.86,
+      "probability": 0.997
+    },
+    {
+      "word": "three",
+      "start": 169.86,
+      "end": 170.2,
+      "probability": 0.846
+    },
+    {
+      "word": "key",
+      "start": 170.2,
+      "end": 170.56,
+      "probability": 0.998
+    },
+    {
+      "word": "areas.",
+      "start": 170.56,
+      "end": 171.04,
+      "probability": 0.999
+    },
+    {
+      "word": "First,",
+      "start": 171.76,
+      "end": 172.04,
+      "probability": 0.979
+    },
+    {
+      "word": "we'll",
+      "start": 172.42,
+      "end": 172.54,
+      "probability": 0.994
+    },
+    {
+      "word": "see",
+      "start": 172.54,
+      "end": 172.72,
+      "probability": 0.998
+    },
+    {
+      "word": "how",
+      "start": 172.72,
+      "end": 172.84,
+      "probability": 0.982
+    },
+    {
+      "word": "the",
+      "start": 172.84,
+      "end": 172.96,
+      "probability": 0.998
+    },
+    {
+      "word": "legacy",
+      "start": 172.96,
+      "end": 173.4,
+      "probability": 0.964
+    },
+    {
+      "word": "of",
+      "start": 173.4,
+      "end": 173.6,
+      "probability": 0.999
+    },
+    {
+      "word": "colonialism",
+      "start": 173.6,
+      "end": 174.16,
+      "probability": 0.994
+    },
+    {
+      "word": "and",
+      "start": 174.16,
+      "end": 174.58,
+      "probability": 0.977
+    },
+    {
+      "word": "early",
+      "start": 174.58,
+      "end": 174.88,
+      "probability": 0.996
+    },
+    {
+      "word": "power",
+      "start": 174.88,
+      "end": 175.2,
+      "probability": 0.994
+    },
+    {
+      "word": "struggles",
+      "start": 175.2,
+      "end": 175.66,
+      "probability": 0.993
+    },
+    {
+      "word": "shaped",
+      "start": 175.66,
+      "end": 176.12,
+      "probability": 0.986
+    },
+    {
+      "word": "social",
+      "start": 176.12,
+      "end": 176.64,
+      "probability": 0.976
+    },
+    {
+      "word": "hierarchies.",
+      "start": 176.64,
+      "end": 177.38,
+      "probability": 0.988
+    },
+    {
+      "word": "Second,",
+      "start": 177.88,
+      "end": 178.38,
+      "probability": 0.995
+    },
+    {
+      "word": "we'll",
+      "start": 178.78,
+      "end": 179.0,
+      "probability": 0.996
+    },
+    {
+      "word": "examine",
+      "start": 179.0,
+      "end": 179.32,
+      "probability": 0.998
+    },
+    {
+      "word": "how",
+      "start": 179.32,
+      "end": 179.56,
+      "probability": 0.997
+    },
+    {
+      "word": "oil",
+      "start": 179.56,
+      "end": 179.92,
+      "probability": 0.991
+    },
+    {
+      "word": "dependence",
+      "start": 179.92,
+      "end": 180.42,
+      "probability": 0.979
+    },
+    {
+      "word": "and",
+      "start": 180.42,
+      "end": 180.72,
+      "probability": 0.99
+    },
+    {
+      "word": "economic",
+      "start": 180.72,
+      "end": 181.16,
+      "probability": 0.999
+    },
+    {
+      "word": "mismanagement",
+      "start": 181.16,
+      "end": 181.9,
+      "probability": 0.996
+    },
+    {
+      "word": "made",
+      "start": 181.9,
+      "end": 182.28,
+      "probability": 0.995
+    },
+    {
+      "word": "inequality",
+      "start": 182.28,
+      "end": 182.84,
+      "probability": 0.98
+    },
+    {
+      "word": "worse.",
+      "start": 182.84,
+      "end": 183.36,
+      "probability": 0.996
+    },
+    {
+      "word": "And",
+      "start": 184.14,
+      "end": 184.28,
+      "probability": 0.925
+    },
+    {
+      "word": "third,",
+      "start": 184.28,
+      "end": 184.62,
+      "probability": 0.987
+    },
+    {
+      "word": "we'll",
+      "start": 184.98,
+      "end": 185.18,
+      "probability": 0.995
+    },
+    {
+      "word": "look",
+      "start": 185.18,
+      "end": 185.36,
+      "probability": 0.995
+    },
+    {
+      "word": "at",
+      "start": 185.36,
+      "end": 185.44,
+      "probability": 0.995
+    },
+    {
+      "word": "how",
+      "start": 185.44,
+      "end": 185.58,
+      "probability": 0.996
+    },
+    {
+      "word": "competing",
+      "start": 185.58,
+      "end": 186.06,
+      "probability": 0.621
+    },
+    {
+      "word": "political",
+      "start": 186.06,
+      "end": 186.58,
+      "probability": 0.994
+    },
+    {
+      "word": "visions",
+      "start": 186.58,
+      "end": 186.92,
+      "probability": 0.983
+    },
+    {
+      "word": "pushed",
+      "start": 186.92,
+      "end": 187.28,
+      "probability": 0.211
+    },
+    {
+      "word": "the",
+      "start": 187.28,
+      "end": 187.52,
+      "probability": 0.991
+    },
+    {
+      "word": "nation",
+      "start": 187.52,
+      "end": 187.82,
+      "probability": 0.991
+    },
+    {
+      "word": "even",
+      "start": 187.82,
+      "end": 188.28,
+      "probability": 0.97
+    },
+    {
+      "word": "further",
+      "start": 188.28,
+      "end": 188.78,
+      "probability": 0.983
+    },
+    {
+      "word": "apart.",
+      "start": 188.78,
+      "end": 189.3,
+      "probability": 0.983
+    },
+    {
+      "word": "Just",
+      "start": 189.78,
+      "end": 190.04,
+      "probability": 0.911
+    },
+    {
+      "word": "a",
+      "start": 190.04,
+      "end": 190.18,
+      "probability": 0.997
+    },
+    {
+      "word": "quick",
+      "start": 190.18,
+      "end": 190.32,
+      "probability": 0.999
+    },
+    {
+      "word": "note,",
+      "start": 190.32,
+      "end": 190.52,
+      "probability": 0.999
+    },
+    {
+      "word": "this",
+      "start": 190.68,
+      "end": 190.76,
+      "probability": 0.984
+    },
+    {
+      "word": "isn't",
+      "start": 190.76,
+      "end": 190.98,
+      "probability": 0.991
+    },
+    {
+      "word": "a",
+      "start": 190.98,
+      "end": 191.1,
+      "probability": 0.979
+    },
+    {
+      "word": "political",
+      "start": 191.1,
+      "end": 191.44,
+      "probability": 0.996
+    },
+    {
+      "word": "statement,",
+      "start": 191.44,
+      "end": 191.94,
+      "probability": 0.998
+    },
+    {
+      "word": "but",
+      "start": 192.32,
+      "end": 192.38,
+      "probability": 0.996
+    },
+    {
+      "word": "an",
+      "start": 192.38,
+      "end": 192.48,
+      "probability": 0.986
+    },
+    {
+      "word": "analysis",
+      "start": 192.48,
+      "end": 192.92,
+      "probability": 0.993
+    },
+    {
+      "word": "of",
+      "start": 192.92,
+      "end": 193.3,
+      "probability": 0.995
+    },
+    {
+      "word": "the",
+      "start": 193.3,
+      "end": 193.44,
+      "probability": 0.986
+    },
+    {
+      "word": "causes.",
+      "start": 193.44,
+      "end": 193.86,
+      "probability": 0.993
+    },
+    {
+      "word": "To",
+      "start": 194.4,
+      "end": 194.96,
+      "probability": 0.949
+    },
+    {
+      "word": "understand",
+      "start": 194.96,
+      "end": 195.42,
+      "probability": 0.997
+    },
+    {
+      "word": "the",
+      "start": 195.42,
+      "end": 195.6,
+      "probability": 0.98
+    },
+    {
+      "word": "deep",
+      "start": 195.6,
+      "end": 195.8,
+      "probability": 0.83
+    },
+    {
+      "word": "divisions",
+      "start": 195.8,
+      "end": 196.16,
+      "probability": 0.993
+    },
+    {
+      "word": "in",
+      "start": 196.16,
+      "end": 196.36,
+      "probability": 0.991
+    },
+    {
+      "word": "Venezuela",
+      "start": 196.36,
+      "end": 196.66,
+      "probability": 0.978
+    },
+    {
+      "word": "today,",
+      "start": 196.66,
+      "end": 197.18,
+      "probability": 0.995
+    },
+    {
+      "word": "we",
+      "start": 197.6,
+      "end": 197.76,
+      "probability": 0.996
+    },
+    {
+      "word": "have",
+      "start": 197.76,
+      "end": 197.86,
+      "probability": 0.987
+    },
+    {
+      "word": "to",
+      "start": 197.86,
+      "end": 198.02,
+      "probability": 0.996
+    },
+    {
+      "word": "look",
+      "start": 198.02,
+      "end": 198.16,
+      "probability": 0.997
+    },
+    {
+      "word": "way",
+      "start": 198.16,
+      "end": 198.56,
+      "probability": 0.977
+    },
+    {
+      "word": "back",
+      "start": 198.56,
+      "end": 198.9,
+      "probability": 0.994
+    },
+    {
+      "word": "long",
+      "start": 198.9,
+      "end": 199.32,
+      "probability": 0.978
+    },
+    {
+      "word": "before",
+      "start": 199.32,
+      "end": 199.68,
+      "probability": 0.99
+    },
+    {
+      "word": "the",
+      "start": 199.68,
+      "end": 199.86,
+      "probability": 0.994
+    },
+    {
+      "word": "late",
+      "start": 199.86,
+      "end": 200.02,
+      "probability": 0.992
+    },
+    {
+      "word": "20th",
+      "start": 200.02,
+      "end": 200.46,
+      "probability": 0.952
+    },
+    {
+      "word": "century.",
+      "start": 200.46,
+      "end": 200.82,
+      "probability": 0.961
+    },
+    {
+      "word": "After",
+      "start": 201.1,
+      "end": 201.32,
+      "probability": 0.994
+    },
+    {
+      "word": "gaining",
+      "start": 201.32,
+      "end": 201.58,
+      "probability": 0.999
+    },
+    {
+      "word": "independence",
+      "start": 201.58,
+      "end": 202.12,
+      "probability": 0.995
+    },
+    {
+      "word": "from",
+      "start": 202.12,
+      "end": 202.38,
+      "probability": 0.995
+    },
+    {
+      "word": "Spain,",
+      "start": 202.38,
+      "end": 202.78,
+      "probability": 0.999
+    },
+    {
+      "word": "the",
+      "start": 203.24,
+      "end": 203.3,
+      "probability": 0.998
+    },
+    {
+      "word": "country",
+      "start": 203.3,
+      "end": 203.48,
+      "probability": 0.987
+    },
+    {
+      "word": "spent",
+      "start": 203.48,
+      "end": 203.82,
+      "probability": 0.996
+    },
+    {
+      "word": "over",
+      "start": 203.82,
+      "end": 204.14,
+      "probability": 0.995
+    },
+    {
+      "word": "a",
+      "start": 204.14,
+      "end": 204.28,
+      "probability": 0.996
+    },
+    {
+      "word": "century",
+      "start": 204.28,
+      "end": 204.76,
+      "probability": 0.993
+    },
+    {
+      "word": "struggling",
+      "start": 204.76,
+      "end": 205.26,
+      "probability": 0.967
+    },
+    {
+      "word": "under",
+      "start": 205.26,
+      "end": 205.58,
+      "probability": 0.995
+    },
+    {
+      "word": "the",
+      "start": 205.58,
+      "end": 205.68,
+      "probability": 0.997
+    },
+    {
+      "word": "rule",
+      "start": 205.68,
+      "end": 205.9,
+      "probability": 0.996
+    },
+    {
+      "word": "of",
+      "start": 205.9,
+      "end": 206.14,
+      "probability": 0.999
+    },
+    {
+      "word": "Cadios.",
+      "start": 206.14,
+      "end": 206.78,
+      "probability": 0.534
+    },
+    {
+      "word": "These",
+      "start": 207.22,
+      "end": 207.38,
+      "probability": 0.993
+    },
+    {
+      "word": "were",
+      "start": 207.38,
+      "end": 207.54,
+      "probability": 0.997
+    },
+    {
+      "word": "powerful,",
+      "start": 207.54,
+      "end": 208.24,
+      "probability": 0.995
+    },
+    {
+      "word": "regional",
+      "start": 208.48,
+      "end": 208.8,
+      "probability": 0.989
+    },
+    {
+      "word": "strongmen",
+      "start": 208.8,
+      "end": 209.48,
+      "probability": 0.807
+    },
+    {
+      "word": "who",
+      "start": 209.48,
+      "end": 209.72,
+      "probability": 0.937
+    },
+    {
+      "word": "ruled",
+      "start": 209.72,
+      "end": 210.06,
+      "probability": 0.993
+    },
+    {
+      "word": "through",
+      "start": 210.06,
+      "end": 210.32,
+      "probability": 0.992
+    },
+    {
+      "word": "force",
+      "start": 210.32,
+      "end": 210.74,
+      "probability": 0.98
+    },
+    {
+      "word": "and",
+      "start": 210.74,
+      "end": 211.32,
+      "probability": 0.891
+    },
+    {
+      "word": "personal",
+      "start": 211.32,
+      "end": 211.84,
+      "probability": 0.993
+    },
+    {
+      "word": "favors.",
+      "start": 211.84,
+      "end": 212.26,
+      "probability": 0.956
+    },
+    {
+      "word": "These",
+      "start": 212.76,
+      "end": 212.88,
+      "probability": 0.996
+    },
+    {
+      "word": "leaders",
+      "start": 212.88,
+      "end": 213.14,
+      "probability": 0.998
+    },
+    {
+      "word": "were",
+      "start": 213.14,
+      "end": 213.32,
+      "probability": 0.994
+    },
+    {
+      "word": "often",
+      "start": 213.32,
+      "end": 213.62,
+      "probability": 0.997
+    },
+    {
+      "word": "military",
+      "start": 213.62,
+      "end": 214.0,
+      "probability": 0.757
+    },
+    {
+      "word": "figures",
+      "start": 214.0,
+      "end": 214.68,
+      "probability": 0.987
+    },
+    {
+      "word": "who",
+      "start": 214.68,
+      "end": 214.84,
+      "probability": 0.928
+    },
+    {
+      "word": "spent",
+      "start": 214.84,
+      "end": 215.12,
+      "probability": 0.987
+    },
+    {
+      "word": "their",
+      "start": 215.12,
+      "end": 215.32,
+      "probability": 0.995
+    },
+    {
+      "word": "time",
+      "start": 215.32,
+      "end": 215.62,
+      "probability": 0.997
+    },
+    {
+      "word": "in",
+      "start": 215.62,
+      "end": 215.8,
+      "probability": 0.988
+    },
+    {
+      "word": "constant",
+      "start": 215.8,
+      "end": 216.32,
+      "probability": 0.994
+    },
+    {
+      "word": "power",
+      "start": 216.32,
+      "end": 216.74,
+      "probability": 0.99
+    },
+    {
+      "word": "struggles,",
+      "start": 216.74,
+      "end": 217.26,
+      "probability": 0.996
+    },
+    {
+      "word": "which",
+      "start": 217.66,
+      "end": 217.8,
+      "probability": 0.996
+    },
+    {
+      "word": "made",
+      "start": 217.8,
+      "end": 217.98,
+      "probability": 0.997
+    },
+    {
+      "word": "it",
+      "start": 217.98,
+      "end": 218.14,
+      "probability": 0.998
+    },
+    {
+      "word": "impossible",
+      "start": 218.14,
+      "end": 218.72,
+      "probability": 0.99
+    },
+    {
+      "word": "to",
+      "start": 218.72,
+      "end": 219.06,
+      "probability": 0.998
+    },
+    {
+      "word": "build",
+      "start": 219.06,
+      "end": 219.32,
+      "probability": 0.997
+    },
+    {
+      "word": "stable",
+      "start": 219.32,
+      "end": 219.78,
+      "probability": 0.983
+    },
+    {
+      "word": "institutions.",
+      "start": 219.78,
+      "end": 220.46,
+      "probability": 0.995
+    },
+    {
+      "word": "Take",
+      "start": 221.22,
+      "end": 221.4,
+      "probability": 0.899
+    },
+    {
+      "word": "Jose",
+      "start": 221.4,
+      "end": 221.86,
+      "probability": 0.722
+    },
+    {
+      "word": "Antonio",
+      "start": 221.86,
+      "end": 222.36,
+      "probability": 0.971
+    },
+    {
+      "word": "Pias,",
+      "start": 222.36,
+      "end": 222.92,
+      "probability": 0.45
+    },
+    {
+      "word": "for",
+      "start": 223.42,
+      "end": 223.52,
+      "probability": 0.992
+    },
+    {
+      "word": "example.",
+      "start": 223.52,
+      "end": 223.9,
+      "probability": 0.999
+    },
+    {
+      "word": "He",
+      "start": 224.46,
+      "end": 224.62,
+      "probability": 0.993
+    },
+    {
+      "word": "was",
+      "start": 224.62,
+      "end": 224.74,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 224.74,
+      "end": 224.84,
+      "probability": 0.99
+    },
+    {
+      "word": "hero",
+      "start": 224.84,
+      "end": 225.18,
+      "probability": 0.993
+    },
+    {
+      "word": "of",
+      "start": 225.18,
+      "end": 225.46,
+      "probability": 0.993
+    },
+    {
+      "word": "the",
+      "start": 225.46,
+      "end": 225.54,
+      "probability": 0.991
+    },
+    {
+      "word": "independence",
+      "start": 225.54,
+      "end": 226.0,
+      "probability": 0.762
+    },
+    {
+      "word": "movement,",
+      "start": 226.0,
+      "end": 226.54,
+      "probability": 0.997
+    },
+    {
+      "word": "but",
+      "start": 226.98,
+      "end": 227.08,
+      "probability": 0.997
+    },
+    {
+      "word": "his",
+      "start": 227.08,
+      "end": 227.22,
+      "probability": 0.996
+    },
+    {
+      "word": "leadership",
+      "start": 227.22,
+      "end": 227.54,
+      "probability": 0.998
+    },
+    {
+      "word": "style",
+      "start": 227.54,
+      "end": 228.0,
+      "probability": 0.987
+    },
+    {
+      "word": "was",
+      "start": 228.0,
+      "end": 228.26,
+      "probability": 0.997
+    },
+    {
+      "word": "typical",
+      "start": 228.26,
+      "end": 228.7,
+      "probability": 0.99
+    },
+    {
+      "word": "for",
+      "start": 228.7,
+      "end": 229.0,
+      "probability": 0.995
+    },
+    {
+      "word": "the",
+      "start": 229.0,
+      "end": 229.1,
+      "probability": 0.994
+    },
+    {
+      "word": "time.",
+      "start": 229.1,
+      "end": 229.42,
+      "probability": 0.997
+    },
+    {
+      "word": "He",
+      "start": 230.06,
+      "end": 230.24,
+      "probability": 0.982
+    },
+    {
+      "word": "and",
+      "start": 230.24,
+      "end": 230.42,
+      "probability": 0.986
+    },
+    {
+      "word": "other",
+      "start": 230.42,
+      "end": 230.6,
+      "probability": 0.995
+    },
+    {
+      "word": "leaders",
+      "start": 230.6,
+      "end": 230.88,
+      "probability": 0.998
+    },
+    {
+      "word": "prioritized",
+      "start": 230.88,
+      "end": 231.64,
+      "probability": 0.892
+    },
+    {
+      "word": "their",
+      "start": 231.64,
+      "end": 231.86,
+      "probability": 0.998
+    },
+    {
+      "word": "own",
+      "start": 231.86,
+      "end": 232.14,
+      "probability": 0.989
+    },
+    {
+      "word": "regional",
+      "start": 232.14,
+      "end": 232.52,
+      "probability": 0.994
+    },
+    {
+      "word": "interests",
+      "start": 232.52,
+      "end": 233.0,
+      "probability": 0.995
+    },
+    {
+      "word": "and",
+      "start": 233.0,
+      "end": 233.5,
+      "probability": 0.7
+    },
+    {
+      "word": "personal",
+      "start": 233.5,
+      "end": 233.94,
+      "probability": 0.911
+    },
+    {
+      "word": "gain",
+      "start": 233.94,
+      "end": 234.26,
+      "probability": 0.989
+    },
+    {
+      "word": "over",
+      "start": 234.26,
+      "end": 234.86,
+      "probability": 0.996
+    },
+    {
+      "word": "national",
+      "start": 234.86,
+      "end": 235.26,
+      "probability": 0.987
+    },
+    {
+      "word": "unity.",
+      "start": 235.26,
+      "end": 235.74,
+      "probability": 0.999
+    },
+    {
+      "word": "This",
+      "start": 236.1,
+      "end": 236.28,
+      "probability": 0.972
+    },
+    {
+      "word": "established",
+      "start": 236.28,
+      "end": 236.98,
+      "probability": 0.997
+    },
+    {
+      "word": "a",
+      "start": 236.98,
+      "end": 237.16,
+      "probability": 0.986
+    },
+    {
+      "word": "pattern",
+      "start": 237.16,
+      "end": 237.46,
+      "probability": 0.998
+    },
+    {
+      "word": "of",
+      "start": 237.46,
+      "end": 237.8,
+      "probability": 0.999
+    },
+    {
+      "word": "fragmented",
+      "start": 237.8,
+      "end": 238.26,
+      "probability": 0.565
+    },
+    {
+      "word": "power",
+      "start": 238.26,
+      "end": 238.68,
+      "probability": 0.993
+    },
+    {
+      "word": "that",
+      "start": 238.68,
+      "end": 239.18,
+      "probability": 0.943
+    },
+    {
+      "word": "would",
+      "start": 239.18,
+      "end": 239.3,
+      "probability": 0.989
+    },
+    {
+      "word": "plague",
+      "start": 239.3,
+      "end": 239.6,
+      "probability": 0.961
+    },
+    {
+      "word": "Venezuela",
+      "start": 239.6,
+      "end": 240.04,
+      "probability": 0.948
+    },
+    {
+      "word": "for",
+      "start": 240.04,
+      "end": 240.42,
+      "probability": 0.994
+    },
+    {
+      "word": "decades.",
+      "start": 240.42,
+      "end": 240.9,
+      "probability": 0.996
+    },
+    {
+      "word": "Now,",
+      "start": 241.34,
+      "end": 241.96,
+      "probability": 0.964
+    },
+    {
+      "word": "let's",
+      "start": 242.4,
+      "end": 242.68,
+      "probability": 0.984
+    },
+    {
+      "word": "look",
+      "start": 242.68,
+      "end": 242.82,
+      "probability": 0.99
+    },
+    {
+      "word": "at",
+      "start": 242.82,
+      "end": 242.9,
+      "probability": 0.997
+    },
+    {
+      "word": "the",
+      "start": 242.9,
+      "end": 243.0,
+      "probability": 0.986
+    },
+    {
+      "word": "early",
+      "start": 243.0,
+      "end": 243.22,
+      "probability": 0.984
+    },
+    {
+      "word": "20th",
+      "start": 243.22,
+      "end": 243.76,
+      "probability": 0.967
+    },
+    {
+      "word": "century,",
+      "start": 243.76,
+      "end": 244.12,
+      "probability": 0.927
+    },
+    {
+      "word": "when",
+      "start": 244.3,
+      "end": 244.48,
+      "probability": 0.979
+    },
+    {
+      "word": "everything",
+      "start": 244.48,
+      "end": 244.74,
+      "probability": 0.998
+    },
+    {
+      "word": "changed",
+      "start": 244.74,
+      "end": 245.32,
+      "probability": 0.991
+    },
+    {
+      "word": "with",
+      "start": 245.32,
+      "end": 245.5,
+      "probability": 0.986
+    },
+    {
+      "word": "the",
+      "start": 245.5,
+      "end": 245.58,
+      "probability": 0.974
+    },
+    {
+      "word": "discovery",
+      "start": 245.58,
+      "end": 246.06,
+      "probability": 0.989
+    },
+    {
+      "word": "of",
+      "start": 246.06,
+      "end": 246.3,
+      "probability": 0.996
+    },
+    {
+      "word": "oil.",
+      "start": 246.3,
+      "end": 246.56,
+      "probability": 0.996
+    },
+    {
+      "word": "Under",
+      "start": 247.04,
+      "end": 247.2,
+      "probability": 0.972
+    },
+    {
+      "word": "the",
+      "start": 247.2,
+      "end": 247.32,
+      "probability": 0.998
+    },
+    {
+      "word": "dictatorship",
+      "start": 247.32,
+      "end": 247.72,
+      "probability": 0.844
+    },
+    {
+      "word": "of",
+      "start": 247.72,
+      "end": 248.2,
+      "probability": 0.995
+    },
+    {
+      "word": "Juan",
+      "start": 248.2,
+      "end": 248.42,
+      "probability": 0.882
+    },
+    {
+      "word": "Vicente",
+      "start": 248.42,
+      "end": 248.88,
+      "probability": 0.986
+    },
+    {
+      "word": "Gomez,",
+      "start": 248.88,
+      "end": 249.28,
+      "probability": 0.697
+    },
+    {
+      "word": "oil",
+      "start": 250.0,
+      "end": 250.12,
+      "probability": 0.981
+    },
+    {
+      "word": "production",
+      "start": 250.12,
+      "end": 250.56,
+      "probability": 0.995
+    },
+    {
+      "word": "accelerated",
+      "start": 250.56,
+      "end": 251.26,
+      "probability": 0.994
+    },
+    {
+      "word": "rapidly.",
+      "start": 251.26,
+      "end": 251.8,
+      "probability": 0.999
+    },
+    {
+      "word": "But",
+      "start": 252.36,
+      "end": 252.68,
+      "probability": 0.986
+    },
+    {
+      "word": "here's",
+      "start": 252.68,
+      "end": 253.04,
+      "probability": 0.98
+    },
+    {
+      "word": "the",
+      "start": 253.04,
+      "end": 253.12,
+      "probability": 0.994
+    },
+    {
+      "word": "key",
+      "start": 253.12,
+      "end": 253.32,
+      "probability": 0.996
+    },
+    {
+      "word": "insight.",
+      "start": 253.32,
+      "end": 253.78,
+      "probability": 0.987
+    },
+    {
+      "word": "While",
+      "start": 254.28,
+      "end": 254.48,
+      "probability": 0.99
+    },
+    {
+      "word": "oil",
+      "start": 254.48,
+      "end": 254.88,
+      "probability": 0.99
+    },
+    {
+      "word": "revenue",
+      "start": 254.88,
+      "end": 255.38,
+      "probability": 0.991
+    },
+    {
+      "word": "poured",
+      "start": 255.38,
+      "end": 255.68,
+      "probability": 0.988
+    },
+    {
+      "word": "into",
+      "start": 255.68,
+      "end": 255.98,
+      "probability": 0.988
+    },
+    {
+      "word": "the",
+      "start": 255.98,
+      "end": 256.12,
+      "probability": 0.997
+    },
+    {
+      "word": "country,",
+      "start": 256.12,
+      "end": 256.58,
+      "probability": 0.994
+    },
+    {
+      "word": "the",
+      "start": 257.12,
+      "end": 257.28,
+      "probability": 0.997
+    },
+    {
+      "word": "benefits",
+      "start": 257.28,
+      "end": 257.86,
+      "probability": 0.999
+    },
+    {
+      "word": "were",
+      "start": 257.86,
+      "end": 258.42,
+      "probability": 0.992
+    },
+    {
+      "word": "not",
+      "start": 258.42,
+      "end": 258.72,
+      "probability": 0.998
+    },
+    {
+      "word": "shared.",
+      "start": 258.72,
+      "end": 259.62,
+      "probability": 0.982
+    },
+    {
+      "word": "Gomez",
+      "start": 260.16,
+      "end": 260.52,
+      "probability": 0.99
+    },
+    {
+      "word": "used",
+      "start": 260.52,
+      "end": 261.1,
+      "probability": 0.995
+    },
+    {
+      "word": "that",
+      "start": 261.1,
+      "end": 261.36,
+      "probability": 0.994
+    },
+    {
+      "word": "wealth",
+      "start": 261.36,
+      "end": 261.68,
+      "probability": 0.999
+    },
+    {
+      "word": "to",
+      "start": 261.68,
+      "end": 261.92,
+      "probability": 0.994
+    },
+    {
+      "word": "consolidate",
+      "start": 261.92,
+      "end": 262.6,
+      "probability": 0.998
+    },
+    {
+      "word": "his",
+      "start": 262.6,
+      "end": 262.94,
+      "probability": 0.995
+    },
+    {
+      "word": "own",
+      "start": 262.94,
+      "end": 263.2,
+      "probability": 0.992
+    },
+    {
+      "word": "power",
+      "start": 263.2,
+      "end": 263.68,
+      "probability": 0.999
+    },
+    {
+      "word": "and",
+      "start": 263.68,
+      "end": 264.4,
+      "probability": 0.843
+    },
+    {
+      "word": "enrich",
+      "start": 264.4,
+      "end": 264.86,
+      "probability": 0.0
+    },
+    {
+      "word": "his",
+      "start": 264.86,
+      "end": 265.18,
+      "probability": 0.915
+    },
+    {
+      "word": "allies.",
+      "start": 265.18,
+      "end": 265.68,
+      "probability": 0.987
+    },
+    {
+      "word": "This",
+      "start": 266.58,
+      "end": 266.7,
+      "probability": 0.964
+    },
+    {
+      "word": "only",
+      "start": 266.7,
+      "end": 267.08,
+      "probability": 0.973
+    },
+    {
+      "word": "made",
+      "start": 267.08,
+      "end": 267.28,
+      "probability": 0.994
+    },
+    {
+      "word": "existing",
+      "start": 267.28,
+      "end": 267.88,
+      "probability": 0.976
+    },
+    {
+      "word": "inequalities",
+      "start": 267.88,
+      "end": 268.56,
+      "probability": 0.976
+    },
+    {
+      "word": "worse",
+      "start": 268.56,
+      "end": 268.98,
+      "probability": 0.995
+    },
+    {
+      "word": "and",
+      "start": 268.98,
+      "end": 269.56,
+      "probability": 0.439
+    },
+    {
+      "word": "fueled",
+      "start": 269.56,
+      "end": 269.88,
+      "probability": 0.82
+    },
+    {
+      "word": "resentment",
+      "start": 269.88,
+      "end": 270.4,
+      "probability": 0.997
+    },
+    {
+      "word": "among",
+      "start": 270.4,
+      "end": 270.74,
+      "probability": 0.983
+    },
+    {
+      "word": "everyone",
+      "start": 270.74,
+      "end": 271.26,
+      "probability": 0.986
+    },
+    {
+      "word": "else",
+      "start": 271.26,
+      "end": 271.56,
+      "probability": 0.965
+    },
+    {
+      "word": "who",
+      "start": 271.56,
+      "end": 271.66,
+      "probability": 0.941
+    },
+    {
+      "word": "was",
+      "start": 271.66,
+      "end": 271.8,
+      "probability": 0.93
+    },
+    {
+      "word": "left",
+      "start": 271.8,
+      "end": 272.0,
+      "probability": 0.997
+    },
+    {
+      "word": "out.",
+      "start": 272.0,
+      "end": 272.32,
+      "probability": 0.991
+    },
+    {
+      "word": "This",
+      "start": 272.78,
+      "end": 272.98,
+      "probability": 0.991
+    },
+    {
+      "word": "concentration",
+      "start": 272.98,
+      "end": 273.58,
+      "probability": 0.993
+    },
+    {
+      "word": "of",
+      "start": 273.58,
+      "end": 273.8,
+      "probability": 0.998
+    },
+    {
+      "word": "wealth",
+      "start": 273.8,
+      "end": 274.04,
+      "probability": 0.993
+    },
+    {
+      "word": "really",
+      "start": 274.04,
+      "end": 274.44,
+      "probability": 0.988
+    },
+    {
+      "word": "laid",
+      "start": 274.44,
+      "end": 274.68,
+      "probability": 0.962
+    },
+    {
+      "word": "the",
+      "start": 274.68,
+      "end": 274.84,
+      "probability": 0.995
+    },
+    {
+      "word": "groundwork",
+      "start": 274.84,
+      "end": 275.32,
+      "probability": 0.983
+    },
+    {
+      "word": "for",
+      "start": 275.32,
+      "end": 275.48,
+      "probability": 0.997
+    },
+    {
+      "word": "future",
+      "start": 275.48,
+      "end": 275.78,
+      "probability": 0.927
+    },
+    {
+      "word": "social",
+      "start": 275.78,
+      "end": 276.22,
+      "probability": 0.993
+    },
+    {
+      "word": "and",
+      "start": 276.22,
+      "end": 276.46,
+      "probability": 0.979
+    },
+    {
+      "word": "political",
+      "start": 276.46,
+      "end": 276.82,
+      "probability": 0.999
+    },
+    {
+      "word": "conflict.",
+      "start": 276.82,
+      "end": 277.52,
+      "probability": 0.987
+    },
+    {
+      "word": "By",
+      "start": 277.98,
+      "end": 278.26,
+      "probability": 0.992
+    },
+    {
+      "word": "the",
+      "start": 278.26,
+      "end": 278.36,
+      "probability": 0.99
+    },
+    {
+      "word": "mid",
+      "start": 278.36,
+      "end": 278.58,
+      "probability": 0.998
+    },
+    {
+      "word": "-20th",
+      "start": 278.58,
+      "end": 279.12,
+      "probability": 0.749
+    },
+    {
+      "word": "century,",
+      "start": 279.12,
+      "end": 279.5,
+      "probability": 0.981
+    },
+    {
+      "word": "there",
+      "start": 279.74,
+      "end": 279.96,
+      "probability": 0.997
+    },
+    {
+      "word": "were",
+      "start": 279.96,
+      "end": 280.06,
+      "probability": 0.983
+    },
+    {
+      "word": "attempts",
+      "start": 280.06,
+      "end": 280.34,
+      "probability": 0.999
+    },
+    {
+      "word": "to",
+      "start": 280.34,
+      "end": 280.52,
+      "probability": 0.998
+    },
+    {
+      "word": "fix",
+      "start": 280.52,
+      "end": 280.72,
+      "probability": 0.999
+    },
+    {
+      "word": "these",
+      "start": 280.72,
+      "end": 281.0,
+      "probability": 0.965
+    },
+    {
+      "word": "issues",
+      "start": 281.0,
+      "end": 281.34,
+      "probability": 0.999
+    },
+    {
+      "word": "through",
+      "start": 281.34,
+      "end": 281.64,
+      "probability": 0.992
+    },
+    {
+      "word": "democratic",
+      "start": 281.64,
+      "end": 282.18,
+      "probability": 0.938
+    },
+    {
+      "word": "reforms.",
+      "start": 282.18,
+      "end": 282.86,
+      "probability": 0.998
+    },
+    {
+      "word": "Leaders",
+      "start": 283.54,
+      "end": 283.7,
+      "probability": 0.969
+    },
+    {
+      "word": "like",
+      "start": 283.7,
+      "end": 283.94,
+      "probability": 0.976
+    },
+    {
+      "word": "Romulo",
+      "start": 283.94,
+      "end": 284.32,
+      "probability": 0.549
+    },
+    {
+      "word": "Betancourt",
+      "start": 284.32,
+      "end": 284.88,
+      "probability": 0.608
+    },
+    {
+      "word": "tried",
+      "start": 284.88,
+      "end": 285.18,
+      "probability": 0.955
+    },
+    {
+      "word": "to",
+      "start": 285.18,
+      "end": 285.32,
+      "probability": 0.998
+    },
+    {
+      "word": "diversify",
+      "start": 285.32,
+      "end": 285.88,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 285.88,
+      "end": 286.1,
+      "probability": 0.996
+    },
+    {
+      "word": "economy",
+      "start": 286.1,
+      "end": 286.54,
+      "probability": 0.999
+    },
+    {
+      "word": "and",
+      "start": 286.54,
+      "end": 286.74,
+      "probability": 0.991
+    },
+    {
+      "word": "implement",
+      "start": 286.74,
+      "end": 287.12,
+      "probability": 0.988
+    },
+    {
+      "word": "social",
+      "start": 287.12,
+      "end": 287.58,
+      "probability": 0.993
+    },
+    {
+      "word": "programs",
+      "start": 287.58,
+      "end": 288.1,
+      "probability": 0.992
+    },
+    {
+      "word": "to",
+      "start": 288.1,
+      "end": 288.36,
+      "probability": 0.998
+    },
+    {
+      "word": "address",
+      "start": 288.36,
+      "end": 288.68,
+      "probability": 0.998
+    },
+    {
+      "word": "inequality.",
+      "start": 288.68,
+      "end": 289.44,
+      "probability": 0.997
+    },
+    {
+      "word": "While",
+      "start": 289.96,
+      "end": 290.24,
+      "probability": 0.987
+    },
+    {
+      "word": "these",
+      "start": 290.24,
+      "end": 290.44,
+      "probability": 0.974
+    },
+    {
+      "word": "efforts",
+      "start": 290.44,
+      "end": 290.78,
+      "probability": 0.995
+    },
+    {
+      "word": "showed",
+      "start": 290.78,
+      "end": 291.14,
+      "probability": 0.996
+    },
+    {
+      "word": "some",
+      "start": 291.14,
+      "end": 291.46,
+      "probability": 0.996
+    },
+    {
+      "word": "promise,",
+      "start": 291.46,
+      "end": 291.94,
+      "probability": 0.99
+    },
+    {
+      "word": "they",
+      "start": 292.42,
+      "end": 292.64,
+      "probability": 0.99
+    },
+    {
+      "word": "hit",
+      "start": 292.64,
+      "end": 292.8,
+      "probability": 0.962
+    },
+    {
+      "word": "a",
+      "start": 292.8,
+      "end": 292.9,
+      "probability": 0.996
+    },
+    {
+      "word": "wall.",
+      "start": 292.9,
+      "end": 293.1,
+      "probability": 0.155
+    },
+    {
+      "word": "They",
+      "start": 293.68,
+      "end": 293.8,
+      "probability": 0.971
+    },
+    {
+      "word": "faced",
+      "start": 293.8,
+      "end": 294.18,
+      "probability": 0.99
+    },
+    {
+      "word": "massive",
+      "start": 294.18,
+      "end": 294.7,
+      "probability": 0.984
+    },
+    {
+      "word": "resistance",
+      "start": 294.7,
+      "end": 295.24,
+      "probability": 0.981
+    },
+    {
+      "word": "from",
+      "start": 295.24,
+      "end": 295.54,
+      "probability": 0.981
+    },
+    {
+      "word": "powerful",
+      "start": 295.54,
+      "end": 295.96,
+      "probability": 0.993
+    },
+    {
+      "word": "interest",
+      "start": 295.96,
+      "end": 296.32,
+      "probability": 0.936
+    },
+    {
+      "word": "groups",
+      "start": 296.32,
+      "end": 296.64,
+      "probability": 0.997
+    },
+    {
+      "word": "and",
+      "start": 296.64,
+      "end": 297.22,
+      "probability": 0.342
+    },
+    {
+      "word": "the",
+      "start": 297.22,
+      "end": 297.32,
+      "probability": 0.992
+    },
+    {
+      "word": "structural",
+      "start": 297.32,
+      "end": 297.72,
+      "probability": 0.994
+    },
+    {
+      "word": "problems",
+      "start": 297.72,
+      "end": 298.22,
+      "probability": 0.989
+    },
+    {
+      "word": "in",
+      "start": 298.22,
+      "end": 298.48,
+      "probability": 0.996
+    },
+    {
+      "word": "Venezuela",
+      "start": 298.48,
+      "end": 298.76,
+      "probability": 0.293
+    },
+    {
+      "word": "and",
+      "start": 298.76,
+      "end": 299.04,
+      "probability": 0.503
+    },
+    {
+      "word": "society",
+      "start": 299.04,
+      "end": 299.46,
+      "probability": 0.974
+    },
+    {
+      "word": "were",
+      "start": 299.46,
+      "end": 299.98,
+      "probability": 0.978
+    },
+    {
+      "word": "just",
+      "start": 299.98,
+      "end": 300.2,
+      "probability": 0.909
+    },
+    {
+      "word": "too",
+      "start": 300.2,
+      "end": 300.6,
+      "probability": 0.987
+    },
+    {
+      "word": "deep",
+      "start": 300.6,
+      "end": 300.86,
+      "probability": 0.992
+    },
+    {
+      "word": "to",
+      "start": 300.86,
+      "end": 301.08,
+      "probability": 0.995
+    },
+    {
+      "word": "overcome.",
+      "start": 301.08,
+      "end": 301.48,
+      "probability": 0.986
+    },
+    {
+      "word": "Even",
+      "start": 302.16,
+      "end": 302.34,
+      "probability": 0.972
+    },
+    {
+      "word": "in",
+      "start": 302.34,
+      "end": 302.46,
+      "probability": 0.998
+    },
+    {
+      "word": "1976,",
+      "start": 302.46,
+      "end": 303.38,
+      "probability": 0.994
+    },
+    {
+      "word": "when",
+      "start": 303.86,
+      "end": 304.12,
+      "probability": 0.996
+    },
+    {
+      "word": "the",
+      "start": 304.12,
+      "end": 304.24,
+      "probability": 0.996
+    },
+    {
+      "word": "oil",
+      "start": 304.24,
+      "end": 304.44,
+      "probability": 0.96
+    },
+    {
+      "word": "industry",
+      "start": 304.44,
+      "end": 304.9,
+      "probability": 0.998
+    },
+    {
+      "word": "was",
+      "start": 304.9,
+      "end": 305.12,
+      "probability": 0.998
+    },
+    {
+      "word": "nationalized",
+      "start": 305.12,
+      "end": 305.88,
+      "probability": 0.955
+    },
+    {
+      "word": "under",
+      "start": 305.88,
+      "end": 306.12,
+      "probability": 0.992
+    },
+    {
+      "word": "Carlos",
+      "start": 306.12,
+      "end": 306.48,
+      "probability": 0.989
+    },
+    {
+      "word": "Andres",
+      "start": 306.48,
+      "end": 306.92,
+      "probability": 0.742
+    },
+    {
+      "word": "Perez,",
+      "start": 306.92,
+      "end": 307.32,
+      "probability": 0.757
+    },
+    {
+      "word": "the",
+      "start": 307.86,
+      "end": 307.94,
+      "probability": 0.989
+    },
+    {
+      "word": "results",
+      "start": 307.94,
+      "end": 308.26,
+      "probability": 0.996
+    },
+    {
+      "word": "were",
+      "start": 308.26,
+      "end": 308.88,
+      "probability": 0.994
+    },
+    {
+      "word": "disappointing.",
+      "start": 308.88,
+      "end": 309.5,
+      "probability": 0.982
+    },
+    {
+      "word": "It",
+      "start": 309.92,
+      "end": 310.02,
+      "probability": 0.983
+    },
+    {
+      "word": "was",
+      "start": 310.02,
+      "end": 310.14,
+      "probability": 0.997
+    },
+    {
+      "word": "supposed",
+      "start": 310.14,
+      "end": 310.44,
+      "probability": 0.989
+    },
+    {
+      "word": "to",
+      "start": 310.44,
+      "end": 310.7,
+      "probability": 0.998
+    },
+    {
+      "word": "give",
+      "start": 310.7,
+      "end": 310.84,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 310.84,
+      "end": 311.02,
+      "probability": 0.932
+    },
+    {
+      "word": "people",
+      "start": 311.02,
+      "end": 311.26,
+      "probability": 0.997
+    },
+    {
+      "word": "control",
+      "start": 311.26,
+      "end": 311.68,
+      "probability": 0.998
+    },
+    {
+      "word": "over",
+      "start": 311.68,
+      "end": 312.1,
+      "probability": 0.997
+    },
+    {
+      "word": "their",
+      "start": 312.1,
+      "end": 312.26,
+      "probability": 0.99
+    },
+    {
+      "word": "resources,",
+      "start": 312.26,
+      "end": 312.8,
+      "probability": 0.997
+    },
+    {
+      "word": "but",
+      "start": 313.24,
+      "end": 313.44,
+      "probability": 0.997
+    },
+    {
+      "word": "instead,",
+      "start": 313.44,
+      "end": 313.9,
+      "probability": 0.993
+    },
+    {
+      "word": "it",
+      "start": 314.28,
+      "end": 314.5,
+      "probability": 0.997
+    },
+    {
+      "word": "just",
+      "start": 314.5,
+      "end": 314.62,
+      "probability": 0.977
+    },
+    {
+      "word": "became",
+      "start": 314.62,
+      "end": 314.9,
+      "probability": 0.996
+    },
+    {
+      "word": "another",
+      "start": 314.9,
+      "end": 315.24,
+      "probability": 0.988
+    },
+    {
+      "word": "avenue",
+      "start": 315.24,
+      "end": 315.64,
+      "probability": 0.998
+    },
+    {
+      "word": "for",
+      "start": 315.64,
+      "end": 315.84,
+      "probability": 0.998
+    },
+    {
+      "word": "political",
+      "start": 315.84,
+      "end": 316.28,
+      "probability": 0.997
+    },
+    {
+      "word": "maneuvering",
+      "start": 316.28,
+      "end": 316.88,
+      "probability": 0.949
+    },
+    {
+      "word": "and",
+      "start": 316.88,
+      "end": 317.02,
+      "probability": 0.918
+    },
+    {
+      "word": "corruption.",
+      "start": 317.02,
+      "end": 317.44,
+      "probability": 0.993
+    },
+    {
+      "word": "Back",
+      "start": 318.28,
+      "end": 318.46,
+      "probability": 0.961
+    },
+    {
+      "word": "in",
+      "start": 318.46,
+      "end": 318.6,
+      "probability": 0.996
+    },
+    {
+      "word": "the",
+      "start": 318.6,
+      "end": 318.68,
+      "probability": 0.994
+    },
+    {
+      "word": "1",
+      "start": 318.68,
+      "end": 318.94,
+      "probability": 0.483
+    },
+    {
+      "word": ",970",
+      "start": 318.94,
+      "end": 320.8,
+      "probability": 0.944
+    },
+    {
+      "word": "seconds,",
+      "start": 320.8,
+      "end": 321.48,
+      "probability": 0.673
+    },
+    {
+      "word": "Venezuela",
+      "start": 321.78,
+      "end": 321.96,
+      "probability": 0.988
+    },
+    {
+      "word": "was",
+      "start": 321.96,
+      "end": 322.44,
+      "probability": 0.993
+    },
+    {
+      "word": "experiencing",
+      "start": 322.44,
+      "end": 323.0,
+      "probability": 0.997
+    },
+    {
+      "word": "an",
+      "start": 323.0,
+      "end": 323.34,
+      "probability": 0.991
+    },
+    {
+      "word": "unprecedented",
+      "start": 323.34,
+      "end": 324.1,
+      "probability": 0.974
+    },
+    {
+      "word": "economic",
+      "start": 324.1,
+      "end": 324.88,
+      "probability": 0.998
+    },
+    {
+      "word": "boom.",
+      "start": 324.88,
+      "end": 325.18,
+      "probability": 0.996
+    },
+    {
+      "word": "It",
+      "start": 325.68,
+      "end": 325.78,
+      "probability": 0.984
+    },
+    {
+      "word": "was",
+      "start": 325.78,
+      "end": 325.92,
+      "probability": 0.995
+    },
+    {
+      "word": "fueled,",
+      "start": 325.92,
+      "end": 326.26,
+      "probability": 0.882
+    },
+    {
+      "word": "of",
+      "start": 326.26,
+      "end": 326.88,
+      "probability": 0.995
+    },
+    {
+      "word": "course,",
+      "start": 326.88,
+      "end": 327.12,
+      "probability": 0.999
+    },
+    {
+      "word": "by",
+      "start": 327.56,
+      "end": 327.8,
+      "probability": 0.995
+    },
+    {
+      "word": "soaring",
+      "start": 327.8,
+      "end": 328.3,
+      "probability": 0.955
+    },
+    {
+      "word": "oil",
+      "start": 328.3,
+      "end": 328.64,
+      "probability": 0.998
+    },
+    {
+      "word": "prices.",
+      "start": 328.64,
+      "end": 329.14,
+      "probability": 0.996
+    },
+    {
+      "word": "The",
+      "start": 329.7,
+      "end": 329.98,
+      "probability": 0.992
+    },
+    {
+      "word": "government",
+      "start": 329.98,
+      "end": 330.28,
+      "probability": 0.983
+    },
+    {
+      "word": "poured",
+      "start": 330.28,
+      "end": 330.56,
+      "probability": 0.987
+    },
+    {
+      "word": "money",
+      "start": 330.56,
+      "end": 330.86,
+      "probability": 0.996
+    },
+    {
+      "word": "into",
+      "start": 330.86,
+      "end": 331.28,
+      "probability": 0.993
+    },
+    {
+      "word": "infrastructure,",
+      "start": 331.28,
+      "end": 332.04,
+      "probability": 0.993
+    },
+    {
+      "word": "social",
+      "start": 332.6,
+      "end": 332.9,
+      "probability": 0.993
+    },
+    {
+      "word": "programs,",
+      "start": 332.9,
+      "end": 333.46,
+      "probability": 0.992
+    },
+    {
+      "word": "and",
+      "start": 334.08,
+      "end": 334.26,
+      "probability": 0.995
+    },
+    {
+      "word": "industrial",
+      "start": 334.26,
+      "end": 334.98,
+      "probability": 0.989
+    },
+    {
+      "word": "development.",
+      "start": 334.98,
+      "end": 335.7,
+      "probability": 0.998
+    },
+    {
+      "word": "For",
+      "start": 336.2,
+      "end": 336.44,
+      "probability": 0.994
+    },
+    {
+      "word": "a",
+      "start": 336.44,
+      "end": 336.58,
+      "probability": 0.916
+    },
+    {
+      "word": "while,",
+      "start": 336.58,
+      "end": 336.92,
+      "probability": 0.999
+    },
+    {
+      "word": "there",
+      "start": 337.26,
+      "end": 337.44,
+      "probability": 0.998
+    },
+    {
+      "word": "was",
+      "start": 337.44,
+      "end": 337.56,
+      "probability": 0.994
+    },
+    {
+      "word": "a",
+      "start": 337.56,
+      "end": 337.68,
+      "probability": 0.991
+    },
+    {
+      "word": "real",
+      "start": 337.68,
+      "end": 337.98,
+      "probability": 0.975
+    },
+    {
+      "word": "sense",
+      "start": 337.98,
+      "end": 338.32,
+      "probability": 0.999
+    },
+    {
+      "word": "of",
+      "start": 338.32,
+      "end": 338.66,
+      "probability": 0.998
+    },
+    {
+      "word": "widespread",
+      "start": 338.66,
+      "end": 339.16,
+      "probability": 0.994
+    },
+    {
+      "word": "prosperity.",
+      "start": 339.16,
+      "end": 340.14,
+      "probability": 0.997
+    },
+    {
+      "word": "But",
+      "start": 340.7,
+      "end": 340.84,
+      "probability": 0.973
+    },
+    {
+      "word": "here's",
+      "start": 340.84,
+      "end": 341.04,
+      "probability": 0.981
+    },
+    {
+      "word": "the",
+      "start": 341.04,
+      "end": 341.1,
+      "probability": 0.996
+    },
+    {
+      "word": "problem.",
+      "start": 341.1,
+      "end": 341.42,
+      "probability": 0.998
+    },
+    {
+      "word": "Relying",
+      "start": 342.08,
+      "end": 342.64,
+      "probability": 0.747
+    },
+    {
+      "word": "on",
+      "start": 342.64,
+      "end": 342.74,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 342.74,
+      "end": 342.84,
+      "probability": 0.992
+    },
+    {
+      "word": "single",
+      "start": 342.84,
+      "end": 343.22,
+      "probability": 0.998
+    },
+    {
+      "word": "commodity",
+      "start": 343.22,
+      "end": 343.8,
+      "probability": 0.997
+    },
+    {
+      "word": "turned",
+      "start": 343.8,
+      "end": 344.18,
+      "probability": 0.995
+    },
+    {
+      "word": "out",
+      "start": 344.18,
+      "end": 344.44,
+      "probability": 0.995
+    },
+    {
+      "word": "to",
+      "start": 344.44,
+      "end": 344.6,
+      "probability": 0.996
+    },
+    {
+      "word": "be",
+      "start": 344.6,
+      "end": 344.8,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 344.8,
+      "end": 345.08,
+      "probability": 0.993
+    },
+    {
+      "word": "house",
+      "start": 345.08,
+      "end": 345.48,
+      "probability": 0.938
+    },
+    {
+      "word": "of",
+      "start": 345.48,
+      "end": 345.64,
+      "probability": 0.519
+    },
+    {
+      "word": "cards.",
+      "start": 345.64,
+      "end": 346.08,
+      "probability": 0.704
+    },
+    {
+      "word": "When",
+      "start": 346.64,
+      "end": 346.82,
+      "probability": 0.956
+    },
+    {
+      "word": "oil",
+      "start": 346.82,
+      "end": 347.04,
+      "probability": 0.985
+    },
+    {
+      "word": "prices",
+      "start": 347.04,
+      "end": 347.4,
+      "probability": 0.966
+    },
+    {
+      "word": "crashed",
+      "start": 347.4,
+      "end": 347.84,
+      "probability": 0.978
+    },
+    {
+      "word": "in",
+      "start": 347.84,
+      "end": 348.02,
+      "probability": 0.936
+    },
+    {
+      "word": "the",
+      "start": 348.02,
+      "end": 348.1,
+      "probability": 0.99
+    },
+    {
+      "word": "1",
+      "start": 348.1,
+      "end": 348.34,
+      "probability": 0.529
+    },
+    {
+      "word": ",980",
+      "start": 348.34,
+      "end": 349.34,
+      "probability": 0.797
+    },
+    {
+      "word": "seconds,",
+      "start": 349.34,
+      "end": 349.84,
+      "probability": 0.801
+    },
+    {
+      "word": "the",
+      "start": 350.16,
+      "end": 350.2,
+      "probability": 0.985
+    },
+    {
+      "word": "Venezuelan",
+      "start": 350.2,
+      "end": 350.78,
+      "probability": 0.943
+    },
+    {
+      "word": "economy",
+      "start": 350.78,
+      "end": 351.2,
+      "probability": 0.997
+    },
+    {
+      "word": "buckled",
+      "start": 351.2,
+      "end": 351.8,
+      "probability": 0.977
+    },
+    {
+      "word": "under",
+      "start": 351.8,
+      "end": 352.08,
+      "probability": 0.997
+    },
+    {
+      "word": "the",
+      "start": 352.08,
+      "end": 352.22,
+      "probability": 0.975
+    },
+    {
+      "word": "pressure.",
+      "start": 352.22,
+      "end": 352.54,
+      "probability": 0.995
+    },
+    {
+      "word": "The",
+      "start": 353.16,
+      "end": 353.28,
+      "probability": 0.986
+    },
+    {
+      "word": "government",
+      "start": 353.28,
+      "end": 353.5,
+      "probability": 0.985
+    },
+    {
+      "word": "tried",
+      "start": 353.5,
+      "end": 353.78,
+      "probability": 0.996
+    },
+    {
+      "word": "to",
+      "start": 353.78,
+      "end": 353.94,
+      "probability": 0.999
+    },
+    {
+      "word": "fight",
+      "start": 353.94,
+      "end": 354.16,
+      "probability": 0.993
+    },
+    {
+      "word": "the",
+      "start": 354.16,
+      "end": 354.3,
+      "probability": 0.976
+    },
+    {
+      "word": "crisis",
+      "start": 354.3,
+      "end": 354.64,
+      "probability": 0.996
+    },
+    {
+      "word": "with",
+      "start": 354.64,
+      "end": 354.96,
+      "probability": 0.989
+    },
+    {
+      "word": "austerity",
+      "start": 354.96,
+      "end": 355.58,
+      "probability": 0.997
+    },
+    {
+      "word": "measures,",
+      "start": 355.58,
+      "end": 355.9,
+      "probability": 0.997
+    },
+    {
+      "word": "but",
+      "start": 356.36,
+      "end": 356.46,
+      "probability": 0.996
+    },
+    {
+      "word": "these",
+      "start": 356.46,
+      "end": 356.62,
+      "probability": 0.975
+    },
+    {
+      "word": "policies",
+      "start": 356.62,
+      "end": 357.12,
+      "probability": 0.997
+    },
+    {
+      "word": "hit",
+      "start": 357.12,
+      "end": 357.4,
+      "probability": 0.996
+    },
+    {
+      "word": "the",
+      "start": 357.4,
+      "end": 357.56,
+      "probability": 0.994
+    },
+    {
+      "word": "poor",
+      "start": 357.56,
+      "end": 357.9,
+      "probability": 0.926
+    },
+    {
+      "word": "and",
+      "start": 357.9,
+      "end": 358.18,
+      "probability": 0.978
+    },
+    {
+      "word": "marginalized",
+      "start": 358.18,
+      "end": 358.88,
+      "probability": 0.7
+    },
+    {
+      "word": "the",
+      "start": 358.88,
+      "end": 359.48,
+      "probability": 0.954
+    },
+    {
+      "word": "hardest.",
+      "start": 359.48,
+      "end": 359.84,
+      "probability": 0.972
+    },
+    {
+      "word": "Instead",
+      "start": 360.54,
+      "end": 360.76,
+      "probability": 0.989
+    },
+    {
+      "word": "of",
+      "start": 360.76,
+      "end": 360.9,
+      "probability": 0.996
+    },
+    {
+      "word": "fixing",
+      "start": 360.9,
+      "end": 361.18,
+      "probability": 0.995
+    },
+    {
+      "word": "things,",
+      "start": 361.18,
+      "end": 361.74,
+      "probability": 0.995
+    },
+    {
+      "word": "they",
+      "start": 362.04,
+      "end": 362.22,
+      "probability": 0.936
+    },
+    {
+      "word": "just",
+      "start": 362.22,
+      "end": 362.38,
+      "probability": 0.922
+    },
+    {
+      "word": "made",
+      "start": 362.38,
+      "end": 362.52,
+      "probability": 0.996
+    },
+    {
+      "word": "existing",
+      "start": 362.52,
+      "end": 363.14,
+      "probability": 0.98
+    },
+    {
+      "word": "inequalities",
+      "start": 363.14,
+      "end": 363.82,
+      "probability": 0.973
+    },
+    {
+      "word": "even",
+      "start": 363.82,
+      "end": 364.36,
+      "probability": 0.988
+    },
+    {
+      "word": "worse.",
+      "start": 364.36,
+      "end": 364.68,
+      "probability": 0.998
+    },
+    {
+      "word": "Everything",
+      "start": 365.42,
+      "end": 365.9,
+      "probability": 0.968
+    },
+    {
+      "word": "finally",
+      "start": 365.9,
+      "end": 366.54,
+      "probability": 0.565
+    },
+    {
+      "word": "boiled",
+      "start": 366.54,
+      "end": 366.86,
+      "probability": 0.87
+    },
+    {
+      "word": "over",
+      "start": 366.86,
+      "end": 367.2,
+      "probability": 0.996
+    },
+    {
+      "word": "in",
+      "start": 367.2,
+      "end": 367.38,
+      "probability": 0.989
+    },
+    {
+      "word": "1989",
+      "start": 367.38,
+      "end": 367.96,
+      "probability": 0.996
+    },
+    {
+      "word": "with",
+      "start": 367.96,
+      "end": 368.44,
+      "probability": 0.963
+    },
+    {
+      "word": "the",
+      "start": 368.44,
+      "end": 368.54,
+      "probability": 0.975
+    },
+    {
+      "word": "Carrakezo",
+      "start": 368.54,
+      "end": 369.16,
+      "probability": 0.443
+    },
+    {
+      "word": "riots.",
+      "start": 369.16,
+      "end": 369.54,
+      "probability": 0.955
+    },
+    {
+      "word": "This",
+      "start": 370.08,
+      "end": 370.24,
+      "probability": 0.993
+    },
+    {
+      "word": "was",
+      "start": 370.24,
+      "end": 370.38,
+      "probability": 0.993
+    },
+    {
+      "word": "a",
+      "start": 370.38,
+      "end": 370.52,
+      "probability": 0.97
+    },
+    {
+      "word": "spontaneous",
+      "start": 370.52,
+      "end": 371.14,
+      "probability": 0.993
+    },
+    {
+      "word": "explosion",
+      "start": 371.14,
+      "end": 371.72,
+      "probability": 0.641
+    },
+    {
+      "word": "of",
+      "start": 371.72,
+      "end": 372.06,
+      "probability": 0.994
+    },
+    {
+      "word": "social",
+      "start": 372.06,
+      "end": 372.48,
+      "probability": 0.995
+    },
+    {
+      "word": "unrest",
+      "start": 372.48,
+      "end": 372.9,
+      "probability": 0.999
+    },
+    {
+      "word": "and",
+      "start": 372.9,
+      "end": 373.22,
+      "probability": 0.332
+    },
+    {
+      "word": "response",
+      "start": 373.22,
+      "end": 373.6,
+      "probability": 0.988
+    },
+    {
+      "word": "to",
+      "start": 373.6,
+      "end": 374.24,
+      "probability": 0.991
+    },
+    {
+      "word": "those",
+      "start": 374.24,
+      "end": 374.5,
+      "probability": 0.972
+    },
+    {
+      "word": "austerity",
+      "start": 374.5,
+      "end": 375.14,
+      "probability": 0.999
+    },
+    {
+      "word": "cuts.",
+      "start": 375.14,
+      "end": 375.52,
+      "probability": 0.987
+    },
+    {
+      "word": "It",
+      "start": 375.8,
+      "end": 375.98,
+      "probability": 0.98
+    },
+    {
+      "word": "was",
+      "start": 375.98,
+      "end": 376.1,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 376.1,
+      "end": 376.2,
+      "probability": 0.981
+    },
+    {
+      "word": "clear",
+      "start": 376.2,
+      "end": 376.58,
+      "probability": 0.997
+    },
+    {
+      "word": "sign",
+      "start": 376.58,
+      "end": 376.96,
+      "probability": 0.997
+    },
+    {
+      "word": "of",
+      "start": 376.96,
+      "end": 377.12,
+      "probability": 0.992
+    },
+    {
+      "word": "the",
+      "start": 377.12,
+      "end": 377.22,
+      "probability": 0.982
+    },
+    {
+      "word": "deep",
+      "start": 377.22,
+      "end": 377.56,
+      "probability": 0.976
+    },
+    {
+      "word": "seated",
+      "start": 377.56,
+      "end": 377.88,
+      "probability": 0.06
+    },
+    {
+      "word": "anger",
+      "start": 377.88,
+      "end": 378.3,
+      "probability": 0.987
+    },
+    {
+      "word": "simmering",
+      "start": 378.3,
+      "end": 378.96,
+      "probability": 0.977
+    },
+    {
+      "word": "beneath",
+      "start": 378.96,
+      "end": 379.14,
+      "probability": 0.999
+    },
+    {
+      "word": "the",
+      "start": 379.14,
+      "end": 379.36,
+      "probability": 0.995
+    },
+    {
+      "word": "surface",
+      "start": 379.36,
+      "end": 379.62,
+      "probability": 0.996
+    },
+    {
+      "word": "of",
+      "start": 379.62,
+      "end": 379.82,
+      "probability": 0.998
+    },
+    {
+      "word": "society.",
+      "start": 379.82,
+      "end": 380.32,
+      "probability": 0.991
+    },
+    {
+      "word": "This",
+      "start": 380.92,
+      "end": 381.14,
+      "probability": 0.979
+    },
+    {
+      "word": "volatile",
+      "start": 381.14,
+      "end": 381.52,
+      "probability": 0.982
+    },
+    {
+      "word": "environment",
+      "start": 381.52,
+      "end": 382.12,
+      "probability": 0.997
+    },
+    {
+      "word": "was",
+      "start": 382.12,
+      "end": 382.32,
+      "probability": 0.999
+    },
+    {
+      "word": "the",
+      "start": 382.32,
+      "end": 382.48,
+      "probability": 0.993
+    },
+    {
+      "word": "perfect",
+      "start": 382.48,
+      "end": 382.78,
+      "probability": 0.994
+    },
+    {
+      "word": "stage",
+      "start": 382.78,
+      "end": 383.16,
+      "probability": 0.994
+    },
+    {
+      "word": "for",
+      "start": 383.16,
+      "end": 383.42,
+      "probability": 0.998
+    },
+    {
+      "word": "Hugo",
+      "start": 383.42,
+      "end": 383.68,
+      "probability": 0.985
+    },
+    {
+      "word": "Chavez.",
+      "start": 383.68,
+      "end": 384.16,
+      "probability": 0.787
+    },
+    {
+      "word": "He",
+      "start": 384.62,
+      "end": 384.7,
+      "probability": 0.992
+    },
+    {
+      "word": "capitalized",
+      "start": 384.7,
+      "end": 385.46,
+      "probability": 0.951
+    },
+    {
+      "word": "on",
+      "start": 385.46,
+      "end": 385.64,
+      "probability": 0.994
+    },
+    {
+      "word": "the",
+      "start": 385.64,
+      "end": 385.74,
+      "probability": 0.986
+    },
+    {
+      "word": "public's",
+      "start": 385.74,
+      "end": 386.3,
+      "probability": 0.987
+    },
+    {
+      "word": "discontent",
+      "start": 386.3,
+      "end": 386.82,
+      "probability": 0.993
+    },
+    {
+      "word": "with",
+      "start": 386.82,
+      "end": 387.02,
+      "probability": 0.98
+    },
+    {
+      "word": "the",
+      "start": 387.02,
+      "end": 387.14,
+      "probability": 0.958
+    },
+    {
+      "word": "political",
+      "start": 387.14,
+      "end": 387.5,
+      "probability": 0.981
+    },
+    {
+      "word": "order.",
+      "start": 387.5,
+      "end": 387.86,
+      "probability": 0.998
+    },
+    {
+      "word": "By",
+      "start": 388.34,
+      "end": 388.48,
+      "probability": 0.994
+    },
+    {
+      "word": "1998,",
+      "start": 388.48,
+      "end": 388.98,
+      "probability": 0.985
+    },
+    {
+      "word": "he",
+      "start": 389.64,
+      "end": 389.74,
+      "probability": 0.994
+    },
+    {
+      "word": "rose",
+      "start": 389.74,
+      "end": 389.98,
+      "probability": 0.972
+    },
+    {
+      "word": "to",
+      "start": 389.98,
+      "end": 390.18,
+      "probability": 0.998
+    },
+    {
+      "word": "power",
+      "start": 390.18,
+      "end": 390.48,
+      "probability": 0.999
+    },
+    {
+      "word": "on",
+      "start": 390.48,
+      "end": 390.68,
+      "probability": 0.997
+    },
+    {
+      "word": "a",
+      "start": 390.68,
+      "end": 390.76,
+      "probability": 0.962
+    },
+    {
+      "word": "platform",
+      "start": 390.76,
+      "end": 391.24,
+      "probability": 0.995
+    },
+    {
+      "word": "of",
+      "start": 391.24,
+      "end": 391.5,
+      "probability": 0.997
+    },
+    {
+      "word": "radical",
+      "start": 391.5,
+      "end": 391.88,
+      "probability": 0.993
+    },
+    {
+      "word": "change.",
+      "start": 391.88,
+      "end": 392.5,
+      "probability": 0.999
+    },
+    {
+      "word": "His",
+      "start": 393.16,
+      "end": 393.44,
+      "probability": 0.983
+    },
+    {
+      "word": "Bolivarian",
+      "start": 393.44,
+      "end": 394.18,
+      "probability": 0.827
+    },
+    {
+      "word": "revolution",
+      "start": 394.18,
+      "end": 394.76,
+      "probability": 0.674
+    },
+    {
+      "word": "was",
+      "start": 394.76,
+      "end": 395.08,
+      "probability": 0.998
+    },
+    {
+      "word": "inspired",
+      "start": 395.08,
+      "end": 395.68,
+      "probability": 0.997
+    },
+    {
+      "word": "by",
+      "start": 395.68,
+      "end": 395.86,
+      "probability": 0.597
+    },
+    {
+      "word": "the",
+      "start": 395.86,
+      "end": 395.96,
+      "probability": 0.985
+    },
+    {
+      "word": "vision",
+      "start": 395.96,
+      "end": 396.3,
+      "probability": 0.939
+    },
+    {
+      "word": "of",
+      "start": 396.3,
+      "end": 396.58,
+      "probability": 0.993
+    },
+    {
+      "word": "Simone",
+      "start": 396.58,
+      "end": 397.04,
+      "probability": 0.338
+    },
+    {
+      "word": "Bolivar.",
+      "start": 397.04,
+      "end": 397.96,
+      "probability": 0.779
+    },
+    {
+      "word": "It",
+      "start": 398.42,
+      "end": 398.48,
+      "probability": 0.966
+    },
+    {
+      "word": "promised",
+      "start": 398.48,
+      "end": 398.86,
+      "probability": 0.967
+    },
+    {
+      "word": "to",
+      "start": 398.86,
+      "end": 399.1,
+      "probability": 0.996
+    },
+    {
+      "word": "redistribute",
+      "start": 399.1,
+      "end": 399.76,
+      "probability": 0.997
+    },
+    {
+      "word": "wealth",
+      "start": 399.76,
+      "end": 400.26,
+      "probability": 0.979
+    },
+    {
+      "word": "and",
+      "start": 400.26,
+      "end": 400.74,
+      "probability": 0.698
+    },
+    {
+      "word": "finally",
+      "start": 400.74,
+      "end": 401.32,
+      "probability": 0.936
+    },
+    {
+      "word": "empower",
+      "start": 401.32,
+      "end": 401.92,
+      "probability": 0.968
+    },
+    {
+      "word": "the",
+      "start": 401.92,
+      "end": 402.2,
+      "probability": 0.996
+    },
+    {
+      "word": "poor.",
+      "start": 402.2,
+      "end": 402.48,
+      "probability": 0.985
+    },
+    {
+      "word": "But",
+      "start": 402.96,
+      "end": 403.34,
+      "probability": 0.982
+    },
+    {
+      "word": "while",
+      "start": 403.34,
+      "end": 403.52,
+      "probability": 0.968
+    },
+    {
+      "word": "his",
+      "start": 403.52,
+      "end": 403.68,
+      "probability": 0.986
+    },
+    {
+      "word": "policies",
+      "start": 403.68,
+      "end": 404.18,
+      "probability": 0.989
+    },
+    {
+      "word": "were",
+      "start": 404.18,
+      "end": 404.42,
+      "probability": 0.995
+    },
+    {
+      "word": "initially",
+      "start": 404.42,
+      "end": 404.74,
+      "probability": 0.98
+    },
+    {
+      "word": "popular,",
+      "start": 404.74,
+      "end": 405.36,
+      "probability": 0.996
+    },
+    {
+      "word": "they",
+      "start": 405.88,
+      "end": 406.04,
+      "probability": 0.985
+    },
+    {
+      "word": "ended",
+      "start": 406.04,
+      "end": 406.22,
+      "probability": 0.989
+    },
+    {
+      "word": "up",
+      "start": 406.22,
+      "end": 406.4,
+      "probability": 1.0
+    },
+    {
+      "word": "polarizing",
+      "start": 406.4,
+      "end": 407.0,
+      "probability": 0.97
+    },
+    {
+      "word": "the",
+      "start": 407.0,
+      "end": 407.14,
+      "probability": 0.997
+    },
+    {
+      "word": "country",
+      "start": 407.14,
+      "end": 407.44,
+      "probability": 0.997
+    },
+    {
+      "word": "even",
+      "start": 407.44,
+      "end": 407.78,
+      "probability": 0.992
+    },
+    {
+      "word": "further.",
+      "start": 407.78,
+      "end": 408.22,
+      "probability": 0.992
+    },
+    {
+      "word": "A",
+      "start": 408.7,
+      "end": 408.88,
+      "probability": 0.983
+    },
+    {
+      "word": "failed",
+      "start": 408.88,
+      "end": 409.14,
+      "probability": 0.995
+    },
+    {
+      "word": "coup",
+      "start": 409.14,
+      "end": 409.38,
+      "probability": 0.956
+    },
+    {
+      "word": "attempt",
+      "start": 409.38,
+      "end": 409.78,
+      "probability": 0.999
+    },
+    {
+      "word": "in",
+      "start": 409.78,
+      "end": 409.9,
+      "probability": 0.989
+    },
+    {
+      "word": "2002",
+      "start": 409.9,
+      "end": 410.74,
+      "probability": 0.992
+    },
+    {
+      "word": "revealed",
+      "start": 410.74,
+      "end": 411.18,
+      "probability": 0.981
+    },
+    {
+      "word": "just",
+      "start": 411.18,
+      "end": 411.58,
+      "probability": 0.983
+    },
+    {
+      "word": "how",
+      "start": 411.58,
+      "end": 411.9,
+      "probability": 0.998
+    },
+    {
+      "word": "deep",
+      "start": 411.9,
+      "end": 412.26,
+      "probability": 0.991
+    },
+    {
+      "word": "the",
+      "start": 412.26,
+      "end": 412.48,
+      "probability": 0.993
+    },
+    {
+      "word": "divisions",
+      "start": 412.48,
+      "end": 412.84,
+      "probability": 0.976
+    },
+    {
+      "word": "in",
+      "start": 412.84,
+      "end": 413.12,
+      "probability": 0.499
+    },
+    {
+      "word": "the",
+      "start": 413.12,
+      "end": 413.22,
+      "probability": 0.987
+    },
+    {
+      "word": "nation",
+      "start": 413.22,
+      "end": 413.52,
+      "probability": 0.993
+    },
+    {
+      "word": "had",
+      "start": 413.52,
+      "end": 413.76,
+      "probability": 0.991
+    },
+    {
+      "word": "become.",
+      "start": 413.76,
+      "end": 414.22,
+      "probability": 0.992
+    },
+    {
+      "word": "In",
+      "start": 414.66,
+      "end": 414.74,
+      "probability": 0.985
+    },
+    {
+      "word": "response,",
+      "start": 414.74,
+      "end": 415.1,
+      "probability": 0.995
+    },
+    {
+      "word": "Chavez",
+      "start": 415.86,
+      "end": 416.14,
+      "probability": 0.933
+    },
+    {
+      "word": "moved",
+      "start": 416.14,
+      "end": 416.5,
+      "probability": 0.985
+    },
+    {
+      "word": "to",
+      "start": 416.5,
+      "end": 416.78,
+      "probability": 0.998
+    },
+    {
+      "word": "consolidate",
+      "start": 416.78,
+      "end": 417.36,
+      "probability": 0.997
+    },
+    {
+      "word": "his",
+      "start": 417.36,
+      "end": 417.66,
+      "probability": 0.994
+    },
+    {
+      "word": "power.",
+      "start": 417.66,
+      "end": 418.08,
+      "probability": 0.999
+    },
+    {
+      "word": "He",
+      "start": 418.46,
+      "end": 418.56,
+      "probability": 0.99
+    },
+    {
+      "word": "created",
+      "start": 418.56,
+      "end": 418.8,
+      "probability": 0.997
+    },
+    {
+      "word": "parallel",
+      "start": 418.8,
+      "end": 419.2,
+      "probability": 0.989
+    },
+    {
+      "word": "social",
+      "start": 419.2,
+      "end": 419.6,
+      "probability": 0.995
+    },
+    {
+      "word": "programs",
+      "start": 419.6,
+      "end": 420.04,
+      "probability": 0.989
+    },
+    {
+      "word": "that",
+      "start": 420.04,
+      "end": 420.2,
+      "probability": 0.99
+    },
+    {
+      "word": "bypass",
+      "start": 420.2,
+      "end": 420.54,
+      "probability": 0.999
+    },
+    {
+      "word": "traditional",
+      "start": 420.54,
+      "end": 421.24,
+      "probability": 0.563
+    },
+    {
+      "word": "institutions",
+      "start": 421.24,
+      "end": 422.0,
+      "probability": 0.997
+    },
+    {
+      "word": "which",
+      "start": 422.0,
+      "end": 422.56,
+      "probability": 0.466
+    },
+    {
+      "word": "made",
+      "start": 422.56,
+      "end": 422.7,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 422.7,
+      "end": 422.84,
+      "probability": 0.997
+    },
+    {
+      "word": "public",
+      "start": 422.84,
+      "end": 423.12,
+      "probability": 0.992
+    },
+    {
+      "word": "more",
+      "start": 423.12,
+      "end": 423.38,
+      "probability": 0.998
+    },
+    {
+      "word": "dependent",
+      "start": 423.38,
+      "end": 423.78,
+      "probability": 0.981
+    },
+    {
+      "word": "on",
+      "start": 423.78,
+      "end": 424.0,
+      "probability": 0.994
+    },
+    {
+      "word": "the",
+      "start": 424.0,
+      "end": 424.12,
+      "probability": 0.951
+    },
+    {
+      "word": "state.",
+      "start": 424.12,
+      "end": 424.44,
+      "probability": 0.982
+    },
+    {
+      "word": "These",
+      "start": 424.78,
+      "end": 424.92,
+      "probability": 0.97
+    },
+    {
+      "word": "actions",
+      "start": 424.92,
+      "end": 425.38,
+      "probability": 0.994
+    },
+    {
+      "word": "were",
+      "start": 425.38,
+      "end": 425.6,
+      "probability": 0.316
+    },
+    {
+      "word": "meant",
+      "start": 425.6,
+      "end": 425.82,
+      "probability": 0.989
+    },
+    {
+      "word": "to",
+      "start": 425.82,
+      "end": 426.02,
+      "probability": 0.997
+    },
+    {
+      "word": "alleviate",
+      "start": 426.02,
+      "end": 426.3,
+      "probability": 0.994
+    },
+    {
+      "word": "poverty,",
+      "start": 426.3,
+      "end": 426.88,
+      "probability": 0.997
+    },
+    {
+      "word": "but",
+      "start": 427.4,
+      "end": 427.48,
+      "probability": 0.995
+    },
+    {
+      "word": "they",
+      "start": 427.48,
+      "end": 427.6,
+      "probability": 0.962
+    },
+    {
+      "word": "also",
+      "start": 427.6,
+      "end": 427.86,
+      "probability": 0.997
+    },
+    {
+      "word": "served",
+      "start": 427.86,
+      "end": 428.2,
+      "probability": 0.994
+    },
+    {
+      "word": "a",
+      "start": 428.2,
+      "end": 428.28,
+      "probability": 0.983
+    },
+    {
+      "word": "political",
+      "start": 428.28,
+      "end": 428.62,
+      "probability": 0.998
+    },
+    {
+      "word": "purpose.",
+      "start": 428.62,
+      "end": 428.98,
+      "probability": 0.999
+    },
+    {
+      "word": "They",
+      "start": 429.52,
+      "end": 429.66,
+      "probability": 0.989
+    },
+    {
+      "word": "entrenched",
+      "start": 429.66,
+      "end": 430.12,
+      "probability": 0.99
+    },
+    {
+      "word": "his",
+      "start": 430.12,
+      "end": 430.32,
+      "probability": 0.991
+    },
+    {
+      "word": "power",
+      "start": 430.32,
+      "end": 430.64,
+      "probability": 0.998
+    },
+    {
+      "word": "base",
+      "start": 430.64,
+      "end": 430.9,
+      "probability": 0.667
+    },
+    {
+      "word": "and",
+      "start": 430.9,
+      "end": 431.1,
+      "probability": 0.938
+    },
+    {
+      "word": "pushed",
+      "start": 431.1,
+      "end": 431.38,
+      "probability": 0.997
+    },
+    {
+      "word": "his",
+      "start": 431.38,
+      "end": 431.6,
+      "probability": 0.993
+    },
+    {
+      "word": "opponents",
+      "start": 431.6,
+      "end": 431.96,
+      "probability": 0.979
+    },
+    {
+      "word": "to",
+      "start": 431.96,
+      "end": 432.22,
+      "probability": 0.989
+    },
+    {
+      "word": "the",
+      "start": 432.22,
+      "end": 432.3,
+      "probability": 0.986
+    },
+    {
+      "word": "margins.",
+      "start": 432.3,
+      "end": 432.64,
+      "probability": 0.996
+    },
+    {
+      "word": "While",
+      "start": 433.54,
+      "end": 433.74,
+      "probability": 0.984
+    },
+    {
+      "word": "the",
+      "start": 433.74,
+      "end": 433.88,
+      "probability": 0.995
+    },
+    {
+      "word": "seeds",
+      "start": 433.88,
+      "end": 434.16,
+      "probability": 0.916
+    },
+    {
+      "word": "of",
+      "start": 434.16,
+      "end": 434.38,
+      "probability": 0.998
+    },
+    {
+      "word": "division",
+      "start": 434.38,
+      "end": 434.74,
+      "probability": 0.981
+    },
+    {
+      "word": "were",
+      "start": 434.74,
+      "end": 434.96,
+      "probability": 0.984
+    },
+    {
+      "word": "sewn",
+      "start": 434.96,
+      "end": 435.26,
+      "probability": 0.15
+    },
+    {
+      "word": "long",
+      "start": 435.26,
+      "end": 435.5,
+      "probability": 0.972
+    },
+    {
+      "word": "ago,",
+      "start": 435.5,
+      "end": 435.82,
+      "probability": 0.993
+    },
+    {
+      "word": "everything",
+      "start": 436.32,
+      "end": 436.66,
+      "probability": 0.996
+    },
+    {
+      "word": "truly",
+      "start": 436.66,
+      "end": 437.14,
+      "probability": 0.993
+    },
+    {
+      "word": "came",
+      "start": 437.14,
+      "end": 437.42,
+      "probability": 0.992
+    },
+    {
+      "word": "to",
+      "start": 437.42,
+      "end": 437.64,
+      "probability": 0.987
+    },
+    {
+      "word": "a",
+      "start": 437.64,
+      "end": 437.76,
+      "probability": 0.978
+    },
+    {
+      "word": "head",
+      "start": 437.76,
+      "end": 437.92,
+      "probability": 0.981
+    },
+    {
+      "word": "in",
+      "start": 437.92,
+      "end": 438.14,
+      "probability": 0.993
+    },
+    {
+      "word": "2014",
+      "start": 438.14,
+      "end": 438.82,
+      "probability": 0.993
+    },
+    {
+      "word": "when",
+      "start": 438.82,
+      "end": 439.44,
+      "probability": 0.56
+    },
+    {
+      "word": "oil",
+      "start": 439.44,
+      "end": 439.74,
+      "probability": 0.992
+    },
+    {
+      "word": "prices",
+      "start": 439.74,
+      "end": 440.24,
+      "probability": 0.969
+    },
+    {
+      "word": "collapsed.",
+      "start": 440.24,
+      "end": 440.94,
+      "probability": 0.996
+    },
+    {
+      "word": "The",
+      "start": 441.58,
+      "end": 441.78,
+      "probability": 0.991
+    },
+    {
+      "word": "nation",
+      "start": 441.78,
+      "end": 442.02,
+      "probability": 0.986
+    },
+    {
+      "word": "had",
+      "start": 442.02,
+      "end": 442.18,
+      "probability": 0.98
+    },
+    {
+      "word": "become",
+      "start": 442.18,
+      "end": 442.44,
+      "probability": 0.993
+    },
+    {
+      "word": "so",
+      "start": 442.44,
+      "end": 442.78,
+      "probability": 0.997
+    },
+    {
+      "word": "reliant",
+      "start": 442.78,
+      "end": 443.22,
+      "probability": 0.998
+    },
+    {
+      "word": "on",
+      "start": 443.22,
+      "end": 443.4,
+      "probability": 0.996
+    },
+    {
+      "word": "this",
+      "start": 443.4,
+      "end": 443.56,
+      "probability": 0.9
+    },
+    {
+      "word": "single",
+      "start": 443.56,
+      "end": 443.92,
+      "probability": 0.992
+    },
+    {
+      "word": "commodity",
+      "start": 443.92,
+      "end": 444.3,
+      "probability": 0.994
+    },
+    {
+      "word": "that",
+      "start": 444.3,
+      "end": 444.56,
+      "probability": 0.976
+    },
+    {
+      "word": "the",
+      "start": 444.56,
+      "end": 444.72,
+      "probability": 0.985
+    },
+    {
+      "word": "economic",
+      "start": 444.72,
+      "end": 445.1,
+      "probability": 0.996
+    },
+    {
+      "word": "fallout",
+      "start": 445.1,
+      "end": 445.64,
+      "probability": 0.976
+    },
+    {
+      "word": "was",
+      "start": 445.64,
+      "end": 445.8,
+      "probability": 0.983
+    },
+    {
+      "word": "swift",
+      "start": 445.8,
+      "end": 446.14,
+      "probability": 0.983
+    },
+    {
+      "word": "and",
+      "start": 446.14,
+      "end": 446.68,
+      "probability": 0.979
+    },
+    {
+      "word": "merciless.",
+      "start": 446.68,
+      "end": 447.32,
+      "probability": 0.992
+    },
+    {
+      "word": "Hyperinflation",
+      "start": 448.0,
+      "end": 448.56,
+      "probability": 0.932
+    },
+    {
+      "word": "spiraled",
+      "start": 448.56,
+      "end": 449.12,
+      "probability": 0.864
+    },
+    {
+      "word": "out",
+      "start": 449.12,
+      "end": 449.26,
+      "probability": 0.643
+    },
+    {
+      "word": "of",
+      "start": 449.26,
+      "end": 449.34,
+      "probability": 0.99
+    },
+    {
+      "word": "control,",
+      "start": 449.34,
+      "end": 449.7,
+      "probability": 0.999
+    },
+    {
+      "word": "making",
+      "start": 450.14,
+      "end": 450.28,
+      "probability": 0.99
+    },
+    {
+      "word": "the",
+      "start": 450.28,
+      "end": 450.52,
+      "probability": 0.994
+    },
+    {
+      "word": "Bolivar",
+      "start": 450.52,
+      "end": 451.04,
+      "probability": 0.653
+    },
+    {
+      "word": "practically",
+      "start": 451.04,
+      "end": 451.76,
+      "probability": 0.939
+    },
+    {
+      "word": "worthless.",
+      "start": 451.76,
+      "end": 452.34,
+      "probability": 0.986
+    },
+    {
+      "word": "Suddenly,",
+      "start": 452.84,
+      "end": 453.26,
+      "probability": 0.981
+    },
+    {
+      "word": "even",
+      "start": 453.66,
+      "end": 453.84,
+      "probability": 0.998
+    },
+    {
+      "word": "basic",
+      "start": 453.84,
+      "end": 454.26,
+      "probability": 0.997
+    },
+    {
+      "word": "essentials",
+      "start": 454.26,
+      "end": 454.74,
+      "probability": 0.992
+    },
+    {
+      "word": "like",
+      "start": 454.74,
+      "end": 455.14,
+      "probability": 0.61
+    },
+    {
+      "word": "food",
+      "start": 455.14,
+      "end": 455.54,
+      "probability": 0.993
+    },
+    {
+      "word": "and",
+      "start": 455.54,
+      "end": 455.72,
+      "probability": 0.977
+    },
+    {
+      "word": "medicine",
+      "start": 455.72,
+      "end": 456.08,
+      "probability": 0.999
+    },
+    {
+      "word": "became",
+      "start": 456.08,
+      "end": 456.42,
+      "probability": 0.981
+    },
+    {
+      "word": "hard",
+      "start": 456.42,
+      "end": 456.72,
+      "probability": 0.999
+    },
+    {
+      "word": "to",
+      "start": 456.72,
+      "end": 456.86,
+      "probability": 0.921
+    },
+    {
+      "word": "find.",
+      "start": 456.86,
+      "end": 457.34,
+      "probability": 0.999
+    },
+    {
+      "word": "Faced",
+      "start": 457.68,
+      "end": 458.08,
+      "probability": 0.916
+    },
+    {
+      "word": "with",
+      "start": 458.08,
+      "end": 458.24,
+      "probability": 0.999
+    },
+    {
+      "word": "this",
+      "start": 458.24,
+      "end": 458.44,
+      "probability": 0.995
+    },
+    {
+      "word": "impossible",
+      "start": 458.44,
+      "end": 459.18,
+      "probability": 0.94
+    },
+    {
+      "word": "situation,",
+      "start": 459.18,
+      "end": 459.88,
+      "probability": 0.998
+    },
+    {
+      "word": "millions",
+      "start": 460.38,
+      "end": 460.6,
+      "probability": 0.961
+    },
+    {
+      "word": "of",
+      "start": 460.6,
+      "end": 460.9,
+      "probability": 0.999
+    },
+    {
+      "word": "Venezuelans",
+      "start": 460.9,
+      "end": 461.56,
+      "probability": 0.995
+    },
+    {
+      "word": "made",
+      "start": 461.56,
+      "end": 461.72,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 461.72,
+      "end": 461.92,
+      "probability": 0.988
+    },
+    {
+      "word": "heartbreaking",
+      "start": 461.92,
+      "end": 462.38,
+      "probability": 0.833
+    },
+    {
+      "word": "choice",
+      "start": 462.38,
+      "end": 462.96,
+      "probability": 0.998
+    },
+    {
+      "word": "to",
+      "start": 462.96,
+      "end": 463.26,
+      "probability": 0.998
+    },
+    {
+      "word": "leave",
+      "start": 463.26,
+      "end": 463.56,
+      "probability": 0.978
+    },
+    {
+      "word": "their",
+      "start": 463.56,
+      "end": 463.84,
+      "probability": 0.995
+    },
+    {
+      "word": "homes,",
+      "start": 463.84,
+      "end": 464.3,
+      "probability": 0.998
+    },
+    {
+      "word": "searching",
+      "start": 464.76,
+      "end": 464.94,
+      "probability": 0.997
+    },
+    {
+      "word": "for",
+      "start": 464.94,
+      "end": 465.16,
+      "probability": 1.0
+    },
+    {
+      "word": "stability",
+      "start": 465.16,
+      "end": 465.72,
+      "probability": 0.992
+    },
+    {
+      "word": "and",
+      "start": 465.72,
+      "end": 465.98,
+      "probability": 0.955
+    },
+    {
+      "word": "opportunity",
+      "start": 465.98,
+      "end": 466.6,
+      "probability": 0.994
+    },
+    {
+      "word": "elsewhere.",
+      "start": 466.6,
+      "end": 467.14,
+      "probability": 0.997
+    },
+    {
+      "word": "Under",
+      "start": 467.76,
+      "end": 468.1,
+      "probability": 0.985
+    },
+    {
+      "word": "Nicolas",
+      "start": 468.1,
+      "end": 468.36,
+      "probability": 0.241
+    },
+    {
+      "word": "Maduro's",
+      "start": 468.36,
+      "end": 468.98,
+      "probability": 0.895
+    },
+    {
+      "word": "leadership,",
+      "start": 468.98,
+      "end": 469.4,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 469.8,
+      "end": 469.86,
+      "probability": 0.995
+    },
+    {
+      "word": "situation",
+      "start": 469.86,
+      "end": 470.38,
+      "probability": 0.999
+    },
+    {
+      "word": "only",
+      "start": 470.38,
+      "end": 470.94,
+      "probability": 0.99
+    },
+    {
+      "word": "got",
+      "start": 470.94,
+      "end": 471.2,
+      "probability": 0.999
+    },
+    {
+      "word": "worse.",
+      "start": 471.2,
+      "end": 471.58,
+      "probability": 0.999
+    },
+    {
+      "word": "The",
+      "start": 472.08,
+      "end": 472.26,
+      "probability": 0.996
+    },
+    {
+      "word": "political",
+      "start": 472.26,
+      "end": 472.6,
+      "probability": 0.997
+    },
+    {
+      "word": "landscape",
+      "start": 472.6,
+      "end": 473.02,
+      "probability": 0.999
+    },
+    {
+      "word": "fractured",
+      "start": 473.02,
+      "end": 473.68,
+      "probability": 0.995
+    },
+    {
+      "word": "even",
+      "start": 473.68,
+      "end": 473.98,
+      "probability": 0.634
+    },
+    {
+      "word": "further",
+      "start": 473.98,
+      "end": 474.5,
+      "probability": 0.985
+    },
+    {
+      "word": "as",
+      "start": 474.5,
+      "end": 474.74,
+      "probability": 0.895
+    },
+    {
+      "word": "opposition",
+      "start": 474.74,
+      "end": 475.18,
+      "probability": 0.964
+    },
+    {
+      "word": "movements",
+      "start": 475.18,
+      "end": 475.7,
+      "probability": 0.941
+    },
+    {
+      "word": "gained",
+      "start": 475.7,
+      "end": 476.04,
+      "probability": 0.992
+    },
+    {
+      "word": "ground.",
+      "start": 476.04,
+      "end": 476.46,
+      "probability": 0.99
+    },
+    {
+      "word": "This",
+      "start": 476.98,
+      "end": 477.26,
+      "probability": 0.981
+    },
+    {
+      "word": "is",
+      "start": 477.26,
+      "end": 477.38,
+      "probability": 0.972
+    },
+    {
+      "word": "when",
+      "start": 477.38,
+      "end": 477.54,
+      "probability": 0.987
+    },
+    {
+      "word": "figures",
+      "start": 477.54,
+      "end": 477.86,
+      "probability": 0.992
+    },
+    {
+      "word": "like",
+      "start": 477.86,
+      "end": 478.18,
+      "probability": 0.992
+    },
+    {
+      "word": "Juan",
+      "start": 478.18,
+      "end": 478.48,
+      "probability": 0.949
+    },
+    {
+      "word": "Guaidó",
+      "start": 478.48,
+      "end": 479.04,
+      "probability": 0.848
+    },
+    {
+      "word": "emerged,",
+      "start": 479.04,
+      "end": 479.62,
+      "probability": 0.969
+    },
+    {
+      "word": "claiming",
+      "start": 480.0,
+      "end": 480.16,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 480.16,
+      "end": 480.36,
+      "probability": 0.989
+    },
+    {
+      "word": "presidency",
+      "start": 480.36,
+      "end": 480.88,
+      "probability": 0.957
+    },
+    {
+      "word": "and",
+      "start": 480.88,
+      "end": 481.1,
+      "probability": 0.92
+    },
+    {
+      "word": "winning",
+      "start": 481.1,
+      "end": 481.36,
+      "probability": 0.991
+    },
+    {
+      "word": "recognition",
+      "start": 481.36,
+      "end": 481.94,
+      "probability": 0.997
+    },
+    {
+      "word": "from",
+      "start": 481.94,
+      "end": 482.22,
+      "probability": 0.99
+    },
+    {
+      "word": "several",
+      "start": 482.22,
+      "end": 482.62,
+      "probability": 0.995
+    },
+    {
+      "word": "international",
+      "start": 482.62,
+      "end": 483.04,
+      "probability": 0.989
+    },
+    {
+      "word": "powers.",
+      "start": 483.04,
+      "end": 483.66,
+      "probability": 0.998
+    },
+    {
+      "word": "Instead",
+      "start": 484.16,
+      "end": 484.5,
+      "probability": 0.982
+    },
+    {
+      "word": "of",
+      "start": 484.5,
+      "end": 484.64,
+      "probability": 0.999
+    },
+    {
+      "word": "resolving",
+      "start": 484.64,
+      "end": 485.04,
+      "probability": 0.996
+    },
+    {
+      "word": "the",
+      "start": 485.04,
+      "end": 485.22,
+      "probability": 0.996
+    },
+    {
+      "word": "crisis,",
+      "start": 485.22,
+      "end": 485.64,
+      "probability": 0.992
+    },
+    {
+      "word": "this",
+      "start": 486.16,
+      "end": 486.26,
+      "probability": 0.987
+    },
+    {
+      "word": "only",
+      "start": 486.26,
+      "end": 486.46,
+      "probability": 0.994
+    },
+    {
+      "word": "deepened",
+      "start": 486.46,
+      "end": 486.9,
+      "probability": 0.968
+    },
+    {
+      "word": "the",
+      "start": 486.9,
+      "end": 487.02,
+      "probability": 0.996
+    },
+    {
+      "word": "chasm",
+      "start": 487.02,
+      "end": 487.42,
+      "probability": 0.922
+    },
+    {
+      "word": "within",
+      "start": 487.42,
+      "end": 487.76,
+      "probability": 0.99
+    },
+    {
+      "word": "Venezuelan",
+      "start": 487.76,
+      "end": 488.38,
+      "probability": 0.899
+    },
+    {
+      "word": "society.",
+      "start": 488.38,
+      "end": 488.92,
+      "probability": 0.998
+    },
+    {
+      "word": "But",
+      "start": 489.4,
+      "end": 489.6,
+      "probability": 0.983
+    },
+    {
+      "word": "here's",
+      "start": 489.6,
+      "end": 489.9,
+      "probability": 0.973
+    },
+    {
+      "word": "the",
+      "start": 489.9,
+      "end": 489.98,
+      "probability": 0.967
+    },
+    {
+      "word": "key",
+      "start": 489.98,
+      "end": 490.2,
+      "probability": 0.998
+    },
+    {
+      "word": "insight.",
+      "start": 490.2,
+      "end": 490.62,
+      "probability": 0.989
+    },
+    {
+      "word": "The",
+      "start": 490.92,
+      "end": 491.0,
+      "probability": 0.978
+    },
+    {
+      "word": "ultimate",
+      "start": 491.0,
+      "end": 491.42,
+      "probability": 0.975
+    },
+    {
+      "word": "spark",
+      "start": 491.42,
+      "end": 491.82,
+      "probability": 0.985
+    },
+    {
+      "word": "for",
+      "start": 491.82,
+      "end": 492.04,
+      "probability": 0.994
+    },
+    {
+      "word": "all",
+      "start": 492.04,
+      "end": 492.26,
+      "probability": 0.978
+    },
+    {
+      "word": "this",
+      "start": 492.26,
+      "end": 492.5,
+      "probability": 0.977
+    },
+    {
+      "word": "disunity",
+      "start": 492.5,
+      "end": 493.06,
+      "probability": 0.991
+    },
+    {
+      "word": "may",
+      "start": 493.06,
+      "end": 493.44,
+      "probability": 0.979
+    },
+    {
+      "word": "have",
+      "start": 493.44,
+      "end": 493.7,
+      "probability": 0.991
+    },
+    {
+      "word": "been",
+      "start": 493.7,
+      "end": 493.86,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 493.86,
+      "end": 494.02,
+      "probability": 0.993
+    },
+    {
+      "word": "pervasive",
+      "start": 494.02,
+      "end": 494.54,
+      "probability": 0.993
+    },
+    {
+      "word": "corruption",
+      "start": 494.54,
+      "end": 495.12,
+      "probability": 0.998
+    },
+    {
+      "word": "within",
+      "start": 495.12,
+      "end": 495.44,
+      "probability": 0.994
+    },
+    {
+      "word": "the",
+      "start": 495.44,
+      "end": 495.6,
+      "probability": 0.986
+    },
+    {
+      "word": "government.",
+      "start": 495.6,
+      "end": 495.94,
+      "probability": 0.995
+    },
+    {
+      "word": "There",
+      "start": 496.28,
+      "end": 496.4,
+      "probability": 0.99
+    },
+    {
+      "word": "was",
+      "start": 496.4,
+      "end": 496.54,
+      "probability": 0.992
+    },
+    {
+      "word": "a",
+      "start": 496.54,
+      "end": 496.64,
+      "probability": 0.996
+    },
+    {
+      "word": "growing",
+      "start": 496.64,
+      "end": 496.98,
+      "probability": 0.996
+    },
+    {
+      "word": "reality",
+      "start": 496.98,
+      "end": 497.58,
+      "probability": 0.998
+    },
+    {
+      "word": "that",
+      "start": 497.58,
+      "end": 497.78,
+      "probability": 0.975
+    },
+    {
+      "word": "while",
+      "start": 497.78,
+      "end": 497.94,
+      "probability": 0.915
+    },
+    {
+      "word": "the",
+      "start": 497.94,
+      "end": 498.08,
+      "probability": 0.99
+    },
+    {
+      "word": "average",
+      "start": 498.08,
+      "end": 498.42,
+      "probability": 0.995
+    },
+    {
+      "word": "person",
+      "start": 498.42,
+      "end": 498.9,
+      "probability": 0.986
+    },
+    {
+      "word": "suffered,",
+      "start": 498.9,
+      "end": 499.42,
+      "probability": 0.963
+    },
+    {
+      "word": "officials",
+      "start": 499.88,
+      "end": 500.36,
+      "probability": 0.991
+    },
+    {
+      "word": "were",
+      "start": 500.36,
+      "end": 500.78,
+      "probability": 0.539
+    },
+    {
+      "word": "enriching",
+      "start": 500.78,
+      "end": 501.32,
+      "probability": 0.99
+    },
+    {
+      "word": "themselves.",
+      "start": 501.32,
+      "end": 501.8,
+      "probability": 0.99
+    },
+    {
+      "word": "This",
+      "start": 502.48,
+      "end": 502.76,
+      "probability": 0.987
+    },
+    {
+      "word": "ignited",
+      "start": 502.76,
+      "end": 503.26,
+      "probability": 0.997
+    },
+    {
+      "word": "a",
+      "start": 503.26,
+      "end": 503.42,
+      "probability": 0.99
+    },
+    {
+      "word": "deep",
+      "start": 503.42,
+      "end": 503.68,
+      "probability": 0.99
+    },
+    {
+      "word": "sense",
+      "start": 503.68,
+      "end": 503.94,
+      "probability": 0.996
+    },
+    {
+      "word": "of",
+      "start": 503.94,
+      "end": 504.16,
+      "probability": 0.998
+    },
+    {
+      "word": "resentment",
+      "start": 504.16,
+      "end": 504.58,
+      "probability": 0.999
+    },
+    {
+      "word": "and",
+      "start": 504.58,
+      "end": 504.82,
+      "probability": 0.915
+    },
+    {
+      "word": "created",
+      "start": 504.82,
+      "end": 505.18,
+      "probability": 0.997
+    },
+    {
+      "word": "a",
+      "start": 505.18,
+      "end": 505.36,
+      "probability": 0.995
+    },
+    {
+      "word": "stark",
+      "start": 505.36,
+      "end": 505.68,
+      "probability": 0.708
+    },
+    {
+      "word": "divide,",
+      "start": 505.68,
+      "end": 506.24,
+      "probability": 0.998
+    },
+    {
+      "word": "those",
+      "start": 506.74,
+      "end": 506.94,
+      "probability": 0.986
+    },
+    {
+      "word": "who",
+      "start": 506.94,
+      "end": 507.14,
+      "probability": 0.997
+    },
+    {
+      "word": "benefited",
+      "start": 507.14,
+      "end": 507.52,
+      "probability": 0.846
+    },
+    {
+      "word": "from",
+      "start": 507.52,
+      "end": 507.8,
+      "probability": 0.998
+    },
+    {
+      "word": "government",
+      "start": 507.8,
+      "end": 508.14,
+      "probability": 0.987
+    },
+    {
+      "word": "connections",
+      "start": 508.14,
+      "end": 508.6,
+      "probability": 0.991
+    },
+    {
+      "word": "and",
+      "start": 508.6,
+      "end": 509.24,
+      "probability": 0.492
+    },
+    {
+      "word": "those",
+      "start": 509.24,
+      "end": 509.48,
+      "probability": 0.995
+    },
+    {
+      "word": "who",
+      "start": 509.48,
+      "end": 509.66,
+      "probability": 0.992
+    },
+    {
+      "word": "were",
+      "start": 509.66,
+      "end": 509.76,
+      "probability": 0.926
+    },
+    {
+      "word": "left",
+      "start": 509.76,
+      "end": 509.96,
+      "probability": 0.997
+    },
+    {
+      "word": "to",
+      "start": 509.96,
+      "end": 510.16,
+      "probability": 0.987
+    },
+    {
+      "word": "struggle",
+      "start": 510.16,
+      "end": 510.54,
+      "probability": 0.993
+    },
+    {
+      "word": "in",
+      "start": 510.54,
+      "end": 510.76,
+      "probability": 0.995
+    },
+    {
+      "word": "their",
+      "start": 510.76,
+      "end": 510.92,
+      "probability": 0.996
+    },
+    {
+      "word": "wake.",
+      "start": 510.92,
+      "end": 511.16,
+      "probability": 0.996
+    },
+    {
+      "word": "In",
+      "start": 511.7,
+      "end": 511.88,
+      "probability": 0.982
+    },
+    {
+      "word": "the",
+      "start": 511.88,
+      "end": 512.04,
+      "probability": 0.997
+    },
+    {
+      "word": "end,",
+      "start": 512.04,
+      "end": 512.44,
+      "probability": 0.998
+    },
+    {
+      "word": "this",
+      "start": 512.88,
+      "end": 513.12,
+      "probability": 0.996
+    },
+    {
+      "word": "environment",
+      "start": 513.12,
+      "end": 513.58,
+      "probability": 0.989
+    },
+    {
+      "word": "of",
+      "start": 513.58,
+      "end": 513.8,
+      "probability": 0.998
+    },
+    {
+      "word": "corruption",
+      "start": 513.8,
+      "end": 514.34,
+      "probability": 0.998
+    },
+    {
+      "word": "and",
+      "start": 514.34,
+      "end": 514.66,
+      "probability": 0.991
+    },
+    {
+      "word": "economic",
+      "start": 514.66,
+      "end": 515.08,
+      "probability": 0.999
+    },
+    {
+      "word": "pain",
+      "start": 515.08,
+      "end": 515.44,
+      "probability": 0.997
+    },
+    {
+      "word": "completely",
+      "start": 515.44,
+      "end": 516.14,
+      "probability": 0.996
+    },
+    {
+      "word": "broke",
+      "start": 516.14,
+      "end": 516.54,
+      "probability": 0.999
+    },
+    {
+      "word": "the",
+      "start": 516.54,
+      "end": 516.74,
+      "probability": 0.997
+    },
+    {
+      "word": "social",
+      "start": 516.74,
+      "end": 517.08,
+      "probability": 0.974
+    },
+    {
+      "word": "fabric",
+      "start": 517.08,
+      "end": 517.5,
+      "probability": 0.998
+    },
+    {
+      "word": "of",
+      "start": 517.5,
+      "end": 517.74,
+      "probability": 0.998
+    },
+    {
+      "word": "Venezuela.",
+      "start": 517.74,
+      "end": 518.12,
+      "probability": 0.983
+    },
+    {
+      "word": "To",
+      "start": 518.96,
+      "end": 519.2,
+      "probability": 0.989
+    },
+    {
+      "word": "wrap",
+      "start": 519.2,
+      "end": 519.4,
+      "probability": 0.992
+    },
+    {
+      "word": "things",
+      "start": 519.4,
+      "end": 519.76,
+      "probability": 0.999
+    },
+    {
+      "word": "up,",
+      "start": 519.76,
+      "end": 520.0,
+      "probability": 0.999
+    },
+    {
+      "word": "we've",
+      "start": 520.32,
+      "end": 520.48,
+      "probability": 0.972
+    },
+    {
+      "word": "explored",
+      "start": 520.48,
+      "end": 520.96,
+      "probability": 0.999
+    },
+    {
+      "word": "the",
+      "start": 520.96,
+      "end": 521.16,
+      "probability": 0.99
+    },
+    {
+      "word": "deep",
+      "start": 521.16,
+      "end": 521.5,
+      "probability": 0.984
+    },
+    {
+      "word": "divisions",
+      "start": 521.5,
+      "end": 522.02,
+      "probability": 0.997
+    },
+    {
+      "word": "within",
+      "start": 522.02,
+      "end": 522.32,
+      "probability": 0.984
+    },
+    {
+      "word": "Venezuela.",
+      "start": 522.32,
+      "end": 522.98,
+      "probability": 0.997
+    },
+    {
+      "word": "It's",
+      "start": 523.5,
+      "end": 523.82,
+      "probability": 0.994
+    },
+    {
+      "word": "a",
+      "start": 523.82,
+      "end": 523.9,
+      "probability": 0.995
+    },
+    {
+      "word": "stark",
+      "start": 523.9,
+      "end": 524.32,
+      "probability": 0.999
+    },
+    {
+      "word": "contrast",
+      "start": 524.32,
+      "end": 524.9,
+      "probability": 0.997
+    },
+    {
+      "word": "to",
+      "start": 524.9,
+      "end": 525.3,
+      "probability": 0.998
+    },
+    {
+      "word": "the",
+      "start": 525.3,
+      "end": 525.4,
+      "probability": 0.995
+    },
+    {
+      "word": "nation's",
+      "start": 525.4,
+      "end": 525.86,
+      "probability": 0.991
+    },
+    {
+      "word": "massive",
+      "start": 525.86,
+      "end": 526.32,
+      "probability": 0.976
+    },
+    {
+      "word": "natural",
+      "start": 526.32,
+      "end": 526.86,
+      "probability": 0.985
+    },
+    {
+      "word": "wealth.",
+      "start": 526.86,
+      "end": 527.38,
+      "probability": 0.985
+    },
+    {
+      "word": "We",
+      "start": 527.74,
+      "end": 527.94,
+      "probability": 0.996
+    },
+    {
+      "word": "looked",
+      "start": 527.94,
+      "end": 528.12,
+      "probability": 0.986
+    },
+    {
+      "word": "at",
+      "start": 528.12,
+      "end": 528.22,
+      "probability": 0.995
+    },
+    {
+      "word": "three",
+      "start": 528.22,
+      "end": 528.5,
+      "probability": 0.977
+    },
+    {
+      "word": "main",
+      "start": 528.5,
+      "end": 528.76,
+      "probability": 0.999
+    },
+    {
+      "word": "reasons",
+      "start": 528.76,
+      "end": 529.1,
+      "probability": 0.999
+    },
+    {
+      "word": "for",
+      "start": 529.1,
+      "end": 529.4,
+      "probability": 0.997
+    },
+    {
+      "word": "this.",
+      "start": 529.4,
+      "end": 529.58,
+      "probability": 0.071
+    },
+    {
+      "word": "First,",
+      "start": 530.2,
+      "end": 530.44,
+      "probability": 0.871
+    },
+    {
+      "word": "the",
+      "start": 530.9,
+      "end": 530.98,
+      "probability": 0.995
+    },
+    {
+      "word": "legacy",
+      "start": 530.98,
+      "end": 531.4,
+      "probability": 0.97
+    },
+    {
+      "word": "of",
+      "start": 531.4,
+      "end": 531.62,
+      "probability": 0.999
+    },
+    {
+      "word": "colonialism",
+      "start": 531.62,
+      "end": 532.18,
+      "probability": 0.979
+    },
+    {
+      "word": "and",
+      "start": 532.18,
+      "end": 532.56,
+      "probability": 0.702
+    },
+    {
+      "word": "the",
+      "start": 532.56,
+      "end": 532.74,
+      "probability": 0.994
+    },
+    {
+      "word": "era",
+      "start": 532.74,
+      "end": 533.02,
+      "probability": 0.99
+    },
+    {
+      "word": "of",
+      "start": 533.02,
+      "end": 533.28,
+      "probability": 0.996
+    },
+    {
+      "word": "the",
+      "start": 533.28,
+      "end": 533.4,
+      "probability": 0.965
+    },
+    {
+      "word": "Codios",
+      "start": 533.4,
+      "end": 533.94,
+      "probability": 0.487
+    },
+    {
+      "word": "set",
+      "start": 533.94,
+      "end": 534.28,
+      "probability": 0.976
+    },
+    {
+      "word": "a",
+      "start": 534.28,
+      "end": 534.46,
+      "probability": 0.989
+    },
+    {
+      "word": "pattern",
+      "start": 534.46,
+      "end": 534.84,
+      "probability": 0.995
+    },
+    {
+      "word": "of",
+      "start": 534.84,
+      "end": 535.08,
+      "probability": 0.996
+    },
+    {
+      "word": "instability",
+      "start": 535.08,
+      "end": 535.56,
+      "probability": 0.983
+    },
+    {
+      "word": "and",
+      "start": 535.56,
+      "end": 535.96,
+      "probability": 0.987
+    },
+    {
+      "word": "inequality",
+      "start": 535.96,
+      "end": 536.6,
+      "probability": 0.986
+    },
+    {
+      "word": "that",
+      "start": 536.6,
+      "end": 537.16,
+      "probability": 0.837
+    },
+    {
+      "word": "we",
+      "start": 537.16,
+      "end": 537.28,
+      "probability": 0.997
+    },
+    {
+      "word": "still",
+      "start": 537.28,
+      "end": 537.58,
+      "probability": 0.985
+    },
+    {
+      "word": "see",
+      "start": 537.58,
+      "end": 537.88,
+      "probability": 0.998
+    },
+    {
+      "word": "today.",
+      "start": 537.88,
+      "end": 538.22,
+      "probability": 0.994
+    },
+    {
+      "word": "Second,",
+      "start": 538.72,
+      "end": 539.1,
+      "probability": 0.979
+    },
+    {
+      "word": "there's",
+      "start": 539.36,
+      "end": 539.64,
+      "probability": 0.962
+    },
+    {
+      "word": "the",
+      "start": 539.64,
+      "end": 539.74,
+      "probability": 0.971
+    },
+    {
+      "word": "dependence",
+      "start": 539.74,
+      "end": 540.22,
+      "probability": 0.969
+    },
+    {
+      "word": "on",
+      "start": 540.22,
+      "end": 540.58,
+      "probability": 0.997
+    },
+    {
+      "word": "oil.",
+      "start": 540.58,
+      "end": 540.98,
+      "probability": 0.991
+    },
+    {
+      "word": "While",
+      "start": 541.56,
+      "end": 541.76,
+      "probability": 0.983
+    },
+    {
+      "word": "it",
+      "start": 541.76,
+      "end": 541.86,
+      "probability": 0.998
+    },
+    {
+      "word": "brought",
+      "start": 541.86,
+      "end": 542.0,
+      "probability": 0.998
+    },
+    {
+      "word": "prosperity",
+      "start": 542.0,
+      "end": 542.52,
+      "probability": 0.999
+    },
+    {
+      "word": "at",
+      "start": 542.52,
+      "end": 542.72,
+      "probability": 0.934
+    },
+    {
+      "word": "first,",
+      "start": 542.72,
+      "end": 542.96,
+      "probability": 0.998
+    },
+    {
+      "word": "it",
+      "start": 543.48,
+      "end": 543.54,
+      "probability": 0.998
+    },
+    {
+      "word": "eventually",
+      "start": 543.54,
+      "end": 543.86,
+      "probability": 0.993
+    },
+    {
+      "word": "created",
+      "start": 543.86,
+      "end": 544.28,
+      "probability": 0.998
+    },
+    {
+      "word": "huge",
+      "start": 544.28,
+      "end": 544.9,
+      "probability": 0.996
+    },
+    {
+      "word": "vulnerabilities",
+      "start": 544.9,
+      "end": 545.5,
+      "probability": 0.822
+    },
+    {
+      "word": "and",
+      "start": 545.5,
+      "end": 545.94,
+      "probability": 0.964
+    },
+    {
+      "word": "made",
+      "start": 545.94,
+      "end": 546.1,
+      "probability": 0.998
+    },
+    {
+      "word": "existing",
+      "start": 546.1,
+      "end": 546.64,
+      "probability": 0.993
+    },
+    {
+      "word": "disparities",
+      "start": 546.64,
+      "end": 547.24,
+      "probability": 0.994
+    },
+    {
+      "word": "even",
+      "start": 547.24,
+      "end": 547.76,
+      "probability": 0.987
+    },
+    {
+      "word": "worse.",
+      "start": 547.76,
+      "end": 548.08,
+      "probability": 0.999
+    },
+    {
+      "word": "Finally,",
+      "start": 548.66,
+      "end": 548.98,
+      "probability": 0.979
+    },
+    {
+      "word": "we",
+      "start": 549.32,
+      "end": 549.52,
+      "probability": 0.995
+    },
+    {
+      "word": "saw",
+      "start": 549.52,
+      "end": 549.74,
+      "probability": 0.995
+    },
+    {
+      "word": "how",
+      "start": 549.74,
+      "end": 549.88,
+      "probability": 0.997
+    },
+    {
+      "word": "political",
+      "start": 549.88,
+      "end": 550.2,
+      "probability": 0.995
+    },
+    {
+      "word": "fragmentation",
+      "start": 550.2,
+      "end": 551.02,
+      "probability": 0.997
+    },
+    {
+      "word": "driven",
+      "start": 551.02,
+      "end": 551.4,
+      "probability": 0.571
+    },
+    {
+      "word": "by",
+      "start": 551.4,
+      "end": 551.68,
+      "probability": 0.999
+    },
+    {
+      "word": "clashing",
+      "start": 551.68,
+      "end": 552.14,
+      "probability": 0.974
+    },
+    {
+      "word": "ideologies",
+      "start": 552.14,
+      "end": 552.86,
+      "probability": 0.993
+    },
+    {
+      "word": "and",
+      "start": 552.86,
+      "end": 553.18,
+      "probability": 0.973
+    },
+    {
+      "word": "widespread",
+      "start": 553.18,
+      "end": 553.66,
+      "probability": 0.995
+    },
+    {
+      "word": "corruption",
+      "start": 553.66,
+      "end": 554.36,
+      "probability": 0.998
+    },
+    {
+      "word": "has",
+      "start": 554.36,
+      "end": 554.88,
+      "probability": 0.424
+    },
+    {
+      "word": "deepened",
+      "start": 554.88,
+      "end": 555.4,
+      "probability": 0.965
+    },
+    {
+      "word": "the",
+      "start": 555.4,
+      "end": 555.52,
+      "probability": 0.993
+    },
+    {
+      "word": "rifts",
+      "start": 555.52,
+      "end": 555.74,
+      "probability": 0.853
+    },
+    {
+      "word": "in",
+      "start": 555.74,
+      "end": 555.96,
+      "probability": 0.987
+    },
+    {
+      "word": "society",
+      "start": 555.96,
+      "end": 556.42,
+      "probability": 0.997
+    },
+    {
+      "word": "even",
+      "start": 556.42,
+      "end": 556.76,
+      "probability": 0.986
+    },
+    {
+      "word": "further.",
+      "start": 556.76,
+      "end": 557.18,
+      "probability": 0.988
+    },
+    {
+      "word": "As",
+      "start": 557.46,
+      "end": 558.0,
+      "probability": 0.968
+    },
+    {
+      "word": "we've",
+      "start": 558.0,
+      "end": 558.36,
+      "probability": 0.98
+    },
+    {
+      "word": "seen,",
+      "start": 558.36,
+      "end": 558.78,
+      "probability": 0.997
+    },
+    {
+      "word": "Venezuela's",
+      "start": 559.32,
+      "end": 559.92,
+      "probability": 0.916
+    },
+    {
+      "word": "story",
+      "start": 559.92,
+      "end": 560.14,
+      "probability": 0.995
+    },
+    {
+      "word": "is",
+      "start": 560.14,
+      "end": 560.36,
+      "probability": 0.987
+    },
+    {
+      "word": "really",
+      "start": 560.36,
+      "end": 560.6,
+      "probability": 0.914
+    },
+    {
+      "word": "one",
+      "start": 560.6,
+      "end": 560.84,
+      "probability": 0.989
+    },
+    {
+      "word": "of",
+      "start": 560.84,
+      "end": 561.0,
+      "probability": 0.997
+    },
+    {
+      "word": "unfulfilled",
+      "start": 561.0,
+      "end": 561.56,
+      "probability": 0.846
+    },
+    {
+      "word": "potential.",
+      "start": 561.56,
+      "end": 562.16,
+      "probability": 0.997
+    },
+    {
+      "word": "It's",
+      "start": 562.48,
+      "end": 562.6,
+      "probability": 0.985
+    },
+    {
+      "word": "a",
+      "start": 562.6,
+      "end": 562.64,
+      "probability": 0.998
+    },
+    {
+      "word": "place",
+      "start": 562.64,
+      "end": 562.8,
+      "probability": 0.999
+    },
+    {
+      "word": "where",
+      "start": 562.8,
+      "end": 563.02,
+      "probability": 0.998
+    },
+    {
+      "word": "history,",
+      "start": 563.02,
+      "end": 563.44,
+      "probability": 0.996
+    },
+    {
+      "word": "flawed",
+      "start": 563.94,
+      "end": 564.14,
+      "probability": 0.977
+    },
+    {
+      "word": "policies,",
+      "start": 564.14,
+      "end": 564.68,
+      "probability": 0.993
+    },
+    {
+      "word": "and",
+      "start": 565.12,
+      "end": 565.2,
+      "probability": 0.996
+    },
+    {
+      "word": "political",
+      "start": 565.2,
+      "end": 565.5,
+      "probability": 0.998
+    },
+    {
+      "word": "ideologies",
+      "start": 565.5,
+      "end": 566.28,
+      "probability": 0.995
+    },
+    {
+      "word": "have",
+      "start": 566.28,
+      "end": 566.5,
+      "probability": 0.985
+    },
+    {
+      "word": "worked",
+      "start": 566.5,
+      "end": 566.74,
+      "probability": 0.966
+    },
+    {
+      "word": "together",
+      "start": 566.74,
+      "end": 567.1,
+      "probability": 0.999
+    },
+    {
+      "word": "to",
+      "start": 567.1,
+      "end": 567.32,
+      "probability": 0.998
+    },
+    {
+      "word": "create",
+      "start": 567.32,
+      "end": 567.6,
+      "probability": 0.999
+    },
+    {
+      "word": "a",
+      "start": 567.6,
+      "end": 567.78,
+      "probability": 0.998
+    },
+    {
+      "word": "divided",
+      "start": 567.78,
+      "end": 568.2,
+      "probability": 0.988
+    },
+    {
+      "word": "nation,",
+      "start": 568.2,
+      "end": 568.68,
+      "probability": 0.996
+    },
+    {
+      "word": "despite",
+      "start": 569.04,
+      "end": 569.42,
+      "probability": 0.998
+    },
+    {
+      "word": "its",
+      "start": 569.42,
+      "end": 569.72,
+      "probability": 0.97
+    },
+    {
+      "word": "abundance",
+      "start": 569.72,
+      "end": 570.08,
+      "probability": 0.998
+    },
+    {
+      "word": "of",
+      "start": 570.08,
+      "end": 570.36,
+      "probability": 0.996
+    },
+    {
+      "word": "resources.",
+      "start": 570.36,
+      "end": 570.9,
+      "probability": 0.999
+    },
+    {
+      "word": "Overcoming",
+      "start": 571.6,
+      "end": 572.08,
+      "probability": 0.941
+    },
+    {
+      "word": "these",
+      "start": 572.08,
+      "end": 572.4,
+      "probability": 0.998
+    },
+    {
+      "word": "divisions",
+      "start": 572.4,
+      "end": 572.76,
+      "probability": 0.996
+    },
+    {
+      "word": "to",
+      "start": 572.76,
+      "end": 573.02,
+      "probability": 0.982
+    },
+    {
+      "word": "reach",
+      "start": 573.02,
+      "end": 573.22,
+      "probability": 0.998
+    },
+    {
+      "word": "real",
+      "start": 573.22,
+      "end": 573.58,
+      "probability": 0.947
+    },
+    {
+      "word": "stability",
+      "start": 573.58,
+      "end": 574.18,
+      "probability": 0.995
+    },
+    {
+      "word": "remains",
+      "start": 574.18,
+      "end": 574.7,
+      "probability": 0.928
+    },
+    {
+      "word": "a",
+      "start": 574.7,
+      "end": 575.16,
+      "probability": 0.98
+    },
+    {
+      "word": "daunting",
+      "start": 575.16,
+      "end": 575.56,
+      "probability": 0.998
+    },
+    {
+      "word": "task,",
+      "start": 575.56,
+      "end": 575.96,
+      "probability": 0.999
+    },
+    {
+      "word": "but",
+      "start": 576.46,
+      "end": 576.6,
+      "probability": 0.996
+    },
+    {
+      "word": "here's",
+      "start": 576.6,
+      "end": 576.98,
+      "probability": 0.99
+    },
+    {
+      "word": "the",
+      "start": 576.98,
+      "end": 577.08,
+      "probability": 0.994
+    },
+    {
+      "word": "key",
+      "start": 577.08,
+      "end": 577.32,
+      "probability": 0.999
+    },
+    {
+      "word": "insight.",
+      "start": 577.32,
+      "end": 577.84,
+      "probability": 0.994
+    },
+    {
+      "word": "Understanding",
+      "start": 578.54,
+      "end": 579.08,
+      "probability": 0.99
+    },
+    {
+      "word": "these",
+      "start": 579.08,
+      "end": 579.36,
+      "probability": 0.038
+    },
+    {
+      "word": "complexities",
+      "start": 579.36,
+      "end": 579.96,
+      "probability": 0.998
+    },
+    {
+      "word": "is",
+      "start": 579.96,
+      "end": 580.28,
+      "probability": 0.948
+    },
+    {
+      "word": "the",
+      "start": 580.28,
+      "end": 580.46,
+      "probability": 0.997
+    },
+    {
+      "word": "first",
+      "start": 580.46,
+      "end": 580.74,
+      "probability": 0.996
+    },
+    {
+      "word": "step",
+      "start": 580.74,
+      "end": 581.04,
+      "probability": 0.999
+    },
+    {
+      "word": "toward",
+      "start": 581.04,
+      "end": 581.32,
+      "probability": 0.901
+    },
+    {
+      "word": "finding",
+      "start": 581.32,
+      "end": 581.66,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 581.66,
+      "end": 581.82,
+      "probability": 0.996
+    },
+    {
+      "word": "solution.",
+      "start": 581.82,
+      "end": 582.24,
+      "probability": 0.999
+    },
+    {
+      "word": "I",
+      "start": 582.8,
+      "end": 582.88,
+      "probability": 0.992
+    },
+    {
+      "word": "encourage",
+      "start": 582.88,
+      "end": 583.24,
+      "probability": 0.997
+    },
+    {
+      "word": "you",
+      "start": 583.24,
+      "end": 583.46,
+      "probability": 0.999
+    },
+    {
+      "word": "to",
+      "start": 583.46,
+      "end": 583.56,
+      "probability": 0.999
+    },
+    {
+      "word": "dive",
+      "start": 583.56,
+      "end": 583.74,
+      "probability": 0.993
+    },
+    {
+      "word": "deeper",
+      "start": 583.74,
+      "end": 584.18,
+      "probability": 0.996
+    },
+    {
+      "word": "into",
+      "start": 584.18,
+      "end": 584.44,
+      "probability": 0.999
+    },
+    {
+      "word": "the",
+      "start": 584.44,
+      "end": 584.58,
+      "probability": 0.979
+    },
+    {
+      "word": "history,",
+      "start": 584.58,
+      "end": 584.94,
+      "probability": 0.998
+    },
+    {
+      "word": "politics,",
+      "start": 585.42,
+      "end": 585.82,
+      "probability": 0.996
+    },
+    {
+      "word": "and",
+      "start": 586.16,
+      "end": 586.38,
+      "probability": 0.998
+    },
+    {
+      "word": "culture",
+      "start": 586.38,
+      "end": 586.84,
+      "probability": 0.996
+    },
+    {
+      "word": "of",
+      "start": 586.84,
+      "end": 587.06,
+      "probability": 0.997
+    },
+    {
+      "word": "this",
+      "start": 587.06,
+      "end": 587.18,
+      "probability": 0.996
+    },
+    {
+      "word": "fascinating",
+      "start": 587.18,
+      "end": 587.68,
+      "probability": 0.995
+    },
+    {
+      "word": "country.",
+      "start": 587.68,
+      "end": 588.14,
+      "probability": 0.996
+    },
+    {
+      "word": "Seek",
+      "start": 588.78,
+      "end": 589.12,
+      "probability": 0.944
+    },
+    {
+      "word": "out",
+      "start": 589.12,
+      "end": 589.24,
+      "probability": 0.974
+    },
+    {
+      "word": "different",
+      "start": 589.24,
+      "end": 589.48,
+      "probability": 0.997
+    },
+    {
+      "word": "perspectives",
+      "start": 589.48,
+      "end": 590.04,
+      "probability": 0.999
+    },
+    {
+      "word": "and",
+      "start": 590.04,
+      "end": 590.3,
+      "probability": 0.966
+    },
+    {
+      "word": "stay",
+      "start": 590.3,
+      "end": 590.54,
+      "probability": 0.996
+    },
+    {
+      "word": "informed,",
+      "start": 590.54,
+      "end": 591.14,
+      "probability": 0.998
+    },
+    {
+      "word": "advocate",
+      "start": 591.6,
+      "end": 591.92,
+      "probability": 0.994
+    },
+    {
+      "word": "for",
+      "start": 591.92,
+      "end": 592.16,
+      "probability": 0.999
+    },
+    {
+      "word": "policies",
+      "start": 592.16,
+      "end": 592.62,
+      "probability": 0.995
+    },
+    {
+      "word": "that",
+      "start": 592.62,
+      "end": 592.84,
+      "probability": 0.991
+    },
+    {
+      "word": "promote",
+      "start": 592.84,
+      "end": 593.08,
+      "probability": 0.998
+    },
+    {
+      "word": "dialogue",
+      "start": 593.08,
+      "end": 593.56,
+      "probability": 0.986
+    },
+    {
+      "word": "and",
+      "start": 593.56,
+      "end": 593.84,
+      "probability": 0.988
+    },
+    {
+      "word": "sustainable",
+      "start": 593.84,
+      "end": 594.18,
+      "probability": 0.997
+    },
+    {
+      "word": "development.",
+      "start": 594.18,
+      "end": 594.94,
+      "probability": 1.0
+    },
+    {
+      "word": "By",
+      "start": 595.3,
+      "end": 595.42,
+      "probability": 0.993
+    },
+    {
+      "word": "educating",
+      "start": 595.42,
+      "end": 595.9,
+      "probability": 0.997
+    },
+    {
+      "word": "ourselves",
+      "start": 595.9,
+      "end": 596.34,
+      "probability": 0.997
+    },
+    {
+      "word": "and",
+      "start": 596.34,
+      "end": 596.6,
+      "probability": 0.916
+    },
+    {
+      "word": "taking",
+      "start": 596.6,
+      "end": 596.84,
+      "probability": 0.998
+    },
+    {
+      "word": "action,",
+      "start": 596.84,
+      "end": 597.34,
+      "probability": 0.998
+    },
+    {
+      "word": "we",
+      "start": 597.78,
+      "end": 597.94,
+      "probability": 0.998
+    },
+    {
+      "word": "can",
+      "start": 597.94,
+      "end": 598.08,
+      "probability": 0.995
+    },
+    {
+      "word": "contribute",
+      "start": 598.08,
+      "end": 598.54,
+      "probability": 0.998
+    },
+    {
+      "word": "to",
+      "start": 598.54,
+      "end": 598.8,
+      "probability": 0.998
+    },
+    {
+      "word": "a",
+      "start": 598.8,
+      "end": 598.9,
+      "probability": 0.996
+    },
+    {
+      "word": "future",
+      "start": 598.9,
+      "end": 599.22,
+      "probability": 0.999
+    },
+    {
+      "word": "where",
+      "start": 599.22,
+      "end": 599.5,
+      "probability": 0.994
+    },
+    {
+      "word": "Venezuela",
+      "start": 599.5,
+      "end": 599.88,
+      "probability": 0.862
+    },
+    {
+      "word": "finally",
+      "start": 599.88,
+      "end": 600.58,
+      "probability": 0.994
+    },
+    {
+      "word": "reaches",
+      "start": 600.58,
+      "end": 600.98,
+      "probability": 0.848
+    },
+    {
+      "word": "its",
+      "start": 600.98,
+      "end": 601.16,
+      "probability": 0.964
+    },
+    {
+      "word": "potential",
+      "start": 601.16,
+      "end": 601.66,
+      "probability": 0.997
+    },
+    {
+      "word": "and",
+      "start": 601.66,
+      "end": 602.12,
+      "probability": 0.657
+    },
+    {
+      "word": "where",
+      "start": 602.12,
+      "end": 602.28,
+      "probability": 0.99
+    },
+    {
+      "word": "its",
+      "start": 602.28,
+      "end": 602.44,
+      "probability": 0.948
+    },
+    {
+      "word": "people",
+      "start": 602.44,
+      "end": 602.74,
+      "probability": 0.987
+    },
+    {
+      "word": "can",
+      "start": 602.74,
+      "end": 602.98,
+      "probability": 0.997
+    },
+    {
+      "word": "thrive",
+      "start": 602.98,
+      "end": 603.36,
+      "probability": 0.999
+    },
+    {
+      "word": "in",
+      "start": 603.36,
+      "end": 603.58,
+      "probability": 0.988
+    },
+    {
+      "word": "unity",
+      "start": 603.58,
+      "end": 603.94,
+      "probability": 0.991
+    },
+    {
+      "word": "and",
+      "start": 603.94,
+      "end": 604.52,
+      "probability": 0.958
+    },
+    {
+      "word": "prosperity.",
+      "start": 604.52,
+      "end": 605.1,
+      "probability": 0.985
+    }
+  ]
+}

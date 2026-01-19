@@ -1,0 +1,65 @@
+{
+  "query": "Hugo Chavez",
+  "source": "wikimedia",
+  "count": 5,
+  "scored": false,
+  "scored_by": null,
+  "context": null,
+  "results": [
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Busto_Hugo_Ch%C3%A1vez_MG_493420250913.jpg",
+      "thumbnail_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Busto_Hugo_Ch%C3%A1vez_MG_493420250913.jpg/960px-Busto_Hugo_Ch%C3%A1vez_MG_493420250913.jpg",
+      "title": "Busto Hugo Chávez MG 493420250913.jpg",
+      "source": "wikimedia",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Busto_Hugo_Ch%C3%A1vez_MG_493420250913.jpg",
+      "width": 4350,
+      "height": 6448,
+      "photographer": "Rjcastillo",
+      "license": "CC BY 4.0"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Hugo_Ch%C3%A1vez.jpg",
+      "thumbnail_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Hugo_Ch%C3%A1vez.jpg/960px-Hugo_Ch%C3%A1vez.jpg",
+      "title": "Hugo Chávez.jpg",
+      "source": "wikimedia",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Hugo_Ch%C3%A1vez.jpg",
+      "width": 4098,
+      "height": 3166,
+      "photographer": "Walter Vargas from San Cristóbal, Venezuela",
+      "license": "CC BY-SA 2.0"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Hugo_Ch%C3%A1vez_%2802-04-2010%29.jpg",
+      "thumbnail_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Hugo_Ch%C3%A1vez_%2802-04-2010%29.jpg/960px-Hugo_Ch%C3%A1vez_%2802-04-2010%29.jpg",
+      "title": "Hugo Chávez (02-04-2010).jpg",
+      "source": "wikimedia",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Hugo_Ch%C3%A1vez_(02-04-2010).jpg",
+      "width": 2011,
+      "height": 2946,
+      "photographer": "Premier.gov.ru",
+      "license": "CC BY 4.0"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Hugo_Ch%C3%A1vez_%282%29.jpg",
+      "thumbnail_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Hugo_Ch%C3%A1vez_%282%29.jpg/960px-Hugo_Ch%C3%A1vez_%282%29.jpg",
+      "title": "Hugo Chávez (2).jpg",
+      "source": "wikimedia",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Hugo_Ch%C3%A1vez_(2).jpg",
+      "width": 3223,
+      "height": 3101,
+      "photographer": "Walter Vargas from San Cristóbal, Venezuela",
+      "license": "CC BY-SA 2.0"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Hugo_Rafael_Ch%C3%A1vez_Fr%C3%ADas.jpeg",
+      "thumbnail_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Hugo_Rafael_Ch%C3%A1vez_Fr%C3%ADas.jpeg/960px-Hugo_Rafael_Ch%C3%A1vez_Fr%C3%ADas.jpeg",
+      "title": "Hugo Rafael Chávez Frías.jpeg",
+      "source": "wikimedia",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Hugo_Rafael_Ch%C3%A1vez_Fr%C3%ADas.jpeg",
+      "width": 1026,
+      "height": 1291,
+      "photographer": "Office of the President of Brazil",
+      "license": "CC BY-SA 2.0"
+    }
+  ]
+}

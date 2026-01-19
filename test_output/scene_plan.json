@@ -1,0 +1,3776 @@
+{
+  "sections": {
+    "Hook": [
+      {
+        "id": "Hook_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 0.0,
+        "end_seconds": 0.5,
+        "narration_excerpt": "Venezuela",
+        "visual_type": "b-roll",
+        "visual_description": "A breathtaking cinematic drone shot of Mount Roraima with clouds swirling around its flat summit at sunrise.",
+        "search_query": "Venezuela Roraima drone shot landscape sunrise",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "Venezuela",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Hook_scene_001.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 1.68,
+        "end_seconds": 7.2,
+        "narration_excerpt": "stunning beauty\u2014home to cascading waterfalls, vibrant rainforests, and sun-drenched coastlines",
+        "visual_type": "b-roll",
+        "visual_description": "Fast-paced montage: 1. Close-up of water rushing over Angel Falls. 2. A vibrant green macaw flying over a thick jungle canopy. 3. Crystal clear turquoise water hitting a white sand beach in Los Roques.",
+        "search_query": "Angel Falls close up",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Hook_scene_002.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_003",
+        "covers_beats": [
+          "beat_003"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 7.72,
+        "end_seconds": 11.46,
+        "narration_excerpt": "But these idyllic images are often met with a much harsher reality",
+        "visual_type": "b-roll",
+        "visual_description": "Abrupt jarring cut to a handheld, grainy shot of a narrow Caracas alleyway with crumbling concrete walls and tangled overhead power lines.",
+        "search_query": "Caracas slums poverty street",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "But",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Hook_scene_003.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_004",
+        "covers_beats": [
+          "beat_004"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 12.84,
+        "end_seconds": 18.2,
+        "narration_excerpt": "widespread poverty, political unrest, and a nation that seems to be perpetually on the brink",
+        "visual_type": "b-roll",
+        "visual_description": "A series of archival clips showing crowds gathered outside a grocery store with empty shelves, followed by a wide shot of a street protest with tear gas smoke in the distance.",
+        "search_query": "Venezuela food lines shortages",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "unrest",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Hook_scene_004.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_005",
+        "covers_beats": [
+          "beat_005"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 18.68,
+        "end_seconds": 21.44,
+        "narration_excerpt": "Take the words of Maria Rodriguez, a resident of Caracas",
+        "visual_type": "a-roll",
+        "visual_description": "A medium shot of Maria Rodriguez, middle-aged woman with a weary expression, standing in a busy marketplace, looking directly past the camera with sadness.",
+        "search_query": "Venezuelan woman interview candid city background",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_006",
+        "covers_beats": [
+          "beat_006"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 21.84,
+        "end_seconds": 29.98,
+        "narration_excerpt": "She says, 'We are tired. Tired of the empty promises, the shortages, and the constant struggle just to survive.'",
+        "visual_type": "graphics",
+        "visual_description": "The background blurs as bold, elegant serif text fades in. The words are highlighted in sequence as they are spoken.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "tired",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          },
+          {
+            "trigger": "promises",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          },
+          {
+            "trigger": "shortages",
+            "action": "highlight",
+            "target": 1,
+            "time": null
+          },
+          {
+            "trigger": "struggle",
+            "action": "highlight",
+            "target": 2,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "list",
+          "theme": "dark",
+          "data": {
+            "title": "Maria Rodriguez",
+            "items": [
+              "Empty promises",
+              "The shortages",
+              "The constant struggle"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Hook_scene_006.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_007",
+        "covers_beats": [
+          "beat_007"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 31.62,
+        "end_seconds": 33.86,
+        "narration_excerpt": "this is all happening in a country sitting on one of the world's largest oil reserves",
+        "visual_type": "graphics",
+        "visual_description": "A dark, stylized 3D map of Venezuela. As 'oil' is mentioned, the Orinoco Belt glows in a vibrant amber color, with 3D oil barrel icons popping up to show scale.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "oil",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "warm",
+          "data": {
+            "title": "Global Oil Reserves",
+            "items": [
+              "Venezuela: 300+ Billion Barrels",
+              "World Rank: #1"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Hook_scene_007.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_008",
+        "covers_beats": [
+          "beat_008"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 36.24,
+        "end_seconds": 41.18,
+        "narration_excerpt": "In theory, that resource should guarantee prosperity for everyone",
+        "visual_type": "generated",
+        "visual_description": "An AI-generated vision of a futuristic Caracas. Gleaming white skyscrapers intertwined with vertical gardens, high-tech maglev trains, and prosperous citizens walking through clean, sunlit plazas.",
+        "search_query": "",
+        "comfyui_prompt": "Cinematic wide shot of a futuristic solarpunk Caracas, Venezuela, hyper-modern architecture with integrated lush tropical greenery, maglev transport, clean marble streets, golden hour lighting, utopian atmosphere, 8k resolution, highly detailed, architectural photography style.",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "prosperity",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Hook_scene_008.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_009",
+        "covers_beats": [
+          "beat_009"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 41.64,
+        "end_seconds": 46.66,
+        "narration_excerpt": "So, how did this happen? How did a nation so rich become so fractured?",
+        "visual_type": "host",
+        "visual_description": "Host medium close-up in a dimly lit studio with a soft blue backlight. Host looks directly at the camera with a look of genuine inquiry and concern.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "fractured",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Hook_scene_010",
+        "covers_beats": [
+          "beat_010"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 46.66,
+        "end_seconds": 50.78,
+        "narration_excerpt": "That\u2019s exactly what we\u2019re going to explore together",
+        "visual_type": "graphics",
+        "visual_description": "The screen goes black and a title card slams onto the screen in bold, distressed white lettering: 'VENEZUELA: THE OIL PARADOX'. A faint texture of oil spills moves in the background.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "steps",
+          "theme": "dark",
+          "data": {
+            "title": "VENEZUELA: THE OIL PARADOX",
+            "items": []
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Hook_scene_010.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      }
+    ],
+    "Context": [
+      {
+        "id": "Context_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 50.78,
+        "end_seconds": 52.6,
+        "narration_excerpt": "complexities of modern Venezuela",
+        "visual_type": "graphics",
+        "visual_description": "A high-energy collage of sepia-toned archival photos (colonial architecture, battle sketches) and modern high-contrast video (colorful street protests, digital artifacts) that glitch-transitions between layers.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "complexities",
+            "action": "reveal",
+            "target": "glitch_overlay",
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 59.46,
+        "end_seconds": 61.06,
+        "narration_excerpt": "diverse indigenous groups",
+        "visual_type": "generated",
+        "visual_description": "A sweeping aerial view of a vibrant indigenous village with palm-thatched dwellings situated in a lush, green basin between misty mountains. Sunbeams filter through tropical foliage.",
+        "search_query": "",
+        "comfyui_prompt": "photorealistic wide shot of pre-colonial South American indigenous settlement, palm-thatched huts, lush Venezuelan basin, Orinoco river style, vibrant green jungle, misty mountains in background, volumetric lighting, 8k resolution, cinematic drone shot",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Context_scene_002.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_003",
+        "covers_beats": [
+          "beat_003"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 61.06,
+        "end_seconds": 68.52,
+        "narration_excerpt": "Arawak people... Carib groups dominated the east",
+        "visual_type": "graphics",
+        "visual_description": "A 3D topographic map of Venezuela. The western region glows gold for Arawak and the eastern region glows teal for Carib.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "Arawak",
+            "action": "highlight",
+            "target": "west_region",
+            "time": null
+          },
+          {
+            "trigger": "east",
+            "action": "reveal",
+            "target": "east_label",
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "warm",
+          "data": {
+            "title": "Indigenous Territories",
+            "items": [
+              "Arawak (West)",
+              "Carib (East)"
+            ]
+          },
+          "theme_config_ref": "docu-warm-soft"
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Context_scene_003.svg",
+        "infographic_asset_png": "infographics/Context_scene_003.png",
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_004",
+        "covers_beats": [
+          "beat_004"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 68.52,
+        "end_seconds": 69.96,
+        "narration_excerpt": "unique languages and customs",
+        "visual_type": "b-roll",
+        "visual_description": "Macro close-up panning across red-pigmented petroglyphs carved into a sun-bleached rock face.",
+        "search_query": "ancient petroglyphs Venezuela",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Context_scene_004.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_005",
+        "covers_beats": [
+          "beat_005"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 76.62,
+        "end_seconds": 78.16,
+        "narration_excerpt": "Spanish colonizers arrived",
+        "visual_type": "b-roll",
+        "visual_description": "A dramatic oil painting depicting Spanish galleons with large red crosses on their sails anchored near a tropical coastline.",
+        "search_query": "Spanish galleon arrival painting",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Context_scene_005.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_006",
+        "covers_beats": [
+          "beat_006"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 81.12,
+        "end_seconds": 82.26,
+        "narration_excerpt": "fire for independence",
+        "visual_type": "b-roll",
+        "visual_description": "Extreme close-up of an old parchment map of the South American continent; an orange flame lick the bottom edge, slowly consuming the paper.",
+        "search_query": "burning parchment map",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "fire",
+            "action": "cut",
+            "target": "flame_ignition",
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Context_scene_006.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_007",
+        "covers_beats": [
+          "beat_007"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 88.44,
+        "end_seconds": 90.42,
+        "narration_excerpt": "legendary Simon Bolivar",
+        "visual_type": "b-roll",
+        "visual_description": "A stately, full-frame oil portrait of Simon Bolivar in a blue and gold military uniform with a high collar.",
+        "search_query": "Simon Bolivar portrait oil painting",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Context_scene_007.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_008",
+        "covers_beats": [
+          "beat_008"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 94.84,
+        "end_seconds": 97.3,
+        "narration_excerpt": "independence from Spain in 1821",
+        "visual_type": "graphics",
+        "visual_description": "The numbers '1821' appear in bold, distressed gold font over a tattered, wind-blown Venezuelan flag background.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "1821",
+            "action": "reveal",
+            "target": "text_overlay",
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "steps",
+          "theme": "dark",
+          "data": {
+            "title": "Independence",
+            "items": [
+              "1821"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Context_scene_008.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_009",
+        "covers_beats": [
+          "beat_009"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 99.92,
+        "end_seconds": 103.16,
+        "narration_excerpt": "national hero, a title he still holds today",
+        "visual_type": "b-roll",
+        "visual_description": "Modern wide shot of the Plaza Bolivar in Caracas, showing the massive bronze equestrian statue of Bolivar with pedestrians in modern clothing passing by.",
+        "search_query": "Plaza Bolivar Caracas statue",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Context_scene_009.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_010",
+        "covers_beats": [
+          "beat_010"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 106.24,
+        "end_seconds": 108.88,
+        "narration_excerpt": "economic realities were about to reshape the nation",
+        "visual_type": "b-roll",
+        "visual_description": "A close-up, shallow depth-of-field shot of a dusty, hand-written 19th-century ledger book being closed, followed by a shot of tarnished silver coins.",
+        "search_query": "old dusty ledger book",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "economic",
+            "action": "cut",
+            "target": "ledger_closing",
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Context_scene_010.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_011",
+        "covers_beats": [
+          "beat_011"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 110.34,
+        "end_seconds": 111.42,
+        "narration_excerpt": "early 20th century",
+        "visual_type": "graphics",
+        "visual_description": "A sleek, horizontal timeline bar at the bottom of the screen. A marker slides rapidly from a 1800 point to a 1900 point as the background blurs.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "list",
+          "theme": "cool",
+          "data": {
+            "title": "Historical Shift",
+            "items": [
+              "1800s: Agriculture",
+              "1900s: Oil Discovery"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Context_scene_011.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_012",
+        "covers_beats": [
+          "beat_012"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 115.32,
+        "end_seconds": 118.46,
+        "narration_excerpt": "huge oil reserves transformed the country",
+        "visual_type": "b-roll",
+        "visual_description": "Vintage black-and-white grainy footage of a 'gusher'\u2014crude oil spraying high into the air over a wooden oil derrick.",
+        "search_query": "1920s oil gusher archival",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Context_scene_012.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_013",
+        "covers_beats": [
+          "beat_013"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 120.02,
+        "end_seconds": 123.66,
+        "narration_excerpt": "farming society to a nation heavily dependent on petroleum",
+        "visual_type": "graphics",
+        "visual_description": "Split screen. Left: A hand-drawn icon of a wooden plow on a field. Right: A photo of a massive steel oil tanker. The tanker side expands to consume the plow side.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "default",
+          "data": {
+            "title": "Economic Transformation",
+            "items": [
+              "Agriculture",
+              "Petroleum"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Context_scene_013.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_014",
+        "covers_beats": [
+          "beat_014"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 130.94,
+        "end_seconds": 133.1,
+        "narration_excerpt": "deep-seated challenges that would define Venezuela's future",
+        "visual_type": "host",
+        "visual_description": "The host is framed in a medium-close shot, sitting in a dimly lit studio. They lean forward, looking directly into the lens with a grave, focused expression.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "challenges",
+            "action": "highlight",
+            "target": "host_expression",
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Context_scene_015",
+        "covers_beats": [
+          "beat_015"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 138.12,
+        "end_seconds": 140.84,
+        "narration_excerpt": "influence almost every single part of Venezuelan life",
+        "visual_type": "b-roll",
+        "visual_description": "A rapid-fire montage of four shots: 1. A gas pump nozzle, 2. A glistening luxury skyscraper, 3. Empty grocery shelves, 4. A formal government palace. A dark, iridescent 'oil-slick' texture overlays all shots.",
+        "search_query": "gas station nozzle close up",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Context_scene_015.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      }
+    ],
+    "Thesis": [
+      {
+        "id": "Thesis_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 142.36,
+        "end_seconds": 146.5,
+        "narration_excerpt": "Venezuela has incredible potential wealth from its natural resources",
+        "visual_type": "b-roll",
+        "visual_description": "Cinematic drone shots of lush Amazonian rainforests and the Orinoco belt oil rigs under a golden sunset.",
+        "search_query": "Venezuela Amazon drone",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Thesis_scene_001.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_002",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 146.82,
+        "end_seconds": 149.66,
+        "narration_excerpt": "yet its society stands starkly divided",
+        "visual_type": "b-roll",
+        "visual_description": "Hard cut to a high-angle, gritty shot of the Petare slums, showing the dense, multicolored brick houses packed tightly on the hillsides.",
+        "search_query": "Petare slums Caracas aerial",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "divided",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Thesis_scene_002.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_002_alt",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "2.5s",
+        "start_seconds": 151.48,
+        "end_seconds": 152.38,
+        "narration_excerpt": "explore why",
+        "visual_type": "graphics",
+        "visual_description": "Bold, minimalist white text reading 'WHY?' centered on a dark, charcoal-textured background with slight camera shake.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "list",
+          "theme": "dark",
+          "data": {
+            "title": "WHY?",
+            "items": []
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Thesis_scene_002_alt.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_003",
+        "covers_beats": [
+          "beat_003"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 155.2,
+        "end_seconds": 161.7,
+        "narration_excerpt": "divisions stem from a mix of historical baggage, flawed economic policies, and conflicting political ideologies",
+        "visual_type": "graphics",
+        "visual_description": "A triad diagram appearing on screen. A central node labeled 'CORE ISSUES' branches out into three distinct icons.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "historical",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          },
+          {
+            "trigger": "economic",
+            "action": "reveal",
+            "target": 1,
+            "time": null
+          },
+          {
+            "trigger": "political",
+            "action": "reveal",
+            "target": 2,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "steps",
+          "theme": "default",
+          "data": {
+            "title": "The Core Issues",
+            "items": [
+              "Historical Baggage",
+              "Economic Policies",
+              "Political Ideologies"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Thesis_scene_003.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_004",
+        "covers_beats": [
+          "beat_004"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 164.12,
+        "end_seconds": 166.8,
+        "narration_excerpt": "fueled constant polarization and instability",
+        "visual_type": "generated",
+        "visual_description": "Abstract fluid simulation: thick red smoke and deep blue smoke swirling from opposite sides, colliding in the center to form a violent, turbulent purple vortex.",
+        "search_query": "",
+        "comfyui_prompt": "Abstract cinematic fluid simulation, thick red and blue smoke colliding in slow motion, creating a dark purple vortex, high contrast, dark background, 8k resolution, photorealistic smoke textures",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "instability",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Thesis_scene_004.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_005",
+        "covers_beats": [
+          "beat_005"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 169.36,
+        "end_seconds": 171.04,
+        "narration_excerpt": "we\u2019ll look at three key areas",
+        "visual_type": "graphics",
+        "visual_description": "A vertical roadmap titled 'THE PATH AHEAD' with three numbered points appearing sequentially.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "list",
+          "theme": "cool",
+          "data": {
+            "title": "Roadmap",
+            "items": [
+              "1. Colonialism",
+              "2. Oil",
+              "3. Ideology"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Thesis_scene_005.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_006",
+        "covers_beats": [
+          "beat_006"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 172.96,
+        "end_seconds": 177.38,
+        "narration_excerpt": "legacy of colonialism and early power struggles shaped social hierarchies",
+        "visual_type": "b-roll",
+        "visual_description": "Slow pan over archival Spanish Casta paintings showing racial hierarchies, followed by an old map of Colonial Caracas.",
+        "search_query": "Spanish Casta paintings",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "colonialism",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Thesis_scene_006.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_007",
+        "covers_beats": [
+          "beat_007"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 179.56,
+        "end_seconds": 183.36,
+        "narration_excerpt": "oil dependence and economic mismanagement made inequality worse",
+        "visual_type": "graphics",
+        "visual_description": "An animated line graph. A black line (Oil Production) rises sharply, while a gap between two shaded areas (Wealth Gini Coefficient) widens significantly beneath it.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "inequality",
+            "action": "reveal",
+            "target": 1,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "warm",
+          "data": {
+            "title": "Oil vs Inequality",
+            "items": [
+              "Oil Production",
+              "Wealth Gap"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Thesis_scene_007.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_008",
+        "covers_beats": [
+          "beat_008"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 185.58,
+        "end_seconds": 189.3,
+        "narration_excerpt": "competing political visions pushed the nation even further apart",
+        "visual_type": "b-roll",
+        "visual_description": "Vertical split-screen. Left: Low-quality archival footage of Hugo Chavez in a red beret speaking passionately. Right: Modern high-quality footage of protesters in the streets clashing with police.",
+        "search_query": "Hugo Chavez speech archives",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "apart",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Thesis_scene_008.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Thesis_scene_009",
+        "covers_beats": [
+          "beat_009"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 190.76,
+        "end_seconds": 193.86,
+        "narration_excerpt": "isn\u2019t a political statement, but an analysis of the causes",
+        "visual_type": "host",
+        "visual_description": "Mid-shot of the host in a neutrally lit studio. They lean slightly forward, hands open in a clarifying gesture, wearing a soft grey sweater.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      }
+    ],
+    "Evidence 1": [
+      {
+        "id": "Evidence_1_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 194.4,
+        "end_seconds": 198.9,
+        "narration_excerpt": "To understand the deep divisions in Venezuela today, we have to look way back",
+        "visual_type": "graphics",
+        "visual_description": "A high-definition modern satellite map of Venezuela. As the narration reaches 'way back', the colors drain and the texture morphs into a 19th-century yellowed parchment map with ink-drawn borders.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "way back",
+            "action": "reveal",
+            "target": 1,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "warm",
+          "data": {
+            "title": "Historical Context",
+            "items": [
+              "Modern Day",
+              "19th Century"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_1_scene_001.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 203.24,
+        "end_seconds": 206.14,
+        "narration_excerpt": "the country spent over a century struggling under the rule of 'caudillos'",
+        "visual_type": "b-roll",
+        "visual_description": "A montage of archival oil paintings showing 19th-century South American soldiers on horseback and sketches of chaotic battlefields.",
+        "search_query": "19th century South American independence wars painting",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_002.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_003",
+        "covers_beats": [
+          "beat_003"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 207.22,
+        "end_seconds": 212.26,
+        "narration_excerpt": "These were powerful regional strongmen who ruled through force and personal favors",
+        "visual_type": "generated",
+        "visual_description": "A cinematic, AI-generated scene of a stern, decorated military general in a lavish colonial office handing a wax-sealed scroll to an aide while armed soldiers stand in the shadows behind him.",
+        "search_query": "",
+        "comfyui_prompt": "Oil painting style, a stern 19th century Hispanic military caudillo in a lavish gold-trimmed colonial room, handing a secret scroll to a subordinate, soldiers standing guard in the background, cinematic lighting, historical drama, rich textures.",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Evidence_1_scene_003.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_004",
+        "covers_beats": [
+          "beat_004"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 217.66,
+        "end_seconds": 220.46,
+        "narration_excerpt": "which made it impossible to build stable institutions",
+        "visual_type": "graphics",
+        "visual_description": "Three grand marble pillars labeled 'Law', 'Justice', and 'Education'. When the narrator says 'impossible', the pillars develop deep cracks and crumble into dust.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "impossible",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "steps",
+          "theme": "dark",
+          "data": {
+            "title": "Institutional Collapse",
+            "items": [
+              "Law",
+              "Justice",
+              "Education"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_1_scene_004.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_005",
+        "covers_beats": [
+          "beat_005",
+          "beat_006"
+        ],
+        "start": "0:00",
+        "duration": "8s",
+        "start_seconds": 221.22,
+        "end_seconds": 225.54,
+        "narration_excerpt": "Take Jos\u00e9 Antonio P\u00e1ez, for example... leadership style was typical for the time",
+        "visual_type": "b-roll",
+        "visual_description": "Starts with a formal, high-contrast historical portrait of Jos\u00e9 Antonio P\u00e1ez, then cuts to dynamic illustrations of him leading a cavalry charge in the llanos.",
+        "search_query": "Jos\u00e9 Antonio P\u00e1ez portrait",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_005.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_007",
+        "covers_beats": [
+          "beat_007"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 230.88,
+        "end_seconds": 235.74,
+        "narration_excerpt": "prioritized their own regional interests and personal gain over national unity",
+        "visual_type": "graphics",
+        "visual_description": "An animated map of Venezuela divided into regional territories. Gold-colored 'wealth' particles flow from the countryside into small regional hubs, pointedly avoiding the capital/center.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "list",
+          "theme": "cool",
+          "data": {
+            "title": "Fragmented Interests",
+            "items": [
+              "Regional Power",
+              "Local Wealth",
+              "Personal Loyalty"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_1_scene_007.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_008",
+        "covers_beats": [
+          "beat_008"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 236.1,
+        "end_seconds": 238.68,
+        "narration_excerpt": "This established a pattern of fragmented power",
+        "visual_type": "generated",
+        "visual_description": "A metaphorical image of a glass mirror in the shape of Venezuela, shattered into jagged shards on a dark surface.",
+        "search_query": "",
+        "comfyui_prompt": "A shattered mirror reflecting the outline map of Venezuela, broken into sharp fragments, dark reflective background, conceptual photography, high contrast, symbol of political fragmentation.",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "fragmented",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Evidence_1_scene_008.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_009",
+        "covers_beats": [
+          "beat_009"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 244.3,
+        "end_seconds": 246.56,
+        "narration_excerpt": "when everything changed with the discovery of oil",
+        "visual_type": "b-roll",
+        "visual_description": "Archival black and white footage of an oil gusher erupting from a wooden derrick, coating the surrounding area in black oil.",
+        "search_query": "early 20th century oil gusher footage",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "oil",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_009.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_010",
+        "covers_beats": [
+          "beat_010"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 247.04,
+        "end_seconds": 251.8,
+        "narration_excerpt": "Under the dictatorship of Juan Vicente G\u00f3mez, oil production accelerated rapidly",
+        "visual_type": "b-roll",
+        "visual_description": "Photos of Juan Vicente G\u00f3mez in full military regalia, followed by shots of early industrial oil pumpjacks rhythmically moving.",
+        "search_query": "Juan Vicente G\u00f3mez portrait military",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_010.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_011",
+        "covers_beats": [
+          "beat_011"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 254.28,
+        "end_seconds": 259.62,
+        "narration_excerpt": "while oil revenue poured into the country, the benefits were not shared",
+        "visual_type": "graphics",
+        "visual_description": "An animated bar chart. The 'Oil Revenue' bar shoots upward rapidly. When the narrator says 'not shared', a second bar labeled 'Average Income' stays flat at the bottom.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "not shared",
+            "action": "reveal",
+            "target": 1,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "dark",
+          "data": {
+            "title": "The Oil Gap",
+            "items": [
+              "Oil Revenue",
+              "Average Income"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_1_scene_011.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_012",
+        "covers_beats": [
+          "beat_012"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 260.16,
+        "end_seconds": 265.68,
+        "narration_excerpt": "G\u00f3mez used that wealth to consolidate his own power and enrich his allies",
+        "visual_type": "generated",
+        "visual_description": "A surreal AI-generated image of a polished gold oil pipeline running through a desolate, dusty landscape directly into the gates of a massive, opulent palace.",
+        "search_query": "",
+        "comfyui_prompt": "A golden oil pipeline snaking through a dry barren wasteland leading into a giant white palace, surrealism, high contrast, wealth versus poverty metaphor, cinematic lighting.",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Evidence_1_scene_012.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_013",
+        "covers_beats": [
+          "beat_013"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 267.08,
+        "end_seconds": 270.4,
+        "narration_excerpt": "made existing inequalities worse and fueled resentment",
+        "visual_type": "b-roll",
+        "visual_description": "A split-screen comparison: On the left, wealthy elites in evening wear at a ballroom; on the right, impoverished rural families outside mud-walled shacks.",
+        "search_query": "venezuela 1940s wealthy elite party",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "resentment",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_013.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_014",
+        "covers_beats": [
+          "beat_014"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 274.44,
+        "end_seconds": 277.52,
+        "narration_excerpt": "laid the groundwork for future social and political conflict",
+        "visual_type": "graphics",
+        "visual_description": "Bold text appears on screen: 'INEQUALITY -> UNREST'. A digital fuse at the bottom of the screen sparks and begins to burn quickly toward the text.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "steps",
+          "theme": "warm",
+          "data": {
+            "title": "Path to Conflict",
+            "items": [
+              "Inequality",
+              "Resentment",
+              "Unrest"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_1_scene_014.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_015",
+        "covers_beats": [
+          "beat_015"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 279.74,
+        "end_seconds": 282.86,
+        "narration_excerpt": "there were attempts to fix these issues through democratic reforms",
+        "visual_type": "b-roll",
+        "visual_description": "Flickering black and white footage of optimistic citizens dropping paper ballots into boxes and large, cheering crowds at a democratic rally.",
+        "search_query": "venezuela 1950s voting footage",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_015.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_016",
+        "covers_beats": [
+          "beat_016"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 285.32,
+        "end_seconds": 289.44,
+        "narration_excerpt": "diversify the economy and implement social programs to address inequality",
+        "visual_type": "b-roll",
+        "visual_description": "Photos of R\u00f3mulo Betancourt speaking passionately at a podium, followed by quick shots of mid-century hospital corridors and children entering a new school.",
+        "search_query": "R\u00f3mulo Betancourt speech",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_016.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_017",
+        "covers_beats": [
+          "beat_017"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 289.96,
+        "end_seconds": 293.1,
+        "narration_excerpt": "While these efforts showed some promise, they hit a wall",
+        "visual_type": "generated",
+        "visual_description": "A metaphorical scene of a heavy steam engine (labeled 'Reform') hitting a massive, unmoving wall of solid grey stone in the middle of a track.",
+        "search_query": "",
+        "comfyui_prompt": "A vintage steam locomotive labeled 'REFORM' crashing into a gargantuan solid stone wall, sparks flying, cinematic impact, dark background, conceptual art.",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "hit a wall",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Evidence_1_scene_017.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_018",
+        "covers_beats": [
+          "beat_018"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 297.72,
+        "end_seconds": 298.48,
+        "narration_excerpt": "problems in Venezuelan society were just too deep to overcome",
+        "visual_type": "graphics",
+        "visual_description": "A diagram showing the 'Tree of State'. The roots are being strangled by heavy grey rocks labeled 'Corruption' and 'Old Guard'.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "list",
+          "theme": "dark",
+          "data": {
+            "title": "Structural Barriers",
+            "items": [
+              "Systemic Corruption",
+              "Entrenched Elite",
+              "Economic Dependence"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_1_scene_018.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_019",
+        "covers_beats": [
+          "beat_019"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 302.16,
+        "end_seconds": 305.88,
+        "narration_excerpt": "Even in 1976, when the oil industry was nationalized... the results were disappointing",
+        "visual_type": "b-roll",
+        "visual_description": "1976 footage of Carlos Andr\u00e9s P\u00e9rez signing the nationalization decree, followed by the original blue and orange PDVSA logo being unveiled.",
+        "search_query": "Carlos Andr\u00e9s P\u00e9rez oil nationalization 1976",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "1976",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_019.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_1_scene_020",
+        "covers_beats": [
+          "beat_020"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 313.44,
+        "end_seconds": 317.44,
+        "narration_excerpt": "instead, it just became another avenue for political maneuvering and corruption",
+        "visual_type": "b-roll",
+        "visual_description": "Close up of oil pulsing through a pipe, which dissolves into a shot of silhouettes in a smoke-filled room with expensive liquor bottles on the table.",
+        "search_query": "oil pipe flow close up",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "corruption",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_1_scene_020.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      }
+    ],
+    "Evidence 2": [
+      {
+        "id": "Evidence_2_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 321.78,
+        "end_seconds": 325.18,
+        "narration_excerpt": "Venezuela was experiencing an unprecedented economic boom",
+        "visual_type": "b-roll",
+        "visual_description": "Vintage archival footage of 1970s Caracas. Wide shots of the modern skyline, busy avenues with classic cars, and well-dressed people walking past high-end storefronts.",
+        "search_query": "1970s Caracas archival footage",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "boom",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_001.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 325.92,
+        "end_seconds": 329.14,
+        "narration_excerpt": "fueled, of course, by soaring oil prices",
+        "visual_type": "graphics",
+        "visual_description": "A clean, minimalist line chart showing global oil prices. The line climbs steeply from the bottom left toward the top right.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "dark",
+          "data": {
+            "title": "Global Oil Prices (1970-1980)",
+            "items": [
+              "$3/barrel",
+              "$35/barrel"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_2_scene_002.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_003",
+        "covers_beats": [
+          "beat_003"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 331.28,
+        "end_seconds": 335.7,
+        "narration_excerpt": "infrastructure, social programs, and industrial development",
+        "visual_type": "b-roll",
+        "visual_description": "A fast-paced montage of mid-century modern construction: a bridge being built, heavy machinery laying pavement, and the interior of a massive steel factory.",
+        "search_query": "1970s bridge construction Venezuela",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_003.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_004",
+        "covers_beats": [
+          "beat_004"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 337.26,
+        "end_seconds": 340.14,
+        "narration_excerpt": "there was a real sense of widespread prosperity",
+        "visual_type": "b-roll",
+        "visual_description": "Warm, handheld film footage of a middle-class family picnic in a lush Caracas park, followed by people laughing while carrying shopping bags.",
+        "search_query": "1970s Venezuela middle class family",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "prosperity",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_004.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_005",
+        "covers_beats": [
+          "beat_005"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 342.08,
+        "end_seconds": 346.08,
+        "narration_excerpt": "relying on a single commodity turned out to be a house of cards",
+        "visual_type": "generated",
+        "visual_description": "Stylized 3D animation. A house of cards where each card is a circular oil barrel lid. The structure is tall but begins to tremble and slide against a dark, moody background.",
+        "search_query": "",
+        "comfyui_prompt": "Cinematic 3D animation, house of cards made of rusty oil barrels, leaning dangerously, dark background, dramatic lighting, photorealistic textures, motion blur --ar 16:9",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "cards",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Evidence_2_scene_005.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_006",
+        "covers_beats": [
+          "beat_006"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 346.64,
+        "end_seconds": 348.1,
+        "narration_excerpt": "When oil prices crashed in the 1980s",
+        "visual_type": "graphics",
+        "visual_description": "The previous oil price chart returns, but the line takes a violent, jagged dive downward. A large red '1980s' text overlay appears with a downward arrow.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "steps",
+          "theme": "dark",
+          "data": {
+            "title": "The Crash",
+            "items": [
+              "1982: Price Volatility",
+              "1986: The Great Collapse"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_2_scene_006.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_007",
+        "covers_beats": [
+          "beat_007"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 357.12,
+        "end_seconds": 359.84,
+        "narration_excerpt": "hit the poor and marginalized the hardest",
+        "visual_type": "b-roll",
+        "visual_description": "Grimy, low-quality news footage of people standing in long queues outside a grocery store with empty shelves. Close-up on a weathered hand holding a small amount of currency.",
+        "search_query": "1980s Venezuela poverty archival",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "poor",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_007.png",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_008",
+        "covers_beats": [
+          "beat_008"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 362.04,
+        "end_seconds": 364.68,
+        "narration_excerpt": "they just made existing inequalities even worse",
+        "visual_type": "graphics",
+        "visual_description": "Split screen infographic. Left side: A simplified icon of a penthouse. Right side: A simplified icon of a shanty house. An animated gap between them widens as 'Inequality' text pulses in the center.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "warm",
+          "data": {
+            "title": "Wealth Gap",
+            "items": [
+              "Elite Assets",
+              "Lower Class Debt"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_2_scene_008.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_009",
+        "covers_beats": [
+          "beat_009",
+          "beat_010"
+        ],
+        "start": "0:00",
+        "duration": "8s",
+        "start_seconds": 365.42,
+        "end_seconds": 369.54,
+        "narration_excerpt": "Everything finally boiled over in 1989 with the Caracazo riots",
+        "visual_type": "b-roll",
+        "visual_description": "Violent montage of the 1989 Caracazo. Smoke rising over the city, people running through streets, and military trucks patrolling shattered storefronts.",
+        "search_query": "Caracazo 1989 footage",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "Caracazo",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_009.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_010",
+        "covers_beats": [
+          "beat_011"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 377.22,
+        "end_seconds": 379.62,
+        "narration_excerpt": "deep-seated anger simmering beneath the surface",
+        "visual_type": "b-roll",
+        "visual_description": "Series of three extreme close-ups of faces from the 1989 footage: a woman shouting, a man with a look of pure desperation, and a young protester with eyes fixed off-camera.",
+        "search_query": "protester face close up Caracas 1989",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "anger",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_010.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_011",
+        "covers_beats": [
+          "beat_012"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 382.32,
+        "end_seconds": 384.16,
+        "narration_excerpt": "the perfect stage for Hugo Ch\u00e1vez",
+        "visual_type": "a-roll",
+        "visual_description": "Archival footage of a young Hugo Ch\u00e1vez in his iconic red beret and military fatigues, speaking firmly during his 1992 televised surrender.",
+        "search_query": "Hugo Chavez 1992 surrender speech",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "Chavez",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_012",
+        "covers_beats": [
+          "beat_013"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 384.7,
+        "end_seconds": 385.74,
+        "narration_excerpt": "capitalized on the public's discontent",
+        "visual_type": "b-roll",
+        "visual_description": "Sea of red shirts. A massive campaign rally with thousands of people waving flags and holding up hand-painted posters of Ch\u00e1vez's face.",
+        "search_query": "Chavez campaign rally 1998",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_012.png",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_013",
+        "covers_beats": [
+          "beat_014"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 388.34,
+        "end_seconds": 392.5,
+        "narration_excerpt": "By 1998, he rose to power on a platform of radical change",
+        "visual_type": "a-roll",
+        "visual_description": "Ch\u00e1vez at his 1998 inauguration, raising his hand to take the oath of office while wearing the presidential sash.",
+        "search_query": "Hugo Chavez 1998 inauguration",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_014",
+        "covers_beats": [
+          "beat_015"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 395.08,
+        "end_seconds": 397.96,
+        "narration_excerpt": "inspired by the vision of Sim\u00f3n Bol\u00edvar",
+        "visual_type": "graphics",
+        "visual_description": "A split screen graphic. On the left, a vibrant photo of Ch\u00e1vez. On the right, an oil painting of Sim\u00f3n Bol\u00edvar. An ornate 'Bolivarian Revolution' title appears across the bottom.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "Bolivar",
+            "action": "reveal",
+            "target": 1,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "warm",
+          "data": {
+            "title": "The Ideology",
+            "items": [
+              "Hugo Ch\u00e1vez",
+              "Sim\u00f3n Bol\u00edvar"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_2_scene_014.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_015",
+        "covers_beats": [
+          "beat_016"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 399.1,
+        "end_seconds": 402.48,
+        "narration_excerpt": "redistribute wealth and finally empower the poor",
+        "visual_type": "b-roll",
+        "visual_description": "Candid footage of Ch\u00e1vez in a poor neighborhood, hugging an elderly woman and handing a folder (land title) to a smiling man.",
+        "search_query": "Chavez in barrio hugging people",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_015.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_016",
+        "covers_beats": [
+          "beat_017"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 406.04,
+        "end_seconds": 408.22,
+        "narration_excerpt": "ended up polarizing the country even further",
+        "visual_type": "b-roll",
+        "visual_description": "A fast split-screen: Left side shows cheering pro-government supporters in red. Right side shows angry opposition protesters in white being blocked by police.",
+        "search_query": "Venezuela polarization protests",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "polarizing",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_016.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_017",
+        "covers_beats": [
+          "beat_018"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 408.88,
+        "end_seconds": 412.84,
+        "narration_excerpt": "failed coup attempt in 2002 revealed just how deep the divisions",
+        "visual_type": "a-roll",
+        "visual_description": "Static-filled news broadcast footage from April 2002. Gunfire on a bridge (Puente Llaguno) and a news anchor looking visibly shaken.",
+        "search_query": "April 2002 coup Venezuela footage",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_018",
+        "covers_beats": [
+          "beat_019"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 415.86,
+        "end_seconds": 418.08,
+        "narration_excerpt": "Ch\u00e1vez moved to consolidate his power",
+        "visual_type": "host",
+        "visual_description": "The host is framed in a medium close-up, leaning slightly forward with a serious expression, looking directly into the lens.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "consolidate",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_019",
+        "covers_beats": [
+          "beat_020"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 420.2,
+        "end_seconds": 423.78,
+        "narration_excerpt": "bypassed traditional institutions, which made the public more dependent",
+        "visual_type": "graphics",
+        "visual_description": "A flowchart graphic. Oil money flows from a central barrel, bypasses 'Government Institutions' (represented by a grey building), and goes directly into several red boxes labeled 'Misiones'.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "steps",
+          "theme": "cool",
+          "data": {
+            "title": "State Dependency",
+            "items": [
+              "Oil Revenue",
+              "Direct Parallel Funding",
+              "Social Loyalty"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_2_scene_019.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_2_scene_020",
+        "covers_beats": [
+          "beat_021"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 429.66,
+        "end_seconds": 432.64,
+        "narration_excerpt": "entrenched his power base and pushed his opponents to the margins",
+        "visual_type": "b-roll",
+        "visual_description": "Juxtaposition: A bright, colorful shot of a new government health clinic (Misi\u00f3n Barrio Adentro) followed by a dark, handheld shot of an opposition leader being led away in handcuffs.",
+        "search_query": "Barrio Adentro clinic",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "margins",
+            "action": "cut",
+            "target": 1,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_2_scene_020.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      }
+    ],
+    "Evidence 3": [
+      {
+        "id": "Evidence_3_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 436.32,
+        "end_seconds": 440.94,
+        "narration_excerpt": "everything truly came to a head in 2014 when oil prices collapsed",
+        "visual_type": "graphics",
+        "visual_description": "A clean, minimalist line graph on a dark background showing the global price of oil. The line is relatively stable until 2014, where it takes a sharp, jagged plunge downward.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "collapsed",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "dark",
+          "data": {
+            "title": "Global Oil Price (USD)",
+            "items": [
+              "2013: $110",
+              "2014: Collapse",
+              "2015: $50"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Evidence_3_scene_001.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 441.58,
+        "end_seconds": 444.3,
+        "narration_excerpt": "The nation had become so reliant on this single commodity",
+        "visual_type": "b-roll",
+        "visual_description": "Cinematic archival footage of the Jose Terminal or similar massive Venezuelan oil refineries, showing smoke stacks and vast rows of oil storage tanks at dusk.",
+        "search_query": "Venezuela oil refinery aerial",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_3_scene_002.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_003",
+        "covers_beats": [
+          "beat_003"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 450.14,
+        "end_seconds": 452.34,
+        "narration_excerpt": "making the Bolivar practically worthless",
+        "visual_type": "b-roll",
+        "visual_description": "Close-up of hands weaving a handbag out of colorful Bolivar banknotes; cut to a pile of cash lying in a gutter next to actual trash.",
+        "search_query": "Venezuelan bolivar money crafts",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "worthless",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_3_scene_003.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_004",
+        "covers_beats": [
+          "beat_004"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 453.66,
+        "end_seconds": 457.34,
+        "narration_excerpt": "even basic essentials like food and medicine became hard to find",
+        "visual_type": "b-roll",
+        "visual_description": "A sequence of handheld, slightly shaky shots: an empty refrigerated meat aisle in a supermarket, followed by a long, static queue of people standing under the sun outside a pharmacy.",
+        "search_query": "Venezuela empty grocery shelves",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_3_scene_004.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_005",
+        "covers_beats": [
+          "beat_005"
+        ],
+        "start": "0:00",
+        "duration": "8s",
+        "start_seconds": 460.38,
+        "end_seconds": 463.56,
+        "narration_excerpt": "millions of Venezuelans made the heartbreaking choice to leave",
+        "visual_type": "b-roll",
+        "visual_description": "Wide, high-angle shot of a highway filled with 'caminantes'\u2014migrants carrying heavy backpacks and rolling suitcases, walking toward the horizon.",
+        "search_query": "Venezuelan migrants walking highway",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "leave",
+            "action": "fade",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_3_scene_005.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_006",
+        "covers_beats": [
+          "beat_006"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 467.76,
+        "end_seconds": 468.36,
+        "narration_excerpt": "Under Nicol\u00e1s Maduro\u2019s leadership, the situation only got worse",
+        "visual_type": "a-roll",
+        "visual_description": "Nicol\u00e1s Maduro speaking forcefully at a red-clothed podium, surrounded by military generals in olive drab uniforms.",
+        "search_query": "Nicolas Maduro speech military background",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_007",
+        "covers_beats": [
+          "beat_007"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 472.26,
+        "end_seconds": 476.46,
+        "narration_excerpt": "political landscape fractured even further as opposition movements gained ground",
+        "visual_type": "b-roll",
+        "visual_description": "Drone footage over Caracas showing a massive sea of white-clad protesters; cut to a chaotic shot of tear gas canisters exploding and people running from armored National Guard vehicles.",
+        "search_query": "Venezuela protests aerial view",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_3_scene_007.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_008",
+        "covers_beats": [
+          "beat_008"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 476.98,
+        "end_seconds": 479.62,
+        "narration_excerpt": "This is when figures like Juan Guaid\u00f3 emerged",
+        "visual_type": "a-roll",
+        "visual_description": "Juan Guaid\u00f3 standing on a stage outdoors, hand raised, taking an oath in front of a cheering crowd.",
+        "search_query": "Juan Guaido swearing in ceremony street",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "Guaid\u00f3",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_009",
+        "covers_beats": [
+          "beat_009"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 486.16,
+        "end_seconds": 488.92,
+        "narration_excerpt": "this only deepened the chasm within Venezuelan society",
+        "visual_type": "generated",
+        "visual_description": "A metaphorical, 3D-style map of Venezuela sitting on a dark floor. A deep, glowing tectonic crack opens up right through the center of the country, physically pushing the two halves apart.",
+        "search_query": "",
+        "comfyui_prompt": "A map of Venezuela as a 3D clay model on a dark background, a deep jagged tectonic crack splitting the map down the middle, glowing embers in the crack, cinematic lighting, 8k resolution, metaphorical style",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "chasm",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Evidence_3_scene_009.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_010",
+        "covers_beats": [
+          "beat_010"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 490.92,
+        "end_seconds": 495.12,
+        "narration_excerpt": "the ultimate spark for all this disunity may have been the pervasive corruption",
+        "visual_type": "host",
+        "visual_description": "Host in mid-shot, leaning slightly forward toward the camera with a focused, serious expression, against a blurred library or studio background.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "corruption",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_011",
+        "covers_beats": [
+          "beat_011"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 497.78,
+        "end_seconds": 501.8,
+        "narration_excerpt": "while the average person suffered, officials were enriching themselves",
+        "visual_type": "b-roll",
+        "visual_description": "Split-screen composition. Left side: A grainy, handheld shot of a person digging through a trash bag for food. Right side: A sleek, high-definition shot of a gold-trimmed luxury SUV driving through a gated community in Las Mercedes, Caracas.",
+        "search_query": "Venezuela poverty scavenging food",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_3_scene_011.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_012",
+        "covers_beats": [
+          "beat_012"
+        ],
+        "start": "0:00",
+        "duration": "7s",
+        "start_seconds": 502.76,
+        "end_seconds": 506.24,
+        "narration_excerpt": "ignited a deep sense of resentment and created a stark divide",
+        "visual_type": "b-roll",
+        "visual_description": "Slow-motion close-ups of faces: an elderly woman looking exhausted while leaning on a cane in a sun-drenched line, and a young man with a bandana over his face looking intensely toward a line of riot police.",
+        "search_query": "Venezuela suffering face close up",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Evidence_3_scene_012.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Evidence_3_scene_013",
+        "covers_beats": [
+          "beat_013"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 515.44,
+        "end_seconds": 518.12,
+        "narration_excerpt": "completely broke the social fabric of Venezuela",
+        "visual_type": "generated",
+        "visual_description": "A close-up of the Venezuelan flag (yellow, blue, red with stars). The fabric begins to fray rapidly at the edges, threads pulling away and dissolving into ash as the image fades to black.",
+        "search_query": "",
+        "comfyui_prompt": "Close up of the Venezuelan flag made of silk, the edges are burning and fraying, threads coming loose and floating away into a dark void, cinematic, hyper-realistic, symbol of decay",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "broke",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Evidence_3_scene_013.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      }
+    ],
+    "Conclusion": [
+      {
+        "id": "Conclusion_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 520.48,
+        "end_seconds": 522.98,
+        "narration_excerpt": "explored the deep divisions within Venezuela",
+        "visual_type": "b-roll",
+        "visual_description": "Cinematic drone shot of Caracas, starting over high-end luxury apartments with pools, then panning or zooming out to reveal the sprawling, densely packed brick-colored houses of the Petare barrio climbing the hillsides.",
+        "search_query": "Caracas drone Petare barrio vs luxury",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "divisions",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Conclusion_scene_001.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 524.32,
+        "end_seconds": 525.4,
+        "narration_excerpt": "contrast to the nation\u2019s massive natural wealth",
+        "visual_type": "b-roll",
+        "visual_description": "A breathtaking, wide aerial shot of Angel Falls (Salto \u00c1ngel) with mist rising, followed by a slow pan across the lush Orinoco river basin.",
+        "search_query": "Angel Falls aerial 4k",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Conclusion_scene_002.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_003",
+        "covers_beats": [
+          "beat_003"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 527.94,
+        "end_seconds": 529.1,
+        "narration_excerpt": "looked at three main reasons",
+        "visual_type": "graphics",
+        "visual_description": "Minimalist typography on a dark background. Numbers 1, 2, and 3 appear sequentially in sync with the narration.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "History",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          },
+          {
+            "trigger": "Oil",
+            "action": "reveal",
+            "target": 1,
+            "time": null
+          },
+          {
+            "trigger": "Politics",
+            "action": "reveal",
+            "target": 2,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "sequence-steps-simple",
+          "theme": "dark",
+          "data": {
+            "title": "Key Factors",
+            "items": [
+              "1. History",
+              "2. Oil",
+              "3. Politics"
+            ]
+          },
+          "theme_config_ref": "docu-dark-minimal"
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Conclusion_scene_003.svg",
+        "infographic_asset_png": "infographics/Conclusion_scene_003.png",
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_004",
+        "covers_beats": [
+          "beat_004"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 530.98,
+        "end_seconds": 533.4,
+        "narration_excerpt": "legacy of colonialism and the era of the 'caudillos'",
+        "visual_type": "b-roll",
+        "visual_description": "Sepia-toned historical illustrations of 19th-century Venezuelan military leaders in uniform, with a slight Ken Burns zoom effect to add motion.",
+        "search_query": "Venezuelan caudillos sketches",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "caudillos",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Conclusion_scene_004.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_005",
+        "covers_beats": [
+          "beat_005"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 539.64,
+        "end_seconds": 540.98,
+        "narration_excerpt": "the dependence on oil",
+        "visual_type": "b-roll",
+        "visual_description": "Extreme close-up of a rusty, weathered oil pump jack moving slowly up and down against a hazy, orange sunset sky.",
+        "search_query": "rusty oil pump jack close up",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Conclusion_scene_005.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_006",
+        "covers_beats": [
+          "beat_006"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 543.86,
+        "end_seconds": 545.5,
+        "narration_excerpt": "created huge vulnerabilities",
+        "visual_type": "graphics",
+        "visual_description": "An animated line graph. A gold line representing 'Oil Prices' fluctuates wildly and then drops, while a red line representing 'Poverty' starts low and surges upward as the gold line falls.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "vulnerabilities",
+            "action": "highlight",
+            "target": 1,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "comparison",
+          "theme": "cool",
+          "data": {
+            "title": "Oil vs Poverty Index",
+            "items": [
+              "Oil Volatility",
+              "Social Vulnerability"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Conclusion_scene_006.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_007",
+        "covers_beats": [
+          "beat_007"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 549.88,
+        "end_seconds": 552.86,
+        "narration_excerpt": "political fragmentation\u2014driven by clashing ideologies",
+        "visual_type": "b-roll",
+        "visual_description": "Quick-cut montage: A crowd wearing red Chavista shirts cheering, immediately followed by a shot of an opposition protest with blue and white flags and smoke in the background.",
+        "search_query": "Venezuela political rally red shirts",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Conclusion_scene_007.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_008",
+        "covers_beats": [
+          "beat_008"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 560.36,
+        "end_seconds": 562.16,
+        "narration_excerpt": "really one of unfulfilled potential",
+        "visual_type": "generated",
+        "visual_description": "A cinematic, metaphorical shot of a majestic bird sculpted from liquid gold, struggling to maintain its flight while buffeted by dark, swirling storm clouds and lightning.",
+        "search_query": "",
+        "comfyui_prompt": "A majestic phoenix made of shimmering liquid gold, struggling to fly through a dark violent thunderstorm, cinematic lighting, dramatic atmosphere, high detail, 8k, symbolic art style.",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "unfulfilled",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Conclusion_scene_008.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_009",
+        "covers_beats": [
+          "beat_009"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 567.32,
+        "end_seconds": 570.08,
+        "narration_excerpt": "create a divided nation, despite its abundance",
+        "visual_type": "graphics",
+        "visual_description": "3D render of three massive interlocking iron gears labeled 'History', 'Policy', and 'Ideology'. They turn with difficulty and then sparks fly as they jam completely.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "steps",
+          "theme": "warm",
+          "data": {
+            "title": "Systemic Gridlock",
+            "items": [
+              "History",
+              "Policy",
+              "Ideology"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Conclusion_scene_009.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_010",
+        "covers_beats": [
+          "beat_010"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 574.18,
+        "end_seconds": 575.96,
+        "narration_excerpt": "remains a daunting task",
+        "visual_type": "b-roll",
+        "visual_description": "A long shot of a solitary person carrying a heavy bag, walking up a steep, narrow concrete staircase through a sun-drenched barrio.",
+        "search_query": "walking up barrio stairs Caracas",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Conclusion_scene_010.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_011",
+        "covers_beats": [
+          "beat_011"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 580.46,
+        "end_seconds": 582.24,
+        "narration_excerpt": "first step toward finding a solution",
+        "visual_type": "host",
+        "visual_description": "Host on camera in a studio or home office setting, leaning forward slightly with a sincere and focused expression.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_012",
+        "covers_beats": [
+          "beat_012"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 583.56,
+        "end_seconds": 586.84,
+        "narration_excerpt": "dive deeper into the history, politics, and culture",
+        "visual_type": "b-roll",
+        "visual_description": "Fast-paced cultural montage: hands shaping an arepa on a grill, a dancer spinning in a yellow/blue/red dress, and a close-up of a hand flipping through an old textbook with a map of South America.",
+        "search_query": "making Venezuelan arepas",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Conclusion_scene_012.jpg",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_013",
+        "covers_beats": [
+          "beat_013"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 588.78,
+        "end_seconds": 590.04,
+        "narration_excerpt": "Seek out different perspectives",
+        "visual_type": "graphics",
+        "visual_description": "A dynamic 'wall' of digital magazine covers, newspaper headlines in Spanish and English, and book titles like 'Comprehending Venezuela' floating in 3D space.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [],
+        "layers": [],
+        "infographic": {
+          "template": "list",
+          "theme": "cool",
+          "data": {
+            "title": "Resources",
+            "items": [
+              "International Reports",
+              "Historical Texts",
+              "Local News"
+            ]
+          }
+        },
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": "infographics/Conclusion_scene_013.svg",
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_014",
+        "covers_beats": [
+          "beat_014"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 592.84,
+        "end_seconds": 594.94,
+        "narration_excerpt": "promote dialogue and sustainable development",
+        "visual_type": "generated",
+        "visual_description": "A futuristic, optimistic vision of Caracas: lush green gardens on rooftops, solar panels on barrio homes, and a clean cable car system gliding over a vibrant, unified city.",
+        "search_query": "",
+        "comfyui_prompt": "Solar-punk Caracas, vibrant community gardens in a hilly urban environment, modern solar panels on colorful houses, clean urban transport, hopeful atmosphere, bright sunny day, architectural concept art.",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "sustainable",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": "Conclusion_scene_014.png",
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      },
+      {
+        "id": "Conclusion_scene_015",
+        "covers_beats": [
+          "beat_015"
+        ],
+        "start": "0:00",
+        "duration": "6s",
+        "start_seconds": 602.98,
+        "end_seconds": 605.1,
+        "narration_excerpt": "thrive in unity and prosperity",
+        "visual_type": "b-roll",
+        "visual_description": "A group of young Venezuelans in a park laughing and talking, transitioning to a final hero shot of the Venezuelan flag waving proudly against a clear blue sky.",
+        "search_query": "Venezuelan people laughing together",
+        "comfyui_prompt": "",
+        "library_match": true,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "unity",
+            "action": "cut",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": "assets\\broll\\Conclusion_scene_015.webp",
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "subtitle_cues": []
+      }
+    ]
+  }
+}

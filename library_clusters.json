@@ -1,0 +1,265 @@
+{
+  "videos": [
+    {
+      "path": "D:\\ClaudeProjects\\NOLAN\\asset\\＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm",
+      "name": "＂Genius, Billionaire, Playboy, Philanthropist＂ Tony Stark vs Steve Rogers - The Avengers (2012) [4-ftbs8TppY].webm",
+      "clusters": [
+        {
+          "id": 0,
+          "timestamp_start": 0,
+          "timestamp_end": 6.5065,
+          "timestamp_formatted": "00:00 - 00:06",
+          "duration": 6.5065,
+          "segment_count": 1,
+          "cluster_summary": "Aboard the S.H.I.E.L.D. Helicarrier, Bruce Banner pensively reflects on the group’s lack of cohesion, describing them as a volatile \"chemical mixture\" rather than a team. By characterizing the assembly of heroes as a \"time bomb,\" he highlights the dangerous instability and internal friction threatening their alliance. This moment captures the narrative tension and the precarious nature of the group's early formation.",
+          "people": [
+            "Bruce Banner"
+          ],
+          "locations": [
+            "S.H.I.E.L.D. Helicarrier"
+          ],
+          "combined_transcript": "But what are we, a team? No, no, no, we're a chemical mixture that makes chaos. We're a time bomb.",
+          "segments": [
+            {
+              "timestamp_start": 0,
+              "timestamp_end": 6.5065,
+              "frame_description": "A man in a purple button-down shirt stares pensively off-camera while inside a high-tech structural interior with clouds visible in the background.",
+              "transcript": "But what are we, a team? No, no, no, we're a chemical mixture that makes chaos. We're a time bomb.",
+              "combined_summary": "Inside a high-tech facility with clouds visible in the distance, a man in a purple shirt reflects pensively on his group's volatility, describing them as a 'time bomb' and a 'chemical mixture that makes chaos.'"
+            }
+          ]
+        },
+        {
+          "id": 1,
+          "timestamp_start": 6.5065,
+          "timestamp_end": 20.353666666666665,
+          "timestamp_formatted": "00:06 - 00:20",
+          "duration": 13.847166666666666,
+          "segment_count": 3,
+          "cluster_summary": "Inside a high-tech laboratory, a heated confrontation erupts between Tony Stark and Steve Rogers, with Nick Fury present as the group’s internal tensions reach a breaking point. Describing the team as a \"time bomb,\" Rogers openly challenges Stark’s identity and heroism without his armor, highlighting the deep ideological rift and lack of unity among the heroes.",
+          "people": [
+            "An individual addressed as 'big man'",
+            "Captain America",
+            "Male speaker in tactical suit",
+            "Nick Fury",
+            "Tony Stark"
+          ],
+          "locations": [
+            "High-tech indoor environment",
+            "High-tech laboratory"
+          ],
+          "combined_transcript": "We're a time bomb. You need to step away. Why shouldn't a guy let off a little steam? Why shouldn't a guy let off a little steam? You know, Dan Well-Wide, back off. Oh, I'm starting to want you to make me. Yeah, big man and a pseudo armor. Yeah, big man and a pseudo armor. Take that off, what are you?",
+          "segments": [
+            {
+              "timestamp_start": 6.5065,
+              "timestamp_end": 9.968291666666666,
+              "frame_description": "Tony Stark, Captain America, and Nick Fury stand in a high-tech laboratory, directing their serious gazes toward something off-camera.",
+              "transcript": "We're a time bomb. You need to step away. Why shouldn't a guy let off a little steam?",
+              "combined_summary": "Tony Stark, Captain America, and Nick Fury stand in a high-tech laboratory during a tense confrontation as voices describe the group as a 'time bomb' while discussing the need to vent frustration."
+            },
+            {
+              "timestamp_start": 9.968291666666666,
+              "timestamp_end": 18.810458333333333,
+              "frame_description": "In a high-tech laboratory, Tony Stark gestures while talking next to a serious-looking Captain America.",
+              "transcript": "Why shouldn't a guy let off a little steam? You know, Dan Well-Wide, back off. Oh, I'm starting to want you to make me. Yeah, big man and a pseudo armor.",
+              "combined_summary": "In a high-tech laboratory, Tony Stark engages in a tense verbal confrontation with a serious Captain America, dismissively defending his behavior while challenging Steve Rogers."
+            },
+            {
+              "timestamp_start": 18.810458333333333,
+              "timestamp_end": 20.353666666666665,
+              "frame_description": "A man in a dark blue tactical suit speaks with a serious and concerned expression while standing in a high-tech indoor environment.",
+              "transcript": "Yeah, big man and a pseudo armor. Take that off, what are you?",
+              "combined_summary": "A man in a tactical suit challenges another person's identity and worth without their armor during a serious confrontation in a high-tech environment."
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "timestamp_start": 20.353666666666665,
+          "timestamp_end": 22.81445833333333,
+          "timestamp_formatted": "00:20 - 00:22",
+          "duration": 2.4607916666666654,
+          "segment_count": 1,
+          "cluster_summary": "In a tense confrontation, Tony Stark delivers a quick-witted rebuttal to Steve Rogers' challenge regarding his identity without his high-tech armor by famously defining himself as a \"genius billionaire playboy philanthropist.\" This iconic exchange highlights the early ideological friction and clashing egos between the two leaders as they struggle to find common ground. Stark’s sharp-tongued response underscores his characteristic confidence and establishes the central dynamic of their complex relationship within the Avengers.",
+          "people": [
+            "Steve Rogers",
+            "Tony Stark"
+          ],
+          "locations": [
+            "dimly lit interior"
+          ],
+          "combined_transcript": "Take that off, what are you? Genius billionaire playboy philanthropist.",
+          "segments": [
+            {
+              "timestamp_start": 20.353666666666665,
+              "timestamp_end": 22.81445833333333,
+              "frame_description": "Tony Stark looks off-camera with a serious expression in a dimly lit interior setting.",
+              "transcript": "Take that off, what are you? Genius billionaire playboy philanthropist.",
+              "combined_summary": "In a dimly lit interior, Tony Stark responds to a challenge about his identity by describing himself as a 'genius billionaire playboy philanthropist.'"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "timestamp_start": 22.81445833333333,
+          "timestamp_end": 30.363666666666663,
+          "timestamp_formatted": "00:22 - 00:30",
+          "duration": 7.549208333333333,
+          "segment_count": 2,
+          "cluster_summary": "In a high-tech laboratory, Steve Rogers delivers a blistering critique of Tony Stark’s character, dismissing his wealth and status as superficial. As Black Widow and Thor look on, Rogers argues that Stark lacks the selflessness of true heroes and only fights for his own interests. This heated exchange highlights the deep ideological rift and personal tension growing between the Avengers' core members.",
+          "people": [
+            "Black Widow",
+            "Male speaker in a dark blue tactical suit",
+            "Steve Rogers (speaker)",
+            "Thor",
+            "Tony Stark (referenced)"
+          ],
+          "locations": [
+            "A high-tech laboratory",
+            "High-tech indoor setting"
+          ],
+          "combined_transcript": "Genius billionaire playboy philanthropist. I know guys with none of that worth ten of you. I know guys with none of that worth ten of you. I've seen the footage. The only thing you really fight for is yourself.",
+          "segments": [
+            {
+              "timestamp_start": 22.81445833333333,
+              "timestamp_end": 24.691333333333333,
+              "frame_description": "Black Widow and Thor stand inside a high-tech laboratory, looking off-screen with serious expressions.",
+              "transcript": "Genius billionaire playboy philanthropist. I know guys with none of that worth ten of you.",
+              "combined_summary": "Black Widow and Thor look on seriously in a high-tech lab while a voice dismisses someone's status as a 'genius billionaire playboy philanthropist,' stating they know people worth far more."
+            },
+            {
+              "timestamp_start": 24.691333333333333,
+              "timestamp_end": 30.363666666666663,
+              "frame_description": "A man with a serious expression, wearing a dark blue tactical suit, speaks intensely to another person in a blurry, high-tech indoor setting.",
+              "transcript": "I know guys with none of that worth ten of you. I've seen the footage. The only thing you really fight for is yourself.",
+              "combined_summary": "A man in a dark blue tactical suit intensely criticizes another person's character, claiming they only fight for themselves despite their status or equipment."
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "timestamp_start": 30.363666666666663,
+          "timestamp_end": 31.69833333333333,
+          "timestamp_formatted": "00:30 - 00:31",
+          "duration": 1.3346666666666671,
+          "segment_count": 1,
+          "cluster_summary": "Inside a high-tech command center, Nick Fury delivers a stern critique to an unseen individual, asserting that their motivations are purely self-serving. This confrontation highlights the ideological friction between Fury’s mission and the perceived ego of a potential ally, challenging the core of their character. It serves as a significant narrative moment that questions the nature of heroism and the necessity of fighting for a cause greater than oneself.",
+          "people": [
+            "Nick Fury"
+          ],
+          "locations": [
+            "high-tech command center"
+          ],
+          "combined_transcript": "The only thing you really fight for is yourself.",
+          "segments": [
+            {
+              "timestamp_start": 30.363666666666663,
+              "timestamp_end": 31.69833333333333,
+              "frame_description": "Nick Fury, wearing his signature black leather jacket and eyepatch, stands inside a high-tech command center and looks off-camera with a serious expression.",
+              "transcript": "The only thing you really fight for is yourself.",
+              "combined_summary": "Inside a high-tech command center, a serious Nick Fury asserts that the individual he is addressing only fights for themselves."
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "timestamp_start": 31.69833333333333,
+          "timestamp_end": 38.621916666666664,
+          "timestamp_formatted": "00:31 - 00:38",
+          "duration": 6.923583333333333,
+          "segment_count": 2,
+          "cluster_summary": "In a high-tech setting, Steve Rogers intensely challenges Tony Stark’s character, accusing him of being a selfish individual who is incapable of making a selfless sacrifice for the greater good. This moment highlights the fundamental ideological tension and lack of trust between the two heroes as they struggle to find common ground. Their exchange establishes a central conflict regarding heroism and duty that defines their early relationship within the team.",
+          "people": [
+            "Steve Rogers",
+            "Tony Stark",
+            "male speaker"
+          ],
+          "locations": [
+            "a high-tech, dimly lit environment",
+            "dimly lit indoor setting"
+          ],
+          "combined_transcript": "The only thing you really fight for is yourself. You're not the guy to make the sacrifice play, You're not the guy to make the sacrifice play, to lay down on a wire, or let the other guy crawl over you. I think I would just cut the wire.",
+          "segments": [
+            {
+              "timestamp_start": 31.69833333333333,
+              "timestamp_end": 33.78375,
+              "frame_description": "Tony Stark stares intently with a somber expression at another person in a dimly lit indoor setting.",
+              "transcript": "The only thing you really fight for is yourself. You're not the guy to make the sacrifice play,",
+              "combined_summary": "Tony Stark stares somberly in a dimly lit room as a voice tells him he only fights for himself and is not the type to make a sacrifice play."
+            },
+            {
+              "timestamp_start": 33.78375,
+              "timestamp_end": 38.621916666666664,
+              "frame_description": "A man with a serious expression, Steve Rogers, looks intently at another person while speaking in a high-tech, dimly lit environment.",
+              "transcript": "You're not the guy to make the sacrifice play, to lay down on a wire, or let the other guy crawl over you. I think I would just cut the wire.",
+              "combined_summary": "In a high-tech, dimly lit setting, Steve Rogers intensely challenges another person's character, arguing that they aren't the type to make a selfless sacrifice play for others."
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "timestamp_start": 38.621916666666664,
+          "timestamp_end": 40.24854166666666,
+          "timestamp_formatted": "00:38 - 00:40",
+          "duration": 1.626624999999997,
+          "segment_count": 1,
+          "cluster_summary": "A man with a serious expression delivers a blunt and decisive statement during a tense indoor conversation, suggesting that he would simply cut the wire to resolve a complex situation. This moment highlights the character's pragmatic approach and underscores the high-stakes nature of the dilemma being discussed.",
+          "people": [
+            "male speaker"
+          ],
+          "locations": [],
+          "combined_transcript": "I think I would just cut the wire.",
+          "segments": [
+            {
+              "timestamp_start": 38.621916666666664,
+              "timestamp_end": 40.24854166666666,
+              "frame_description": "A man with a serious expression gazes intently at another person during a tense conversation in a blurred indoor setting.",
+              "transcript": "I think I would just cut the wire.",
+              "combined_summary": "A man with a serious expression gazes intently during a tense conversation in a blurred indoor setting, stating that he would 'just cut the wire.'"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "timestamp_start": 40.24854166666666,
+          "timestamp_end": 74.40766666666666,
+          "timestamp_formatted": "00:40 - 01:14",
+          "duration": 34.159124999999996,
+          "segment_count": 3,
+          "cluster_summary": "On the S.H.I.E.L.D. Helicarrier, Tony Stark and Steve Rogers engage in a tense verbal confrontation where they trade sharp critiques of each other's character and methods. While Steve accuses Tony of merely pretending to be a hero, Tony retaliates by dismissively labeling Steve as a laboratory experiment whose abilities came from a bottle. This heated exchange highlights the deep-seated ideological friction and mutual distrust between the two foundational members of the Avengers.",
+          "people": [
+            "Steve Rogers",
+            "Tony Stark"
+          ],
+          "locations": [
+            "S.H.I.E.L.D. Helicarrier"
+          ],
+          "combined_transcript": "I think I would just cut the wire. I think I would just cut the wire. You know, you may not be a threat, but you better stop pretending to be a hero. but you better stop pretending to be a hero. A hero? Like you? You're a laboratory experiment, Rogers. Everything special about you came on a bottle.",
+          "segments": [
+            {
+              "timestamp_start": 40.24854166666666,
+              "timestamp_end": 41.624916666666664,
+              "frame_description": "A man with dark hair wearing a purple shirt looks off-camera with a serious expression while standing in a high-tech facility with a view of clouds in the background.",
+              "transcript": "I think I would just cut the wire.",
+              "combined_summary": "Inside a high-tech facility with a view of the sky, a man in a purple shirt (Tony Stark) says, 'I think I would just cut the wire,' while discussing his approach to problem-solving."
+            },
+            {
+              "timestamp_start": 41.624916666666664,
+              "timestamp_end": 46.88016666666666,
+              "frame_description": "In a close-up shot, a man in a dark blue suit speaks to another person while standing in an indoor setting.",
+              "transcript": "I think I would just cut the wire. You know, you may not be a threat, but you better stop pretending to be a hero.",
+              "combined_summary": "A man in a dark blue suit delivers a sharp critique during a confrontation, telling someone to stop pretending to be a hero and claiming he would simply 'cut the wire' in a crisis."
+            },
+            {
+              "timestamp_start": 46.88016666666666,
+              "timestamp_end": 74.40766666666666,
+              "frame_description": "In this close-up shot, Tony Stark looks intently at someone off-camera with a serious and concerned expression in a dimly lit indoor setting.",
+              "transcript": "but you better stop pretending to be a hero. A hero? Like you? You're a laboratory experiment, Rogers. Everything special about you came on a bottle.",
+              "combined_summary": "In a dimly lit setting, a serious Tony Stark confronts Steve Rogers, dismissively claiming that Rogers is merely a laboratory experiment whose special abilities came from a bottle."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

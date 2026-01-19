@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN Motion Effects Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #0ea5e9;
+            --accent-hover: #38bdf8;
+            --border: #475569;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Category Tabs */
+        .category-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .category-tab {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .category-tab:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .category-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            min-height: calc(100vh - 120px);
+        }
+
+        /* Effects Grid */
+        .effects-grid {
+            flex: 1;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            align-content: start;
+        }
+
+        .effect-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .effect-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .effect-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.3);
+        }
+
+        .effect-preview {
+            aspect-ratio: 16/9;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 48px;
+        }
+
+        .effect-preview video,
+        .effect-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .effect-info {
+            padding: 16px;
+        }
+
+        .effect-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .effect-category {
+            font-size: 12px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .effect-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Detail Panel */
+        .detail-panel {
+            width: 400px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: none;
+            flex-direction: column;
+        }
+
+        .detail-panel.open {
+            display: flex;
+        }
+
+        .detail-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-header h2 {
+            font-size: 18px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .detail-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .detail-preview {
+            aspect-ratio: 16/9;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .detail-preview video,
+        .detail-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .detail-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        /* Form Controls */
+        .form-section {
+            margin-bottom: 20px;
+        }
+
+        .form-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .form-hint {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Range Slider */
+        .range-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .range-container input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--bg-tertiary);
+            appearance: none;
+        }
+
+        .range-container input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+
+        .range-value {
+            min-width: 40px;
+            text-align: right;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Color Picker */
+        .color-picker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-picker input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .color-picker input[type="text"] {
+            flex: 1;
+        }
+
+        /* File Upload */
+        .file-upload {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-upload:hover {
+            border-color: var(--accent);
+        }
+
+        .file-upload.has-file {
+            border-style: solid;
+            border-color: var(--success);
+        }
+
+        .file-upload-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .file-upload-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .file-upload-name {
+            font-size: 12px;
+            color: var(--success);
+            margin-top: 8px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-primary:disabled {
+            background: var(--bg-tertiary);
+            cursor: not-allowed;
+        }
+
+        .detail-actions {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .detail-actions .btn {
+            width: 100%;
+        }
+
+        /* Result Preview */
+        .result-section {
+            margin-top: 16px;
+            padding: 16px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+        }
+
+        .result-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.pending {
+            background: var(--text-secondary);
+        }
+
+        .status-dot.rendering {
+            background: var(--accent);
+            animation: pulse 1s infinite;
+        }
+
+        .status-dot.done {
+            background: var(--success);
+        }
+
+        .status-dot.error {
+            background: var(--error);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .result-video {
+            width: 100%;
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Error State */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            border-radius: 8px;
+            padding: 16px;
+            color: var(--error);
+            margin: 24px;
+        }
+
+        /* Collapsible Examples */
+        .example-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--accent);
+            cursor: pointer;
+            margin-top: 6px;
+            user-select: none;
+        }
+
+        .example-toggle:hover {
+            color: var(--accent-hover);
+        }
+
+        .example-toggle .arrow {
+            transition: transform 0.2s;
+            font-size: 10px;
+        }
+
+        .example-toggle.open .arrow {
+            transform: rotate(90deg);
+        }
+
+        .example-content {
+            display: none;
+            margin-top: 8px;
+            padding: 10px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .example-content.open {
+            display: block;
+        }
+
+        .example-content .example-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .example-content code {
+            display: block;
+            color: var(--text-primary);
+        }
+
+        .example-copy {
+            font-size: 10px;
+            color: var(--accent);
+            cursor: pointer;
+            margin-top: 8px;
+            display: inline-block;
+        }
+
+        .example-copy:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Motion Effects Showcase</h1>
+            <div class="header-subtitle">Browse and generate motion effects for your video essays</div>
+        </div>
+    </div>
+
+    <div class="category-tabs" id="categoryTabs">
+        <button class="category-tab active" data-category="all">All</button>
+    </div>
+
+    <div class="main-content">
+        <div class="effects-grid" id="effectsGrid">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading effects...
+            </div>
+        </div>
+
+        <div class="detail-panel" id="detailPanel">
+            <div class="detail-header">
+                <h2 id="detailTitle">Effect Name</h2>
+                <button class="close-btn" onclick="closeDetailPanel()">&times;</button>
+            </div>
+            <div class="detail-content" id="detailContent">
+                <!-- Dynamic content -->
+            </div>
+            <div class="detail-actions">
+                <button class="btn btn-primary" id="generateBtn" onclick="generateEffect()">
+                    Generate Preview
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let effects = [];
+        let selectedEffect = null;
+        let currentJobId = null;
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadEffects();
+        });
+
+        async function loadEffects(category = null) {
+            const grid = document.getElementById('effectsGrid');
+            grid.innerHTML = '<div class="loading"><div class="spinner"></div>Loading effects...</div>';
+
+            try {
+                const url = category && category !== 'all'
+                    ? `/showcase/api/effects?category=${category}`
+                    : '/showcase/api/effects';
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to load effects');
+                }
+
+                const data = await response.json();
+                effects = data.effects;
+
+                // Update category tabs
+                updateCategoryTabs(data.categories);
+
+                // Render effects grid
+                renderEffectsGrid();
+            } catch (error) {
+                grid.innerHTML = `<div class="error-message">${error.message}</div>`;
+            }
+        }
+
+        function updateCategoryTabs(categories) {
+            const tabs = document.getElementById('categoryTabs');
+            const activeCategory = tabs.querySelector('.active')?.dataset.category || 'all';
+
+            tabs.innerHTML = '<button class="category-tab active" data-category="all">All</button>';
+
+            categories.forEach(cat => {
+                const count = effects.filter(e => e.category === cat).length;
+                if (count > 0) {
+                    const btn = document.createElement('button');
+                    btn.className = 'category-tab';
+                    btn.dataset.category = cat;
+                    btn.textContent = `${cat.charAt(0).toUpperCase() + cat.slice(1)} (${count})`;
+                    btn.onclick = () => selectCategory(cat);
+                    tabs.appendChild(btn);
+                }
+            });
+
+            // Re-select active category
+            tabs.querySelectorAll('.category-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.category === activeCategory);
+                if (btn.dataset.category === 'all') {
+                    btn.onclick = () => selectCategory('all');
+                }
+            });
+        }
+
+        function selectCategory(category) {
+            document.querySelectorAll('.category-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.category === category);
+            });
+            loadEffects(category);
+        }
+
+        function renderEffectsGrid() {
+            const grid = document.getElementById('effectsGrid');
+
+            if (effects.length === 0) {
+                grid.innerHTML = '<div class="loading">No effects found</div>';
+                return;
+            }
+
+            grid.innerHTML = effects.map(effect => `
+                <div class="effect-card ${selectedEffect?.id === effect.id ? 'selected' : ''}"
+                     onclick="selectEffect('${effect.id}')">
+                    <div class="effect-preview">
+                        ${effect.preview
+                            ? `<video src="/showcase/preview/${effect.preview}" muted loop onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>`
+                            : getEffectIcon(effect.category)
+                        }
+                    </div>
+                    <div class="effect-info">
+                        <div class="effect-category">${effect.category}</div>
+                        <div class="effect-name">${effect.name}</div>
+                        <div class="effect-description">${effect.description}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getEffectIcon(category) {
+            const icons = {
+                image: '🖼️',
+                quote: '💬',
+                statistic: '📊',
+                chart: '📈',
+                comparison: '⚖️',
+                title: '📝',
+                transition: '🔄',
+                map: '🗺️',
+                data: '📋',
+                progress: '📶',
+                text: '✍️'
+            };
+            return icons[category] || '🎬';
+        }
+
+        function selectEffect(effectId) {
+            selectedEffect = effects.find(e => e.id === effectId);
+            if (!selectedEffect) return;
+
+            // Update grid selection
+            document.querySelectorAll('.effect-card').forEach(card => {
+                card.classList.toggle('selected', card.querySelector('.effect-name').textContent === selectedEffect.name);
+            });
+
+            // Open detail panel
+            const panel = document.getElementById('detailPanel');
+            panel.classList.add('open');
+
+            document.getElementById('detailTitle').textContent = selectedEffect.name;
+
+            renderDetailContent();
+        }
+
+        function closeDetailPanel() {
+            document.getElementById('detailPanel').classList.remove('open');
+            selectedEffect = null;
+            document.querySelectorAll('.effect-card').forEach(card => card.classList.remove('selected'));
+        }
+
+        function renderDetailContent() {
+            const content = document.getElementById('detailContent');
+
+            content.innerHTML = `
+                <div class="detail-preview">
+                    ${selectedEffect.preview
+                        ? `<video src="/showcase/preview/${selectedEffect.preview}" muted loop autoplay></video>`
+                        : `<span style="font-size: 64px">${getEffectIcon(selectedEffect.category)}</span>`
+                    }
+                </div>
+                <div class="detail-description">${selectedEffect.description}</div>
+
+                <div class="form-section">
+                    <h3>Parameters</h3>
+                    ${renderParameterForm(selectedEffect.parameters)}
+                </div>
+
+                <div id="resultSection"></div>
+            `;
+        }
+
+        // Examples for different parameter types/names
+        // These must match the actual itemSchema from each effect preset
+        const paramExamples = {
+            // Kinetic Typography - phrases array
+            phrases: {
+                label: 'Phrases for kinetic typography',
+                example: `[
+  { "text": "This is the first phrase", "hold": 0.8 },
+  { "text": "Second phrase appears", "hold": 0.7 },
+  { "text": "Final impact!", "hold": 1.0 }
+]`
+            },
+            // Bar charts - items with label and numeric value
+            items: {
+                label: 'Chart data items',
+                example: `[
+  { "label": "Q1 Sales", "value": 85 },
+  { "label": "Q2 Sales", "value": 120 },
+  { "label": "Q3 Sales", "value": 95 },
+  { "label": "Q4 Sales", "value": 140 }
+]`
+            },
+            // Bar chart callouts
+            callouts: {
+                label: 'Callout annotations',
+                example: `[
+  { "target_index": 1, "label": "Best quarter!", "color": "#22c55e" },
+  { "target_index": 3, "label": "Record high", "color": "#ef4444" }
+]`
+            },
+            // Map flyover points
+            points: {
+                label: 'Map waypoints (x, y are 0-1)',
+                example: `[
+  { "x": 0.25, "y": 0.3, "zoom": 1.2, "label": "New York" },
+  { "x": 0.5, "y": 0.5, "zoom": 1.5, "label": "Chicago" },
+  { "x": 0.75, "y": 0.4, "zoom": 1.3, "label": "Los Angeles" }
+]`
+            },
+            // Timeline events
+            events: {
+                label: 'Timeline events',
+                example: `[
+  { "year": "1990", "title": "The Beginning", "description": "Company founded" },
+  { "year": "2000", "title": "Expansion", "description": "Global operations launched" },
+  { "year": "2010", "title": "Innovation", "description": "Revolutionary product released" },
+  { "year": "2020", "title": "Today", "description": "Industry leader" }
+]`
+            },
+            // Bounce text words
+            words: {
+                label: 'Words to animate (one per bounce)',
+                example: `["Innovation", "Creativity", "Excellence", "Success"]`
+            },
+            // Highlight words for text-highlight
+            highlightWords: {
+                label: 'Words to highlight in the text',
+                example: `["important", "key", "critical"]`
+            },
+            // Text field examples
+            text: {
+                label: 'Quote or message text',
+                example: `The only way to do great work is to love what you do.`
+            },
+            title: {
+                label: 'Title text',
+                example: `The Rise of Artificial Intelligence`
+            },
+            subtitle: {
+                label: 'Subtitle text',
+                example: `How machine learning is transforming industries`
+            },
+            author: {
+                label: 'Attribution',
+                example: `Steve Jobs`
+            },
+            label: {
+                label: 'Label text',
+                example: `Annual Revenue`
+            },
+            prefix: {
+                label: 'Number prefix',
+                example: `$`
+            },
+            suffix: {
+                label: 'Number suffix',
+                example: `M`
+            },
+            number: {
+                label: 'Chapter number',
+                example: `01`
+            },
+            name: {
+                label: 'Person name',
+                example: `John Smith`
+            },
+            role: {
+                label: 'Title/role',
+                example: `CEO, Acme Corp`
+            },
+            // Typewriter cursor character
+            cursorChar: {
+                label: 'Cursor character',
+                example: `|`
+            },
+            // Glitch intensity
+            intensity: {
+                label: 'Effect intensity (0-1)',
+                example: `0.5`
+            },
+            // Progress/countdown values
+            seconds: {
+                label: 'Countdown seconds',
+                example: `10`
+            },
+            maxValue: {
+                label: 'Maximum value',
+                example: `100`
+            }
+        };
+
+        function getExampleForParam(param) {
+            // Check by name first, then by type
+            if (paramExamples[param.name]) {
+                return paramExamples[param.name];
+            }
+            // Generic items example
+            if (param.type === 'items') {
+                return paramExamples.items;
+            }
+            return null;
+        }
+
+        function toggleExample(btn) {
+            btn.classList.toggle('open');
+            const content = btn.nextElementSibling;
+            content.classList.toggle('open');
+        }
+
+        function copyExample(btn, paramName) {
+            const example = paramExamples[paramName] || paramExamples.items;
+            if (example) {
+                // Find the textarea/input for this param and fill it
+                const field = document.querySelector(`[data-param="${paramName}"]`);
+                if (field) {
+                    field.value = example.example;
+                    btn.textContent = 'Copied to field!';
+                    setTimeout(() => btn.textContent = 'Use this example', 1500);
+                }
+            }
+        }
+
+        function copyExampleToInput(btn, paramName) {
+            // Same function, just for clarity with input fields
+            copyExample(btn, paramName);
+        }
+
+        function renderParameterForm(parameters) {
+            return parameters.map(param => {
+                const defaultValue = selectedEffect.defaults[param.name] ?? param.default ?? '';
+                const required = param.required ? ' *' : '';
+                const example = getExampleForParam(param);
+
+                switch (param.type) {
+                    case 'string':
+                        const strExample = getExampleForParam(param);
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <input type="text" class="form-input"
+                                       data-param="${param.name}"
+                                       value="${escapeHtml(defaultValue)}"
+                                       placeholder="${param.description || ''}">
+                                ${param.description ? `<div class="form-hint">${param.description}</div>` : ''}
+                                ${strExample ? `
+                                    <div class="example-toggle" onclick="toggleExample(this)">
+                                        <span class="arrow">▶</span> Show example
+                                    </div>
+                                    <div class="example-content">
+                                        <div class="example-label">${strExample.label}</div>
+                                        <code>${escapeHtml(strExample.example)}</code>
+                                        <span class="example-copy" onclick="copyExampleToInput(this, '${param.name}')">Use this example</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+
+                    case 'text':
+                        const txtExample = getExampleForParam(param);
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <textarea class="form-textarea"
+                                          data-param="${param.name}"
+                                          placeholder="${param.description || ''}">${escapeHtml(defaultValue)}</textarea>
+                                ${txtExample ? `
+                                    <div class="example-toggle" onclick="toggleExample(this)">
+                                        <span class="arrow">▶</span> Show example
+                                    </div>
+                                    <div class="example-content">
+                                        <div class="example-label">${txtExample.label}</div>
+                                        <code>${escapeHtml(txtExample.example)}</code>
+                                        <span class="example-copy" onclick="copyExample(this, '${param.name}')">Use this example</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+
+                    case 'number':
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <input type="number" class="form-input"
+                                       data-param="${param.name}"
+                                       value="${defaultValue}"
+                                       min="${param.min ?? ''}"
+                                       max="${param.max ?? ''}"
+                                       step="${param.step ?? 1}">
+                            </div>
+                        `;
+
+                    case 'duration':
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <div class="range-container">
+                                    <input type="range"
+                                           data-param="${param.name}"
+                                           value="${defaultValue}"
+                                           min="${param.min ?? 1}"
+                                           max="${param.max ?? 30}"
+                                           oninput="this.nextElementSibling.textContent = this.value + 's'">
+                                    <span class="range-value">${defaultValue}s</span>
+                                </div>
+                            </div>
+                        `;
+
+                    case 'color':
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <div class="color-picker">
+                                    <input type="color"
+                                           data-param="${param.name}"
+                                           value="${defaultValue}"
+                                           oninput="this.nextElementSibling.value = this.value">
+                                    <input type="text" class="form-input"
+                                           value="${defaultValue}"
+                                           oninput="this.previousElementSibling.value = this.value">
+                                </div>
+                            </div>
+                        `;
+
+                    case 'select':
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <select class="form-select" data-param="${param.name}">
+                                    ${(param.options || []).map(opt =>
+                                        `<option value="${opt}" ${opt === defaultValue ? 'selected' : ''}>${opt}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                        `;
+
+                    case 'image':
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <div class="file-upload" data-param="${param.name}" onclick="triggerFileUpload(this)">
+                                    <div class="file-upload-icon">📁</div>
+                                    <div class="file-upload-text">Click to upload image</div>
+                                    <input type="file" accept="image/*" style="display:none"
+                                           onchange="handleFileUpload(this)">
+                                </div>
+                            </div>
+                        `;
+
+                    case 'items':
+                        const itemsExample = getExampleForParam(param);
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <textarea class="form-textarea"
+                                          data-param="${param.name}"
+                                          data-type="items"
+                                          placeholder="Enter as JSON array">${JSON.stringify(defaultValue || [], null, 2)}</textarea>
+                                ${itemsExample ? `
+                                    <div class="example-toggle" onclick="toggleExample(this)">
+                                        <span class="arrow">▶</span> Show example
+                                    </div>
+                                    <div class="example-content">
+                                        <div class="example-label">${itemsExample.label}</div>
+                                        <code>${escapeHtml(itemsExample.example)}</code>
+                                        <span class="example-copy" onclick="copyExample(this, '${param.name}')">Use this example</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+
+                    default:
+                        return `
+                            <div class="form-group">
+                                <label class="form-label">${param.label}${required}</label>
+                                <input type="text" class="form-input"
+                                       data-param="${param.name}"
+                                       value="${defaultValue}">
+                            </div>
+                        `;
+                }
+            }).join('');
+        }
+
+        function triggerFileUpload(container) {
+            container.querySelector('input[type="file"]').click();
+        }
+
+        async function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const container = input.parentElement;
+            container.classList.add('has-file');
+            container.querySelector('.file-upload-text').textContent = 'Uploading...';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/showcase/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Upload failed');
+
+                const result = await response.json();
+                container.dataset.uploadPath = result.path;
+                container.querySelector('.file-upload-text').textContent = file.name;
+
+                // Add filename display
+                let nameEl = container.querySelector('.file-upload-name');
+                if (!nameEl) {
+                    nameEl = document.createElement('div');
+                    nameEl.className = 'file-upload-name';
+                    container.appendChild(nameEl);
+                }
+                nameEl.textContent = `Uploaded: ${result.filename}`;
+            } catch (error) {
+                container.classList.remove('has-file');
+                container.querySelector('.file-upload-text').textContent = 'Upload failed - try again';
+            }
+        }
+
+        function collectParams() {
+            const params = {};
+
+            document.querySelectorAll('[data-param]').forEach(el => {
+                const name = el.dataset.param;
+                let value;
+
+                if (el.classList.contains('file-upload')) {
+                    value = el.dataset.uploadPath || null;
+                } else if (el.dataset.type === 'items') {
+                    try {
+                        value = JSON.parse(el.value);
+                    } catch {
+                        value = [];
+                    }
+                } else if (el.type === 'number' || el.type === 'range') {
+                    value = parseFloat(el.value);
+                } else if (el.type === 'color') {
+                    value = el.value;
+                } else {
+                    value = el.value;
+                }
+
+                if (value !== null && value !== '') {
+                    params[name] = value;
+                }
+            });
+
+            return params;
+        }
+
+        async function generateEffect() {
+            if (!selectedEffect) return;
+
+            const params = collectParams();
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                const formData = new FormData();
+                formData.append('effect', selectedEffect.id);
+                formData.append('params', JSON.stringify(params));
+
+                const response = await fetch('/showcase/api/render', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Render failed');
+                }
+
+                const result = await response.json();
+                currentJobId = result.job_id;
+
+                showResult('pending', 'Job submitted...');
+                pollJobStatus();
+            } catch (error) {
+                showResult('error', error.message);
+                btn.disabled = false;
+                btn.textContent = 'Generate Preview';
+            }
+        }
+
+        async function pollJobStatus() {
+            if (!currentJobId) return;
+
+            try {
+                const response = await fetch(`/showcase/api/render/status/${currentJobId}`);
+                const status = await response.json();
+
+                if (status.status === 'done') {
+                    const resultResponse = await fetch(`/showcase/api/render/result/${currentJobId}`);
+                    const result = await resultResponse.json();
+                    showResult('done', 'Render complete!', result.video_path);
+                    document.getElementById('generateBtn').disabled = false;
+                    document.getElementById('generateBtn').textContent = 'Generate Preview';
+                } else if (status.status === 'error') {
+                    showResult('error', status.error || 'Render failed');
+                    document.getElementById('generateBtn').disabled = false;
+                    document.getElementById('generateBtn').textContent = 'Generate Preview';
+                } else {
+                    showResult(status.status, `Progress: ${Math.round(status.progress * 100)}%`);
+                    setTimeout(pollJobStatus, 1000);
+                }
+            } catch (error) {
+                showResult('error', 'Failed to check status');
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('generateBtn').textContent = 'Generate Preview';
+            }
+        }
+
+        function showResult(status, message, videoPath = null) {
+            const section = document.getElementById('resultSection');
+
+            let videoHtml = '';
+            if (videoPath) {
+                const filename = videoPath.split(/[/\\]/).pop();
+                videoHtml = `<video class="result-video" src="/showcase/output/${filename}" controls autoplay loop></video>`;
+            }
+
+            section.innerHTML = `
+                <div class="result-section">
+                    <div class="result-status">
+                        <div class="status-dot ${status}"></div>
+                        <span>${message}</span>
+                    </div>
+                    ${videoHtml}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
