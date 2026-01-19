@@ -2,7 +2,123 @@
 
 A comprehensive list of visual assets needed for each video essay style. Use this to ensure consistent, professional-quality graphics across all styles.
 
-**Sources:** Research from [Visme](https://visme.co/blog/best-infographic-tools/), [Envato Elements](https://elements.envato.com/video-templates/documentary), [Motion Array](https://motionarray.com/motion-graphics-templates/lower-thirds/), [Storyblocks](https://www.storyblocks.com/resources/blog/the-art-of-the-video-essay), [FilterGrade](https://filtergrade.com/15-lower-thirds-templates-for-documentaries/)
+**Research Sources:** [Visme](https://visme.co/blog/best-infographic-tools/), [Envato Elements](https://elements.envato.com/video-templates/documentary), [Motion Array](https://motionarray.com/motion-graphics-templates/lower-thirds/), [Storyblocks](https://www.storyblocks.com/resources/blog/the-art-of-the-video-essay), [FilterGrade](https://filtergrade.com/15-lower-thirds-templates-for-documentaries/)
+
+---
+
+## Asset Sourcing Guide
+
+### Free Icon Libraries (Open Source, MIT License)
+
+| Library | Icons | URL | Best For |
+|---------|-------|-----|----------|
+| **Lucide** | 1,500+ | [lucide.dev](https://lucide.dev) | General UI, most comprehensive |
+| **Feather** | 280+ | [feathericons.com](https://feathericons.com) | Minimal line icons |
+| **Heroicons** | 450+ | [heroicons.com](https://heroicons.com) | Tailwind integration |
+| **Tabler** | 5,900+ | [tabler-icons.io](https://tabler-icons.io) | Largest free library |
+| **Phosphor** | 7,000+ | [phosphoricons.com](https://phosphoricons.com) | Multiple weights (thin/bold/duotone) |
+| **Ionicons** | 1,300+ | [ionic.io/ionicons](https://ionic.io/ionicons) | Mobile/app style |
+
+**Recommended:** Start with **Lucide** (fork of Feather with more icons, active development).
+
+### Free Motion Graphics Templates
+
+| Source | Contents | License | URL |
+|--------|----------|---------|-----|
+| **Mixkit** | MOGRTs, lower thirds, transitions | Free, no attribution | [mixkit.co](https://mixkit.co/free-premiere-pro-templates/) |
+| **Motion Array Free** | Titles, transitions, overlays | Free tier | [motionarray.com/free](https://motionarray.com/motion-graphics-templates/free/) |
+| **Uppbeat** | Intros, stickers, buttons | Free tier | [uppbeat.io](https://uppbeat.io/motion-graphics) |
+| **Videezy** | 14,000+ templates | CC + Premium | [videezy.com](https://www.videezy.com/free-video/motion-graphic-template) |
+| **Jitter** | Web-based motion templates | Free | [jitter.video](https://jitter.video/templates/) |
+| **Pond5 Free Pack** | 200+ templates bundle | Free download | [pond5.com blog](https://blog.pond5.com/78342-free-motion-graphics-templates-assets-premiere-pro-effects/) |
+
+### Figma Community Resources (Free)
+
+| Resource | Contents | URL |
+|----------|----------|-----|
+| **Charts & Infographics UI Kit** | 40+ chart types, light/dark | [Figma Community](https://www.figma.com/community/file/1204665783973698091) |
+| **Essential Charts & Infographics** | 200+ custom charts | [Figma Community](https://www.figma.com/community/file/1279748307594328785) |
+| **Data Visualization Kit** | 40+ charts, 50+ styles | [Figma Community](https://www.figma.com/community/file/1199721318228257277) |
+| **BRIX Chart Components** | 30+ chart UI components | [Figma Community](https://www.figma.com/community/file/1171964766928934583) |
+| **Charts & Graphs UI Kit** | Bar, line, pie, donut | [Figma Community](https://www.figma.com/community/file/1314538669933482880) |
+
+### AI Generation Tools (Free Tiers)
+
+| Tool | Type | Free Tier | Export | URL |
+|------|------|-----------|--------|-----|
+| **Napkin AI** | Infographics, diagrams, flowcharts | Yes (limited) | SVG, PNG, PDF | [napkin.ai](https://www.napkin.ai) |
+| **Piktochart AI** | Infographics from prompts | 60 credits/month | PNG, PDF | [piktochart.com](https://piktochart.com/generative-ai/) |
+| **Venngage AI** | Infographic generator | Free plan | PNG, PDF | [venngage.com](https://venngage.com/ai-tools/infographic-generator) |
+| **Infografix** | Mobile infographics | Free app | SVG, PNG | [infografix.app](https://infografix.app/) |
+| **Recraft AI** | SVG illustrations, icons | Limited | SVG | [recraft.ai](https://www.recraft.ai) |
+| **Haikei** | SVG backgrounds, patterns | Free | SVG | [haikei.app](https://haikei.app/) |
+| **SVGator** | Animated SVGs | Free tier | SVG | [svgator.com](https://www.svgator.com) |
+
+### Paid Resources (Professional Quality)
+
+| Source | Best For | Price | URL |
+|--------|----------|-------|-----|
+| **Envato Elements** | Massive library (video, graphics, audio) | $16.50/mo | [elements.envato.com](https://elements.envato.com) |
+| **Motion Array** | MOGRTs, Premiere/AE templates | $29.99/mo | [motionarray.com](https://motionarray.com) |
+| **VideoHive** | After Effects templates (per-item) | $15-50/item | [videohive.net](https://videohive.net) |
+| **Artlist** | Templates + music + SFX bundle | $25/mo | [artlist.io](https://artlist.io) |
+| **Creativemarket** | Design assets, fonts, graphics | Per-item | [creativemarket.com](https://creativemarket.com) |
+
+### Map Animation Tools
+
+| Tool | Type | Price | URL |
+|------|------|-------|-----|
+| **GEOlayers 3** | After Effects plugin for maps | $99 | [geolayers.com](https://aescripts.com/geolayers/) |
+| **Mapbox Studio** | Custom map styles | Free tier | [mapbox.com](https://www.mapbox.com/mapbox-studio) |
+| **Felt** | Collaborative maps | Free tier | [felt.com](https://felt.com) |
+| **Google Earth Studio** | Satellite flyovers | Free | [earth.google.com/studio](https://earth.google.com/studio) |
+
+---
+
+### Recommended Sourcing Strategy for NOLAN
+
+#### Phase 1: Icons (Immediate)
+```
+Source: Lucide Icons (MIT License)
+- Download full icon set
+- Convert to style-specific colors
+- Store in assets/common/icons/
+```
+
+#### Phase 2: Charts & Data Viz (Code-Generated)
+```
+Source: Keep in Motion Canvas / Remotion
+- Bar, line, pie charts
+- Counters, progress bars
+- Timelines, flowcharts
+Reason: Dynamic data requires code, not static assets
+```
+
+#### Phase 3: Frames & Mockups (Figma → SVG)
+```
+Source: Figma Community templates
+- Device frames (browser, phone, laptop)
+- Social media mockups
+- Document frames
+Workflow: Figma → Export SVG → Color customize per style
+```
+
+#### Phase 4: Backgrounds & Decorative (AI + Manual)
+```
+Source: Haikei (backgrounds), Recraft (illustrations)
+- Generate base patterns/gradients
+- Customize for each style's palette
+```
+
+#### Phase 5: Complex Motion Templates (Reference Only)
+```
+Source: Mixkit, Motion Array (for inspiration)
+- Study timing and easing
+- Recreate in Motion Canvas/Remotion
+Note: Don't use directly; build custom versions
+```
+
+---
 
 ---
 
