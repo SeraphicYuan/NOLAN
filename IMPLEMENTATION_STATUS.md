@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-01-19
 
 ## Summary
 
@@ -441,6 +441,7 @@ NOLAN/
 │   ├── aligner.py       # Scene-to-audio alignment
 │   ├── library_viewer.py # Library browser server
 │   ├── image_search.py  # Image search providers
+│   ├── assets.py        # Asset management for motion effects
 │   └── templates/
 │       ├── index.html   # Viewer UI
 │       ├── scenes.html  # Scene plan A/B viewer
@@ -453,6 +454,9 @@ NOLAN/
 │   │   ├── jobs/        # Job queue and types
 │   │   └── engines/     # Render engines (infographic, etc.)
 │   └── package.json
+├── assets/              # Visual assets for motion effects
+│   ├── common/icons/    # Shared SVG icons (check, star, etc.)
+│   └── styles/          # Style-specific assets (per EssayStyle)
 ├── pyproject.toml       # Package configuration
 └── .env                 # API keys (not committed)
 ```
@@ -477,6 +481,11 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
+- **Database-Backed Asset Management** - SQLite storage for large asset libraries (100+ assets)
+  - Search by name, tags, category
+  - Asset versioning and thumbnails
+  - CLI for asset management (`nolan assets list/add/tag`)
+  - Trigger: Implement when asset count justifies complexity
 - **TTS Voiceover Generation** - `nolan voiceover` command with MiniMax API and Chatterbox local fallback
 - **End-to-End Orchestrator** - `nolan make-video` single command for full pipeline automation
 - **Fair Use Transform Presets** - Implement `--fair-use-transform` flag for automated clip transformation
@@ -726,3 +735,17 @@ NOLAN/
   - **Motion Canvas support** - `regionToMotionCanvas()` converts to center-based coordinates
   - **Style layout merge** - `applyStyleToRegion()` merges EssayStyle.layout with region defaults
   - **Extensible architecture** - Phase 1 (templates) complete; designed for Phase 2 (composition) and Phase 3 (full CSS)
+- ✅ **Asset Management System** - File-based visual assets for motion effects
+  - **Folder structure** - Organized by style with common fallback:
+    - `assets/styles/{style-id}/` - Style-specific assets
+    - `assets/common/` - Shared assets (fallback for all styles)
+  - **AssetManager API** - Python module for asset access:
+    - `get_asset(style, name)` - Get path with style→common fallback
+    - `get_asset_content(style, name)` - Read file content directly
+    - `get_icon(style, name)` - Convenience for `.svg` icons
+    - `list_assets(style, category)` - List available assets
+  - **Common icons** - 9 SVG icons (24x24 viewBox, `currentColor` stroke):
+    - check, star, arrow-up, trending-up, code, database, users, zap, award
+  - **Design decision** - Chose file-based over database for simplicity
+    - Database-backed system in backlog for future scaling (100+ assets)
+  - **Documentation** - `assets/README.md` with guidelines and usage

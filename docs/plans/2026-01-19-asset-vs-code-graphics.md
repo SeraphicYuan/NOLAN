@@ -1,7 +1,7 @@
 # Design Discussion: Asset-Based vs Code-Generated Graphics
 
 **Date:** 2026-01-19
-**Status:** Open for discussion
+**Status:** Decided - Implementing Hybrid (Option 1: File-Based)
 **Context:** After implementing `chart-progress-staircase` effect
 
 ---
@@ -144,3 +144,100 @@ Visual limitations:
 - Flat arrow (no 3D gradient effect)
 - Basic shadow layer
 - No arrow head at end
+
+---
+
+## Decision (2026-01-20)
+
+**Chosen approach:** Hybrid with simple file-based asset management (Option 1)
+
+**Rationale:** Each visual style needs corresponding assets to match its aesthetic. Code alone can't perfectly replicate designed visuals. Start simple with file-based system, evolve if needed.
+
+---
+
+## Implementation: File-Based Asset System
+
+### Folder Structure
+```
+assets/
+├── styles/                    # Style-specific assets
+│   ├── noir-essay/
+│   │   ├── icons/
+│   │   └── ...
+│   ├── cold-data/
+│   ├── modern-creator/
+│   └── podcast-visual/
+├── common/                    # Shared assets (fallback)
+│   ├── icons/
+│   │   ├── check.svg
+│   │   ├── star.svg
+│   │   ├── arrow-up.svg
+│   │   ├── trending-up.svg
+│   │   ├── code.svg
+│   │   ├── database.svg
+│   │   ├── users.svg
+│   │   ├── zap.svg
+│   │   └── award.svg
+│   └── shapes/
+└── README.md
+```
+
+### Python API
+```python
+from nolan.assets import asset_manager
+
+# Get asset (falls back to common if style-specific doesn't exist)
+path = asset_manager.get_asset("noir-essay", "icons/check.svg")
+
+# Get content directly
+svg = asset_manager.get_asset_content("noir-essay", "card-bg.svg")
+
+# Convenience for icons
+icon = asset_manager.get_icon("noir-essay", "star")
+
+# List assets
+assets = asset_manager.list_assets("noir-essay")
+```
+
+### Files Created
+- `src/nolan/assets.py` - AssetManager class
+- `assets/README.md` - Documentation
+- `assets/common/icons/*.svg` - 9 common icons
+
+---
+
+## Backlog: Database-Backed Asset Management
+
+**Priority:** Low (implement only if asset library grows significantly)
+
+**Trigger:** Consider when:
+- 100+ assets across styles
+- Need search/tagging functionality
+- Multiple contributors managing assets
+- Version control for assets needed
+
+**Proposed Schema:**
+```python
+class Asset(Model):
+    id: str
+    name: str
+    style_id: str | None  # None = common
+    category: str         # 'icon', 'background', 'shape'
+    tags: list[str]
+    file_path: Path
+    metadata: dict        # dimensions, colors, etc.
+    created_at: datetime
+    updated_at: datetime
+```
+
+**Features to add:**
+- SQLite storage (keep it simple)
+- Search by name, tags, category
+- Asset versioning
+- Thumbnail generation
+- CLI for asset management
+
+**Not needed now because:**
+- Current asset count is small (~10-20)
+- Simple folder structure is sufficient
+- No collaboration needs yet
