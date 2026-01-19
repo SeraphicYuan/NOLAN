@@ -495,6 +495,11 @@ NOLAN/
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - **Image search browser display** - View image search results in web UI
 - **Vision model image selection** - Auto-select best matching images using vision model
+- **ae-to-json Integration** - Parse After Effects project JSON exports
+  - CLI: `nolan import-ae project.json` to extract animation data
+  - Parse keyframes, timing curves, layer structure from ae-to-json output
+  - Generate Motion Canvas/Remotion code from animation data
+  - Requires: After Effects + [ae-to-json](https://github.com/Experience-Monks/ae-to-json)
 - **Lottie Player Integration** - Play Lottie JSON animations in Remotion engine
   - Enable LottieFiles and After Effects Bodymovin exports as motion assets
   - Bridge format for converting external motion graphics templates
@@ -508,6 +513,11 @@ NOLAN/
 - **SVG Animation Import** - Parse animated SVGs (SMIL) to Motion Canvas code
   - Convert SMIL animations to Motion Canvas generator functions
   - Preserve timing, easing, and transform sequences
+- **Canva Static Export** - Download Canva designs as static assets via API
+  - OAuth flow for [Canva Connect API](https://www.canva.dev/docs/connect/)
+  - Export PNG/SVG elements from Canva templates
+  - Animate exported assets in NOLAN with custom timing
+  - Note: No animation keyframe access, static export only
 
 ## Recently Completed
 

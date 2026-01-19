@@ -212,14 +212,93 @@ Workflow:
 | Wipe reveal | 0.3-0.5s | ease-in-out | `clip-path` animation |
 | Bounce settle | 0.4-0.6s | ease-out-bounce | `easing: 'easeOutBounce'` |
 
+### Programmatic API Integration
+
+#### After Effects ExtendScript API
+
+After Effects provides a scripting API that can export animation data programmatically.
+
+| Tool | What It Does | URL |
+|------|--------------|-----|
+| **ExtendScript API** | Access all project elements, layers, keyframes | [ae-scripting.docsforadobe.dev](https://ae-scripting.docsforadobe.dev/) |
+| **ae-to-json** | Export full project structure + keyframes to JSON | [github.com/Experience-Monks/ae-to-json](https://github.com/Experience-Monks/ae-to-json) |
+| **Bodymovin/Lottie** | Export vector animations as Lottie JSON | [aescripts.com/bodymovin](https://aescripts.com/bodymovin/) |
+| **Facebook Keyframes** | Extract transforms, timing curves (archived) | [github.com/facebookarchive/Keyframes](https://github.com/facebookarchive/Keyframes) |
+
+**Potential NOLAN Integration:**
+```
+Workflow:
+1. Open .aep template in After Effects
+2. Run ae-to-json or custom ExtendScript
+3. Get JSON with: position, scale, rotation, anchor, timing curves
+4. Parse JSON → generate Motion Canvas/Remotion code
+
+Data Available:
+- Layer properties (position, scale, rotation, opacity, anchor)
+- Keyframe values and timing
+- Easing/interpolation curves
+- Composition structure and hierarchy
+- Effect parameters
+
+Requirements:
+- After Effects installed
+- Enable "Allow Scripts to Write Files" in AE preferences
+- ECMAScript 3 engine (JSON polyfill needed)
+```
+
+#### Premiere Pro API
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| [ExtendScript](https://ppro-scripting.docsforadobe.dev/) | Supported until Sep 2026 | Access projects, clips, sequences |
+| [UXP](https://developer.adobe.com/premiere-pro/uxp/) | New (v25.6+) | Modern JavaScript |
+
+Less useful for NOLAN - Premiere is for editing, not motion graphics creation.
+
+#### Canva Connect API
+
+| API | Capability | Usefulness |
+|-----|------------|------------|
+| [Design Editing API](https://www.canva.dev/docs/connect/) | Read/update element positions, sizes | Medium - layout only |
+| [Export API](https://www.canva.dev/docs/connect/api-reference/exports/) | Export to PNG, JPG, PDF, MP4 | Low - no keyframes |
+| Data Connectors | Pull external data into designs | Not useful |
+
+**Limitations:**
+- No animation keyframe access
+- Can't extract template animation logic
+- Enterprise tier may be required
+- Rate limited (10 exports per 10 seconds)
+
+**Possible Use Case:**
+- Design static elements in Canva (title cards, lower thirds)
+- Export as PNG/SVG via API
+- Animate in NOLAN with our own timing
+
 ### Backlog: Template Conversion Tools
 
 The following features are planned to make template conversion easier:
 
-1. **Lottie Player Integration** - Play Lottie JSON in Remotion engine
-2. **Motion Pattern Library** - Documented timing/easing presets
-3. **Template Analysis Tool** - CLI to help document animation timing
-4. **SVG Animation Import** - Parse animated SVGs (SMIL) to code
+**High Priority (Programmatic):**
+1. **ae-to-json Integration** - Parse After Effects project JSON exports
+   - CLI: `nolan import-ae project.json`
+   - Extract keyframes, timing curves, layer structure
+   - Generate Motion Canvas/Remotion code from animation data
+2. **Lottie Player Integration** - Play Lottie JSON in Remotion engine
+   - Enable LottieFiles and Bodymovin exports as motion assets
+   - Bridge format for After Effects vector animations
+
+**Medium Priority:**
+3. **Motion Pattern Library** - Documented timing/easing presets
+   - Catalog of common patterns extracted from professional templates
+   - Frame-accurate timing and easing curves
+4. **Template Analysis Tool** - CLI to measure timing from reference
+   - `nolan analyze-template <video>` for frame-by-frame analysis
+5. **SVG Animation Import** - Parse animated SVGs (SMIL) to code
+
+**Lower Priority:**
+6. **Canva Static Export** - Download Canva designs as static assets
+   - OAuth flow for Canva Connect API
+   - Export PNG/SVG elements for animation in NOLAN
 
 See `IMPLEMENTATION_STATUS.md` backlog for implementation status.
 
