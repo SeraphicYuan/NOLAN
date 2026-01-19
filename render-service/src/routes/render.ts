@@ -3,7 +3,14 @@ import { Router } from 'express';
 import { jobQueue } from '../jobs/queue.js';
 import { RenderSpec } from '../jobs/types.js';
 import { hasEffect, transformToEngineData } from '../effects/index.js';
-import { resolveLayout, isLayoutTemplate, type LayoutSpec } from '../layout/index.js';
+import {
+  resolveLayout,
+  isLayoutTemplate,
+  getLayoutTemplates,
+  getTemplateRegions,
+  TEMPLATES,
+  type LayoutSpec,
+} from '../layout/index.js';
 
 const router = Router();
 
@@ -125,11 +132,10 @@ router.delete('/job/:id', (req, res) => {
 
 // GET /render/layouts - List available layout templates
 router.get('/layouts', (req, res) => {
-  const { getLayoutTemplates, getTemplateRegions, TEMPLATES } = require('../layout/index.js');
   const templates = getLayoutTemplates();
 
   res.json({
-    templates: templates.map((name: string) => ({
+    templates: templates.map((name) => ({
       name,
       regions: getTemplateRegions(name),
       definition: TEMPLATES[name],
