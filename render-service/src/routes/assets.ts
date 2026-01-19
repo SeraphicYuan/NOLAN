@@ -73,6 +73,24 @@ router.get('/icons/:name', (req: Request, res: Response) => {
 });
 
 /**
+ * GET /assets/variants/:styleId/*
+ * List available variants for an asset
+ */
+router.get('/variants/:styleId/*', (req: Request, res: Response) => {
+  const styleId = String(req.params.styleId);
+  const assetName = String(req.params[0]); // Everything after styleId/
+
+  const variants = assetManager.listVariants(styleId, assetName);
+
+  res.json({
+    styleId,
+    assetName,
+    variants,
+    count: variants.length,
+  });
+});
+
+/**
  * GET /assets/check/:styleId/:assetName
  * Check if an asset exists
  */

@@ -64,22 +64,7 @@ export const EMBEDDED_ICONS: Record<string, string> = {
   <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
 </svg>`,
 
-  // Additional commonly used icons
-  growth: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-  <polyline points="17 6 23 6 23 12"></polyline>
-</svg>`,
-
-  data: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
-</svg>`,
-
-  brand: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="12" cy="8" r="7"></circle>
-  <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
-</svg>`,
+  // Note: growth, data, brand are handled via ICON_ALIASES below
 
   service: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="3"></circle>
@@ -158,6 +143,11 @@ export class AssetManager {
   /**
    * Get icon SVG content
    *
+   * Lookup order:
+   * 1. Style-specific filesystem: assets/styles/{styleId}/icons/{name}.svg
+   * 2. Common filesystem: assets/common/icons/{name}.svg
+   * 3. Embedded icons (bundled in code)
+   *
    * @param iconName Icon name (e.g., "check", "star")
    * @param styleId Optional style for style-specific icons
    * @param variant Optional variant suffix
@@ -175,12 +165,24 @@ export class AssetManager {
     // Resolve alias first
     const resolvedName = ICON_ALIASES[iconName] || iconName;
 
-    // Try filesystem first if styleId provided
+    // 1. Try style-specific filesystem if styleId provided
     if (styleId) {
       svg = this.getAssetContent(styleId, `icons/${resolvedName}.svg`, variant);
     }
 
-    // Fall back to embedded icons
+    // 2. Try common filesystem (use dummy style to trigger common fallback)
+    if (!svg) {
+      const commonPath = this.getAssetPath('_unused_', `icons/${resolvedName}.svg`, variant);
+      if (commonPath) {
+        try {
+          svg = fs.readFileSync(commonPath, 'utf-8');
+        } catch {
+          // Ignore read errors
+        }
+      }
+    }
+
+    // 3. Fall back to embedded icons
     if (!svg) {
       svg = EMBEDDED_ICONS[resolvedName] || null;
     }
@@ -239,11 +241,13 @@ export class AssetManager {
       return null;
     }
 
-    // Apply variant to asset name
+    // Apply variant to asset name (preserving parent directory)
     if (variant) {
       const ext = path.extname(assetName);
-      const base = assetName.slice(0, -ext.length);
-      assetName = `${base}-${variant}${ext}`;
+      const dir = path.dirname(assetName);
+      const base = path.basename(assetName, ext);
+      const newName = `${base}-${variant}${ext}`;
+      assetName = dir !== '.' ? path.join(dir, newName) : newName;
     }
 
     // Try style-specific first
@@ -314,6 +318,58 @@ export class AssetManager {
 
     return Array.from(icons).sort();
   }
+
+  /**
+   * List available variants for an asset
+   *
+   * For "icons/arrow.svg", returns variants like ["ribbon", "3d"] if
+   * "icons/arrow-ribbon.svg" and "icons/arrow-3d.svg" exist.
+   */
+  listVariants(styleId: string, assetName: string): string[] {
+    try {
+      styleId = sanitizePath(styleId, false);
+      assetName = sanitizePath(assetName, true);
+    } catch {
+      return [];
+    }
+
+    const variants = new Set<string>();
+    const ext = path.extname(assetName);
+    const dir = path.dirname(assetName);
+    const baseName = path.basename(assetName, ext);
+
+    // Check style-specific directory
+    const styleDir = path.join(this.stylesDir, styleId, dir);
+    if (fs.existsSync(styleDir)) {
+      for (const file of fs.readdirSync(styleDir)) {
+        if (
+          file.startsWith(baseName + '-') &&
+          file.endsWith(ext) &&
+          file !== assetName
+        ) {
+          const variant = file.slice(baseName.length + 1, -ext.length);
+          if (variant) variants.add(variant);
+        }
+      }
+    }
+
+    // Check common directory
+    const commonDir = path.join(this.commonDir, dir);
+    if (fs.existsSync(commonDir)) {
+      for (const file of fs.readdirSync(commonDir)) {
+        if (
+          file.startsWith(baseName + '-') &&
+          file.endsWith(ext) &&
+          file !== assetName
+        ) {
+          const variant = file.slice(baseName.length + 1, -ext.length);
+          if (variant) variants.add(variant);
+        }
+      }
+    }
+
+    return Array.from(variants).sort();
+  }
 }
 
 // Global singleton
@@ -335,4 +391,8 @@ export function hasIcon(iconName: string, styleId?: string): boolean {
 
 export function listIcons(styleId?: string): string[] {
   return assetManager.listIcons(styleId);
+}
+
+export function listVariants(styleId: string, assetName: string): string[] {
+  return assetManager.listVariants(styleId, assetName);
 }

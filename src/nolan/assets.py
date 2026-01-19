@@ -270,8 +270,23 @@ class AssetManager:
         Returns:
             True if style-specific asset exists
         """
+        # Sanitize inputs
+        try:
+            style_id = _sanitize_path_component(style_id, allow_slash=False)
+            asset_name = _sanitize_path_component(asset_name, allow_slash=True)
+        except ValueError:
+            return False
+
         style_path = self.styles_dir / style_id / asset_name
-        return style_path.exists()
+        if not style_path.exists():
+            return False
+
+        # Verify path is within assets directory
+        try:
+            style_path.resolve().relative_to(self.assets_dir.resolve())
+            return True
+        except ValueError:
+            return False
 
     def list_assets(self, style_id: str, category: Optional[str] = None) -> list[str]:
         """
@@ -404,6 +419,13 @@ class AssetManager:
         Returns:
             List of variant suffixes (empty list if no variants)
         """
+        # Sanitize inputs
+        try:
+            style_id = _sanitize_path_component(style_id, allow_slash=False)
+            asset_name = _sanitize_path_component(asset_name, allow_slash=True)
+        except ValueError:
+            return []
+
         variants = set()
         path_obj = Path(asset_name)
         base_stem = path_obj.stem
@@ -413,21 +435,30 @@ class AssetManager:
         # Check style-specific directory
         style_dir = self.styles_dir / style_id / parent
         if style_dir.exists():
-            for f in style_dir.iterdir():
-                if f.is_file() and f.name.startswith(base_stem + "-") and f.suffix == suffix:
-                    # Extract variant: "arrow-ribbon.svg" → "ribbon"
-                    variant = f.stem[len(base_stem) + 1:]
-                    if variant:
-                        variants.add(variant)
+            # Verify directory is within assets
+            try:
+                style_dir.resolve().relative_to(self.assets_dir.resolve())
+                for f in style_dir.iterdir():
+                    if f.is_file() and f.name.startswith(base_stem + "-") and f.suffix == suffix:
+                        # Extract variant: "arrow-ribbon.svg" → "ribbon"
+                        variant = f.stem[len(base_stem) + 1:]
+                        if variant:
+                            variants.add(variant)
+            except ValueError:
+                pass  # Path traversal attempt, skip
 
         # Check common directory
         common_dir = self.common_dir / parent
         if common_dir.exists():
-            for f in common_dir.iterdir():
-                if f.is_file() and f.name.startswith(base_stem + "-") and f.suffix == suffix:
-                    variant = f.stem[len(base_stem) + 1:]
-                    if variant:
-                        variants.add(variant)
+            try:
+                common_dir.resolve().relative_to(self.assets_dir.resolve())
+                for f in common_dir.iterdir():
+                    if f.is_file() and f.name.startswith(base_stem + "-") and f.suffix == suffix:
+                        variant = f.stem[len(base_stem) + 1:]
+                        if variant:
+                            variants.add(variant)
+            except ValueError:
+                pass
 
         return sorted(variants)
 
