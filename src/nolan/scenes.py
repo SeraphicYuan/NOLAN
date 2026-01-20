@@ -311,7 +311,7 @@ class Scene:
 
     # === Content ===
     narration_excerpt: str = ""             # Key phrase for SRT matching
-    visual_type: str = "b-roll"             # b-roll, graphic, text-overlay, generated-image, infographic, layered
+    visual_type: str = "b-roll"             # b-roll, graphic, text-overlay, generated-image, infographic, layered, lottie
     visual_description: str = ""            # What appears on screen
 
     # === Asset Sources (Step 1 hints) ===
@@ -332,6 +332,11 @@ class Scene:
 
     # === Infographic spec (if visual_type == "infographic") ===
     infographic: Optional[Dict[str, Any]] = None
+
+    # === Lottie animation (if visual_type == "lottie") ===
+    lottie_template: Optional[str] = None   # Path to Lottie JSON template
+    lottie_config: Optional[Dict] = None    # {text: {old: new}, colors: {#hex: #hex}, duration, fps}
+    lottie_asset: Optional[str] = None      # Generated customized Lottie file
 
     # === Text overlay style (if visual_type == "text-overlay") ===
     text_style: Optional[Dict] = None       # {position, font_size, color, animation}

@@ -373,22 +373,21 @@ assets/
             └── lower-third-noir.json
 ```
 
-### 4. Scene Plan Integration (Planned)
+### 4. Scene Plan Integration
 
 ```json
 {
-  "type": "lottie",
-  "file": "lower-thirds/simple.json",
-  "duration": 3,
-  "customizations": {
+  "visual_type": "lottie",
+  "lottie_template": "assets/common/lottie/lower-thirds/simple.json",
+  "lottie_config": {
     "text": {
       "Name": "John Smith",
       "Title": "CEO, Acme Corp"
     },
     "colors": {
-      "primary_color": "#0077B6",
-      "accent_color": "#FFD700"
-    }
+      "#0077B6": "#FFD700"
+    },
+    "duration_seconds": 3
   }
 }
 ```
@@ -421,4 +420,5 @@ assets/
 
 ## Changelog
 
-- **2025-01-19**: Initial documentation created after spike test success
+- **2026-01-19**: Added Python utility module (`src/nolan/lottie.py`), integrated Lottie into Remotion engine, added scene plan support
+- **2026-01-19**: Initial documentation created after spike test success

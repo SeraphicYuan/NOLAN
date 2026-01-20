@@ -7,8 +7,8 @@ const Root: React.FC = () => {
     <Composition
       id="LottieTest"
       component={LottieTest}
-      durationInFrames={90}
-      fps={30}
+      durationInFrames={152}   // 76 Lottie frames * 2 for full loop
+      fps={60}                 // Match Lottie's 60fps
       width={1920}
       height={1080}
     />

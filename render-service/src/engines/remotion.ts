@@ -31,6 +31,7 @@ type RemotionPayload = {
   debug: boolean;
   imageName?: string;
   mapImageName?: string;
+  lottieName?: string;
 };
 
 const DEFAULT_WIDTH = 1920;
@@ -140,6 +141,18 @@ function resolveMapImagePath(spec: RenderSpec): string | null {
   return candidate ? String(candidate) : null;
 }
 
+function resolveLottiePath(spec: RenderSpec): string | null {
+  const data = spec.data ?? {};
+  const dataRecord = data as Record<string, unknown>;
+  const specAny = spec as unknown as Record<string, unknown>;
+  const candidate =
+    (typeof dataRecord.lottie_path === 'string' && dataRecord.lottie_path) ||
+    (typeof dataRecord.lottie === 'string' && dataRecord.lottie) ||
+    (typeof specAny.lottie_path === 'string' && specAny.lottie_path) ||
+    '';
+  return candidate ? String(candidate) : null;
+}
+
 type CsvTable = {
   headers: string[];
   rows: string[][];
@@ -211,7 +224,8 @@ function createProjectFiles(
   root: string,
   payload: RemotionPayload,
   imagePath: string | null,
-  mapImagePath: string | null
+  mapImagePath: string | null,
+  lottiePath: string | null
 ): void {
   const srcDir = path.join(root, 'src');
   const publicDir = path.join(root, 'public');
@@ -232,6 +246,13 @@ function createProjectFiles(
     payload.mapImageName = mapImageName;
   }
 
+  if (lottiePath) {
+    const lottieName = path.basename(lottiePath);
+    const targetPath = path.join(publicDir, lottieName);
+    fs.copyFileSync(lottiePath, targetPath);
+    payload.lottieName = lottieName;
+  }
+
   const specJson = JSON.stringify(payload, null, 2);
 
   const indexTsx = `import { registerRoot } from 'remotion';
@@ -241,7 +262,8 @@ registerRoot(RemotionRoot);
 `;
 
   const infographicTsx = `import React from 'react';
-import { AbsoluteFill, Img, staticFile, useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion';
+import { AbsoluteFill, Img, staticFile, useCurrentFrame, useVideoConfig, interpolate, spring, delayRender, continueRender } from 'remotion';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 type Item = {
   label?: string;
@@ -1074,12 +1096,72 @@ export const OverlayOnly: React.FC<{
     </AbsoluteFill>
   );
 };
+
+// Lottie animation component using dotLottie for frame-accurate rendering
+export const LottieAnimation: React.FC<{
+  lottieName: string;
+  data?: Record<string, unknown>;
+  theme?: string;
+}> = ({ lottieName, data, theme }) => {
+  const frame = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
+  const colors = themes[theme ?? 'default'] ?? themes.default;
+  const dotLottieRef = React.useRef<any>(null);
+  const [handle] = React.useState(() => delayRender('Loading Lottie'));
+  const [isLoaded, setIsLoaded] = React.useState(false);
+  const [totalFrames, setTotalFrames] = React.useState(0);
+
+  const lottieUrl = staticFile(lottieName);
+  const lottieData = (data as any)?.lottie ?? {};
+  const bgColor = lottieData.background || colors.background;
+
+  const dotLottieRefCallback = (dotLottie: any) => {
+    dotLottieRef.current = dotLottie;
+    if (dotLottie) {
+      dotLottie.addEventListener('load', () => {
+        const frames = dotLottie.totalFrames;
+        setTotalFrames(frames);
+        setIsLoaded(true);
+        dotLottie.pause();
+        continueRender(handle);
+      });
+      dotLottie.addEventListener('loadError', () => {
+        continueRender(handle);
+      });
+    }
+  };
+
+  React.useEffect(() => {
+    if (!dotLottieRef.current || !isLoaded || totalFrames === 0) return;
+    const progress = frame / durationInFrames;
+    const lottieFrame = Math.floor(progress * totalFrames);
+    dotLottieRef.current.setFrame(lottieFrame);
+  }, [frame, isLoaded, totalFrames, durationInFrames]);
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: bgColor }}>
+      <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: lottieData.width || 600, height: lottieData.height || 600 }}>
+          <DotLottieReact
+            src={lottieUrl}
+            dotLottieRefCallback={dotLottieRefCallback}
+            autoplay={false}
+            loop={false}
+            useFrameInterpolation={false}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+      </AbsoluteFill>
+      <OverlayElements data={data ?? {}} theme={theme ?? 'default'} />
+    </AbsoluteFill>
+  );
+};
 `;
 
   const rootTsx = `import React from 'react';
 import { Composition } from 'remotion';
 import spec from './spec.json';
-import { Infographic, MapFlyover, ZoomImage, OverlayOnly } from './Infographic';
+import { Infographic, MapFlyover, ZoomImage, OverlayOnly, LottieAnimation } from './Infographic';
 
 const width = typeof (spec as any).width === 'number' ? (spec as any).width : ${DEFAULT_WIDTH};
 const height = typeof (spec as any).height === 'number' ? (spec as any).height : ${DEFAULT_HEIGHT};
@@ -1090,6 +1172,7 @@ const data = (spec as any).data ?? {};
 const theme = typeof (spec as any).theme === 'string' ? (spec as any).theme : 'default';
 const imageName = typeof (spec as any).imageName === 'string' ? (spec as any).imageName : '';
 const mapImageName = typeof (spec as any).mapImageName === 'string' ? (spec as any).mapImageName : '';
+const lottieName = typeof (spec as any).lottieName === 'string' ? (spec as any).lottieName : '';
 const focus = (spec as any).data?.image_focus ?? {};
 const bbox = Array.isArray(focus.bbox) ? focus.bbox : null;
 const bboxX = bbox && typeof bbox[0] === 'number' ? bbox[0] : undefined;
@@ -1123,6 +1206,7 @@ const zoomTo =
       : undefined;
 const useMap = mapImageName.length > 0;
 const useImage = imageName.length > 0;
+const useLottie = lottieName.length > 0;
 // Detect overlay-only effects (no base infographic content needed)
 const useOverlayOnly = !!(
   (data as any)?.title_card ||
@@ -1132,7 +1216,7 @@ const useOverlayOnly = !!(
 );
 
 export const RemotionRoot: React.FC = () => {
-  const Component = useMap ? MapFlyover : useImage ? ZoomImage : useOverlayOnly ? OverlayOnly : Infographic;
+  const Component = useLottie ? LottieAnimation : useMap ? MapFlyover : useImage ? ZoomImage : useOverlayOnly ? OverlayOnly : Infographic;
   return (
     <Composition
       id="NolanInfographic"
@@ -1141,7 +1225,7 @@ export const RemotionRoot: React.FC = () => {
       fps={fps}
       width={width}
       height={height}
-      defaultProps={{ data, theme, imageName, mapImageName, focusX, focusY, zoomFrom, zoomTo }}
+      defaultProps={{ data, theme, imageName, mapImageName, lottieName, focusX, focusY, zoomFrom, zoomTo }}
     />
   );
 };
@@ -1274,6 +1358,7 @@ export class RemotionEngine implements RenderEngine {
     const specAny = spec as unknown as Record<string, unknown>;
     const imagePath = resolveImagePath(spec);
     const mapImagePath = resolveMapImagePath(spec);
+    const lottiePath = resolveLottiePath(spec);
     const audioPath = (spec.data as Record<string, unknown>)?.audio_path;
     const markersOnly =
       (spec.data as Record<string, unknown>)?.audio_markers_only === true ||
@@ -1297,7 +1382,7 @@ export class RemotionEngine implements RenderEngine {
 
     attachCsvTable(payload);
     const tempRoot = fs.mkdtempSync(path.join(cacheRoot, 'job-'));
-    createProjectFiles(tempRoot, payload, imagePath, mapImagePath);
+    createProjectFiles(tempRoot, payload, imagePath, mapImagePath, lottiePath);
 
     const outputPath = path.join(outputDir, `${payload.outputName}.mp4`);
     const entryPoint = path.join(tempRoot, 'src', 'index.tsx');

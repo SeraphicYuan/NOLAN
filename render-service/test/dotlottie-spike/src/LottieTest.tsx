@@ -21,7 +21,8 @@ export const LottieTest: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
 
   // Use local Lottie file via staticFile
-  const lottieUrl = staticFile('sample.json');
+  // Cyberpunk v2 with proper color transformation
+  const lottieUrl = staticFile('sample_cyberpunk2.json');
 
   // Handle dotLottie instance
   const dotLottieRefCallback = (dotLottie: DotLottie | null) => {
@@ -70,7 +71,10 @@ export const LottieTest: React.FC = () => {
   }, [frame, isLoaded, totalFrames, durationInFrames]);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: '#1a1a2e' }}>
+    <AbsoluteFill style={{
+      backgroundColor: '#0f0a1a',
+      background: 'linear-gradient(135deg, #0f0a1a 0%, #1a0a2e 50%, #0a1a2e 100%)'
+    }}>
       {/* Lottie animation container */}
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 600, height: 600 }}>
@@ -105,12 +109,22 @@ export const LottieTest: React.FC = () => {
       {/* Title */}
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 60 }}>
         <div style={{
-          fontSize: 32,
-          fontWeight: 600,
-          color: '#ffffff',
+          fontSize: 36,
+          fontWeight: 700,
+          color: '#00e5ff',
           fontFamily: 'Inter, sans-serif',
+          textShadow: '0 0 20px #00e5ff, 0 0 40px #9333ea',
+          letterSpacing: '0.1em',
         }}>
-          dotLottie + Remotion Integration Test
+          LOTTIE CUSTOMIZATION DEMO
+        </div>
+        <div style={{
+          fontSize: 18,
+          color: '#ec4899',
+          fontFamily: 'monospace',
+          marginTop: 8,
+        }}>
+          Text + Colors + Timing + Dimensions = All Modified
         </div>
       </AbsoluteFill>
     </AbsoluteFill>

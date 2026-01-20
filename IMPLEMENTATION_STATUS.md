@@ -495,12 +495,16 @@ NOLAN/
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - **Image search browser display** - View image search results in web UI
 - **Vision model image selection** - Auto-select best matching images using vision model
-- **dotLottie Integration** ⭐ Priority - Integrate dotlottie-react into Remotion engine
+- **dotLottie Integration** ✅ COMPLETED
   - ✅ Spike completed: frame-accurate rendering with `setFrame()` works
   - ✅ No flickering observed (unlike @remotion/lottie)
+  - ✅ `LottieAnimation` component added to Remotion engine
+  - ✅ Python utility module: `src/nolan/lottie.py` (customize_lottie, validate, transform colors)
+  - ✅ Scene plan support: `visual_type: "lottie"` with `lottie_template` and `lottie_config`
+  - ✅ Asset library structure: `assets/common/lottie/` (lower-thirds, transitions, icons, etc.)
   - ⚠️ Expressions still need baking in AE (wiggle, etc.) - industry standard practice
-  - Next: Add Lottie as supported asset type in scene plans
   - Test files: `render-service/test/dotlottie-spike/`
+  - Docs: [docs/LOTTIE_INTEGRATION.md](docs/LOTTIE_INTEGRATION.md)
   - See: [dotLottie React](https://developers.lottiefiles.com/docs/dotlottie-player/dotlottie-react/)
 - **Motion Pattern Library** - Documented timing/easing presets from professional templates
   - Catalog of common motion patterns (reveal, emphasis, exit)
