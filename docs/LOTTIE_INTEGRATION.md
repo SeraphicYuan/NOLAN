@@ -394,22 +394,45 @@ assets/
 
 ---
 
-## Limitations
+## ThorVG Feature Support
+
+dotLottie uses [ThorVG](https://github.com/thorvg/thorvg), a high-performance vector graphics engine. It has **comprehensive Lottie support**:
+
+### Fully Supported
+
+| Category | Features |
+|----------|----------|
+| **Shapes** | Ellipse, Group, Path, Polystar, Rectangle |
+| **Fills** | Solid colors, opacity, linear/radial gradients, fill rules (NonZero/EvenOdd) |
+| **Strokes** | Dashes, caps (butt/round/square), joins (miter/bevel/round), width, miter limits |
+| **Transforms** | Anchor point, auto-orient, opacity, parenting, position, scale, skew |
+| **Masks** | Add, subtract, intersect, lighten, darken, difference + alpha/luma mattes |
+| **Effects** | Drop shadows, Gaussian blur, fill, stroke, tint, tritone |
+| **Text** | Alignment, capitalization, embedded fonts/glyphs, outlines, range selectors, paths, tracking |
+| **Images** | Base64 embedded, local/URL sources (JPG, PNG, WebP) |
+| **Interpolation** | Linear, cubic bezier, step/hold, spatial bezier, rove-across-time |
+| **Modifiers** | Offset paths, repeaters, corner rounding, trim paths |
+| **Expressions** | JavaScript-based expressions supported |
+| **Advanced** | Markers, precompositions, time remapping, time stretch, property slots |
+
+### Limitations
 
 | Limitation | Workaround |
 |------------|------------|
-| Expressions not supported | Bake to keyframes in After Effects |
 | 3D layers not supported | Use 2D with parallax effects |
-| Effects (blur, glow) not supported | Pre-render effects or use CSS filters |
-| Complex masks may fail | Simplify masks or pre-render |
+| Some complex layer effects | Pre-render in After Effects |
 | Large file sizes | Optimize paths, reduce keyframes |
-| Font embedding | Use web-safe fonts or embed as paths |
+| Custom fonts | Embed as glyphs or use web-safe fonts |
+
+> **Note**: Unlike older Lottie players, ThorVG supports expressions, drop shadows, Gaussian blur, and advanced masking. Most After Effects animations export cleanly.
 
 ---
 
 ## Resources
 
 - [dotLottie Documentation](https://dotlottie.io/)
+- [ThorVG Lottie Support Wiki](https://github.com/thorvg/thorvg/wiki/Lottie-Support) - Full feature matrix
+- [LottieFiles Supported Features](https://lottiefiles.com/supported-features) - Platform comparison
 - [dotLottie Web API](https://developers.lottiefiles.com/docs/dotlottie-player/dotlottie-web/)
 - [Lottie JSON Spec](https://lottiefiles.github.io/lottie-docs/)
 - [LottieFiles (Free Animations)](https://lottiefiles.com/)
@@ -420,5 +443,6 @@ assets/
 
 ## Changelog
 
+- **2026-01-19**: Updated feature support docs - ThorVG supports expressions, effects, masks (better than expected)
 - **2026-01-19**: Added Python utility module (`src/nolan/lottie.py`), integrated Lottie into Remotion engine, added scene plan support
 - **2026-01-19**: Initial documentation created after spike test success

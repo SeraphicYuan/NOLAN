@@ -502,10 +502,10 @@ NOLAN/
   - ✅ Python utility module: `src/nolan/lottie.py` (customize_lottie, validate, transform colors)
   - ✅ Scene plan support: `visual_type: "lottie"` with `lottie_template` and `lottie_config`
   - ✅ Asset library structure: `assets/common/lottie/` (lower-thirds, transitions, icons, etc.)
-  - ⚠️ Expressions still need baking in AE (wiggle, etc.) - industry standard practice
+  - ✅ ThorVG engine supports: expressions, drop shadows, blur, masks, gradients, text
   - Test files: `render-service/test/dotlottie-spike/`
   - Docs: [docs/LOTTIE_INTEGRATION.md](docs/LOTTIE_INTEGRATION.md)
-  - See: [dotLottie React](https://developers.lottiefiles.com/docs/dotlottie-player/dotlottie-react/)
+  - See: [ThorVG Lottie Support](https://github.com/thorvg/thorvg/wiki/Lottie-Support)
 - **Motion Pattern Library** - Documented timing/easing presets from professional templates
   - Catalog of common motion patterns (reveal, emphasis, exit)
   - Frame-accurate timing and easing curves for each pattern
