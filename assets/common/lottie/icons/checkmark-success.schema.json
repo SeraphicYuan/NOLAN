@@ -1,0 +1,33 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "checkmark-success",
+  "description": "TODO: Add description",
+  "usage": "TODO: Add usage examples",
+  "fields": {
+    "color_1": {
+      "type": "color",
+      "label": "c / S",
+      "path": "layers[0].shapes[0].it[1].c.k",
+      "default": "#4a5ea9",
+      "color_type": "stroke"
+    },
+    "color_2": {
+      "type": "color",
+      "label": "L / F",
+      "path": "layers[2].shapes[0].it[1].c.k",
+      "default": "#0b0a24",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 60.0,
+    "in_point": 0.0,
+    "out_point": 45.0,
+    "duration_frames": 45.0,
+    "duration_seconds": 0.75
+  },
+  "dimensions": {
+    "width": 937.0,
+    "height": 893.0
+  }
+}

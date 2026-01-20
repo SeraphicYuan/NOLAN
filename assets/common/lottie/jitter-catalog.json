@@ -1,0 +1,47 @@
+{
+  "source": "jitter.video",
+  "generated_at": "2026-01-20 00:02:13",
+  "total_count": 3,
+  "categories": {
+    "text": [
+      {
+        "id": "uPcA9Kmq96mcz8a6A1nRzPHy",
+        "name": "Glide",
+        "url": "https://jitter.video/file/?id=uPcA9Kmq96mcz8a6A1nRzPHy",
+        "local_path": "jitter-text\\glide.json",
+        "width": 1080,
+        "height": 1080,
+        "fps": 60,
+        "duration_seconds": 2.93,
+        "file_size_bytes": 60193,
+        "downloaded_at": "2026-01-20 00:01:24"
+      },
+      {
+        "id": "rwNXW64IP4cvcmu7nyNXvb9f",
+        "name": "Morph Inflating Text",
+        "url": "https://jitter.video/file/?id=rwNXW64IP4cvcmu7nyNXvb9f",
+        "local_path": "jitter-text\\morph-inflating-text.json",
+        "width": 1728,
+        "height": 1049,
+        "fps": 60,
+        "duration_seconds": 2.22,
+        "file_size_bytes": 307955,
+        "downloaded_at": "2026-01-20 00:02:10"
+      }
+    ],
+    "icons": [
+      {
+        "id": "Kk1siV3nlG0Z",
+        "name": "Wow Rotate Scale",
+        "url": "https://jitter.video/file/?id=Kk1siV3nlG0Z",
+        "local_path": "jitter-icons\\wow-rotate-scale.json",
+        "width": 800,
+        "height": 600,
+        "fps": 60,
+        "duration_seconds": 5.0,
+        "file_size_bytes": 9235,
+        "downloaded_at": "2026-01-20 00:01:54"
+      }
+    ]
+  }
+}

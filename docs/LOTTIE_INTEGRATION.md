@@ -428,6 +428,375 @@ dotLottie uses [ThorVG](https://github.com/thorvg/thorvg), a high-performance ve
 
 ---
 
+## Lottie Template Catalog
+
+NOLAN includes a curated library of production-ready Lottie animations.
+
+### Included Templates
+
+| Category | Count | Use Case |
+|----------|-------|----------|
+| `lower-thirds/` | 2 | Speaker names, titles |
+| `title-cards/` | 1 | Section headers, reveals |
+| `transitions/` | 2 | Scene transitions, wipes |
+| `data-callouts/` | 2 | Number counters, statistics |
+| `progress-bars/` | 2 | Loading, timelines |
+| `loaders/` | 1 | Processing indicators |
+| `icons/` | 2 | Checkmarks, arrows |
+
+### Location
+
+```
+assets/common/lottie/
+├── catalog.json                    # Full metadata for all templates
+├── lower-thirds/
+│   ├── simple.json                 # 3-color animated lower third
+│   ├── simple.schema.json          # Schema: primary_color, secondary_color, accent_color
+│   ├── modern.json                 # Clean minimal style with text
+│   └── modern.schema.json          # Schema: headline
+├── title-cards/
+│   ├── text-reveal.json            # Animated text reveal
+│   └── text-reveal.schema.json
+├── transitions/
+│   ├── wipe-simple.json            # Fast screen wipe (0.67s)
+│   └── shape-morph.json            # Organic shape transition
+├── data-callouts/
+│   ├── number-counter.json         # Animated number display
+│   └── counting.json               # Multi-digit counter
+├── progress-bars/
+│   ├── minimal.json                # Clean progress indicator
+│   └── loading-bar.json            # Full-width loading bar
+├── loaders/
+│   └── paperplane.json             # Paper plane loading animation
+└── icons/
+    ├── magic-box.json              # Gift box reveal animation
+    ├── magic-box.schema.json       # Schema: message, box_color, ribbon_color
+    ├── checkmark-success.json
+    └── arrow-down.json
+```
+
+### Catalog JSON
+
+Each animation has rich metadata in `catalog.json`:
+
+```python
+from nolan.lottie_downloader import LottieFilesDownloader
+
+# Load catalog
+downloader = LottieFilesDownloader()
+catalog = downloader.create_catalog()
+
+# Find animations by category
+lower_thirds = catalog['categories']['lower-thirds']
+for anim in lower_thirds:
+    print(f"{anim['local_path']}: {anim['duration_seconds']}s @ {anim['fps']}fps")
+    print(f"  Colors: {anim['color_palette']}")
+```
+
+### Metadata Fields
+
+| Field | Description |
+|-------|-------------|
+| `id` | LottieFiles animation ID |
+| `author` | Original creator |
+| `source_url` | Link to LottieFiles page |
+| `duration_seconds` | Animation length |
+| `fps` | Frame rate |
+| `width`, `height` | Dimensions |
+| `color_palette` | Extracted hex colors |
+| `has_expressions` | Uses JS expressions |
+| `has_images` | Contains embedded images |
+| `layer_count` | Number of layers |
+| `license` | Lottie Simple License (free for commercial use) |
+
+---
+
+## Jitter.video Downloader
+
+Download Lottie animations from Jitter.video's template library using browser automation.
+
+### Features
+
+- **Browser automation** - Uses Playwright to navigate Jitter's SPA
+- **Category discovery** - Finds templates from category pages (video-titles, text, icons, etc.)
+- **Multi-artboard handling** - Auto-selects first artboard for templates with multiple artboards
+- **Metadata extraction** - Captures dimensions, FPS, duration from Lottie JSON
+- **Catalog generation** - Creates `jitter-catalog.json` with all template metadata
+
+### Installation
+
+```bash
+# Install Playwright (required)
+pip install playwright
+playwright install chromium
+```
+
+### Python Usage
+
+```python
+from nolan.jitter_downloader import JitterDownloader, JITTER_CATEGORIES
+import asyncio
+
+async def download_jitter_templates():
+    async with JitterDownloader(
+        output_dir="assets/common/lottie",
+        headless=True,            # Set False to see browser
+        delay_between_downloads=2.0
+    ) as downloader:
+        # Discover templates from a category
+        templates = await downloader.discover_templates("text", limit=5)
+
+        # Download each template
+        for template in templates:
+            result = await downloader.download_template(template)
+            if result:
+                print(f"Saved: {result.local_path}")
+
+        # Create catalog of all downloaded templates
+        downloader.create_catalog(templates)
+
+asyncio.run(download_jitter_templates())
+```
+
+### CLI Usage
+
+```bash
+# List available categories
+python -m nolan.jitter_downloader --list-categories
+
+# Download from a specific category
+python -m nolan.jitter_downloader --category text --limit 5
+
+# Download essential templates (curated set)
+python -m nolan.jitter_downloader --essential
+
+# Show browser window for debugging
+python -m nolan.jitter_downloader --category icons --visible
+```
+
+### Available Categories
+
+| Category | Description |
+|----------|-------------|
+| `video-titles` | Title cards and intro animations |
+| `text` | Text reveal and typography effects |
+| `icons` | Animated icon sets |
+| `logos` | Logo animations and reveals |
+| `social-media` | Social platform templates |
+| `ui-elements` | UI component animations |
+| `buttons` | Button hover and click states |
+| `backgrounds` | Animated backgrounds |
+| `charts` | Data visualization |
+| `devices` | Device mockups |
+| `ads` | Advertisement templates |
+| `showreels` | Showreel transitions |
+
+### Output Structure
+
+```
+assets/common/lottie/
+├── jitter-catalog.json          # Catalog of all Jitter templates
+├── jitter-text/
+│   ├── glide.json               # 1080x1080, 2.9s @ 60fps
+│   ├── morph-inflating-text.json
+│   └── sliding-text-reveal.json
+├── jitter-icons/
+│   └── wow-rotate-scale.json    # 800x600, 5.0s @ 60fps
+└── jitter-video-titles/
+    └── ...
+```
+
+### Notes
+
+- **Rate limiting** - Built-in 2-3 second delay between downloads to avoid overwhelming Jitter
+- **~70% success rate** - Some templates are private/deleted or have unsupported multi-artboard configurations
+- **Blob downloads** - Uses JavaScript evaluation to fetch blob content directly
+
+---
+
+## LottieFiles Downloader
+
+Download additional animations from LottieFiles.com:
+
+```python
+from nolan.lottie_downloader import LottieFilesDownloader
+
+downloader = LottieFilesDownloader(
+    output_dir="assets/common/lottie",
+    requests_per_minute=15  # Rate limiting
+)
+
+# Download single animation
+meta = downloader.download(
+    "https://lottiefiles.com/free-animation/loading-40-paperplane-pXSmJB5J2C",
+    category="loaders",
+    local_name="paperplane"
+)
+print(f"Saved: {meta.local_path} ({meta.file_size_kb} KB)")
+
+# Search for animations
+results = downloader.search_lottiefiles("lower third", limit=5)
+for r in results:
+    print(f"{r['title']}: {r['url']}")
+
+# Download batch
+urls = [
+    ("https://lottiefiles.com/...", "transitions", "fade"),
+    ("https://lottiefiles.com/...", "icons", "star"),
+]
+downloader.download_batch(urls)
+```
+
+### CLI Usage
+
+```bash
+# Download curated essential library (all 12 animations)
+python -m nolan.lottie_downloader --download-essential
+
+# Search LottieFiles
+python -m nolan.lottie_downloader --search "title card"
+
+# Download single animation
+python -m nolan.lottie_downloader --download "https://lottiefiles.com/..." transitions
+
+# Regenerate catalog
+python -m nolan.lottie_downloader --catalog
+```
+
+### Features
+
+- **Rate limiting** - 15-20 requests/minute to avoid blocks
+- **Metadata extraction** - Author, dimensions, FPS, colors, expressions
+- **Duplicate detection** - Content hashing prevents re-downloads
+- **Color palette extraction** - Hex colors from the animation
+- **Organized storage** - Saves by category with descriptive names
+
+---
+
+## Template Schema System
+
+Each Lottie template can have a `.schema.json` file that defines its customizable fields with semantic names. This enables a "magicbox" API where you pass field names without knowing the internal Lottie structure.
+
+### Schema File Structure
+
+```json
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "Magic Box",
+  "description": "Gift box that opens to reveal a message.",
+  "usage": "Success states, celebrations. Keep message short.",
+  "fields": {
+    "message": {
+      "type": "text",
+      "label": "Message",
+      "path": "layers[0].t.d.k[0].s.t",
+      "default": "Yey!",
+      "properties": {
+        "font": "Teko-Bold",
+        "size": 41,
+        "color": "#1c98de"
+      }
+    },
+    "box_color": {
+      "type": "color",
+      "label": "Box Color",
+      "path": "layers[3].shapes[0].it[1].c.k",
+      "default": "#0295d7",
+      "color_type": "fill"
+    }
+  },
+  "timing": {"fps": 30, "duration_seconds": 1.27},
+  "dimensions": {"width": 315, "height": 600},
+  "examples": [
+    {"message": "WIN!", "box_color": "#4CAF50"}
+  ]
+}
+```
+
+### Using Templates (Magicbox API)
+
+```python
+from nolan.lottie import render_template
+
+# Just pass semantic field names - no Lottie knowledge required
+render_template(
+    "assets/common/lottie/icons/magic-box.json",
+    "output/celebration.json",
+    message="100%",
+    box_color="#9C27B0",
+    ribbon_color="#E91E63"
+)
+
+# Lower third with custom headline
+render_template(
+    "assets/common/lottie/lower-thirds/modern.json",
+    "output/breaking.json",
+    headline="EXCLUSIVE"
+)
+
+# Color-only template
+render_template(
+    "assets/common/lottie/lower-thirds/simple.json",
+    "output/branded.json",
+    primary_color="#1a1a2e",
+    secondary_color="#16213e",
+    accent_color="#e94560"
+)
+```
+
+### Analyzing Templates
+
+Discover customizable fields in any Lottie file:
+
+```python
+from nolan.lottie import analyze_lottie, generate_schema, save_schema
+
+# Analyze to see what's customizable
+analysis = analyze_lottie("path/to/animation.json")
+print(f"Text fields: {len(analysis['text_fields'])}")
+print(f"Color fields: {len(analysis['color_fields'])}")
+print(f"Duration: {analysis['timing']['duration_seconds']}s")
+
+# Generate starter schema (then manually curate field names)
+schema = generate_schema("path/to/animation.json", template_name="My Template")
+save_schema(schema, "path/to/animation.json")
+# Creates: path/to/animation.schema.json
+```
+
+### Listing Available Templates
+
+```python
+from nolan.lottie import list_templates
+
+for t in list_templates():
+    status = "✓" if t['has_schema'] else "○"
+    fields = ", ".join(t['fields'][:3])
+    print(f"[{status}] {t['category']}/{t['name']}: {fields}")
+```
+
+Output:
+```
+[✓] icons/Magic Box: message, box_color, ribbon_color
+[✓] lower-thirds/Modern Lower Third: headline
+[✓] lower-thirds/Simple Lower Third: primary_color, secondary_color, accent_color
+[✓] transitions/shape-morph: color_1, color_2, color_3
+...
+```
+
+### Curated Templates
+
+These templates have human-curated semantic field names:
+
+| Template | Fields | Use Case |
+|----------|--------|----------|
+| `icons/magic-box` | `message`, `box_color`, `ribbon_color`, `accent_color` | Celebrations, achievements |
+| `lower-thirds/modern` | `headline` | Breaking news, alerts |
+| `lower-thirds/simple` | `primary_color`, `secondary_color`, `accent_color` | Branded overlays |
+
+Other templates have auto-generated field names (`color_1`, `color_2`, etc.) that work but are less semantic.
+
+---
+
 ## Resources
 
 - [dotLottie Documentation](https://dotlottie.io/)
@@ -443,6 +812,7 @@ dotLottie uses [ThorVG](https://github.com/thorvg/thorvg), a high-performance ve
 
 ## Changelog
 
+- **2026-01-20**: Added Jitter.video downloader (`src/nolan/jitter_downloader.py`) - Playwright-based browser automation for downloading Lottie templates from Jitter
 - **2026-01-19**: Updated feature support docs - ThorVG supports expressions, effects, masks (better than expected)
 - **2026-01-19**: Added Python utility module (`src/nolan/lottie.py`), integrated Lottie into Remotion engine, added scene plan support
 - **2026-01-19**: Initial documentation created after spike test success

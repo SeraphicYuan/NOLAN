@@ -1,0 +1,33 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "minimal",
+  "description": "TODO: Add description",
+  "usage": "TODO: Add usage examples",
+  "fields": {
+    "color_1": {
+      "type": "color",
+      "label": "L / F",
+      "path": "assets[comp_1].layers[0].shapes[0].it[1].c.k",
+      "default": "#0074ff",
+      "color_type": "fill"
+    },
+    "color_2": {
+      "type": "color",
+      "label": "M / F",
+      "path": "assets[comp_0].layers[2].shapes[0].it[1].c.k",
+      "default": "#d7d7d7",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 29,
+    "in_point": 0,
+    "out_point": 61,
+    "duration_frames": 61,
+    "duration_seconds": 2.1
+  },
+  "dimensions": {
+    "width": 400,
+    "height": 400
+  }
+}

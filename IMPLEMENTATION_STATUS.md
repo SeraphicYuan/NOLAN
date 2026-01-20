@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-19
+**Last Updated:** 2026-01-20
 
 ## Summary
 
@@ -396,7 +396,7 @@ nolan projects delete venezuela --delete-videos                             # Al
 
 ## Test Coverage
 
-132 tests covering all modules:
+174 tests covering all modules:
 - Configuration: 3 tests
 - LLM Client: 2 tests
 - Parser: 3 tests
@@ -413,7 +413,8 @@ nolan projects delete venezuela --delete-videos                             # Al
 - Transcript: 15 tests
 - Analyzer: 10 tests
 - Whisper: 17 tests
-- Clustering: 34 tests (NEW)
+- Clustering: 34 tests
+- Lottie: 42 tests (NEW)
 
 ## Project Structure
 
@@ -446,7 +447,7 @@ NOLAN/
 │       ├── index.html   # Viewer UI
 │       ├── scenes.html  # Scene plan A/B viewer
 │       └── library.html # Library browser UI
-├── tests/               # Test suite (132 tests)
+├── tests/               # Test suite (174 tests)
 ├── render-service/      # Node.js microservice for infographics/animations
 │   ├── src/
 │   │   ├── server.ts    # Express API server
@@ -506,11 +507,26 @@ NOLAN/
   - Test files: `render-service/test/dotlottie-spike/`
   - Docs: [docs/LOTTIE_INTEGRATION.md](docs/LOTTIE_INTEGRATION.md)
   - See: [ThorVG Lottie Support](https://github.com/thorvg/thorvg/wiki/Lottie-Support)
-- **Motion Pattern Library** - Documented timing/easing presets from professional templates
-  - Catalog of common motion patterns (reveal, emphasis, exit)
-  - Frame-accurate timing and easing curves for each pattern
-  - JSON format for easy consumption by render engines
-  - More valuable than raw AE import - reusable across all effects
+- **Lottie Template Catalog** ✅ COMPLETED (was: Motion Pattern Library)
+  - ✅ LottieFiles Downloader: `src/nolan/lottie_downloader.py`
+    - Rate-limited downloads (15-20 req/min), metadata extraction, duplicate detection
+    - Color palette extraction, search functionality
+  - ✅ Jitter.video Downloader: `src/nolan/jitter_downloader.py`
+    - Playwright browser automation for Jitter's SPA
+    - Category discovery, multi-artboard handling, blob content extraction
+    - CLI: `python -m nolan.jitter_downloader --essential`
+  - ✅ 12+ production-ready animations in 7+ categories:
+    - LottieFiles: lower-thirds (2), title-cards (1), transitions (2), data-callouts (2), progress-bars (2), loaders (1), icons (2)
+    - Jitter: text effects (glide, morph, sliding reveal), icons (rotate-scale)
+  - ✅ Catalogs: `catalog.json` (LottieFiles), `jitter-catalog.json` (Jitter)
+  - ✅ Template Schema System: `src/nolan/lottie.py`
+    - `analyze_lottie()` - Discover customizable fields (text, colors, timing)
+    - `generate_schema()` / `save_schema()` - Create `.schema.json` files
+    - `render_template()` - Magicbox API with semantic field names
+    - `list_templates()` - List templates with schema status
+  - ✅ Curated schemas for 3 templates: magic-box, modern lower-third, simple lower-third
+  - ✅ 42 tests: `tests/test_lottie.py`
+  - ✅ Docs: [docs/LOTTIE_INTEGRATION.md](docs/LOTTIE_INTEGRATION.md#lottie-template-catalog)
 - **Template Analysis Tool** - CLI to help document animation timing from reference
   - `nolan analyze-template <video>` to measure keyframes and timing
   - Export structured motion specs from reference videos

@@ -1,0 +1,42 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "Simple Lower Third",
+  "description": "Colorful animated lower third with geometric shapes. No text - use as a decorative bar overlay.",
+  "usage": "Speaker identification, interview overlays. Composite with text added separately in video editor.",
+  "fields": {
+    "primary_color": {
+      "type": "color",
+      "label": "Primary Color",
+      "path": "layers[1].shapes[0].it[1].c.k",
+      "default": "#3ab2b8",
+      "color_type": "fill"
+    },
+    "secondary_color": {
+      "type": "color",
+      "label": "Secondary Color",
+      "path": "layers[2].shapes[0].it[1].c.k",
+      "default": "#f93443",
+      "color_type": "fill"
+    },
+    "accent_color": {
+      "type": "color",
+      "label": "Accent Color",
+      "path": "layers[6].shapes[0].it[1].c.k",
+      "default": "#ffb000",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 30,
+    "duration_seconds": 4.04
+  },
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "examples": [
+    {"primary_color": "#3ab2b8", "secondary_color": "#f93443", "accent_color": "#ffb000"},
+    {"primary_color": "#1a1a2e", "secondary_color": "#16213e", "accent_color": "#e94560"},
+    {"primary_color": "#2d3436", "secondary_color": "#636e72", "accent_color": "#00b894"}
+  ]
+}

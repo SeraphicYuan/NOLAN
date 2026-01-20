@@ -1,0 +1,54 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "Magic Box",
+  "description": "Animated gift box that opens to reveal a celebration message. Perfect for achievements, milestones, or surprises.",
+  "usage": "Success states, unlocks, rewards, celebrations. Keep message short (1-2 words).",
+  "fields": {
+    "message": {
+      "type": "text",
+      "label": "Message",
+      "path": "layers[0].t.d.k[0].s.t",
+      "default": "Yey!",
+      "properties": {
+        "font": "Teko-Bold",
+        "size": 41,
+        "color": "#1c98de",
+        "justify": "center"
+      }
+    },
+    "box_color": {
+      "type": "color",
+      "label": "Box Color",
+      "path": "layers[3].shapes[0].it[1].c.k",
+      "default": "#0295d7",
+      "color_type": "fill"
+    },
+    "ribbon_color": {
+      "type": "color",
+      "label": "Ribbon Color",
+      "path": "layers[5].shapes[0].it[1].c.k",
+      "default": "#ffd364",
+      "color_type": "fill"
+    },
+    "accent_color": {
+      "type": "color",
+      "label": "Band Accent",
+      "path": "layers[1].shapes[0].it[1].c.k",
+      "default": "#de456e",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 30,
+    "duration_seconds": 1.27
+  },
+  "dimensions": {
+    "width": 315,
+    "height": 600
+  },
+  "examples": [
+    {"message": "Yey!", "box_color": "#0295d7", "ribbon_color": "#ffd364"},
+    {"message": "WIN!", "box_color": "#4CAF50", "ribbon_color": "#FFD700"},
+    {"message": "100%", "box_color": "#9C27B0", "ribbon_color": "#E91E63"}
+  ]
+}

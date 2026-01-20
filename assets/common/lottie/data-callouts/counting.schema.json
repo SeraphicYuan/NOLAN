@@ -1,0 +1,116 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "counting",
+  "description": "TODO: Add description",
+  "usage": "TODO: Add usage examples",
+  "fields": {
+    "text_1": {
+      "type": "text",
+      "label": "0",
+      "path": "layers[5].t.d.k[0].s.t",
+      "default": "0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9",
+      "properties": {
+        "font": "SpoqaHanSansJP-Bold",
+        "size": 44.0,
+        "color": "#6d16ec",
+        "justify": "center"
+      }
+    },
+    "text_2": {
+      "type": "text",
+      "label": "0",
+      "path": "layers[7].t.d.k[0].s.t",
+      "default": "0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9",
+      "properties": {
+        "font": "SpoqaHanSansJP-Bold",
+        "size": 44.0,
+        "color": "#6d16ec",
+        "justify": "center"
+      }
+    },
+    "text_3": {
+      "type": "text",
+      "label": "0",
+      "path": "layers[9].t.d.k[0].s.t",
+      "default": "0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9",
+      "properties": {
+        "font": "SpoqaHanSansJP-Bold",
+        "size": 44.0,
+        "color": "#6d16ec",
+        "justify": "center"
+      }
+    },
+    "text_4": {
+      "type": "text",
+      "label": "0",
+      "path": "layers[11].t.d.k[0].s.t",
+      "default": "0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9\r0\r1\r2\r3\r4\r5\r6\r7\r8\r9",
+      "properties": {
+        "font": "SpoqaHanSansJP-Bold",
+        "size": 44.0,
+        "color": "#6d16ec",
+        "justify": "center"
+      }
+    },
+    "color_1": {
+      "type": "color",
+      "label": "S / S",
+      "path": "layers[0].shapes[0].it[1].c.k",
+      "default": "#ffffff",
+      "color_type": "stroke"
+    },
+    "color_2": {
+      "type": "color",
+      "label": "S / F",
+      "path": "layers[0].shapes[0].it[2].c.k",
+      "default": "#f8ea34",
+      "color_type": "fill"
+    },
+    "color_3": {
+      "type": "color",
+      "label": "b / F",
+      "path": "assets[comp_0].layers[0].shapes[0].it[1].c.k",
+      "default": "#1b75b8",
+      "color_type": "fill"
+    },
+    "color_4": {
+      "type": "color",
+      "label": "r / F",
+      "path": "assets[comp_0].layers[2].shapes[0].it[1].c.k",
+      "default": "#f7ff06",
+      "color_type": "fill"
+    },
+    "color_5": {
+      "type": "color",
+      "label": "r / F",
+      "path": "assets[comp_0].layers[3].shapes[0].it[1].c.k",
+      "default": "#f7ff05",
+      "color_type": "fill"
+    },
+    "color_6": {
+      "type": "color",
+      "label": "c / F",
+      "path": "assets[comp_0].layers[4].shapes[0].it[1].c.k",
+      "default": "#22b8b6",
+      "color_type": "fill"
+    },
+    "color_7": {
+      "type": "color",
+      "label": "y / F",
+      "path": "assets[comp_0].layers[6].shapes[0].it[1].c.k",
+      "default": "#30c8ac",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 29.9700012207031,
+    "in_point": 0.0,
+    "out_point": 148.000006028164,
+    "duration_frames": 148.000006028164,
+    "duration_seconds": 4.94
+  },
+  "dimensions": {
+    "width": 550.0,
+    "height": 550.0
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "loading-bar",
+  "description": "TODO: Add description",
+  "usage": "TODO: Add usage examples",
+  "fields": {
+    "color_1": {
+      "type": "color",
+      "label": "D / F",
+      "path": "layers[0].shapes[0].it[1].c.k",
+      "default": "#f1892d",
+      "color_type": "fill"
+    },
+    "color_2": {
+      "type": "color",
+      "label": "L / F",
+      "path": "layers[5].shapes[0].it[2].c.k",
+      "default": "#f17027",
+      "color_type": "fill"
+    },
+    "color_3": {
+      "type": "color",
+      "label": "L / F",
+      "path": "assets[comp_0].layers[0].shapes[0].it[1].c.k",
+      "default": "#2ff1cf",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 50.0,
+    "in_point": 0.0,
+    "out_point": 500.0,
+    "duration_frames": 500.0,
+    "duration_seconds": 10.0
+  },
+  "dimensions": {
+    "width": 1920.0,
+    "height": 1080.0
+  }
+}

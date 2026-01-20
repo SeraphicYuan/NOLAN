@@ -1,0 +1,33 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "wipe-simple",
+  "description": "TODO: Add description",
+  "usage": "TODO: Add usage examples",
+  "fields": {
+    "color_1": {
+      "type": "color",
+      "label": "S / S",
+      "path": "assets[comp_0].layers[0].shapes[0].it[1].c.k",
+      "default": "#e5e5e5",
+      "color_type": "stroke"
+    },
+    "color_2": {
+      "type": "color",
+      "label": "S / F",
+      "path": "assets[comp_0].layers[0].shapes[0].it[2].c.k",
+      "default": "#7655a3",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 29.9700012207031,
+    "in_point": 0.0,
+    "out_point": 20.0000008146167,
+    "duration_frames": 20.0000008146167,
+    "duration_seconds": 0.67
+  },
+  "dimensions": {
+    "width": 4000.0,
+    "height": 4000.0
+  }
+}

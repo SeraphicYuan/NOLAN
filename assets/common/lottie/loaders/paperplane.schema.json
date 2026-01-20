@@ -1,0 +1,47 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "paperplane",
+  "description": "TODO: Add description",
+  "usage": "TODO: Add usage examples",
+  "fields": {
+    "color_1": {
+      "type": "color",
+      "label": "p / F",
+      "path": "assets[comp_0].layers[0].shapes[0].it[1].c.k",
+      "default": "#d0d2d2",
+      "color_type": "fill"
+    },
+    "color_2": {
+      "type": "color",
+      "label": "M / F",
+      "path": "assets[comp_0].layers[1].shapes[0].it[0].it[1].c.k",
+      "default": "#3930ac",
+      "color_type": "fill"
+    },
+    "color_3": {
+      "type": "color",
+      "label": "M / F",
+      "path": "assets[comp_0].layers[1].shapes[1].it[0].it[1].c.k",
+      "default": "#464ad7",
+      "color_type": "fill"
+    },
+    "color_4": {
+      "type": "color",
+      "label": "M / F",
+      "path": "assets[comp_0].layers[1].shapes[2].it[0].it[1].c.k",
+      "default": "#5d68f8",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 50.0,
+    "in_point": 0.0,
+    "out_point": 147.0,
+    "duration_frames": 147.0,
+    "duration_seconds": 2.94
+  },
+  "dimensions": {
+    "width": 800.0,
+    "height": 600.0
+  }
+}

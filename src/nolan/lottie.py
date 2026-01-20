@@ -57,7 +57,8 @@ def validate_lottie(data: dict) -> tuple[bool, str | None]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    required_fields = ['v', 'fr', 'ip', 'op', 'w', 'h', 'layers']
+    # Core required fields (v is optional - some files omit it)
+    required_fields = ['fr', 'ip', 'op', 'w', 'h', 'layers']
 
     for field in required_fields:
         if field not in data:
@@ -69,11 +70,11 @@ def validate_lottie(data: dict) -> tuple[bool, str | None]:
     if not isinstance(data['fr'], (int, float)) or data['fr'] <= 0:
         return False, "fr (frame rate) must be a positive number"
 
-    if not isinstance(data['w'], int) or data['w'] <= 0:
-        return False, "w (width) must be a positive integer"
+    if not isinstance(data['w'], (int, float)) or data['w'] <= 0:
+        return False, "w (width) must be a positive number"
 
-    if not isinstance(data['h'], int) or data['h'] <= 0:
-        return False, "h (height) must be a positive integer"
+    if not isinstance(data['h'], (int, float)) or data['h'] <= 0:
+        return False, "h (height) must be a positive number"
 
     return True, None
 
@@ -458,3 +459,438 @@ def noir_transform(rgb: list[float]) -> list[float]:
 def invert_transform(rgb: list[float]) -> list[float]:
     """Invert colors."""
     return [round(1 - rgb[0], 3), round(1 - rgb[1], 3), round(1 - rgb[2], 3)]
+
+
+# =============================================================================
+# Template Schema System
+# =============================================================================
+
+def analyze_lottie(path: str | Path) -> dict:
+    """
+    Analyze a Lottie file and discover all customizable fields.
+
+    Returns a dictionary with:
+    - text_fields: Text layers with their paths and current values
+    - color_fields: Fill/stroke colors with paths and hex values
+    - timing: FPS, duration, frame range
+    - dimensions: Width and height
+
+    Args:
+        path: Path to Lottie JSON file
+
+    Returns:
+        Analysis dictionary with all customizable fields
+    """
+    data = load_lottie(path)
+
+    analysis = {
+        "text_fields": [],
+        "color_fields": [],
+        "timing": {
+            "fps": data.get("fr", 30),
+            "in_point": data.get("ip", 0),
+            "out_point": data.get("op", 0),
+            "duration_frames": data.get("op", 0) - data.get("ip", 0),
+            "duration_seconds": round(
+                (data.get("op", 0) - data.get("ip", 0)) / data.get("fr", 30), 2
+            )
+        },
+        "dimensions": {
+            "width": data.get("w", 0),
+            "height": data.get("h", 0)
+        }
+    }
+
+    # Find text fields
+    _find_text_fields(data, data.get("layers", []), "layers", analysis["text_fields"])
+
+    # Find color fields
+    _find_color_fields(data, data.get("layers", []), "layers", analysis["color_fields"])
+
+    return analysis
+
+
+def _find_text_fields(
+    root_data: dict,
+    layers: list,
+    path_prefix: str,
+    results: list
+) -> None:
+    """Recursively find text layers in Lottie data."""
+    for i, layer in enumerate(layers):
+        layer_path = f"{path_prefix}[{i}]"
+        layer_name = layer.get("nm", f"Layer {i}")
+
+        # Text layer (ty=5)
+        if layer.get("ty") == 5:
+            text_data = layer.get("t", {}).get("d", {}).get("k", [])
+            if text_data and isinstance(text_data, list) and len(text_data) > 0:
+                text_props = text_data[0].get("s", {})
+                text_content = text_props.get("t", "")
+
+                field = {
+                    "name": layer_name,
+                    "path": f"{layer_path}.t.d.k[0].s.t",
+                    "current_value": text_content,
+                    "type": "text",
+                    "properties": {}
+                }
+
+                # Extract text properties
+                if "f" in text_props:
+                    field["properties"]["font"] = text_props["f"]
+                if "s" in text_props:
+                    field["properties"]["size"] = text_props["s"]
+                if "fc" in text_props:
+                    field["properties"]["color"] = lottie_rgb_to_hex(text_props["fc"][:3])
+                if "j" in text_props:
+                    field["properties"]["justify"] = {0: "left", 1: "right", 2: "center"}.get(
+                        text_props["j"], "left"
+                    )
+
+                results.append(field)
+
+        # Precomp layer (ty=0) - recurse into assets
+        if layer.get("ty") == 0 and "refId" in layer:
+            ref_id = layer["refId"]
+            for asset in root_data.get("assets", []):
+                if asset.get("id") == ref_id and "layers" in asset:
+                    _find_text_fields(
+                        root_data,
+                        asset["layers"],
+                        f"assets[{ref_id}].layers",
+                        results
+                    )
+
+
+def _find_color_fields(
+    root_data: dict,
+    layers: list,
+    path_prefix: str,
+    results: list,
+    seen_colors: set = None
+) -> None:
+    """Recursively find color fields in Lottie data."""
+    if seen_colors is None:
+        seen_colors = set()
+
+    for i, layer in enumerate(layers):
+        layer_path = f"{path_prefix}[{i}]"
+        layer_name = layer.get("nm", f"Layer {i}")
+
+        # Process shapes
+        shapes = layer.get("shapes", [])
+        _find_colors_in_shapes(shapes, f"{layer_path}.shapes", layer_name, results, seen_colors)
+
+        # Precomp layer - recurse into assets
+        if layer.get("ty") == 0 and "refId" in layer:
+            ref_id = layer["refId"]
+            for asset in root_data.get("assets", []):
+                if asset.get("id") == ref_id and "layers" in asset:
+                    _find_color_fields(
+                        root_data,
+                        asset["layers"],
+                        f"assets[{ref_id}].layers",
+                        results,
+                        seen_colors
+                    )
+
+
+def _find_colors_in_shapes(
+    shapes: list,
+    path_prefix: str,
+    layer_name: str,
+    results: list,
+    seen_colors: set
+) -> None:
+    """Find colors in shape layers."""
+    for i, shape in enumerate(shapes):
+        shape_path = f"{path_prefix}[{i}]"
+        shape_type = shape.get("ty", "")
+        shape_name = shape.get("nm", f"Shape {i}")
+
+        # Fill (fl)
+        if shape_type == "fl":
+            color_data = shape.get("c", {})
+            color_val = color_data.get("k", [])
+            if isinstance(color_val, list) and len(color_val) >= 3:
+                # Check if it's static color (not animated)
+                if all(isinstance(v, (int, float)) for v in color_val[:3]):
+                    hex_color = lottie_rgb_to_hex(color_val[:3])
+                    color_key = f"fill:{hex_color}"
+                    if color_key not in seen_colors:
+                        seen_colors.add(color_key)
+                        results.append({
+                            "name": f"{layer_name} / {shape_name}",
+                            "path": f"{shape_path}.c.k",
+                            "current_value": hex_color,
+                            "type": "fill"
+                        })
+
+        # Stroke (st)
+        elif shape_type == "st":
+            color_data = shape.get("c", {})
+            color_val = color_data.get("k", [])
+            if isinstance(color_val, list) and len(color_val) >= 3:
+                if all(isinstance(v, (int, float)) for v in color_val[:3]):
+                    hex_color = lottie_rgb_to_hex(color_val[:3])
+                    color_key = f"stroke:{hex_color}"
+                    if color_key not in seen_colors:
+                        seen_colors.add(color_key)
+                        results.append({
+                            "name": f"{layer_name} / {shape_name}",
+                            "path": f"{shape_path}.c.k",
+                            "current_value": hex_color,
+                            "type": "stroke"
+                        })
+
+        # Group (gr) - recurse into items
+        elif shape_type == "gr":
+            items = shape.get("it", [])
+            _find_colors_in_shapes(items, f"{shape_path}.it", layer_name, results, seen_colors)
+
+
+def generate_schema(path: str | Path, template_name: str = None) -> dict:
+    """
+    Generate a starter schema file from Lottie analysis.
+
+    The generated schema has placeholder field names that should be
+    manually curated to semantic names.
+
+    Args:
+        path: Path to Lottie JSON file
+        template_name: Optional name for the template
+
+    Returns:
+        Schema dictionary ready to be saved
+    """
+    analysis = analyze_lottie(path)
+    path = Path(path)
+
+    schema = {
+        "$schema": "lottie-template-schema-v1",
+        "name": template_name or path.stem,
+        "description": "TODO: Add description",
+        "usage": "TODO: Add usage examples",
+        "fields": {},
+        "timing": analysis["timing"],
+        "dimensions": analysis["dimensions"]
+    }
+
+    # Add text fields with placeholder names
+    for i, field in enumerate(analysis["text_fields"]):
+        field_key = f"text_{i + 1}"
+        schema["fields"][field_key] = {
+            "type": "text",
+            "label": field["name"],
+            "path": field["path"],
+            "default": field["current_value"],
+            "properties": field.get("properties", {})
+        }
+
+    # Add color fields
+    for i, field in enumerate(analysis["color_fields"]):
+        field_key = f"color_{i + 1}"
+        schema["fields"][field_key] = {
+            "type": "color",
+            "label": field["name"],
+            "path": field["path"],
+            "default": field["current_value"],
+            "color_type": field["type"]  # fill or stroke
+        }
+
+    return schema
+
+
+def load_schema(template_path: str | Path) -> dict | None:
+    """
+    Load the schema for a Lottie template.
+
+    Looks for {template_name}.schema.json alongside the template file.
+
+    Args:
+        template_path: Path to Lottie JSON file
+
+    Returns:
+        Schema dictionary or None if no schema exists
+    """
+    template_path = Path(template_path)
+    schema_path = template_path.with_suffix(".schema.json")
+
+    if not schema_path.exists():
+        return None
+
+    with open(schema_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_schema(schema: dict, template_path: str | Path) -> Path:
+    """
+    Save a schema file alongside a Lottie template.
+
+    Args:
+        schema: Schema dictionary
+        template_path: Path to the Lottie JSON file
+
+    Returns:
+        Path to the saved schema file
+    """
+    template_path = Path(template_path)
+    schema_path = template_path.with_suffix(".schema.json")
+
+    with open(schema_path, "w", encoding="utf-8") as f:
+        json.dump(schema, f, indent=2)
+
+    return schema_path
+
+
+def render_template(
+    template_path: str | Path,
+    output_path: str | Path = None,
+    **field_values
+) -> dict:
+    """
+    Render a Lottie template with field values from its schema.
+
+    This is the main "magicbox" API - pass semantic field names and get
+    a customized Lottie animation.
+
+    Args:
+        template_path: Path to Lottie JSON file
+        output_path: Path to save rendered animation (optional)
+        **field_values: Field values matching schema field names
+
+    Returns:
+        The rendered Lottie data dictionary
+
+    Raises:
+        ValueError: If template has no schema or field name is invalid
+
+    Example:
+        >>> render_template(
+        ...     "assets/common/lottie/lower-thirds/simple.json",
+        ...     "output/speaker.json",
+        ...     name="Jane Doe",
+        ...     title="CEO, TechCorp",
+        ...     accent_color="#FFD700"
+        ... )
+    """
+    template_path = Path(template_path)
+
+    # Load schema
+    schema = load_schema(template_path)
+    if schema is None:
+        raise ValueError(
+            f"No schema found for {template_path}. "
+            f"Create {template_path.with_suffix('.schema.json')} first."
+        )
+
+    # Load template
+    data = load_lottie(template_path)
+
+    # Apply field values
+    for field_name, value in field_values.items():
+        if field_name not in schema["fields"]:
+            available = list(schema["fields"].keys())
+            raise ValueError(
+                f"Unknown field '{field_name}'. Available fields: {available}"
+            )
+
+        field_def = schema["fields"][field_name]
+        field_path = field_def["path"]
+        field_type = field_def["type"]
+
+        if field_type == "text":
+            _set_value_at_path(data, field_path, value)
+        elif field_type == "color":
+            # Convert hex to Lottie RGB
+            rgb = hex_to_lottie_rgb(value)
+            # Add alpha if needed
+            current = _get_value_at_path(data, field_path)
+            if isinstance(current, list) and len(current) == 4:
+                rgb.append(current[3])  # Preserve alpha
+            _set_value_at_path(data, field_path, rgb)
+
+    # Save if output path provided
+    if output_path:
+        save_lottie(data, output_path)
+
+    return data
+
+
+def _get_value_at_path(data: dict, path: str) -> Any:
+    """Get a value from nested dict/list using path notation."""
+    current = data
+
+    # Parse path like "layers[0].shapes[1].c.k"
+    parts = re.split(r'\.|\[', path)
+
+    for part in parts:
+        part = part.rstrip(']')
+        if not part:
+            continue
+
+        if part.isdigit():
+            current = current[int(part)]
+        else:
+            current = current[part]
+
+    return current
+
+
+def _set_value_at_path(data: dict, path: str, value: Any) -> None:
+    """Set a value in nested dict/list using path notation."""
+    parts = re.split(r'\.|\[', path)
+    parts = [p.rstrip(']') for p in parts if p]
+
+    current = data
+    for part in parts[:-1]:
+        if part.isdigit():
+            current = current[int(part)]
+        else:
+            current = current[part]
+
+    final_key = parts[-1]
+    if final_key.isdigit():
+        current[int(final_key)] = value
+    else:
+        current[final_key] = value
+
+
+def list_templates(
+    lottie_dir: str | Path = "assets/common/lottie"
+) -> list[dict]:
+    """
+    List all Lottie templates with their schema status.
+
+    Args:
+        lottie_dir: Base directory for Lottie templates
+
+    Returns:
+        List of template info dictionaries
+    """
+    lottie_dir = Path(lottie_dir)
+    templates = []
+
+    for json_file in lottie_dir.rglob("*.json"):
+        # Skip catalog, schema, and meta files
+        if json_file.name in ("catalog.json",):
+            continue
+        if ".schema." in json_file.name or ".meta." in json_file.name:
+            continue
+
+        schema_path = json_file.with_suffix(".schema.json")
+        schema = load_schema(json_file) if schema_path.exists() else None
+
+        rel_path = json_file.relative_to(lottie_dir)
+
+        templates.append({
+            "path": str(rel_path),
+            "category": rel_path.parent.name if rel_path.parent.name != "." else "root",
+            "name": schema["name"] if schema else json_file.stem,
+            "has_schema": schema is not None,
+            "fields": list(schema["fields"].keys()) if schema else [],
+            "description": schema.get("description", "") if schema else ""
+        })
+
+    return templates

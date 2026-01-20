@@ -1,0 +1,54 @@
+{
+  "$schema": "lottie-template-schema-v1",
+  "name": "shape-morph",
+  "description": "TODO: Add description",
+  "usage": "TODO: Add usage examples",
+  "fields": {
+    "color_1": {
+      "type": "color",
+      "label": "S / F",
+      "path": "layers[0].shapes[0].it[1].c.k",
+      "default": "#8e9aae",
+      "color_type": "fill"
+    },
+    "color_2": {
+      "type": "color",
+      "label": "S / F",
+      "path": "layers[1].shapes[0].it[1].c.k",
+      "default": "#c8aca7",
+      "color_type": "fill"
+    },
+    "color_3": {
+      "type": "color",
+      "label": "S / F",
+      "path": "layers[2].shapes[0].it[1].c.k",
+      "default": "#9a8b97",
+      "color_type": "fill"
+    },
+    "color_4": {
+      "type": "color",
+      "label": "S / F",
+      "path": "layers[3].shapes[0].it[1].c.k",
+      "default": "#494e69",
+      "color_type": "fill"
+    },
+    "color_5": {
+      "type": "color",
+      "label": "S / F",
+      "path": "layers[4].shapes[0].it[1].c.k",
+      "default": "#21213a",
+      "color_type": "fill"
+    }
+  },
+  "timing": {
+    "fps": 50.0,
+    "in_point": 0.0,
+    "out_point": 141.0,
+    "duration_frames": 141.0,
+    "duration_seconds": 2.82
+  },
+  "dimensions": {
+    "width": 1600.0,
+    "height": 1200.0
+  }
+}
