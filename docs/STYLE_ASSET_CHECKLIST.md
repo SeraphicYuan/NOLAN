@@ -278,27 +278,29 @@ Less useful for NOLAN - Premiere is for editing, not motion graphics creation.
 
 The following features are planned to make template conversion easier:
 
-**High Priority (Programmatic):**
-1. **ae-to-json Integration** - Parse After Effects project JSON exports
-   - CLI: `nolan import-ae project.json`
-   - Extract keyframes, timing curves, layer structure
-   - Generate Motion Canvas/Remotion code from animation data
-2. **Lottie Player Integration** - Play Lottie JSON in Remotion engine
+**High Priority:**
+1. **Lottie Player Integration** ⭐ - Play Lottie JSON in Remotion engine
+   - Install `@remotion/lottie` + `lottie-web` in render-service
    - Enable LottieFiles and Bodymovin exports as motion assets
-   - Bridge format for After Effects vector animations
-
-**Medium Priority:**
-3. **Motion Pattern Library** - Documented timing/easing presets
+   - Limitations: Vector animations only, no expressions/effects/3D
+   - Best path for After Effects → NOLAN workflow
+2. **Motion Pattern Library** - Documented timing/easing presets
    - Catalog of common patterns extracted from professional templates
    - Frame-accurate timing and easing curves
-4. **Template Analysis Tool** - CLI to measure timing from reference
+   - More reusable than raw AE import
+
+**Medium Priority:**
+3. **Template Analysis Tool** - CLI to measure timing from reference
    - `nolan analyze-template <video>` for frame-by-frame analysis
-5. **SVG Animation Import** - Parse animated SVGs (SMIL) to code
+4. **SVG Animation Import** - Parse animated SVGs (SMIL) to code
 
 **Lower Priority:**
-6. **Canva Static Export** - Download Canva designs as static assets
+5. **Canva Static Export** - Download Canva designs as static assets
    - OAuth flow for Canva Connect API
    - Export PNG/SVG elements for animation in NOLAN
+
+**Deprioritized:**
+- ~~ae-to-json Integration~~ - Research showed this requires 4-6 weeks for basic transforms only. By the time you strip out unsupported features (expressions, effects, masks, 3D), you're left with simple transforms that are faster to recreate manually. Lottie runtime is better.
 
 See `IMPLEMENTATION_STATUS.md` backlog for implementation status.
 

@@ -495,18 +495,17 @@ NOLAN/
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - **Image search browser display** - View image search results in web UI
 - **Vision model image selection** - Auto-select best matching images using vision model
-- **ae-to-json Integration** - Parse After Effects project JSON exports
-  - CLI: `nolan import-ae project.json` to extract animation data
-  - Parse keyframes, timing curves, layer structure from ae-to-json output
-  - Generate Motion Canvas/Remotion code from animation data
-  - Requires: After Effects + [ae-to-json](https://github.com/Experience-Monks/ae-to-json)
-- **Lottie Player Integration** - Play Lottie JSON animations in Remotion engine
-  - Enable LottieFiles and After Effects Bodymovin exports as motion assets
-  - Bridge format for converting external motion graphics templates
+- **Lottie Player Integration** - Play Lottie JSON animations in Remotion engine ⭐ Priority
+  - Install `@remotion/lottie` + `lottie-web` in render-service
+  - Support Lottie JSON as asset type in scene plans (`"asset_type": "lottie"`)
+  - Enable After Effects Bodymovin exports as motion assets
+  - Limitations: Vector animations only, no expressions/effects/3D
+  - See: [Remotion Lottie docs](https://www.remotion.dev/docs/lottie/)
 - **Motion Pattern Library** - Documented timing/easing presets from professional templates
   - Catalog of common motion patterns (reveal, emphasis, exit)
   - Frame-accurate timing and easing curves for each pattern
   - JSON format for easy consumption by render engines
+  - More valuable than raw AE import - reusable across all effects
 - **Template Analysis Tool** - CLI to help document animation timing from reference
   - `nolan analyze-template <video>` to measure keyframes and timing
   - Export structured motion specs from reference videos
