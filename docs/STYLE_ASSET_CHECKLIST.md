@@ -279,11 +279,13 @@ Less useful for NOLAN - Premiere is for editing, not motion graphics creation.
 The following features are planned to make template conversion easier:
 
 **High Priority:**
-1. **Lottie Player Integration** ⭐ - Play Lottie JSON in Remotion engine
-   - Install `@remotion/lottie` + `lottie-web` in render-service
-   - Enable LottieFiles and Bodymovin exports as motion assets
-   - Limitations: Vector animations only, no expressions/effects/3D
-   - Best path for After Effects → NOLAN workflow
+1. **dotLottie Integration Spike** ⭐ - Test dotlottie-react with Remotion (1-2 days)
+   - dotLottie uses ThorVG (WebAssembly) - designed for video export, not just playback
+   - Canva uses ThorVG for iOS video export (80% faster, 70% less memory)
+   - Has `setFrame()` for frame-accurate control (vs lottie-web's flickering `.goToAndStop()`)
+   - ThorVG recently added wiggle expression support (lottie-web doesn't have this)
+   - If spike succeeds → full Lottie integration
+   - See: [dotLottie React](https://developers.lottiefiles.com/docs/dotlottie-player/dotlottie-react/)
 2. **Motion Pattern Library** - Documented timing/easing presets
    - Catalog of common patterns extracted from professional templates
    - Frame-accurate timing and easing curves

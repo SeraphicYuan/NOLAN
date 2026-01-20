@@ -495,12 +495,12 @@ NOLAN/
 - **HunyuanOCR integration** - Text extraction from video frames (subtitles, on-screen text, titles)
 - **Image search browser display** - View image search results in web UI
 - **Vision model image selection** - Auto-select best matching images using vision model
-- **Lottie Player Integration** - Play Lottie JSON animations in Remotion engine ⭐ Priority
-  - Install `@remotion/lottie` + `lottie-web` in render-service
-  - Support Lottie JSON as asset type in scene plans (`"asset_type": "lottie"`)
-  - Enable After Effects Bodymovin exports as motion assets
-  - Limitations: Vector animations only, no expressions/effects/3D
-  - See: [Remotion Lottie docs](https://www.remotion.dev/docs/lottie/)
+- **dotLottie Integration Spike** ⭐ Priority - Test dotlottie-react with Remotion (1-2 days)
+  - Validate frame-accurate rendering with `setFrame()` works for video export
+  - Test expression support (wiggle, etc.) - ThorVG recently added support
+  - Compare to `@remotion/lottie` which has flickering issues with expressions
+  - If successful: add full Lottie support as asset type
+  - See: [dotLottie React](https://developers.lottiefiles.com/docs/dotlottie-player/dotlottie-react/), [Canva ThorVG case study](https://lottiefiles.com/blog/working-with-lottie-animations/canva-enhances-ios-rendering-faster-and-efficient-with-thorvg)
 - **Motion Pattern Library** - Documented timing/easing presets from professional templates
   - Catalog of common motion patterns (reveal, emphasis, exit)
   - Frame-accurate timing and easing curves for each pattern
