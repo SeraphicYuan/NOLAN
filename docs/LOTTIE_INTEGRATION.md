@@ -614,6 +614,50 @@ assets/common/lottie/
 
 ---
 
+## Lottieflow Downloader
+
+Download UI micro-interactions from Finsweet's Lottieflow library.
+
+### Features
+
+- **Bulk download** - Captures all animations from category pages via network interception
+- **Smart filtering** - Filters out UI chrome to get only content animations
+- **21 categories** - Menu icons, arrows, checkboxes, loaders, play buttons, and more
+
+### CLI Usage
+
+```bash
+# List available categories
+python -m nolan.lottieflow_downloader --list-categories
+
+# Download from a specific category
+python -m nolan.lottieflow_downloader --category menu-nav --limit 10
+
+# Download essential templates (curated set from 8 categories)
+python -m nolan.lottieflow_downloader --essential
+```
+
+### Available Categories
+
+`404`, `arrow`, `attention`, `background`, `checkbox`, `communication`, `countdown`, `cta`, `dropdown`, `ecommerce`, `loading`, `media`, `menu-nav`, `play`, `radio`, `scroll-down`, `scroll-top`, `scrolling`, `search`, `social-media`, `success`
+
+### Output Structure
+
+```
+assets/common/lottie/
+├── lottieflow-catalog.json      # Catalog of all Lottieflow templates
+├── lottieflow-menu-nav/         # Hamburger menu animations
+├── lottieflow-arrow/            # Arrow/slider animations
+├── lottieflow-checkbox/         # Checkbox toggle animations
+├── lottieflow-loading/          # Loading spinners
+├── lottieflow-play/             # Play/pause button animations
+├── lottieflow-scroll-down/      # Scroll indicators
+├── lottieflow-success/          # Success checkmarks
+└── lottieflow-attention/        # Attention grabbers
+```
+
+---
+
 ## LottieFiles Downloader
 
 Download additional animations from LottieFiles.com:
@@ -812,6 +856,7 @@ Other templates have auto-generated field names (`color_1`, `color_2`, etc.) tha
 
 ## Changelog
 
+- **2026-01-21**: Added Lottieflow downloader (`src/nolan/lottieflow_downloader.py`) - Playwright-based bulk download from Finsweet's Lottieflow (30 UI animations)
 - **2026-01-20**: Added Jitter.video downloader (`src/nolan/jitter_downloader.py`) - Playwright-based browser automation for downloading Lottie templates from Jitter
 - **2026-01-19**: Updated feature support docs - ThorVG supports expressions, effects, masks (better than expected)
 - **2026-01-19**: Added Python utility module (`src/nolan/lottie.py`), integrated Lottie into Remotion engine, added scene plan support

@@ -1,0 +1,413 @@
+{
+  "source": "finsweet.com/lottieflow",
+  "generated_at": "2026-01-21 00:21:25",
+  "total_count": 30,
+  "categories": {
+    "menu-nav": [
+      {
+        "id": "menunav",
+        "name": "Menunav",
+        "page_url": "https://finsweet.com/lottieflow/category/menu-nav",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc23dbd9dcd8e0beea18568_menuNav.json",
+        "local_path": "lottieflow-menu-nav\\menunav.json",
+        "width": 1000,
+        "height": 1000,
+        "fps": 25,
+        "duration_seconds": 4.28,
+        "file_size_bytes": 11474,
+        "downloaded_at": "2026-01-21 00:20:24"
+      },
+      {
+        "id": "menu14-menunavpack-smooth",
+        "name": "Menu14 Menunavpack Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/menu-nav",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5e0df6ef574de23a37ed6788_Menu14-MenuNavPack-smooth.json",
+        "local_path": "lottieflow-menu-nav\\menu14-menunavpack-smooth.json",
+        "width": 542,
+        "height": 580,
+        "fps": 48,
+        "duration_seconds": 3.5,
+        "file_size_bytes": 26196,
+        "downloaded_at": "2026-01-21 00:20:24"
+      },
+      {
+        "id": "menu",
+        "name": "Menu",
+        "page_url": "https://finsweet.com/lottieflow/category/menu-nav",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc2392173f230a985ce554c_menu.json",
+        "local_path": "lottieflow-menu-nav\\menu.json",
+        "width": 425,
+        "height": 425,
+        "fps": 48,
+        "duration_seconds": 2.58,
+        "file_size_bytes": 12126,
+        "downloaded_at": "2026-01-21 00:20:24"
+      },
+      {
+        "id": "menu-pack9-smooth",
+        "name": "Menu Pack9 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/menu-nav",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def85eab4a174939e5c13d7_Menu-Pack9-smooth.json",
+        "local_path": "lottieflow-menu-nav\\menu-pack9-smooth.json",
+        "width": 850,
+        "height": 850,
+        "fps": 48,
+        "duration_seconds": 2.5,
+        "file_size_bytes": 6554,
+        "downloaded_at": "2026-01-21 00:20:24"
+      },
+      {
+        "id": "menu3-menunavpack-smooth",
+        "name": "Menu3 Menunavpack Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/menu-nav",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5e0df4587d06d8daff5a6eee_Menu3-MenuNavPack-smooth.json",
+        "local_path": "lottieflow-menu-nav\\menu3-menunavpack-smooth.json",
+        "width": 710,
+        "height": 710,
+        "fps": 48,
+        "duration_seconds": 4.08,
+        "file_size_bytes": 13052,
+        "downloaded_at": "2026-01-21 00:20:24"
+      }
+    ],
+    "arrow": [
+      {
+        "id": "slider%20arrow%20right-pack7-smooth",
+        "name": "Slider%20Arrow%20Right Pack7 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/arrow",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def94157834ab181f4e177d_Slider%20Arrow%20Right-Pack7-smooth.json",
+        "local_path": "lottieflow-arrow\\slider%20arrow%20right-pack7-smooth.json",
+        "width": 555,
+        "height": 304,
+        "fps": 48,
+        "duration_seconds": 1.52,
+        "file_size_bytes": 5379,
+        "downloaded_at": "2026-01-21 00:20:35"
+      },
+      {
+        "id": "slider%20arrow%20left-pack7-smooth",
+        "name": "Slider%20Arrow%20Left Pack7 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/arrow",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def93f547074547ec3a7c26_Slider%20Arrow%20Left-Pack7-smooth.json",
+        "local_path": "lottieflow-arrow\\slider%20arrow%20left-pack7-smooth.json",
+        "width": 555,
+        "height": 304,
+        "fps": 48,
+        "duration_seconds": 1.52,
+        "file_size_bytes": 5372,
+        "downloaded_at": "2026-01-21 00:20:35"
+      },
+      {
+        "id": "slider%20arrows",
+        "name": "Slider%20Arrows",
+        "page_url": "https://finsweet.com/lottieflow/category/arrow",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc23c6373f230b314ce6caa_slider%20arrows.json",
+        "local_path": "lottieflow-arrow\\slider%20arrows.json",
+        "width": 1000,
+        "height": 1000,
+        "fps": 25,
+        "duration_seconds": 2.8,
+        "file_size_bytes": 3971,
+        "downloaded_at": "2026-01-21 00:20:35"
+      },
+      {
+        "id": "sliderarrowsleft",
+        "name": "Sliderarrowsleft",
+        "page_url": "https://finsweet.com/lottieflow/category/arrow",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5db461f572af130ec439fd43_sliderArrowsLeft.json",
+        "local_path": "lottieflow-arrow\\sliderarrowsleft.json",
+        "width": 1000,
+        "height": 1000,
+        "fps": 48,
+        "duration_seconds": 1.5,
+        "file_size_bytes": 10288,
+        "downloaded_at": "2026-01-21 00:20:35"
+      },
+      {
+        "id": "slider%20arrow%20left-pack6-smooth",
+        "name": "Slider%20Arrow%20Left Pack6 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/arrow",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dd55bb4501a815772daff9f_Slider%20Arrow%20Left-Pack6-smooth.json",
+        "local_path": "lottieflow-arrow\\slider%20arrow%20left-pack6-smooth.json",
+        "width": 700,
+        "height": 700,
+        "fps": 48,
+        "duration_seconds": 1.54,
+        "file_size_bytes": 10078,
+        "downloaded_at": "2026-01-21 00:20:35"
+      }
+    ],
+    "checkbox": [
+      {
+        "id": "checkbox",
+        "name": "Checkbox",
+        "page_url": "https://finsweet.com/lottieflow/category/checkbox",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc23ddbdccaf61bcb4b4cc6_checkbox.json",
+        "local_path": "lottieflow-checkbox\\checkbox.json",
+        "width": 1107,
+        "height": 1107,
+        "fps": 25,
+        "duration_seconds": 3.0,
+        "file_size_bytes": 3451,
+        "downloaded_at": "2026-01-21 00:20:43"
+      },
+      {
+        "id": "checkbox",
+        "name": "Checkbox",
+        "page_url": "https://finsweet.com/lottieflow/category/checkbox",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc23078688e0bb25e079663_checkbox.json",
+        "local_path": "lottieflow-checkbox\\checkbox.json",
+        "width": 1107,
+        "height": 1107,
+        "fps": 25,
+        "duration_seconds": 3.0,
+        "file_size_bytes": 3722,
+        "downloaded_at": "2026-01-21 00:20:43"
+      },
+      {
+        "id": "checkbox-pack7-smooth",
+        "name": "Checkbox Pack7 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/checkbox",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5deeccc1984d72073fd21784_Checkbox-Pack7-smooth.json",
+        "local_path": "lottieflow-checkbox\\checkbox-pack7-smooth.json",
+        "width": 706,
+        "height": 706,
+        "fps": 48,
+        "duration_seconds": 2.02,
+        "file_size_bytes": 4722,
+        "downloaded_at": "2026-01-21 00:20:43"
+      }
+    ],
+    "loading": [
+      {
+        "id": "loader-pack6-smooth",
+        "name": "Loader Pack6 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/loading",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dd55a5451a5423084df704d_Loader-Pack6-smooth.json",
+        "local_path": "lottieflow-loading\\loader-pack6-smooth.json",
+        "width": 712,
+        "height": 712,
+        "fps": 48,
+        "duration_seconds": 3.0,
+        "file_size_bytes": 17917,
+        "downloaded_at": "2026-01-21 00:20:51"
+      },
+      {
+        "id": "loader-pack9-smooth",
+        "name": "Loader Pack9 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/loading",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def85c5cb4a703b3d14998b_Loader-Pack9-smooth.json",
+        "local_path": "lottieflow-loading\\loader-pack9-smooth.json",
+        "width": 470,
+        "height": 744,
+        "fps": 48,
+        "duration_seconds": 4.0,
+        "file_size_bytes": 38400,
+        "downloaded_at": "2026-01-21 00:20:51"
+      },
+      {
+        "id": "loader-pack8-smooth",
+        "name": "Loader Pack8 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/loading",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def7c44ab4fffa70313a5fa_Loader-Pack8-smooth.json",
+        "local_path": "lottieflow-loading\\loader-pack8-smooth.json",
+        "width": 715,
+        "height": 715,
+        "fps": 48,
+        "duration_seconds": 2.12,
+        "file_size_bytes": 9671,
+        "downloaded_at": "2026-01-21 00:20:51"
+      },
+      {
+        "id": "loader-pack7-smooth",
+        "name": "Loader Pack7 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/loading",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5deecd6dbfedac2d60c0df21_Loader-Pack7-smooth.json",
+        "local_path": "lottieflow-loading\\loader-pack7-smooth.json",
+        "width": 390,
+        "height": 360,
+        "fps": 48,
+        "duration_seconds": 5.5,
+        "file_size_bytes": 8924,
+        "downloaded_at": "2026-01-21 00:20:51"
+      },
+      {
+        "id": "refresh",
+        "name": "Refresh",
+        "page_url": "https://finsweet.com/lottieflow/category/loading",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc238a973f230c6a3ce52ee_refresh.json",
+        "local_path": "lottieflow-loading\\refresh.json",
+        "width": 660,
+        "height": 615,
+        "fps": 48,
+        "duration_seconds": 1.79,
+        "file_size_bytes": 10455,
+        "downloaded_at": "2026-01-21 00:20:51"
+      }
+    ],
+    "play": [
+      {
+        "id": "play-pack7-smooth",
+        "name": "Play Pack7 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/play",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5deece8cabbb0f1d3041feef_Play-Pack7-smooth.json",
+        "local_path": "lottieflow-play\\play-pack7-smooth.json",
+        "width": 680,
+        "height": 570,
+        "fps": 48,
+        "duration_seconds": 2.5,
+        "file_size_bytes": 10324,
+        "downloaded_at": "2026-01-21 00:20:59"
+      },
+      {
+        "id": "play-pack8-smooth",
+        "name": "Play Pack8 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/play",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def943d3f61563bebe31a9c_Play-Pack8-smooth.json",
+        "local_path": "lottieflow-play\\play-pack8-smooth.json",
+        "width": 528,
+        "height": 650,
+        "fps": 48,
+        "duration_seconds": 3.23,
+        "file_size_bytes": 13279,
+        "downloaded_at": "2026-01-21 00:20:59"
+      },
+      {
+        "id": "play-pack9-smooth",
+        "name": "Play Pack9 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/play",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def860c0650227af3288a40_Play-Pack9-smooth.json",
+        "local_path": "lottieflow-play\\play-pack9-smooth.json",
+        "width": 670,
+        "height": 630,
+        "fps": 48,
+        "duration_seconds": 3.98,
+        "file_size_bytes": 8747,
+        "downloaded_at": "2026-01-21 00:20:59"
+      }
+    ],
+    "scroll-down": [
+      {
+        "id": "scrolldown_v1",
+        "name": "Scrolldown V1",
+        "page_url": "https://finsweet.com/lottieflow/category/scroll-down",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc236f373f230e7dfce4ba5_scrolldown_v1.json",
+        "local_path": "lottieflow-scroll-down\\scrolldown_v1.json",
+        "width": 607,
+        "height": 607,
+        "fps": 48,
+        "duration_seconds": 1.62,
+        "file_size_bytes": 9270,
+        "downloaded_at": "2026-01-21 00:21:08"
+      },
+      {
+        "id": "scroll%20down-pack8-smooth",
+        "name": "Scroll%20Down Pack8 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/scroll-down",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def7d0647074535d1306485_Scroll%20Down-Pack8-smooth.json",
+        "local_path": "lottieflow-scroll-down\\scroll%20down-pack8-smooth.json",
+        "width": 500,
+        "height": 802,
+        "fps": 48,
+        "duration_seconds": 1.52,
+        "file_size_bytes": 3890,
+        "downloaded_at": "2026-01-21 00:21:08"
+      },
+      {
+        "id": "scroll%20down-pack7-smooth",
+        "name": "Scroll%20Down Pack7 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/scroll-down",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5deecec3f026ab1178591bd6_Scroll%20Down-Pack7-smooth.json",
+        "local_path": "lottieflow-scroll-down\\scroll%20down-pack7-smooth.json",
+        "width": 210,
+        "height": 680,
+        "fps": 48,
+        "duration_seconds": 2.02,
+        "file_size_bytes": 7492,
+        "downloaded_at": "2026-01-21 00:21:08"
+      }
+    ],
+    "success": [
+      {
+        "id": "success",
+        "name": "Success",
+        "page_url": "https://finsweet.com/lottieflow/category/success",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc23d94dccaf663424b4b1f_success.json",
+        "local_path": "lottieflow-success\\success.json",
+        "width": 1200,
+        "height": 1200,
+        "fps": 25,
+        "duration_seconds": 2.0,
+        "file_size_bytes": 4999,
+        "downloaded_at": "2026-01-21 00:21:16"
+      },
+      {
+        "id": "success-pack7-smooth",
+        "name": "Success Pack7 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/success",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5deecf3a76279c028bf4849e_Success-Pack7-smooth.json",
+        "local_path": "lottieflow-success\\success-pack7-smooth.json",
+        "width": 665,
+        "height": 665,
+        "fps": 48,
+        "duration_seconds": 1.98,
+        "file_size_bytes": 6518,
+        "downloaded_at": "2026-01-21 00:21:16"
+      },
+      {
+        "id": "success-pack6-smooth",
+        "name": "Success Pack6 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/success",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dd55c1df91b661dc7d630b0_Success-Pack6-smooth.json",
+        "local_path": "lottieflow-success\\success-pack6-smooth.json",
+        "width": 712,
+        "height": 712,
+        "fps": 48,
+        "duration_seconds": 2.44,
+        "file_size_bytes": 3780,
+        "downloaded_at": "2026-01-21 00:21:16"
+      }
+    ],
+    "attention": [
+      {
+        "id": "attention%20grabber-pack8-smooth",
+        "name": "Attention%20Grabber Pack8 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/attention",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5def7aadca4d3b3eded15977_Attention%20Grabber-Pack8-smooth.json",
+        "local_path": "lottieflow-attention\\attention%20grabber-pack8-smooth.json",
+        "width": 950,
+        "height": 900,
+        "fps": 48,
+        "duration_seconds": 3.04,
+        "file_size_bytes": 8409,
+        "downloaded_at": "2026-01-21 00:21:25"
+      },
+      {
+        "id": "attention%20grabber-pack6-smooth",
+        "name": "Attention%20Grabber Pack6 Smooth",
+        "page_url": "https://finsweet.com/lottieflow/category/attention",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dd5595da7f61353c810a9a0_Attention%20Grabber-Pack6-smooth.json",
+        "local_path": "lottieflow-attention\\attention%20grabber-pack6-smooth.json",
+        "width": 480,
+        "height": 620,
+        "fps": 25,
+        "duration_seconds": 1.6,
+        "file_size_bytes": 5830,
+        "downloaded_at": "2026-01-21 00:21:25"
+      },
+      {
+        "id": "attention%20grabbers",
+        "name": "Attention%20Grabbers",
+        "page_url": "https://finsweet.com/lottieflow/category/attention",
+        "cdn_url": "https://cdn.prod.website-files.com/5d829bf092d4644f5c42e0ea/5dc23227688e0b08ef079a7a_Attention%20Grabbers.json",
+        "local_path": "lottieflow-attention\\attention%20grabbers.json",
+        "width": 1127,
+        "height": 1032,
+        "fps": 25,
+        "duration_seconds": 3.8,
+        "file_size_bytes": 7915,
+        "downloaded_at": "2026-01-21 00:21:25"
+      }
+    ]
+  }
+}

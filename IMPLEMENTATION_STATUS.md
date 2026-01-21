@@ -515,10 +515,15 @@ NOLAN/
     - Playwright browser automation for Jitter's SPA
     - Category discovery, multi-artboard handling, blob content extraction
     - CLI: `python -m nolan.jitter_downloader --essential`
-  - ✅ 12+ production-ready animations in 7+ categories:
+  - ✅ Lottieflow Downloader: `src/nolan/lottieflow_downloader.py`
+    - Bulk download via network interception (no login required)
+    - 21 categories of UI micro-interactions
+    - CLI: `python -m nolan.lottieflow_downloader --essential`
+  - ✅ 50+ production-ready animations across multiple sources:
     - LottieFiles: lower-thirds (2), title-cards (1), transitions (2), data-callouts (2), progress-bars (2), loaders (1), icons (2)
     - Jitter: text effects (glide, morph, sliding reveal), icons (rotate-scale)
-  - ✅ Catalogs: `catalog.json` (LottieFiles), `jitter-catalog.json` (Jitter)
+    - Lottieflow: menu-nav (5), arrows (5), checkboxes (3), loaders (5), play (3), scroll-down (3), success (3), attention (3)
+  - ✅ Catalogs: `catalog.json`, `jitter-catalog.json`, `lottieflow-catalog.json`
   - ✅ Template Schema System: `src/nolan/lottie.py`
     - `analyze_lottie()` - Discover customizable fields (text, colors, timing)
     - `generate_schema()` / `save_schema()` - Create `.schema.json` files
