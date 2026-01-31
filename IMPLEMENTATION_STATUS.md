@@ -99,6 +99,67 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 - **Dominant-Match Fast Path** - Skips LLM when top similarity is clearly ahead.
 - **Deterministic Tie-Breaking** - Pre-LLM ranking uses similarity, transcript presence, and duration fit.
 - **LLM Selection Cache** - Per-run cache for scene+candidates avoids repeated LLM calls.
+
+## Codebase Refactoring (2026-01-31)
+
+### File Organization
+- **Scratch Directory** - All temporary/test outputs use `.scratch/` directory
+  - Updated 5 CLI commands with problematic default paths
+  - Added `.scratch/` to `.gitignore`
+  - Prevents test files scattering in project root
+
+### Models Package
+- **Centralized Data Models** - Extracted dataclasses to `nolan/models/` package
+  - `InferredContext` - Visual + audio analysis results
+  - `VideoSegment` - Indexed video segment data
+  - `SceneCluster` - Grouped segments representing story moments
+- **Backwards Compatibility** - Re-exports in original modules maintain API stability
+- **Type Hints** - Using `TYPE_CHECKING` imports to avoid circular dependencies
+
+### CLI Package
+- **Hybrid Approach** - Created `nolan/cli/` package with backwards-compatible entry point
+  - `cli_legacy.py` - Original CLI preserved (4,478 lines)
+  - `cli/__init__.py` - Entry point re-exports from legacy
+  - `cli/utils.py` - Shared utilities for future command modules
+
+### Downloaders Package
+- **Shared Utilities** - Created `nolan/downloaders/` package with common code
+  - `sanitize_filename()` - Safe filename generation
+  - `extract_lottie_metadata()` - Parse Lottie JSON metadata
+  - `save_lottie_json()` - Save with minification
+  - `RateLimiter` - Request rate limiting for APIs
+  - `CatalogBuilder` - Generate catalog JSON files
+- **Base Models** - Shared template dataclasses
+  - `BaseLottieTemplate` - Common fields for all sources
+  - `JitterTemplate`, `LottieflowTemplate`, `LottieFilesMetadata` - Source-specific
+- **Updated Downloaders** - Jitter, LottieFiles, Lottieflow use shared utilities
+- **New Tests** - 20 tests for shared downloader utilities
+
+### HTTP Client Module
+- **Shared HTTP Utilities** - Created `nolan/http_client.py` for consolidated HTTP access
+  - `get_async_client()` - Pre-configured async httpx client
+  - `get_sync_client()` - Pre-configured sync httpx client
+  - `fetch_json_async()` / `fetch_json_sync()` - JSON fetch helpers
+  - `download_file_async()` / `download_file_sync()` - File download helpers
+  - `ServiceClient` - Base class for service-specific API clients
+  - Default timeouts (30s read, 10s connect)
+  - Default User-Agent header
+  - Connection pooling support
+- **New Tests** - 23 tests for HTTP client utilities
+
+### New Test Coverage
+- **test_aligner.py** - 23 tests for audio-scene alignment
+  - Text normalization (unicode, punctuation, whitespace)
+  - Word stream search (exact, fuzzy, case-insensitive)
+  - Scene alignment algorithms
+- **test_image_search.py** - 18 tests for image search
+  - ImageSearchResult dataclass and scoring
+  - ImageProvider base class
+  - DDGSProvider implementation
+- **test_clip_matcher.py** - 18 tests for clip matching
+  - ClipCandidate and MatchResult dataclasses
+  - Deduplication logic
+  - Cache key generation
   - Project-level filtering support
 - **BGE Embeddings** - BAAI/bge-base-en-v1.5 model (768 dimensions)
   - Query-document asymmetry support for better retrieval
@@ -482,6 +543,47 @@ NOLAN/
 
 ## Next Steps (Backlog)
 
+### Autonomous Quality System (Priority)
+
+See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-autonomous-quality-system.md) for full design.
+
+**Goal:** Enable NOLAN to produce high-quality video clips autonomously with minimal human intervention.
+
+**Four-Layer Approach:**
+1. **Scope to Strengths** - Route visual types to appropriate pipelines (templates vs. generation)
+2. **Template Library** - Expand Lottie/Motion Canvas templates for automatable content
+3. **Video Generation** - Integrate LTX-Video/Runway for b-roll and cinematic content
+4. **Quality Evaluation** - Vision-based scoring with retry loops and human fallback
+
+**Phase 1 (Template System): COMPLETE**
+- [x] Unified template catalog (`TemplateCatalog` class)
+- [x] Semantic tagging (240+ auto-generated tags)
+- [x] CLI commands (`nolan templates list/search/info/semantic-search/match-scene`)
+- [x] Semantic template discovery (ChromaDB + BGE embeddings)
+- [x] Scene-to-template matching (`find_templates_for_scene()`)
+- [x] Visual type router (`VisualRouter` class in `visual_router.py`)
+- [x] CLI: `nolan route-scenes` - show routing decisions
+- [x] CLI: `nolan render-templates` - render templates to video clips
+- [ ] Template library expansion (200+ templates - currently 52)
+- [ ] Template schema completion for all templates (13/52 have schemas)
+
+**Phase 2 (Quality Evaluation):**
+- [ ] Quality scoring prompts (semantic fit, visual quality, style consistency)
+- [ ] Quality gate integration after asset generation
+- [ ] Per-video style guide system
+
+**Phase 3 (Video Generation):**
+- [ ] LTX-Video integration (self-hostable)
+- [ ] Runway API integration (commercial)
+- [ ] Video generation router with cost management
+
+**Phase 4 (Human Review):**
+- [ ] Review queue with priority scoring
+- [ ] Review web UI for flagged scenes
+- [ ] Notification system for pending reviews
+
+---
+
 - **Database-Backed Asset Management** - SQLite storage for large asset libraries (100+ assets)
   - Search by name, tags, category
   - Asset versioning and thumbnails
@@ -546,6 +648,32 @@ NOLAN/
 
 ## Recently Completed
 
+- ✅ **Video Generation Integration** - Dual-backend video generation for autonomous content creation
+  - `VideoGenerator` abstract base class with unified interface
+  - `ComfyUIVideoGenerator` for local video models (LTX-Video, Wan, HunyuanVideo, CogVideoX, AnimateDiff)
+  - `RunwayGenerator` for commercial API (Gen-3 Alpha Turbo, Gen-3 Alpha)
+  - Auto-detection of prompt nodes in ComfyUI workflows
+  - Scene-to-video generation with optimized prompts: `generate_video_for_scene()`
+  - CLI: `nolan video-gen check/generate/scene/batch`
+  - Cost tracking for commercial API usage
+  - Part of Autonomous Quality System Phase A-2
+- ✅ **Visual Router** - Intelligent scene-to-pipeline routing for asset generation
+  - `VisualRouter` class routes scenes to appropriate pipelines
+  - Route types: template, library, generation, infographic, passthrough
+  - Template types: lower-third, text-overlay, title, counter, icon, loading, lottie, ui
+  - Library types: b-roll, a-roll, footage, cinematic
+  - Generation types: generated, generated-image
+  - Template matching with score threshold (default 0.5)
+  - CLI: `nolan route-scenes`, `nolan render-templates`
+  - Part of Autonomous Quality System Phase A-3
+- ✅ **Template Catalog System** - Unified Lottie template management for autonomous video generation
+  - `TemplateCatalog` class merges LottieFiles, Jitter, Lottieflow sources
+  - 53 templates across 17 categories with auto-tagging (240+ tags)
+  - `TemplateSearch` with ChromaDB vector embeddings for semantic search
+  - Scene-to-template matching: `find_templates_for_scene()`, `match_scene_to_template()`
+  - CLI: `nolan templates list/info/search/semantic-search/match-scene/index/auto-tag`
+  - Visual type routing maps scene types to template categories
+  - Part of Autonomous Quality System Phase A-1
 - ✅ **Video Library Clip Matching** - `nolan match-clips` command for matching scenes to library clips
   - Semantic search using ChromaDB vector database finds relevant clips
   - LLM selection picks best candidate considering visual relevance, narrative fit, and duration

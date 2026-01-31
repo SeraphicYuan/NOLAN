@@ -20,6 +20,12 @@ from typing import Optional
 
 import httpx
 
+from nolan.downloaders.utils import (
+    sanitize_filename,
+    extract_lottie_metadata,
+    save_lottie_json,
+)
+
 try:
     from playwright.async_api import async_playwright, Browser, BrowserContext
     PLAYWRIGHT_AVAILABLE = True
@@ -329,17 +335,11 @@ class LottieflowDownloader:
                 filename = self._sanitize_filename(original_name)
                 save_path = category_dir / f"{filename}.json"
 
-                # Extract metadata
-                width = lottie_data.get("w", 0)
-                height = lottie_data.get("h", 0)
-                fps = lottie_data.get("fr", 0)
-                ip = lottie_data.get("ip", 0)
-                op = lottie_data.get("op", 0)
-                duration = round((op - ip) / fps, 2) if fps > 0 else 0
+                # Extract metadata using shared utility
+                meta = extract_lottie_metadata(lottie_data)
 
-                # Save file
-                with open(save_path, "w", encoding="utf-8") as f:
-                    json.dump(lottie_data, f, separators=(",", ":"))
+                # Save file using shared utility
+                file_size = save_lottie_json(lottie_data, save_path)
 
                 template = LottieflowTemplate(
                     id=filename,
@@ -347,16 +347,16 @@ class LottieflowDownloader:
                     category=category,
                     page_url=f"{self.BASE_URL}/category/{category}",
                     cdn_url=cdn_url,
-                    width=width,
-                    height=height,
-                    fps=fps,
-                    duration_seconds=duration,
-                    file_size_bytes=save_path.stat().st_size,
+                    width=meta["width"],
+                    height=meta["height"],
+                    fps=meta["fps"],
+                    duration_seconds=meta["duration_seconds"],
+                    file_size_bytes=file_size,
                     local_path=str(save_path.relative_to(self.output_dir)),
                     downloaded_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 )
                 templates.append(template)
-                print(f"  [{i+1}/{min(len(content_lotties), limit)}] {template.name} ({template.file_size_bytes} bytes, {duration}s)")
+                print(f"  [{i+1}/{min(len(content_lotties), limit)}] {template.name} ({file_size} bytes, {meta['duration_seconds']}s)")
 
         except Exception as e:
             print(f"Error: {e}")
@@ -386,10 +386,7 @@ class LottieflowDownloader:
 
     def _sanitize_filename(self, name: str) -> str:
         """Convert template name to safe filename."""
-        name = re.sub(r'[<>:"/\\|?*]', '', name)
-        name = re.sub(r'\s+', '-', name.strip())
-        name = re.sub(r'-+', '-', name)
-        return name.lower()[:50]
+        return sanitize_filename(name)
 
     def create_catalog(self, templates: list[LottieflowTemplate]) -> dict:
         """

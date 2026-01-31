@@ -22,6 +22,8 @@ from typing import Optional
 from urllib.parse import urlparse, quote_plus
 import requests
 
+from nolan.downloaders.utils import RateLimiter, sanitize_filename
+
 
 @dataclass
 class LottieMetadata:
@@ -48,23 +50,6 @@ class LottieMetadata:
     has_expressions: bool = False
     has_images: bool = False
     local_path: str = ""
-
-
-class RateLimiter:
-    """Simple rate limiter to avoid getting blocked."""
-
-    def __init__(self, requests_per_minute: int = 20):
-        self.min_interval = 60.0 / requests_per_minute
-        self.last_request = 0
-
-    def wait(self):
-        """Wait if necessary to respect rate limit."""
-        now = time.time()
-        elapsed = now - self.last_request
-        if elapsed < self.min_interval:
-            sleep_time = self.min_interval - elapsed
-            time.sleep(sleep_time)
-        self.last_request = time.time()
 
 
 class LottieFilesDownloader:
@@ -560,9 +545,8 @@ class LottieFilesDownloader:
         if filename:
             safe_name = filename
         else:
-            # Create safe filename from title
-            safe_name = re.sub(r'[^\w\s-]', '', meta.title.lower())
-            safe_name = re.sub(r'[\s]+', '-', safe_name).strip('-')
+            # Create safe filename from title using shared utility
+            safe_name = sanitize_filename(meta.title)
             if not safe_name:
                 safe_name = meta.id or f"animation-{int(time.time())}"
 

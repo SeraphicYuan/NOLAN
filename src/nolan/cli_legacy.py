@@ -754,9 +754,11 @@ def _export_all_videos(index, output_path):
 
         output['videos'].append(video_data)
 
-    # Determine output path
+    # Determine output path - default to .scratch/ to avoid root clutter
     if output_path is None:
-        output_path = 'library_export.json'
+        scratch_dir = Path('.scratch')
+        scratch_dir.mkdir(exist_ok=True)
+        output_path = scratch_dir / 'library_export.json'
     output_path = Path(output_path)
 
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -1012,9 +1014,11 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
         }
         output['videos'].append(video_data)
 
-    # Save
+    # Save - default to .scratch/ to avoid root clutter
     if output_path is None:
-        output_path = 'library_clusters.json'
+        scratch_dir = Path('.scratch')
+        scratch_dir.mkdir(exist_ok=True)
+        output_path = scratch_dir / 'library_clusters.json'
     output_path = Path(output_path)
 
     with open(output_path, 'w', encoding='utf-8') as f:
@@ -1162,8 +1166,8 @@ async def _generate_images(config, project_path, scene_id, workflow_path=None, p
 
 @main.command('generate-test')
 @click.argument('prompt')
-@click.option('--output', '-o', type=click.Path(), default='./test_output.png',
-              help='Output path for generated image.')
+@click.option('--output', '-o', type=click.Path(), default='.scratch/test_output.png',
+              help='Output path for generated image (default: .scratch/test_output.png).')
 @click.option('--workflow', '-w', type=click.Path(exists=True),
               help='Custom ComfyUI workflow JSON file.')
 @click.option('--prompt-node', '-n', type=str, default=None,
@@ -1189,6 +1193,7 @@ def generate_test(ctx, prompt, output, workflow, prompt_node, overrides):
     """
     config = ctx.obj['config']
     output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
     workflow_path = Path(workflow) if workflow else None
 
     if workflow_path:
@@ -1509,8 +1514,8 @@ async def _render_infographics(project, host, port, engine_mode, force):
 @click.argument('query')
 @click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'all']),
               default='ddgs', help='Image source to search.')
-@click.option('--output', '-o', type=click.Path(), default='./image_search_results.json',
-              help='Output JSON file for results.')
+@click.option('--output', '-o', type=click.Path(), default='.scratch/image_search_results.json',
+              help='Output JSON file for results (default: .scratch/image_search_results.json).')
 @click.option('--max-results', '-n', type=int, default=10,
               help='Maximum number of results per source.')
 @click.option('--score/--no-score', default=False,
@@ -2710,8 +2715,8 @@ def assemble(ctx, scene_plan, audio_file, output, resolution, fps, transition, t
 
 @main.command('yt-download')
 @click.argument('url_or_file')
-@click.option('--output', '-o', type=click.Path(), default='./downloads',
-              help='Output directory for downloaded videos.')
+@click.option('--output', '-o', type=click.Path(), default='.scratch/downloads',
+              help='Output directory for downloaded videos (default: .scratch/downloads).')
 @click.option('--format', '-f', 'video_format', default='bestvideo[height<=720]+bestaudio/best[height<=720]',
               help='yt-dlp format string.')
 @click.option('--subtitles/--no-subtitles', default=True,
@@ -3474,6 +3479,999 @@ def hub(ctx, projects, host, port):
         projects_dir=projects_dir,
     )
     uvicorn.run(app, host=host, port=port)
+
+
+# ==================== Template Catalog Commands ====================
+
+@main.group()
+def templates():
+    """Manage Lottie animation templates.
+
+    Browse, search, and render templates from the unified catalog.
+    """
+    pass
+
+
+@templates.command('list')
+@click.option('--category', '-c', type=str, default=None,
+              help='Filter by category.')
+@click.option('--source', '-s', type=str, default=None,
+              help='Filter by source (lottiefiles, jitter, lottieflow).')
+@click.option('--with-schema', is_flag=True,
+              help='Only show templates with schemas.')
+def templates_list(category, source, with_schema):
+    """List all available templates.
+
+    Examples:
+
+      nolan templates list
+
+      nolan templates list --category lower-thirds
+
+      nolan templates list --source jitter --with-schema
+    """
+    from nolan.template_catalog import TemplateCatalog
+
+    catalog = TemplateCatalog()
+    catalog.load_tags()
+
+    if with_schema:
+        items = catalog.list_with_schema()
+    elif category:
+        items = catalog.list_by_category(category)
+    elif source:
+        items = catalog.list_by_source(source)
+    else:
+        items = catalog.list_all()
+
+    if not items:
+        click.echo("No templates found.")
+        return
+
+    click.echo(f"{'ID':<40} {'CATEGORY':<20} {'SCHEMA':<6} {'TAGS'}")
+    click.echo("-" * 90)
+    for t in sorted(items, key=lambda x: (x.category, x.name)):
+        schema = "Yes" if t.has_schema else "-"
+        tags = ", ".join(t.tags[:3]) + ("..." if len(t.tags) > 3 else "")
+        click.echo(f"{t.id[:38]:<40} {t.category[:18]:<20} {schema:<6} {tags}")
+
+    click.echo(f"\nTotal: {len(items)} templates")
+
+
+@templates.command('info')
+@click.argument('template_id')
+def templates_info(template_id):
+    """Show detailed template information.
+
+    TEMPLATE_ID is the template ID or local path.
+
+    Examples:
+
+      nolan templates info number-counter-ssLbxKeW8Z
+
+      nolan templates info lower-thirds/simple.json
+    """
+    from nolan.template_catalog import TemplateCatalog
+
+    catalog = TemplateCatalog()
+    catalog.load_tags()
+
+    template = catalog.get(template_id) or catalog.get_by_path(template_id)
+
+    if not template:
+        click.echo(f"Template not found: {template_id}")
+        return
+
+    click.echo(f"Name:     {template.name}")
+    click.echo(f"ID:       {template.id}")
+    click.echo(f"Category: {template.category}")
+    click.echo(f"Source:   {template.source}")
+    click.echo(f"Path:     {template.local_path}")
+    click.echo(f"Size:     {template.width}x{template.height}")
+    click.echo(f"Duration: {template.duration_seconds}s @ {template.fps} fps")
+    click.echo(f"Tags:     {', '.join(template.tags) if template.tags else '(none)'}")
+
+    if template.has_schema:
+        click.echo(f"\nSchema fields: {', '.join(template.schema_fields)}")
+    else:
+        click.echo("\nNo schema (use 'nolan templates generate-schema' to create one)")
+
+    if template.color_palette:
+        click.echo(f"Colors:   {', '.join(template.color_palette)}")
+
+
+@templates.command('search')
+@click.argument('query')
+@click.option('--all', 'match_all', is_flag=True,
+              help='Match all tags (default: match any).')
+def templates_search(query, match_all):
+    """Search templates by tags.
+
+    QUERY is a comma-separated list of tags to search for.
+
+    Examples:
+
+      nolan templates search counter
+
+      nolan templates search "loading,spinner"
+
+      nolan templates search "icon,success" --all
+    """
+    from nolan.template_catalog import TemplateCatalog
+
+    catalog = TemplateCatalog()
+    catalog.load_tags()
+
+    tags = [t.strip() for t in query.split(",")]
+    results = catalog.search_by_tags(tags, match_all=match_all)
+
+    if not results:
+        click.echo(f"No templates found matching: {', '.join(tags)}")
+        return
+
+    click.echo(f"{'ID':<40} {'CATEGORY':<20} {'TAGS'}")
+    click.echo("-" * 80)
+    for t in results:
+        tags_str = ", ".join(t.tags[:4])
+        click.echo(f"{t.id[:38]:<40} {t.category[:18]:<20} {tags_str}")
+
+    click.echo(f"\nFound: {len(results)} templates")
+
+
+@templates.command('categories')
+def templates_categories():
+    """List all template categories."""
+    from nolan.template_catalog import TemplateCatalog
+
+    catalog = TemplateCatalog()
+
+    summary = catalog.summary()
+
+    click.echo("Template Categories:\n")
+    for cat, count in sorted(summary['by_category'].items()):
+        click.echo(f"  {cat:<25} {count} templates")
+
+    click.echo(f"\nTotal: {summary['total']} templates across {len(summary['by_category'])} categories")
+
+
+@templates.command('auto-tag')
+def templates_auto_tag():
+    """Auto-generate tags for all templates.
+
+    Tags are generated based on category and name patterns.
+    """
+    from nolan.template_catalog import TemplateCatalog
+
+    catalog = TemplateCatalog()
+    catalog.load_tags()  # Load existing first
+
+    tags_added = catalog.auto_tag_all()
+    path = catalog.save_tags()
+
+    click.echo(f"Added {tags_added} new tags")
+    click.echo(f"Saved to: {path}")
+
+
+@templates.command('summary')
+def templates_summary():
+    """Show template catalog summary."""
+    from nolan.template_catalog import TemplateCatalog
+
+    catalog = TemplateCatalog()
+    catalog.load_tags()
+
+    summary = catalog.summary()
+
+    click.echo("=== Template Catalog Summary ===\n")
+    click.echo(f"Total templates: {summary['total']}")
+    click.echo(f"With schemas:    {summary['with_schema']}")
+    click.echo()
+    click.echo("By source:")
+    for src, count in sorted(summary['by_source'].items()):
+        click.echo(f"  {src:<15} {count}")
+    click.echo()
+    click.echo(f"Categories: {len(summary['by_category'])}")
+
+
+@templates.command('index')
+@click.option('--force', is_flag=True, help='Reindex all templates.')
+def templates_index(force):
+    """Index templates for semantic search.
+
+    Creates vector embeddings for natural language search.
+    """
+    from nolan.template_catalog import TemplateCatalog, TemplateSearch
+
+    catalog = TemplateCatalog()
+    catalog.load_tags()
+    catalog.auto_tag_all()  # Ensure tags are present
+
+    search = TemplateSearch(catalog)
+
+    click.echo("Indexing templates for semantic search...")
+    indexed = search.index_templates(force=force)
+    click.echo(f"Indexed {indexed} templates")
+
+
+@templates.command('semantic-search')
+@click.argument('query')
+@click.option('-n', '--top', type=int, default=5, help='Number of results.')
+@click.option('--category', '-c', type=str, default=None, help='Filter by category.')
+@click.option('--with-schema', is_flag=True, help='Only templates with schemas.')
+def templates_semantic_search(query, top, category, with_schema):
+    """Search templates using natural language.
+
+    QUERY is a natural language description of what you're looking for.
+
+    Examples:
+
+      nolan templates semantic-search "loading spinner animation"
+
+      nolan templates semantic-search "show name at bottom" --with-schema
+
+      nolan templates semantic-search "counting numbers" -n 10
+    """
+    from nolan.template_catalog import TemplateCatalog, TemplateSearch
+
+    catalog = TemplateCatalog()
+    catalog.load_tags()
+
+    search = TemplateSearch(catalog)
+
+    # Check if indexed
+    try:
+        results = search.search(query, top_k=top, category=category, with_schema_only=with_schema)
+    except Exception as e:
+        click.echo(f"Search failed: {e}")
+        click.echo("Try running: nolan templates index")
+        return
+
+    if not results:
+        click.echo("No results found. Try running: nolan templates index")
+        return
+
+    click.echo(f"{'SCORE':<8} {'ID':<35} {'CATEGORY':<20}")
+    click.echo("-" * 70)
+    for r in results:
+        score_pct = f"{r.score * 100:.1f}%"
+        click.echo(f"{score_pct:<8} {r.template.id[:33]:<35} {r.template.category[:18]:<20}")
+
+    click.echo(f"\nFound: {len(results)} results")
+
+
+@templates.command('match-scene')
+@click.argument('visual_type')
+@click.argument('description')
+@click.option('-n', '--top', type=int, default=5, help='Number of results.')
+@click.option('--with-schema', is_flag=True, help='Only templates with schemas.')
+def templates_match_scene(visual_type, description, top, with_schema):
+    """Find templates matching a scene specification.
+
+    VISUAL_TYPE is the scene's visual type (lower-third, counter, title, etc.)
+    DESCRIPTION is the visual description of what's needed.
+
+    Examples:
+
+      nolan templates match-scene lower-third "show speaker name"
+
+      nolan templates match-scene counter "animated number statistic" --with-schema
+
+      nolan templates match-scene title "chapter heading reveal"
+    """
+    from dataclasses import dataclass
+    from nolan.template_catalog import (
+        TemplateCatalog, TemplateSearch, find_templates_for_scene
+    )
+
+    @dataclass
+    class MockScene:
+        visual_type: str
+        visual_description: str
+        narration_excerpt: str = ''
+
+    catalog = TemplateCatalog()
+    catalog.load_tags()
+
+    search = TemplateSearch(catalog)
+
+    scene = MockScene(visual_type=visual_type, visual_description=description)
+    results = find_templates_for_scene(
+        scene, catalog, search, top_k=top, require_schema=with_schema
+    )
+
+    if not results:
+        click.echo("No matching templates found.")
+        return
+
+    click.echo(f"{'SCORE':<8} {'NAME':<30} {'CATEGORY':<20} {'SCHEMA'}")
+    click.echo("-" * 75)
+    for r in results:
+        score_pct = f"{r.score * 100:.1f}%"
+        schema = "Yes" if r.template.has_schema else "-"
+        click.echo(f"{score_pct:<8} {r.template.name[:28]:<30} {r.template.category[:18]:<20} {schema}")
+
+    click.echo(f"\nTop match: {results[0].template.local_path}")
+
+
+# ==================== Visual Router Commands ====================
+
+@main.command('route-scenes')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.option('--threshold', '-t', type=float, default=0.5,
+              help='Template match threshold (0-1).')
+def route_scenes(scene_plan, threshold):
+    """Show routing decisions for each scene.
+
+    SCENE_PLAN is the path to scene_plan.json.
+
+    Displays which pipeline (template, library, generation, infographic)
+    each scene will use based on its visual_type.
+
+    Examples:
+
+      nolan route-scenes scene_plan.json
+
+      nolan route-scenes scene_plan.json --threshold 0.6
+    """
+    from pathlib import Path
+    from nolan.scenes import ScenePlan
+    from nolan.visual_router import VisualRouter
+
+    plan = ScenePlan.load(scene_plan)
+    router = VisualRouter(template_score_threshold=threshold)
+
+    click.echo(f"{'SCENE':<25} {'TYPE':<15} {'ROUTE':<12} {'TEMPLATE/REASON'}")
+    click.echo("-" * 80)
+
+    all_scenes = []
+    for section_name, scenes in plan.sections.items():
+        for scene in scenes:
+            all_scenes.append(scene)
+            decision = router.route(scene)
+
+            template_info = decision.reason[:25]
+            if decision.template:
+                template_info = f"{decision.template.name} ({decision.template_score:.0%})"
+
+            scene_id = f"{section_name[:8]}:{scene.id[:14]}"
+            click.echo(f"{scene_id:<25} {scene.visual_type:<15} {decision.route:<12} {template_info}")
+
+    # Summary
+    decisions = router.route_all(all_scenes)
+    summary = router.summary(decisions)
+
+    click.echo(f"\nTotal: {summary['total']} scenes")
+    click.echo("By route:")
+    for route, count in sorted(summary['by_route'].items()):
+        click.echo(f"  {route:<12} {count}")
+
+
+@main.command('render-templates')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.option('--force', is_flag=True, help='Re-render even if asset exists.')
+@click.option('--threshold', '-t', type=float, default=0.5,
+              help='Template match threshold (0-1).')
+@click.option('--dry-run', is_flag=True, help='Show what would be rendered.')
+def render_templates(scene_plan, force, threshold, dry_run):
+    """Render Lottie templates to video clips for matching scenes.
+
+    SCENE_PLAN is the path to scene_plan.json.
+
+    For each scene that routes to 'template':
+    1. Find matching Lottie template
+    2. Customize template with scene data
+    3. Render to MP4 via render-service
+    4. Update scene_plan.json with rendered_clip path
+
+    Examples:
+
+      nolan render-templates scene_plan.json
+
+      nolan render-templates scene_plan.json --dry-run
+
+      nolan render-templates scene_plan.json --force --threshold 0.6
+    """
+    from pathlib import Path
+    import json
+    import httpx
+
+    from nolan.scenes import ScenePlan
+    from nolan.visual_router import VisualRouter
+    from nolan.lottie import customize_lottie, load_schema
+
+    scene_plan_path = Path(scene_plan)
+    plan = ScenePlan.load(str(scene_plan_path))
+    router = VisualRouter(template_score_threshold=threshold)
+
+    # Find scenes to render
+    to_render = []
+    for section_name, scenes in plan.sections.items():
+        for scene in scenes:
+            # Skip if already has asset and not forcing
+            if not force and (scene.rendered_clip or scene.lottie_asset):
+                continue
+
+            decision = router.route(scene)
+            if decision.route == "template" and decision.template:
+                duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
+                to_render.append((section_name, scene, decision, duration))
+
+    if not to_render:
+        click.echo("No template scenes to render.")
+        return
+
+    click.echo(f"Template scenes to render: {len(to_render)}")
+
+    if dry_run:
+        click.echo("\nDry run - would render:")
+        for section, scene, decision, duration in to_render:
+            click.echo(f"  {scene.id}: {decision.template.name} ({duration:.1f}s)")
+        return
+
+    # Output directories
+    lottie_dir = scene_plan_path.parent / 'assets' / 'lottie'
+    clips_dir = scene_plan_path.parent / 'assets' / 'clips'
+    lottie_dir.mkdir(parents=True, exist_ok=True)
+    clips_dir.mkdir(parents=True, exist_ok=True)
+
+    # Get render service config
+    try:
+        from nolan.config import load_config
+        config = load_config()
+        render_host = getattr(config.render_service, 'host', '127.0.0.1') if hasattr(config, 'render_service') else '127.0.0.1'
+        render_port = getattr(config.render_service, 'port', 3010) if hasattr(config, 'render_service') else 3010
+    except Exception:
+        render_host = '127.0.0.1'
+        render_port = 3010
+
+    base_url = f"http://{render_host}:{render_port}"
+    click.echo(f"Render service: {base_url}")
+
+    rendered = 0
+    failed = 0
+    modified = False
+
+    for i, (section_name, scene, decision, duration) in enumerate(to_render):
+        template = decision.template
+        click.echo(f"\n[{i+1}/{len(to_render)}] {scene.id}: {template.name}")
+
+        try:
+            # Get template path
+            template_path = router.catalog.get_full_path(template)
+            if not template_path.exists():
+                click.echo(f"  Template not found: {template_path}")
+                failed += 1
+                continue
+
+            # Check for schema
+            schema = load_schema(template_path)
+
+            # Customize template
+            output_lottie = lottie_dir / f"{scene.id}.json"
+
+            # Build customization from scene data
+            customizations = {}
+            if schema and schema.get("fields"):
+                fields = schema["fields"]
+
+                # Try to map narration/description to text fields
+                text_fields = [k for k, v in fields.items() if v.get("type") == "text"]
+                if text_fields and scene.narration_excerpt:
+                    # Use first text field for narration excerpt
+                    customizations[text_fields[0]] = scene.narration_excerpt[:50]
+
+            if scene.lottie_config:
+                # Merge explicit config
+                if "text" in scene.lottie_config:
+                    customizations.update(scene.lottie_config["text"])
+
+            # Apply customizations if any
+            if customizations and schema:
+                from nolan.lottie import render_template
+                try:
+                    render_template(template_path, output_lottie, **customizations)
+                    click.echo(f"  Customized: {output_lottie.name}")
+                except Exception as e:
+                    # Fall back to copying template
+                    import shutil
+                    shutil.copy(template_path, output_lottie)
+                    click.echo(f"  Copied (customization failed): {e}")
+            else:
+                # Just copy the template
+                import shutil
+                shutil.copy(template_path, output_lottie)
+                click.echo(f"  Copied: {output_lottie.name}")
+
+            # Update scene with lottie_asset
+            scene.lottie_asset = str(output_lottie.relative_to(scene_plan_path.parent))
+            scene.lottie_template = template.local_path
+            modified = True
+
+            # Render to video via render-service
+            output_clip = clips_dir / f"{scene.id}.mp4"
+
+            with httpx.Client(timeout=120.0) as client:
+                # Check if render service is available
+                try:
+                    health = client.get(f"{base_url}/health")
+                    if health.status_code != 200:
+                        click.echo(f"  Render service not available")
+                        continue
+                except Exception:
+                    click.echo(f"  Render service not reachable at {base_url}")
+                    continue
+
+                # Submit Lottie render job
+                response = client.post(
+                    f"{base_url}/render",
+                    json={
+                        "engine": "remotion",
+                        "output_format": "mp4",
+                        "spec": {
+                            "type": "lottie",
+                            "lottie_path": str(output_lottie),
+                            "duration": duration,
+                            "width": 1920,
+                            "height": 1080,
+                            "fps": 30,
+                        }
+                    },
+                    timeout=120.0
+                )
+
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("output_path"):
+                        # Copy rendered file
+                        import shutil
+                        rendered_path = Path(result["output_path"])
+                        if rendered_path.exists():
+                            shutil.copy(rendered_path, output_clip)
+                            scene.rendered_clip = str(output_clip.relative_to(scene_plan_path.parent))
+                            click.echo(f"  Rendered: {output_clip.name}")
+                            rendered += 1
+                        else:
+                            click.echo(f"  Render output not found: {rendered_path}")
+                            failed += 1
+                    else:
+                        click.echo(f"  Render job submitted (check status)")
+                        rendered += 1
+                else:
+                    click.echo(f"  Render failed: {response.status_code}")
+                    failed += 1
+
+        except Exception as e:
+            click.echo(f"  Error: {e}")
+            failed += 1
+
+    # Save updated scene plan
+    if modified:
+        plan.save(str(scene_plan_path))
+        click.echo(f"\nUpdated: {scene_plan_path}")
+
+    click.echo(f"\nRendered: {rendered}, Failed: {failed}")
+
+
+# ==================== Video Generation Commands ====================
+
+@main.group()
+def video_gen():
+    """Video generation with ComfyUI or Runway.
+
+    Generate video clips from text prompts using local models (ComfyUI)
+    or commercial APIs (Runway).
+    """
+    pass
+
+
+@video_gen.command('check')
+@click.option('--backend', '-b', type=click.Choice(['comfyui', 'runway', 'all']),
+              default='all', help='Backend to check.')
+@click.option('--host', type=str, default='127.0.0.1',
+              help='ComfyUI host.')
+@click.option('--port', type=int, default=8188,
+              help='ComfyUI port.')
+def video_gen_check(backend, host, port):
+    """Check video generation backend availability.
+
+    Examples:
+
+      nolan video-gen check
+
+      nolan video-gen check --backend comfyui
+
+      nolan video-gen check --backend runway
+    """
+    import os
+
+    if backend in ('comfyui', 'all'):
+        click.echo("ComfyUI:")
+        from nolan.video_gen import ComfyUIVideoGenerator, VideoGenerationConfig
+        try:
+            # Check if we can connect (need a workflow to instantiate)
+            import httpx
+            try:
+                response = httpx.get(f"http://{host}:{port}/system_stats", timeout=5.0)
+                if response.status_code == 200:
+                    stats = response.json()
+                    click.echo(f"  Status: Connected")
+                    click.echo(f"  URL: http://{host}:{port}")
+                    if 'system' in stats:
+                        click.echo(f"  GPU: {stats['system'].get('gpu', 'Unknown')}")
+                else:
+                    click.echo(f"  Status: Error (HTTP {response.status_code})")
+            except httpx.ConnectError:
+                click.echo(f"  Status: Not running")
+                click.echo(f"  URL: http://{host}:{port}")
+        except Exception as e:
+            click.echo(f"  Status: Error - {e}")
+
+    if backend in ('runway', 'all'):
+        click.echo("\nRunway:")
+        api_key = os.environ.get('RUNWAY_API_KEY')
+        if api_key:
+            click.echo(f"  API Key: {'*' * 8}...{api_key[-4:]}")
+            from nolan.video_gen import RunwayGenerator
+            try:
+                gen = RunwayGenerator(api_key=api_key)
+                connected = asyncio.run(gen.check_connection())
+                click.echo(f"  Status: {'Connected' if connected else 'Connection failed'}")
+            except Exception as e:
+                click.echo(f"  Status: Error - {e}")
+        else:
+            click.echo("  API Key: Not set (RUNWAY_API_KEY)")
+            click.echo("  Status: Not configured")
+
+
+@video_gen.command('generate')
+@click.argument('prompt')
+@click.option('--output', '-o', type=click.Path(), required=True,
+              help='Output video path.')
+@click.option('--backend', '-b', type=click.Choice(['comfyui', 'runway']),
+              default='comfyui', help='Backend to use.')
+@click.option('--workflow', '-w', type=click.Path(exists=True),
+              help='ComfyUI workflow file (required for ComfyUI).')
+@click.option('--duration', '-d', type=float, default=4.0,
+              help='Video duration in seconds.')
+@click.option('--width', type=int, default=1280,
+              help='Video width.')
+@click.option('--height', type=int, default=720,
+              help='Video height.')
+@click.option('--negative', type=str, default=None,
+              help='Negative prompt.')
+@click.option('--seed', type=int, default=None,
+              help='Random seed (None = random).')
+@click.option('--host', type=str, default='127.0.0.1',
+              help='ComfyUI host.')
+@click.option('--port', type=int, default=8188,
+              help='ComfyUI port.')
+@click.option('--timeout', type=float, default=600.0,
+              help='Generation timeout in seconds.')
+def video_gen_generate(prompt, output, backend, workflow, duration, width, height,
+                       negative, seed, host, port, timeout):
+    """Generate a video from a text prompt.
+
+    PROMPT is the text description of the video to generate.
+
+    Examples:
+
+      nolan video-gen generate "sunset over mountains" -o sunset.mp4 -w ltx-video.json
+
+      nolan video-gen generate "city streets at night" -o city.mp4 --backend runway
+
+      nolan video-gen generate "ocean waves" -o waves.mp4 -w wan-video.json -d 8
+    """
+    from pathlib import Path
+    from nolan.video_gen import (
+        ComfyUIVideoGenerator, RunwayGenerator,
+        VideoGenerationConfig, VideoGeneratorFactory
+    )
+
+    config = VideoGenerationConfig(
+        duration=duration,
+        width=width,
+        height=height,
+        negative_prompt=negative,
+        seed=seed,
+    )
+
+    output_path = Path(output)
+
+    click.echo(f"Backend: {backend}")
+    click.echo(f"Prompt: {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
+    click.echo(f"Output: {output_path}")
+    click.echo(f"Duration: {duration}s @ {width}x{height}")
+
+    async def run_generation():
+        if backend == 'comfyui':
+            if not workflow:
+                raise click.UsageError("--workflow is required for ComfyUI backend")
+            generator = ComfyUIVideoGenerator(
+                host=host,
+                port=port,
+                workflow_file=Path(workflow)
+            )
+        else:
+            import os
+            api_key = os.environ.get('RUNWAY_API_KEY')
+            if not api_key:
+                raise click.UsageError("RUNWAY_API_KEY environment variable required for Runway")
+            generator = RunwayGenerator(api_key=api_key)
+
+        click.echo(f"\nGenerating...")
+        result = await generator.generate(prompt, output_path, config, timeout)
+        return result
+
+    result = asyncio.run(run_generation())
+
+    if result.success:
+        click.echo(f"\nSuccess!")
+        click.echo(f"  Video: {result.video_path}")
+        click.echo(f"  Duration: {result.duration_seconds}s")
+        click.echo(f"  Generation time: {result.generation_time_seconds:.1f}s")
+        if result.cost_usd:
+            click.echo(f"  Cost: ${result.cost_usd:.2f}")
+    else:
+        click.echo(f"\nFailed: {result.error}")
+        raise SystemExit(1)
+
+
+@video_gen.command('scene')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.argument('scene_id')
+@click.option('--backend', '-b', type=click.Choice(['comfyui', 'runway']),
+              default='comfyui', help='Backend to use.')
+@click.option('--workflow', '-w', type=click.Path(exists=True),
+              help='ComfyUI workflow file.')
+@click.option('--style', type=str, default=None,
+              help='Style hint (e.g., "cinematic", "documentary").')
+@click.option('--host', type=str, default='127.0.0.1',
+              help='ComfyUI host.')
+@click.option('--port', type=int, default=8188,
+              help='ComfyUI port.')
+def video_gen_scene(scene_plan, scene_id, backend, workflow, style, host, port):
+    """Generate video for a specific scene.
+
+    Uses the scene's visual_description and narration to create a video.
+
+    SCENE_PLAN is the path to scene_plan.json.
+    SCENE_ID is the scene ID to generate video for.
+
+    Examples:
+
+      nolan video-gen scene scene_plan.json scene_001 -w ltx-video.json
+
+      nolan video-gen scene scene_plan.json scene_042 --backend runway --style cinematic
+    """
+    from pathlib import Path
+    from nolan.scenes import ScenePlan
+    from nolan.video_gen import (
+        ComfyUIVideoGenerator, RunwayGenerator,
+        VideoGenerationConfig, generate_video_for_scene
+    )
+
+    scene_plan_path = Path(scene_plan)
+    plan = ScenePlan.load(str(scene_plan_path))
+
+    # Find scene
+    scene = None
+    for section_name, scenes in plan.sections.items():
+        for s in scenes:
+            if s.id == scene_id:
+                scene = s
+                break
+        if scene:
+            break
+
+    if not scene:
+        click.echo(f"Scene not found: {scene_id}")
+        raise SystemExit(1)
+
+    click.echo(f"Scene: {scene.id}")
+    click.echo(f"Visual: {scene.visual_description[:60]}{'...' if len(scene.visual_description or '') > 60 else ''}")
+    click.echo(f"Narration: {scene.narration_excerpt[:60]}{'...' if len(scene.narration_excerpt or '') > 60 else ''}")
+
+    # Calculate duration
+    duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
+    click.echo(f"Duration: {duration:.1f}s")
+
+    # Output path
+    clips_dir = scene_plan_path.parent / 'assets' / 'generated'
+    clips_dir.mkdir(parents=True, exist_ok=True)
+    output_path = clips_dir / f"{scene_id}.mp4"
+
+    config = VideoGenerationConfig(
+        duration=duration,
+        width=1920,
+        height=1080,
+        style=style,
+    )
+
+    async def run_generation():
+        if backend == 'comfyui':
+            if not workflow:
+                raise click.UsageError("--workflow is required for ComfyUI backend")
+            generator = ComfyUIVideoGenerator(
+                host=host,
+                port=port,
+                workflow_file=Path(workflow)
+            )
+        else:
+            import os
+            api_key = os.environ.get('RUNWAY_API_KEY')
+            if not api_key:
+                raise click.UsageError("RUNWAY_API_KEY environment variable required")
+            generator = RunwayGenerator(api_key=api_key)
+
+        click.echo(f"\nGenerating with {backend}...")
+        return await generate_video_for_scene(
+            generator=generator,
+            visual_description=scene.visual_description or "",
+            narration_excerpt=scene.narration_excerpt or "",
+            output_path=output_path,
+            config=config,
+            style_hint=style
+        )
+
+    result = asyncio.run(run_generation())
+
+    if result.success:
+        click.echo(f"\nSuccess!")
+        click.echo(f"  Video: {result.video_path}")
+        click.echo(f"  Generation time: {result.generation_time_seconds:.1f}s")
+
+        # Update scene plan
+        scene.rendered_clip = str(output_path.relative_to(scene_plan_path.parent))
+        plan.save(str(scene_plan_path))
+        click.echo(f"  Updated: {scene_plan_path}")
+    else:
+        click.echo(f"\nFailed: {result.error}")
+        raise SystemExit(1)
+
+
+@video_gen.command('batch')
+@click.argument('scene_plan', type=click.Path(exists=True))
+@click.option('--backend', '-b', type=click.Choice(['comfyui', 'runway']),
+              default='comfyui', help='Backend to use.')
+@click.option('--workflow', '-w', type=click.Path(exists=True),
+              help='ComfyUI workflow file.')
+@click.option('--visual-types', type=str, default='generated,generated-image',
+              help='Comma-separated visual types to generate.')
+@click.option('--force', is_flag=True,
+              help='Regenerate even if rendered_clip exists.')
+@click.option('--limit', type=int, default=None,
+              help='Maximum scenes to generate.')
+@click.option('--dry-run', is_flag=True,
+              help='Show what would be generated without doing it.')
+@click.option('--host', type=str, default='127.0.0.1',
+              help='ComfyUI host.')
+@click.option('--port', type=int, default=8188,
+              help='ComfyUI port.')
+def video_gen_batch(scene_plan, backend, workflow, visual_types, force, limit, dry_run, host, port):
+    """Generate videos for multiple scenes.
+
+    Processes all scenes matching the specified visual types.
+
+    SCENE_PLAN is the path to scene_plan.json.
+
+    Examples:
+
+      nolan video-gen batch scene_plan.json -w ltx-video.json
+
+      nolan video-gen batch scene_plan.json --visual-types b-roll,cinematic --backend runway
+
+      nolan video-gen batch scene_plan.json -w ltx.json --dry-run
+    """
+    from pathlib import Path
+    from nolan.scenes import ScenePlan
+    from nolan.video_gen import (
+        ComfyUIVideoGenerator, RunwayGenerator,
+        VideoGenerationConfig, generate_video_for_scene
+    )
+
+    scene_plan_path = Path(scene_plan)
+    plan = ScenePlan.load(str(scene_plan_path))
+    target_types = set(t.strip() for t in visual_types.split(','))
+
+    # Find scenes to generate
+    to_generate = []
+    for section_name, scenes in plan.sections.items():
+        for scene in scenes:
+            if scene.visual_type not in target_types:
+                continue
+            if not force and scene.rendered_clip:
+                continue
+            to_generate.append((section_name, scene))
+
+    if limit:
+        to_generate = to_generate[:limit]
+
+    if not to_generate:
+        click.echo("No scenes to generate.")
+        return
+
+    click.echo(f"Scenes to generate: {len(to_generate)}")
+    click.echo(f"Backend: {backend}")
+    click.echo(f"Visual types: {', '.join(target_types)}")
+
+    if dry_run:
+        click.echo("\nDry run - would generate:")
+        for section, scene in to_generate:
+            duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
+            desc = (scene.visual_description or "")[:40]
+            click.echo(f"  {scene.id}: {scene.visual_type} - {desc}... ({duration:.1f}s)")
+        return
+
+    # Setup generator
+    async def run_batch():
+        if backend == 'comfyui':
+            if not workflow:
+                raise click.UsageError("--workflow is required for ComfyUI backend")
+            generator = ComfyUIVideoGenerator(
+                host=host,
+                port=port,
+                workflow_file=Path(workflow)
+            )
+        else:
+            import os
+            api_key = os.environ.get('RUNWAY_API_KEY')
+            if not api_key:
+                raise click.UsageError("RUNWAY_API_KEY environment variable required")
+            generator = RunwayGenerator(api_key=api_key)
+
+        # Check connection
+        connected = await generator.check_connection()
+        if not connected:
+            click.echo(f"Cannot connect to {backend} backend")
+            return 0, len(to_generate)
+
+        clips_dir = scene_plan_path.parent / 'assets' / 'generated'
+        clips_dir.mkdir(parents=True, exist_ok=True)
+
+        generated = 0
+        failed = 0
+        total_cost = 0.0
+
+        for i, (section_name, scene) in enumerate(to_generate):
+            click.echo(f"\n[{i+1}/{len(to_generate)}] {scene.id}")
+
+            duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
+            output_path = clips_dir / f"{scene.id}.mp4"
+
+            config = VideoGenerationConfig(
+                duration=duration,
+                width=1920,
+                height=1080,
+            )
+
+            result = await generate_video_for_scene(
+                generator=generator,
+                visual_description=scene.visual_description or "",
+                narration_excerpt=scene.narration_excerpt or "",
+                output_path=output_path,
+                config=config,
+            )
+
+            if result.success:
+                scene.rendered_clip = str(output_path.relative_to(scene_plan_path.parent))
+                generated += 1
+                click.echo(f"  Success: {result.video_path.name} ({result.generation_time_seconds:.1f}s)")
+                if result.cost_usd:
+                    total_cost += result.cost_usd
+            else:
+                failed += 1
+                click.echo(f"  Failed: {result.error}")
+
+        # Save updated plan
+        plan.save(str(scene_plan_path))
+        click.echo(f"\nUpdated: {scene_plan_path}")
+
+        return generated, failed, total_cost
+
+    generated, failed, total_cost = asyncio.run(run_batch())
+    click.echo(f"\nGenerated: {generated}, Failed: {failed}")
+    if total_cost > 0:
+        click.echo(f"Total cost: ${total_cost:.2f}")
 
 
 if __name__ == '__main__':

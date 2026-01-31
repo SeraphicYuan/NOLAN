@@ -13,6 +13,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from nolan.downloaders.utils import (
+    sanitize_filename,
+    extract_lottie_metadata,
+    save_lottie_json,
+    CatalogBuilder,
+)
+
 try:
     from playwright.async_api import async_playwright, Browser, Page, BrowserContext
     PLAYWRIGHT_AVAILABLE = True
@@ -283,27 +290,22 @@ class JitterDownloader:
                 print(f"    Invalid JSON content")
                 return None
 
-            # Extract metadata from Lottie
-            template.width = lottie_data.get("w", 800)
-            template.height = lottie_data.get("h", 600)
-            template.fps = lottie_data.get("fr", 60)
-            ip = lottie_data.get("ip", 0)
-            op = lottie_data.get("op", 0)
-            template.duration_seconds = round((op - ip) / template.fps, 2) if template.fps > 0 else 0
+            # Extract metadata from Lottie using shared utility
+            meta = extract_lottie_metadata(lottie_data)
+            template.width = meta["width"] or 800
+            template.height = meta["height"] or 600
+            template.fps = meta["fps"] or 60
+            template.duration_seconds = meta["duration_seconds"]
 
             # Determine save path
             filename = local_name or self._sanitize_filename(template.name)
             category_dir = self.output_dir / f"jitter-{template.category}"
-            category_dir.mkdir(parents=True, exist_ok=True)
-
             save_path = category_dir / f"{filename}.json"
 
-            # Save file
-            with open(save_path, "w", encoding="utf-8") as f:
-                json.dump(lottie_data, f, separators=(",", ":"))
+            # Save file using shared utility
+            template.file_size_bytes = save_lottie_json(lottie_data, save_path)
 
             template.local_path = str(save_path.relative_to(self.output_dir))
-            template.file_size_bytes = save_path.stat().st_size
             template.downloaded_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             print(f"    Saved: {template.local_path} ({template.file_size_bytes} bytes)")
@@ -347,11 +349,7 @@ class JitterDownloader:
 
     def _sanitize_filename(self, name: str) -> str:
         """Convert template name to safe filename."""
-        # Remove/replace invalid characters
-        name = re.sub(r'[<>:"/\\|?*]', '', name)
-        name = re.sub(r'\s+', '-', name.strip())
-        name = re.sub(r'-+', '-', name)
-        return name.lower()[:50]
+        return sanitize_filename(name)
 
     def create_catalog(self, templates: list[JitterTemplate]) -> dict:
         """
