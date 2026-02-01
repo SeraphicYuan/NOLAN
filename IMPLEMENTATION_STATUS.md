@@ -648,6 +648,71 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
 
 ## Recently Completed
 
+- ✅ **Animated Scene Renderer** - Codified animation system for generating animated video scenes
+  - **nolan.renderer package** - Complete animation rendering framework:
+    - `BaseRenderer` - Base class for all scene renderers with frame-by-frame rendering
+    - `Element` - Scene element (text, rectangle, image) with property animation
+    - `Timeline` - Global timing management for fade in/out sequences
+    - `Easing` - 15+ easing functions (ease_out_cubic, ease_in_out_cubic, ease_out_back, ease_out_bounce, etc.)
+  - **Composable Effects System**:
+    - `FadeIn` / `FadeOut` - Opacity animation with configurable timing
+    - `SlideUp` / `SlideDown` - Vertical position animation
+    - `ScaleIn` - Scale animation from specified starting scale
+    - `ExpandWidth` - Width expansion from center (for accent lines)
+    - `CountUp` - Animated number counting effect
+    - Effects are stackable: multiple effects can be applied to a single element
+  - **Position/Layout System** (`layout.py`):
+    - `Position` dataclass with percentage-based coordinates (0-1)
+    - 16 named presets: center, lower-third, upper-third, corners, split-screen
+    - All renderers accept `position` parameter for placement control
+    - Aligns with render-service layout system for consistency
+  - **Scene-Specific Renderers** (8 total):
+    - `QuoteRenderer` - Quote cards with fade+slide quote, expanding accent bar, fade attribution
+    - `TitleRenderer` - Title cards with zoom+fade title, expanding accent line, fade subtitle
+    - `StatisticRenderer` - Year/statistic reveals with scale+fade value, expanding side lines, fade label
+    - `ListRenderer` - Animated bullet lists with staggered item reveals
+    - `LowerThirdRenderer` - Speaker identification overlays with name/title
+    - `CounterRenderer` - Animated number counting (e.g., "300 BILLION BARRELS")
+    - `ComparisonRenderer` - Side-by-side VS comparisons (Maduro vs Guaidó)
+    - `TimelineRenderer` - Historical timelines with sequential date reveals
+    - `KenBurnsRenderer` - Zoom/pan effects on images (documentary staple)
+    - `FlashbackRenderer` - Vintage/sepia effects with vignette and grain
+  - **Preset Functions** - One-line rendering for common scene types:
+    - `documentary_quote()` - Dark background, red accent documentary style
+    - `documentary_title()` - Near-black background, white title, red accent
+    - `historical_year()` - Sepia tones, gold accents for historical content
+    - `big_number()` - Statistics with modern/danger/success styles
+    - `chapter_title()` - Chapter number and title combination
+  - **Style Presets** - `StylePresets` class with documentary, historical, modern_clean, danger, success color schemes
+  - **Frame-by-Frame Pipeline**:
+    - Uses PIL for reliable text rendering (avoids MoviePy TextClip font issues)
+    - Pre-renders all frames with eased properties
+    - Composes into video using MoviePy VideoClip
+    - Integrated with Quality Protocol for auto-validation
+  - **Location**: `src/nolan/renderer/` (base.py, easing.py, effects.py, layout.py, scenes/, presets.py)
+  - **Test script**: `scripts/test_all_renderers.py` - Tests all 8 scene renderers
+
+- ✅ **Quality Protocol Module** - Automated validation and fix system for rendered video content
+  - **nolan.quality package** - Core quality assurance module:
+    - `QualityProtocol` - Main validation class with configurable checks
+    - `QAConfig` - Configuration for checks, tolerances, and auto-fix settings
+    - `QAResult` / `QAIssue` - Result types with pass/fail status and issue details
+  - **Validation checks**:
+    - Properties: file exists, duration, resolution, file size
+    - Visual: blank frame detection, brightness analysis
+    - Text (optional): OCR-based text verification via pytesseract
+    - Visual text comparison: reference-based text rendering quality check
+  - **Auto-fix system**:
+    - Font fallback chain for text rendering issues
+    - Re-render with corrected parameters
+    - Configurable max fix attempts
+  - **Root cause discovery**: MoviePy TextClip has font rendering issues (character cutoff)
+    - Solution: Use PIL direct text rendering + moviepy video encoding
+    - `create_quote_frame()` function for reliable text rendering
+  - **Integration**: `render_with_quality_check()` wrapper function
+  - **Design document**: `docs/quality-protocol-design.md`
+  - Location: `nolan/quality/` (protocol.py, types.py, checks/)
+
 - ✅ **Video Generation Integration** - Dual-backend video generation for autonomous content creation
   - `VideoGenerator` abstract base class with unified interface
   - `ComfyUIVideoGenerator` for local video models (LTX-Video, Wan, HunyuanVideo, CogVideoX, AnimateDiff)
