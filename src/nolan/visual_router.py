@@ -39,6 +39,7 @@ TEMPLATE_VISUAL_TYPES = {
 
 # Visual types that can use Python renderer as fallback
 PYTHON_TEMPLATE_TYPES = {
+    # Text-based
     "quote",
     "text-overlay",
     "title",
@@ -46,6 +47,17 @@ PYTHON_TEMPLATE_TYPES = {
     "year",
     "list",
     "chapter",
+    # Overlay types
+    "lower-third",
+    "speaker-id",
+    # Animated data
+    "counter",
+    "comparison",
+    "timeline",
+    # Image effects (require image path)
+    "ken-burns",
+    "flashback",
+    "historical",
 }
 
 # Visual types that should search library

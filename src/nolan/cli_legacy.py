@@ -3878,34 +3878,49 @@ def render_templates(scene_plan, force, threshold, dry_run):
     from nolan.scenes import ScenePlan
     from nolan.visual_router import VisualRouter
     from nolan.lottie import customize_lottie, load_schema
+    from nolan.renderer.engine import PythonTemplateEngine
 
     scene_plan_path = Path(scene_plan)
     plan = ScenePlan.load(str(scene_plan_path))
     router = VisualRouter(template_score_threshold=threshold)
 
-    # Find scenes to render
-    to_render = []
+    # Find scenes to render (both Lottie templates and Python templates)
+    lottie_to_render = []
+    python_to_render = []
+
     for section_name, scenes in plan.sections.items():
         for scene in scenes:
             # Skip if already has asset and not forcing
-            if not force and (scene.rendered_clip or scene.lottie_asset):
+            if not force and scene.rendered_clip:
                 continue
 
             decision = router.route(scene)
-            if decision.route == "template" and decision.template:
-                duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
-                to_render.append((section_name, scene, decision, duration))
+            duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
+            duration = max(duration, 3.0)  # Minimum 3 seconds
 
-    if not to_render:
+            if decision.route == "template" and decision.template:
+                if not force and scene.lottie_asset:
+                    continue
+                lottie_to_render.append((section_name, scene, decision, duration))
+            elif decision.route == "python-template":
+                python_to_render.append((section_name, scene, decision, duration))
+
+    total_to_render = len(lottie_to_render) + len(python_to_render)
+    if total_to_render == 0:
         click.echo("No template scenes to render.")
         return
 
-    click.echo(f"Template scenes to render: {len(to_render)}")
+    click.echo(f"Total scenes to render: {total_to_render}")
+    click.echo(f"  Lottie templates: {len(lottie_to_render)}")
+    click.echo(f"  Python templates: {len(python_to_render)}")
 
     if dry_run:
         click.echo("\nDry run - would render:")
-        for section, scene, decision, duration in to_render:
-            click.echo(f"  {scene.id}: {decision.template.name} ({duration:.1f}s)")
+        for section, scene, decision, duration in lottie_to_render:
+            click.echo(f"  [Lottie] {scene.id}: {decision.template.name} ({duration:.1f}s)")
+        for section, scene, decision, duration in python_to_render:
+            renderer_type = decision.python_renderer or "auto"
+            click.echo(f"  [Python] {scene.id}: {renderer_type} ({duration:.1f}s)")
         return
 
     # Output directories
@@ -3931,7 +3946,11 @@ def render_templates(scene_plan, force, threshold, dry_run):
     failed = 0
     modified = False
 
-    for i, (section_name, scene, decision, duration) in enumerate(to_render):
+    # ========== Render Lottie templates ==========
+    if lottie_to_render:
+        click.echo(f"\n--- Rendering {len(lottie_to_render)} Lottie templates ---")
+
+    for i, (section_name, scene, decision, duration) in enumerate(lottie_to_render):
         template = decision.template
         click.echo(f"\n[{i+1}/{len(to_render)}] {scene.id}: {template.name}")
 
@@ -4043,6 +4062,39 @@ def render_templates(scene_plan, force, threshold, dry_run):
         except Exception as e:
             click.echo(f"  Error: {e}")
             failed += 1
+
+    # ========== Render Python templates ==========
+    if python_to_render:
+        click.echo(f"\n--- Rendering {len(python_to_render)} Python templates ---")
+
+        python_engine = PythonTemplateEngine()
+        python_clips_dir = scene_plan_path.parent / 'assets' / 'clips'
+        python_clips_dir.mkdir(parents=True, exist_ok=True)
+
+        for i, (section_name, scene, decision, duration) in enumerate(python_to_render):
+            renderer_type = decision.python_renderer or python_engine.detect_scene_type(scene)
+            click.echo(f"\n[{i+1}/{len(python_to_render)}] {scene.id}: Python:{renderer_type}")
+
+            try:
+                result = python_engine.render(
+                    scene,
+                    python_clips_dir,
+                    duration=duration,
+                )
+
+                if result.success:
+                    # Update scene with rendered clip path
+                    scene.rendered_clip = str(Path(result.output_path).relative_to(scene_plan_path.parent))
+                    click.echo(f"  Rendered: {Path(result.output_path).name}")
+                    rendered += 1
+                    modified = True
+                else:
+                    click.echo(f"  Failed: {result.error}")
+                    failed += 1
+
+            except Exception as e:
+                click.echo(f"  Error: {e}")
+                failed += 1
 
     # Save updated scene plan
     if modified:
