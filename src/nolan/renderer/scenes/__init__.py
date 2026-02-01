@@ -29,6 +29,8 @@ from .news_headline import NewsHeadlineRenderer
 from .document_highlight import DocumentHighlightRenderer
 # Transition renderers
 from .section_divider import SectionDividerRenderer
+# Portrait/Figure renderers
+from .portrait_reveal import render_portrait_reveal, portrait_reveal
 
 __all__ = [
     'QuoteRenderer',
@@ -62,4 +64,7 @@ __all__ = [
     'DocumentHighlightRenderer',
     # Transitions
     'SectionDividerRenderer',
+    # Portrait/Figure
+    'render_portrait_reveal',
+    'portrait_reveal',
 ]

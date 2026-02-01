@@ -38,5 +38,31 @@ venv/
 htmlcov/
 
 # Project specific
-output/
 *.db
+
+# Scratch/debug directory (temporary outputs, experiments)
+.scratch/
+
+# Large project files (videos, audio)
+projects/*/output/*.mp4
+projects/*/output/*.webm
+projects/*/output/*.mov
+projects/*/source/*.mp4
+projects/*/source/*.webm
+projects/*/source/*.mov
+projects/*/assets/voiceover/*.mp3
+projects/*/assets/voiceover/*.wav
+
+# Vector stores
+.template_vectors/
+chroma_db/
+
+# Temporary directories
+.tmp/
+
+# Node modules (render-service)
+render-service/node_modules/
+render-service/dist/
+
+# Video analysis projects (local only, large files)
+video_analysis/

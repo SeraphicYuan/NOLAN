@@ -654,8 +654,8 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
     - `Element` - Scene element (text, rectangle, image) with property animation
     - `Timeline` - Global timing management for fade in/out sequences
     - `Easing` - 27 easing functions (linear, quad/cubic/quart/expo, back, elastic, bounce, spring, bezier)
-  - **Composable Effects System** (45+ effects):
-    - **Basic**: `FadeIn`, `FadeOut`, `SlideUp`, `SlideDown`, `SlideLeft`, `SlideRight`, `ScaleIn`, `ScaleOut`, `ExpandWidth`
+  - **Composable Effects System** (46+ effects):
+    - **Basic**: `FadeIn`, `FadeOut`, `SlideUp`, `SlideDown`, `SlideLeft`, `SlideRight`, `MoveTo`, `ScaleIn`, `ScaleOut`, `ExpandWidth`
     - **Text**: `TypeWriter`, `Reveal` (word/char), `CountUp` (number animation with prefix/suffix)
     - **Emphasis**: `Shake`, `Flash`, `Bounce`, `Glitch`, `Pulse`, `Hold`
     - **Rotation**: `RotateIn`, `RotateOut`, `Spin`, `Wobble`
@@ -677,13 +677,14 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
     - 16 named presets: center, lower-third, upper-third, corners, split-screen
     - All renderers accept `position` parameter for placement control
     - Aligns with render-service layout system for consistency
-  - **Scene-Specific Renderers** (26 total):
+  - **Scene-Specific Renderers** (27 total):
     - **Core** (10): `QuoteRenderer`, `TitleRenderer`, `StatisticRenderer`, `ListRenderer`, `LowerThirdRenderer`, `CounterRenderer`, `ComparisonRenderer`, `TimelineRenderer`, `KenBurnsRenderer`, `FlashbackRenderer`
     - **Text Cards** (5): `DefinitionRenderer`, `SourceCitationRenderer`, `PullQuoteRenderer`, `QuestionRenderer`, `VerdictRenderer`
     - **Location/Time** (3): `LocationStampRenderer`, `ChapterCardRenderer`, `ProgressBarRenderer`
     - **Data Visualization** (3): `StatComparisonRenderer`, `PercentageBarRenderer`, `RankingRenderer`
     - **Media Mockup** (3): `TweetCardRenderer`, `NewsHeadlineRenderer`, `DocumentHighlightRenderer`
     - **Transitions** (1): `SectionDividerRenderer`
+    - **Portrait/Figure** (1): `portrait_reveal` - portrait slides aside to reveal bullet points (from video analysis)
     - **Smart Text Layout**: Automatic line wrapping with `max_width`, `max_lines`, dynamic font sizing
   - **Preset Functions** - One-line rendering for common scene types:
     - `documentary_quote()` - Dark background, red accent documentary style

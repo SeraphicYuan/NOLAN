@@ -113,6 +113,28 @@ class SlideRight(Effect):
 
 
 @dataclass
+class MoveTo(Effect):
+    """Animate element from current position to a new position.
+
+    Unlike SlideIn effects which bring elements from off-screen,
+    MoveTo animates visible elements between positions.
+
+    Args:
+        delta_x: Horizontal movement (positive = right, negative = left)
+        delta_y: Vertical movement (positive = down, negative = up)
+    """
+    delta_x: float = 0
+    delta_y: float = 0
+
+    def apply(self, t: float, props: Dict[str, Any]) -> Dict[str, Any]:
+        progress = self.get_progress(t)
+        # Apply movement based on progress
+        props['x_offset'] = props.get('x_offset', 0) + self.delta_x * progress
+        props['y_offset'] = props.get('y_offset', 0) + self.delta_y * progress
+        return props
+
+
+@dataclass
 class ScaleIn(Effect):
     """Scale element in from smaller size."""
     from_scale: float = 0.8
