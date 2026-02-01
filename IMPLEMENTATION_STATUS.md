@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-01-20
+**Last Updated:** 2026-02-01
 
 ## Summary
 
@@ -653,30 +653,38 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
     - `BaseRenderer` - Base class for all scene renderers with frame-by-frame rendering
     - `Element` - Scene element (text, rectangle, image) with property animation
     - `Timeline` - Global timing management for fade in/out sequences
-    - `Easing` - 15+ easing functions (ease_out_cubic, ease_in_out_cubic, ease_out_back, ease_out_bounce, etc.)
-  - **Composable Effects System**:
-    - `FadeIn` / `FadeOut` - Opacity animation with configurable timing
-    - `SlideUp` / `SlideDown` - Vertical position animation
-    - `ScaleIn` - Scale animation from specified starting scale
-    - `ExpandWidth` - Width expansion from center (for accent lines)
-    - `CountUp` - Animated number counting effect
+    - `Easing` - 27 easing functions (linear, quad/cubic/quart/expo, back, elastic, bounce, spring, bezier)
+  - **Composable Effects System** (45+ effects):
+    - **Basic**: `FadeIn`, `FadeOut`, `SlideUp`, `SlideDown`, `SlideLeft`, `SlideRight`, `ScaleIn`, `ScaleOut`, `ExpandWidth`
+    - **Text**: `TypeWriter`, `Reveal` (word/char), `CountUp` (number animation with prefix/suffix)
+    - **Emphasis**: `Shake`, `Flash`, `Bounce`, `Glitch`, `Pulse`, `Hold`
+    - **Rotation**: `RotateIn`, `RotateOut`, `Spin`, `Wobble`
+    - **Blur/Focus**: `BlurIn`, `BlurOut`, `FocusPull`, `PulseBlur`
+    - **Shadow**: `ShadowIn`, `ShadowOut`, `ShadowPulse`
+    - **Glow**: `GlowIn`, `GlowOut`, `GlowPulse`, `Highlight`
+    - **Color**: `ColorShift`, `ColorTint`
+    - **Annotation**: `Underline`, `Strikethrough`, `CircleAnnotation`, `ArrowPoint`
+    - **Cinematic**: `Letterbox`, `Scanlines`, `VHSEffect`
+    - **Drawing**: `DrawLine`, `DrawBox`
+    - **Sequencing**: `Loop`, `Sequence`, `Delay`, `StaggeredFadeIn`
     - Effects are stackable: multiple effects can be applied to a single element
+  - **Easing Functions** (27 total):
+    - Standard: `linear`, `ease_in/out/in_out_quad`, `ease_in/out/in_out_cubic`, `ease_in/out/in_out_quart`, `ease_in/out/in_out_expo`
+    - Special: `ease_in/out/in_out_back` (overshoot), `ease_in/out/in_out_elastic` (spring), `ease_in/out/in_out_bounce`
+    - Advanced: `spring` (physics-based), `bezier` (custom cubic bezier curves)
   - **Position/Layout System** (`layout.py`):
     - `Position` dataclass with percentage-based coordinates (0-1)
     - 16 named presets: center, lower-third, upper-third, corners, split-screen
     - All renderers accept `position` parameter for placement control
     - Aligns with render-service layout system for consistency
-  - **Scene-Specific Renderers** (8 total):
-    - `QuoteRenderer` - Quote cards with fade+slide quote, expanding accent bar, fade attribution
-    - `TitleRenderer` - Title cards with zoom+fade title, expanding accent line, fade subtitle
-    - `StatisticRenderer` - Year/statistic reveals with scale+fade value, expanding side lines, fade label
-    - `ListRenderer` - Animated bullet lists with staggered item reveals
-    - `LowerThirdRenderer` - Speaker identification overlays with name/title
-    - `CounterRenderer` - Animated number counting (e.g., "300 BILLION BARRELS")
-    - `ComparisonRenderer` - Side-by-side VS comparisons (Maduro vs Guaidó)
-    - `TimelineRenderer` - Historical timelines with sequential date reveals
-    - `KenBurnsRenderer` - Zoom/pan effects on images (documentary staple)
-    - `FlashbackRenderer` - Vintage/sepia effects with vignette and grain
+  - **Scene-Specific Renderers** (26 total):
+    - **Core** (10): `QuoteRenderer`, `TitleRenderer`, `StatisticRenderer`, `ListRenderer`, `LowerThirdRenderer`, `CounterRenderer`, `ComparisonRenderer`, `TimelineRenderer`, `KenBurnsRenderer`, `FlashbackRenderer`
+    - **Text Cards** (5): `DefinitionRenderer`, `SourceCitationRenderer`, `PullQuoteRenderer`, `QuestionRenderer`, `VerdictRenderer`
+    - **Location/Time** (3): `LocationStampRenderer`, `ChapterCardRenderer`, `ProgressBarRenderer`
+    - **Data Visualization** (3): `StatComparisonRenderer`, `PercentageBarRenderer`, `RankingRenderer`
+    - **Media Mockup** (3): `TweetCardRenderer`, `NewsHeadlineRenderer`, `DocumentHighlightRenderer`
+    - **Transitions** (1): `SectionDividerRenderer`
+    - **Smart Text Layout**: Automatic line wrapping with `max_width`, `max_lines`, dynamic font sizing
   - **Preset Functions** - One-line rendering for common scene types:
     - `documentary_quote()` - Dark background, red accent documentary style
     - `documentary_title()` - Near-black background, white title, red accent
@@ -689,8 +697,12 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
     - Pre-renders all frames with eased properties
     - Composes into video using MoviePy VideoClip
     - Integrated with Quality Protocol for auto-validation
-  - **Location**: `src/nolan/renderer/` (base.py, easing.py, effects.py, layout.py, scenes/, presets.py)
-  - **Test script**: `scripts/test_all_renderers.py` - Tests all 8 scene renderers
+  - **Location**: `src/nolan/renderer/` (base.py, easing.py, effects.py, layout.py, text_layout.py, scenes/, presets.py)
+  - **Test scripts**:
+    - `scripts/test_all_renderers.py` - Tests core scene renderers
+    - `scripts/test_venezuela_templates.py` - Tests all 15 new templates with Venezuela content
+    - `scripts/test_new_effects.py` - Tests 10 advanced effects (CountUp, Shake, Rotation, Blur, Shadow, Glow, etc.)
+    - `scripts/test_annotation_effects.py` - Tests 8 annotation/cinematic effects (Underline, Letterbox, Scanlines, etc.)
 
 - ✅ **Quality Protocol Module** - Automated validation and fix system for rendered video content
   - **nolan.quality package** - Core quality assurance module:
