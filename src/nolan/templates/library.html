@@ -699,6 +699,8 @@
     </style>
 </head>
 <body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="library"></script>
     <div class="container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -755,6 +757,7 @@
                 <div class="tabs">
                     <button class="tab active" data-tab="segments" onclick="switchTab('segments')">Segments</button>
                     <button class="tab" data-tab="clusters" onclick="switchTab('clusters')">Clusters</button>
+                    <button id="fullVideoBtn" class="tab hidden" onclick="showFullVideo()" title="Open the whole video and scrub freely to cut a clip">✂ Cut from full video</button>
                 </div>
             </div>
 
@@ -789,6 +792,23 @@
                     <div class="video-container">
                         <video id="videoPlayer" controls></video>
                     </div>
+                    <div class="cut-panel" id="cutPanel" style="margin:10px 0;padding:10px;border:1px solid #2a2a3a;border-radius:8px;background:#15151f;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <strong style="font-size:13px;">✂ Cut clip</strong>
+                            <button onclick="setCutIn()" style="cursor:pointer;">Set In</button>
+                            <span>In: <span id="cutInLabel" class="current">--:--</span></span>
+                            <button onclick="setCutOut()" style="cursor:pointer;">Set Out</button>
+                            <span>Out: <span id="cutOutLabel" class="current">--:--</span></span>
+                            <button onclick="previewCut()" style="cursor:pointer;">▶ Preview</button>
+                            <button onclick="clearCut()" style="cursor:pointer;">Clear</button>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                            <input id="cutLabel" type="text" placeholder="label (optional)" style="flex:1;min-width:140px;padding:5px;background:#0e0e16;border:1px solid #2a2a3a;border-radius:6px;color:#eee;">
+                            <input id="cutTags" type="text" placeholder="tags, comma-separated" style="flex:1;min-width:140px;padding:5px;background:#0e0e16;border:1px solid #2a2a3a;border-radius:6px;color:#eee;">
+                            <button onclick="saveCutClip()" style="cursor:pointer;font-weight:600;">💾 Save clip</button>
+                        </div>
+                        <div id="cutStatus" style="margin-top:6px;font-size:12px;color:#9a9ab0;"></div>
+                    </div>
                     <div class="player-info">
                         <div class="player-segment-info" id="playerInfo"></div>
                     </div>
@@ -811,6 +831,15 @@
         let playbackStart = 0;
         let playbackEnd = 0;
         let isLooping = true;
+
+        // Manual clip-cut state.
+        // cutIn/cutOut are the working values for the video currently in the
+        // player (cutVideo); cutSelections persists a pending In/Out per video
+        // path so a selection survives closing the panel and switching videos.
+        let cutIn = null;
+        let cutOut = null;
+        let cutVideo = null;
+        let cutSelections = {};
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
@@ -1015,6 +1044,7 @@
 
             const name = path.split(/[/\\]/).pop();
             document.getElementById('currentTitle').textContent = name;
+            document.getElementById('fullVideoBtn').classList.remove('hidden');
 
             // Load data
             await Promise.all([
@@ -1454,6 +1484,137 @@
             showPlayer(segment.video_path, segment);
         }
 
+        // ---- Manual clip cutting ----
+        function setCutIn() {
+            const v = document.getElementById('videoPlayer');
+            cutIn = v.currentTime;
+            if (cutOut !== null && cutOut <= cutIn) cutOut = null;
+            persistCut();
+            updateCutLabels();
+            setCutStatus('In set to ' + formatTime(cutIn));
+        }
+        function setCutOut() {
+            const v = document.getElementById('videoPlayer');
+            const t = v.currentTime;
+            if (cutIn !== null && t <= cutIn) {
+                setCutStatus('Out must be after In', true);
+                return;
+            }
+            cutOut = t;
+            persistCut();
+            updateCutLabels();
+            setCutStatus('Out set to ' + formatTime(cutOut));
+        }
+        function clearCut() {
+            cutIn = null; cutOut = null;
+            if (cutVideo) delete cutSelections[cutVideo];
+            updateCutLabels();
+            setCutStatus('Selection cleared');
+        }
+        function updateCutLabels() {
+            document.getElementById('cutInLabel').textContent = cutIn !== null ? formatTime(cutIn) : '--:--';
+            document.getElementById('cutOutLabel').textContent = cutOut !== null ? formatTime(cutOut) : '--:--';
+        }
+        // Persist the working In/Out for the video currently in the player.
+        function persistCut() {
+            if (cutVideo) cutSelections[cutVideo] = { in: cutIn, out: cutOut };
+        }
+        // Load a video's saved pending selection into the working values.
+        function loadCutFor(path) {
+            cutVideo = path;
+            const s = cutSelections[path] || {};
+            cutIn = (s.in !== undefined ? s.in : null);
+            cutOut = (s.out !== undefined ? s.out : null);
+            updateCutLabels();
+        }
+        function setCutStatus(msg, isError) {
+            const el = document.getElementById('cutStatus');
+            if (!el) return;
+            el.textContent = msg || '';
+            el.style.color = isError ? '#ff6b6b' : '#9a9ab0';
+        }
+        function previewCut() {
+            if (cutIn === null || cutOut === null) { setCutStatus('Set In and Out first', true); return; }
+            const v = document.getElementById('videoPlayer');
+            playbackStart = cutIn;
+            playbackEnd = cutOut;
+            v.currentTime = cutIn;
+            v.play().catch(() => {});
+            setCutStatus('Previewing ' + formatTime(cutIn) + ' → ' + formatTime(cutOut));
+        }
+        async function saveCutClip() {
+            // The clip belongs to the video currently in the player (cutVideo),
+            // which may differ from the sidebar selection for search results.
+            const srcVideo = cutVideo || currentVideo;
+            if (!srcVideo) { setCutStatus('No video loaded', true); return; }
+            if (cutIn === null || cutOut === null) { setCutStatus('Set In and Out first', true); return; }
+            setCutStatus('Saving…');
+            try {
+                const resp = await fetch('/library/api/clips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source_video_path: srcVideo,
+                        clip_start: cutIn,
+                        clip_end: cutOut,
+                        label: document.getElementById('cutLabel').value || null,
+                        tags: document.getElementById('cutTags').value || null,
+                        project: currentProject || null,
+                    }),
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.detail || resp.statusText);
+                }
+                const data = await resp.json();
+                // Clip captured — clear this video's pending selection.
+                cutIn = null; cutOut = null;
+                if (cutVideo) delete cutSelections[cutVideo];
+                updateCutLabels();
+                setCutStatus('✓ Saved clip ' + data.clip.id + ' — open the Clips tab to use it');
+            } catch (e) {
+                setCutStatus('Save failed: ' + e.message, true);
+            }
+        }
+
+        // Open the whole video for free scrubbing + manual cutting (no segment needed)
+        function showFullVideo() {
+            if (!currentVideo) { setCutStatus('Select a video first', true); return; }
+            const panel = document.getElementById('playerPanel');
+            const video = document.getElementById('videoPlayer');
+            const badge = document.getElementById('playerTypeBadge');
+
+            panel.classList.remove('hidden');
+            badge.textContent = 'Full video';
+            badge.className = 'player-type-badge';
+
+            // Whole-video range, looping off so the scrubber roams freely.
+            playbackStart = 0;
+            playbackEnd = Infinity;
+            isLooping = false;
+            const loopCb = document.getElementById('loopCheckbox');
+            if (loopCb) loopCb.checked = false;
+
+            const videoUrl = `/library/video/${encodeURIComponent(currentVideo)}`;
+            if (video.src !== location.origin + videoUrl) video.src = videoUrl;
+            video.currentTime = 0;
+
+            document.getElementById('timeRangeStart').textContent = '00:00';
+            document.getElementById('timeRangeEnd').textContent = 'full';
+            document.getElementById('timeCurrent').textContent = '00:00';
+            document.getElementById('playerInfo').innerHTML =
+                '<p>Full video — scrub anywhere, then use Set In / Set Out below to cut a clip.</p>';
+
+            // Restore this video's pending selection (if any) instead of wiping it.
+            loadCutFor(currentVideo);
+            setCutStatus(cutIn !== null || cutOut !== null
+                ? 'Restored your pending selection — adjust or Save.'
+                : 'Scrub to your start → Set In, scrub to your end → Set Out, then Save clip.');
+
+            video.play().catch(() => {});
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
         // Show player
         function showPlayer(videoPath, segment, cluster = null) {
             const panel = document.getElementById('playerPanel');
@@ -1462,6 +1623,9 @@
             const badge = document.getElementById('playerTypeBadge');
 
             panel.classList.remove('hidden');
+
+            // Bind the cut bar to this video and restore its pending selection.
+            loadCutFor(videoPath);
 
             // Set type badge
             if (cluster) {

@@ -8,6 +8,98 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Experiments
+
+### Asset-First Scene Building (2026-06-24)
+Inverted pipeline prototype: take a slice of an existing script and **build scenes
+from available assets** instead of script→scenes→match. Combined three sources —
+segment search (archival b-roll), renderer cards (counter/title/lower-third), and a
+ComfyUI hero still + Ken Burns — synced to the original voiceover.
+
+- **What changed:** end-to-end demo that the legacy `nolan assemble` asset-priority
+  path (`rendered_clip > generated_asset > matched_asset`) composes mixed asset types
+  into a final mp4. Index now supports **project-local** DBs (`projects/<name>/index.db`).
+- **Usage:** `projects/US Economy/experiment_roaring20s/` — `index_source.py` →
+  `build_full.py` → `nolan assemble scene_plan.json vo.m4a -o final.mp4 -r 1920x1080`.
+- **Result:** `final.mp4`, 1920×1080@30, 86s, 11 scenes, all sources verified.
+- **Gaps surfaced:** no compositing/overlay in assemble, no animated line-chart
+  renderer, crossfade transition is a stub. See the project's `findings.md`.
+- **New workflow:** registered **`flux-dev`** (`workflows/image/flux-dev-fp8.json`,
+  `flux1-dev-fp8`) and **`z-image-turbo`** (8-step, `basic-z-image.json`) — large
+  photoreal upgrades over the SDXL `sdxl-default` default.
+  Use via `get_registry().build_client('flux-dev', config)`.
+
+### Renderer: compositing, charts, fades (2026-06-25)
+Three additions that turn the cut-sequence essay into layered video-essay grammar
+(all in the renderer layer; `nolan assemble` stays a dumb concatenator):
+
+- **Compositing** — `BaseRenderer.render_frame_rgba()` renders a scene with a
+  transparent background; `renderer/composite.py::composite_over_broll(overlay,
+  broll, out, duration, fade=, scrim=)` overlays a counter / lower-third / title /
+  caption *on top of* moving b-roll (ffmpeg `overlay`, with optional scrim for
+  text legibility). Replaces full-screen black "stat cards."
+- **Animated line chart** — `renderer/scenes/line_chart.py::LineChartRenderer`
+  (exported as `LineChartRenderer` / `render_line_chart`): progressive polyline,
+  green-up/red-down segments, leading dot + value readout, x-labels revealed as the
+  line passes. Built for the market rise→crash→rally beat.
+- **B-roll fades** — `render_b_roll` honors a per-scene `fade` (seconds) for gentle
+  fade in/out on cuts; `composite_over_broll` takes the same `fade`.
+- **Title auto-fit** — `BaseRenderer.fit_font_size()`; `TitleRenderer` shrinks long
+  titles/subtitles to fit the frame instead of clipping.
+- **Loop/feedback diagram** — `renderer/scenes/loop_diagram.py::LoopDiagramRenderer`
+  (`render_loop_diagram`): labelled nodes on a circle with animated curved arrows
+  forming a cycle. For systemic "X feeds Y feeds Z back to X" arguments. Composites.
+
+Demo: `projects/US Economy/experiment_roaring20s/build_v2.py` → `final_v2.mp4`.
+
+### Curated Remotion source (2026-06-25)
+Python remains the default renderer; Remotion is used **only** within its strong scope
+(kinetic typography, rich animated charts, SVG annotations, maps, premium cards — see
+`docs/REMOTION_EVALUATION.md`). A proper static Remotion project lives in
+`render-service/remotion-lib/` (real `.tsx`, not the code-generator) with a job-JSON →
+`bundle`+`renderMedia` flow (`render.mjs`).
+- **Built (7 compositions across categories 1–5):** `Kinetic` (kinetic-text), `BarCompare` +
+  `KShape` (rich-chart), `AnnotateOverVideo` + `AnnotateStat` (svg-annotation), `RouteMap`
+  (map), `PremiumCard` (premium card). Render ~5–9s each.
+- **Style system:** shared `theme` tokens (`src/theme.ts`: dark-editorial/light/high-contrast
+  or override object) on every effect + per-effect style vars (`lineStyle`, `barStyle`,
+  `shapeStyle`, `routeStyle`, `cardStyle`) + shared seeded path helpers (`src/shapes.ts`).
+  See `render-service/remotion-lib/README.md`.
+- **Wired as a source.** `visual_router.py` has a `remotion` route (`REMOTION_VISUAL_TYPES`
+  maps `kinetic-text`/`bar-compare`/`k-shape`/`annotate-video`/`annotate-stat`/`route-map`/
+  `premium-card` → composition ids; `RouteDecision.remotion_comp`). Discoverable registry at
+  `remotion-lib/registry.json` (each comp's visual_type + style schema). Render bridge:
+  `src/nolan/remotion_source.py` (`list_compositions`, `render`, `render_scene` — shells
+  `render.mjs` via Node).
+- **Showcase reel:** `Showcase` composition (`<Series>` of all effects + labels) →
+  `remotion-lib/output/showcase.mp4` (~27s).
+
+### Motion-spec system — natural language → render (2026-06-25)
+`src/nolan/motion/` translates a one-line scene design into a precise, validated render
+spec and renders it on the right backend (Python renderer or Remotion). A declarative
+**registry** is the single source of truth.
+- `registry.py` — 13 effects across categories/both backends; **shared params**
+  (`position`/`theme`/`accent`) declared once, each effect lists its own content/style
+  params + which shared params it supports. Add params here over time.
+- `manifest.py` — builds the LLM capability manifest + prompt guide from the registry.
+- `spec.py` — validate/normalize (effect/required/enum checks, fills defaults, coerces types).
+- `compiler.py` — `compile_spec(scene, client)` (LLM + one repair retry).
+- `executor.py` — `render(spec, out)` dispatches Python (`renderer.scenes`) vs Remotion
+  (`remotion_source`); `position` normalized to `{x,y}` for both.
+- API: `from nolan.motion import author`. Example: `examples/motion_author.py` (6 scenes,
+  both backends, LLM-authored complex content like chart bars / loop nodes).
+- **Solves** the "one script per location" problem: `position` (and style) are parameters
+  the LLM sets. Known refinements: clamp wide content to a safe area; map `theme` onto Python
+  renderers; add `timing`/motion as the next shared param; vision-grounding for placing
+  annotations *on b-roll content*.
+- **Integrated into the pipeline (2026-06-25):**
+  - *Scene designer* — `SceneDesigner.author_motion(scenes)` + `design_full_plan(..., author_motion=True)`
+    attach a `motion_spec` to graphic/text/data scenes (skips b-roll/generated). New `Scene.motion_spec`
+    field (serialized). Orchestrator `render_scene` renders `motion_spec` first (Python or Remotion).
+  - *Clips "Analyze effect"* — `webui/operations.py::_effect_task_markdown` now lists **both backends**
+    (`_motion_catalog_md()` generated from the registry), so the recreation agent treats Remotion as a
+    first-class source and is told to add a `MotionEffect(... backend=...)` row when implementing.
+
 ## Implemented Features
 
 ### Core Pipeline
@@ -17,6 +109,11 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 
 ### Infrastructure
 - **Configuration System** - YAML + environment variable configuration
+- **Text LLM (configurable)** - `create_text_llm(config)` factory; default
+  **qwen/qwen3.7-plus via OpenRouter** for all authoring tasks (script, scenes,
+  clustering, inference, translation). Override via `nolan.yaml` `llm:` block,
+  the Settings page, or per-run (`llm_provider`/`llm_model`). `OpenRouterLLM`
+  (text) + `GeminiClient` both implement `generate(prompt, system_prompt)`.
 - **Gemini LLM Client** - Async client for Gemini API
 - **Video Indexer** - SQLite-backed video library indexing with visual analysis
 - **Asset Matcher** - Matches scenes to indexed video library
@@ -26,16 +123,31 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
   - Search and filter by project
 
 ### Hybrid Indexing
-- **Vision Provider** - Switchable vision models (Ollama/Gemini)
+- **Vision Provider** - Switchable vision models (Ollama/Gemini/OpenRouter)
   - Default: qwen3-vl:8b via Ollama
   - Configurable host/port/model
+  - OpenRouter provider (OpenAI-compatible) gives access to any vision model
+    on OpenRouter, e.g. `qwen/qwen3.7-plus`. Set `OPENROUTER_API_KEY` in `.env`
+    and run `nolan index --provider openrouter` (model via `vision.model` in
+    `nolan.yaml`). Shares the exact analyze-frame prompt + JSON parser with
+    Gemini, so results are directly comparable across providers.
+  - Reasoning control via `vision.reasoning_enabled` (default off) + optional
+    `vision.reasoning_max_tokens`. Disabling reasoning on models like
+    `qwen/qwen3.7-plus` cuts latency ~4-6x (~35s→~6s/frame) with no quality loss.
 - **Smart Sampling** - 5 strategies for frame extraction:
   - FFmpeg scene detection (default - 10-50x faster, hardware accelerated)
   - Hybrid (Python-based, combines time bounds with scene detection)
   - Fixed interval
   - Scene change detection (OpenCV)
   - Perceptual hashing (skip duplicates)
-- **Transcript Alignment** - SRT/VTT/Whisper JSON support
+- **Transcript Alignment** - SRT/VTT/Whisper JSON support (read as UTF-8, handles Chinese)
+  - **Subtitle-first, Whisper-fallback**: downloads English + Chinese subtitles
+    (`subtitle_langs` defaults to en + zh variants); uses a downloaded subtitle when
+    present, and only transcribes with Whisper when none is found. WebUI ingest wires
+    this fallback by default (`whisper_fallback`).
+  - **UTF-8 mode required on Windows**: run the hub/CLI with `-X utf8` (the launcher
+    does this). Otherwise ffmpeg subprocess output is decoded as cp1252, which crashes
+    the reader thread and corrupts scene detection (fewer segments).
 - **Segment Analyzer** - LLM fusion of visual + audio with inferred context
 
 ### Whisper Integration
@@ -242,6 +354,8 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
 - **JSON Output** - Results saved with URLs, thumbnails, dimensions, license
 - **Search All** - Query multiple sources at once with `--source all`
 - **Vision Model Scoring** - Score images by relevance using AI
+  - OpenRouter (default: `qwen/qwen3.7-plus`, reasoning off) — used by both
+    `image-search --score` and `match-broll --score`
   - Gemini vision model (cloud, fast)
   - Ollama vision model (local, requires running Ollama)
   - Scores from 0-10 with explanations
@@ -310,12 +424,164 @@ NOLAN is a CLI tool that transforms structured essays into video production pack
   - `GET /effects` - List all effects with parameters
   - `GET /effects/:id` - Get specific effect details
   - `POST /render` - Render with `{effect, params}` format
+- **Full-loop webUI (v1)** — hub now operates the pipeline from the browser, not just browse:
+  - **Project Studio** (`/studio`) — per-project stage view: source → script/scenes → match assets → render/assemble, each with status + action buttons
+  - **Add to Library** (`/library/add`) — index a file or YouTube URL with vision provider/model/reasoning picker
+  - **New from Essay** (`/process`) — essay → script → scene plan
+  - **Settings** (`/settings`) — vision provider/model/reasoning, persisted to nolan.yaml
+  - In-process **job manager** (`webui/jobs.py`) + `/api/jobs/{id}` polling; shared `static/` theme + nav + job widget
+  - Endpoints: `/api/ingest`, `/api/process`, `/api/match`, `/api/render-clips`, `/api/assemble`, `/api/sync-vectors`, `/api/project/{name}/status`
+  - See `docs/WEBUI_ROADMAP_v1.md`
+- **ComfyUI / Generation page** (`/comfyui`) — manage multiple generation models, each with its own
+  workflow. Backed by a **WorkflowRegistry** (`workflow_registry.py`, `workflows/registry.json`):
+  named entries `{file/builtin, checkpoint, prompt_node, w/h/steps, styles}`. Page shows ComfyUI
+  connection + installed checkpoints + queue, lists/adds/deletes workflows (paste/upload a
+  "Save (API Format)" JSON → prompt node auto-detected), and a **sample runner** (prompt → image →
+  scratch preview in `samples/`). Generation (`/api/generate`, Studio) selects a registered workflow.
+  Endpoints: `/api/comfyui/status`, `/api/comfyui/workflows` (GET/POST/DELETE), `/api/comfyui/sample`.
+- **One-click launcher** - `start_webui.bat` (project root) builds + starts the
+  render service (`:3010`) and launches the Hub on `:8011` in its own window,
+  then opens the browser. Note: Hub uses `:8011` (not the default `:8001`,
+  which is reserved by SPARTA). The Showcase tab requires the render service.
+
+### Manual Clips (2026-06-24)
+
+Cut a snippet from any indexed video by hand, save it as a reusable **clip
+asset**, and materialize it on demand for a downstream consumer.
+
+- **Data model** — schema **v7** adds a `saved_clips` table (`indexer.py`). A
+  clip is a `matched_clip`-shaped **pointer** (`source_video_path` + `clip_start`
+  /`clip_end` + `label`/`tags`/`project_id`), not a file. `project_id` NULL = global
+  library. Methods: `add_saved_clip` / `list_saved_clips(project_ids=…)` /
+  `get_saved_clip` / `delete_saved_clip`. v6→v7 migrates in place (segments preserved).
+- **Cut UI** — the Library player (`/library`) gains Set In / Set Out / Preview /
+  Clear / Save controls, reusing the existing loop-preview. Saving POSTs
+  `/library/api/clips`. Cut from an auto-segment **or** the whole video via the
+  **✂ Cut from full video** button (free scrubbing, no segment needed). A pending
+  In/Out selection is kept **per video** — it survives closing the panel and
+  switching videos, and the clip is saved against the video actually in the
+  player (correct even for cross-project search results).
+- **Clips page** (`/clips`, `clips.html`) — cross-project search across **saved
+  clips + auto-snippets (segments/clusters)** with a **project-scope multi-select**
+  ("all" or pick a list). `search`/`search_clusters` gained a `project_ids` arg for
+  `IN (…)` scoping. Each result can be previewed, saved, or materialized.
+- **Materialize on demand** (`operations.materialize_clip`, `/library/api/clips/{id}/materialize`)
+  produces the form the consumer needs and caches it under `projects/_clips/<id>/`:
+  `none` (pointer → video essay), `file` (.mp4 → ComfyUI), `frames` (JPGs → Claude).
+  Cached results are reused unless `force`.
+- **Analyze effect via Claude agent** — the Clips page "🎬 Analyze effect" button
+  (`POST /library/api/clips/{id}/analyze-effect`, `operations.analyze_effect`)
+  materializes the clip's frames + file, writes a task brief to
+  `projects/_clips/<id>/effect_task.md`, and dispatches it to a **selectable tmux
+  Claude Code agent** (the Clips page has an agent dropdown populated from
+  `GET /library/api/tmux-sessions`, defaulting to `nolan2`; dispatch via
+  `tmux send-keys`, `wsl.exe tmux` from the Windows hub).
+  The agent identifies the effect, **dedups against the motion library**
+  (`renderer/scenes/`, `renderer/effects.py`, `render-service/src/effects/`),
+  assesses replicability, and writes findings to `effect_analysis.md`
+  (readable via `GET /library/api/clips/{id}/analysis`, shown by the page's
+  "View findings" button).
+- Clips-page result handlers are **index-based** (read paths from stored result
+  objects) so Windows file paths with backslashes aren't corrupted by inline
+  HTML/JS string parsing — this fixed broken Preview/Save buttons.
+- Endpoints: `GET/POST /library/api/clips`, `DELETE /library/api/clips/{id}`,
+  `GET /library/api/clips/search`, `POST /library/api/clips/{id}/materialize`,
+  `POST /library/api/clips/{id}/analyze-effect`, `GET /library/api/clips/{id}/analysis`,
+  `GET /library/api/tmux-sessions`.
+
+  *Usage:* open `/library`, play a video, Set In/Out, Save → switch to `/clips`,
+  pick a project scope, search, then "Materialize file/frames" for downstream use.
+
+### Script Styles — transcript corpora → style guides (M1, 2026-06-25)
+
+Learn script-writing *craft* from reference transcripts and distill a reusable
+**style guide**, then later write new scripts in that voice. The writing-side
+mirror of the Clips/effects (visual-craft) feature.
+
+- **Store** (`src/nolan/script_style.py`, `ScriptStyleStore`) — file-backed under
+  `script_styles/<id>/`: `manifest.json`, `corpus/<slug>.txt`, `per_transcript/<slug>.json`,
+  `style_guide.md`. CRUD + `add_source` with **video_id dedup** so repeat fetches
+  skip known videos.
+- **Acquisition** — paste text, upload `.txt/.srt/.vtt` (parsed via `TranscriptLoader`),
+  or a list of **YouTube links**: `YouTubeClient.fetch_transcript` pulls the
+  **original-language transcript only** (yt-dlp `skip_download`, single best track —
+  no video, no auto-translations), reusing the 429-safe language picker.
+- **Analysis (hybrid, Stage B)** — `operations.analyze_style`: inline LLM
+  (`create_text_llm`) extracts per-transcript features (JSON), then dispatches a
+  **synthesis task to a selectable tmux Claude agent** which authors
+  `style_guide.md` (Voice, Hook patterns, Narrative structure, Pacing, Rhetorical
+  devices, Do/Don't, Exemplars, and a copy-pasteable "How to Apply" block).
+- **UI** — `/script-styles` page: style library (left) + per-style detail (add
+  transcripts → analyze → view guide), with an agent-session dropdown.
+- Endpoints: `GET/POST /api/script-styles`, `GET/DELETE /api/script-styles/{id}`,
+  `POST .../{id}/add-text|upload-file|add-youtube|analyze`, `POST .../{id}/remove-source/{slug}`,
+  `GET .../{id}/guide`.
+- **M2 (done, 2026-06-25) — apply a guide to script generation:**
+  `ScriptConverter` (`script.py`) takes an optional `style_guide`; its
+  `extract_style_instruction` pulls the guide's "How to Apply" block (fallback:
+  whole guide) and injects it as the **system prompt**, plus a per-section
+  instruction to write in that voice. `process_essay` accepts `style_id` (loads
+  the guide from the library); the **New-from-Essay wizard (`/process`)** has a
+  "Script style (optional)" dropdown listing styles that have a guide.
+- **M3 (done, 2026-06-25) — channel acquisition:** `YouTubeClient.list_channel_videos`
+  (flat enumeration of a channel's /videos tab; accepts @handle, UC… id, full URL,
+  or bare handle via `channel_videos_url`) + `operations.fetch_channel`. Two modes:
+  **last-N** (newest videos) and **date window** (`date_after`/`date_before`;
+  newest-first with early-stop, probing per-video dates via `get_info` when flat
+  entries lack them). Reuses `fetch_transcripts` for the actual fetch (dedup +
+  pacing + 429 backoff). Endpoint `POST /api/script-styles/{id}/add-channel`; UI
+  has a channel input with a last-N / date-range toggle on `/script-styles`.
+
+### Script Projects — subject + style + sources → grounded script.md (2026-06-25)
+
+The missing **front stage** of the pipeline: write a new, *source-grounded* script
+from scratch (not the essay→narration adaptation in `script.py`). Output is a
+normal **Director-ready project** (`projects/<slug>/` with `project.yaml` +
+`script.md`), so it flows straight into `script_to_scenes → … → render` with no glue.
+
+- **Store** (`src/nolan/scriptwriter/store.py`, `ScriptProjectStore`) — scaffolds a
+  Director-ready project (same `project.yaml`/dir tree as `nolan projects init`) plus
+  a `scriptgen/` workspace the Director ignores: `meta.json`, `brief.md`,
+  `sources/{sources.md, raw/}`, `facts.md`, `factcheck.md`, `citations.md`. Sources
+  are pasted text/files (saved to `raw/`, `status=fetched`) or bare URLs
+  (`status=pending`, fetched by the agent).
+- **Task brief** (`scriptwriter/tasks.py`, `write_script_task`) — the agent brief
+  (mirrors `_style_synthesis_task`): fetch pending URLs via WebFetch → ground
+  `facts.md` (every claim tagged `[S#]` or `[model: needs-check]`) → draft `script.md`
+  using the chosen style's **How to Apply** block → fact-check. **Grounded-but-graceful**
+  policy: prefer source-backed claims, allow flagged model-knowledge, never present
+  unverified as certain. Output obeys the Director contract (`## ` beat headings +
+  `**Total Duration:** M:SS`).
+- **Dispatch** — `operations.write_script` writes the task file and dispatches to a
+  tmux Claude agent (same mechanism as `analyze_style`); **standalone** — drops a
+  Director-ready project, handoff to render stays a separate step.
+- **Reuse, not rebuild:** voice from `ScriptStyleStore.read_guide(style_id)`; project
+  shape + dir tree from `projects init`; agent dispatch from `analyze_style`. The new
+  parts are only the sourcing/grounding layer + the fact-check gate.
+- **UI** — `/script-projects` page: create (subject + style dropdown + angle/pivot/
+  minutes) → add sources (**URL / paste / file upload** of .txt/.md/.srt/.vtt) →
+  **Write script** with **live job progress** (polls `/api/jobs/{id}`) → view `script.md`
+  and the **grounding artifacts** (Brief / Facts / Fact-check / Citations, plus each
+  source's fetched text) in an in-page viewer.
+- Endpoints: `GET/POST /api/script-projects`, `GET/DELETE /api/script-projects/{slug}`,
+  `POST .../{slug}/add-source|upload-file|remove-source/{sid}|write`,
+  `GET .../{slug}/script|artifact/{name}|source/{sid}`.
+- Tested by `scripts/test_scriptwriter.py` (store scaffolding, source handling, artifact/
+  source reads, task brief content — no LLM needed); UI verified live via headless render.
+- **Note:** two distinct `style_guide.md` exist — `script_styles/<id>/style_guide.md`
+  (narrative voice) vs `projects/<slug>/style_guide.md` (visual/scene, written by the
+  Director). Disambiguating the project one (→ `visual_style.md`) is a recommended
+  follow-up cleanup, not yet done.
 
 ### YouTube Integration
 - **Video Download** - Download YouTube videos using yt-dlp
   - Single video, batch from file, or entire playlists
   - Configurable quality formats (default: 720p)
-  - Automatic subtitle download (configurable languages)
+  - Automatic subtitle download — fetches only the **video's original
+    language** (detected from yt-dlp metadata) instead of all configured
+    languages, avoiding YouTube's HTTP 429 subtitle rate-limit. If a subtitle
+    download still fails, the video is **retried once without subtitles** so the
+    download succeeds and the Whisper fallback transcribes it.
   - Progress tracking with callbacks
 - **YouTube Search** - Search for videos without downloading
   - Returns video metadata (title, duration, views, channel)
@@ -663,7 +929,7 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
     - **Shadow**: `ShadowIn`, `ShadowOut`, `ShadowPulse`
     - **Glow**: `GlowIn`, `GlowOut`, `GlowPulse`, `Highlight`
     - **Color**: `ColorShift`, `ColorTint`
-    - **Annotation**: `Underline`, `Strikethrough`, `CircleAnnotation`, `ArrowPoint`
+    - **Annotation**: `Underline` (incl. `style="highlight"` marker sweep with phrase-based `highlight_text` selection), `Strikethrough`, `CircleAnnotation`, `ArrowPoint`
     - **Cinematic**: `Letterbox`, `Scanlines`, `VHSEffect`
     - **Drawing**: `DrawLine`, `DrawBox`
     - **Sequencing**: `Loop`, `Sequence`, `Delay`, `StaggeredFadeIn`
@@ -673,16 +939,22 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
     - Special: `ease_in/out/in_out_back` (overshoot), `ease_in/out/in_out_elastic` (spring), `ease_in/out/in_out_bounce`
     - Advanced: `spring` (physics-based), `bezier` (custom cubic bezier curves)
   - **Position/Layout System** (`layout.py`):
-    - `Position` dataclass with percentage-based coordinates (0-1)
-    - 16 named presets: center, lower-third, upper-third, corners, split-screen
-    - All renderers accept `position` parameter for placement control
+    - **Position System** (percentage-based): `Position` dataclass with x/y percentages (0-1)
+      - 16 named presets: center, lower-third, upper-third, corners, split-screen
+      - All renderers accept `position` parameter for placement control
+    - **Slot/Layout System** (region-based): Cross-platform screen division
+      - `Slot` - Rectangular region with x, y, width, height, padding
+      - `Layout` - Divides screen into slots (columns, rows, grids)
+      - `get_preset()` - Named layouts: "thirds", "golden", "split-1-2", "grid-2x2", etc.
+      - JSON-serializable for Motion Canvas/Remotion integration
+      - Templates can accept custom layouts as input
     - Aligns with render-service layout system for consistency
   - **Scene-Specific Renderers** (27 total):
     - **Core** (10): `QuoteRenderer`, `TitleRenderer`, `StatisticRenderer`, `ListRenderer`, `LowerThirdRenderer`, `CounterRenderer`, `ComparisonRenderer`, `TimelineRenderer`, `KenBurnsRenderer`, `FlashbackRenderer`
     - **Text Cards** (5): `DefinitionRenderer`, `SourceCitationRenderer`, `PullQuoteRenderer`, `QuestionRenderer`, `VerdictRenderer`
     - **Location/Time** (3): `LocationStampRenderer`, `ChapterCardRenderer`, `ProgressBarRenderer`
-    - **Data Visualization** (3): `StatComparisonRenderer`, `PercentageBarRenderer`, `RankingRenderer`
-    - **Media Mockup** (3): `TweetCardRenderer`, `NewsHeadlineRenderer`, `DocumentHighlightRenderer`
+    - **Data Visualization** (4): `StatComparisonRenderer`, `PercentageBarRenderer`, `RankingRenderer`, `PieCalloutRenderer` (5-beat donut/pie: intro → scale-down → colour slice by % → eject slice → info-text reveal; controllable `pie_center`)
+    - **Media Mockup** (3): `TweetCardRenderer`, `NewsHeadlineRenderer`, `DocumentHighlightRenderer` (its `highlight_text` param drives a phrase-targeted highlighter sweep)
     - **Transitions** (1): `SectionDividerRenderer`
     - **Portrait/Figure** (1): `portrait_reveal` - portrait slides aside to reveal bullet points (from video analysis)
     - **Smart Text Layout**: Automatic line wrapping with `max_width`, `max_lines`, dynamic font sizing
@@ -704,6 +976,8 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
     - `scripts/test_venezuela_templates.py` - Tests all 15 new templates with Venezuela content
     - `scripts/test_new_effects.py` - Tests 10 advanced effects (CountUp, Shake, Rotation, Blur, Shadow, Glow, etc.)
     - `scripts/test_annotation_effects.py` - Tests 8 annotation/cinematic effects (Underline, Letterbox, Scanlines, etc.)
+    - `scripts/test_highlight_sweep.py` - Tests the highlight-marker sweep (`Underline(style="highlight")`) and phrase-based selection
+    - `scripts/test_pie_callout.py` - Tests the 5-beat donut callout (`PieCalloutRenderer`): slice tracks %, text reveal, controllable location
 
 - ✅ **Quality Protocol Module** - Automated validation and fix system for rendered video content
   - **nolan.quality package** - Core quality assurance module:

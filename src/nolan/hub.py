@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional, List, Dict
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -107,8 +107,422 @@ def create_hub_app(
     """
     app = FastAPI(title="NOLAN Hub")
     templates_dir = Path(__file__).parent / "templates"
+    static_dir = Path(__file__).parent / "static"
     uploads_dir = Path(__file__).parent.parent.parent / "render-service" / "uploads"
     uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    # Shared static assets (theme, nav, job-poll widget).
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+    # ==================== Job Manager (background operations) ====================
+    from nolan.webui.jobs import get_job_manager
+    job_manager = get_job_manager()
+
+    @app.get("/api/jobs")
+    async def jobs_list(type: Optional[str] = None):
+        return [j.to_dict(include_logs=False) for j in job_manager.list(job_type=type)]
+
+    @app.get("/api/jobs/{job_id}")
+    async def jobs_get(job_id: str):
+        job = job_manager.get(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="job not found")
+        return job.to_dict()
+
+    @app.post("/api/jobs/{job_id}/cancel")
+    async def jobs_cancel(job_id: str):
+        return {"cancelled": job_manager.cancel(job_id)}
+
+    async def _render_service_up() -> bool:
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                r = await client.get(f"{render_service_url}/")
+                return r.status_code < 500
+        except Exception:
+            return False
+
+    # ==================== Ingest (Add to Library) ====================
+
+    @app.get("/library/add", response_class=HTMLResponse)
+    async def library_add_page():
+        tpl = templates_dir / "ingest.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>ingest.html not found</h1>"
+
+    @app.post("/api/ingest")
+    async def api_ingest(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        config = load_config()
+        effective_db = db_path or Path(config.indexing.database).expanduser()
+        target = (body.get("target") or "").strip()
+        if not target:
+            raise HTTPException(status_code=400, detail="target (file path or URL) is required")
+        job = job_manager.start(
+            "ingest", operations.ingest,
+            meta={"target": target, "source_type": body.get("source_type", "file")},
+            config=config, db_path=effective_db,
+            source_type=body.get("source_type", "file"),
+            target=target,
+            provider=body.get("provider", "openrouter"),
+            model=(body.get("model") or None),
+            reasoning_enabled=body.get("reasoning_enabled"),
+            reasoning_max_tokens=body.get("reasoning_max_tokens"),
+            project_dir=(body.get("project") or None),
+            force=bool(body.get("force", False)),
+            whisper_fallback=bool(body.get("whisper_fallback", True)),
+        )
+        return {"job_id": job.id, "type": "ingest"}
+
+    # ==================== Essay -> Process wizard ====================
+
+    @app.get("/process", response_class=HTMLResponse)
+    async def process_page():
+        tpl = templates_dir / "process.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>process.html not found</h1>"
+
+    @app.post("/api/process")
+    async def api_process(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        essay_text = (body.get("essay_text") or "").strip()
+        project_name = (body.get("project_name") or "").strip()
+        if not essay_text:
+            raise HTTPException(status_code=400, detail="essay_text is required")
+        if not project_name:
+            raise HTTPException(status_code=400, detail="project_name is required")
+        # sanitize project name into a slug-safe folder
+        import re as _re
+        project_name = _re.sub(r"[^a-zA-Z0-9_-]+", "-", project_name).strip("-").lower() or "project"
+        job = job_manager.start(
+            "process", operations.process_essay,
+            meta={"project": project_name},
+            config=load_config(), essay_text=essay_text, project_name=project_name,
+            skip_scenes=bool(body.get("skip_scenes", False)),
+            style_id=(body.get("style_id") or None),
+        )
+        return {"job_id": job.id, "type": "process", "project": project_name}
+
+    # ==================== Import existing script (BYO-script) ====================
+
+    @app.post("/api/import-script")
+    async def api_import_script(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        video_path = (body.get("video_path") or "").strip()
+        project = (body.get("project") or "").strip()
+        if not video_path or not project:
+            raise HTTPException(status_code=400, detail="video_path and project are required")
+        import re as _re
+        project = _re.sub(r"[^a-zA-Z0-9_-]+", "-", project).strip("-").lower() or "project"
+        job = job_manager.start(
+            "import-script", operations.import_script_from_video,
+            meta={"project": project},
+            config=load_config(), video_path=video_path, project_name=project,
+            translate=bool(body.get("translate", True)),
+        )
+        return {"job_id": job.id, "type": "import-script", "project": project}
+
+    @app.post("/api/design")
+    async def api_design(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        if not project:
+            raise HTTPException(status_code=400, detail="project is required")
+        job = job_manager.start(
+            "design", operations.design, meta={"project": project},
+            config=load_config(), project_name=project,
+            llm_provider=(body.get("llm_provider") or None),
+            llm_model=(body.get("llm_model") or None),
+            reasoning=body.get("reasoning"),
+            source_project=(body.get("source_project") or None),
+        )
+        return {"job_id": job.id, "type": "design"}
+
+    # ==================== Vector index management ====================
+
+    @app.post("/api/sync-vectors")
+    async def api_sync_vectors(body: dict = Body(default={})):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        config = load_config()
+        effective_db = db_path or Path(config.indexing.database).expanduser()
+        job = job_manager.start(
+            "sync-vectors", operations.sync_vectors,
+            db_path=effective_db, project_id=(body.get("project_id") or None),
+        )
+        return {"job_id": job.id, "type": "sync-vectors"}
+
+    # ==================== Settings ====================
+
+    @app.get("/settings", response_class=HTMLResponse)
+    async def settings_page():
+        tpl = templates_dir / "settings.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>settings.html not found</h1>"
+
+    @app.get("/api/settings")
+    async def api_settings_get():
+        from nolan.config import load_config
+        config = load_config()
+        return {
+            "vision": {
+                "provider": config.vision.provider,
+                "model": config.vision.model,
+                "reasoning_enabled": config.vision.reasoning_enabled,
+                "reasoning_max_tokens": config.vision.reasoning_max_tokens,
+            },
+            "llm": {
+                "provider": config.llm.provider,
+                "model": config.llm.model,
+                "reasoning_enabled": config.llm.reasoning_enabled,
+            },
+            "keys": {
+                "gemini": bool(config.gemini.api_key),
+                "openrouter": bool(config.vision.openrouter_api_key),
+            },
+            "indexing": {"database": config.indexing.database},
+        }
+
+    @app.post("/api/settings")
+    async def api_settings_set(body: dict = Body(...)):
+        """Persist vision settings to nolan.yaml (vision: block)."""
+        import yaml
+        cfg_path = Path("nolan.yaml")
+        data = {}
+        if cfg_path.exists():
+            data = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+        vision = data.get("vision", {}) or {}
+        for key in ("provider", "model", "reasoning_enabled", "reasoning_max_tokens"):
+            if key in body:
+                vision[key] = body[key]
+        data["vision"] = vision
+        # LLM block (text tasks) — accepts a nested "llm" object in the body.
+        if isinstance(body.get("llm"), dict):
+            llm = data.get("llm", {}) or {}
+            for key in ("provider", "model", "reasoning_enabled"):
+                if key in body["llm"]:
+                    llm[key] = body["llm"][key]
+            data["llm"] = llm
+        cfg_path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+        return {"saved": True, "vision": vision, "llm": data.get("llm")}
+
+    # ==================== Asset matching (Phase 3) ====================
+
+    @app.post("/api/match")
+    async def api_match(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        if not project:
+            raise HTTPException(status_code=400, detail="project is required")
+        kind = body.get("kind", "broll")
+        if kind == "broll-video":
+            # Video-first multi-source b-roll (Internet Archive + Pexels/Pixabay video)
+            job = job_manager.start(
+                "match", operations.match_broll_v2,
+                meta={"project": project, "kind": kind},
+                config=load_config(), project_name=project,
+                prefer_video=bool(body.get("prefer_video", True)),
+                max_results=int(body.get("max_results", 4)),
+            )
+            return {"job_id": job.id, "type": "match"}
+        job = job_manager.start(
+            "match", operations.match_assets,
+            meta={"project": project, "kind": kind},
+            config=load_config(), project_name=project,
+            source=body.get("source", "wikimedia"),
+            max_results=int(body.get("max_results", 5)),
+            kind=kind,
+        )
+        return {"job_id": job.id, "type": "match"}
+
+    @app.post("/api/materialize-clips")
+    async def api_materialize_clips(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        if not project:
+            raise HTTPException(status_code=400, detail="project is required")
+        job = job_manager.start(
+            "materialize-clips", operations.materialize_clips, meta={"project": project},
+            config=load_config(), project_name=project,
+            max_clip_seconds=float(body.get("max_clip_seconds", 10.0)),
+        )
+        return {"job_id": job.id, "type": "materialize-clips"}
+
+    @app.post("/api/generate")
+    async def api_generate(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        if not project:
+            raise HTTPException(status_code=400, detail="project is required")
+        job = job_manager.start(
+            "generate", operations.generate_assets, meta={"project": project},
+            config=load_config(), project_name=project,
+            workflow_name=(body.get("workflow") or None),
+            style_cohesion=bool(body.get("style_cohesion", True)),
+        )
+        return {"job_id": job.id, "type": "generate"}
+
+    # ==================== ComfyUI / Generation workflows ====================
+
+    @app.get("/comfyui", response_class=HTMLResponse)
+    async def comfyui_page():
+        tpl = templates_dir / "comfyui.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>comfyui.html not found</h1>"
+
+    @app.get("/api/comfyui/status")
+    async def api_comfyui_status():
+        from nolan.config import load_config
+        from nolan.webui import operations
+        return await operations.comfyui_status(load_config())
+
+    @app.get("/api/comfyui/workflows")
+    async def api_comfyui_workflows():
+        from nolan.workflow_registry import get_registry
+        return [e.to_dict() for e in get_registry().list()]
+
+    @app.post("/api/comfyui/workflows")
+    async def api_comfyui_add_workflow(body: dict = Body(...)):
+        from nolan.workflow_registry import get_registry, WorkflowEntry
+        from nolan.comfyui import load_workflow_file, find_prompt_nodes
+        import re as _re
+        name = (body.get("name") or "").strip()
+        wf_json = body.get("workflow_json")
+        if not name or wf_json is None:
+            raise HTTPException(status_code=400, detail="name and workflow_json are required")
+        slug = _re.sub(r"[^a-zA-Z0-9_-]+", "-", name).strip("-").lower() or "workflow"
+        wf_dir = Path("workflows") / "image"
+        wf_dir.mkdir(parents=True, exist_ok=True)
+        wf_path = wf_dir / f"{slug}.json"
+        wf_path.write_text(json.dumps(wf_json, indent=2), encoding="utf-8")
+        # Normalize (UI→API) + auto-detect prompt node if not provided.
+        prompt_node = body.get("prompt_node") or None
+        try:
+            wf = load_workflow_file(wf_path)
+            if not prompt_node:
+                prompt_node = find_prompt_nodes(wf).get("positive")
+        except Exception:
+            pass
+        entry = WorkflowEntry(
+            name=slug, description=body.get("description", ""),
+            file=str(wf_path).replace("\\", "/"), checkpoint=body.get("checkpoint"),
+            prompt_node=prompt_node,
+            width=int(body.get("width", 1024)), height=int(body.get("height", 1024)),
+            steps=int(body.get("steps", 25)), styles=body.get("styles", []),
+        )
+        get_registry().add(entry)
+        return {"saved": True, "entry": entry.to_dict()}
+
+    @app.delete("/api/comfyui/workflows/{name}")
+    async def api_comfyui_delete_workflow(name: str):
+        from nolan.workflow_registry import get_registry
+        return {"removed": get_registry().remove(name)}
+
+    @app.post("/api/comfyui/sample")
+    async def api_comfyui_sample(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        prompt = (body.get("prompt") or "").strip()
+        if not prompt:
+            raise HTTPException(status_code=400, detail="prompt is required")
+        job = job_manager.start(
+            "comfyui-sample", operations.comfyui_sample,
+            meta={"workflow": body.get("workflow")},
+            config=load_config(), workflow_name=(body.get("workflow") or None), prompt=prompt,
+            width=body.get("width"), height=body.get("height"), steps=body.get("steps"),
+        )
+        return {"job_id": job.id, "type": "comfyui-sample"}
+
+    @app.get("/comfyui/preview/{filename:path}")
+    async def comfyui_preview(filename: str):
+        path = Path("samples") / filename
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="sample not found")
+        return FileResponse(str(path))
+
+    # ==================== Render / Assemble (Phase 4) ====================
+
+    @app.post("/api/render-clips")
+    async def api_render_clips(body: dict = Body(...)):
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        plan = Path("projects") / project / "scene_plan.json"
+        if not plan.exists():
+            raise HTTPException(status_code=400, detail=f"no scene_plan.json for '{project}'")
+        args = ["render-clips", str(plan)]
+        if body.get("force"):
+            args.append("--force")
+        job = job_manager.start("render-clips", operations.run_cli,
+                                meta={"project": project}, args=args, label="render-clips")
+        return {"job_id": job.id, "type": "render-clips"}
+
+    @app.post("/api/assemble")
+    async def api_assemble(body: dict = Body(...)):
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        plan = Path("projects") / project / "scene_plan.json"
+        if not plan.exists():
+            raise HTTPException(status_code=400, detail=f"no scene_plan.json for '{project}'")
+        args = ["assemble", str(plan)]
+        if body.get("audio_file"):
+            args += ["--audio-file", body["audio_file"]]
+        if body.get("output"):
+            args += ["--output", body["output"]]
+        job = job_manager.start("assemble", operations.run_cli,
+                                meta={"project": project}, args=args, label="assemble")
+        return {"job_id": job.id, "type": "assemble"}
+
+    # ==================== Project Studio (full loop) ====================
+
+    @app.get("/studio", response_class=HTMLResponse)
+    async def studio_page():
+        tpl = templates_dir / "studio.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>studio.html not found</h1>"
+
+    @app.get("/api/project/{project}/status")
+    async def api_project_status(project: str):
+        """Per-project pipeline-stage status for the Studio view."""
+        base = Path("projects") / project
+        scene_plan = base / "scene_plan.json"
+        status = {
+            "project": project,
+            "exists": base.exists(),
+            "has_essay": (base / "essay.md").exists(),
+            "has_script": (base / "script.md").exists(),
+            "has_scene_plan": scene_plan.exists(),
+            "scenes": 0, "matched": 0, "rendered": 0, "has_final": False,
+            "source_videos": 0,
+        }
+        src = base / "source"
+        if src.exists():
+            status["source_videos"] = len([p for p in src.glob("*.mp4")])
+        if scene_plan.exists():
+            try:
+                from nolan.scenes import ScenePlan
+                plan = ScenePlan.load(str(scene_plan))
+                scenes = plan.all_scenes
+                status["scenes"] = len(scenes)
+                status["matched"] = sum(1 for s in scenes
+                                        if getattr(s, "matched_asset", None) or getattr(s, "matched_clip", None))
+                status["rendered"] = sum(1 for s in scenes if getattr(s, "rendered_clip", None))
+            except Exception as e:
+                status["error"] = str(e)
+        finals = list(base.glob("*.mp4")) + list((base / "output").glob("*.mp4")) if base.exists() else []
+        status["has_final"] = len(finals) > 0
+        return status
 
     # ==================== Landing Page ====================
 
@@ -126,6 +540,7 @@ def create_hub_app(
         library_available = db_path and db_path.exists()
         projects = scan_projects(projects_dir) if projects_dir else []
 
+        render_up = await _render_service_up()
         return {
             "library": {
                 "available": library_available,
@@ -134,6 +549,10 @@ def create_hub_app(
             "showcase": {
                 "available": True,
                 "render_service_url": render_service_url,
+            },
+            "render_service": {
+                "available": render_up,
+                "url": render_service_url,
             },
             "projects": projects,
         }
@@ -315,6 +734,426 @@ def create_hub_app(
                 raise HTTPException(status_code=404, detail="Video not found")
             media_types = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime"}
             return FileResponse(file_path, media_type=media_types.get(file_path.suffix.lower(), "video/mp4"))
+
+        # ==================== Saved Clips (manual cuts) ====================
+
+        clips_template = templates_dir / "clips.html"
+
+        @app.get("/clips", response_class=HTMLResponse)
+        async def clips_home():
+            """Serve the clips search / library page."""
+            if clips_template.exists():
+                return clips_template.read_text(encoding="utf-8")
+            return "<h1>clips.html not found</h1>"
+
+        def _resolve_scope(projects: Optional[str]) -> Optional[List[str]]:
+            """Turn a comma-separated list of slugs/ids into project ids.
+
+            Returns None for 'all projects' (empty / 'all')."""
+            if not projects or projects.strip().lower() in ("all", ""):
+                return None
+            ids = []
+            for token in projects.split(","):
+                token = token.strip()
+                if not token:
+                    continue
+                resolved = index.resolve_project(token) or token
+                ids.append(resolved)
+            return ids or None
+
+        @app.get("/library/api/clips")
+        async def clips_list(projects: Optional[str] = Query(default=None)):
+            """List saved clips, optionally scoped to a set of projects."""
+            scope = _resolve_scope(projects)
+            return {"clips": index.list_saved_clips(project_ids=scope),
+                    "scope": scope}
+
+        @app.post("/library/api/clips")
+        async def clips_create(body: dict = Body(...)):
+            """Create a saved clip from a manual in/out selection."""
+            source = (body.get("source_video_path") or "").strip()
+            if not source:
+                raise HTTPException(status_code=400, detail="source_video_path is required")
+            try:
+                clip_start = float(body.get("clip_start"))
+                clip_end = float(body.get("clip_end"))
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="clip_start and clip_end must be numbers")
+            if clip_end <= clip_start:
+                raise HTTPException(status_code=400, detail="clip_end must be greater than clip_start")
+            tags = body.get("tags") or None
+            if isinstance(tags, str):
+                tags = [t.strip() for t in tags.split(",") if t.strip()] or None
+            project = (body.get("project") or "").strip() or None
+            project_id = index.resolve_project(project) if project else None
+            clip_id = index.add_saved_clip(
+                source_video_path=source,
+                clip_start=clip_start, clip_end=clip_end,
+                label=(body.get("label") or None),
+                tags=tags, project_id=project_id,
+            )
+            return {"clip": index.get_saved_clip(clip_id)}
+
+        @app.delete("/library/api/clips/{clip_id}")
+        async def clips_delete(clip_id: str):
+            if not index.delete_saved_clip(clip_id):
+                raise HTTPException(status_code=404, detail="clip not found")
+            return {"deleted": clip_id}
+
+        @app.post("/library/api/clips/{clip_id}/materialize")
+        async def clips_materialize(clip_id: str, body: dict = Body(default={})):
+            """Materialize a saved clip (none|file|frames) as a background job."""
+            from nolan.webui import operations
+            if not index.get_saved_clip(clip_id):
+                raise HTTPException(status_code=404, detail="clip not found")
+            form = (body.get("form") or "file").strip()
+            job = job_manager.start(
+                "materialize-clip", operations.materialize_clip,
+                meta={"clip_id": clip_id, "form": form},
+                db_path=db_path, clip_id=clip_id, form=form,
+                num_frames=int(body.get("num_frames", 6)),
+                force=bool(body.get("force", False)),
+            )
+            return {"job_id": job.id, "type": "materialize-clip"}
+
+        @app.get("/library/api/tmux-sessions")
+        async def list_tmux_sessions():
+            """List tmux sessions available as analysis-agent targets."""
+            from nolan.webui import operations
+            import asyncio as _asyncio
+            sessions = await _asyncio.get_event_loop().run_in_executor(
+                None, operations.list_tmux_sessions)
+            return {"sessions": sessions}
+
+        @app.post("/library/api/clips/{clip_id}/analyze-effect")
+        async def clips_analyze_effect(clip_id: str, body: dict = Body(default={})):
+            """Dispatch a clip to a tmux Claude agent for effect analysis."""
+            from nolan.webui import operations
+            if not index.get_saved_clip(clip_id):
+                raise HTTPException(status_code=404, detail="clip not found")
+            session = (body.get("session") or "nolan2").strip() or "nolan2"
+            job = job_manager.start(
+                "analyze-effect", operations.analyze_effect,
+                meta={"clip_id": clip_id, "session": session},
+                db_path=db_path, clip_id=clip_id,
+                num_frames=int(body.get("num_frames", 10)),
+                session=session,
+            )
+            return {"job_id": job.id, "type": "analyze-effect"}
+
+        @app.get("/library/api/clips/{clip_id}/analysis")
+        async def clips_analysis(clip_id: str):
+            """Return the nolan2 agent's effect-analysis findings, if written yet."""
+            analysis = Path("projects") / "_clips" / clip_id / "effect_analysis.md"
+            if not analysis.exists():
+                raise HTTPException(status_code=404, detail="no analysis yet")
+            return {"clip_id": clip_id, "content": analysis.read_text(encoding="utf-8")}
+
+        @app.get("/library/api/clips/search")
+        async def clips_search(
+            q: str = Query(default="", description="keyword query (optional)"),
+            projects: Optional[str] = Query(default=None),
+            limit: int = Query(default=50, le=200),
+        ):
+            """Scoped search across saved clips + auto-snippets (segments/clusters)."""
+            scope = _resolve_scope(projects)
+            saved = index.list_saved_clips(project_ids=scope)
+            if q:
+                ql = q.lower()
+                saved = [c for c in saved
+                         if ql in (c.get("label") or "").lower()
+                         or any(ql in str(t).lower() for t in (c.get("tags") or []))
+                         or ql in (c.get("video_name") or "").lower()]
+            result = {"query": q, "scope": scope, "saved_clips": saved,
+                      "saved_clip_count": len(saved)}
+            if q:
+                segs = index.search(q, limit=limit, project_ids=scope)
+                clus = index.search_clusters(q, limit=limit, project_ids=scope)
+                result["segments"] = [_segment_to_dict(s) for s in segs]
+                result["segment_count"] = len(segs)
+                result["clusters"] = clus
+                result["cluster_count"] = len(clus)
+            else:
+                result["segments"] = []
+                result["segment_count"] = 0
+                result["clusters"] = []
+                result["cluster_count"] = 0
+            return result
+
+    # ==================== Script Styles (transcript corpora → style guides) ====================
+
+    from nolan.script_style import ScriptStyleStore
+    style_store = ScriptStyleStore(Path("script_styles"))
+    script_styles_template = templates_dir / "script_styles.html"
+
+    @app.get("/script-styles", response_class=HTMLResponse)
+    async def script_styles_page():
+        if script_styles_template.exists():
+            return script_styles_template.read_text(encoding="utf-8")
+        return "<h1>script_styles.html not found</h1>"
+
+    @app.get("/api/script-styles")
+    async def script_styles_list():
+        return {"styles": style_store.list()}
+
+    @app.post("/api/script-styles")
+    async def script_styles_create(body: dict = Body(...)):
+        name = (body.get("name") or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="name is required")
+        style_id = style_store.create(name)
+        return {"style": style_store.get(style_id)}
+
+    @app.get("/api/script-styles/{style_id}")
+    async def script_styles_get(style_id: str):
+        if not style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="style not found")
+        return style_store.get(style_id)
+
+    @app.delete("/api/script-styles/{style_id}")
+    async def script_styles_delete(style_id: str):
+        if not style_store.delete(style_id):
+            raise HTTPException(status_code=404, detail="style not found")
+        return {"deleted": style_id}
+
+    @app.post("/api/script-styles/{style_id}/add-text")
+    async def script_styles_add_text(style_id: str, body: dict = Body(...)):
+        """Add a pasted transcript to the corpus."""
+        if not style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="style not found")
+        text = (body.get("text") or "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="text is required")
+        title = (body.get("title") or "Pasted transcript").strip()
+        entry = style_store.add_source(style_id, text=text, title=title, source_type="upload")
+        return {"source": entry}
+
+    @app.post("/api/script-styles/{style_id}/upload-file")
+    async def script_styles_upload_file(style_id: str, file: UploadFile = File(...)):
+        """Add an uploaded .txt/.srt/.vtt transcript to the corpus."""
+        if not style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="style not found")
+        raw = (await file.read())
+        suffix = Path(file.filename or "").suffix.lower()
+        if suffix in (".srt", ".vtt"):
+            import tempfile
+            from nolan.transcript import TranscriptLoader
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tf:
+                tf.write(raw)
+                tmp = Path(tf.name)
+            try:
+                text = TranscriptLoader.load(tmp).full_text
+            finally:
+                tmp.unlink(missing_ok=True)
+        else:
+            text = raw.decode("utf-8", errors="replace")
+        title = Path(file.filename or "uploaded").stem or "uploaded"
+        entry = style_store.add_source(style_id, text=text, title=title, source_type="upload")
+        return {"source": entry}
+
+    @app.post("/api/script-styles/{style_id}/add-youtube")
+    async def script_styles_add_youtube(style_id: str, body: dict = Body(...)):
+        """Fetch transcripts for a list of YouTube URLs (background job)."""
+        from nolan.webui import operations
+        if not style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="style not found")
+        urls = body.get("urls") or []
+        if isinstance(urls, str):
+            urls = [u.strip() for u in urls.splitlines() if u.strip()]
+        if not urls:
+            raise HTTPException(status_code=400, detail="urls required")
+        job = job_manager.start(
+            "fetch-transcripts", operations.fetch_transcripts,
+            meta={"style_id": style_id, "count": len(urls)},
+            store_root="script_styles", style_id=style_id, urls=urls,
+            request_delay=float(body.get("request_delay", 2.0)),
+            max_retries=int(body.get("max_retries", 3)),
+        )
+        return {"job_id": job.id, "type": "fetch-transcripts"}
+
+    @app.post("/api/script-styles/{style_id}/add-channel")
+    async def script_styles_add_channel(style_id: str, body: dict = Body(...)):
+        """Fetch transcripts from a YouTube channel (last-N or date window)."""
+        from nolan.webui import operations
+        if not style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="style not found")
+        channel = (body.get("channel") or "").strip()
+        if not channel:
+            raise HTTPException(status_code=400, detail="channel is required")
+        mode = (body.get("mode") or "count").strip()
+        job = job_manager.start(
+            "fetch-channel", operations.fetch_channel,
+            meta={"style_id": style_id, "channel": channel, "mode": mode},
+            store_root="script_styles", style_id=style_id, channel=channel,
+            mode=mode, count=int(body.get("count", 10)),
+            date_after=(body.get("date_after") or None),
+            date_before=(body.get("date_before") or None),
+            request_delay=float(body.get("request_delay", 2.0)),
+            max_retries=int(body.get("max_retries", 3)),
+        )
+        return {"job_id": job.id, "type": "fetch-channel"}
+
+    @app.post("/api/script-styles/{style_id}/remove-source/{slug}")
+    async def script_styles_remove_source(style_id: str, slug: str):
+        if not style_store.remove_source(style_id, slug):
+            raise HTTPException(status_code=404, detail="source not found")
+        return {"removed": slug}
+
+    @app.post("/api/script-styles/{style_id}/analyze")
+    async def script_styles_analyze(style_id: str, body: dict = Body(default={})):
+        """Run Stage-B analysis: per-transcript extraction + agent synthesis."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        if not style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="style not found")
+        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        job = job_manager.start(
+            "analyze-style", operations.analyze_style,
+            meta={"style_id": style_id, "session": session},
+            config=load_config(), store_root="script_styles",
+            style_id=style_id, session=session,
+        )
+        return {"job_id": job.id, "type": "analyze-style"}
+
+    @app.get("/api/script-styles/{style_id}/guide")
+    async def script_styles_guide(style_id: str):
+        guide = style_store.read_guide(style_id)
+        if guide is None:
+            raise HTTPException(status_code=404, detail="no guide yet")
+        return {"style_id": style_id, "content": guide}
+
+    # ==================== Script Projects (subject + style + sources → script.md) ====================
+
+    from nolan.scriptwriter import ScriptProjectStore
+    script_project_store = ScriptProjectStore(Path("projects"))
+    script_projects_template = templates_dir / "script_projects.html"
+
+    @app.get("/script-projects", response_class=HTMLResponse)
+    async def script_projects_page():
+        if script_projects_template.exists():
+            return script_projects_template.read_text(encoding="utf-8")
+        return "<h1>script_projects.html not found</h1>"
+
+    @app.get("/api/script-projects")
+    async def script_projects_list():
+        return {"projects": script_project_store.list()}
+
+    @app.post("/api/script-projects")
+    async def script_projects_create(body: dict = Body(...)):
+        name = (body.get("name") or "").strip()
+        subject = (body.get("subject") or "").strip()
+        style_id = (body.get("style_id") or "").strip()
+        if not subject or not style_id:
+            raise HTTPException(status_code=400, detail="subject and style_id are required")
+        if not style_store.exists(style_id):
+            raise HTTPException(status_code=400, detail=f"unknown style_id: {style_id}")
+        slug = script_project_store.create(
+            name or subject, subject=subject, style_id=style_id,
+            angle=(body.get("angle") or "").strip(),
+            pivot=(body.get("pivot") or "").strip(),
+            target_minutes=float(body.get("target_minutes") or 8.0),
+            description=(body.get("description") or "").strip(),
+        )
+        return {"project": script_project_store.get(slug)}
+
+    @app.get("/api/script-projects/{slug}")
+    async def script_projects_get(slug: str):
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        return script_project_store.get(slug)
+
+    @app.delete("/api/script-projects/{slug}")
+    async def script_projects_delete(slug: str):
+        if not script_project_store.delete(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        return {"deleted": slug}
+
+    @app.post("/api/script-projects/{slug}/add-source")
+    async def script_projects_add_source(slug: str, body: dict = Body(...)):
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        kind = (body.get("kind") or "").strip()
+        url = (body.get("url") or "").strip() or None
+        text = body.get("text") or None
+        if kind not in ("url", "paste", "file", "reference"):
+            raise HTTPException(status_code=400, detail="kind must be url/paste/file/reference")
+        if kind == "url" and not url:
+            raise HTTPException(status_code=400, detail="url required for kind=url")
+        if kind in ("paste", "file") and not text:
+            raise HTTPException(status_code=400, detail="text required for kind=paste/file")
+        entry = script_project_store.add_source(
+            slug, kind=kind, title=(body.get("title") or "").strip(), url=url, text=text)
+        return {"source": entry}
+
+    @app.post("/api/script-projects/{slug}/upload-file")
+    async def script_projects_upload_file(slug: str, file: UploadFile = File(...)):
+        """Add an uploaded .txt/.md/.srt/.vtt source to a project (saved to raw/)."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        raw = await file.read()
+        suffix = Path(file.filename or "").suffix.lower()
+        if suffix in (".srt", ".vtt"):
+            import tempfile
+            from nolan.transcript import TranscriptLoader
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tf:
+                tf.write(raw)
+                tmp = Path(tf.name)
+            try:
+                text = TranscriptLoader.load(tmp).full_text
+            finally:
+                tmp.unlink(missing_ok=True)
+        else:
+            text = raw.decode("utf-8", errors="replace")
+        title = Path(file.filename or "uploaded").stem or "uploaded"
+        entry = script_project_store.add_source(slug, kind="file", title=title, text=text)
+        return {"source": entry}
+
+    @app.post("/api/script-projects/{slug}/remove-source/{sid}")
+    async def script_projects_remove_source(slug: str, sid: str):
+        if not script_project_store.remove_source(slug, sid):
+            raise HTTPException(status_code=404, detail="source not found")
+        return {"removed": sid}
+
+    @app.get("/api/script-projects/{slug}/artifact/{name}")
+    async def script_projects_artifact(slug: str, name: str):
+        """Read a grounding artifact: brief|facts|factcheck|citations|sources."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        content = script_project_store.read_artifact(slug, name)
+        if content is None:
+            raise HTTPException(status_code=404, detail=f"no {name} yet")
+        return {"slug": slug, "name": name, "content": content}
+
+    @app.get("/api/script-projects/{slug}/source/{sid}")
+    async def script_projects_source_text(slug: str, sid: str):
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        content = script_project_store.read_source_text(slug, sid)
+        if content is None:
+            raise HTTPException(status_code=404, detail="no fetched text for this source")
+        return {"slug": slug, "sid": sid, "content": content}
+
+    @app.post("/api/script-projects/{slug}/write")
+    async def script_projects_write(slug: str, body: dict = Body(default={})):
+        from nolan.webui import operations
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        job = job_manager.start(
+            "write-script", operations.write_script,
+            meta={"slug": slug, "session": session},
+            store_root="projects", slug=slug, session=session,
+        )
+        return {"job_id": job.id, "type": "write-script"}
+
+    @app.get("/api/script-projects/{slug}/script")
+    async def script_projects_script(slug: str):
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        content = script_project_store.read_script(slug)
+        if content is None:
+            raise HTTPException(status_code=404, detail="no script yet")
+        return {"slug": slug, "content": content}
 
     # ==================== Showcase Routes ====================
 
@@ -527,6 +1366,86 @@ def create_hub_app(
             ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
         }
         return FileResponse(file_path, media_type=media_types.get(suffix, "application/octet-stream"))
+
+    # ==================== Agents Routes (Orchestrator Dashboard) ====================
+
+    if projects_dir:
+        from nolan.orchestrator import dashboard as agents_dashboard
+
+        agents_template = templates_dir / "agents.html"
+        repo_root = Path(__file__).parent.parent.parent
+
+        @app.get("/agents", response_class=HTMLResponse)
+        async def agents_home():
+            """Serve the agents dashboard page."""
+            if agents_template.exists():
+                return agents_template.read_text(encoding="utf-8")
+            return "<h1>Agents template not found</h1>"
+
+        @app.get("/api/agents")
+        async def agents_list():
+            """List all projects with .orchestrator/ folders + their state."""
+            return {"projects": agents_dashboard.list_all_projects(projects_dir)}
+
+        @app.get("/api/agents/{slug}/state")
+        async def agents_state(slug: str):
+            project_path = projects_dir / slug
+            if not (project_path / ".orchestrator").exists():
+                raise HTTPException(status_code=404, detail="project has no .orchestrator/")
+            return agents_dashboard.project_summary(project_path)
+
+        @app.get("/api/agents/{slug}/checkpoint")
+        async def agents_checkpoint(slug: str):
+            project_path = projects_dir / slug
+            body = agents_dashboard.latest_checkpoint(project_path)
+            if body is None:
+                raise HTTPException(status_code=404, detail="no CHECKPOINT.md")
+            return {"slug": slug, "body": body}
+
+        @app.get("/api/agents/{slug}/stream")
+        async def agents_stream(slug: str, since: int = 0):
+            project_path = projects_dir / slug
+            if not (project_path / ".orchestrator").exists():
+                raise HTTPException(status_code=404, detail="project has no .orchestrator/")
+            return {
+                "slug": slug,
+                "modules": agents_dashboard.read_all_streams(project_path, since_seq=since),
+            }
+
+        @app.post("/api/agents/{slug}/feedback")
+        async def agents_feedback(slug: str, body: dict = Body(...)):
+            project_path = projects_dir / slug
+            if not (project_path / ".orchestrator").exists():
+                raise HTTPException(status_code=404, detail="project has no .orchestrator/")
+            text = (body.get("body") or "").strip()
+            if not text:
+                raise HTTPException(status_code=400, detail="empty feedback body")
+            path = agents_dashboard.write_feedback(project_path, text)
+            return {"slug": slug, "path": str(path.relative_to(project_path))}
+
+        @app.post("/api/agents/{slug}/run")
+        async def agents_run(slug: str):
+            project_path = projects_dir / slug
+            if not project_path.exists():
+                raise HTTPException(status_code=404, detail="project not found")
+            return agents_dashboard.trigger_orchestrate(project_path, repo_root)
+
+        @app.post("/api/agents/{slug}/refine")
+        async def agents_refine(slug: str, body: dict = Body(...)):
+            project_path = projects_dir / slug
+            if not project_path.exists():
+                raise HTTPException(status_code=404, detail="project not found")
+            target = (body.get("target") or "").strip()
+            if not target:
+                raise HTTPException(status_code=400, detail="missing 'target' step name")
+            if agents_dashboard.unconsumed_feedback_count(project_path) == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="no unconsumed feedback files; save feedback first",
+                )
+            return agents_dashboard.trigger_orchestrate(
+                project_path, repo_root, refine_target=target
+            )
 
     return app
 

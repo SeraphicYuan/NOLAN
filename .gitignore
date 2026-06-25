@@ -66,3 +66,9 @@ render-service/dist/
 
 # Video analysis projects (local only, large files)
 video_analysis/
+
+# ComfyUI sample previews (scratch)
+samples/
+
+# Script-style corpora + guides (user data)
+script_styles/

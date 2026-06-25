@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN Clips</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #14141f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .sub { color: #9a9ab0; font-size: 13px; margin-bottom: 16px; }
+        .panel { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+        .scope-projects { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+        .scope-projects label { font-size: 13px; display: flex; align-items: center; gap: 5px; background:#0f0f18; padding:4px 8px; border-radius:6px; border:1px solid #2a2a3a; cursor:pointer; }
+        .searchbar { display: flex; gap: 8px; margin-top: 10px; }
+        .searchbar input { flex: 1; padding: 9px; background: #0e0e16; border: 1px solid #2a2a3a; border-radius: 8px; color: #eee; font-size: 14px; }
+        button { background: #2a2a3a; color: #eee; border: 1px solid #3a3a4a; border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
+        button:hover { background: #34344a; }
+        button.primary { background: #e94560; border-color: #e94560; font-weight: 600; }
+        button.danger { background: #3a1f28; border-color: #5a2a38; }
+        .section-title { font-size: 15px; margin: 18px 0 8px; display:flex; align-items:center; gap:8px; }
+        .count { color: #9a9ab0; font-size: 12px; }
+        .card { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 9px; padding: 11px; margin-bottom: 9px; }
+        .card .meta { font-size: 12px; color: #9a9ab0; margin-bottom: 4px; display:flex; gap:10px; flex-wrap:wrap; }
+        .card .label { font-weight: 600; font-size: 14px; }
+        .card .desc { font-size: 13px; color: #cfcfe0; margin: 5px 0; }
+        .tag { background: #0f2f3a; color: #7fd3e0; border-radius: 5px; padding: 1px 7px; font-size: 11px; }
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+        .jobstatus { font-size: 12px; color: #9a9ab0; margin-top: 6px; }
+        .empty { color: #7a7a8c; font-size: 13px; padding: 8px 0; }
+        #playerPanel { position: sticky; top: 10px; z-index: 5; }
+        #clipPlayer { width: 100%; max-height: 320px; border-radius: 8px; background:#000; }
+        .hidden { display: none; }
+        code { background:#0e0e16; padding:1px 5px; border-radius:4px; font-size:12px; color:#9fe0a0; }
+    </style>
+</head>
+<body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="clips"></script>
+
+<div class="wrap">
+    <h1>✂ Clips</h1>
+    <div class="sub">Manually-cut clips (saved as reusable pointers) + cross-project snippet search. Saved clips materialize on demand for video essays, Claude, or ComfyUI.</div>
+
+    <div class="panel" id="playerPanel" style="display:none;">
+        <video id="clipPlayer" controls></video>
+        <div class="jobstatus" id="playerLabel"></div>
+    </div>
+
+    <div class="panel">
+        <strong style="font-size:14px;">Scope</strong>
+        <div class="sub" style="margin:4px 0 0;">Pick which projects' auto-snippets are in play. Saved clips are global and always shown.</div>
+        <div class="scope-projects" id="scopeProjects">
+            <label><input type="checkbox" id="scopeAll" checked onchange="onScopeAllChange()"> All projects</label>
+        </div>
+        <div class="searchbar">
+            <input id="searchInput" type="text" placeholder="Search clips & snippets (leave empty to list saved clips only)…">
+            <button class="primary" onclick="runSearch()">Search</button>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <strong style="font-size:13px;">🎬 Analysis agent:</strong>
+            <select id="agentSelect" style="padding:6px;background:#0e0e16;border:1px solid #2a2a3a;border-radius:7px;color:#eee;"></select>
+            <button onclick="loadSessions()" title="Refresh tmux sessions">⟳</button>
+            <span class="sub" style="margin:0;">tmux session that "Analyze effect" pushes to</span>
+        </div>
+    </div>
+
+    <div class="section-title">💾 Saved Clips <span class="count" id="savedCount"></span></div>
+    <div id="savedClips"></div>
+
+    <div id="snippetResults"></div>
+</div>
+
+<script>
+let projects = [];
+// Last search results — handlers reference these by index so we never inline
+// file paths into HTML (Windows backslashes get eaten as JS escapes otherwise).
+let _saved = [], _segs = [], _clus = [], _materialized = {};
+
+function formatTime(s) {
+    if (s == null) return '--:--';
+    s = Math.floor(s);
+    const m = Math.floor(s / 60), sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+function esc(t) {
+    const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML;
+}
+
+async function loadProjects() {
+    try {
+        const r = await fetch('/library/api/projects');
+        const data = await r.json();
+        projects = data.projects || [];
+        const box = document.getElementById('scopeProjects');
+        projects.forEach(p => {
+            const lbl = document.createElement('label');
+            lbl.innerHTML = `<input type="checkbox" class="scope-proj" value="${esc(p.slug || p.id)}" onchange="onScopeProjChange()"> ${esc(p.name)} <span class="count">(${p.video_count})</span>`;
+            box.appendChild(lbl);
+        });
+    } catch (e) { /* projects API only present when a library DB exists */ }
+}
+
+function onScopeAllChange() {
+    if (document.getElementById('scopeAll').checked) {
+        document.querySelectorAll('.scope-proj').forEach(c => c.checked = false);
+    }
+}
+function onScopeProjChange() {
+    const any = [...document.querySelectorAll('.scope-proj')].some(c => c.checked);
+    document.getElementById('scopeAll').checked = !any;
+}
+function selectedScope() {
+    if (document.getElementById('scopeAll').checked) return null;
+    const ids = [...document.querySelectorAll('.scope-proj:checked')].map(c => c.value);
+    return ids.length ? ids.join(',') : null;
+}
+
+async function runSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    const scope = selectedScope();
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (scope) params.set('projects', scope);
+    const r = await fetch('/library/api/clips/search?' + params.toString());
+    if (!r.ok) { document.getElementById('snippetResults').innerHTML = '<div class="empty">Search failed.</div>'; return; }
+    const data = await r.json();
+    renderSaved(data.saved_clips || []);
+    renderSnippets(data, q);
+}
+
+function renderSaved(clips) {
+    _saved = clips;
+    document.getElementById('savedCount').textContent = `(${clips.length})`;
+    const box = document.getElementById('savedClips');
+    if (!clips.length) { box.innerHTML = '<div class="empty">No saved clips yet. Cut one from the Library player.</div>'; return; }
+    box.innerHTML = clips.map((c, i) => `
+        <div class="card" id="card-${c.id}">
+            <div class="label">${esc(c.label || c.video_name || c.id)}</div>
+            <div class="meta">
+                <span>${esc(c.video_name)}</span>
+                <span>${formatTime(c.clip_start)} → ${formatTime(c.clip_end)} (${(c.duration||0).toFixed(1)}s)</span>
+                <span><code>${c.id}</code></span>
+                ${(c.tags||[]).map(t => `<span class="tag">${esc(t)}</span>`).join('')}
+            </div>
+            <div class="actions">
+                <button onclick="previewSavedIdx(${i})">▶ Preview</button>
+                <button onclick="materialize('${c.id}', 'file')">Materialize file (ComfyUI)</button>
+                <button onclick="materialize('${c.id}', 'frames')">Materialize frames (Claude)</button>
+                <button onclick="analyzeEffect('${c.id}')" title="Send to the nolan2 Claude agent to identify the effect, dedup vs the motion library, and assess replicability">🎬 Analyze effect</button>
+                <button class="danger" onclick="deleteClip('${c.id}')">Delete</button>
+            </div>
+            <div class="jobstatus" id="job-${c.id}"></div>
+        </div>
+    `).join('');
+}
+
+function renderSnippets(data, q) {
+    _segs = data.segments || [];
+    _clus = data.clusters || [];
+    const box = document.getElementById('snippetResults');
+    if (!q) { box.innerHTML = ''; return; }
+    let html = `<div class="section-title">🎬 Segments <span class="count">(${_segs.length})</span></div>`;
+    html += _segs.length ? _segs.map((s, i) => snippetCard(s, 'seg', i)).join('') : '<div class="empty">No matching segments.</div>';
+    html += `<div class="section-title">🎞 Clusters <span class="count">(${_clus.length})</span></div>`;
+    html += _clus.length ? _clus.map((s, i) => snippetCard(s, 'clus', i)).join('') : '<div class="empty">No matching clusters.</div>';
+    box.innerHTML = html;
+}
+
+function snippetCard(s, type, i) {
+    const desc = type === 'clus' ? (s.cluster_summary || '') : (s.combined_summary || s.frame_description || '');
+    const name = s.video_name || (s.video_path ? s.video_path.split(/[\\/]/).pop() : '');
+    return `
+        <div class="card">
+            <div class="meta">
+                <span>${esc(name)}</span>
+                <span>${formatTime(s.timestamp_start)} → ${formatTime(s.timestamp_end)}</span>
+            </div>
+            <div class="desc">${esc(desc).slice(0, 280)}</div>
+            <div class="actions">
+                <button onclick="previewSnippetIdx('${type}', ${i})">▶ Preview</button>
+                <button class="primary" onclick="saveSnippetIdx('${type}', ${i})">💾 Save as clip</button>
+            </div>
+        </div>`;
+}
+
+// Index-based handlers — read the path from the stored result object so file
+// paths never pass through HTML/JS string parsing.
+function previewSavedIdx(i) {
+    const c = _saved[i]; if (!c) return;
+    previewClip(c.source_video_path, c.clip_start, c.clip_end, c.label || c.id);
+}
+function previewSnippetIdx(type, i) {
+    const s = (type === 'clus' ? _clus : _segs)[i]; if (!s) return;
+    const name = s.video_name || (s.video_path ? s.video_path.split(/[\\/]/).pop() : '');
+    previewClip(s.video_path, s.timestamp_start, s.timestamp_end, name);
+}
+function saveSnippetIdx(type, i) {
+    const s = (type === 'clus' ? _clus : _segs)[i]; if (!s) return;
+    saveSnippet(s.video_path, s.timestamp_start, s.timestamp_end);
+}
+function previewMaterialized(id) {
+    const p = _materialized[id]; if (!p) return;
+    previewClip(p, 0, 1e9, 'materialized clip');
+}
+
+function previewClip(path, start, end, label) {
+    const panel = document.getElementById('playerPanel');
+    const v = document.getElementById('clipPlayer');
+    panel.style.display = 'block';
+    document.getElementById('playerLabel').textContent = `${label} — ${formatTime(start)} → ${formatTime(end)} (looping)`;
+    const url = '/library/video/' + encodeURIComponent(path);
+    if (v.src !== location.origin + url) v.src = url;
+    v.currentTime = start;
+    v.play().catch(() => {});
+    v.ontimeupdate = () => { if (v.currentTime >= end) v.currentTime = start; };
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function saveSnippet(path, start, end) {
+    const label = prompt('Label for this clip (optional):', '') ?? '';
+    const r = await fetch('/library/api/clips', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_video_path: path, clip_start: start, clip_end: end, label: label || null, project: selectedScope() ? selectedScope().split(',')[0] : null }),
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); alert('Save failed: ' + (e.detail || r.statusText)); return; }
+    runSearch();
+}
+
+async function deleteClip(id) {
+    if (!confirm('Delete clip ' + id + '?')) return;
+    await fetch('/library/api/clips/' + id, { method: 'DELETE' });
+    runSearch();
+}
+
+async function materialize(id, form) {
+    const status = document.getElementById('job-' + id);
+    status.textContent = 'Starting ' + form + ' materialization…';
+    const r = await fetch('/library/api/clips/' + id + '/materialize', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ form }),
+    });
+    if (!r.ok) { status.textContent = 'Failed to start job.'; return; }
+    const { job_id } = await r.json();
+    pollJob(job_id, status, form);
+}
+
+async function loadSessions() {
+    const sel = document.getElementById('agentSelect');
+    try {
+        const r = await fetch('/library/api/tmux-sessions');
+        const data = await r.json();
+        const sessions = data.sessions || [];
+        if (!sessions.length) {
+            sel.innerHTML = '<option value="nolan2">nolan2 (none detected)</option>';
+            return;
+        }
+        sel.innerHTML = sessions.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+        if (sessions.includes('nolan2')) sel.value = 'nolan2';  // sensible default
+    } catch (e) {
+        sel.innerHTML = '<option value="nolan2">nolan2</option>';
+    }
+}
+function selectedAgent() {
+    const sel = document.getElementById('agentSelect');
+    return (sel && sel.value) || 'nolan2';
+}
+
+async function analyzeEffect(id) {
+    const status = document.getElementById('job-' + id);
+    const session = selectedAgent();
+    status.textContent = `Extracting frames & dispatching to ${session}…`;
+    const r = await fetch('/library/api/clips/' + id + '/analyze-effect', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session }),
+    });
+    if (!r.ok) { status.textContent = 'Failed to start analysis.'; return; }
+    const { job_id } = await r.json();
+    pollJob(job_id, status, 'analyze');
+}
+
+async function pollJob(jobId, statusEl, form) {
+    try {
+        const r = await fetch('/api/jobs/' + jobId);
+        const j = await r.json();
+        statusEl.textContent = `${j.status}: ${j.message || ''}`;
+        if (j.status === 'done') {
+            const res = j.result || {};
+            if (form === 'file' && res.path) {
+                _materialized[res.clip_id] = res.path;
+                statusEl.innerHTML = `✓ File: <code>${esc(res.path)}</code> ` +
+                    `<button onclick="previewMaterialized('${res.clip_id}')">▶ Play</button>`;
+            } else if (form === 'frames' && res.frames) {
+                statusEl.innerHTML = `✓ ${res.frames.length} frames in <code>${esc(res.dir)}</code>`;
+            } else if (form === 'analyze') {
+                statusEl.innerHTML = res.dispatched
+                    ? `✓ Dispatched to <b>${esc(res.session || 'agent')}</b> (${res.frame_count} frames). Watch that pane — findings will be written to <code>${esc(res.analysis_file || '')}</code>. <button onclick="viewAnalysis('${res.clip_id}')">View findings</button>`
+                    : `⚠ Frames ready but dispatch to ${esc(res.session || 'agent')} failed: ${esc(res.dispatch_error || 'unknown')}. Task file: <code>${esc(res.task_file || '')}</code>`;
+            } else {
+                statusEl.textContent = '✓ Done.';
+            }
+            return;
+        }
+        if (j.status === 'error') { statusEl.textContent = '✗ ' + (j.error || 'error'); return; }
+        setTimeout(() => pollJob(jobId, statusEl, form), 1000);
+    } catch (e) {
+        statusEl.textContent = 'Polling error: ' + e.message;
+    }
+}
+
+async function viewAnalysis(id) {
+    const status = document.getElementById('job-' + id);
+    const r = await fetch('/library/api/clips/' + id + '/analysis');
+    if (!r.ok) {
+        status.innerHTML = '⏳ No findings yet — nolan2 may still be working. Try again shortly.';
+        return;
+    }
+    const data = await r.json();
+    status.innerHTML = `<pre style="white-space:pre-wrap;max-height:360px;overflow:auto;background:#0e0e16;padding:10px;border-radius:6px;">${esc(data.content)}</pre>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadProjects();
+    loadSessions();
+    runSearch();
+    document.getElementById('searchInput').addEventListener('keypress', e => { if (e.key === 'Enter') runSearch(); });
+});
+</script>
+</body>
+</html>

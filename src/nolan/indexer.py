@@ -19,7 +19,7 @@ class VideoIndex:
     """SQLite-backed video index with content-based fingerprints."""
 
     # Schema version for migrations
-    SCHEMA_VERSION = 6
+    SCHEMA_VERSION = 7
 
     def __init__(self, db_path: Path):
         """Initialize the index.
@@ -67,6 +67,12 @@ class VideoIndex:
 
             if current_version < 6:
                 self._migrate_to_v6(conn)
+                cursor = conn.execute("SELECT version FROM schema_version LIMIT 1")
+                row = cursor.fetchone()
+                current_version = row[0] if row else 0
+
+            if current_version < 7:
+                self._migrate_to_v7(conn)
 
             # Create tables with new schema
             conn.execute("""
@@ -120,6 +126,19 @@ class VideoIndex:
                     created_at TEXT
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS saved_clips (
+                    id TEXT PRIMARY KEY,
+                    source_video_path TEXT NOT NULL,
+                    clip_start REAL NOT NULL,
+                    clip_end REAL NOT NULL,
+                    label TEXT,
+                    tags TEXT,
+                    project_id TEXT,
+                    created_at TEXT
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_clips_project ON saved_clips(project_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_segments_video ON segments(video_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_clusters_video ON clusters(video_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_videos_fingerprint ON videos(fingerprint)")
@@ -329,6 +348,32 @@ class VideoIndex:
                 CREATE INDEX IF NOT EXISTS idx_transcript_cache_lookup
                 ON transcript_alignment_cache(fingerprint, transcript_hash, timestamps_hash)
             """)
+
+        conn.execute("DELETE FROM schema_version")
+        conn.execute("INSERT INTO schema_version (version) VALUES (?)", (self.SCHEMA_VERSION,))
+        conn.commit()
+
+    def _migrate_to_v7(self, conn: sqlite3.Connection) -> None:
+        """Migrate to v7 schema (add saved_clips table for manual cuts)."""
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='saved_clips'"
+        )
+        if cursor.fetchone() is None:
+            conn.execute("""
+                CREATE TABLE saved_clips (
+                    id TEXT PRIMARY KEY,
+                    source_video_path TEXT NOT NULL,
+                    clip_start REAL NOT NULL,
+                    clip_end REAL NOT NULL,
+                    label TEXT,
+                    tags TEXT,
+                    project_id TEXT,
+                    created_at TEXT
+                )
+            """)
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_saved_clips_project ON saved_clips(project_id)"
+            )
 
         conn.execute("DELETE FROM schema_version")
         conn.execute("INSERT INTO schema_version (version) VALUES (?)", (self.SCHEMA_VERSION,))
@@ -936,6 +981,30 @@ class VideoIndex:
             if managed_conn is not None:
                 managed_conn.close()
 
+    def set_has_transcript(self, video_id: int, value: bool,
+                           conn: Optional[sqlite3.Connection] = None) -> None:
+        """Set the videos.has_transcript flag for a video.
+
+        Args:
+            video_id: Video ID.
+            value: True if the video has a transcript (subtitle or Whisper).
+        """
+        if conn is None:
+            managed_conn = sqlite3.connect(self.db_path)
+        else:
+            managed_conn = None
+        try:
+            active_conn = conn or managed_conn
+            active_conn.execute(
+                "UPDATE videos SET has_transcript = ? WHERE id = ?",
+                (1 if value else 0, video_id),
+            )
+            if conn is None:
+                active_conn.commit()
+        finally:
+            if managed_conn is not None:
+                managed_conn.close()
+
     def count_segments(self, video_id: int) -> int:
         """Count segments for a video.
 
@@ -1093,7 +1162,8 @@ class VideoIndex:
         query: str,
         limit: int = 10,
         fields: Optional[List[str]] = None,
-        project_id: Optional[str] = None
+        project_id: Optional[str] = None,
+        project_ids: Optional[List[str]] = None
     ) -> List[VideoSegment]:
         """Search for segments matching a query.
 
@@ -1120,7 +1190,11 @@ class VideoIndex:
                 JOIN videos v ON v.id = s.video_id
             """
             params = []
-            if project_id:
+            if project_ids:
+                placeholders = ",".join("?" for _ in project_ids)
+                sql += f" WHERE v.project_id IN ({placeholders})"
+                params.extend(project_ids)
+            elif project_id:
                 sql += " WHERE v.project_id = ?"
                 params.append(project_id)
             cursor = conn.execute(sql, params)
@@ -1301,7 +1375,8 @@ class VideoIndex:
         query: str,
         limit: int = 10,
         fields: Optional[List[str]] = None,
-        project_id: Optional[str] = None
+        project_id: Optional[str] = None,
+        project_ids: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """Search for clusters matching a query.
 
@@ -1327,7 +1402,11 @@ class VideoIndex:
                 JOIN videos v ON v.id = c.video_id
             """
             params = []
-            if project_id:
+            if project_ids:
+                placeholders = ",".join("?" for _ in project_ids)
+                sql += f" WHERE v.project_id IN ({placeholders})"
+                params.extend(project_ids)
+            elif project_id:
                 sql += " WHERE v.project_id = ?"
                 params.append(project_id)
             cursor = conn.execute(sql, params)
@@ -1371,6 +1450,110 @@ class VideoIndex:
             # Sort by score descending
             results.sort(key=lambda x: x[0], reverse=True)
             return [cluster for _, cluster in results[:limit]]
+
+    # ==================== Saved Clip Methods ====================
+
+    @staticmethod
+    def _saved_clip_row_to_dict(row) -> Dict[str, Any]:
+        return {
+            "id": row[0],
+            "source_video_path": row[1],
+            "video_name": Path(row[1]).name if row[1] else "",
+            "clip_start": row[2],
+            "clip_end": row[3],
+            "duration": (row[3] or 0) - (row[2] or 0),
+            "label": row[4],
+            "tags": json.loads(row[5]) if row[5] else [],
+            "project_id": row[6],
+            "created_at": row[7],
+        }
+
+    def add_saved_clip(
+        self,
+        source_video_path: str,
+        clip_start: float,
+        clip_end: float,
+        label: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        project_id: Optional[str] = None,
+    ) -> str:
+        """Save a manually-cut clip as a reusable, matched_clip-shaped record.
+
+        The clip is a pointer (source path + in/out), not a file; it is
+        materialized on demand by a downstream consumer. ``project_id`` of None
+        means the clip belongs to the global library.
+
+        Returns:
+            The generated clip id (``clip_<hex8>``).
+        """
+        import uuid
+        if clip_end <= clip_start:
+            raise ValueError("clip_end must be greater than clip_start")
+        clip_id = f"clip_{uuid.uuid4().hex[:8]}"
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT INTO saved_clips (
+                    id, source_video_path, clip_start, clip_end,
+                    label, tags, project_id, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                clip_id, source_video_path, clip_start, clip_end,
+                label,
+                json.dumps(tags) if tags else None,
+                project_id,
+                datetime.now().isoformat(),
+            ))
+            conn.commit()
+        return clip_id
+
+    def list_saved_clips(
+        self,
+        project_ids: Optional[List[str]] = None,
+        include_global: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """List saved clips, optionally scoped to a set of projects.
+
+        Args:
+            project_ids: If provided, only clips tagged with one of these
+                project ids are returned. If None, all clips are returned.
+            include_global: When scoping by project_ids, also include global
+                clips (project_id IS NULL). Ignored when project_ids is None.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            sql = (
+                "SELECT id, source_video_path, clip_start, clip_end, "
+                "label, tags, project_id, created_at FROM saved_clips"
+            )
+            params: List[Any] = []
+            if project_ids:
+                placeholders = ",".join("?" for _ in project_ids)
+                clause = f"project_id IN ({placeholders})"
+                params.extend(project_ids)
+                if include_global:
+                    clause = f"({clause} OR project_id IS NULL)"
+                sql += f" WHERE {clause}"
+            sql += " ORDER BY created_at DESC"
+            cursor = conn.execute(sql, params)
+            return [self._saved_clip_row_to_dict(row) for row in cursor.fetchall()]
+
+    def get_saved_clip(self, clip_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single saved clip by id."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT id, source_video_path, clip_start, clip_end,
+                       label, tags, project_id, created_at
+                FROM saved_clips WHERE id = ?
+            """, (clip_id,))
+            row = cursor.fetchone()
+            return self._saved_clip_row_to_dict(row) if row else None
+
+    def delete_saved_clip(self, clip_id: str) -> bool:
+        """Delete a saved clip. Returns True if a row was removed."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("DELETE FROM saved_clips WHERE id = ?", (clip_id,))
+            conn.commit()
+            return cursor.rowcount > 0
 
 
 def compute_checksum(path: Path, chunk_size: int = 8192) -> str:
@@ -1614,6 +1797,10 @@ class HybridVideoIndexer:
                             transcript = TranscriptLoader.load(generated_path)
                     except Exception:
                         pass  # Continue without transcript
+
+            # Record whether a transcript (subtitle or Whisper) is present.
+            self.index.set_has_transcript(video_id, transcript is not None, conn=conn)
+            conn.commit()
 
             # Sample frames (streamed when possible)
             sampler = self._get_sampler()

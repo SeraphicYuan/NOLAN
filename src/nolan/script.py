@@ -27,6 +27,24 @@ OUTPUT:
 Return ONLY the converted narration text. Do not include the section title or any other formatting."""
 
 
+def extract_style_instruction(style_guide: str, max_chars: int = 4000) -> str:
+    """Pull the actionable instruction from a script style guide.
+
+    Prefers the guide's "How to Apply" section (authored to be system-prompt
+    ready); falls back to the whole guide, truncated. Returns "" for empty input.
+    """
+    import re
+    if not style_guide or not style_guide.strip():
+        return ""
+    # Match a "## How to Apply" heading (any level/casing) up to the next heading.
+    m = re.search(
+        r"^#{1,6}\s*how to apply.*?$(.*?)(?=^#{1,6}\s|\Z)",
+        style_guide, re.IGNORECASE | re.MULTILINE | re.DOTALL,
+    )
+    body = m.group(1).strip() if m and m.group(1).strip() else style_guide.strip()
+    return body[:max_chars]
+
+
 def format_timestamp(seconds: float) -> str:
     """Format seconds as M:SS or H:MM:SS."""
     minutes = int(seconds // 60)
@@ -124,15 +142,19 @@ class Script:
 class ScriptConverter:
     """Converts essay sections to video script narration."""
 
-    def __init__(self, llm_client, words_per_minute: int = 150):
+    def __init__(self, llm_client, words_per_minute: int = 150, style_guide: str = None):
         """Initialize the converter.
 
         Args:
             llm_client: The LLM client to use for conversion.
             words_per_minute: Speaking rate for duration estimation.
+            style_guide: Optional script style guide (markdown). When given, its
+                "How to Apply" instruction is injected as the system prompt so the
+                narration is written in that voice/style.
         """
         self.llm = llm_client
         self.words_per_minute = words_per_minute
+        self.style_system = extract_style_instruction(style_guide) if style_guide else None
 
     async def convert_section(self, section: Section, start_time: float = 0.0) -> ScriptSection:
         """Convert a single section to script narration.
@@ -149,7 +171,13 @@ class ScriptConverter:
             content=section.content
         )
 
-        narration = await self.llm.generate(prompt)
+        if self.style_system:
+            prompt += ("\n7. Write the narration in the voice and style described in the "
+                       "system prompt — adopt its tone, pacing, sentence rhythm, hooks, and "
+                       "rhetorical devices while preserving this section's meaning.")
+            narration = await self.llm.generate(prompt, system_prompt=self.style_system)
+        else:
+            narration = await self.llm.generate(prompt)
         narration = narration.strip()
 
         # Calculate timing based on output word count

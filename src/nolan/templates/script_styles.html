@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN Script Styles</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #14141f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .sub { color: #9a9ab0; font-size: 13px; margin-bottom: 14px; }
+        .panel { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+        .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        input, textarea, select { background: #0e0e16; border: 1px solid #2a2a3a; border-radius: 7px; color: #eee; padding: 8px; font-size: 14px; font-family: inherit; }
+        textarea { width: 100%; min-height: 90px; resize: vertical; }
+        button { background: #2a2a3a; color: #eee; border: 1px solid #3a3a4a; border-radius: 7px; padding: 8px 13px; cursor: pointer; font-size: 13px; }
+        button:hover { background: #34344a; }
+        button.primary { background: #e94560; border-color: #e94560; font-weight: 600; }
+        button.danger { background: #3a1f28; border-color: #5a2a38; }
+        .styles-list { display: flex; flex-direction: column; gap: 8px; }
+        .style-card { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 9px; padding: 11px; cursor: pointer; }
+        .style-card.active { border-color: #e94560; }
+        .style-card .name { font-weight: 600; font-size: 15px; }
+        .style-card .meta { font-size: 12px; color: #9a9ab0; margin-top: 3px; }
+        .badge { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: #0f2f3a; color: #7fd3e0; }
+        .badge.no { background: #2a2a3a; color: #9a9ab0; }
+        .grid { display: grid; grid-template-columns: 320px 1fr; gap: 16px; }
+        .section-title { font-size: 14px; margin: 14px 0 7px; font-weight: 600; }
+        .src { font-size: 12px; color: #cfcfe0; padding: 5px 0; border-bottom: 1px solid #23232f; display: flex; justify-content: space-between; gap: 8px; }
+        .src .x { color: #ff6b6b; cursor: pointer; }
+        .jobstatus { font-size: 12px; color: #9a9ab0; margin-top: 8px; }
+        .empty { color: #7a7a8c; font-size: 13px; padding: 8px 0; }
+        pre { white-space: pre-wrap; background: #0e0e16; padding: 12px; border-radius: 8px; max-height: 520px; overflow: auto; font-size: 13px; }
+        code { background:#0e0e16; padding:1px 5px; border-radius:4px; font-size:12px; }
+        .hidden { display: none; }
+        label.fld { font-size: 12px; color: #9a9ab0; display:block; margin: 8px 0 3px; }
+    </style>
+</head>
+<body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="script-styles"></script>
+
+<div class="wrap">
+    <h1>✍ Script Styles</h1>
+    <div class="sub">Build a corpus of reference transcripts, then distill a reusable script-writing style guide. Choose a guide later to write new scripts in that voice.</div>
+
+    <div class="grid">
+        <!-- LEFT: style library -->
+        <div>
+            <div class="panel">
+                <div class="row">
+                    <input id="newName" type="text" placeholder="New style name…" style="flex:1;">
+                    <button class="primary" onclick="createStyle()">+ Create</button>
+                </div>
+            </div>
+            <div class="section-title">Style library</div>
+            <div class="styles-list" id="stylesList"><div class="empty">Loading…</div></div>
+        </div>
+
+        <!-- RIGHT: selected style detail -->
+        <div id="detail">
+            <div class="empty">Select or create a style on the left.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+let styles = [];
+let current = null;     // selected style id
+let currentManifest = null;
+
+function esc(t){ const d=document.createElement('div'); d.textContent=t==null?'':t; return d.innerHTML; }
+
+async function loadStyles() {
+    const r = await fetch('/api/script-styles');
+    const data = await r.json();
+    styles = data.styles || [];
+    const box = document.getElementById('stylesList');
+    if (!styles.length) { box.innerHTML = '<div class="empty">No styles yet. Create one above.</div>'; return; }
+    box.innerHTML = styles.map(s => `
+        <div class="style-card ${s.id===current?'active':''}" onclick="selectStyle('${esc(s.id)}')">
+            <div class="name">${esc(s.name)}</div>
+            <div class="meta">
+                ${s.source_count} transcript(s) ·
+                <span class="badge ${s.has_guide?'':'no'}">${s.has_guide?'guide ready':'no guide'}</span>
+            </div>
+        </div>`).join('');
+}
+
+async function createStyle() {
+    const name = document.getElementById('newName').value.trim();
+    if (!name) return;
+    const r = await fetch('/api/script-styles', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}),
+    });
+    if (!r.ok) { alert('Create failed'); return; }
+    const data = await r.json();
+    document.getElementById('newName').value = '';
+    await loadStyles();
+    selectStyle(data.style.id);
+}
+
+async function loadSessions(selId) {
+    try {
+        const r = await fetch('/library/api/tmux-sessions');
+        const data = await r.json();
+        const sessions = data.sessions || [];
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        sel.innerHTML = (sessions.length ? sessions : ['nolan2'])
+            .map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+        if (sessions.includes('nolan2')) sel.value = 'nolan2';
+    } catch(e){}
+}
+
+async function selectStyle(id) {
+    current = id;
+    const r = await fetch('/api/script-styles/' + id);
+    if (!r.ok) { document.getElementById('detail').innerHTML = '<div class="empty">Not found.</div>'; return; }
+    currentManifest = await r.json();
+    renderDetail();
+    loadStyles();  // refresh active highlight + counts
+}
+
+function renderDetail() {
+    const m = currentManifest;
+    const sources = m.sources || [];
+    document.getElementById('detail').innerHTML = `
+        <div class="panel">
+            <div class="row" style="justify-content:space-between;">
+                <div><b style="font-size:16px;">${esc(m.name)}</b> <span class="sub">(${esc(m.id)})</span></div>
+                <button class="danger" onclick="deleteStyle('${esc(m.id)}')">Delete style</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="section-title">1 · Add transcripts</div>
+            <label class="fld">YouTube links (one per line) — fetches original-language transcript only, dedups automatically</label>
+            <textarea id="ytUrls" placeholder="https://www.youtube.com/watch?v=..."></textarea>
+            <div class="row" style="margin-top:6px;">
+                <button class="primary" onclick="addYoutube()">Fetch transcripts</button>
+                <span class="jobstatus" id="ytStatus"></span>
+            </div>
+            <label class="fld">…or fetch from a YouTube channel (dedups against the corpus)</label>
+            <input id="chUrl" type="text" placeholder="@handle, channel URL, or UC…" style="width:100%;">
+            <div class="row" style="margin-top:6px;">
+                <select id="chMode" onchange="toggleChMode()">
+                    <option value="count">Last N videos</option>
+                    <option value="dates">Date range</option>
+                </select>
+                <span id="chCountWrap">N = <input id="chCount" type="number" value="10" min="1" style="width:70px;"></span>
+                <span id="chDatesWrap" class="hidden">from <input id="chAfter" type="date"> to <input id="chBefore" type="date"></span>
+                <button class="primary" onclick="addChannel()">Fetch channel</button>
+                <span class="jobstatus" id="chStatus"></span>
+            </div>
+            <label class="fld">Paste a transcript</label>
+            <input id="pasteTitle" type="text" placeholder="title (optional)" style="width:100%;margin-bottom:6px;">
+            <textarea id="pasteText" placeholder="paste transcript text…"></textarea>
+            <div class="row" style="margin-top:6px;">
+                <button onclick="addText()">Add pasted text</button>
+                <label style="font-size:12px;color:#9a9ab0;">or upload .txt/.srt/.vtt:</label>
+                <input id="fileInput" type="file" accept=".txt,.srt,.vtt" onchange="uploadFile()">
+                <span class="jobstatus" id="uploadStatus"></span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="section-title">Corpus (${sources.length})</div>
+            <div id="sourceList">${
+                sources.length ? sources.map(s => `
+                    <div class="src">
+                        <span>${esc(s.title)} <span style="color:#7a7a8c;">· ${s.source_type}${s.word_count?(' · '+s.word_count+'w'):''}</span></span>
+                        <span class="x" onclick="removeSource('${esc(s.slug)}')">remove</span>
+                    </div>`).join('')
+                : '<div class="empty">No transcripts yet.</div>'
+            }</div>
+        </div>
+
+        <div class="panel">
+            <div class="section-title">2 · Analyze → style guide</div>
+            <div class="row">
+                <label style="font-size:12px;color:#9a9ab0;">Synthesis agent:</label>
+                <select id="agentSelect"></select>
+                <button onclick="loadSessions('agentSelect')" title="Refresh sessions">⟳</button>
+                <button class="primary" onclick="analyze()">Analyze corpus</button>
+                <span class="jobstatus" id="analyzeStatus"></span>
+            </div>
+            <div class="sub" style="margin-top:6px;">Inline LLM extracts per-transcript features, then the selected Claude agent writes the style guide.</div>
+        </div>
+
+        <div class="panel">
+            <div class="section-title">3 · Style guide ${m.has_guide?'<span class="badge">ready</span>':''}</div>
+            <div class="row">
+                <button onclick="viewGuide()">View guide</button>
+                <span class="sub">file: <code>script_styles/${esc(m.id)}/style_guide.md</code></span>
+            </div>
+            <div id="guideView"></div>
+        </div>
+    `;
+    loadSessions('agentSelect');
+}
+
+async function addYoutube() {
+    const urls = document.getElementById('ytUrls').value.trim();
+    if (!urls) return;
+    const status = document.getElementById('ytStatus');
+    status.textContent = 'Starting fetch…';
+    const r = await fetch('/api/script-styles/' + current + '/add-youtube', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({urls}),
+    });
+    if (!r.ok) { status.textContent = 'Failed to start.'; return; }
+    const { job_id } = await r.json();
+    pollJob(job_id, status, () => { document.getElementById('ytUrls').value=''; selectStyle(current); });
+}
+
+function toggleChMode() {
+    const dates = document.getElementById('chMode').value === 'dates';
+    document.getElementById('chCountWrap').classList.toggle('hidden', dates);
+    document.getElementById('chDatesWrap').classList.toggle('hidden', !dates);
+}
+
+async function addChannel() {
+    const channel = document.getElementById('chUrl').value.trim();
+    if (!channel) return;
+    const mode = document.getElementById('chMode').value;
+    const status = document.getElementById('chStatus');
+    status.textContent = 'Enumerating channel…';
+    const body = { channel, mode };
+    if (mode === 'count') body.count = parseInt(document.getElementById('chCount').value) || 10;
+    else { body.date_after = document.getElementById('chAfter').value || null;
+           body.date_before = document.getElementById('chBefore').value || null; }
+    const r = await fetch('/api/script-styles/' + current + '/add-channel', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+    });
+    if (!r.ok) { status.textContent = 'Failed to start.'; return; }
+    const { job_id } = await r.json();
+    pollJob(job_id, status, () => selectStyle(current));
+}
+
+async function addText() {
+    const text = document.getElementById('pasteText').value.trim();
+    if (!text) return;
+    const title = document.getElementById('pasteTitle').value.trim();
+    const r = await fetch('/api/script-styles/' + current + '/add-text', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text, title}),
+    });
+    if (!r.ok) { alert('Add failed'); return; }
+    document.getElementById('pasteText').value=''; document.getElementById('pasteTitle').value='';
+    selectStyle(current);
+}
+
+async function uploadFile() {
+    const inp = document.getElementById('fileInput');
+    if (!inp.files.length) return;
+    const status = document.getElementById('uploadStatus');
+    status.textContent = 'Uploading…';
+    const fd = new FormData();
+    fd.append('file', inp.files[0]);
+    const r = await fetch('/api/script-styles/' + current + '/upload-file', { method:'POST', body: fd });
+    status.textContent = r.ok ? '✓ added' : 'failed';
+    if (r.ok) selectStyle(current);
+}
+
+async function removeSource(slug) {
+    await fetch('/api/script-styles/' + current + '/remove-source/' + encodeURIComponent(slug), {method:'POST'});
+    selectStyle(current);
+}
+
+async function analyze() {
+    const session = (document.getElementById('agentSelect')||{}).value || 'nolan2';
+    const status = document.getElementById('analyzeStatus');
+    status.textContent = 'Extracting features…';
+    const r = await fetch('/api/script-styles/' + current + '/analyze', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({session}),
+    });
+    if (!r.ok) { status.textContent = 'Failed to start.'; return; }
+    const { job_id } = await r.json();
+    pollJob(job_id, status, null, (res) => {
+        status.innerHTML = res.dispatched
+            ? `✓ Extracted ${res.extracted}; synthesis dispatched to <b>${esc(res.session)}</b>. Watch that pane, then "View guide". <code>${esc(res.guide_file)}</code>`
+            : `⚠ Extracted ${res.extracted} but dispatch to ${esc(res.session)} failed: ${esc(res.dispatch_error||'')}`;
+    });
+}
+
+async function viewGuide() {
+    const r = await fetch('/api/script-styles/' + current + '/guide');
+    const view = document.getElementById('guideView');
+    if (!r.ok) { view.innerHTML = '<div class="empty">No guide yet — the agent may still be writing it.</div>'; return; }
+    const data = await r.json();
+    view.innerHTML = `<pre>${esc(data.content)}</pre>`;
+}
+
+async function deleteStyle(id) {
+    if (!confirm('Delete style "' + id + '" and its corpus?')) return;
+    await fetch('/api/script-styles/' + id, {method:'DELETE'});
+    current = null; currentManifest = null;
+    document.getElementById('detail').innerHTML = '<div class="empty">Select or create a style on the left.</div>';
+    loadStyles();
+}
+
+async function pollJob(jobId, statusEl, onDoneSimple, onDoneResult) {
+    try {
+        const r = await fetch('/api/jobs/' + jobId);
+        const j = await r.json();
+        if (j.status !== 'done' && j.status !== 'error') statusEl.textContent = `${j.status}: ${j.message||''}`;
+        if (j.status === 'done') {
+            if (onDoneResult) onDoneResult(j.result || {});
+            else { statusEl.textContent = '✓ ' + (j.message || 'done'); if (onDoneSimple) onDoneSimple(); }
+            return;
+        }
+        if (j.status === 'error') { statusEl.textContent = '✗ ' + (j.error || 'error'); return; }
+        setTimeout(() => pollJob(jobId, statusEl, onDoneSimple, onDoneResult), 1200);
+    } catch(e) { statusEl.textContent = 'poll error: ' + e.message; }
+}
+
+document.addEventListener('DOMContentLoaded', loadStyles);
+</script>
+</body>
+</html>

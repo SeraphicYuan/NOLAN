@@ -91,12 +91,18 @@ class YouTubeClient:
             output_dir: Directory to save downloaded videos.
             format: yt-dlp format string (default: H.264 720p, fallback to any codec).
             download_subtitles: Whether to download subtitles.
-            subtitle_langs: Subtitle languages to download (default: ['en']).
+            subtitle_langs: Subtitle languages to download. Default covers English
+                and Chinese (simplified + traditional), incl. region variants.
         """
         self.output_dir = Path(output_dir) if output_dir else Path.cwd()
         self.format = format or self.DEFAULT_FORMAT
         self.download_subtitles = download_subtitles
-        self.subtitle_langs = subtitle_langs or ['en']
+        # English + Chinese by default. yt-dlp matches these against the video's
+        # available subtitle/auto-caption tracks; missing ones are simply skipped.
+        self.subtitle_langs = subtitle_langs or [
+            'en', 'en-US', 'en-GB',
+            'zh', 'zh-Hans', 'zh-Hant', 'zh-CN', 'zh-TW', 'zh-HK',
+        ]
 
     def _get_base_opts(self) -> dict:
         """Get base yt-dlp options."""
@@ -110,8 +116,15 @@ class YouTubeClient:
         self,
         output_template: Optional[str] = None,
         progress_callback: Optional[Callable] = None,
+        with_subtitles: Optional[bool] = None,
     ) -> dict:
-        """Get yt-dlp options for downloading."""
+        """Get yt-dlp options for downloading.
+
+        Args:
+            with_subtitles: Override subtitle download for this attempt. When
+                None, falls back to ``self.download_subtitles``. Used to retry a
+                download with subtitles disabled after a subtitle rate-limit.
+        """
         opts = self._get_base_opts()
         opts.update({
             'format': self.format,
@@ -123,7 +136,8 @@ class YouTubeClient:
             }],
         })
 
-        if self.download_subtitles:
+        subtitles = self.download_subtitles if with_subtitles is None else with_subtitles
+        if subtitles:
             opts.update({
                 'writesubtitles': True,
                 'writeautomaticsub': True,  # Auto-generated subs as fallback
@@ -285,6 +299,45 @@ class YouTubeClient:
                 except Exception:
                     pass  # Ignore cleanup errors
 
+    @staticmethod
+    def _is_subtitle_error(error: str) -> bool:
+        """True if a download error is about subtitles (not the video itself).
+
+        YouTube rate-limits the subtitle/timedtext endpoint independently of the
+        video stream, so a 429 (or other failure) while fetching subtitles
+        should not be fatal — the video is what matters and Whisper can
+        transcribe it afterwards.
+        """
+        e = (error or "").lower()
+        return "subtitle" in e or "timedtext" in e
+
+    def _pick_subtitle_langs(self, info: dict) -> List[str]:
+        """Choose subtitle languages matching the video's original language.
+
+        yt-dlp exposes the native language as ``info['language']`` and the tracks
+        actually available under ``subtitles`` / ``automatic_captions``. We pick
+        only the tracks whose base language matches the video's original language
+        (e.g. an English video → English subtitles only). This avoids requesting
+        languages that don't exist and the 429 rate-limit that comes from
+        fetching many tracks at once. Falls back to the configured list when the
+        language can't be determined.
+        """
+        available = set((info.get('subtitles') or {}).keys())
+        available |= set((info.get('automatic_captions') or {}).keys())
+
+        detected = (info.get('language') or '').strip()
+        if detected:
+            base = detected.split('-')[0].lower()
+            matches = [l for l in available if l.split('-')[0].lower() == base]
+            # Prefer available tracks in the original language; otherwise request
+            # the detected code directly and let yt-dlp skip if absent.
+            return matches or [detected]
+
+        # Language unknown: keep only configured langs that actually exist, or
+        # fall back to the full configured list if availability is unknown too.
+        matches = [l for l in self.subtitle_langs if l in available]
+        return matches or self.subtitle_langs
+
     def download(
         self,
         url: str,
@@ -292,6 +345,11 @@ class YouTubeClient:
         progress_callback: Optional[Callable] = None,
     ) -> DownloadResult:
         """Download a single video.
+
+        If a download fails because of a subtitle error (e.g. YouTube returns
+        HTTP 429 on the subtitle endpoint), it retries once with subtitles
+        disabled so the video still downloads; the indexer's Whisper fallback
+        then handles transcription.
 
         Args:
             url: Video URL.
@@ -301,7 +359,27 @@ class YouTubeClient:
         Returns:
             DownloadResult object.
         """
-        opts = self._get_download_opts(output_template, progress_callback)
+        result = self._download_once(url, output_template, progress_callback)
+        if (not result.success and self.download_subtitles
+                and self._is_subtitle_error(result.error or "")):
+            # Subtitle endpoint failed (commonly a 429 rate-limit). Retry the
+            # download without subtitles — Whisper fallback covers transcription.
+            result = self._download_once(
+                url, output_template, progress_callback, with_subtitles=False
+            )
+            if result.success:
+                result.error = None
+        return result
+
+    def _download_once(
+        self,
+        url: str,
+        output_template: Optional[str] = None,
+        progress_callback: Optional[Callable] = None,
+        with_subtitles: Optional[bool] = None,
+    ) -> DownloadResult:
+        """Perform a single download attempt (see ``download`` for retry logic)."""
+        opts = self._get_download_opts(output_template, progress_callback, with_subtitles)
 
         # Track the actual output file
         downloaded_file = None
@@ -316,12 +394,20 @@ class YouTubeClient:
             opts['progress_hooks'] = []
         opts['progress_hooks'].append(track_filename)
 
+        subs_enabled = self.download_subtitles if with_subtitles is None else with_subtitles
+
         with yt_dlp.YoutubeDL(opts) as ydl:
             try:
                 # Get info first (for cleanup on failure)
                 info = ydl.extract_info(url, download=False)
                 video_id = info.get('id', '')
                 video_title = info.get('title', 'Unknown')
+
+                # Narrow subtitle requests to the video's original language only.
+                # Requesting every configured language hammers YouTube's subtitle
+                # endpoint and triggers HTTP 429; one language is enough.
+                if subs_enabled:
+                    ydl.params['subtitleslangs'] = self._pick_subtitle_langs(info)
 
                 # Now download
                 info = ydl.extract_info(url, download=True)
@@ -458,6 +544,112 @@ class YouTubeClient:
                     break
 
         return self.download_batch(urls, progress_callback)
+
+    def fetch_transcript(self, url: str, out_dir: Optional[Path] = None) -> dict:
+        """Fetch a video's original-language transcript WITHOUT the video.
+
+        Downloads only the subtitle track (yt-dlp ``skip_download``), restricted
+        to the video's original language (reusing ``_pick_subtitle_langs``), and
+        parses it to plain text via ``TranscriptLoader``.
+
+        Returns:
+            dict with video_id, title, channel, upload_date, language, text.
+
+        Raises:
+            RuntimeError if no transcript is available for the video.
+        """
+        import tempfile
+        from nolan.transcript import TranscriptLoader
+
+        out_dir = Path(out_dir) if out_dir else Path(tempfile.mkdtemp())
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        opts = self._get_base_opts()
+        opts.update({
+            'skip_download': True,
+            'writesubtitles': True,
+            'writeautomaticsub': True,
+            'subtitlesformat': 'srt/vtt/best',
+            'outtmpl': str(out_dir / '%(id)s.%(ext)s'),
+        })
+
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            # Transcript only needs ONE track — the original language. Requesting
+            # the whole matched set (incl. auto-translations like 'en-de') wastes
+            # requests and invites HTTP 429.
+            langs = self._pick_subtitle_langs(info)
+            detected = info.get('language')
+            if detected and detected in langs:
+                langs = [detected]
+            elif langs:
+                langs = [sorted(langs)[0]]
+            ydl.params['subtitleslangs'] = langs
+            ydl.extract_info(url, download=True)  # writes subtitle files only
+
+        video_id = info.get('id', '')
+        subs = sorted(out_dir.glob(f"{video_id}*.srt")) + sorted(out_dir.glob(f"{video_id}*.vtt"))
+        if not subs:
+            raise RuntimeError(
+                f"no transcript available for '{info.get('title') or url}' "
+                f"(no subtitles or auto-captions in the original language)"
+            )
+        transcript = TranscriptLoader.load(subs[0])
+        return {
+            "video_id": video_id,
+            "title": info.get("title"),
+            "channel": info.get("channel") or info.get("uploader"),
+            "upload_date": info.get("upload_date"),  # YYYYMMDD
+            "language": info.get("language"),
+            "text": transcript.full_text,
+        }
+
+    @staticmethod
+    def channel_videos_url(channel: str) -> str:
+        """Normalize a channel reference to its uploads/videos tab URL.
+
+        Accepts a full URL, an @handle, a UC… channel id, or a bare handle.
+        """
+        c = (channel or "").strip()
+        if c.startswith("http://") or c.startswith("https://"):
+            if any(k in c for k in ("/videos", "/watch", "list=", "/streams", "/shorts")):
+                return c
+            return c.rstrip("/") + "/videos"
+        if c.startswith("@"):
+            return f"https://www.youtube.com/{c}/videos"
+        if re.fullmatch(r"UC[0-9A-Za-z_-]{22}", c):
+            return f"https://www.youtube.com/channel/{c}/videos"
+        return f"https://www.youtube.com/@{c}/videos"
+
+    def list_channel_videos(self, channel: str, limit: Optional[int] = None) -> List[dict]:
+        """Enumerate a channel's videos (newest first), without downloading.
+
+        Uses flat extraction (fast). Note: flat entries often lack ``upload_date``
+        — callers that need dates should probe per-video via ``get_info``.
+
+        Returns:
+            List of dicts: {video_id, url, title, upload_date}.
+        """
+        url = self.channel_videos_url(channel)
+        opts = self._get_base_opts()
+        opts['extract_flat'] = 'in_playlist'
+        if limit:
+            opts['playlistend'] = int(limit)
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            entries = [e for e in (info.get('entries') or []) if e]
+        out = []
+        for e in entries:
+            vid = e.get('id')
+            if not vid:
+                continue
+            out.append({
+                "video_id": vid,
+                "url": e.get('url') or f"https://www.youtube.com/watch?v={vid}",
+                "title": e.get('title'),
+                "upload_date": e.get('upload_date'),  # often None in flat mode
+            })
+        return out
 
 
 def extract_video_id(url: str) -> Optional[str]:
