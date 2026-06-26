@@ -11,6 +11,8 @@
     { id: "clips", label: "Clips", href: "/clips" },
     { id: "script-styles", label: "Script Styles", href: "/script-styles" },
     { id: "script-projects", label: "Script Projects", href: "/script-projects" },
+    { id: "voices", label: "Voices", href: "/voices" },
+    { id: "tts", label: "TTS Studio", href: "/tts" },
     { id: "scenes", label: "Scenes", href: "/scenes" },
     { id: "showcase", label: "Showcase", href: "/showcase" },
     { id: "comfyui", label: "ComfyUI", href: "/comfyui" },

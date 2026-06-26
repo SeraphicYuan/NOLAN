@@ -67,6 +67,23 @@ class WhisperConfig:
 
 
 @dataclass
+class OmniVoiceConfig:
+    """OmniVoice local TTS engine (runs in a dedicated CUDA env via subprocess)."""
+    env_python: str = ""            # path to D:\env\omnivoice\python.exe
+    model: str = "k2-fsa/OmniVoice"
+    num_step: int = 32              # diffusion steps; 16 faster, 32 higher quality
+    free_comfyui_vram: bool = True  # ask ComfyUI to unload models before a TTS job
+
+
+@dataclass
+class TtsConfig:
+    """Text-to-speech / voice cloning. Off by default (needs the omnivoice env)."""
+    enabled: bool = False
+    provider: str = "omnivoice"     # omnivoice (local) — extensible to others
+    omnivoice: OmniVoiceConfig = field(default_factory=OmniVoiceConfig)
+
+
+@dataclass
 class IndexingConfig:
     """Video indexing configuration."""
     frame_interval: int = 5
@@ -136,6 +153,7 @@ class NolanConfig:
     comfyui: ComfyUIConfig = field(default_factory=ComfyUIConfig)
     vision: VisionConfig = field(default_factory=VisionConfig)
     whisper: WhisperConfig = field(default_factory=WhisperConfig)
+    tts: TtsConfig = field(default_factory=TtsConfig)
     indexing: IndexingConfig = field(default_factory=IndexingConfig)
     defaults: DefaultsConfig = field(default_factory=DefaultsConfig)
     image_sources: ImageSourcesConfig = field(default_factory=ImageSourcesConfig)
@@ -207,6 +225,15 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
             for key, value in overrides["whisper"].items():
                 if hasattr(config.whisper, key):
                     setattr(config.whisper, key, value)
+
+        if "tts" in overrides:
+            for key, value in overrides["tts"].items():
+                if key == "omnivoice" and isinstance(value, dict):
+                    for k2, v2 in value.items():
+                        if hasattr(config.tts.omnivoice, k2):
+                            setattr(config.tts.omnivoice, k2, v2)
+                elif hasattr(config.tts, key):
+                    setattr(config.tts, key, value)
 
         if "indexing" in overrides:
             for key, value in overrides["indexing"].items():

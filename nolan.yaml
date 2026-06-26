@@ -1,5 +1,27 @@
 comfyui:
-  port: 8002
-
+  port: 8080
+tts:
+  # Local TTS + voice cloning via OmniVoice (dedicated CUDA env). See
+  # docs/OMNIVOICE_SETUP.md. ~2 GB VRAM; serialized with ComfyUI via the shared
+  # GPU lock, so free_comfyui_vram can stay off (keeps ComfyUI warm).
+  enabled: true
+  provider: omnivoice
+  omnivoice:
+    env_python: D:\env\omnivoice\python.exe
+    model: k2-fsa/OmniVoice
+    num_step: 32
+    free_comfyui_vram: false
+llm:
+  # Default text LLM for authoring tasks (script, scene design, clustering,
+  # inference). qwen/qwen3.7-plus via OpenRouter — cheaper than Gemini.
+  # Set provider: gemini to switch back. Needs OPENROUTER_API_KEY (or GEMINI_API_KEY).
+  provider: openrouter
+  model: qwen/qwen3.7-plus
+  reasoning_enabled: false
+vision:
+  provider: openrouter
+  model: qwen/qwen3.7-plus
+  reasoning_enabled: false
+  reasoning_max_tokens: null
 indexing:
   database: D:\ClaudeProjects\.nolan\library.db

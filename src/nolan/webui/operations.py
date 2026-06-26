@@ -238,49 +238,31 @@ def _scene_plan_path(project_name: str) -> Path:
     return Path("projects") / project_name / "scene_plan.json"
 
 
-def build_query_variants(scene) -> list:
-    """Generate search queries broad→specific for a scene.
-
-    The scene designer's queries are often too literal (proper nouns, years) for
-    stock/archival libraries. We try the original, then progressively broader
-    variants (drop years/proper-nouns), then a generic phrase from the description.
-    """
-    import re as _re
-    out = []
-    q = (getattr(scene, "search_query", "") or "").strip()
-    if q:
-        out.append(q)
-        broad = _re.sub(r"\b\d{4}\b", "", q)                       # drop years
-        broad = _re.sub(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b", "", broad)  # drop Proper Nouns
-        broad = _re.sub(r"\s+", " ", broad).strip()
-        if broad and broad.lower() != q.lower():
-            out.append(broad)
-    vd = (getattr(scene, "visual_description", "") or "").strip()
-    if vd:
-        out.append(" ".join(vd.split()[:6]))
-    seen, res = set(), []
-    for x in out:
-        if x and x.lower() not in seen:
-            seen.add(x.lower())
-            res.append(x)
-    return res or ["archival documentary footage"]
+# Moved to nolan.external_assets (P2) — re-exported here for back-compat.
+from nolan.external_assets import build_query_variants  # noqa: E402,F401
 
 
 async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool = True,
                          max_results: int = 4, concurrency: int = 6, score_cap: int = 4,
-                         scorer_model: str = "qwen/qwen3-vl-8b-instruct"):
+                         scorer_model: str = "qwen/qwen3-vl-8b-instruct",
+                         use_library: bool = True, library_gate: int = 5):
     """Video-first, multi-source b-roll matcher with query-variant fallback.
 
     Speed-optimized: (1) scenes processed concurrently, (2) candidates cheaply
     pre-filtered to the top `score_cap` by quality before vision-scoring,
     (3) a fast small vision model (`scorer_model`) does relevance scoring.
     Videos are attached by reference; images downloaded. assemble detects type by ext.
+
+    When `use_library`, the picture library (global + this project) is searched
+    FIRST (CLIP) and a candidate that vision-scores >= `library_gate` is reused
+    directly — free, and it reuses curated/licensed assets — before any external
+    provider is queried.
     """
     import threading
     from concurrent.futures import ThreadPoolExecutor
     import httpx as _httpx
     from nolan.scenes import ScenePlan
-    from nolan.image_search import ImageSearchClient, ImageScorer
+    from nolan.image_search import ImageSearchClient, ImageScorer, ImageSearchResult
     from nolan.cli_legacy import _scoring_vision_config
 
     plan_path = _scene_plan_path(project_name)
@@ -306,60 +288,73 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
         out_dir.mkdir(parents=True, exist_ok=True)
         vid_sources = client.video_providers()
 
-        state = {"done": 0, "matched": 0}
+        # Picture-library sources (global + project), one shared CLIP embedder.
+        libs = []
+        if use_library:
+            try:
+                from nolan.imagelib import ClipEmbedder, ImageLibrary
+                emb = ClipEmbedder()
+                libs.append(ImageLibrary("global", embedder=emb))
+                if (Path("projects") / project_name / "imagelib").exists():
+                    libs.append(ImageLibrary("project", project=project_name, embedder=emb))
+            except Exception as e:
+                job.log(f"picture library unavailable: {e}")
+
+        state = {"done": 0, "matched": 0, "from_library": 0}
         lock = threading.Lock()
+        lib_lock = threading.Lock()
+
+        def _try_library(scene, variants):
+            """Reuse a library asset if one vision-scores >= library_gate."""
+            import shutil
+            q = (getattr(scene, "search_query", "") or scene.visual_description
+                 or (variants[0] if variants else ""))
+            cands = []
+            with lib_lock:
+                for lib in libs:
+                    try:
+                        for h in lib.search(q, k=score_cap):
+                            cands.append((str(lib.base / h.asset.path), h.asset))
+                    except Exception:
+                        pass
+            if not cands:
+                return False
+            isrs = [ImageSearchResult(url=p, title=a.title, source=f"library:{a.source or '?'}",
+                                      source_url=a.source_url, license=a.license,
+                                      width=a.width, height=a.height)
+                    for p, a in cands[:score_cap]]
+            ctx = f"for a documentary scene: {scene.visual_description or ''}"
+            scored = scorer.score_results(isrs, q, context=ctx)
+            best = scored[0] if scored else None
+            if not best or (best.score or 0) < library_gate:
+                return False
+            dest = out_dir / f"{scene.id}{Path(best.url).suffix or '.jpg'}"
+            try:
+                shutil.copy(best.url, dest)
+            except Exception:
+                return False
+            scene.matched_asset = str(dest.relative_to(plan_path.parent)).replace("\\", "/")
+            job.log(f"{scene.id}: {best.source} (library, score {best.score})")
+            return True
 
         def process_scene(scene):
             variants = build_query_variants(scene)
-            cands = []
-            if prefer_video and vid_sources:
-                for variant in variants:
-                    cands = client.search_assets(variant, media_type="video",
-                                                 sources=vid_sources, max_results=max_results)
-                    if cands:
-                        break
-            if not cands:
-                for variant in variants:
-                    cands = client.search_assets(variant, media_type="image", max_results=max_results)
-                    if cands:
-                        break
-            ok = False
-            if cands:
-                # (2) Cheap pre-filter: rank by quality (resolution/aspect), keep top score_cap.
-                for c in cands:
-                    qs, _ = scorer.calculate_quality_score(c)
-                    c.quality_score = qs
-                cands = sorted(cands, key=lambda c: c.quality_score or 0, reverse=True)[:score_cap]
-                ctx = f"for a documentary scene: {scene.visual_description or ''}"
-                scored = scorer.score_results(
-                    cands, getattr(scene, "search_query", "") or scene.visual_description or "", context=ctx)
-                best = scored[0] if scored else None
-                if best and (best.score or 0) >= 4:
-                    if best.media_type == "video":
-                        # Resolve the actual mp4 URL for the winner only (lazy).
-                        resolved = client.resolve_video(best)
-                        if resolved and resolved.url:
-                            job.log(f"{scene.id}: video from {resolved.source} (score {best.score})")
-                            scene.matched_clip = {
-                                "external_url": resolved.url, "source": resolved.source,
-                                "source_url": resolved.source_url, "title": resolved.title,
-                                "license": resolved.license, "duration": resolved.duration,
-                                "media_type": "video",
-                                "preview_image_url": resolved.preview_image_url or resolved.thumbnail_url,
-                                "score": best.score, "external": True,
-                            }
-                            ok = True
-                    else:
-                        dest = out_dir / f"{scene.id}.jpg"
-                        try:
-                            data = _httpx.get(best.url, follow_redirects=True, timeout=30.0,
-                                              headers={"User-Agent": "Mozilla/5.0"}).content
-                            dest.write_bytes(data)
-                            scene.matched_asset = str(dest.relative_to(plan_path.parent)).replace("\\", "/")
-                            job.log(f"{scene.id}: image from {best.source} (score {best.score})")
-                            ok = True
-                        except Exception:
-                            ok = False
+            # Library-first: reuse a curated asset before any external provider.
+            if libs and _try_library(scene, variants):
+                with lock:
+                    state["done"] += 1
+                    state["matched"] += 1
+                    state["from_library"] += 1
+                    job.set_progress(0.05 + 0.9 * state["done"] / max(1, len(broll)),
+                                     f"b-roll {state['done']}/{len(broll)} · {state['matched']} matched")
+                return
+            # Shared external-provider match (same logic the resolver uses as external_fn).
+            from nolan.external_assets import external_match_for_scene
+            kind = external_match_for_scene(
+                scene, client=client, scorer=scorer, vid_sources=vid_sources,
+                out_dir=out_dir, project_root=plan_path.parent, prefer_video=prefer_video,
+                max_results=max_results, score_cap=score_cap, gate=4, log=job.log)
+            ok = bool(kind)
             with lock:
                 state["done"] += 1
                 if ok:
@@ -373,7 +368,8 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
 
         plan.save(str(plan_path))
         return {"project": project_name, "broll_scenes": len(broll), "matched": state["matched"],
-                "video_sources": vid_sources, "scorer_model": scorer_model}
+                "from_library": state["from_library"], "video_sources": vid_sources,
+                "scorer_model": scorer_model}
 
     result = await asyncio.to_thread(_work)
     job.set_progress(1.0, f"Matched {result['matched']}/{result['broll_scenes']} b-roll scenes")
@@ -633,12 +629,16 @@ async def materialize_clips(job, *, config, project_name: str, max_clip_seconds:
 
 
 async def extract_assets(job, *, url: str, limit: Optional[int] = None,
-                         download: bool = True, dest: Optional[str] = None) -> dict:
+                         download: bool = True, dest: Optional[str] = None,
+                         save_to_library: bool = False, scope: str = "global",
+                         project: Optional[str] = None) -> dict:
     """Extract high-def image assets from a page URL via the parser registry.
 
     Picks the matching extractor (Gutenberg / Wikimedia / Met / generic),
     optionally downloads the full-res files into ``dest`` (or
-    ``.scratch/extracted/<host>``) and writes a manifest.
+    ``.scratch/extracted/<host>``) and writes a manifest. With
+    ``save_to_library`` the assets are also ingested into the picture library
+    (deduped, CLIP-embedded, tagged with the page URL).
     """
     import json
     from urllib.parse import urlparse
@@ -648,14 +648,14 @@ async def extract_assets(job, *, url: str, limit: Optional[int] = None,
     ex = get_extractor(url)
     job.set_progress(0.1, f"Extracting via '{ex.name}'...")
     results = await asyncio.to_thread(extract_from_url, url, limit=limit)
-    job.set_progress(0.5, f"Found {len(results)} asset(s)")
+    job.set_progress(0.4, f"Found {len(results)} asset(s)")
 
     records = [r.to_dict() for r in results]
     out_dir = None
     if download and results:
         host = urlparse(url).netloc.replace(":", "_") or "page"
         out_dir = Path(dest) if dest else Path(".scratch/extracted") / host
-        job.set_progress(0.6, f"Downloading {len(results)} asset(s) -> {out_dir}")
+        job.set_progress(0.5, f"Downloading {len(results)} asset(s) -> {out_dir}")
         records = await download_assets(results, out_dir)
         (out_dir / "manifest.json").write_text(
             json.dumps({"url": url, "extractor": ex.name, "count": len(records),
@@ -663,12 +663,47 @@ async def extract_assets(job, *, url: str, limit: Optional[int] = None,
             encoding="utf-8",
         )
 
+    saved = 0
+    if save_to_library and results:
+        job.set_progress(0.7, f"Saving {len(results)} to {scope} picture library...")
+        saved = await asyncio.to_thread(
+            _ingest_results_to_library, results, records, scope, project, url)
+
     ok = sum(1 for r in records if r.get("local_path")) if download else 0
     msg = f"{len(records)} asset(s)" + (f", {ok} downloaded" if download else "")
+    if save_to_library:
+        msg += f", {saved} in library"
     job.set_progress(1.0, f"Done - {msg}")
     return {"url": url, "extractor": ex.name, "count": len(records),
-            "downloaded": ok, "out_dir": str(out_dir) if out_dir else None,
-            "results": records}
+            "downloaded": ok, "saved_to_library": saved,
+            "out_dir": str(out_dir) if out_dir else None, "results": records}
+
+
+def _ingest_results_to_library(results, records, scope, project, query_url) -> int:
+    """Ingest extractor results into the picture library (one shared embedder).
+
+    Uses an already-downloaded local file when available (no re-fetch), else the
+    remote URL. Returns the number of new assets added.
+    """
+    from nolan.imagelib import ClipEmbedder, ImageLibrary
+
+    lib = ImageLibrary(scope=scope, project=project, embedder=ClipEmbedder())
+    local_by_url = {r.get("url"): r.get("local_path") for r in records}
+    added = 0
+    for r in results:
+        try:
+            local = local_by_url.get(r.url)
+            if local and Path(local).exists():
+                _, created = lib.add_file(
+                    local, url=r.url, source=r.source, source_url=r.source_url,
+                    license=r.license, title=r.title, width=r.width, height=r.height,
+                    query=query_url)
+            else:
+                _, created = lib.add_result(r, query=query_url)
+            added += int(created)
+        except Exception:
+            continue
+    return added
 
 
 async def comfyui_status(config) -> dict:
@@ -1125,6 +1160,7 @@ Transcript:
 def _parse_json_object(raw: str) -> dict:
     """Parse an LLM JSON object response, tolerant of surrounding prose/fences."""
     import json as _json
+    import re
     raw = (raw or "").strip()
     try:
         return _json.loads(raw)
@@ -1229,6 +1265,305 @@ async def fetch_transcripts(job, *, store_root, style_id: str, urls: list,
     return {"style_id": style_id, "added": added, "skipped": skipped, "errors": errors,
             "added_count": len(added), "skipped_count": len(skipped),
             "error_count": len(errors)}
+
+
+def _ffmpeg_exe() -> str:
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return "ffmpeg"
+
+
+def _wav_duration(path) -> float:
+    import wave
+    try:
+        with wave.open(str(path), "rb") as w:
+            return round(w.getnframes() / float(w.getframerate()), 3)
+    except Exception:
+        return 0.0
+
+
+def _tempo_on(tempo) -> bool:
+    return tempo is not None and abs(float(tempo) - 1.0) > 0.01
+
+
+def detect_voice_wpm(wav_path, ref_text=None, baseline: int = 150) -> dict:
+    """Measure a reference voice's speaking rate (words/min) + suggest a Pace.
+
+    Uses ref_text if given, else transcribes the clip with Whisper. ``baseline``
+    is OmniVoice's approximate default output rate; suggested_pace = wpm/baseline
+    (clamped 0.5–1.6) so the output matches the reference's pace.
+    """
+    from pathlib import Path as _P
+    p = _P(wav_path)
+    if not p.exists():
+        return {"ok": False, "reason": "sample not found"}
+    dur = _wav_duration(p)
+    if dur <= 0:
+        return {"ok": False, "reason": "could not read audio"}
+    text = (ref_text or "").strip()
+    source = "ref_text"
+    if not text:
+        try:
+            from nolan.whisper import WhisperTranscriber, WhisperConfig, WHISPER_AVAILABLE
+            if not WHISPER_AVAILABLE:
+                return {"ok": False, "reason": "no transcript & Whisper not installed",
+                        "duration": round(dur, 1)}
+            # CPU: the nolan env has CPU-only torch (no cublas); a few-second clip
+            # transcribes fast on CPU anyway.
+            segs = WhisperTranscriber(WhisperConfig(
+                model_size="base", device="cpu", compute_type="int8")).transcribe(p)
+            text = " ".join(s.text for s in segs).strip()
+            source = "whisper"
+        except Exception as e:
+            return {"ok": False, "reason": f"transcription failed: {e}", "duration": round(dur, 1)}
+    words = len(text.split())
+    if words == 0:
+        return {"ok": False, "reason": "no speech detected", "duration": round(dur, 1)}
+    wpm = words / dur * 60
+    suggested = max(0.5, min(1.6, round((wpm / baseline) * 20) / 20))  # clamp + round to 0.05
+    return {"ok": True, "wpm": round(wpm), "words": words, "duration": round(dur, 1),
+            "output_wpm": baseline, "suggested_pace": suggested, "source": source}
+
+
+async def _atempo(src, dst, tempo: float) -> None:
+    """Time-stretch audio by `tempo` (>1 faster) without changing pitch (ffmpeg atempo)."""
+    proc = await asyncio.create_subprocess_exec(
+        _ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(src), "-filter:a", f"atempo={float(tempo):.3f}", str(dst),
+        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+    )
+    _, err = await proc.communicate()
+    if proc.returncode != 0:
+        raise RuntimeError(f"atempo failed: {(err or b'').decode(errors='replace')[:300]}")
+
+
+async def _free_comfyui_vram(config) -> None:
+    """Best-effort: ask ComfyUI to unload models so a TTS job has VRAM headroom."""
+    import httpx
+    base = f"http://{config.comfyui.host}:{config.comfyui.port}"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as c:
+            await c.post(f"{base}/free", json={"unload_models": True, "free_memory": True})
+    except Exception:
+        pass  # ComfyUI not running / no /free — fine, we proceed anyway
+
+
+async def tts_synthesize(job, *, config, text: str, ref_audio: str = None,
+                         ref_text: str = None, instruct: str = None,
+                         num_step: int = None, speed: float = None, language_id: str = None,
+                         tempo: float = 1.0):
+    """Synthesize a single utterance (TTS Studio) and write a wav under voices/_tts_out/.
+
+    Runs under the shared GPU lock so it never overlaps ComfyUI.
+    """
+    from pathlib import Path as _Path
+    from nolan.tts import create_tts_provider
+    from nolan.webui.jobs import get_gpu_lock
+
+    if not config.tts.enabled:
+        raise RuntimeError("TTS is disabled — set tts.enabled: true in nolan.yaml "
+                           "(see docs/OMNIVOICE_SETUP.md)")
+    text = (text or "").strip()
+    if not text:
+        raise RuntimeError("no text to synthesize")
+    if not ref_audio and not instruct:
+        job.log("No voice reference or instruct given — using OmniVoice's default voice")
+
+    out_dir = _Path("voices") / "_tts_out"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{job.id}.wav"
+
+    provider = create_tts_provider(config.tts)
+    loop = asyncio.get_event_loop()
+    extra = {}
+    if instruct:
+        extra["instruct"] = instruct
+    if speed is not None:
+        extra["speed"] = speed
+    if language_id:
+        extra["language_id"] = language_id
+
+    job.set_progress(0.1, "Waiting for GPU…")
+    async with get_gpu_lock():
+        if config.tts.omnivoice.free_comfyui_vram:
+            job.set_progress(0.15, "Freeing ComfyUI VRAM…")
+            await _free_comfyui_vram(config)
+        job.set_progress(0.3, "Synthesizing…")
+
+        def _run():
+            return provider.synthesize(text, out_path, ref_audio=ref_audio,
+                                       ref_text=ref_text, num_step=num_step, **extra)
+        wav = await loop.run_in_executor(None, _run)
+
+    if _tempo_on(tempo):
+        job.set_progress(0.95, f"Adjusting pace (×{tempo})…")
+        tmp = out_path.with_name(out_path.stem + "_t.wav")
+        await _atempo(wav, tmp, tempo)
+        _Path(tmp).replace(out_path)
+        wav = out_path
+
+    job.set_progress(1.0, "Done")
+    return {"output": str(wav), "token": job.id}
+
+
+async def generate_voiceover(job, *, config, project: str = None, script_project: str = None,
+                             mode: str = "full", voice_id: str = None, store_root: str = "voices",
+                             ref_audio: str = None, ref_text: str = None, instruct: str = None,
+                             num_step: int = None, speed: float = None, language_id: str = None,
+                             tempo: float = 1.0):
+    """Generate a project's voiceover with local TTS.
+
+    Source: a render project's script.json (``project``) OR a Script Project's
+    script.md (``script_project``, split on ## headings). Only section *bodies* are
+    spoken — headings/metadata are never read aloud (both modes).
+
+    mode='full'     -> concatenated voiceover.mp3 (run `nolan align` after).
+    mode='segments' -> per-section wavs + segments.json under assets/voiceover/segments/.
+
+    Runs under the shared GPU lock so it never overlaps ComfyUI.
+    """
+    from pathlib import Path as _Path
+    from nolan.tts import create_tts_provider
+    from nolan.voice_library import VoiceLibrary
+    from nolan.webui.jobs import get_gpu_lock
+
+    if not config.tts.enabled:
+        raise RuntimeError("TTS is disabled — set tts.enabled: true in nolan.yaml "
+                           "(see docs/OMNIVOICE_SETUP.md)")
+
+    # --- resolve sections [{title, timecode, body}] + the project base dir ----
+    if script_project:
+        from nolan.script import parse_script_sections
+        base = _Path("projects") / script_project
+        md_path = base / "script.md"
+        if not md_path.exists():
+            raise RuntimeError(f"no script.md for script project '{script_project}'")
+        sections = parse_script_sections(md_path.read_text(encoding="utf-8"))
+        label = script_project
+    elif project:
+        from nolan.script import Script, clean_tts_text
+        base = _Path("projects") / project
+        sp = base / "script.json"
+        if not sp.exists():
+            raise RuntimeError(f"no script.json for project '{project}'")
+        sc = Script.load_json(str(sp))
+        sections = [{"title": s.title, "timecode": None, "body": clean_tts_text(s.narration)}
+                    for s in sc.sections if (s.narration or "").strip()]
+        label = project
+    else:
+        raise RuntimeError("provide project or script_project")
+    sections = [s for s in sections if (s["body"] or "").strip()]
+    if not sections:
+        raise RuntimeError("script has no narration to synthesize")
+
+    # --- resolve cloning voice: explicit ref_audio wins; else a saved voice_id.
+    # The SAME ref is applied to every section so the voice stays consistent.
+    if not ref_audio and voice_id:
+        lib = VoiceLibrary(_Path(store_root))
+        voice = lib.get(voice_id)
+        if not voice:
+            raise RuntimeError(f"voice not found: {voice_id}")
+        ref_audio = str(lib.sample_path(voice_id))
+        ref_text = voice.get("ref_text")
+        job.log(f"Cloning voice: {voice.get('name')} ({voice_id})")
+    if not ref_audio and not instruct:
+        job.log("No voice reference/instruct — OmniVoice will auto-pick a voice "
+                "PER SECTION, so sections may not match. Pick/clone a voice for consistency.")
+
+    items = []
+    for i, s in enumerate(sections):
+        it = {"id": f"sec_{i:04d}", "text": s["body"]}
+        if ref_audio:
+            it["ref_audio"] = ref_audio
+        if ref_text:
+            it["ref_text"] = ref_text
+        if instruct:
+            it["instruct"] = instruct
+        if speed is not None:
+            it["speed"] = speed
+        if language_id:
+            it["language_id"] = language_id
+        items.append(it)
+
+    vo_dir = base / "assets" / "voiceover"
+    work = vo_dir / "_work"
+    work.mkdir(parents=True, exist_ok=True)
+    provider = create_tts_provider(config.tts)
+    loop = asyncio.get_event_loop()
+
+    job.set_progress(0.1, f"Synthesizing {len(items)} sections (waiting for GPU)…")
+    async with get_gpu_lock():
+        if config.tts.omnivoice.free_comfyui_vram:
+            job.set_progress(0.15, "Freeing ComfyUI VRAM…")
+            await _free_comfyui_vram(config)
+        job.set_progress(0.25, f"Running OmniVoice on {len(items)} sections…")
+        produced = await loop.run_in_executor(
+            None, lambda: provider.synthesize_batch(items, work, num_step=num_step))
+
+    if not produced:
+        raise RuntimeError("TTS produced no audio (check the omnivoice env / logs)")
+    missing = [it["id"] for it in items if it["id"] not in produced]
+    if missing:
+        job.log(f"warning: {len(missing)} sections produced no audio: {missing[:5]}")
+
+    import json as _json
+    import shutil as _shutil
+    from nolan.script_style import slugify
+
+    if mode == "segments":
+        job.set_progress(0.9, "Packaging segments…")
+        seg_dir = vo_dir / "segments"
+        _shutil.rmtree(seg_dir, ignore_errors=True)
+        seg_dir.mkdir(parents=True, exist_ok=True)
+        manifest = []
+        apply_tempo = _tempo_on(tempo)
+        for i, s in enumerate(sections):
+            src = produced.get(f"sec_{i:04d}")
+            if not src:
+                continue
+            name = f"{i:02d}_{slugify(s['title'] or 'section')}.wav"
+            dest = seg_dir / name
+            if apply_tempo:
+                await _atempo(src, dest, tempo)
+                Path(src).unlink(missing_ok=True)
+            else:
+                Path(src).replace(dest)
+            manifest.append({"index": i, "title": s["title"], "timecode": s["timecode"],
+                             "file": name, "duration": _wav_duration(dest)})
+        (seg_dir / "segments.json").write_text(
+            _json.dumps({"project": label, "voice_id": voice_id, "segments": manifest},
+                        indent=2, ensure_ascii=False), encoding="utf-8")
+        _shutil.rmtree(work, ignore_errors=True)
+        total = round(sum(m["duration"] for m in manifest), 1)
+        job.set_progress(1.0, f"{len(manifest)} segments ({total}s) → {seg_dir}")
+        return {"mode": "segments", "project": label, "segments": manifest,
+                "count": len(manifest), "dir": str(seg_dir), "missing": missing}
+
+    # full mode: concat -> voiceover.mp3
+    job.set_progress(0.9, "Concatenating voiceover…")
+    ordered = [produced[it["id"]] for it in items if it["id"] in produced]
+    list_file = work / "_concat.txt"
+    list_file.write_text("".join(f"file '{p.resolve().as_posix()}'\n" for p in ordered),
+                         encoding="utf-8")
+    out_mp3 = vo_dir / "voiceover.mp3"
+    cmd = [_ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error", "-f", "concat",
+           "-safe", "0", "-i", str(list_file)]
+    if _tempo_on(tempo):
+        cmd += ["-filter:a", f"atempo={float(tempo):.3f}"]
+    cmd += ["-ar", "44100", str(out_mp3)]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+    )
+    _, err = await proc.communicate()
+    if proc.returncode != 0:
+        raise RuntimeError(f"voiceover concat failed: {(err or b'').decode(errors='replace')[:400]}")
+
+    job.set_progress(1.0, f"Voiceover ready ({len(ordered)} sections) → {out_mp3}")
+    return {"mode": "full", "project": label, "voiceover": str(out_mp3),
+            "sections": len(ordered), "missing": missing,
+            "next": "run `nolan align` to set audio-accurate scene timings"}
 
 
 async def fetch_channel(job, *, store_root, style_id: str, channel: str,

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN Voices</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #14141f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        .wrap { max-width: 1000px; margin: 0 auto; padding: 18px; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .sub { color: #9a9ab0; font-size: 13px; margin-bottom: 14px; }
+        .panel { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+        .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        input, textarea, select { background: #0e0e16; border: 1px solid #2a2a3a; border-radius: 7px; color: #eee; padding: 8px; font-size: 14px; font-family: inherit; }
+        button { background: #2a2a3a; color: #eee; border: 1px solid #3a3a4a; border-radius: 7px; padding: 8px 13px; cursor: pointer; font-size: 13px; }
+        button:hover { background: #34344a; }
+        button.primary { background: #e94560; border-color: #e94560; font-weight: 600; }
+        button.danger { background: #3a1f28; border-color: #5a2a38; }
+        .section-title { font-size: 14px; margin: 14px 0 7px; font-weight: 600; }
+        .card { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 9px; padding: 11px; margin-bottom: 8px; }
+        .card .name { font-weight: 600; }
+        .card .meta { font-size: 12px; color: #9a9ab0; margin: 3px 0; }
+        .empty { color: #7a7a8c; font-size: 13px; padding: 8px 0; }
+        .jobstatus { font-size: 12px; color: #9a9ab0; margin-top: 8px; }
+        .warn { background: #3a2f12; border: 1px solid #5a4a20; color: #e8d59a; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+        label.fld { font-size: 12px; color: #9a9ab0; display:block; margin: 8px 0 3px; }
+        audio { height: 30px; vertical-align: middle; }
+        code { background:#0e0e16; padding:1px 5px; border-radius:4px; font-size:12px; }
+    </style>
+</head>
+<body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="voices"></script>
+
+<div class="wrap">
+    <h1>🎙 Voices</h1>
+    <div class="sub">Clone reference voices (from an upload or a saved Clip's audio) and generate a project's voiceover with local TTS (OmniVoice).</div>
+
+    <div id="ttsWarn"></div>
+
+    <div class="panel">
+        <div class="section-title">Add a voice</div>
+        <label class="fld">From an audio file (3–10s of clean speech)</label>
+        <div class="row">
+            <input id="upName" type="text" placeholder="voice name" style="flex:1;min-width:140px;">
+            <input id="upFile" type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg">
+            <button class="primary" onclick="uploadVoice()">Add</button>
+            <span class="jobstatus" id="upStatus"></span>
+        </div>
+        <label class="fld">Optional reference transcript (auto-transcribed if blank)</label>
+        <input id="upRefText" type="text" placeholder="what is said in the clip" style="width:100%;">
+
+        <label class="fld" style="margin-top:14px;">…or clone from a saved Clip's audio</label>
+        <div class="row">
+            <input id="clipName" type="text" placeholder="voice name" style="min-width:140px;">
+            <input id="clipId" type="text" placeholder="clip id (clip_xxxx) — from the Clips page" style="flex:1;min-width:200px;">
+            <button onclick="fromClip()">Clone from clip</button>
+            <span class="jobstatus" id="clipStatus"></span>
+        </div>
+    </div>
+
+    <div class="section-title">Voice library <span class="sub" id="voiceCount"></span></div>
+    <div id="voiceList"><div class="empty">Loading…</div></div>
+
+    <div class="panel">
+        <div class="section-title">Generate project voiceover</div>
+        <div class="row">
+            <select id="projSelect"><option value="">— pick a project —</option></select>
+            <select id="voiceSelect"><option value="">default voice (no cloning)</option></select>
+            <button class="primary" onclick="genVoiceover()">Generate voiceover</button>
+            <span class="jobstatus" id="genStatus"></span>
+        </div>
+        <div class="sub" style="margin-top:6px;">Reads the project's script.json → voiceover.mp3. Then run <code>nolan align</code> for audio-accurate scene timings.</div>
+    </div>
+</div>
+
+<script>
+let voices = [];
+function esc(t){ const d=document.createElement('div'); d.textContent=t==null?'':t; return d.innerHTML; }
+
+async function loadVoices() {
+    const r = await fetch('/api/voices');
+    const data = await r.json();
+    voices = data.voices || [];
+    document.getElementById('ttsWarn').innerHTML = data.tts_enabled ? '' :
+        '<div class="warn">⚠ TTS is disabled. Install the OmniVoice env (see docs/OMNIVOICE_SETUP.md) and set <code>tts.enabled: true</code> in nolan.yaml, then restart the hub. You can still add/manage voices now.</div>';
+    document.getElementById('voiceCount').textContent = `(${voices.length})`;
+    const box = document.getElementById('voiceList');
+    box.innerHTML = voices.length ? voices.map(v => `
+        <div class="card">
+            <div class="name">${esc(v.name)} <span class="sub">(${esc(v.id)})</span></div>
+            <div class="meta">source: ${esc(v.source||'?')}${v.has_ref_text?' · has transcript':''}</div>
+            <div class="row">
+                <audio controls preload="none" src="/api/voices/${encodeURIComponent(v.id)}/sample"></audio>
+                <button class="danger" onclick="delVoice('${esc(v.id)}')">Delete</button>
+            </div>
+        </div>`).join('') : '<div class="empty">No voices yet. Add one above.</div>';
+    // refresh the voice picker
+    const sel = document.getElementById('voiceSelect');
+    sel.innerHTML = '<option value="">default voice (no cloning)</option>' +
+        voices.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
+}
+
+async function loadProjects() {
+    try {
+        const r = await fetch('/api/status');
+        const data = await r.json();
+        const projs = (data.projects || []).map(p => p.name);
+        document.getElementById('projSelect').innerHTML = '<option value="">— pick a project —</option>' +
+            projs.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    } catch(e){}
+}
+
+async function uploadVoice() {
+    const name = document.getElementById('upName').value.trim();
+    const f = document.getElementById('upFile').files[0];
+    const status = document.getElementById('upStatus');
+    if (!name || !f) { status.textContent = 'name + file required'; return; }
+    status.textContent = 'Uploading…';
+    const fd = new FormData();
+    fd.append('file', f); fd.append('name', name);
+    const rt = document.getElementById('upRefText').value.trim();
+    if (rt) fd.append('ref_text', rt);
+    const r = await fetch('/api/voices/upload', { method:'POST', body: fd });
+    status.textContent = r.ok ? '✓ added' : 'failed';
+    if (r.ok) { document.getElementById('upName').value=''; document.getElementById('upRefText').value=''; loadVoices(); }
+}
+
+async function fromClip() {
+    const name = document.getElementById('clipName').value.trim();
+    const clip_id = document.getElementById('clipId').value.trim();
+    const status = document.getElementById('clipStatus');
+    if (!name || !clip_id) { status.textContent = 'name + clip id required'; return; }
+    status.textContent = 'Extracting…';
+    const r = await fetch('/api/voices/from-clip', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, clip_id}),
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); status.textContent = 'failed: ' + (e.detail||r.statusText); return; }
+    status.textContent = '✓ added'; document.getElementById('clipName').value=''; document.getElementById('clipId').value=''; loadVoices();
+}
+
+async function delVoice(id) {
+    if (!confirm('Delete voice ' + id + '?')) return;
+    await fetch('/api/voices/' + encodeURIComponent(id), { method:'DELETE' });
+    loadVoices();
+}
+
+async function genVoiceover() {
+    const project = document.getElementById('projSelect').value;
+    const voice_id = document.getElementById('voiceSelect').value || null;
+    const status = document.getElementById('genStatus');
+    if (!project) { status.textContent = 'pick a project'; return; }
+    status.textContent = 'Starting…';
+    const r = await fetch('/api/generate-voiceover', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({project, voice_id}),
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); status.textContent = 'failed: ' + (e.detail||r.statusText); return; }
+    const { job_id } = await r.json();
+    pollJob(job_id, status);
+}
+
+async function pollJob(jobId, statusEl) {
+    try {
+        const r = await fetch('/api/jobs/' + jobId);
+        const j = await r.json();
+        if (j.status !== 'done' && j.status !== 'error') statusEl.textContent = `${j.status}: ${j.message||''}`;
+        if (j.status === 'done') {
+            const res = j.result || {};
+            statusEl.innerHTML = `✓ ${res.sections} sections → <code>${esc(res.voiceover||'')}</code>. Then run <code>nolan align</code>.`;
+            return;
+        }
+        if (j.status === 'error') { statusEl.textContent = '✗ ' + (j.error || 'error'); return; }
+        setTimeout(() => pollJob(jobId, statusEl), 1500);
+    } catch(e){ statusEl.textContent = 'poll error: ' + e.message; }
+}
+
+document.addEventListener('DOMContentLoaded', () => { loadVoices(); loadProjects(); });
+</script>
+</body>
+</html>

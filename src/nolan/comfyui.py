@@ -495,8 +495,12 @@ class ComfyUIClient:
             Path to the generated image.
         """
         workflow = self._build_workflow(prompt)
-        prompt_id = await self._queue_prompt(workflow)
-        result = await self._wait_for_completion(prompt_id, timeout=timeout)
+        # Serialize GPU work across the process so ComfyUI and local TTS don't
+        # contend for VRAM. The lock is held for the whole inference span.
+        from nolan.webui.jobs import get_gpu_lock
+        async with get_gpu_lock():
+            prompt_id = await self._queue_prompt(workflow)
+            result = await self._wait_for_completion(prompt_id, timeout=timeout)
 
         # Get the output image info
         outputs = result.get("outputs", {})

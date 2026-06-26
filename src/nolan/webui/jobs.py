@@ -156,3 +156,21 @@ def get_job_manager() -> JobManager:
     if _manager is None:
         _manager = JobManager()
     return _manager
+
+
+# Process-wide GPU serialization. Both ComfyUI image generation and local TTS
+# (OmniVoice) compete for the single GPU's VRAM. They run as tasks on the one hub
+# event loop, so a shared asyncio.Lock is enough to ensure only one GPU-heavy job
+# runs at a time. Acquire it around the actual GPU work:
+#     from nolan.webui.jobs import get_gpu_lock
+#     async with get_gpu_lock():
+#         ...  # GPU inference (ComfyUI generate / OmniVoice batch)
+_gpu_lock: Optional["asyncio.Lock"] = None
+
+
+def get_gpu_lock() -> "asyncio.Lock":
+    """Process-wide async lock serializing GPU work (ComfyUI vs TTS)."""
+    global _gpu_lock
+    if _gpu_lock is None:
+        _gpu_lock = asyncio.Lock()
+    return _gpu_lock

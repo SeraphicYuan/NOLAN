@@ -8,6 +8,36 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Picture Library — searchable image store (2026-06-25)
+
+`src/nolan/imagelib/` — the still-image counterpart to the video library:
+persistent, deduplicated, license-aware, with **CLIP semantic search** (text→image).
+Acquisition results (search providers + link extractors) can now be warehoused
+instead of dumped into ephemeral `.scratch/`.
+
+- **`catalog.py`** `AssetCatalog` (SQLite): one row/asset with `content_hash`
+  (dedup), `source`, `source_url`, `license`, dims, `tags`, `query`,
+  `status` (active|rejected). **`embeddings.py`** `ClipEmbedder`
+  (sentence-transformers `clip-ViT-B-32`, image+text shared space).
+  **`store.py`** `ImageLibrary`: file storage + catalog + ChromaDB `images`
+  collection; `add_file/add_url/add_result`, `search` (active+license filtered),
+  `set_status` (reject de-indexes), `search_all` (global+project merge).
+- **Scopes** (in-tree, gitignored): global `_library/images/`,
+  project `projects/<name>/imagelib/`.
+- **CLI**: `nolan images {search,add,list,reject,stats}`; plus `image-search
+  --save [--scope --project]` to ingest results tagged with the query.
+- **match-broll integration**: `match_broll_v2` searches the library (global +
+  project) FIRST, vision-scores candidates on the same scale, and reuses one
+  scoring ≥ `library_gate` before any external provider (`from_library` in result).
+  Required making `AssetCatalog` thread-safe (`check_same_thread=False` + lock)
+  since match-broll searches from a thread pool.
+- **Hub UI**: `/images` gallery — browse/CLIP-search, scope + license filter,
+  per-tile reject; thumbnails via `/api/images/raw`.
+- **Verified**: 12 unit tests (`tests/test_imagelib.py`, incl. cross-thread) +
+  `tests/test_hub_images.py` (endpoints) + live CLIP ("skeleton" vs "locomotive"
+  rank their own images) + functional match-broll test (scene matched from
+  library, external skipped). See `docs/PICTURE_LIBRARY_v1.md`.
+
 ## Asset Extraction — link → assets (2026-06-25)
 
 `src/nolan/extractors/` — a new acquisition channel: give it a **page URL**, it
@@ -105,6 +135,16 @@ Three additions that turn the cut-sequence essay into layered video-essay gramma
 - **Loop/feedback diagram** — `renderer/scenes/loop_diagram.py::LoopDiagramRenderer`
   (`render_loop_diagram`): labelled nodes on a circle with animated curved arrows
   forming a cycle. For systemic "X feeds Y feeds Z back to X" arguments. Composites.
+- **Photo montage ("photos on a table")** — `renderer/scenes/photo_montage.py::PhotoMontageRenderer`
+  (`render_photo_montage`): Polaroid-framed stills (white border + drop shadow + slight
+  rotation) on a textured/vignetted surface, a slow Ken Burns camera, and one **hero card
+  that slides in** with a **handwritten type-on caption**. For introducing historical
+  figures / archival stills. Spec id `photo-montage` (python). Test: `scripts/test_photo_montage.py`.
+  Reverse-engineered from clip analysis (`projects/_clips/clip_518fb653/effect_analysis.md`).
+  Cards/hero accept `frame:"polaroid"|"cutout"` — `cutout` keeps a transparent PNG's
+  irregular silhouette (alpha preserved) and the drop shadow follows it.
+  For the **flexible/extensible** version with per-card motion control, use the Remotion
+  `PhotoMontage` composition below (spec id `photo-montage-pro`).
 
 Demo: `projects/US Economy/experiment_roaring20s/build_v2.py` → `final_v2.mp4`.
 
@@ -114,9 +154,31 @@ Python remains the default renderer; Remotion is used **only** within its strong
 `docs/REMOTION_EVALUATION.md`). A proper static Remotion project lives in
 `render-service/remotion-lib/` (real `.tsx`, not the code-generator) with a job-JSON →
 `bundle`+`renderMedia` flow (`render.mjs`).
-- **Built (7 compositions across categories 1–5):** `Kinetic` (kinetic-text), `BarCompare` +
+- **Built (9 compositions across categories 1–5):** `Kinetic` (kinetic-text), `BarCompare` +
   `KShape` (rich-chart), `AnnotateOverVideo` + `AnnotateStat` (svg-annotation), `RouteMap`
   (map), `PremiumCard` (premium card). Render ~5–9s each.
+- **`PhotoMontage` (photo-montage-pro)** — flexible "photos on a table" with a **per-card
+  motion system**: each card declares where it rests (`x,y,scale,rotation`) and how it
+  arrives (`from` edge + `enterAt`/`enterDur`/`distance`/`ease`) independently — e.g. one
+  slides up to center, one in from the left to rest on the left. Frame styles
+  `polaroid`/`plain`/`cutout` (cutout = bare PNG alpha + silhouette `drop-shadow`),
+  handwritten type-on captions, Ken Burns camera. Multi-image staging: `render.mjs` stages
+  the `cards[].src` array + `background` into `public/` (mirrors the `segments` pattern).
+  **Per-card keyframe tracks** (`card.keys: [{at,x?,y?,scale?,rotation?,opacity?,ease?}]`)
+  fully drive a card's transform when present — each property tweens through only the keys
+  that define it, enabling **appear-then-tilt**, **fade-in-then-fade-out**, and arbitrary
+  **multi-step paths**; the `from` sugar remains for one-shot entrances. Tests:
+  `scripts/test_photo_montage_remotion.py` (entrances), `scripts/test_photo_montage_stress.py`
+  (keyframe tracks: delayed tilt / fade-out / complex path / layered sizes). 3D pan/tilt:
+  per-card `rotX`/`rotY` (+`perspective`) — `rotation` is in-plane (rotateZ), `rotX/rotY` swing
+  the card in 3D space (a "pan" vs a flat tilt); demo `scripts/test_photo_montage_pan.py`.
+- **`PhotoGrid` (photo-grid)** — procedural grid choreography that scales to dozens of
+  images: (1) N images **fly in** to fill a `cols×rows` grid, sequenced **one-by-one / by
+  row / by col** (`order`); (2) one image (`focusIndex`) **zooms to center** while the rest
+  of the grid **peters out**; (3) it **zooms back** and the grid returns. All per-cell motion
+  is computed from grid shape + timings, so the input is just a flat image list. Reuses the
+  multi-image staging + polaroid/plain/cutout frames. Test: `scripts/test_photo_grid.py`
+  (40 real library images, 8×5).
 - **Style system:** shared `theme` tokens (`src/theme.ts`: dark-editorial/light/high-contrast
   or override object) on every effect + per-effect style vars (`lineStyle`, `barStyle`,
   `shapeStyle`, `routeStyle`, `cardStyle`) + shared seeded path helpers (`src/shapes.ts`).
@@ -130,11 +192,32 @@ Python remains the default renderer; Remotion is used **only** within its strong
 - **Showcase reel:** `Showcase` composition (`<Series>` of all effects + labels) →
   `remotion-lib/output/showcase.mp4` (~27s).
 
+### Brief layer — authoring broll/motion from intent (2026-06-26)
+`src/nolan/brief/` is the agent-facing authoring surface between the broll/scene-design
+stage and the render engines. Principle: **the LLM does the semantic part, deterministic
+code does the mechanical part, they meet at a small validatable _brief_.** The agent
+authors ~8 JSON fields; a resolver compiles them to a validated `nolan.motion` spec.
+- **`TimeRef`** (`timeref.py`) — symbolic time resolved against the scene transcript:
+  `3.2` | `"start"/"end"/"mid"` | `{"cue":"keyword"}` (when the VO says it) | `{"frac"}` |
+  `{"after","delay"}`. Reusable by **any** timed effect, not just photo.
+- **`SceneContext`** (`context.py`) — duration + word-level narration timing + warnings
+  sink; `from_scene(scene, words)` builds it from a Scene (transcript for cue matching).
+- **`photo-story`** (`photo_story.py`) — first brief family. `layout:"grid"` → `photo-grid`,
+  `layout:"free"` → `photo-montage-pro`. Motion **verbs** (`enter/fade/tilt/pan/tilt3d/
+  move/path/zoom`) compile to keyframe tracks, so the agent never writes `keys`/perspective.
+- **`resolve_brief(brief, ctx)`** (`resolve.py`) → `(validated spec, messages)`; registry
+  `BRIEF_REGISTRY` for new families. **Boundary:** cue→time resolves at *design time*
+  (where the transcript lives); the resolved spec is persisted on the scene, render stays
+  context-free. Graceful: missing cue/image/verb → warn + best-effort spec, never crash.
+- Verified end-to-end: "6 pics, 2×3 grid, zoom pic 4 when VO says 'keyword'" → focus lands
+  at the cue's exact timestamp and renders. Test: `scripts/test_brief.py`; design doc:
+  `docs/BROLL_BRIEF.md`.
+
 ### Motion-spec system — natural language → render (2026-06-25)
 `src/nolan/motion/` translates a one-line scene design into a precise, validated render
 spec and renders it on the right backend (Python renderer or Remotion). A declarative
 **registry** is the single source of truth.
-- `registry.py` — 13 effects across categories/both backends; **shared params**
+- `registry.py` — 16 effects across categories/both backends; **shared params**
   (`position`/`theme`/`accent`) declared once, each effect lists its own content/style
   params + which shared params it supports. Add params here over time.
 - `manifest.py` — builds the LLM capability manifest + prompt guide from the registry.
@@ -1349,3 +1432,67 @@ See [docs/plans/2026-01-30-autonomous-quality-system.md](docs/plans/2026-01-30-a
   - **Design decision** - Chose file-based over database for simplicity
     - Database-backed system in backlog for future scaling (100+ assets)
   - **Documentation** - `assets/README.md` with guidelines and usage
+
+## Local TTS + Voice Cloning (OmniVoice) — M1 (2026-06-26)
+
+Local text-to-speech with zero-shot voice cloning via
+[OmniVoice](https://github.com/k2-fsa/OmniVoice) (Apache-2.0). Fills the gap where
+the orchestrator wrote *silent* audio ("TTS not yet integrated").
+
+- **Isolated runtime:** OmniVoice runs in a dedicated CUDA conda env
+  (`D:\env\omnivoice`), invoked as a **batch subprocess** so the heavy torch stack
+  stays out of the lean `nolan` env and VRAM is freed when the job ends. Setup:
+  `scripts/setup_omnivoice.ps1`, POC: `scripts/omnivoice_poc.py`, docs:
+  `docs/OMNIVOICE_SETUP.md`.
+- **Shared GPU lock:** `get_gpu_lock()` (singleton in `webui/jobs.py`) serializes
+  GPU work across the hub event loop. `ComfyUIClient.generate()` and the TTS
+  worker acquire the *same* lock so OmniVoice and ComfyUI never contend for the
+  4090's VRAM; the TTS job can also POST ComfyUI `/free` first
+  (`tts.omnivoice.free_comfyui_vram`).
+- **Provider abstraction:** `src/nolan/tts.py` — `TtsProvider` ABC +
+  `OmniVoiceTTS` (batch via `omnivoice-infer-batch`) + `create_tts_provider`
+  (mirrors `create_text_llm`). Config: `TtsConfig`/`OmniVoiceConfig` + a `tts:`
+  block in `nolan.yaml` (enabled default off).
+- **Voice library:** `src/nolan/voice_library.py` — file-backed `voices/<id>/`
+  (sample.wav + meta). Clone from an **uploaded clip** or from a **saved Clip's
+  audio** (reuses the Clips feature). Optional reference transcript (OmniVoice
+  auto-transcribes via Whisper otherwise).
+- **Voiceover generation:** `operations.generate_voiceover` reads a project's
+  `script.json`, batch-synthesizes per section under the GPU lock, concatenates →
+  `projects/<name>/assets/voiceover/voiceover.mp3`. Run `nolan align` after for
+  audio-accurate scene timings (replaces the 150-wpm estimate).
+- **UI:** `/voices` page (add/clone/preview voices, generate a project's voiceover)
+  + Voices nav link. Endpoints: `GET/DELETE /api/voices`, `/api/voices/upload`,
+  `/api/voices/from-clip`, `GET /api/voices/{id}/sample`, `POST /api/generate-voiceover`.
+- **Roadmap:** auto-wire TTS into the orchestrator (`SegmentBuilder.tts_fn` /
+  `director` silent-audio replacement) + a `nolan voiceover` CLI — deferred.
+
+### TTS Studio (`/tts`) — 2026-06-26
+
+Interactive single-utterance TTS playground built on the OmniVoice integration.
+- **Voice source** (4 modes): saved voice · upload a sample · **crop from a library
+  video** (player + Set-In/Out, or click a segment/cluster to prefill the range)
+  · **voice design** (`instruct` text, no cloning). Cropped/uploaded samples are
+  **ephemeral** (`voices/_tmp/<token>.wav`) with an optional "Save as voice".
+- **Text source**: write/paste, or load a project's script (`GET /api/project/{p}/script`).
+- **Params**: num_step (16/24/32), speed, language_id, instruct.
+- **Output**: inline player + wav download; runs under the shared GPU lock.
+- Backend: `operations.tts_synthesize`; endpoints `POST /api/tts/sample`,
+  `/api/tts/sample-from-library`, `/api/tts/synthesize`, `GET /api/tts/sample/{t}`,
+  `/api/tts/output/{t}`, `POST /api/voices/save-sample`. `OmniVoiceTTS` now passes
+  num_step/speed/instruct/language through.
+
+### TTS Studio — Script Projects source + Project Voiceover modes (2026-06-26)
+
+- TTS Studio text source now lists **Script Projects** (`/api/script-projects`),
+  loading `script.md` with markdown headings/metadata stripped.
+- New **Project Voiceover** panel + extended `operations.generate_voiceover`
+  (source = render project's `script.json` OR a Script Project's `script.md`):
+  - `script.py.parse_script_sections` splits `script.md` on `##` headings into
+    `{title, timecode, body}`; `clean_tts_text` strips markdown so only bodies are
+    spoken (headings/`**Total Duration**`/`---` never read aloud) — both modes.
+  - **mode=full** → concatenated `assets/voiceover/voiceover.mp3`.
+  - **mode=segments** → per-section `assets/voiceover/segments/<NN>_<slug>.wav` +
+    `segments.json` (title, timecode, duration) for the segment pipeline.
+- Endpoints: `POST /api/generate-voiceover` (now takes `script_project` + `mode`),
+  `GET /api/voiceover/{project}/{path}` serves outputs. Segment-pipeline auto-wiring deferred.

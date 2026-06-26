@@ -45,6 +45,51 @@ def extract_style_instruction(style_guide: str, max_chars: int = 4000) -> str:
     return body[:max_chars]
 
 
+def clean_tts_text(text: str) -> str:
+    """Strip markdown so a TTS engine speaks clean prose (no `*`, `_`, headings)."""
+    import re
+    t = text or ""
+    t = re.sub(r"^\s{0,3}#{1,6}\s.*$", "", t, flags=re.MULTILINE)   # heading lines
+    t = re.sub(r"^\s*---\s*$", "", t, flags=re.MULTILINE)            # hr separators
+    t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)                   # md links -> text
+    t = t.replace("**", "").replace("*", "").replace("`", "")          # emphasis/code
+    t = re.sub(r"(?<!\w)_([^_]+)_(?!\w)", r"\1", t)                   # _italic_ -> italic
+    t = re.sub(r"[ \t]+\n", "\n", t)
+    return t.strip()
+
+
+def parse_script_sections(md: str) -> List[Dict[str, Any]]:
+    """Split a script.md into sections on level-2 (``## ``) headings.
+
+    Returns ``[{title, timecode, body}]``. Content before the first ``##`` (the
+    ``# Video Script`` H1, ``**Total Duration**``, ``---``) is ignored. Bodies
+    exclude the heading line and are TTS-cleaned, so they are safe to speak in
+    either full or segmented mode.
+    """
+    import re
+    sections: List[Dict[str, Any]] = []
+    cur = None
+    for line in (md or "").splitlines():
+        m = re.match(r"^##\s+(.*)$", line)
+        if m:
+            if cur:
+                sections.append(cur)
+            head = m.group(1).strip()
+            tc = re.search(r"\[([^\]]+)\]\s*$", head)
+            cur = {
+                "title": re.sub(r"\s*\[[^\]]+\]\s*$", "", head).strip(),
+                "timecode": tc.group(1).strip() if tc else None,
+                "body": "",
+            }
+        elif cur is not None:
+            cur["body"] += line + "\n"
+    if cur:
+        sections.append(cur)
+    for s in sections:
+        s["body"] = clean_tts_text(s["body"])
+    return [s for s in sections if s["body"]]
+
+
 def format_timestamp(seconds: float) -> str:
     """Format seconds as M:SS or H:MM:SS."""
     minutes = int(seconds // 60)

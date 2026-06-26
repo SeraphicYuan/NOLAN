@@ -103,6 +103,26 @@ def scan_projects(projects_dir: Path, max_depth: int = 3) -> List[Dict]:
     return projects
 
 
+def _resolve_assemble_audio(proj_dir: Path, audio: Optional[str]) -> Optional[Path]:
+    """Resolve narration audio for assemble.
+
+    Explicit `audio` (absolute or project-relative), else the project's standard
+    voiceover (`assets/voiceover/voiceover.{mp3,wav,m4a,ogg}`). Returns an existing
+    Path or None.
+    """
+    if audio:
+        p = Path(audio)
+        if p.exists():
+            return p
+        cand = proj_dir / audio
+        return cand if cand.exists() else None
+    for ext in (".mp3", ".wav", ".m4a", ".ogg"):
+        c = proj_dir / "assets" / "voiceover" / f"voiceover{ext}"
+        if c.exists():
+            return c
+    return None
+
+
 def create_hub_app(
     db_path: Optional[Path] = None,
     projects_dir: Optional[Path] = None,
@@ -292,11 +312,15 @@ def create_hub_app(
             raise HTTPException(status_code=400, detail="url is required")
         limit = body.get("limit") or None
 
-        if body.get("download"):
+        if body.get("download") or body.get("save_to_library"):
             from nolan.webui import operations
             job = job_manager.start(
                 "extract-assets", operations.extract_assets, meta={"url": url},
-                url=url, limit=limit, download=True, dest=(body.get("dest") or None),
+                url=url, limit=limit, download=bool(body.get("download", True)),
+                dest=(body.get("dest") or None),
+                save_to_library=bool(body.get("save_to_library")),
+                scope=(body.get("scope") or "global"),
+                project=(body.get("project") or None),
             )
             return {"job_id": job.id, "type": "extract-assets"}
 
@@ -309,6 +333,118 @@ def create_hub_app(
             raise HTTPException(status_code=502, detail=f"extract failed: {e}")
         return {"extractor": ex.name, "count": len(results),
                 "results": [r.to_dict() for r in results]}
+
+    # ==================== Picture library ====================
+
+    @app.get("/images", response_class=HTMLResponse)
+    async def images_page():
+        tpl = templates_dir / "images.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>images.html not found</h1>"
+
+    def _open_imagelib(scope: str, project: Optional[str]):
+        from nolan.imagelib import ImageLibrary
+        return ImageLibrary(scope=scope or "global", project=(project or None))
+
+    def _img_dict(asset, score, scope, project):
+        return {
+            "id": asset.id, "title": asset.title, "license": asset.license,
+            "source": asset.source, "source_url": asset.source_url,
+            "width": asset.width, "height": asset.height, "score": score,
+            "raw": f"/api/images/raw?scope={scope}&project={project or ''}&id={asset.id}",
+        }
+
+    @app.get("/api/images/search")
+    async def api_images_search(q: str, scope: str = "global", project: str = None,
+                                k: int = 24, license: str = None):
+        import asyncio as _asyncio
+
+        def _do():
+            from nolan.imagelib import ImageLibrary
+            scopes = []
+            if scope in ("global", "both"):
+                scopes.append(("global", None))
+            if scope in ("project", "both") and project:
+                scopes.append(("project", project))
+            if not scopes:
+                scopes = [("global", None)]
+            hits = []
+            for sc, pr in scopes:
+                lib = ImageLibrary(scope=sc, project=pr)
+                for h in lib.search(q, k=k, license_contains=license):
+                    hits.append(_img_dict(h.asset, h.score, sc, pr))
+            hits.sort(key=lambda d: (d["score"] or 0), reverse=True)
+            return hits[:k]
+
+        return {"query": q, "results": await _asyncio.to_thread(_do)}
+
+    @app.get("/api/images/list")
+    async def api_images_list(scope: str = "global", project: str = None,
+                              source: str = None, license: str = None,
+                              status: str = "active", limit: int = 60):
+        lib = _open_imagelib(scope, project)
+        items = [_img_dict(a, None, scope, project)
+                 for a in lib.list(status=status, source=source,
+                                   license_contains=license, limit=limit)]
+        return {"results": items, "stats": lib.stats()}
+
+    @app.get("/api/images/raw")
+    async def api_images_raw(id: int, scope: str = "global", project: str = None):
+        lib = _open_imagelib(scope, project)
+        a = lib.catalog.get(id)
+        if not a:
+            raise HTTPException(status_code=404, detail="asset not found")
+        path = (lib.base / a.path).resolve()
+        if not str(path).startswith(str(lib.base.resolve())) or not path.exists():
+            raise HTTPException(status_code=404, detail="file missing")
+        return FileResponse(str(path))
+
+    @app.post("/api/images/{asset_id}/reject")
+    async def api_images_reject(asset_id: int, body: dict = Body(default={})):
+        lib = _open_imagelib(body.get("scope", "global"), body.get("project"))
+        lib.set_status(asset_id, "rejected")
+        return {"ok": True, "id": asset_id}
+
+    @app.post("/api/images/add")
+    async def api_images_add(body: dict = Body(...)):
+        """Ingest an image by URL into the library (tagged with an optional topic)."""
+        import asyncio as _asyncio
+        url = (body.get("url") or "").strip()
+        if not url:
+            raise HTTPException(status_code=400, detail="url is required")
+
+        def _do():
+            lib = _open_imagelib(body.get("scope", "global"), body.get("project"))
+            asset, created = lib.add_url(
+                url, source=(body.get("source") or "web"),
+                license=body.get("license"), query=body.get("query"))
+            return {"id": asset.id, "created": created, "title": asset.title}
+        try:
+            return await _asyncio.to_thread(_do)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"add failed: {e}")
+
+    @app.post("/api/images/{asset_id}/promote")
+    async def api_images_promote(asset_id: int, body: dict = Body(default={})):
+        """Copy a project asset into the global library."""
+        import asyncio as _asyncio
+        project = body.get("project")
+        if not project:
+            raise HTTPException(status_code=400, detail="project is required")
+
+        def _do():
+            from nolan.imagelib import promote_to_global
+            asset, created = promote_to_global(project, asset_id)
+            return {"ok": True, "global_id": asset.id, "created": created}
+        try:
+            return await _asyncio.to_thread(_do)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.get("/api/images/stats")
+    async def api_images_stats(scope: str = "global", project: str = None):
+        return _open_imagelib(scope, project).stats()
 
     # ==================== Settings ====================
 
@@ -523,12 +659,17 @@ def create_hub_app(
     async def api_assemble(body: dict = Body(...)):
         from nolan.webui import operations
         project = (body.get("project") or "").strip()
-        plan = Path("projects") / project / "scene_plan.json"
+        proj_dir = Path("projects") / project
+        plan = proj_dir / "scene_plan.json"
         if not plan.exists():
             raise HTTPException(status_code=400, detail=f"no scene_plan.json for '{project}'")
-        args = ["assemble", str(plan)]
-        if body.get("audio_file"):
-            args += ["--audio-file", body["audio_file"]]
+        audio = _resolve_assemble_audio(proj_dir, body.get("audio_file"))
+        if not audio:
+            raise HTTPException(status_code=400, detail=(
+                "no narration audio — provide audio_file or add "
+                "assets/voiceover/voiceover.mp3 to the project"))
+        # audio is a POSITIONAL arg to `nolan assemble` (was wrongly sent as --audio-file).
+        args = ["assemble", str(plan), str(audio)]
         if body.get("output"):
             args += ["--output", body["output"]]
         job = job_manager.start("assemble", operations.run_cli,
@@ -608,6 +749,27 @@ def create_hub_app(
             },
             "projects": projects,
         }
+
+    @app.get("/api/projects")
+    async def list_unified_projects():
+        """Unified project list with capability flags (C1).
+
+        One source of truth across scenes/script/orchestrator/segment, replacing
+        the per-page scans. ``library_project_id`` links each FS project to its
+        index-DB row (by slug) when a library DB is present.
+        """
+        from nolan import projects as _projects
+        if not projects_dir:
+            return {"projects": [], "total": 0}
+        idx = None
+        if db_path and db_path.exists():
+            try:
+                from nolan.indexer import VideoIndex
+                idx = VideoIndex(db_path)
+            except Exception:
+                idx = None
+        found = _projects.discover_projects(projects_dir, index=idx)
+        return {"projects": [p.to_dict() for p in found], "total": len(found)}
 
     # ==================== Library Routes ====================
 
@@ -1106,6 +1268,16 @@ def create_hub_app(
             target_minutes=float(body.get("target_minutes") or 8.0),
             description=(body.get("description") or "").strip(),
         )
+        # C1: link the new FS project to the library DB so it's one project, not two.
+        if db_path and db_path.exists():
+            try:
+                from nolan import projects as _projects
+                from nolan.indexer import VideoIndex
+                proj = _projects.get_project(slug, projects_dir or _projects.DEFAULT_ROOT)
+                if proj:
+                    _projects.link_db_project(VideoIndex(db_path), proj)
+            except Exception:
+                pass  # linking is best-effort; never block project creation
         return {"project": script_project_store.get(slug)}
 
     @app.get("/api/script-projects/{slug}")
@@ -1206,6 +1378,284 @@ def create_hub_app(
         if content is None:
             raise HTTPException(status_code=404, detail="no script yet")
         return {"slug": slug, "content": content}
+
+    # ==================== Voices (TTS + voice cloning) ====================
+
+    from nolan.voice_library import VoiceLibrary
+    voice_lib = VoiceLibrary(Path("voices"))
+    voices_template = templates_dir / "voices.html"
+
+    def _tts_enabled() -> bool:
+        try:
+            from nolan.config import load_config
+            return bool(load_config().tts.enabled)
+        except Exception:
+            return False
+
+    @app.get("/voices", response_class=HTMLResponse)
+    async def voices_page():
+        if voices_template.exists():
+            return voices_template.read_text(encoding="utf-8")
+        return "<h1>voices.html not found</h1>"
+
+    @app.get("/api/voices")
+    async def voices_list():
+        return {"voices": voice_lib.list(), "tts_enabled": _tts_enabled()}
+
+    @app.delete("/api/voices/{voice_id}")
+    async def voices_delete(voice_id: str):
+        if not voice_lib.delete(voice_id):
+            raise HTTPException(status_code=404, detail="voice not found")
+        return {"deleted": voice_id}
+
+    @app.get("/api/voices/{voice_id}/sample")
+    async def voices_sample(voice_id: str):
+        p = voice_lib.sample_path(voice_id)
+        if not p.exists():
+            raise HTTPException(status_code=404, detail="no sample")
+        return FileResponse(p, media_type="audio/wav")
+
+    @app.post("/api/voices/upload")
+    async def voices_upload(file: UploadFile = File(...), name: str = Form(...),
+                            ref_text: str = Form(None)):
+        import tempfile
+        raw = await file.read()
+        suffix = Path(file.filename or "audio").suffix or ".audio"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tf:
+            tf.write(raw)
+            tmp = Path(tf.name)
+        try:
+            meta = voice_lib.create_from_audio(name, tmp, ref_text=(ref_text or None),
+                                               source="upload", source_ref=file.filename)
+        finally:
+            tmp.unlink(missing_ok=True)
+        return {"voice": meta}
+
+    @app.get("/api/voices/wpm")
+    async def voices_wpm(voice_id: str = Query(default=None), sample_token: str = Query(default=None)):
+        """Detect a reference voice's words-per-minute + suggest a Pace to match."""
+        import asyncio as _asyncio
+        from nolan.webui import operations
+        ref_text = None
+        if voice_id:
+            v = voice_lib.get(voice_id)
+            if not v:
+                raise HTTPException(status_code=404, detail="voice not found")
+            wav = voice_lib.sample_path(voice_id)
+            ref_text = v.get("ref_text")
+        elif sample_token:
+            wav = voice_lib.temp_sample_path(sample_token)
+            if not wav.exists():
+                raise HTTPException(status_code=404, detail="sample not found")
+        else:
+            raise HTTPException(status_code=400, detail="voice_id or sample_token required")
+        return await _asyncio.get_event_loop().run_in_executor(
+            None, operations.detect_voice_wpm, str(wav), ref_text)
+
+    @app.post("/api/voices/from-clip")
+    async def voices_from_clip(body: dict = Body(...)):
+        """Clone a voice from a saved Clip's audio (from the library)."""
+        from nolan.config import load_config
+        from nolan.indexer import VideoIndex
+        clip_id = (body.get("clip_id") or "").strip()
+        name = (body.get("name") or "").strip()
+        if not clip_id or not name:
+            raise HTTPException(status_code=400, detail="clip_id and name are required")
+        eff_db = db_path or Path(load_config().indexing.database).expanduser()
+        if not eff_db.exists():
+            raise HTTPException(status_code=400, detail="library DB not found")
+        clip = VideoIndex(eff_db).get_saved_clip(clip_id)
+        if not clip:
+            raise HTTPException(status_code=404, detail="clip not found")
+        meta = voice_lib.create_from_clip(
+            name, clip["source_video_path"], clip["clip_start"], clip["clip_end"],
+            ref_text=(body.get("ref_text") or None), clip_id=clip_id)
+        return {"voice": meta}
+
+    @app.post("/api/generate-voiceover")
+    async def api_generate_voiceover(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip() or None
+        script_project = (body.get("script_project") or "").strip() or None
+        if not project and not script_project:
+            raise HTTPException(status_code=400, detail="project or script_project is required")
+        mode = (body.get("mode") or "full").strip()
+        if mode not in ("full", "segments"):
+            raise HTTPException(status_code=400, detail="mode must be 'full' or 'segments'")
+        # Resolve the active voice the same way the studio does: a saved voice,
+        # an ephemeral cropped/uploaded sample, or a voice-design instruct.
+        ref_audio = ref_text = None
+        voice_id = (body.get("voice_id") or "").strip() or None
+        sample_token = (body.get("sample_token") or "").strip()
+        if sample_token:
+            sp = voice_lib.temp_sample_path(sample_token)
+            if not sp.exists():
+                raise HTTPException(status_code=404, detail="sample not found")
+            ref_audio = str(sp)
+            ref_text = (body.get("ref_text") or None)
+            voice_id = None
+        job = job_manager.start(
+            "generate-voiceover", operations.generate_voiceover,
+            meta={"project": project or script_project, "mode": mode},
+            config=load_config(), project=project, script_project=script_project,
+            mode=mode, voice_id=voice_id, ref_audio=ref_audio, ref_text=ref_text,
+            instruct=(body.get("instruct") or None),
+            num_step=(int(body["num_step"]) if body.get("num_step") else None),
+            speed=(float(body["speed"]) if body.get("speed") else None),
+            language_id=(body.get("language_id") or None),
+            tempo=float(body.get("tempo") or 1.0),
+        )
+        return {"job_id": job.id, "type": "generate-voiceover"}
+
+    @app.get("/api/voiceover-info/{project}")
+    async def api_voiceover_info(project: str):
+        """Report a project's existing voiceover outputs (full mp3 + segments)."""
+        vo = Path("projects") / project / "assets" / "voiceover"
+        full = (vo / "voiceover.mp3").exists()
+        segs = []
+        sj = vo / "segments" / "segments.json"
+        if sj.exists():
+            try:
+                segs = (json.loads(sj.read_text(encoding="utf-8")) or {}).get("segments", [])
+            except Exception:
+                segs = []
+        return {"project": project, "full": full, "segments": segs}
+
+    @app.get("/api/voiceover/{project}/{path:path}")
+    async def api_voiceover_file(project: str, path: str):
+        """Serve a project's voiceover output (voiceover.mp3 or segments/<file>.wav)."""
+        from urllib.parse import unquote
+        safe = unquote(path).replace("\\", "/")
+        if ".." in safe:
+            raise HTTPException(status_code=400, detail="bad path")
+        p = Path("projects") / project / "assets" / "voiceover" / safe
+        if not p.exists():
+            raise HTTPException(status_code=404, detail="not found")
+        mt = "audio/mpeg" if p.suffix.lower() == ".mp3" else "audio/wav"
+        return FileResponse(p, media_type=mt)
+
+    # ---- TTS Studio (single-utterance playground) ----
+    tts_template = templates_dir / "tts.html"
+
+    @app.get("/tts", response_class=HTMLResponse)
+    async def tts_page():
+        if tts_template.exists():
+            return tts_template.read_text(encoding="utf-8")
+        return "<h1>tts.html not found</h1>"
+
+    @app.post("/api/tts/sample")
+    async def tts_sample_upload(file: UploadFile = File(...)):
+        """Create an ephemeral cloning sample from an uploaded audio file."""
+        import tempfile
+        from uuid import uuid4
+        raw = await file.read()
+        suffix = Path(file.filename or "audio").suffix or ".audio"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tf:
+            tf.write(raw)
+            tmp = Path(tf.name)
+        token = uuid4().hex[:12]
+        try:
+            voice_lib.make_temp_sample(token, src_audio=tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+        return {"token": token, "sample_url": f"/api/tts/sample/{token}"}
+
+    @app.post("/api/tts/sample-from-library")
+    async def tts_sample_from_library(body: dict = Body(...)):
+        """Create an ephemeral cloning sample by cropping a library video's audio."""
+        from uuid import uuid4
+        video_path = (body.get("video_path") or "").strip()
+        try:
+            start = float(body.get("start"))
+            end = float(body.get("end"))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="start and end (seconds) are required")
+        if not video_path:
+            raise HTTPException(status_code=400, detail="video_path is required")
+        if not Path(video_path).exists():
+            raise HTTPException(status_code=404, detail="video not found")
+        token = uuid4().hex[:12]
+        try:
+            voice_lib.make_temp_sample(token, video_path=video_path, start=start, end=end)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"token": token, "sample_url": f"/api/tts/sample/{token}",
+                "duration": round(end - start, 2)}
+
+    @app.get("/api/tts/sample/{token}")
+    async def tts_sample_get(token: str):
+        p = voice_lib.temp_sample_path(token)
+        if not p.exists():
+            raise HTTPException(status_code=404, detail="sample not found")
+        return FileResponse(p, media_type="audio/wav")
+
+    @app.post("/api/voices/save-sample")
+    async def voices_save_sample(body: dict = Body(...)):
+        token = (body.get("token") or "").strip()
+        name = (body.get("name") or "").strip()
+        if not token or not name:
+            raise HTTPException(status_code=400, detail="token and name are required")
+        if not voice_lib.temp_sample_path(token).exists():
+            raise HTTPException(status_code=404, detail="sample not found")
+        meta = voice_lib.promote_temp(token, name, ref_text=(body.get("ref_text") or None))
+        return {"voice": meta}
+
+    @app.post("/api/tts/synthesize")
+    async def api_tts_synthesize(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        text = (body.get("text") or "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="text is required")
+        # Resolve the voice reference: saved voice | ephemeral sample | none/instruct.
+        ref_audio = ref_text = None
+        voice_id = (body.get("voice_id") or "").strip()
+        sample_token = (body.get("sample_token") or "").strip()
+        if voice_id:
+            v = voice_lib.get(voice_id)
+            if not v:
+                raise HTTPException(status_code=404, detail="voice not found")
+            ref_audio = str(voice_lib.sample_path(voice_id))
+            ref_text = v.get("ref_text")
+        elif sample_token:
+            sp = voice_lib.temp_sample_path(sample_token)
+            if not sp.exists():
+                raise HTTPException(status_code=404, detail="sample not found")
+            ref_audio = str(sp)
+            ref_text = (body.get("ref_text") or None)
+        job = job_manager.start(
+            "tts-synthesize", operations.tts_synthesize,
+            meta={"chars": len(text)},
+            config=load_config(), text=text, ref_audio=ref_audio, ref_text=ref_text,
+            instruct=(body.get("instruct") or None),
+            num_step=(int(body["num_step"]) if body.get("num_step") else None),
+            speed=(float(body["speed"]) if body.get("speed") else None),
+            language_id=(body.get("language_id") or None),
+            tempo=float(body.get("tempo") or 1.0),
+        )
+        return {"job_id": job.id, "type": "tts-synthesize"}
+
+    @app.get("/api/tts/output/{token}")
+    async def tts_output_get(token: str):
+        p = Path("voices") / "_tts_out" / f"{token}.wav"
+        if not p.exists():
+            raise HTTPException(status_code=404, detail="output not found")
+        return FileResponse(p, media_type="audio/wav")
+
+    @app.get("/api/project/{project}/script")
+    async def api_project_script(project: str):
+        """Return a project's narration text (for the TTS Studio text source)."""
+        base = Path("projects") / project
+        md = base / "script.md"
+        if md.exists():
+            return {"project": project, "script": md.read_text(encoding="utf-8")}
+        js = base / "script.json"
+        if js.exists():
+            from nolan.script import Script
+            s = Script.load_json(str(js))
+            return {"project": project, "script": "\n\n".join(x.narration for x in s.sections)}
+        raise HTTPException(status_code=404, detail="no script for project")
 
     # ==================== Showcase Routes ====================
 
@@ -1400,34 +1850,31 @@ def create_hub_app(
                     }
         return {"path": None, "exists": False, "project": project}
 
-    @app.get("/scenes/assets/{project}/{asset_path:path}")
-    async def scenes_serve_asset(project: str, asset_path: str):
-        """Serve asset files for a specific project."""
-        result = _get_project_dir(project)
-        if not result:
-            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-
-        project_path, _ = result
-        file_path = project_path / "assets" / asset_path
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="Asset not found")
-
-        # Determine media type
-        suffix = file_path.suffix.lower()
-        media_types = {
-            ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4", ".ogg": "audio/ogg",
-            ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
-            ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
-            ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
-        }
-        return FileResponse(file_path, media_type=media_types.get(suffix, "application/octet-stream"))
-
     _MEDIA_TYPES = {
         ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4", ".ogg": "audio/ogg",
         ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
         ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
         ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
     }
+
+    @app.get("/scenes/assets/{project}/{asset_path:path}")
+    async def scenes_serve_asset(project: str, asset_path: str):
+        """Serve asset files for a specific project (path-traversal contained)."""
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+
+        project_path, _ = result
+        root = project_path.resolve()
+        try:
+            fp = (project_path / "assets" / asset_path).resolve()
+        except OSError:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        # Contain to the project's assets dir — reject `..` escapes.
+        if not (root in fp.parents) or not fp.is_file():
+            raise HTTPException(status_code=404, detail="Asset not found")
+        return FileResponse(fp, media_type=_MEDIA_TYPES.get(fp.suffix.lower(),
+                                                            "application/octet-stream"))
 
     @app.get("/scenes/file")
     async def scenes_file(project: str = Query(...), path: str = Query(...)):
@@ -1475,11 +1922,18 @@ def create_hub_app(
             raise HTTPException(status_code=404, detail=str(e))
         return {"applied": applied, "pipeline": pipeline}
 
+    # ComfyUI model -> (workflow file, prompt node) for generated scenes.
+    _COMFY_WF = {"flux-dev": ("workflows/image/flux-dev-fp8.json", "6"),
+                 "z-image": ("workflows/image/basic-z-image.json", "27")}
+
     @app.post("/scenes/api/rerender")
     async def scenes_rerender(payload: dict = Body(...)):
         """Re-render the named scenes (background job); reassembles when done."""
         project = payload.get("project")
         scene_ids = payload.get("scene_ids") or []
+        model = payload.get("comfyui_model") or "flux-dev"
+        if model not in _COMFY_WF:
+            model = "flux-dev"
         if not (project and scene_ids):
             raise HTTPException(status_code=400, detail="project and scene_ids are required")
         result = _get_project_dir(project)
@@ -1488,9 +1942,10 @@ def create_hub_app(
         _, scene_plan_path = result
         from nolan import iterate
         pipeline = iterate.detect_pipeline(scene_plan_path)
+        wf, node = _COMFY_WF[model]
 
-        async def worker(job, plan_path, ids, pipeline):
-            job.message = f"Re-rendering {len(ids)} scene(s) [{pipeline}]…"
+        async def worker(job, plan_path, ids, pipeline, wf, node, model):
+            job.message = f"Re-rendering {len(ids)} scene(s) [{pipeline}, {model}]…"
 
             def _do():
                 # Both pipelines may re-resolve an edited scene's library match, which
@@ -1500,7 +1955,8 @@ def create_hub_app(
                 config = load_config()
                 client = create_text_llm(config)
                 return iterate.rerender_scenes(plan_path, ids, pipeline=pipeline,
-                                               llm_client=client, nolan_config=config)
+                                               llm_client=client, nolan_config=config,
+                                               comfyui_workflow=wf, comfyui_prompt_node=node)
 
             final = await asyncio.to_thread(_do)
             # Flag any scene that silently degraded (search-miss -> generation/card).
@@ -1513,9 +1969,40 @@ def create_hub_app(
             return {"final": str(final) if final else None, "fell_back": fell_back}
 
         job = job_manager.start("rerender", worker,
-                                meta={"project": project, "scenes": scene_ids, "pipeline": pipeline},
-                                plan_path=scene_plan_path, ids=scene_ids, pipeline=pipeline)
-        return {"job_id": job.id, "pipeline": pipeline}
+                                meta={"project": project, "scenes": scene_ids,
+                                      "pipeline": pipeline, "model": model},
+                                plan_path=scene_plan_path, ids=scene_ids, pipeline=pipeline,
+                                wf=wf, node=node, model=model)
+        return {"job_id": job.id, "pipeline": pipeline, "model": model}
+
+    @app.get("/scenes/api/fleet")
+    async def scenes_fleet():
+        """Live scene-edit agents (nolan* tmux sessions) joined with their status files."""
+        from nolan import fleet
+        return {"agents": fleet.fleet()}
+
+    @app.post("/scenes/api/dispatch")
+    async def scenes_dispatch(payload: dict = Body(...)):
+        """Send selected scene(s) + a note to a named Claude Code agent (tmux)."""
+        from nolan import fleet
+        project = payload.get("project")
+        scene_ids = payload.get("scene_ids") or []
+        note = (payload.get("note") or "").strip()
+        agent = payload.get("agent")
+        if not (project and scene_ids and note and agent):
+            raise HTTPException(status_code=400, detail="project, scene_ids, note, agent are all required")
+        live = {a["agent"] for a in fleet.fleet() if a["session_alive"]}
+        if agent not in live:
+            raise HTTPException(status_code=409, detail=f"agent '{agent}' is not a live tmux session")
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        _, scene_plan_path = result
+        try:
+            status = fleet.dispatch(agent, str(scene_plan_path), project, scene_ids, note)
+        except Exception as e:  # noqa: BLE001 - surface tmux/dispatch failures to the UI
+            raise HTTPException(status_code=502, detail=f"dispatch failed: {e}")
+        return {"dispatched": True, "agent": agent, "status": status}
 
     # ==================== Agents Routes (Orchestrator Dashboard) ====================
 
@@ -1672,7 +2159,7 @@ def _stored_cluster_to_dict(cluster: dict, index) -> dict:
 
 def run_hub(
     host: str = "127.0.0.1",
-    port: int = 8001,
+    port: int = 8011,  # 8001 belongs to SPARTA; the hub uses 8011
     db_path: Optional[Path] = None,
     projects_dir: Optional[Path] = None,
 ):
