@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Studio · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    .wrap { max-width: 880px; margin: 28px auto; padding: 0 20px; }
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    .sub { color: var(--text-secondary); margin-bottom: 20px; font-size: 14px; }
+    .picker { display: flex; gap: 12px; align-items: center; margin-bottom: 24px; }
+    .picker select { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border);
+                     border-radius: 8px; padding: 10px 12px; font-size: 14px; min-width: 240px; }
+    .stage { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px;
+             padding: 20px; margin-bottom: 16px; }
+    .stage-head { display: flex; align-items: center; gap: 12px; }
+    .stage-num { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-tertiary);
+                 display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+    .stage-num.done { background: var(--success); color: #06280f; }
+    .stage-title { font-size: 17px; font-weight: 600; flex: 1; }
+    .stage-status { font-size: 13px; color: var(--text-secondary); }
+    .stage-body { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .arm { color: var(--text-secondary); text-align: center; font-size: 18px; margin: -4px 0; }
+    .empty { color: var(--text-secondary); font-size: 14px; padding: 40px; text-align: center; }
+    input.inline { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border);
+                   border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="studio"></script>
+  <div class="wrap">
+    <h1>Project Studio</h1>
+    <div class="sub">The full loop for one project: ingest source → process essay → review assets → render &amp; assemble.</div>
+
+    <div class="picker">
+      <select id="project" onchange="onSelect()"><option value="">— select a project —</option></select>
+      <a class="btn secondary" href="/process">+ New from essay</a>
+      <a class="btn ghost" href="/library/add">+ Add to library</a>
+    </div>
+
+    <div id="stages"></div>
+    <div id="empty" class="empty">Select a project above, or create one.</div>
+  </div>
+
+  <script src="/static/jobs.js"></script>
+  <script>
+    var current = null;
+
+    function qs(name) { return new URLSearchParams(location.search).get(name); }
+
+    function loadProjects() {
+      fetch("/api/status").then(function (r) { return r.json(); }).then(function (s) {
+        var sel = document.getElementById("project");
+        (s.projects || []).forEach(function (p) {
+          var name = p.slug || p.name || p;
+          var o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o);
+        });
+        var pre = qs("project");
+        if (pre) { sel.value = pre; onSelect(); }
+      });
+    }
+
+    function badge(ok, label) {
+      return '<span class="badge ' + (ok ? "done" : "pending") + '">' + (ok ? "✓ " : "") + label + "</span>";
+    }
+
+    function stage(num, title, statusHtml, bodyHtml, done) {
+      return '<div class="stage"><div class="stage-head"><div class="stage-num ' + (done ? "done" : "") + '">' + num +
+        '</div><div class="stage-title">' + title + '</div><div class="stage-status">' + statusHtml + "</div></div>" +
+        '<div class="stage-body">' + bodyHtml + '</div></div>';
+    }
+
+    function onSelect() {
+      current = document.getElementById("project").value;
+      if (!current) { document.getElementById("stages").innerHTML = ""; document.getElementById("empty").style.display = "block"; return; }
+      document.getElementById("empty").style.display = "none";
+      refresh();
+    }
+
+    function refresh() {
+      fetch("/api/project/" + encodeURIComponent(current) + "/status")
+        .then(function (r) { return r.json(); })
+        .then(render);
+    }
+
+    function render(st) {
+      var html = "";
+      // Stage 1 — Source / ingest
+      html += stage(1, "Source footage",
+        st.source_videos + " video(s) in source/",
+        '<a class="btn secondary" href="/library/add">Add to library</a>' +
+        '<a class="btn ghost" href="/library">Browse library</a>',
+        st.source_videos > 0);
+      html += '<div class="arm">↓</div>';
+
+      // Stage 2 — Process
+      html += stage(2, "Script & scene plan",
+        badge(st.has_script, "script") + " " + badge(st.has_scene_plan, st.scenes + " scenes"),
+        (st.has_scene_plan
+          ? '<a class="btn secondary" href="/scenes?project=' + encodeURIComponent(current) + '">Open in Scenes</a>'
+          : '<a class="btn" href="/process">Generate from essay</a>'),
+        st.has_scene_plan);
+      html += '<div class="arm">↓</div>';
+
+      // Stage 3 — Match assets
+      var matchBody =
+        '<button class="btn" onclick="runJob(\'/api/match\',{project:current,kind:\'broll-video\'},\'job3\')">Match b-roll (video + archival)</button> ' +
+        '<button class="btn secondary" onclick="runJob(\'/api/match\',{project:current,kind:\'clips\'},\'job3\')">Match library clips</button> ' +
+        '<button class="btn secondary" onclick="runJob(\'/api/generate\',{project:current},\'job3\')">Generate (ComfyUI)</button> ' +
+        'Stock images: <select id="src" class="inline"><option>wikimedia</option><option>loc</option><option>ddgs</option><option>all</option></select> ' +
+        '<button class="btn ghost" onclick="runJob(\'/api/match\',{project:current,kind:\'broll\',source:document.getElementById(\'src\').value},\'job3\')">images only</button>' +
+        '<div class="job-widget" id="job3" style="display:none;"></div>';
+      html += stage(3, "Review &amp; match assets",
+        badge(st.matched > 0, st.matched + "/" + st.scenes + " matched"),
+        st.has_scene_plan ? matchBody : '<span class="stage-status">needs a scene plan first</span>',
+        st.scenes > 0 && st.matched >= st.scenes);
+      html += '<div class="arm">↓</div>';
+
+      // Stage 4 — Render & assemble
+      var renderBody =
+        '<button class="btn" onclick="runJob(\'/api/materialize-clips\',{project:current},\'job4\')">Fetch &amp; trim matched clips</button> ' +
+        '<button class="btn" onclick="runJob(\'/api/render-clips\',{project:current},\'job4\')">Render clips</button> ' +
+        'Audio: <input id="audio" class="inline" placeholder="path to narration .wav/.mp3 (optional)" size="34"> ' +
+        '<button class="btn secondary" onclick="runJob(\'/api/assemble\',{project:current,audio_file:document.getElementById(\'audio\').value},\'job4\')">Assemble final</button>' +
+        '<div class="job-widget" id="job4" style="display:none;"></div>';
+      html += stage(4, "Render &amp; assemble",
+        badge(st.rendered > 0, st.rendered + " rendered") + " " + badge(st.has_final, "final video"),
+        st.has_scene_plan ? renderBody : '<span class="stage-status">needs a scene plan first</span>',
+        st.has_final);
+
+      document.getElementById("stages").innerHTML = html;
+    }
+
+    function runJob(url, body, widgetId) {
+      NolanJobs.start(url, body, {
+        into: document.getElementById(widgetId),
+        onDone: function () { refresh(); }
+      }).catch(function (e) { alert("Failed: " + e.message); });
+    }
+
+    loadProjects();
+  </script>
+</body>
+</html>

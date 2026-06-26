@@ -22,7 +22,25 @@ from nolan.template_catalog import (
 
 
 # Route types
-RouteType = Literal["template", "python-template", "library", "generation", "infographic", "passthrough"]
+RouteType = Literal["template", "python-template", "library", "generation", "infographic", "remotion", "passthrough"]
+
+
+# Visual types routed to the curated Remotion source -> composition id.
+# Distinct names (not "title"/"chart") so this is additive and never hijacks the
+# existing Lottie/Python/infographic routes. See render-service/remotion-lib/.
+REMOTION_VISUAL_TYPES = {
+    "kinetic-text": "Kinetic",
+    "bar-compare": "BarCompare",
+    "bar-chart": "BarCompare",
+    "k-shape": "KShape",
+    "diverging-lines": "KShape",
+    "annotate-video": "AnnotateOverVideo",
+    "annotate-stat": "AnnotateStat",
+    "stat-annotation": "AnnotateStat",
+    "route-map": "RouteMap",
+    "premium-card": "PremiumCard",
+    "hero-card": "PremiumCard",
+}
 
 
 # Visual types that should use templates (Lottie/render-service)
@@ -90,6 +108,7 @@ class RouteDecision:
     template: Optional[TemplateInfo] = None
     template_score: Optional[float] = None
     python_renderer: Optional[str] = None  # e.g., "quote", "title", "statistic"
+    remotion_comp: Optional[str] = None    # Remotion composition id (route == "remotion")
 
 
 class VisualRouter:
@@ -157,6 +176,14 @@ class VisualRouter:
             return RouteDecision(
                 route="passthrough",
                 reason="Scene already has rendered_clip"
+            )
+
+        # Curated Remotion source (kinetic-text, charts, annotations, map, card)
+        if visual_type in REMOTION_VISUAL_TYPES:
+            return RouteDecision(
+                route="remotion",
+                reason=f"Curated Remotion composition for '{visual_type}'",
+                remotion_comp=REMOTION_VISUAL_TYPES[visual_type],
             )
 
         # Check infographic first (has specific spec)

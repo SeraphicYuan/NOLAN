@@ -12,7 +12,7 @@ Animation: Document fades in, highlight reveals, source appears
 
 from typing import Tuple, Optional, Union, List
 from ..base import BaseRenderer, Element
-from ..effects import FadeIn, SlideUp, ExpandWidth
+from ..effects import FadeIn, SlideUp, ExpandWidth, Underline
 from ..layout import Position, POSITIONS
 
 
@@ -198,6 +198,18 @@ class DocumentHighlightRenderer(BaseRenderer):
         text_element.add_effect(
             FadeIn(start=0.5, duration=0.5, easing="ease_out_cubic")
         )
+        # Sweep a highlighter marker over the chosen phrase once the text is in.
+        if self.highlight_text:
+            text_element.add_effect(
+                Underline(
+                    style="highlight",
+                    highlight_text=self.highlight_text,
+                    color=self.highlight_bg_color,
+                    start=1.1,
+                    duration=0.9,
+                    easing="ease_out_cubic",
+                )
+            )
         self.add_element(text_element)
 
         # Source (below document)

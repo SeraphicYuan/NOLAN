@@ -194,10 +194,44 @@
     </style>
 </head>
 <body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="home"></script>
     <div class="container">
         <div class="header">
             <h1>NOLAN</h1>
             <p class="subtitle">Video Essay Production Pipeline</p>
+        </div>
+
+        <!-- Create & Operate Section -->
+        <div class="section-header">
+            <span class="section-title">Create &amp; Operate</span>
+            <span class="section-line"></span>
+        </div>
+        <div class="cards">
+            <a href="/studio" class="card">
+                <span class="card-icon">🎛️</span>
+                <div class="card-title">Project Studio</div>
+                <div class="card-desc">The full loop for one project: source → script &amp; scenes → match assets → render &amp; assemble.</div>
+                <div class="card-meta"><span class="card-badge">Full pipeline</span></div>
+            </a>
+            <a href="/process" class="card">
+                <span class="card-icon">📝</span>
+                <div class="card-title">New from Essay</div>
+                <div class="card-desc">Turn a markdown essay into a narration script and scene plan.</div>
+                <div class="card-meta"><span class="card-badge">Authoring</span></div>
+            </a>
+            <a href="/library/add" class="card">
+                <span class="card-icon">➕</span>
+                <div class="card-title">Add to Library</div>
+                <div class="card-desc">Index a local file or YouTube URL with your chosen vision model.</div>
+                <div class="card-meta"><span class="card-badge">Ingest</span></div>
+            </a>
+            <a href="/settings" class="card">
+                <span class="card-icon">⚙️</span>
+                <div class="card-title">Settings</div>
+                <div class="card-desc">Default vision provider, model, and reasoning toggle.</div>
+                <div class="card-meta"><span class="card-badge">Config</span></div>
+            </a>
         </div>
 
         <!-- Tools Section -->
@@ -206,6 +240,18 @@
             <span class="section-line"></span>
         </div>
         <div class="cards">
+            <a href="/extract" class="card">
+                <span class="card-icon">🔗</span>
+                <div class="card-title">Extract Assets</div>
+                <div class="card-desc">Pull high-definition images from any link (Gutenberg, Wikimedia, Met, generic).</div>
+                <div class="card-meta"><span class="card-badge">Sourcing</span></div>
+            </a>
+            <a href="/scenes" class="card">
+                <span class="card-icon">🎞️</span>
+                <div class="card-title">Scenes</div>
+                <div class="card-desc">Review scene plans with A/V script layout per project.</div>
+                <div class="card-meta"><span class="card-badge">Review</span></div>
+            </a>
             <a href="/library" class="card" id="library-card">
                 <span class="card-icon">📚</span>
                 <div class="card-title">Video Library</div>
@@ -221,6 +267,15 @@
                 <div class="card-desc">Generate Ken Burns, kinetic typography, animated charts, and more.</div>
                 <div class="card-meta">
                     <span class="card-badge" id="showcase-status">Checking...</span>
+                </div>
+            </a>
+
+            <a href="/agents" class="card" id="agents-card">
+                <span class="card-icon">🤖</span>
+                <div class="card-title">Agents</div>
+                <div class="card-desc">Track Director and specialist agent state across projects; trigger orchestrate runs and post feedback.</div>
+                <div class="card-meta">
+                    <span class="card-badge" id="agents-status">Orchestrator</span>
                 </div>
             </a>
         </div>

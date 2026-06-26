@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ComfyUI · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    .wrap { max-width: 1000px; margin: 28px auto; padding: 0 20px; }
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    .sub { color: var(--text-secondary); margin-bottom: 20px; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+    .card h2 { font-size: 16px; margin-bottom: 12px; }
+    .wf { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+    .wf .nm { font-weight: 600; }
+    .tag { display:inline-block; background: var(--bg-tertiary); border-radius: 6px; padding: 1px 8px; font-size: 11px; margin-right: 4px; color: var(--text-secondary); }
+    .muted { color: var(--text-secondary); font-size: 12px; }
+    .ck { font-family: ui-monospace, monospace; font-size: 12px; color: var(--text-secondary); }
+    img.preview { max-width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid var(--border); }
+    textarea { min-height: 80px; }
+    .row { display:flex; gap:10px; } .row > * { flex:1; }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="comfyui"></script>
+  <div class="wrap">
+    <h1>ComfyUI / Generation</h1>
+    <div class="sub">Manage generation workflows (one per model), check connection &amp; installed models, and run sample prompts. Build graphs in ComfyUI → export "Save (API Format)" → register here.</div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2>Connection</h2>
+          <div id="status" class="muted">Checking…</div>
+        </div>
+        <div class="card">
+          <h2>Sample runner</h2>
+          <div class="field"><label>Workflow</label><select id="sampleWf"></select></div>
+          <div class="field"><label>Prompt</label><textarea id="samplePrompt" placeholder="a cinematic wide shot of…"></textarea></div>
+          <div class="row">
+            <div class="field"><label>Width</label><input id="sw" type="number" placeholder="(workflow default)"></div>
+            <div class="field"><label>Height</label><input id="sh" type="number" placeholder="(default)"></div>
+            <div class="field"><label>Steps</label><input id="ss" type="number" placeholder="(default)"></div>
+          </div>
+          <button class="btn" id="sampleBtn" onclick="runSample()">Generate sample</button>
+          <div class="job-widget" id="sampleJob" style="display:none;"></div>
+          <div id="samplePreview"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Registered workflows</h2>
+          <div id="workflows" class="muted">Loading…</div>
+        </div>
+        <div class="card">
+          <h2>Add workflow</h2>
+          <div class="field"><label>Name</label><input id="wfName" placeholder="flux-photoreal"></div>
+          <div class="field"><label>Checkpoint (optional, informational)</label><input id="wfCkpt" placeholder="flux1-dev-fp8.safetensors"></div>
+          <div class="row">
+            <div class="field"><label>Width</label><input id="wfW" type="number" value="1024"></div>
+            <div class="field"><label>Height</label><input id="wfH" type="number" value="1024"></div>
+            <div class="field"><label>Steps</label><input id="wfS" type="number" value="25"></div>
+          </div>
+          <div class="field"><label>Style tags (comma-sep)</label><input id="wfStyles" placeholder="photoreal, cinematic"></div>
+          <div class="field"><label>Workflow JSON (ComfyUI "Save (API Format)")</label>
+            <textarea id="wfJson" placeholder='{ "3": { "class_type": "KSampler", ... } }'></textarea>
+            <div class="muted">Prompt node is auto-detected. Or load a file: <input type="file" id="wfFile" accept=".json" style="width:auto;display:inline;border:none;padding:0;"></div>
+          </div>
+          <button class="btn" onclick="addWorkflow()">Register workflow</button>
+          <span id="wfSaved" style="color:var(--success);font-size:13px;margin-left:10px;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/jobs.js"></script>
+  <script>
+    function loadStatus() {
+      fetch("/api/comfyui/status").then(r=>r.json()).then(s=>{
+        var el=document.getElementById("status");
+        if (s.connected) {
+          el.innerHTML = '<span class="ok" style="color:var(--success)">● connected</span> ' + s.url +
+            '<br>queue: ' + s.queue_running + ' running / ' + s.queue_pending + ' pending' +
+            '<br><b>Installed checkpoints (' + s.checkpoints.length + '):</b><br>' +
+            s.checkpoints.map(c=>'<span class="ck">'+c+'</span>').join('<br>');
+        } else {
+          el.innerHTML = '<span style="color:var(--danger)">● not reachable</span> at ' + s.url +
+            '<br><span class="muted">Start ComfyUI (or fix the port in nolan.yaml).</span>';
+        }
+      });
+    }
+    function loadWorkflows() {
+      fetch("/api/comfyui/workflows").then(r=>r.json()).then(list=>{
+        var sel=document.getElementById("sampleWf"); sel.innerHTML="";
+        var box=document.getElementById("workflows"); box.innerHTML = list.length ? "" : "(none)";
+        list.forEach(w=>{
+          var o=document.createElement("option"); o.value=w.name; o.textContent=w.name; sel.appendChild(o);
+          var div=document.createElement("div"); div.className="wf";
+          div.innerHTML = '<div class="nm">'+w.name+' <button class="btn ghost" style="float:right;padding:2px 8px;font-size:11px;" onclick="delWf(\''+w.name+'\')">delete</button></div>' +
+            '<div class="muted">'+(w.description||'')+'</div>' +
+            '<div class="ck">'+(w.checkpoint||(w.builtin?'(built-in)':''))+' · '+w.width+'×'+w.height+' · '+w.steps+' steps · prompt node '+(w.prompt_node||'auto')+'</div>' +
+            '<div style="margin-top:6px;">'+(w.styles||[]).map(t=>'<span class="tag">'+t+'</span>').join('')+'</div>';
+          box.appendChild(div);
+        });
+      });
+    }
+    function delWf(n){ if(!confirm('Delete '+n+'?'))return; fetch('/api/comfyui/workflows/'+encodeURIComponent(n),{method:'DELETE'}).then(()=>loadWorkflows()); }
+    document.getElementById("wfFile").addEventListener("change",function(e){
+      var f=e.target.files[0]; if(!f)return; var rd=new FileReader();
+      rd.onload=()=>{ document.getElementById("wfJson").value=rd.result; }; rd.readAsText(f);
+    });
+    function addWorkflow(){
+      var json; try{ json=JSON.parse(document.getElementById("wfJson").value); }catch(e){ alert("Invalid JSON"); return; }
+      fetch("/api/comfyui/workflows",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        name:document.getElementById("wfName").value, workflow_json:json,
+        checkpoint:document.getElementById("wfCkpt").value,
+        width:parseInt(document.getElementById("wfW").value)||1024,
+        height:parseInt(document.getElementById("wfH").value)||1024,
+        steps:parseInt(document.getElementById("wfS").value)||25,
+        styles:document.getElementById("wfStyles").value.split(",").map(s=>s.trim()).filter(Boolean)
+      })}).then(r=>r.json()).then(()=>{ document.getElementById("wfSaved").textContent="✓ saved"; loadWorkflows(); setTimeout(()=>document.getElementById("wfSaved").textContent="",3000); });
+    }
+    function runSample(){
+      var btn=document.getElementById("sampleBtn"); btn.disabled=true; btn.textContent="Generating…";
+      document.getElementById("samplePreview").innerHTML="";
+      NolanJobs.start("/api/comfyui/sample",{
+        workflow:document.getElementById("sampleWf").value,
+        prompt:document.getElementById("samplePrompt").value,
+        width:parseInt(document.getElementById("sw").value)||null,
+        height:parseInt(document.getElementById("sh").value)||null,
+        steps:parseInt(document.getElementById("ss").value)||null
+      },{into:document.getElementById("sampleJob"),onDone:function(job){
+        btn.disabled=false; btn.textContent="Generate sample";
+        if(job.status==="done"&&job.result&&job.result.preview){
+          document.getElementById("samplePreview").innerHTML='<img class="preview" src="/comfyui/preview/'+job.result.preview+'?t='+Date.now()+'">';
+        }
+      }}).catch(e=>{ btn.disabled=false; btn.textContent="Generate sample"; alert("Failed: "+e.message); });
+    }
+    loadStatus(); loadWorkflows(); setInterval(loadStatus, 20000);
+  </script>
+</body>
+</html>

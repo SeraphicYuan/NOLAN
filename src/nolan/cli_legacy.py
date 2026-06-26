@@ -84,7 +84,7 @@ async def _process_essay(config, essay_path, output_path, skip_scenes, skip_asse
     from nolan.parser import parse_essay
     from nolan.script import ScriptConverter
     from nolan.scenes import SceneDesigner
-    from nolan.llm import GeminiClient
+    from nolan.llm import create_text_llm
 
     # Setup
     output_path.mkdir(parents=True, exist_ok=True)
@@ -92,10 +92,7 @@ async def _process_essay(config, essay_path, output_path, skip_scenes, skip_asse
     (output_path / "assets" / "matched").mkdir(parents=True, exist_ok=True)
 
     # Initialize LLM
-    llm = GeminiClient(
-        api_key=config.gemini.api_key,
-        model=config.gemini.model
-    )
+    llm = create_text_llm(config)
 
     # Step 1: Parse essay
     click.echo("\n[1/4] Parsing essay...")
@@ -179,16 +176,13 @@ async def _convert_script(config, essay_path, output_path):
     """Async implementation of script command."""
     from nolan.parser import parse_essay
     from nolan.script import ScriptConverter
-    from nolan.llm import GeminiClient
+    from nolan.llm import create_text_llm
 
     # Setup
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Initialize LLM
-    llm = GeminiClient(
-        api_key=config.gemini.api_key,
-        model=config.gemini.model
-    )
+    llm = create_text_llm(config)
 
     # Step 1: Parse essay
     click.echo("\n[1/2] Parsing essay...")
@@ -271,16 +265,13 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
     import json
     from nolan.script import Script
     from nolan.scenes import SceneDesigner
-    from nolan.llm import GeminiClient
+    from nolan.llm import create_text_llm
 
     # Setup
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Initialize LLM
-    llm = GeminiClient(
-        api_key=config.gemini.api_key,
-        model=config.gemini.model
-    )
+    llm = create_text_llm(config)
 
     # Step 1: Load script
     click.echo("\n[1/2] Loading script...")
@@ -366,9 +357,9 @@ async def _design_scenes(config, script_path, output_path, beats_only=False):
 @click.option('--sampler', '-s', default=None,
               type=click.Choice(['ffmpeg_scene', 'hybrid', 'fixed', 'scene_change']),
               help='Frame sampling strategy. ffmpeg_scene (default) is 10-50x faster.')
-@click.option('--vision', default='gemini',
-              type=click.Choice(['gemini', 'ollama']),
-              help='Vision provider for frame analysis.')
+@click.option('--vision', default='openrouter',
+              type=click.Choice(['openrouter', 'gemini', 'ollama']),
+              help='Vision provider for frame analysis. Default: openrouter (qwen/qwen3.7-plus, reasoning off).')
 @click.option('--whisper/--no-whisper', default=True,
               help='Auto-generate transcripts with Whisper when no subtitle file exists (default: enabled).')
 @click.option('--whisper-model', default='base',
@@ -445,7 +436,7 @@ async def _index_videos(config, input_path, recursive, frame_interval, sampling_
     from nolan.indexer import HybridVideoIndexer, VideoIndex
     from nolan.vision import create_vision_provider, VisionConfig
     from nolan.sampler import create_sampler, SamplerConfig, SamplingStrategy
-    from nolan.llm import GeminiClient
+    from nolan.llm import create_text_llm
 
     # Initialize database
     db_path = Path(config.indexing.database).expanduser()
@@ -455,8 +446,13 @@ async def _index_videos(config, input_path, recursive, frame_interval, sampling_
     if vision_provider == "gemini":
         vision_model = "gemini-3-flash-preview"
         api_key = config.gemini.api_key
-    else:
-        vision_model = config.vision.model
+    elif vision_provider == "openrouter":
+        # OpenRouter model slugs contain '/'; fall back to the default if the
+        # configured model looks like an Ollama tag (e.g. "qwen3-vl:8b").
+        vision_model = config.vision.model if "/" in config.vision.model else "qwen/qwen3.7-plus"
+        api_key = config.vision.openrouter_api_key
+    else:  # ollama
+        vision_model = config.vision.model if "/" not in config.vision.model else "qwen3-vl:8b"
         api_key = None
 
     # Initialize vision provider
@@ -466,7 +462,10 @@ async def _index_videos(config, input_path, recursive, frame_interval, sampling_
         host=config.vision.host,
         port=config.vision.port,
         timeout=config.vision.timeout,
-        api_key=api_key
+        api_key=api_key,
+        base_url=config.vision.base_url,
+        reasoning_enabled=config.vision.reasoning_enabled,
+        reasoning_max_tokens=config.vision.reasoning_max_tokens,
     )
     vision = create_vision_provider(vision_config)
 
@@ -525,12 +524,9 @@ async def _index_videos(config, input_path, recursive, frame_interval, sampling_
 
     # Initialize LLM for inference (if enabled)
     llm = None
-    if config.indexing.enable_inference and config.gemini.api_key:
-        llm = GeminiClient(
-            api_key=config.gemini.api_key,
-            model=config.gemini.model
-        )
-        click.echo("Inference: enabled (using Gemini)")
+    if config.indexing.enable_inference:
+        llm = create_text_llm(config)
+        click.echo(f"Inference: enabled ({config.llm.provider}:{config.llm.model})")
     else:
         click.echo("Inference: disabled")
 
@@ -852,8 +848,8 @@ async def _cluster_video(config, db_path, video_path, output_path, summarize, re
     # Refine with LLM story boundary detection (smart chunking)
     if refine and config.gemini.api_key:
         click.echo(f"Detecting story boundaries (chunk_size={chunk_size})...")
-        from nolan.llm import GeminiClient
-        llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
+        from nolan.llm import create_text_llm
+        llm = create_text_llm(config)
         detector = StoryBoundaryDetector(llm, chunk_size=chunk_size, overlap=overlap)
 
         def refine_progress(current, total, msg):
@@ -865,8 +861,8 @@ async def _cluster_video(config, db_path, video_path, output_path, summarize, re
     # Generate summaries (async batch processing)
     if summarize and config.gemini.api_key:
         click.echo(f"Generating cluster summaries (concurrency={concurrency})...")
-        from nolan.llm import GeminiClient
-        llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
+        from nolan.llm import create_text_llm
+        llm = create_text_llm(config)
         analyzer = ClusterAnalyzer(llm, concurrency=concurrency)
 
         def summary_progress(current, total, msg):
@@ -955,8 +951,8 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
     detector = None
     analyzer = None
     if (summarize or refine) and config.gemini.api_key:
-        from nolan.llm import GeminiClient
-        llm = GeminiClient(api_key=config.gemini.api_key, model=config.gemini.model)
+        from nolan.llm import create_text_llm
+        llm = create_text_llm(config)
         if refine:
             detector = StoryBoundaryDetector(llm, chunk_size=chunk_size, overlap=overlap)
         if summarize:
@@ -1100,7 +1096,7 @@ def generate(ctx, scene, project, workflow, prompt_node, overrides):
     asyncio.run(_generate_images(config, project_path, scene, workflow_path, prompt_node, list(overrides)))
 
 
-async def _generate_images(config, project_path, scene_id, workflow_path=None, prompt_node=None, overrides=None):
+async def _generate_images(config, project_path, scene_id, workflow_path=None, prompt_node=None, overrides=None, prompt_suffix=""):
     """Async implementation of generate command."""
     from nolan.scenes import ScenePlan
     from nolan.comfyui import ComfyUIClient
@@ -1151,9 +1147,12 @@ async def _generate_images(config, project_path, scene_id, workflow_path=None, p
     for s in scenes_to_generate:
         click.echo(f"\n  {s.id}: {s.comfyui_prompt[:50]}...")
         output_path = output_dir / f"{s.id}.png"
+        gen_prompt = s.comfyui_prompt
+        if prompt_suffix:
+            gen_prompt = f"{gen_prompt.rstrip(', ')}, {prompt_suffix}"
 
         try:
-            await client.generate(s.comfyui_prompt, output_path)
+            await client.generate(gen_prompt, output_path)
             s.generated_asset = f"{s.id}.png"
             click.echo(f"    Saved: {output_path}")
         except Exception as e:
@@ -1510,9 +1509,30 @@ async def _render_infographics(project, host, port, engine_mode, force):
     click.echo(f"Rendered {rendered} infographic(s). Scene plan updated.")
 
 
+def _scoring_vision_config(config, vision: str) -> dict:
+    """Build the ImageScorer vision_config dict for the chosen provider."""
+    if vision == "gemini":
+        return {"api_key": config.gemini.api_key, "model": "gemini-3-flash-preview"}
+    if vision == "openrouter":
+        model = config.vision.model if "/" in config.vision.model else "qwen/qwen3.7-plus"
+        return {
+            "api_key": config.vision.openrouter_api_key,
+            "model": model,
+            "base_url": config.vision.base_url,
+            "reasoning_enabled": config.vision.reasoning_enabled,
+            "reasoning_max_tokens": config.vision.reasoning_max_tokens,
+        }
+    # ollama
+    return {
+        "host": config.vision.host,
+        "port": config.vision.port,
+        "model": config.vision.model if "/" not in config.vision.model else "qwen3-vl:8b",
+    }
+
+
 @main.command('image-search')
 @click.argument('query')
-@click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'all']),
+@click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'wellcome', 'europeana', 'dpla', 'all']),
               default='ddgs', help='Image source to search.')
 @click.option('--output', '-o', type=click.Path(), default='.scratch/image_search_results.json',
               help='Output JSON file for results (default: .scratch/image_search_results.json).')
@@ -1520,8 +1540,8 @@ async def _render_infographics(project, host, port, engine_mode, force):
               help='Maximum number of results per source.')
 @click.option('--score/--no-score', default=False,
               help='Score images by relevance using vision model.')
-@click.option('--vision', type=click.Choice(['gemini', 'ollama']),
-              default='gemini', help='Vision provider for scoring.')
+@click.option('--vision', type=click.Choice(['openrouter', 'gemini', 'ollama']),
+              default='openrouter', help='Vision provider for scoring. Default: openrouter (qwen/qwen3.7-plus).')
 @click.option('--context', '-c', type=str, default=None,
               help='Additional context for scoring (e.g., "for a documentary about history").')
 @click.pass_context
@@ -1537,11 +1557,14 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
       - wikimedia: Wikimedia Commons (no API key needed, public domain)
       - smithsonian: Smithsonian Open Access (requires SMITHSONIAN_API_KEY, CC0)
       - loc: Library of Congress (no API key needed, public domain)
+      - wellcome: Wellcome Collection (no API key needed, CC/PD history & medicine)
+      - europeana: Europeana EU cultural heritage (needs EUROPEANA_API_KEY)
+      - dpla: Digital Public Library of America (needs DPLA_API_KEY)
       - all: Search all available sources
 
     Scoring:
       Use --score to rank images by relevance using a vision model.
-      Use --vision to choose between 'gemini' or 'ollama' for scoring.
+      Use --vision to choose 'openrouter' (default), 'gemini', or 'ollama'.
 
     Examples:
 
@@ -1565,6 +1588,7 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
         pexels_api_key=config.image_sources.pexels_api_key,
         pixabay_api_key=config.image_sources.pixabay_api_key,
         smithsonian_api_key=config.image_sources.smithsonian_api_key,
+        keys=config.image_sources.provider_keys(),
     )
 
     # Show available providers
@@ -1586,14 +1610,7 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
             click.echo(f"\nScoring images with {vision}...")
 
             # Configure vision provider
-            if vision == "gemini":
-                vision_config = {"api_key": config.gemini.api_key}
-            else:  # ollama
-                vision_config = {
-                    "host": config.vision.host,
-                    "port": config.vision.port,
-                    "model": config.vision.model,
-                }
+            vision_config = _scoring_vision_config(config, vision)
 
             scorer = ImageScorer(vision_provider=vision, vision_config=vision_config)
 
@@ -1643,6 +1660,82 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
         click.echo(f"Error: {e}")
 
 
+@main.command('extract-assets')
+@click.argument('url')
+@click.option('--output', '-o', type=click.Path(), default=None,
+              help='Directory to download assets into (default: .scratch/extracted/<host>).')
+@click.option('--limit', '-n', type=int, default=None,
+              help='Maximum number of assets to extract.')
+@click.option('--manifest', '-m', type=click.Path(), default=None,
+              help='JSON manifest path (default: <output>/manifest.json).')
+@click.option('--download/--no-download', default=True,
+              help='Download the full-resolution assets (default: on).')
+@click.pass_context
+def extract_assets(ctx, url, output, limit, manifest, download):
+    """Extract high-definition image assets from a web page URL.
+
+    Uses a registry of parsers (Project Gutenberg, Wikimedia Commons, The Met,
+    Internet Archive, Library of Congress, and any IIIF manifest/info.json) plus
+    a universal HTML fallback that prefers linked full-res over thumbnails,
+    srcset, and og:image.
+
+    Examples:
+
+      nolan extract-assets https://www.gutenberg.org/files/21790/21790-h/21790-h.htm
+
+      nolan extract-assets https://commons.wikimedia.org/wiki/File:The_Blue_Marble.jpg -n 1
+
+      nolan extract-assets https://www.loc.gov/item/2021669449/
+
+      nolan extract-assets https://iiif.io/api/cookbook/recipe/0009-book-1/manifest.json
+    """
+    import asyncio
+    import json
+    from urllib.parse import urlparse
+
+    from nolan.extractors import download_assets, extract_from_url, get_extractor
+
+    ex = get_extractor(url)
+    click.echo(f"Extractor: {ex.name}")
+    try:
+        results = extract_from_url(url, limit=limit)
+    except Exception as e:
+        click.echo(f"Error fetching/parsing: {e}")
+        return
+
+    click.echo(f"Found {len(results)} asset(s)")
+    for i, r in enumerate(results[:10]):
+        click.echo(f"  {i + 1}. {r.url}")
+    if len(results) > 10:
+        click.echo(f"  ... and {len(results) - 10} more")
+    if not results:
+        return
+
+    host = urlparse(url).netloc.replace(":", "_") or "page"
+    out_dir = Path(output) if output else Path(".scratch/extracted") / host
+    records = [r.to_dict() for r in results]
+
+    if download:
+        click.echo(f"\nDownloading to {out_dir} ...")
+        records = asyncio.run(download_assets(results, out_dir))
+        ok = sum(1 for r in records if r.get("local_path"))
+        click.echo(f"Downloaded {ok}/{len(records)}")
+        for r in records:
+            if r.get("error"):
+                click.echo(f"  ! {r['url']}: {r['error']}")
+
+    manifest_path = Path(manifest) if manifest else out_dir / "manifest.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        json.dumps(
+            {"url": url, "extractor": ex.name, "count": len(records), "results": records},
+            indent=2, ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    click.echo(f"Manifest: {manifest_path}")
+
+
 @main.command('match-broll')
 @click.argument('scene_plan', type=click.Path(exists=True))
 @click.option('--output', '-o', type=click.Path(), default=None,
@@ -1653,8 +1746,8 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
               help='Maximum results to consider per scene.')
 @click.option('--score/--no-score', default=True,
               help='Score images by relevance using vision model.')
-@click.option('--vision', type=click.Choice(['gemini', 'ollama']),
-              default='gemini', help='Vision provider for scoring.')
+@click.option('--vision', type=click.Choice(['openrouter', 'gemini', 'ollama']),
+              default='openrouter', help='Vision provider for scoring. Default: openrouter (qwen/qwen3.7-plus).')
 @click.option('--skip-existing/--no-skip-existing', default=True,
               help='Skip scenes that already have matched assets.')
 @click.option('--dry-run', is_flag=True,
@@ -1726,6 +1819,7 @@ async def _match_broll(config, scene_plan_path, output_dir, source, max_results,
         pexels_api_key=config.image_sources.pexels_api_key,
         pixabay_api_key=config.image_sources.pixabay_api_key,
         smithsonian_api_key=config.image_sources.smithsonian_api_key,
+        keys=config.image_sources.provider_keys(),
     )
 
     # Check if source is available
@@ -1738,14 +1832,7 @@ async def _match_broll(config, scene_plan_path, output_dir, source, max_results,
     # Initialize scorer if needed
     scorer = None
     if score:
-        if vision == "gemini":
-            vision_config = {"api_key": config.gemini.api_key}
-        else:
-            vision_config = {
-                "host": config.vision.host,
-                "port": config.vision.port,
-                "model": config.vision.model,
-            }
+        vision_config = _scoring_vision_config(config, vision)
         scorer = ImageScorer(vision_provider=vision, vision_config=vision_config)
 
     matched_count = 0
@@ -1864,7 +1951,7 @@ async def _match_clips(config, scene_plan_path, candidates, min_similarity, proj
     from nolan.clip_matcher import ClipMatcher
     from nolan.vector_search import VectorSearch
     from nolan.indexer import VideoIndex
-    from nolan.llm import GeminiClient
+    from nolan.llm import create_text_llm
     from nolan.config import ClipMatchingConfig
 
     scene_plan_path = Path(scene_plan_path)
@@ -1929,10 +2016,7 @@ async def _match_clips(config, scene_plan_path, candidates, min_similarity, proj
             project_id = proj['id']
 
     # Initialize LLM
-    llm = GeminiClient(
-        api_key=config.gemini.api_key,
-        model=config.gemini.model
-    )
+    llm = create_text_llm(config)
 
     # Initialize matcher
     matcher = ClipMatcher(vector_search, llm, match_config)
@@ -2962,6 +3046,110 @@ def projects():
     Each project has a slug (e.g., 'venezuela') for easy reference.
     """
     pass
+
+
+@projects.command('init')
+@click.argument('slug')
+@click.option('--name', '-n', type=str, default=None,
+              help='Display name for the project (defaults to slug).')
+@click.option('--description', '-d', type=str, default=None,
+              help='Project description.')
+@click.option('--script', '-s', type=click.Path(exists=True, dir_okay=False), default=None,
+              help='Path to an existing script.md to copy in.')
+@click.option('--projects-root', type=click.Path(file_okay=False), default='projects',
+              help='Parent directory for the new project (default: projects/).')
+@click.pass_context
+def projects_init(ctx, slug, name, description, script, projects_root):
+    """Scaffold a new orchestrator-ready project folder.
+
+    Creates `projects/<slug>/` with `project.yaml`, `script.md`, and the
+    standard `source/`, `assets/`, `output/`, `.orchestrator/` subdirectories.
+
+    Use this for greenfield orchestration. Subsequent `nolan index` calls scoped
+    `--project <slug>` will populate the indexed library; `nolan orchestrate
+    projects/<slug>` then drives the pipeline.
+
+    Examples:
+
+      nolan projects init venezuela --name "Venezuela Documentary"
+
+      nolan projects init tutorials -d "Python tutorial series"
+
+      nolan projects init tech-essay --script ./drafts/tech-essay.md
+    """
+    import shutil
+    import yaml as yaml_lib
+
+    project_dir = Path(projects_root) / slug
+    if project_dir.exists():
+        click.echo(f"Error: {project_dir} already exists. Pick a different slug or remove the folder.", err=True)
+        ctx.exit(1)
+
+    display_name = name or slug.replace('-', ' ').replace('_', ' ').title()
+
+    # Create the directory tree
+    project_dir.mkdir(parents=True)
+    for sub in ("source", "assets", "output",
+                ".orchestrator/instructions",
+                ".orchestrator/feedback",
+                ".orchestrator/history",
+                ".orchestrator/modules"):
+        (project_dir / sub).mkdir(parents=True, exist_ok=True)
+
+    # project.yaml
+    project_yaml_data = {
+        "name": display_name,
+        "slug": slug,
+        "description": description or "",
+        "source_videos": ["source/"],
+        "output_dir": "output/",
+        "assets_dir": "assets/",
+    }
+    (project_dir / "project.yaml").write_text(
+        yaml_lib.safe_dump(project_yaml_data, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+    # script.md — copied from --script flag, or a starter template
+    if script:
+        shutil.copy(script, project_dir / "script.md")
+        script_msg = f"copied from {script}"
+    else:
+        starter = (
+            f"# Video Script\n\n"
+            f"**Total Duration:** _set after writing_\n\n"
+            f"---\n\n"
+            f"## Hook [0:00 - 0:??]\n\n"
+            f"<paradox or contrast that frames the central question>\n\n"
+            f"## Context [0:?? - ?:??]\n\n"
+            f"<historical or definitional setup>\n\n"
+            f"## Thesis [?:?? - ?:??]\n\n"
+            f"<single sentence stating the argument; enumerate evidence sections>\n\n"
+            f"## Evidence 1 [?:?? - ?:??]\n\n"
+            f"<first lens / cause / pillar>\n\n"
+            f"## Evidence 2 [?:?? - ?:??]\n\n"
+            f"<second lens>\n\n"
+            f"## Evidence 3 [?:?? - ?:??]\n\n"
+            f"<third lens>\n\n"
+            f"## Conclusion [?:?? - ?:??]\n\n"
+            f"<synthesis + reflective close>\n"
+        )
+        (project_dir / "script.md").write_text(starter, encoding="utf-8")
+        script_msg = "starter template"
+
+    click.echo(f"Created project at {project_dir}")
+    click.echo(f"  slug:        {slug}")
+    click.echo(f"  name:        {display_name}")
+    if description:
+        click.echo(f"  description: {description}")
+    click.echo(f"  script.md:   {script_msg}")
+    click.echo()
+    click.echo("Next steps:")
+    click.echo(f"  1. Edit `{project_dir}/script.md`.")
+    click.echo(f"  2. Drop source videos in `{project_dir}/source/` and run "
+               f"`nolan index {project_dir}/source --project {slug}`.")
+    click.echo(f"  3. Run `nolan orchestrate {project_dir}` to advance the pipeline "
+               f"(or add `--auto` to run all steps).")
 
 
 @projects.command('create')
@@ -4524,6 +4712,210 @@ def video_gen_batch(scene_plan, backend, workflow, visual_types, force, limit, d
     click.echo(f"\nGenerated: {generated}, Failed: {failed}")
     if total_cost > 0:
         click.echo(f"Total cost: ${total_cost:.2f}")
+
+
+@main.command()
+@click.argument('project', type=click.Path(exists=True, file_okay=False))
+@click.option('--auto', is_flag=True, default=False,
+              help='Run all pending pipeline steps in sequence (one Director '
+                   'invocation; each step still writes its own checkpoint).')
+@click.option('--refine', is_flag=True, default=False,
+              help='Run a refine pass on a previously-completed step using '
+                   'the latest unconsumed feedback file.')
+@click.option('--target', type=str, default=None,
+              help='Step name to refine. Required with --refine.')
+@click.pass_context
+def orchestrate(ctx, project, auto, refine, target):
+    """Run the two-layer Director on a project folder.
+
+    Default mode: advance the pipeline by one step (run_next_step).
+    --auto mode: run all pending steps in sequence until done or error.
+    --refine mode: re-run a completed step against the latest feedback file.
+    """
+    from nolan.orchestrator.director import (
+        DirectorError, run_auto_sync, run_refine_sync, run_sync,
+    )
+
+    if auto and refine:
+        click.echo("Error: --auto and --refine are mutually exclusive.", err=True)
+        ctx.exit(2)
+
+    project_path = Path(project)
+
+    try:
+        if refine:
+            if not target:
+                click.echo(
+                    "Error: --target STEP is required with --refine.",
+                    err=True,
+                )
+                ctx.exit(2)
+            checkpoint_path = run_refine_sync(project_path, target)
+            click.echo(f"Checkpoint written: {checkpoint_path}")
+            click.echo("Refine pass complete. Review the new snapshot and iterate.")
+        elif auto:
+            checkpoints = run_auto_sync(project_path)
+            for cp in checkpoints:
+                click.echo(f"Checkpoint written: {cp}")
+            click.echo(
+                f"Auto run finished — {len(checkpoints)} step(s) executed."
+            )
+        else:
+            checkpoint_path = run_sync(project_path)
+            click.echo(f"Checkpoint written: {checkpoint_path}")
+            click.echo("Review and re-run to advance the next step.")
+    except DirectorError as exc:
+        click.echo(f"Director error: {exc}", err=True)
+        ctx.exit(1)
+
+
+@main.command('build-from-segment')
+@click.option('--source', type=click.Path(exists=True), help='Indexed source video (with sibling .srt).')
+@click.option('--start', type=float, help='Span start seconds (with --source).')
+@click.option('--end', type=float, help='Span end seconds (with --source).')
+@click.option('--srt', type=click.Path(exists=True), help='Override SRT path.')
+@click.option('--index-db', type=click.Path(), help='Project index.db for b-roll search.')
+@click.option('--script', 'script_file', type=click.Path(exists=True), help='Script text file.')
+@click.option('--vo', type=click.Path(exists=True), help='Voiceover audio file.')
+@click.option('--from-plan', type=click.Path(exists=True), help='Resume from an edited scene_plan.json.')
+@click.option('--mode', type=click.Choice(['auto', 'review']), default='auto')
+@click.option('--out-dir', '-o', type=click.Path(), default='segment_out')
+@click.option('--music', type=click.Path(exists=True), help='Background music bed (P3).')
+@click.option('--no-generation', is_flag=True, help='Disable ComfyUI fallback for unmatched b-roll.')
+@click.option('--comfyui-model', type=click.Choice(['flux-dev', 'z-image']), default='flux-dev',
+              help='ComfyUI model for generated scenes.')
+@click.option('--comfyui-timeout', type=float, default=240.0,
+              help='Per-image gen timeout (s); on timeout a scene falls back to a card.')
+@click.pass_context
+def build_from_segment(ctx, source, start, end, srt, index_db, script_file, vo, from_plan,
+                       mode, out_dir, music, no_generation, comfyui_model, comfyui_timeout):
+    """Build a ~1-minute video essay from a segment (span / script / voiceover)."""
+    config = ctx.obj['config']
+    from nolan.llm import create_text_llm
+    from nolan.segment import (SegmentBuilder, BuildConfig, ResolverConfig,
+                               from_indexed_span, from_script, from_vo)
+    llm = create_text_llm(config)
+    out_dir = Path(out_dir)
+    _cw = {'flux-dev': ('workflows/image/flux-dev-fp8.json', '6'),
+           'z-image': ('workflows/image/basic-z-image.json', '27')}[comfyui_model]
+    bcfg = BuildConfig(out_dir=out_dir, mode=mode, music=Path(music) if music else None,
+                       resolver=ResolverConfig(enable_generation=not no_generation),
+                       comfyui_workflow=_cw[0], comfyui_prompt_node=_cw[1], comfyui_timeout=comfyui_timeout)
+    builder = SegmentBuilder(llm, bcfg, nolan_config=config)
+
+    if from_plan:
+        res = builder.build_from_plan(Path(from_plan))
+        click.echo(f"Rendered from plan → {res.final_path}")
+        return
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if source and start is not None and end is not None:
+        srt_path = srt or str(Path(source).with_suffix('.srt'))
+        if not Path(srt_path).exists():
+            # try the yt-dlp style sibling
+            cands = list(Path(source).parent.glob(Path(source).stem + '*.srt'))
+            srt_path = str(cands[0]) if cands else srt_path
+        seg = from_indexed_span(Path(source), Path(srt_path), start, end, out_dir,
+                                index_db=Path(index_db) if index_db else None)
+    elif script_file:
+        seg = from_script(Path(script_file).read_text(encoding='utf-8'), out_dir,
+                          vo_path=Path(vo) if vo else None,
+                          index_db=Path(index_db) if index_db else None)
+    elif vo:
+        seg = from_vo(Path(vo), out_dir)
+    else:
+        click.echo("Provide --source+--start+--end, or --script, or --vo, or --from-plan.", err=True)
+        ctx.exit(1)
+
+    res = asyncio.run(builder.build(seg))
+    click.echo(f"Scenes: {len(res.manifest['scenes'])}  | plan: {res.plan_path}")
+    for s in res.manifest['scenes']:
+        click.echo(f"  {s['t'][0]}-{s['t'][1]}s  [{s['source']}]  {s['narration']}")
+    if res.stopped_for_review:
+        click.echo(f"\nReview mode: edit {res.plan_path}, then "
+                   f"`nolan build-from-segment --from-plan {res.plan_path}`")
+    else:
+        click.echo(f"\nDone → {res.final_path}")
+
+
+_COMFY_WF = {'flux-dev': ('workflows/image/flux-dev-fp8.json', '6'),
+             'z-image': ('workflows/image/basic-z-image.json', '27')}
+
+
+@main.command('revise-scene')
+@click.argument('plan', type=click.Path(exists=True))
+@click.argument('scene_id')
+@click.option('--note', help='Free-text instruction; an agent rewrites the scene to match.')
+@click.option('--set', 'sets', multiple=True, metavar='FIELD=VALUE',
+              help='Direct field edit (repeatable). VALUE parsed as JSON, else kept as string.')
+@click.pass_context
+def revise_scene_cmd(ctx, plan, scene_id, note, sets):
+    """Apply a comment OR a direct edit to one scene of a scene_plan.json (the gate)."""
+    import json
+    from nolan import iterate
+    config = ctx.obj['config']
+    if note and sets:
+        click.echo("Use either --note (agent) or --set (direct), not both.", err=True)
+        ctx.exit(1)
+    if not note and not sets:
+        click.echo("Provide --note or one or more --set FIELD=VALUE.", err=True)
+        ctx.exit(1)
+
+    pipeline = iterate.detect_pipeline(plan)
+    if note:
+        from nolan.llm import create_text_llm
+        llm = create_text_llm(config)
+        patch = asyncio.run(iterate.apply_edit(plan, scene_id, note=note, client=llm, pipeline=pipeline))
+    else:
+        edits = {}
+        for item in sets:
+            if '=' not in item:
+                click.echo(f"Bad --set '{item}' (need FIELD=VALUE).", err=True)
+                ctx.exit(1)
+            k, v = item.split('=', 1)
+            try:
+                edits[k] = json.loads(v)
+            except (ValueError, json.JSONDecodeError):
+                edits[k] = v
+        patch = asyncio.run(iterate.apply_edit(plan, scene_id, patch=edits, pipeline=pipeline))
+
+    if not patch:
+        click.echo(f"No change applied to {scene_id} (note produced an empty patch?).")
+        return
+    click.echo(f"[{pipeline}] revised {scene_id}: {', '.join(patch.keys())}")
+    click.echo(f"Re-render with: nolan rerender {plan} --scenes {scene_id}")
+
+
+@main.command('rerender')
+@click.argument('plan', type=click.Path(exists=True))
+@click.option('--scenes', required=True, help='Comma-separated scene ids to re-render.')
+@click.option('--comfyui-model', type=click.Choice(['flux-dev', 'z-image']), default='flux-dev')
+@click.option('--comfyui-timeout', type=float, default=240.0)
+@click.pass_context
+def rerender_cmd(ctx, plan, scenes, comfyui_model, comfyui_timeout):
+    """Re-render only the named scenes and reassemble (works for either pipeline)."""
+    from nolan import iterate
+    config = ctx.obj['config']
+    ids = [s.strip() for s in scenes.split(',') if s.strip()]
+    pipeline = iterate.detect_pipeline(plan)
+    wf, node = _COMFY_WF[comfyui_model]
+    # Both pipelines may need the LLM: segment to render/escalate, either to re-resolve
+    # an edited scene's library match (search_query change).
+    from nolan.llm import create_text_llm
+    llm = create_text_llm(config)
+    click.echo(f"[{pipeline}] re-rendering {len(ids)} scene(s): {', '.join(ids)} …")
+    final = iterate.rerender_scenes(
+        plan, ids, pipeline=pipeline, llm_client=llm, nolan_config=config,
+        comfyui_workflow=wf, comfyui_prompt_node=node, comfyui_timeout=comfyui_timeout)
+
+    # Surface how each re-rendered scene resolved so a silent degrade (search-miss ->
+    # generation/card fallback) is visible rather than hidden.
+    data = iterate.load_plan_raw(plan)
+    for s in (sc for _, sc in iterate.iter_scenes(data) if sc.get("id") in set(ids)):
+        src = str(s.get("resolved_source") or "?")
+        flag = "  ⚠ fell back" if ("miss" in src or "fallback" in src) else ""
+        click.echo(f"  {s.get('id')}: {src}{flag}")
+    click.echo(f"Done → {final}")
 
 
 if __name__ == '__main__':

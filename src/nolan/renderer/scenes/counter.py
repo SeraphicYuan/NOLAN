@@ -93,6 +93,17 @@ class CounterRenderer(BaseRenderer):
         value_y = self.height // 2 - (30 if self.label else 0)
         label_y = value_y + self.value_size + 20
 
+        # Resolve placement from self.position (named anchor or {x,y}); falls back
+        # to the legacy centered y if position is the default center.
+        value_pos = self.position
+        label_pos = Position(
+            x=self.position.x,
+            y=min(0.95, self.position.y + 0.10),
+            align=self.position.align,
+            valign=self.position.valign,
+            padding=self.position.padding,
+        )
+
         # Value with count-up animation
         value_element = Element(
             id="value",
@@ -103,6 +114,7 @@ class CounterRenderer(BaseRenderer):
             color=self.value_color,
             x='center',
             y=value_y,
+            position=value_pos,
         )
         value_element.add_effects([
             FadeIn(start=0.2, duration=0.5, easing="ease_out_cubic"),
@@ -129,6 +141,7 @@ class CounterRenderer(BaseRenderer):
                 color=self.label_color,
                 x='center',
                 y=label_y,
+                position=label_pos,
             )
             label_element.add_effect(
                 FadeIn(start=self.count_start + self.count_duration - 0.3,

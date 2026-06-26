@@ -78,12 +78,22 @@ class TitleRenderer(BaseRenderer):
 
     def _setup_elements(self):
         """Create and configure scene elements."""
+        # Auto-fit long titles/subtitles so they don't clip at the frame edges.
+        fitted_title_size = self.fit_font_size(
+            self.title, self.title_font, self.title_size, int(self.width * 0.86)
+        )
+        fitted_subtitle_size = self.subtitle_size
+        if self.subtitle:
+            fitted_subtitle_size = self.fit_font_size(
+                self.subtitle, self.subtitle_font, self.subtitle_size, int(self.width * 0.80)
+            )
+
         # Calculate base Y from position
         base_y = int(self.height * self.position.y)
 
         # Calculate vertical positions relative to base
         title_y = base_y - 60
-        line_y = title_y + self.title_size + 20
+        line_y = title_y + fitted_title_size + 20
         subtitle_y = line_y + 40
 
         # Title - zoom + fade in
@@ -92,7 +102,7 @@ class TitleRenderer(BaseRenderer):
             element_type="text",
             text=self.title,
             font_path=self.title_font,
-            font_size=self.title_size,
+            font_size=fitted_title_size,
             color=self.title_color,
             x='center',
             y=title_y,
@@ -126,7 +136,7 @@ class TitleRenderer(BaseRenderer):
                 element_type="text",
                 text=self.subtitle,
                 font_path=self.subtitle_font,
-                font_size=self.subtitle_size,
+                font_size=fitted_subtitle_size,
                 color=self.subtitle_color,
                 x='center',
                 y=subtitle_y,

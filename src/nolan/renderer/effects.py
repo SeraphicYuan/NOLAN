@@ -655,11 +655,19 @@ class Highlight(Effect):
 
 @dataclass
 class Underline(Effect):
-    """Animated underline/highlighter reveal under text."""
+    """Animated underline/highlighter reveal under text.
+
+    style="highlight" sweeps a semi-transparent marker bar left->right over the
+    text (translucent, text stays readable). Set ``highlight_text`` to a phrase
+    to highlight only that span (word-level, wrap-aware across lines); leave it
+    None to sweep the whole element.
+    """
     color: tuple = (255, 220, 100)  # Highlighter yellow
     thickness: int = 8
-    offset_y: int = 5  # Below text baseline
-    style: str = "line"  # "line" or "highlight" (thicker, semi-transparent)
+    offset_y: int = 5  # Below text baseline ("line" style only)
+    style: str = "line"  # "line" or "highlight" (marker bar over text)
+    highlight_text: Optional[str] = None  # Phrase to highlight (None = whole element)
+    opacity: float = 0.45  # Marker fill opacity (0..1), "highlight" style only
 
     def apply(self, t: float, props: Dict[str, Any]) -> Dict[str, Any]:
         progress = self.get_progress(t)
@@ -668,6 +676,8 @@ class Underline(Effect):
         props['underline_thickness'] = self.thickness
         props['underline_offset'] = self.offset_y
         props['underline_style'] = self.style
+        props['underline_highlight_text'] = self.highlight_text
+        props['underline_opacity'] = self.opacity
         return props
 
 
@@ -1002,4 +1012,20 @@ class EffectPresets:
         """Quick flash for emphasis."""
         return [
             Flash(start=start, duration=duration, flashes=flashes),
+        ]
+
+    @staticmethod
+    def highlight_sweep(start: float = 0.0, duration: float = 0.9,
+                        highlight_text: str = None,
+                        color: tuple = (255, 220, 100),
+                        opacity: float = 0.45) -> list:
+        """Highlighter-marker sweep over text (whole element, or a phrase).
+
+        Pass ``highlight_text`` to mark only that phrase (word-level, wrap-aware);
+        leave it None to sweep the whole text element.
+        """
+        return [
+            Underline(start=start, duration=duration, style="highlight",
+                      highlight_text=highlight_text, color=color, opacity=opacity,
+                      easing="ease_out_cubic"),
         ]

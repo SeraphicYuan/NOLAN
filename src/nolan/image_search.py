@@ -11,7 +11,7 @@ import httpx
 
 @dataclass
 class ImageSearchResult:
-    """Unified image search result."""
+    """Unified search result for an image or a video clip."""
     url: str
     thumbnail_url: Optional[str] = None
     title: Optional[str] = None
@@ -21,6 +21,10 @@ class ImageSearchResult:
     height: Optional[int] = None
     photographer: Optional[str] = None
     license: Optional[str] = None
+    media_type: str = "image"  # "image" | "video"
+    duration: Optional[float] = None  # video length in seconds (if known)
+    preview_image_url: Optional[str] = None  # poster/still for a video (for scoring/preview)
+    ref: Optional[str] = None  # provider-internal handle for lazy resolution (e.g. IA id)
     score: Optional[float] = None  # Vision model relevance score (0-10)
     score_reason: Optional[str] = None  # Explanation for the score
     scored_by: Optional[str] = None  # Which vision model scored this
@@ -62,6 +66,15 @@ class ImageProvider(ABC):
     def is_available(self) -> bool:
         """Check if provider is available (has required credentials)."""
         return True
+
+    def resolve(self, result: "ImageSearchResult") -> Optional["ImageSearchResult"]:
+        """Resolve a lazily-returned result into a fully-usable one.
+
+        Default: already usable. Video providers that defer the expensive
+        per-item lookup (mp4 manifest fetch) override this and fill `url`/`duration`
+        for the chosen result only. Return None if it can't be resolved.
+        """
+        return result
 
 
 class DDGSProvider(ImageProvider):
@@ -172,6 +185,96 @@ class PexelsProvider(ImageProvider):
                 height=photo.get("height"),
                 photographer=photo.get("photographer", ""),
                 license="Pexels License (free for commercial use)",
+            ))
+        return results
+
+
+class PexelsVideoProvider(ImageProvider):
+    """Pexels API VIDEO search (free stock video). Needs PEXELS_API_KEY."""
+
+    name = "pexels_video"
+    BASE_URL = "https://api.pexels.com/videos"
+    media_type = "video"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        if not self.api_key:
+            raise RuntimeError("Pexels API key not configured")
+        headers = {"Authorization": self.api_key}
+        params = {"query": query, "per_page": min(max_results, 80)}
+        with httpx.Client() as client:
+            resp = client.get(f"{self.BASE_URL}/search", headers=headers, params=params, timeout=30.0)
+            resp.raise_for_status()
+            data = resp.json()
+        results = []
+        for vid in data.get("videos", []):
+            files = vid.get("video_files", []) or []
+            # Prefer an HD-ish mp4 that isn't the huge 4K master.
+            mp4s = [f for f in files if f.get("file_type") == "video/mp4" and f.get("link")]
+            mp4s.sort(key=lambda f: (f.get("height") or 0))
+            if not mp4s:
+                continue
+            chosen = next((f for f in mp4s if (f.get("height") or 0) >= 720), mp4s[-1])
+            results.append(ImageSearchResult(
+                url=chosen["link"],
+                thumbnail_url=vid.get("image"),
+                preview_image_url=vid.get("image"),
+                title=(vid.get("user", {}) or {}).get("name", "Pexels video"),
+                source=self.name,
+                source_url=vid.get("url"),
+                width=chosen.get("width"), height=chosen.get("height"),
+                photographer=(vid.get("user", {}) or {}).get("name"),
+                media_type="video",
+                duration=vid.get("duration"),
+                license="Pexels License (free for commercial use)",
+            ))
+        return results
+
+
+class PixabayVideoProvider(ImageProvider):
+    """Pixabay API VIDEO search (free stock video). Needs PIXABAY_API_KEY."""
+
+    name = "pixabay_video"
+    BASE_URL = "https://pixabay.com/api/videos/"
+    media_type = "video"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        if not self.api_key:
+            raise RuntimeError("Pixabay API key not configured")
+        params = {"key": self.api_key, "q": query, "per_page": min(max(max_results, 3), 200)}
+        with httpx.Client() as client:
+            resp = client.get(self.BASE_URL, params=params, timeout=30.0)
+            resp.raise_for_status()
+            data = resp.json()
+        results = []
+        for hit in data.get("hits", []):
+            streams = hit.get("videos", {}) or {}
+            stream = streams.get("medium") or streams.get("large") or streams.get("small") or {}
+            if not stream.get("url"):
+                continue
+            results.append(ImageSearchResult(
+                url=stream["url"],
+                thumbnail_url=stream.get("thumbnail"),
+                preview_image_url=stream.get("thumbnail"),
+                title=hit.get("tags", "Pixabay video"),
+                source=self.name,
+                source_url=hit.get("pageURL"),
+                width=stream.get("width"), height=stream.get("height"),
+                photographer=hit.get("user"),
+                media_type="video",
+                duration=hit.get("duration"),
+                license="Pixabay License (free for commercial use)",
             ))
         return results
 
@@ -473,6 +576,558 @@ class LibraryOfCongressProvider(ImageProvider):
         return results
 
 
+class InternetArchiveProvider(ImageProvider):
+    """Internet Archive (archive.org) — keyless archival VIDEO search.
+
+    Best fit for historical/archival documentary footage. Searches movies,
+    then resolves a downloadable mp4 per item via the metadata API.
+    """
+
+    name = "archive"
+    SEARCH_URL = "https://archive.org/advancedsearch.php"
+    META_URL = "https://archive.org/metadata"
+    media_type = "video"
+
+    def is_available(self) -> bool:
+        return True  # no key required
+
+    def _pick_mp4(self, identifier: str, client: "httpx.Client") -> Optional[Dict[str, Any]]:
+        """Resolve a playable mp4 file + duration for an item."""
+        try:
+            meta = client.get(f"{self.META_URL}/{identifier}", timeout=20.0).json()
+        except Exception:
+            return None
+        files = meta.get("files", []) or []
+        mp4s = [f for f in files if str(f.get("name", "")).lower().endswith(".mp4")]
+        if not mp4s:
+            return None
+        # Prefer a reasonably-sized h.264 derivative (not the largest master).
+        def size(f):
+            try:
+                return int(f.get("size", 0))
+            except (TypeError, ValueError):
+                return 0
+        mp4s.sort(key=size)
+        chosen = mp4s[len(mp4s) // 2] if len(mp4s) > 2 else mp4s[0]
+        dur = None
+        try:
+            dur = float(chosen.get("length")) if chosen.get("length") else None
+        except (TypeError, ValueError):
+            # length can be "MM:SS"
+            ls = str(chosen.get("length", ""))
+            if ":" in ls:
+                parts = [float(p) for p in ls.split(":")]
+                dur = sum(p * 60 ** i for i, p in enumerate(reversed(parts)))
+        return {"name": chosen["name"], "duration": dur}
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        """Lazy search: returns candidates with posters (enough to vision-score) but
+        does NOT fetch the per-item mp4 manifest. Call resolve() on the winner only."""
+        params = {
+            "q": f'({query}) AND mediatype:(movies)',
+            "fl[]": ["identifier", "title", "year", "licenseurl"],
+            "rows": min(max_results, 20),
+            "page": 1,
+            "output": "json",
+            "sort[]": "downloads desc",
+        }
+        headers = {"User-Agent": "NOLAN-VideoEssayTool/1.0"}
+        results: List[ImageSearchResult] = []
+        try:
+            with httpx.Client() as client:
+                resp = client.get(self.SEARCH_URL, params=params, headers=headers, timeout=30.0)
+                resp.raise_for_status()
+                docs = resp.json().get("response", {}).get("docs", [])
+        except Exception:
+            return results
+        for doc in docs[:max_results]:
+            ident = doc.get("identifier")
+            if not ident:
+                continue
+            results.append(ImageSearchResult(
+                url="",  # deferred — resolved for the winner via resolve()
+                ref=ident,
+                thumbnail_url=f"https://archive.org/services/img/{ident}",
+                preview_image_url=f"https://archive.org/services/img/{ident}",
+                title=doc.get("title", ident),
+                source=self.name,
+                source_url=f"https://archive.org/details/{ident}",
+                media_type="video",
+                license=doc.get("licenseurl") or "Internet Archive (see item page)",
+            ))
+        return results
+
+    def resolve(self, result):
+        if result.url or not result.ref:
+            return result
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN-VideoEssayTool/1.0"}) as client:
+                picked = self._pick_mp4(result.ref, client)
+        except Exception:
+            return None
+        if not picked:
+            return None
+        result.url = f"https://archive.org/download/{result.ref}/{picked['name']}"
+        result.duration = picked.get("duration")
+        return result
+
+
+class NASAImageProvider(ImageProvider):
+    """NASA Image Library — keyless, public domain images."""
+    name = "nasa"
+    URL = "https://images-api.nasa.gov/search"
+
+    def is_available(self) -> bool:
+        return True
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        try:
+            with httpx.Client() as c:
+                data = c.get(self.URL, params={"q": query, "media_type": "image"},
+                             timeout=30.0, headers={"User-Agent": "NOLAN/1.0"}).json()
+        except Exception:
+            return results
+        for item in data.get("collection", {}).get("items", [])[:max_results]:
+            d = (item.get("data") or [{}])[0]
+            links = item.get("links") or []
+            if not links:
+                continue
+            results.append(ImageSearchResult(
+                url=links[0].get("href", ""), thumbnail_url=links[-1].get("href", ""),
+                title=d.get("title", ""), source=self.name,
+                source_url=f"https://images.nasa.gov/details/{d.get('nasa_id','')}",
+                photographer=d.get("center"), license="Public Domain (NASA)",
+            ))
+        return results
+
+
+class NASAVideoProvider(ImageProvider):
+    """NASA Image Library — keyless, public domain VIDEO."""
+    name = "nasa_video"
+    URL = "https://images-api.nasa.gov/search"
+    media_type = "video"
+
+    def is_available(self) -> bool:
+        return True
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        """Lazy: return candidates with a poster but defer the per-item asset
+        manifest fetch (the mp4 URL) to resolve()."""
+        results = []
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                data = c.get(self.URL, params={"q": query, "media_type": "video"}, timeout=30.0).json()
+        except Exception:
+            return results
+        for item in data.get("collection", {}).get("items", [])[:max_results]:
+            d = (item.get("data") or [{}])[0]
+            href = item.get("href")  # asset manifest (fetched lazily in resolve)
+            if not href:
+                continue
+            poster = (item.get("links") or [{}])[0].get("href")
+            results.append(ImageSearchResult(
+                url="", ref=href, thumbnail_url=poster, preview_image_url=poster,
+                title=d.get("title", ""), source=self.name,
+                source_url=f"https://images.nasa.gov/details/{d.get('nasa_id','')}",
+                media_type="video", license="Public Domain (NASA)",
+            ))
+        return results
+
+    def resolve(self, result):
+        if result.url or not result.ref:
+            return result
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                assets = c.get(result.ref, timeout=20.0).json()
+        except Exception:
+            return None
+        mp4 = next((a for a in assets if str(a).lower().endswith(".mp4")), None)
+        if not mp4:
+            return None
+        result.url = mp4
+        return result
+
+
+class OpenverseProvider(ImageProvider):
+    """Openverse — keyless CC image aggregator (Flickr, museums, …)."""
+    name = "openverse"
+    URL = "https://api.openverse.org/v1/images/"
+
+    def is_available(self) -> bool:
+        return True
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                data = c.get(self.URL, params={"q": query, "page_size": min(max_results, 20)}, timeout=30.0).json()
+        except Exception:
+            return results
+        for r in data.get("results", []):
+            lic = " ".join(x for x in [r.get("license", "").upper(), r.get("license_version", "")] if x)
+            results.append(ImageSearchResult(
+                url=r.get("url", ""), thumbnail_url=r.get("thumbnail"),
+                title=r.get("title", ""), source=f"{self.name}:{r.get('source', '')}",
+                source_url=r.get("foreign_landing_url"), photographer=r.get("creator"),
+                license=f"CC {lic}".strip(),
+            ))
+        return results
+
+
+class MetMuseumProvider(ImageProvider):
+    """The Met — keyless, CC0 public-domain art/historical objects."""
+    name = "met"
+    SEARCH = "https://collectionapi.metmuseum.org/public/collection/v1/search"
+    OBJECT = "https://collectionapi.metmuseum.org/public/collection/v1/objects"
+
+    def is_available(self) -> bool:
+        return True
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                ids = c.get(self.SEARCH, params={"q": query, "hasImages": "true"}, timeout=30.0).json().get("objectIDs") or []
+                for oid in ids[: max_results * 2]:
+                    if len(results) >= max_results:
+                        break
+                    try:
+                        o = c.get(f"{self.OBJECT}/{oid}", timeout=20.0).json()
+                    except Exception:
+                        continue
+                    if not o.get("primaryImage") or not o.get("isPublicDomain"):
+                        continue
+                    results.append(ImageSearchResult(
+                        url=o.get("primaryImage"), thumbnail_url=o.get("primaryImageSmall"),
+                        title=o.get("title", ""), source=self.name, source_url=o.get("objectURL"),
+                        photographer=o.get("artistDisplayName"), license="CC0 (The Met)",
+                    ))
+        except Exception:
+            return results
+        return results
+
+
+class ArtInstituteProvider(ImageProvider):
+    """Art Institute of Chicago — keyless, CC0 art (IIIF images)."""
+    name = "artic"
+    URL = "https://api.artic.edu/api/v1/artworks/search"
+    IIIF = "https://www.artic.edu/iiif/2"
+
+    def is_available(self) -> bool:
+        return True
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                data = c.get(self.URL, params={"q": query, "limit": min(max_results, 20),
+                                                "fields": "id,title,image_id,artist_title"}, timeout=30.0).json()
+        except Exception:
+            return results
+        for a in data.get("data", []):
+            img = a.get("image_id")
+            if not img:
+                continue
+            results.append(ImageSearchResult(
+                url=f"{self.IIIF}/{img}/full/1686,/0/default.jpg",
+                thumbnail_url=f"{self.IIIF}/{img}/full/400,/0/default.jpg",
+                title=a.get("title", ""), source=self.name,
+                source_url=f"https://www.artic.edu/artworks/{a.get('id')}",
+                photographer=a.get("artist_title"), license="CC0 (Art Institute of Chicago)",
+            ))
+        return results
+
+
+class ClevelandArtProvider(ImageProvider):
+    """Cleveland Museum of Art — keyless, CC0 art/historical."""
+    name = "cleveland"
+    URL = "https://openaccess-api.clevelandart.org/api/artworks/"
+
+    def is_available(self) -> bool:
+        return True
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                data = c.get(self.URL, params={"q": query, "limit": min(max_results, 20),
+                                                "has_image": 1}, timeout=30.0).json()
+        except Exception:
+            return results
+        for a in data.get("data", []):
+            imgs = a.get("images") or {}
+            web = (imgs.get("web") or {}).get("url")
+            if not web:
+                continue
+            results.append(ImageSearchResult(
+                url=(imgs.get("print") or {}).get("url") or web,
+                thumbnail_url=web, title=a.get("title", ""), source=self.name,
+                source_url=a.get("url"), license=a.get("share_license_status", "CC0"),
+            ))
+        return results
+
+
+class WellcomeProvider(ImageProvider):
+    """Wellcome Collection — keyless, mostly CC/PD historical & medical imagery (IIIF).
+
+    Strong for documentary work: science, medicine, history, ephemera. The Images
+    API returns an IIIF image-service ``info.json`` per result; we build the
+    full-resolution image URL from it.
+    """
+    name = "wellcome"
+    URL = "https://api.wellcomecollection.org/catalogue/v2/images"
+
+    def is_available(self) -> bool:
+        return True  # no key required
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                data = c.get(self.URL, params={"query": query, "pageSize": min(max_results, 100)},
+                             timeout=30.0).json()
+        except Exception:
+            return results
+        for r in data.get("results", []):
+            locs = r.get("locations") or []
+            info = locs[0].get("url") if locs else None
+            if not info:
+                continue
+            base = info[: -len("/info.json")] if info.endswith("/info.json") else info
+            lic = (locs[0].get("license") or {}).get("label")
+            src = r.get("source") or {}
+            work_id = src.get("id")
+            results.append(ImageSearchResult(
+                url=f"{base}/full/full/0/default.jpg",
+                thumbnail_url=f"{base}/full/!400,400/0/default.jpg",  # IIIF-sized, displayable
+                title=src.get("title", ""), source=self.name,
+                source_url=f"https://wellcomecollection.org/works/{work_id}" if work_id else None,
+                license=lic or "Wellcome Collection (see item)",
+            ))
+        return results
+
+
+class EuropeanaProvider(ImageProvider):
+    """Europeana — EU cultural heritage (image + video). Needs free API key."""
+    name = "europeana"
+    URL = "https://api.europeana.eu/record/v2/search.json"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        params = {"wskey": self.api_key, "query": query, "media": "true",
+                  "rows": min(max_results, 50), "profile": "rich"}
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                data = c.get(self.URL, params=params, timeout=30.0).json()
+        except Exception:
+            return results
+        for it in data.get("items", []):
+            url = (it.get("edmIsShownBy") or it.get("edmObject") or [None])
+            url = url[0] if isinstance(url, list) else url
+            if not url:
+                continue
+            etype = (it.get("type") or "IMAGE").upper()
+            results.append(ImageSearchResult(
+                url=url,
+                thumbnail_url=(it.get("edmPreview") or [None])[0] if isinstance(it.get("edmPreview"), list) else it.get("edmPreview"),
+                title=(it.get("title") or [""])[0] if isinstance(it.get("title"), list) else it.get("title", ""),
+                source=self.name, source_url=(it.get("guid") or it.get("link")),
+                license=(it.get("rights") or [None])[0] if isinstance(it.get("rights"), list) else it.get("rights"),
+                media_type="video" if etype == "VIDEO" else "image",
+                preview_image_url=(it.get("edmPreview") or [None])[0] if isinstance(it.get("edmPreview"), list) else None,
+            ))
+        return results
+
+
+class DPLAProvider(ImageProvider):
+    """Digital Public Library of America — US archives/museums. Needs free API key."""
+    name = "dpla"
+    URL = "https://api.dp.la/v2/items"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        params = {"api_key": self.api_key, "q": query, "page_size": min(max_results, 50)}
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+                data = c.get(self.URL, params=params, timeout=30.0).json()
+        except Exception:
+            return results
+        for doc in data.get("docs", []):
+            obj = doc.get("object")
+            if not obj:
+                continue
+            sr = doc.get("sourceResource", {}) or {}
+            title = sr.get("title")
+            results.append(ImageSearchResult(
+                url=obj, thumbnail_url=obj,
+                title=title[0] if isinstance(title, list) else (title or ""),
+                source=self.name, source_url=doc.get("isShownAt"),
+                license=doc.get("rights") or "see source",
+            ))
+        return results
+
+
+class FlickrProvider(ImageProvider):
+    """Flickr — CC-licensed images. Needs free API key."""
+    name = "flickr"
+    URL = "https://api.flickr.com/services/rest/"
+    CC_LICENSES = "1,2,3,4,5,6,9,10"  # Creative Commons license ids
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        params = {"method": "flickr.photos.search", "api_key": self.api_key, "text": query,
+                  "license": self.CC_LICENSES, "extras": "url_l,owner_name,license",
+                  "format": "json", "nojsoncallback": 1, "per_page": min(max_results, 50)}
+        with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+            data = c.get(self.URL, params=params, timeout=30.0).json()
+        for ph in data.get("photos", {}).get("photo", []):
+            if not ph.get("url_l"):
+                continue
+            results.append(ImageSearchResult(
+                url=ph["url_l"], thumbnail_url=ph.get("url_l"),
+                title=ph.get("title", ""), source=self.name,
+                source_url=f"https://www.flickr.com/photos/{ph.get('owner')}/{ph.get('id')}",
+                photographer=ph.get("ownername"), license="Creative Commons (Flickr)",
+            ))
+        return results
+
+
+class UnsplashProvider(ImageProvider):
+    """Unsplash — premium modern stock images. Needs free Access Key."""
+    name = "unsplash"
+    URL = "https://api.unsplash.com/search/photos"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        headers = {"Authorization": f"Client-ID {self.api_key}", "User-Agent": "NOLAN/1.0"}
+        with httpx.Client(headers=headers) as c:
+            data = c.get(self.URL, params={"query": query, "per_page": min(max_results, 30)}, timeout=30.0).json()
+        for p in data.get("results", []):
+            urls = p.get("urls", {})
+            results.append(ImageSearchResult(
+                url=urls.get("full") or urls.get("regular", ""), thumbnail_url=urls.get("small"),
+                title=p.get("description") or p.get("alt_description", ""), source=self.name,
+                source_url=(p.get("links", {}) or {}).get("html"),
+                photographer=(p.get("user", {}) or {}).get("name"),
+                license="Unsplash License (free for commercial use)",
+            ))
+        return results
+
+
+class RijksmuseumProvider(ImageProvider):
+    """Rijksmuseum — Dutch art/historical. Needs free API key."""
+    name = "rijksmuseum"
+    URL = "https://www.rijksmuseum.nl/api/en/collection"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        params = {"key": self.api_key, "q": query, "imgonly": "true", "ps": min(max_results, 50)}
+        with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+            data = c.get(self.URL, params=params, timeout=30.0).json()
+        for a in data.get("artObjects", []):
+            img = (a.get("webImage") or {}).get("url")
+            if not img:
+                continue
+            results.append(ImageSearchResult(
+                url=img, thumbnail_url=(a.get("headerImage") or {}).get("url") or img,
+                title=a.get("title", ""), source=self.name, source_url=a.get("links", {}).get("web"),
+                photographer=a.get("principalOrFirstMaker"), license="Public Domain (Rijksmuseum)",
+            ))
+        return results
+
+
+class HarvardArtProvider(ImageProvider):
+    """Harvard Art Museums — art/historical. Needs free API key."""
+    name = "harvard"
+    URL = "https://api.harvardartmuseums.org/object"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        params = {"apikey": self.api_key, "q": query, "size": min(max_results, 50), "hasimage": 1}
+        with httpx.Client(headers={"User-Agent": "NOLAN/1.0"}) as c:
+            data = c.get(self.URL, params=params, timeout=30.0).json()
+        for r in data.get("records", []):
+            if not r.get("primaryimageurl"):
+                continue
+            results.append(ImageSearchResult(
+                url=r["primaryimageurl"], thumbnail_url=r.get("primaryimageurl"),
+                title=r.get("title", ""), source=self.name, source_url=r.get("url"),
+                photographer=r.get("people", [{}])[0].get("name") if r.get("people") else None,
+                license=r.get("creditline") or "see source",
+            ))
+        return results
+
+
+class CoverrVideoProvider(ImageProvider):
+    """Coverr — free modern stock VIDEO. Needs API key."""
+    name = "coverr_video"
+    URL = "https://api.coverr.co/videos"
+    media_type = "video"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results = []
+        headers = {"Authorization": f"Bearer {self.api_key}", "User-Agent": "NOLAN/1.0"}
+        params = {"query": query, "page_size": min(max_results, 30)}
+        with httpx.Client(headers=headers) as c:
+            data = c.get(self.URL, params=params, timeout=30.0).json()
+        for v in data.get("hits", data.get("videos", [])):
+            urls = v.get("urls", {}) or {}
+            mp4 = urls.get("mp4") or urls.get("mp4_download")
+            if not mp4:
+                continue
+            results.append(ImageSearchResult(
+                url=mp4, thumbnail_url=v.get("poster") or v.get("thumbnail"),
+                preview_image_url=v.get("poster") or v.get("thumbnail"),
+                title=v.get("title", ""), source=self.name, source_url=v.get("urls", {}).get("page"),
+                media_type="video", duration=v.get("duration"),
+                license="Coverr License (free for commercial use)",
+            ))
+        return results
+
+
 class ImageSearchClient:
     """Client for searching images across multiple providers."""
 
@@ -481,14 +1136,16 @@ class ImageSearchClient:
         pexels_api_key: Optional[str] = None,
         pixabay_api_key: Optional[str] = None,
         smithsonian_api_key: Optional[str] = None,
+        keys: Optional[Dict[str, str]] = None,
     ):
         """Initialize image search client.
 
         Args:
-            pexels_api_key: Pexels API key.
-            pixabay_api_key: Pixabay API key.
-            smithsonian_api_key: Smithsonian API key from api.data.gov.
+            pexels_api_key / pixabay_api_key / smithsonian_api_key: legacy explicit keys.
+            keys: dict of extra provider keys (europeana, dpla, flickr, unsplash,
+                rijksmuseum, harvard, coverr) — typically from config.image_sources.
         """
+        k = keys or {}
         self.providers: Dict[str, ImageProvider] = {
             "ddgs": DDGSProvider(),
             "pexels": PexelsProvider(api_key=pexels_api_key),
@@ -496,7 +1153,32 @@ class ImageSearchClient:
             "wikimedia": WikimediaCommonsProvider(),
             "smithsonian": SmithsonianProvider(api_key=smithsonian_api_key),
             "loc": LibraryOfCongressProvider(),
+            # Keyless extras (image)
+            "nasa": NASAImageProvider(),
+            "openverse": OpenverseProvider(),
+            "met": MetMuseumProvider(),
+            "artic": ArtInstituteProvider(),
+            "cleveland": ClevelandArtProvider(),
+            "wellcome": WellcomeProvider(),
+            # Key-needed (image) — available once the key is set
+            "europeana": EuropeanaProvider(api_key=k.get("europeana")),
+            "dpla": DPLAProvider(api_key=k.get("dpla")),
+            "flickr": FlickrProvider(api_key=k.get("flickr")),
+            "unsplash": UnsplashProvider(api_key=k.get("unsplash")),
+            "rijksmuseum": RijksmuseumProvider(api_key=k.get("rijksmuseum")),
+            "harvard": HarvardArtProvider(api_key=k.get("harvard")),
+            # Video providers
+            "archive": InternetArchiveProvider(),                 # keyless archival video
+            "nasa_video": NASAVideoProvider(),                    # keyless PD video
+            "pexels_video": PexelsVideoProvider(api_key=pexels_api_key),
+            "pixabay_video": PixabayVideoProvider(api_key=pixabay_api_key),
+            "coverr_video": CoverrVideoProvider(api_key=k.get("coverr")),
         }
+
+    def video_providers(self) -> List[str]:
+        """Names of available providers that return video."""
+        return [n for n, p in self.providers.items()
+                if getattr(p, "media_type", "image") == "video" and p.is_available()]
 
     def get_available_providers(self) -> List[str]:
         """Get list of available provider names."""
@@ -536,6 +1218,49 @@ class ImageSearchClient:
             raise RuntimeError(f"Provider '{source}' is not available (missing API key or package)")
 
         return provider.search(query, max_results)
+
+    def search_assets(self, query: str, media_type: Optional[str] = None,
+                      sources: Optional[List[str]] = None,
+                      max_results: int = 5) -> List[ImageSearchResult]:
+        """Search across multiple providers, optionally filtered by media type.
+
+        Args:
+            query: search string.
+            media_type: "video" | "image" | None (any).
+            sources: explicit provider names; default = all available providers
+                matching media_type.
+            max_results: results per provider.
+        """
+        if sources is None:
+            sources = [n for n, p in self.providers.items()
+                       if p.is_available()
+                       and (media_type is None or getattr(p, "media_type", "image") == media_type)]
+
+        def _one(name):
+            provider = self.providers.get(name)
+            if not provider or not provider.is_available():
+                return []
+            try:
+                return provider.search(query, max_results)
+            except Exception as e:
+                print(f"Warning: {name} search failed: {e}")
+                return []
+
+        # Query providers concurrently (each is network-bound).
+        merged: List[ImageSearchResult] = []
+        if sources:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=min(8, len(sources))) as ex:
+                for r in ex.map(_one, sources):
+                    merged.extend(r)
+        return merged
+
+    def resolve_video(self, result: ImageSearchResult) -> Optional[ImageSearchResult]:
+        """Resolve a lazily-returned video result (fill its mp4 url) via its provider."""
+        provider = self.providers.get(result.source)
+        if provider and hasattr(provider, "resolve"):
+            return provider.resolve(result)
+        return result
 
     def search_to_json(
         self,
@@ -838,6 +1563,108 @@ REASON: [brief explanation in one sentence]"""
 
         return score, reason
 
+    def _score_with_openrouter(
+        self,
+        image_data: bytes,
+        query: str,
+        context: Optional[str] = None
+    ) -> tuple[float, str]:
+        """Score image using an OpenRouter vision model (OpenAI-compatible).
+
+        Args:
+            image_data: Image bytes.
+            query: Search query.
+            context: Additional context for scoring.
+
+        Returns:
+            Tuple of (score, reason).
+        """
+        import base64
+
+        api_key = self.vision_config.get("api_key")
+        if not api_key:
+            raise RuntimeError("OpenRouter API key not configured")
+        model = self.vision_config.get("model", "qwen/qwen3.7-plus")
+        base_url = self.vision_config.get("base_url", "https://openrouter.ai/api/v1").rstrip("/")
+        reasoning_enabled = self.vision_config.get("reasoning_enabled", False)
+        reasoning_max_tokens = self.vision_config.get("reasoning_max_tokens")
+
+        # Sniff mime type so the data URL matches the downloaded bytes.
+        mime = "image/jpeg"
+        if image_data[:4] == b"\x89PNG":
+            mime = "image/png"
+        elif image_data[:4] == b"RIFF" and image_data[8:12] == b"WEBP":
+            mime = "image/webp"
+        elif image_data[:3] == b"GIF":
+            mime = "image/gif"
+        image_b64 = base64.b64encode(image_data).decode("utf-8")
+
+        context_text = f"\nContext: {context}" if context else ""
+        prompt = f"""Score this image for relevance to the search query.
+
+Search query: "{query}"{context_text}
+
+Rate the image from 0-10 where:
+- 10 = Perfect match, exactly what was searched for
+- 7-9 = Good match, clearly related to the query
+- 4-6 = Partial match, somewhat related
+- 1-3 = Poor match, barely related
+- 0 = Not relevant at all
+
+Respond in this exact format:
+SCORE: [number]
+REASON: [brief explanation in one sentence]"""
+
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}},
+                    ],
+                }
+            ],
+        }
+        # Reasoning off by default for speed (non-reasoning models ignore this).
+        if not reasoning_enabled:
+            payload["reasoning"] = {"enabled": False}
+        elif reasoning_max_tokens:
+            payload["reasoning"] = {"max_tokens": reasoning_max_tokens}
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/nolan",
+            "X-Title": "NOLAN",
+        }
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(
+                f"{base_url}/chat/completions",
+                json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+            result = response.json()
+            text = (result["choices"][0]["message"].get("content") or "").strip()
+
+        # Parse response
+        score = 5.0
+        reason = "Unable to parse response"
+
+        for line in text.split("\n"):
+            if line.startswith("SCORE:"):
+                try:
+                    score = float(line.replace("SCORE:", "").strip())
+                    score = max(0, min(10, score))  # Clamp to 0-10
+                except ValueError:
+                    pass
+            elif line.startswith("REASON:"):
+                reason = line.replace("REASON:", "").strip()
+
+        return score, reason
+
     def calculate_quality_score(self, result: ImageSearchResult) -> tuple[float, str]:
         """Calculate image quality score based on resolution and aspect ratio.
 
@@ -935,6 +1762,8 @@ REASON: [brief explanation in one sentence]"""
             return self._score_with_gemini(image_data, query, context)
         elif self.vision_provider == "ollama":
             return self._score_with_ollama(image_data, query, context)
+        elif self.vision_provider == "openrouter":
+            return self._score_with_openrouter(image_data, query, context)
         else:
             raise ValueError(f"Unknown vision provider: {self.vision_provider}")
 
@@ -958,33 +1787,35 @@ REASON: [brief explanation in one sentence]"""
         Returns:
             List of results sorted by combined score (relevance + quality tiebreaker).
         """
-        scored_results = []
-
-        for i, result in enumerate(results):
-            # Calculate quality score first (doesn't require download)
-            if include_quality:
+        # Quality scores need no network — compute up front.
+        if include_quality:
+            for result in results:
                 quality_score, quality_reason = self.calculate_quality_score(result)
                 result.quality_score = quality_score
                 result.quality_reason = quality_reason
 
-            # Use thumbnail for faster scoring, with main URL as fallback
+        def _score_one(result):
             primary_url = result.thumbnail_url or result.url
             fallback_url = result.url if result.thumbnail_url else None
-
             try:
                 score, reason = self.score_image(primary_url, query, context, fallback_url)
                 result.score = score
                 result.score_reason = reason
-                result.scored_by = self.vision_provider
             except Exception as e:
                 result.score = 0.0
                 result.score_reason = f"Scoring failed: {str(e)}"
-                result.scored_by = self.vision_provider
+            result.scored_by = self.vision_provider
+            return result
 
-            scored_results.append(result)
+        # Score candidates concurrently (each call is network-bound).
+        scored_results = []
+        if results:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=min(8, len(results))) as pool:
+                scored_results = list(pool.map(_score_one, results))
 
-            if progress_callback:
-                progress_callback(i + 1, len(results), result)
+        if progress_callback:
+            progress_callback(len(scored_results), len(results), None)
 
         # Sort by combined score (relevance + quality as tiebreaker)
         scored_results.sort(key=lambda r: r.combined_score(), reverse=True)

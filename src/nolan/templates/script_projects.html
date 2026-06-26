@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN Script Projects</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #14141f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .sub { color: #9a9ab0; font-size: 13px; margin-bottom: 14px; }
+        .panel { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+        .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        input, textarea, select { background: #0e0e16; border: 1px solid #2a2a3a; border-radius: 7px; color: #eee; padding: 8px; font-size: 14px; font-family: inherit; }
+        textarea { width: 100%; min-height: 80px; resize: vertical; }
+        button { background: #2a2a3a; color: #eee; border: 1px solid #3a3a4a; border-radius: 7px; padding: 8px 13px; cursor: pointer; font-size: 13px; }
+        button:hover { background: #34344a; }
+        button.primary { background: #e94560; border-color: #e94560; font-weight: 600; }
+        button.danger { background: #3a1f28; border-color: #5a2a38; }
+        .list { display: flex; flex-direction: column; gap: 8px; }
+        .card { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 9px; padding: 11px; cursor: pointer; }
+        .card.active { border-color: #e94560; }
+        .card .name { font-weight: 600; font-size: 15px; }
+        .card .meta { font-size: 12px; color: #9a9ab0; margin-top: 3px; }
+        .badge { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: #0f2f3a; color: #7fd3e0; }
+        .badge.no { background: #2a2a3a; color: #9a9ab0; }
+        .grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+        .section-title { font-size: 14px; margin: 14px 0 7px; font-weight: 600; }
+        .src { font-size: 12px; color: #cfcfe0; padding: 5px 0; border-bottom: 1px solid #23232f; display: flex; justify-content: space-between; gap: 8px; }
+        .src .x { color: #ff6b6b; cursor: pointer; }
+        .jobstatus { font-size: 12px; color: #9a9ab0; margin-top: 8px; }
+        .empty { color: #7a7a8c; font-size: 13px; padding: 8px 0; }
+        pre { white-space: pre-wrap; background: #0e0e16; padding: 12px; border-radius: 8px; max-height: 520px; overflow: auto; font-size: 13px; }
+        label.fld { font-size: 12px; color: #9a9ab0; display:block; margin: 8px 0 3px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="script-projects"></script>
+
+<div class="wrap">
+    <h1>📝 Script Projects</h1>
+    <div class="sub">Turn a <b>subject + a narrative style + context sources</b> into a grounded, Director-ready <code>script.md</code>. The writer fetches sources, grounds the facts, drafts in your chosen voice, and fact-checks before finalizing.</div>
+
+    <div class="grid">
+        <!-- LEFT: project library + create -->
+        <div>
+            <div class="panel">
+                <label class="fld">Subject (what's the script about?)</label>
+                <input id="newSubject" type="text" placeholder="e.g. Holbein's Dance of Death" style="width:100%;">
+                <label class="fld">Narrative style</label>
+                <select id="newStyle" style="width:100%;"><option value="">Loading styles…</option></select>
+                <div class="row" style="margin-top:8px;">
+                    <input id="newAngle" type="text" placeholder="Angle (optional)" style="flex:1;">
+                    <input id="newMinutes" type="number" value="8" min="1" max="30" style="width:80px;" title="Target minutes">
+                </div>
+                <input id="newPivot" type="text" placeholder="Hidden-detail pivot (optional)" style="width:100%; margin-top:8px;">
+                <button class="primary" style="margin-top:10px;" onclick="createProject()">+ Create project</button>
+            </div>
+            <div class="section-title">Projects</div>
+            <div class="list" id="projList"><div class="empty">Loading…</div></div>
+        </div>
+
+        <!-- RIGHT: selected project -->
+        <div id="detail" class="hidden">
+            <div class="panel">
+                <div class="row" style="justify-content:space-between;">
+                    <div><span class="name" id="dName" style="font-size:17px;"></span></div>
+                    <div class="row">
+                        <button class="primary" onclick="writeScript()">✍ Write script</button>
+                        <button class="danger" onclick="deleteProject()">Delete</button>
+                    </div>
+                </div>
+                <div class="meta" id="dMeta" style="color:#9a9ab0; font-size:12px; margin-top:6px;"></div>
+                <div class="jobstatus" id="jobStatus"></div>
+            </div>
+
+            <div class="panel">
+                <div class="section-title" style="margin-top:0;">Sources</div>
+                <div id="srcList"><div class="empty">No sources yet.</div></div>
+                <label class="fld">Add a URL (fetched by the writer)</label>
+                <div class="row">
+                    <input id="srcUrl" type="text" placeholder="https://…" style="flex:1;">
+                    <button onclick="addUrl()">+ URL</button>
+                </div>
+                <label class="fld">Or paste source text</label>
+                <textarea id="srcText" placeholder="Paste an article / excerpt…"></textarea>
+                <div class="row" style="margin-top:6px;">
+                    <input id="srcTitle" type="text" placeholder="Source title (optional)" style="flex:1;">
+                    <button onclick="addPaste()">+ Paste</button>
+                </div>
+                <label class="fld">Or upload a file (.txt / .md / .srt / .vtt)</label>
+                <div class="row">
+                    <input id="srcFile" type="file" accept=".txt,.md,.srt,.vtt" style="flex:1;">
+                    <button onclick="uploadFile()">+ Upload</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="row" style="justify-content:space-between;">
+                    <div class="section-title" style="margin-top:0;">Grounding artifacts</div>
+                    <div class="row">
+                        <button onclick="viewArtifact('brief')">Brief</button>
+                        <button onclick="viewArtifact('facts')">Facts</button>
+                        <button onclick="viewArtifact('factcheck')">Fact-check</button>
+                        <button onclick="viewArtifact('citations')">Citations</button>
+                    </div>
+                </div>
+                <pre id="artView" class="empty">Select an artifact (or click a source above) to view it here.</pre>
+            </div>
+
+            <div class="panel">
+                <div class="row" style="justify-content:space-between;">
+                    <div class="section-title" style="margin-top:0;">script.md</div>
+                    <button onclick="loadScript()">Refresh</button>
+                </div>
+                <pre id="scriptView" class="empty">Not written yet.</pre>
+            </div>
+        </div>
+        <div id="detailEmpty" class="panel"><div class="empty">Select or create a project.</div></div>
+    </div>
+</div>
+
+<script>
+let current = null;
+const $ = id => document.getElementById(id);
+
+async function api(path, opts) {
+    const r = await fetch(path, opts);
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.statusText); }
+    return r.json();
+}
+
+async function loadStyles() {
+    const data = await api('/api/script-styles');
+    const sel = $('newStyle');
+    const withGuide = (data.styles || []).filter(s => s.has_guide);
+    if (!withGuide.length) { sel.innerHTML = '<option value="">No style guides yet — build one in Script Styles</option>'; return; }
+    sel.innerHTML = withGuide.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+async function loadProjects() {
+    const data = await api('/api/script-projects');
+    const list = $('projList');
+    if (!data.projects.length) { list.innerHTML = '<div class="empty">No projects yet.</div>'; return; }
+    list.innerHTML = data.projects.map(p => `
+        <div class="card ${current === p.slug ? 'active' : ''}" onclick="select('${p.slug}')">
+            <div class="name">${p.name}</div>
+            <div class="meta">style: ${p.style_id} · ${p.source_count} sources ·
+              <span class="badge ${p.has_script ? '' : 'no'}">${p.has_script ? 'script ✓' : 'no script'}</span></div>
+        </div>`).join('');
+}
+
+async function createProject() {
+    const subject = $('newSubject').value.trim();
+    const style_id = $('newStyle').value;
+    if (!subject || !style_id) { alert('Subject and a style guide are required.'); return; }
+    const body = { subject, style_id, name: subject, angle: $('newAngle').value.trim(),
+                   pivot: $('newPivot').value.trim(), target_minutes: parseFloat($('newMinutes').value) || 8 };
+    const data = await api('/api/script-projects', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    $('newSubject').value = ''; $('newAngle').value = ''; $('newPivot').value = '';
+    await loadProjects();
+    select(data.project.slug);
+}
+
+async function select(slug) {
+    current = slug;
+    const p = await api('/api/script-projects/' + slug);
+    $('detail').classList.remove('hidden');
+    $('detailEmpty').classList.add('hidden');
+    $('dName').textContent = p.name;
+    $('dMeta').textContent = `subject: ${p.subject} · style: ${p.style_id} · ~${p.target_minutes} min` +
+        (p.angle ? ` · angle: ${p.angle}` : '') + (p.pivot ? ` · pivot: ${p.pivot}` : '');
+    renderSources(p.sources || []);
+    loadScript();
+    loadProjects();
+}
+
+function renderSources(sources) {
+    const el = $('srcList');
+    if (!sources.length) { el.innerHTML = '<div class="empty">No sources yet.</div>'; return; }
+    el.innerHTML = sources.map(s => `
+        <div class="src"><span style="cursor:pointer;" title="view fetched text" onclick="viewSource('${s.id}')">[${s.id}] (${s.kind}, ${s.status}) ${s.title || s.url || ''}</span>
+        <span class="x" onclick="removeSource('${s.id}')">✕</span></div>`).join('');
+}
+
+async function addUrl() {
+    const url = $('srcUrl').value.trim();
+    if (!url) return;
+    await api('/api/script-projects/' + current + '/add-source', { method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ kind: 'url', url }) });
+    $('srcUrl').value = ''; select(current);
+}
+
+async function addPaste() {
+    const text = $('srcText').value.trim();
+    if (!text) return;
+    await api('/api/script-projects/' + current + '/add-source', { method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ kind: 'paste', text, title: $('srcTitle').value.trim() }) });
+    $('srcText').value = ''; $('srcTitle').value = ''; select(current);
+}
+
+async function removeSource(sid) {
+    await api('/api/script-projects/' + current + '/remove-source/' + sid, { method: 'POST' });
+    select(current);
+}
+
+async function uploadFile() {
+    const f = $('srcFile').files[0];
+    if (!f) return;
+    const fd = new FormData(); fd.append('file', f);
+    await fetch('/api/script-projects/' + current + '/upload-file', { method: 'POST', body: fd })
+        .then(r => { if (!r.ok) throw new Error('upload failed'); });
+    $('srcFile').value = ''; select(current);
+}
+
+async function viewArtifact(name) {
+    try {
+        const r = await api('/api/script-projects/' + current + '/artifact/' + name);
+        $('artView').textContent = r.content; $('artView').classList.remove('empty');
+    } catch (e) { $('artView').textContent = name + ': not generated yet.'; $('artView').classList.add('empty'); }
+}
+
+async function viewSource(sid) {
+    try {
+        const r = await api('/api/script-projects/' + current + '/source/' + sid);
+        $('artView').textContent = '# ' + sid + '\n\n' + r.content; $('artView').classList.remove('empty');
+    } catch (e) { $('artView').textContent = sid + ': no fetched text yet (pending URL — fetched during Write).'; $('artView').classList.add('empty'); }
+}
+
+let pollTimer = null;
+async function writeScript() {
+    if (pollTimer) clearInterval(pollTimer);
+    $('jobStatus').textContent = 'Dispatching writer…';
+    let r;
+    try {
+        r = await api('/api/script-projects/' + current + '/write', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    } catch (e) { $('jobStatus').textContent = 'Error: ' + e.message; return; }
+    const jobId = r.job_id;
+    pollTimer = setInterval(async () => {
+        try {
+            const j = await api('/api/jobs/' + jobId);
+            const pct = Math.round((j.progress || 0) * 100);
+            $('jobStatus').textContent = `Writer [${j.status}] ${pct}% — ${j.message || ''}`;
+            if (j.status === 'done' || j.status === 'error' || j.status === 'cancelled') {
+                clearInterval(pollTimer); pollTimer = null;
+                if (j.status === 'done') {
+                    const res = j.result || {};
+                    $('jobStatus').textContent = res.dispatched
+                        ? 'Dispatched to the writer agent. It is fetching sources, grounding facts, drafting & fact-checking — refresh script.md / artifacts in a bit.'
+                        : ('Dispatch failed: ' + (res.dispatch_error || 'unknown'));
+                }
+                select(current);
+            }
+        } catch (e) { clearInterval(pollTimer); pollTimer = null; $('jobStatus').textContent = 'Job poll error: ' + e.message; }
+    }, 1000);
+}
+
+async function loadScript() {
+    try {
+        const r = await api('/api/script-projects/' + current + '/script');
+        $('scriptView').textContent = r.content;
+        $('scriptView').classList.remove('empty');
+    } catch { $('scriptView').textContent = 'Not written yet.'; $('scriptView').classList.add('empty'); }
+}
+
+async function deleteProject() {
+    if (!confirm('Delete this project and its folder?')) return;
+    await api('/api/script-projects/' + current, { method: 'DELETE' });
+    current = null;
+    $('detail').classList.add('hidden'); $('detailEmpty').classList.remove('hidden');
+    loadProjects();
+}
+
+loadStyles();
+loadProjects();
+</script>
+</body>
+</html>

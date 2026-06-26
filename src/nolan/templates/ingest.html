@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add to Library · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    .wrap { max-width: 640px; margin: 32px auto; padding: 0 20px; }
+    h1 { font-size: 28px; margin-bottom: 6px; }
+    .sub { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+    .row { display: flex; gap: 12px; }
+    .row > * { flex: 1; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab { padding: 8px 16px; border-radius: 8px; background: var(--bg-tertiary); cursor: pointer; font-size: 14px; }
+    .tab.active { background: var(--accent); color: #fff; }
+    .hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="library"></script>
+  <div class="wrap">
+    <h1>Add to Library</h1>
+    <div class="sub">Download a YouTube video or index a local file. Frames are analyzed by your chosen vision model and stored as searchable segments.</div>
+    <div class="card">
+      <div class="tabs">
+        <div class="tab active" data-src="youtube" onclick="setSrc('youtube')">YouTube URL</div>
+        <div class="tab" data-src="file" onclick="setSrc('file')">Local file</div>
+      </div>
+
+      <div class="field">
+        <label id="targetLabel">YouTube URL</label>
+        <input id="target" placeholder="https://www.youtube.com/watch?v=…">
+        <div class="hint" id="targetHint">Video downloads into projects/&lt;project&gt;/source (or _library if blank).</div>
+      </div>
+
+      <div class="field">
+        <label>Project (optional)</label>
+        <input id="project" placeholder="e.g. venezuela — groups the download under that project folder">
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Vision provider</label>
+          <select id="provider" onchange="onProvider()">
+            <option value="openrouter" selected>OpenRouter (default)</option>
+            <option value="gemini">Gemini</option>
+            <option value="ollama">Ollama (local)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <input id="model" placeholder="qwen/qwen3.7-plus" value="qwen/qwen3.7-plus">
+        </div>
+      </div>
+
+      <div class="field" id="reasoningField">
+        <label><input type="checkbox" id="reasoning" style="width:auto;margin-right:8px;"> Enable reasoning (slower, ~6x; usually leave off)</label>
+      </div>
+
+      <div class="field">
+        <label><input type="checkbox" id="force" style="width:auto;margin-right:8px;"> Force re-index (re-analyze even if already in the library — needed to pick up newly downloaded subtitles)</label>
+      </div>
+
+      <div class="field">
+        <label><input type="checkbox" id="whisper" checked style="width:auto;margin-right:8px;"> Transcribe with Whisper if no subtitle is found (English/Chinese auto-detected)</label>
+      </div>
+
+      <button class="btn" id="go" onclick="startIngest()">Index video</button>
+      <div class="job-widget" id="job" style="display:none;"></div>
+    </div>
+  </div>
+
+  <script src="/static/jobs.js"></script>
+  <script>
+    var srcType = "youtube";
+    var modelDefaults = { openrouter: "qwen/qwen3.7-plus", gemini: "gemini-3-flash-preview", ollama: "qwen3-vl:8b" };
+    function setSrc(s) {
+      srcType = s;
+      document.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("active", t.dataset.src === s); });
+      document.getElementById("targetLabel").textContent = s === "youtube" ? "YouTube URL" : "Local file path";
+      document.getElementById("target").placeholder = s === "youtube" ? "https://www.youtube.com/watch?v=…" : "D:\\\\path\\\\to\\\\video.mp4";
+      document.getElementById("targetHint").style.display = s === "youtube" ? "block" : "none";
+    }
+    function onProvider() {
+      var p = document.getElementById("provider").value;
+      document.getElementById("model").value = modelDefaults[p] || "";
+      document.getElementById("reasoningField").style.display = (p === "openrouter") ? "block" : "none";
+    }
+    function startIngest() {
+      var btn = document.getElementById("go");
+      btn.disabled = true; btn.textContent = "Indexing…";
+      NolanJobs.start("/api/ingest", {
+        source_type: srcType,
+        target: document.getElementById("target").value,
+        project: document.getElementById("project").value,
+        provider: document.getElementById("provider").value,
+        model: document.getElementById("model").value,
+        reasoning_enabled: document.getElementById("reasoning").checked,
+        force: document.getElementById("force").checked,
+        whisper_fallback: document.getElementById("whisper").checked
+      }, {
+        into: document.getElementById("job"),
+        onDone: function (job) {
+          btn.disabled = false; btn.textContent = "Index video";
+          if (job.status === "done") {
+            btn.textContent = "✓ Indexed — add another";
+          }
+        }
+      }).catch(function (e) {
+        btn.disabled = false; btn.textContent = "Index video";
+        alert("Failed to start: " + e.message);
+      });
+    }
+    onProvider();
+  </script>
+</body>
+</html>

@@ -11,6 +11,8 @@ The rendering system is built around:
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple, Union
 from pathlib import Path
+import re
+import string
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
@@ -209,6 +211,30 @@ class BaseRenderer:
         }
         percent = percentages.get(style, 0.75)
         return int(self.width * percent)
+
+    def fit_font_size(
+        self,
+        text: str,
+        font_path: str,
+        desired_size: int,
+        max_width: Optional[int] = None,
+        min_size: int = 24,
+    ) -> int:
+        """Shrink `desired_size` until `text` fits within `max_width`.
+
+        Returns the largest size <= desired_size whose rendered width fits, down to
+        `min_size`. Used so long single-line titles auto-fit instead of clipping.
+        """
+        if max_width is None:
+            max_width = int(self.width * 0.85)
+        size = int(desired_size)
+        while size > min_size:
+            font = self.get_font(font_path, size)
+            bbox = font.getbbox(text)
+            if (bbox[2] - bbox[0]) <= max_width:
+                break
+            size -= 4
+        return size
 
     def resolve_position(
         self,
@@ -573,12 +599,175 @@ class BaseRenderer:
         # Render glow using transformed method (handles blur)
         self._render_element_transformed(main_img, element, glow_props, 1.0)
 
+    def _layout_text_lines(self, draw, element, props):
+        """Return (font, lines, line_height) mirroring _render_text's layout.
+
+        lines is a list of (line_text, line_x, line_y) where (line_x, line_y) is
+        the top-left at which the glyphs are drawn. Used by annotations that need
+        per-line / sub-span geometry (e.g. the highlight marker).
+        """
+        text = props.get('visible_text', props.get('text', ''))
+        font_path = element.font_path or "C:/Windows/Fonts/arialbd.ttf"
+        base_font_size = int(props['font_size'] * props.get('scale', 1.0))
+        max_width = props.get('max_width', 0)
+        max_lines = props.get('max_lines', 0)
+        text_align = props.get('text_align', 'center')
+
+        if max_width > 0:
+            from .text_layout import TextLayout
+            layout = TextLayout(
+                text=text, font_path=font_path, font_size=base_font_size,
+                max_width=max_width, max_lines=max_lines if max_lines > 0 else 0,
+            )
+            if not layout.lines:
+                return None, [], 0
+            font = self.get_font(font_path, layout.final_font_size)
+            x, y = self.resolve_position(
+                props['x'], props['y'], max_width, layout.total_height,
+                position=props.get('position'))
+            x += int(props.get('x_offset', 0))
+            y += int(props.get('y_offset', 0))
+
+            if text_align == 'center':
+                block_center_x = x + max_width // 2
+            elif text_align == 'right':
+                block_center_x = x + max_width
+            else:
+                block_center_x = x
+
+            lines = []
+            for i, line in enumerate(layout.lines):
+                line_y = y + (i * layout.line_height)
+                lbbox = draw.textbbox((0, 0), line, font=font)
+                lwidth = lbbox[2] - lbbox[0]
+                if text_align == 'center':
+                    line_x = block_center_x - lwidth // 2
+                elif text_align == 'right':
+                    line_x = block_center_x - lwidth
+                else:
+                    line_x = block_center_x
+                lines.append((line, line_x, line_y))
+            return font, lines, layout.line_height
+        else:
+            font = self.get_font(font_path, base_font_size)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+            x, y = self.resolve_position(
+                props['x'], props['y'], tw, th, position=props.get('position'))
+            x += int(props.get('x_offset', 0))
+            y += int(props.get('y_offset', 0))
+            ascent, descent = font.getmetrics()
+            return font, [(text, x, y)], ascent + descent
+
+    def _highlight_segments(self, draw, font, lines, phrase):
+        """Map ``phrase`` to swept pixel segments over the laid-out lines.
+
+        Returns a list of (x, y_top, width, height) rectangles covering the
+        matched words. Matching is word-level and wrap-aware (a phrase may span
+        lines). Returns None if the phrase isn't found (caller falls back to
+        sweeping the whole element).
+        """
+        if not phrase:
+            return None
+
+        def norm(w):
+            return w.strip(string.punctuation).lower()
+
+        # Flatten lines into tokens, remembering line index + char span.
+        tokens = []  # (line_idx, norm_word, char_start, char_end)
+        for li, (line, _lx, _ly) in enumerate(lines):
+            for m in re.finditer(r'\S+', line):
+                tokens.append((li, norm(m.group(0)), m.start(), m.end()))
+
+        target = [norm(w) for w in phrase.split() if norm(w)]
+        if not target or not tokens:
+            return None
+
+        # Find the consecutive token run matching the phrase words.
+        run = None
+        for i in range(len(tokens) - len(target) + 1):
+            if [tokens[i + j][1] for j in range(len(target))] == target:
+                run = tokens[i:i + len(target)]
+                break
+        if run is None:
+            return None
+
+        ascent, descent = font.getmetrics()
+        text_h = ascent + descent
+        # Group matched tokens by line, then build one rect per line span.
+        segs = []
+        by_line = {}
+        for (li, _w, cs, ce) in run:
+            lo, hi = by_line.get(li, (cs, ce))
+            by_line[li] = (min(lo, cs), max(hi, ce))
+        for li, (cs, ce) in sorted(by_line.items()):
+            line, lx, ly = lines[li]
+            px_start = draw.textlength(line[:cs], font=font)
+            px_end = draw.textlength(line[:ce], font=font)
+            segs.append((int(lx + px_start), int(ly), int(px_end - px_start), text_h))
+        return segs
+
+    def _render_highlight_marker(self, draw, element, props, color, progress, alpha, img):
+        """Composite a translucent marker bar swept left->right over the text.
+
+        Highlights the phrase in ``underline_highlight_text`` if set (word-level,
+        wrap-aware), otherwise the whole element. Drawn as a separate alpha layer
+        so the fill blends over the glyphs instead of replacing them.
+        """
+        if img is None or progress <= 0:
+            return
+
+        font, lines, _lh = self._layout_text_lines(draw, element, props)
+        if not lines:
+            return
+
+        segs = self._highlight_segments(
+            draw, font, lines, props.get('underline_highlight_text'))
+        if segs is None:
+            # Fall back to sweeping every line of the element.
+            ascent, descent = font.getmetrics()
+            text_h = ascent + descent
+            segs = []
+            for (line, lx, ly) in lines:
+                lw = int(draw.textlength(line, font=font))
+                if lw > 0:
+                    segs.append((lx, ly, lw, text_h))
+
+        # Marker overshoot padding so it reads like a drawn highlighter.
+        pad_x, pad_y = 4, 3
+        segs = [(x - pad_x, y - pad_y, w + 2 * pad_x, h + 2 * pad_y)
+                for (x, y, w, h) in segs]
+
+        total = sum(w for (_x, _y, w, _h) in segs)
+        if total <= 0:
+            return
+        reveal = total * progress
+
+        opacity = props.get('underline_opacity', 0.45)
+        fill_alpha = max(0, min(255, int(255 * opacity * alpha)))
+        if fill_alpha <= 0:
+            return
+        fill = tuple(color[:3]) + (fill_alpha,)
+
+        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        odraw = ImageDraw.Draw(overlay)
+        budget = reveal
+        for (x, y, w, h) in segs:
+            if budget <= 0:
+                break
+            seg_w = int(min(w, budget))
+            if seg_w > 0:
+                odraw.rectangle([x, y, x + seg_w, y + h], fill=fill)
+            budget -= w
+        img.alpha_composite(overlay)
+
     def _render_text_annotations(
         self,
         draw: ImageDraw.ImageDraw,
         element: Element,
         props: Dict[str, Any],
         global_alpha: float,
+        img: Image.Image = None,
     ):
         """Render text annotations like underline, strikethrough, circle."""
         text = props.get('visible_text', props.get('text', ''))
@@ -612,16 +801,13 @@ class BaseRenderer:
             ul_offset = props.get('underline_offset', 5)
             ul_style = props.get('underline_style', 'line')
 
-            line_y = y + text_height + ul_offset
-            line_width = int(text_width * underline_progress)
-
             if ul_style == 'highlight':
-                # Semi-transparent highlight bar
-                highlight_color = ul_color + (int(150 * alpha),)
-                highlight_img = Image.new('RGBA', (line_width, ul_thickness), highlight_color)
-                # Note: Would need to composite onto main image
+                self._render_highlight_marker(
+                    draw, element, props, ul_color, underline_progress, alpha, img)
             else:
-                # Simple line
+                # Simple line below the text baseline
+                line_y = y + text_height + ul_offset
+                line_width = int(text_width * underline_progress)
                 blended = tuple(int(c * alpha) for c in ul_color)
                 draw.line([(x, line_y), (x + line_width, line_y)],
                          fill=blended, width=ul_thickness)
@@ -781,9 +967,15 @@ class BaseRenderer:
                         # Draw semi-transparent black line
                         draw.line([(0, y), (self.width, y)], fill=(0, 0, 0), width=1)
 
-    def render_frame(self, t: float) -> np.ndarray:
-        """Render a single frame at time t."""
-        img = Image.new('RGBA', (self.width, self.height), self.bg_color + (255,))
+    def _compose_frame(self, t: float, transparent: bool = False) -> Image.Image:
+        """Compose a single RGBA frame at time t.
+
+        When `transparent` is True the background is fully transparent so the
+        frame can be composited over a b-roll clip; otherwise it is the opaque
+        `bg_color`. Element drawing (and per-element fade) is identical either way.
+        """
+        bg = (0, 0, 0, 0) if transparent else self.bg_color + (255,)
+        img = Image.new('RGBA', (self.width, self.height), bg)
         draw = ImageDraw.Draw(img)
 
         global_alpha = self.timeline.get_global_alpha(t)
@@ -811,13 +1003,23 @@ class BaseRenderer:
 
             # Render text annotations (underline, strikethrough, etc.)
             if element.element_type == 'text':
-                self._render_text_annotations(draw, element, props, global_alpha)
+                self._render_text_annotations(draw, element, props, global_alpha, img)
 
         # Render frame-level effects (letterbox, scanlines)
         self._render_frame_effects(img, draw, t, global_alpha)
+        return img
 
-        # Convert back to RGB for video encoding
-        return np.array(img.convert('RGB'))
+    def render_frame(self, t: float) -> np.ndarray:
+        """Render a single opaque RGB frame at time t (for standalone scenes)."""
+        return np.array(self._compose_frame(t, transparent=False).convert('RGB'))
+
+    def render_frame_rgba(self, t: float) -> np.ndarray:
+        """Render a single RGBA frame with a transparent background.
+
+        Used by the compositor to overlay this scene (counter, lower-third,
+        caption, ...) on top of a b-roll clip.
+        """
+        return np.array(self._compose_frame(t, transparent=True))
 
     def render(
         self,

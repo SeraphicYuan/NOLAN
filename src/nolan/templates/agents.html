@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOLAN Agents</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #0ea5e9;
+    --accent-hover: #38bdf8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --purple: #a78bfa;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 32px 24px 64px;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+.header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 32px; }
+.header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.header .subtitle { color: var(--text-secondary); font-size: 13px; }
+.toolbar { display: flex; gap: 8px; align-items: center; }
+.toolbar a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--bg-tertiary);
+}
+.toolbar a:hover { color: var(--text-primary); border-color: var(--accent); }
+.refresh-status { font-size: 12px; color: var(--text-muted); }
+
+.empty {
+    text-align: center;
+    padding: 80px 24px;
+    color: var(--text-muted);
+    border: 1px dashed var(--bg-tertiary);
+    border-radius: 16px;
+}
+
+.project {
+    background: var(--bg-secondary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+.project-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--bg-tertiary);
+    cursor: pointer;
+    user-select: none;
+}
+.project-header:hover { background: rgba(14, 165, 233, 0.04); }
+.project-name { font-size: 15px; font-weight: 600; }
+.project-slug { font-size: 12px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+.spacer { flex: 1; }
+.status-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+.status-fresh { background: rgba(148, 163, 184, 0.15); color: var(--text-secondary); }
+.status-running { background: rgba(14, 165, 233, 0.18); color: var(--accent-hover); }
+.status-running::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--accent-hover);
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.status-awaiting_review { background: rgba(245, 158, 11, 0.18); color: var(--warning); }
+.status-error { background: rgba(239, 68, 68, 0.18); color: var(--danger); }
+.status-completed { background: rgba(34, 197, 94, 0.18); color: var(--success); }
+.iteration-pill {
+    font-size: 11px;
+    color: var(--text-muted);
+    border: 1px solid var(--bg-tertiary);
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+.chevron {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.2s;
+}
+.project.expanded .chevron { transform: rotate(90deg); }
+
+.project-body {
+    display: none;
+    padding: 20px;
+}
+.project.expanded .project-body { display: block; }
+
+.row { display: grid; grid-template-columns: 200px 1fr; gap: 16px; margin-bottom: 12px; }
+.row .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding-top: 4px;
+}
+.row .value { font-size: 14px; color: var(--text-primary); }
+.row .value .secondary { color: var(--text-secondary); font-size: 12px; }
+.row .value code {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.history { margin-top: 16px; }
+.history h4 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+.history-item {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+.history-item:last-child { border-bottom: none; }
+.history-num { color: var(--text-muted); font-family: ui-monospace, monospace; }
+.history-name { color: var(--text-primary); }
+.history-time { color: var(--text-muted); font-size: 11px; font-family: ui-monospace, monospace; }
+.history-status-completed { color: var(--success); }
+.history-status-error { color: var(--danger); }
+.history-status-in_progress { color: var(--accent); }
+
+.artifact-toggle {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    margin-left: 32px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--accent);
+    font-size: 12px;
+    text-decoration: none;
+}
+.artifact-toggle:hover { color: var(--accent-hover); }
+.refine-btn {
+    margin-left: 8px;
+    padding: 2px 10px;
+    font-size: 11px;
+    background: rgba(167, 139, 250, 0.12);
+    border: 1px solid var(--purple);
+    color: var(--purple);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.refine-btn:hover { background: var(--purple); color: var(--bg-primary); }
+.refine-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: transparent;
+}
+.feedback-counter {
+    color: var(--purple);
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 6px;
+}
+.artifact-panel {
+    grid-column: 1 / -1;
+    margin: 8px 0 8px 32px;
+    padding: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 8px;
+    display: none;
+    overflow: hidden;
+}
+.artifact-panel.expanded { display: block; }
+.artifact-file { border-bottom: 1px solid var(--bg-tertiary); }
+.artifact-file:last-child { border-bottom: none; }
+.artifact-header {
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: ui-monospace, monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.artifact-header .artifact-name { color: var(--text-primary); font-weight: 600; }
+.artifact-header .artifact-meta { color: var(--text-muted); font-size: 11px; }
+.artifact-body { padding: 14px 18px; }
+.artifact-body.markdown { color: var(--text-primary); font-size: 13px; line-height: 1.6; }
+.artifact-body.markdown h2 { font-size: 18px; margin: 16px 0 8px; color: var(--text-primary); }
+.artifact-body.markdown h2:first-child { margin-top: 0; }
+.artifact-body.markdown h3 { font-size: 14px; margin: 14px 0 6px; color: var(--text-primary); text-transform: none; letter-spacing: 0; }
+.artifact-body.markdown h4 { font-size: 13px; margin: 12px 0 6px; color: var(--text-secondary); }
+.artifact-body.markdown p { margin: 8px 0; }
+.artifact-body.markdown ul { margin: 8px 0; padding-left: 22px; }
+.artifact-body.markdown li { margin: 3px 0; }
+.artifact-body.markdown code {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    background: var(--bg-tertiary);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+.artifact-body.markdown pre {
+    background: var(--bg-secondary);
+    padding: 10px 14px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 8px 0;
+}
+.artifact-body.markdown pre code { background: none; padding: 0; font-size: 12px; }
+.artifact-body.markdown strong { color: var(--text-primary); font-weight: 600; }
+.artifact-body.markdown table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 12px;
+}
+.artifact-body.markdown th, .artifact-body.markdown td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--bg-tertiary);
+    vertical-align: top;
+}
+.artifact-body.markdown th {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 10px;
+}
+.artifact-link {
+    padding: 10px 14px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+}
+.artifact-link code { color: var(--accent-hover); }
+
+.checkpoint-block {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    color: var(--text-secondary);
+}
+
+.stream-block {
+    margin-top: 16px;
+    background: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 8px;
+    max-height: 480px;
+    overflow-y: auto;
+}
+.stream-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--bg-tertiary);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--bg-secondary);
+    position: sticky;
+    top: 0;
+}
+.stream-header .stream-meta { font-size: 11px; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+.stream-events { padding: 8px 14px; font-size: 13px; line-height: 1.5; }
+.stream-empty { padding: 20px; text-align: center; color: var(--text-muted); font-size: 12px; }
+.stream-event { padding: 6px 0; border-bottom: 1px dashed rgba(148, 163, 184, 0.1); }
+.stream-event:last-child { border-bottom: none; }
+.stream-init { color: var(--text-secondary); font-size: 12px; }
+.stream-init code { color: var(--accent-hover); font-size: 11px; }
+.stream-text { color: var(--text-primary); white-space: pre-wrap; }
+.stream-thinking { color: var(--text-muted); font-style: italic; font-size: 12px; padding-left: 12px; border-left: 2px solid var(--bg-tertiary); }
+.stream-tool {
+    background: var(--bg-secondary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+.stream-tool:hover { border-color: var(--accent); }
+.stream-tool .tool-name { color: var(--accent-hover); font-weight: 600; }
+.stream-tool .tool-summary { color: var(--text-secondary); }
+.stream-tool .tool-detail {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--bg-tertiary);
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: pre-wrap;
+    max-height: 240px;
+    overflow-y: auto;
+    display: none;
+}
+.stream-tool.expanded .tool-detail { display: block; }
+.stream-tool.error { border-color: var(--danger); }
+.stream-tool.error .tool-name { color: var(--danger); }
+.stream-result {
+    color: var(--success);
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+    padding: 8px 12px;
+    background: rgba(34, 197, 94, 0.06);
+    border-left: 3px solid var(--success);
+    border-radius: 0 6px 6px 0;
+}
+.stream-result.error { color: var(--danger); background: rgba(239, 68, 68, 0.06); border-left-color: var(--danger); }
+
+.actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--bg-tertiary);
+}
+button {
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--bg-tertiary);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transition: all 0.15s;
+}
+button:hover { background: var(--accent); border-color: var(--accent); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); }
+button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+.feedback-box { margin-top: 12px; }
+.feedback-box textarea {
+    width: 100%;
+    min-height: 80px;
+    background: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 10px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    resize: vertical;
+}
+.feedback-box textarea:focus { outline: none; border-color: var(--accent); }
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--accent);
+    color: var(--text-primary);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.error { border-color: var(--danger); }
+</style>
+</head>
+<body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="agents"></script>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>Agents</h1>
+            <div class="subtitle">Orchestrator state across projects</div>
+        </div>
+        <div class="toolbar">
+            <span class="refresh-status" id="refresh-status">—</span>
+            <a href="/">Hub</a>
+            <a href="/library">Library</a>
+            <a href="/showcase">Showcase</a>
+        </div>
+    </div>
+    <div id="projects"><div class="empty">Loading...</div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const POLL_INTERVAL_RUNNING = 2500;
+const POLL_INTERVAL_IDLE = 12000;
+let pollTimer = null;
+let expandedSlugs = new Set();
+
+function fmtTs(iso) {
+    if (!iso) return '—';
+    return iso.replace('T', ' ').replace(/\+00:00$/, 'Z');
+}
+
+function elapsedBetween(a, b) {
+    if (!a || !b) return '';
+    const ms = new Date(b) - new Date(a);
+    if (isNaN(ms) || ms < 0) return '';
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms/1000).toFixed(1)}s`;
+    return `${(ms/60000).toFixed(1)}m`;
+}
+
+function statusClass(status) {
+    return 'status-' + (status || 'fresh').replace(/[^a-z_]/gi, '');
+}
+
+function escapeHtml(s) {
+    return (s || '').replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+}
+
+async function fetchAgents() {
+    const res = await fetch('/api/agents');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+}
+
+async function fetchCheckpoint(slug) {
+    const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/checkpoint`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.body || null;
+}
+
+async function fetchStream(slug) {
+    const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/stream`);
+    if (!res.ok) return null;
+    return await res.json();
+}
+
+function fmtToolInputSummary(name, input) {
+    if (!input) return '';
+    const fields = ['file_path', 'pattern', 'command', 'path', 'query'];
+    for (const f of fields) {
+        if (input[f]) return String(input[f]).slice(0, 90);
+    }
+    const keys = Object.keys(input);
+    if (keys.length === 0) return '';
+    return keys.map(k => `${k}=${String(input[k]).slice(0, 40)}`).join(', ').slice(0, 90);
+}
+
+function fmtMs(ms) {
+    if (ms == null) return '';
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms/1000).toFixed(1)}s`;
+    return `${(ms/60000).toFixed(1)}m`;
+}
+
+function renderStreamEvent(ev) {
+    const k = ev.kind;
+    if (k === 'init') {
+        const d = ev.data || {};
+        return `<div class="stream-event stream-init">
+            <code>${escapeHtml(d.model || '?')}</code> ·
+            permission_mode=<code>${escapeHtml(d.permission_mode || '?')}</code> ·
+            cli_v=<code>${escapeHtml(d.claude_code_version || '?')}</code> ·
+            cwd=<code>${escapeHtml(d.cwd || '?')}</code>
+        </div>`;
+    }
+    if (k === 'text') {
+        return `<div class="stream-event stream-text">${escapeHtml(ev.text || '')}</div>`;
+    }
+    if (k === 'thinking') {
+        return `<div class="stream-event stream-thinking">${escapeHtml(ev.text || '')}</div>`;
+    }
+    if (k === 'tool_use') {
+        const summary = fmtToolInputSummary(ev.name, ev.input);
+        const inputJson = JSON.stringify(ev.input || {}, null, 2);
+        return `<div class="stream-event">
+            <div class="stream-tool" data-toolid="${escapeHtml(ev.id || '')}" onclick="toggleStreamTool(this)">
+                🔧 <span class="tool-name">${escapeHtml(ev.name || '?')}</span>
+                <span class="tool-summary">${escapeHtml(summary)}</span>
+                <div class="tool-detail">${escapeHtml(inputJson)}</div>
+            </div>
+        </div>`;
+    }
+    if (k === 'tool_result') {
+        const text = (ev.text || '').slice(0, 600);
+        const cls = ev.is_error ? 'error' : '';
+        return `<div class="stream-event">
+            <div class="stream-tool ${cls}" data-resultfor="${escapeHtml(ev.tool_use_id || '')}" onclick="toggleStreamTool(this)">
+                ${ev.is_error ? '❌' : '↳'} <span class="tool-summary">tool_result${ev.is_error ? ' (error)' : ''}</span>
+                <div class="tool-detail">${escapeHtml(text)}</div>
+            </div>
+        </div>`;
+    }
+    if (k === 'result') {
+        const cls = ev.is_error ? 'error' : '';
+        return `<div class="stream-event"><div class="stream-result ${cls}">
+            ${ev.is_error ? '✗ failed' : '✓ done'} ·
+            ${fmtMs(ev.duration_ms)} (api ${fmtMs(ev.duration_api_ms)}) ·
+            ${ev.num_turns || 0} turns ·
+            subtype=${escapeHtml(ev.subtype || '?')}
+        </div></div>`;
+    }
+    return '';
+}
+
+function toggleStreamTool(el) {
+    el.classList.toggle('expanded');
+}
+
+function renderStreamPanel(slug, data) {
+    if (!data || !data.modules || data.modules.length === 0) {
+        return '';
+    }
+    const blocks = data.modules.map(m => {
+        if (!m.events.length) {
+            return `<div class="stream-block">
+                <div class="stream-header">
+                    Live output · ${escapeHtml(m.agent)}
+                    <span class="spacer"></span>
+                    <span class="stream-meta">no events yet</span>
+                </div>
+                <div class="stream-empty">Waiting for the first event…</div>
+            </div>`;
+        }
+        const eventsHtml = m.events.map(renderStreamEvent).join('');
+        const finishedLabel = m.finished ? '✓ finished' : '⏳ running…';
+        return `<div class="stream-block">
+            <div class="stream-header">
+                Live output · ${escapeHtml(m.agent)}
+                <span class="spacer"></span>
+                <span class="stream-meta">${m.events.length} events · ${finishedLabel} · ${(m.log_size_bytes/1024).toFixed(1)} KB</span>
+            </div>
+            <div class="stream-events">${eventsHtml}</div>
+        </div>`;
+    });
+    return blocks.join('');
+}
+
+// --- Tiny markdown renderer (no external deps) ---
+function inlineMd(text) {
+    return escapeHtml(text)
+        .replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+function renderMdTable(lines) {
+    const cleaned = lines.filter(l => !/^\|[-: |]+\|$/.test(l));
+    if (!cleaned.length) return '';
+    let html = '<table>';
+    cleaned.forEach((line, i) => {
+        const cells = line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+        const tag = i === 0 ? 'th' : 'td';
+        html += '<tr>' + cells.map(c => `<${tag}>${inlineMd(c)}</${tag}>`).join('') + '</tr>';
+    });
+    return html + '</table>';
+}
+
+function renderMarkdown(md) {
+    if (!md) return '';
+    const lines = md.split(/\r?\n/);
+    const out = [];
+    let inList = false, inCode = false, inTable = false;
+    let tableBuf = [];
+    const flushList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+    const flushTable = () => { if (inTable) { out.push(renderMdTable(tableBuf)); tableBuf = []; inTable = false; } };
+    for (const raw of lines) {
+        const line = raw;
+        if (line.startsWith('```')) {
+            flushList(); flushTable();
+            if (inCode) { out.push('</code></pre>'); inCode = false; }
+            else { out.push('<pre><code>'); inCode = true; }
+            continue;
+        }
+        if (inCode) { out.push(escapeHtml(line)); continue; }
+        if (line.startsWith('|') && line.includes('|', 1)) {
+            flushList();
+            tableBuf.push(line);
+            inTable = true;
+            continue;
+        }
+        if (inTable) flushTable();
+        if (/^### /.test(line)) { flushList(); out.push(`<h4>${inlineMd(line.slice(4))}</h4>`); continue; }
+        if (/^## /.test(line))  { flushList(); out.push(`<h3>${inlineMd(line.slice(3))}</h3>`); continue; }
+        if (/^# /.test(line))   { flushList(); out.push(`<h2>${inlineMd(line.slice(2))}</h2>`); continue; }
+        if (/^- /.test(line))   {
+            if (!inList) { out.push('<ul>'); inList = true; }
+            out.push(`<li>${inlineMd(line.slice(2))}</li>`);
+            continue;
+        }
+        flushList();
+        if (line.trim() === '') { out.push(''); continue; }
+        out.push(`<p>${inlineMd(line)}</p>`);
+    }
+    flushList(); flushTable();
+    if (inCode) out.push('</code></pre>');
+    return out.join('\n');
+}
+
+function fmtBytes(n) {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024*1024) return `${(n/1024).toFixed(1)} KB`;
+    return `${(n/(1024*1024)).toFixed(1)} MB`;
+}
+
+function snapshotForStep(snapshots, step) {
+    if (!snapshots) return null;
+    const n = String(step.step_num).padStart(2, '0');
+    const expected = `step_${n}_${step.name}`;
+    return snapshots.find(s => s.name === expected) || null;
+}
+
+function renderArtifactFile(file) {
+    const meta = `<span class="artifact-meta">${escapeHtml(file.kind)} · ${fmtBytes(file.size_bytes)}</span>`;
+    const header = `<div class="artifact-header">
+        <span class="artifact-name">${escapeHtml(file.name)}</span>
+        ${meta}
+    </div>`;
+    if (file.kind === 'markdown' && typeof file.content === 'string') {
+        return `<div class="artifact-file">
+            ${header}
+            <div class="artifact-body markdown">${renderMarkdown(file.content)}</div>
+        </div>`;
+    }
+    return `<div class="artifact-file">
+        ${header}
+        <div class="artifact-link">open in editor: <code>${escapeHtml(file.path)}</code></div>
+    </div>`;
+}
+
+function renderArtifactPanel(panelId, snapshot) {
+    if (!snapshot || !snapshot.files || !snapshot.files.length) {
+        return `<div class="artifact-panel" id="${panelId}"><div class="artifact-link">no snapshot files for this step</div></div>`;
+    }
+    const filesHtml = snapshot.files.map(renderArtifactFile).join('');
+    return `<div class="artifact-panel" id="${panelId}">${filesHtml}</div>`;
+}
+
+function toggleArtifactPanel(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('expanded');
+}
+
+// Steps that support refine via the UI button. Add others as their refine
+// path lands in the Director.
+const REFINABLE_STEPS = new Set([
+    'match_and_adapt_style', 'select_clips', 'slide_designer',
+]);
+
+function renderHistory(history, snapshots, project) {
+    if (!history.length) return '<div class="secondary">No steps yet</div>';
+    const unconsumed = (project && project.unconsumed_feedback_count) || 0;
+    return history.map(h => {
+        const dur = elapsedBetween(h.started_at, h.finished_at);
+        const snap = snapshotForStep(snapshots, h);
+        const panelId = `artifact-${h.step_num}`;
+        const fileCount = snap ? snap.files.length : 0;
+        const toggle = fileCount > 0
+            ? `<a class="artifact-toggle" onclick="toggleArtifactPanel('${panelId}')">▸ Output (${fileCount} file${fileCount===1?'':'s'})</a>`
+            : '';
+        const canRefine = REFINABLE_STEPS.has(h.name) && h.status === 'completed';
+        let refineBtn = '';
+        if (canRefine) {
+            const enabled = unconsumed > 0;
+            const title = enabled
+                ? `Apply ${unconsumed} unconsumed feedback file${unconsumed===1?'':'s'} to this step`
+                : 'No unconsumed feedback. Write feedback below first.';
+            refineBtn = `<button class="refine-btn" ${enabled ? '' : 'disabled'}
+                onclick="refineStep('${escapeHtml(project.slug)}', '${escapeHtml(h.name)}')"
+                title="${escapeHtml(title)}">Refine${enabled ? ` (${unconsumed})` : ''}</button>`;
+        }
+        return `
+        <div class="history-item">
+            <span class="history-num">#${h.step_num}</span>
+            <span class="history-name">
+                ${escapeHtml(h.name)}
+                <span class="history-status-${h.status}"> · ${escapeHtml(h.status)}</span>
+                ${h.notes ? `<div class="secondary">${escapeHtml(h.notes)}</div>` : ''}
+            </span>
+            <span class="history-time">${fmtTs(h.started_at)}${dur ? ` (${dur})` : ''}${refineBtn}</span>
+            ${toggle}
+            ${snap ? renderArtifactPanel(panelId, snap) : ''}
+        </div>`;
+    }).join('');
+}
+
+async function refineStep(slug, target) {
+    try {
+        const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/refine`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target }),
+        });
+        if (!res.ok) {
+            const t = await res.text();
+            throw new Error(t || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        showToast(`Started refine of ${target} (pid ${data.pid})`);
+        refresh();
+    } catch (err) {
+        showToast(`Failed to refine: ${err.message}`, true);
+    }
+}
+
+function renderProvenance(prov) {
+    const rows = [];
+    if (prov.style_template_id) {
+        rows.push(`Style: <code>${escapeHtml(prov.style_template_id)}</code> v${prov.style_template_version} (score ${prov.style_match_score})`);
+    } else if (prov.style_was_fallback) {
+        rows.push('Style: <span class="secondary">fallback (invented)</span>');
+    } else {
+        rows.push('<span class="secondary">— not yet matched —</span>');
+    }
+    if (prov.scene_plan_template_id) {
+        rows.push(`Scene-plan: <code>${escapeHtml(prov.scene_plan_template_id)}</code> v${prov.scene_plan_template_version} (score ${prov.scene_plan_match_score})`);
+    } else if (prov.scene_plan_was_fallback) {
+        rows.push('Scene-plan: <span class="secondary">fallback (invented)</span>');
+    }
+    return rows.join('<br>');
+}
+
+function renderProject(p, checkpointBody, streamData) {
+    const expanded = expandedSlugs.has(p.slug);
+    const isRunning = p.status === 'running';
+    const checkpointHtml = p.has_checkpoint && expanded && checkpointBody
+        ? `<div class="row"><div class="label">Latest Checkpoint</div><div class="value"><div class="checkpoint-block">${escapeHtml(checkpointBody)}</div></div></div>`
+        : '';
+    const streamHtml = expanded && streamData ? renderStreamPanel(p.slug, streamData) : '';
+
+    return `
+    <div class="project ${expanded ? 'expanded' : ''}" data-slug="${escapeHtml(p.slug)}">
+        <div class="project-header" onclick="toggleProject('${escapeHtml(p.slug)}')">
+            <span class="chevron">▶</span>
+            <span class="project-name">${escapeHtml(p.slug)}</span>
+            <span class="project-slug">${escapeHtml(p.path)}</span>
+            <span class="spacer"></span>
+            <span class="iteration-pill">iter ${p.iteration_count}</span>
+            <span class="status-badge ${statusClass(p.status)}">${escapeHtml(p.status)}</span>
+        </div>
+        <div class="project-body">
+            <div class="row"><div class="label">Current Step</div><div class="value"><code>${escapeHtml(p.current_step)}</code></div></div>
+            <div class="row"><div class="label">Last Updated</div><div class="value">${fmtTs(p.last_updated)}</div></div>
+            <div class="row"><div class="label">Templates</div><div class="value">${renderProvenance(p.template_provenance)}</div></div>
+            <div class="row"><div class="label">Style Guide</div><div class="value">${p.has_style_guide ? '<code>style_guide.md</code> present' : '<span class="secondary">not yet generated</span>'}</div></div>
+            ${checkpointHtml}
+            ${streamHtml}
+            <div class="history">
+                <h4>Step History</h4>
+                ${renderHistory(p.step_history || [], p.history_snapshots || [], p)}
+            </div>
+            <div class="actions">
+                <button class="primary" onclick="runAgent('${escapeHtml(p.slug)}')" ${isRunning ? 'disabled' : ''}>
+                    ${isRunning ? 'Running…' : 'Run orchestrate'}
+                </button>
+            </div>
+            <div class="feedback-box">
+                <textarea id="feedback-${escapeHtml(p.slug)}" placeholder="Write feedback to apply on next refine pass (saved as review_<n>.md)…"></textarea>
+                <div class="actions" style="margin-top: 8px; padding-top: 0; border-top: none;">
+                    <button onclick="saveFeedback('${escapeHtml(p.slug)}')">Save feedback</button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function refresh() {
+    const status = document.getElementById('refresh-status');
+    try {
+        const data = await fetchAgents();
+        const projects = data.projects || [];
+        if (!projects.length) {
+            document.getElementById('projects').innerHTML =
+                '<div class="empty">No projects with <code>.orchestrator/</code> folders yet.<br>Run <code>nolan orchestrate &lt;project&gt;</code> to start.</div>';
+        } else {
+            const expandedProjects = projects.filter(p => expandedSlugs.has(p.slug));
+            const checkpointPromises = expandedProjects
+                .filter(p => p.has_checkpoint)
+                .map(p => fetchCheckpoint(p.slug).then(body => [p.slug, body]));
+            const streamPromises = expandedProjects
+                .map(p => fetchStream(p.slug).then(data => [p.slug, data]));
+            const [checkpointsArr, streamsArr] = await Promise.all([
+                Promise.all(checkpointPromises),
+                Promise.all(streamPromises),
+            ]);
+            const checkpoints = Object.fromEntries(checkpointsArr);
+            const streams = Object.fromEntries(streamsArr);
+            const html = projects.map(p => renderProject(p, checkpoints[p.slug], streams[p.slug])).join('');
+            document.getElementById('projects').innerHTML = html;
+        }
+        status.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+
+        const anyRunning = projects.some(p => p.status === 'running');
+        scheduleNext(anyRunning ? POLL_INTERVAL_RUNNING : POLL_INTERVAL_IDLE);
+    } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        scheduleNext(POLL_INTERVAL_IDLE);
+    }
+}
+
+function scheduleNext(delay) {
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(refresh, delay);
+}
+
+function toggleProject(slug) {
+    if (expandedSlugs.has(slug)) expandedSlugs.delete(slug);
+    else expandedSlugs.add(slug);
+    refresh();
+}
+
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.toggle('error', !!isError);
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function runAgent(slug) {
+    try {
+        const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/run`, { method: 'POST' });
+        if (!res.ok) {
+            const t = await res.text();
+            throw new Error(t || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        showToast(`Started orchestrate (pid ${data.pid})`);
+        refresh();
+    } catch (err) {
+        showToast(`Failed to run: ${err.message}`, true);
+    }
+}
+
+async function saveFeedback(slug) {
+    const ta = document.getElementById(`feedback-${slug}`);
+    const body = (ta.value || '').trim();
+    if (!body) {
+        showToast('Feedback is empty', true);
+        return;
+    }
+    try {
+        const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        ta.value = '';
+        showToast(`Saved ${data.path}`);
+        refresh();
+    } catch (err) {
+        showToast(`Failed to save: ${err.message}`, true);
+    }
+}
+
+refresh();
+</script>
+</body>
+</html>

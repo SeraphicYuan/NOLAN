@@ -369,12 +369,21 @@ class ComfyUIClient:
                         # No system prefix, just set the prompt directly
                         inputs[prompt_key] = prompt
 
-            # Randomize seed in KSampler (unless overridden)
-            if "3" not in self._node_overrides or "seed" not in self._node_overrides.get("3", {}):
-                for node_id, node_data in workflow.items():
-                    if node_data.get("class_type") == "KSampler":
-                        if "seed" in node_data.get("inputs", {}):
-                            node_data["inputs"]["seed"] = random.randint(0, 2**32)
+            # Apply width/height/steps + randomize seed on the matching nodes so
+            # custom workflows honor the configured resolution (not just the default).
+            for node_id, node_data in workflow.items():
+                ct = node_data.get("class_type", "")
+                inp = node_data.get("inputs", {})
+                if ct in ("EmptyLatentImage", "EmptySD3LatentImage", "EmptyHunyuanLatentVideo"):
+                    if "width" in inp:
+                        inp["width"] = self.width
+                    if "height" in inp:
+                        inp["height"] = self.height
+                if ct == "KSampler":
+                    if "steps" in inp:
+                        inp["steps"] = self.steps
+                    if "seed" in inp and ("3" not in self._node_overrides or "seed" not in self._node_overrides.get("3", {})):
+                        inp["seed"] = random.randint(0, 2**32)
         else:
             # Default workflow handling
             workflow["6"]["inputs"]["text"] = prompt

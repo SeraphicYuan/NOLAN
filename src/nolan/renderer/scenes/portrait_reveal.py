@@ -15,11 +15,16 @@ Animation sequence:
 3. Text box fades in on opposite side
 4. Title appears
 5. Bullet points reveal one by one
+
+Layout System Integration:
+This template uses the NOLAN Layout system for positioning.
+It can accept a custom layout or use the default "portrait-reveal" preset.
 """
 
-from typing import List, Optional, Tuple, Literal
+from typing import List, Optional, Tuple, Literal, Union
 from ..base import BaseRenderer, Element
 from ..effects import FadeIn, MoveTo
+from ..layout import Layout, Slot, get_preset
 
 
 def render_portrait_reveal(
@@ -29,7 +34,8 @@ def render_portrait_reveal(
     # Optional image (placeholder rectangle if not provided)
     image_path: Optional[str] = None,
     portrait_caption: Optional[str] = None,
-    # Layout
+    # Layout - can pass custom slots or use defaults
+    layout: Optional[List[Slot]] = None,
     portrait_side: Literal["left", "right"] = "left",
     # Timing
     portrait_hold: float = 1.5,      # How long portrait stays centered
@@ -64,6 +70,8 @@ def render_portrait_reveal(
         points: List of bullet points to reveal
         image_path: Path to portrait image (uses placeholder if None)
         portrait_caption: Optional caption under portrait
+        layout: Optional list of 2 Slots [portrait_slot, content_slot].
+                If None, uses default "portrait-reveal" layout.
         portrait_side: Which side portrait ends up ("left" or "right")
         portrait_hold: Seconds portrait stays centered before sliding
         slide_duration: Duration of slide animation
@@ -89,37 +97,59 @@ def render_portrait_reveal(
     """
     renderer = BaseRenderer(width=width, height=height, fps=fps, bg_color=bg_color)
 
-    # Calculate positions
+    # === LAYOUT SETUP ===
+    # Use provided layout or create default
+    if layout is None:
+        # Create layout with 1:2 ratio for portrait:content
+        layout_obj = Layout(width=width, height=height, margin=100, default_gap=60)
+        if portrait_side == "left":
+            layout = layout_obj.columns([1, 2], names=["portrait", "content"])
+        else:
+            layout = layout_obj.columns([2, 1], names=["content", "portrait"])
+
+    # Get slots based on portrait side
+    if portrait_side == "left":
+        portrait_slot, content_slot = layout[0], layout[1]
+    else:
+        content_slot, portrait_slot = layout[0], layout[1]
+
+    # === CALCULATE POSITIONS FROM SLOTS ===
     center_x = width // 2
     center_y = height // 2
 
-    if portrait_side == "left":
-        portrait_start_x = center_x - portrait_width // 2
-        portrait_end_x = 120  # Left margin
-        text_x = 120 + portrait_width + 100  # Right of portrait
-    else:
-        portrait_start_x = center_x - portrait_width // 2
-        portrait_end_x = width - 120 - portrait_width  # Right margin
-        text_x = 120  # Left side
-
-    portrait_y = center_y - portrait_height // 2 - 30
+    # Portrait starts centered, ends in its slot
+    portrait_start_x = center_x - portrait_width // 2
+    portrait_end_x = portrait_slot.align_x(portrait_width, "center")
+    portrait_y = portrait_slot.align_y(portrait_height, "center") - 30  # Slight offset for caption
 
     # Calculate slide distance
     slide_distance_x = portrait_end_x - portrait_start_x
 
-    # Text area
-    text_width = width - text_x - 150
-    text_start_y = portrait_y + 30
+    # Text box uses content slot
+    text_box_x = content_slot.x
+    text_box_y = portrait_y  # Align with portrait top
+    text_box_width = content_slot.width
+    text_box_padding = content_slot.padding
 
-    # Timeline
+    # Text area (inside the text box)
+    text_x = content_slot.inner_x
+    text_width = content_slot.inner_width
+
+    # === TIMELINE ===
     t_portrait_appear = 0.2
     t_slide_start = t_portrait_appear + portrait_hold
     t_slide_end = t_slide_start + slide_duration
-    t_title_start = t_slide_end + title_delay
+    t_textbox_start = t_slide_end + 0.1  # Text box appears slightly after slide
+    t_title_start = t_textbox_start + title_delay
     t_points_start = t_title_start + 0.6
 
     # Calculate total duration
     total_duration = t_points_start + len(points) * point_interval + 2.0
+
+    # Calculate text box height based on content
+    point_spacing = point_size + 25
+    content_height = text_box_padding + title_size + 50 + len(points) * point_spacing + text_box_padding
+    text_box_height = max(content_height, portrait_height)  # At least as tall as portrait
 
     # === PORTRAIT AREA (placeholder rectangle) ===
     portrait_bg = Element(
@@ -212,13 +242,14 @@ def render_portrait_reveal(
 
     # === PORTRAIT CAPTION (optional) ===
     if portrait_caption:
+        # x is the LEFT edge of the text block; text_align="center" centers within max_width
         caption = Element(
             id="portrait_caption",
             element_type="text",
             text=portrait_caption,
             font_size=caption_size,
             color=caption_color,
-            x=portrait_start_x + portrait_width // 2,
+            x=portrait_start_x,  # Left edge of portrait (text centers within max_width)
             y=portrait_y + portrait_height + 30,
             text_align="center",
             max_width=portrait_width,
@@ -229,7 +260,76 @@ def render_portrait_reveal(
         ])
         renderer.add_element(caption)
 
+    # === TEXT BOX BORDER ===
+    textbox_border_thickness = 2
+
+    # Text box background (slightly darker than main bg for contrast)
+    text_box_bg = Element(
+        id="text_box_bg",
+        element_type="rectangle",
+        x=text_box_x,
+        y=text_box_y,
+        width=text_box_width,
+        height=text_box_height,
+        color=(bg_color[0] + 8, bg_color[1] + 8, bg_color[2] + 12),  # Slightly lighter
+    )
+    text_box_bg.add_effect(FadeIn(start=t_textbox_start, duration=0.4))
+    renderer.add_element(text_box_bg)
+
+    # Text box border - top
+    textbox_border_top = Element(
+        id="textbox_border_top",
+        element_type="rectangle",
+        x=text_box_x,
+        y=text_box_y,
+        width=text_box_width,
+        height=textbox_border_thickness,
+        color=border_color,
+    )
+    textbox_border_top.add_effect(FadeIn(start=t_textbox_start, duration=0.4))
+    renderer.add_element(textbox_border_top)
+
+    # Text box border - bottom
+    textbox_border_bottom = Element(
+        id="textbox_border_bottom",
+        element_type="rectangle",
+        x=text_box_x,
+        y=text_box_y + text_box_height - textbox_border_thickness,
+        width=text_box_width,
+        height=textbox_border_thickness,
+        color=border_color,
+    )
+    textbox_border_bottom.add_effect(FadeIn(start=t_textbox_start, duration=0.4))
+    renderer.add_element(textbox_border_bottom)
+
+    # Text box border - left
+    textbox_border_left = Element(
+        id="textbox_border_left",
+        element_type="rectangle",
+        x=text_box_x,
+        y=text_box_y,
+        width=textbox_border_thickness,
+        height=text_box_height,
+        color=border_color,
+    )
+    textbox_border_left.add_effect(FadeIn(start=t_textbox_start, duration=0.4))
+    renderer.add_element(textbox_border_left)
+
+    # Text box border - right
+    textbox_border_right = Element(
+        id="textbox_border_right",
+        element_type="rectangle",
+        x=text_box_x + text_box_width - textbox_border_thickness,
+        y=text_box_y,
+        width=textbox_border_thickness,
+        height=text_box_height,
+        color=border_color,
+    )
+    textbox_border_right.add_effect(FadeIn(start=t_textbox_start, duration=0.4))
+    renderer.add_element(textbox_border_right)
+
     # === TITLE ===
+    title_y = text_box_y + text_box_padding
     title_elem = Element(
         id="title",
         element_type="text",
@@ -237,7 +337,7 @@ def render_portrait_reveal(
         font_size=title_size,
         color=title_color,
         x=text_x,
-        y=text_start_y,
+        y=title_y,
         text_align="left",
         max_width=text_width,
     )
@@ -245,8 +345,7 @@ def render_portrait_reveal(
     renderer.add_element(title_elem)
 
     # === BULLET POINTS ===
-    point_y = text_start_y + title_size + 50
-    point_spacing = point_size + 25
+    point_y = title_y + title_size + 40
 
     for i, point_text in enumerate(points):
         t_point = t_points_start + i * point_interval

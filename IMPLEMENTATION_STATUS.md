@@ -8,6 +8,62 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Asset Extraction — link → assets (2026-06-25)
+
+`src/nolan/extractors/` — a new acquisition channel: give it a **page URL**, it
+extracts the highest-definition images embedded/linked on the page. A registry of
+parsers (site-specific first, generic HTML fallback last); each emits
+`ImageSearchResult` so output flows into the existing scoring/download paths.
+
+- **Parsers**: `gutenberg` (thumbnail-links-to-full illustrations), `wikimedia`
+  (map `/thumb/.../NNNpx-Name.jpg` → original), `met` (object ID → collection API
+  `primaryImage`), `archive` (Internet Archive item → metadata API → original
+  images), `loc` (Library of Congress item → `?fo=json` → largest rendition),
+  `iiif` (**one parser for all IIIF archives** — Presentation v2/v3 manifests +
+  Image API `info.json` → `full/max`), `web` (universal: `<a href>`-wraps-`<img>`
+  → largest `srcset` → `src`, plus `og:image`; resolves relatives, drops
+  icons/tiny/data-URIs, dedups).
+- **No new dep** — stdlib `html.parser` (`html_utils.py`).
+- **Surfaces**: `nolan extract-assets <url> [-n N] [-o DIR] [--no-download]`
+  (downloads to `.scratch/extracted/<host>/` + manifest); hub `/extract` page +
+  `POST /api/extract-assets` (synchronous preview or `download:true` job).
+- **Verified live**: Gutenberg 21790 → 50 illustrations (`illus-048.jpg` full-res,
+  real 750×1178 @300 DPI download); Wikimedia original; Met API; IIIF v2/v3
+  manifests + info.json; Internet Archive item; LoC item. 26 unit tests
+  (`tests/test_extractors.py`, network-free). Note: IIIF is a delivery standard,
+  not a search API, so it lives as an extractor (not an `image_search.py` provider).
+  See `docs/ASSET_EXTRACTION_v1.md`.
+
+## Scene Iteration — review → comment/edit → re-render (2026-06-25)
+
+`src/nolan/iterate/` adds the human-in-the-loop gate: see scenes side-by-side, edit/
+comment on a few, and **re-render only those** — for **both** pipelines (the linear
+orchestrator and the asset-first segment builder), which share `scene_plan.json`.
+
+- **One engine, two adapters** (`engine.py`): `detect_pipeline()` (segment via sibling
+  `segment_meta.json`, orchestrator via `.orchestrator/` or `layout_spec`); `rerender_scenes(plan, ids)`
+  invalidates only the named scenes' clips and re-renders/reassembles via each pipeline's
+  existing path (segment reuses the skip-guarded `build_from_plan`; orchestrator re-renders
+  the selected dicts → `annotate` → silent audio → `call_assemble`). Orchestrator plans are
+  handled as **raw dicts** so `layout_spec` survives (the `Scene` dataclass would drop it).
+- **Apply a comment OR a direct edit** (`revise.py`): `revise_scene(scene, note, client, pipeline)`
+  turns a free-text note into a whitelisted field patch; a `motion_brief` is compiled to a
+  validated `motion_spec` via `nolan.motion.compile_spec`. `apply_edit()` supports note-mode
+  and direct-patch-mode, and dirties `rendered_clip` so the next re-render rebuilds it.
+- **Re-resolve on edit:** changing `search_query`/`visual_type` clears the scene's cached
+  `matched_clip`, and re-render re-runs the match stage for just those scenes (segment reuses
+  the project-local index + escalation; orchestrator re-matches b-roll via `ClipMatcher` on
+  raw dicts). So editing a query actually pulls a different library clip — not just a re-render.
+- **CLI:** `nolan revise-scene <plan> <id> --note "…"` (agent) or `--set field=value` (direct);
+  `nolan rerender <plan> --scenes id1,id2`.
+- **Web UI (`/scenes`):** the read-only viewer is now editable — per-scene **select**,
+  **Comment → agent** / **Edit fields** tabs, and a **Re-render selected** bar (background job).
+  Project discovery now recurses so nested segment outputs (`<project>/segment_*/`) appear;
+  a `/scenes/file` route serves both `clips/` (segment) and `assets/` (linear) previews.
+- **Tests:** `tests/test_iterate.py` (14) — detection, invalidation, whitelist/motion-compile,
+  selective re-render for both pipelines, re-resolve on query change (+ a hub TestClient smoke
+  verified end-to-end).
+
 ## Experiments
 
 ### Asset-First Scene Building (2026-06-24)
@@ -99,6 +155,22 @@ spec and renders it on the right backend (Python renderer or Remotion). A declar
   - *Clips "Analyze effect"* — `webui/operations.py::_effect_task_markdown` now lists **both backends**
     (`_motion_catalog_md()` generated from the registry), so the recreation agent treats Remotion as a
     first-class source and is told to add a `MotionEffect(... backend=...)` row when implementing.
+
+### build-from-segment — wrap the validated pipeline (2026-06-25)
+`src/nolan/segment/` turns a segment into a ~1-min essay via the asset-first pipeline.
+CLI: `nolan build-from-segment`.
+- **Inputs (3):** indexed-source span (`--source --start --end`, slices VO+SRT), `--script`
+  (+ optional `--vo`), or `--vo` (whisper-transcribed). → `inputs.py`.
+- **Stages:** design (`SceneDesigner` + `author_motion`) → timing (`assign_timing`, proportional)
+  → **resolve** (`resolver.AssetResolver`: motion for graphics, segment-search for footage above a
+  threshold, else escalate to external→ComfyUI→black; records `Scene.resolved_source`) →
+  render (`render.py`: motion / b-roll extract+fade / ComfyUI+KenBurns) → `nolan assemble`.
+- **Modes:** `auto` (one shot) and `review` (stops after resolve with a per-scene source manifest;
+  edit `scene_plan.json` then `--from-plan` to resume).
+- **P2:** search threshold + escalation, external-footage hook, `suggest_spans` (LLM).
+  **P3:** `--music` bed (ducked mix), `--transition` pass-through, `tts_fn` hook.
+- **Tests:** `tests/test_segment_builder.py` (9, mocked — resolver routing, timing, SRT/inputs,
+  both modes, suggest, external, TTS). Verified real CLI build (script → motion scenes → `final.mp4`).
 
 ## Implemented Features
 

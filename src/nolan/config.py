@@ -17,6 +17,18 @@ class GeminiConfig:
 
 
 @dataclass
+class LLMConfig:
+    """Default text-LLM for authoring tasks (script, scene design, clustering, etc.).
+
+    Defaults to qwen/qwen3.7-plus via OpenRouter (cheaper than Gemini, strong quality).
+    Override globally in nolan.yaml (`llm:` block) or per-run via CLI/webUI.
+    """
+    provider: str = "openrouter"   # openrouter (default) | gemini
+    model: str = "qwen/qwen3.7-plus"
+    reasoning_enabled: bool = False
+
+
+@dataclass
 class ComfyUIConfig:
     """ComfyUI connection configuration."""
     host: str = "127.0.0.1"
@@ -30,11 +42,18 @@ class ComfyUIConfig:
 @dataclass
 class VisionConfig:
     """Vision provider configuration."""
-    provider: str = "gemini"  # gemini, ollama
-    model: str = "qwen3-vl:8b"
+    provider: str = "openrouter"  # openrouter, gemini, ollama
+    model: str = "qwen/qwen3.7-plus"
     host: str = "127.0.0.1"  # Use IP, not hostname (Windows httpx issue)
     port: int = 11434
     timeout: float = 60.0
+    # OpenRouter-specific (OpenAI-compatible endpoint)
+    openrouter_api_key: str = ""
+    base_url: str = "https://openrouter.ai/api/v1"
+    # Reasoning control for reasoning-capable OpenRouter models. Off by default
+    # (~4-6x faster frame analysis with negligible quality loss).
+    reasoning_enabled: bool = False
+    reasoning_max_tokens: Optional[int] = None
 
 
 @dataclass
@@ -71,10 +90,30 @@ class DefaultsConfig:
 
 @dataclass
 class ImageSourcesConfig:
-    """Image search sources configuration."""
+    """Image/video search sources configuration (API keys)."""
     pexels_api_key: str = ""
     pixabay_api_key: str = ""
     smithsonian_api_key: str = ""  # Get from api.data.gov
+    # Additional providers (free keys) — set in .env to enable.
+    europeana_api_key: str = ""    # https://pro.europeana.eu/pages/get-api
+    dpla_api_key: str = ""         # https://pro.dp.la/developers/policies (email request)
+    flickr_api_key: str = ""       # https://www.flickr.com/services/apps/create/
+    unsplash_access_key: str = ""  # https://unsplash.com/developers
+    rijksmuseum_api_key: str = ""  # https://data.rijksmuseum.nl/object-metadata/api/
+    harvard_art_api_key: str = ""  # https://harvardartmuseums.org/collections/api
+    coverr_api_key: str = ""       # https://coverr.co/ (API access)
+
+    def provider_keys(self) -> dict:
+        """Map for ImageSearchClient(keys=...)."""
+        return {
+            "europeana": self.europeana_api_key,
+            "dpla": self.dpla_api_key,
+            "flickr": self.flickr_api_key,
+            "unsplash": self.unsplash_access_key,
+            "rijksmuseum": self.rijksmuseum_api_key,
+            "harvard": self.harvard_art_api_key,
+            "coverr": self.coverr_api_key,
+        }
 
 
 @dataclass
@@ -93,6 +132,7 @@ class ClipMatchingConfig:
 class NolanConfig:
     """Main configuration container."""
     gemini: GeminiConfig = field(default_factory=GeminiConfig)
+    llm: LLMConfig = field(default_factory=LLMConfig)
     comfyui: ComfyUIConfig = field(default_factory=ComfyUIConfig)
     vision: VisionConfig = field(default_factory=VisionConfig)
     whisper: WhisperConfig = field(default_factory=WhisperConfig)
@@ -118,9 +158,17 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
 
     # Load API keys from environment
     config.gemini.api_key = os.getenv("GEMINI_API_KEY", "")
+    config.vision.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
     config.image_sources.pexels_api_key = os.getenv("PEXELS_API_KEY", "")
     config.image_sources.pixabay_api_key = os.getenv("PIXABAY_API_KEY", "")
     config.image_sources.smithsonian_api_key = os.getenv("SMITHSONIAN_API_KEY", "")
+    config.image_sources.europeana_api_key = os.getenv("EUROPEANA_API_KEY", "")
+    config.image_sources.dpla_api_key = os.getenv("DPLA_API_KEY", "")
+    config.image_sources.flickr_api_key = os.getenv("FLICKR_API_KEY", "")
+    config.image_sources.unsplash_access_key = os.getenv("UNSPLASH_ACCESS_KEY", "")
+    config.image_sources.rijksmuseum_api_key = os.getenv("RIJKSMUSEUM_API_KEY", "")
+    config.image_sources.harvard_art_api_key = os.getenv("HARVARD_ART_API_KEY", "")
+    config.image_sources.coverr_api_key = os.getenv("COVERR_API_KEY", "")
 
     # Auto-detect config file if not provided
     if config_path is None:
@@ -139,6 +187,11 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
             for key, value in overrides["gemini"].items():
                 if hasattr(config.gemini, key):
                     setattr(config.gemini, key, value)
+
+        if "llm" in overrides:
+            for key, value in overrides["llm"].items():
+                if hasattr(config.llm, key):
+                    setattr(config.llm, key, value)
 
         if "comfyui" in overrides:
             for key, value in overrides["comfyui"].items():

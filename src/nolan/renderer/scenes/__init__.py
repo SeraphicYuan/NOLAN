@@ -31,6 +31,10 @@ from .document_highlight import DocumentHighlightRenderer
 from .section_divider import SectionDividerRenderer
 # Portrait/Figure renderers
 from .portrait_reveal import render_portrait_reveal, portrait_reveal
+# Data callout renderers
+from .pie_callout import PieCalloutRenderer, render_pie_callout
+from .line_chart import LineChartRenderer, render_line_chart
+from .loop_diagram import LoopDiagramRenderer, render_loop_diagram
 
 __all__ = [
     'QuoteRenderer',
@@ -67,4 +71,12 @@ __all__ = [
     # Portrait/Figure
     'render_portrait_reveal',
     'portrait_reveal',
+    # Data callout
+    'PieCalloutRenderer',
+    'render_pie_callout',
+    # Charts
+    'LineChartRenderer',
+    'render_line_chart',
+    'LoopDiagramRenderer',
+    'render_loop_diagram',
 ]

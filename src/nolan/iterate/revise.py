@@ -1,0 +1,111 @@
+"""Apply a human comment to one scene -> a renderable field patch (the gate).
+
+`revise_scene` runs an LLM that turns a free-text note + the existing scene into a
+JSON patch of *only* the changed fields. Motion/graphic edits come back as a
+`motion_brief` string which we compile to a validated `motion_spec` via
+`nolan.motion.compile_spec`. `apply_edit` supports both modes the user chose:
+an agent note OR a direct field patch, per scene.
+"""
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import Optional
+
+# Fields a human/agent may change. Kept narrow so a note can't corrupt routing.
+_BASE = {"narration_excerpt", "visual_description", "visual_type", "duration"}
+_SEGMENT = _BASE | {"search_query", "comfyui_prompt", "motion_spec"}
+_ORCH = _BASE | {"layout_spec", "motion_spec", "search_query", "comfyui_prompt"}
+
+
+def editable_fields(pipeline: str) -> set:
+    return _SEGMENT if pipeline == "segment" else _ORCH
+
+
+_GUIDE = (
+    "You revise ONE scene of a video-essay scene plan from a human note. "
+    "Output ONLY a JSON object containing the fields that should change — omit unchanged fields. "
+    "Editable fields for this scene: {fields}. "
+    "Rules:\n"
+    "- To change an animated graphic/text effect, DO NOT write motion_spec directly. "
+    "Instead return a `motion_brief` string: a precise natural-language description of the "
+    "desired effect (what shows, where on screen, accent, timing). It will be compiled to a spec.\n"
+    "- For stock/library footage scenes, edit `search_query` (keywords) or `comfyui_prompt` "
+    "(image-gen prompt).\n"
+    "- For orchestrator `layout_spec` scenes you may return a full corrected `layout_spec` object "
+    "({{template, params}}).\n"
+    "- Keep edits minimal and faithful to the note. Return {{}} if nothing should change."
+)
+
+
+def _extract_json(text: str) -> dict:
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if not m:
+        return {}
+    try:
+        return json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return {}
+
+
+async def revise_scene(scene: dict, note: str, client, pipeline: str) -> dict:
+    """Return a whitelisted patch of changed fields for `scene` given `note`."""
+    wl = editable_fields(pipeline)
+    system = _GUIDE.format(fields=", ".join(sorted(wl)))
+    scene_json = json.dumps(scene, default=str)[:2500]
+    prompt = (f"SCENE:\n{scene_json}\n\nHUMAN NOTE:\n{note}\n\n"
+              "Return the JSON patch now.")
+    raw = await client.generate(prompt, system_prompt=system)
+    patch = _extract_json(raw)
+
+    # motion_brief -> compiled motion_spec (skip on validation failure)
+    brief = patch.pop("motion_brief", None)
+    if brief:
+        from nolan.motion import compile_spec
+        spec, errors = await compile_spec(str(brief), client)
+        if not errors:
+            patch["motion_spec"] = spec
+
+    return {k: v for k, v in patch.items() if k in wl}
+
+
+# Editing one of these changes *which asset* the scene should use, so the
+# resolve/match stage must re-run (not just the renderer) — clear the cached pick.
+_RERESOLVE_TRIGGERS = {"search_query", "visual_type"}
+
+
+def apply_patch(scene: dict, patch: dict) -> None:
+    """Apply `patch` to `scene` in place and mark it dirty (force re-render)."""
+    scene.update(patch)
+    scene["rendered_clip"] = None   # dirty -> rerender_scenes will rebuild it
+    if _RERESOLVE_TRIGGERS & set(patch):
+        # Asset selection is now stale: drop the cached match so re-render re-resolves.
+        scene["matched_clip"] = None
+        scene["resolved_source"] = None
+
+
+async def apply_edit(plan_path, scene_id: str, *, patch: Optional[dict] = None,
+                     note: Optional[str] = None, client=None,
+                     pipeline: Optional[str] = None) -> dict:
+    """Load plan, revise one scene (via note OR direct patch), save, return the patch."""
+    from .engine import load_plan_raw, save_plan_raw, find_scene, detect_pipeline
+
+    plan_path = Path(plan_path)
+    data = load_plan_raw(plan_path)
+    scene = find_scene(data, scene_id)
+    if scene is None:
+        raise KeyError(f"scene '{scene_id}' not found in {plan_path}")
+    pipeline = pipeline or detect_pipeline(plan_path)
+
+    if note:
+        if client is None:
+            raise ValueError("note-based revision requires an llm client")
+        resolved = await revise_scene(scene, note, client, pipeline)
+    else:
+        wl = editable_fields(pipeline)
+        resolved = {k: v for k, v in (patch or {}).items() if k in wl}
+
+    apply_patch(scene, resolved)
+    save_plan_raw(plan_path, data)
+    return resolved

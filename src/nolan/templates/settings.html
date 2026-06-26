@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    .wrap { max-width: 600px; margin: 32px auto; padding: 0 20px; }
+    h1 { font-size: 28px; margin-bottom: 6px; }
+    .sub { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 16px; margin-bottom: 16px; }
+    .keyrow { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .row { display: flex; gap: 12px; } .row > * { flex: 1; }
+    .hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .ok { color: var(--success); } .miss { color: var(--danger); }
+    #saved { color: var(--success); font-size: 13px; margin-left: 12px; }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="settings"></script>
+  <div class="wrap">
+    <h1>Settings</h1>
+    <div class="sub">Default vision provider for indexing & image scoring. Saved to nolan.yaml.</div>
+
+    <div class="card">
+      <h2>Vision provider</h2>
+      <div class="row">
+        <div class="field">
+          <label>Provider</label>
+          <select id="provider" onchange="onProvider()">
+            <option value="openrouter">OpenRouter</option>
+            <option value="gemini">Gemini</option>
+            <option value="ollama">Ollama</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <input id="model">
+        </div>
+      </div>
+      <div class="field" id="reasoningField">
+        <label class="hint"><input type="checkbox" id="reasoning" style="width:auto;margin-right:8px;"> Enable reasoning (slower, richer; off recommended)</label>
+      </div>
+      <div class="field" id="rmtField">
+        <label>Reasoning max tokens (optional budget when enabled)</label>
+        <input id="rmt" type="number" placeholder="(none)">
+      </div>
+      <button class="btn" onclick="save()">Save settings</button>
+      <span id="saved"></span>
+    </div>
+
+    <div class="card">
+      <h2>Text LLM (script, scenes, clustering)</h2>
+      <div class="row">
+        <div class="field">
+          <label>Provider</label>
+          <select id="llmProvider">
+            <option value="openrouter">OpenRouter</option>
+            <option value="gemini">Gemini</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <input id="llmModel">
+        </div>
+      </div>
+      <div class="field">
+        <label class="hint"><input type="checkbox" id="llmReasoning" style="width:auto;margin-right:8px;"> Enable reasoning (slower)</label>
+      </div>
+      <button class="btn" onclick="saveLlm()">Save LLM settings</button>
+      <span id="savedLlm"></span>
+    </div>
+
+    <div class="card">
+      <h2>API keys (from .env)</h2>
+      <div class="keyrow"><span>GEMINI_API_KEY</span><span id="k-gemini"></span></div>
+      <div class="keyrow"><span>OPENROUTER_API_KEY</span><span id="k-openrouter"></span></div>
+      <div class="hint" style="margin-top:10px;">Keys are read from .env and not editable here.</div>
+    </div>
+  </div>
+
+  <script>
+    var modelDefaults = { openrouter: "qwen/qwen3.7-plus", gemini: "gemini-3-flash-preview", ollama: "qwen3-vl:8b" };
+    function onProvider() {
+      var p = document.getElementById("provider").value;
+      document.getElementById("reasoningField").style.display = (p === "openrouter") ? "block" : "none";
+      document.getElementById("rmtField").style.display = (p === "openrouter") ? "block" : "none";
+    }
+    function load() {
+      fetch("/api/settings").then(function (r) { return r.json(); }).then(function (s) {
+        document.getElementById("provider").value = s.vision.provider;
+        document.getElementById("model").value = s.vision.model || "";
+        document.getElementById("reasoning").checked = !!s.vision.reasoning_enabled;
+        document.getElementById("rmt").value = s.vision.reasoning_max_tokens || "";
+        document.getElementById("k-gemini").innerHTML = s.keys.gemini ? '<span class="ok">✓ set</span>' : '<span class="miss">✗ missing</span>';
+        document.getElementById("k-openrouter").innerHTML = s.keys.openrouter ? '<span class="ok">✓ set</span>' : '<span class="miss">✗ missing</span>';
+        if (s.llm) {
+          document.getElementById("llmProvider").value = s.llm.provider;
+          document.getElementById("llmModel").value = s.llm.model || "";
+          document.getElementById("llmReasoning").checked = !!s.llm.reasoning_enabled;
+        }
+        onProvider();
+      });
+    }
+    function saveLlm() {
+      fetch("/api/settings", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ llm: {
+          provider: document.getElementById("llmProvider").value,
+          model: document.getElementById("llmModel").value,
+          reasoning_enabled: document.getElementById("llmReasoning").checked
+        }})
+      }).then(function (r) { return r.json(); }).then(function () {
+        var s = document.getElementById("savedLlm"); s.textContent = "✓ Saved";
+        setTimeout(function () { s.textContent = ""; }, 3000);
+      });
+    }
+    function save() {
+      var rmt = document.getElementById("rmt").value;
+      fetch("/api/settings", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: document.getElementById("provider").value,
+          model: document.getElementById("model").value,
+          reasoning_enabled: document.getElementById("reasoning").checked,
+          reasoning_max_tokens: rmt ? parseInt(rmt, 10) : null
+        })
+      }).then(function (r) { return r.json(); }).then(function () {
+        var s = document.getElementById("saved"); s.textContent = "✓ Saved to nolan.yaml";
+        setTimeout(function () { s.textContent = ""; }, 3000);
+      });
+    }
+    load();
+  </script>
+</body>
+</html>

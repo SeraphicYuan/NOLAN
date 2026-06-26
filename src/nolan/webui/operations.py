@@ -632,6 +632,45 @@ async def materialize_clips(job, *, config, project_name: str, max_clip_seconds:
     return result
 
 
+async def extract_assets(job, *, url: str, limit: Optional[int] = None,
+                         download: bool = True, dest: Optional[str] = None) -> dict:
+    """Extract high-def image assets from a page URL via the parser registry.
+
+    Picks the matching extractor (Gutenberg / Wikimedia / Met / generic),
+    optionally downloads the full-res files into ``dest`` (or
+    ``.scratch/extracted/<host>``) and writes a manifest.
+    """
+    import json
+    from urllib.parse import urlparse
+
+    from nolan.extractors import download_assets, extract_from_url, get_extractor
+
+    ex = get_extractor(url)
+    job.set_progress(0.1, f"Extracting via '{ex.name}'...")
+    results = await asyncio.to_thread(extract_from_url, url, limit=limit)
+    job.set_progress(0.5, f"Found {len(results)} asset(s)")
+
+    records = [r.to_dict() for r in results]
+    out_dir = None
+    if download and results:
+        host = urlparse(url).netloc.replace(":", "_") or "page"
+        out_dir = Path(dest) if dest else Path(".scratch/extracted") / host
+        job.set_progress(0.6, f"Downloading {len(results)} asset(s) -> {out_dir}")
+        records = await download_assets(results, out_dir)
+        (out_dir / "manifest.json").write_text(
+            json.dumps({"url": url, "extractor": ex.name, "count": len(records),
+                        "results": records}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+    ok = sum(1 for r in records if r.get("local_path")) if download else 0
+    msg = f"{len(records)} asset(s)" + (f", {ok} downloaded" if download else "")
+    job.set_progress(1.0, f"Done - {msg}")
+    return {"url": url, "extractor": ex.name, "count": len(records),
+            "downloaded": ok, "out_dir": str(out_dir) if out_dir else None,
+            "results": records}
+
+
 async def comfyui_status(config) -> dict:
     """ComfyUI connection + installed checkpoints + queue (for the ComfyUI page)."""
     import httpx as _httpx

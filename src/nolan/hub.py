@@ -1,5 +1,6 @@
 """Unified Hub for NOLAN web interfaces."""
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Optional, List, Dict
@@ -54,38 +55,50 @@ def _parse_project(directory: Path, scene_plan: Path) -> Dict:
     }
 
 
-def scan_projects(projects_dir: Path) -> List[Dict]:
-    """Scan a directory for valid NOLAN projects.
+# Subdirs that are project *internals*, never separate projects — don't descend.
+_PROJECT_SKIP_DIRS = {
+    "assets", "clips", "work", "output", "source", "frames", "voiceover",
+    "vectors", ".orchestrator", ".nolan", "node_modules", "__pycache__", ".git",
+}
 
-    A valid project is a directory containing scene_plan.json.
-    Also checks:
-    - If the directory itself is a project (has scene_plan.json)
-    - Subdirectories for scene_plan.json or output/scene_plan.json
+
+def _scan_into(base: Path, projects_dir: Path, projects: List[Dict], depth: int, max_depth: int) -> None:
+    scene_plan = _find_scene_plan(base)
+    if scene_plan:
+        info = _parse_project(base, scene_plan)
+        # Name nested projects by their path relative to projects_dir so they stay
+        # unique and resolvable by _get_project_dir (projects_dir / name).
+        try:
+            rel = base.relative_to(projects_dir)
+            info["name"] = projects_dir.name if rel == Path(".") else str(rel).replace("\\", "/")
+        except ValueError:
+            pass
+        projects.append(info)
+    if depth >= max_depth:
+        return
+    try:
+        children = sorted(base.iterdir())
+    except OSError:
+        return
+    for item in children:
+        if item.is_dir() and item.name not in _PROJECT_SKIP_DIRS and not item.name.startswith("."):
+            _scan_into(item, projects_dir, projects, depth + 1, max_depth)
+
+
+def scan_projects(projects_dir: Path, max_depth: int = 3) -> List[Dict]:
+    """Scan a directory tree for valid NOLAN projects (dirs with scene_plan.json).
+
+    Recurses up to `max_depth` so nested segment-builder outputs (e.g.
+    `<linear project>/segment_xyz/`) are discoverable. Nested projects are named
+    by their path relative to `projects_dir` (e.g. "US Economy/segment_xyz").
 
     Returns:
         List of project info dicts with name, path, scene_count, etc.
     """
-    projects = []
+    projects: List[Dict] = []
     if not projects_dir.exists():
         return projects
-
-    # First check if the directory itself is a project
-    scene_plan = _find_scene_plan(projects_dir)
-    if scene_plan:
-        projects.append(_parse_project(projects_dir, scene_plan))
-
-    # Then scan subdirectories
-    for item in projects_dir.iterdir():
-        if not item.is_dir():
-            continue
-
-        scene_plan = _find_scene_plan(item)
-        if not scene_plan:
-            continue
-
-        projects.append(_parse_project(item, scene_plan))
-
-    # Sort by name
+    _scan_into(projects_dir, projects_dir, projects, depth=0, max_depth=max_depth)
     projects.sort(key=lambda p: p["name"].lower())
     return projects
 
@@ -257,6 +270,45 @@ def create_hub_app(
             db_path=effective_db, project_id=(body.get("project_id") or None),
         )
         return {"job_id": job.id, "type": "sync-vectors"}
+
+    # ==================== Asset extraction (link -> assets) ====================
+
+    @app.get("/extract", response_class=HTMLResponse)
+    async def extract_page():
+        tpl = templates_dir / "extract.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>extract.html not found</h1>"
+
+    @app.post("/api/extract-assets")
+    async def api_extract_assets(body: dict = Body(...)):
+        """Extract image assets from a URL.
+
+        Without ``download`` runs synchronously and returns the found assets for
+        a gallery preview; with ``download`` starts a background job.
+        """
+        url = (body.get("url") or "").strip()
+        if not url:
+            raise HTTPException(status_code=400, detail="url is required")
+        limit = body.get("limit") or None
+
+        if body.get("download"):
+            from nolan.webui import operations
+            job = job_manager.start(
+                "extract-assets", operations.extract_assets, meta={"url": url},
+                url=url, limit=limit, download=True, dest=(body.get("dest") or None),
+            )
+            return {"job_id": job.id, "type": "extract-assets"}
+
+        import asyncio as _asyncio
+        from nolan.extractors import extract_from_url, get_extractor
+        ex = get_extractor(url)
+        try:
+            results = await _asyncio.to_thread(extract_from_url, url, limit=limit)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"extract failed: {e}")
+        return {"extractor": ex.name, "count": len(results),
+                "results": [r.to_dict() for r in results]}
 
     # ==================== Settings ====================
 
@@ -1323,7 +1375,10 @@ def create_hub_app(
                 scene["_section"] = section_name
                 scenes.append(scene)
         scenes.sort(key=lambda s: s.get("start_seconds") or 0)
-        return {"scenes": scenes, "sections": sections, "project": project}
+        from nolan.iterate import detect_pipeline, editable_fields
+        pipeline = detect_pipeline(scene_plan_path)
+        return {"scenes": scenes, "sections": sections, "project": project,
+                "pipeline": pipeline, "editable_fields": sorted(editable_fields(pipeline))}
 
     @app.get("/scenes/api/audio-info")
     async def scenes_audio_info(project: str = Query(..., description="Project name")):
@@ -1366,6 +1421,101 @@ def create_hub_app(
             ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
         }
         return FileResponse(file_path, media_type=media_types.get(suffix, "application/octet-stream"))
+
+    _MEDIA_TYPES = {
+        ".mp3": "audio/mpeg", ".wav": "audio/wav", ".m4a": "audio/mp4", ".ogg": "audio/ogg",
+        ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+        ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
+    }
+
+    @app.get("/scenes/file")
+    async def scenes_file(project: str = Query(...), path: str = Query(...)):
+        """Serve a project file by relative path (handles nested project names and
+        both clip locations: `<proj>/clips/x.mp4` segment, `<proj>/assets/...` linear)."""
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        project_path, _ = result
+        root = project_path.resolve()
+        for candidate in (project_path / path, project_path / "assets" / path):
+            try:
+                fp = candidate.resolve()
+            except OSError:
+                continue
+            if (fp == root or root in fp.parents) and fp.is_file():  # contain to project
+                return FileResponse(fp, media_type=_MEDIA_TYPES.get(fp.suffix.lower(),
+                                                                    "application/octet-stream"))
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    @app.post("/scenes/api/scene/revise")
+    async def scenes_revise(payload: dict = Body(...)):
+        """Apply a human comment (`note`) or a direct field `patch` to one scene."""
+        project = payload.get("project")
+        scene_id = payload.get("scene_id")
+        note = payload.get("note")
+        patch = payload.get("patch")
+        if not (project and scene_id):
+            raise HTTPException(status_code=400, detail="project and scene_id are required")
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        _, scene_plan_path = result
+        from nolan import iterate
+        pipeline = iterate.detect_pipeline(scene_plan_path)
+        client = None
+        if note:
+            from nolan.config import load_config
+            from nolan.llm import create_text_llm
+            client = create_text_llm(load_config())
+        try:
+            applied = await iterate.apply_edit(scene_plan_path, scene_id, patch=patch,
+                                               note=note, client=client, pipeline=pipeline)
+        except KeyError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        return {"applied": applied, "pipeline": pipeline}
+
+    @app.post("/scenes/api/rerender")
+    async def scenes_rerender(payload: dict = Body(...)):
+        """Re-render the named scenes (background job); reassembles when done."""
+        project = payload.get("project")
+        scene_ids = payload.get("scene_ids") or []
+        if not (project and scene_ids):
+            raise HTTPException(status_code=400, detail="project and scene_ids are required")
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        _, scene_plan_path = result
+        from nolan import iterate
+        pipeline = iterate.detect_pipeline(scene_plan_path)
+
+        async def worker(job, plan_path, ids, pipeline):
+            job.message = f"Re-rendering {len(ids)} scene(s) [{pipeline}]…"
+
+            def _do():
+                # Both pipelines may re-resolve an edited scene's library match, which
+                # needs config (index DB) + an LLM client.
+                from nolan.config import load_config
+                from nolan.llm import create_text_llm
+                config = load_config()
+                client = create_text_llm(config)
+                return iterate.rerender_scenes(plan_path, ids, pipeline=pipeline,
+                                               llm_client=client, nolan_config=config)
+
+            final = await asyncio.to_thread(_do)
+            # Flag any scene that silently degraded (search-miss -> generation/card).
+            data = iterate.load_plan_raw(plan_path)
+            fell_back = [sc.get("id") for _, sc in iterate.iter_scenes(data)
+                         if sc.get("id") in set(ids)
+                         and any(k in str(sc.get("resolved_source") or "") for k in ("miss", "fallback"))]
+            if fell_back:
+                job.message = f"Done, but {len(fell_back)} fell back: {', '.join(fell_back)}"
+            return {"final": str(final) if final else None, "fell_back": fell_back}
+
+        job = job_manager.start("rerender", worker,
+                                meta={"project": project, "scenes": scene_ids, "pipeline": pipeline},
+                                plan_path=scene_plan_path, ids=scene_ids, pipeline=pipeline)
+        return {"job_id": job.id, "pipeline": pipeline}
 
     # ==================== Agents Routes (Orchestrator Dashboard) ====================
 

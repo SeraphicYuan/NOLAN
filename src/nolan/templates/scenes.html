@@ -416,9 +416,54 @@
                 min-height: 150px;
             }
         }
+
+        /* ---- Iteration UI (select / edit / comment / re-render) ---- */
+        .scene-select { margin-right: 8px; cursor: pointer; }
+        .scene-edit { margin-top: 10px; }
+        .edit-toggle {
+            background: none; border: 1px solid #3a3f4b; color: #9aa3b2;
+            border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+        }
+        .edit-toggle:hover { color: #fff; border-color: #6b7280; }
+        .edit-panel {
+            margin-top: 8px; padding: 10px; border: 1px solid #2c313c;
+            border-radius: 8px; background: #1a1d24;
+        }
+        .edit-mode-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+        .tab-btn {
+            background: #20242d; border: 1px solid #2c313c; color: #9aa3b2;
+            border-radius: 6px; padding: 3px 10px; font-size: 12px; cursor: pointer;
+        }
+        .tab-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .edit-note, .field-edit input {
+            width: 100%; box-sizing: border-box; background: #0f1117; color: #e5e7eb;
+            border: 1px solid #2c313c; border-radius: 6px; padding: 6px 8px; font-size: 13px;
+        }
+        .field-edit { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .field-edit .field-label { flex: 0 0 130px; color: #8b93a1; font-size: 12px; font-family: monospace; }
+        .apply-btn {
+            margin-top: 6px; background: #16a34a; color: #fff; border: none;
+            border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer;
+        }
+        .apply-btn:hover { background: #15803d; }
+        .edit-status { margin-top: 6px; font-size: 12px; color: #fbbf24; min-height: 14px; }
+        .rerender-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+            display: flex; align-items: center; gap: 12px;
+            background: #11151c; border-top: 1px solid #2c313c;
+            padding: 10px 18px; font-size: 13px; color: #cbd5e1;
+        }
+        .rerender-bar button {
+            background: #20242d; border: 1px solid #2c313c; color: #cbd5e1;
+            border-radius: 6px; padding: 5px 12px; cursor: pointer;
+        }
+        .rerender-bar button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .rerender-msg { color: #fbbf24; }
     </style>
 </head>
 <body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="scenes"></script>
     <header class="header">
         <h1>Scene Plan Viewer</h1>
         <div class="header-controls">
@@ -471,6 +516,11 @@
         let currentSection = 'all';
         let currentStatus = 'all';
 
+        // Iteration state
+        let currentPipeline = 'segment';      // 'segment' | 'orchestrator'
+        let editableFields = [];
+        let selectedScenes = new Set();       // scene ids queued for re-render
+
         // Range playback state
         let playbackRange = null;  // { start, end, sceneId }
 
@@ -517,6 +567,18 @@
             return null;
         }
 
+        // Build a project-scoped file URL (handles nested project names + clip paths)
+        function fileUrl(relPath) {
+            return `/scenes/file?project=${encodeURIComponent(currentProject)}&path=${encodeURIComponent(relPath)}`;
+        }
+
+        // The handful of fields worth editing inline, per pipeline.
+        function inlineEditFields(scene) {
+            const order = ['search_query', 'comfyui_prompt', 'visual_type',
+                           'narration_excerpt', 'visual_description', 'duration'];
+            return order.filter(f => editableFields.includes(f));
+        }
+
         // Render a single scene row
         function renderScene(scene, index) {
             const status = getAssetStatus(scene);
@@ -528,10 +590,11 @@
 
             let assetHtml = '';
             if (assetPath) {
+                const url = fileUrl(assetPath);
                 if (isVideo) {
-                    assetHtml = `<video src="/${assetPath}" controls></video>`;
+                    assetHtml = `<video src="${url}" controls></video>`;
                 } else {
-                    assetHtml = `<img src="/${assetPath}" alt="${scene.id}" onclick="openLightbox('/${assetPath}')">`;
+                    assetHtml = `<img src="${url}" alt="${scene.id}" onclick="openLightbox('${url}')">`;
                 }
                 assetHtml += `<div class="asset-path">${assetPath}</div>`;
             } else {
@@ -552,6 +615,10 @@
                      id="scene-${index}">
                     <div class="scene-details">
                         <div class="scene-header">
+                            <label class="scene-select" title="Queue this scene for re-render">
+                                <input type="checkbox" ${selectedScenes.has(scene.id) ? 'checked' : ''}
+                                       onchange="toggleSelect('${scene.id}', this.checked)">
+                            </label>
                             <span class="scene-id">${scene.id}</span>
                             <span class="scene-timing" onclick="seekTo(${scene.start_seconds || 0}, ${scene.end_seconds || 0}, '${scene.id}')" title="Click to play this scene's audio">
                                 ${formatTime(scene.start_seconds)} - ${formatTime(scene.end_seconds)} (${duration.toFixed(1)}s)
@@ -607,6 +674,30 @@
                                     <div class="detail-section-title">Section</div>
                                     <div class="detail-section-content">${scene._section}</div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="scene-edit">
+                            <button class="edit-toggle" onclick="toggleEdit('${scene.id}')">✎ Edit / comment</button>
+                            <div class="edit-panel" id="edit-${scene.id}" style="display:none;">
+                                <div class="edit-mode-tabs">
+                                    <button class="tab-btn active" id="tab-note-${scene.id}" onclick="setEditMode('${scene.id}','note')">Comment → agent</button>
+                                    <button class="tab-btn" id="tab-fields-${scene.id}" onclick="setEditMode('${scene.id}','fields')">Edit fields</button>
+                                </div>
+                                <div class="edit-body" id="body-note-${scene.id}">
+                                    <textarea id="note-${scene.id}" class="edit-note" rows="2"
+                                        placeholder="e.g. make this a +300% green counter, top-left"></textarea>
+                                    <button class="apply-btn" onclick="applyNote('${scene.id}')">Apply comment</button>
+                                </div>
+                                <div class="edit-body" id="body-fields-${scene.id}" style="display:none;">
+                                    ${inlineEditFields(scene).map(f => `
+                                        <label class="field-edit">
+                                            <span class="field-label">${f}</span>
+                                            <input id="field-${scene.id}-${f}" value="${(scene[f] ?? '').toString().replace(/"/g, '&quot;')}">
+                                        </label>`).join('')}
+                                    <button class="apply-btn" onclick="applyFields('${scene.id}')">Apply edits</button>
+                                </div>
+                                <div class="edit-status" id="editstatus-${scene.id}"></div>
                             </div>
                         </div>
                     </div>
@@ -665,6 +756,126 @@
 
             document.getElementById('stats').textContent =
                 `${visibleCount}/${allScenes.length} scenes | ${matched} matched | ${generated} generated | ${infographic} infographic | ${missing} missing`;
+
+            updateRerenderBar();
+        }
+
+        // ---------- Iteration: select / edit / comment / re-render ----------
+        function toggleSelect(id, checked) {
+            if (checked) selectedScenes.add(id); else selectedScenes.delete(id);
+            updateRerenderBar();
+        }
+        function clearSelection() { selectedScenes.clear(); renderScenes(); }
+
+        function updateRerenderBar() {
+            let bar = document.getElementById('rerenderBar');
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.id = 'rerenderBar';
+                bar.className = 'rerender-bar';
+                document.body.appendChild(bar);
+            }
+            if (selectedScenes.size === 0) { bar.style.display = 'none'; return; }
+            bar.style.display = 'flex';
+            bar.innerHTML =
+                `<span>${selectedScenes.size} scene(s) selected · pipeline <b>${currentPipeline}</b></span>
+                 <button onclick="clearSelection()">Clear</button>
+                 <button class="primary" onclick="rerenderSelected()">Re-render selected</button>
+                 <span id="rerenderMsg" class="rerender-msg"></span>`;
+        }
+
+        function toggleEdit(id) {
+            const p = document.getElementById(`edit-${id}`);
+            p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+        }
+        function setEditMode(id, mode) {
+            document.getElementById(`body-note-${id}`).style.display = (mode === 'note') ? 'block' : 'none';
+            document.getElementById(`body-fields-${id}`).style.display = (mode === 'fields') ? 'block' : 'none';
+            document.getElementById(`tab-note-${id}`).classList.toggle('active', mode === 'note');
+            document.getElementById(`tab-fields-${id}`).classList.toggle('active', mode === 'fields');
+        }
+
+        async function postRevise(body) {
+            const res = await fetch('/scenes/api/scene/revise', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body) });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(j.detail || res.statusText);
+            return j;
+        }
+
+        async function refreshScenes() {
+            const res = await fetch(`/scenes/api/scenes/flat?project=${encodeURIComponent(currentProject)}`);
+            const data = await res.json();
+            allScenes = data.scenes;
+            renderScenes();
+        }
+
+        async function applyNote(id) {
+            const note = document.getElementById(`note-${id}`).value.trim();
+            const st = document.getElementById(`editstatus-${id}`);
+            if (!note) { st.textContent = 'Enter a comment first.'; return; }
+            st.textContent = 'Applying (agent)…';
+            try {
+                const r = await postRevise({ project: currentProject, scene_id: id, note });
+                const keys = Object.keys(r.applied || {});
+                st.textContent = keys.length ? ('Applied: ' + keys.join(', ')) : 'No change produced.';
+                if (keys.length) { selectedScenes.add(id); await refreshScenes(); }
+            } catch (e) { st.textContent = 'Error: ' + e.message; }
+        }
+
+        async function applyFields(id) {
+            const scene = allScenes.find(s => s.id === id);
+            const patch = {};
+            inlineEditFields(scene).forEach(f => {
+                const el = document.getElementById(`field-${id}-${f}`);
+                if (el && el.value !== (scene[f] ?? '').toString()) patch[f] = el.value;
+            });
+            const st = document.getElementById(`editstatus-${id}`);
+            if (Object.keys(patch).length === 0) { st.textContent = 'No changes.'; return; }
+            st.textContent = 'Saving…';
+            try {
+                const r = await postRevise({ project: currentProject, scene_id: id, patch });
+                st.textContent = 'Saved: ' + Object.keys(r.applied || {}).join(', ');
+                selectedScenes.add(id);
+                await refreshScenes();
+            } catch (e) { st.textContent = 'Error: ' + e.message; }
+        }
+
+        async function rerenderSelected() {
+            const ids = [...selectedScenes];
+            if (ids.length === 0) return;
+            const msg = document.getElementById('rerenderMsg');
+            msg.textContent = 'Submitting…';
+            try {
+                const res = await fetch('/scenes/api/rerender', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: currentProject, scene_ids: ids }) });
+                const j = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(j.detail || res.statusText);
+                pollJob(j.job_id, msg);
+            } catch (e) { msg.textContent = 'Error: ' + e.message; }
+        }
+
+        async function pollJob(jobId, msg) {
+            msg.textContent = 'Rendering…';
+            const tick = async () => {
+                try {
+                    const r = await fetch(`/api/jobs/${jobId}`);
+                    const j = await r.json();
+                    msg.textContent = j.message || j.status;
+                    if (j.status === 'done') {
+                        msg.textContent = 'Done ✓ — reloading';
+                        selectedScenes.clear();
+                        await loadSceneData();
+                        return;
+                    }
+                    if (j.status === 'error') { msg.textContent = 'Error: ' + (j.error || 'render failed'); return; }
+                    if (j.status === 'cancelled') { msg.textContent = 'Cancelled'; return; }
+                } catch (e) { msg.textContent = 'Poll error: ' + e.message; }
+                setTimeout(tick, 1500);
+            };
+            tick();
         }
 
         // Open lightbox
@@ -809,6 +1020,9 @@
                 const scenesData = await scenesRes.json();
                 allScenes = scenesData.scenes;
                 sections = scenesData.sections;
+                currentPipeline = scenesData.pipeline || 'segment';
+                editableFields = scenesData.editable_fields || [];
+                selectedScenes.clear();
 
                 // Reset and populate section filter
                 const sectionFilter = document.getElementById('sectionFilter');

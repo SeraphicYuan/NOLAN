@@ -281,10 +281,13 @@ class ClipMatcher:
         if scene.start_seconds is not None and scene.end_seconds is not None:
             return scene.end_seconds - scene.start_seconds
 
-        # Parse duration string (e.g., "5s", "3.5s")
-        if scene.duration:
-            match = re.match(r"(\d+\.?\d*)s?", scene.duration)
-            if match:
+        # Duration may be a number (4.5) or a string ("5s", "3.5s") depending on
+        # which LLM designed the plan — handle both.
+        if scene.duration is not None:
+            if isinstance(scene.duration, (int, float)):
+                return float(scene.duration)
+            match = re.match(r"(\d+\.?\d*)s?", str(scene.duration))
+            if match and match.group(1):
                 return float(match.group(1))
 
         return 5.0  # Default 5 seconds

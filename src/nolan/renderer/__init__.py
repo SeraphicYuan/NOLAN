@@ -45,8 +45,14 @@ from .scenes.tweet_card import TweetCardRenderer
 from .scenes.news_headline import NewsHeadlineRenderer
 from .scenes.document_highlight import DocumentHighlightRenderer
 from .scenes.section_divider import SectionDividerRenderer
+from .scenes.pie_callout import PieCalloutRenderer, render_pie_callout
 from .engine import PythonTemplateEngine, RenderResult, PYTHON_RENDERABLE_TYPES
-from .layout import Position, POSITIONS, resolve_position
+from .layout import (
+    # Position system (percentage-based)
+    Position, POSITIONS, resolve_position,
+    # Slot/Layout system (region-based)
+    Slot, Layout, LAYOUT_PRESETS, get_preset, slots_to_json, slots_from_json,
+)
 
 __all__ = [
     # Core
@@ -93,12 +99,22 @@ __all__ = [
     'DocumentHighlightRenderer',
     # Transition Renderers
     'SectionDividerRenderer',
+    # Data Callout Renderers
+    'PieCalloutRenderer',
+    'render_pie_callout',
     # Engine
     'PythonTemplateEngine',
     'RenderResult',
     'PYTHON_RENDERABLE_TYPES',
-    # Layout
+    # Layout - Position system
     'Position',
     'POSITIONS',
     'resolve_position',
+    # Layout - Slot system
+    'Slot',
+    'Layout',
+    'LAYOUT_PRESETS',
+    'get_preset',
+    'slots_to_json',
+    'slots_from_json',
 ]

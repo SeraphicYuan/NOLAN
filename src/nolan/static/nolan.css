@@ -1,0 +1,103 @@
+/* NOLAN shared theme + components. Included by hub pages for a consistent look. */
+:root {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --accent: #0ea5e9;
+  --accent-hover: #38bdf8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --purple: #a78bfa;
+  --border: #334155;
+}
+
+/* ---- Shared top nav (injected by nav.js) ---- */
+.nolan-nav {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px; position: sticky; top: 0; z-index: 100;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.nolan-nav .brand {
+  font-weight: 700; font-size: 18px; margin-right: 20px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  text-decoration: none;
+}
+.nolan-nav a.navlink {
+  color: var(--text-secondary); text-decoration: none; padding: 6px 12px;
+  border-radius: 6px; font-size: 14px; transition: all .15s;
+}
+.nolan-nav a.navlink:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.nolan-nav a.navlink.active { color: var(--text-primary); background: var(--bg-tertiary); }
+.nolan-nav .spacer { flex: 1; }
+.nolan-nav .svc { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.nolan-nav .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); }
+.nolan-nav .dot.up { background: var(--success); }
+.nolan-nav .dot.down { background: var(--danger); }
+
+/* ---- Service-down banner ---- */
+.nolan-banner {
+  background: var(--warning); color: #1a1a1a; padding: 10px 20px;
+  font-size: 14px; text-align: center; font-weight: 600;
+}
+.nolan-banner.hidden { display: none; }
+
+/* ---- Buttons ---- */
+.btn {
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.btn:hover { background: var(--accent-hover); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.secondary { background: var(--bg-tertiary); color: var(--text-primary); }
+.btn.secondary:hover { background: #475569; }
+.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+
+/* ---- Forms ---- */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.field input, .field select, .field textarea {
+  width: 100%; background: var(--bg-primary); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px;
+  font-family: inherit;
+}
+.field textarea { min-height: 160px; resize: vertical; }
+
+/* ---- Modal ---- */
+.nolan-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none;
+  align-items: flex-start; justify-content: center; z-index: 200; padding: 60px 16px; overflow-y: auto;
+}
+.nolan-modal-backdrop.open { display: flex; }
+.nolan-modal {
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px;
+  width: 100%; max-width: 560px; padding: 24px;
+}
+.nolan-modal h2 { margin: 0 0 16px; font-size: 20px; }
+
+/* ---- Job progress widget ---- */
+.job-widget {
+  background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px; margin-top: 14px; font-size: 13px;
+}
+.job-widget .bar { height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden; margin: 8px 0; }
+.job-widget .bar > div { height: 100%; background: var(--accent); width: 0%; transition: width .3s; }
+.job-widget .msg { color: var(--text-secondary); }
+.job-widget .logs {
+  margin-top: 8px; max-height: 160px; overflow-y: auto; font-family: ui-monospace, monospace;
+  font-size: 11px; color: var(--text-secondary); white-space: pre-wrap; background: #0a0f1d;
+  border-radius: 6px; padding: 8px;
+}
+.job-widget.status-done { border-color: var(--success); }
+.job-widget.status-error { border-color: var(--danger); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.badge.running { background: var(--accent); color: #fff; }
+.badge.done { background: var(--success); color: #06280f; }
+.badge.error { background: var(--danger); color: #fff; }
+.badge.pending { background: var(--bg-tertiary); color: var(--text-secondary); }

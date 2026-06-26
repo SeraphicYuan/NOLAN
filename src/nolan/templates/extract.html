@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extract Assets · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    .wrap { max-width: 980px; margin: 32px auto; padding: 0 20px; }
+    h1 { font-size: 28px; margin-bottom: 6px; }
+    .sub { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+    input[type=text], input[type=number] {
+      background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary);
+      border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+    input#url { flex: 1; min-width: 320px; }
+    input#limit { width: 90px; }
+    button { background: var(--accent, #6366f1); color: #fff; border: none; border-radius: 8px;
+             padding: 10px 16px; font-size: 14px; cursor: pointer; }
+    button.secondary { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); }
+    button:disabled { opacity: .5; cursor: default; }
+    .hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+    .meta { margin: 18px 0 8px; font-size: 13px; color: var(--text-secondary); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .tile { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
+            overflow: hidden; display: flex; flex-direction: column; }
+    .tile img { width: 100%; height: 130px; object-fit: cover; background: var(--bg-primary); display: block; }
+    .tile .cap { padding: 8px; font-size: 11px; color: var(--text-secondary); word-break: break-all; }
+    .tile a { color: var(--accent, #818cf8); text-decoration: none; }
+    #job { margin-top: 16px; display: none; }
+    .err { color: #f87171; font-size: 13px; margin-top: 10px; }
+  </style>
+  <script src="/static/nav.js" data-active="extract"></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Extract Assets from a Link</h1>
+    <p class="sub">Paste a page URL — NOLAN pulls the highest-definition images it can find.
+       Site-aware parsers (Gutenberg, Wikimedia Commons, The Met, Internet Archive,
+       Library of Congress, IIIF manifests) plus a universal HTML fallback (linked full-res
+       over thumbnails, <code>srcset</code>, <code>og:image</code>).</p>
+
+    <div class="card">
+      <div class="row">
+        <div style="flex:1;">
+          <label for="url">Page URL</label>
+          <input type="text" id="url" placeholder="https://www.gutenberg.org/files/21790/21790-h/21790-h.htm">
+        </div>
+        <div>
+          <label for="limit">Limit</label>
+          <input type="number" id="limit" min="1" placeholder="all">
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button id="preview-btn">Preview</button>
+        <button id="download-btn" class="secondary">Extract &amp; Download</button>
+      </div>
+      <div class="hint">Preview lists what was found without downloading. Extract &amp; Download saves
+        full-res files to <code>.scratch/extracted/&lt;host&gt;</code> with a manifest.</div>
+      <div id="error" class="err"></div>
+      <div id="job"></div>
+    </div>
+
+    <div id="meta" class="meta"></div>
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <script src="/static/jobs.js"></script>
+  <script>
+    var urlEl = document.getElementById("url");
+    var limitEl = document.getElementById("limit");
+    var previewBtn = document.getElementById("preview-btn");
+    var downloadBtn = document.getElementById("download-btn");
+    var errEl = document.getElementById("error");
+    var metaEl = document.getElementById("meta");
+    var gridEl = document.getElementById("grid");
+    var jobEl = document.getElementById("job");
+
+    function body() {
+      var b = { url: urlEl.value.trim() };
+      var lim = parseInt(limitEl.value, 10);
+      if (!isNaN(lim) && lim > 0) b.limit = lim;
+      return b;
+    }
+
+    function esc(s) { return String(s || "").replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+    function renderResults(extractor, results) {
+      metaEl.textContent = results.length + " asset(s) via '" + extractor + "' extractor";
+      gridEl.innerHTML = results.map(function (r) {
+        var img = r.thumbnail_url || r.url;
+        var lic = r.license ? "<div>" + esc(r.license) + "</div>" : "";
+        return '<div class="tile">' +
+          '<a href="' + esc(r.url) + '" target="_blank" rel="noopener">' +
+          '<img loading="lazy" src="' + esc(img) + '" alt=""></a>' +
+          '<div class="cap"><a href="' + esc(r.url) + '" target="_blank" rel="noopener">full-res</a>' +
+          lic + '</div></div>';
+      }).join("");
+    }
+
+    function reset() { errEl.textContent = ""; metaEl.textContent = ""; gridEl.innerHTML = ""; jobEl.style.display = "none"; }
+
+    previewBtn.addEventListener("click", function () {
+      if (!urlEl.value.trim()) { errEl.textContent = "Enter a URL."; return; }
+      reset();
+      previewBtn.disabled = true; previewBtn.textContent = "Extracting…";
+      fetch("/api/extract-assets", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body())
+      }).then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error(t || r.status); });
+        return r.json();
+      }).then(function (data) {
+        renderResults(data.extractor, data.results || []);
+      }).catch(function (e) { errEl.textContent = "Error: " + e.message; })
+        .finally(function () { previewBtn.disabled = false; previewBtn.textContent = "Preview"; });
+    });
+
+    downloadBtn.addEventListener("click", function () {
+      if (!urlEl.value.trim()) { errEl.textContent = "Enter a URL."; return; }
+      reset();
+      var b = body(); b.download = true;
+      NolanJobs.start("/api/extract-assets", b, {
+        into: jobEl,
+        onDone: function (job) {
+          if (job.result && job.result.results) {
+            renderResults(job.result.extractor, job.result.results);
+            if (job.result.out_dir) metaEl.textContent += " — saved to " + job.result.out_dir;
+          }
+        }
+      }).catch(function (e) { errEl.textContent = "Error: " + e.message; });
+    });
+  </script>
+</body>
+</html>

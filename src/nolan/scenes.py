@@ -2,6 +2,8 @@
 
 import json
 import re
+import asyncio
+from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional, Any
 
@@ -68,12 +70,19 @@ Break this narration into BEATS. A beat is a distinct unit of thought - it could
 - A transition moment
 
 For each beat, decide:
-1. What VISUAL CATEGORY should accompany it?
-   - b-roll: Illustrative footage (stock, archival, metaphorical imagery)
-   - graphics: Charts, diagrams, infographics, animated text
-   - a-roll: Primary footage of the subject being discussed (if we have it)
-   - generated: AI-generated image for concepts with no real footage
-   - host: Face-to-camera moment (rare, for emphasis)
+1. What VISUAL CATEGORY should accompany it? CHOOSE BY WHAT CAN ACTUALLY BE PRODUCED:
+   - generated: THE DEFAULT for most beats. AI-generated imagery for anything that is NOT
+     real, findable footage — historical reconstructions (ancient/period eras with no film),
+     dramatizations, specific artifacts, metaphors, symbolic or conceptual shots. When unsure,
+     choose generated: generation can render any single described image.
+   - b-roll: ONLY for genuine REAL footage that plausibly exists in archives/stock — real
+     historical events with known footage (e.g. WWII newsreels, a moon landing), real modern
+     events, identifiable real people/places, or generic real-world stock (a stadium crowd, a
+     city street, ocean waves). Do NOT use b-roll for reconstructions, pre-film eras, imagined
+     scenes, or compound/montage visuals — those are 'generated'.
+   - graphics: data, maps, timelines, comparisons, statistics, quotes, animated text.
+   - a-roll: primary footage of the literal real subject (only if such footage exists).
+   - host: face-to-camera presenter moment (rare).
 
 2. Is this SEE-SAY or COUNTERPOINT?
    - see-say: Visual directly illustrates what's being said
@@ -86,7 +95,7 @@ Return a JSON array:
   {{
     "id": "beat_001",
     "narration": "the exact words for this beat",
-    "category": "b-roll|graphics|a-roll|generated|host",
+    "category": "generated|b-roll|graphics|a-roll|host",
     "mode": "see-say|counterpoint",
     "visual_intent": "brief description of what this beat needs visually",
     "has_visual_hole": false,
@@ -97,6 +106,8 @@ Return a JSON array:
 GUIDELINES:
 - Every sentence or distinct thought = one beat
 - Don't over-split: keep phrases that flow together as one beat
+- PREFER 'generated' over 'b-roll' whenever in doubt — generation reliably produces any image;
+  real footage is scarce and only fits real, documented events/people/places.
 - Flag visual_hole=true for abstract concepts (e.g., "freedom", "economic anxiety")
 - sync_word is optional - only include for impactful moments
 
@@ -239,12 +250,27 @@ SECTION: {section_title}
 BEATS:
 {beats_json}
 
-Convert these beats into SCENES. You have flexibility in the mapping:
+Convert these beats into SCENES. Mapping:
 - 1 beat → 1 scene (most common)
-- 1 beat → multiple scenes (for montage/quick cuts)
-- Multiple beats → 1 scene (when one visual spans multiple thoughts, e.g., infographic with reveals)
+- 1 beat → multiple scenes when the beat implies a montage / quick cuts — emit ONE SCENE PER
+  SHOT, each with its OWN single-visual description and asset (never pack a montage into one scene)
+- Multiple beats → 1 scene (when one sustained visual spans multiple thoughts, e.g., an infographic
+  with reveals)
 
-For each scene, provide full visual specifications based on the beat's category.
+CRITICAL — each scene depicts ONE clear, single, concrete visual:
+- The visual_description must be a SINGLE image/shot ("a Mayan stone relief of ballplayers"), never a
+  list of shots ("Shot 1… Shot 2… Shot 3…"). If you wrote a montage, split it into multiple scenes.
+- Make subjects concrete and self-contained so they can be sourced or generated.
+
+ROUTE BY FULFILLABILITY (generation-first):
+- Default to "generated" with a concrete, cinematic `comfyui_prompt` for reconstructions, period
+  scenes, artifacts, metaphors, and any imagined/symbolic shot.
+- Use "b-roll" ONLY for genuine real footage that plausibly exists (real documented events/people/
+  places, generic real-world stock). If a b-roll subject isn't real findable footage, switch it to
+  "generated" and write a comfyui_prompt instead.
+- "graphics" for data/maps/timelines/quotes.
+
+For each scene, provide full visual specifications based on its category.
 
 TEMPLATE CATALOG:
 {template_catalog}
@@ -264,7 +290,7 @@ Return JSON array:
       "template": "pick from catalog",
       "theme": "default|dark|warm|cool",
       "theme_config_ref": "docu-dark-minimal|docu-warm-soft (optional)",
-      "data": {{"title": "...", "items": [{"label": "...", "icon_keyword": "optional"}]}}
+      "data": {{"title": "...", "items": [{{"label": "...", "icon_keyword": "optional"}}]}}
     }},
     "sync_points": [
       {{"trigger": "word", "action": "reveal|highlight|cut", "target": 0}}
@@ -276,8 +302,10 @@ Return JSON array:
 
 GUIDELINES:
 - Include only relevant fields per visual_type
+- ALWAYS include a concrete `comfyui_prompt` for "generated" scenes (single subject, cinematic,
+  period/style-accurate)
 - For graphics with multiple data points, use sync_points to reveal items on trigger words
-- For montage (1 beat → N scenes), create quick sequential scenes
+- For montage (1 beat → N scenes), create quick sequential scenes, EACH a single visual
 - For sustained visual (N beats → 1 scene), combine narration_excerpt from all beats
 - narration_excerpt should be the KEY PHRASE for SRT timestamp matching
 
@@ -349,6 +377,8 @@ class Scene:
     infographic_asset_png: Optional[str] = None  # PNG preview for infographics
     rendered_clip: Optional[str] = None      # Pre-rendered MP4 clip (highest priority)
     matched_clip: Optional[Dict[str, Any]] = None  # Video library clip match
+    motion_spec: Optional[Dict[str, Any]] = None  # nolan.motion spec (NL-authored effect)
+    resolved_source: Optional[str] = None    # segment builder: which source rendered this
 
     # === SRT Cues (attached in Step 4) ===
     subtitle_cues: List[Any] = field(default_factory=list)  # SubtitleCue objects
@@ -371,13 +401,13 @@ class ScenePlan:
 
     def save(self, path: str) -> None:
         """Save to JSON file."""
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             f.write(self.to_json())
 
     @classmethod
     def load(cls, path: str) -> "ScenePlan":
         """Load from JSON file."""
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         plan = cls()
@@ -453,6 +483,8 @@ class ScenePlan:
             infographic_asset_png=data.get("infographic_asset_png"),
             rendered_clip=data.get("rendered_clip"),
             matched_clip=data.get("matched_clip"),
+            motion_spec=data.get("motion_spec"),
+            resolved_source=data.get("resolved_source"),
             subtitle_cues=data.get("subtitle_cues", []),
         )
 
@@ -520,13 +552,37 @@ class SceneDesigner:
     Pass 2: Detail enrichment - add category-specific details (search queries, specs, etc.)
     """
 
-    def __init__(self, llm_client):
+    def __init__(self, llm_client, cache_dir=None, model_id: str = "default"):
         """Initialize the designer.
 
         Args:
             llm_client: The LLM client for scene generation.
+            cache_dir: Optional directory to cache LLM responses on disk, so
+                re-running design on the same script + model is instant.
+            model_id: Identifier mixed into the cache key (so different models
+                don't collide).
         """
         self.llm = llm_client
+        self.model_id = model_id
+        self._cache_dir = Path(cache_dir) if cache_dir else None
+        if self._cache_dir:
+            self._cache_dir.mkdir(parents=True, exist_ok=True)
+
+    async def _cached_generate(self, prompt: str) -> str:
+        """LLM generate with optional on-disk response cache (keyed by model+prompt)."""
+        if not self._cache_dir:
+            return await self.llm.generate(prompt)
+        import hashlib
+        key = hashlib.sha256(f"{self.model_id}\x00{prompt}".encode("utf-8")).hexdigest()[:32]
+        cache_file = self._cache_dir / f"{key}.txt"
+        if cache_file.exists():
+            return cache_file.read_text(encoding="utf-8")
+        result = await self.llm.generate(prompt)
+        try:
+            cache_file.write_text(result, encoding="utf-8")
+        except Exception:
+            pass  # cache best-effort
+        return result
 
     # =========================================================================
     # PASS 1: Beat Detection
@@ -547,7 +603,7 @@ class SceneDesigner:
             narration=section.narration
         )
 
-        response = await self.llm.generate(prompt)
+        response = await self._cached_generate(prompt)
         beats_data = self._parse_json_array(response)
 
         beats = []
@@ -591,7 +647,7 @@ class SceneDesigner:
             template_catalog=INFOGRAPHIC_TEMPLATE_REGISTRY,
         )
 
-        response = await self.llm.generate(prompt)
+        response = await self._cached_generate(prompt)
         scenes_data = self._parse_json_array(response)
 
         return [self._parse_scene_data(s) for s in scenes_data]
@@ -678,25 +734,83 @@ class SceneDesigner:
         """
         return await self.detect_beats(section)
 
-    async def design_full_plan(self, sections: List[ScriptSection], enrich: bool = True) -> ScenePlan:
+    # Scenes whose visual is footage/generation — not authored as a motion effect.
+    _NON_MOTION_TYPES = {"b-roll", "a-roll", "footage", "cinematic", "generated",
+                         "generated-image", "host", "passthrough"}
+
+    async def author_motion(self, scenes: List[Scene], concurrency: int = 4) -> List[Scene]:
+        """Attach a `motion_spec` to graphic/text/data scenes by compiling their visual
+        intent through the nolan.motion spec system (covers Python + Remotion effects)."""
+        from nolan.motion import compile_spec
+        sem = asyncio.Semaphore(max(1, concurrency))
+
+        async def _one(scene: Scene):
+            vt = (scene.visual_type or "").lower().strip()
+            if vt in self._NON_MOTION_TYPES:
+                return
+            brief = (scene.visual_description or scene.narration_excerpt or "").strip()
+            if not brief:
+                return
+            async with sem:
+                try:
+                    spec, _errors = await compile_spec(brief, self.llm)
+                except Exception:
+                    return
+            if spec.get("backend"):   # a valid effect resolved
+                scene.motion_spec = spec
+
+        await asyncio.gather(*[_one(s) for s in scenes])
+        return scenes
+
+    async def design_full_plan(self, sections: List[ScriptSection], enrich: bool = True,
+                               progress_callback=None, concurrency: int = 8,
+                               author_motion: bool = False) -> ScenePlan:
         """Design scenes for all script sections.
 
         Args:
             sections: List of script sections.
             enrich: If True, run full two-pass. If False, beats only.
+            progress_callback: Optional callable(current, total, scenes_so_far, message)
+                invoked after each section, for live progress reporting.
 
         Returns:
             Complete ScenePlan.
         """
         plan = ScenePlan()
+        total = len(sections)
 
-        for section in sections:
-            scenes = await self.design_section(section, enrich=enrich)
-            # Prefix scene IDs with section name to ensure global uniqueness
+        # Sections are independent, so design them concurrently (bounded) instead
+        # of serially — the dominant speedup for long scripts. Order and progress
+        # are preserved.
+        sem = asyncio.Semaphore(max(1, concurrency))
+        done = 0
+        scenes_so_far = 0
+        lock = asyncio.Lock()
+
+        async def _one(i, section):
+            nonlocal done, scenes_so_far
+            async with sem:
+                scenes = await self.design_section(section, enrich=enrich)
             section_prefix = self._sanitize_section_name(section.title)
             for scene in scenes:
                 scene.id = f"{section_prefix}_{scene.id}"
-            plan.sections[section.title] = scenes
+            async with lock:
+                done += 1
+                scenes_so_far += len(scenes)
+                if progress_callback:
+                    progress_callback(done, total, scenes_so_far,
+                                      f"{done}/{total} sections · {scenes_so_far} scenes so far")
+            return section.title, scenes
+
+        results = await asyncio.gather(*[_one(i, s) for i, s in enumerate(sections)])
+        # Preserve original section order in the plan.
+        by_title = dict(results)
+        for section in sections:
+            plan.sections[section.title] = by_title.get(section.title, [])
+
+        # Optional: author motion specs (Python + Remotion effects) for graphic scenes.
+        if author_motion:
+            await self.author_motion(plan.all_scenes, concurrency=concurrency)
 
         return plan
 
@@ -727,22 +841,33 @@ class SceneDesigner:
     # JSON Parsing Helpers
     # =========================================================================
 
+    @staticmethod
+    def _strip_fences(response: str) -> str:
+        """Strip markdown code fences (```json … ```) that some models add."""
+        s = response.strip()
+        if s.startswith("```"):
+            s = re.sub(r'^```[a-zA-Z0-9_-]*\s*', '', s)
+            s = re.sub(r'\s*```$', '', s.strip())
+        return s.strip()
+
     def _parse_json_array(self, response: str) -> List[Dict]:
-        """Parse a JSON array from LLM response."""
+        """Parse a JSON array from an LLM response (tolerant of code fences)."""
+        s = self._strip_fences(response)
         try:
-            return json.loads(response.strip())
+            return json.loads(s)
         except json.JSONDecodeError:
-            match = re.search(r'\[.*\]', response, re.DOTALL)
+            match = re.search(r'\[.*\]', s, re.DOTALL)
             if match:
                 return json.loads(match.group())
             raise ValueError(f"Could not parse JSON array from response: {response[:200]}")
 
     def _parse_json_object(self, response: str) -> Dict:
-        """Parse a JSON object from LLM response."""
+        """Parse a JSON object from an LLM response (tolerant of code fences)."""
+        s = self._strip_fences(response)
         try:
-            return json.loads(response.strip())
+            return json.loads(s)
         except json.JSONDecodeError:
-            match = re.search(r'\{.*\}', response, re.DOTALL)
+            match = re.search(r'\{.*\}', s, re.DOTALL)
             if match:
                 return json.loads(match.group())
             raise ValueError(f"Could not parse JSON object from response: {response[:200]}")
