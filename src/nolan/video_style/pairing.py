@@ -20,6 +20,7 @@ This dimension needs an **indexed** video (aligned transcript + descriptions).
 from __future__ import annotations
 
 import json
+import re
 from statistics import mean
 from typing import Any, Callable, Dict, List, Optional
 
@@ -55,6 +56,53 @@ def _band(score: float) -> str:
     if score < TONAL_MAX:
         return "tonal/abstract"
     return "associative"
+
+
+# On-screen-text confound: vision descriptions often quote the narration rendered
+# on screen ("…text stating 'X'"), which inflates said↔shown similarity with the
+# literal words rather than the imagery. We strip multi-word quoted spans + the
+# text lead-in phrases before embedding, and flag the segment as having on-screen text.
+# Paired double/smart/CJK quotes (NOT straight single ' — those collide with
+# possessives/contractions). Straight single quotes are only stripped when a text
+# lead-in precedes them (so "the king's throne" is safe, "text stating 'X'" isn't).
+_QUOTED_PAIRED = re.compile(r"[\"“”‘’『』「」]\s*([^\"“”‘’『』「」]{0,400}?)\s*[\"“”‘’『』「」]")
+_SINGLE_WITH_HINT = re.compile(
+    r"(?:text|caption|reads?|reading|stating|states|says|saying|words?|"
+    r"title(?:\s+card)?|subtitle|overlay|displaying)\b[^']{0,25}?'([^']{1,400}?)'",
+    re.IGNORECASE)
+_LEADIN = re.compile(
+    r"\b(?:accompanied by|featuring|with|displaying|showing|and)?\s*(?:the\s+)?"
+    r"(?:on-?screen\s+)?(?:text|caption|words?|title(?:\s+card)?|subtitle|lower[- ]third)"
+    r"(?:\s+overlay)?(?:\s+(?:that\s+)?(?:stating|states|reads?|reading|saying|says))?\s*:?",
+    re.IGNORECASE)
+_TEXT_HINT = re.compile(r"\b(caption|subtitle|title card|lower[- ]third|on-?screen text)\b", re.IGNORECASE)
+
+
+def strip_onscreen_text(shown: str) -> tuple:
+    """Return (imagery_only_text, has_onscreen_text).
+
+    Removes multi-word quoted spans (the rendered narration) and text lead-in
+    phrases, so the embedding reflects the *imagery*, not the words shown as text.
+    Single-word quotes / possessives are left alone.
+    """
+    had = False
+
+    def _repl(m):
+        nonlocal had
+        if len(m.group(1).split()) >= 2:   # multi-word quote ⇒ on-screen text
+            had = True
+            return " "
+        return m.group(0)
+
+    cleaned = _QUOTED_PAIRED.sub(_repl, shown)
+    cleaned = _SINGLE_WITH_HINT.sub(_repl, cleaned)
+    cleaned = _LEADIN.sub(" ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" .,;:-")
+    if not had and _TEXT_HINT.search(shown):
+        had = True
+    if len(cleaned.split()) < 3:           # stripped too much → keep original
+        cleaned = shown
+    return cleaned, had
 
 
 def compose_shown(seg: Dict[str, Any]) -> str:
@@ -94,24 +142,27 @@ def analyze_pairing(segments: List[Dict[str, Any]], duration: float = 0.0,
     paired (said, shown) samples for the synthesis agent.
     """
     # Keep only segments that have BOTH a spoken line and a visual description.
+    # ``shown_clean`` (rendered narration stripped) is what we embed, so directness
+    # reflects the imagery rather than the words shown on screen.
     pairs = []
     for s in segments or []:
         said = (s.get("transcript") or "").strip()
         shown = compose_shown(s)
         if said and shown:
-            pairs.append((s, said, shown))
+            shown_clean, has_text = strip_onscreen_text(shown)
+            pairs.append((s, said, shown, shown_clean, has_text))
     if len(pairs) < 2:
         return {"available": False, "reason": "need >=2 segments with transcript + visual description"}
 
     if embed is None:
         embed = make_bge_embedder()
-    # Embed said + shown in ONE batch so both live in the same vector space.
+    # Embed said + (text-stripped) shown in ONE batch — same vector space.
     m = len(pairs)
-    all_vecs = embed([p[1] for p in pairs] + [p[2] for p in pairs])
+    all_vecs = embed([p[1] for p in pairs] + [p[3] for p in pairs])
     said_vecs, shown_vecs = all_vecs[:m], all_vecs[m:]
 
     rows = []
-    for (seg, said, shown), sv, hv in zip(pairs, said_vecs, shown_vecs):
+    for (seg, said, shown, _clean, has_text), sv, hv in zip(pairs, said_vecs, shown_vecs):
         d = round(_cos(sv, hv), 3)
         start = float(seg.get("timestamp_start") or 0.0)
         rows.append({
@@ -119,8 +170,9 @@ def analyze_pairing(segments: List[Dict[str, Any]], duration: float = 0.0,
             "directness": d,
             "band": _band(d),
             "position": _position_bucket(start, duration),
+            "on_screen_text": has_text,
             "said": said[:snippet_chars],
-            "shown": shown[:snippet_chars],
+            "shown": shown[:snippet_chars],   # raw (with any on-screen text) for the agent
         })
 
     n = len(rows)
@@ -148,6 +200,10 @@ def analyze_pairing(segments: List[Dict[str, Any]], duration: float = 0.0,
         "literalness": ("mostly-literal" if dist["literal"] >= 0.6
                         else "mostly-associative" if (dist["associative"] + dist["tonal/abstract"]) >= 0.6
                         else "mixed"),
+        # Its own style dimension: how often key narration is burned into the frame
+        # as on-screen text (directness above is computed with that text removed).
+        "on_screen_text_ratio": round(sum(1 for r in rows if r["on_screen_text"]) / n, 3),
+        "directness_note": "computed on imagery only (rendered on-screen narration stripped)",
         "samples": by_time,                         # paired said/shown for the agent
         "bands": {"literal_min": LITERAL_MIN, "tonal_max": TONAL_MAX},
     }

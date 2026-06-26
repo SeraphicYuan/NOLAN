@@ -72,6 +72,35 @@ def main():
     g = pairing.analyze_pairing([{"transcript": "x", "combined_summary": "y"}], embed=fake_embedder)
     assert g["available"] is False
     print("insufficient-data guard OK")
+
+    # --- on-screen-text stripping ---
+    # possessives/contractions must NOT be stripped (no text lead-in)
+    keep, had = pairing.strip_onscreen_text("the soldier's anguish and the king's empty throne")
+    assert had is False and "soldier" in keep and "throne" in keep, (keep, had)
+    # rendered narration in quotes after a lead-in IS stripped + flagged
+    clean, had2 = pairing.strip_onscreen_text(
+        "a melancholic nobleman accompanied by text stating 'There is a pain harder than death'")
+    assert had2 is True and "pain harder than death" not in clean and "nobleman" in clean, (clean, had2)
+    print("strip_onscreen_text OK:", repr(clean))
+
+    # de-inflation: a segment 'literal' ONLY because the visual shows the narration text
+    seg_text = [
+        {"timestamp_start": 0, "timestamp_end": 3,
+         "transcript": "alpha beta gamma delta epsilon",
+         "combined_summary": "a calm misty empty field accompanied by text stating 'alpha beta gamma delta epsilon'"},
+        {"timestamp_start": 10, "timestamp_end": 13,
+         "transcript": "the river flooded the village",
+         "combined_summary": "the river flooded the village"},
+    ]
+    rt = pairing.analyze_pairing(seg_text, duration=13.0, embed=fake_embedder)
+    onscreen = [s for s in rt["samples"] if s["t"] == 0.0][0]
+    print("on_screen_text_ratio:", rt["on_screen_text_ratio"], "| flagged seg band:", onscreen["band"], "d=", onscreen["directness"])
+    assert rt["on_screen_text_ratio"] == 0.5, rt["on_screen_text_ratio"]
+    assert onscreen["on_screen_text"] is True
+    # with the quoted narration stripped, the misty-field visual is NOT literal anymore
+    assert onscreen["band"] != "literal", (onscreen["band"], onscreen["directness"])
+    print("de-inflation OK (quoted narration no longer counts as literal)")
+
     print("\nOK - pairing analysis verified.")
 
 
