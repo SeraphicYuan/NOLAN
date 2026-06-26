@@ -1,0 +1,41 @@
+{
+  "slug": "holbein-dance-of-death",
+  "name": "Holbein Dance of Death",
+  "subject": "Hans Holbein the Younger's woodcut series The Dance of Death (Les simulachres & historiees faces de la mort)",
+  "style_id": "art-stories",
+  "angle": "Death as the great leveler — and a smuggled social/anticlerical satire on the eve of the Reformation",
+  "pivot": "The Ploughman cut, where Death is gentle/helpful — the one tonal break that recontextualizes the whole series",
+  "target_minutes": 8.0,
+  "description": "Hans Holbein the Younger's woodcut series The Dance of Death (Les simulachres & historiees faces de la mort)",
+  "created_at": "2026-06-25T14:08:41.801460",
+  "status": "written",
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "url",
+      "title": "Wikipedia — Danse Macabre (Holbein section)",
+      "url": "https://en.wikipedia.org/wiki/Danse_Macabre",
+      "added_at": "2026-06-25T14:08:41.820168",
+      "status": "fetched",
+      "text_path": "sources/raw/S1-wikipedia-danse-macabre.md"
+    },
+    {
+      "id": "S2",
+      "kind": "url",
+      "title": "lamortdanslart.com — Holbein Danse macabre",
+      "url": "https://www.lamortdanslart.com/danse/Manuscrit/Holbein/dd_holbein.htm",
+      "added_at": "2026-06-25T14:08:41.829103",
+      "status": "fetched",
+      "text_path": "sources/raw/S2-lamortdanslart-holbein.md"
+    },
+    {
+      "id": "S3",
+      "kind": "url",
+      "title": "Artdex — The Mystery of Hans Holbein's Death",
+      "url": "https://www.artdex.com/the-mystery-of-hans-holbeins-death/",
+      "added_at": "2026-06-25T14:08:41.838459",
+      "status": "fetched",
+      "text_path": "sources/raw/S3-artdex-mystery-holbein.md"
+    }
+  ]
+}

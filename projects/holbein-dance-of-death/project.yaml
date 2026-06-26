@@ -1,0 +1,8 @@
+name: Holbein Dance of Death
+slug: holbein-dance-of-death
+description: Hans Holbein the Younger's woodcut series The Dance of Death (Les simulachres
+  & historiees faces de la mort)
+source_videos:
+- source/
+output_dir: output/
+assets_dir: assets/
