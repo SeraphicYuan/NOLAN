@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Picture Library · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    .wrap { max-width: 1200px; margin: 28px auto; padding: 0 20px; }
+    h1 { font-size: 26px; margin-bottom: 4px; }
+    .sub { color: var(--text-secondary); margin-bottom: 18px; font-size: 13px; }
+    .bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+           background: var(--bg-secondary); border: 1px solid var(--border);
+           border-radius: 12px; padding: 14px; }
+    label { display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 3px; }
+    input[type=text], select {
+      background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary);
+      border-radius: 8px; padding: 9px 11px; font-size: 14px; }
+    input#q { min-width: 280px; flex: 1; }
+    button { background: var(--accent, #6366f1); color: #fff; border: none; border-radius: 8px;
+             padding: 9px 16px; font-size: 14px; cursor: pointer; }
+    .meta { margin: 14px 2px 10px; font-size: 13px; color: var(--text-secondary); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+    .tile { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
+            overflow: hidden; display: flex; flex-direction: column; }
+    .tile.selected { border-color: var(--accent, #818cf8); box-shadow: 0 0 0 2px var(--accent, #818cf8); }
+    .tile .imgwrap { position: relative; background: var(--bg-primary); aspect-ratio: 4/3; }
+    .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .tile .score { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.65);
+                   color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 6px; }
+    .tile .body { padding: 9px; font-size: 11px; color: var(--text-secondary); }
+    .tile .ttl { color: var(--text-primary); font-size: 12px; margin-bottom: 4px;
+                 display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .tile .lic { color: #34d399; }
+    .tile .actions { display: flex; justify-content: space-between; margin-top: 6px; }
+    .tile a { color: var(--accent, #818cf8); text-decoration: none; }
+    .reject { background: transparent; color: #f87171; border: 1px solid var(--border);
+              border-radius: 6px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+    .empty { color: var(--text-secondary); padding: 30px; text-align: center; }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="images"></script>
+  <div class="wrap">
+    <h1>Picture Library</h1>
+    <p class="sub">Persistent, license-aware image store with CLIP semantic search.
+       Leave the box empty to browse newest; type to search by meaning.</p>
+
+    <div class="bar">
+      <div style="flex:1;">
+        <label for="q">Search (semantic)</label>
+        <input type="text" id="q" placeholder="e.g. soldiers in a trench">
+      </div>
+      <div>
+        <label for="scope">Scope</label>
+        <select id="scope">
+          <option value="global">Global</option>
+          <option value="project">Project</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
+      <div>
+        <label for="project">Project</label>
+        <input type="text" id="project" placeholder="(name)" style="width:130px;">
+      </div>
+      <div>
+        <label for="license">License contains</label>
+        <input type="text" id="license" placeholder="e.g. CC0" style="width:120px;">
+      </div>
+      <button id="go">Search</button>
+    </div>
+
+    <div class="bar" style="margin-top:10px;">
+      <div style="flex:1;">
+        <label for="addurl">Add image by URL (into the selected scope)</label>
+        <input type="text" id="addurl" placeholder="https://… .jpg">
+      </div>
+      <div>
+        <label for="addlic">License</label>
+        <input type="text" id="addlic" placeholder="(optional)" style="width:130px;">
+      </div>
+      <button id="addbtn">Add</button>
+    </div>
+
+    <div id="meta" class="meta"></div>
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <script>
+    var qEl = document.getElementById("q");
+    var scopeEl = document.getElementById("scope");
+    var projEl = document.getElementById("project");
+    var licEl = document.getElementById("license");
+    var grid = document.getElementById("grid");
+    var meta = document.getElementById("meta");
+
+    function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+    function params(){
+      var p = new URLSearchParams();
+      p.set("scope", scopeEl.value);
+      if (projEl.value.trim()) p.set("project", projEl.value.trim());
+      if (licEl.value.trim()) p.set("license", licEl.value.trim());
+      return p;
+    }
+
+    function tile(r){
+      var sc = (r.score != null) ? '<span class="score">'+r.score.toFixed(3)+'</span>' : '';
+      var dims = (r.width && r.height) ? r.width+"x"+r.height : "";
+      var src = r.source_url ? '<a href="'+esc(r.source_url)+'" target="_blank" rel="noopener">source</a>' : '';
+      var promote = projEl.value.trim()
+        ? '<button class="reject" style="color:#818cf8;" onclick="promote('+r.id+',this)">Promote</button>' : '';
+      return '<div class="tile" data-id="'+r.id+'">'+
+        '<div class="imgwrap">'+sc+'<a href="'+esc(r.raw)+'" target="_blank" rel="noopener">'+
+          '<img loading="lazy" src="'+esc(r.raw)+'" alt=""></a></div>'+
+        '<div class="body"><div class="ttl">'+esc(r.title||"(untitled)")+'</div>'+
+          '<div class="lic">'+esc(r.license||"?")+'</div>'+
+          '<div>'+esc(r.source||"")+' '+dims+'</div>'+
+          '<div class="actions">'+src+promote+
+            '<button class="reject" onclick="reject('+r.id+',this)">Reject</button></div>'+
+        '</div></div>';
+    }
+
+    function render(results, label){
+      meta.textContent = results.length + " " + label;
+      grid.innerHTML = results.length
+        ? results.map(tile).join("")
+        : '<div class="empty">Nothing here yet. Save assets via the Extract page or '+
+          '<code>nolan image-search --save</code>.</div>';
+    }
+
+    function run(){
+      var q = qEl.value.trim();
+      var url = q ? "/api/images/search?q="+encodeURIComponent(q)+"&"+params().toString()
+                  : "/api/images/list?"+params().toString();
+      meta.textContent = "Loading...";
+      fetch(url).then(function(r){return r.json();}).then(function(d){
+        render(d.results||[], q ? "result(s) for '"+q+"'" : "asset(s)");
+      }).catch(function(e){ meta.textContent = "Error: "+e.message; });
+    }
+
+    function reject(id, btn){
+      var body = {scope: scopeEl.value, project: projEl.value.trim() || null};
+      fetch("/api/images/"+id+"/reject", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)})
+        .then(function(){ var t=btn.closest(".tile"); if(t) t.remove(); });
+    }
+    window.reject = reject;
+
+    function promote(id, btn){
+      var proj = projEl.value.trim();
+      if (!proj){ alert("Set the Project field to promote from."); return; }
+      btn.disabled = true; btn.textContent = "…";
+      fetch("/api/images/"+id+"/promote", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body: JSON.stringify({project: proj})})
+        .then(function(r){ if(!r.ok) return r.text().then(function(t){throw new Error(t);}); return r.json(); })
+        .then(function(){ btn.textContent = "✓ global"; })
+        .catch(function(e){ btn.disabled=false; btn.textContent="Promote"; alert("Promote failed: "+e.message); });
+    }
+    window.promote = promote;
+
+    function addByUrl(){
+      var url = document.getElementById("addurl").value.trim();
+      if (!url){ return; }
+      var body = {url: url, scope: scopeEl.value, project: projEl.value.trim() || null,
+                  license: document.getElementById("addlic").value.trim() || null,
+                  query: qEl.value.trim() || null};
+      var b = document.getElementById("addbtn");
+      b.disabled = true; b.textContent = "Adding…";
+      fetch("/api/images/add", {method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(body)})
+        .then(function(r){ if(!r.ok) return r.text().then(function(t){throw new Error(t);}); return r.json(); })
+        .then(function(){ document.getElementById("addurl").value=""; run(); })
+        .catch(function(e){ alert("Add failed: "+e.message); })
+        .finally(function(){ b.disabled=false; b.textContent="Add"; });
+    }
+    document.getElementById("addbtn").addEventListener("click", addByUrl);
+
+    document.getElementById("go").addEventListener("click", run);
+    qEl.addEventListener("keydown", function(e){ if(e.key==="Enter") run(); });
+
+    // Visual selection: highlight the image tile you click.
+    document.addEventListener("click", function(e){
+      var tile = e.target.closest(".tile");
+      if (!tile) return;
+      document.querySelectorAll(".tile.selected").forEach(function(t){ t.classList.remove("selected"); });
+      tile.classList.add("selected");
+    });
+
+    run();  // initial browse
+  </script>
+</body>
+</html>

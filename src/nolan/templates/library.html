@@ -351,6 +351,13 @@
             border-color: var(--accent);
         }
 
+        .segment-card.active,
+        .cluster-header.active,
+        .cluster-segment.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
         .segment-header {
             display: flex;
             align-items: center;
@@ -805,7 +812,7 @@
                         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
                             <input id="cutLabel" type="text" placeholder="label (optional)" style="flex:1;min-width:140px;padding:5px;background:#0e0e16;border:1px solid #2a2a3a;border-radius:6px;color:#eee;">
                             <input id="cutTags" type="text" placeholder="tags, comma-separated" style="flex:1;min-width:140px;padding:5px;background:#0e0e16;border:1px solid #2a2a3a;border-radius:6px;color:#eee;">
-                            <button onclick="saveCutClip()" style="cursor:pointer;font-weight:600;">💾 Save clip</button>
+                            <button onclick="saveCutClip()" style="cursor:pointer;font-weight:600;" title="Saves the whole segment if you haven't set In/Out">💾 Save clip</button>
                         </div>
                         <div id="cutStatus" style="margin-top:6px;font-size:12px;color:#9a9ab0;"></div>
                     </div>
@@ -1547,7 +1554,20 @@
             // which may differ from the sidebar selection for search results.
             const srcVideo = cutVideo || currentVideo;
             if (!srcVideo) { setCutStatus('No video loaded', true); return; }
-            if (cutIn === null || cutOut === null) { setCutStatus('Set In and Out first', true); return; }
+            // Default to the full selected segment/cluster when In/Out aren't set.
+            // Only when a segment/cluster is loaded (finite playbackEnd) — in
+            // full-video mode (playbackEnd = Infinity) there are no bounds to
+            // default to, so we still require an explicit selection. A single set
+            // side keeps the other at the segment edge.
+            const segmentLoaded = isFinite(playbackEnd);
+            const startT = (cutIn !== null) ? cutIn : (segmentLoaded ? playbackStart : null);
+            const endT = (cutOut !== null) ? cutOut : (segmentLoaded ? playbackEnd : null);
+            if (startT === null || endT === null) {
+                setCutStatus('Set In and Out first (full video has no segment bounds to default to)', true);
+                return;
+            }
+            if (!(endT > startT)) { setCutStatus('No valid selection to save', true); return; }
+            const usedFullSegment = (cutIn === null && cutOut === null);
             setCutStatus('Saving…');
             try {
                 const resp = await fetch('/library/api/clips', {
@@ -1555,8 +1575,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         source_video_path: srcVideo,
-                        clip_start: cutIn,
-                        clip_end: cutOut,
+                        clip_start: startT,
+                        clip_end: endT,
                         label: document.getElementById('cutLabel').value || null,
                         tags: document.getElementById('cutTags').value || null,
                         project: currentProject || null,
@@ -1571,7 +1591,8 @@
                 cutIn = null; cutOut = null;
                 if (cutVideo) delete cutSelections[cutVideo];
                 updateCutLabels();
-                setCutStatus('✓ Saved clip ' + data.clip.id + ' — open the Clips tab to use it');
+                setCutStatus('✓ Saved ' + (usedFullSegment ? 'full segment ' : 'clip ') + data.clip.id +
+                             ' (' + formatTime(startT) + ' → ' + formatTime(endT) + ') — open the Clips tab to use it');
             } catch (e) {
                 setCutStatus('Save failed: ' + e.message, true);
             }
@@ -1626,6 +1647,10 @@
 
             // Bind the cut bar to this video and restore its pending selection.
             loadCutFor(videoPath);
+            // Hint: with no In/Out, Save captures the whole segment.
+            if (cutIn === null && cutOut === null) {
+                setCutStatus('💾 Save clip captures the whole segment — or Set In/Out to trim.');
+            }
 
             // Set type badge
             if (cluster) {
@@ -1711,6 +1736,16 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // Visual selection: highlight the segment/cluster card being played/selected
+        // (video items already get an .active state in selectVideo).
+        document.addEventListener('click', (e) => {
+            const item = e.target.closest('.segment-card, .cluster-header, .cluster-segment');
+            if (!item) return;
+            document.querySelectorAll('.segment-card.active, .cluster-header.active, .cluster-segment.active')
+                .forEach(c => c.classList.remove('active'));
+            item.classList.add('active');
+        });
     </script>
 </body>
 </html>
