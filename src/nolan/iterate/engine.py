@@ -118,21 +118,47 @@ def rerender_scenes(
 
 def _rerender_segment(plan_path: Path, ids: set, *, llm_client, nolan_config,
                       comfyui_workflow, comfyui_prompt_node, comfyui_timeout) -> Optional[Path]:
-    from nolan.segment.builder import SegmentBuilder, BuildConfig
+    """Re-render ONLY the named scenes, then reassemble.
 
-    # Invalidate selected clips in the raw plan, then let the skip-guarded
-    # build_from_plan re-render exactly the missing ones and reassemble.
-    data = load_plan_raw(plan_path)
-    for _, scene in iter_scenes(data):
-        if scene.get("id") in ids:
-            invalidate_scene(plan_path, scene, "segment")
-    save_plan_raw(plan_path, data)
+    Renders exactly the selected scenes (not the whole plan) so it is safe on
+    plans not produced by the segment builder — whose clip filenames don't match
+    the skip-guard, which would otherwise re-render everything.
+    """
+    from nolan.segment.builder import SegmentBuilder, BuildConfig, _resolve_meta_path
+    from nolan.segment.inputs import SegmentInput
+    from nolan.scenes import ScenePlan
+
+    meta_path = plan_path.parent / "segment_meta.json"
+    if not meta_path.exists():
+        raise FileNotFoundError(
+            f"{meta_path} missing — this plan wasn't built by the segment pipeline. "
+            "Add a segment_meta.json (duration/vo_path/source_video/index_db) to iterate on it.")
 
     cfg = BuildConfig(out_dir=plan_path.parent, comfyui_workflow=comfyui_workflow,
                       comfyui_prompt_node=comfyui_prompt_node, comfyui_timeout=comfyui_timeout)
     builder = SegmentBuilder(llm_client, cfg, nolan_config=nolan_config)
-    result = builder.build_from_plan(plan_path)
-    return result.final_path
+
+    plan = ScenePlan.load(str(plan_path))
+    selected = [s for s in plan.all_scenes if s.id in ids]
+    # Invalidate selected (clear clip + delete file); untouched scenes keep theirs.
+    for s in selected:
+        s.rendered_clip = None
+        clip = plan_path.parent / "clips" / f"{s.id}.mp4"
+        if clip.exists():
+            clip.unlink()
+
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    seg = SegmentInput(sections=[], duration=meta["duration"],
+                       vo_path=_resolve_meta_path(meta.get("vo_path")),
+                       source_video=_resolve_meta_path(meta.get("source_video")),
+                       index_db=_resolve_meta_path(meta.get("index_db")),
+                       project_id=meta.get("project_id"))
+
+    builder._reresolve_unresolved(selected, seg)   # re-pick assets for the selected only
+    builder._render(selected, seg)                 # render ONLY the selected scenes
+    ScenePlan(sections=plan.sections).save(str(plan_path))   # persist (full plan)
+    vo = builder._resolve_vo(seg)
+    return builder._assemble(plan_path, vo, plan_path.parent / "final.mp4")
 
 
 def _reresolve_broll_dicts(stale: list, llm_client, nolan_config) -> int:

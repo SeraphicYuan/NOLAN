@@ -1,0 +1,13 @@
+{
+  "comp": "PremiumCard",
+  "out": "Segment_scene_009.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "title": "CEO Statement",
+    "subtitle": "Low-Income Traffic",
+    "kicker": "",
+    "cardStyle": "glass",
+    "theme": "dark-editorial"
+  }
+}

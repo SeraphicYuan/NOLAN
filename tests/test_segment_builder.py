@@ -66,11 +66,84 @@ def test_resolver_no_generation_yields_none():
 
 
 def test_resolver_external_before_generation():  # P2
+    # New contract: external_fn attaches the asset itself (image OR video clip) and
+    # returns a truthy kind; the resolver no longer sets matched_asset for it.
     cfg = ResolverConfig(enable_search=False, enable_external=True, enable_generation=True)
-    r = AssetResolver(cfg, external_fn=lambda s: "ext.jpg")
+
+    def ext_image(scene):
+        scene.matched_asset = "assets/broll/x.jpg"
+        return "image:wikimedia"
+
+    r = AssetResolver(cfg, external_fn=ext_image)
     s = Scene(id="x", visual_type="b-roll", visual_description="y")
     assert r.resolve(s).startswith("external")
-    assert s.matched_asset == "ext.jpg"
+    assert s.matched_asset == "assets/broll/x.jpg"
+
+    def ext_video(scene):
+        scene.matched_clip = {"external_url": "http://v/clip.mp4", "external": True}
+        return "video:pexels_video"
+
+    r2 = AssetResolver(cfg, external_fn=ext_video)
+    s2 = Scene(id="y", visual_type="b-roll", visual_description="z")
+    assert r2.resolve(s2).startswith("external")
+    assert s2.matched_clip and s2.matched_clip["external"] and not s2.matched_asset
+
+
+def test_resolver_lazy_motion_for_graphic():  # P3 (lazy author_motion)
+    """A graphic scene with no motion_spec authors one on demand via motion_fn."""
+    seen = {}
+    def motion_fn(s):
+        seen["brief"] = s.visual_description
+        return {"effect": "counter", "backend": "python"}
+    r = AssetResolver(ResolverConfig(enable_search=False, enable_external=False), motion_fn=motion_fn)
+    s = Scene(id="x", visual_type="text-overlay", visual_description="count to 300")
+    src = r.resolve(s)
+    assert src == "motion:counter"
+    assert s.motion_spec == {"effect": "counter", "backend": "python"}
+    assert seen["brief"] == "count to 300"
+
+
+def test_resolver_motion_fn_not_called_for_footage():  # P3
+    calls = {"n": 0}
+    def motion_fn(s):
+        calls["n"] += 1
+        return {"effect": "x", "backend": "python"}
+    r = AssetResolver(ResolverConfig(enable_search=False, enable_external=False, enable_generation=True),
+                      motion_fn=motion_fn)
+    s = Scene(id="x", visual_type="b-roll", visual_description="a city skyline")
+    assert r.resolve(s).startswith("generated") and calls["n"] == 0  # footage never authors motion
+
+
+def test_resolver_existing_motion_spec_skips_motion_fn():  # P3
+    calls = {"n": 0}
+    def motion_fn(s):
+        calls["n"] += 1
+        return {"effect": "y", "backend": "python"}
+    r = AssetResolver(ResolverConfig(), motion_fn=motion_fn)
+    s = Scene(id="x", visual_type="graphic", motion_spec={"effect": "pre", "backend": "python"})
+    assert r.resolve(s) == "motion:pre" and calls["n"] == 0
+
+
+def test_resolver_motion_fn_none_falls_through():  # P3
+    r = AssetResolver(ResolverConfig(enable_search=False, enable_external=False, enable_generation=True),
+                      motion_fn=lambda s: None)
+    s = Scene(id="x", visual_type="graphic", visual_description="a chart")
+    assert r.resolve(s).startswith("generated")
+
+
+def test_resolver_enable_motion_false():  # P3
+    r = AssetResolver(ResolverConfig(enable_motion=False, enable_search=False,
+                                     enable_external=False, enable_generation=True),
+                      motion_fn=lambda s: {"effect": "x", "backend": "python"})
+    s = Scene(id="x", visual_type="graphic", visual_description="a chart")
+    assert r.resolve(s).startswith("generated")
+
+
+def test_resolver_external_none_falls_through_to_generation():  # P2
+    cfg = ResolverConfig(enable_search=False, enable_external=True, enable_generation=True)
+    r = AssetResolver(cfg, external_fn=lambda s: None)   # no external match
+    s = Scene(id="x", visual_type="b-roll", visual_description="y")
+    assert r.resolve(s).startswith("generated") and not s.matched_asset
 
 
 def test_builder_tts_hook_used_when_no_vo(tmp_path):  # P3
@@ -159,3 +232,57 @@ def test_builder_review_then_resume(monkeypatch, tmp_path):
     # resume from the (possibly edited) plan
     res2 = builder.build_from_plan(tmp_path / "scene_plan.json")
     assert res2.final_path and Path(res2.final_path).exists()
+
+
+# ---------------------------------------------------------------- library source
+def test_resolver_library_used_on_search_miss():
+    """Footage scene with no segment match -> picture-library still."""
+    calls = {}
+    def libfn(scene):
+        calls["q"] = scene.search_query
+        return "/abs/lib/img.jpg"
+    r = AssetResolver(ResolverConfig(enable_external=False),
+                      search_fn=lambda s: None, library_fn=libfn)
+    sc = Scene(id="x", visual_type="b-roll", search_query="wwi trench")
+    src = r.resolve(sc)
+    assert src.startswith("library(") and sc.matched_asset == "/abs/lib/img.jpg"
+    assert calls["q"] == "wwi trench"
+
+
+def test_resolver_library_before_external():
+    r = AssetResolver(ResolverConfig(enable_external=True),
+                      search_fn=lambda s: None,
+                      library_fn=lambda s: "/lib.jpg",
+                      external_fn=lambda s: "/ext.jpg")
+    sc = Scene(id="x", visual_type="b-roll", visual_description="d")
+    src = r.resolve(sc)
+    assert sc.matched_asset == "/lib.jpg" and src.startswith("library(")
+
+
+def test_resolver_library_miss_falls_through_to_generation():
+    r = AssetResolver(ResolverConfig(enable_external=False, enable_generation=True),
+                      search_fn=lambda s: None, library_fn=lambda s: None)
+    sc = Scene(id="x", visual_type="b-roll", visual_description="d")
+    assert r.resolve(sc).startswith("generated")
+
+
+def test_resolver_library_disabled():
+    r = AssetResolver(ResolverConfig(enable_library=False, enable_external=False),
+                      search_fn=lambda s: None, library_fn=lambda s: "/x.jpg")
+    sc = Scene(id="x", visual_type="b-roll", visual_description="d")
+    src = r.resolve(sc)
+    assert src.startswith("generated") and not sc.matched_asset
+
+
+def test_resolver_segment_search_wins_over_library():
+    """A clearing segment match is used; library is never consulted."""
+    lib_called = {"n": 0}
+    def libfn(s):
+        lib_called["n"] += 1
+        return "/lib.jpg"
+    r = AssetResolver(ResolverConfig(search_threshold=0.5),
+                      search_fn=lambda s: {"similarity_score": 0.9, "video_path": "v"},
+                      library_fn=libfn)
+    sc = Scene(id="x", visual_type="b-roll", search_query="q")
+    src = r.resolve(sc)
+    assert src.startswith("search(") and lib_called["n"] == 0

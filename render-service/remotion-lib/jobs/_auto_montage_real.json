@@ -1,0 +1,134 @@
+{
+  "comp": "PhotoMontage",
+  "out": "montage_real.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "background": "#241016",
+    "vignette": 0.5,
+    "zoomStart": 1.04,
+    "zoomEnd": 1.14,
+    "panX": -0.03,
+    "panY": 0.0,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\f7\\f7b20ff79e23a5f61a25180f39ff65438adbad7965e3e6cf801ff6cd33a9af33.jpg",
+      "x": 0.22,
+      "y": 0.55,
+      "scale": 0.5,
+      "rotation": -5,
+      "from": "left",
+      "enterAt": 0.1,
+      "enterDur": 0.8,
+      "frame": "polaroid",
+      "caption": "The Knight"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\90\\90d631e71aeb89d00558cf2b03891675e7353975024f9ff2de7f0e0a92f90db2.jpg",
+      "x": 0.5,
+      "y": 0.55,
+      "scale": 0.48,
+      "rotation": 2,
+      "frame": "polaroid",
+      "caption": "The Physician",
+      "keys": [
+        {
+          "at": 0.4,
+          "y": 0.72,
+          "opacity": 0.0
+        },
+        {
+          "at": 1.1,
+          "y": 0.55,
+          "opacity": 1.0,
+          "ease": "out"
+        },
+        {
+          "at": 3.0,
+          "y": 0.55,
+          "opacity": 1.0
+        },
+        {
+          "at": 3.8,
+          "y": 0.4,
+          "opacity": 0.0,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\52\\52ae8c8a74f31c2d8c81e1019f521989462bd59f8962e583e11edc9228022aae.jpg",
+      "x": 0.8,
+      "y": 0.55,
+      "scale": 0.5,
+      "frame": "polaroid",
+      "caption": "The Countess",
+      "keys": [
+        {
+          "at": 0.8,
+          "opacity": 0.0,
+          "rotation": 0
+        },
+        {
+          "at": 1.4,
+          "opacity": 1.0,
+          "rotation": 0,
+          "ease": "out"
+        },
+        {
+          "at": 2.4,
+          "rotation": 0
+        },
+        {
+          "at": 2.9,
+          "rotation": 12,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\ec\\ec1829c5a5d1c94198a11949c4b5080daffb81a3de9c93df0eed457fdf957525.jpg",
+      "x": 0.15,
+      "y": 0.3,
+      "scale": 0.24,
+      "frame": "plain",
+      "keys": [
+        {
+          "at": 2.0,
+          "x": 0.16,
+          "y": 0.3,
+          "scale": 0.2,
+          "rotation": -8,
+          "opacity": 0.0
+        },
+        {
+          "at": 2.6,
+          "x": 0.4,
+          "y": 0.26,
+          "scale": 0.28,
+          "rotation": 4,
+          "opacity": 1.0,
+          "ease": "out"
+        },
+        {
+          "at": 3.6,
+          "x": 0.6,
+          "y": 0.68,
+          "scale": 0.36,
+          "rotation": -3,
+          "ease": "inOut"
+        },
+        {
+          "at": 4.4,
+          "x": 0.85,
+          "y": 0.34,
+          "scale": 0.22,
+          "rotation": 9,
+          "ease": "inOut"
+        }
+      ]
+    }
+  ]
+}

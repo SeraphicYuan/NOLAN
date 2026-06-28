@@ -137,31 +137,32 @@ def test_editable_fields_differ_by_pipeline():
 
 
 # ---------------------------------------------------------------- rerender: segment
-def test_rerender_segment_invalidates_then_builds(tmp_path, monkeypatch):
+def test_rerender_segment_renders_only_selected(tmp_path, monkeypatch):
     d = tmp_path / "seg"
     p = _write_plan(d, [_seg_scene("s1"), _seg_scene("s2")], segment=True)
+    (d / "segment_meta.json").write_text(json.dumps({"duration": 10}), encoding="utf-8")
     for sid in ("s1", "s2"):
         clip = d / "clips" / f"{sid}.mp4"
         clip.parent.mkdir(parents=True, exist_ok=True)
         clip.write_bytes(b"x" * 500)
 
-    seen = {}
-
-    def fake_build_from_plan(self, plan_path):
-        # By now the engine should have invalidated only s1's clip in the plan.
-        data = load_plan_raw(plan_path)
-        seen["s1"] = find_scene(data, "s1")["rendered_clip"]
-        seen["s2"] = find_scene(data, "s2")["rendered_clip"]
-        seen["s1_file"] = (Path(plan_path).parent / "clips" / "s1.mp4").exists()
-        seen["s2_file"] = (Path(plan_path).parent / "clips" / "s2.mp4").exists()
-        return SimpleNamespace(final_path=Path(plan_path).parent / "final.mp4")
-
-    monkeypatch.setattr("nolan.segment.builder.SegmentBuilder.build_from_plan", fake_build_from_plan)
+    rendered = []
+    monkeypatch.setattr("nolan.segment.builder.SegmentBuilder._reresolve_unresolved",
+                        lambda self, scenes, seg: 0)
+    monkeypatch.setattr("nolan.segment.builder.SegmentBuilder._render",
+                        lambda self, scenes, seg: rendered.extend(s.id for s in scenes))
+    monkeypatch.setattr("nolan.segment.builder.SegmentBuilder._resolve_vo",
+                        lambda self, seg: d / "vo.wav")
+    monkeypatch.setattr("nolan.segment.builder.SegmentBuilder._assemble",
+                        lambda self, plan_path, vo, out: out)
 
     final = rerender_scenes(p, ["s1"], llm_client=FakeLLM())
     assert final == d / "final.mp4"
-    assert seen["s1"] is None and seen["s1_file"] is False   # s1 invalidated
-    assert seen["s2"] == "clips/s2.mp4" and seen["s2_file"]  # s2 untouched
+    assert rendered == ["s1"]                                 # ONLY s1 was rendered
+    assert not (d / "clips" / "s1.mp4").exists()              # s1 invalidated
+    assert (d / "clips" / "s2.mp4").exists()                  # s2's clip untouched
+    # s2 still points at its clip in the persisted plan
+    assert find_scene(load_plan_raw(p), "s2")["rendered_clip"] == "clips/s2.mp4"
 
 
 # ---------------------------------------------------------------- rerender: orchestrator

@@ -1,0 +1,17 @@
+{
+  "comp": "Kinetic",
+  "out": "b8b_close.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "text": "for most",
+    "highlights": [
+      "most"
+    ],
+    "position": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "theme": "dark-editorial"
+  }
+}

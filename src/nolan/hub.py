@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, List, Dict
 
 import httpx
+from urllib.parse import quote
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -240,6 +241,49 @@ def create_hub_app(
         )
         return {"job_id": job.id, "type": "process", "project": project_name}
 
+    # ==================== Publish (source -> beautiful HTML article) ====================
+
+    @app.get("/publish", response_class=HTMLResponse)
+    async def publish_page():
+        tpl = templates_dir / "publish.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>publish.html not found</h1>"
+
+    @app.post("/api/publish")
+    async def api_publish(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        src = (body.get("source") or "").strip()
+        if not src:
+            raise HTTPException(status_code=400, detail="source (URL, file path, or pasted text) is required")
+        job = job_manager.start(
+            "publish", operations.publish_article,
+            meta={"theme": (body.get("theme") or "press")},
+            nolan_config=load_config(),
+            src=src,
+            theme=(body.get("theme") or "press"),
+            type=(body.get("type") or "explainer"),
+            width=(body.get("width") or "regular"),
+            images=(body.get("images") or "none"),
+            brand=(body.get("brand") or None),
+            cover=bool(body.get("cover", True)),
+            slug=(body.get("slug") or None),
+        )
+        return {"job_id": job.id, "type": "publish"}
+
+    @app.get("/publish/file")
+    async def publish_file(slug: str = Query(...)):
+        """Serve a published article.html by slug (contained to projects/_published)."""
+        pub_root = (Path(__file__).resolve().parents[2] / "projects" / "_published").resolve()
+        try:
+            fp = (pub_root / slug / "article" / "article.html").resolve()
+        except OSError:
+            raise HTTPException(status_code=404, detail="article not found")
+        if not (pub_root in fp.parents) or not fp.is_file():
+            raise HTTPException(status_code=404, detail="article not found")
+        return FileResponse(fp, media_type="text/html")
+
     # ==================== Import existing script (BYO-script) ====================
 
     @app.post("/api/import-script")
@@ -352,6 +396,7 @@ def create_hub_app(
             "id": asset.id, "title": asset.title, "license": asset.license,
             "source": asset.source, "source_url": asset.source_url,
             "width": asset.width, "height": asset.height, "score": score,
+            "scope": scope, "scope_project": project,
             "raw": f"/api/images/raw?scope={scope}&project={project or ''}&id={asset.id}",
         }
 
@@ -446,6 +491,79 @@ def create_hub_app(
     async def api_images_stats(scope: str = "global", project: str = None):
         return _open_imagelib(scope, project).stats()
 
+    # ==================== Lottie showcase ====================
+
+    @app.get("/lottie", response_class=HTMLResponse)
+    async def lottie_page():
+        tpl = templates_dir / "lottie.html"
+        return tpl.read_text(encoding="utf-8") if tpl.exists() else "<h1>lottie.html not found</h1>"
+
+    def _lottie_dict(t):
+        return {"id": t.id, "name": t.name, "category": t.category, "source": t.source,
+                "tags": t.tags, "width": t.width, "height": t.height,
+                "duration": t.duration_seconds, "has_schema": t.has_schema,
+                "schema_fields": t.schema_fields, "license": t.license, "author": t.author,
+                "raw": f"/api/lottie/{t.id}/raw"}
+
+    @app.get("/api/lottie")
+    async def api_lottie_list(category: str = None, q: str = None):
+        from nolan.template_catalog import TemplateCatalog
+        cat = TemplateCatalog()
+        items = cat.list_by_category(category) if category else cat.list_all()
+        if q:
+            ql = q.lower()
+            items = [t for t in items if ql in t.name.lower() or ql in t.category.lower()
+                     or any(ql in tag.lower() for tag in t.tags)]
+        return {"templates": [_lottie_dict(t) for t in items],
+                "categories": cat.categories(), "total": len(items)}
+
+    @app.get("/api/lottie/{template_id}")
+    async def api_lottie_get(template_id: str):
+        from nolan.template_catalog import TemplateCatalog
+        t = TemplateCatalog().get(template_id)
+        if not t:
+            raise HTTPException(status_code=404, detail="template not found")
+        return _lottie_dict(t)
+
+    @app.get("/api/lottie/{template_id}/raw")
+    async def api_lottie_raw(template_id: str):
+        from nolan.template_catalog import TemplateCatalog
+        cat = TemplateCatalog()
+        t = cat.get(template_id)
+        if not t:
+            raise HTTPException(status_code=404, detail="template not found")
+        fp = cat.get_full_path(t).resolve()
+        if not fp.exists():
+            raise HTTPException(status_code=404, detail="file missing")
+        return FileResponse(str(fp), media_type="application/json")
+
+    @app.post("/api/lottie/render")
+    async def api_lottie_render(body: dict = Body(...)):
+        from nolan.webui import operations
+        template_id = (body.get("id") or "").strip()
+        if not template_id:
+            raise HTTPException(status_code=400, detail="id is required")
+        overrides = {}
+        if body.get("fields"):
+            overrides["fields"] = body["fields"]
+        if body.get("text"):
+            overrides["text"] = body["text"]
+        if body.get("colors"):
+            overrides["colors"] = body["colors"]
+        job = job_manager.start(
+            "lottie-render", operations.render_lottie_preview, meta={"id": template_id},
+            template_id=template_id, overrides=overrides,
+            duration=body.get("duration"), service_url=render_service_url)
+        return {"job_id": job.id, "type": "lottie-render"}
+
+    @app.get("/api/lottie/preview/{name}")
+    async def api_lottie_preview(name: str):
+        root = (Path("_library") / "lottie_previews").resolve()
+        fp = (root / name).resolve()
+        if not (root in fp.parents) or not fp.is_file():
+            raise HTTPException(status_code=404, detail="preview not found")
+        return FileResponse(str(fp), media_type="video/mp4")
+
     # ==================== Settings ====================
 
     @app.get("/settings", response_class=HTMLResponse)
@@ -511,14 +629,18 @@ def create_hub_app(
         if not project:
             raise HTTPException(status_code=400, detail="project is required")
         kind = body.get("kind", "broll")
-        if kind == "broll-video":
-            # Video-first multi-source b-roll (Internet Archive + Pexels/Pixabay video)
+        if kind in ("broll", "broll-video"):
+            # Consolidated b-roll matcher (query-variant fallback + multi-source +
+            # library-first). "broll-video" prefers video clips; "broll" prefers
+            # stock images. The legacy single-query matcher is retired from this path.
             job = job_manager.start(
                 "match", operations.match_broll_v2,
                 meta={"project": project, "kind": kind},
                 config=load_config(), project_name=project,
-                prefer_video=bool(body.get("prefer_video", True)),
+                prefer_video=bool(body.get("prefer_video", kind == "broll-video")),
                 max_results=int(body.get("max_results", 4)),
+                use_vision=bool(body.get("use_vision", False)),
+                semantic=bool(body.get("semantic", True)),
             )
             return {"job_id": job.id, "type": "match"}
         job = job_manager.start(
@@ -1508,9 +1630,22 @@ def create_hub_app(
         )
         return {"job_id": job.id, "type": "generate-voiceover"}
 
+    @app.post("/api/generate-captions")
+    async def api_generate_captions(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        if not project:
+            raise HTTPException(status_code=400, detail="project is required")
+        job = job_manager.start(
+            "generate-captions", operations.generate_captions,
+            meta={"project": project}, config=load_config(), project=project,
+        )
+        return {"job_id": job.id, "type": "generate-captions"}
+
     @app.get("/api/voiceover-info/{project}")
     async def api_voiceover_info(project: str):
-        """Report a project's existing voiceover outputs (full mp3 + segments)."""
+        """Report a project's existing voiceover outputs (full mp3 + segments + captions)."""
         vo = Path("projects") / project / "assets" / "voiceover"
         full = (vo / "voiceover.mp3").exists()
         segs = []
@@ -1520,11 +1655,12 @@ def create_hub_app(
                 segs = (json.loads(sj.read_text(encoding="utf-8")) or {}).get("segments", [])
             except Exception:
                 segs = []
-        return {"project": project, "full": full, "segments": segs}
+        captions = (vo / "voiceover.srt").exists()
+        return {"project": project, "full": full, "segments": segs, "captions": captions}
 
     @app.get("/api/voiceover/{project}/{path:path}")
     async def api_voiceover_file(project: str, path: str):
-        """Serve a project's voiceover output (voiceover.mp3 or segments/<file>.wav)."""
+        """Serve a project's voiceover output (audio, or .srt/.vtt/.json captions)."""
         from urllib.parse import unquote
         safe = unquote(path).replace("\\", "/")
         if ".." in safe:
@@ -1532,7 +1668,9 @@ def create_hub_app(
         p = Path("projects") / project / "assets" / "voiceover" / safe
         if not p.exists():
             raise HTTPException(status_code=404, detail="not found")
-        mt = "audio/mpeg" if p.suffix.lower() == ".mp3" else "audio/wav"
+        mt = {".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "application/x-subrip",
+              ".vtt": "text/vtt", ".json": "application/json"}.get(
+                  p.suffix.lower(), "application/octet-stream")
         return FileResponse(p, media_type=mt)
 
     # ---- TTS Studio (single-utterance playground) ----
@@ -1656,6 +1794,101 @@ def create_hub_app(
             s = Script.load_json(str(js))
             return {"project": project, "script": "\n\n".join(x.narration for x in s.sections)}
         raise HTTPException(status_code=404, detail="no script for project")
+
+    # ==================== Video Styles (reference videos → visual style guide) ====================
+
+    from nolan.video_style import VideoStyleStore
+    video_style_store = VideoStyleStore(Path("video_styles"))
+    video_styles_template = templates_dir / "video_styles.html"
+
+    @app.get("/video-styles", response_class=HTMLResponse)
+    async def video_styles_page():
+        if video_styles_template.exists():
+            return video_styles_template.read_text(encoding="utf-8")
+        return "<h1>video_styles.html not found</h1>"
+
+    @app.get("/api/video-styles")
+    async def video_styles_list():
+        return {"styles": video_style_store.list()}
+
+    @app.post("/api/video-styles")
+    async def video_styles_create(body: dict = Body(...)):
+        name = (body.get("name") or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="name is required")
+        return {"style": video_style_store.get(video_style_store.create(name))}
+
+    @app.get("/api/video-styles/{style_id}")
+    async def video_styles_get(style_id: str):
+        if not video_style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="video style not found")
+        return video_style_store.get(style_id)
+
+    @app.delete("/api/video-styles/{style_id}")
+    async def video_styles_delete(style_id: str):
+        if not video_style_store.delete(style_id):
+            raise HTTPException(status_code=404, detail="video style not found")
+        return {"deleted": style_id}
+
+    @app.post("/api/video-styles/{style_id}/add-video")
+    async def video_styles_add_video(style_id: str, body: dict = Body(...)):
+        if not video_style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="video style not found")
+        vp = (body.get("video_path") or "").strip()
+        if not vp:
+            raise HTTPException(status_code=400, detail="video_path is required")
+        entry = video_style_store.add_video(
+            style_id, video_path=vp, title=(body.get("title") or "").strip(),
+            duration=body.get("duration"), indexed=bool(body.get("indexed")))
+        return {"source": entry}
+
+    @app.post("/api/video-styles/{style_id}/remove-source/{slug}")
+    async def video_styles_remove_source(style_id: str, slug: str):
+        if not video_style_store.remove_source(style_id, slug):
+            raise HTTPException(status_code=404, detail="source not found")
+        return {"removed": slug}
+
+    @app.post("/api/video-styles/{style_id}/pair-script")
+    async def video_styles_pair_script(style_id: str, body: dict = Body(...)):
+        if not video_style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="video style not found")
+        ssid = (body.get("script_style_id") or "").strip() or None
+        if ssid and not style_store.exists(ssid):
+            raise HTTPException(status_code=400, detail=f"unknown script style: {ssid}")
+        video_style_store.pair_script_style(style_id, ssid)
+        return {"style_id": style_id, "script_style_id": ssid}
+
+    @app.post("/api/video-styles/{style_id}/analyze")
+    async def video_styles_analyze(style_id: str, body: dict = Body(default={})):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        if not video_style_store.exists(style_id):
+            raise HTTPException(status_code=404, detail="video style not found")
+        config = load_config()
+        effective_db = db_path or Path(config.indexing.database).expanduser()
+        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        job = job_manager.start(
+            "analyze-video-style", operations.analyze_video_style,
+            meta={"style_id": style_id, "session": session},
+            config=config, store_root="video_styles", db_path=effective_db,
+            style_id=style_id, session=session,
+            provider=(body.get("provider") or "openrouter"),
+            enable_vision=bool(body.get("enable_vision", True)))
+        return {"job_id": job.id, "type": "analyze-video-style"}
+
+    @app.get("/api/video-styles/{style_id}/guide")
+    async def video_styles_guide(style_id: str):
+        guide = video_style_store.read_guide(style_id)
+        if guide is None:
+            raise HTTPException(status_code=404, detail="no guide yet")
+        return {"style_id": style_id, "content": guide}
+
+    @app.get("/api/video-styles/{style_id}/extract/{slug}")
+    async def video_styles_extract(style_id: str, slug: str):
+        ex = video_style_store.read_extract(style_id, slug)
+        if ex is None:
+            raise HTTPException(status_code=404, detail="no extract yet")
+        return ex
 
     # ==================== Showcase Routes ====================
 
@@ -1911,16 +2144,146 @@ def create_hub_app(
         from nolan import iterate
         pipeline = iterate.detect_pipeline(scene_plan_path)
         client = None
+        words = None
         if note:
             from nolan.config import load_config
             from nolan.llm import create_text_llm
             client = create_text_llm(load_config())
+            # VO word-timing for {cue:"..."} in a photo_brief (cached after first call)
+            words = await asyncio.to_thread(iterate.scene_words, scene_plan_path)
         try:
             applied = await iterate.apply_edit(scene_plan_path, scene_id, patch=patch,
-                                               note=note, client=client, pipeline=pipeline)
+                                               note=note, client=client, pipeline=pipeline,
+                                               transcript_words=words)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e))
         return {"applied": applied, "pipeline": pipeline}
+
+    @app.post("/scenes/api/scene/assets")
+    async def scenes_scene_assets(payload: dict = Body(...)):
+        """Manage a scene's asset tray (add/remove/reorder/place/label).
+
+        The tray is the human-curated set of assets a later comment can reference
+        ({ref:'<id>'}). Edits here do NOT invalidate the rendered clip — only a
+        comment/re-render does. Library images are resolved to a real path server-side.
+        """
+        project = payload.get("project")
+        scene_id = payload.get("scene_id")
+        op = payload.get("op")
+        if not (project and scene_id and op):
+            raise HTTPException(status_code=400, detail="project, scene_id, op are required")
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        _, scene_plan_path = result
+        from nolan import iterate
+        data = iterate.load_plan_raw(scene_plan_path)
+        scene = iterate.find_scene(data, scene_id)
+        if scene is None:
+            raise HTTPException(status_code=404, detail=f"scene '{scene_id}' not found")
+        assets = list(scene.get("assets") or [])
+
+        def _next_id():
+            used = {a.get("id") for a in assets}
+            i = 1
+            while f"a{i}" in used:
+                i += 1
+            return f"a{i}"
+
+        def _find(aid):
+            return next((a for a in assets if a.get("id") == aid), None)
+
+        if op == "add":
+            source = payload.get("source", "library")
+            if source == "library":
+                from nolan.imagelib import ImageLibrary
+                lib = ImageLibrary(scope=payload.get("scope", "global"),
+                                   project=payload.get("scope_project"))
+                iid = int(payload["image_id"])
+                a = lib.catalog.get(iid)
+                if not a:
+                    raise HTTPException(status_code=404, detail="library image not found")
+                asset = {"id": _next_id(), "kind": "image", "src": str(lib.abs_path(a)),
+                         "label": (payload.get("label") or (a.title or "").strip().rstrip(".")),
+                         "thumb": f"/api/images/raw?scope={payload.get('scope', 'global')}"
+                                  f"&project={payload.get('scope_project') or ''}&id={iid}"}
+            elif source == "clip":
+                src = payload.get("source_video_path")
+                if not src:
+                    raise HTTPException(status_code=400, detail="source_video_path required")
+                asset = {"id": _next_id(), "kind": "clip", "src": src}
+                for k in ("clip_start", "clip_end"):
+                    if payload.get(k) is not None:
+                        asset[k] = float(payload[k])
+                if payload.get("label"):
+                    asset["label"] = payload["label"]
+                asset["thumb"] = (f"/scenes/api/frame-thumb?project={project}"
+                                  f"&src={quote(str(src))}&t={asset.get('clip_start', 0)}")
+            elif source == "path":
+                p = payload.get("path")
+                if not p:
+                    raise HTTPException(status_code=400, detail="path required")
+                asset = {"id": _next_id(), "kind": payload.get("kind", "image"), "src": p}
+                if payload.get("label"):
+                    asset["label"] = payload["label"]
+            else:
+                raise HTTPException(status_code=400, detail=f"unknown source {source!r}")
+            assets.append(asset)
+        elif op == "remove":
+            assets = [a for a in assets if a.get("id") != payload.get("asset_id")]
+        elif op == "reorder":
+            order = payload.get("order") or []
+            idx = {a.get("id"): a for a in assets}
+            assets = [idx[i] for i in order if i in idx] + [a for a in assets if a.get("id") not in set(order)]
+        elif op in ("set_place", "set_label"):
+            a = _find(payload.get("asset_id"))
+            if not a:
+                raise HTTPException(status_code=404, detail="asset_id not found")
+            if op == "set_place":
+                pl = payload.get("place")
+                if pl:
+                    a["place"] = [float(pl[0]), float(pl[1])]
+                else:
+                    a.pop("place", None)
+            else:
+                a["label"] = payload.get("label", "")
+        else:
+            raise HTTPException(status_code=400, detail=f"unknown op {op!r}")
+
+        # Direct save: tray edits are not render-invalidating (unlike apply_edit).
+        scene["assets"] = assets
+        iterate.save_plan_raw(scene_plan_path, data)
+        return {"assets": assets}
+
+    @app.get("/scenes/api/frame-thumb")
+    async def scenes_frame_thumb(src: str, t: float = 0.0, project: str = None):
+        """A single cached JPEG frame from a video at time `t` — for clip thumbnails."""
+        import hashlib
+        import subprocess
+        import tempfile
+        import imageio_ffmpeg
+        # resolve src: absolute, project-relative, or repo-root-relative
+        cands = [Path(src)]
+        if project:
+            pr = _get_project_dir(project)
+            if pr:
+                cands.append(pr[0] / src)
+        cands.append(Path(__file__).resolve().parents[2] / src)
+        path = next((c for c in cands if c.exists()), None)
+        if not path:
+            raise HTTPException(status_code=404, detail="video not found")
+        key = hashlib.md5(f"{path}|{t:.2f}".encode()).hexdigest()
+        out = Path(tempfile.gettempdir()) / "nolan_thumbs" / f"{key}.jpg"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        if not out.exists():
+            ff = imageio_ffmpeg.get_ffmpeg_exe()
+            await asyncio.to_thread(subprocess.run,
+                [ff, "-y", "-ss", str(t), "-i", str(path), "-frames:v", "1",
+                 "-vf", "scale=240:-1", "-loglevel", "error", str(out)],
+                timeout=20, capture_output=True)
+        if out.exists():
+            return FileResponse(str(out), media_type="image/jpeg")
+        raise HTTPException(status_code=404, detail="could not extract frame")
 
     # ComfyUI model -> (workflow file, prompt node) for generated scenes.
     _COMFY_WF = {"flux-dev": ("workflows/image/flux-dev-fp8.json", "6"),

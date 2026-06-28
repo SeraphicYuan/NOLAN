@@ -1,0 +1,74 @@
+{
+  "scenes": [
+    {
+      "id": "Section_1_scene_001",
+      "t": [
+        0.0,
+        0.441
+      ],
+      "visual_type": "graphics",
+      "source": "motion:k-shape",
+      "narration": "splits"
+    },
+    {
+      "id": "Section_2_scene_001",
+      "t": [
+        0.441,
+        2.205
+      ],
+      "visual_type": "generated",
+      "source": "none(gen-disabled)",
+      "narration": "The top 10 percent"
+    },
+    {
+      "id": "Section_2_scene_002",
+      "t": [
+        2.205,
+        5.733
+      ],
+      "visual_type": "graphics",
+      "source": "motion:bar-compare",
+      "narration": "now drives 50 percent of all consumer spending."
+    },
+    {
+      "id": "Section_3_scene_001",
+      "t": [
+        5.733,
+        9.703
+      ],
+      "visual_type": "graphics",
+      "source": "motion:line-chart",
+      "narration": "The S and P 500 sits at record highs"
+    },
+    {
+      "id": "Section_3_scene_002",
+      "t": [
+        9.703,
+        12.79
+      ],
+      "visual_type": "graphics",
+      "source": "motion:k-shape",
+      "narration": "while consumer confidence is near pandemic lows."
+    },
+    {
+      "id": "Section_4_scene_001",
+      "t": [
+        12.79,
+        15.877
+      ],
+      "visual_type": "generated",
+      "source": "none(gen-disabled)",
+      "narration": "Making more money will not save you."
+    },
+    {
+      "id": "Section_4_scene_002",
+      "t": [
+        15.877,
+        17.2
+      ],
+      "visual_type": "generated",
+      "source": "none(gen-disabled)",
+      "narration": "Owning assets will."
+    }
+  ]
+}

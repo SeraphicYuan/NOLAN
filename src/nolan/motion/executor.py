@@ -38,15 +38,22 @@ def _render_remotion(spec: Dict[str, Any], out_path: Path) -> Path:
     if "accent" in spec:
         props["accent"] = spec["accent"]
     # a video/image given as a path is staged into public/; a bare name is left as a prop
-    video = image = None
+    video = image = background = cards = None
     if isinstance(props.get("videoSrc"), str) and ("/" in props["videoSrc"] or props["videoSrc"].endswith(".mp4")):
         video = props.pop("videoSrc")
     if isinstance(props.get("mapSrc"), str) and ("/" in props["mapSrc"] or props["mapSrc"].endswith((".png", ".jpg"))):
         image = props.pop("mapSrc")
+    # photo-montage: an array of card images + an optional table-texture background
+    if isinstance(props.get("cards"), list):
+        cards = props.pop("cards")
+    bg = props.get("background")
+    if isinstance(bg, str) and ("/" in bg or bg.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))):
+        background = props.pop("background")  # an image path → stage it (a CSS color stays in props)
 
     frames = max(30, int(round(spec.get("duration", 4.0) * 30)))
     produced = remotion_source.render(spec["target"], props, out_path.name,
-                                      duration_frames=frames, video=video, image=image)
+                                      duration_frames=frames, video=video, image=image,
+                                      cards=cards, background=background)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if Path(produced).resolve() != out_path.resolve():
         shutil.copy(produced, out_path)

@@ -8,6 +8,53 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Publish — beautiful HTML articles, a second output medium (2026-06-28)
+
+`src/nolan/publish/` turns a URL / document / pasted text into a self-contained,
+**offline single-file HTML article** — the article twin of the video pipeline,
+sharing NOLAN's ingest + agent-orchestration front-half. Authoring is driven by
+the NOLAN-native **`beautiful-article`** skill (reacticle themes + figure library);
+the deterministic scaffold/build runs the skill's scripts via WSL.
+
+- **CLI**: `nolan publish <source> --theme press --type explainer [--width --images
+  --brand --slug --review --no-cover]` → `projects/_published/<slug>/article/article.html`.
+- **WebUI**: new **Publish** tab (`/publish`) — form (theme/type/width/images/brand/cover)
+  → background job (`operations.publish_article`) → progress poll → in-page preview +
+  open/download. Reuses the standard `NolanJobs` job widget; result served by `/publish/file`.
+- **Single source of truth**: the skill owns the scaffold-template + figure library +
+  scripts; `publish/toolkit.py` references them (removed the duplicate vendored `webkit/`).
+- **Project model**: `projects.py` gained a `has_article` marker (kind `article`) so
+  published articles appear in the unified project list.
+- **Hardening**: `source.load_source` now fails loudly on a mistyped/unsupported source
+  path instead of silently treating the path string as article body.
+- **Verified**: toolkit tests 6/6 (real WSL build → 2.5 MB offline HTML, screenshot,
+  source guard); full `nolan publish` e2e (agent authored 3 sections → offline article);
+  UI wiring (routes, validation, path-traversal containment, real article served);
+  `discover_projects` picks up published articles; project tests 11/11.
+
+## Stock providers — keys + rate-limit safeguards (2026-06-27)
+
+Enabled three keyed stock providers (config-only) and added rate-limit handling
+to `src/nolan/image_search.py`:
+
+- **Keys** in `.env`: `PIXABAY_API_KEY` (images + video), `UNSPLASH_ACCESS_KEY`
+  (images), `PEXELS_API_KEY` (images + video). Wired already — `config.py`
+  maps the env vars → `ImageSourcesConfig` → `ImageSearchClient`; no code change
+  to enable.
+- **`_RateLimiter`** (module-level singleton, thread-safe sliding window): per-
+  *account* buckets so Pexels image+video (and Pixabay image+video) share quota.
+  Limits: Unsplash 50/hr, Pexels 200/hr, Pixabay 100/60s. A provider over its
+  limit is skipped; an HTTP 429 cools its bucket (≤5 min) instead of erroring.
+- **Tiered fan-out**: `search_assets()` queries cheap/keyless + high-limit
+  providers first and only falls through to tight-budget ones (`_DEFER_LAST`,
+  i.e. Unsplash) when the first tier returns `< max_results`. An explicit
+  `sources=` list is honored as a single tier. Explicit single-source `search()`
+  still works; 429 → `[]`, other errors propagate as before.
+- **Verified**: 8 logic tests (sliding window, shared bucket, 429 cooldown,
+  tier short-circuit + fallback, explicit-source behavior) + live fan-out
+  (53 image results from tier-0, Unsplash not queried) + live Pexels/Pixabay/
+  Unsplash image & video searches.
+
 ## Picture Library — searchable image store (2026-06-25)
 
 `src/nolan/imagelib/` — the still-image counterpart to the video library:
@@ -209,9 +256,24 @@ authors ~8 JSON fields; a resolver compiles them to a validated `nolan.motion` s
   `BRIEF_REGISTRY` for new families. **Boundary:** cue→time resolves at *design time*
   (where the transcript lives); the resolved spec is persisted on the scene, render stays
   context-free. Graceful: missing cue/image/verb → warn + best-effort spec, never crash.
-- Verified end-to-end: "6 pics, 2×3 grid, zoom pic 4 when VO says 'keyword'" → focus lands
-  at the cue's exact timestamp and renders. Test: `scripts/test_brief.py`; design doc:
+- **Wired into the scene-edit router** (`iterate/revise.py`): the LLM gate returns a
+  `photo_brief` object for montage/grid notes, resolved against the scene's narration →
+  `motion_spec`. Verified with a **real LLM + real comment** end-to-end ("6 pics, 2×3 grid,
+  zoom the 4th when VO says 'keyword'" → `photo-grid`, focusIndex 3, focusAt 3.2s, rendered):
+  `scripts/test_router_brief.py`. Brief-unit test: `scripts/test_brief.py`; design doc:
   `docs/BROLL_BRIEF.md`.
+- **Asset binding (the input half):** each scene carries an asset **tray**
+  (`scene.assets:[{id,kind,src,label?,thumb?,place?}]`). A comment references it by id/label
+  ("grid of these, zoom the Knight") instead of pasting paths; the revise gate sees the tray
+  and emits `images:[{ref:'<id>'}]`, dereferenced to the bound src (+ `place`/`scale`/`label`).
+  UI: a `/scenes` **Assets** tab with a slide-in **picker drawer** — tabs Pictures (browse
+  `/api/images/list` + CLIP search) and Videos/Clips (`/library/api/clips`, thumbnails via
+  `/scenes/api/frame-thumb`), multi-select → add; tray cards show kind badge + remove + 3×3
+  `place` picker. Backend op endpoint `POST /scenes/api/scene/assets` (add image/clip/path,
+  remove/reorder/set_place/set_label), non-render-invalidating; resolver kind-validates (clip
+  refs warn — video-in-montage is TODO C). **Spatial control** is offered only for declarative fields (place),
+  never keyframes — those stay comment-driven. Tests: `scripts/test_asset_binding.py` (+ real
+  LLM, hub TestClient capstone); hub/CLI cue timing fed by `iterate.scene_words` (cached VO transcript).
 
 ### Motion-spec system — natural language → render (2026-06-25)
 `src/nolan/motion/` translates a one-line scene design into a precise, validated render
@@ -727,6 +789,64 @@ normal **Director-ready project** (`projects/<slug>/` with `project.yaml` +
   (narrative voice) vs `projects/<slug>/style_guide.md` (visual/scene, written by the
   Director). Disambiguating the project one (→ `visual_style.md`) is a recommended
   follow-up cleanup, not yet done.
+
+### Video Styles — reference videos → visual style guide (2026-06-26)
+
+The **visual twin of Script Styles**: distill the *production / visual* style of
+reference library videos into a reusable `video_style_guide.md` so a similar look
+(and visual-verbal feel) can be cloned. Mirrors the Script Styles flow — corpus →
+per-video extract → agent synthesis → guide. **Descriptive-only v1** (not yet wired
+into the render pipeline).
+
+- **Module** `src/nolan/video_style/`:
+  - `store.py` (`VideoStyleStore`) — file-backed `video_styles/<id>/`: `manifest.json`
+    (reference videos + optional `script_style_id` pairing), `per_video/<slug>.json`,
+    `frames/<slug>/`, `video_style_guide.md`. Dedups by video_path.
+  - `visual_stats.py` — **deterministic** (OpenCV/NumPy, no LLM): format (aspect/fps/
+    duration/orientation), color (k-means palette hex, saturation/contrast, warm↔cool),
+    motion (frame-diff), graphics (edge/overlay density), pacing-from-segments
+    (cuts/min, shot-length stats, tempo).
+  - `pairing.py` — **script↔visual relationship** (the differentiator): per segment,
+    BGE-cosine **directness** between `transcript` (said) and `combined_summary`/
+    `frame_description`+`inferred_context` (shown), reusing `vector_search`'s embedder.
+    Bands literal/associative/tonal, with distribution, arc variation (open/mid/close),
+    and paired said↔shown samples for the agent. Needs an indexed video.
+  - `tempo.py` — **video-measured** editing tempo (not the index proxy): true shot-cut
+    detection (HSV-histogram diff, motion-robust), a windowed cuts/min **curve** + trend
+    (accelerates/steady/decelerates/varied), and **motion-weighted energy** (intra-shot
+    motion of non-cut transitions blended with cut-rate). On Liu Xiu it found 66 real
+    cuts vs the index's 25 segments (~2.6× undercount). Primary pacing signal;
+    `pacing_from_segments` is the cheap fallback.
+  - `vision_pass.py` — style-focused vision prompt (cinematography/color/lighting/
+    graphics) over sampled frames; provider injectable (defaults to **OpenRouter**, not
+    Gemini, when run via `analyze_video_style`).
+  - `extract.py` — samples the video once and assembles stats + pacing + pairing +
+    cinematography into `per_video/<slug>.json` (+ caches frames). Graceful-degrades
+    when un-indexed (no pairing) or no vision provider.
+  - `tasks.py` — synthesis brief (sections incl. the **Script ↔ Visual Pairing** one).
+- **Dispatch** — `operations.analyze_video_style`: per-video extract (loads segments
+  from the index, runs stats+pairing+vision), then dispatches synthesis to the `nolan2`
+  tmux agent (same mechanism as `analyze_style`).
+- **UI** — `/video-styles` page: create → pick reference videos from the **library**
+  (indexed videos flagged) → pair with a Script Style → **Analyze** (live job poll) →
+  view per-video extract JSON + the guide.
+- Endpoints: `GET/POST /api/video-styles`, `GET/DELETE /api/video-styles/{id}`,
+  `POST .../{id}/add-video|remove-source/{slug}|pair-script|analyze`,
+  `GET .../{id}/guide|extract/{slug}`.
+- Reuses: `sampler`/cv2 (frames), `vector_search` BGE embedder (pairing), `vision.py`
+  provider, `VideoIndex.get_segments`, the Script Styles store/UI/agent-dispatch pattern.
+- Tested (no model/db needed): `scripts/test_video_style.py` (stats+store),
+  `test_pairing.py`, `test_vision_pass.py`, `test_extract.py`,
+  `test_video_style_synthesis.py`, `test_tempo.py`; UI verified headless.
+  **End-to-end validated** on the indexed 「劉秀」 video (real BGE + OpenRouter vision +
+  tempo) → `video_styles/liu-xiu-historical-narrative/`.
+- Real-run fixes: non-ASCII paths broke `cv2.imwrite` (→ `imencode`+`tofile` + ASCII
+  slugs); pairing bands recalibrated to **0.72/0.58** (BGE related-pairs cluster
+  0.55–0.80); on-screen-text inflates said↔shown similarity (documented; future: strip
+  rendered narration before embedding).
+- **Open:** pairing bands still single-video-calibrated; on-screen-text confound; the
+  tempo `energy` blend + cut threshold are heuristics; executable mapping (guide →
+  render pipeline) is a deferred phase.
 
 ### YouTube Integration
 - **Video Download** - Download YouTube videos using yt-dlp
@@ -1496,3 +1616,19 @@ Interactive single-utterance TTS playground built on the OmniVoice integration.
     `segments.json` (title, timecode, duration) for the segment pipeline.
 - Endpoints: `POST /api/generate-voiceover` (now takes `script_project` + `mode`),
   `GET /api/voiceover/{project}/{path}` serves outputs. Segment-pipeline auto-wiring deferred.
+
+### Voiceover captions (SRT/VTT + word JSON) — 2026-06-26
+
+Hybrid word-timing for generated voiceovers: Whisper word timestamps snapped to
+the KNOWN script words (correct spelling of proper nouns/numbers), no new deps.
+- `src/nolan/captions.py`: `align_words` (difflib sequence-align known↔Whisper +
+  gap interpolation), `group_lines`, `words_to_srt` / `words_to_vtt`.
+- `operations.generate_captions(project)`: CPU Whisper `transcribe_words` per
+  segment (or the full mp3), aligns to section bodies, stitches a global timeline
+  via segment offsets. Writes `assets/voiceover/voiceover.{srt,vtt,words.json}`
+  (full) + per-segment `<seg>.{srt,vtt,words.json}`.
+- Endpoint `POST /api/generate-captions`; outputs served via `/api/voiceover/...`
+  (now sends srt/vtt/json types); `/api/voiceover-info` reports a `captions` flag.
+- UI: "Captions (SRT)" button in the TTS Studio Project Voiceover panel; SRT/VTT/
+  word-JSON download links appear once generated.
+- Word JSON ({word,start,end}) is ready for kinetic/karaoke caption effects.

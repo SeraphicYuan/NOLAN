@@ -1,0 +1,13 @@
+{
+  "comp": "PremiumCard",
+  "out": "Section_1_scene_003.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "title": "GREECE",
+    "subtitle": "The Greek beach scene",
+    "kicker": "",
+    "cardStyle": "glass",
+    "theme": "dark-editorial"
+  }
+}

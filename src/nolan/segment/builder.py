@@ -47,9 +47,13 @@ class BuildConfig:
     width: int = 1920
     height: int = 1080
     fade: float = 0.4
+    enable_external: bool = True        # escalate footage misses to stock/archival providers (P2)
     transition: str = "cut"             # passed to assemble (P3)
     music: Optional[Path] = None        # P3 background bed
     music_gain: float = 0.18
+    voice: Optional[str] = None         # voice_id for generated VO (overrides project/default)
+    vo_tempo: float = 1.0               # pace for generated VO (ffmpeg atempo)
+    captions: bool = True               # produce SRT/VTT/words.json alongside the VO
     comfyui_workflow: str = "workflows/image/flux-dev-fp8.json"
     comfyui_prompt_node: str = "6"
     comfyui_timeout: float = 240.0
@@ -76,8 +80,10 @@ class SegmentBuilder:
 
     # --- stages ---
     async def _design(self, seg: SegmentInput) -> List[Scene]:
+        # Motion is authored lazily in the resolver now (only for graphic scenes that
+        # reach it), not as an eager design pass — so author_motion stays off here.
         designer = SceneDesigner(self.llm)
-        plan = await designer.design_full_plan(seg.sections, enrich=True, author_motion=True)
+        plan = await designer.design_full_plan(seg.sections, enrich=True, author_motion=False)
         scenes = plan.all_scenes
         assign_timing(scenes, seg.duration)
         return scenes
@@ -113,9 +119,128 @@ class SegmentBuilder:
         except Exception:
             return None
 
+    def _make_library_fn(self, seg: SegmentInput) -> Optional[Callable]:
+        """Picture-library still search (CLIP), tried after a segment-search miss.
+
+        Lazy: the CLIP model + libraries load on the first footage scene only.
+        Returns the absolute path of the best hit clearing `library_threshold`.
+        """
+        if not self.cfg.resolver.enable_library:
+            return None
+        state: dict = {}
+
+        def fn(scene):
+            if "libs" not in state:
+                try:
+                    from nolan.imagelib import ClipEmbedder, ImageLibrary
+                    emb = ClipEmbedder()
+                    libs = [ImageLibrary("global", embedder=emb)]
+                    if seg.project_id and (Path("projects") / seg.project_id / "imagelib").exists():
+                        libs.append(ImageLibrary("project", project=seg.project_id, embedder=emb))
+                    state["libs"] = libs
+                except Exception:
+                    state["libs"] = []
+            libs = state["libs"]
+            if not libs:
+                return None
+            q = (getattr(scene, "search_query", "") or scene.visual_description
+                 or getattr(scene, "narration_excerpt", "") or "")
+            if not q:
+                return None
+            best = None
+            for lib in libs:
+                try:
+                    for h in lib.search(q, k=3):
+                        if best is None or h.score > best[1]:
+                            best = (str(lib.abs_path(h.asset)), h.score)
+                except Exception:
+                    pass
+            if best and best[1] >= self.cfg.resolver.library_threshold:
+                return best[0]
+            return None
+        return fn
+
+    def _make_external_fn(self, seg: SegmentInput) -> Optional[Callable]:
+        """External stock/archival provider search (P2), tried after library miss.
+
+        Shares match-broll's finder (`external_assets.external_match_for_scene`):
+        provider search → quality pre-filter → vision score → attach video clip by
+        reference / download image. Lazy: client + scorer build on first footage miss.
+        """
+        if not self.cfg.enable_external:
+            return None
+        state: dict = {}
+
+        def fn(scene):
+            if "client" not in state:
+                try:
+                    from nolan.image_search import ImageScorer, ImageSearchClient
+                    from nolan.cli_legacy import _scoring_vision_config
+                    cfg = self.nolan_config
+                    img = getattr(cfg, "image_sources", None)
+                    client = ImageSearchClient(
+                        pexels_api_key=getattr(img, "pexels_api_key", None),
+                        pixabay_api_key=getattr(img, "pixabay_api_key", None),
+                        smithsonian_api_key=getattr(img, "smithsonian_api_key", None),
+                        keys=img.provider_keys() if img and hasattr(img, "provider_keys") else None,
+                    )
+                    sv = _scoring_vision_config(cfg, "openrouter")
+                    sv["model"] = "qwen/qwen3-vl-8b-instruct"
+                    state["client"] = client
+                    state["scorer"] = ImageScorer(vision_provider="openrouter", vision_config=sv)
+                    state["vid"] = client.video_providers()
+                except Exception:
+                    state["client"] = None
+            if not state.get("client"):
+                return None
+            from nolan.external_assets import external_match_for_scene
+            out_dir = Path(self.cfg.out_dir) / "assets" / "broll"
+            try:
+                # Images, not video: the segment pipeline has no materialize step, so
+                # downloaded stills (matched_asset → assemble) are render-ready whereas
+                # external video clips (by reference) would need trimming first.
+                return external_match_for_scene(
+                    scene, client=state["client"], scorer=state["scorer"],
+                    vid_sources=state["vid"], out_dir=out_dir, project_root=Path(self.cfg.out_dir),
+                    prefer_video=False, gate=4)
+            except Exception:
+                return None
+        return fn
+
+    def _make_motion_fn(self, seg: SegmentInput) -> Optional[Callable]:
+        """Lazy motion authoring: graphic/text/data scene with no motion_spec ->
+        compile one from its visual intent via the nolan.motion spec system.
+
+        Replaces the eager design-stage `author_motion` pass — runs only for scenes
+        that actually reach the resolver's motion branch.
+        """
+        if self.llm is None:
+            return None
+        from nolan.motion import compile_spec
+        from .render import _run_async
+
+        def fn(scene):
+            brief = (getattr(scene, "visual_description", "") or
+                     getattr(scene, "narration_excerpt", "") or "").strip()
+            if not brief:
+                return None
+            try:
+                spec, _errors = _run_async(compile_spec(brief, self.llm))
+            except Exception:
+                return None
+            return spec if spec.get("backend") else None
+        return fn
+
+    def _resolver(self, seg: SegmentInput) -> AssetResolver:
+        import dataclasses
+        rcfg = dataclasses.replace(self.cfg.resolver, enable_external=self.cfg.enable_external)
+        return AssetResolver(rcfg, search_fn=self._make_search_fn(seg),
+                             library_fn=self._make_library_fn(seg),
+                             external_fn=self._make_external_fn(seg),
+                             motion_fn=self._make_motion_fn(seg))
+
     def _resolve(self, scenes, seg: SegmentInput) -> dict:
-        resolver = AssetResolver(self.cfg.resolver, search_fn=self._make_search_fn(seg))
-        return resolver.resolve_all(scenes)
+        return self._resolver(seg).resolve_all(scenes)
 
     def _reresolve_unresolved(self, scenes, seg: SegmentInput) -> int:
         """Re-run the resolve stage for scenes whose asset pick was cleared (edited).
@@ -127,7 +252,7 @@ class SegmentBuilder:
         needing = [s for s in scenes if not s.resolved_source]
         if not needing:
             return 0
-        resolver = AssetResolver(self.cfg.resolver, search_fn=self._make_search_fn(seg))
+        resolver = self._resolver(seg)
         for s in needing:
             resolver.resolve(s)
         return len(needing)
@@ -192,10 +317,54 @@ class SegmentBuilder:
                             "visual_type": s.visual_type, "source": s.resolved_source,
                             "narration": (s.narration_excerpt or "")[:60]} for s in scenes]}
 
+    def _voiceover_stage(self, seg: SegmentInput, scenes):
+        """Produce the voiceover (existing source VO, or TTS) + captions.
+
+        Returns (vo_path, words). `words` is the VO word-timeline (for scene
+        alignment) or None. Order: this runs BEFORE render so scene timings are
+        audio-accurate and TTS (which frees its VRAM on exit) precedes ComfyUI.
+        """
+        if seg.vo_path and Path(seg.vo_path).exists():
+            return Path(seg.vo_path), None  # real source VO — keep its timing
+
+        cfg = self.nolan_config
+        if cfg and getattr(cfg, "tts", None) and cfg.tts.enabled and seg.sections:
+            try:
+                from nolan.tts import create_tts_provider
+                from nolan import voiceover as vo
+                provider = create_tts_provider(cfg.tts)
+                ref_audio, ref_text, vid = vo.resolve_voice_ref(self.cfg.out_dir, cfg, self.cfg.voice)
+                logger.info("Voiceover voice: %s", vid or "(OmniVoice default)")
+                res = vo.produce_voiceover(
+                    self.cfg.out_dir, seg.sections, provider,
+                    ref_audio=ref_audio, ref_text=ref_text,
+                    num_step=cfg.tts.omnivoice.num_step, tempo=self.cfg.vo_tempo)
+                words = None
+                if self.cfg.captions:
+                    try:
+                        words = vo.build_captions(self.cfg.out_dir, res["sections"])
+                    except Exception as e:
+                        logger.warning("caption step failed: %s", e)
+                return Path(res["voiceover"]), words
+            except Exception as e:
+                logger.warning("TTS voiceover failed (%s) — falling back to silent", e)
+
+        from nolan.orchestrator.render import generate_silent_audio
+        return generate_silent_audio(seg.duration, self.cfg.out_dir / "vo_silent.wav"), None
+
     # --- public ---
     async def build(self, seg: SegmentInput) -> BuildResult:
         scenes = await self._design(seg)
         self._resolve(scenes, seg)
+
+        # Voiceover + captions + audio-accurate timing — BEFORE render/save.
+        vo, words = self._voiceover_stage(seg, scenes)
+        seg.vo_path = str(vo)  # record so a review-resume reuses the same VO
+        if words:
+            from nolan.voiceover import align_scenes_from_words
+            matched = align_scenes_from_words(scenes, words)
+            logger.info("Aligned %d/%d scenes from voiceover", matched, len(scenes))
+
         plan_path = self._save_plan(scenes, seg)
         manifest = self._manifest(scenes)
         (self.cfg.out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -205,7 +374,6 @@ class SegmentBuilder:
 
         self._render(scenes, seg)
         ScenePlan(sections={"segment": scenes}).save(str(plan_path))   # persist rendered_clip
-        vo = self._resolve_vo(seg)
         final = self._assemble(plan_path, vo, self.cfg.out_dir / "final.mp4")
         return BuildResult(plan_path, manifest, final_path=final)
 

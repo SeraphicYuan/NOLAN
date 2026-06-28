@@ -1,0 +1,413 @@
+{
+  "sections": {
+    "segment": [
+      {
+        "id": "Section_1_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 0.0,
+        "end_seconds": 1.665,
+        "narration_excerpt": "splits in two",
+        "visual_type": "generated",
+        "visual_description": "A surreal, high-quality 3D render of a modern city street physically fracturing down the middle. The left side is gleaming, futuristic, and wealthy with bright lights and pristine architecture. The right side is decaying, dark, and dilapidated with cracked pavement and shadows. The fracture is a sharp, clean line dividing the two realities.",
+        "search_query": "",
+        "comfyui_prompt": "cinematic 3D render, wide angle shot, a modern city street splitting directly down the center, dual reality, left side is utopian glossy white architecture bright sunlight high wealth, right side is dystopian decay rust dark shadows poverty, sharp geometric fracture line in the pavement, hyperrealistic, 8k, unreal engine 5, dramatic lighting, symbolic of economic divide",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "splits",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated [render-failed: RuntimeError]",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_2_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "5s",
+        "start_seconds": 1.665,
+        "end_seconds": 2.774,
+        "narration_excerpt": "50 percent",
+        "visual_type": "graphics",
+        "visual_description": "A clean, high-contrast animated infographic comparing the top 10% of the population against the remaining 90%, highlighting that the smaller segment generates half of total consumer spending.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "50 percent",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "compare-binary-horizontal-simple-vs",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "Consumer Spending Distribution",
+            "items": [
+              {
+                "label": "Top 10%",
+                "children": [
+                  {
+                    "label": "Contribution",
+                    "desc": "50% of Total Spending"
+                  }
+                ]
+              },
+              {
+                "label": "Bottom 90%",
+                "children": [
+                  {
+                    "label": "Contribution",
+                    "desc": "50% of Total Spending"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Section_2_scene_001.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "bar-compare",
+          "backend": "remotion",
+          "target": "BarCompare",
+          "content": {
+            "title": "Consumer Spending",
+            "bars": [
+              {
+                "label": "Top 10%",
+                "value": 50,
+                "color": "#FF4D4D"
+              },
+              {
+                "label": "Bottom 90%",
+                "value": 50,
+                "color": "#4DA6FF"
+              }
+            ],
+            "prefix": "",
+            "suffix": "%"
+          },
+          "style": {
+            "barStyle": "flat"
+          },
+          "theme": "high-contrast",
+          "duration": 5.0
+        },
+        "resolved_source": "motion:bar-compare",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_3_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 2.774,
+        "end_seconds": 7.768,
+        "narration_excerpt": "The S and P 500 sits at record highs",
+        "visual_type": "graphics",
+        "visual_description": "A clean, minimalist line chart on a dark background showing the S&P 500 index trend over the last few years. The line climbs steadily from left to right, ending at a sharp peak on the far right. A glowing accent color highlights the final data point, labeled 'All-Time High'.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "highs",
+            "action": "highlight",
+            "target": 2,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "chart-line-plain-text",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "S&P 500 Index",
+            "items": [
+              {
+                "label": "Start",
+                "value": "3800"
+              },
+              {
+                "label": "Mid",
+                "value": "4200"
+              },
+              {
+                "label": "Current",
+                "value": "5200"
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Section_3_scene_001.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "line-chart",
+          "backend": "python",
+          "target": "LineChartRenderer",
+          "content": {
+            "points": [
+              [
+                "Start",
+                4000
+              ],
+              [
+                "Mid",
+                4500
+              ],
+              [
+                "Recent",
+                5000
+              ],
+              [
+                "All-Time High",
+                5200
+              ]
+            ],
+            "title": "S&P 500 Index Trend",
+            "value_prefix": "",
+            "value_suffix": ""
+          },
+          "style": {},
+          "duration": 6.0
+        },
+        "resolved_source": "motion:line-chart",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_3_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 7.768,
+        "end_seconds": 11.652,
+        "narration_excerpt": "while consumer confidence is near pandemic lows.",
+        "visual_type": "graphics",
+        "visual_description": "A stark, downward-sloping line graph representing Consumer Confidence. The line drops significantly towards the right side of the screen, ending at a low point marked with a warning color (e.g., muted red or orange). The background is dark to maintain continuity, but the mood is somber.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "lows",
+            "action": "highlight",
+            "target": 2,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "chart-line-plain-text",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "Consumer Confidence Index",
+            "items": [
+              {
+                "label": "Pre-Pandemic",
+                "value": "100"
+              },
+              {
+                "label": "Peak Recovery",
+                "value": "115"
+              },
+              {
+                "label": "Current",
+                "value": "78"
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Section_3_scene_002.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "line-chart",
+          "backend": "python",
+          "target": "LineChartRenderer",
+          "content": {
+            "points": [
+              [
+                "Start",
+                100
+              ],
+              [
+                "Mid",
+                85
+              ],
+              [
+                "End",
+                45
+              ]
+            ],
+            "title": "Consumer Confidence",
+            "value_prefix": "",
+            "value_suffix": ""
+          },
+          "style": {},
+          "duration": 6.0
+        },
+        "resolved_source": "motion:line-chart",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_4_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "3.5s",
+        "start_seconds": 11.652,
+        "end_seconds": 15.535,
+        "narration_excerpt": "Making more money will not save you.",
+        "visual_type": "generated",
+        "visual_description": "A surreal 3D render of a solitary figure standing on a small, unstable raft constructed entirely of floating banknotes in the middle of a dark, stormy ocean. The cash is visibly dissolving into the churning water, and the figure looks overwhelmed and helpless against the waves.",
+        "search_query": "",
+        "comfyui_prompt": "cinematic 3D render, wide angle, a person standing on a raft made of floating US dollar bills in a violent stormy ocean, dark moody lighting, heavy rain, waves crashing, the money is wet and dissolving into pulp, photorealistic, 8k, unreal engine 5, dramatic atmosphere, fear, overwhelming --ar 16:9",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "save",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated [render-failed: RuntimeError]",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_4_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "3.5s",
+        "start_seconds": 15.535,
+        "end_seconds": 17.2,
+        "narration_excerpt": "Owning assets will.",
+        "visual_type": "generated",
+        "visual_description": "A stark, high-contrast 3D render showing the same figure now standing safely inside a solid, glowing geometric shelter. The structure is composed of translucent gold and marble-like blocks representing real estate and equity, forming a sturdy foundation that shields the person from the surrounding storm.",
+        "search_query": "",
+        "comfyui_prompt": "cinematic 3D render, low angle, a person standing safely inside a futuristic geometric shelter made of glowing gold bars and solid marble blocks, protective dome, warm interior light contrasting with dark stormy background, symbols of stability, real estate, equity, solid foundation, hyperrealistic, 8k, clean lines, architectural visualization --ar 16:9",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "assets",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated [render-failed: RuntimeError]",
+        "subtitle_cues": []
+      }
+    ]
+  }
+}

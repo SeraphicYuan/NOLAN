@@ -1,12 +1,91 @@
 """Image search providers for NOLAN."""
 
 import json
+import threading
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 import httpx
+
+
+# --- Free-tier rate limits for keyed stock providers -------------------------
+# (max_requests, window_seconds) per *account*. Providers that share one account
+# (e.g. Pexels image + video use the same key) share a single bucket.
+_RATE_LIMITS = {
+    "unsplash": (50, 3600),    # 50 / hour  (tightest)
+    "pexels": (200, 3600),     # 200 / hour (+ 20k / month, not tracked here)
+    "pixabay": (100, 60),      # 100 / 60s  (burst)
+}
+# provider name -> rate-limit bucket (account). Unlisted providers are unthrottled.
+_RATE_BUCKET = {
+    "unsplash": "unsplash",
+    "pexels": "pexels", "pexels_video": "pexels",
+    "pixabay": "pixabay", "pixabay_video": "pixabay",
+}
+# Providers with a tight budget: queried only as a fallback tier in the default
+# fan-out, after cheaper/keyless providers come up short. See _tier_sources.
+_DEFER_LAST = {"unsplash"}
+
+
+class _RateLimiter:
+    """Thread-safe sliding-window limiter shared across providers and clients.
+
+    Tracks request timestamps per account bucket and honors a cooldown set when
+    a provider returns HTTP 429. Lets the fan-out skip a tapped-out provider
+    instead of hammering (and getting blocked by) the API. A single module-level
+    instance is shared, since callers create a fresh ImageSearchClient per request.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._hits: Dict[str, list] = {}
+        self._cooldown: Dict[str, float] = {}
+
+    def allow(self, name: str) -> bool:
+        """Return True (and record a hit) if `name` is under its limit, else False."""
+        bucket = _RATE_BUCKET.get(name)
+        if not bucket:
+            return True  # unthrottled provider
+        limit, window = _RATE_LIMITS[bucket]
+        now = time.monotonic()
+        with self._lock:
+            if now < self._cooldown.get(bucket, 0):
+                return False
+            hits = [t for t in self._hits.get(bucket, []) if now - t < window]
+            if len(hits) >= limit:
+                self._hits[bucket] = hits
+                return False
+            hits.append(now)
+            self._hits[bucket] = hits
+            return True
+
+    def record(self, name: str) -> None:
+        """Record a hit unconditionally (for explicit single-source calls)."""
+        bucket = _RATE_BUCKET.get(name)
+        if not bucket:
+            return
+        now = time.monotonic()
+        _, window = _RATE_LIMITS[bucket]
+        with self._lock:
+            hits = [t for t in self._hits.get(bucket, []) if now - t < window]
+            hits.append(now)
+            self._hits[bucket] = hits
+
+    def penalize(self, name: str) -> None:
+        """Cool a bucket down after a 429 (capped at 5 min for hourly limits)."""
+        bucket = _RATE_BUCKET.get(name)
+        if not bucket:
+            return
+        _, window = _RATE_LIMITS[bucket]
+        with self._lock:
+            self._cooldown[bucket] = time.monotonic() + min(window, 300)
+
+
+# Module-level singleton — shared across all ImageSearchClient instances.
+_RATE_LIMITER = _RateLimiter()
 
 
 @dataclass
@@ -1174,6 +1253,46 @@ class ImageSearchClient:
             "pixabay_video": PixabayVideoProvider(api_key=pixabay_api_key),
             "coverr_video": CoverrVideoProvider(api_key=k.get("coverr")),
         }
+        self._limiter = _RATE_LIMITER
+
+    def _provider_search(self, name: str, query: str, max_results: int,
+                         *, fanout: bool) -> List[ImageSearchResult]:
+        """Run one provider's search with 429-aware cooldown.
+
+        A 429 cools the provider's bucket and yields [] (never raises). Other
+        errors are swallowed to [] in `fanout` mode but propagate for an explicit
+        single-source call (preserving the original behavior of `search`).
+        """
+        provider = self.providers.get(name)
+        if not provider or not provider.is_available():
+            return []
+        try:
+            return provider.search(query, max_results)
+        except httpx.HTTPStatusError as e:
+            if getattr(e.response, "status_code", None) == 429:
+                self._limiter.penalize(name)
+                print(f"Warning: {name} rate-limited (429); cooling down")
+                return []
+            if fanout:
+                print(f"Warning: {name} search failed: {e}")
+                return []
+            raise
+        except Exception as e:
+            if fanout:
+                print(f"Warning: {name} search failed: {e}")
+                return []
+            raise
+
+    @staticmethod
+    def _tier_sources(sources: List[str]) -> List[List[str]]:
+        """Split sources into priority tiers: cheap/keyless first, deferred last.
+
+        Tight-budget providers (`_DEFER_LAST`, e.g. Unsplash 50/hr) form a
+        fallback tier queried only if earlier tiers come up short.
+        """
+        first = [n for n in sources if n not in _DEFER_LAST]
+        last = [n for n in sources if n in _DEFER_LAST]
+        return [t for t in (first, last) if t]
 
     def video_providers(self) -> List[str]:
         """Names of available providers that return video."""
@@ -1203,11 +1322,12 @@ class ImageSearchClient:
         if source == "all":
             results = []
             for name, provider in self.providers.items():
-                if provider.is_available():
-                    try:
-                        results.extend(provider.search(query, max_results))
-                    except Exception as e:
-                        print(f"Warning: {name} search failed: {e}")
+                if not provider.is_available():
+                    continue
+                if not self._limiter.allow(name):
+                    print(f"Warning: {name} rate-limited; skipping")
+                    continue
+                results.extend(self._provider_search(name, query, max_results, fanout=True))
             return results
 
         if source not in self.providers:
@@ -1217,7 +1337,10 @@ class ImageSearchClient:
         if not provider.is_available():
             raise RuntimeError(f"Provider '{source}' is not available (missing API key or package)")
 
-        return provider.search(query, max_results)
+        # Explicit single-source call: honor the request but keep the bucket count
+        # accurate and stay 429-safe.
+        self._limiter.record(source)
+        return self._provider_search(source, query, max_results, fanout=False)
 
     def search_assets(self, query: str, media_type: Optional[str] = None,
                       sources: Optional[List[str]] = None,
@@ -1231,28 +1354,35 @@ class ImageSearchClient:
                 matching media_type.
             max_results: results per provider.
         """
+        explicit = sources is not None
         if sources is None:
             sources = [n for n, p in self.providers.items()
                        if p.is_available()
                        and (media_type is None or getattr(p, "media_type", "image") == media_type)]
+        if not sources:
+            return []
 
-        def _one(name):
-            provider = self.providers.get(name)
-            if not provider or not provider.is_available():
-                return []
-            try:
-                return provider.search(query, max_results)
-            except Exception as e:
-                print(f"Warning: {name} search failed: {e}")
-                return []
+        # Default fan-out is tiered so tight-budget providers (Unsplash) are only
+        # queried when cheaper/keyless ones come up short. An explicit `sources`
+        # list is honored as a single tier in the order given.
+        tiers = [sources] if explicit else self._tier_sources(sources)
 
-        # Query providers concurrently (each is network-bound).
+        from concurrent.futures import ThreadPoolExecutor
         merged: List[ImageSearchResult] = []
-        if sources:
-            from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=min(8, len(sources))) as ex:
-                for r in ex.map(_one, sources):
+        for tier in tiers:
+            # Rate-limit gate: only query providers currently under their limit.
+            ready = [n for n in tier if self._limiter.allow(n)]
+            if not ready:
+                continue
+            with ThreadPoolExecutor(max_workers=min(8, len(ready))) as ex:
+                for r in ex.map(
+                    lambda n: self._provider_search(n, query, max_results, fanout=True),
+                    ready,
+                ):
                     merged.extend(r)
+            # Enough from a higher-priority tier — don't spend the next tier's quota.
+            if len(merged) >= max_results:
+                break
         return merged
 
     def resolve_video(self, result: ImageSearchResult) -> Optional[ImageSearchResult]:
@@ -1400,6 +1530,12 @@ class ImageScorer:
         Returns:
             Image bytes or None if failed.
         """
+        # Local file (e.g. a picture-library asset) — read directly.
+        if url and "://" not in url:
+            try:
+                return Path(url).read_bytes()
+            except Exception:
+                return None
         # Use browser-like headers to avoid being blocked
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

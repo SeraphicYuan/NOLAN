@@ -1,0 +1,76 @@
+{
+  "comp": "PhotoMontage",
+  "out": "Section_1_scene_001.mp4",
+  "durationInFrames": 300,
+  "codec": "h264",
+  "props": {
+    "background": "#1a1a1a",
+    "vignette": 0.6,
+    "zoomStart": 1.0,
+    "zoomEnd": 1.05,
+    "panX": 0.0,
+    "panY": 0.0,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "public/tundra.jpg",
+      "x": 0.16,
+      "y": 0.5,
+      "scale": 0.9,
+      "rotation": -2,
+      "from": "left",
+      "enterAt": 0,
+      "enterDur": 1.2,
+      "frame": "plain",
+      "caption": "The Tundra",
+      "keys": [
+        {
+          "at": 2.0,
+          "scale": 0.95,
+          "rotation": 0,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "public/desert.jpg",
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.0,
+      "rotation": 0,
+      "from": "center",
+      "enterAt": 0.4,
+      "enterDur": 1.2,
+      "frame": "plain",
+      "caption": "The Desert",
+      "keys": [
+        {
+          "at": 2.4,
+          "scale": 1.05,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "public/jungle.jpg",
+      "x": 0.84,
+      "y": 0.5,
+      "scale": 0.9,
+      "rotation": 2,
+      "from": "right",
+      "enterAt": 0.8,
+      "enterDur": 1.2,
+      "frame": "plain",
+      "caption": "The Jungle",
+      "keys": [
+        {
+          "at": 2.8,
+          "scale": 0.95,
+          "rotation": 0,
+          "ease": "inOut"
+        }
+      ]
+    }
+  ]
+}

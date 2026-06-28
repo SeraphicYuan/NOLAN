@@ -1,0 +1,377 @@
+D:\ClaudeProjects\NOLAN\src\nolan\llm.py:3: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+Source video : If The Economy Is F＊cked, Why Hasn’t It Crashed Yet？.mp4
+Index DB     : projects\US Economy\index.db
+Vision       : openrouter:qwen/qwen3.7-plus
+Sampler      : ffmpeg_scene
+Transcript   : SRT auto-detected (whisper disabled)
+
+
+Vision provider: openrouter (qwen/qwen3.7-plus)
+Sampling strategy: ffmpeg_scene
+Whisper: disabled
+Inference: enabled (openrouter:qwen/qwen3.7-plus)
+Transcript: enabled
+
+Indexing single video...
+  [0/0] Loaded 30622 cached frame scores
+  [0/0] Adaptive threshold: 0.4794 (mean=0.0217, stdev=0.0915, 5.0sigma)
+  [0/0] Detected 411 scene changes (from cache)
+  [0/0] Detected 411 scene changes
+  [1/336] Frame at 0.0s
+  [2/336] Frame at 19.3s
+  [3/336] Frame at 6.5s
+  [4/336] Frame at 3.4s
+  [5/336] Frame at 24.8s
+  [6/336] Frame at 21.4s
+  [7/336] Frame at 7.6s
+  [8/336] Frame at 15.3s
+  [9/336] Frame at 30.7s
+  [10/336] Frame at 32.9s
+  [11/336] Frame at 51.1s
+  [12/336] Frame at 50.0s
+  [13/336] Frame at 40.3s
+  [14/336] Frame at 52.3s
+  [15/336] Frame at 43.8s
+  [16/336] Frame at 54.0s
+  [17/336] Frame at 67.9s
+  [18/336] Frame at 62.6s
+  [19/336] Frame at 64.3s
+  [20/336] Frame at 60.1s
+  [21/336] Frame at 65.8s
+  [22/336] Frame at 59.1s
+  [23/336] Frame at 57.1s
+  [24/336] Frame at 55.5s
+  [25/336] Frame at 69.3s
+  [26/336] Frame at 70.9s
+  [27/336] Frame at 72.4s
+  [28/336] Frame at 81.0s
+  [29/336] Frame at 76.0s
+  [30/336] Frame at 77.5s
+  [31/336] Frame at 74.7s
+  [32/336] Frame at 79.0s
+  [33/336] Frame at 89.7s
+  [34/336] Frame at 83.2s
+  [35/336] Frame at 91.4s
+  [36/336] Frame at 93.1s
+  [37/336] Frame at 100.8s
+  [38/336] Frame at 94.1s
+  [39/336] Frame at 98.1s
+  [40/336] Frame at 102.7s
+  [41/336] Frame at 118.2s
+  [42/336] Frame at 105.2s
+  [43/336] Frame at 110.5s
+  [44/336] Frame at 122.5s
+  [45/336] Frame at 117.0s
+  [46/336] Frame at 134.4s
+  [47/336] Frame at 111.9s
+  [48/336] Frame at 113.4s
+  [49/336] Frame at 150.2s
+  [50/336] Frame at 151.6s
+  [51/336] Frame at 145.7s
+  [52/336] Frame at 147.0s
+  [53/336] Frame at 143.5s
+  [54/336] Frame at 148.8s
+  [55/336] Frame at 137.6s
+  [56/336] Frame at 141.4s
+  [57/336] Frame at 154.7s
+  [58/336] Frame at 159.8s
+  [59/336] Frame at 157.4s
+  [60/336] Frame at 163.0s
+  [61/336] Frame at 169.8s
+  [62/336] Frame at 165.5s
+  [63/336] Frame at 167.1s
+  [64/336] Frame at 172.0s
+  [65/336] Frame at 180.3s
+  [66/336] Frame at 173.0s
+  [67/336] Frame at 193.2s
+  [68/336] Frame at 183.8s
+  [69/336] Frame at 187.5s
+  [70/336] Frame at 185.8s
+  [71/336] Frame at 189.4s
+  [72/336] Frame at 178.1s
+  [73/336] Frame at 199.9s
+  [74/336] Frame at 202.3s
+  [75/336] Frame at 219.5s
+  [76/336] Frame at 217.4s
+  [77/336] Frame at 228.5s
+  [78/336] Frame at 216.2s
+  [79/336] Frame at 234.1s
+  [80/336] Frame at 230.9s
+  [81/336] Frame at 257.0s
+  [82/336] Frame at 252.1s
+  [83/336] Frame at 250.9s
+  [84/336] Frame at 247.3s
+  [85/336] Frame at 255.5s
+  [86/336] Frame at 253.7s
+  [87/336] Frame at 242.5s
+  [88/336] Frame at 249.5s
+  [89/336] Frame at 261.7s
+  [90/336] Frame at 268.0s
+  [91/336] Frame at 277.3s
+  [92/336] Frame at 271.5s
+  [93/336] Frame at 272.6s
+  [94/336] Frame at 263.8s
+  [95/336] Frame at 278.8s
+  [96/336] Frame at 275.5s
+  [97/336] Frame at 295.7s
+  [98/336] Frame at 281.9s
+  [99/336] Frame at 299.4s
+  [100/336] Frame at 286.6s
+  [101/336] Frame at 305.6s
+  [102/336] Frame at 309.0s
+  [103/336] Frame at 298.4s
+  [104/336] Frame at 307.3s
+  [105/336] Frame at 315.4s
+  [106/336] Frame at 325.7s
+  [107/336] Frame at 316.7s
+  [108/336] Frame at 320.9s
+  [109/336] Frame at 328.4s
+  [110/336] Frame at 330.7s
+  [111/336] Frame at 335.3s
+  [112/336] Frame at 338.3s
+  [113/336] Frame at 344.3s
+  [114/336] Frame at 356.4s
+  [115/336] Frame at 349.6s
+  [116/336] Frame at 353.2s
+  [117/336] Frame at 361.2s
+  [118/336] Frame at 354.2s
+  [119/336] Frame at 347.5s
+  [120/336] Frame at 352.1s
+  [121/336] Frame at 375.3s
+  [122/336] Frame at 363.1s
+  [123/336] Frame at 364.6s
+  [124/336] Frame at 372.7s
+  [125/336] Frame at 371.5s
+  [126/336] Frame at 366.9s
+  [127/336] Frame at 374.0s
+  [128/336] Frame at 378.0s
+  [129/336] Frame at 393.3s
+  [130/336] Frame at 389.5s
+  [131/336] Frame at 385.6s
+  [132/336] Frame at 394.3s
+  [133/336] Frame at 381.5s
+  [134/336] Frame at 411.8s
+  [135/336] Frame at 379.8s
+  [136/336] Frame at 391.9s
+  [137/336] Frame at 455.8s
+  [138/336] Frame at 460.6s
+  [139/336] Frame at 457.3s
+  [140/336] Frame at 430.1s
+  [141/336] Frame at 451.9s
+  [142/336] Frame at 459.0s
+  [143/336] Frame at 413.0s
+  [144/336] Frame at 414.3s
+  [145/336] Frame at 467.0s
+  [146/336] Frame at 500.2s
+  [147/336] Frame at 482.4s
+  [148/336] Frame at 480.6s
+  [149/336] Frame at 486.3s
+  [150/336] Frame at 477.6s
+  [151/336] Frame at 463.6s
+  [152/336] Frame at 496.9s
+  [153/336] Frame at 520.4s
+  [154/336] Frame at 525.4s
+  [155/336] Frame at 504.9s
+  [156/336] Frame at 521.9s
+  [157/336] Frame at 527.7s
+  [158/336] Frame at 530.5s
+  [159/336] Frame at 532.8s
+  [160/336] Frame at 536.3s
+  [161/336] Frame at 549.1s
+  [162/336] Frame at 543.7s
+  [163/336] Frame at 552.6s
+  [164/336] Frame at 547.8s
+  [165/336] Frame at 537.6s
+  [166/336] Frame at 556.0s
+  [167/336] Frame at 554.2s
+  [168/336] Frame at 540.5s
+  [169/336] Frame at 558.1s
+  [170/336] Frame at 562.2s
+  [171/336] Frame at 588.3s
+  [172/336] Frame at 567.4s
+  [173/336] Frame at 598.1s
+  [174/336] Frame at 571.6s
+  [175/336] Frame at 593.9s
+  [176/336] Frame at 579.8s
+  [177/336] Frame at 614.5s
+  [178/336] Frame at 629.7s
+  [179/336] Frame at 599.9s
+  [180/336] Frame at 622.5s
+  [181/336] Frame at 620.5s
+  [182/336] Frame at 639.5s
+  [183/336] Frame at 617.4s
+  [184/336] Frame at 618.8s
+  [185/336] Frame at 653.4s
+  [186/336] Frame at 642.6s
+  [187/336] Frame at 650.5s
+  [188/336] Frame at 655.2s
+  [189/336] Frame at 664.1s
+  [190/336] Frame at 661.7s
+  [191/336] Frame at 668.6s
+  [192/336] Frame at 670.6s
+  [193/336] Frame at 691.9s
+  [194/336] Frame at 672.8s
+  [195/336] Frame at 682.1s
+  [196/336] Frame at 680.5s
+  [197/336] Frame at 676.6s
+  [198/336] Frame at 723.5s
+  [199/336] Frame at 713.9s
+  [200/336] Frame at 700.2s
+  [201/336] Frame at 731.6s
+  [202/336] Frame at 725.6s
+  [203/336] Frame at 728.1s
+  [204/336] Frame at 733.4s
+  [205/336] Frame at 760.8s
+  [206/336] Frame at 759.5s
+  [207/336] Frame at 758.3s
+  [208/336] Frame at 763.2s
+  [209/336] Frame at 765.1s
+  [210/336] Frame at 775.8s
+  [211/336] Frame at 768.1s
+  [212/336] Frame at 786.2s
+  [213/336] Frame at 787.3s
+  [214/336] Frame at 788.8s
+  [215/336] Frame at 776.9s
+  [216/336] Frame at 773.6s
+  [217/336] Frame at 793.5s
+  [218/336] Frame at 798.9s
+  [219/336] Frame at 796.6s
+  [220/336] Frame at 802.1s
+  [221/336] Frame at 804.8s
+  [222/336] Frame at 819.9s
+  [223/336] Frame at 807.3s
+  [224/336] Frame at 794.9s
+  [225/336] Frame at 871.4s
+  [226/336] Frame at 852.2s
+  [227/336] Frame at 868.1s
+  [228/336] Frame at 870.1s
+  [229/336] Frame at 853.7s
+  [230/336] Frame at 827.7s
+  [231/336] Frame at 863.0s
+  [232/336] Frame at 861.9s
+  [233/336] Frame at 884.5s
+  [234/336] Frame at 877.6s
+  [235/336] Frame at 883.0s
+  [236/336] Frame at 886.3s
+  [237/336] Frame at 892.9s
+  [238/336] Frame at 911.9s
+  [239/336] Frame at 916.8s
+  [240/336] Frame at 919.4s
+  [241/336] Frame at 953.4s
+  [242/336] Frame at 931.0s
+  [243/336] Frame at 933.1s
+  [244/336] Frame at 950.2s
+  [245/336] Frame at 937.5s
+  [246/336] Frame at 951.9s
+  [247/336] Frame at 927.0s
+  [248/336] Frame at 958.6s
+  [249/336] Frame at 960.7s
+  [250/336] Frame at 969.8s
+  [251/336] Frame at 978.7s
+  [252/336] Frame at 968.6s
+  [253/336] Frame at 962.7s
+  [254/336] Frame at 965.4s
+  [255/336] Frame at 964.3s
+  [256/336] Frame at 982.6s
+  [257/336] Frame at 1004.0s
+  [258/336] Frame at 1005.9s
+  [259/336] Frame at 1009.1s
+  [260/336] Frame at 986.2s
+  [261/336] Frame at 1007.3s
+  [262/336] Frame at 1010.8s
+  [263/336] Frame at 984.0s
+  [264/336] Frame at 993.7s
+  [265/336] Frame at 1012.0s
+  [266/336] Frame at 1016.5s
+  [267/336] Frame at 1019.9s
+  [268/336] Frame at 1026.8s
+  [269/336] Frame at 1018.8s
+  [270/336] Frame at 1014.4s
+  [271/336] Frame at 1017.6s
+  [272/336] Frame at 1023.2s
+  [273/336] Frame at 1033.0s
+  [274/336] Frame at 1043.0s
+  [275/336] Frame at 1028.2s
+  [276/336] Frame at 1031.2s
+  [277/336] Frame at 1036.9s
+  [278/336] Frame at 1058.1s
+  [279/336] Frame at 1029.5s
+  [280/336] Frame at 1056.6s
+  [281/336] Frame at 1059.8s
+  [282/336] Frame at 1062.3s
+  [283/336] Frame at 1061.3s
+  [284/336] Frame at 1073.9s
+  [285/336] Frame at 1072.0s
+  [286/336] Frame at 1078.3s
+  [287/336] Frame at 1076.6s
+  [288/336] Frame at 1075.6s
+  [289/336] Frame at 1080.2s
+  [290/336] Frame at 1083.5s
+  [291/336] Frame at 1081.2s
+  [292/336] Frame at 1094.0s
+  [293/336] Frame at 1102.5s
+  [294/336] Frame at 1101.2s
+  [295/336] Frame at 1086.7s
+  [296/336] Frame at 1082.3s
+  [297/336] Frame at 1104.3s
+  [298/336] Frame at 1113.7s
+  [299/336] Frame at 1108.2s
+  [300/336] Frame at 1120.1s
+  [301/336] Frame at 1111.7s
+  [302/336] Frame at 1110.5s
+  [303/336] Frame at 1127.5s
+  [304/336] Frame at 1122.6s
+  [305/336] Frame at 1135.3s
+  [306/336] Frame at 1137.3s
+  [307/336] Frame at 1133.3s
+  [308/336] Frame at 1128.7s
+  [309/336] Frame at 1131.1s
+  [310/336] Frame at 1139.3s
+  [311/336] Frame at 1151.5s
+  [312/336] Frame at 1153.3s
+  [313/336] Frame at 1155.0s
+  [314/336] Frame at 1166.2s
+  [315/336] Frame at 1159.5s
+  [316/336] Frame at 1158.2s
+  [317/336] Frame at 1162.5s
+  [318/336] Frame at 1160.6s
+  [319/336] Frame at 1156.4s
+  [320/336] Frame at 1180.8s
+  [321/336] Frame at 1194.8s
+  [322/336] Frame at 1201.6s
+  [323/336] Frame at 1182.7s
+  [324/336] Frame at 1221.4s
+  [325/336] Frame at 1215.6s
+  [326/336] Frame at 1184.2s
+  [327/336] Frame at 1190.4s
+  [328/336] Frame at 1185.9s
+  [329/336] Frame at 1242.1s
+  [330/336] Frame at 1227.8s
+  [331/336] Frame at 1271.6s
+  [332/336] Frame at 1235.5s
+  [333/336] Frame at 1224.4s
+  [334/336] Frame at 1258.3s
+  [335/336] Frame at 1266.1s
+  [336/336] Frame at 1246.1s
+
+Indexing complete:
+  Videos found: 1
+  Newly indexed: 1
+  Skipped (unchanged): 0
+  Segments added: 336
+
+Database: projects\US Economy\index.db
+
+[Auto] Syncing vectors for semantic search...
+  [1/1] Syncing: If The Economy Is F＊cked, Why Hasn’t It C
+  Vectors: 336 segments, 0 clusters
+
+Indexing complete.

@@ -1,0 +1,14 @@
+{
+  "comp": "Kinetic",
+  "out": "router_test.mp4",
+  "durationInFrames": 100,
+  "codec": "h264",
+  "props": {
+    "text": "Routed through the new Remotion source",
+    "highlights": [
+      "remotion",
+      "source"
+    ],
+    "scrim": 0.45
+  }
+}

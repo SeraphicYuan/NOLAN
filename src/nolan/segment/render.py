@@ -7,14 +7,9 @@ All outputs are 1920x1080 so `nolan assemble` can concat them.
 from __future__ import annotations
 
 import asyncio
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-
-import imageio_ffmpeg
-
-FF = imageio_ffmpeg.get_ffmpeg_exe()
 
 
 def _run_async(coro):
@@ -45,14 +40,6 @@ class RenderContext:
     comfyui_timeout: float = 240.0
 
 
-def _vf(ctx: RenderContext, fade: float, dur: float) -> str:
-    v = (f"scale={ctx.width}:{ctx.height}:force_original_aspect_ratio=decrease,"
-         f"pad={ctx.width}:{ctx.height}:(ow-iw)/2:(oh-ih)/2:black,fps={ctx.fps}")
-    if fade > 0:
-        v += f",fade=t=in:st=0:d={fade},fade=t=out:st={max(0,dur-fade):.3f}:d={fade}"
-    return v
-
-
 def _scene_dur(scene) -> float:
     return max(0.5, (scene.end_seconds or 0) - (scene.start_seconds or 0))
 
@@ -69,20 +56,6 @@ def _resolve_video(src, ctx: RenderContext):
     if ctx.source_video and Path(ctx.source_video).exists():
         return str(ctx.source_video)
     return src
-
-
-def _extract_broll(scene, ctx: RenderContext, out: Path) -> Path:
-    mc = scene.matched_clip
-    start, end = float(mc["clip_start"]), float(mc["clip_end"])
-    dur = _scene_dur(scene)
-    src = _resolve_video(mc.get("video_path") or (str(ctx.source_video) if ctx.source_video else None), ctx)
-    cmd = [FF, "-y", "-ss", str(start), "-i", str(src), "-t", f"{dur:.3f}",
-           "-vf", _vf(ctx, ctx.fade, dur), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an",
-           "-r", str(ctx.fps), "-loglevel", "error", str(out)]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode:
-        raise RuntimeError(f"broll extract failed: {r.stderr[-300:]}")
-    return out
 
 
 def _gen_comfyui(scene, ctx: RenderContext, out: Path) -> Path:
@@ -113,41 +86,31 @@ def _gen_comfyui(scene, ctx: RenderContext, out: Path) -> Path:
     return out
 
 
-def _fallback_card(scene, ctx: RenderContext, out: Path) -> Path:
-    """Resilient fallback when generation is unavailable: a clean title card from the
-    scene's intent, so the timeline never has a black hole."""
-    from nolan.renderer.scenes import TitleRenderer
-    # Prefer the spoken line (viewer-facing) over visual_description (a gen instruction).
-    text = (scene.narration_excerpt or scene.visual_description or "").strip()
-    text = (text[:70] + "…") if len(text) > 72 else text
-    TitleRenderer(title=text or "—", width=ctx.width, height=ctx.height,
-                  show_accent_line=True).render(str(out), duration=_scene_dur(scene), with_qa=False)
-    return out
-
-
 def render_scene_clip(scene, ctx: RenderContext) -> Optional[str]:
-    """Render one scene; set scene.rendered_clip (path relative to clips_dir.parent) and return it."""
+    """Render one scene; set scene.rendered_clip (path relative to clips_dir.parent) and return it.
+
+    Routing is shared via `render_dispatch.render_one`; segment keeps its
+    `clips/<id>.mp4` path convention, ComfyUI generation, and resume-skip.
+    """
+    from nolan.render_dispatch import render_one
+
     ctx.clips_dir.mkdir(parents=True, exist_ok=True)
     out = ctx.clips_dir / f"{scene.id}.mp4"
-    src = scene.resolved_source or ""
 
     # Resume-friendly: skip scenes already rendered to a non-empty clip.
     if scene.rendered_clip and out.exists() and out.stat().st_size > 256:
         return scene.rendered_clip
 
-    if scene.motion_spec:
-        from nolan.motion import render as render_motion
-        render_motion(scene.motion_spec, out)
-    elif scene.matched_clip:
-        _extract_broll(scene, ctx, out)
-    elif scene.comfyui_prompt and src.startswith("generated"):
-        try:
-            _gen_comfyui(scene, ctx, out)
-        except Exception:
-            _fallback_card(scene, ctx, out)   # gen down/slow -> a card beats a black hole
-            scene.resolved_source = (scene.resolved_source or "generated") + "->card-fallback"
-    else:
+    kind = render_one(
+        scene, out, duration=_scene_dur(scene), width=ctx.width, height=ctx.height,
+        fps=ctx.fps, fade=ctx.fade, source_video=ctx.source_video,
+        resolve_src=lambda src: _resolve_video(src, ctx),
+        gen_fn=lambda s, o: _gen_comfyui(s, ctx, o),
+    )
+    if kind is None:
         return None  # no asset -> assemble fills black
+    if kind == "card":
+        scene.resolved_source = (scene.resolved_source or "generated") + "->card-fallback"
 
     rel = f"{ctx.clips_dir.name}/{out.name}"
     scene.rendered_clip = rel

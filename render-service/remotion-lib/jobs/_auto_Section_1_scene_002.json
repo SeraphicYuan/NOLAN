@@ -1,0 +1,31 @@
+{
+  "comp": "PhotoMontage",
+  "out": "Section_1_scene_002.mp4",
+  "durationInFrames": 300,
+  "codec": "h264",
+  "props": {
+    "background": "#2a1216",
+    "vignette": 0.6,
+    "zoomStart": 1.0,
+    "zoomEnd": 1.1,
+    "panX": -0.02,
+    "panY": 0.03,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "greek_athletes_wrestling.jpg",
+      "x": 0.5,
+      "y": 0.5,
+      "scale": 1.1,
+      "rotation": -2,
+      "from": "bottom",
+      "enterAt": 0,
+      "enterDur": 1.2,
+      "ease": "spring",
+      "frame": "cutout",
+      "caption": "The Ancient Games",
+      "shadow": true
+    }
+  ]
+}

@@ -888,13 +888,15 @@ class VideoIndex:
             List of VideoSegment objects.
         """
         with sqlite3.connect(self.db_path) as conn:
+            # Separator-insensitive match: stored paths may use Windows backslashes,
+            # but browsers normalize '\' -> '/' in URLs, so an exact match would miss.
             cursor = conn.execute("""
                 SELECT v.path, s.timestamp_start, s.timestamp_end,
                        s.frame_description, s.transcript, s.combined_summary,
                        s.inferred_context, s.sample_reason
                 FROM segments s
                 JOIN videos v ON v.id = s.video_id
-                WHERE v.path = ?
+                WHERE REPLACE(v.path, '\\', '/') = REPLACE(?, '\\', '/')
                 ORDER BY s.timestamp_start
             """, (video_path,))
 

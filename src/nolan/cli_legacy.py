@@ -601,25 +601,6 @@ async def _index_videos(config, input_path, recursive, frame_interval, sampling_
 
 
 @main.command()
-@click.option('--project', '-p', type=click.Path(exists=True), default='./output',
-              help='Project output directory to view.')
-@click.option('--host', default='127.0.0.1', help='Server host.')
-@click.option('--port', default=8000, type=int, help='Server port.')
-def serve(project, host, port):
-    """Launch the viewer to review pipeline outputs.
-
-    Opens a browser to view your script, scene plan, and assets.
-    """
-    from nolan.viewer import run_server
-
-    project_path = Path(project)
-    click.echo(f"Serving: {project_path}")
-    click.echo(f"Opening: http://{host}:{port}")
-
-    run_server(project_path, host=host, port=port)
-
-
-@main.command()
 @click.argument('video', type=click.Path(exists=True), required=False)
 @click.option('--output', '-o', type=click.Path(), help='Output JSON file path.')
 @click.option('--all', 'export_all', is_flag=True, help='Export all indexed videos.')
@@ -1022,34 +1003,6 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
 
     total_clusters = sum(len(v['clusters']) for v in output['videos'])
     click.echo(f"\nExported {len(videos)} videos ({total_clusters} clusters) to {output_path}")
-
-
-@main.command()
-@click.option('--host', default='127.0.0.1', help='Server host.')
-@click.option('--port', default=8001, type=int, help='Server port.')
-@click.pass_context
-def browse(ctx, host, port):
-    """Browse your indexed video library in a web UI.
-
-    Opens a browser to explore indexed videos, segments, and clusters.
-    Search across all segments and preview videos at specific timestamps.
-
-    Requires running 'nolan index' first to populate the library.
-    """
-    from nolan.library_viewer import run_library_server
-
-    config = ctx.obj['config']
-    db_path = Path(config.indexing.database).expanduser()
-
-    if not db_path.exists():
-        click.echo(f"Error: Database not found at {db_path}")
-        click.echo("Run 'nolan index <folder>' first to index videos.")
-        return
-
-    click.echo(f"Database: {db_path}")
-    click.echo(f"Opening: http://{host}:{port}")
-
-    run_library_server(db_path, host=host, port=port)
 
 
 @main.command()
@@ -1544,8 +1497,16 @@ def _scoring_vision_config(config, vision: str) -> dict:
               default='openrouter', help='Vision provider for scoring. Default: openrouter (qwen/qwen3.7-plus).')
 @click.option('--context', '-c', type=str, default=None,
               help='Additional context for scoring (e.g., "for a documentary about history").')
+@click.option('--resolve/--no-resolve', default=False,
+              help='Upgrade thumbnails to full-res by extracting from each result\'s source page '
+                   '(useful for aggregators like DPLA that return previews).')
+@click.option('--save/--no-save', default=False,
+              help='Save results into the picture library (tagged with the query).')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global',
+              help='Picture-library scope when --save is used.')
+@click.option('--project', '-p', default=None, help='Project name (for --scope project).')
 @click.pass_context
-def image_search(ctx, query, source, output, max_results, score, vision, context):
+def image_search(ctx, query, source, output, max_results, score, vision, context, resolve, save, scope, project):
     """Search for images from various sources.
 
     QUERY is the search term for finding images.
@@ -1605,6 +1566,15 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
         results = client.search(query, source, max_results)
         click.echo(f"Found {len(results)} results")
 
+        # Upgrade thumbnails -> full-res via the extractor registry
+        if resolve and results:
+            click.echo("\nResolving full-res from source pages...")
+            from nolan.extractors import resolve_results
+            before = [r.url for r in results]
+            results = resolve_results(results)
+            upgraded = sum(1 for old, r in zip(before, results) if r.url != old)
+            click.echo(f"Upgraded {upgraded}/{len(results)} to full-res.")
+
         # Score images if requested
         if score:
             click.echo(f"\nScoring images with {vision}...")
@@ -1639,6 +1609,22 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
 
         click.echo(f"\nResults saved to: {output_path}")
 
+        # Save into the picture library (tagged with the query)
+        if save and results:
+            from nolan.imagelib import ImageLibrary
+            lib = ImageLibrary(scope=scope, project=project)
+            click.echo(f"\nSaving to {scope} picture library...")
+            added = dup = failed = 0
+            for r in results:
+                if not r.url:
+                    continue
+                try:
+                    _, created = lib.add_result(r, query=query)
+                    added += int(created); dup += int(not created)
+                except Exception:
+                    failed += 1
+            click.echo(f"Library: +{added} new, {dup} duplicate, {failed} failed.")
+
         # Show results
         for i, r in enumerate(results[:5]):
             score_str = f" (Score: {r.score:.1f}" if r.score is not None else ""
@@ -1670,8 +1656,13 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
               help='JSON manifest path (default: <output>/manifest.json).')
 @click.option('--download/--no-download', default=True,
               help='Download the full-resolution assets (default: on).')
+@click.option('--save-to-library/--no-save-to-library', 'save_to_library', default=False,
+              help='Also ingest the assets into the picture library.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global',
+              help='Picture-library scope for --save-to-library.')
+@click.option('--project', '-p', default=None, help='Project name (for --scope project).')
 @click.pass_context
-def extract_assets(ctx, url, output, limit, manifest, download):
+def extract_assets(ctx, url, output, limit, manifest, download, save_to_library, scope, project):
     """Extract high-definition image assets from a web page URL.
 
     Uses a registry of parsers (Project Gutenberg, Wikimedia Commons, The Met,
@@ -1734,6 +1725,159 @@ def extract_assets(ctx, url, output, limit, manifest, download):
         encoding="utf-8",
     )
     click.echo(f"Manifest: {manifest_path}")
+
+    if save_to_library and results:
+        from nolan.imagelib import ImageLibrary
+        click.echo(f"\nSaving to {scope} picture library...")
+        lib = ImageLibrary(scope=scope, project=project)
+        local_by_url = {r.get("url"): r.get("local_path") for r in records}
+        added = dup = 0
+        with click.progressbar(results, label='Ingesting') as bar:
+            for r in bar:
+                try:
+                    local = local_by_url.get(r.url)
+                    if local and Path(local).exists():
+                        _, created = lib.add_file(
+                            local, url=r.url, source=r.source, source_url=r.source_url,
+                            license=r.license, title=r.title, width=r.width,
+                            height=r.height, query=url)
+                    else:
+                        _, created = lib.add_result(r, query=url)
+                    added += int(created); dup += int(not created)
+                except Exception:
+                    pass
+        click.echo(f"Library: +{added} new, {dup} duplicate.")
+
+
+@main.group('images')
+def images():
+    """Picture library — persistent, searchable, license-aware image store.
+
+    Global library lives in _library/images/; per-project in
+    projects/<name>/imagelib/. Semantic search uses CLIP (text -> image).
+    """
+    pass
+
+
+def _open_library(scope, project):
+    from nolan.imagelib import ImageLibrary
+    return ImageLibrary(scope=scope, project=project)
+
+
+@images.command('search')
+@click.argument('query')
+@click.option('--scope', type=click.Choice(['global', 'project', 'both']), default='global')
+@click.option('--project', '-p', default=None, help='Project name (for project/both scope).')
+@click.option('--top', '-k', type=int, default=12, help='Number of results.')
+@click.option('--license', 'license_contains', default=None, help='Only results whose license contains this text.')
+def images_search(query, scope, project, top, license_contains):
+    """Semantic search the picture library."""
+    from nolan.imagelib import ImageLibrary, search_all
+    if scope == 'both':
+        hits = search_all(query, project=project, k=top, license_contains=license_contains)
+    else:
+        hits = ImageLibrary(scope=scope, project=project).search(
+            query, k=top, license_contains=license_contains)
+    click.echo(f"{len(hits)} result(s) for '{query}':")
+    for h in hits:
+        a = h.asset
+        click.echo(f"  [{h.score:.3f}] #{a.id} {a.title or '(untitled)'} "
+                   f"({a.width}x{a.height}) {a.license or '?'}")
+        click.echo(f"          {a.path}  <- {a.source or '?'}")
+
+
+@images.command('add')
+@click.argument('url_or_manifest')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+@click.option('--source', default=None)
+@click.option('--license', 'license_', default=None)
+@click.option('--query', default=None, help='Tag with the query/topic this asset is for.')
+def images_add(url_or_manifest, scope, project, source, license_, query):
+    """Add an image URL, or ingest a manifest.json from `extract-assets`."""
+    import json
+    lib = _open_library(scope, project)
+    added = skipped = 0
+    if url_or_manifest.startswith('http'):
+        try:
+            a, created = lib.add_url(url_or_manifest, source=source, license=license_, query=query)
+            added += int(created); skipped += int(not created)
+            click.echo(f"{'Added' if created else 'Exists'} #{a.id}: {a.path}")
+        except Exception as e:
+            click.echo(f"Failed: {e}")
+    else:
+        data = json.loads(Path(url_or_manifest).read_text(encoding='utf-8'))
+        items = data.get('results', data) if isinstance(data, dict) else data
+        with click.progressbar(items, label='Ingesting') as bar:
+            for it in bar:
+                url = it.get('url')
+                if not url:
+                    continue
+                local = it.get('local_path')  # prefer already-downloaded file (no re-fetch)
+                try:
+                    if local and Path(local).exists():
+                        a, created = lib.add_file(
+                            local, url=url, source=it.get('source') or source,
+                            source_url=it.get('source_url'),
+                            license=it.get('license') or license_,
+                            title=it.get('title'), query=query)
+                    else:
+                        a, created = lib.add_url(
+                            url, source=it.get('source') or source,
+                            source_url=it.get('source_url'),
+                            license=it.get('license') or license_,
+                            title=it.get('title'), query=query)
+                    added += int(created); skipped += int(not created)
+                except Exception as e:
+                    click.echo(f"\n  ! {url[:60]}: {e}")
+        click.echo(f"Added {added}, skipped {skipped} (duplicates).")
+
+
+@images.command('list')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+@click.option('--source', default=None)
+@click.option('--license', 'license_contains', default=None)
+@click.option('--status', default='active')
+@click.option('--limit', '-n', type=int, default=30)
+def images_list(scope, project, source, license_contains, status, limit):
+    """List library assets."""
+    lib = _open_library(scope, project)
+    for a in lib.list(status=status, source=source, license_contains=license_contains, limit=limit):
+        click.echo(f"  #{a.id} [{a.source or '?'}] {a.title or '(untitled)'} "
+                   f"({a.width}x{a.height}) {a.license or '?'}")
+
+
+@images.command('reject')
+@click.argument('asset_id', type=int)
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_reject(asset_id, scope, project):
+    """Reject an asset (hidden from search; removed from the vector index)."""
+    _open_library(scope, project).set_status(asset_id, 'rejected')
+    click.echo(f"Rejected #{asset_id}.")
+
+
+@images.command('promote')
+@click.argument('asset_id', type=int)
+@click.option('--project', '-p', required=True, help='Project the asset lives in.')
+def images_promote(asset_id, project):
+    """Copy a project-library asset into the global library."""
+    from nolan.imagelib import promote_to_global
+    try:
+        asset, created = promote_to_global(project, asset_id)
+    except Exception as e:
+        click.echo(f"Failed: {e}")
+        return
+    click.echo(f"{'Promoted to' if created else 'Already in'} global #{asset.id}: {asset.title or asset.path}")
+
+
+@images.command('stats')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_stats(scope, project):
+    """Show library counts."""
+    click.echo(_open_library(scope, project).stats())
 
 
 @main.command('match-broll')
@@ -2316,13 +2460,52 @@ def align(ctx, scene_plan, audio_file, model, language, save_words):
         click.echo(f"  {a.scene_id}: {a.start_seconds:.1f}s - {a.end_seconds:.1f}s ({conf})")
 
 
+def _unified_render_clip(scene, clips_dir, duration, project_root, llm=None):
+    """Render a graphic/text/data/generated scene through the unified core (lazy
+    motion authoring + render_dispatch.render_one). Returns the rendered_clip rel
+    path, or None if the core can't handle this scene (caller falls back to legacy).
+    """
+    from nolan.render_dispatch import render_one
+
+    # Lazily author a motion_spec for a graphic/text/data scene that lacks one.
+    # Generated (ComfyUI image) scenes are excluded — they belong to the
+    # comfyui/card branch of render_one, not motion authoring (which would
+    # produce a remotion spec that can't render locally → black).
+    _vt = (getattr(scene, "visual_type", "") or "").lower()
+    if (not getattr(scene, "motion_spec", None) and llm is not None
+            and not _vt.startswith("generated")):
+        try:
+            from nolan.motion import compile_spec
+            from nolan.segment.render import _run_async
+            brief = (getattr(scene, "visual_description", "")
+                     or getattr(scene, "narration_excerpt", "") or "").strip()
+            if brief:
+                spec, _errs = _run_async(compile_spec(brief, llm))
+                if spec.get("backend"):
+                    scene.motion_spec = spec
+        except Exception:
+            pass
+
+    out = Path(clips_dir) / f"{scene.id}.mp4"
+    try:
+        kind = render_one(scene, out, duration=max(float(duration), 1.0))
+    except Exception:
+        return None
+    if not kind:
+        return None
+    return str(out.relative_to(project_root)).replace("\\", "/")
+
+
 @main.command('render-clips')
 @click.argument('scene_plan', type=click.Path(exists=True))
 @click.option('--force', is_flag=True, help='Re-render even if clip exists.')
 @click.option('--resolution', '-r', default='1920x1080', help='Output resolution.')
 @click.option('--fps', default=30, type=int, help='Frame rate.')
+@click.option('--unified/--no-unified', default=True,
+              help='Render graphic/text/data scenes through the unified core first '
+                   '(lazy motion + render_one); render-service is the fallback.')
 @click.pass_context
-def render_clips(ctx, scene_plan, force, resolution, fps):
+def render_clips(ctx, scene_plan, force, resolution, fps, unified):
     """Pre-render animated scenes to MP4 clips.
 
     SCENE_PLAN is the path to scene_plan.json.
@@ -2351,7 +2534,40 @@ def render_clips(ctx, scene_plan, force, resolution, fps):
     from nolan.scenes import ScenePlan
     plan = ScenePlan.load(str(scene_plan_path))
 
-    # Find scenes that need rendering
+    clips_dir = scene_plan_path.parent / 'assets' / 'clips'
+    clips_dir.mkdir(parents=True, exist_ok=True)
+    rendered = 0
+    failed = 0
+
+    # P3: render eligible scenes through the unified core first (lazy motion + render_one).
+    # The render-service loop below is the fallback for anything the core can't handle.
+    if unified:
+        _llm = None
+        try:
+            from nolan.llm import create_text_llm
+            _llm = create_text_llm(config)
+        except Exception:
+            _llm = None
+        _MOTION_VT = {"graphics", "graphic", "text-overlay", "text", "data", "infographic",
+                      "generated", "generated-image", "lower-third", "lower-thirds", "quote",
+                      "title", "chart", "counter", "stat", "callout"}
+        for section_name, scenes in plan.sections.items():
+            for scene in scenes:
+                if scene.rendered_clip and not force:
+                    continue
+                vt = (scene.visual_type or "").lower().strip()
+                if vt not in _MOTION_VT and not scene.motion_spec:
+                    continue
+                dur = max((scene.end_seconds or 5.0) - (scene.start_seconds or 0.0), 1.0)
+                rel = _unified_render_clip(scene, clips_dir, dur, scene_plan_path.parent, _llm)
+                if rel:
+                    scene.rendered_clip = rel
+                    rendered += 1
+                    click.echo(f"  [core] {scene.id}: {Path(rel).name}")
+        if rendered:
+            click.echo(f"Rendered {rendered} scene(s) via the unified core.")
+
+    # Find scenes that still need rendering (render-service fallback)
     to_render = []
     for section_name, scenes in plan.sections.items():
         for scene in scenes:
@@ -2374,7 +2590,10 @@ def render_clips(ctx, scene_plan, force, resolution, fps):
                 to_render.append((section_name, scene, duration))
 
     if not to_render:
-        click.echo("No scenes need rendering.")
+        if rendered > 0:
+            plan.save(str(scene_plan_path))
+            click.echo(f"\nScene plan updated: {scene_plan_path}")
+        click.echo("No scenes need the render-service fallback.")
         return
 
     click.echo(f"Scenes to render: {len(to_render)}")
@@ -2390,9 +2609,6 @@ def render_clips(ctx, scene_plan, force, resolution, fps):
     base_url = f"http://{render_host}:{render_port}"
 
     click.echo(f"Render service: {base_url}")
-
-    rendered = 0
-    failed = 0
 
     for i, (section_name, scene, duration) in enumerate(to_render):
         scene_id = f"{section_name}_{scene.id}"
@@ -2477,6 +2693,50 @@ def render_clips(ctx, scene_plan, force, resolution, fps):
     click.echo(f"  Skipped: {len([s for sec in plan.sections.values() for s in sec if s.rendered_clip]) - rendered}")
 
 
+@main.command('render-lottie')
+@click.argument('lottie', type=click.Path(exists=True))
+@click.option('--output', '-o', type=click.Path(), default='lottie.mp4', help='Output MP4 path.')
+@click.option('--text', multiple=True, help='Text replacement OLD=NEW (repeatable).')
+@click.option('--color', multiple=True, help='Color map #OLD=#NEW (repeatable).')
+@click.option('--duration', type=float, default=5.0, help='Duration in seconds.')
+@click.option('--fps', type=int, default=30)
+@click.option('--resolution', '-r', default='1920x1080')
+@click.option('--service', default='http://127.0.0.1:3010', help='Render-service URL.')
+def render_lottie(lottie, output, text, color, duration, fps, resolution, service):
+    """Render a Lottie template/animation to MP4 via the render-service.
+
+    Optionally customize text/colors first. Requires the node render-service
+    (cd render-service && npm run dev).
+
+    Examples:
+
+      nolan render-lottie lower-third.json -o speaker.mp4 --duration 6
+
+      nolan render-lottie lower-third.json --text "Name=Jane Doe" --color "#ff0000=#00ff00"
+    """
+    from nolan.lottie_render import prepare_lottie, render_lottie_to_mp4
+    width, height = map(int, resolution.split('x'))
+    src = Path(lottie)
+    cfg = {"duration": duration, "fps": fps, "width": width, "height": height}
+    if text:
+        cfg["text"] = dict(kv.split("=", 1) for kv in text)
+    if color:
+        cfg["colors"] = dict(kv.split("=", 1) for kv in color)
+    if cfg.get("text") or cfg.get("colors"):
+        import tempfile
+        prepared = Path(tempfile.gettempdir()) / (src.stem + ".prepared.json")
+        prepare_lottie(src, prepared, cfg)
+        src = prepared
+        click.echo(f"Customized → {src}")
+    try:
+        out = render_lottie_to_mp4(src, output, service_url=service, width=width,
+                                   height=height, fps=fps, duration=duration)
+        click.echo(f"Rendered: {out}")
+    except Exception as e:
+        click.echo(f"Failed: {e}")
+        click.echo("Is the render-service running?  cd render-service && npm run dev")
+
+
 @main.command('assemble')
 @click.argument('scene_plan', type=click.Path(exists=True))
 @click.argument('audio_file', type=click.Path(exists=True))
@@ -2538,6 +2798,7 @@ def assemble(ctx, scene_plan, audio_file, output, resolution, fps, transition, t
     # Resolve assets for each scene
     scene_assets = []
     missing = 0
+    black_ids = []
 
     for scene in all_scenes:
         asset = None
@@ -2579,6 +2840,7 @@ def assemble(ctx, scene_plan, audio_file, output, resolution, fps, transition, t
                 'duration': max(0.1, duration),
             })
             missing += 1
+            black_ids.append(scene.id)
 
     if missing > 0:
         click.echo(f"\nWarning: {missing} scenes have no assets")
@@ -2795,6 +3057,17 @@ def assemble(ctx, scene_plan, audio_file, output, resolution, fps, transition, t
     # Get file size
     size_mb = output_path.stat().st_size / (1024 * 1024)
     click.echo(f"Size: {size_mb:.1f} MB")
+
+    # QA: loudly flag black scenes so a "successful" render that is mostly black
+    # can't pass silently (assemble exits 0 either way for caller compatibility).
+    if black_ids:
+        total = len(all_scenes)
+        pct = 100.0 * len(black_ids) / max(1, total)
+        click.echo("")
+        click.echo(f"  !!  {len(black_ids)}/{total} scenes ({pct:.0f}%) rendered as BLACK "
+                   f"(no asset): {', '.join(black_ids[:12])}"
+                   + (" …" if len(black_ids) > 12 else ""))
+        click.echo("      Run match / render-clips for these before publishing.")
 
 
 @main.command('yt-download')
@@ -3220,6 +3493,69 @@ def projects_list(ctx):
         click.echo(f"{p['slug']:<20} {p['name'][:28]:<30} {p['video_count']:<8}")
 
 
+@projects.command('status')
+@click.option('--root', type=click.Path(), default='projects', help='Projects directory.')
+@click.pass_context
+def projects_status(ctx, root):
+    """Unified project view: capabilities + library-DB link (C1).
+
+    One list across script/scenes/orchestrator/segment workflows, replacing the
+    per-page fragmented views.
+    """
+    from nolan import projects as P
+    from nolan.indexer import VideoIndex
+    config = ctx.obj['config']
+    idx = None
+    db_path = Path(config.indexing.database).expanduser()
+    if db_path.exists():
+        try:
+            idx = VideoIndex(db_path)
+        except Exception:
+            idx = None
+    found = P.discover_projects(Path(root), index=idx)
+    if not found:
+        click.echo("No projects found under " + str(root))
+        return
+    click.echo(f"{'SLUG':<30} {'KINDS':<26} {'DB':<4} SCENES")
+    click.echo("-" * 72)
+    for p in found:
+        kinds = ",".join(p.kinds) or "-"
+        db = "yes" if p.library_project_id else "-"
+        click.echo(f"{p.slug[:29]:<30} {kinds[:25]:<26} {db:<4} {p.scene_count}")
+
+
+@projects.command('backfill')
+@click.option('--root', type=click.Path(), default='projects', help='Projects directory.')
+@click.option('--dry-run', is_flag=True, help='Show what would be linked without writing.')
+@click.pass_context
+def projects_backfill(ctx, root, dry_run):
+    """Register a library-DB project row for each filesystem project missing one (C1).
+
+    Closes the FS↔DB gap: script/orchestrator projects created on disk never had a
+    DB row, so videos/clips couldn't attach. Idempotent.
+    """
+    from nolan import projects as P
+    from nolan.indexer import VideoIndex
+    config = ctx.obj['config']
+    db_path = Path(config.indexing.database).expanduser()
+    index = VideoIndex(db_path)
+    linked = skipped = 0
+    for proj in P.discover_projects(Path(root), index=index):
+        if proj.library_project_id:
+            skipped += 1
+            continue
+        if dry_run:
+            click.echo(f"  would link: {proj.slug}")
+            linked += 1
+            continue
+        pid = P.link_db_project(index, proj)
+        if pid:
+            click.echo(f"  linked {proj.slug} -> {pid}")
+            linked += 1
+    verb = "would link" if dry_run else "linked"
+    click.echo(f"{verb} {linked}, already-linked {skipped}.")
+
+
 @projects.command('info')
 @click.argument('slug')
 @click.pass_context
@@ -3559,69 +3895,10 @@ def semantic_search(ctx, query, limit, level, project, output):
 
 
 @main.command()
-@click.option('--host', default='127.0.0.1', help='Host to bind to.')
-@click.option('--port', default=8001, type=int, help='Port to bind to.')
-@click.pass_context
-def showcase(ctx, host, port):
-    """Launch the Motion Effects Showcase UI.
-
-    Browse and generate motion effects for video essays.
-    Requires the render service to be running for generating effects.
-
-    Examples:
-
-      nolan showcase
-
-      nolan showcase --port 8002
-    """
-    from nolan.showcase import run_showcase
-
-    click.echo(f"Starting Motion Effects Showcase at http://{host}:{port}")
-    click.echo("Render service should be running at http://127.0.0.1:3010")
-    click.echo("Press Ctrl+C to stop.\n")
-
-    run_showcase(host=host, port=port)
-
-
-@main.command()
-@click.option('--host', default='127.0.0.1', help='Host to bind to.')
-@click.option('--port', default=8000, type=int, help='Port to bind to.')
-@click.pass_context
-def library(ctx, host, port):
-    """Launch the Video Library Viewer UI.
-
-    Browse your indexed video library with visual search.
-
-    Examples:
-
-      nolan library
-
-      nolan library --port 8080
-    """
-    config = ctx.obj['config']
-    db_path = Path(config.indexing.database).expanduser()
-
-    if not db_path.exists():
-        click.echo(f"Error: Database not found at {db_path}")
-        click.echo("Run 'nolan index' first to index videos.")
-        return
-
-    from nolan.library_viewer import create_library_app
-    import uvicorn
-
-    click.echo(f"Starting Library Viewer at http://{host}:{port}")
-    click.echo(f"Database: {db_path}")
-    click.echo("Press Ctrl+C to stop.\n")
-
-    app = create_library_app(db_path)
-    uvicorn.run(app, host=host, port=port)
-
-
-@main.command()
 @click.option('--projects', '-p', type=click.Path(), default='projects',
               help='Directory containing projects (default: projects/).')
 @click.option('--host', default='127.0.0.1', help='Host to bind to.')
-@click.option('--port', default=8001, type=int, help='Port to bind to.')
+@click.option('--port', default=8011, type=int, help='Port to bind to (8001 is SPARTA).')
 @click.pass_context
 def hub(ctx, projects, host, port):
     """Launch the unified NOLAN Hub UI.
@@ -4033,266 +4310,6 @@ def route_scenes(scene_plan, threshold):
     for route, count in sorted(summary['by_route'].items()):
         click.echo(f"  {route:<12} {count}")
 
-
-@main.command('render-templates')
-@click.argument('scene_plan', type=click.Path(exists=True))
-@click.option('--force', is_flag=True, help='Re-render even if asset exists.')
-@click.option('--threshold', '-t', type=float, default=0.5,
-              help='Template match threshold (0-1).')
-@click.option('--dry-run', is_flag=True, help='Show what would be rendered.')
-def render_templates(scene_plan, force, threshold, dry_run):
-    """Render Lottie templates to video clips for matching scenes.
-
-    SCENE_PLAN is the path to scene_plan.json.
-
-    For each scene that routes to 'template':
-    1. Find matching Lottie template
-    2. Customize template with scene data
-    3. Render to MP4 via render-service
-    4. Update scene_plan.json with rendered_clip path
-
-    Examples:
-
-      nolan render-templates scene_plan.json
-
-      nolan render-templates scene_plan.json --dry-run
-
-      nolan render-templates scene_plan.json --force --threshold 0.6
-    """
-    from pathlib import Path
-    import json
-    import httpx
-
-    from nolan.scenes import ScenePlan
-    from nolan.visual_router import VisualRouter
-    from nolan.lottie import customize_lottie, load_schema
-    from nolan.renderer.engine import PythonTemplateEngine
-
-    scene_plan_path = Path(scene_plan)
-    plan = ScenePlan.load(str(scene_plan_path))
-    router = VisualRouter(template_score_threshold=threshold)
-
-    # Find scenes to render (both Lottie templates and Python templates)
-    lottie_to_render = []
-    python_to_render = []
-
-    for section_name, scenes in plan.sections.items():
-        for scene in scenes:
-            # Skip if already has asset and not forcing
-            if not force and scene.rendered_clip:
-                continue
-
-            decision = router.route(scene)
-            duration = (scene.end_seconds or 5.0) - (scene.start_seconds or 0.0)
-            duration = max(duration, 3.0)  # Minimum 3 seconds
-
-            if decision.route == "template" and decision.template:
-                if not force and scene.lottie_asset:
-                    continue
-                lottie_to_render.append((section_name, scene, decision, duration))
-            elif decision.route == "python-template":
-                python_to_render.append((section_name, scene, decision, duration))
-
-    total_to_render = len(lottie_to_render) + len(python_to_render)
-    if total_to_render == 0:
-        click.echo("No template scenes to render.")
-        return
-
-    click.echo(f"Total scenes to render: {total_to_render}")
-    click.echo(f"  Lottie templates: {len(lottie_to_render)}")
-    click.echo(f"  Python templates: {len(python_to_render)}")
-
-    if dry_run:
-        click.echo("\nDry run - would render:")
-        for section, scene, decision, duration in lottie_to_render:
-            click.echo(f"  [Lottie] {scene.id}: {decision.template.name} ({duration:.1f}s)")
-        for section, scene, decision, duration in python_to_render:
-            renderer_type = decision.python_renderer or "auto"
-            click.echo(f"  [Python] {scene.id}: {renderer_type} ({duration:.1f}s)")
-        return
-
-    # Output directories
-    lottie_dir = scene_plan_path.parent / 'assets' / 'lottie'
-    clips_dir = scene_plan_path.parent / 'assets' / 'clips'
-    lottie_dir.mkdir(parents=True, exist_ok=True)
-    clips_dir.mkdir(parents=True, exist_ok=True)
-
-    # Get render service config
-    try:
-        from nolan.config import load_config
-        config = load_config()
-        render_host = getattr(config.render_service, 'host', '127.0.0.1') if hasattr(config, 'render_service') else '127.0.0.1'
-        render_port = getattr(config.render_service, 'port', 3010) if hasattr(config, 'render_service') else 3010
-    except Exception:
-        render_host = '127.0.0.1'
-        render_port = 3010
-
-    base_url = f"http://{render_host}:{render_port}"
-    click.echo(f"Render service: {base_url}")
-
-    rendered = 0
-    failed = 0
-    modified = False
-
-    # ========== Render Lottie templates ==========
-    if lottie_to_render:
-        click.echo(f"\n--- Rendering {len(lottie_to_render)} Lottie templates ---")
-
-    for i, (section_name, scene, decision, duration) in enumerate(lottie_to_render):
-        template = decision.template
-        click.echo(f"\n[{i+1}/{len(to_render)}] {scene.id}: {template.name}")
-
-        try:
-            # Get template path
-            template_path = router.catalog.get_full_path(template)
-            if not template_path.exists():
-                click.echo(f"  Template not found: {template_path}")
-                failed += 1
-                continue
-
-            # Check for schema
-            schema = load_schema(template_path)
-
-            # Customize template
-            output_lottie = lottie_dir / f"{scene.id}.json"
-
-            # Build customization from scene data
-            customizations = {}
-            if schema and schema.get("fields"):
-                fields = schema["fields"]
-
-                # Try to map narration/description to text fields
-                text_fields = [k for k, v in fields.items() if v.get("type") == "text"]
-                if text_fields and scene.narration_excerpt:
-                    # Use first text field for narration excerpt
-                    customizations[text_fields[0]] = scene.narration_excerpt[:50]
-
-            if scene.lottie_config:
-                # Merge explicit config
-                if "text" in scene.lottie_config:
-                    customizations.update(scene.lottie_config["text"])
-
-            # Apply customizations if any
-            if customizations and schema:
-                from nolan.lottie import render_template
-                try:
-                    render_template(template_path, output_lottie, **customizations)
-                    click.echo(f"  Customized: {output_lottie.name}")
-                except Exception as e:
-                    # Fall back to copying template
-                    import shutil
-                    shutil.copy(template_path, output_lottie)
-                    click.echo(f"  Copied (customization failed): {e}")
-            else:
-                # Just copy the template
-                import shutil
-                shutil.copy(template_path, output_lottie)
-                click.echo(f"  Copied: {output_lottie.name}")
-
-            # Update scene with lottie_asset
-            scene.lottie_asset = str(output_lottie.relative_to(scene_plan_path.parent))
-            scene.lottie_template = template.local_path
-            modified = True
-
-            # Render to video via render-service
-            output_clip = clips_dir / f"{scene.id}.mp4"
-
-            with httpx.Client(timeout=120.0) as client:
-                # Check if render service is available
-                try:
-                    health = client.get(f"{base_url}/health")
-                    if health.status_code != 200:
-                        click.echo(f"  Render service not available")
-                        continue
-                except Exception:
-                    click.echo(f"  Render service not reachable at {base_url}")
-                    continue
-
-                # Submit Lottie render job
-                response = client.post(
-                    f"{base_url}/render",
-                    json={
-                        "engine": "remotion",
-                        "output_format": "mp4",
-                        "spec": {
-                            "type": "lottie",
-                            "lottie_path": str(output_lottie),
-                            "duration": duration,
-                            "width": 1920,
-                            "height": 1080,
-                            "fps": 30,
-                        }
-                    },
-                    timeout=120.0
-                )
-
-                if response.status_code == 200:
-                    result = response.json()
-                    if result.get("output_path"):
-                        # Copy rendered file
-                        import shutil
-                        rendered_path = Path(result["output_path"])
-                        if rendered_path.exists():
-                            shutil.copy(rendered_path, output_clip)
-                            scene.rendered_clip = str(output_clip.relative_to(scene_plan_path.parent))
-                            click.echo(f"  Rendered: {output_clip.name}")
-                            rendered += 1
-                        else:
-                            click.echo(f"  Render output not found: {rendered_path}")
-                            failed += 1
-                    else:
-                        click.echo(f"  Render job submitted (check status)")
-                        rendered += 1
-                else:
-                    click.echo(f"  Render failed: {response.status_code}")
-                    failed += 1
-
-        except Exception as e:
-            click.echo(f"  Error: {e}")
-            failed += 1
-
-    # ========== Render Python templates ==========
-    if python_to_render:
-        click.echo(f"\n--- Rendering {len(python_to_render)} Python templates ---")
-
-        python_engine = PythonTemplateEngine()
-        python_clips_dir = scene_plan_path.parent / 'assets' / 'clips'
-        python_clips_dir.mkdir(parents=True, exist_ok=True)
-
-        for i, (section_name, scene, decision, duration) in enumerate(python_to_render):
-            renderer_type = decision.python_renderer or python_engine.detect_scene_type(scene)
-            click.echo(f"\n[{i+1}/{len(python_to_render)}] {scene.id}: Python:{renderer_type}")
-
-            try:
-                result = python_engine.render(
-                    scene,
-                    python_clips_dir,
-                    duration=duration,
-                )
-
-                if result.success:
-                    # Update scene with rendered clip path
-                    scene.rendered_clip = str(Path(result.output_path).relative_to(scene_plan_path.parent))
-                    click.echo(f"  Rendered: {Path(result.output_path).name}")
-                    rendered += 1
-                    modified = True
-                else:
-                    click.echo(f"  Failed: {result.error}")
-                    failed += 1
-
-            except Exception as e:
-                click.echo(f"  Error: {e}")
-                failed += 1
-
-    # Save updated scene plan
-    if modified:
-        plan.save(str(scene_plan_path))
-        click.echo(f"\nUpdated: {scene_plan_path}")
-
-    click.echo(f"\nRendered: {rendered}, Failed: {failed}")
-
-
-# ==================== Video Generation Commands ====================
 
 @main.group()
 def video_gen():
@@ -4786,9 +4803,14 @@ def orchestrate(ctx, project, auto, refine, target):
               help='ComfyUI model for generated scenes.')
 @click.option('--comfyui-timeout', type=float, default=240.0,
               help='Per-image gen timeout (s); on timeout a scene falls back to a card.')
+@click.option('--voice', help='Voice id (from the voice library) for generated VO; '
+              'overrides the project/default voice. Needs tts.enabled in nolan.yaml.')
+@click.option('--vo-pace', type=float, default=1.0,
+              help='Voiceover pace (ffmpeg atempo, >1 faster). Default 1.0.')
 @click.pass_context
 def build_from_segment(ctx, source, start, end, srt, index_db, script_file, vo, from_plan,
-                       mode, out_dir, music, no_generation, comfyui_model, comfyui_timeout):
+                       mode, out_dir, music, no_generation, comfyui_model, comfyui_timeout,
+                       voice, vo_pace):
     """Build a ~1-minute video essay from a segment (span / script / voiceover)."""
     config = ctx.obj['config']
     from nolan.llm import create_text_llm
@@ -4800,7 +4822,8 @@ def build_from_segment(ctx, source, start, end, srt, index_db, script_file, vo, 
            'z-image': ('workflows/image/basic-z-image.json', '27')}[comfyui_model]
     bcfg = BuildConfig(out_dir=out_dir, mode=mode, music=Path(music) if music else None,
                        resolver=ResolverConfig(enable_generation=not no_generation),
-                       comfyui_workflow=_cw[0], comfyui_prompt_node=_cw[1], comfyui_timeout=comfyui_timeout)
+                       comfyui_workflow=_cw[0], comfyui_prompt_node=_cw[1], comfyui_timeout=comfyui_timeout,
+                       voice=voice, vo_tempo=vo_pace)
     builder = SegmentBuilder(llm, bcfg, nolan_config=config)
 
     if from_plan:
@@ -4865,7 +4888,9 @@ def revise_scene_cmd(ctx, plan, scene_id, note, sets):
     if note:
         from nolan.llm import create_text_llm
         llm = create_text_llm(config)
-        patch = asyncio.run(iterate.apply_edit(plan, scene_id, note=note, client=llm, pipeline=pipeline))
+        words = iterate.scene_words(plan)  # VO word-timing for {cue:"..."} (cached)
+        patch = asyncio.run(iterate.apply_edit(plan, scene_id, note=note, client=llm,
+                                               pipeline=pipeline, transcript_words=words))
     else:
         edits = {}
         for item in sets:
@@ -4884,6 +4909,37 @@ def revise_scene_cmd(ctx, plan, scene_id, note, sets):
         return
     click.echo(f"[{pipeline}] revised {scene_id}: {', '.join(patch.keys())}")
     click.echo(f"Re-render with: nolan rerender {plan} --scenes {scene_id}")
+
+
+@main.command('publish')
+@click.argument('source')
+@click.option('--theme', default='press', help='reacticle theme (press/bodoni/tufte/freddie/vignelli/...)')
+@click.option('--type', 'atype', default='explainer', help='article type (essay/explainer/longform/briefing/...)')
+@click.option('--width', default='regular', help='narrow/regular/wide/full')
+@click.option('--images', default='none', help='none/placeholders/ai-generated')
+@click.option('--brand', default=None, help='brand seed hex color (recolors the theme via oklch), e.g. #3257d6')
+@click.option('--slug', default=None, help='output workspace name (default: from the title)')
+@click.option('--out', type=click.Path(), default=None, help='output dir (default: projects/_published)')
+@click.option('--review', is_flag=True, help='scaffold + source only, then stop for authoring/review')
+@click.option('--no-cover', is_flag=True, help='disable the book-style cover')
+@click.pass_context
+def publish_cmd(ctx, source, theme, atype, width, images, brand, slug, out, review, no_cover):
+    """Turn a URL / doc / text into a self-contained, offline single-file HTML article."""
+    from nolan.publish import Publisher, PublishConfig
+    cfg = PublishConfig(theme=theme, type=atype, width=width, images=images,
+                        brand_color=brand, cover=not no_cover,
+                        mode='review' if review else 'auto', out_dir=out)
+    pub = Publisher(cfg, nolan_config=ctx.obj['config'])
+    res = asyncio.run(pub.run(source, slug=slug))
+    if res.stopped_for_review:
+        click.echo(f"Scaffolded {res.workspace}")
+        click.echo("  Author the article (agent) then: build in that workspace.")
+    elif res.ok:
+        click.echo(f"Published -> {res.article_html}")
+        click.echo(f"  {res.summary}")
+    else:
+        click.echo(f"Incomplete: {res.summary or res.notes}", err=True)
+        ctx.exit(1)
 
 
 @main.command('rerender')

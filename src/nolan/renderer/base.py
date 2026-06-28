@@ -300,6 +300,18 @@ class BaseRenderer:
         elif element.element_type == 'rectangle':
             self._render_rectangle(draw, element, props, alpha)
 
+    def _alpha_color(self, base_color, alpha: float):
+        """Color for the current compose mode.
+
+        Transparent mode → true per-pixel RGBA alpha (so the element fades over the
+        underlying b-roll). Opaque mode → blend toward bg_color (unchanged legacy
+        behavior). Fixes overlays ghosting toward bg_color in composite_over_broll.
+        """
+        rgb = tuple(base_color[:3])
+        if getattr(self, "_transparent", False):
+            return rgb + (max(0, min(255, int(round(alpha * 255)))),)
+        return lerp_color(self.bg_color, base_color, alpha)
+
     def _render_text(
         self,
         draw: ImageDraw.ImageDraw,
@@ -320,7 +332,7 @@ class BaseRenderer:
 
         # Blend color with background for alpha effect
         base_color = props.get('color', element.color)
-        blended_color = lerp_color(self.bg_color, base_color, alpha)
+        blended_color = self._alpha_color(base_color, alpha)
 
         # If max_width is set, use smart text layout
         if max_width > 0:
@@ -429,7 +441,7 @@ class BaseRenderer:
 
         # Blend color
         base_color = props.get('color', element.color)
-        blended_color = lerp_color(self.bg_color, base_color, alpha)
+        blended_color = self._alpha_color(base_color, alpha)
 
         draw.rectangle([(x, y), (x + width, y + height)], fill=blended_color)
 
@@ -977,6 +989,9 @@ class BaseRenderer:
         bg = (0, 0, 0, 0) if transparent else self.bg_color + (255,)
         img = Image.new('RGBA', (self.width, self.height), bg)
         draw = ImageDraw.Draw(img)
+        # In transparent mode, elements must carry true per-pixel alpha (so they
+        # fade over the underlying b-roll); in opaque mode they blend toward bg_color.
+        self._transparent = transparent
 
         global_alpha = self.timeline.get_global_alpha(t)
 

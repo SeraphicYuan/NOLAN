@@ -1,0 +1,16 @@
+{
+  "comp": "AnnotateStat",
+  "out": "smoke_annotate.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "value": "$46.6B",
+    "label": "Lowe's buybacks",
+    "shapeStyle": "scribble",
+    "position": {
+      "x": 0.2,
+      "y": 0.82
+    },
+    "theme": "dark-editorial"
+  }
+}

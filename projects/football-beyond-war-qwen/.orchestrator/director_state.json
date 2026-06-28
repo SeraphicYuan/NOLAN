@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "project_slug": "football-beyond-war-qwen",
+  "iteration_count": 0,
+  "current_step": "checkpoint_after_render",
+  "status": "awaiting_review",
+  "started_at": "2026-06-16T00:10:21+00:00",
+  "last_updated": "2026-06-16T00:25:56+00:00",
+  "step_history": [
+    {
+      "step_num": 1,
+      "name": "match_and_adapt_style",
+      "started_at": "2026-06-16T00:10:21+00:00",
+      "finished_at": "2026-06-16T00:11:49+00:00",
+      "status": "completed",
+      "notes": ""
+    },
+    {
+      "step_num": 2,
+      "name": "select_clips",
+      "started_at": "2026-06-16T00:11:49+00:00",
+      "finished_at": "2026-06-16T00:23:28+00:00",
+      "status": "completed",
+      "notes": ""
+    },
+    {
+      "step_num": 3,
+      "name": "render",
+      "started_at": "2026-06-16T00:23:28+00:00",
+      "finished_at": "2026-06-16T00:25:56+00:00",
+      "status": "completed",
+      "notes": ""
+    }
+  ],
+  "template_provenance": {
+    "style_template_id": "essay-doc-explainer-v1",
+    "style_template_version": 1,
+    "style_match_score": 0.816,
+    "style_was_fallback": false,
+    "scene_plan_template_id": "essay-thesis-evidence-v1",
+    "scene_plan_template_version": 1,
+    "scene_plan_match_score": 0.756,
+    "scene_plan_was_fallback": false
+  },
+  "max_tokens_per_step": 200000,
+  "consumed_feedback": []
+}

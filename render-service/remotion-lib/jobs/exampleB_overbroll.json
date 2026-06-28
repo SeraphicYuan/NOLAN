@@ -1,0 +1,12 @@
+{
+  "comp": "Kinetic",
+  "out": "kinetic_B_overbroll.mp4",
+  "durationInFrames": 120,
+  "video": "remotion-lib/assets/broll.mp4",
+  "props": {
+    "text": "The stock market was never measuring your life",
+    "highlights": ["never", "your", "life"],
+    "accent": "#46e08a",
+    "scrim": 0.5
+  }
+}

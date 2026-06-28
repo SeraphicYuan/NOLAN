@@ -160,6 +160,70 @@ REGISTRY: List[MotionEffect] = [
         content=[_p("nodes", "string[]", "node labels in cycle order", required=True),
                  _p("title", "string", default=""), _p("center_label", "string", default="")],
         duration_default=7.0),
+    MotionEffect(
+        "photo-montage", "python", "image",
+        "'Photos on a table' montage: Polaroid-framed stills on a textured surface, "
+        "a slow Ken Burns camera, and one hero card that slides in with a handwritten "
+        "caption. Best for historical figures/archival stills.", "PhotoMontageRenderer",
+        content=[_p("hero", "object",
+                    "the sliding/captioned card: {image_path, caption?, x?, y?, scale?, "
+                    "rotation?, slide_from?}", required=True),
+                 _p("cards", "array",
+                    "settled background cards: [{image_path, x, y, scale?, rotation?, caption?}] "
+                    "with x,y as 0..1 of the frame", default=[]),
+                 _p("background", "string", "optional table-texture image path", default=None),
+                 _p("slide_from", "enum", "hero entry direction",
+                    values=["left", "right", "up", "down"], default="right")],
+        duration_default=10.0),
+    MotionEffect(
+        "photo-montage-pro", "remotion", "photo-montage",
+        "'Photos on a table' montage with a per-card motion system (Remotion): each card "
+        "declares where it rests and how it arrives (from-edge + timing + easing) "
+        "independently. Polaroid/plain/cutout frames, handwritten captions, Ken Burns "
+        "camera. Use for flexible b-roll/asset presentation.", "PhotoMontage",
+        content=[_p("cards", "array",
+                    "[{src, x, y (0..1 rest center), scale?, rotation?, "
+                    "from?:left|right|top|bottom|center|none, enterAt?, enterDur?, distance?, "
+                    "ease?:out|inOut|spring, fade?, fromScale?, frame?:polaroid|plain|cutout, "
+                    "caption?, captionAt?, captionDur?, shadow?, rotX?, rotY?, perspective?, "
+                    "keys?:[{at,x?,y?,scale?,rotation?,rotX?,rotY?,opacity?,ease?}] (explicit "
+                    "keyframe track; rotation=in-plane tilt, rotX/rotY=3D pan/tilt — for "
+                    "appear-then-pan / fade-out / multi-step paths)}]", required=True),
+                 _p("background", "string", "CSS color (e.g. #2a1216) or table-texture image path",
+                    default="#241016")],
+        style=[_p("vignette", "number", "edge darkening 0..1", default=0.5),
+               _p("zoomStart", "number", "camera zoom at start", default=1.05),
+               _p("zoomEnd", "number", "camera zoom at end", default=1.16),
+               _p("panX", "number", "camera pan, fraction of width", default=-0.04),
+               _p("panY", "number", "camera pan, fraction of height", default=0.0)],
+        shared=["theme"], duration_default=10.0),
+    MotionEffect(
+        "photo-grid", "remotion", "photo-montage",
+        "Procedural photo grid with a 3-step choreography (Remotion): images fly in to "
+        "fill a cols×rows grid (sequenced one-by-one / by row / by col), then one image "
+        "zooms to center while the grid peters out, then it returns to the grid. Computed "
+        "from grid shape + timings — scales to dozens of images.", "PhotoGrid",
+        content=[_p("cards", "array", "[{src, caption?}] images to place (cols*rows of them)",
+                    required=True),
+                 _p("cols", "int", "grid columns", default=8),
+                 _p("rows", "int", "grid rows", default=5),
+                 _p("focusIndex", "int", "which image zooms to center (default middle)", default=None),
+                 _p("background", "string", "CSS color or texture image path", default="#241016")],
+        style=[_p("order", "enum", "fly-in sequencing",
+                  values=["one-by-one", "row", "col"], default="one-by-one"),
+               _p("flyFrom", "enum", "where cells fly in from",
+                  values=["edges", "bottom", "scale"], default="edges"),
+               _p("frame", "enum", "card frame style",
+                  values=["polaroid", "plain", "cutout"], default="polaroid"),
+               _p("fillStart", "number", "sec before fly-in begins", default=0.2),
+               _p("stagger", "number", "sec between successive units", default=0.08),
+               _p("flyDur", "number", "sec each cell takes to fly in", default=0.6),
+               _p("focusAt", "number", "sec the focus zoom starts (default after fill)", default=None),
+               _p("focusHold", "number", "sec the focused image stays centered", default=1.6),
+               _p("focusScale", "number", "centered height as fraction of frame", default=0.8),
+               _p("margin", "number", "outer grid margin, fraction", default=0.05),
+               _p("vignette", "number", "edge darkening 0..1", default=0.5)],
+        shared=["theme"], duration_default=10.0),
 ]
 
 BY_ID = {e.id: e for e in REGISTRY}

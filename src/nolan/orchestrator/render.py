@@ -1,20 +1,10 @@
-"""Render dispatcher for the orchestrator's `render` pipeline step.
+"""Render thunks for the orchestrator's `render` pipeline step.
 
-Translates the orchestrator's `scene_plan.json` (with `matched_clip` +
-`layout_spec`) into per-scene MP4 clips, then assembles a final video.
-
-Routing per scene `visual_type`:
-
-- `b-roll` with `matched_clip` → FFmpeg sub-clip extraction
-- `text-overlay` / `graphic` with `layout_spec` → direct dispatch into the
-  Python scene renderers (bypasses `PythonTemplateEngine`'s regex auto-detect,
-  which is built for the legacy `visual_description`-based pipeline)
-- `generated-image` (no ComfyUI integration yet) → skipped; assemble fills
-  with a black frame
-- `layout_spec.template == "custom"` → skipped; ditto
-
-This module reuses NOLAN's existing scene renderers and assemble logic; it
-does not re-implement video composition.
+`render_scene` delegates per-scene routing to the shared `render_dispatch.render_one`
+(motion → matched_clip → layout_spec → comfyui → card) and keeps the orchestrator's
+`RenderOutcome` + project-relative path convention. `render_layout` (the layout_spec →
+scene-renderer dispatch) is also used by `render_dispatch`. Assembly is shelled out to
+`nolan assemble`.
 """
 
 from __future__ import annotations
@@ -68,7 +58,7 @@ def _build_renderer_registry():
     """
     from nolan.renderer.scenes.chapter_card import ChapterCardRenderer
     from nolan.renderer.scenes.comparison import ComparisonRenderer
-    from nolan.renderer.scenes.counter import CountUp
+    from nolan.renderer.scenes.counter import CounterRenderer
     from nolan.renderer.scenes.definition import DefinitionRenderer
     from nolan.renderer.scenes.document_highlight import DocumentHighlightRenderer
     from nolan.renderer.scenes.list import ListRenderer
@@ -93,7 +83,7 @@ def _build_renderer_registry():
     return {
         "chapter_card": ChapterCardRenderer,
         "comparison": ComparisonRenderer,
-        "counter": CountUp,
+        "counter": CounterRenderer,
         "definition": DefinitionRenderer,
         "document_highlight": DocumentHighlightRenderer,
         "list": ListRenderer,
@@ -170,46 +160,8 @@ class RenderError(RuntimeError):
     pass
 
 
-def render_b_roll(
-    scene: dict,
-    output_path: Path,
-) -> Path:
-    """Extract a sub-clip from the source video using FFmpeg."""
-    mc = scene.get("matched_clip") or {}
-    video_path = mc.get("video_path")
-    clip_start = mc.get("clip_start")
-    clip_end = mc.get("clip_end")
-    if not (video_path and clip_start is not None and clip_end is not None):
-        raise RenderError(
-            f"scene {scene.get('id')} matched_clip is incomplete: {mc!r}"
-        )
-    duration = float(clip_end) - float(clip_start)
-    if duration <= 0:
-        raise RenderError(f"scene {scene.get('id')} matched_clip has non-positive duration")
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        "ffmpeg", "-y",
-        "-ss", str(clip_start),
-        "-i", str(video_path),
-        "-t", f"{duration:.3f}",
-    ]
-    # Optional gentle fade in/out (seconds) so hard cuts breathe a little.
-    fade = float(scene.get("fade", 0.0) or 0.0)
-    if fade > 0:
-        fade = min(fade, duration / 2)
-        cmd += ["-vf", f"fade=t=in:st=0:d={fade},fade=t=out:st={duration - fade:.3f}:d={fade}"]
-    cmd += [
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an",
-        "-loglevel", "error",
-        str(output_path),
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RenderError(
-            f"ffmpeg failed for {scene.get('id')}: {proc.stderr.strip() or proc.stdout.strip()}"
-        )
-    return output_path
+# (render_b_roll removed in P4 — b-roll extraction now lives in the shared
+#  render_dispatch.render_one → ffmpeg_utils.extract_subclip.)
 
 
 def render_layout(
@@ -262,77 +214,46 @@ def render_scene(
     project_path: Path,
     output_dir: Path,
 ) -> RenderOutcome:
-    """Dispatch a single scene to the right renderer."""
+    """Dispatch a single scene to the right renderer via the shared router.
+
+    Routing (motion → b-roll → layout → generated/card) lives in
+    `render_dispatch.render_one`; this keeps the orchestrator's `RenderOutcome` +
+    project-relative path convention. No `gen_fn` is passed, so `generated-image`
+    scenes render a title card instead of a black frame.
+    """
+    from nolan.render_dispatch import render_one
+
     scene_id = scene.get("id", "unknown")
     visual_type = scene.get("visual_type", "")
     duration = parse_duration(scene.get("duration", "5s"))
     target = output_dir / f"{scene_id}.mp4"
-
     spec_template = (scene.get("layout_spec") or {}).get("template")
 
     try:
-        # Highest priority: an LLM-authored motion spec (nolan.motion, Python or Remotion).
-        if scene.get("motion_spec"):
-            from nolan.motion import render as render_motion
-            render_motion(scene["motion_spec"], target)
-            return RenderOutcome(
-                scene_id=scene_id,
-                rendered_clip=str(target.relative_to(project_path)).replace("\\", "/"),
-                visual_type=visual_type,
-                template=scene["motion_spec"].get("effect"),
-                skipped_reason=None,
-            )
+        kind = render_one(scene, target, duration=duration)
+    except Exception as exc:  # noqa: BLE001 - one bad scene shouldn't abort the render
+        return RenderOutcome(scene_id, None, visual_type, spec_template, f"render error: {exc}")
 
-        if visual_type == "b-roll":
-            if scene.get("matched_clip"):
-                render_b_roll(scene, target)
-                return RenderOutcome(
-                    scene_id=scene_id,
-                    rendered_clip=str(target.relative_to(project_path)).replace("\\", "/"),
-                    visual_type=visual_type,
-                    template=None,
-                    skipped_reason=None,
-                )
-            return RenderOutcome(
-                scene_id, None, visual_type, None,
-                "b-roll without matched_clip — assemble will use black frame",
-            )
+    if kind is None:
+        return RenderOutcome(scene_id, None, visual_type, spec_template,
+                             _skip_reason(scene, visual_type, spec_template))
+    return RenderOutcome(
+        scene_id=scene_id,
+        rendered_clip=str(target.relative_to(project_path)).replace("\\", "/"),
+        visual_type=visual_type,
+        template=spec_template or kind,
+        skipped_reason=None,
+    )
 
-        if visual_type in ("text-overlay", "graphic"):
-            if scene.get("layout_spec"):
-                result = render_layout(scene, target, duration)
-                if result is None:
-                    return RenderOutcome(
-                        scene_id, None, visual_type, spec_template,
-                        f"template `{spec_template}` not renderable in v1 (custom or unknown)",
-                    )
-                return RenderOutcome(
-                    scene_id=scene_id,
-                    rendered_clip=str(target.relative_to(project_path)).replace("\\", "/"),
-                    visual_type=visual_type,
-                    template=spec_template,
-                    skipped_reason=None,
-                )
-            return RenderOutcome(
-                scene_id, None, visual_type, None,
-                f"{visual_type} without layout_spec — assemble will use black frame",
-            )
 
-        if visual_type == "generated-image":
-            return RenderOutcome(
-                scene_id, None, visual_type, None,
-                "generated-image: ComfyUI integration not implemented in v1",
-            )
-
-        return RenderOutcome(
-            scene_id, None, visual_type, None,
-            f"unknown visual_type `{visual_type}`",
-        )
-    except RenderError as exc:
-        return RenderOutcome(
-            scene_id, None, visual_type, spec_template,
-            f"render error: {exc}",
-        )
+def _skip_reason(scene: dict, visual_type: str, spec_template: str | None) -> str:
+    if visual_type == "b-roll" and not scene.get("matched_clip"):
+        return "b-roll without matched_clip — assemble will use black frame"
+    if visual_type in ("text-overlay", "graphic") and not scene.get("layout_spec"):
+        return f"{visual_type} without layout_spec — assemble will use black frame"
+    if spec_template:
+        return f"template `{spec_template}` not renderable (custom or unknown)"
+    return f"no renderable asset for visual_type `{visual_type}`"
 
 
 def render_all(
@@ -384,23 +305,12 @@ def annotate_scene_plan(
 
 
 def generate_silent_audio(duration_seconds: float, output_path: Path) -> Path:
-    """Produce a silent WAV of the given duration via FFmpeg lavfi anullsrc."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        "ffmpeg", "-y",
-        "-f", "lavfi",
-        "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
-        "-t", f"{duration_seconds:.3f}",
-        "-c:a", "pcm_s16le",
-        "-loglevel", "error",
-        str(output_path),
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RenderError(
-            f"silent audio generation failed: {proc.stderr.strip()}"
-        )
-    return output_path
+    """Produce a silent WAV of the given duration (shared bundled-ffmpeg helper)."""
+    from nolan.ffmpeg_utils import silent_audio
+    try:
+        return silent_audio(duration_seconds, output_path)
+    except Exception as exc:
+        raise RenderError(f"silent audio generation failed: {exc}") from exc
 
 
 def call_assemble(

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "beautiful-article-figures",
+  "homepage": "https://github.com/ConardLi/garden-skills",
+  "items": [
+    {
+      "name": "figures-core",
+      "type": "registry:component",
+      "title": "Core article figures",
+      "description": "Theme-portable, token-styled, SSR-safe figures + primitives. Style only via generic --ra-* tokens, so they restyle per theme. Ships with the scaffold; import from the figures barrel.",
+      "dependencies": ["reacticle"],
+      "files": [
+        { "path": "assets/scaffold-template/article/figures/primitives.tsx", "target": "article/figures/primitives.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/StepFlow.tsx", "target": "article/figures/StepFlow.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/HubSpoke.tsx", "target": "article/figures/HubSpoke.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/CompareCards.tsx", "target": "article/figures/CompareCards.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/VersusPair.tsx", "target": "article/figures/VersusPair.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/CardGrid.tsx", "target": "article/figures/CardGrid.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/ProportionBar.tsx", "target": "article/figures/ProportionBar.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/Timeline.tsx", "target": "article/figures/Timeline.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/Stat.tsx", "target": "article/figures/Stat.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/PullQuote.tsx", "target": "article/figures/PullQuote.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/Inline.tsx", "target": "article/figures/Inline.tsx", "type": "registry:component" },
+        { "path": "assets/scaffold-template/article/figures/index.ts", "target": "article/figures/index.ts", "type": "registry:component" }
+      ],
+      "meta": {
+        "intents": {
+          "StepFlow": "sequential process / pipeline",
+          "HubSpoke": "one-to-many connection",
+          "CompareCards": "comparison across items",
+          "VersusPair": "A-vs-B contrast",
+          "CardGrid": "grid of annotated cards",
+          "ProportionBar": "relative size / capacity",
+          "Timeline": "sequence of events over time",
+          "Stat": "big-number callouts / KPIs",
+          "PullQuote": "decorative typographic quote",
+          "Term": "inline glossary (hover)",
+          "Footnote": "inline footnote / citation (hover)"
+        }
+      }
+    },
+    {
+      "name": "figure-mermaid",
+      "type": "registry:component",
+      "title": "Mermaid diagram (Tier 1)",
+      "description": "Render Mermaid text to a themed SVG (flowchart / sequence / state / ER / gantt / timeline / mindmap / sankey / quadrant / class / kanban / xychart). Themed from --ra-* tokens; renders offline (mermaid bundled). Import directly from ../figures/Mermaid (NOT the barrel) so mermaid only bundles when used. NOTE: adds ~3.7 MB to the article when used — reserve for diagrams the core figures can't express.",
+      "dependencies": ["mermaid", "reacticle"],
+      "files": [
+        { "path": "registry/figures/Mermaid.tsx", "target": "article/figures/Mermaid.tsx", "type": "registry:component" },
+        { "path": "registry/figures/_theme.ts", "target": "article/figures/_theme.ts", "type": "registry:component" }
+      ],
+      "meta": { "intent": "structured diagram (long tail)", "bundleCostMB": 3.7, "importPath": "../figures/Mermaid" }
+    },
+    {
+      "name": "figure-chart",
+      "type": "registry:component",
+      "title": "Data chart (Tier 2)",
+      "description": "Real data charts (line / bar / area) via Recharts, themed from --ra-* tokens. For actual numbers where ProportionBar is too coarse. Import directly from ../figures/Chart (NOT the barrel). Set isAnimationActive=false is already applied so it renders statically (print/screenshot-safe).",
+      "dependencies": ["recharts", "reacticle"],
+      "files": [
+        { "path": "registry/figures/Chart.tsx", "target": "article/figures/Chart.tsx", "type": "registry:component" },
+        { "path": "registry/figures/_theme.ts", "target": "article/figures/_theme.ts", "type": "registry:component" }
+      ],
+      "meta": { "intent": "data visualization", "bundleCostMB": 0.5, "importPath": "../figures/Chart" }
+    }
+  ]
+}

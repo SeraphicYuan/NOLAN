@@ -1,0 +1,69 @@
+{
+  "sections": {
+    "main": [
+      {
+        "id": "p_grid",
+        "start_seconds": 0.0,
+        "end_seconds": 6.0,
+        "duration": "6s",
+        "narration_excerpt": "the market crashed and then the keyword appeared",
+        "visual_type": "generated-image",
+        "motion_spec": null,
+        "rendered_clip": null,
+        "subtitle_cues": [
+          {
+            "text": "the",
+            "start": 0.2,
+            "end": 0.4
+          },
+          {
+            "text": "market",
+            "start": 0.5,
+            "end": 0.9
+          },
+          {
+            "text": "crashed",
+            "start": 1.0,
+            "end": 1.5
+          },
+          {
+            "text": "and",
+            "start": 1.6,
+            "end": 1.8
+          },
+          {
+            "text": "then",
+            "start": 1.9,
+            "end": 2.2
+          },
+          {
+            "text": "the",
+            "start": 2.4,
+            "end": 2.6
+          },
+          {
+            "text": "keyword",
+            "start": 3.2,
+            "end": 3.6
+          },
+          {
+            "text": "appeared",
+            "start": 3.7,
+            "end": 4.3
+          }
+        ],
+        "assets": [
+          {
+            "id": "a1",
+            "kind": "clip",
+            "src": "D:\\ClaudeProjects\\NOLAN\\projects\\segment_run1\\clips\\Section_2_scene_001.mp4",
+            "clip_start": 0.5,
+            "clip_end": 2.0,
+            "label": "Test Clip",
+            "thumb": "/scenes/api/frame-thumb?project=_test_brief_grid&src=D%3A%5CClaudeProjects%5CNOLAN%5Cprojects%5Csegment_run1%5Cclips%5CSection_2_scene_001.mp4&t=0.5"
+          }
+        ]
+      }
+    ]
+  }
+}

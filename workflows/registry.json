@@ -1,0 +1,81 @@
+{
+  "workflows": [
+    {
+      "name": "sdxl-default",
+      "description": "Built-in SDXL workflow (juggernautXL)",
+      "builtin": "default",
+      "file": null,
+      "checkpoint": "juggernautXL_ragnarokBy.safetensors",
+      "prompt_node": "6",
+      "width": 1920,
+      "height": 1080,
+      "steps": 20,
+      "styles": [
+        "photoreal",
+        "cinematic"
+      ]
+    },
+    {
+      "name": "netayume-lumina",
+      "description": "NetaYume Lumina text-to-image",
+      "builtin": null,
+      "file": "workflows/image/nolan_api_image_netayume_lumina_t2i.json",
+      "checkpoint": "NetaYumev35_pretrained_all_in_one.safetensors",
+      "prompt_node": null,
+      "width": 1024,
+      "height": 1024,
+      "steps": 30,
+      "styles": [
+        "illustration",
+        "anime"
+      ]
+    },
+    {
+      "name": "basic-z-image",
+      "description": "Z-Image-Turbo text-to-image (8-step)",
+      "builtin": null,
+      "file": "workflows/image/basic-z-image.json",
+      "checkpoint": "z_image_turbo_bf16.safetensors",
+      "prompt_node": "27",
+      "width": 1280,
+      "height": 720,
+      "steps": 8,
+      "styles": [
+        "photoreal",
+        "cinematic"
+      ]
+    },
+    {
+      "name": "flux-dev",
+      "description": "FLUX.1 dev fp8 (photoreal, all-in-one checkpoint)",
+      "builtin": null,
+      "file": "workflows/image/flux-dev-fp8.json",
+      "checkpoint": "flux1-dev-fp8.safetensors",
+      "prompt_node": "6",
+      "width": 1344,
+      "height": 768,
+      "steps": 24,
+      "styles": [
+        "photoreal",
+        "cinematic",
+        "archival"
+      ]
+    },
+    {
+      "name": "z-image-turbo",
+      "description": "Z-Image Turbo (8-step photoreal, AuraFlow/Qwen3-4B encoder)",
+      "builtin": null,
+      "file": "workflows/image/basic-z-image.json",
+      "checkpoint": "z_image_turbo_bf16.safetensors",
+      "prompt_node": "27",
+      "width": 1280,
+      "height": 720,
+      "steps": 8,
+      "styles": [
+        "photoreal",
+        "cinematic",
+        "fast"
+      ]
+    }
+  ]
+}

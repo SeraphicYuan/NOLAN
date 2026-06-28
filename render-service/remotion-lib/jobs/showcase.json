@@ -1,0 +1,15 @@
+{
+  "comp": "Showcase",
+  "out": "showcase.mp4",
+  "durationInFrames": 802,
+  "props": {"introTitle": "Remotion Motion Library", "perFrames": 120, "introFrames": 60},
+  "segments": [
+    {"video": "remotion-lib/output/kinetic_A_thesis.mp4", "label": "Kinetic Text", "category": "kinetic-text"},
+    {"video": "remotion-lib/output/chart_C_capex.mp4", "label": "Bar Compare", "category": "rich-chart"},
+    {"video": "remotion-lib/output/chart_D2_kshape_zigzag.mp4", "label": "K-Shape", "category": "rich-chart"},
+    {"video": "remotion-lib/output/annotate_E_video.mp4", "label": "Annotate B-roll", "category": "svg-annotation"},
+    {"video": "remotion-lib/output/annotate_F2_scribble.mp4", "label": "Annotate Stat", "category": "svg-annotation"},
+    {"video": "remotion-lib/output/map_G_flows.mp4", "label": "Route Map", "category": "map"},
+    {"video": "remotion-lib/output/card_H_chapter.mp4", "label": "Premium Card", "category": "premium-card"}
+  ]
+}

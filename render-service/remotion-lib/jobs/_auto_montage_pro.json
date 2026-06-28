@@ -1,0 +1,64 @@
+{
+  "comp": "PhotoMontage",
+  "out": "montage_pro.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "background": "#241016",
+    "vignette": 0.55,
+    "zoomStart": 1.05,
+    "zoomEnd": 1.18,
+    "panX": -0.05,
+    "panY": 0.0,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\test_output\\photo_montage_pro\\left.png",
+      "x": 0.2,
+      "y": 0.52,
+      "scale": 0.46,
+      "rotation": -6,
+      "from": "left",
+      "enterAt": 0.2,
+      "enterDur": 0.8,
+      "frame": "polaroid",
+      "caption": "On the left"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\test_output\\photo_montage_pro\\right.png",
+      "x": 0.8,
+      "y": 0.52,
+      "scale": 0.46,
+      "rotation": 6,
+      "from": "right",
+      "enterAt": 0.5,
+      "enterDur": 0.8,
+      "frame": "polaroid",
+      "caption": "On the right"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\test_output\\photo_montage_pro\\center.png",
+      "x": 0.5,
+      "y": 0.52,
+      "scale": 0.54,
+      "rotation": 2,
+      "from": "bottom",
+      "enterAt": 1.0,
+      "enterDur": 0.9,
+      "ease": "spring",
+      "frame": "polaroid",
+      "caption": "Tokugawa Ieyasu"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\test_output\\photo_montage_pro\\cutout.png",
+      "x": 0.5,
+      "y": 0.26,
+      "scale": 0.34,
+      "from": "top",
+      "enterAt": 1.8,
+      "enterDur": 0.8,
+      "frame": "cutout"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "scenes": [
+    {
+      "id": "Section_1_scene_001",
+      "t": [
+        0.0,
+        1.665
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "splits in two"
+    },
+    {
+      "id": "Section_2_scene_001",
+      "t": [
+        1.665,
+        2.774
+      ],
+      "visual_type": "graphics",
+      "source": "motion:bar-compare",
+      "narration": "50 percent"
+    },
+    {
+      "id": "Section_3_scene_001",
+      "t": [
+        2.774,
+        7.768
+      ],
+      "visual_type": "graphics",
+      "source": "motion:line-chart",
+      "narration": "The S and P 500 sits at record highs"
+    },
+    {
+      "id": "Section_3_scene_002",
+      "t": [
+        7.768,
+        11.652
+      ],
+      "visual_type": "graphics",
+      "source": "motion:line-chart",
+      "narration": "while consumer confidence is near pandemic lows."
+    },
+    {
+      "id": "Section_4_scene_001",
+      "t": [
+        11.652,
+        15.535
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "Making more money will not save you."
+    },
+    {
+      "id": "Section_4_scene_002",
+      "t": [
+        15.535,
+        17.2
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "Owning assets will."
+    }
+  ]
+}

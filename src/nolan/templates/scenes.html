@@ -446,6 +446,75 @@
             border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer;
         }
         .apply-btn:hover { background: #15803d; }
+        .note-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+        .note-or { color: #6b7280; font-size: 11px; }
+        /* ---- Asset tray ---- */
+        .asset-tray { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+        .tray-empty { color: #6b7280; font-size: 12px; padding: 4px 0; }
+        .tray-card { position: relative; width: 92px; background: #1a1d24; border: 1px solid #2c313c; border-radius: 7px; padding: 5px; }
+        .tray-idx { position: absolute; top: 3px; left: 3px; background: #2563eb; color: #fff; font-size: 10px; border-radius: 4px; padding: 0 4px; z-index: 2; }
+        .tray-thumb { width: 100%; height: 64px; object-fit: cover; border-radius: 4px; background: #0d0f13; display: block; }
+        .tray-label { font-size: 10px; color: #c9c9d2; margin-top: 3px; line-height: 1.2; max-height: 24px; overflow: hidden; }
+        .tray-x { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.6); color: #fca5a5; border: none; border-radius: 4px; cursor: pointer; font-size: 10px; padding: 1px 4px; }
+        .pgrid { display: grid; grid-template-columns: repeat(3, 8px); gap: 2px; margin-top: 4px; align-items: center; }
+        .pdot { width: 8px; height: 8px; border-radius: 50%; background: #3a4150; cursor: pointer; }
+        .pdot.on { background: #fbbf24; }
+        .pclr { grid-column: 1 / span 3; color: #6b7280; font-size: 10px; cursor: pointer; text-align: right; }
+        .asset-add { display: flex; gap: 6px; margin: 4px 0; }
+        .asset-search { flex: 1; background: #20242d; border: 1px solid #2c313c; color: #e5e7eb; border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+        .asset-results { display: flex; flex-wrap: wrap; gap: 6px; max-height: 220px; overflow-y: auto; }
+        .res-card { width: 80px; cursor: pointer; border: 1px solid #2c313c; border-radius: 6px; padding: 3px; background: #161922; }
+        .res-card:hover { border-color: #2563eb; }
+        .res-card img { width: 100%; height: 56px; object-fit: cover; border-radius: 4px; display: block; }
+        .res-card span { font-size: 9px; color: #9aa0a8; display: block; margin-top: 2px; line-height: 1.1; max-height: 22px; overflow: hidden; }
+        .edit-hint { color: #6b7280; font-size: 11px; margin-top: 6px; line-height: 1.4; }
+        .tray-kind { position: absolute; top: 3px; right: 22px; font-size: 8px; font-weight: 700; border-radius: 3px; padding: 0 3px; z-index: 2; color: #fff; }
+        .tray-kind.image { background: #3b7d4f; }
+        .tray-kind.clip, .tray-kind.video { background: #8a5a2b; }
+        /* ---- Asset picker drawer ---- */
+        .picker-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 40; }
+        .picker-backdrop.open { opacity: 1; pointer-events: auto; }
+        .picker-drawer { position: fixed; top: 0; right: 0; height: 100%; width: 420px; max-width: 92vw; background: #14171d; border-left: 1px solid #2c313c; box-shadow: -8px 0 30px rgba(0,0,0,.5); transform: translateX(100%); transition: transform .2s ease; z-index: 41; display: flex; flex-direction: column; }
+        .picker-drawer.open { transform: translateX(0); }
+        .picker-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #2c313c; font-weight: 600; color: #e5e7eb; }
+        .picker-close { background: none; border: none; color: #9aa0a8; font-size: 16px; cursor: pointer; }
+        .picker-tabs { display: flex; gap: 4px; padding: 8px 14px 0; }
+        .ptab { background: #1a1d24; border: 1px solid #2c313c; color: #9aa0a8; border-radius: 6px 6px 0 0; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+        .ptab.active { background: #20242d; color: #fff; border-bottom-color: #20242d; }
+        .picker-search { display: flex; gap: 6px; padding: 10px 14px; }
+        .picker-search input { flex: 1; background: #20242d; border: 1px solid #2c313c; color: #e5e7eb; border-radius: 6px; padding: 6px 9px; font-size: 12px; }
+        .picker-search button { background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 0 12px; cursor: pointer; }
+        .picker-grid { flex: 1; overflow-y: auto; padding: 0 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: start; }
+        .pk-card { position: relative; cursor: pointer; border: 2px solid #2c313c; border-radius: 7px; overflow: hidden; background: #161922; }
+        .pk-card img { width: 100%; height: 78px; object-fit: cover; display: block; background: #0d0f13; }
+        .pk-card span { display: block; font-size: 9px; color: #9aa0a8; padding: 2px 4px; line-height: 1.15; max-height: 24px; overflow: hidden; }
+        .pk-card.on { border-color: #fbbf24; }
+        .pk-check { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; line-height: 16px; text-align: center; font-size: 11px; border-radius: 50%; background: #fbbf24; color: #14171d; opacity: 0; }
+        .pk-card.on .pk-check { opacity: 1; }
+        .picker-subbar { gap: 14px; padding: 8px 14px 0; flex-wrap: wrap; }
+        .subseg { font-size: 11px; color: #6b7280; display: inline-flex; align-items: center; gap: 4px; }
+        .subbtn { background: #1a1d24; border: 1px solid #2c313c; color: #9aa0a8; border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 11px; }
+        .subbtn.on { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .picker-list { flex: 1; overflow-y: auto; padding: 4px 14px; display: block; }
+        .vid-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 10px; border: 1px solid #2c313c; border-radius: 7px; margin-bottom: 6px; cursor: pointer; background: #161922; }
+        .vid-row:hover { border-color: #2563eb; }
+        .vid-name { font-size: 12px; color: #e5e7eb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; }
+        .vid-meta { font-size: 10px; color: #6b7280; white-space: nowrap; }
+        .seg-back { grid-column: 1 / -1; font-size: 11px; color: #60a5fa; cursor: pointer; padding: 2px 0 6px; }
+        .picker-foot { padding: 12px 14px; border-top: 1px solid #2c313c; }
+        .picker-add { width: 100%; background: #2563eb; color: #fff; border: none; border-radius: 7px; padding: 9px; cursor: pointer; font-size: 13px; }
+        .picker-add:disabled { background: #2c313c; color: #6b7280; cursor: default; }
+        .scene-agent {
+            background: #20242d; border: 1px solid #2c313c; color: #e5e7eb;
+            border-radius: 6px; padding: 4px 6px; font-size: 12px;
+        }
+        .agent-btn {
+            background: #2563eb; color: #fff; border: none; border-radius: 6px;
+            padding: 5px 12px; font-size: 12px; cursor: pointer;
+        }
+        .agent-btn:hover { background: #1d4ed8; }
+        .status-badge.edited { background: #78350f; color: #fbbf24; }
+        .asset-placeholder.edited { color: #fbbf24; }
         .edit-status { margin-top: 6px; font-size: 12px; color: #fbbf24; min-height: 14px; }
         .rerender-bar {
             position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
@@ -458,7 +527,40 @@
             border-radius: 6px; padding: 5px 12px; cursor: pointer;
         }
         .rerender-bar button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .rerender-model { color: #8b93a1; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+        .rerender-model select {
+            background: #20242d; border: 1px solid #2c313c; color: #e5e7eb;
+            border-radius: 6px; padding: 4px 6px; font-size: 12px;
+        }
         .rerender-msg { color: #fbbf24; }
+        .refresh-btn {
+            background: #20242d; border: 1px solid #2c313c; color: #cbd5e1;
+            border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+        }
+        .refresh-btn:hover { color: #fff; border-color: #6b7280; }
+        .refresh-btn:disabled { opacity: 0.6; cursor: default; }
+        .rerender-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .agent-note {
+            flex: 1; min-width: 240px; background: #0f1117; color: #e5e7eb;
+            border: 1px solid #2c313c; border-radius: 6px; padding: 6px 8px; font-size: 13px;
+        }
+        .fleet-panel {
+            position: fixed; top: 70px; right: 16px; z-index: 40; width: 260px;
+            background: #11151c; border: 1px solid #2c313c; border-radius: 10px;
+            padding: 10px 12px; font-size: 12px; color: #cbd5e1;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        .fleet-title { font-weight: 600; color: #9aa3b2; margin-bottom: 8px; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
+        .fleet-agent { padding: 6px 0; border-top: 1px solid #1c212b; }
+        .fleet-agent:first-of-type { border-top: none; }
+        .fleet-state { color: #8b93a1; margin-left: 6px; }
+        .fleet-msg { color: #6b7280; margin-top: 2px; font-size: 11px; }
+        .fleet-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4b5563; margin-right: 4px; }
+        .fleet-dot.working { background: #fbbf24; animation: pulse 1.2s infinite; }
+        .fleet-dot.done { background: #16a34a; }
+        .fleet-dot.error { background: #dc2626; }
+        .fleet-dot.dispatched { background: #2563eb; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
     </style>
 </head>
 <body>
@@ -480,6 +582,7 @@
                 <option value="infographic">Infographic</option>
                 <option value="missing">Missing</option>
             </select>
+            <button id="refreshBtn" class="refresh-btn" onclick="refreshView()" title="Reload scenes + re-rendered clips (after an agent finishes)">↻ Refresh</button>
             <div class="stats" id="stats">Loading...</div>
         </div>
     </header>
@@ -520,6 +623,7 @@
         let currentPipeline = 'segment';      // 'segment' | 'orchestrator'
         let editableFields = [];
         let selectedScenes = new Set();       // scene ids queued for re-render
+        let editedScenes = new Set();         // scene ids edited this session, pending re-render
 
         // Range playback state
         let playbackRange = null;  // { start, end, sceneId }
@@ -567,9 +671,11 @@
             return null;
         }
 
-        // Build a project-scoped file URL (handles nested project names + clip paths)
+        // Build a project-scoped file URL (handles nested project names + clip paths).
+        // The nonce busts the browser cache so re-rendered clips (same path) reload.
+        let assetNonce = Date.now();
         function fileUrl(relPath) {
-            return `/scenes/file?project=${encodeURIComponent(currentProject)}&path=${encodeURIComponent(relPath)}`;
+            return `/scenes/file?project=${encodeURIComponent(currentProject)}&path=${encodeURIComponent(relPath)}&_=${assetNonce}`;
         }
 
         // The handful of fields worth editing inline, per pipeline.
@@ -579,9 +685,18 @@
             return order.filter(f => editableFields.includes(f));
         }
 
+        // Escape user-controlled text before inserting into HTML.
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
         // Render a single scene row
         function renderScene(scene, index) {
-            const status = getAssetStatus(scene);
+            // A scene edited this session but not yet re-rendered shows "edited" (not "missing").
+            const pendingEdit = editedScenes.has(scene.id) && !scene.rendered_clip;
+            const status = pendingEdit ? 'edited' : getAssetStatus(scene);
             const assetPath = getAssetPath(scene);
             const duration = (scene.end_seconds || 0) - (scene.start_seconds || 0);
 
@@ -597,6 +712,13 @@
                     assetHtml = `<img src="${url}" alt="${scene.id}" onclick="openLightbox('${url}')">`;
                 }
                 assetHtml += `<div class="asset-path">${assetPath}</div>`;
+            } else if (pendingEdit) {
+                assetHtml = `
+                    <div class="asset-placeholder edited">
+                        <div class="asset-placeholder-icon">✎</div>
+                        <div>edited — Re-render to see it</div>
+                    </div>
+                `;
             } else {
                 assetHtml = `
                     <div class="asset-placeholder">
@@ -608,7 +730,7 @@
 
             return `
                 <div class="scene-row ${status === 'missing' ? 'missing-asset' : ''}"
-                     data-section="${scene._section}"
+                     data-section="${esc(scene._section)}"
                      data-status="${status}"
                      data-start="${scene.start_seconds || 0}"
                      data-end="${scene.end_seconds || 0}"
@@ -631,20 +753,20 @@
                         </div>
 
                         ${scene.narration_excerpt ? `
-                            <div class="scene-narration">"${scene.narration_excerpt}"</div>
+                            <div class="scene-narration">"${esc(scene.narration_excerpt)}"</div>
                         ` : ''}
 
                         <div class="scene-meta">
                             ${scene.search_query ? `
                                 <div class="meta-row">
                                     <span class="meta-label">Query:</span>
-                                    <span class="meta-value">${scene.search_query}</span>
+                                    <span class="meta-value">${esc(scene.search_query)}</span>
                                 </div>
                             ` : ''}
                             ${scene.comfyui_prompt ? `
                                 <div class="meta-row">
                                     <span class="meta-label">Prompt:</span>
-                                    <span class="meta-value">${scene.comfyui_prompt.substring(0, 100)}${scene.comfyui_prompt.length > 100 ? '...' : ''}</span>
+                                    <span class="meta-value">${esc(scene.comfyui_prompt.substring(0, 100))}${scene.comfyui_prompt.length > 100 ? '...' : ''}</span>
                                 </div>
                             ` : ''}
                         </div>
@@ -655,7 +777,7 @@
                                 ${scene.visual_description ? `
                                     <div class="detail-section">
                                         <div class="detail-section-title">Visual Description</div>
-                                        <div class="detail-section-content">${scene.visual_description}</div>
+                                        <div class="detail-section-content">${esc(scene.visual_description)}</div>
                                     </div>
                                 ` : ''}
                                 ${scene.sync_points && scene.sync_points.length > 0 ? `
@@ -672,7 +794,7 @@
                                 ` : ''}
                                 <div class="detail-section">
                                     <div class="detail-section-title">Section</div>
-                                    <div class="detail-section-content">${scene._section}</div>
+                                    <div class="detail-section-content">${esc(scene._section)}</div>
                                 </div>
                             </div>
                         </div>
@@ -681,13 +803,24 @@
                             <button class="edit-toggle" onclick="toggleEdit('${scene.id}')">✎ Edit / comment</button>
                             <div class="edit-panel" id="edit-${scene.id}" style="display:none;">
                                 <div class="edit-mode-tabs">
-                                    <button class="tab-btn active" id="tab-note-${scene.id}" onclick="setEditMode('${scene.id}','note')">Comment → agent</button>
+                                    <button class="tab-btn active" id="tab-note-${scene.id}" onclick="setEditMode('${scene.id}','note')">Comment</button>
+                                    <button class="tab-btn" id="tab-assets-${scene.id}" onclick="setEditMode('${scene.id}','assets')">Assets${(scene.assets&&scene.assets.length)?` (${scene.assets.length})`:''}</button>
                                     <button class="tab-btn" id="tab-fields-${scene.id}" onclick="setEditMode('${scene.id}','fields')">Edit fields</button>
                                 </div>
                                 <div class="edit-body" id="body-note-${scene.id}">
                                     <textarea id="note-${scene.id}" class="edit-note" rows="2"
-                                        placeholder="e.g. make this a +300% green counter, top-left"></textarea>
-                                    <button class="apply-btn" onclick="applyNote('${scene.id}')">Apply comment</button>
+                                        placeholder="e.g. make it grimmer  ·  or: rework to Remotion kinetic text"></textarea>
+                                    <div class="note-actions">
+                                        <button class="apply-btn" onclick="applyNote('${scene.id}')" title="Fast LLM — instant text/prompt tweaks">⚡ Quick edit (LLM)</button>
+                                        <span class="note-or">or hand to an agent:</span>
+                                        <select class="js-agent-select scene-agent" id="sceneAgent-${scene.id}"></select>
+                                        <button class="agent-btn" onclick="dispatchSceneToAgent('${scene.id}')" title="Claude Code agent — hard edits (Remotion, recreate effect, validate)">Send to Claude →</button>
+                                    </div>
+                                </div>
+                                <div class="edit-body" id="body-assets-${scene.id}" style="display:none;">
+                                    <div class="asset-tray" id="tray-${scene.id}">${assetTrayHtml(scene)}</div>
+                                    <button class="apply-btn" onclick="openPicker('${scene.id}')">＋ Add from library</button>
+                                    <div class="edit-hint">Curate the pictures &amp; clips this scene can use, then reference them in a Comment (e.g. "grid of these, zoom the Knight when the VO says 'crash'"). Click a card's grid dot to set where it sits.</div>
                                 </div>
                                 <div class="edit-body" id="body-fields-${scene.id}" style="display:none;">
                                     ${inlineEditFields(scene).map(f => `
@@ -738,7 +871,7 @@
 
                 // Add section divider
                 if (scene._section !== lastSection) {
-                    html += `<div class="section-divider">${scene._section}</div>`;
+                    html += `<div class="section-divider">${esc(scene._section)}</div>`;
                     lastSection = scene._section;
                 }
 
@@ -758,6 +891,7 @@
                 `${visibleCount}/${allScenes.length} scenes | ${matched} matched | ${generated} generated | ${infographic} infographic | ${missing} missing`;
 
             updateRerenderBar();
+            refreshAgentSelect();   // populate per-scene agent dropdowns right away
         }
 
         // ---------- Iteration: select / edit / comment / re-render ----------
@@ -777,11 +911,29 @@
             }
             if (selectedScenes.size === 0) { bar.style.display = 'none'; return; }
             bar.style.display = 'flex';
+            const agentOpts = fleetAgents.filter(a => a.session_alive)
+                .map(a => `<option value="${a.agent}">${a.agent}${a.state==='working'?' (busy)':''}</option>`).join('')
+                || '<option value="">no agents</option>';
             bar.innerHTML =
-                `<span>${selectedScenes.size} scene(s) selected · pipeline <b>${currentPipeline}</b></span>
-                 <button onclick="clearSelection()">Clear</button>
-                 <button class="primary" onclick="rerenderSelected()">Re-render selected</button>
-                 <span id="rerenderMsg" class="rerender-msg"></span>`;
+                `<div class="rerender-row">
+                   <span>${selectedScenes.size} scene(s) selected · pipeline <b>${currentPipeline}</b></span>
+                   <label class="rerender-model">gen model:
+                     <select id="rerenderModel">
+                       <option value="flux-dev">flux-dev</option>
+                       <option value="z-image">z-image-turbo</option>
+                     </select>
+                   </label>
+                   <button onclick="clearSelection()">Clear</button>
+                   <button class="primary" onclick="rerenderSelected()">Re-render selected</button>
+                 </div>
+                 <div class="rerender-row">
+                   <input id="agentNote" class="agent-note" placeholder="note for the agent (e.g. rework these to Remotion kinetic text)">
+                   <label class="rerender-model">agent:
+                     <select id="agentSelect" class="js-agent-select">${agentOpts}</select>
+                   </label>
+                   <button class="primary" onclick="dispatchToAgent()">Send to agent →</button>
+                   <span id="rerenderMsg" class="rerender-msg"></span>
+                 </div>`;
         }
 
         function toggleEdit(id) {
@@ -789,10 +941,192 @@
             p.style.display = (p.style.display === 'none') ? 'block' : 'none';
         }
         function setEditMode(id, mode) {
-            document.getElementById(`body-note-${id}`).style.display = (mode === 'note') ? 'block' : 'none';
-            document.getElementById(`body-fields-${id}`).style.display = (mode === 'fields') ? 'block' : 'none';
-            document.getElementById(`tab-note-${id}`).classList.toggle('active', mode === 'note');
-            document.getElementById(`tab-fields-${id}`).classList.toggle('active', mode === 'fields');
+            ['note','assets','fields'].forEach(m => {
+                const body = document.getElementById(`body-${m}-${id}`);
+                if (body) body.style.display = (mode === m) ? 'block' : 'none';
+                const tab = document.getElementById(`tab-${m}-${id}`);
+                if (tab) tab.classList.toggle('active', mode === m);
+            });
+        }
+
+        // ---------- Asset tray (per-scene binding) ----------
+        const ANCHORS = [[0.2,0.25],[0.5,0.2],[0.8,0.25],[0.2,0.5],[0.5,0.5],[0.8,0.5],[0.2,0.78],[0.5,0.82],[0.8,0.78]];
+        function placeDots(sceneId, a) {
+            const cur = a.place ? `${a.place[0]},${a.place[1]}` : '';
+            const dots = ANCHORS.map(p => {
+                const on = (`${p[0]},${p[1]}` === cur);
+                return `<i class="pdot${on?' on':''}" title="place ${p[0]},${p[1]}"
+                          onclick="assetSetPlace('${sceneId}','${a.id}',[${p[0]},${p[1]}])"></i>`;
+            }).join('');
+            const clr = a.place ? `<i class="pclr" title="auto-place" onclick="assetSetPlace('${sceneId}','${a.id}',null)">×</i>` : '';
+            return `<div class="pgrid">${dots}${clr}</div>`;
+        }
+        function assetTrayHtml(scene) {
+            const assets = scene.assets || [];
+            if (!assets.length) return `<div class="tray-empty">No assets yet — search below to add pictures.</div>`;
+            return assets.map((a, i) => `
+                <div class="tray-card">
+                    <span class="tray-idx">${i}</span>
+                    <span class="tray-kind ${a.kind||'image'}" title="${a.kind||'image'}">${(a.kind||'image')==='image'?'IMG':(a.kind==='clip'||a.kind==='video'?'VID':a.kind.toUpperCase())}</span>
+                    <img class="tray-thumb" src="${a.thumb || assetUrl(a.src)}" alt="">
+                    <div class="tray-meta">
+                        <div class="tray-label" title="id=${a.id}">${esc(a.label || a.id)}</div>
+                        ${placeDots(scene.id, a)}
+                    </div>
+                    <button class="tray-x" title="remove" onclick="assetOp('${scene.id}',{op:'remove',asset_id:'${a.id}'})">✕</button>
+                </div>`).join('');
+        }
+        function assetUrl(src) {
+            // best-effort thumb for path-added assets that live under the project
+            return `/scenes/file?project=${encodeURIComponent(currentProject)}&path=${encodeURIComponent(src)}&_=${assetNonce}`;
+        }
+        async function assetOp(sceneId, body) {
+            body.project = currentProject; body.scene_id = sceneId;
+            const res = await fetch('/scenes/api/scene/assets', {
+                method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(j.detail || res.statusText);
+            const scene = allScenes.find(s => s.id === sceneId);
+            if (scene) scene.assets = j.assets;
+            const tray = document.getElementById(`tray-${sceneId}`);
+            if (tray && scene) tray.innerHTML = assetTrayHtml(scene);
+            const tab = document.getElementById(`tab-assets-${sceneId}`);
+            if (tab) tab.textContent = 'Assets' + (j.assets.length ? ` (${j.assets.length})` : '');
+            return j;
+        }
+        function assetSetPlace(sceneId, assetId, place) {
+            assetOp(sceneId, {op:'set_place', asset_id: assetId, place}).catch(e => alert(e.message));
+        }
+        // ---------- Asset picker drawer (browse + search, multi-select) ----------
+        let pickerScene = null, pickerTab = 'pictures', pickerSel = new Map(), pickerItems = [];
+        let vidScope = 'project', vidSource = 'clips', vidVideo = null, pickerVideos = [];
+        function openPicker(sceneId) {
+            pickerScene = sceneId; pickerSel = new Map();
+            document.getElementById('pickerTitle').textContent = 'Add assets → ' + sceneId;
+            document.getElementById('pickerDrawer').classList.add('open');
+            document.getElementById('pickerBackdrop').classList.add('open');
+            setPickerTab('pictures');
+        }
+        function closePicker() {
+            document.getElementById('pickerDrawer').classList.remove('open');
+            document.getElementById('pickerBackdrop').classList.remove('open');
+            pickerScene = null;
+        }
+        function setPickerTab(tab) {
+            pickerTab = tab; vidVideo = null;
+            document.getElementById('ptab-pictures').classList.toggle('active', tab === 'pictures');
+            document.getElementById('ptab-videos').classList.toggle('active', tab === 'videos');
+            document.getElementById('pickerQ').placeholder = tab === 'pictures'
+                ? 'search pictures (blank = browse all)…' : 'filter by name…';
+            renderSub(); loadPicker();
+        }
+        function renderSub() {
+            const sub = document.getElementById('pickerSub');
+            if (pickerTab !== 'videos') { sub.style.display = 'none'; sub.innerHTML = ''; return; }
+            sub.style.display = 'flex';
+            const tog = (cur, val, lbl, fn) => `<button class="subbtn${cur===val?' on':''}" onclick="${fn}('${val}')">${lbl}</button>`;
+            sub.innerHTML =
+                `<span class="subseg">Scope ${tog(vidScope,'project','This project','setVidScope')}${tog(vidScope,'all','All','setVidScope')}</span>` +
+                `<span class="subseg">Source ${tog(vidSource,'clips','Saved clips','setVidSource')}${tog(vidSource,'segments','Segments','setVidSource')}</span>`;
+        }
+        function setVidScope(s) { vidScope = s; vidVideo = null; renderSub(); loadPicker(); }
+        function setVidSource(s) { vidSource = s; vidVideo = null; renderSub(); loadPicker(); }
+        function pickKey(it) { return `${it.source}:${it.k}`; }
+        function thumbUrl(src, t) { return `/scenes/api/frame-thumb?project=${encodeURIComponent(currentProject)}&src=${encodeURIComponent(src)}&t=${t||0}`; }
+
+        async function loadPicker() {
+            const q = document.getElementById('pickerQ').value.trim();
+            const grid = document.getElementById('pickerGrid');
+            grid.innerHTML = '<div class="loading">Loading…</div>';
+            try {
+                if (pickerTab === 'pictures') return renderItems(await fetchPictures(q), grid);
+                if (vidSource === 'clips') return renderItems(await fetchClips(q), grid);
+                if (!vidVideo) return renderVideoList(await fetchVideos(q), grid);
+                return renderItems(await fetchSegments(vidVideo, q), grid, true);
+            } catch (e) { grid.innerHTML = '<div class="tray-empty">Error: ' + e.message + '</div>'; }
+        }
+        async function fetchPictures(q) {
+            const url = q
+                ? `/api/images/search?q=${encodeURIComponent(q)}&scope=both&project=${encodeURIComponent(currentProject)}&k=40`
+                : `/api/images/list?scope=global&limit=60`;
+            const j = await (await fetch(url)).json();
+            return (j.results || []).map(h => ({
+                source: 'library', k: h.id, thumb: h.raw, label: h.title || ('#' + h.id),
+                payload: {op:'add', source:'library', image_id: h.id, scope: h.scope || 'global',
+                          scope_project: h.scope_project || null, label: h.title || ''} }));
+        }
+        async function fetchClips(q) {
+            const proj = vidScope === 'project' ? currentProject : '';
+            const j = await (await fetch(`/library/api/clips?projects=${encodeURIComponent(proj)}`)).json();
+            let clips = j.clips || [];
+            if (q) { const ql = q.toLowerCase(); clips = clips.filter(c =>
+                ((c.label||'') + ' ' + (c.video_name||'')).toLowerCase().includes(ql)); }
+            return clips.map(c => ({
+                source: 'clip', k: c.id, thumb: thumbUrl(c.source_video_path, c.clip_start),
+                label: c.label || c.video_name || c.id,
+                payload: {op:'add', source:'clip', source_video_path: c.source_video_path,
+                          clip_start: c.clip_start, clip_end: c.clip_end, label: c.label || c.video_name || ''} }));
+        }
+        async function fetchVideos(q) {
+            const proj = vidScope === 'project' ? currentProject : '';
+            const j = await (await fetch(`/library/api/videos${proj?`?project=${encodeURIComponent(proj)}`:''}`)).json();
+            let vids = j.videos || [];
+            if (q) { const ql = q.toLowerCase(); vids = vids.filter(v => (v.name||'').toLowerCase().includes(ql)); }
+            return vids;
+        }
+        async function fetchSegments(videoPath, q) {
+            const j = await (await fetch(`/library/api/videos/${encodeURIComponent(videoPath)}/segments`)).json();
+            let segs = j.segments || [];
+            if (q) { const ql = q.toLowerCase(); segs = segs.filter(s =>
+                ((s.frame_description||'') + ' ' + (s.transcript||'')).toLowerCase().includes(ql)); }
+            return segs.map((s, i) => ({
+                source: 'seg', k: `${videoPath}#${s.timestamp_start}`,
+                thumb: thumbUrl(s.video_path, s.timestamp_start),
+                label: s.frame_description || s.timestamp_formatted || ('seg ' + i),
+                payload: {op:'add', source:'clip', source_video_path: s.video_path,
+                          clip_start: s.timestamp_start, clip_end: s.timestamp_end,
+                          label: s.frame_description || s.timestamp_formatted || ''} }));
+        }
+        function renderVideoList(videos, grid) {
+            grid.className = 'picker-list';
+            pickerVideos = videos;
+            if (!videos.length) { grid.innerHTML = '<div class="tray-empty">No indexed videos in scope.</div>'; return; }
+            grid.innerHTML = videos.map((v, i) => `
+                <div class="vid-row" onclick="pickVideo(${i})">
+                    <span class="vid-name">${esc(v.name)}</span>
+                    <span class="vid-meta">${v.segment_count||0} segs · ${esc(v.duration_formatted||'')} ›</span>
+                </div>`).join('');
+        }
+        function pickVideo(i) { const v = pickerVideos[i]; if (!v) return; vidVideo = v.path;
+            document.getElementById('pickerQ').value = ''; loadPicker(); }
+        function renderItems(items, grid, segMode) {
+            grid.className = 'picker-grid';
+            pickerItems = items;
+            const back = segMode ? `<div class="seg-back" onclick="vidVideo=null;loadPicker()">← all videos</div>` : '';
+            if (!items.length) { grid.innerHTML = back + '<div class="tray-empty">Nothing here.</div>'; return; }
+            grid.innerHTML = back + items.map((it, i) => {
+                const on = pickerSel.has(pickKey(it));
+                return `<div class="pk-card${on?' on':''}" data-key="${pickKey(it)}" onclick="togglePick(${i})">
+                    <img src="${it.thumb}" loading="lazy" alt=""><span>${esc((it.label||'').slice(0,42))}</span>
+                    <i class="pk-check">✓</i></div>`;
+            }).join('');
+        }
+        function togglePick(i) {
+            const it = pickerItems[i]; if (!it) return;
+            const key = pickKey(it);
+            if (pickerSel.has(key)) pickerSel.delete(key); else pickerSel.set(key, it.payload);
+            const el = document.querySelector(`.pk-card[data-key="${key}"]`);
+            if (el) el.classList.toggle('on', pickerSel.has(key));
+            document.getElementById('pickerAdd').textContent = `Add ${pickerSel.size} to scene`;
+            document.getElementById('pickerAdd').disabled = pickerSel.size === 0;
+        }
+        async function pickerAddSelected() {
+            if (!pickerScene || !pickerSel.size) return;
+            const btn = document.getElementById('pickerAdd'); btn.disabled = true; btn.textContent = 'Adding…';
+            try {
+                for (const payload of pickerSel.values()) await assetOp(pickerScene, {...payload});
+                closePicker();
+            } catch (e) { alert(e.message); btn.disabled = false; }
         }
 
         async function postRevise(body) {
@@ -819,8 +1153,8 @@
             try {
                 const r = await postRevise({ project: currentProject, scene_id: id, note });
                 const keys = Object.keys(r.applied || {});
-                st.textContent = keys.length ? ('Applied: ' + keys.join(', ')) : 'No change produced.';
-                if (keys.length) { selectedScenes.add(id); await refreshScenes(); }
+                st.textContent = keys.length ? ('Applied: ' + keys.join(', ') + ' — Re-render to see it') : 'No change produced.';
+                if (keys.length) { selectedScenes.add(id); editedScenes.add(id); await refreshScenes(); }
             } catch (e) { st.textContent = 'Error: ' + e.message; }
         }
 
@@ -836,8 +1170,9 @@
             st.textContent = 'Saving…';
             try {
                 const r = await postRevise({ project: currentProject, scene_id: id, patch });
-                st.textContent = 'Saved: ' + Object.keys(r.applied || {}).join(', ');
+                st.textContent = 'Saved: ' + Object.keys(r.applied || {}).join(', ') + ' — Re-render to see it';
                 selectedScenes.add(id);
+                editedScenes.add(id);
                 await refreshScenes();
             } catch (e) { st.textContent = 'Error: ' + e.message; }
         }
@@ -846,11 +1181,12 @@
             const ids = [...selectedScenes];
             if (ids.length === 0) return;
             const msg = document.getElementById('rerenderMsg');
+            const model = (document.getElementById('rerenderModel') || {}).value || 'flux-dev';
             msg.textContent = 'Submitting…';
             try {
                 const res = await fetch('/scenes/api/rerender', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ project: currentProject, scene_ids: ids }) });
+                    body: JSON.stringify({ project: currentProject, scene_ids: ids, comfyui_model: model }) });
                 const j = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(j.detail || res.statusText);
                 pollJob(j.job_id, msg);
@@ -876,6 +1212,105 @@
                 setTimeout(tick, 1500);
             };
             tick();
+        }
+
+        // Reload the current project's scenes + clips (e.g. after an agent finishes).
+        async function refreshView() {
+            if (!currentProject) return;
+            const btn = document.getElementById('refreshBtn');
+            const label = btn ? btn.textContent : '';
+            if (btn) { btn.textContent = '↻ Refreshing…'; btn.disabled = true; }
+            assetNonce = Date.now();          // force re-rendered clips to reload (bypass cache)
+            try {
+                await loadSceneData();
+                await loadFleet();
+            } finally {
+                if (btn) { btn.textContent = label || '↻ Refresh'; btn.disabled = false; }
+            }
+        }
+
+        // ---------- Fleet: dispatch scenes to Claude Code agents + status board ----------
+        async function loadFleet() {
+            try {
+                const r = await fetch('/scenes/api/fleet');
+                fleetAgents = (await r.json()).agents || [];
+            } catch (e) { fleetAgents = []; }
+            renderFleet();
+            refreshAgentSelect();   // update dropdown options in place (don't rebuild the bar / lose the note)
+        }
+
+        function refreshAgentSelect() {
+            const live = fleetAgents.filter(a => a.session_alive);
+            const opts = live.length
+                ? live.map(a => `<option value="${a.agent}">${a.agent}${a.state==='working'?' (busy)':''}</option>`).join('')
+                : '<option value="">no agents</option>';
+            document.querySelectorAll('.js-agent-select').forEach(sel => {
+                const cur = sel.value;
+                sel.innerHTML = opts;
+                if (cur && live.some(a => a.agent === cur)) sel.value = cur;
+            });
+        }
+
+        function renderFleet() {
+            let panel = document.getElementById('fleetPanel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'fleetPanel';
+                panel.className = 'fleet-panel';
+                document.body.appendChild(panel);
+            }
+            if (!fleetAgents.length) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            const rows = fleetAgents.map(a => {
+                const st = a.state || 'idle';
+                const where = a.scene_ids ? ` · ${(a.scene_ids || []).join(', ')}` : '';
+                const msg = a.message ? `<div class="fleet-msg">${a.message}</div>` : '';
+                const dead = a.session_alive ? '' : ' (gone)';
+                return `<div class="fleet-agent">
+                          <span class="fleet-dot ${st}"></span>
+                          <b>${a.agent}</b><span class="fleet-state">${st}${dead}${where}</span>
+                          ${msg}
+                        </div>`;
+            }).join('');
+            panel.innerHTML = `<div class="fleet-title">Agents</div>${rows}`;
+        }
+
+        async function dispatchToAgent() {
+            const ids = [...selectedScenes];
+            const note = (document.getElementById('agentNote') || {}).value || '';
+            const agent = (document.getElementById('agentSelect') || {}).value || '';
+            const msg = document.getElementById('rerenderMsg');
+            if (!ids.length) { msg.textContent = 'Select scene(s) first.'; return; }
+            if (!note.trim()) { msg.textContent = 'Write a note for the agent.'; return; }
+            if (!agent) { msg.textContent = 'No live agent to send to.'; return; }
+            msg.textContent = `Dispatching to ${agent}…`;
+            try {
+                const res = await fetch('/scenes/api/dispatch', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: currentProject, scene_ids: ids, note, agent }) });
+                const j = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(j.detail || res.statusText);
+                msg.textContent = `Sent ${ids.length} scene(s) to ${agent} ✓ — watch the Agents panel`;
+                loadFleet();
+            } catch (e) { msg.textContent = 'Dispatch error: ' + e.message; }
+        }
+
+        async function dispatchSceneToAgent(id) {
+            const note = ((document.getElementById('note-' + id) || {}).value || '').trim();
+            const agent = (document.getElementById('sceneAgent-' + id) || {}).value || '';
+            const st = document.getElementById('editstatus-' + id);
+            if (!note) { st.textContent = 'Write a note first.'; return; }
+            if (!agent) { st.textContent = 'No live agent to send to.'; return; }
+            st.textContent = `Dispatching to ${agent}…`;
+            try {
+                const res = await fetch('/scenes/api/dispatch', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: currentProject, scene_ids: [id], note, agent }) });
+                const j = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(j.detail || res.statusText);
+                st.textContent = `Sent to ${agent} ✓ — watch the Agents panel (top-right)`;
+                loadFleet();
+            } catch (e) { st.textContent = 'Dispatch error: ' + e.message; }
         }
 
         // Open lightbox
@@ -1023,6 +1458,7 @@
                 currentPipeline = scenesData.pipeline || 'segment';
                 editableFields = scenesData.editable_fields || [];
                 selectedScenes.clear();
+                editedScenes.clear();
 
                 // Reset and populate section filter
                 const sectionFilter = document.getElementById('sectionFilter');
@@ -1086,6 +1522,29 @@
 
         // Initialize
         loadProjects();
-    </script>
+        loadFleet();
+        setInterval(loadFleet, 5000);   // poll the agent fleet board
+</script>
+
+<div class="picker-backdrop" id="pickerBackdrop" onclick="closePicker()"></div>
+<div class="picker-drawer" id="pickerDrawer">
+    <div class="picker-head">
+        <span id="pickerTitle">Add assets</span>
+        <button class="picker-close" onclick="closePicker()">✕</button>
+    </div>
+    <div class="picker-tabs">
+        <button class="ptab active" id="ptab-pictures" onclick="setPickerTab('pictures')">Pictures</button>
+        <button class="ptab" id="ptab-videos" onclick="setPickerTab('videos')">Videos / Clips</button>
+    </div>
+    <div class="picker-subbar" id="pickerSub" style="display:none"></div>
+    <div class="picker-search">
+        <input id="pickerQ" placeholder="search…" onkeydown="if(event.key==='Enter')loadPicker()">
+        <button onclick="loadPicker()">Go</button>
+    </div>
+    <div class="picker-grid" id="pickerGrid"></div>
+    <div class="picker-foot">
+        <button class="picker-add" id="pickerAdd" disabled onclick="pickerAddSelected()">Add 0 to scene</button>
+    </div>
+</div>
 </body>
 </html>

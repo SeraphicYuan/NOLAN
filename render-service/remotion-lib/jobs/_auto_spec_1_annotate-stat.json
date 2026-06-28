@@ -1,0 +1,16 @@
+{
+  "comp": "AnnotateStat",
+  "out": "spec_1_annotate-stat.mp4",
+  "durationInFrames": 110,
+  "codec": "h264",
+  "props": {
+    "value": "$28,000",
+    "label": "stock buybacks per employee",
+    "shapeStyle": "scribble",
+    "position": {
+      "x": 0.8,
+      "y": 0.82
+    },
+    "theme": "dark-editorial"
+  }
+}

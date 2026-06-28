@@ -80,6 +80,7 @@ class TtsConfig:
     """Text-to-speech / voice cloning. Off by default (needs the omnivoice env)."""
     enabled: bool = False
     provider: str = "omnivoice"     # omnivoice (local) — extensible to others
+    default_voice: str = ""         # fallback voice_id for automated builds
     omnivoice: OmniVoiceConfig = field(default_factory=OmniVoiceConfig)
 
 

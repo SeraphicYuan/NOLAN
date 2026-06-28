@@ -22,15 +22,22 @@ class ResolverConfig:
     enable_search: bool = True
     enable_generation: bool = True
     enable_external: bool = False          # P2
+    enable_library: bool = True            # picture-library stills (CLIP)
+    library_threshold: float = 0.24        # CLIP cosine floor for a usable still
+    enable_motion: bool = True             # lazily author a motion_spec for graphic/text scenes
 
 
 class AssetResolver:
     def __init__(self, config: ResolverConfig = None,
                  search_fn: Optional[Callable] = None,      # scene -> matched_clip dict|None (with similarity_score)
-                 external_fn: Optional[Callable] = None):   # scene -> matched_asset path|None (P2)
+                 external_fn: Optional[Callable] = None,    # scene -> truthy kind|None; sets matched_clip/matched_asset (P2)
+                 library_fn: Optional[Callable] = None,     # scene -> matched_asset path|None (picture library)
+                 motion_fn: Optional[Callable] = None):     # scene -> motion_spec dict|None (lazy authoring)
         self.cfg = config or ResolverConfig()
         self.search_fn = search_fn
         self.external_fn = external_fn
+        self.library_fn = library_fn
+        self.motion_fn = motion_fn
 
     def resolve(self, scene) -> str:
         """Populate the scene's asset field and return resolved_source."""
@@ -64,14 +71,28 @@ class AssetResolver:
         if vt in GENERATED_TYPES:
             return self._generate(scene)
 
-        # graphic/text without a motion_spec (author_motion didn't cover it) -> generate
+        # graphic/text/data scene with no motion_spec: author one on demand (lazy —
+        # only for scenes that actually reach here, not an eager design-stage pass).
+        if self.cfg.enable_motion and self.motion_fn:
+            spec = self.motion_fn(scene)
+            if spec:
+                scene.motion_spec = spec
+                return f"motion:{spec.get('effect', '?')}"
+
         return self._escalate(scene, reason=f"no-motion-for-{vt or 'unknown'}")
 
     def _escalate(self, scene, reason: str) -> str:
-        if self.cfg.enable_external and self.external_fn:
-            asset = self.external_fn(scene)
+        # Picture library (curated stills) before external providers / generation.
+        if self.cfg.enable_library and self.library_fn:
+            asset = self.library_fn(scene)
             if asset:
                 scene.matched_asset = asset
+                return f"library({reason})"
+        if self.cfg.enable_external and self.external_fn:
+            # external_fn finds + attaches the asset (sets scene.matched_clip for a
+            # video, or scene.matched_asset for an image) and returns a truthy kind.
+            got = self.external_fn(scene)
+            if got:
                 return f"external({reason})"
         if self.cfg.enable_generation:
             return self._generate(scene, reason=reason)

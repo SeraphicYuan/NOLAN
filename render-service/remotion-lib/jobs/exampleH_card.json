@@ -1,0 +1,11 @@
+{
+  "comp": "PremiumCard",
+  "out": "card_H_chapter.mp4",
+  "durationInFrames": 130,
+  "props": {
+    "kicker": "Player 3",
+    "title": "The Government",
+    "subtitle": "who writes the rules that keep it running",
+    "cardStyle": "glass"
+  }
+}

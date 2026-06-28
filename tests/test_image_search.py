@@ -6,7 +6,17 @@ from nolan.image_search import (
     ImageSearchResult,
     ImageProvider,
     DDGSProvider,
+    WellcomeProvider,
+    EuropeanaProvider,
+    DPLAProvider,
 )
+
+
+def _mock_json_client(payload):
+    """A patched httpx.Client whose .get().json() returns ``payload``."""
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value.get.return_value.json.return_value = payload
+    return mock_client
 
 
 class TestImageSearchResult:
@@ -158,6 +168,130 @@ class TestDDGSProvider:
             with patch.object(provider, 'search', return_value=[]):
                 results = provider.search("test query", max_results=5)
                 assert isinstance(results, list)
+
+
+class TestWellcomeProvider:
+    """Tests for the Wellcome Collection provider (keyless, IIIF)."""
+
+    def test_keyless_and_name(self):
+        p = WellcomeProvider()
+        assert p.name == "wellcome"
+        assert p.is_available() is True
+
+    def test_builds_fullres_and_thumbnail_from_iiif(self):
+        """Should build full-res + sized thumbnail from the IIIF info.json URL."""
+        canned = {"results": [{
+            "thumbnail": {"url": "https://iiif.wellcomecollection.org/image/X1/info.json"},
+            "locations": [{
+                "url": "https://iiif.wellcomecollection.org/image/X1/info.json",
+                "license": {"id": "pdm", "label": "Public Domain Mark"},
+            }],
+            "source": {"id": "work123", "title": "A microscope"},
+        }]}
+        mock_client = MagicMock()
+        mock_client.__enter__.return_value.get.return_value.json.return_value = canned
+        with patch("nolan.image_search.httpx.Client", return_value=mock_client):
+            results = WellcomeProvider().search("microscope", max_results=5)
+
+        assert len(results) == 1
+        r = results[0]
+        assert r.url == "https://iiif.wellcomecollection.org/image/X1/full/full/0/default.jpg"
+        assert r.thumbnail_url == "https://iiif.wellcomecollection.org/image/X1/full/!400,400/0/default.jpg"
+        assert r.license == "Public Domain Mark"
+        assert r.source_url == "https://wellcomecollection.org/works/work123"
+        assert r.source == "wellcome"
+
+    def test_skips_results_without_location(self):
+        canned = {"results": [{"source": {"id": "w", "title": "no image"}}]}
+        mock_client = MagicMock()
+        mock_client.__enter__.return_value.get.return_value.json.return_value = canned
+        with patch("nolan.image_search.httpx.Client", return_value=mock_client):
+            assert WellcomeProvider().search("x") == []
+
+    def test_network_error_returns_empty(self):
+        with patch("nolan.image_search.httpx.Client", side_effect=Exception("boom")):
+            assert WellcomeProvider().search("x") == []
+
+
+class TestEuropeanaProvider:
+    """Tests for Europeana (key-gated EU cultural heritage)."""
+
+    def test_gated_on_key(self):
+        assert EuropeanaProvider().is_available() is False
+        assert EuropeanaProvider(api_key="k").is_available() is True
+
+    def test_parses_list_or_string_fields(self):
+        payload = {"items": [{
+            "edmIsShownBy": ["https://prov.eu/full.jpg"],
+            "edmPreview": ["https://prov.eu/thumb.jpg"],
+            "title": ["A painting"],
+            "guid": "https://europeana.eu/item/123",
+            "rights": ["http://creativecommons.org/publicdomain/mark/1.0/"],
+            "type": "IMAGE",
+        }]}
+        with patch("nolan.image_search.httpx.Client", return_value=_mock_json_client(payload)):
+            r = EuropeanaProvider(api_key="k").search("painting")
+        assert len(r) == 1
+        assert r[0].url == "https://prov.eu/full.jpg"
+        assert r[0].thumbnail_url == "https://prov.eu/thumb.jpg"
+        assert r[0].title == "A painting"
+        assert r[0].source_url == "https://europeana.eu/item/123"
+        assert r[0].media_type == "image"
+
+    def test_skips_items_without_url(self):
+        payload = {"items": [{"title": ["no media"]}]}
+        with patch("nolan.image_search.httpx.Client", return_value=_mock_json_client(payload)):
+            assert EuropeanaProvider(api_key="k").search("x") == []
+
+    def test_network_error_returns_empty(self):
+        with patch("nolan.image_search.httpx.Client", side_effect=Exception("boom")):
+            assert EuropeanaProvider(api_key="k").search("x") == []
+
+
+class TestDPLAProvider:
+    """Tests for DPLA (key-gated US archives/museums)."""
+
+    def test_gated_on_key(self):
+        assert DPLAProvider().is_available() is False
+        assert DPLAProvider(api_key="k").is_available() is True
+
+    def test_parses_object_and_source_resource(self):
+        payload = {"docs": [{
+            "object": "https://dp.la/thumb/abc.jpg",
+            "sourceResource": {"title": ["Old map"]},
+            "isShownAt": "https://provider.org/item/1",
+            "rights": "No known copyright",
+        }]}
+        with patch("nolan.image_search.httpx.Client", return_value=_mock_json_client(payload)):
+            r = DPLAProvider(api_key="k").search("map")
+        assert len(r) == 1
+        assert r[0].url == "https://dp.la/thumb/abc.jpg"
+        assert r[0].title == "Old map"
+        assert r[0].source_url == "https://provider.org/item/1"
+        assert r[0].license == "No known copyright"
+
+    def test_skips_docs_without_object(self):
+        payload = {"docs": [{"sourceResource": {"title": "no object"}}]}
+        with patch("nolan.image_search.httpx.Client", return_value=_mock_json_client(payload)):
+            assert DPLAProvider(api_key="k").search("x") == []
+
+    def test_network_error_returns_empty(self):
+        with patch("nolan.image_search.httpx.Client", side_effect=Exception("boom")):
+            assert DPLAProvider(api_key="k").search("x") == []
+
+
+class TestScorerLocalFile:
+    """The scorer must read local files (picture-library assets) for vision scoring."""
+
+    def test_download_image_reads_local_path(self, tmp_path):
+        from nolan.image_search import ImageScorer
+        p = tmp_path / "x.bin"
+        p.write_bytes(b"hello-bytes")
+        assert ImageScorer()._download_image(str(p)) == b"hello-bytes"
+
+    def test_download_image_missing_local_returns_none(self, tmp_path):
+        from nolan.image_search import ImageScorer
+        assert ImageScorer()._download_image(str(tmp_path / "nope.jpg")) is None
 
 
 class TestImageSearchResultSorting:

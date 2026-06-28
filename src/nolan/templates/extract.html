@@ -55,12 +55,21 @@
           <input type="number" id="limit" min="1" placeholder="all">
         </div>
       </div>
-      <div class="row" style="margin-top:12px;">
+      <div class="row" style="margin-top:12px; align-items:center;">
         <button id="preview-btn">Preview</button>
         <button id="download-btn" class="secondary">Extract &amp; Download</button>
+        <label style="display:flex; align-items:center; gap:6px; margin:0; color:var(--text-primary); font-size:13px;">
+          <input type="checkbox" id="tolib" checked> → Picture Library
+        </label>
+        <select id="libscope" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:7px;">
+          <option value="global">Global</option>
+          <option value="project">Project</option>
+        </select>
+        <input type="text" id="libproject" placeholder="project (if project)" style="width:150px;">
       </div>
       <div class="hint">Preview lists what was found without downloading. Extract &amp; Download saves
-        full-res files to <code>.scratch/extracted/&lt;host&gt;</code> with a manifest.</div>
+        full-res files to <code>.scratch/extracted/&lt;host&gt;</code> with a manifest, and (when
+        <em>→ Picture Library</em> is checked) ingests them into the searchable library.</div>
       <div id="error" class="err"></div>
       <div id="job"></div>
     </div>
@@ -125,12 +134,20 @@
       if (!urlEl.value.trim()) { errEl.textContent = "Enter a URL."; return; }
       reset();
       var b = body(); b.download = true;
+      if (document.getElementById("tolib").checked) {
+        b.save_to_library = true;
+        b.scope = document.getElementById("libscope").value;
+        b.project = document.getElementById("libproject").value.trim() || null;
+      }
       NolanJobs.start("/api/extract-assets", b, {
         into: jobEl,
         onDone: function (job) {
           if (job.result && job.result.results) {
             renderResults(job.result.extractor, job.result.results);
-            if (job.result.out_dir) metaEl.textContent += " — saved to " + job.result.out_dir;
+            var extra = "";
+            if (job.result.out_dir) extra += " — saved to " + job.result.out_dir;
+            if (job.result.saved_to_library) extra += " · " + job.result.saved_to_library + " added to library";
+            metaEl.textContent += extra;
           }
         }
       }).catch(function (e) { errEl.textContent = "Error: " + e.message; });

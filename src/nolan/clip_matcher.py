@@ -173,7 +173,7 @@ class ClipMatcher:
         """
         query = self.build_search_query(scene)
         if not query:
-            return []
+            return [], 0, None
 
         results: List[SemanticSearchResult] = []
         raw_results_count = 0

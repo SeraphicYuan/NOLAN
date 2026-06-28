@@ -1,0 +1,14 @@
+{
+  "comp": "BarCompare",
+  "out": "chart_C_capex.mp4",
+  "durationInFrames": 140,
+  "props": {
+    "title": "Big Tech AI capex vs the dot-com telecom peak",
+    "prefix": "$",
+    "suffix": "B",
+    "bars": [
+      {"label": "Dot-com telecom peak", "value": 160, "color": "#6b7280"},
+      {"label": "AI data-center capex, now", "value": 520, "color": "#46e08a"}
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "comp": "KShape",
+  "out": "chart_D_kshape.mp4",
+  "durationInFrames": 140,
+  "props": {
+    "title": "A K-shaped economy",
+    "topLabel": "ASSET OWNERS",
+    "bottomLabel": "EVERYONE ELSE"
+  }
+}

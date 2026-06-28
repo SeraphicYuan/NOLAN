@@ -1,0 +1,13 @@
+{
+  "comp": "KShape",
+  "out": "chart_D2_kshape_zigzag.mp4",
+  "durationInFrames": 150,
+  "props": {
+    "title": "A K-shaped economy",
+    "topLabel": "ASSET OWNERS",
+    "bottomLabel": "EVERYONE ELSE",
+    "lineStyle": "zigzag",
+    "jitter": 26,
+    "segments": 22
+  }
+}

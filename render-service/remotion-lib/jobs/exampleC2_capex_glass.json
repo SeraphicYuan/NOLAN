@@ -1,0 +1,13 @@
+{
+  "comp": "BarCompare",
+  "out": "chart_C2_capex_glass.mp4",
+  "durationInFrames": 140,
+  "props": {
+    "title": "Big Tech AI capex vs the dot-com telecom peak",
+    "prefix": "$", "suffix": "B", "barStyle": "glass",
+    "bars": [
+      {"label": "Dot-com telecom peak", "value": 160},
+      {"label": "AI data-center capex, now", "value": 520}
+    ]
+  }
+}

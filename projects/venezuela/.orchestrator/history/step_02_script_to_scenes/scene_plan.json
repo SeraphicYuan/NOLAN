@@ -1,0 +1,738 @@
+{
+  "sections": {
+    "Hook": [
+      {
+        "id": "scene_001",
+        "start": "0:00",
+        "duration": "7s",
+        "narration_excerpt": "Venezuela. It’s a land of incredible beauty—filled with cascading waterfalls, vibrant rainforests, and sun-drenched coastlines.",
+        "visual_type": "b-roll",
+        "visual_description": "Slow cinematic aerial of Angel Falls and the Gran Sabana, then a glide across rainforest canopy and a sun-drenched Caribbean coastline. Saturated, color-graded, premium documentary look.",
+        "search_query": "Venezuela landscape Angel Falls Gran Sabana coastline aerial",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_002",
+        "start": "0:07",
+        "duration": "6s",
+        "narration_excerpt": "But these idyllic images are constantly colliding with a much darker reality.",
+        "visual_type": "b-roll",
+        "visual_description": "Hard cut from beauty into modern Caracas crisis imagery: deteriorating apartment blocks at dusk, sparse traffic, distant smoke. Color graded cooler, contrast lifted.",
+        "search_query": "Caracas Venezuela poverty crisis streets contemporary",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_003",
+        "start": "0:13",
+        "duration": "6s",
+        "narration_excerpt": "We’re talking about widespread poverty, political unrest, and a nation that seems to be perpetually on the brink.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: a Venezuelan flag torn down the middle, half illuminated by warm sunset, half in shadow. Cinematic, painterly, no text.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic cinematic composition of a Venezuelan flag torn vertically down the middle, one half illuminated by warm golden hour light, the other half in deep moody shadow with smoke curling at its edge. Photorealistic, dramatic chiaroscuro lighting, shallow depth of field, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_004",
+        "start": "0:19",
+        "duration": "4s",
+        "narration_excerpt": "Listen to what Maria Rodriguez, a resident of Caracas, said recently:",
+        "visual_type": "b-roll",
+        "visual_description": "Tight handheld shot of an anonymous woman walking through a Caracas market street at dusk, framed from behind so identity is preserved. Used as visual setup for the quote that follows.",
+        "search_query": "Caracas market street woman walking shoppers",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_005",
+        "start": "0:23",
+        "duration": "9s",
+        "narration_excerpt": "We are tired. Tired of the empty promises, the shortages, and the constant struggle just to survive.",
+        "visual_type": "text-overlay",
+        "visual_description": "Full-screen typographic quote card. Large serif headline rendering of the quote with a slow upward fade-in line by line. Attribution beneath in small caps: 'MARIA RODRIGUEZ — CARACAS RESIDENT'. Restrained palette, deep charcoal background, warm cream type.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_006",
+        "start": "0:32",
+        "duration": "7s",
+        "narration_excerpt": "And here’s the most shocking part: all of this is happening in a country sitting on top of one of the world’s largest oil reserves.",
+        "visual_type": "b-roll",
+        "visual_description": "Wide shot of Lake Maracaibo oil derricks at golden hour, slow push-in. Then a tight macro of crude oil pumping. Conveys industrial scale.",
+        "search_query": "Venezuela Lake Maracaibo oil derricks crude oil infrastructure",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_007",
+        "start": "0:39",
+        "duration": "6s",
+        "narration_excerpt": "In theory, that resource should guarantee prosperity for everyone.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: a single oil drop falling from above, refracting into a cascade of gold coins that scatter across an empty grand hall. Cinematic, painterly, no text.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic cinematic still: a single droplet of crude oil falling from a darkened ceiling, refracting mid-air into a cascade of gold coins scattering across the polished marble floor of an empty grand hall. Photorealistic, dramatic side-lighting, deep blacks, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_008",
+        "start": "0:45",
+        "duration": "7s",
+        "narration_excerpt": "So, how did this happen? How did a nation with so much wealth become so fractured? That’s exactly what we’re going to explore today.",
+        "visual_type": "b-roll",
+        "visual_description": "Quick montage: a bustling Chavez-era rally cuts to a quiet empty supermarket aisle cuts to a Caracas skyline at twilight. Each cut held only ~2s, ending on a held wide of the city.",
+        "search_query": "Venezuela Caracas skyline crowd rally empty supermarket montage",
+        "comfyui_prompt": ""
+      }
+    ],
+    "Context": [
+      {
+        "id": "scene_009",
+        "start": "0:52",
+        "duration": "7s",
+        "narration_excerpt": "To really understand the complexities of modern Venezuela, we first need to look back at its history.",
+        "visual_type": "graphic",
+        "visual_description": "Animated horizontal timeline that scrolls from 'PRE-1500' on the right rapidly back to 'TODAY' on the left, with faint era labels (Indigenous → Spanish Colonial → Independence → Oil Era → Modern). Restrained typography, sepia accents on cream background.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_010",
+        "start": "0:59",
+        "duration": "9s",
+        "narration_excerpt": "Long before Europeans arrived, the land was home to many diverse indigenous groups.",
+        "visual_type": "generated-image",
+        "visual_description": "Pre-Columbian indigenous village in a clearing of tropical forest, thatched dwellings, communal fire, figures in period-accurate dress in soft mid-distance silhouette. Dignified, neutral, no caricature.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic cinematic still of a pre-Columbian indigenous village in a clearing of dense Venezuelan tropical forest, several thatched-roof dwellings around a communal cooking fire, figures in historically accurate Arawak dress moving in mid-distance, soft early-morning mist filtering through the canopy. Period-accurate, dignified, neutral framing, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_011",
+        "start": "1:08",
+        "duration": "10s",
+        "narration_excerpt": "In the west, the Arawak people settled the region, while the Carib dominated the east.",
+        "visual_type": "graphic",
+        "visual_description": "Stylized map of present-day Venezuela. Arawak territory shaded warm ochre on the western side, Carib territory shaded muted teal on the eastern side, both labeled. Coastline and major rivers marked, country borders ghosted in. Subtle hand-drawn texture.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_012",
+        "start": "1:18",
+        "duration": "8s",
+        "narration_excerpt": "These societies had their own distinct languages and traditions, and their farming practices shaped the landscape long before the modern era.",
+        "visual_type": "generated-image",
+        "visual_description": "Indigenous farmers tending terraced cassava and maize plots beside a river, traditional tools, period-accurate dress. Wide composition, soft natural light, dignified portrayal.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic cinematic still of pre-Columbian indigenous farmers tending terraced cassava and maize fields beside a winding river in tropical Venezuela, period-accurate woven garments and bone-and-wood farming tools, soft midday natural light filtering through high cloud, dignified neutral framing, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_013",
+        "start": "1:26",
+        "duration": "8s",
+        "narration_excerpt": "But everything changed with the arrival of Spanish colonizers.",
+        "visual_type": "generated-image",
+        "visual_description": "Spanish galleons approaching the Venezuelan coast at dawn, sails catching the first light, a longboat being lowered. Cinematic ocean wide shot, period-accurate 16th-century rigging.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic cinematic wide shot of two 16th-century Spanish galleons approaching the Venezuelan Caribbean coast at dawn, full sails catching the first golden light, a longboat with armored conquistadors being lowered to the calm sea, period-accurate rigging and dress, low angle from the shoreline, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_014",
+        "start": "1:34",
+        "duration": "8s",
+        "narration_excerpt": "After centuries of colonial rule, a spirit of independence began to sweep across South America.",
+        "visual_type": "graphic",
+        "visual_description": "Animated date marker card: large numerals '1810s — 1820s' fading in over a faint stylized continental map of South America, with small flame icons appearing across cities (Caracas, Bogotá, Quito, Lima). Restrained sepia palette.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_015",
+        "start": "1:42",
+        "duration": "8s",
+        "narration_excerpt": "Venezuela became a central player in that fight, led by the legendary Simón Bolívar.",
+        "visual_type": "generated-image",
+        "visual_description": "Three-quarter-length painterly portrait of Simón Bolívar in early-19th-century military dress, dignified expression, period-accurate uniform with epaulettes and sash, neutral muted background. No caricature, photorealistic with painterly lighting.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic painterly three-quarter-length portrait of Simón Bolívar in early-19th-century South American liberation army dress uniform, period-accurate epaulettes, dark coat with red sash, dignified composed expression, neutral muted studio background, soft Rembrandt lighting, premium documentary aesthetic, no caricature, no text, 16:9."
+      },
+      {
+        "id": "scene_016",
+        "start": "1:50",
+        "duration": "8s",
+        "narration_excerpt": "After years of intense struggle, the country officially declared its independence from Spain in 1821, forever cementing Bolívar as a national hero.",
+        "visual_type": "generated-image",
+        "visual_description": "Wide cinematic battlefield aftermath at dusk: independence-era flag being raised on a hilltop overlooking a valley, soldiers in period dress in mid-distance silhouette. Dignified, no glorification of violence.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic cinematic wide shot of an early-19th-century South American independence-war hilltop at dusk, the flag of Gran Colombia being raised on a wooden pole, period-accurate liberation soldiers in muted blue and white uniforms standing in mid-distance silhouette, smoke and golden hour light filling the valley below, dignified, no graphic violence, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_017",
+        "start": "1:58",
+        "duration": "7s",
+        "narration_excerpt": "Independence promised a new beginning, but the nation’s path was about to be reshaped by a new economic reality.",
+        "visual_type": "graphic",
+        "visual_description": "Date-marker transition card: large numerals '1821 → EARLY 1900s' fade across the screen with a thin horizontal arrow connecting them, faint Venezuelan map silhouette behind. Sepia and oil-black palette.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_018",
+        "start": "2:05",
+        "duration": "7s",
+        "narration_excerpt": "In the early 20th century, Venezuela’s story took a dramatic turn. The discovery of massive oil reserves transformed the country from a simple farming society into an economy almost entirely dependent on petroleum exports.",
+        "visual_type": "generated-image",
+        "visual_description": "Early-20th-century oil derrick erupting with crude on a sun-baked Venezuelan plain, period-dressed workers running back, sepia tonality. Photorealistic historical reconstruction.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic sepia-toned historical reconstruction of an early-20th-century wooden oil derrick erupting with a black gusher of crude oil on the sun-baked plains near Lake Maracaibo Venezuela, period-dressed oilfield workers in canvas overalls running back from the spray, harsh midday sunlight, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_019",
+        "start": "2:12",
+        "duration": "6s",
+        "narration_excerpt": "While this shift initially brought a lot of wealth, it also created the very challenges that would define Venezuela’s future. Eventually, this one commodity would come to influence almost every part of life in the country.",
+        "visual_type": "b-roll",
+        "visual_description": "Slow drone push over a modern Venezuelan oil refinery complex at dusk, flares burning, vast pipeline network. Sets up the modern oil-era stakes.",
+        "search_query": "Venezuela oil refinery pipeline modern aerial dusk",
+        "comfyui_prompt": ""
+      }
+    ],
+    "Thesis": [
+      {
+        "id": "scene_020",
+        "start": "2:18",
+        "duration": "7s",
+        "narration_excerpt": "On paper, Venezuela should be incredibly wealthy. But the reality is a society split right down the middle.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: an aerial cross-section of a single street where one side shows polished modern apartment towers and the other side shows informal hillside settlements, divided by a stark vertical line of light. Cinematic, photorealistic.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic aerial composition of a single Caracas street viewed from directly above, the left half showing polished modern glass apartment towers with manicured plazas, the right half showing dense informal hillside settlements with corrugated rooftops, divided by a stark vertical line of golden light running between them, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_021",
+        "start": "2:25",
+        "duration": "5s",
+        "narration_excerpt": "In this video, we’re exploring the root causes of that paradox.",
+        "visual_type": "b-roll",
+        "visual_description": "Tracking shot through a Caracas neighborhood at street level, juxtaposing wealth and scarcity in the same frame as the camera moves.",
+        "search_query": "Caracas neighborhood street tracking shot inequality",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_022",
+        "start": "2:30",
+        "duration": "10s",
+        "narration_excerpt": "Here is the key insight: these deep divisions stem from a complex mix of historical factors, flawed economic choices, and clashing political ideologies.",
+        "visual_type": "text-overlay",
+        "visual_description": "Held full-screen typographic card. Top line in small caps: 'HERE’S THE KEY INSIGHT'. Below in larger serif: the three driver phrases stacked — 'HISTORICAL FACTORS  /  FLAWED ECONOMIC CHOICES  /  CLASHING POLITICAL IDEOLOGIES'. Slow line-by-line fade-in. Deep charcoal background, warm cream type.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_023",
+        "start": "2:40",
+        "duration": "6s",
+        "narration_excerpt": "Together, these forces have fueled years of instability. We’re going to examine this through three lenses.",
+        "visual_type": "graphic",
+        "visual_description": "Three-card 'lenses' graphic introduced: three equal vertical cards laid side by side with simple icons and labels — '1. COLONIAL LEGACY & CAUDILLOS', '2. OIL DEPENDENCE & INEQUALITY', '3. POLITICAL FRAGMENTATION'. All three lit equally. This card will be reused at each Evidence opener.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_024",
+        "start": "2:46",
+        "duration": "6s",
+        "narration_excerpt": "First, we’ll see how the legacy of colonialism and early power struggles shaped the country’s social hierarchy.",
+        "visual_type": "text-overlay",
+        "visual_description": "Section-marker text-overlay: large numeral '1' top-left, label 'COLONIAL LEGACY & CAUDILLOS' beneath, sub-line 'how early power struggles shaped a social hierarchy'. Same typographic system as the key-insight card.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_025",
+        "start": "2:52",
+        "duration": "6s",
+        "narration_excerpt": "Second, we’ll look at how a total dependence on oil led to economic mismanagement and massive inequality.",
+        "visual_type": "graphic",
+        "visual_description": "The three-lenses card returns with lens 2 highlighted (lens 1 and lens 3 dimmed to 35% opacity). Lens 2 label fully readable: '2. OIL DEPENDENCE & INEQUALITY'.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_026",
+        "start": "2:58",
+        "duration": "6s",
+        "narration_excerpt": "And finally, we’ll explore how rival political visions fractured the nation even further.",
+        "visual_type": "text-overlay",
+        "visual_description": "Section-marker text-overlay: large word 'FINALLY' top-left, label 'POLITICAL FRAGMENTATION' beneath, sub-line 'how rival political visions fractured the nation'. Matches the system used for the 'First' marker.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_027",
+        "start": "3:04",
+        "duration": "6s",
+        "narration_excerpt": "Now, this isn’t a political statement—it is an analysis of the causes behind the crisis.",
+        "visual_type": "b-roll",
+        "visual_description": "Neutral, slow shot of a Venezuelan flag hanging still in low light, no crowd, no slogans. Frames the disclaimer with a steady, non-partisan visual register.",
+        "search_query": "Venezuela flag still neutral low light",
+        "comfyui_prompt": ""
+      }
+    ],
+    "Evidence 1": [
+      {
+        "id": "scene_028",
+        "start": "3:10",
+        "duration": "5s",
+        "narration_excerpt": "To understand Venezuela’s deep divisions, we have to look back much further than you might think.",
+        "visual_type": "graphic",
+        "visual_description": "Section-opener: the three-lenses card returns with lens 1 fully lit (lens 2 and lens 3 dimmed). Lens 1 label fully readable: '1. COLONIAL LEGACY & CAUDILLOS'. Subtitle beneath the card: 'LENS 1 OF 3'.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_029",
+        "start": "3:15",
+        "duration": "7s",
+        "narration_excerpt": "Between 1830 and 1935, the nation was defined by the rule of “caudillos”—powerful regional strongmen who held onto power through force and personal favors.",
+        "visual_type": "generated-image",
+        "visual_description": "Wide painterly composition of a 19th-century caudillo on horseback overlooking a small Venezuelan town from a ridge, period-accurate military dress, dignified and historically grounded — not heroic, not villainous.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic painterly cinematic still of a mid-19th-century Venezuelan caudillo on horseback at a ridgetop overlooking a small valley town below, period-accurate military uniform with sash and saber, calm overcast light, neutral and historically grounded composition, dignified framing, premium documentary aesthetic, no caricature, no text, 16:9."
+      },
+      {
+        "id": "scene_030",
+        "start": "3:22",
+        "duration": "10s",
+        "narration_excerpt": "These leaders were often military figures from the independence era, and their constant power struggles made it impossible to build stable national institutions.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic painterly composition: a half-built classical government building with scaffolding, two factions of armed men on opposite sides arguing in mid-distance, the structure unfinished and weather-stained.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic painterly cinematic still of a half-built mid-19th-century classical-style government building with weathered scaffolding still in place, two small factions of period-dressed armed men gesturing at each other on opposite sides of the unfinished steps, overcast neutral light, premium documentary aesthetic, no caricature, no text, 16:9."
+      },
+      {
+        "id": "scene_031",
+        "start": "3:32",
+        "duration": "8s",
+        "narration_excerpt": "Take José Antonio Páez, for example. He dominated much of this era, but his leadership prioritized local interests and personal gain over national unity.",
+        "visual_type": "graphic",
+        "visual_description": "Horizontal timeline 1830–1935 with caudillo-era leaders pinned along it. José Antonio Páez's name highlighted with a small period-style portrait icon and dates beneath. Sepia palette consistent with prior timelines.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_032",
+        "start": "3:40",
+        "duration": "9s",
+        "narration_excerpt": "This established a pattern of fragmented power that would haunt Venezuela for decades.",
+        "visual_type": "generated-image",
+        "visual_description": "Three-quarter painterly portrait of José Antonio Páez in mid-19th-century Venezuelan military dress, dignified composed expression, neutral muted background. Period-accurate, photorealistic, no caricature.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic painterly three-quarter portrait of José Antonio Páez in mid-19th-century Venezuelan general's military dress uniform, period-accurate epaulettes and sash, dignified composed expression, neutral muted studio background, soft Rembrandt lighting, premium documentary aesthetic, no caricature, no text, 16:9."
+      },
+      {
+        "id": "scene_033",
+        "start": "3:49",
+        "duration": "7s",
+        "narration_excerpt": "Then, in the early 20th century, everything changed with the discovery of oil.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: an empty national-flag map of Venezuela cracking apart along regional fault lines, sepia tones, slow zoom-in to one of the cracks.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic still of a topographic relief map of Venezuela viewed from above, the surface cracking apart along regional fault lines like dried earth, soft sepia and umber tonality, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_034",
+        "start": "3:56",
+        "duration": "7s",
+        "narration_excerpt": "Under the dictatorship of Juan Vicente Gómez, oil revenue started pouring into the country.",
+        "visual_type": "graphic",
+        "visual_description": "Date-marker card: '1908–1935 — GóMEZ ERA' fading in over a faint timeline, with an animated upward bar showing oil revenue rising sharply. Restrained sepia palette.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_035",
+        "start": "4:03",
+        "duration": "9s",
+        "narration_excerpt": "But here is the key insight: that wealth wasn’t shared. Gómez used the oil boom to enrich himself and his inner circle, which only made the existing inequality worse.",
+        "visual_type": "generated-image",
+        "visual_description": "Three-quarter painterly portrait of Juan Vicente Gómez in early-20th-century Venezuelan presidential military dress, formal pose, neutral muted background. Period-accurate, dignified, photorealistic, no caricature.",
+        "search_query": "",
+        "comfyui_prompt": "A photorealistic painterly three-quarter portrait of Juan Vicente Gómez in early-20th-century Venezuelan presidential military dress uniform with sash and medals, formal composed pose, neutral muted studio background, soft side-lighting, premium documentary aesthetic, no caricature, no text, 16:9."
+      },
+      {
+        "id": "scene_036",
+        "start": "4:12",
+        "duration": "10s",
+        "narration_excerpt": "But here is the key insight: that wealth wasn’t shared. Gómez used the oil boom to enrich himself and his inner circle, which only made the existing inequality worse.",
+        "visual_type": "text-overlay",
+        "visual_description": "Held full-screen typographic card. Top line in small caps: 'HERE IS THE KEY INSIGHT'. Below in larger serif: 'THE WEALTH WASN’T SHARED.' Sub-line beneath in lighter weight: 'Gómez used the oil boom to enrich an inner circle.' Same typographic system as the thesis key-insight card.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_037",
+        "start": "4:22",
+        "duration": "8s",
+        "narration_excerpt": "This concentration of wealth fueled deep resentment among those left behind and laid the groundwork for future social conflict.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: a long ornate banquet table laden with gold cutlery and oil-black centerpieces inside a grand hall, while in the foreground a thin row of empty wooden chairs faces away from it. Cinematic, painterly.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic still of a long ornate banquet table laden with gold cutlery, crystal glasses and dark oil-black floral centerpieces inside an early-20th-century grand hall, while in the immediate foreground a thin row of empty plain wooden chairs faces away from the table, dramatic side-lighting, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_038",
+        "start": "4:30",
+        "duration": "8s",
+        "narration_excerpt": "By the middle of the century, there were real attempts at democratic reform. Leaders like Rómulo Betancourt tried to diversify the economy and fix the inequality gap through social programs.",
+        "visual_type": "b-roll",
+        "visual_description": "Mid-20th-century black-and-white archival-style footage of Venezuelan civic life: voters at a polling station, mid-century Caracas streetscape, Betancourt-era public works underway. Drawn from indexed library where available.",
+        "search_query": "Venezuela 1950s 1960s democratic Betancourt era civic life archival",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_039",
+        "start": "4:38",
+        "duration": "10s",
+        "narration_excerpt": "While these efforts were promising, they were met with fierce resistance from people with vested interests. They simply weren’t enough to overcome the country’s deep-seated structural problems.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic painterly composition: a reformer in mid-20th-century suit standing at a podium, while shadowed silhouettes of seated industrialists at a long table sit unmoved in the foreground. Restrained palette, no caricature.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic painterly cinematic still of a mid-20th-century Venezuelan civic reformer in a tailored suit speaking from a wooden podium, while in the immediate foreground a row of shadowed silhouettes of seated industrialists at a long table sits unmoved with arms folded, restrained sepia and olive palette, dramatic side-lighting, premium documentary aesthetic, no caricature, no text, 16:9."
+      },
+      {
+        "id": "scene_040",
+        "start": "4:48",
+        "duration": "10s",
+        "narration_excerpt": "Even in 1976, when the oil industry was nationalized to give the people more control, the result was disappointing. What was meant to be a win for the public ultimately became just another avenue for political maneuvering and corruption.",
+        "visual_type": "b-roll",
+        "visual_description": "1970s archival-style footage of Venezuelan oil refinery workers and a formal nationalization ceremony. Crowd, flags, podium. Drawn from indexed library where available.",
+        "search_query": "Venezuela 1976 oil nationalization ceremony archival workers refinery",
+        "comfyui_prompt": ""
+      }
+    ],
+    "Evidence 2": [
+      {
+        "id": "scene_041",
+        "start": "4:58",
+        "duration": "5s",
+        "narration_excerpt": "The 1970s marked a period of massive economic growth for Venezuela, all fueled by soaring oil prices.",
+        "visual_type": "graphic",
+        "visual_description": "Section-opener: the three-lenses card returns with lens 2 fully lit (lens 1 and lens 3 dimmed). Lens 2 label fully readable: '2. OIL DEPENDENCE & INEQUALITY'. Subtitle beneath the card: 'LENS 2 OF 3'.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_042",
+        "start": "5:03",
+        "duration": "10s",
+        "narration_excerpt": "The 1970s marked a period of massive economic growth for Venezuela, all fueled by soaring oil prices.",
+        "visual_type": "b-roll",
+        "visual_description": "1970s archival footage of Caracas: new highways being built, modernist towers under construction, downtown bustle. Warm-graded archival look from the indexed library.",
+        "search_query": "Caracas 1970s construction boom highways skyline archival",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_043",
+        "start": "5:13",
+        "duration": "10s",
+        "narration_excerpt": "The government poured money into infrastructure, social programs, and industrial development. For a while, there was a real sense of widespread prosperity.",
+        "visual_type": "b-roll",
+        "visual_description": "1970s archival of Venezuelan public life: schoolchildren in uniform, hospital openings, families in new apartment blocks. Conveys the prosperity moment.",
+        "search_query": "Venezuela 1970s public schools hospitals families prosperity archival",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_044",
+        "start": "5:23",
+        "duration": "10s",
+        "narration_excerpt": "But here’s the problem: that entire economy was a house of cards. Because they relied so heavily on a single commodity, they were incredibly vulnerable.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: a tall delicately balanced house of cards built from oil-barrel-printed playing cards on a polished surface, a single drop of oil falling toward it from above. Cinematic, photorealistic.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic still of a tall delicately balanced house of cards built from playing cards each printed with a small oil-barrel motif, sitting on a polished dark wooden surface, a single droplet of crude oil suspended mid-fall just above the top card, dramatic side-lighting, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_045",
+        "start": "5:33",
+        "duration": "10s",
+        "narration_excerpt": "When oil prices plummeted in the 1980s, the Venezuelan economy buckled under the pressure.",
+        "visual_type": "graphic",
+        "visual_description": "Animated line chart: 'CRUDE OIL PRICE 1970–1989' rising sharply through the 70s, then collapsing through the early 80s. A second line for 'VENEZUELAN GDP' echoing the same shape. Vertical marker labeled '1980s COLLAPSE'. Restrained two-color palette.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_046",
+        "start": "5:43",
+        "duration": "10s",
+        "narration_excerpt": "The government implemented austerity measures to fight the crisis, but these policies hit the poor and marginalized the hardest. It only served to make the nation’s existing inequalities even worse.",
+        "visual_type": "b-roll",
+        "visual_description": "1980s archival of Caracas: long bread lines, shuttered shops, families in low-income neighborhoods, austerity-era footage from the indexed library.",
+        "search_query": "Venezuela 1980s austerity bread lines poverty Caracas archival",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_047",
+        "start": "5:53",
+        "duration": "10s",
+        "narration_excerpt": "Everything finally boiled over in 1989 with the Caracazo riots.",
+        "visual_type": "b-roll",
+        "visual_description": "1989 Caracazo archival footage from the indexed library: crowds in the streets, overturned vehicles, smoke rising over Caracas hillsides. Quick cuts, raw archival look.",
+        "search_query": "Caracazo 1989 riots Caracas Venezuela archival protest",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_048",
+        "start": "6:03",
+        "duration": "8s",
+        "narration_excerpt": "This was a spontaneous explosion of social unrest, and it was a clear sign of the deep-seated frustration and anger simmering beneath the surface of society.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: a hand-painted cracked stone surface from above, a single column of smoke rising from a fissure that runs across the frame. Cinematic, restrained palette.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic overhead still of a cracked stone plaza surface, a deep fissure running diagonally across the frame, a single thin column of smoke rising from the fissure into the frame, restrained ash and ochre palette, dramatic late-afternoon side-light, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_049",
+        "start": "6:11",
+        "duration": "10s",
+        "narration_excerpt": "This volatile environment was the perfect stage for Hugo Chávez. He capitalized on the public’s discontent with the political establishment and the long history of inequality we discussed. In 1998, Chávez rose to power on a platform of radical change. He called it the Bolivarian Revolution.",
+        "visual_type": "b-roll",
+        "visual_description": "1998-era archival of Hugo Chávez at a campaign rally and at the inauguration: neutral, official footage from the indexed library, no hostile or glorifying framing. Quick intercuts to crowd reactions.",
+        "search_query": "Hugo Chavez 1998 campaign rally inauguration Venezuela archival",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_050",
+        "start": "6:21",
+        "duration": "10s",
+        "narration_excerpt": "Inspired by the vision of Simón Bolívar, he promised to redistribute wealth and finally empower the poor.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic painterly composition: a large bronze statue of Simón Bolívar in a Caracas plaza at dusk, a modern crowd silhouetted at its base looking up. Dignified, neutral framing.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic still of a tall bronze equestrian statue of Simón Bolívar at the center of a Caracas plaza at dusk, a modern crowd silhouetted at the statue's base looking up, soft golden hour light catching the statue's edges, dignified neutral framing, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_051",
+        "start": "6:31",
+        "duration": "9s",
+        "narration_excerpt": "However, while Chávez’s policies were initially popular, they pushed the country toward even more polarization. After a failed coup attempt in 2002, Chávez moved to consolidate his power.",
+        "visual_type": "b-roll",
+        "visual_description": "2002 archival from the indexed library: opposition marches and pro-Chávez rallies in alternating quick cuts, news-style footage of the April 2002 coup events. Neutral framing.",
+        "search_query": "Venezuela 2002 coup attempt Chavez opposition rallies archival",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_052",
+        "start": "6:40",
+        "duration": "8s",
+        "narration_excerpt": "He created parallel social programs that bypassed traditional institutions, which deepened the public’s dependence on the state. While these actions were intended to alleviate poverty, they often just helped him entrench his political base and further marginalize his opponents.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: two parallel lines of doors, one set labeled with faint 'MINISTRY' nameplates and locked, the other set new and brightly painted with people queueing at them. Cinematic, photorealistic.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic still of two parallel rows of doors along a long corridor, the upper row of older wooden ministry doors with faded brass nameplates and chained handles, the lower row of newly painted bright doors with a queue of people waiting beside them, restrained palette, soft overhead light, premium documentary aesthetic, no readable text, 16:9."
+      }
+    ],
+    "Evidence 3": [
+      {
+        "id": "scene_053",
+        "start": "6:48",
+        "duration": "5s",
+        "narration_excerpt": "Those seeds of division we’ve been tracking really started to bloom in 2014, when oil prices collapsed.",
+        "visual_type": "graphic",
+        "visual_description": "Section-opener: the three-lenses card returns with lens 3 fully lit (lens 1 and lens 2 dimmed). Lens 3 label fully readable: '3. POLITICAL FRAGMENTATION'. Subtitle beneath the card: 'LENS 3 OF 3'.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_054",
+        "start": "6:53",
+        "duration": "8s",
+        "narration_excerpt": "Those seeds of division we’ve been tracking really started to bloom in 2014, when oil prices collapsed.",
+        "visual_type": "graphic",
+        "visual_description": "Animated line chart: 'BRENT CRUDE 2010–2016' holding around $100 then collapsing through 2014–2016. Vertical marker labeled '2014 OIL CRASH' fades in. Same chart system as the 1980s chart for visual continuity.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_055",
+        "start": "7:01",
+        "duration": "8s",
+        "narration_excerpt": "It showed just how dependent the nation had become on that single commodity. The economic fallout was fast, and it was brutal.",
+        "visual_type": "b-roll",
+        "visual_description": "Contemporary archival from the indexed library: idle oil infrastructure, layoffs at refinery gates, news-style footage of Venezuelan economic strain in 2014–2015.",
+        "search_query": "Venezuela 2014 oil crash economic crisis refinery contemporary",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_056",
+        "start": "7:09",
+        "duration": "8s",
+        "narration_excerpt": "Hyperinflation spiraled out of control, making the Bolivar virtually worthless.",
+        "visual_type": "graphic",
+        "visual_description": "Hyperinflation chart: a logarithmic-style climb of the Venezuelan inflation rate 2015–2019, the curve sweeping near-vertical at the right edge. Labels: 'BOLIVAR INFLATION %'. Beside the chart, a small inset of stacked banknotes growing taller.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_057",
+        "start": "7:17",
+        "duration": "8s",
+        "narration_excerpt": "Soon, even basic necessities like food and medicine were nowhere to be found.",
+        "visual_type": "b-roll",
+        "visual_description": "Contemporary archival from the indexed library: empty supermarket shelves, pharmacy queues, neighbors negotiating in informal markets. Restrained, dignified framing.",
+        "search_query": "Venezuela empty supermarket shelves pharmacy shortage queue contemporary",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_058",
+        "start": "7:25",
+        "duration": "10s",
+        "narration_excerpt": "Faced with these impossible conditions, millions of Venezuelans made the heartbreaking choice to leave everything behind and seek a better life elsewhere.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: a small family with worn suitcases walking along a long empty highway at dawn, the road stretching to a hazy horizon. Backs to camera, dignified, no faces shown.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic wide still of a small family of three with worn suitcases walking away from camera along a long empty South American highway at dawn, road stretching to a hazy horizon, soft pastel sky, dignified framing, backs to camera, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_059",
+        "start": "7:35",
+        "duration": "8s",
+        "narration_excerpt": "Now, things only got worse under the leadership of Nicolás Maduro. The political landscape fractured even further as opposition movements gained momentum.",
+        "visual_type": "b-roll",
+        "visual_description": "Maduro-era archival from the indexed library: official government footage of Maduro at a press address intercut quickly with opposition street marches. Neutral, no caricature.",
+        "search_query": "Nicolas Maduro press address opposition march Venezuela archival",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_060",
+        "start": "7:43",
+        "duration": "10s",
+        "narration_excerpt": "We saw figures like Juan Guaidó emerge, claiming the presidency and gaining recognition from several international powers. But instead of a solution, this only deepened the chasm within the country.",
+        "visual_type": "b-roll",
+        "visual_description": "2019-era archival from the indexed library: Juan Guaidó addressing crowds, international news graphics of countries recognizing his claim, intercut with rival Maduro footage. Neutral framing throughout.",
+        "search_query": "Juan Guaido Venezuela 2019 presidency claim opposition crowd archival",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_061",
+        "start": "7:53",
+        "duration": "10s",
+        "narration_excerpt": "But here’s the key insight: the real accelerant for all this disunity was the deep-seated corruption that plagued one government after another.",
+        "visual_type": "text-overlay",
+        "visual_description": "Held full-screen typographic card. Top line in small caps: 'HERE’S THE KEY INSIGHT'. Below in larger serif: 'THE REAL ACCELERANT WAS CORRUPTION'. Sub-line beneath in lighter weight: 'one government after another.' Same typographic system as the prior key-insight cards.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_062",
+        "start": "8:03",
+        "duration": "8s",
+        "narration_excerpt": "There was a growing reality that officials were getting rich while the rest of the country suffered, and that ignited a powerful sense of resentment. It created a stark divide between those who benefited from government connections and those who were left to struggle.",
+        "visual_type": "b-roll",
+        "visual_description": "Contemporary archival from the indexed library: a government motorcade passing through a struggling neighborhood, then quick cuts of a polished government event interior versus a cracked sidewalk in a poorer barrio.",
+        "search_query": "Venezuela government motorcade barrio inequality contrast contemporary",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_063",
+        "start": "8:11",
+        "duration": "8s",
+        "narration_excerpt": "In the end, this environment of corruption, combined with the economic crisis, didn’t just hurt the country—it completely tore the social fabric of Venezuela apart.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: a large hand-woven Venezuelan textile (in flag colors) being torn slowly down the middle, threads frayed at the rip line. Cinematic macro, painterly.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic macro still of a large hand-woven textile in muted yellow, blue and red bands being torn slowly down the middle, individual threads frayed at the rip line, dramatic side-lighting, restrained palette, premium documentary aesthetic, no text, 16:9."
+      }
+    ],
+    "Conclusion": [
+      {
+        "id": "scene_064",
+        "start": "8:19",
+        "duration": "12s",
+        "narration_excerpt": "So, we’ve taken a look at the deep divisions within Venezuelan society. It’s a stark contrast, especially when you consider the nation’s incredible natural wealth.",
+        "visual_type": "b-roll",
+        "visual_description": "Slow held aerial of a Venezuelan landscape: tepui plateaus or coastline at golden hour, pulled back to feel reflective. Echoes the Hook's opening beauty footage to bring the essay full circle.",
+        "search_query": "Venezuela landscape aerial tepui Gran Sabana coastline golden hour",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_065",
+        "start": "8:31",
+        "duration": "7s",
+        "narration_excerpt": "We’ve explored three main reasons why this happened.",
+        "visual_type": "graphic",
+        "visual_description": "The three-lenses card returns with all three fully lit and labeled: '1. COLONIAL LEGACY & CAUDILLOS', '2. OIL DEPENDENCE & INEQUALITY', '3. POLITICAL FRAGMENTATION'. Used as the synthesis card.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_066",
+        "start": "8:38",
+        "duration": "10s",
+        "narration_excerpt": "First, there’s the legacy of colonialism and the era of the “caudillos.” That history created a pattern of instability and inequality that still resonates today.",
+        "visual_type": "text-overlay",
+        "visual_description": "Recap text-overlay: large numeral '1' top-left, label 'COLONIAL LEGACY & CAUDILLOS', sub-line 'a pattern of instability that still resonates'. A small ghosted painterly silhouette of a 19th-century caudillo on horseback fades in behind the type.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_067",
+        "start": "8:48",
+        "duration": "10s",
+        "narration_excerpt": "Second, the country’s reliance on oil—which seemed like a blessing at first—actually made the economy vulnerable and made existing social gaps even wider.",
+        "visual_type": "b-roll",
+        "visual_description": "Slow held shot of an idle oil pumpjack against a wide Venezuelan sky, rust on the metal, sound of wind. Indexed-library footage if available.",
+        "search_query": "Venezuela oil pumpjack idle wide sky rusted infrastructure",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_068",
+        "start": "8:58",
+        "duration": "10s",
+        "narration_excerpt": "And finally, there’s the political fragmentation. Competing ideologies and widespread corruption have only pushed people further apart.",
+        "visual_type": "text-overlay",
+        "visual_description": "Recap text-overlay: large word 'FINALLY' top-left, label 'POLITICAL FRAGMENTATION', sub-line 'competing ideologies have pushed people apart'. A small ghosted silhouette of a divided crowd fades in behind the type.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_069",
+        "start": "9:08",
+        "duration": "10s",
+        "narration_excerpt": "When you put it all together, Venezuela’s story is really about unfulfilled potential. A mix of history, flawed policies, and conflicting ideologies have created a divided society, despite all those resources.",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: a vast wheat-or-coffee-field-like expanse with a single seedling growing in the foreground, a stormy and a clear sky split across the horizon. Cinematic, painterly, hopeful but unresolved.",
+        "search_query": "",
+        "comfyui_prompt": "A symbolic photorealistic cinematic wide still of a vast Venezuelan plain stretching to the horizon, a single small green seedling rising from cracked earth in the immediate foreground, the sky above split between dark stormclouds on the right and clear pale blue on the left, soft directional light, hopeful but unresolved tone, premium documentary aesthetic, no text, 16:9."
+      },
+      {
+        "id": "scene_070",
+        "start": "9:18",
+        "duration": "12s",
+        "narration_excerpt": "Now, overcoming these divisions and finding true stability is a daunting task. It’s not going to be easy. But here’s the key insight: understanding these complexities is the first step toward finding a way forward.",
+        "visual_type": "text-overlay",
+        "visual_description": "Held full-screen typographic card, longest hold of the video. Top line in small caps: 'HERE’S THE KEY INSIGHT'. Below in larger serif: 'UNDERSTANDING THESE COMPLEXITIES'. Sub-line beneath: 'IS THE FIRST STEP TOWARD FINDING A WAY FORWARD.' Same typographic system as the prior key-insight cards.",
+        "search_query": "",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_071",
+        "start": "9:30",
+        "duration": "8s",
+        "narration_excerpt": "I encourage you to dig deeper into the history and culture of this fascinating country. Look for different perspectives and stay informed. We can all advocate for policies that focus on dialogue, reconciliation, and sustainable growth.",
+        "visual_type": "b-roll",
+        "visual_description": "Soft tracking shots of Venezuelan civic life: a community meeting, a market exchange, a teacher with students. Quietly hopeful, no slogans.",
+        "search_query": "Venezuela community meeting market teacher students civic life contemporary",
+        "comfyui_prompt": ""
+      },
+      {
+        "id": "scene_072",
+        "start": "9:38",
+        "duration": "12s",
+        "narration_excerpt": "By educating ourselves and taking action, we can contribute to a future where Venezuela finally reaches its potential—a future where its people can truly thrive in unity and prosperity.",
+        "visual_type": "b-roll",
+        "visual_description": "Final held image: a slow, sustained aerial pulling back over a Venezuelan landscape at dusk — mountain silhouette, river catching the last light — letting the essay breathe to its end.",
+        "search_query": "Venezuela landscape aerial dusk mountain river held closing",
+        "comfyui_prompt": ""
+      }
+    ]
+  }
+}

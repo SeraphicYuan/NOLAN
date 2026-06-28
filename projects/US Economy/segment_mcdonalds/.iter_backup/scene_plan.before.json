@@ -1,0 +1,750 @@
+{
+  "sections": {
+    "segment": [
+      {
+        "id": "Segment_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 0.0,
+        "end_seconds": 8.025,
+        "narration_excerpt": "actively picking sides",
+        "visual_type": "generated",
+        "visual_description": "A stylized, symmetrical split-screen composition of a corporate boardroom table. The left side is bathed in warm, golden light with traditional wood textures, while the right side is cool, blue-tinted, and metallic. The division is sharp, symbolizing polarization.",
+        "search_query": "",
+        "comfyui_prompt": "cinematic split screen, corporate boardroom table, distinct color grading, left side warm golden wood, right side cool blue metallic, sharp vertical division line, high contrast, symbolic polarization, 8k, hyperrealistic",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "sides",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_001.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 8.025,
+        "end_seconds": 13.375,
+        "narration_excerpt": "death spiral",
+        "visual_type": "graphics",
+        "visual_description": "An animated line graph showing McDonald's stock price and sales dipping sharply during the early 2000s, with a red downward trend arrow.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "death spiral",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "chart-line-plain-text",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "McDonald's Performance (Early 2000s)",
+            "items": [
+              {
+                "label": "2000",
+                "value": 100
+              },
+              {
+                "label": "2002",
+                "value": 60
+              },
+              {
+                "label": "2003",
+                "value": 45
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_002.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "line-chart",
+          "backend": "python",
+          "target": "LineChartRenderer",
+          "content": {
+            "points": [
+              [
+                "1999",
+                28
+              ],
+              [
+                "2000",
+                24
+              ],
+              [
+                "2001",
+                20
+              ],
+              [
+                "2002",
+                16
+              ],
+              [
+                "2003",
+                14
+              ]
+            ],
+            "title": "McDonald's Early 2000s Decline",
+            "value_prefix": "",
+            "value_suffix": ""
+          },
+          "style": {},
+          "duration": 6.0
+        },
+        "resolved_source": "motion:line-chart",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_003",
+        "covers_beats": [
+          "beat_003"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 13.375,
+        "end_seconds": 18.725,
+        "narration_excerpt": "dollar menu",
+        "visual_type": "generated",
+        "visual_description": "A high-quality, nostalgic reconstruction of a mid-2000s McDonald's interior menu board. The focus is on the 'Dollar Menu' section, brightly lit with yellow and red branding, showcasing items like McChicken and Cheeseburgers at $1.00.",
+        "search_query": "McDonald's dollar menu 2000s",
+        "comfyui_prompt": "photorealistic shot of a McDonald's menu board from 2005, focus on 'Dollar Menu' section, bright yellow and red lighting, vintage fast food aesthetic, shallow depth of field, 4k",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "dollar menu",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_003.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_004",
+        "covers_beats": [
+          "beat_004"
+        ],
+        "start": "0:00",
+        "duration": "2s",
+        "start_seconds": 18.725,
+        "end_seconds": 24.075,
+        "narration_excerpt": "Remember those?",
+        "visual_type": "generated",
+        "visual_description": "A close-up, slightly grainy, nostalgic shot of a single silver dollar coin resting on a red plastic fast-food tray. The lighting is soft and warm, evoking a sense of memory and simplicity.",
+        "search_query": "",
+        "comfyui_prompt": "close-up macro shot, silver dollar coin on red plastic fast food tray, film grain overlay, warm nostalgic lighting, shallow depth of field, bokeh background, 35mm film style",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "those",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_004.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_005",
+        "covers_beats": [
+          "beat_005"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 24.075,
+        "end_seconds": 26.75,
+        "narration_excerpt": "worked",
+        "visual_type": "generated",
+        "visual_description": "A stylized 3D illustration of a hand holding a crisp dollar bill. As the bill is held, it visually morphs or transforms into a juicy hamburger, symbolizing the conversion of money into value/food.",
+        "search_query": "",
+        "comfyui_prompt": "3D stylized illustration, hand holding a dollar bill, magical transformation into a hamburger, clean lines, bright colors, symbolic value, white background, octane render",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "worked",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_005.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_006",
+        "covers_beats": [
+          "beat_006"
+        ],
+        "start": "0:00",
+        "duration": "2s",
+        "start_seconds": 26.75,
+        "end_seconds": 29.425,
+        "narration_excerpt": "33%",
+        "visual_type": "graphics",
+        "visual_description": "Bold animated text '33%' appearing over a rising green revenue bar chart.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "33%",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "chart-column-simple",
+          "theme": "default",
+          "data": {
+            "title": "Revenue Growth",
+            "items": [
+              {
+                "label": "Pre-Dollar Menu",
+                "value": 100
+              },
+              {
+                "label": "Post-Dollar Menu",
+                "value": 133
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_006.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "counter",
+          "backend": "python",
+          "target": "CounterRenderer",
+          "content": {
+            "value": 33,
+            "label": "Revenue Growth",
+            "prefix": "",
+            "suffix": "%"
+          },
+          "style": {
+            "tone": "success"
+          },
+          "position": "center",
+          "duration": 4.0
+        },
+        "resolved_source": "motion:counter",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_007",
+        "covers_beats": [
+          "beat_007"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 29.425,
+        "end_seconds": 32.1,
+        "narration_excerpt": "everyone",
+        "visual_type": "generated",
+        "visual_description": "A diverse montage-style single shot (or composite) of various people\u2014a student, a construction worker, a family\u2014eating McDonald's in casual, bright settings. The focus is on accessibility and universality.",
+        "search_query": "",
+        "comfyui_prompt": "collage style composition, diverse group of people eating McDonald's burgers, casual clothing, bright natural lighting, happy expressions, candid photography style, high resolution",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "dissolve",
+        "sync_points": [
+          {
+            "trigger": "everyone",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_007.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_008",
+        "covers_beats": [
+          "beat_008"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 32.1,
+        "end_seconds": 34.775,
+        "narration_excerpt": "2025",
+        "visual_type": "generated",
+        "visual_description": "A modern McDonald's storefront at dusk. The architecture is sleek and modern. The lighting is cooler, with blue and white tones, giving it a slightly exclusive or sterile feel compared to the previous warm scenes.",
+        "search_query": "",
+        "comfyui_prompt": "modern McDonald's exterior at dusk, sleek architecture, cool blue and white lighting, twilight sky, cinematic wide shot, slightly sterile atmosphere, 8k, photorealistic",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "2025",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_008.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated [render-failed: TimeoutError] [render-failed: RuntimeError]->card-fallback->card-fallback",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_009",
+        "covers_beats": [
+          "beat_009"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 34.775,
+        "end_seconds": 37.45,
+        "narration_excerpt": "dropped",
+        "visual_type": "graphics",
+        "visual_description": "A quote card with the CEO's statement, accompanied by a downward arrow graphic labeled 'Low-Income Traffic' dropping significantly.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "dropped",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "list-row-simple-horizontal-arrow",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "CEO Statement: Low-Income Traffic",
+            "items": [
+              {
+                "label": "Current Trend",
+                "desc": "Double-digit drop"
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_009.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "premium-card",
+          "backend": "remotion",
+          "target": "PremiumCard",
+          "content": {
+            "title": "CEO Statement",
+            "subtitle": "Low-Income Traffic",
+            "kicker": ""
+          },
+          "style": {
+            "cardStyle": "glass"
+          },
+          "theme": "dark-editorial",
+          "duration": 4.0
+        },
+        "resolved_source": "motion:premium-card",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_010",
+        "covers_beats": [
+          "beat_010"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 37.45,
+        "end_seconds": 40.125,
+        "narration_excerpt": "luxury",
+        "visual_type": "graphics",
+        "visual_description": "A large statistic '78%' with the word 'LUXURY' stamped over a burger icon.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "luxury",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "chart-pie-plain-text",
+          "theme": "cool",
+          "data": {
+            "title": "Perception of Fast Food",
+            "items": [
+              {
+                "label": "View as Luxury",
+                "value": 78
+              },
+              {
+                "label": "View as Affordable",
+                "value": 22
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_010.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "annotate-stat",
+          "backend": "remotion",
+          "target": "AnnotateStat",
+          "content": {
+            "value": "78%",
+            "label": "LUXURY"
+          },
+          "style": {
+            "shapeStyle": "clean"
+          },
+          "position": "center",
+          "theme": "dark-editorial",
+          "duration": 4.0
+        },
+        "resolved_source": "motion:annotate-stat",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_011",
+        "covers_beats": [
+          "beat_011"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 40.125,
+        "end_seconds": 42.8,
+        "narration_excerpt": "skyrocketed",
+        "visual_type": "generated",
+        "visual_description": "An upward trending rocket or arrow graphic labeled 'High-Income Traffic' against a backdrop of premium dining aesthetics, such as a blurred upscale interior.",
+        "search_query": "",
+        "comfyui_prompt": "3D graphic of a rocket or arrow shooting upwards, labeled 'High-Income', background is blurred upscale restaurant interior, gold and dark green color palette, cinematic lighting, motion blur",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "skyrocketed",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_011.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated [render-failed: TimeoutError] [render-failed: RuntimeError]->card-fallback->card-fallback",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_012",
+        "covers_beats": [
+          "beat_012"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 42.8,
+        "end_seconds": 48.15,
+        "narration_excerpt": "every industry",
+        "visual_type": "generated",
+        "visual_description": "A map of the USA with various industry icons (retail, auto, tech) splitting into two distinct colors (e.g., blue and orange) across the map, symbolizing the widespread bifurcation.",
+        "search_query": "",
+        "comfyui_prompt": "stylized map of the USA, flat design, icons for retail auto and tech scattered across, each icon split into two contrasting colors, clean vector art, white background, infographic style",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "every industry",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_012.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated [render-failed: TimeoutError] [render-failed: RuntimeError]->card-fallback->card-fallback",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_013",
+        "covers_beats": [
+          "beat_013"
+        ],
+        "start": "0:00",
+        "duration": "2s",
+        "start_seconds": 48.15,
+        "end_seconds": 50.825,
+        "narration_excerpt": "two",
+        "visual_type": "generated",
+        "visual_description": "A symbolic visual of a generic object (like a dollar bill or a shopping cart) cracking cleanly down the middle into two halves, floating in a void.",
+        "search_query": "",
+        "comfyui_prompt": "symbolic 3D render, a shopping cart cracking in half, clean break, floating in dark void, dramatic lighting, high contrast, metaphor for division, 8k",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "two",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_013.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated [render-failed: TimeoutError] [render-failed: RuntimeError]->card-fallback->card-fallback",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Segment_scene_014",
+        "covers_beats": [
+          "beat_014"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 50.825,
+        "end_seconds": 53.5,
+        "narration_excerpt": "retailers",
+        "visual_type": "generated",
+        "visual_description": "Exterior shot of a well-known discount retailer store (resembling Walmart or Target) in daylight, establishing the next segment of the essay.",
+        "search_query": "",
+        "comfyui_prompt": "wide exterior shot of a large discount retail store, big box architecture, parking lot in foreground, daytime, clear sky, realistic, 4k",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "fade",
+        "sync_points": [
+          {
+            "trigger": "retailers",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Segment_scene_014.mp4",
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "generated [render-failed: TimeoutError] [render-failed: RuntimeError]->card-fallback->card-fallback",
+        "subtitle_cues": []
+      }
+    ]
+  }
+}

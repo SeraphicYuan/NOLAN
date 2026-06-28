@@ -1423,8 +1423,7 @@ class Director:
                 "scene_plan.json": scene_plan_after,
                 "reasoning.md": (
                     f"# Step {record.step_num}: select_clips\n\n"
-                    f"Claude CLI elapsed: {result.elapsed_seconds:.1f}s, "
-                    f"events: {result.event_count}\n\n"
+                    f"Matched via fast semantic vector search (no Claude pass).\n\n"
                     f"## Report\n\n{report_body}\n"
                 ),
             },
@@ -1436,8 +1435,7 @@ class Director:
         state_mod.save_state(self.project_path, state)
 
         summary_lines = [
-            f"clip_selector ran in {result.elapsed_seconds:.1f}s "
-            f"({result.event_count} stream events).",
+            "clip_selector matched scenes via fast semantic vector search.",
             f"Report at `.orchestrator/modules/clip_selector/last_report.md`.",
             f"`scene_plan.json` updated in place; snapshot in "
             f"`.orchestrator/history/step_{record.step_num:02d}_select_clips/`.",

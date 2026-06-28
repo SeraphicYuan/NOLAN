@@ -1,0 +1,348 @@
+{
+  "number-counting-animation-temgw9WZsB": [
+    "number",
+    "counter",
+    "statistic",
+    "data"
+  ],
+  "number-counter-ssLbxKeW8Z": [
+    "number",
+    "counter",
+    "statistic",
+    "data",
+    "counting"
+  ],
+  "arrow-down-bounce-mXVB1I6SyD": [
+    "icon",
+    "symbol",
+    "ui",
+    "bounce",
+    "spring",
+    "elastic",
+    "arrow",
+    "direction"
+  ],
+  "check-mark-success-hzJ4cKEtXR": [
+    "icon",
+    "symbol",
+    "ui",
+    "checkmark",
+    "success",
+    "done"
+  ],
+  "loading-40-paperplane-pXSmJB5J2C": [
+    "loading",
+    "spinner",
+    "wait",
+    "animation",
+    "loader"
+  ],
+  "lower-third-animation-FfK5z5l9fd": [
+    "lower-third",
+    "name",
+    "title",
+    "speaker",
+    "label"
+  ],
+  "lower-third-owdkgGX5Tc": [
+    "lower-third",
+    "name",
+    "title",
+    "speaker",
+    "label"
+  ],
+  "progress-bar-sqm4mSYd5d": [
+    "progress",
+    "loading",
+    "bar",
+    "percentage"
+  ],
+  "progress-loading-bar-KWTD4pWqDc": [
+    "progress",
+    "loading",
+    "bar",
+    "percentage",
+    "loader"
+  ],
+  "text-reveal-JrGm7Dk6WI": [
+    "title",
+    "heading",
+    "intro",
+    "text",
+    "reveal",
+    "appear",
+    "show"
+  ],
+  "simple-screen-wipe-Obgep2D0Cw": [
+    "transition",
+    "wipe",
+    "fade",
+    "animation"
+  ],
+  "transition-x0uTRvQcnn": [
+    "transition",
+    "wipe",
+    "fade",
+    "animation"
+  ],
+  "jitter-uPcA9Kmq96mcz8a6A1nRzPHy": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion",
+    "glide",
+    "slide",
+    "smooth"
+  ],
+  "jitter-rwNXW64IP4cvcmu7nyNXvb9f": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion",
+    "morph",
+    "transform",
+    "shape"
+  ],
+  "jitter-Kk1siV3nlG0Z": [
+    "icon",
+    "ui",
+    "micro-interaction"
+  ],
+  "lottieflow-menunav": [
+    "menu",
+    "navigation",
+    "hamburger",
+    "ui"
+  ],
+  "lottieflow-menu14-menunavpack-smooth": [
+    "menu",
+    "navigation",
+    "hamburger",
+    "ui"
+  ],
+  "lottieflow-menu": [
+    "menu",
+    "navigation",
+    "hamburger",
+    "ui"
+  ],
+  "lottieflow-menu-pack9-smooth": [
+    "menu",
+    "navigation",
+    "hamburger",
+    "ui"
+  ],
+  "lottieflow-menu3-menunavpack-smooth": [
+    "menu",
+    "navigation",
+    "hamburger",
+    "ui"
+  ],
+  "lottieflow-slider%20arrow%20right-pack7-smooth": [
+    "arrow",
+    "direction",
+    "navigation",
+    "slider"
+  ],
+  "lottieflow-slider%20arrow%20left-pack7-smooth": [
+    "arrow",
+    "direction",
+    "navigation",
+    "slider"
+  ],
+  "lottieflow-slider%20arrows": [
+    "arrow",
+    "direction",
+    "navigation",
+    "slider"
+  ],
+  "lottieflow-sliderarrowsleft": [
+    "arrow",
+    "direction",
+    "navigation",
+    "slider"
+  ],
+  "lottieflow-slider%20arrow%20left-pack6-smooth": [
+    "arrow",
+    "direction",
+    "navigation",
+    "slider"
+  ],
+  "lottieflow-checkbox": [
+    "checkbox",
+    "toggle",
+    "form",
+    "ui",
+    "checkmark",
+    "success",
+    "done"
+  ],
+  "lottieflow-checkbox-pack7-smooth": [
+    "checkbox",
+    "toggle",
+    "form",
+    "ui",
+    "checkmark",
+    "success",
+    "done"
+  ],
+  "lottieflow-loader-pack6-smooth": [
+    "loading",
+    "spinner",
+    "wait"
+  ],
+  "lottieflow-loader-pack9-smooth": [
+    "loading",
+    "spinner",
+    "wait"
+  ],
+  "lottieflow-loader-pack8-smooth": [
+    "loading",
+    "spinner",
+    "wait"
+  ],
+  "lottieflow-loader-pack7-smooth": [
+    "loading",
+    "spinner",
+    "wait"
+  ],
+  "lottieflow-refresh": [
+    "loading",
+    "spinner",
+    "wait"
+  ],
+  "lottieflow-play-pack7-smooth": [
+    "play",
+    "pause",
+    "media",
+    "button"
+  ],
+  "lottieflow-play-pack8-smooth": [
+    "play",
+    "pause",
+    "media",
+    "button"
+  ],
+  "lottieflow-play-pack9-smooth": [
+    "play",
+    "pause",
+    "media",
+    "button"
+  ],
+  "lottieflow-scrolldown_v1": [
+    "scroll",
+    "arrow",
+    "navigation",
+    "indicator"
+  ],
+  "lottieflow-scroll%20down-pack8-smooth": [
+    "scroll",
+    "arrow",
+    "navigation",
+    "indicator"
+  ],
+  "lottieflow-scroll%20down-pack7-smooth": [
+    "scroll",
+    "arrow",
+    "navigation",
+    "indicator"
+  ],
+  "lottieflow-success": [
+    "success",
+    "check",
+    "done",
+    "confirmation"
+  ],
+  "lottieflow-success-pack7-smooth": [
+    "success",
+    "check",
+    "done",
+    "confirmation"
+  ],
+  "lottieflow-success-pack6-smooth": [
+    "success",
+    "check",
+    "done",
+    "confirmation"
+  ],
+  "lottieflow-attention%20grabber-pack8-smooth": [
+    "attention",
+    "alert",
+    "notification",
+    "emphasis"
+  ],
+  "lottieflow-attention%20grabber-pack6-smooth": [
+    "attention",
+    "alert",
+    "notification",
+    "emphasis"
+  ],
+  "lottieflow-attention%20grabbers": [
+    "attention",
+    "alert",
+    "notification",
+    "emphasis"
+  ],
+  "lottiefiles-magic-box": [
+    "icon",
+    "symbol",
+    "ui"
+  ],
+  "jitter-bouncing-period": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion"
+  ],
+  "jitter-cascading-text": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion"
+  ],
+  "jitter-counter-1000": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion",
+    "counter",
+    "number",
+    "counting"
+  ],
+  "jitter-glitch-text-reveal": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion",
+    "reveal",
+    "appear",
+    "show"
+  ],
+  "jitter-morph-lines-to-text": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion",
+    "morph",
+    "transform",
+    "shape"
+  ],
+  "jitter-morph-shape-to-text": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion",
+    "morph",
+    "transform",
+    "shape"
+  ],
+  "jitter-sliding-text-reveal": [
+    "text",
+    "typography",
+    "kinetic",
+    "motion",
+    "reveal",
+    "appear",
+    "show"
+  ]
+}

@@ -72,3 +72,12 @@ samples/
 
 # Script-style corpora + guides (user data)
 script_styles/
+
+# Global generated libraries (picture library, lottie render previews)
+/_library/
+
+# Node dependencies (never commit — was causing git add to stall)
+node_modules/
+
+# Generated silent audio tracks (render scratch — can exceed GitHub 100MB limit)
+silent.wav

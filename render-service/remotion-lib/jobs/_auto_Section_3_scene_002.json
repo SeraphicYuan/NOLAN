@@ -1,0 +1,15 @@
+{
+  "comp": "KShape",
+  "out": "Section_3_scene_002.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "title": "Market Divergence",
+    "topLabel": "S&P 500",
+    "bottomLabel": "Consumer Confidence",
+    "lineStyle": "straight",
+    "jitter": 24,
+    "segments": 18,
+    "theme": "dark-editorial"
+  }
+}

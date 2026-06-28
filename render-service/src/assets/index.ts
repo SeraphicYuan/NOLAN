@@ -15,6 +15,11 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Embedded common icons (24x24 viewBox, currentColor stroke)
 // These are bundled so render-service works standalone

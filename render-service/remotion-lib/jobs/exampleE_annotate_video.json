@@ -1,0 +1,10 @@
+{
+  "comp": "AnnotateOverVideo",
+  "out": "annotate_E_video.mp4",
+  "durationInFrames": 110,
+  "video": "remotion-lib/assets/broll.mp4",
+  "props": {
+    "focusX": 0.52, "focusY": 0.40, "rx": 230, "ry": 175,
+    "label": "borrowed money fueled this", "accent": "#ffd23b", "scrim": 0.14
+  }
+}

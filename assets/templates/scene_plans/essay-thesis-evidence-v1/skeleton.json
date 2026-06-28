@@ -1,0 +1,135 @@
+{
+  "template_id": "essay-thesis-evidence-v1",
+  "evidence_section_count": 3,
+  "evidence_section_count_range": [2, 5],
+  "default_runtime_seconds": 600,
+  "runtime_range_seconds": [300, 1200],
+  "sections": [
+    {
+      "name": "Hook",
+      "purpose": "Open on a paradox, arresting fact, or contrast that frames the central question. Establish stakes.",
+      "duration_pct": [5, 10],
+      "pacing": "fast",
+      "scene_duration_hint_seconds": [5, 7],
+      "beat_count_hint": [6, 10],
+      "required_beats": [
+        {
+          "role": "visual_paradox",
+          "purpose": "Arresting visual that establishes the topic's central tension",
+          "duration_hint_seconds": [4, 7]
+        },
+        {
+          "role": "human_stakes",
+          "purpose": "Quote from a named real person, or a small character moment, grounding the abstract topic in a human voice",
+          "duration_hint_seconds": [5, 8]
+        },
+        {
+          "role": "central_question",
+          "purpose": "Pose the question this video will answer",
+          "duration_hint_seconds": [5, 8]
+        }
+      ]
+    },
+    {
+      "name": "Context",
+      "purpose": "Background the viewer needs to understand the rest. Usually historical or definitional.",
+      "duration_pct": [12, 18],
+      "pacing": "standard",
+      "scene_duration_hint_seconds": [8, 11],
+      "beat_count_hint": [10, 16],
+      "required_beats": [
+        {
+          "role": "context_open",
+          "purpose": "Bridge from Hook ('to understand this, we need to look back...') into the contextual material"
+        },
+        {
+          "role": "context_body",
+          "purpose": "Chronological or topical setup; lean on maps, timelines, archival"
+        },
+        {
+          "role": "context_close",
+          "purpose": "Land on the moment that immediately precedes the present-day situation; set up the Thesis"
+        }
+      ]
+    },
+    {
+      "name": "Thesis",
+      "purpose": "Name the question explicitly and announce the structure of the answer.",
+      "duration_pct": [8, 12],
+      "pacing": "standard",
+      "scene_duration_hint_seconds": [8, 11],
+      "beat_count_hint": [4, 7],
+      "required_beats": [
+        {
+          "role": "thesis_statement",
+          "purpose": "Single clear sentence stating what the video argues"
+        },
+        {
+          "role": "structure_announcement",
+          "purpose": "Enumerate the evidence sections explicitly ('we'll examine this through N lenses: first... second... third...')"
+        },
+        {
+          "role": "scope_disclaimer",
+          "purpose": "Optional: clarify what the video is not (e.g., 'this isn't a partisan take, it's an analysis')",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "Evidence",
+      "is_repeating": true,
+      "repeat_count_field": "evidence_section_count",
+      "purpose": "One lens / cause / pillar of the argument. Returns to the thesis at the end.",
+      "duration_pct_per_section": [15, 22],
+      "pacing": "standard_to_medium_slow",
+      "scene_duration_hint_seconds": [8, 12],
+      "beat_count_hint": [8, 14],
+      "required_beats": [
+        {
+          "role": "evidence_open",
+          "purpose": "Name the lens and reference the thesis number visually (e.g., 'Cause #N')"
+        },
+        {
+          "role": "evidence_body",
+          "purpose": "Present the case, mixing narration with the project's visual modes"
+        },
+        {
+          "role": "evidence_close",
+          "purpose": "Return to the thesis explicitly — 'and that's how X contributed to Y'"
+        }
+      ]
+    },
+    {
+      "name": "Conclusion",
+      "purpose": "Synthesize the evidence sections; restate the thesis with the case now made; end on reflection or call to action.",
+      "duration_pct": [12, 18],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [12, 15],
+      "beat_count_hint": [7, 12],
+      "required_beats": [
+        {
+          "role": "thesis_restate",
+          "purpose": "Restate the thesis now that the evidence has backed it"
+        },
+        {
+          "role": "synthesis",
+          "purpose": "Cross-section synthesis — how the evidence sections combine, not just summarize each"
+        },
+        {
+          "role": "closing_call",
+          "purpose": "End on reflection, open question, or call to action. Match the project's voice."
+        },
+        {
+          "role": "final_image",
+          "purpose": "A held closing image (12-15s) that lets the conclusion breathe",
+          "duration_hint_seconds": [12, 15]
+        }
+      ]
+    }
+  ],
+  "global_constraints": {
+    "max_consecutive_same_visual_type": 2,
+    "section_break_marker_required": true,
+    "section_break_marker_visual_types": ["text-overlay", "graphic"]
+  }
+}

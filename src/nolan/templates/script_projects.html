@@ -133,12 +133,18 @@ async function api(path, opts) {
     return r.json();
 }
 
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
 async function loadStyles() {
     const data = await api('/api/script-styles');
     const sel = $('newStyle');
     const withGuide = (data.styles || []).filter(s => s.has_guide);
     if (!withGuide.length) { sel.innerHTML = '<option value="">No style guides yet — build one in Script Styles</option>'; return; }
-    sel.innerHTML = withGuide.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    sel.innerHTML = withGuide.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
 }
 
 async function loadProjects() {
@@ -146,9 +152,9 @@ async function loadProjects() {
     const list = $('projList');
     if (!data.projects.length) { list.innerHTML = '<div class="empty">No projects yet.</div>'; return; }
     list.innerHTML = data.projects.map(p => `
-        <div class="card ${current === p.slug ? 'active' : ''}" onclick="select('${p.slug}')">
-            <div class="name">${p.name}</div>
-            <div class="meta">style: ${p.style_id} · ${p.source_count} sources ·
+        <div class="card ${current === p.slug ? 'active' : ''}" onclick="select('${esc(p.slug)}')">
+            <div class="name">${esc(p.name)}</div>
+            <div class="meta">style: ${esc(p.style_id)} · ${esc(p.source_count)} sources ·
               <span class="badge ${p.has_script ? '' : 'no'}">${p.has_script ? 'script ✓' : 'no script'}</span></div>
         </div>`).join('');
 }
@@ -182,8 +188,8 @@ function renderSources(sources) {
     const el = $('srcList');
     if (!sources.length) { el.innerHTML = '<div class="empty">No sources yet.</div>'; return; }
     el.innerHTML = sources.map(s => `
-        <div class="src"><span style="cursor:pointer;" title="view fetched text" onclick="viewSource('${s.id}')">[${s.id}] (${s.kind}, ${s.status}) ${s.title || s.url || ''}</span>
-        <span class="x" onclick="removeSource('${s.id}')">✕</span></div>`).join('');
+        <div class="src"><span style="cursor:pointer;" title="view fetched text" onclick="viewSource('${esc(s.id)}')">[${esc(s.id)}] (${esc(s.kind)}, ${esc(s.status)}) ${esc(s.title || s.url || '')}</span>
+        <span class="x" onclick="removeSource('${esc(s.id)}')">✕</span></div>`).join('');
 }
 
 async function addUrl() {

@@ -1,0 +1,13 @@
+{
+  "comp": "PremiumCard",
+  "out": "05_premium-card.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "title": "The Government",
+    "subtitle": "who writes the rules",
+    "kicker": "Player 3",
+    "cardStyle": "glass",
+    "theme": "dark-editorial"
+  }
+}

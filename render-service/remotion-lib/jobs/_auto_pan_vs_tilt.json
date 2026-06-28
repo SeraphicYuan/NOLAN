@@ -1,0 +1,78 @@
+{
+  "comp": "PhotoMontage",
+  "out": "pan_vs_tilt.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "background": "#241016",
+    "vignette": 0.5,
+    "zoomStart": 1.03,
+    "zoomEnd": 1.1,
+    "panX": 0.0,
+    "panY": 0.0,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\f7\\f7b20ff79e23a5f61a25180f39ff65438adbad7965e3e6cf801ff6cd33a9af33.jpg",
+      "x": 0.28,
+      "y": 0.52,
+      "scale": 0.56,
+      "frame": "polaroid",
+      "caption": "tilt (rotateZ)",
+      "keys": [
+        {
+          "at": 0.3,
+          "opacity": 0.0,
+          "rotation": 0
+        },
+        {
+          "at": 1.0,
+          "opacity": 1.0,
+          "rotation": 0,
+          "ease": "out"
+        },
+        {
+          "at": 1.8,
+          "rotation": 0
+        },
+        {
+          "at": 2.5,
+          "rotation": 14,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\52\\52ae8c8a74f31c2d8c81e1019f521989462bd59f8962e583e11edc9228022aae.jpg",
+      "x": 0.72,
+      "y": 0.52,
+      "scale": 0.56,
+      "frame": "polaroid",
+      "perspective": 1200,
+      "caption": "pan (rotateY)",
+      "keys": [
+        {
+          "at": 0.5,
+          "opacity": 0.0,
+          "rotY": 0
+        },
+        {
+          "at": 1.2,
+          "opacity": 1.0,
+          "rotY": 0,
+          "ease": "out"
+        },
+        {
+          "at": 2.0,
+          "rotY": 0
+        },
+        {
+          "at": 2.9,
+          "rotY": -40,
+          "ease": "inOut"
+        }
+      ]
+    }
+  ]
+}

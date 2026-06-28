@@ -1,0 +1,23 @@
+{
+  "comp": "BarCompare",
+  "out": "Section_2_scene_002.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "title": "Spending Share: Top 10% vs Bottom 90%",
+    "bars": [
+      {
+        "label": "Top 10%",
+        "value": 50
+      },
+      {
+        "label": "Bottom 90%",
+        "value": 50
+      }
+    ],
+    "prefix": "",
+    "suffix": "%",
+    "barStyle": "gradient",
+    "theme": "dark-editorial"
+  }
+}

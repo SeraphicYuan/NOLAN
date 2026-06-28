@@ -37,9 +37,10 @@ def test_cli_has_index_command(runner):
     assert "video" in result.output.lower() or "directory" in result.output.lower()
 
 
-def test_cli_has_serve_command(runner):
-    """CLI has serve command."""
-    result = runner.invoke(main, ['serve', '--help'])
+def test_cli_has_hub_command(runner):
+    """CLI has the hub command (the unified web UI; legacy serve/browse/library
+    standalone viewers were removed in favor of it)."""
+    result = runner.invoke(main, ['hub', '--help'])
 
     assert result.exit_code == 0
-    assert "project" in result.output.lower()
+    assert "port" in result.output.lower()

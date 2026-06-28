@@ -1,0 +1,16 @@
+{
+  "comp": "AnnotateStat",
+  "out": "01_annotate-stat.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "value": "$46.6B",
+    "label": "total Lowe's buybacks",
+    "shapeStyle": "scribble",
+    "position": {
+      "x": 0.8,
+      "y": 0.82
+    },
+    "theme": "dark-editorial"
+  }
+}

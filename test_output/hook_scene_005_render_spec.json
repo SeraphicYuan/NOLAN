@@ -1,0 +1,14 @@
+{
+  "engine": "remotion",
+  "width": 1920,
+  "height": 1080,
+  "duration": 7.0,
+  "data": {
+    "lottie_path": "D:\\ClaudeProjects\\NOLAN\\test_output\\hook_scene_005_lower_third.json",
+    "lottie": {
+      "width": 1920,
+      "height": 1080,
+      "background": "#1a1a1a"
+    }
+  }
+}

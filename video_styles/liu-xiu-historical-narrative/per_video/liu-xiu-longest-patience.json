@@ -1,0 +1,318 @@
+{
+  "video_path": "projects\\_library\\source\\「劉秀」中國歷史上最漫長的一次忍耐.mp4",
+  "format": {
+    "width": 640,
+    "height": 360,
+    "fps": 30.0,
+    "aspect_ratio": "16:9",
+    "orientation": "landscape",
+    "duration": 573.43
+  },
+  "color": {
+    "palette": [
+      {
+        "hex": "#0b0b0d",
+        "weight": 0.431
+      },
+      {
+        "hex": "#251d1d",
+        "weight": 0.313
+      },
+      {
+        "hex": "#483534",
+        "weight": 0.146
+      },
+      {
+        "hex": "#874e44",
+        "weight": 0.075
+      },
+      {
+        "hex": "#ca946a",
+        "weight": 0.035
+      }
+    ],
+    "saturation": 0.348,
+    "brightness": 0.186,
+    "contrast": 0.137,
+    "warm_ratio": 0.87,
+    "temperature": "warm"
+  },
+  "motion": 0.126,
+  "graphics": {
+    "edge_density": 0.0579,
+    "lower_third_activity": 0.863
+  },
+  "pacing": {
+    "available": true,
+    "segment_count": 25,
+    "cuts_per_min": 2.62,
+    "shot_len_mean": 22.94,
+    "shot_len_median": 26.63,
+    "shot_len_stdev": 9.0,
+    "tempo": "slow"
+  },
+  "frames_analyzed": 24,
+  "frame_files": [
+    "frame_000.jpg",
+    "frame_001.jpg",
+    "frame_002.jpg",
+    "frame_003.jpg",
+    "frame_004.jpg",
+    "frame_005.jpg",
+    "frame_006.jpg",
+    "frame_007.jpg",
+    "frame_008.jpg",
+    "frame_009.jpg",
+    "frame_010.jpg",
+    "frame_011.jpg",
+    "frame_012.jpg",
+    "frame_013.jpg",
+    "frame_014.jpg",
+    "frame_015.jpg",
+    "frame_016.jpg",
+    "frame_017.jpg",
+    "frame_018.jpg",
+    "frame_019.jpg",
+    "frame_020.jpg",
+    "frame_021.jpg",
+    "frame_022.jpg",
+    "frame_023.jpg"
+  ],
+  "pairing": {
+    "available": true,
+    "segment_count": 24,
+    "mean_directness": 0.699,
+    "distribution": {
+      "literal": 0.333,
+      "associative": 0.625,
+      "tonal/abstract": 0.042
+    },
+    "directness_by_position": {
+      "open": 0.715,
+      "mid": 0.681,
+      "close": 0.697
+    },
+    "literalness": "mostly-associative",
+    "samples": [
+      {
+        "t": 0.0,
+        "directness": 0.647,
+        "band": "associative",
+        "position": "open",
+        "said": "There is a pain that is harder than death. It is not torture. It is not humiliation. It is when you know who killed your loved one, yet you ",
+        "shown": "This video frame features a melancholic illustration of an ancient Chinese nobleman accompanied by text stating 'There is a pain harder than"
+      },
+      {
+        "t": 22.3,
+        "directness": 0.72,
+        "band": "literal",
+        "position": "open",
+        "said": "and live on day by day. Autumn, twenty-three A.D. News spread from Wancheng. Liu Xiu's elder brother, Liu Yan, was killed by Emperor Gengshi",
+        "shown": "This segment uses a split-screen animation contrasting a calm, refined portrait of a nobleman with a dynamic scene of a horseman to illustra"
+      },
+      {
+        "t": 41.3,
+        "directness": 0.749,
+        "band": "literal",
+        "position": "open",
+        "said": "decorated general. Liu Xiu was leading troops away. Two months ago, he defeated four hundred twenty thousand with three thousand at Kunyang.",
+        "shown": "This frame illustrates the high-stakes political tension surrounding General Liu Xiu, juxtaposing the bureaucratic act of stamping an imperi"
+      },
+      {
+        "t": 60.5,
+        "directness": 0.714,
+        "band": "associative",
+        "position": "open",
+        "said": "He was twenty-eight that year. The longest endurance in Chinese history begins right here. To tell this story clearly, we must go back to th",
+        "shown": "The video uses an animation of a historical figure studying a war map to illustrate the beginning of Liu Xiu's life and his enduring legacy "
+      },
+      {
+        "t": 87.1,
+        "directness": 0.704,
+        "band": "associative",
+        "position": "open",
+        "said": "Liu Yan was a born leader. Bold, generous, and unconventional, he loved befriending heroes. He always spoke of restoring the Han. Such talk ",
+        "shown": "The video uses a split-screen visual to contrast the personalities of Liu Yan and Liu Xiu, depicting the latter as a humble figure in a fiel"
+      },
+      {
+        "t": 117.1,
+        "directness": 0.716,
+        "band": "associative",
+        "position": "open",
+        "said": "Standing together, everyone thought the elder brother would be the one to succeed. Chaos erupted at the end of the Xin Dynasty.",
+        "shown": "This animated segment illustrates the chaos at the end of the Xin Dynasty, showing a group of men—likely including an elder and younger brot"
+      },
+      {
+        "t": 119.8,
+        "directness": 0.75,
+        "band": "literal",
+        "position": "open",
+        "said": "Chaos erupted at the end of the Xin Dynasty. Rebel armies like the Chimei and Lulin erupted. Liu Yan seized the moment, revolting with his b",
+        "shown": "This segment illustrates the chaos of the late Xin Dynasty rebellion, showing Liu Yan and his followers overlooking the landscape before a v"
+      },
+      {
+        "t": 140.8,
+        "directness": 0.708,
+        "band": "associative",
+        "position": "open",
+        "said": "leaders grew uneasy. February, twenty-three A.D. Rebel forces gathered to choose an emperor. By merit and fame, Liu Yan was the best choice.",
+        "shown": "This segment features an illustration of a powerful commander leading rebel forces while the narrator explains how the Lulin army rejected t"
+      },
+      {
+        "t": 169.2,
+        "directness": 0.726,
+        "band": "literal",
+        "position": "open",
+        "said": "Yet this title didn't fix the core issue. It wasn't about the rank, but about what everyone could see: if Liu Yan wanted to, he was more qua",
+        "shown": "This video segment uses a split-screen illustration to visually contrast the 'earned' legitimacy of the armored Liu Yan (left) against the '"
+      },
+      {
+        "t": 192.8,
+        "directness": 0.717,
+        "band": "associative",
+        "position": "mid",
+        "said": "Liu Yan's very existence denied Liu Xuan. Worse yet, Liu Yan didn't hold back; he always resented Liu Xuan becoming emperor. His words and a",
+        "shown": "This segment illustrates the fatal conflict between Emperor Liu Xuan, shown seated on the throne, and his resentful rival Liu Yan, depicted "
+      },
+      {
+        "t": 222.8,
+        "directness": 0.653,
+        "band": "associative",
+        "position": "mid",
+        "said": "Upon hearing this, Liu Xiu was stuck. With little power, he had no way to resist. His subordinates included spies planted by Emperor Gengshi",
+        "shown": "The video displays the Chinese character for 'kneel' on a black background to visually emphasize the transcript's narration of Liu Xiu's des"
+      },
+      {
+        "t": 252.8,
+        "directness": 0.765,
+        "band": "literal",
+        "position": "mid",
+        "said": "He went to see Liu Xuan and knelt, apologizing for his brother's crimes. Stating Liu Yan acted improperly and he failed to discipline him, h",
+        "shown": "This scene visualizes the historical account of a man kneeling before Emperor Liu Xuan to apologize for his brother's crimes, depicting the "
+      },
+      {
+        "t": 273.5,
+        "directness": 0.738,
+        "band": "literal",
+        "position": "mid",
+        "said": "Liu Xuan prepared two plans. If Liu Xiu caused trouble, he'd handle him too. But Liu Xiu's reaction was surprising. His brother was just kil",
+        "shown": "This frame illustrates the moment Liu Xiu apologizes to Liu Xuan after his brother's death, depicting the submissive bowing figure in the co"
+      },
+      {
+        "t": 303.5,
+        "directness": 0.685,
+        "band": "associative",
+        "position": "mid",
+        "said": "behind the walls... Outside the tent, he ate, met people, and handled official business normally. As if the death didn't affect him. The Boo",
+        "shown": "This frame depicts a solitary historical figure working late at night by candlelight, visually representing the transcript's narrative of a "
+      },
+      {
+        "t": 333.5,
+        "directness": 0.552,
+        "band": "tonal/abstract",
+        "position": "mid",
+        "said": "but convince everyone he had truly let it go. This wasn't just for a day or two. This went on for months. A performance for survival that co",
+        "shown": "A young nobleman maintains a stoic facade while holding a wine cup, visually representing the transcript's description of a survival perform"
+      },
+      {
+        "t": 357.0,
+        "directness": 0.654,
+        "band": "associative",
+        "position": "mid",
+        "said": "be a future. History has many examples. Goujian slept on wood, Han Xin crawled through legs, and Sima Yi faked illness to fool Cao Shuang. B",
+        "shown": "An animated illustration of a solitary armored figure visualizes the transcript's narrative about Liu Xiu's dangerous lack of privacy and hi"
+      },
+      {
+        "t": 387.0,
+        "directness": 0.672,
+        "band": "associative",
+        "position": "close",
+        "said": "no meetings or contact, drawing a clear line. Wasn't cold protection. He saw Liu Xuan tracking Liu Yan's men to determine the next leader. I",
+        "shown": "The video depicts a solitary warrior standing apart from a group of followers in a rainy courtyard, visually illustrating the transcript's n"
+      },
+      {
+        "t": 417.0,
+        "directness": 0.717,
+        "band": "associative",
+        "position": "close",
+        "said": "Enduring the enemy's suspicion on one hand, and the heartbreak of his followers on the other. Some people looked down on him because of this",
+        "shown": "This frame illustrates the historical figure Liu Xiu walking through a court of officials, visually representing the transcript's narrative "
+      },
+      {
+        "t": 447.0,
+        "directness": 0.731,
+        "band": "literal",
+        "position": "close",
+        "said": "could grow their own roots. Titled General Who Breaks the Barbarians, acting Grand Marshal, holding the powers of the Grand Marshal. He cros",
+        "shown": "This segment features an illustration of a solitary general overlooking a vast army and city, visually representing the transcript's narrati"
+      },
+      {
+        "t": 462.7,
+        "directness": 0.686,
+        "band": "associative",
+        "position": "close",
+        "said": "In Wancheng, his every move was evidence against him. In Hebei, he could finally reorganize people, rebuild relationships, and have his own ",
+        "shown": "This segment uses a split-screen visual of a warrior and a gathering of men to illustrate the transcript's discussion on Liu Xiu's strategic"
+      },
+      {
+        "t": 492.7,
+        "directness": 0.707,
+        "band": "associative",
+        "position": "close",
+        "said": "Endurance is never the goal; it's a means to an end. Those months Liu Xiu endured weren't because of good character or a broad vision. He en",
+        "shown": "This frame depicts a calculating warrior strategizing over a map, visually reinforcing the transcript's discussion of Liu Xiu's ability to e"
+      },
+      {
+        "t": 522.7,
+        "directness": 0.603,
+        "band": "associative",
+        "position": "close",
+        "said": "to his enemy to apologize for his brother, taking a marquisate with no power giving thanks for a great favor. For months after, eating and l",
+        "shown": "This scene depicts a tense audience in an imperial court where a subject kneels before the emperor, visually representing the transcript's n"
+      },
+      {
+        "t": 552.7,
+        "directness": 0.66,
+        "band": "associative",
+        "position": "close",
+        "said": "Survival is just earning the right to place another bet.",
+        "shown": "A stylized image of a warrior playing a board game accompanies a narration defining survival as merely earning the opportunity to take anoth"
+      },
+      {
+        "t": 554.1,
+        "directness": 0.798,
+        "band": "literal",
+        "position": "close",
+        "said": "Next stop, Hebei. There's no emperor there to back him up, no elder brother to pave the way, and no ready-made army at his command. Only a f",
+        "shown": "This segment illustrates Liu Xiu's pivotal moment in Hebei, visually depicting him strategizing alone over a game board while the narration "
+      }
+    ],
+    "bands": {
+      "literal_min": 0.72,
+      "tonal_max": 0.58
+    }
+  },
+  "cinematography": {
+    "prompt": "You are a cinematographer analyzing the VISUAL STYLE of this single video frame — ignore the specific subject/content. In 2–3 concise sentences, cover: shot type & framing (wide/medium/close; centered vs rule-of-thirds; negative space); camera/lens feel (depth of field, angle, any motion implied); lighting (high/low key, direction, mood); color & grade (palette, warm/cool, saturation, contrast); and any on-screen graphics or text (lower-thirds, titles, captions, callouts, data viz). Be concrete; describe style, not story.",
+    "frames_read": 4,
+    "reads": [
+      {
+        "frame": "frame_000.jpg",
+        "read": "This medium close-up utilizes a rule-of-thirds composition, balancing the subject against bold, textured gold calligraphy and an ornate geometric border. The low-key lighting creates a dramatic chiaroscuro effect with a sharp side-key, complemented by a moody, desaturated color grade of deep crimsons and heavy shadows. A shallow depth of field isolates the subject from the dark background, emphasizing a high-contrast, cinematic period-drama aesthetic."
+      },
+      {
+        "frame": "frame_006.jpg",
+        "read": "This medium shot utilizes a shallow depth of field and an over-the-shoulder perspective to create a layered, intimate composition that focuses on the figures in the middle ground. The lighting is dramatic and low-key, featuring a warm, upward-directed source that creates sharp chiaroscuro highlights against a desaturated palette of deep shadows and cool, nocturnal background tones. A subtle, stylized text watermark is positioned in the bottom-right corner, while the high-contrast grade emphasizes a gritty, cinematic texture."
+      },
+      {
+        "frame": "frame_012.jpg",
+        "read": "This medium shot utilizes a rule-of-thirds composition, positioning the subject on the right to leave significant negative space for a blurred background captured with a shallow depth of field. The low-key lighting creates a high-contrast, dual-tone grade, pitting a warm orange directional light from the right against desaturated, cool-blue shadows for a moody, cinematic feel. A subtle text watermark is visible in the bottom-right corner, while the overall frame remains static and painterly."
+      },
+      {
+        "frame": "frame_018.jpg",
+        "read": "This medium-wide, over-the-shoulder shot utilizes a low-key lighting setup with dramatic, directional shafts of light from the right to create high-contrast highlights and deep, atmospheric shadows. The eye-level camera employs a moderate depth of field that isolates the mid-ground subjects against a dense, slightly blurred background of figures. The color grade features a desaturated, earthy palette of deep reds and blacks with warm highlights, accented only by a subtle, faint watermark in the bottom-right corner."
+      }
+    ],
+    "errors": []
+  }
+}

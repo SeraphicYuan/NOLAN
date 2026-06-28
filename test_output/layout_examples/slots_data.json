@@ -1,0 +1,18 @@
+[
+  {
+    "x": 100,
+    "y": 100,
+    "width": 553,
+    "height": 880,
+    "padding": 40,
+    "name": "col0"
+  },
+  {
+    "x": 713,
+    "y": 100,
+    "width": 1106,
+    "height": 880,
+    "padding": 40,
+    "name": "col1"
+  }
+]

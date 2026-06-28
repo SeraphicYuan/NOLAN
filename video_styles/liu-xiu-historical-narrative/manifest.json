@@ -1,0 +1,18 @@
+{
+  "id": "liu-xiu-historical-narrative",
+  "name": "Liu Xiu — Historical Narrative",
+  "created_at": "2026-06-26T18:20:56.654153",
+  "script_style_id": null,
+  "sources": [
+    {
+      "slug": "liu-xiu-longest-patience",
+      "video_path": "projects\\_library\\source\\「劉秀」中國歷史上最漫長的一次忍耐.mp4",
+      "title": "Liu Xiu longest patience",
+      "fingerprint": null,
+      "duration": null,
+      "indexed": true,
+      "analyzed": true,
+      "added_at": "2026-06-26T18:20:56.660561"
+    }
+  ]
+}

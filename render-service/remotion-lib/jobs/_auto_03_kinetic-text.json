@@ -1,0 +1,18 @@
+{
+  "comp": "Kinetic",
+  "out": "03_kinetic-text.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "text": "making more money won't save you",
+    "highlights": [
+      "won't",
+      "save"
+    ],
+    "position": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "theme": "dark-editorial"
+  }
+}

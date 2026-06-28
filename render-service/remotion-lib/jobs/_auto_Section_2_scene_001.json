@@ -1,0 +1,25 @@
+{
+  "comp": "BarCompare",
+  "out": "Section_2_scene_001.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "title": "Consumer Spending",
+    "bars": [
+      {
+        "label": "Top 10%",
+        "value": 50,
+        "color": "#FF4D4D"
+      },
+      {
+        "label": "Bottom 90%",
+        "value": 50,
+        "color": "#4DA6FF"
+      }
+    ],
+    "prefix": "",
+    "suffix": "%",
+    "barStyle": "flat",
+    "theme": "high-contrast"
+  }
+}

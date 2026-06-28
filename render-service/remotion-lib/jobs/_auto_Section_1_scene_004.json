@@ -1,0 +1,17 @@
+{
+  "comp": "Kinetic",
+  "out": "Section_1_scene_004.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "text": "HARPASTUM",
+    "highlights": [
+      "harpastum"
+    ],
+    "position": {
+      "x": 0.8,
+      "y": 0.82
+    },
+    "theme": "dark-editorial"
+  }
+}

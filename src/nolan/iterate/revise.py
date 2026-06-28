@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Optional
 
 # Fields a human/agent may change. Kept narrow so a note can't corrupt routing.
-_BASE = {"narration_excerpt", "visual_description", "visual_type", "duration"}
+# `assets` is the per-scene asset tray (UI-managed; the agent references it, see below).
+_BASE = {"narration_excerpt", "visual_description", "visual_type", "duration", "assets"}
 _SEGMENT = _BASE | {"search_query", "comfyui_prompt", "motion_spec"}
 _ORCH = _BASE | {"layout_spec", "motion_spec", "search_query", "comfyui_prompt"}
 
@@ -31,12 +32,39 @@ _GUIDE = (
     "- To change an animated graphic/text effect, DO NOT write motion_spec directly. "
     "Instead return a `motion_brief` string: a precise natural-language description of the "
     "desired effect (what shows, where on screen, accent, timing). It will be compiled to a spec.\n"
+    "- For a PHOTO MONTAGE / GRID of pictures (multiple images, a grid/tile, 'fly in', or "
+    "'zoom one picture when the voiceover says X'), return a `photo_brief` OBJECT (do not write "
+    "motion_spec). Schema:\n"
+    "    {{kind:'photo-story', layout:'grid'|'free', images:[<path>... or {{src,caption?,place?:[x,y],scale?,frame?,motion?:[verbs]}}],\n"
+    "     background?:'#hex', grid?:'RxC', fly_in?:'one-by-one'|'row'|'col',\n"
+    "     focus?:{{image:<idx>, at:<TimeRef>, hold?, scale?}}}}\n"
+    "  TimeRef anchors timing to the voiceover: a number (sec), 'start'/'end'/'mid', or "
+    "{{cue:'<spoken word/phrase>'}} to fire when the VO says it. Free-layout motion verbs: "
+    "{{enter:'left|right|top|bottom',at}}, {{fade:'in|out',at}}, {{tilt:<deg>,at}}, {{pan:<deg>,at}} (3D), "
+    "{{move:[x,y],at}}, {{path:[{{to:[x,y],at}}...]}}, {{zoom:<scale>,at}}.\n"
+    "  IMAGES: if the scene lists BOUND ASSETS below, reference them in `images` as "
+    "{{ref:'<asset id>'}} (preferred) — match the note's wording ('pic 4', 'the breadline photo') "
+    "to an asset's id/label. Otherwise use explicit image paths from the note.\n"
     "- For stock/library footage scenes, edit `search_query` (keywords) or `comfyui_prompt` "
     "(image-gen prompt).\n"
     "- For orchestrator `layout_spec` scenes you may return a full corrected `layout_spec` object "
     "({{template, params}}).\n"
     "- Keep edits minimal and faithful to the note. Return {{}} if nothing should change."
 )
+
+
+def _assets_summary(assets) -> str:
+    """A compact, id-first listing of the scene's bound assets for the LLM to reference."""
+    import os
+    if not assets:
+        return ""
+    lines = []
+    for i, a in enumerate(assets):
+        if not isinstance(a, dict):
+            continue
+        label = a.get("label") or os.path.basename(str(a.get("src", "")))
+        lines.append(f"  [{i}] id={a.get('id')} kind={a.get('kind', 'image')} label={label!r}")
+    return "\nBOUND ASSETS (reference in a photo_brief by {ref:'<id>'}):\n" + "\n".join(lines) + "\n" if lines else ""
 
 
 def _extract_json(text: str) -> dict:
@@ -49,15 +77,34 @@ def _extract_json(text: str) -> dict:
         return {}
 
 
-async def revise_scene(scene: dict, note: str, client, pipeline: str) -> dict:
-    """Return a whitelisted patch of changed fields for `scene` given `note`."""
+async def revise_scene(scene: dict, note: str, client, pipeline: str,
+                       transcript_words: Optional[list] = None) -> dict:
+    """Return a whitelisted patch of changed fields for `scene` given `note`.
+
+    `transcript_words` (a word-timed transcript, abs seconds) is used to resolve
+    voiceover cue timing in a `photo_brief`; falls back to scene.subtitle_cues.
+    """
     wl = editable_fields(pipeline)
     system = _GUIDE.format(fields=", ".join(sorted(wl)))
-    scene_json = json.dumps(scene, default=str)[:2500]
-    prompt = (f"SCENE:\n{scene_json}\n\nHUMAN NOTE:\n{note}\n\n"
+    scene_json = json.dumps({k: v for k, v in scene.items() if k != "assets"}, default=str)[:2500]
+    assets_block = _assets_summary(scene.get("assets"))
+    prompt = (f"SCENE:\n{scene_json}\n{assets_block}\nHUMAN NOTE:\n{note}\n\n"
               "Return the JSON patch now.")
     raw = await client.generate(prompt, system_prompt=system)
     patch = _extract_json(raw)
+
+    # photo_brief (montage/grid) -> resolved motion_spec via the brief layer.
+    # Resolved at design time so cue timing can use this scene's narration word-timing.
+    pbrief = patch.pop("photo_brief", None)
+    if pbrief:
+        from nolan.brief import resolve_brief, SceneContext
+        ctx = SceneContext.from_scene(scene, words=transcript_words)
+        spec, messages = resolve_brief(pbrief, ctx)
+        if spec:
+            patch["motion_spec"] = spec
+            patch.setdefault("visual_type", "graphic")
+        for m in messages:
+            print(f"[photo_brief] {m}")
 
     # motion_brief -> compiled motion_spec (skip on validation failure)
     brief = patch.pop("motion_brief", None)
@@ -87,7 +134,8 @@ def apply_patch(scene: dict, patch: dict) -> None:
 
 async def apply_edit(plan_path, scene_id: str, *, patch: Optional[dict] = None,
                      note: Optional[str] = None, client=None,
-                     pipeline: Optional[str] = None) -> dict:
+                     pipeline: Optional[str] = None,
+                     transcript_words: Optional[list] = None) -> dict:
     """Load plan, revise one scene (via note OR direct patch), save, return the patch."""
     from .engine import load_plan_raw, save_plan_raw, find_scene, detect_pipeline
 
@@ -101,7 +149,7 @@ async def apply_edit(plan_path, scene_id: str, *, patch: Optional[dict] = None,
     if note:
         if client is None:
             raise ValueError("note-based revision requires an llm client")
-        resolved = await revise_scene(scene, note, client, pipeline)
+        resolved = await revise_scene(scene, note, client, pipeline, transcript_words=transcript_words)
     else:
         wl = editable_fields(pipeline)
         resolved = {k: v for k, v in (patch or {}).items() if k in wl}

@@ -1,0 +1,23 @@
+{
+  "id": "essay-thesis-evidence-v1",
+  "kind": "scene_plan",
+  "version": 1,
+  "name": "Essay Thesis-Evidence (7-section)",
+  "genres": ["explainer", "current-events", "history", "social-issues", "documentary", "argumentative-essay"],
+  "duration_range": [300, 1200],
+  "tags": [
+    "thesis-driven",
+    "multi-lens-argument",
+    "hook-context-thesis-evidence-conclusion",
+    "human-stakes-quote",
+    "section-break-markers",
+    "pacing-arc-fast-to-slow",
+    "explicitly-numbered-structure"
+  ],
+  "summary": "Seven-section narrative arc for argumentative video essays: Hook → Context → Thesis → Evidence (×N, default 3) → Conclusion. Pacing arcs from fast (Hook) through standard (body) to slow (Conclusion). Evidence sections are parameterized — pick N from the script's argument structure. Pairs naturally with the 'essay-doc-explainer-v1' style template.",
+  "compatible_styles": ["essay-doc-explainer-v1"],
+  "provenance": {
+    "derived_from_project": "venezuela",
+    "promoted_at": "2026-04-26"
+  }
+}

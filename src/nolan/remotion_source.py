@@ -49,13 +49,16 @@ def render(
     duration_frames: int = 120,
     video: Optional[str] = None,
     image: Optional[str] = None,
+    cards: Optional[List[Dict[str, Any]]] = None,
+    background: Optional[str] = None,
     codec: str = "h264",
     timeout: float = 180.0,
 ) -> Path:
     """Render a Remotion composition to mp4 and return its path.
 
-    `video`/`image` are paths (relative to render-service/) staged into public/
-    for `<OffthreadVideo>` / basemap use.
+    `video`/`image`/`background` are image/video paths staged into public/ for
+    `<OffthreadVideo>` / basemap / table-texture use. `cards` is a list of
+    photo-montage card dicts whose `src` image is staged (motion/style fields kept).
     """
     job: Dict[str, Any] = {"comp": comp, "out": out_name, "durationInFrames": duration_frames,
                            "codec": codec, "props": props}
@@ -63,6 +66,10 @@ def render(
         job["video"] = video
     if image:
         job["image"] = image
+    if background:
+        job["background"] = background
+    if cards:
+        job["cards"] = cards
 
     jobs_dir = LIB / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)

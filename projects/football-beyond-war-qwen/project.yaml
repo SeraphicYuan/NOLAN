@@ -1,0 +1,7 @@
+name: Football Beyond War
+slug: football-beyond-war-qwen
+description: Documentary essay on how football transcends conflict — from ancient ball games (Episkyros, Cuju, Pok-A-Tok) to the 2026 World Cup. Scene plan designed by qwen3.7-plus from the original video's translated script.
+source_videos:
+  - source/
+output_dir: output/
+assets_dir: assets/

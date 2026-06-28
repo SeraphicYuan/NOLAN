@@ -1,0 +1,24 @@
+{
+  "comp": "RouteMap",
+  "out": "Section_1_scene_006.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "title": "Pacific Trade Flow",
+    "pins": [
+      {
+        "x": 0.25,
+        "y": 0.45,
+        "label": "East Asia"
+      },
+      {
+        "x": 0.75,
+        "y": 0.5,
+        "label": "Americas"
+      }
+    ],
+    "mapSrc": "globe-dark",
+    "routeStyle": "arc",
+    "theme": "dark-editorial"
+  }
+}

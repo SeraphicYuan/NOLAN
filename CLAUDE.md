@@ -142,6 +142,73 @@ When reviewing your own code (or receiving review), check:
 - Single-line obvious changes
 - Config value updates
 
+# Examples Folder
+
+The `examples/` folder showcases NOLAN's capabilities with self-contained, runnable scripts.
+
+## Purpose
+- Demonstrate individual features and modules
+- Provide copy-paste starting points for users
+- Test that core functionality works end-to-end
+
+## Naming Convention
+```
+examples/
+├── 01_youtube_download.py      # Basic: download a video
+├── 02_transcription.py         # Basic: transcribe audio
+├── 03_frame_sampling.py        # Basic: extract frames
+├── 04_vision_analysis.py       # Analyze frames with Gemini
+├── 05_full_indexing.py         # Complete hybrid indexing
+├── render_quote.py             # Render a quote effect
+├── render_counter.py           # Render a stat counter
+├── render_with_layout.py       # Use layout system
+├── pipeline_essay_video.py     # Full essay-to-video pipeline
+└── README.md                   # Index of all examples
+```
+
+Use numbered prefixes (`01_`, `02_`) for learning progressions. Use descriptive names for standalone demos.
+
+## Example Structure
+Each example should:
+1. **Be self-contained** - Run independently with minimal setup
+2. **Include docstring** - Explain what it demonstrates
+3. **Use hardcoded test data** - No external dependencies
+4. **Print clear output** - Show what's happening
+5. **Handle errors gracefully** - Useful error messages
+
+Template:
+```python
+"""Example: [Feature Name]
+
+Demonstrates how to use [module/feature] for [use case].
+
+Usage:
+    python examples/example_name.py
+
+Output:
+    [Describe expected output]
+"""
+
+from pathlib import Path
+from src.nolan.module import Feature
+
+def main():
+    # Example code here
+    print("Result:", result)
+
+if __name__ == "__main__":
+    main()
+```
+
+## When to Create Examples
+- After implementing a new feature
+- When a module's usage isn't obvious from the API
+- When users ask "how do I use X?"
+
+## Updating Examples
+- If a module API changes, update its example
+- Run examples after major refactors to verify they work
+
 # Video Analysis Workflow
 
 **Trigger words:** "analyze video", "video analysis", "study this video", "what techniques"

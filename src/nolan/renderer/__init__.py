@@ -46,7 +46,6 @@ from .scenes.news_headline import NewsHeadlineRenderer
 from .scenes.document_highlight import DocumentHighlightRenderer
 from .scenes.section_divider import SectionDividerRenderer
 from .scenes.pie_callout import PieCalloutRenderer, render_pie_callout
-from .engine import PythonTemplateEngine, RenderResult, PYTHON_RENDERABLE_TYPES
 from .layout import (
     # Position system (percentage-based)
     Position, POSITIONS, resolve_position,
@@ -102,10 +101,6 @@ __all__ = [
     # Data Callout Renderers
     'PieCalloutRenderer',
     'render_pie_callout',
-    # Engine
-    'PythonTemplateEngine',
-    'RenderResult',
-    'PYTHON_RENDERABLE_TYPES',
     # Layout - Position system
     'Position',
     'POSITIONS',

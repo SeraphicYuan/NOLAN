@@ -1,0 +1,33 @@
+{
+  "doc": "Capability manifest the LLM is given so it can translate a scene design into a precise render spec. Shared vocabulary (position/theme) + per-effect content & style. Proof-of-concept subset across 3 categories / 2 backends.",
+  "shared": {
+    "position": {
+      "doc": "Where to place the element. A named anchor OR a normalized {x,y} in 0..1. Same meaning on both backends.",
+      "anchors": ["top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right", "upper-third", "lower-third"]
+    },
+    "theme": {"values": ["dark-editorial", "light", "high-contrast"], "default": "dark-editorial"}
+  },
+  "effects": [
+    {
+      "effect": "annotate-stat", "backend": "remotion", "category": "svg-annotation",
+      "purpose": "Emphasize one number/stat with a drawn circle + caption underneath.",
+      "content": {"value": "the headline string e.g. \"$28,000\"", "label": "short caption"},
+      "style": {"shapeStyle": ["clean", "scribble"]},
+      "supports": ["position", "theme", "accent"]
+    },
+    {
+      "effect": "kinetic-text", "backend": "remotion", "category": "kinetic-text",
+      "purpose": "Reveal a short headline word-by-word, accenting key words.",
+      "content": {"text": "the line", "highlights": ["key", "words", "lowercased"]},
+      "style": {},
+      "supports": ["position", "theme", "accent"]
+    },
+    {
+      "effect": "counter", "backend": "python", "category": "data",
+      "purpose": "Animated count-up number with a caption (a stat reveal).",
+      "content": {"value": "integer (digits only)", "prefix": "e.g. \"$\" or \"+\"", "suffix": "e.g. \"%\" or \"B\"", "label": "caption"},
+      "style": {"tone": ["neutral", "success", "danger"]},
+      "supports": ["position", "theme"]
+    }
+  ]
+}

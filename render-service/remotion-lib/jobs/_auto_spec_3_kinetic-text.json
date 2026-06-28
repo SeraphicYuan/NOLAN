@@ -1,0 +1,19 @@
+{
+  "comp": "Kinetic",
+  "out": "spec_3_kinetic-text.mp4",
+  "durationInFrames": 110,
+  "codec": "h264",
+  "props": {
+    "text": "two completely different economies",
+    "highlights": [
+      "two",
+      "economies"
+    ],
+    "position": {
+      "x": 0.5,
+      "y": 0.16
+    },
+    "theme": "dark-editorial",
+    "scrim": 0
+  }
+}

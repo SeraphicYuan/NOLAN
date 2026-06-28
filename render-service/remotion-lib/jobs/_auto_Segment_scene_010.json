@@ -1,0 +1,16 @@
+{
+  "comp": "AnnotateStat",
+  "out": "Segment_scene_010.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "value": "78%",
+    "label": "LUXURY",
+    "shapeStyle": "clean",
+    "position": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "theme": "dark-editorial"
+  }
+}

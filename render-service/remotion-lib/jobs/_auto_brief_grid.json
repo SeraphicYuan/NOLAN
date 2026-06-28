@@ -1,0 +1,44 @@
+{
+  "comp": "PhotoGrid",
+  "out": "brief_grid.mp4",
+  "durationInFrames": 180,
+  "codec": "h264",
+  "props": {
+    "cols": 3,
+    "rows": 2,
+    "focusIndex": 4,
+    "background": "#241016",
+    "order": "one-by-one",
+    "flyFrom": "edges",
+    "frame": "polaroid",
+    "fillStart": 0.2,
+    "stagger": 0.08,
+    "flyDur": 0.6,
+    "focusAt": 3.2,
+    "focusHold": 1.4,
+    "focusScale": 0.8,
+    "margin": 0.05,
+    "vignette": 0.5,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\15\\152de2d8d020100a157c0304240cded20dd63be1785a3d6c337762207b44214c.jpg"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\15\\151222279b62ccbc533556b0a4e1591661f4efd1079190a8e3ac89e224dcced1.jpg"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\4d\\4dae7a4f69e6f8c4220ba11ca6d8611060e85d218f626c80d1c25d0b907640ef.jpg"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\0e\\0e9c9ea847408f225b3d9754d862adf30f77e3a199e36c66f6c3822267268d02.jpg"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\3a\\3ada5681ab0f13b5ceea7cafb29cb67bb574e1ca9e5e6e565a28a46296e3b8d4.jpg"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\6f\\6fbd73ccd430520a8271e1f84b3b32978aa0924237683126bbc3cb2bea71105a.jpg"
+    }
+  ]
+}

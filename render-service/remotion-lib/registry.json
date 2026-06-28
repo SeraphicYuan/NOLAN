@@ -1,0 +1,66 @@
+{
+  "description": "Curated Remotion source — compositions NOLAN routes to within Remotion's strong scope. Each entry is discoverable like a Lottie template: it carries a visual_type, a shared theme, and per-effect style vars.",
+  "shared": {
+    "theme": {
+      "doc": "Shared style. Preset name or partial override object.",
+      "presets": ["dark-editorial", "light", "high-contrast"],
+      "tokens": ["bg", "fg", "muted", "accent", "up", "down", "neutral", "fontFamily", "speed"]
+    }
+  },
+  "compositions": [
+    {
+      "id": "Kinetic", "visual_type": "kinetic-text", "category": "kinetic-text",
+      "description": "Word-by-word kinetic typography with highlighted key words, optionally over a b-roll background.",
+      "style": {},
+      "props": {"text": "string", "highlights": "string[]", "accent": "color?", "scrim": "0..1", "videoSrc": "file?"}
+    },
+    {
+      "id": "BarCompare", "visual_type": "bar-compare", "category": "rich-chart",
+      "description": "Animated bar comparison with count-up value labels.",
+      "style": {"barStyle": ["flat", "gradient", "glass"]},
+      "props": {"title": "string", "bars": "[{label,value,color?}]", "prefix": "string?", "suffix": "string?"}
+    },
+    {
+      "id": "KShape", "visual_type": "k-shape", "category": "rich-chart",
+      "description": "Two diverging lines (rising vs falling) from a shared origin — the K-shaped split.",
+      "style": {"lineStyle": ["straight", "zigzag"], "jitter": "px", "segments": "int"},
+      "props": {"title": "string", "topLabel": "string", "bottomLabel": "string"}
+    },
+    {
+      "id": "AnnotateOverVideo", "visual_type": "annotate-video", "category": "svg-annotation",
+      "description": "Draw-on circle + arrow + label pointing at a spot on moving b-roll.",
+      "style": {"shapeStyle": ["clean", "scribble"]},
+      "props": {"videoSrc": "file", "focusX": "0..1", "focusY": "0..1", "rx": "px", "ry": "px", "label": "string", "accent": "color?", "scrim": "0..1"}
+    },
+    {
+      "id": "AnnotateStat", "visual_type": "annotate-stat", "category": "svg-annotation",
+      "description": "Big stat with a drawn circle-emphasis + caption.",
+      "style": {"shapeStyle": ["clean", "scribble"]},
+      "props": {"value": "string", "label": "string", "accent": "color?"}
+    },
+    {
+      "id": "RouteMap", "visual_type": "route-map", "category": "map",
+      "description": "Animated pins + routes over a basemap image (money/flow/geo).",
+      "style": {"routeStyle": ["arc", "straight"]},
+      "props": {"title": "string", "pins": "[{x,y,label}]", "mapSrc": "image?"}
+    },
+    {
+      "id": "PremiumCard", "visual_type": "premium-card", "category": "premium-card",
+      "description": "Glass/gradient hero or chapter title card with drifting gradient-mesh background.",
+      "style": {"cardStyle": ["glass", "gradient", "spotlight"]},
+      "props": {"kicker": "string?", "title": "string", "subtitle": "string?"}
+    },
+    {
+      "id": "PhotoMontage", "visual_type": "photo-montage-pro", "category": "photo-montage",
+      "description": "'Photos on a table' montage with a per-card motion system: each card declares where it rests (x,y,scale,rotation) and how it arrives (from edge + timing + easing) — e.g. one slides up to center, one in from the left to rest on the left. Polaroid/plain/cutout frame styles, handwritten captions, a slow Ken Burns camera. High-value for b-roll/asset presentation in essays.",
+      "style": {},
+      "props": {"cards": "[{src,x,y,scale?,rotation?,from?,enterAt?,enterDur?,distance?,ease?,fade?,fromScale?,frame?,caption?,captionAt?,captionDur?,shadow?,rotX?,rotY?,perspective?,keys?:[{at,x?,y?,scale?,rotation?,rotX?,rotY?,opacity?,ease?}] (rotation=in-plane tilt, rotX/rotY=3D pan/tilt)}]", "background": "color|image?", "vignette": "0..1", "zoomStart": "number", "zoomEnd": "number", "panX": "0..1", "panY": "0..1"}
+    },
+    {
+      "id": "PhotoGrid", "visual_type": "photo-grid", "category": "photo-montage",
+      "description": "Procedural photo grid with a 3-step choreography: (1) N images fly in to fill a cols×rows grid, sequenced one-by-one / by row / by col; (2) one image zooms to fill the center while the rest of the grid peters out; (3) it zooms back and the grid returns. Computed from grid shape + timings, so 40 images is just a list. Polaroid/plain/cutout frames.",
+      "style": {"order": ["one-by-one", "row", "col"], "flyFrom": ["edges", "bottom", "scale"], "frame": ["polaroid", "plain", "cutout"]},
+      "props": {"cards": "[{src,caption?}]", "cols": "int", "rows": "int", "focusIndex": "int?", "fillStart": "sec", "stagger": "sec", "flyDur": "sec", "focusAt": "sec?", "focusHold": "sec", "focusScale": "0..1", "background": "color|image?", "vignette": "0..1", "margin": "0..1"}
+    }
+  ]
+}

@@ -24,6 +24,7 @@ from .engine import (
     rerender_scenes,
 )
 from .revise import revise_scene, apply_patch, apply_edit, editable_fields
+from .transcript import scene_words
 
 __all__ = [
     "detect_pipeline",
@@ -37,4 +38,5 @@ __all__ = [
     "apply_patch",
     "apply_edit",
     "editable_fields",
+    "scene_words",
 ]

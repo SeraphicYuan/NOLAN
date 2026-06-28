@@ -88,6 +88,129 @@ def extract_from_url(
     return results[:limit] if limit else results
 
 
+def _best_candidate(
+    found: List[ImageSearchResult], original: ImageSearchResult
+) -> Optional[ImageSearchResult]:
+    """Pick the best full-res candidate from a source page.
+
+    Prefer the largest by known dimensions; otherwise the first (extractors order
+    best-first — site extractors return the canonical image, generic puts
+    ``og:image`` first). Skip a candidate identical to what we already have.
+    """
+    fresh = [f for f in found if f.url and f.url != original.url]
+    if not fresh:
+        return None
+    sized = [f for f in fresh if f.width and f.height]
+    if sized:
+        return max(sized, key=lambda f: f.width * f.height)
+    return fresh[0]
+
+
+# Known thumbnail-URL -> full-resolution rewrites (deterministic, no JS needed).
+# ContentDM (OCLC) powers a large share of DPLA and exposes IIIF.
+_CONTENTDM_RE = re.compile(
+    r"(https?://[^/]+)/(?:utils/getthumbnail|digital/api/singleitem/image)/collection/([^/]+)/id/(\d+)",
+    re.IGNORECASE,
+)
+
+
+def _rewrite_thumbnail(url: Optional[str]) -> Optional[str]:
+    """Map a known thumbnail URL to its full-resolution equivalent, else None."""
+    if not url:
+        return None
+    m = _CONTENTDM_RE.search(url)
+    if m:
+        host, collection, cid = m.groups()
+        return f"{host}/digital/iiif/{collection}/{cid}/full/max/0/default.jpg"
+    return None
+
+
+# A IIIF Image API request: .../full/<size>/<rotation>/<quality>.<format>
+_IIIF_SIZE_RE = re.compile(
+    r"(?P<pre>.+?/full/)"
+    r"(?P<size>\d+,|,\d+|\d+,\d+|pct:\d+(?:\.\d+)?|!\d+,\d+)"
+    r"(?P<post>/\d+/(?:default|native|color|gray|grey|bitonal)\.\w+)$",
+    re.IGNORECASE,
+)
+
+
+def _maximize_iiif(url: Optional[str]) -> Optional[str]:
+    """Bump a sized IIIF image URL (e.g. ``/full/730,/``) to ``/full/max/``."""
+    if not url or "/full/max/" in url or "/full/full/" in url:
+        return url
+    m = _IIIF_SIZE_RE.search(url)
+    return f"{m.group('pre')}max{m.group('post')}" if m else url
+
+
+def _verify_image(url: str, timeout: float = 15.0) -> bool:
+    """True if the URL serves an image (streamed GET, body not downloaded)."""
+    try:
+        with httpx.Client(headers={"User-Agent": _UA}, follow_redirects=True) as c:
+            with c.stream("GET", url, timeout=timeout) as r:
+                return r.status_code == 200 and \
+                    r.headers.get("content-type", "").startswith("image/")
+    except Exception:
+        return False
+
+
+def _apply_upgrade(result: ImageSearchResult, new_url: str,
+                   width=None, height=None) -> None:
+    """Swap in a full-res URL, demoting the old image to thumbnail."""
+    maxed = _maximize_iiif(new_url)
+    if maxed != new_url:
+        width = height = None  # dims described the sized rendition, not max
+        new_url = maxed
+    if not result.thumbnail_url:
+        result.thumbnail_url = result.url
+    result.url = new_url
+    if width:
+        result.width = width
+    if height:
+        result.height = height
+    result.source = f"{result.source}+resolved" if result.source else "resolved"
+
+
+def resolve_result(result: ImageSearchResult) -> ImageSearchResult:
+    """Upgrade a search result to full-res. Two tiers, both best-effort:
+
+    1. **Deterministic URL rewrite** of the thumbnail itself (e.g. ContentDM
+       ``getthumbnail`` → IIIF ``full/max``), verified to actually serve an image.
+    2. **Source-page extraction** — follow ``source_url`` (an item landing page,
+       e.g. DPLA's ``isShownAt``) through the extractor registry and take the best
+       image found.
+
+    On any failure the result is returned unchanged — resolve never loses data.
+    """
+    rewritten = _rewrite_thumbnail(result.url)
+    if rewritten and rewritten != result.url and _verify_image(rewritten):
+        _apply_upgrade(result, rewritten)
+        return result
+
+    page = result.source_url
+    if not page or not page.startswith("http"):
+        return result
+    try:
+        found = extract_from_url(page, limit=8)
+    except Exception:
+        return result
+    best = _best_candidate(found, result)
+    if best and best.url:
+        _apply_upgrade(result, best.url, best.width, best.height)
+    return result
+
+
+def resolve_results(
+    results: List[ImageSearchResult], *, max_workers: int = 6
+) -> List[ImageSearchResult]:
+    """Resolve many results concurrently (see :func:`resolve_result`)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    if not results:
+        return results
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        return list(pool.map(resolve_result, results))
+
+
 def _filename_for(result: ImageSearchResult, index: int) -> str:
     """Derive a safe local filename for a downloaded asset."""
     path = urlparse(result.url).path
@@ -133,4 +256,6 @@ __all__ = [
     "get_extractor",
     "fetch_html",
     "download_assets",
+    "resolve_result",
+    "resolve_results",
 ]

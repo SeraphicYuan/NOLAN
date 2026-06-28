@@ -1,0 +1,462 @@
+{
+  "sections": {
+    "segment": [
+      {
+        "id": "Section_1_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 0.0,
+        "end_seconds": 0.441,
+        "narration_excerpt": "splits",
+        "visual_type": "graphics",
+        "visual_description": "An animated line graph representing economic growth physically tearing or fracturing down the middle, visually representing the divergence.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "splits",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "chart-line-plain-text",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "Economic Divergence",
+            "items": [
+              {
+                "label": "Sector A",
+                "value": 80
+              },
+              {
+                "label": "Sector B",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Section_1_scene_001.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "k-shape",
+          "backend": "remotion",
+          "target": "KShape",
+          "content": {
+            "title": "Economic Divergence",
+            "topLabel": "Growth",
+            "bottomLabel": "Decline"
+          },
+          "style": {
+            "lineStyle": "straight",
+            "jitter": 24,
+            "segments": 18
+          },
+          "theme": "dark-editorial",
+          "duration": 5.0
+        },
+        "resolved_source": "motion:k-shape",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_2_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 0.441,
+        "end_seconds": 2.205,
+        "narration_excerpt": "The top 10 percent",
+        "visual_type": "generated",
+        "visual_description": "A high-angle, cinematic drone shot looking down on a bustling, modern metropolitan street filled with a dense crowd of pedestrians. A subtle, glowing golden filter or light effect isolates a small cluster of well-dressed individuals in the center, visually separating them from the surrounding monochrome or desaturated crowd to represent the elite top 10%.",
+        "search_query": "",
+        "comfyui_prompt": "high-angle drone shot of a crowded city street, busy pedestrian zone, photorealistic, 8k. The majority of the crowd is desaturated and gray. A small, distinct group of people in the center is highlighted with a warm golden glow and sharp color saturation, wearing high-end luxury fashion. Cinematic lighting, depth of field, symbolic representation of economic elite.",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "percent",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "none(gen-disabled)",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_2_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 2.205,
+        "end_seconds": 5.733,
+        "narration_excerpt": "now drives 50 percent of all consumer spending.",
+        "visual_type": "graphics",
+        "visual_description": "An animated pie chart appearing on a dark, minimal background. The chart is divided into two segments: a large segment labeled 'Top 10%' and a remaining segment labeled 'Bottom 90%'. The 'Top 10%' segment expands or pulses to occupy exactly 50% of the chart area, visually demonstrating its disproportionate share of spending.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "50 percent",
+            "action": "reveal",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "chart-pie-plain-text",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "Consumer Spending Share",
+            "items": [
+              {
+                "label": "Top 10%",
+                "value": 50
+              },
+              {
+                "label": "Bottom 90%",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Section_2_scene_002.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "bar-compare",
+          "backend": "remotion",
+          "target": "BarCompare",
+          "content": {
+            "title": "Spending Share: Top 10% vs Bottom 90%",
+            "bars": [
+              {
+                "label": "Top 10%",
+                "value": 50
+              },
+              {
+                "label": "Bottom 90%",
+                "value": 50
+              }
+            ],
+            "prefix": "",
+            "suffix": "%"
+          },
+          "style": {
+            "barStyle": "gradient"
+          },
+          "theme": "dark-editorial",
+          "duration": 5.0
+        },
+        "resolved_source": "motion:bar-compare",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_3_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "3s",
+        "start_seconds": 5.733,
+        "end_seconds": 9.703,
+        "narration_excerpt": "The S and P 500 sits at record highs",
+        "visual_type": "graphics",
+        "visual_description": "An animated line graph showing the S&P 500 trend line climbing steeply to a peak, with a prominent label indicating 'Record High'.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "highs",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "chart-line-plain-text",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "S&P 500 Trend",
+            "items": [
+              {
+                "label": "Current Level",
+                "value": "Record High"
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Section_3_scene_001.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "line-chart",
+          "backend": "python",
+          "target": "LineChartRenderer",
+          "content": {
+            "points": [
+              [
+                "Start",
+                3800
+              ],
+              [
+                "Mid",
+                4500
+              ],
+              [
+                "Peak",
+                5200
+              ]
+            ],
+            "title": "S&P 500 Trend",
+            "value_prefix": "",
+            "value_suffix": ""
+          },
+          "style": {},
+          "duration": 6.0
+        },
+        "resolved_source": "motion:line-chart",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_3_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "4s",
+        "start_seconds": 9.703,
+        "end_seconds": 12.79,
+        "narration_excerpt": "while consumer confidence is near pandemic lows.",
+        "visual_type": "graphics",
+        "visual_description": "A split-screen graphic where the left side shows the previously established rising S&P 500 line, and the right side features a downward-trending gauge labeled 'Consumer Confidence' dropping into a red 'Low' zone, creating a visual contrast between the two indicators.",
+        "search_query": "",
+        "comfyui_prompt": "",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "lows",
+            "action": "reveal",
+            "target": 1,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": {
+          "template": "compare-binary-horizontal-simple-vs",
+          "theme": "dark",
+          "theme_config_ref": "docu-dark-minimal",
+          "data": {
+            "title": "Economic Divergence",
+            "items": [
+              {
+                "label": "S&P 500",
+                "children": [
+                  {
+                    "label": "Trend",
+                    "desc": "Record Highs"
+                  }
+                ]
+              },
+              {
+                "label": "Consumer Confidence",
+                "children": [
+                  {
+                    "label": "Trend",
+                    "desc": "Pandemic Lows"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": "clips/Section_3_scene_002.mp4",
+        "matched_clip": null,
+        "motion_spec": {
+          "effect": "k-shape",
+          "backend": "remotion",
+          "target": "KShape",
+          "content": {
+            "title": "Market Divergence",
+            "topLabel": "S&P 500",
+            "bottomLabel": "Consumer Confidence"
+          },
+          "style": {
+            "lineStyle": "straight",
+            "jitter": 24,
+            "segments": 18
+          },
+          "theme": "dark-editorial",
+          "duration": 5.0
+        },
+        "resolved_source": "motion:k-shape",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_4_scene_001",
+        "covers_beats": [
+          "beat_001"
+        ],
+        "start": "0:00",
+        "duration": "3.5s",
+        "start_seconds": 12.79,
+        "end_seconds": 15.877,
+        "narration_excerpt": "Making more money will not save you.",
+        "visual_type": "generated",
+        "visual_description": "A surreal, high-contrast shot of a person submerged up to their neck in a turbulent sea of floating paper currency. The subject looks anxious and overwhelmed, not relieved. The money offers no buoyancy, swirling chaotically around them like drowning water.",
+        "search_query": "",
+        "comfyui_prompt": "cinematic surrealism, a person drowning in a sea of floating US dollar bills, high contrast, dramatic lighting, anxiety on face, money swirling like water, no buoyancy, hyperrealistic, 8k, detailed texture of paper currency, dark moody atmosphere --ar 16:9",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "save",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "none(gen-disabled)",
+        "subtitle_cues": []
+      },
+      {
+        "id": "Section_4_scene_002",
+        "covers_beats": [
+          "beat_002"
+        ],
+        "start": "0:00",
+        "duration": "3.5s",
+        "start_seconds": 15.877,
+        "end_seconds": 17.2,
+        "narration_excerpt": "Owning assets will.",
+        "visual_type": "generated",
+        "visual_description": "A close-up, low-angle shot of a heavy, solid golden anchor or foundation block settling firmly into bedrock. The image is stable, sharp, and warm, contrasting with the previous chaos. Dust settles as it locks into place, representing tangible stability.",
+        "search_query": "",
+        "comfyui_prompt": "close-up low-angle shot of a massive solid gold anchor embedding into grey bedrock, dust particles settling, warm cinematic lighting, sense of weight and stability, hyperrealistic, 8k, sharp focus, metallic texture, immovable object --ar 16:9",
+        "library_match": false,
+        "animation_type": null,
+        "animation_params": null,
+        "transition": "cut",
+        "sync_points": [
+          {
+            "trigger": "assets",
+            "action": "highlight",
+            "target": 0,
+            "time": null
+          }
+        ],
+        "layers": [],
+        "infographic": null,
+        "lottie_template": null,
+        "lottie_config": null,
+        "lottie_asset": null,
+        "text_style": null,
+        "skip_generation": false,
+        "matched_asset": null,
+        "generated_asset": null,
+        "infographic_asset": null,
+        "infographic_asset_png": null,
+        "rendered_clip": null,
+        "matched_clip": null,
+        "motion_spec": null,
+        "resolved_source": "none(gen-disabled)",
+        "subtitle_cues": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "project_slug": "venezuela",
+  "iteration_count": 2,
+  "current_step": "checkpoint_after_slide_designer",
+  "status": "awaiting_review",
+  "started_at": "2026-04-27T20:41:44+00:00",
+  "last_updated": "2026-04-28T03:19:58+00:00",
+  "step_history": [
+    {
+      "step_num": 1,
+      "name": "match_and_adapt_style",
+      "started_at": "2026-04-27T20:41:44+00:00",
+      "finished_at": "2026-04-27T20:43:08+00:00",
+      "status": "completed",
+      "notes": ""
+    },
+    {
+      "step_num": 3,
+      "name": "match_and_adapt_style_refine_1",
+      "started_at": "2026-04-27T23:59:54+00:00",
+      "finished_at": "2026-04-28T00:01:33+00:00",
+      "status": "completed",
+      "notes": ""
+    },
+    {
+      "step_num": 3,
+      "name": "script_to_scenes",
+      "started_at": "2026-04-28T02:44:03+00:00",
+      "finished_at": "2026-04-28T02:57:08+00:00",
+      "status": "completed",
+      "notes": ""
+    },
+    {
+      "step_num": 4,
+      "name": "select_clips",
+      "started_at": "2026-04-28T03:12:24+00:00",
+      "finished_at": "2026-04-28T03:12:24+00:00",
+      "status": "completed",
+      "notes": "synthetic — skipped for slide_designer test"
+    },
+    {
+      "step_num": 5,
+      "name": "slide_designer",
+      "started_at": "2026-04-28T03:12:39+00:00",
+      "finished_at": "2026-04-28T03:19:58+00:00",
+      "status": "completed",
+      "notes": "agent succeeded; runner empty-text bug masked it (now fixed)"
+    }
+  ],
+  "template_provenance": {
+    "style_template_id": "essay-doc-explainer-v1",
+    "style_template_version": 1,
+    "style_match_score": 0.87,
+    "style_was_fallback": false,
+    "scene_plan_template_id": "essay-thesis-evidence-v1",
+    "scene_plan_template_version": 1,
+    "scene_plan_match_score": 0.86,
+    "scene_plan_was_fallback": false
+  },
+  "max_tokens_per_step": 200000,
+  "consumed_feedback": [
+    "review_1.md",
+    "review_2.md"
+  ]
+}

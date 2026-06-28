@@ -1,0 +1,144 @@
+{
+  "scenes": [
+    {
+      "id": "Segment_scene_001",
+      "t": [
+        0.0,
+        8.025
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "actively picking sides"
+    },
+    {
+      "id": "Segment_scene_002",
+      "t": [
+        8.025,
+        13.375
+      ],
+      "visual_type": "graphics",
+      "source": "motion:line-chart",
+      "narration": "death spiral"
+    },
+    {
+      "id": "Segment_scene_003",
+      "t": [
+        13.375,
+        18.725
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "dollar menu"
+    },
+    {
+      "id": "Segment_scene_004",
+      "t": [
+        18.725,
+        24.075
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "Remember those?"
+    },
+    {
+      "id": "Segment_scene_005",
+      "t": [
+        24.075,
+        26.75
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "worked"
+    },
+    {
+      "id": "Segment_scene_006",
+      "t": [
+        26.75,
+        29.425
+      ],
+      "visual_type": "graphics",
+      "source": "motion:counter",
+      "narration": "33%"
+    },
+    {
+      "id": "Segment_scene_007",
+      "t": [
+        29.425,
+        32.1
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "everyone"
+    },
+    {
+      "id": "Segment_scene_008",
+      "t": [
+        32.1,
+        34.775
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "2025"
+    },
+    {
+      "id": "Segment_scene_009",
+      "t": [
+        34.775,
+        37.45
+      ],
+      "visual_type": "graphics",
+      "source": "motion:premium-card",
+      "narration": "dropped"
+    },
+    {
+      "id": "Segment_scene_010",
+      "t": [
+        37.45,
+        40.125
+      ],
+      "visual_type": "graphics",
+      "source": "motion:annotate-stat",
+      "narration": "luxury"
+    },
+    {
+      "id": "Segment_scene_011",
+      "t": [
+        40.125,
+        42.8
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "skyrocketed"
+    },
+    {
+      "id": "Segment_scene_012",
+      "t": [
+        42.8,
+        48.15
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "every industry"
+    },
+    {
+      "id": "Segment_scene_013",
+      "t": [
+        48.15,
+        50.825
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "two"
+    },
+    {
+      "id": "Segment_scene_014",
+      "t": [
+        50.825,
+        53.5
+      ],
+      "visual_type": "generated",
+      "source": "generated",
+      "narration": "retailers"
+    }
+  ]
+}

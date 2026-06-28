@@ -1398,10 +1398,13 @@ export class RemotionEngine implements RenderEngine {
         onProgress: () => undefined,
       });
 
+      const browserExecutable = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_PATH || null;
+      console.log(`[Remotion] Browser executable: ${browserExecutable || '(using bundled chromium)'}`);
+
       const composition = await selectComposition({
         serveUrl: bundleLocation,
         id: 'NolanInfographic',
-        chromiumOptions: {},
+        browserExecutable,
       });
 
       await renderMedia({
@@ -1409,7 +1412,7 @@ export class RemotionEngine implements RenderEngine {
         composition,
         codec: 'h264',
         outputLocation: outputPath,
-        chromiumOptions: {},
+        browserExecutable,
       });
 
       return {

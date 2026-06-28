@@ -1,0 +1,23 @@
+{
+  "comp": "BarCompare",
+  "out": "04_bar-compare.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "title": "AI data-center capex vs the dot-com telecom peak",
+    "bars": [
+      {
+        "label": "Dot-com telecom peak",
+        "value": 160
+      },
+      {
+        "label": "AI data-center capex",
+        "value": 520
+      }
+    ],
+    "prefix": "$",
+    "suffix": "B",
+    "barStyle": "glass",
+    "theme": "dark-editorial"
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "comp": "PhotoMontage",
+  "out": "stress.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "background": "#221018",
+    "vignette": 0.5,
+    "zoomStart": 1.04,
+    "zoomEnd": 1.14,
+    "panX": -0.03,
+    "panY": 0.0,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\test_output\\photo_montage_stress\\base.png",
+      "x": 0.22,
+      "y": 0.55,
+      "scale": 0.42,
+      "rotation": -5,
+      "from": "left",
+      "enterAt": 0.1,
+      "enterDur": 0.8,
+      "frame": "polaroid",
+      "caption": "entrance"
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\test_output\\photo_montage_stress\\inout.png",
+      "x": 0.5,
+      "y": 0.55,
+      "scale": 0.4,
+      "rotation": 2,
+      "frame": "polaroid",
+      "caption": "fade in/out",
+      "keys": [
+        {
+          "at": 0.4,
+          "y": 0.72,
+          "opacity": 0.0
+        },
+        {
+          "at": 1.1,
+          "y": 0.55,
+          "opacity": 1.0,
+          "ease": "out"
+        },
+        {
+          "at": 3.0,
+          "y": 0.55,
+          "opacity": 1.0
+        },
+        {
+          "at": 3.8,
+          "y": 0.4,
+          "opacity": 0.0,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\test_output\\photo_montage_stress\\tilt.png",
+      "x": 0.8,
+      "y": 0.55,
+      "scale": 0.42,
+      "frame": "polaroid",
+      "caption": "tilt later",
+      "keys": [
+        {
+          "at": 0.8,
+          "opacity": 0.0,
+          "rotation": 0,
+          "scale": 0.42
+        },
+        {
+          "at": 1.4,
+          "opacity": 1.0,
+          "rotation": 0,
+          "ease": "out"
+        },
+        {
+          "at": 2.4,
+          "rotation": 0
+        },
+        {
+          "at": 2.9,
+          "rotation": 14,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\test_output\\photo_montage_stress\\small.png",
+      "x": 0.15,
+      "y": 0.3,
+      "scale": 0.22,
+      "frame": "plain",
+      "keys": [
+        {
+          "at": 2.0,
+          "x": 0.15,
+          "y": 0.3,
+          "scale": 0.18,
+          "rotation": -8,
+          "opacity": 0.0
+        },
+        {
+          "at": 2.6,
+          "x": 0.4,
+          "y": 0.25,
+          "scale": 0.26,
+          "rotation": 4,
+          "opacity": 1.0,
+          "ease": "out"
+        },
+        {
+          "at": 3.6,
+          "x": 0.62,
+          "y": 0.7,
+          "scale": 0.34,
+          "rotation": -3,
+          "ease": "inOut"
+        },
+        {
+          "at": 4.4,
+          "x": 0.85,
+          "y": 0.32,
+          "scale": 0.2,
+          "rotation": 10,
+          "ease": "inOut"
+        }
+      ]
+    }
+  ]
+}

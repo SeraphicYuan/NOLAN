@@ -5,6 +5,19 @@ import type { RenderSpec } from '../jobs/types.js';
 import { RenderEngine, RenderResult } from './types.js';
 import { ensureDir, toNumber, toString } from './utils.js';
 import { resolveBackgroundFromTheme } from '../themes.js';
+import {
+  resolveLayout,
+  getMainRegion,
+  type Region,
+  type LayoutSpec,
+} from '../layout/index.js';
+
+type LayoutRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 
 type MotionCanvasPayload = {
   data: Record<string, unknown>;
@@ -15,6 +28,7 @@ type MotionCanvasPayload = {
   background: string;
   outputName: string;
   debug: boolean;
+  layout: LayoutRect;
 };
 
 const DEFAULT_WIDTH = 1920;
@@ -56,19 +70,45 @@ function resolveDuration(spec: RenderSpec): number {
 
 function buildPayload(spec: RenderSpec, outputName: string): MotionCanvasPayload {
   const data = spec.data ?? {};
+  const dataRecord = data as Record<string, unknown>;
   const debugFlag =
     process.env.MOTION_CANVAS_DEBUG === '1' ||
-    (typeof (data as Record<string, unknown>).debug === 'boolean' &&
-      (data as Record<string, unknown>).debug === true);
+    (typeof dataRecord.debug === 'boolean' && dataRecord.debug === true);
+
+  const width = toNumber(spec.width, DEFAULT_WIDTH);
+  const height = toNumber(spec.height, DEFAULT_HEIGHT);
+
+  // Resolve layout to get target region
+  const layoutSpec = dataRecord.layout as LayoutSpec | undefined;
+  const resolved = resolveLayout(layoutSpec);
+
+  // Get target region (default to main if not specified)
+  const targetRegionName = dataRecord._targetRegion as string | undefined;
+  let region: Region;
+  if (targetRegionName && resolved.regions[targetRegionName]) {
+    region = resolved.regions[targetRegionName];
+  } else {
+    region = getMainRegion(resolved);
+  }
+
+  // Convert region percentages to pixel coordinates
+  const layoutRect: LayoutRect = {
+    x: Math.round(region.x * width),
+    y: Math.round(region.y * height),
+    width: Math.round(region.w * width),
+    height: Math.round(region.h * height),
+  };
+
   return {
     data,
-    width: toNumber(spec.width, DEFAULT_WIDTH),
-    height: toNumber(spec.height, DEFAULT_HEIGHT),
+    width,
+    height,
     duration: resolveDuration(spec),
     fps: resolveFps(spec),
     background: resolveBackground(spec),
     outputName,
     debug: debugFlag,
+    layout: layoutRect,
   };
 }
 
@@ -106,7 +146,7 @@ export default makeProject({
 });
 `;
 
-  const sceneTsx = `import { Circle, Layout, Line, Rect, Txt, Svg, makeScene2D } from '@motion-canvas/2d';
+  const sceneTsx = `import { Circle, Layout, Line, Rect, Txt, makeScene2D } from '@motion-canvas/2d';
 import { Vector2, all, createRef, waitFor, easeOutCubic, linear } from '@motion-canvas/core';
 import spec from '../spec.json';
 
@@ -119,6 +159,16 @@ const safeItems = items.length ? items : ['No items provided'];
 const width = typeof (spec as any).width === 'number' ? (spec as any).width : ${DEFAULT_WIDTH};
 const height = typeof (spec as any).height === 'number' ? (spec as any).height : ${DEFAULT_HEIGHT};
 const background = typeof (spec as any).background === 'string' ? (spec as any).background : '${DEFAULT_BACKGROUND}';
+
+// Layout region (from layout system)
+const layoutRegion = (spec as any).layout ?? { x: width * 0.1, y: height * 0.1, width: width * 0.8, height: height * 0.8 };
+const layoutX = layoutRegion.x;
+const layoutY = layoutRegion.y;
+const layoutW = layoutRegion.width;
+const layoutH = layoutRegion.height;
+// Center of layout region (for positioning content)
+const layoutCenterX = layoutX + layoutW / 2;
+const layoutCenterY = layoutY + layoutH / 2;
 const chart =
   typeof (data as any).chart === 'object' && (data as any).chart !== null
     ? (data as any).chart
@@ -1023,8 +1073,11 @@ export default makeScene2D(function* (view) {
   }
 
   if (kineticEnabled) {
+    // Position content within layout region (offset from center of canvas)
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Txt
           ref={kineticRef}
           text=""
@@ -1056,8 +1109,11 @@ export default makeScene2D(function* (view) {
   }
 
   if (counterEnabled) {
+    // Position content within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center" direction="column" gap={24}>
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center" direction="column" gap={24}>
         <Txt
           ref={counterRef}
           text={counterPrefix + '0' + counterSuffix}
@@ -1116,8 +1172,11 @@ export default makeScene2D(function* (view) {
   }
 
   if (typewriterEnabled) {
+    // Position content within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center" direction="row">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center" direction="row">
         <Txt
           ref={typewriterRef}
           text=""
@@ -1171,9 +1230,11 @@ export default makeScene2D(function* (view) {
     const duration = typeof (spec as any).duration === 'number' ? (spec as any).duration : ${DEFAULT_DURATION};
 
     if (progressType === 'circular') {
-      // Circular progress ring
+      // Circular progress ring - position within layout region
+      const offsetX = layoutCenterX - width / 2;
+      const offsetY = layoutCenterY - height / 2;
       view.add(
-        <Layout layout width={width} height={height} alignItems="center" justifyContent="center" direction="column" gap={24}>
+        <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center" direction="column" gap={24}>
           <Layout layout={false}>
             {/* Track (background ring) */}
             <Circle
@@ -1250,9 +1311,11 @@ export default makeScene2D(function* (view) {
       // Hold
       yield* waitFor(Math.max(0.5, duration - animDuration - 0.4));
     } else {
-      // Progress bar
+      // Progress bar - position within layout region
+      const offsetX = layoutCenterX - width / 2;
+      const offsetY = layoutCenterY - height / 2;
       view.add(
-        <Layout layout width={width} height={height} alignItems="center" justifyContent="center" direction="column" gap={24}>
+        <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center" direction="column" gap={24}>
           {progressLabel ? (
             <Txt
               ref={progressLabelRef}
@@ -1330,8 +1393,11 @@ export default makeScene2D(function* (view) {
     const duration = typeof (spec as any).duration === 'number' ? (spec as any).duration : ${DEFAULT_DURATION};
     const timePerNumber = (duration - 1) / (countdownStart + 1); // Leave 1s for end text
 
+    // Position within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Txt
           ref={countdownRef}
           text=""
@@ -1411,8 +1477,11 @@ export default makeScene2D(function* (view) {
     // Estimate text width based on character count and font size
     const estimatedTextWidth = highlightText.length * highlightFontSize * 0.55;
 
+    // Position content within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Layout layout={false}>
           {/* Highlight marker/underline behind text */}
           {highlightStyle === 'marker' ? (
@@ -1496,8 +1565,11 @@ export default makeScene2D(function* (view) {
     else if (slideDirection === 'top') startY = -height;
     else if (slideDirection === 'bottom') startY = height;
 
+    // Position within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Txt
           ref={slideTextRef}
           text={slideText}
@@ -1609,8 +1681,11 @@ export default makeScene2D(function* (view) {
     const duration = typeof (spec as any).duration === 'number' ? (spec as any).duration : ${DEFAULT_DURATION};
     const intensity = glitchIntensity === 'high' ? 12 : glitchIntensity === 'low' ? 3 : 6;
 
+    // Position within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Layout layout={false}>
           {/* Red channel offset */}
           <Txt
@@ -1685,8 +1760,11 @@ export default makeScene2D(function* (view) {
       bounceLetterRefs.push(createRef<Txt>());
     }
 
+    // Position within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Layout layout={false}>
           {letters.map((letter, index) => (
             <Txt
@@ -2294,8 +2372,11 @@ export default makeScene2D(function* (view) {
     };
     const charset = charsets[scrambleCharset] || charsets.alphanumeric;
 
+    // Position within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Txt
           ref={scrambleRef}
           text={scrambleText.split('').map(() => charset[Math.floor(Math.random() * charset.length)]).join('')}
@@ -2329,8 +2410,11 @@ export default makeScene2D(function* (view) {
   if (gradientTextEnabled) {
     const duration = typeof (spec as any).duration === 'number' ? (spec as any).duration : ${DEFAULT_DURATION};
 
+    // Position within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Txt
           ref={gradientTextRef}
           text={gradientTextValue}
@@ -2362,8 +2446,11 @@ export default makeScene2D(function* (view) {
   if (dissolveEnabled) {
     const duration = typeof (spec as any).duration === 'number' ? (spec as any).duration : ${DEFAULT_DURATION};
 
+    // Position within layout region
+    const offsetX = layoutCenterX - width / 2;
+    const offsetY = layoutCenterY - height / 2;
     view.add(
-      <Layout layout width={width} height={height} alignItems="center" justifyContent="center">
+      <Layout layout width={layoutW} height={layoutH} x={offsetX} y={offsetY} alignItems="center" justifyContent="center">
         <Txt
           ref={dissolveTextRef}
           text={dissolveText || 'Dissolve'}
@@ -3647,12 +3734,12 @@ export default makeScene2D(function* (view) {
                 size={40}
                 fill={staircaseArrowColor + '20'}
               />
-              <Svg
+              {/* Icon placeholder (Svg not available in current Motion Canvas version) */}
+              <Circle
                 x={-cardWidth / 2 + 35}
                 y={0}
-                svg={getIconSvg(item.icon, staircaseArrowColor)}
-                width={24}
-                height={24}
+                size={20}
+                fill={staircaseArrowColor}
               />
               {/* Label */}
               <Txt
@@ -4050,12 +4137,21 @@ export class MotionCanvasEngine implements RenderEngine {
       const url = `http://127.0.0.1:${port}/render.html`;
 
       logDebug('launching puppeteer');
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_PATH || undefined;
+      logDebug(`Browser executable: ${executablePath || '(using bundled chromium)'}`);
       browser = await withTimeout(
         'puppeteer launch',
         30000,
         puppeteer.launch({
           headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+          ],
+          executablePath,
         }),
       );
 
@@ -4112,7 +4208,8 @@ export class MotionCanvasEngine implements RenderEngine {
         );
         logDebug('render started');
       } catch {
-        const details = debugEnabled && consoleMessages.length ? `\n${consoleMessages.join('\n')}` : '';
+        // Always include console messages for debugging
+        const details = consoleMessages.length ? `\nConsole output:\n${consoleMessages.join('\n')}` : '';
         throw new Error(`Motion Canvas renderer did not start.${details}`);
       }
 
@@ -4125,7 +4222,8 @@ export class MotionCanvasEngine implements RenderEngine {
         );
         logDebug('render completed');
       } catch {
-        const details = debugEnabled && consoleMessages.length ? `\n${consoleMessages.join('\n')}` : '';
+        // Always include console messages for debugging
+        const details = consoleMessages.length ? `\nConsole output:\n${consoleMessages.join('\n')}` : '';
         throw new Error(`Motion Canvas render timed out after ${renderTimeoutMs}ms.${details}`);
       }
 

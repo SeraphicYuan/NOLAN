@@ -1,0 +1,24 @@
+{
+  "comp": "RouteMap",
+  "out": "Section_2_scene_005.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "title": "The Great Divide",
+    "pins": [
+      {
+        "x": 0.5,
+        "y": 0.4,
+        "label": "Great Plains"
+      },
+      {
+        "x": 0.45,
+        "y": 0.75,
+        "label": "Yucatan Peninsula"
+      }
+    ],
+    "mapSrc": "americas-basemap",
+    "routeStyle": "straight",
+    "theme": "high-contrast"
+  }
+}

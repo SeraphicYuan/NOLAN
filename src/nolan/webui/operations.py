@@ -245,7 +245,9 @@ from nolan.external_assets import build_query_variants  # noqa: E402,F401
 async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool = True,
                          max_results: int = 4, concurrency: int = 6, score_cap: int = 4,
                          scorer_model: str = "qwen/qwen3-vl-8b-instruct",
-                         use_library: bool = True, library_gate: int = 5):
+                         use_library: bool = True, library_gate: int = 5,
+                         use_vision: bool = False, semantic: bool = True,
+                         sim_gate: float = 0.30):
     """Video-first, multi-source b-roll matcher with query-variant fallback.
 
     Speed-optimized: (1) scenes processed concurrently, (2) candidates cheaply
@@ -300,6 +302,24 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
             except Exception as e:
                 job.log(f"picture library unavailable: {e}")
 
+        # Semantic mode: external candidates are described (vision) + ingested into
+        # the project library so the match is description<->description (like the
+        # video library) and the library grows/reuses across runs.
+        ingest_lib = None
+        if semantic:
+            try:
+                from nolan.imagelib import ImageLibrary
+                from nolan.imagelib.describe import make_describer
+                describer = make_describer(config)
+                ingest_lib = ImageLibrary("project", project=project_name,
+                                          embedder=(libs[0].embedder if libs else None),
+                                          describer=describer)
+                if ingest_lib not in libs:
+                    libs.append(ingest_lib)
+            except Exception as e:
+                job.log(f"semantic match unavailable, falling back: {e}")
+                ingest_lib = None
+
         state = {"done": 0, "matched": 0, "from_library": 0}
         lock = threading.Lock()
         lib_lock = threading.Lock()
@@ -323,11 +343,18 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
                                       source_url=a.source_url, license=a.license,
                                       width=a.width, height=a.height)
                     for p, a in cands[:score_cap]]
-            ctx = f"for a documentary scene: {scene.visual_description or ''}"
-            scored = scorer.score_results(isrs, q, context=ctx)
-            best = scored[0] if scored else None
-            if not best or (best.score or 0) < library_gate:
-                return False
+            if use_vision:
+                ctx = f"for a documentary scene: {scene.visual_description or ''}"
+                scored = scorer.score_results(isrs, q, context=ctx)
+                best = scored[0] if scored else None
+                if not best or (best.score or 0) < library_gate:
+                    return False
+            else:
+                # Fast default: trust CLIP ranking (lib.search is already CLIP-ranked).
+                best = isrs[0] if isrs else None
+                if not best:
+                    return False
+                best.score = best.score if getattr(best, "score", None) is not None else "clip"
             dest = out_dir / f"{scene.id}{Path(best.url).suffix or '.jpg'}"
             try:
                 shutil.copy(best.url, dest)
@@ -353,7 +380,8 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
             kind = external_match_for_scene(
                 scene, client=client, scorer=scorer, vid_sources=vid_sources,
                 out_dir=out_dir, project_root=plan_path.parent, prefer_video=prefer_video,
-                max_results=max_results, score_cap=score_cap, gate=4, log=job.log)
+                max_results=max_results, score_cap=score_cap, gate=4,
+                use_vision=use_vision, log=job.log)
             ok = bool(kind)
             with lock:
                 state["done"] += 1
@@ -362,9 +390,30 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
                 job.set_progress(0.05 + 0.9 * state["done"] / max(1, len(broll)),
                                  f"b-roll {state['done']}/{len(broll)} · {state['matched']} matched")
 
-        # (1) Process scenes concurrently.
-        with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            list(pool.map(process_scene, broll))
+        def process_scene_semantic(scene):
+            """Unified description-based match (library-first, external=ingest).
+            Sequential: ChromaDB/vision aren't thread-safe and the describe step
+            is the cost — it caches into the library for reuse."""
+            from nolan.external_assets import semantic_match_for_scene
+            kind = semantic_match_for_scene(
+                scene, libs=libs, client=client, scorer=scorer, vid_sources=vid_sources,
+                out_dir=out_dir, project_root=plan_path.parent, ingest_lib=ingest_lib,
+                max_results=max_results, score_cap=score_cap, sim_gate=sim_gate, log=job.log)
+            state["done"] += 1
+            if kind:
+                state["matched"] += 1
+                if kind.startswith("library"):
+                    state["from_library"] += 1
+            job.set_progress(0.05 + 0.9 * state["done"] / max(1, len(broll)),
+                             f"b-roll {state['done']}/{len(broll)} · {state['matched']} matched")
+
+        if semantic and ingest_lib is not None:
+            for s in broll:
+                process_scene_semantic(s)
+        else:
+            # (1) Process scenes concurrently (legacy CLIP/quality path).
+            with ThreadPoolExecutor(max_workers=concurrency) as pool:
+                list(pool.map(process_scene, broll))
 
         plan.save(str(plan_path))
         return {"project": project_name, "broll_scenes": len(broll), "matched": state["matched"],
@@ -704,6 +753,53 @@ def _ingest_results_to_library(results, records, scope, project, query_url) -> i
         except Exception:
             continue
     return added
+
+
+async def render_lottie_preview(job, *, template_id: str, overrides: Optional[dict] = None,
+                                width: int = 1920, height: int = 1080, fps: int = 30,
+                                duration: Optional[float] = None,
+                                service_url: Optional[str] = None) -> dict:
+    """Render a catalog Lottie template (optionally customized) to MP4 for the showcase.
+
+    Writes to `_library/lottie_previews/<id>.mp4` (served by the hub) and returns the
+    filename. Requires the render-service.
+    """
+    import re as _re
+
+    from nolan.lottie_render import DEFAULT_SERVICE, prepare_lottie, render_lottie_to_mp4
+    from nolan.template_catalog import TemplateCatalog
+
+    cat = TemplateCatalog()
+    t = cat.get(template_id)
+    if not t:
+        raise RuntimeError(f"unknown lottie template: {template_id}")
+    src = cat.get_full_path(t)
+    dur = float(duration or t.duration_seconds or 5.0)
+
+    out_dir = Path("_library") / "lottie_previews"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    overrides = overrides or {}
+    safe = _re.sub(r"[^A-Za-z0-9._-]", "_", template_id)
+    job.set_progress(0.2, f"Rendering '{t.name}'…")
+    prepared = out_dir / f"{safe}.prepared.json"
+    if overrides.get("fields"):
+        # schema field-name → value (the showcase editor) -> render_template
+        from nolan.lottie import render_template
+        try:
+            render_template(src, prepared, **overrides["fields"])
+            src = prepared
+        except Exception:
+            pass  # template has no schema / invalid field -> render as-is
+    elif overrides.get("text") or overrides.get("colors"):
+        prepare_lottie(src, prepared, {**overrides, "duration": dur, "fps": fps})
+        src = prepared
+
+    name = f"{safe}.mp4"
+    await asyncio.to_thread(
+        render_lottie_to_mp4, src, out_dir / name, service_url=service_url or DEFAULT_SERVICE,
+        width=width, height=height, fps=fps, duration=dur)
+    job.set_progress(1.0, "Rendered")
+    return {"file": name, "name": t.name}
 
 
 async def comfyui_status(config) -> dict:
@@ -1566,6 +1662,87 @@ async def generate_voiceover(job, *, config, project: str = None, script_project
             "next": "run `nolan align` to set audio-accurate scene timings"}
 
 
+async def generate_captions(job, *, config, project: str):
+    """Build SRT/VTT + word-level JSON for a project's voiceover (hybrid timing).
+
+    Uses the known script text (correct spelling) + Whisper word timestamps. If the
+    voiceover has per-section segments, captions each segment AND stitches a full
+    timeline; otherwise captions voiceover.mp3 directly.
+    """
+    import json as _json
+    from pathlib import Path as _P
+    from nolan import captions as _cap
+    from nolan.whisper import WhisperTranscriber, WhisperConfig, WHISPER_AVAILABLE
+
+    if not WHISPER_AVAILABLE:
+        raise RuntimeError("captions need Whisper (pip install faster-whisper)")
+
+    base = _P("projects") / project
+    vo = base / "assets" / "voiceover"
+    if not vo.exists():
+        raise RuntimeError(f"no voiceover for '{project}' — generate one first")
+
+    # known section text (correct spelling) from script.md or script.json
+    md, sj = base / "script.md", base / "script.json"
+    if md.exists():
+        from nolan.script import parse_script_sections
+        sections = parse_script_sections(md.read_text(encoding="utf-8"))
+    elif sj.exists():
+        from nolan.script import Script, clean_tts_text
+        sc = Script.load_json(str(sj))
+        sections = [{"title": s.title, "body": clean_tts_text(s.narration)}
+                    for s in sc.sections if (s.narration or "").strip()]
+    else:
+        raise RuntimeError("no script text found to align against")
+
+    transcriber = WhisperTranscriber(WhisperConfig(
+        model_size="base", device="cpu", compute_type="int8"))
+    loop = asyncio.get_event_loop()
+
+    seg_dir = vo / "segments"
+    manifest_path = seg_dir / "segments.json"
+    global_words, per_seg = [], []
+
+    if manifest_path.exists():
+        manifest = _json.loads(manifest_path.read_text(encoding="utf-8")).get("segments", [])
+        offset, total = 0.0, len(manifest)
+        for n, m in enumerate(manifest):
+            job.set_progress(0.05 + 0.9 * (n / total if total else 0),
+                             f"Captioning [{n+1}/{total}] {(m.get('title') or '')[:40]}")
+            wavp = seg_dir / m["file"]
+            if not wavp.exists():
+                continue
+            idx = m.get("index", n)
+            known = (sections[idx]["body"] if idx < len(sections) else "").split()
+            wt = await loop.run_in_executor(None, transcriber.transcribe_words, wavp)
+            words = _cap.align_words(known, wt)
+            (seg_dir / (wavp.stem + ".srt")).write_text(_cap.words_to_srt(words), encoding="utf-8")
+            (seg_dir / (wavp.stem + ".vtt")).write_text(_cap.words_to_vtt(words), encoding="utf-8")
+            (seg_dir / (wavp.stem + ".words.json")).write_text(
+                _json.dumps(words, ensure_ascii=False), encoding="utf-8")
+            per_seg.append(wavp.stem)
+            global_words.extend(_cap.shift_words(words, offset))
+            offset += float(m.get("duration") or _wav_duration(wavp))
+    else:
+        mp3 = vo / "voiceover.mp3"
+        if not mp3.exists():
+            raise RuntimeError("no segments and no voiceover.mp3 to caption")
+        job.set_progress(0.1, "Transcribing voiceover…")
+        known = " ".join(s["body"] for s in sections).split()
+        wt = await loop.run_in_executor(None, transcriber.transcribe_words, mp3)
+        global_words = _cap.align_words(known, wt)
+
+    job.set_progress(0.96, "Writing SRT / VTT / word JSON…")
+    (vo / "voiceover.srt").write_text(_cap.words_to_srt(global_words), encoding="utf-8")
+    (vo / "voiceover.vtt").write_text(_cap.words_to_vtt(global_words), encoding="utf-8")
+    (vo / "voiceover.words.json").write_text(
+        _json.dumps(global_words, ensure_ascii=False), encoding="utf-8")
+
+    job.set_progress(1.0, f"Captions ready ({len(global_words)} words)")
+    return {"project": project, "words": len(global_words), "per_segment": per_seg,
+            "srt": "voiceover.srt", "vtt": "voiceover.vtt", "words_json": "voiceover.words.json"}
+
+
 async def fetch_channel(job, *, store_root, style_id: str, channel: str,
                         mode: str = "count", count: int = 10,
                         date_after: str = None, date_before: str = None,
@@ -1782,3 +1959,141 @@ async def write_script(job, *, store_root, slug: str, session: str = "nolan2"):
     return {"slug": slug, "session": session, "task_file": task_posix,
             "script_file": script_posix, "dispatched": dispatched,
             "dispatch_error": dispatch_error}
+
+
+# ==================== Video-style analysis (visual style guides) ====================
+
+
+def _vseg_to_dict(seg) -> dict:
+    """Map a VideoSegment to the dict shape the video_style modules expect."""
+    ic = getattr(seg, "inferred_context", None)
+    return {
+        "timestamp_start": seg.timestamp_start,
+        "timestamp_end": seg.timestamp_end,
+        "transcript": seg.transcript,
+        "combined_summary": seg.combined_summary,
+        "frame_description": seg.frame_description,
+        "inferred_context": ic.to_dict() if ic else None,
+    }
+
+
+async def analyze_video_style(job, *, config, store_root, db_path, style_id: str,
+                              session: str = "nolan2", provider: str = "openrouter",
+                              max_frames: int = 24, vision_max_frames: int = 6,
+                              enable_vision: bool = True):
+    """Per-video visual extraction (stats + pairing + vision), then dispatch the
+    synthesis to a tmux Claude agent which writes ``video_style_guide.md``.
+    Mirrors :func:`analyze_style`.
+    """
+    from pathlib import Path as _Path
+    from nolan.video_style import VideoStyleStore, pairing as pairing_mod
+    from nolan.video_style.extract import build_extract
+    from nolan.video_style.tasks import video_style_synthesis_task
+    from nolan.indexer import VideoIndex
+    from nolan.vision import create_vision_provider
+
+    store = VideoStyleStore(_Path(store_root))
+    if not store.exists(style_id):
+        raise RuntimeError(f"video style not found: {style_id}")
+    name = store.get(style_id).get("name", style_id)
+    sources = store.sources(style_id)
+    if not sources:
+        raise RuntimeError("no reference videos — add some before analyzing")
+
+    index = VideoIndex(_Path(db_path))
+    embedder = pairing_mod.make_bge_embedder()  # loads BGE once
+
+    vision = None
+    if enable_vision:
+        try:
+            vp = create_vision_provider(_select_vision(config, provider, None, None, None))
+            vision = vp if await vp.check_connection() else None
+            if vision is None:
+                job.log(f"vision provider '{provider}' unreachable — skipping cinematography")
+        except Exception as e:
+            job.log(f"vision setup failed ({e}) — skipping cinematography")
+
+    total = len(sources)
+    analyzed, errors = [], []
+    for i, s in enumerate(sources):
+        slug, vpath = s["slug"], s["video_path"]
+        job.set_progress(0.05 + 0.8 * (i / total if total else 0),
+                         f"Analyzing [{i+1}/{total}] {s.get('title') or slug}")
+        try:
+            try:
+                segs = [_vseg_to_dict(x) for x in index.get_segments(vpath)]
+            except Exception:
+                segs = []
+            extract = await build_extract(
+                _Path(vpath), segments=segs, frames_dir=store.frames_dir(style_id, slug),
+                embed=embedder, vision_provider=vision,
+                max_frames=max_frames, vision_max_frames=vision_max_frames)
+            store.write_extract(style_id, slug, extract)
+            store.mark_analyzed(style_id, slug)
+            analyzed.append(slug)
+            job.log(f"  + {s.get('title') or slug} (segments={len(segs)}, frames={extract['frames_analyzed']})")
+        except Exception as e:
+            errors.append({"slug": slug, "error": str(e)})
+            job.log(f"  ! {slug}: {e}")
+
+    job.set_progress(0.9, "Writing synthesis brief…")
+    store.task_path(style_id).write_text(
+        video_style_synthesis_task(style_id, name, analyzed), encoding="utf-8")
+    task_posix = f"video_styles/{style_id}/synthesis_task.md"
+    guide_posix = f"video_styles/{style_id}/video_style_guide.md"
+
+    job.set_progress(0.94, f"Dispatching synthesis to {session}…")
+    message = (f"New NOLAN video style-guide synthesis task — please read and "
+               f"complete {task_posix} now, writing the guide to {guide_posix}.")
+    dispatched, dispatch_error = True, None
+    try:
+        await asyncio.get_event_loop().run_in_executor(None, _dispatch_to_tmux, session, message)
+        job.set_progress(1.0, f"Analyzed {len(analyzed)}; synthesis dispatched to {session}")
+    except Exception as e:
+        dispatched, dispatch_error = False, str(e)
+        job.set_progress(1.0, f"Analyzed {len(analyzed)}; dispatch failed: {e}")
+
+    return {"style_id": style_id, "session": session, "analyzed": analyzed,
+            "errors": errors, "task_file": task_posix, "guide_file": guide_posix,
+            "dispatched": dispatched, "dispatch_error": dispatch_error}
+
+
+# ==================== Publish (source -> beautiful HTML article) ====================
+
+async def publish_article(job, *, src: str, theme: str = "press", type: str = "explainer",
+                          width: str = "regular", images: str = "none",
+                          brand: Optional[str] = None, cover: bool = True,
+                          slug: Optional[str] = None, nolan_config=None):
+    """Turn a URL / file / pasted text into a self-contained offline HTML article.
+
+    Mirrors the ``nolan publish`` CLI. The authoring step runs a Claude agent
+    (minutes), so progress is staged: scaffold -> author -> build. The deterministic
+    scaffold/build steps are blocking (subprocess) so they run in a thread; the
+    authoring step is already async.
+    """
+    from nolan.publish import toolkit
+    from nolan.publish.builder import Publisher, PublishConfig
+
+    loop = asyncio.get_event_loop()
+    cfg = PublishConfig(theme=theme, type=type, width=width, images=images,
+                        brand_color=(brand or None), cover=cover)
+    pub = Publisher(cfg, nolan_config=nolan_config)
+
+    job.set_progress(0.05, "Scaffolding workspace…")
+    ws, _ = await loop.run_in_executor(None, pub.prepare, src, slug)
+    job.log(f"workspace: {ws}")
+
+    job.set_progress(0.15, "Authoring article (agent)…")
+    await pub.author(ws)
+
+    sections = list((ws / "article" / "sections").glob("*.tsx"))
+    if not sections:
+        raise RuntimeError("agent wrote no sections — authoring did not complete")
+
+    job.set_progress(0.85, f"Building ({len(sections)} sections)…")
+    html = await loop.run_in_executor(None, pub.finalize, ws)
+    ok = html.exists() and toolkit.is_offline(html)
+    summary = f"{len(sections)} sections, {html.stat().st_size // 1024} KB, offline={ok}"
+    job.set_progress(1.0, f"{ws.name}: {summary}")
+    return {"ok": ok, "slug": ws.name, "sections": len(sections),
+            "article_html": str(html), "workspace": str(ws), "summary": summary}

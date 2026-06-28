@@ -1,0 +1,27 @@
+
+
+
+
+
+
+
+
+
+
+Scenes: 14  | plan: projects\US Economy\segment_mcdonalds\scene_plan.json
+  0.0-8.025s  [generated]  actively picking sides
+  8.025-13.375s  [motion:line-chart]  death spiral
+  13.375-18.725s  [generated]  dollar menu
+  18.725-24.075s  [generated]  Remember those?
+  24.075-26.75s  [generated]  worked
+  26.75-29.425s  [motion:counter]  33%
+  29.425-32.1s  [generated]  everyone
+  32.1-34.775s  [generated]  2025
+  34.775-37.45s  [motion:premium-card]  dropped
+  37.45-40.125s  [motion:annotate-stat]  luxury
+  40.125-42.8s  [generated]  skyrocketed
+  42.8-48.15s  [generated]  every industry
+  48.15-50.825s  [generated]  two
+  50.825-53.5s  [generated]  retailers
+
+Done → projects\US Economy\segment_mcdonalds\final.mp4

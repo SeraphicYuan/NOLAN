@@ -73,12 +73,12 @@ router.get('/icons/:name', (req: Request, res: Response) => {
 });
 
 /**
- * GET /assets/variants/:styleId/*
+ * GET /assets/variants/:styleId/:assetName
  * List available variants for an asset
  */
-router.get('/variants/:styleId/*', (req: Request, res: Response) => {
+router.get('/variants/:styleId/:assetName', (req: Request, res: Response) => {
   const styleId = String(req.params.styleId);
-  const assetName = String(req.params[0]); // Everything after styleId/
+  const assetName = String(req.params.assetName);
 
   const variants = assetManager.listVariants(styleId, assetName);
 
@@ -94,9 +94,9 @@ router.get('/variants/:styleId/*', (req: Request, res: Response) => {
  * GET /assets/check/:styleId/:assetName
  * Check if an asset exists
  */
-router.get('/check/:styleId/*', (req: Request, res: Response) => {
+router.get('/check/:styleId/:assetName', (req: Request, res: Response) => {
   const styleId = String(req.params.styleId);
-  const assetName = String(req.params[0]); // Everything after styleId/
+  const assetName = String(req.params.assetName);
   const variant = queryString(req.query.variant);
 
   const assetPath = assetManager.getAssetPath(styleId, assetName, variant);

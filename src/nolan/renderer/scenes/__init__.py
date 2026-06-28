@@ -35,6 +35,8 @@ from .portrait_reveal import render_portrait_reveal, portrait_reveal
 from .pie_callout import PieCalloutRenderer, render_pie_callout
 from .line_chart import LineChartRenderer, render_line_chart
 from .loop_diagram import LoopDiagramRenderer, render_loop_diagram
+# Photo montage ("photos on a table")
+from .photo_montage import PhotoMontageRenderer, render_photo_montage
 
 __all__ = [
     'QuoteRenderer',
@@ -79,4 +81,7 @@ __all__ = [
     'render_line_chart',
     'LoopDiagramRenderer',
     'render_loop_diagram',
+    # Photo montage
+    'PhotoMontageRenderer',
+    'render_photo_montage',
 ]

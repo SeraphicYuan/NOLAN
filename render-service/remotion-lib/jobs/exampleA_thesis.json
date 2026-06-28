@@ -1,0 +1,10 @@
+{
+  "comp": "Kinetic",
+  "out": "kinetic_A_thesis.mp4",
+  "durationInFrames": 120,
+  "props": {
+    "text": "Two completely different economies running inside the same country",
+    "highlights": ["two", "different", "economies", "same", "country"],
+    "accent": "#ff3b3b"
+  }
+}

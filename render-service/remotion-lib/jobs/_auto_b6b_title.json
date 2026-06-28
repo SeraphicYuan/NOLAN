@@ -1,0 +1,17 @@
+{
+  "comp": "Kinetic",
+  "out": "b6b_title.mp4",
+  "durationInFrames": 120,
+  "codec": "h264",
+  "props": {
+    "text": "just the stock market",
+    "highlights": [
+      "stock market"
+    ],
+    "position": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "theme": "dark-editorial"
+  }
+}

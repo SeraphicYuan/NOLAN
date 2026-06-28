@@ -1,0 +1,118 @@
+{
+  "comp": "PhotoMontage",
+  "out": "brief_free.mp4",
+  "durationInFrames": 150,
+  "codec": "h264",
+  "props": {
+    "background": "#241016",
+    "vignette": 0.5,
+    "zoomStart": 1.05,
+    "zoomEnd": 1.16,
+    "panX": -0.04,
+    "panY": 0.0,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\15\\152de2d8d020100a157c0304240cded20dd63be1785a3d6c337762207b44214c.jpg",
+      "x": 0.25,
+      "y": 0.5,
+      "scale": 0.5,
+      "caption": "Facsimile Of Title Page Of 1538 Edition",
+      "keys": [
+        {
+          "at": 0.0,
+          "x": -0.16999999999999998,
+          "y": 0.5,
+          "opacity": 0.0
+        },
+        {
+          "at": 0.7,
+          "x": 0.25,
+          "y": 0.5,
+          "opacity": 1.0,
+          "ease": "out"
+        },
+        {
+          "at": 2.5,
+          "rotation": 0.0
+        },
+        {
+          "at": 3.1,
+          "rotation": -6.0,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\15\\151222279b62ccbc533556b0a4e1591661f4efd1079190a8e3ac89e224dcced1.jpg",
+      "x": 0.75,
+      "y": 0.5,
+      "scale": 0.5,
+      "caption": "The Creation",
+      "keys": [
+        {
+          "at": 0.4,
+          "x": 1.17,
+          "y": 0.5,
+          "opacity": 0.0
+        },
+        {
+          "at": 1.1,
+          "x": 0.75,
+          "y": 0.5,
+          "opacity": 1.0,
+          "ease": "out"
+        },
+        {
+          "at": 2.5,
+          "rotY": 0.0
+        },
+        {
+          "at": 3.1,
+          "rotY": -35.0,
+          "ease": "inOut"
+        }
+      ]
+    },
+    {
+      "src": "D:\\ClaudeProjects\\NOLAN\\_library\\images\\files\\4d\\4dae7a4f69e6f8c4220ba11ca6d8611060e85d218f626c80d1c25d0b907640ef.jpg",
+      "x": 0.5,
+      "y": 0.3,
+      "scale": 0.28,
+      "frame": "plain",
+      "keys": [
+        {
+          "at": 1.0,
+          "opacity": 0.0
+        },
+        {
+          "at": 1.6,
+          "opacity": 1.0,
+          "ease": "out"
+        },
+        {
+          "at": 1.6,
+          "x": 0.5,
+          "y": 0.3,
+          "ease": "out"
+        },
+        {
+          "at": 3.0,
+          "x": 0.5,
+          "y": 0.72,
+          "ease": "inOut"
+        },
+        {
+          "at": 4.2,
+          "opacity": 1.0
+        },
+        {
+          "at": 4.8,
+          "opacity": 0.0,
+          "ease": "inOut"
+        }
+      ]
+    }
+  ]
+}

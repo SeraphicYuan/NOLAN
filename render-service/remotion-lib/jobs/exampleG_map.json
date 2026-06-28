@@ -1,0 +1,15 @@
+{
+  "comp": "RouteMap",
+  "out": "map_G_flows.mp4",
+  "durationInFrames": 150,
+  "image": "remotion-lib/assets/us_map.png",
+  "props": {
+    "title": "Where the AI money flows",
+    "routeStyle": "arc",
+    "pins": [
+      {"x": 0.80, "y": 0.40, "label": "WALL STREET"},
+      {"x": 0.14, "y": 0.54, "label": "BIG TECH"},
+      {"x": 0.48, "y": 0.64, "label": "DATA CENTERS"}
+    ]
+  }
+}

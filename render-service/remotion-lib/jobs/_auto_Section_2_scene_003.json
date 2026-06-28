@@ -1,0 +1,61 @@
+{
+  "comp": "PhotoMontage",
+  "out": "Section_2_scene_003.mp4",
+  "durationInFrames": 300,
+  "codec": "h264",
+  "props": {
+    "background": "#1a1510",
+    "vignette": 0.6,
+    "zoomStart": 1.1,
+    "zoomEnd": 1.25,
+    "panX": 0.02,
+    "panY": -0.02,
+    "theme": "dark-editorial"
+  },
+  "cards": [
+    {
+      "src": "maya_athlete_midair_hip_strike.jpg",
+      "x": 0.5,
+      "y": 0.45,
+      "scale": 1.1,
+      "rotation": -5,
+      "from": "bottom",
+      "enterAt": 0,
+      "enterDur": 1.2,
+      "ease": "spring",
+      "frame": "cutout",
+      "caption": "The Hip Strike",
+      "keys": [
+        {
+          "at": 1.2,
+          "scale": 1.15,
+          "rotY": 5
+        }
+      ]
+    },
+    {
+      "src": "stone_hoop_wall_detail.jpg",
+      "x": 0.75,
+      "y": 0.25,
+      "scale": 0.9,
+      "rotation": 2,
+      "from": "right",
+      "enterAt": 0.4,
+      "enterDur": 1.0,
+      "frame": "plain",
+      "shadow": true
+    },
+    {
+      "src": "carved_stone_texture_bg.jpg",
+      "x": 0.2,
+      "y": 0.7,
+      "scale": 0.8,
+      "rotation": -10,
+      "from": "left",
+      "enterAt": 0.2,
+      "enterDur": 1.1,
+      "frame": "plain",
+      "opacity": 0.6
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lottie Showcase · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    .wrap { max-width: 1200px; margin: 28px auto; padding: 0 20px; }
+    h1 { font-size: 26px; margin-bottom: 4px; }
+    .sub { color: var(--text-secondary); margin-bottom: 16px; font-size: 13px; }
+    .bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+           background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    input[type=text], select { background: var(--bg-primary); border: 1px solid var(--border);
+      color: var(--text-primary); border-radius: 8px; padding: 9px 11px; font-size: 14px; }
+    input#q { min-width: 260px; flex: 1; }
+    button { background: var(--accent, #6366f1); color: #fff; border: none; border-radius: 8px;
+             padding: 9px 16px; font-size: 14px; cursor: pointer; }
+    .meta { margin: 14px 2px; font-size: 13px; color: var(--text-secondary); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .tile { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
+            overflow: hidden; cursor: pointer; }
+    .tile:hover { border-color: var(--accent, #818cf8); }
+    .player { width: 100%; aspect-ratio: 1/1; background: #0b0b10; }
+    .tcap { padding: 9px; font-size: 11px; color: var(--text-secondary); }
+    .tcap .nm { color: var(--text-primary); font-size: 12px; }
+    /* detail drawer */
+    #drawer { position: fixed; top: 0; right: 0; width: 420px; max-width: 92vw; height: 100vh;
+      background: var(--bg-secondary); border-left: 1px solid var(--border); padding: 20px;
+      overflow-y: auto; transform: translateX(100%); transition: transform .2s; z-index: 50; }
+    #drawer.open { transform: translateX(0); }
+    #drawer .close { float: right; background: transparent; color: var(--text-secondary); border: none; font-size: 20px; }
+    #dplayer { width: 100%; aspect-ratio: 1/1; background: #0b0b10; border-radius: 8px; margin: 10px 0; }
+    .fld { margin: 8px 0; } .fld label { display:block; font-size:11px; color: var(--text-secondary); margin-bottom:3px; }
+    .fld input { width: 100%; }
+    #result video { width: 100%; border-radius: 8px; margin-top: 8px; }
+  </style>
+  <script src="/static/nav.js" data-active="lottie"></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Lottie Showcase</h1>
+    <p class="sub">Browse the Lottie template library, preview live, customize, and render to MP4.
+       (MP4 render needs the render-service running.)</p>
+    <div class="bar">
+      <div style="flex:1;"><label style="font-size:11px;color:var(--text-secondary);">Search</label>
+        <input type="text" id="q" placeholder="name, category, tag"></div>
+      <div><label style="font-size:11px;color:var(--text-secondary);">Category</label>
+        <select id="cat"><option value="">All</option></select></div>
+      <button id="go">Search</button>
+    </div>
+    <div id="meta" class="meta"></div>
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <div id="drawer">
+    <button class="close" onclick="closeDrawer()">✕</button>
+    <h3 id="dname"></h3>
+    <div id="dmeta" class="sub"></div>
+    <div id="dplayer"></div>
+    <div id="dfields"></div>
+    <button id="renderBtn">Render MP4</button>
+    <div id="jobw" class="job-widget" style="margin-top:10px;"></div>
+    <div id="result"></div>
+  </div>
+
+  <script src="/static/jobs.js"></script>
+  <script>
+    var grid = document.getElementById("grid"), meta = document.getElementById("meta");
+    var anims = {}, current = null;
+    function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+    function loadCategories(cats){
+      var sel = document.getElementById("cat");
+      (cats||[]).forEach(function(c){ var o=document.createElement("option"); o.value=c; o.textContent=c; sel.appendChild(o); });
+    }
+
+    function run(){
+      var q = document.getElementById("q").value.trim(), cat = document.getElementById("cat").value;
+      var url = "/api/lottie?" + (cat?("category="+encodeURIComponent(cat)+"&"):"") + (q?("q="+encodeURIComponent(q)):"");
+      meta.textContent = "Loading…";
+      Object.values(anims).forEach(function(a){ try{a.destroy();}catch(e){} }); anims = {};
+      fetch(url).then(function(r){return r.json();}).then(function(d){
+        if (!document.getElementById("cat").dataset.loaded){ loadCategories(d.categories); document.getElementById("cat").dataset.loaded="1"; }
+        meta.textContent = d.total + " template(s)";
+        grid.innerHTML = d.templates.map(function(t){
+          return '<div class="tile" onclick=\'openDrawer('+JSON.stringify(t).replace(/'/g,"&#39;")+')\'>'+
+            '<div class="player" id="p_'+esc(t.id)+'"></div>'+
+            '<div class="tcap"><div class="nm">'+esc(t.name)+'</div>'+esc(t.category)+
+            (t.has_schema?' · editable':'')+'</div></div>';
+        }).join("");
+        // mount live lottie previews
+        d.templates.forEach(function(t){
+          var el = document.getElementById("p_"+t.id);
+          if (el && window.lottie){
+            try { anims[t.id] = lottie.loadAnimation({container:el, renderer:"svg", loop:true, autoplay:true, path:t.raw}); }
+            catch(e){}
+          }
+        });
+      }).catch(function(e){ meta.textContent = "Error: "+e.message; });
+    }
+
+    function openDrawer(t){
+      current = t;
+      document.getElementById("dname").textContent = t.name;
+      document.getElementById("dmeta").textContent = t.category + " · " + (t.license||"") + (t.author?(" · "+t.author):"");
+      var dp = document.getElementById("dplayer"); dp.innerHTML = "";
+      if (window.lottie) lottie.loadAnimation({container:dp, renderer:"svg", loop:true, autoplay:true, path:t.raw});
+      // schema field editor
+      var f = document.getElementById("dfields"); f.innerHTML = "";
+      (t.schema_fields||[]).forEach(function(name){
+        var isColor = name.indexOf("color") === 0 || name.indexOf("color") > -1;
+        f.innerHTML += '<div class="fld"><label>'+esc(name)+'</label>'+
+          '<input id="f_'+esc(name)+'" type="'+(isColor?"color":"text")+'"></div>';
+      });
+      document.getElementById("result").innerHTML = "";
+      document.getElementById("drawer").classList.add("open");
+    }
+    function closeDrawer(){ document.getElementById("drawer").classList.remove("open"); }
+    window.openDrawer = openDrawer; window.closeDrawer = closeDrawer;
+
+    document.getElementById("renderBtn").addEventListener("click", function(){
+      if (!current) return;
+      var fields = {};
+      (current.schema_fields||[]).forEach(function(name){
+        var v = document.getElementById("f_"+name); if (v && v.value) fields[name] = v.value;
+      });
+      var body = {id: current.id};
+      if (Object.keys(fields).length) body.fields = fields;
+      document.getElementById("result").innerHTML = "";
+      NolanJobs.start("/api/lottie/render", body, {
+        into: document.getElementById("jobw"),
+        onDone: function(job){
+          if (job.result && job.result.file){
+            document.getElementById("result").innerHTML =
+              '<video controls autoplay loop src="/api/lottie/preview/'+encodeURIComponent(job.result.file)+'"></video>'+
+              '<div><a href="/api/lottie/preview/'+encodeURIComponent(job.result.file)+'" download>Download MP4</a></div>';
+          } else {
+            document.getElementById("result").innerHTML = '<div class="sub">Render failed — is the render-service running?</div>';
+          }
+        }
+      }).catch(function(e){ alert("Render failed: "+e.message); });
+    });
+
+    document.getElementById("go").addEventListener("click", run);
+    document.getElementById("q").addEventListener("keydown", function(e){ if(e.key==="Enter") run(); });
+    document.getElementById("cat").addEventListener("change", run);
+    run();
+  </script>
+</body>
+</html>

@@ -125,6 +125,7 @@
             <select id="voProject" onchange="loadVOInfo()"><option value="">— Script Project —</option></select>
             <label>Mode <select id="voMode"><option value="full">Full (one mp3)</option><option value="segments">Segments (per ## section)</option></select></label>
             <button class="primary" onclick="genProjectVO()">Generate</button>
+            <button onclick="genCaptions()" title="SRT/VTT captions + word-level JSON for the existing voiceover">Captions (SRT)</button>
             <span class="status" id="voStatus"></span>
         </div>
         <div class="sub" id="voVoiceHint" style="margin-top:6px;"></div>
@@ -389,8 +390,26 @@ async function loadVOInfo(){
                 <div class="sub" style="margin:0;">${String(s.index+1).padStart(2,'0')} · ${esc(s.title||'')} ${s.timecode?('['+esc(s.timecode)+']'):''} · ${s.duration}s</div>
                 <audio controls preload="none" src="/api/voiceover/${encodeURIComponent(slug)}/segments/${encodeURIComponent(s.file)}"></audio></div>`).join('');
     }
+    if(info.captions){
+        const b = '/api/voiceover/'+encodeURIComponent(slug)+'/';
+        html += `<div class="sub" style="margin-top:8px;"><b>Captions</b> · `+
+            `<a href="${b}voiceover.srt" download style="color:#7fd3e0;">SRT</a> · `+
+            `<a href="${b}voiceover.vtt" download style="color:#7fd3e0;">VTT</a> · `+
+            `<a href="${b}voiceover.words.json" download style="color:#7fd3e0;">word JSON</a></div>`;
+    }
     if(!html) html = '<div class="sub">No voiceover yet — choose a mode and click Generate.</div>';
     box.innerHTML = html;
+}
+
+async function genCaptions(){
+    const slug = document.getElementById('voProject').value;
+    const st = document.getElementById('voStatus');
+    if(!slug){ st.textContent='pick a Script Project'; return; }
+    st.textContent='Captioning (CPU Whisper)…';
+    const r = await fetch('/api/generate-captions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project:slug})});
+    if(!r.ok){ const e=await r.json().catch(()=>({})); st.textContent='failed: '+(e.detail||r.statusText); return; }
+    const { job_id } = await r.json();
+    pollVO(job_id, st, slug);  // reuse poller -> refreshes loadVOInfo on done
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{ loadVoices().then(updateVoHint); loadScriptProjects(); loadLibVideos(); });

@@ -1,0 +1,22 @@
+{
+  "id": "essay-doc-explainer-v1",
+  "kind": "style",
+  "version": 1,
+  "name": "Essay-Doc Explainer",
+  "genres": ["explainer", "current-events", "history", "social-issues", "documentary"],
+  "duration_range": [300, 1200],
+  "tags": [
+    "narrative-voiceover",
+    "library-broll-heavy",
+    "generated-image-supplement",
+    "text-overlay-key-insights",
+    "infographic-context",
+    "thesis-evidence-structure",
+    "accessible-but-rigorous"
+  ],
+  "summary": "Polished, accessible-but-rigorous video essay format. Conversational essayist voice, mixed b-roll + generated imagery + text overlays + information graphics. Designed for current-events, history, or social-issue topics aimed at a general audience. ~10 minute target, 8-12s scene pacing, multi-lens thesis structure with reflective open-ended conclusion.",
+  "provenance": {
+    "derived_from_project": "venezuela",
+    "promoted_at": "2026-04-26"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "comp": "AnnotateStat",
+  "out": "annotate_F_stat.mp4",
+  "durationInFrames": 110,
+  "props": {
+    "value": "16,930%",
+    "label": "Pelosi portfolio gain since 1987",
+    "accent": "#ffd23b"
+  }
+}
