@@ -81,3 +81,26 @@ node_modules/
 
 # Generated silent audio tracks (render scratch — can exceed GitHub 100MB limit)
 silent.wav
+
+# --- Lean repo: generated / regenerable artifacts (2026-06-28) ---
+# Test & demo render outputs
+test_output/
+motion_out/
+segment_out/
+
+# Per-project rendered media (keep scene_plan.json / script.md / configs)
+projects/**/*.mp4
+projects/**/*.webm
+projects/**/*.mov
+projects/**/*.wav
+projects/_clips/
+projects/**/.orchestrator/modules/render/
+
+# Beautiful-article build workspaces (regenerable; node_modules already ignored).
+# Keeps beautiful-articles/<name>/ source+plan and the human-3.0 test fixture.
+beautiful-articles/*-build/
+beautiful-articles/_pubtest/
+
+# Render-service scratch
+render-service/uploads/
+render-service/remotion-lib/output/
