@@ -6,27 +6,36 @@
     <title>NOLAN Voices</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #14141f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
         .wrap { max-width: 1000px; margin: 0 auto; padding: 18px; }
-        h1 { font-size: 20px; margin-bottom: 4px; }
-        .sub { color: #9a9ab0; font-size: 13px; margin-bottom: 14px; }
-        .panel { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+        h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+        .sub { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; }
+        .panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
         .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        input, textarea, select { background: #0e0e16; border: 1px solid #2a2a3a; border-radius: 7px; color: #eee; padding: 8px; font-size: 14px; font-family: inherit; }
-        button { background: #2a2a3a; color: #eee; border: 1px solid #3a3a4a; border-radius: 7px; padding: 8px 13px; cursor: pointer; font-size: 13px; }
-        button:hover { background: #34344a; }
-        button.primary { background: #e94560; border-color: #e94560; font-weight: 600; }
-        button.danger { background: #3a1f28; border-color: #5a2a38; }
-        .section-title { font-size: 14px; margin: 14px 0 7px; font-weight: 600; }
-        .card { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 9px; padding: 11px; margin-bottom: 8px; }
+        input, textarea, select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); padding: 9px 12px; font-size: 14px; line-height: 1.5; font-family: inherit; }
+        button { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 600; transition: background .15s, border-color .15s; }
+        button:hover { background: #475569; }
+        button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+        button.danger:hover { filter: brightness(1.08); }
+        .section-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 16px 0 8px; }
+        #voiceList .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 8px; }
         .card .name { font-weight: 600; }
-        .card .meta { font-size: 12px; color: #9a9ab0; margin: 3px 0; }
-        .empty { color: #7a7a8c; font-size: 13px; padding: 8px 0; }
-        .jobstatus { font-size: 12px; color: #9a9ab0; margin-top: 8px; }
+        .card .meta { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }
+        .empty { color: var(--text-secondary); font-size: 13px; padding: 8px 0; }
+        .jobstatus { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
         .warn { background: #3a2f12; border: 1px solid #5a4a20; color: #e8d59a; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
-        label.fld { font-size: 12px; color: #9a9ab0; display:block; margin: 8px 0 3px; }
+        label.fld { font-size: 12px; color: var(--text-secondary); display:block; margin: 8px 0 3px; }
         audio { height: 30px; vertical-align: middle; }
-        code { background:#0e0e16; padding:1px 5px; border-radius:4px; font-size:12px; }
+        code { background:var(--bg-primary); padding:1px 5px; border-radius:4px; font-size:12px; }
+        @media (max-width: 768px) {
+            .wrap { padding: 14px; }
+            input, textarea, select { font-size: 16px; }
+            .row { flex-direction: column; align-items: stretch; }
+            .row > * { width: 100% !important; max-width: 100%; }
+            audio { width: 100%; }
+        }
     </style>
 </head>
 <body>

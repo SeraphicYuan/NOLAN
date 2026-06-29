@@ -25,26 +25,26 @@ body {
     background: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
     padding: 32px 24px 64px;
 }
 .container { max-width: 1200px; margin: 0 auto; }
-.header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 32px; }
+.header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; }
 .header h1 {
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    background: linear-gradient(135deg, var(--accent), var(--purple));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 26px;
+    font-weight: 680;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
 }
-.header .subtitle { color: var(--text-secondary); font-size: 13px; }
+.header .subtitle { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
 .toolbar { display: flex; gap: 8px; align-items: center; }
 .toolbar a {
     color: var(--text-secondary);
     text-decoration: none;
     font-size: 13px;
     padding: 6px 12px;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid var(--bg-tertiary);
 }
 .toolbar a:hover { color: var(--text-primary); border-color: var(--accent); }
@@ -371,8 +371,9 @@ button {
     cursor: pointer;
     font-family: inherit;
     font-size: 13px;
+    font-weight: 600;
     padding: 8px 16px;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid var(--bg-tertiary);
     background: var(--bg-tertiary);
     color: var(--text-primary);
@@ -388,12 +389,13 @@ button.primary:hover { background: var(--accent-hover); border-color: var(--acce
     width: 100%;
     min-height: 80px;
     background: var(--bg-primary);
-    border: 1px solid var(--bg-tertiary);
-    border-radius: 6px;
-    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
     color: var(--text-primary);
     font-family: inherit;
     font-size: 13px;
+    line-height: 1.5;
     resize: vertical;
 }
 .feedback-box textarea:focus { outline: none; border-color: var(--accent); }
@@ -414,6 +416,21 @@ button.primary:hover { background: var(--accent-hover); border-color: var(--acce
 }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast.error { border-color: var(--danger); }
+
+@media (max-width: 768px) {
+    body { padding: 20px 14px 48px; }
+    .header { flex-direction: column; align-items: stretch; gap: 12px; }
+    .toolbar { flex-wrap: wrap; }
+    .project-header { flex-wrap: wrap; padding: 14px 16px; }
+    .project-slug { overflow-wrap: anywhere; }
+    .project-body { padding: 16px; }
+    .row { grid-template-columns: 1fr; gap: 6px; margin-bottom: 14px; }
+    .row .label { padding-top: 0; }
+    .feedback-box textarea { font-size: 16px; }
+    .artifact-toggle, .artifact-panel { margin-left: 0; }
+    .artifact-body.markdown pre, .checkpoint-block, .stream-block { overflow-x: auto; }
+    .toast { left: 14px; right: 14px; bottom: 14px; }
+}
 </style>
 </head>
 <body>

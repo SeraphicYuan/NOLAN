@@ -14,31 +14,89 @@
   --border: #334155;
 }
 
-/* ---- Shared top nav (injected by nav.js) ---- */
-.nolan-nav {
-  display: flex; align-items: center; gap: 4px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 20px; position: sticky; top: 0; z-index: 100;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+/* ===== App shell: left sidebar (Linear/Supabase style), injected by nav.js ===== */
+:root { --rail-width: 232px; }
+
+.nolan-shell {
+  margin: 0;
+  display: flex;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-.nolan-nav .brand {
-  font-weight: 700; font-size: 18px; margin-right: 20px;
+.nolan-main { flex: 1 1 auto; min-width: 0; }
+
+.nolan-sidebar {
+  flex: 0 0 var(--rail-width); width: var(--rail-width);
+  background: var(--bg-secondary); border-right: 1px solid var(--border);
+  position: sticky; top: 0; align-self: flex-start; height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column; padding: 12px 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+}
+.nolan-sidebar .nolan-brand {
+  font-weight: 700; font-size: 18px; letter-spacing: -0.01em;
   background: linear-gradient(135deg, var(--accent), var(--purple));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  text-decoration: none;
+  text-decoration: none; padding: 6px 10px 4px; display: block;
 }
-.nolan-nav a.navlink {
-  color: var(--text-secondary); text-decoration: none; padding: 6px 12px;
-  border-radius: 6px; font-size: 14px; transition: all .15s;
+.nolan-navgroups { display: flex; flex-direction: column; flex: 1; gap: 1px; }
+.nolan-section {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-secondary); opacity: 0.65; padding: 14px 10px 4px;
 }
-.nolan-nav a.navlink:hover { color: var(--text-primary); background: var(--bg-tertiary); }
-.nolan-nav a.navlink.active { color: var(--text-primary); background: var(--bg-tertiary); }
-.nolan-nav .spacer { flex: 1; }
-.nolan-nav .svc { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
-.nolan-nav .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); }
-.nolan-nav .dot.up { background: var(--success); }
-.nolan-nav .dot.down { background: var(--danger); }
+.nolan-link {
+  position: relative; display: block; color: var(--text-secondary); text-decoration: none;
+  padding: 7px 10px; border-radius: 7px; font-size: 14px; line-height: 1.25;
+  transition: background .12s, color .12s;
+}
+.nolan-link:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.nolan-link.active { color: var(--text-primary); background: var(--bg-tertiary); font-weight: 500; }
+.nolan-link.active::before {
+  content: ""; position: absolute; left: 2px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 16px; border-radius: 2px; background: var(--accent);
+}
+.nolan-rail-foot { margin-top: 8px; padding: 10px; border-top: 1px solid var(--border); }
+.nolan-sidebar .svc { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.nolan-sidebar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); }
+.nolan-sidebar .dot.up { background: var(--success); }
+.nolan-sidebar .dot.down { background: var(--danger); }
+
+/* Mobile top bar + hamburger + scrim (desktop: hidden) */
+.nolan-topbar { display: none; }
+.nolan-scrim { display: none; }
+.nolan-burger {
+  width: 40px; height: 40px; background: transparent; border: 1px solid var(--border);
+  border-radius: 8px; cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px; flex: 0 0 auto;
+}
+.nolan-burger span { display: block; width: 18px; height: 2px; background: var(--text-primary); border-radius: 2px; }
+.nolan-topbar .nolan-brand {
+  font-weight: 700; font-size: 18px; text-decoration: none;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* ---- Phones: sidebar becomes an off-canvas drawer ---- */
+@media (max-width: 768px) {
+  .nolan-shell { display: block; }
+  .nolan-sidebar {
+    position: fixed; top: 0; left: 0; height: 100vh; width: 264px; max-width: 84vw;
+    transform: translateX(-100%); transition: transform .22s ease; z-index: 200;
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+  .nolan-shell.nav-open .nolan-sidebar { transform: translateX(0); }
+  .nolan-scrim {
+    display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 150;
+  }
+  .nolan-shell.nav-open .nolan-scrim { opacity: 1; pointer-events: auto; }
+  .nolan-link { padding: 11px 12px; font-size: 16px; } /* touch targets */
+  .nolan-topbar {
+    display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+    padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top));
+  }
+}
 
 /* ---- Service-down banner ---- */
 .nolan-banner {
@@ -101,3 +159,74 @@
 .badge.done { background: var(--success); color: #06280f; }
 .badge.error { background: var(--danger); color: #fff; }
 .badge.pending { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+/* ---- Shared mobile / iPhone base layer ---- */
+/* Media elements never force horizontal scroll. */
+img, video, canvas { max-width: 100%; height: auto; }
+
+@media (max-width: 640px) {
+  /* iOS zooms the page when focusing an input whose font-size < 16px — pin to 16. */
+  .field input, .field select, .field textarea { font-size: 16px; }
+  /* Modals: use the full small screen instead of a fixed 560px card. */
+  .nolan-modal-backdrop { padding: 16px 10px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .nolan-modal { padding: 18px; border-radius: 12px; }
+  /* Roomier tap targets. */
+  .btn { padding: 12px 18px; }
+}
+
+/* ===== Linear-grade base polish (applies to the content area) ===== */
+.nolan-main {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: "cv01", "ss01";
+}
+
+/* Thin, quiet scrollbars (Linear/Supabase feel). */
+* { scrollbar-width: thin; scrollbar-color: var(--bg-tertiary) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary); border-radius: 8px;
+  border: 2px solid transparent; background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: #475569; background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+
+/* Keyboard focus rings — purposeful, accent-colored. */
+.nolan-main a:focus-visible, .nolan-main button:focus-visible,
+.nolan-main input:focus-visible, .nolan-main select:focus-visible,
+.nolan-main textarea:focus-visible, .nolan-link:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+
+/* Gentle focus glow on form controls (additive — base styling stays per-page). */
+.nolan-main input:focus, .nolan-main select:focus, .nolan-main textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  outline: none;
+}
+
+/* Button micro-interactions on the shared .btn. */
+.btn { transition: background .15s, box-shadow .15s, transform .06s; }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Opt-in card primitive for pages adopting the shared system. */
+.card {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px;
+}
+
+/* Media-forward card (Frame.io/Descript influence) for asset/clip/scene pages. */
+.media-card {
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; transition: border-color .15s, transform .12s, box-shadow .15s;
+}
+.media-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.35);
+}
+.media-card .thumb {
+  display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+  background: var(--bg-primary); border-bottom: 1px solid var(--border);
+}
+.media-card .body { padding: 12px 14px; }

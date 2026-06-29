@@ -6,34 +6,61 @@
     <title>NOLAN Clips</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #14141f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-        .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
-        h1 { font-size: 20px; margin-bottom: 4px; }
-        .sub { color: #9a9ab0; font-size: 13px; margin-bottom: 16px; }
-        .panel { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
-        .scope-projects { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-        .scope-projects label { font-size: 13px; display: flex; align-items: center; gap: 5px; background:#0f0f18; padding:4px 8px; border-radius:6px; border:1px solid #2a2a3a; cursor:pointer; }
-        .searchbar { display: flex; gap: 8px; margin-top: 10px; }
-        .searchbar input { flex: 1; padding: 9px; background: #0e0e16; border: 1px solid #2a2a3a; border-radius: 8px; color: #eee; font-size: 14px; }
-        button { background: #2a2a3a; color: #eee; border: 1px solid #3a3a4a; border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
-        button:hover { background: #34344a; }
-        button.primary { background: #e94560; border-color: #e94560; font-weight: 600; }
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        h1 { font-size: 25px; font-weight: 680; letter-spacing: -0.02em; margin-bottom: 4px; }
+        .sub { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+        .panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        .scope-projects { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .scope-projects label { font-size: 13px; display: flex; align-items: center; gap: 6px; background:var(--bg-primary); padding:5px 10px; border-radius:8px; border:1px solid var(--border); cursor:pointer; }
+        .searchbar { display: flex; gap: 8px; margin-top: 12px; }
+        .searchbar input { flex: 1; padding: 9px 12px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; }
+        button { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 13px; transition: background .15s, border-color .15s; }
+        button:hover { border-color: var(--accent); }
+        button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+        button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
         button.danger { background: #3a1f28; border-color: #5a2a38; }
-        .section-title { font-size: 15px; margin: 18px 0 8px; display:flex; align-items:center; gap:8px; }
-        .count { color: #9a9ab0; font-size: 12px; }
-        .card { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 9px; padding: 11px; margin-bottom: 9px; }
-        .card.selected { border-color: #e94560; box-shadow: 0 0 0 2px rgba(233,69,96,.4); }
-        .card .meta { font-size: 12px; color: #9a9ab0; margin-bottom: 4px; display:flex; gap:10px; flex-wrap:wrap; }
-        .card .label { font-weight: 600; font-size: 14px; }
-        .card .desc { font-size: 13px; color: #cfcfe0; margin: 5px 0; }
-        .tag { background: #0f2f3a; color: #7fd3e0; border-radius: 5px; padding: 1px 7px; font-size: 11px; }
-        .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
-        .jobstatus { font-size: 12px; color: #9a9ab0; margin-top: 6px; }
-        .empty { color: #7a7a8c; font-size: 13px; padding: 8px 0; }
+        button.danger:hover { border-color: var(--danger); }
+        .section-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin: 24px 0 10px; display:flex; align-items:center; gap:8px; }
+        .count { color: var(--text-secondary); font-size: 12px; font-weight: 400; }
+
+        /* Frame.io/Descript media-forward clip cards. Scoped under .wrap so the
+           edge-to-edge thumb wins over the shared nolan.css .card padding. */
+        .wrap .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 0; margin-bottom: 12px; overflow: hidden; transition: border-color .15s, transform .12s, box-shadow .15s; }
+        .wrap .card:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
+        .wrap .card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+        .card .thumb { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 9; background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-primary)); border-bottom: 1px solid var(--border); cursor: pointer; }
+        .card .thumb .play { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); font-size: 16px; padding-left: 3px; transition: background .15s, transform .12s; }
+        .card .thumb:hover .play { background: var(--accent); color: #fff; transform: scale(1.06); }
+        .card .thumb .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.7); color: #f1f5f9; font-size: 11px; font-family: ui-monospace, monospace; padding: 2px 6px; border-radius: 5px; }
+        .card .body { padding: 12px 14px; }
+        .card .meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .card .label { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; margin-bottom: 6px; }
+        .card .desc { font-size: 13px; line-height: 1.5; color: var(--text-primary); margin: 6px 0; }
+        .tag { background: #0f2f3a; color: #7fd3e0; border-radius: 6px; padding: 2px 8px; font-size: 11px; }
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        .jobstatus { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+        .empty { color: var(--text-secondary); font-size: 13px; padding: 8px 0; }
+
+        /* Frame.io-style gallery: cards flow into a responsive grid so the 16:9
+           thumbs stay a sensible size; section headers/empty rows span full width. */
+        #savedClips, #snippetResults { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+        #savedClips .empty, #snippetResults .empty, #snippetResults .section-title { grid-column: 1 / -1; }
         #playerPanel { position: sticky; top: 10px; z-index: 5; }
-        #clipPlayer { width: 100%; max-height: 320px; border-radius: 8px; background:#000; }
+        #clipPlayer { width: 100%; max-height: 320px; border-radius: 10px; background:#000; }
         .hidden { display: none; }
-        code { background:#0e0e16; padding:1px 5px; border-radius:4px; font-size:12px; color:#9fe0a0; }
+        code { background:var(--bg-primary); padding:1px 5px; border-radius:4px; font-size:12px; color:#9fe0a0; }
+
+        /* iPhone / narrow-screen: full-width controls, stacked search bar, no zoom-on-focus */
+        @media (max-width: 768px) {
+            .wrap { padding: 14px; }
+            .searchbar { flex-direction: column; }
+            .searchbar input,
+            select, input, textarea { font-size: 16px; }
+            #clipPlayer { max-height: 220px; }
+            .card .meta { overflow-wrap: anywhere; }
+            .actions { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -61,7 +88,7 @@
         </div>
         <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <strong style="font-size:13px;">🎬 Analysis agent:</strong>
-            <select id="agentSelect" style="padding:6px;background:#0e0e16;border:1px solid #2a2a3a;border-radius:7px;color:#eee;"></select>
+            <select id="agentSelect" style="padding:6px;background:var(--bg-primary);border:1px solid var(--border);border-radius:7px;color:var(--text-primary);"></select>
             <button onclick="loadSessions()" title="Refresh tmux sessions">⟳</button>
             <span class="sub" style="margin:0;">tmux session that "Analyze effect" pushes to</span>
         </div>
@@ -138,21 +165,27 @@ function renderSaved(clips) {
     if (!clips.length) { box.innerHTML = '<div class="empty">No saved clips yet. Cut one from the Library player.</div>'; return; }
     box.innerHTML = clips.map((c, i) => `
         <div class="card" id="card-${c.id}">
-            <div class="label">${esc(c.label || c.video_name || c.id)}</div>
-            <div class="meta">
-                <span>${esc(c.video_name)}</span>
-                <span>${formatTime(c.clip_start)} → ${formatTime(c.clip_end)} (${(c.duration||0).toFixed(1)}s)</span>
-                <span><code>${c.id}</code></span>
-                ${(c.tags||[]).map(t => `<span class="tag">${esc(t)}</span>`).join('')}
+            <div class="thumb" onclick="previewSavedIdx(${i})" title="Preview clip">
+                <span class="play">▶</span>
+                <span class="dur">${(c.duration||0).toFixed(1)}s</span>
             </div>
-            <div class="actions">
-                <button onclick="previewSavedIdx(${i})">▶ Preview</button>
-                <button onclick="materialize('${c.id}', 'file')">Materialize file (ComfyUI)</button>
-                <button onclick="materialize('${c.id}', 'frames')">Materialize frames (Claude)</button>
-                <button onclick="analyzeEffect('${c.id}')" title="Send to the nolan2 Claude agent to identify the effect, dedup vs the motion library, and assess replicability">🎬 Analyze effect</button>
-                <button class="danger" onclick="deleteClip('${c.id}')">Delete</button>
+            <div class="body">
+                <div class="label">${esc(c.label || c.video_name || c.id)}</div>
+                <div class="meta">
+                    <span>${esc(c.video_name)}</span>
+                    <span>${formatTime(c.clip_start)} → ${formatTime(c.clip_end)}</span>
+                    <span><code>${c.id}</code></span>
+                    ${(c.tags||[]).map(t => `<span class="tag">${esc(t)}</span>`).join('')}
+                </div>
+                <div class="actions">
+                    <button onclick="previewSavedIdx(${i})">▶ Preview</button>
+                    <button onclick="materialize('${c.id}', 'file')">Materialize file (ComfyUI)</button>
+                    <button onclick="materialize('${c.id}', 'frames')">Materialize frames (Claude)</button>
+                    <button onclick="analyzeEffect('${c.id}')" title="Send to the nolan2 Claude agent to identify the effect, dedup vs the motion library, and assess replicability">🎬 Analyze effect</button>
+                    <button class="danger" onclick="deleteClip('${c.id}')">Delete</button>
+                </div>
+                <div class="jobstatus" id="job-${c.id}"></div>
             </div>
-            <div class="jobstatus" id="job-${c.id}"></div>
         </div>
     `).join('');
 }
@@ -172,16 +205,23 @@ function renderSnippets(data, q) {
 function snippetCard(s, type, i) {
     const desc = type === 'clus' ? (s.cluster_summary || '') : (s.combined_summary || s.frame_description || '');
     const name = s.video_name || (s.video_path ? s.video_path.split(/[\\/]/).pop() : '');
+    const dur = Math.max(0, (s.timestamp_end || 0) - (s.timestamp_start || 0));
     return `
         <div class="card">
-            <div class="meta">
-                <span>${esc(name)}</span>
-                <span>${formatTime(s.timestamp_start)} → ${formatTime(s.timestamp_end)}</span>
+            <div class="thumb" onclick="previewSnippetIdx('${type}', ${i})" title="Preview snippet">
+                <span class="play">▶</span>
+                <span class="dur">${dur.toFixed(1)}s</span>
             </div>
-            <div class="desc">${esc(desc).slice(0, 280)}</div>
-            <div class="actions">
-                <button onclick="previewSnippetIdx('${type}', ${i})">▶ Preview</button>
-                <button class="primary" onclick="saveSnippetIdx('${type}', ${i})">💾 Save as clip</button>
+            <div class="body">
+                <div class="meta">
+                    <span>${esc(name)}</span>
+                    <span>${formatTime(s.timestamp_start)} → ${formatTime(s.timestamp_end)}</span>
+                </div>
+                <div class="desc">${esc(desc).slice(0, 280)}</div>
+                <div class="actions">
+                    <button onclick="previewSnippetIdx('${type}', ${i})">▶ Preview</button>
+                    <button class="primary" onclick="saveSnippetIdx('${type}', ${i})">💾 Save as clip</button>
+                </div>
             </div>
         </div>`;
 }
@@ -318,7 +358,7 @@ async function viewAnalysis(id) {
         return;
     }
     const data = await r.json();
-    status.innerHTML = `<pre style="white-space:pre-wrap;max-height:360px;overflow:auto;background:#0e0e16;padding:10px;border-radius:6px;">${esc(data.content)}</pre>`;
+    status.innerHTML = `<pre style="white-space:pre-wrap;max-height:360px;overflow:auto;background:var(--bg-primary);padding:10px;border-radius:6px;">${esc(data.content)}</pre>`;
 }
 
 // Visual selection: highlight the clip card you're interacting with (preview etc.).

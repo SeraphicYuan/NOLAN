@@ -6,34 +6,45 @@
     <title>NOLAN Script Projects</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #14141f; color: #eaeaea; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
         .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
-        h1 { font-size: 20px; margin-bottom: 4px; }
-        .sub { color: #9a9ab0; font-size: 13px; margin-bottom: 14px; }
-        .panel { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+        h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+        .sub { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; }
+        .panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
         .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        input, textarea, select { background: #0e0e16; border: 1px solid #2a2a3a; border-radius: 7px; color: #eee; padding: 8px; font-size: 14px; font-family: inherit; }
+        input, textarea, select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); padding: 9px 12px; font-size: 14px; line-height: 1.5; font-family: inherit; }
         textarea { width: 100%; min-height: 80px; resize: vertical; }
-        button { background: #2a2a3a; color: #eee; border: 1px solid #3a3a4a; border-radius: 7px; padding: 8px 13px; cursor: pointer; font-size: 13px; }
-        button:hover { background: #34344a; }
-        button.primary { background: #e94560; border-color: #e94560; font-weight: 600; }
-        button.danger { background: #3a1f28; border-color: #5a2a38; }
+        button { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 600; transition: background .15s, border-color .15s; }
+        button:hover { background: #475569; }
+        button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+        button.danger:hover { filter: brightness(1.08); }
         .list { display: flex; flex-direction: column; gap: 8px; }
-        .card { background: #1b1b28; border: 1px solid #2a2a3a; border-radius: 9px; padding: 11px; cursor: pointer; }
-        .card.active { border-color: #e94560; }
-        .card .name { font-weight: 600; font-size: 15px; }
-        .card .meta { font-size: 12px; color: #9a9ab0; margin-top: 3px; }
+        .list .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s; }
+        .list .card:hover { border-color: #475569; }
+        .list .card.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary)); }
+        .card .name { font-weight: 600; font-size: 14px; }
+        .card .meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
         .badge { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: #0f2f3a; color: #7fd3e0; }
-        .badge.no { background: #2a2a3a; color: #9a9ab0; }
+        .badge.no { background: var(--bg-tertiary); color: var(--text-secondary); }
         .grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
-        .section-title { font-size: 14px; margin: 14px 0 7px; font-weight: 600; }
-        .src { font-size: 12px; color: #cfcfe0; padding: 5px 0; border-bottom: 1px solid #23232f; display: flex; justify-content: space-between; gap: 8px; }
-        .src .x { color: #ff6b6b; cursor: pointer; }
-        .jobstatus { font-size: 12px; color: #9a9ab0; margin-top: 8px; }
-        .empty { color: #7a7a8c; font-size: 13px; padding: 8px 0; }
-        pre { white-space: pre-wrap; background: #0e0e16; padding: 12px; border-radius: 8px; max-height: 520px; overflow: auto; font-size: 13px; }
-        label.fld { font-size: 12px; color: #9a9ab0; display:block; margin: 8px 0 3px; }
+        .section-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 16px 0 8px; }
+        .src { font-size: 12px; color: var(--text-primary); padding: 6px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; }
+        .src .x { color: var(--danger); cursor: pointer; }
+        .jobstatus { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+        .empty { color: var(--text-secondary); font-size: 13px; padding: 8px 0; }
+        pre { white-space: pre-wrap; background: var(--bg-primary); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; max-height: 520px; overflow: auto; font-size: 13px; line-height: 1.55; }
+        label.fld { font-size: 12px; color: var(--text-secondary); display:block; margin: 8px 0 3px; }
         .hidden { display: none; }
+        @media (max-width: 768px) {
+            .wrap { padding: 14px; }
+            .grid { grid-template-columns: 1fr !important; }
+            input, textarea, select { font-size: 16px; }
+            .row { flex-direction: column; align-items: stretch; }
+            .row > * { width: 100% !important; max-width: 100%; }
+            pre { max-height: 400px; }
+        }
     </style>
 </head>
 <body>
@@ -73,7 +84,7 @@
                         <button class="danger" onclick="deleteProject()">Delete</button>
                     </div>
                 </div>
-                <div class="meta" id="dMeta" style="color:#9a9ab0; font-size:12px; margin-top:6px;"></div>
+                <div class="meta" id="dMeta" style="color:var(--text-secondary); font-size:12px; margin-top:6px;"></div>
                 <div class="jobstatus" id="jobStatus"></div>
             </div>
 

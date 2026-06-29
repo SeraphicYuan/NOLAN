@@ -11,18 +11,6 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --bg-primary: #1a1a2e;
-            --bg-secondary: #16213e;
-            --bg-tertiary: #0f3460;
-            --text-primary: #eaeaea;
-            --text-secondary: #a0a0a0;
-            --accent: #e94560;
-            --accent-hover: #ff6b6b;
-            --border: #2a2a4a;
-            --success: #4ade80;
-        }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-primary);
@@ -53,7 +41,9 @@
 
         .sidebar-header h1 {
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 650;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
             margin-bottom: 12px;
         }
 
@@ -132,7 +122,7 @@
         }
 
         .search-mode-toggle.semantic {
-            background: rgba(233, 69, 96, 0.15);
+            background: color-mix(in srgb, var(--accent) 15%, transparent);
             border-color: var(--accent);
             color: var(--accent);
         }
@@ -144,7 +134,7 @@
         .semantic-score {
             display: inline-block;
             padding: 2px 6px;
-            background: rgba(233, 69, 96, 0.2);
+            background: color-mix(in srgb, var(--accent) 20%, transparent);
             color: var(--accent);
             border-radius: 4px;
             font-size: 11px;
@@ -247,11 +237,12 @@
         }
 
         .video-item {
-            padding: 12px;
-            border-radius: 8px;
+            padding: 10px 12px;
+            border-radius: 10px;
             cursor: pointer;
-            margin-bottom: 4px;
-            transition: background 0.2s;
+            margin-bottom: 2px;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, border-color 0.15s;
         }
 
         .video-item:hover {
@@ -259,15 +250,29 @@
         }
 
         .video-item.active {
-            background: var(--bg-tertiary);
+            background: color-mix(in srgb, var(--accent) 12%, transparent);
             border-left: 3px solid var(--accent);
         }
 
         .video-item-name {
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 550;
+            line-height: 1.4;
             margin-bottom: 4px;
             word-break: break-word;
+        }
+
+        /* Small media affordance — signals "video" without fabricating a thumbnail. */
+        .video-item-name::before {
+            content: '\25B6';
+            font-size: 8px;
+            color: var(--text-secondary);
+            margin-right: 8px;
+            vertical-align: 1px;
+        }
+
+        .video-item.active .video-item-name::before {
+            color: var(--accent);
         }
 
         .video-item-meta {
@@ -340,15 +345,17 @@
         .segment-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 16px;
             margin-bottom: 12px;
             cursor: pointer;
-            transition: border-color 0.2s;
+            transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
         }
 
         .segment-card:hover {
             border-color: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
         }
 
         .segment-card.active,
@@ -418,18 +425,18 @@
         }
 
         .context-tag.people {
-            background: rgba(99, 102, 241, 0.2);
-            color: #818cf8;
+            background: color-mix(in srgb, var(--accent) 20%, transparent);
+            color: var(--accent);
         }
 
         .context-tag.location {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
+            background: color-mix(in srgb, var(--success) 20%, transparent);
+            color: var(--success);
         }
 
         .context-tag.objects {
-            background: rgba(245, 158, 11, 0.2);
-            color: #fbbf24;
+            background: color-mix(in srgb, var(--warning) 20%, transparent);
+            color: var(--warning);
         }
 
         /* Cluster Card */
@@ -540,12 +547,12 @@
         }
 
         .player-type-badge.segment {
-            background: rgba(99, 102, 241, 0.2);
-            color: #818cf8;
+            background: color-mix(in srgb, var(--accent) 20%, transparent);
+            color: var(--accent);
         }
 
         .player-type-badge.cluster {
-            background: rgba(233, 69, 96, 0.2);
+            background: color-mix(in srgb, var(--accent) 20%, transparent);
             color: var(--accent);
         }
 
@@ -599,11 +606,32 @@
         .video-container {
             background: black;
             aspect-ratio: 16/9;
+            margin: 12px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
         }
 
         .video-container video {
             width: 100%;
             height: 100%;
+            display: block;
+        }
+
+        /* Tidy, consistent chrome for the inline cut-clip controls. */
+        .cut-panel button {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .cut-panel button:hover {
+            border-color: var(--accent);
         }
 
         .player-info {
@@ -703,6 +731,54 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--text-secondary);
         }
+
+        /* iPhone / narrow-screen: stack the master-detail app shell vertically */
+        @media (max-width: 768px) {
+            body {
+                height: auto;
+                overflow: auto;
+            }
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            .sidebar {
+                width: 100%;
+                flex-shrink: 1;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .video-list {
+                max-height: 40vh;
+            }
+            .search-box input,
+            .search-type-select,
+            .project-select {
+                font-size: 16px;
+            }
+            .project-select {
+                max-width: 100%;
+            }
+            .main {
+                overflow: visible;
+            }
+            .main-header {
+                flex-wrap: wrap;
+            }
+            .tabs {
+                margin-left: 0;
+                flex-wrap: wrap;
+            }
+            .main-content {
+                flex-direction: column;
+                overflow: visible;
+            }
+            .player-panel {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid var(--border);
+            }
+        }
     </style>
 </head>
 <body>
@@ -799,7 +875,7 @@
                     <div class="video-container">
                         <video id="videoPlayer" controls></video>
                     </div>
-                    <div class="cut-panel" id="cutPanel" style="margin:10px 0;padding:10px;border:1px solid #2a2a3a;border-radius:8px;background:#15151f;">
+                    <div class="cut-panel" id="cutPanel" style="margin:10px 0;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-primary);">
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <strong style="font-size:13px;">✂ Cut clip</strong>
                             <button onclick="setCutIn()" style="cursor:pointer;">Set In</button>
@@ -810,11 +886,11 @@
                             <button onclick="clearCut()" style="cursor:pointer;">Clear</button>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
-                            <input id="cutLabel" type="text" placeholder="label (optional)" style="flex:1;min-width:140px;padding:5px;background:#0e0e16;border:1px solid #2a2a3a;border-radius:6px;color:#eee;">
-                            <input id="cutTags" type="text" placeholder="tags, comma-separated" style="flex:1;min-width:140px;padding:5px;background:#0e0e16;border:1px solid #2a2a3a;border-radius:6px;color:#eee;">
+                            <input id="cutLabel" type="text" placeholder="label (optional)" style="flex:1;min-width:140px;padding:5px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+                            <input id="cutTags" type="text" placeholder="tags, comma-separated" style="flex:1;min-width:140px;padding:5px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
                             <button onclick="saveCutClip()" style="cursor:pointer;font-weight:600;" title="Saves the whole segment if you haven't set In/Out">💾 Save clip</button>
                         </div>
-                        <div id="cutStatus" style="margin-top:6px;font-size:12px;color:#9a9ab0;"></div>
+                        <div id="cutStatus" style="margin-top:6px;font-size:12px;color:var(--text-secondary);"></div>
                     </div>
                     <div class="player-info">
                         <div class="player-segment-info" id="playerInfo"></div>
@@ -1538,7 +1614,7 @@
             const el = document.getElementById('cutStatus');
             if (!el) return;
             el.textContent = msg || '';
-            el.style.color = isError ? '#ff6b6b' : '#9a9ab0';
+            el.style.color = isError ? 'var(--danger)' : 'var(--text-secondary)';
         }
         function previewCut() {
             if (cutIn === null || cutOut === null) { setCutStatus('Set In and Out first', true); return; }

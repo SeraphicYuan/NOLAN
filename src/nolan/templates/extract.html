@@ -7,32 +7,48 @@
   <link rel="stylesheet" href="/static/nolan.css">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh;
+           font-size: 14px; line-height: 1.5; }
     .wrap { max-width: 980px; margin: 32px auto; padding: 0 20px; }
-    h1 { font-size: 28px; margin-bottom: 6px; }
-    .sub { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
-    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    h1 { font-size: 25px; font-weight: 680; letter-spacing: -0.02em; margin-bottom: 6px; color: var(--text-primary); }
+    .sub { color: var(--text-secondary); margin-bottom: 24px; font-size: 13px; line-height: 1.5; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
     label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
     input[type=text], input[type=number] {
       background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary);
       border-radius: 8px; padding: 10px 12px; font-size: 14px; }
     input#url { flex: 1; min-width: 320px; }
     input#limit { width: 90px; }
-    button { background: var(--accent, #6366f1); color: #fff; border: none; border-radius: 8px;
-             padding: 10px 16px; font-size: 14px; cursor: pointer; }
-    button.secondary { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); }
+    button { background: var(--accent); color: #fff; border: none; border-radius: 8px;
+             padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    button:hover { background: var(--accent-hover); }
+    button.secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    button.secondary:hover { background: var(--bg-tertiary); border-color: var(--text-secondary); }
     button:disabled { opacity: .5; cursor: default; }
-    .hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
-    .meta { margin: 18px 0 8px; font-size: 13px; color: var(--text-secondary); }
+    .hint { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-top: 8px; }
+    .meta { margin: 18px 0 10px; font-size: 12px; color: var(--text-secondary); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-    .tile { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
-            overflow: hidden; display: flex; flex-direction: column; }
+    .tile { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+            overflow: hidden; display: flex; flex-direction: column;
+            transition: border-color .12s ease, transform .12s ease; }
+    .tile:hover { border-color: var(--bg-tertiary); transform: translateY(-1px); }
     .tile img { width: 100%; height: 130px; object-fit: cover; background: var(--bg-primary); display: block; }
-    .tile .cap { padding: 8px; font-size: 11px; color: var(--text-secondary); word-break: break-all; }
-    .tile a { color: var(--accent, #818cf8); text-decoration: none; }
+    .tile .cap { padding: 8px 10px; font-size: 12px; color: var(--text-secondary); word-break: break-all; }
+    .tile a { color: var(--accent); text-decoration: none; }
     #job { margin-top: 16px; display: none; }
-    .err { color: #f87171; font-size: 13px; margin-top: 10px; }
+    .err { color: var(--danger); font-size: 13px; margin-top: 10px; }
+    @media (max-width: 768px) {
+      .wrap { padding: 0 14px; margin: 18px auto; }
+      .card { padding: 16px; }
+      .row { flex-direction: column; align-items: stretch; }
+      .row > div { width: 100%; }
+      input[type=text], input[type=number],
+      input#url, input#limit, #libproject { width: 100% !important; min-width: 0; font-size: 16px; }
+      #libscope { width: 100%; font-size: 16px; }
+      .row > button { width: 100%; }
+      .tile .cap, .tile a { overflow-wrap: anywhere; }
+    }
   </style>
   <script src="/static/nav.js" data-active="extract"></script>
 </head>

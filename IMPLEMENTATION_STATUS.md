@@ -8,6 +8,50 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## WebUI — iPhone-friendly + unified theme (2026-06-28)
+
+The hub WebUI is now responsive across the whole site and visually consistent.
+
+- **Responsive nav** (`static/nav.js` + `static/nolan.css`): the 16-link top bar
+  collapses into a tap-to-open hamburger drawer on phones (≤768px); horizontal
+  bar with wrap on desktop. Touch-sized links, iPhone safe-area (notch) insets.
+- **Mobile base layer** (`nolan.css`): `@media (max-width:640px)` — 16px inputs
+  (no iOS zoom-on-focus), full-width modals, fluid `img/video/canvas`, roomier buttons.
+- **Per-page responsiveness**: every content page (19 templates) got a
+  `@media (max-width:768px)` block — multi-column/master-detail layouts collapse
+  to one column, headers/toolbars stack, controls go full-width, no horizontal scroll.
+- **Theme unification**: 8 pages (clips, library, scenes, script_projects,
+  script_styles, tts, video_styles, voices) were on an off-brand purple/pink palette
+  (`#2a2a3a` bg, `#e94560` accent). Migrated their hardcoded hexes to the shared
+  `nolan.css` CSS variables (slate `--bg-*`, sky-blue `--accent`, semantic
+  `--success/--warning/--danger`) — removing redundant hardcoded colors and making
+  the whole app match the nav. Multi-color status legends intentionally preserved.
+- **Verified**: screenshotted all 20 pages at 390×844 (puppeteer) — nav drawer,
+  column collapse, and the unified theme confirmed; desktop layout unchanged.
+- **Tailscale**: `start_webui.bat` now runs `tailscale serve --tcp=8011` so the Hub
+  is reachable on the tailnet at `http://<tailscale-ip>:8011` (loopback proxy, no
+  Windows Firewall change needed).
+
+### Design system — Linear shell + Frame.io media (2026-06-28)
+
+Reworked the shell and visual language toward Linear (calm console) + Frame.io
+(media-forward), keeping every page and function identical.
+- **Left-sidebar app shell** (`nav.js` + `nolan.css`): replaced the top nav with a
+  grouped left rail (Create / Assets / Produce / Share / System), active item marked
+  by an accent bar, render-status pinned at the bottom. `nav.js` wraps each page's
+  existing content in `<main>` (preserving its padding) so no page markup changed.
+  On phones the rail becomes an off-canvas drawer (hamburger top bar + scrim).
+- **Linear base layer** (`nolan.css`): thin quiet scrollbars, accent focus rings,
+  input focus-glow, button press, plus `.card` / `.media-card` (16:9 `.thumb`) primitives.
+- **Per-page polish** (all 21 templates, via 4 agents): Linear type scale
+  (h1 ~26px/650/-0.02em, 16–18px section heads, 12–13px meta), 8px spacing rhythm,
+  12px card radius, 1px `--border`, tidy controls — styling only, JS/ids/layout intact.
+- **Frame.io media cards**: Clips and Showcase are now 16:9 gallery grids (thumbnail +
+  play affordance + duration badge); Scenes asset previews are framed with hover;
+  Library keeps its 3-pane list (refined rows + ▶ affordance, media-forward detail).
+- **Verified**: puppeteer screenshots of the whole site at 1280 + 390 — sidebar,
+  drawer, media galleries, and per-page polish confirmed; functions preserved.
+
 ## Publish — beautiful HTML articles, a second output medium (2026-06-28)
 
 `src/nolan/publish/` turns a URL / document / pasted text into a self-contained,
