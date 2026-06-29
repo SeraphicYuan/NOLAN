@@ -1,0 +1,7 @@
+# Build artifacts — regenerated each render.
+node_modules/
+output/
+public/
+*.mp3
+*.wav
+*.mp4
