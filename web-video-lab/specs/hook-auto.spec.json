@@ -1,0 +1,84 @@
+{
+  "out": "hook_auto.mp4",
+  "theme": "bold-signal",
+  "fps": 30,
+  "audioDir": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook",
+  "wavDir": "/mnt/d/claudeprojects/nolan/web-video-lab/human-3.0/presentation/.tts_wav",
+  "wordsCache": "web-video-lab/human-3.0/words_hook_all.json",
+  "steps": [
+    {
+      "block": "NpcStrike",
+      "wav": "hook_1",
+      "audio": "1.mp3",
+      "anchors": ["@start", "NPC", "loop"],
+      "bespoke": {
+        "brief": "Cold-open. Big token headline 'I never wanted to be an NPC.' fills the frame at @start. A drawn strike-through sweeps across the word 'NPC' exactly as 'NPC' is spoken (use the per-word `words` timeline, not the coarse anchor). Behind it, a faint monospace terminal backdrop scrolls the same daily line ('run script.npc // same loop') over and over, the scroll speeding up on the word 'loop' to sell the trapped-routine feel. Token-faithful, Surface-wrapped, no Audio."
+      },
+      "props": {}
+    },
+    {
+      "block": "ListReveal",
+      "wav": "hook_2",
+      "audio": "2.mp3",
+      "anchors": ["mind", "body", "spirit", "relationships", "money"],
+      "props": {
+        "title": "Max out every stat",
+        "items": [
+          { "label": "Mind", "tag": "Intellect" },
+          { "label": "Body", "tag": "Strength" },
+          { "label": "Spirit", "tag": "Meaning" },
+          { "label": "Relationships", "tag": "Connection" },
+          { "label": "Money", "tag": "Wealth" }
+        ]
+      }
+    },
+    {
+      "block": "LevelMap",
+      "wav": "hook_3",
+      "audio": "3.mp3",
+      "anchors": ["100", "map", "gold"],
+      "bespoke": {
+        "brief": "Game-map diagram. A giant 'LVL 100' counter snaps to 100 as the number '100' is spoken (per-word `words` timeline). A grid of map tiles then unlocks tile-by-tile, sweeping from one lit corner to fully lit, the unlock cascade firing on the words 'map' and 'unlocked' — the point is 'jacked everywhere', so every tile ends lit, none left dark. Finally a gold bank/coin meter overflows on the word 'gold'. Token accent for the lit tiles and the gold meter. Surface-wrapped, no Audio."
+      },
+      "props": {}
+    },
+    {
+      "block": "ListReveal",
+      "wav": "hook_4",
+      "audio": "4.mp3",
+      "anchors": ["fitness", "knowledge", "free"],
+      "props": {
+        "title": "So I chased it",
+        "items": [
+          { "label": "Fitness", "tag": "Obsession" },
+          { "label": "Knowledge", "tag": "Absorb it all" },
+          { "label": "Freedom", "tag": "Business after business" }
+        ]
+      }
+    },
+    {
+      "block": "YearsCount",
+      "wav": "hook_5",
+      "audio": "5.mp3",
+      "anchors": ["15", "five", "patterns"],
+      "bespoke": {
+        "brief": "Two counting numbers. A big '15' rolls up from 0 to 15 across the span of the words '15 years' (drive the count off the per-word `words` timeline), labelled 'years digging in'; the six domains (psychology, philosophy, money, religion, startups, the internet) tick in underneath as each is named. Then a second big '5' rolls up on the words 'five years', labelled 'writing in public'. On the word 'patterns', both numbers dim and a single line 'the same patterns kept showing up' lands in token accent. Surface-wrapped, no Audio."
+      },
+      "props": {}
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "hook_6",
+      "audio": "6.mp3",
+      "anchors": ["Human", "map", "potential"],
+      "props": {
+        "kicker": "ONE THING",
+        "lines": [
+          { "text": "HUMAN 3.0", "accent": "HUMAN 3.0" },
+          { "text": "One map to escape mediocrity.", "accent": "escape" },
+          { "text": "And reach your potential.", "accent": "potential" }
+        ]
+      }
+    }
+  ]
+}

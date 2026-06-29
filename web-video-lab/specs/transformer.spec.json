@@ -1,0 +1,84 @@
+{
+  "out": "transformer.mp4",
+  "theme": "blueprint",
+  "fps": 30,
+  "captions": true,
+  "audioDir": "D:/ClaudeProjects/NOLAN/web-video-lab/transformer/audio",
+  "wavDir": "/mnt/d/claudeprojects/nolan/web-video-lab/transformer/.tts_wav",
+  "wordsCache": "web-video-lab/transformer/words.json",
+  "segments": "web-video-lab/transformer/segments.json",
+  "steps": [
+    {
+      "block": "HeroStatement", "wav": "transformer_1", "audio": "1.mp3",
+      "anchors": ["@start", "rewired", "Attention"],
+      "props": { "kicker": "2017 · arXiv 1706.03762", "lines": [
+        { "text": "One paper quietly" },
+        { "text": "rewired AI." },
+        { "text": "Attention Is All You Need.", "accent": true } ] }
+    },
+    {
+      "block": "ListReveal", "wav": "transformer_2", "audio": "2.mp3",
+      "anchors": ["sequential", "parallelized", "long"],
+      "props": { "title": "The old way · RNNs", "items": [
+        { "label": "Sequential", "tag": "word by word" },
+        { "label": "No parallelism", "tag": "slow to train" },
+        { "label": "Long-range fades", "tag": "forgets the start" } ] }
+    },
+    {
+      "block": "AttentionFlow", "wav": "transformer_3", "audio": "3.mp3",
+      "anchors": ["@start", "every", "attention"],
+      "props": { "sentence": ["The", "cat", "sat", "on", "the", "mat"], "focus": "cat",
+        "label": "self-attention — every word sees every word" }
+    },
+    {
+      "block": "Formula", "wav": "transformer_4", "audio": "4.mp3",
+      "anchors": ["@start"],
+      "props": { "latex": "\\text{Attention}(Q,K,V)=\\text{softmax}\\!\\left(\\dfrac{QK^{T}}{\\sqrt{d_k}}\\right)V",
+        "caption": "Queries ask · Keys answer · Values get blended by match" }
+    },
+    {
+      "block": "Formula", "wav": "transformer_5", "audio": "5.mp3",
+      "anchors": ["@start"],
+      "props": { "latex": "\\text{MultiHead}(Q,K,V)=\\text{Concat}(\\text{head}_1,\\dots,\\text{head}_h)\\,W^{O}",
+        "caption": "h = 8 heads in parallel · each a different relationship" }
+    },
+    {
+      "block": "Formula", "wav": "transformer_6", "audio": "6.mp3",
+      "anchors": ["@start"],
+      "props": { "latex": "\\begin{aligned} PE_{(pos,2i)} &= \\sin\\!\\left(pos/10000^{2i/d_{\\text{model}}}\\right)\\\\[2pt] PE_{(pos,2i+1)} &= \\cos\\!\\left(pos/10000^{2i/d_{\\text{model}}}\\right) \\end{aligned}",
+        "caption": "no recurrence → inject order with sine & cosine waves" }
+    },
+    {
+      "block": "ArchStack", "wav": "transformer_7", "audio": "7.mp3",
+      "anchors": ["@start", "encoder", "feed"],
+      "props": { "layers": 6, "subLayers": ["Multi-Head Attention", "Feed-Forward"],
+        "note": "× 6 · residual + layer-norm · d_model = 512" }
+    },
+    {
+      "block": "DataTable", "wav": "transformer_8", "audio": "8.mp3",
+      "anchors": ["@start", "best"],
+      "props": { "caption": "WMT 2014 · BLEU",
+        "columns": ["Model", "EN–DE", "EN–FR", "FLOPs"],
+        "rows": [
+          ["Transformer (big)", "28.4", "41.8", "2.3·10¹⁹"],
+          ["Previous best (ensemble)", "26.36", "41.29", "7.7·10¹⁹"] ],
+        "highlightRow": 0 }
+    },
+    {
+      "block": "BarChart", "wav": "transformer_9", "audio": "9.mp3",
+      "anchors": ["@start", "compute", "days"],
+      "props": { "title": "Training compute", "unit": "×10¹⁹ FLOPs",
+        "bars": [ { "label": "Transformer", "value": 2.3, "accent": true },
+                  { "label": "Previous best", "value": 7.7 } ],
+        "caption": "⅓ the compute · trained in 3.5 days" }
+    },
+    {
+      "block": "HeroStatement", "wav": "transformer_10", "audio": "10.mp3",
+      "anchors": ["GPT", "BERT", "attention"],
+      "props": { "kicker": "the backbone of modern AI", "lines": [
+        { "text": "It became GPT." },
+        { "text": "It became BERT." },
+        { "text": "Attention is all you need.", "accent": true } ] }
+    }
+  ]
+}

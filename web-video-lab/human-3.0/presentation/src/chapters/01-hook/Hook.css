@@ -1,0 +1,475 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Chapter 01 · hook — "我不想当 NPC"
+ * bold-signal manifesto. Tokens only (color + font-family). Sizes / motion
+ * are content-driven. All custom classes are prefixed `.hk-`.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.hk-scene {
+  color: var(--text);
+  font-family: var(--font-display-en);
+}
+.hk-accent { color: var(--accent); }
+
+/* shared entrance: clip wipe + lift (guaranteed keyframe motion) */
+@keyframes hk-wipe-up {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateY(18px); }
+  to   { opacity: 1; clip-path: inset(0 0 0 0);    transform: translateY(0); }
+}
+@keyframes hk-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hk-stamp {
+  0%   { opacity: 0; transform: scale(0.78) translateY(10px); }
+  62%  { opacity: 1; transform: scale(1.05) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes hk-grow-x {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * STEP 0 — NPC hook + looping "someone else's script" backdrop
+ * ───────────────────────────────────────────────────────────────────── */
+.hk-s0 { position: relative; overflow: hidden; }
+
+.hk-loop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 120px;
+  font-family: var(--font-mono);
+  font-size: 30px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  white-space: nowrap;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+  -webkit-mask-image: linear-gradient(90deg, transparent, var(--text) 18%, var(--text) 82%, transparent);
+          mask-image: linear-gradient(90deg, transparent, var(--text) 18%, var(--text) 82%, transparent);
+}
+.hk-loop-row {
+  opacity: 0;
+  transform: translateX(-24px);
+  animation: hk-loop-in 520ms var(--ease-quart) both;
+}
+@keyframes hk-loop-in {
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.hk-s0-fore {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 28px;
+  padding: 0 120px;
+  max-width: 1500px;
+}
+.hk-src { color: var(--accent); }
+.hk-h0 {
+  margin: 0;
+  font-size: 132px;
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+  text-shadow: 0 14px 60px rgba(0, 0, 0, 0.6);
+}
+/* NPC — accent word with a strike line drawn through it */
+.hk-npc {
+  position: relative;
+  color: var(--accent);
+  display: inline-block;
+  white-space: nowrap;
+}
+.hk-strike {
+  position: absolute;
+  left: -4%;
+  top: 52%;
+  width: 108%;
+  height: 10px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  border-radius: 2px;
+  box-shadow: 0 0 22px var(--accent-glow);
+  animation: hk-grow-x 420ms var(--ease-quart) 900ms both;
+}
+.hk-s0-sub {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 28px;
+  line-height: 1.5;
+  color: var(--text-mute);
+  max-width: 46ch;
+  animation: hk-rise 600ms var(--ease-quart) 1150ms both;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * STEP 1 — five life-stat bars maxing out
+ * ───────────────────────────────────────────────────────────────────── */
+.hk-s1 { justify-content: center; }
+.hk-s1-head { margin-bottom: 64px; }
+.hk-h1 {
+  margin: 12px 0 0;
+  font-size: 116px;
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+}
+
+.hk-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+.hk-bar {
+  display: grid;
+  grid-template-columns: 320px 1fr 96px;
+  align-items: center;
+  gap: 32px;
+}
+.hk-bar-label {
+  font-size: 18px;
+  color: var(--text-2);
+  text-align: right;
+}
+.hk-bar-track {
+  position: relative;
+  height: 30px;
+  background: var(--surface-3);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+.hk-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 24px var(--accent-glow);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: hk-grow-x 620ms var(--ease-quart) both;
+}
+.hk-bar-max {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  opacity: 0;
+  animation: hk-rise 320ms var(--ease-quart) both;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * STEP 2 — level 100 / map unlocked grid
+ * ───────────────────────────────────────────────────────────────────── */
+.hk-s2 { justify-content: center; gap: 56px; }
+.hk-s2-top {
+  display: flex;
+  align-items: flex-end;
+  gap: 56px;
+}
+.hk-lvl-wrap { display: flex; flex-direction: column; gap: 6px; }
+.hk-lvl {
+  font-size: 200px;
+  line-height: 0.82;
+  color: var(--accent);
+  text-shadow: 0 0 50px var(--accent-glow);
+  animation: hk-stamp 520ms var(--ease-overshoot) both;
+}
+.hk-s2-tag {
+  font-size: 60px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  max-width: 14ch;
+  padding-bottom: 18px;
+}
+
+.hk-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 12px;
+  width: 100%;
+}
+.hk-tile {
+  height: 84px;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  opacity: 0.35;
+  animation: hk-unlock 360ms var(--ease-quart) both;
+}
+@keyframes hk-unlock {
+  from { opacity: 0.2; background: var(--surface-2); border-color: var(--rule); transform: scale(0.9); }
+  to   { opacity: 1;   background: var(--accent-soft); border-color: var(--accent); transform: scale(1); }
+}
+
+.hk-s2-caps {
+  display: flex;
+  gap: 56px;
+  align-items: center;
+}
+.hk-s2-caps .label-mono {
+  font-size: 16px;
+  animation: hk-rise 460ms var(--ease-quart) 1500ms both;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * STEP 3 — three chases, progressive reveal
+ * ───────────────────────────────────────────────────────────────────── */
+.hk-s3 { justify-content: center; }
+.hk-chases {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  margin-top: 40px;
+}
+.hk-chase {
+  display: grid;
+  grid-template-columns: 180px 2px 1fr;
+  align-items: center;
+  gap: 44px;
+  opacity: 0;
+  animation: hk-rise 560ms var(--ease-quart) both;
+}
+.hk-chase-num {
+  font-size: 96px;
+  line-height: 1;
+  color: var(--text-faint);
+}
+.hk-chase-rule {
+  height: 86px;
+  width: 2px;
+  background: var(--accent);
+  transform: scaleY(0);
+  transform-origin: top center;
+  animation: hk-grow-y 380ms var(--ease-quart) both;
+}
+@keyframes hk-grow-y {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+.hk-chase-body { display: flex; flex-direction: column; gap: 10px; }
+.hk-chase-title {
+  font-size: 74px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.hk-chase-note {
+  font-family: var(--font-body);
+  font-size: 24px;
+  color: var(--text-mute);
+}
+
+/* business after business until one worked */
+.hk-attempts {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6px;
+}
+.hk-attempt {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border: 2px solid var(--rule);
+  background: var(--surface-2);
+  opacity: 0;
+  animation: hk-rise 260ms var(--ease-quart) both;
+}
+.hk-attempt-x { position: absolute; inset: 0; }
+.hk-attempt-x::before,
+.hk-attempt-x::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 8%;
+  width: 84%;
+  height: 3px;
+  background: var(--text-faint);
+  transform-origin: center;
+  animation-delay: inherit;
+}
+/* draw both strokes of the ✕ from center out */
+.hk-attempt-x::before { animation: hk-x-a 220ms var(--ease-quart) both; }
+.hk-attempt-x::after  { animation: hk-x-b 220ms var(--ease-quart) both; }
+@keyframes hk-x-a { from { transform: rotate(45deg) scaleX(0); }  to { transform: rotate(45deg) scaleX(1); } }
+@keyframes hk-x-b { from { transform: rotate(-45deg) scaleX(0); } to { transform: rotate(-45deg) scaleX(1); } }
+
+.hk-attempt-win {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 26px var(--accent-glow);
+  animation: hk-stamp 360ms var(--ease-overshoot) both;
+}
+.hk-attempt-note {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0;
+  margin-left: 12px;
+  animation: hk-rise 360ms var(--ease-quart) both;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * STEP 4 — credibility stat (15 / 5) + repeating pattern echo
+ * ───────────────────────────────────────────────────────────────────── */
+.hk-s4 { justify-content: center; gap: 72px; }
+.hk-s4-nums {
+  display: flex;
+  align-items: flex-start;
+  gap: 64px;
+}
+.hk-stat { display: flex; align-items: flex-start; gap: 28px; }
+.hk-bignum {
+  font-size: 280px;
+  line-height: 0.78;
+  color: var(--text);
+  animation: hk-stamp 560ms var(--ease-overshoot) both;
+}
+.hk-stat:last-of-type .hk-bignum { color: var(--accent); text-shadow: 0 0 50px var(--accent-glow); }
+.hk-stat-meta { display: flex; flex-direction: column; gap: 14px; padding-top: 20px; }
+.hk-stat-meta .label-mono { font-size: 18px; color: var(--text-2); }
+.hk-stat-sub {
+  font-family: var(--font-body);
+  font-size: 26px;
+  color: var(--text-mute);
+}
+.hk-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 260px;
+}
+.hk-field {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  color: var(--text-mute);
+  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+  opacity: 0;
+  animation: hk-rise 360ms var(--ease-quart) both;
+}
+.hk-s4-plus {
+  font-size: 120px;
+  line-height: 1;
+  color: var(--text-faint);
+  align-self: center;
+}
+
+.hk-echo-band {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.hk-echo-text {
+  font-size: 52px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.hk-echo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.hk-echo-mark {
+  width: 64px;
+  height: 14px;
+  background: var(--accent);
+  box-shadow: 0 0 16px var(--accent-glow);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: hk-grow-x 260ms var(--ease-quart) both;
+}
+.hk-echo-label {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-left: 14px;
+  opacity: 0;
+  animation: hk-rise 360ms var(--ease-quart) both;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * STEP 5 — HUMAN 3.0 punchline
+ * ───────────────────────────────────────────────────────────────────── */
+.hk-s5 { position: relative; }
+.hk-s5-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  text-align: center;
+}
+.hk-s5-inner .kicker {
+  color: var(--accent);
+  animation: hk-rise 460ms var(--ease-quart) both;
+}
+.hk-title {
+  margin: 0;
+  font-size: 248px;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  display: flex;
+  align-items: baseline;
+  gap: 0.02em;
+  text-shadow: 0 18px 70px rgba(0, 0, 0, 0.6);
+}
+.hk-ver {
+  color: var(--accent);
+  text-shadow: 0 0 60px var(--accent-glow);
+  margin-left: 0.18em;
+}
+
+.hk-map {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  font-family: var(--font-mono);
+  font-size: 26px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hk-map-from { color: var(--text-mute); animation: hk-rise 500ms var(--ease-quart) 1500ms both; }
+.hk-map-to   { color: var(--accent);    animation: hk-rise 500ms var(--ease-quart) 2050ms both; }
+.hk-arrow {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 160px;
+  height: 16px;
+}
+.hk-arrow-line {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  width: 100%;
+  height: 3px;
+  background: var(--accent);
+  animation: hk-grow-x 520ms var(--ease-quart) 1700ms both;
+}
+.hk-arrow-head {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-top: 3px solid var(--accent);
+  border-right: 3px solid var(--accent);
+  transform: translateY(-50%) rotate(45deg) scale(0);
+  animation: hk-head-in 280ms var(--ease-overshoot) 2150ms both;
+}
+@keyframes hk-head-in {
+  to { transform: translateY(-50%) rotate(45deg) scale(1); }
+}

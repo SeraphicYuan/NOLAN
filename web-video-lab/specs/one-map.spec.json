@@ -1,0 +1,181 @@
+{
+  "out": "one-map_chapter_gen.mp4",
+  "theme": "bold-signal",
+  "fps": 30,
+  "audioDir": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/one-map",
+  "wavDir": "/mnt/d/claudeprojects/nolan/web-video-lab/human-3.0/presentation/.tts_wav",
+  "wordsCache": "web-video-lab/human-3.0/words_one-map_all.json",
+  "steps": [
+    {
+      "block": "HeroStatement",
+      "wav": "one-map_1",
+      "audio": "1.mp3",
+      "anchors": [
+        "@start",
+        "tons"
+      ],
+      "props": {
+        "kicker": "they already exist",
+        "lines": [
+          {
+            "text": "There are already"
+          },
+          {
+            "text": "maps for everything.",
+            "accent": true
+          }
+        ]
+      }
+    },
+    {
+      "block": "ListReveal",
+      "wav": "one-map_2",
+      "audio": "2.mp3",
+      "anchors": [
+        "Spiral",
+        "Buddhism",
+        "Red",
+        "commerce"
+      ],
+      "props": {
+        "title": "Existing maps \u00b7 one per domain",
+        "items": [
+          {
+            "label": "Spiral Dynamics",
+            "tag": "Mind"
+          },
+          {
+            "label": "Buddhism \u00b7 Christianity",
+            "tag": "Meaning"
+          },
+          {
+            "label": "Red Pill \u00b7 Feminism",
+            "tag": "Dating"
+          },
+          {
+            "label": "eCommerce \u00b7 Consulting",
+            "tag": "Money"
+          }
+        ]
+      }
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "one-map_3",
+      "audio": "3.mp3",
+      "anchors": [
+        "hold",
+        "locked"
+      ],
+      "props": {
+        "kicker": "every one shares it",
+        "lines": [
+          {
+            "text": "They all hold real truths."
+          },
+          {
+            "text": "But each is locked to one domain.",
+            "accent": true
+          }
+        ]
+      }
+    },
+    {
+      "block": "WebVsBoxes",
+      "wav": "one-map_4",
+      "audio": "4.mp3",
+      "anchors": [
+        "@start",
+        "classes",
+        "web"
+      ],
+      "props": {
+        "kicker": "not a stack of classes",
+        "headline": "Taught as boxes \u2014 it's actually a web.",
+        "boxes": [
+          "Math",
+          "English",
+          "Science"
+        ],
+        "nodes": [
+          "Mind",
+          "Meaning",
+          "Dating",
+          "Body",
+          "Money",
+          "Career"
+        ]
+      }
+    },
+    {
+      "block": "ArchetypeCards",
+      "wav": "one-map_5",
+      "audio": "5.mp3",
+      "anchors": [
+        "spiritual",
+        "businessman",
+        "alpha",
+        "rare"
+      ],
+      "props": {
+        "kicker": "developed on one axis",
+        "cards": [
+          {
+            "name": "Spiritual Teacher",
+            "maxLabel": "Spirit",
+            "maxVal": 0.95,
+            "lowLabel": "Body",
+            "lowVal": 0.2,
+            "flaw": "a frail body"
+          },
+          {
+            "name": "Businessman",
+            "maxLabel": "Wealth",
+            "maxVal": 0.95,
+            "lowLabel": "Relationships",
+            "lowVal": 0.18,
+            "flaw": "can't hold a relationship"
+          },
+          {
+            "name": "Alpha Male",
+            "maxLabel": "Presence",
+            "maxVal": 0.95,
+            "lowLabel": "Emotion",
+            "lowVal": 0.15,
+            "flaw": "an emotional wreck"
+          }
+        ],
+        "closer": "Truly developed across the board \u2014 extremely rare."
+      }
+    },
+    {
+      "block": "Timeline",
+      "wav": "one-map_6",
+      "audio": "6.mp3",
+      "anchors": [
+        "Greek",
+        "internet",
+        "AI",
+        "money"
+      ],
+      "props": {
+        "kicker": "built before the internet",
+        "headline": "Built before the world it must explain",
+        "anchor": {
+          "label": "Greek Philosophy"
+        },
+        "ticks": [
+          {
+            "label": "Internet"
+          },
+          {
+            "label": "AI"
+          }
+        ],
+        "note": "all came after it",
+        "moneyNote": "money \u2014 barely touched, yet it runs most lives."
+      }
+    }
+  ],
+  "captions": true
+}

@@ -1,0 +1,76 @@
+{
+  "out": "tailtrading2.mp4",
+  "theme": "midnight-press",
+  "fps": 30,
+  "captions": true,
+  "fx": { "grade": "warm", "bloom": 0.3, "grain": 0.07, "vignette": 0.42 },
+  "audioDir": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/.tts_wav2",
+  "wavDir": "/mnt/d/claudeprojects/nolan/web-video-lab/tailtrading/.tts_wav2",
+  "wordsCache": "web-video-lab/tailtrading/words2.json",
+  "segments": "web-video-lab/tailtrading/segments2.json",
+  "_figures": [1],
+  "steps": [
+    { "block": "KineticHeadline", "wav": "tail2_1", "audio": "tail2_1.wav",
+      "anchors": ["@start"],
+      "props": { "text": "In a crash, most hedges bleed or fail.", "accentWords": ["bleed", "fail."], "align": "center" } },
+
+    { "block": "PullQuote", "wav": "tail2_2", "audio": "tail2_2.wav",
+      "anchors": ["pay", "bleeds"],
+      "props": { "mode": "quote", "quote": "You pay for what you get.", "accentPhrase": "what you get",
+        "attribution": "— J.P. Morgan · Tail Trading" } },
+
+    { "block": "ComparisonVS", "wav": "tail2_3", "audio": "tail2_3.wav",
+      "anchors": ["Cheap", "Full", "choose"],
+      "props": { "kicker": "the hedging dilemma", "verdict": "What if you didn't have to choose?",
+        "left": { "title": "Cheap hedges", "tag": "low cost", "points": ["under-protect", "fail in the tail"] },
+        "right": { "title": "Full hedges", "tag": "reliable", "points": ["truly protect", "bleed premium daily"] } } },
+
+    { "block": "StatCount", "wav": "tail2_4", "audio": "tail2_4.wav",
+      "anchors": ["thousand", "sigma"],
+      "props": { "stats": [
+        { "value": 1000, "suffix": "+", "decimals": 0, "word": "thousand", "label": "3M-1M term-structure inversions since 2004" },
+        { "value": 1.95, "suffix": "σ", "decimals": 2, "word": "sigma", "label": "average SPX move on those days" } ],
+        "closer": "One clean signal flags the tail.", "accentPhrase": "flags the tail" } },
+
+    { "block": "StepFlow", "wav": "tail2_5", "audio": "tail2_5.wav",
+      "anchors": ["Delta", "Gamma", "Vega"],
+      "props": { "kicker": "three trades", "orientation": "horizontal", "steps": [
+        { "label": "Delta", "detail": "buy the rebound" },
+        { "label": "Gamma", "detail": "harvest the whipsaw" },
+        { "label": "Vega", "detail": "fade the VIX spike" } ] } },
+
+    { "block": "ChapterCard", "wav": "tail2_6", "audio": "tail2_6.wav",
+      "anchors": ["@start", "payoff"],
+      "props": { "index": "II", "title": "The Payoff", "subtitle": "three pillars, one curve" } },
+
+    { "block": "PaperFigure", "wav": "tail2_7", "audio": "tail2_7.wav",
+      "anchors": ["@start"],
+      "props": { "src": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/figures/fig1.png",
+        "kicker": "cumulative PnL · three pillars", "source": "Fig. 1 · OPRA, J.P. Morgan",
+        "spotlight": true,
+        "highlights": [
+          { "word": "stacked", "x": 0.07, "y": 0.12, "w": 0.88, "h": 0.74, "label": "Delta + Gamma + Vega" },
+          { "word": "twenty", "x": 0.44, "y": 0.05, "w": 0.13, "h": 0.82, "label": "2020 tail event" } ] } },
+
+    { "block": "Heatmap", "wav": "tail2_8", "audio": "tail2_8.wav",
+      "anchors": ["@start"],
+      "props": { "title": "Subsequent median SPX return by tenor × signal", "showValues": true, "valueDecimals": 1,
+        "highlightCell": [0, 3], "caption": "% return · deeper inversion + longer hold → bigger rebound (Fig 7)",
+        "rowLabels": ["TS<0", "Normal"], "colLabels": ["1W", "2W", "1M", "3M"],
+        "values": [ [0.7, 1.2, 1.8, 2.2], [0.1, 0.2, 0.3, 0.5] ] } },
+
+    { "block": "DataTable", "wav": "tail2_9", "audio": "tail2_9.wav",
+      "anchors": ["@start", "drawdown"],
+      "props": { "caption": "Long SPX with hedging overlays · Fig. 38, J.P. Morgan",
+        "columns": ["Metric", "SPX", "SPX + PS", "SPX + Tail + PS"],
+        "rows": [ ["Return", "12.5%", "10.2%", "17.1%"], ["Sharpe", "0.69", "0.69", "1.11"],
+          ["Worst 1D", "-12.0%", "-10.6%", "-5.0%"], ["Max DD", "-38.2%", "-31.8%", "-17.6%"] ],
+        "highlightRow": 3 } },
+
+    { "block": "EndCard", "wav": "tail2_10", "audio": "tail2_10.wav",
+      "anchors": ["@start", "front", "buyer", "seller"],
+      "props": { "headline": "Turn the crash into your payday.",
+        "takeaways": ["Loss defined up front", "Always the buyer", "A diversifier, not a cost"],
+        "source": "J.P. Morgan · Thinking Outside the Box for Tail Trading" } }
+  ]
+}

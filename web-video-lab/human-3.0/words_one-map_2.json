@@ -1,0 +1,158 @@
+[
+  {
+    "word": "Spiral",
+    "start": 0.0,
+    "end": 0.48,
+    "p": 0.687
+  },
+  {
+    "word": "Dynamics",
+    "start": 0.48,
+    "end": 1.14,
+    "p": 0.834
+  },
+  {
+    "word": "for",
+    "start": 1.14,
+    "end": 1.26,
+    "p": 0.827
+  },
+  {
+    "word": "the",
+    "start": 1.26,
+    "end": 1.38,
+    "p": 0.957
+  },
+  {
+    "word": "mind,",
+    "start": 1.38,
+    "end": 1.78,
+    "p": 0.338
+  },
+  {
+    "word": "Buddhism",
+    "start": 2.18,
+    "end": 2.76,
+    "p": 0.966
+  },
+  {
+    "word": "and",
+    "start": 2.76,
+    "end": 3.02,
+    "p": 0.989
+  },
+  {
+    "word": "Christianity",
+    "start": 3.02,
+    "end": 3.74,
+    "p": 0.998
+  },
+  {
+    "word": "for",
+    "start": 3.74,
+    "end": 4.08,
+    "p": 0.973
+  },
+  {
+    "word": "meaning,",
+    "start": 4.08,
+    "end": 4.42,
+    "p": 0.945
+  },
+  {
+    "word": "Red",
+    "start": 4.98,
+    "end": 5.1,
+    "p": 0.714
+  },
+  {
+    "word": "Pill",
+    "start": 5.1,
+    "end": 5.38,
+    "p": 0.69
+  },
+  {
+    "word": "and",
+    "start": 5.38,
+    "end": 5.7,
+    "p": 0.897
+  },
+  {
+    "word": "Feminism",
+    "start": 5.7,
+    "end": 6.26,
+    "p": 0.892
+  },
+  {
+    "word": "for",
+    "start": 6.26,
+    "end": 6.54,
+    "p": 0.994
+  },
+  {
+    "word": "Dating,",
+    "start": 6.54,
+    "end": 6.88,
+    "p": 0.743
+  },
+  {
+    "word": "E",
+    "start": 7.44,
+    "end": 7.56,
+    "p": 0.491
+  },
+  {
+    "word": "-commerce",
+    "start": 7.56,
+    "end": 7.88,
+    "p": 0.81
+  },
+  {
+    "word": "and",
+    "start": 7.88,
+    "end": 8.24,
+    "p": 0.934
+  },
+  {
+    "word": "Consulting",
+    "start": 8.24,
+    "end": 8.9,
+    "p": 0.8
+  },
+  {
+    "word": "for",
+    "start": 8.9,
+    "end": 9.08,
+    "p": 0.992
+  },
+  {
+    "word": "Money,",
+    "start": 9.08,
+    "end": 9.4,
+    "p": 0.839
+  },
+  {
+    "word": "Every",
+    "start": 10.1,
+    "end": 10.44,
+    "p": 0.539
+  },
+  {
+    "word": "Guru,",
+    "start": 10.44,
+    "end": 10.82,
+    "p": 0.906
+  },
+  {
+    "word": "Every",
+    "start": 11.24,
+    "end": 11.52,
+    "p": 0.816
+  },
+  {
+    "word": "Model",
+    "start": 11.52,
+    "end": 11.92,
+    "p": 0.884
+  }
+]

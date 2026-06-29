@@ -1,0 +1,4 @@
+# Build artifacts — render outputs + staged assets are regenerated each render.
+node_modules/
+output/
+public/

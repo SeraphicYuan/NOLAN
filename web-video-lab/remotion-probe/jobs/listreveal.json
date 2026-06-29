@@ -1,0 +1,17 @@
+{
+  "comp": "ListReveal",
+  "out": "listreveal.mp4",
+  "durationInFrames": 372,
+  "codec": "h264",
+  "audio": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/one-map/2.mp3",
+  "props": {
+    "title": "Existing maps · one per domain",
+    "items": [
+      { "model": "Spiral Dynamics", "domain": "Mind" },
+      { "model": "Buddhism · Christianity", "domain": "Meaning" },
+      { "model": "Red Pill · Feminism", "domain": "Dating" },
+      { "model": "eCommerce · Consulting", "domain": "Money" }
+    ],
+    "revealFrames": [0, 65, 149, 223]
+  }
+}

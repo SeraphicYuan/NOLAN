@@ -1,0 +1,17 @@
+{
+  "parser_used": "mineru",
+  "parsed_at": "2026-05-04T02:07:27.080356+00:00",
+  "source_file": "E:\\Hermes_DB\\raw\\paper\\zotero\\7ZT87LC9.pdf",
+  "page_count": 27,
+  "char_count": 83994,
+  "source_type": "paper",
+  "source_name": "zotero",
+  "title": "JPM - Thinking Outside the Box for Tail Trading",
+  "date_published": "",
+  "original_filename": "7ZT87LC9.pdf",
+  "image_count": 57,
+  "complexity_reason": "220 images detected; multi-column layout; 27 pages",
+  "content_hash": "2060a97919fb7ea8fa4b4e9d90f71d5559f3a8de3773451a17eaa5492b765495",
+  "parse_failed": false,
+  "metadata": {}
+}

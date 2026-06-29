@@ -1,0 +1,844 @@
+{
+  "one-map_1": [
+    {
+      "word": "Now,",
+      "start": 0.0,
+      "end": 0.32
+    },
+    {
+      "word": "it's",
+      "start": 1.38,
+      "end": 1.66
+    },
+    {
+      "word": "not",
+      "start": 1.66,
+      "end": 2.26
+    },
+    {
+      "word": "like",
+      "start": 2.26,
+      "end": 2.48
+    },
+    {
+      "word": "there",
+      "start": 2.48,
+      "end": 2.68
+    },
+    {
+      "word": "aren't",
+      "start": 2.68,
+      "end": 3.04
+    },
+    {
+      "word": "maps",
+      "start": 3.04,
+      "end": 3.24
+    },
+    {
+      "word": "out",
+      "start": 3.24,
+      "end": 3.5
+    },
+    {
+      "word": "there",
+      "start": 3.5,
+      "end": 3.66
+    },
+    {
+      "word": "already.",
+      "start": 3.66,
+      "end": 4.06
+    },
+    {
+      "word": "There",
+      "start": 4.54,
+      "end": 4.66
+    },
+    {
+      "word": "are",
+      "start": 4.66,
+      "end": 4.76
+    },
+    {
+      "word": "tons",
+      "start": 4.76,
+      "end": 5.06
+    },
+    {
+      "word": "of",
+      "start": 5.06,
+      "end": 5.26
+    },
+    {
+      "word": "them.",
+      "start": 5.26,
+      "end": 5.42
+    }
+  ],
+  "one-map_2": [
+    {
+      "word": "Spiral",
+      "start": 0.0,
+      "end": 0.48
+    },
+    {
+      "word": "Dynamics",
+      "start": 0.48,
+      "end": 1.14
+    },
+    {
+      "word": "for",
+      "start": 1.14,
+      "end": 1.26
+    },
+    {
+      "word": "the",
+      "start": 1.26,
+      "end": 1.38
+    },
+    {
+      "word": "mind,",
+      "start": 1.38,
+      "end": 1.78
+    },
+    {
+      "word": "Buddhism",
+      "start": 2.18,
+      "end": 2.76
+    },
+    {
+      "word": "and",
+      "start": 2.76,
+      "end": 3.02
+    },
+    {
+      "word": "Christianity",
+      "start": 3.02,
+      "end": 3.74
+    },
+    {
+      "word": "for",
+      "start": 3.74,
+      "end": 4.08
+    },
+    {
+      "word": "meaning,",
+      "start": 4.08,
+      "end": 4.42
+    },
+    {
+      "word": "Red",
+      "start": 4.98,
+      "end": 5.1
+    },
+    {
+      "word": "Pill",
+      "start": 5.1,
+      "end": 5.38
+    },
+    {
+      "word": "and",
+      "start": 5.38,
+      "end": 5.7
+    },
+    {
+      "word": "Feminism",
+      "start": 5.7,
+      "end": 6.26
+    },
+    {
+      "word": "for",
+      "start": 6.26,
+      "end": 6.54
+    },
+    {
+      "word": "Dating,",
+      "start": 6.54,
+      "end": 6.88
+    },
+    {
+      "word": "E",
+      "start": 7.44,
+      "end": 7.56
+    },
+    {
+      "word": "-commerce",
+      "start": 7.56,
+      "end": 7.88
+    },
+    {
+      "word": "and",
+      "start": 7.88,
+      "end": 8.24
+    },
+    {
+      "word": "Consulting",
+      "start": 8.24,
+      "end": 8.9
+    },
+    {
+      "word": "for",
+      "start": 8.9,
+      "end": 9.08
+    },
+    {
+      "word": "Money,",
+      "start": 9.08,
+      "end": 9.4
+    },
+    {
+      "word": "Every",
+      "start": 10.1,
+      "end": 10.44
+    },
+    {
+      "word": "Guru,",
+      "start": 10.44,
+      "end": 10.82
+    },
+    {
+      "word": "Every",
+      "start": 11.24,
+      "end": 11.52
+    },
+    {
+      "word": "Model",
+      "start": 11.52,
+      "end": 11.92
+    }
+  ],
+  "one-map_3": [
+    {
+      "word": "And",
+      "start": 0.0,
+      "end": 0.28
+    },
+    {
+      "word": "they",
+      "start": 0.28,
+      "end": 0.4
+    },
+    {
+      "word": "all",
+      "start": 0.4,
+      "end": 0.66
+    },
+    {
+      "word": "hold",
+      "start": 0.66,
+      "end": 1.14
+    },
+    {
+      "word": "real",
+      "start": 1.14,
+      "end": 1.4
+    },
+    {
+      "word": "truths.",
+      "start": 1.4,
+      "end": 1.98
+    },
+    {
+      "word": "But",
+      "start": 2.28,
+      "end": 2.36
+    },
+    {
+      "word": "every",
+      "start": 2.36,
+      "end": 2.76
+    },
+    {
+      "word": "single",
+      "start": 2.76,
+      "end": 3.16
+    },
+    {
+      "word": "one",
+      "start": 3.16,
+      "end": 3.48
+    },
+    {
+      "word": "has",
+      "start": 3.48,
+      "end": 3.86
+    },
+    {
+      "word": "the",
+      "start": 3.86,
+      "end": 4.18
+    },
+    {
+      "word": "same",
+      "start": 4.18,
+      "end": 4.58
+    },
+    {
+      "word": "flaw.",
+      "start": 4.58,
+      "end": 5.08
+    },
+    {
+      "word": "It's",
+      "start": 5.42,
+      "end": 5.62
+    },
+    {
+      "word": "locked",
+      "start": 5.62,
+      "end": 5.88
+    },
+    {
+      "word": "to",
+      "start": 5.88,
+      "end": 6.14
+    },
+    {
+      "word": "one",
+      "start": 6.14,
+      "end": 6.4
+    },
+    {
+      "word": "domain",
+      "start": 6.4,
+      "end": 6.74
+    },
+    {
+      "word": "of",
+      "start": 6.74,
+      "end": 6.94
+    },
+    {
+      "word": "life.",
+      "start": 6.94,
+      "end": 7.22
+    }
+  ],
+  "one-map_4": [
+    {
+      "word": "Here's",
+      "start": 0.0,
+      "end": 0.4
+    },
+    {
+      "word": "the",
+      "start": 0.4,
+      "end": 0.48
+    },
+    {
+      "word": "problem.",
+      "start": 0.48,
+      "end": 0.92
+    },
+    {
+      "word": "Knowledge",
+      "start": 1.52,
+      "end": 1.74
+    },
+    {
+      "word": "isn't",
+      "start": 1.74,
+      "end": 2.24
+    },
+    {
+      "word": "a",
+      "start": 2.24,
+      "end": 2.38
+    },
+    {
+      "word": "stack",
+      "start": 2.38,
+      "end": 2.66
+    },
+    {
+      "word": "of",
+      "start": 2.66,
+      "end": 2.88
+    },
+    {
+      "word": "separate",
+      "start": 2.88,
+      "end": 3.22
+    },
+    {
+      "word": "classes.",
+      "start": 3.22,
+      "end": 3.72
+    },
+    {
+      "word": "It's",
+      "start": 4.2,
+      "end": 4.54
+    },
+    {
+      "word": "a",
+      "start": 4.54,
+      "end": 4.74
+    },
+    {
+      "word": "web.",
+      "start": 4.74,
+      "end": 5.1
+    },
+    {
+      "word": "We",
+      "start": 5.62,
+      "end": 5.76
+    },
+    {
+      "word": "just",
+      "start": 5.76,
+      "end": 5.94
+    },
+    {
+      "word": "got",
+      "start": 5.94,
+      "end": 6.16
+    },
+    {
+      "word": "taught",
+      "start": 6.16,
+      "end": 6.7
+    },
+    {
+      "word": "math,",
+      "start": 6.7,
+      "end": 7.12
+    },
+    {
+      "word": "English,",
+      "start": 7.48,
+      "end": 7.92
+    },
+    {
+      "word": "and",
+      "start": 8.12,
+      "end": 8.16
+    },
+    {
+      "word": "science",
+      "start": 8.16,
+      "end": 8.54
+    },
+    {
+      "word": "in",
+      "start": 8.54,
+      "end": 9.08
+    },
+    {
+      "word": "little",
+      "start": 9.08,
+      "end": 9.5
+    },
+    {
+      "word": "sealed",
+      "start": 9.5,
+      "end": 9.9
+    },
+    {
+      "word": "boxes.",
+      "start": 9.9,
+      "end": 10.36
+    },
+    {
+      "word": "So",
+      "start": 10.8,
+      "end": 10.86
+    },
+    {
+      "word": "we",
+      "start": 10.86,
+      "end": 11.22
+    },
+    {
+      "word": "think",
+      "start": 11.22,
+      "end": 11.54
+    },
+    {
+      "word": "life",
+      "start": 11.54,
+      "end": 11.84
+    },
+    {
+      "word": "works",
+      "start": 11.84,
+      "end": 12.22
+    },
+    {
+      "word": "that",
+      "start": 12.22,
+      "end": 12.46
+    },
+    {
+      "word": "way",
+      "start": 12.46,
+      "end": 12.66
+    },
+    {
+      "word": "too.",
+      "start": 12.66,
+      "end": 12.9
+    }
+  ],
+  "one-map_5": [
+    {
+      "word": "So",
+      "start": 0.0,
+      "end": 0.26
+    },
+    {
+      "word": "you",
+      "start": 0.26,
+      "end": 0.4
+    },
+    {
+      "word": "end",
+      "start": 0.4,
+      "end": 0.68
+    },
+    {
+      "word": "up",
+      "start": 0.68,
+      "end": 0.82
+    },
+    {
+      "word": "with",
+      "start": 0.82,
+      "end": 0.98
+    },
+    {
+      "word": "the",
+      "start": 0.98,
+      "end": 1.26
+    },
+    {
+      "word": "spiritual",
+      "start": 1.26,
+      "end": 1.84
+    },
+    {
+      "word": "teacher",
+      "start": 1.84,
+      "end": 2.34
+    },
+    {
+      "word": "who",
+      "start": 2.34,
+      "end": 2.82
+    },
+    {
+      "word": "has",
+      "start": 2.82,
+      "end": 3.06
+    },
+    {
+      "word": "a",
+      "start": 3.06,
+      "end": 3.2
+    },
+    {
+      "word": "frail",
+      "start": 3.2,
+      "end": 3.76
+    },
+    {
+      "word": "body,",
+      "start": 3.76,
+      "end": 4.2
+    },
+    {
+      "word": "the",
+      "start": 4.64,
+      "end": 4.84
+    },
+    {
+      "word": "businessman",
+      "start": 4.84,
+      "end": 5.24
+    },
+    {
+      "word": "who",
+      "start": 5.24,
+      "end": 5.78
+    },
+    {
+      "word": "can't",
+      "start": 5.78,
+      "end": 6.32
+    },
+    {
+      "word": "hold",
+      "start": 6.32,
+      "end": 6.6
+    },
+    {
+      "word": "a",
+      "start": 6.6,
+      "end": 6.8
+    },
+    {
+      "word": "relationship,",
+      "start": 6.8,
+      "end": 7.4
+    },
+    {
+      "word": "the",
+      "start": 7.72,
+      "end": 7.82
+    },
+    {
+      "word": "alpha",
+      "start": 7.82,
+      "end": 8.08
+    },
+    {
+      "word": "male",
+      "start": 8.08,
+      "end": 8.36
+    },
+    {
+      "word": "who's",
+      "start": 8.36,
+      "end": 8.92
+    },
+    {
+      "word": "an",
+      "start": 8.92,
+      "end": 9.02
+    },
+    {
+      "word": "emotional",
+      "start": 9.02,
+      "end": 9.56
+    },
+    {
+      "word": "wreck.",
+      "start": 9.56,
+      "end": 9.98
+    },
+    {
+      "word": "It's",
+      "start": 10.66,
+      "end": 11.3
+    },
+    {
+      "word": "rare",
+      "start": 11.3,
+      "end": 11.76
+    },
+    {
+      "word": "that",
+      "start": 11.76,
+      "end": 12.06
+    },
+    {
+      "word": "anyone",
+      "start": 12.06,
+      "end": 12.56
+    },
+    {
+      "word": "is",
+      "start": 12.56,
+      "end": 12.96
+    },
+    {
+      "word": "truly",
+      "start": 12.96,
+      "end": 13.46
+    },
+    {
+      "word": "developed",
+      "start": 13.46,
+      "end": 14.1
+    },
+    {
+      "word": "across",
+      "start": 14.1,
+      "end": 14.4
+    },
+    {
+      "word": "the",
+      "start": 14.4,
+      "end": 14.64
+    },
+    {
+      "word": "board.",
+      "start": 14.64,
+      "end": 14.92
+    }
+  ],
+  "one-map_6": [
+    {
+      "word": "And",
+      "start": 0.0,
+      "end": 0.36
+    },
+    {
+      "word": "the",
+      "start": 0.36,
+      "end": 0.5
+    },
+    {
+      "word": "models",
+      "start": 0.5,
+      "end": 0.98
+    },
+    {
+      "word": "that",
+      "start": 0.98,
+      "end": 1.24
+    },
+    {
+      "word": "do",
+      "start": 1.24,
+      "end": 1.52
+    },
+    {
+      "word": "connect",
+      "start": 1.52,
+      "end": 1.98
+    },
+    {
+      "word": "a",
+      "start": 1.98,
+      "end": 2.18
+    },
+    {
+      "word": "few",
+      "start": 2.18,
+      "end": 2.46
+    },
+    {
+      "word": "domains",
+      "start": 2.46,
+      "end": 2.94
+    },
+    {
+      "word": "like",
+      "start": 2.94,
+      "end": 3.38
+    },
+    {
+      "word": "the",
+      "start": 3.38,
+      "end": 3.56
+    },
+    {
+      "word": "old",
+      "start": 3.56,
+      "end": 3.84
+    },
+    {
+      "word": "Greek",
+      "start": 3.84,
+      "end": 4.08
+    },
+    {
+      "word": "philosophies,",
+      "start": 4.08,
+      "end": 4.94
+    },
+    {
+      "word": "most",
+      "start": 5.36,
+      "end": 5.54
+    },
+    {
+      "word": "of",
+      "start": 5.54,
+      "end": 5.72
+    },
+    {
+      "word": "them",
+      "start": 5.72,
+      "end": 5.88
+    },
+    {
+      "word": "predate",
+      "start": 5.88,
+      "end": 6.42
+    },
+    {
+      "word": "the",
+      "start": 6.42,
+      "end": 7.1
+    },
+    {
+      "word": "internet,",
+      "start": 7.1,
+      "end": 7.78
+    },
+    {
+      "word": "predate",
+      "start": 8.06,
+      "end": 8.44
+    },
+    {
+      "word": "AI,",
+      "start": 8.44,
+      "end": 8.86
+    },
+    {
+      "word": "and",
+      "start": 9.18,
+      "end": 9.22
+    },
+    {
+      "word": "barely",
+      "start": 9.22,
+      "end": 9.72
+    },
+    {
+      "word": "touch",
+      "start": 9.72,
+      "end": 10.04
+    },
+    {
+      "word": "money.",
+      "start": 10.04,
+      "end": 10.48
+    },
+    {
+      "word": "The",
+      "start": 10.88,
+      "end": 10.96
+    },
+    {
+      "word": "thing",
+      "start": 10.96,
+      "end": 11.22
+    },
+    {
+      "word": "that",
+      "start": 11.22,
+      "end": 11.4
+    },
+    {
+      "word": "runs",
+      "start": 11.4,
+      "end": 11.66
+    },
+    {
+      "word": "most",
+      "start": 11.66,
+      "end": 12.06
+    },
+    {
+      "word": "people's",
+      "start": 12.06,
+      "end": 12.66
+    },
+    {
+      "word": "entire",
+      "start": 12.66,
+      "end": 13.16
+    },
+    {
+      "word": "lives.",
+      "start": 13.16,
+      "end": 13.9
+    }
+  ]
+}

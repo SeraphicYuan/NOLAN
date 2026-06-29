@@ -1,0 +1,469 @@
+{
+  "compound_1": [
+    {
+      "word": "Einstein",
+      "start": 0.0,
+      "end": 0.6
+    },
+    {
+      "word": "supposedly",
+      "start": 0.6,
+      "end": 1.46
+    },
+    {
+      "word": "called",
+      "start": 1.46,
+      "end": 1.88
+    },
+    {
+      "word": "it",
+      "start": 1.88,
+      "end": 2.1
+    },
+    {
+      "word": "the",
+      "start": 2.1,
+      "end": 2.26
+    },
+    {
+      "word": "eighth",
+      "start": 2.26,
+      "end": 2.64
+    },
+    {
+      "word": "wonder",
+      "start": 2.64,
+      "end": 3.02
+    },
+    {
+      "word": "of",
+      "start": 3.02,
+      "end": 3.3
+    },
+    {
+      "word": "the",
+      "start": 3.3,
+      "end": 3.44
+    },
+    {
+      "word": "world,",
+      "start": 3.44,
+      "end": 3.8
+    },
+    {
+      "word": "compound",
+      "start": 4.42,
+      "end": 4.88
+    },
+    {
+      "word": "interest.",
+      "start": 4.88,
+      "end": 5.54
+    }
+  ],
+  "compound_2": [
+    {
+      "word": "The",
+      "start": 0.0,
+      "end": 0.22
+    },
+    {
+      "word": "idea",
+      "start": 0.22,
+      "end": 0.62
+    },
+    {
+      "word": "is",
+      "start": 0.62,
+      "end": 0.86
+    },
+    {
+      "word": "simple.",
+      "start": 0.86,
+      "end": 1.22
+    },
+    {
+      "word": "You",
+      "start": 1.82,
+      "end": 1.9
+    },
+    {
+      "word": "earn",
+      "start": 1.9,
+      "end": 2.16
+    },
+    {
+      "word": "interest,",
+      "start": 2.16,
+      "end": 2.62
+    },
+    {
+      "word": "then",
+      "start": 3.12,
+      "end": 3.44
+    },
+    {
+      "word": "you",
+      "start": 3.44,
+      "end": 3.66
+    },
+    {
+      "word": "earn",
+      "start": 3.66,
+      "end": 3.88
+    },
+    {
+      "word": "interest",
+      "start": 3.88,
+      "end": 4.34
+    },
+    {
+      "word": "on",
+      "start": 4.34,
+      "end": 4.76
+    },
+    {
+      "word": "the",
+      "start": 4.76,
+      "end": 4.96
+    },
+    {
+      "word": "interest,",
+      "start": 4.96,
+      "end": 5.44
+    },
+    {
+      "word": "and",
+      "start": 5.82,
+      "end": 6.22
+    },
+    {
+      "word": "the",
+      "start": 6.22,
+      "end": 6.34
+    },
+    {
+      "word": "growth",
+      "start": 6.34,
+      "end": 6.58
+    },
+    {
+      "word": "starts",
+      "start": 6.58,
+      "end": 7.06
+    },
+    {
+      "word": "feeding",
+      "start": 7.06,
+      "end": 7.5
+    },
+    {
+      "word": "itself.",
+      "start": 7.5,
+      "end": 8.0
+    }
+  ],
+  "compound_3": [
+    {
+      "word": "A",
+      "start": 0.0,
+      "end": 0.28
+    },
+    {
+      "word": "thousand",
+      "start": 0.28,
+      "end": 0.82
+    },
+    {
+      "word": "dollars",
+      "start": 0.82,
+      "end": 1.26
+    },
+    {
+      "word": "at",
+      "start": 1.26,
+      "end": 1.54
+    },
+    {
+      "word": "8",
+      "start": 1.54,
+      "end": 1.82
+    },
+    {
+      "word": "%",
+      "start": 1.82,
+      "end": 2.22
+    },
+    {
+      "word": "becomes",
+      "start": 2.22,
+      "end": 2.56
+    },
+    {
+      "word": "2",
+      "start": 2.56,
+      "end": 3.0
+    },
+    {
+      "word": ",000",
+      "start": 3.0,
+      "end": 3.56
+    },
+    {
+      "word": "in",
+      "start": 3.56,
+      "end": 3.76
+    },
+    {
+      "word": "9",
+      "start": 3.76,
+      "end": 4.1
+    },
+    {
+      "word": "years,",
+      "start": 4.1,
+      "end": 4.64
+    },
+    {
+      "word": "4",
+      "start": 5.02,
+      "end": 5.54
+    },
+    {
+      "word": ",000",
+      "start": 5.54,
+      "end": 5.96
+    },
+    {
+      "word": "in",
+      "start": 5.96,
+      "end": 6.12
+    },
+    {
+      "word": "18,",
+      "start": 6.12,
+      "end": 6.58
+    },
+    {
+      "word": "10",
+      "start": 7.12,
+      "end": 7.56
+    },
+    {
+      "word": ",000",
+      "start": 7.56,
+      "end": 8.0
+    },
+    {
+      "word": "in",
+      "start": 8.0,
+      "end": 8.24
+    },
+    {
+      "word": "30.",
+      "start": 8.24,
+      "end": 8.72
+    }
+  ],
+  "compound_4": [
+    {
+      "word": "Three",
+      "start": 0.0,
+      "end": 0.34
+    },
+    {
+      "word": "things",
+      "start": 0.34,
+      "end": 0.64
+    },
+    {
+      "word": "decide",
+      "start": 0.64,
+      "end": 1.0
+    },
+    {
+      "word": "where",
+      "start": 1.0,
+      "end": 1.34
+    },
+    {
+      "word": "you",
+      "start": 1.34,
+      "end": 1.6
+    },
+    {
+      "word": "land,",
+      "start": 1.6,
+      "end": 1.96
+    },
+    {
+      "word": "time,",
+      "start": 2.32,
+      "end": 2.82
+    },
+    {
+      "word": "rate,",
+      "start": 3.06,
+      "end": 3.3
+    },
+    {
+      "word": "and",
+      "start": 3.64,
+      "end": 3.9
+    },
+    {
+      "word": "how",
+      "start": 3.9,
+      "end": 4.08
+    },
+    {
+      "word": "consistent",
+      "start": 4.08,
+      "end": 4.72
+    },
+    {
+      "word": "you",
+      "start": 4.72,
+      "end": 4.98
+    },
+    {
+      "word": "stay.",
+      "start": 4.98,
+      "end": 5.3
+    }
+  ],
+  "compound_5": [
+    {
+      "word": "But",
+      "start": 0.0,
+      "end": 0.24
+    },
+    {
+      "word": "it",
+      "start": 0.24,
+      "end": 0.36
+    },
+    {
+      "word": "cuts",
+      "start": 0.36,
+      "end": 0.52
+    },
+    {
+      "word": "both",
+      "start": 0.52,
+      "end": 0.98
+    },
+    {
+      "word": "ways,",
+      "start": 0.98,
+      "end": 1.52
+    },
+    {
+      "word": "debt",
+      "start": 1.92,
+      "end": 2.08
+    },
+    {
+      "word": "compounds",
+      "start": 2.08,
+      "end": 2.66
+    },
+    {
+      "word": "against",
+      "start": 2.66,
+      "end": 3.24
+    },
+    {
+      "word": "you",
+      "start": 3.24,
+      "end": 3.76
+    },
+    {
+      "word": "in",
+      "start": 3.76,
+      "end": 4.08
+    },
+    {
+      "word": "exactly",
+      "start": 4.08,
+      "end": 4.62
+    },
+    {
+      "word": "the",
+      "start": 4.62,
+      "end": 4.84
+    },
+    {
+      "word": "same",
+      "start": 4.84,
+      "end": 5.1
+    },
+    {
+      "word": "way.",
+      "start": 5.1,
+      "end": 5.32
+    }
+  ],
+  "compound_6": [
+    {
+      "word": "So",
+      "start": 0.0,
+      "end": 0.3
+    },
+    {
+      "word": "start",
+      "start": 0.3,
+      "end": 0.62
+    },
+    {
+      "word": "early,",
+      "start": 0.62,
+      "end": 1.04
+    },
+    {
+      "word": "stay",
+      "start": 1.22,
+      "end": 1.4
+    },
+    {
+      "word": "in,",
+      "start": 1.4,
+      "end": 1.74
+    },
+    {
+      "word": "and",
+      "start": 2.16,
+      "end": 2.28
+    },
+    {
+      "word": "let",
+      "start": 2.28,
+      "end": 2.42
+    },
+    {
+      "word": "time",
+      "start": 2.42,
+      "end": 2.82
+    },
+    {
+      "word": "do",
+      "start": 2.82,
+      "end": 3.16
+    },
+    {
+      "word": "the",
+      "start": 3.16,
+      "end": 3.4
+    },
+    {
+      "word": "heavy",
+      "start": 3.4,
+      "end": 3.64
+    },
+    {
+      "word": "lifting.",
+      "start": 3.64,
+      "end": 3.96
+    }
+  ]
+}

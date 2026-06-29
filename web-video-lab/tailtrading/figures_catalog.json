@@ -1,0 +1,230 @@
+[
+  {
+    "figure": 1,
+    "image": "images/d135559490b7f88ac05fd3ebcee1140ea2f634035e7b05f9296e16b6369c4aae.jpg",
+    "caption": "PnL of the New Tail Trading Strategy Contribution from the Three Pillars",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 2,
+    "image": "images/7fa75d245503a9047e1d5129218aa46ef3dc6ec807cf9f0b41b963c0656dc702.jpg",
+    "caption": "SPX Long 1M 25D Call Acc Pnl",
+    "source": ""
+  },
+  {
+    "figure": 3,
+    "image": "images/7960971fd2ec9996d25fba30d8357d9db89898d824bbd24ec9ddac70c1c8be5b.jpg",
+    "caption": "When any of 1, 5, 10, 22D returns were less than -2 Sigma, 3M-1M term structure and VIX levels",
+    "source": ""
+  },
+  {
+    "figure": 4,
+    "image": "images/0c0cb37ba61e1d57a6b89df07a0a4588db67934f8cd7f26da4157d522dd2eed7.jpg",
+    "caption": "When 3M-1M term structure was negative, SPX returns were always at a high sigma score",
+    "source": ""
+  },
+  {
+    "figure": 5,
+    "image": "images/6b069d16c4c8d66fdf5728f7bc0efe2048bac4c35ae9b86628645512fc39ad0d.jpg",
+    "caption": "Subsequent Spot Return Distribution following event dates when TS <0 (‘tail-like days’)",
+    "source": ""
+  },
+  {
+    "figure": 6,
+    "image": "images/5430f0d914c227197f92fcf56894a7b76c1d4b8980113b732094e5e1092ec08b.jpg",
+    "caption": "Subsequent Spot Return Distribution following event dates when TS >0 (‘normal days’)",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 7,
+    "image": "images/9041861757afdb84067b91f5b5f1725b13169ce28cebce6d64e50ef51d57f5f3.jpg",
+    "caption": "Subsequent median returns of SPX increase as the term structure inverts steeper, and also increase with tenor",
+    "source": ""
+  },
+  {
+    "figure": 8,
+    "image": "images/440020a8c22b669c57e40ec81ee44d7157c2a7506f9df3afc2ed8c6b17513eac.jpg",
+    "caption": "Up day realized vol minus down day realized vol",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 9,
+    "image": "images/968c53ee52e4f514e88621cb10b8304f6ec7ebae8115a1cce7d76dc965ad4ab7.jpg",
+    "caption": "Implied skew is steeper on TS $_ { < 0 }$ days From 2008, 5D tenor $9 7 . 5 \\AA - 1 0 2 . 5 \\%$ skew (\\~25 delta)",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 10,
+    "image": "images/898d2b808e20159793d0ed90be83375b6f7a8225f8a13d1ed1abc43abf48b7df.jpg",
+    "caption": "Distribution of Realized minus Implied Vol for 5D tenor post TS <0 day From 2008",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 11,
+    "image": "images/45ebbcb02ffbd17db249c79116c6e8cb140808a5bd61c11060d6eafa59a2a361.jpg",
+    "caption": "Relationship between12M lag-1 autocorrelation and realized volatility",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 12,
+    "image": "images/b80a4e9fb479f56bd3452ac952b77a9affd0e40bd343eb16af172f85a0c43491.jpg",
+    "caption": "Subsequent VIX Return Distribution post TS $\\scriptstyle < 0$ From 2004 for change in UX1, vertical line at 1M median",
+    "source": ""
+  },
+  {
+    "figure": 13,
+    "image": "images/681f6063b1a3bf8ff37006ad0245f6ed29aa5089cf92ce20fe5e70084943050b.jpg",
+    "caption": "Subsequent VIX Return Distribution post TS >0 From 2004 for change in UX1, vertical line at 1M median",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 15,
+    "image": "images/15620dd94c37f7cc2998c6c4c1220a1f0ae47ceecd04cc2d468df5a0e9f8e98c.jpg",
+    "caption": "Long Delta on Futures with different holding tenors \\$1M/Tenor per trade",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 16,
+    "image": "images/acddcc8725fa15d514dd40cfa086ce55b5a06d20e6d4bc34116d0d0e0cfe2bbf.jpg",
+    "caption": "Long Delta with ATM Call MTM",
+    "source": ""
+  },
+  {
+    "figure": 17,
+    "image": "images/fbbd5215f555c180be323e1ee6c2f19fef6eaf8f3df43ef1c7d554303b7c0bf0.jpg",
+    "caption": "Long Delta with 25 Delta Strike Call MTM",
+    "source": ""
+  },
+  {
+    "figure": 18,
+    "image": "images/c045e383b90912bb295f6d3b68bd5ebde1245d5e24b3d3cbe061da919fc84f0c.jpg",
+    "caption": "Long 3x 1M Call Spread MTM",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 19,
+    "image": "images/69ac1ad8b43a60717c56a1c093652756b88612bc793d2fa2764e162448dc51e8.jpg",
+    "caption": "Delta Hedged Call for ATM Strike MTM",
+    "source": ""
+  },
+  {
+    "figure": 20,
+    "image": "images/f19ae488ab45c804040a3d83e773e8c2c0314b4a7ca8e7d630ec41b11a8748a6.jpg",
+    "caption": "Delta Hedged Call for 25 Delta Strike MTM",
+    "source": ""
+  },
+  {
+    "figure": 21,
+    "image": "images/0c4ce42331bf3a2d0921d90802bf6748a815d1a1517891fa4e7f2060b02a6071.jpg",
+    "caption": "Autocorrelation of SPX between Feb-Jun 2020 Lag1 $= - 0 . 4 1$ , $\\mathsf { L a g 2 } = 0 . 3$",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 22,
+    "image": "images/af8d77dcf6e0f1662f2cc47f4a86a3e1c9322b06bf4a6a42fbcbbbcef80cddd8.jpg",
+    "caption": "Autocorrelation of SPX from 1995 Lag1 = -0.09, Lag2 =0",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 23,
+    "image": "images/0662301b0dc9cbe4427f3f813d469db3e5d1cf67316233296911a8c71af59004.jpg",
+    "caption": "Distribution of PnL from Delta Hedged Call of 25d Strike 5D Tenor",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 24,
+    "image": "images/8c0aac6a0e8f71801e05954a2d2ed52efe61f239330441d7033f11791f0f68ac.jpg",
+    "caption": "PnL per Trade ATM Call 5D Tenor x-long call outright, y- long call delta hedged",
+    "source": ""
+  },
+  {
+    "figure": 25,
+    "image": "images/89f0381148234f3c1b55f0206a9c5a3efb34b99939c65d3e54db85f6868b38ee.jpg",
+    "caption": "PnL per Trade for 25 Delta Call 5D Tenor x- long call outright, y- long call delta hedged",
+    "source": ""
+  },
+  {
+    "figure": 26,
+    "image": "images/db496d204ed7e4061e773ab6ff7f250463b3253c7e3bed43d09cab034a0969e6.jpg",
+    "caption": "Short VIX with UX1 Futures with different holding tenors",
+    "source": ""
+  },
+  {
+    "figure": 28,
+    "image": "images/5f68e7b2dd7fa6a18c35460d2e6e0d5ece2ee34cc89d16a16e8dfa1e9838d1b8.jpg",
+    "caption": "Long ATM -25d-10d Put Ladder on VIX for the closest to 1M expiry MTM Notional 1/26 per trade",
+    "source": ""
+  },
+  {
+    "figure": 29,
+    "image": "images/70c31078cf6e4e6c35725619d16bda5edde1b825c7bbf6f8caf731341a645269.jpg",
+    "caption": "Long 1M VIX Put Ladder versus Delta Hedged 25d 5DTE Call Pnl Per Trade, x-axis pnl of delta hedge call, y-axis VIX unscaled",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 30,
+    "image": "images/fefc1cba5411a1cd339526aa2aa5c3e74dcee6b16f3268ef2b48f8c251bd8c6b.jpg",
+    "caption": "Long 1M VIX Put Ladder versus 1M ATM-25 Call Spread Pnl Per Trade, x-axis pnl of delta hedge call, y-axis VIX unscaled",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 31,
+    "image": "images/b4e5dcf7cf78ae4029d43f374fb1be69974ca59b75ed8a00e75b25f9a1bc5802.jpg",
+    "caption": "PnL of the Tail Trading Strategy",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 32,
+    "image": "images/b5cdbb2248d00fb18d2783ed45dea3c88de79109c7ac9901966024ab11641724.jpg",
+    "caption": "Contribution of PnL by Strategy",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 33,
+    "image": "images/a6c410b9c40f17bc68daee7bf66304364aaef56398249afe506fed387c114e10.jpg",
+    "caption": "SPX Put hedging strategies compared with Tail- trading",
+    "source": ""
+  },
+  {
+    "figure": 34,
+    "image": "images/df76301f656ec19adac9ef572eb590f8ac7a818d241087095d81b1a9aecd4f3b.jpg",
+    "caption": "SPX Put or Put spread strategies combined with Tail-trading",
+    "source": ""
+  },
+  {
+    "figure": 37,
+    "image": "images/1cd9f48e1f0e615e4dcff77f1b631c9e410615b025118f6f9d56d79c0a21ac5b.jpg",
+    "caption": "Long SPX $^ +$ Put Spread $^ +$ Tail Trading",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 39,
+    "image": "images/ca87100501567e7b383e01a8ba956fe57be7f53f0543beb6c44e6aa31c13c37e.jpg",
+    "caption": "Tail Trading Strategy Complements SPX Trend Strategy",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 40,
+    "image": "images/fb64c8ae86b5e1a31d3149c14b3ebca56cdf8f548412636b59f1dd1184e32609.jpg",
+    "caption": "Performance of Tail Trading $^ +$ SPX Trend combined",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 41,
+    "image": "images/606fa93c50ead0285293eed204f2cec820d64a3f92151d71bf92babeff8cee95.jpg",
+    "caption": "Trend on SPX $^ +$ Put Spread $^ +$ Tail Trading",
+    "source": "Bloomberg Finance L.P., J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 43,
+    "image": "images/a2c39324a705851d9dbe326d7c459c5c69a73a56b0ffda7cb34a3585ab8d7cfa.jpg",
+    "caption": "Bid-Offer Spread for ATM strikes",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  },
+  {
+    "figure": 44,
+    "image": "images/fdaf10e3e5e982dbd83a3fc408acc6f7c7c7042559d37c8c502ed4eb36533f0b.jpg",
+    "caption": "Bid-Offer Spread for 25D Strikes",
+    "source": "OPRA, J.P. Morgan Equity Derivatives Strategy"
+  }
+]

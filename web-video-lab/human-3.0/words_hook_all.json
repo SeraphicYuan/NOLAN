@@ -1,0 +1,749 @@
+{
+  "hook_1": [
+    {
+      "word": "I",
+      "start": 0.0,
+      "end": 0.3
+    },
+    {
+      "word": "never",
+      "start": 0.3,
+      "end": 0.54
+    },
+    {
+      "word": "wanted",
+      "start": 0.54,
+      "end": 0.82
+    },
+    {
+      "word": "to",
+      "start": 0.82,
+      "end": 0.98
+    },
+    {
+      "word": "be",
+      "start": 0.98,
+      "end": 1.1
+    },
+    {
+      "word": "an",
+      "start": 1.1,
+      "end": 1.26
+    },
+    {
+      "word": "NPC.",
+      "start": 1.26,
+      "end": 1.74
+    },
+    {
+      "word": "You",
+      "start": 2.48,
+      "end": 2.58
+    },
+    {
+      "word": "know",
+      "start": 2.58,
+      "end": 2.7
+    },
+    {
+      "word": "the",
+      "start": 2.7,
+      "end": 2.86
+    },
+    {
+      "word": "type",
+      "start": 2.86,
+      "end": 3.16
+    },
+    {
+      "word": "running",
+      "start": 3.16,
+      "end": 3.6
+    },
+    {
+      "word": "on",
+      "start": 3.6,
+      "end": 3.82
+    },
+    {
+      "word": "a",
+      "start": 3.82,
+      "end": 3.92
+    },
+    {
+      "word": "script",
+      "start": 3.92,
+      "end": 4.2
+    },
+    {
+      "word": "someone",
+      "start": 4.2,
+      "end": 4.66
+    },
+    {
+      "word": "else",
+      "start": 4.66,
+      "end": 4.96
+    },
+    {
+      "word": "wrote.",
+      "start": 4.96,
+      "end": 5.4
+    },
+    {
+      "word": "Same",
+      "start": 6.18,
+      "end": 6.56
+    },
+    {
+      "word": "loop",
+      "start": 6.56,
+      "end": 6.9
+    },
+    {
+      "word": "every",
+      "start": 6.9,
+      "end": 7.38
+    },
+    {
+      "word": "day",
+      "start": 7.38,
+      "end": 7.7
+    },
+    {
+      "word": "until",
+      "start": 7.7,
+      "end": 8.18
+    },
+    {
+      "word": "it's",
+      "start": 8.18,
+      "end": 8.46
+    },
+    {
+      "word": "over.",
+      "start": 8.46,
+      "end": 8.7
+    }
+  ],
+  "hook_2": [
+    {
+      "word": "I",
+      "start": 0.0,
+      "end": 0.26
+    },
+    {
+      "word": "wanted",
+      "start": 0.26,
+      "end": 0.48
+    },
+    {
+      "word": "the",
+      "start": 0.48,
+      "end": 0.64
+    },
+    {
+      "word": "opposite",
+      "start": 0.64,
+      "end": 1.08
+    },
+    {
+      "word": "max",
+      "start": 1.08,
+      "end": 1.4
+    },
+    {
+      "word": "out",
+      "start": 1.4,
+      "end": 1.7
+    },
+    {
+      "word": "every",
+      "start": 1.7,
+      "end": 2.06
+    },
+    {
+      "word": "stat",
+      "start": 2.06,
+      "end": 2.44
+    },
+    {
+      "word": "mind",
+      "start": 2.44,
+      "end": 3.14
+    },
+    {
+      "word": "body",
+      "start": 3.14,
+      "end": 3.68
+    },
+    {
+      "word": "spirit",
+      "start": 3.68,
+      "end": 4.24
+    },
+    {
+      "word": "relationships",
+      "start": 4.24,
+      "end": 5.02
+    },
+    {
+      "word": "money",
+      "start": 5.02,
+      "end": 5.76
+    }
+  ],
+  "hook_3": [
+    {
+      "word": "a",
+      "start": 0.0,
+      "end": 0.26
+    },
+    {
+      "word": "level",
+      "start": 0.26,
+      "end": 0.56
+    },
+    {
+      "word": "100",
+      "start": 0.56,
+      "end": 1.26
+    },
+    {
+      "word": "player.",
+      "start": 1.26,
+      "end": 1.84
+    },
+    {
+      "word": "Every",
+      "start": 2.32,
+      "end": 2.62
+    },
+    {
+      "word": "area",
+      "start": 2.62,
+      "end": 3.08
+    },
+    {
+      "word": "of",
+      "start": 3.08,
+      "end": 3.32
+    },
+    {
+      "word": "the",
+      "start": 3.32,
+      "end": 3.44
+    },
+    {
+      "word": "map",
+      "start": 3.44,
+      "end": 3.62
+    },
+    {
+      "word": "unlocked,",
+      "start": 3.62,
+      "end": 4.42
+    },
+    {
+      "word": "not",
+      "start": 4.9,
+      "end": 5.04
+    },
+    {
+      "word": "jacked",
+      "start": 5.04,
+      "end": 5.5
+    },
+    {
+      "word": "in",
+      "start": 5.5,
+      "end": 5.58
+    },
+    {
+      "word": "one",
+      "start": 5.58,
+      "end": 5.76
+    },
+    {
+      "word": "place,",
+      "start": 5.76,
+      "end": 6.24
+    },
+    {
+      "word": "jacked",
+      "start": 6.78,
+      "end": 7.16
+    },
+    {
+      "word": "everywhere.",
+      "start": 7.16,
+      "end": 7.6
+    },
+    {
+      "word": "Bank",
+      "start": 8.12,
+      "end": 8.3
+    },
+    {
+      "word": "overflowing",
+      "start": 8.3,
+      "end": 8.98
+    },
+    {
+      "word": "with",
+      "start": 8.98,
+      "end": 9.22
+    },
+    {
+      "word": "gold.",
+      "start": 9.22,
+      "end": 9.46
+    }
+  ],
+  "hook_4": [
+    {
+      "word": "so",
+      "start": 0.0,
+      "end": 0.28
+    },
+    {
+      "word": "I",
+      "start": 0.28,
+      "end": 0.48
+    },
+    {
+      "word": "chased",
+      "start": 0.48,
+      "end": 0.94
+    },
+    {
+      "word": "it.",
+      "start": 0.94,
+      "end": 1.16
+    },
+    {
+      "word": "As",
+      "start": 1.68,
+      "end": 1.78
+    },
+    {
+      "word": "a",
+      "start": 1.78,
+      "end": 1.9
+    },
+    {
+      "word": "teenager,",
+      "start": 1.9,
+      "end": 2.34
+    },
+    {
+      "word": "I",
+      "start": 2.66,
+      "end": 2.7
+    },
+    {
+      "word": "got",
+      "start": 2.7,
+      "end": 2.88
+    },
+    {
+      "word": "obsessed",
+      "start": 2.88,
+      "end": 3.28
+    },
+    {
+      "word": "with",
+      "start": 3.28,
+      "end": 3.62
+    },
+    {
+      "word": "fitness.",
+      "start": 3.62,
+      "end": 3.96
+    },
+    {
+      "word": "Then",
+      "start": 4.52,
+      "end": 4.72
+    },
+    {
+      "word": "I",
+      "start": 4.72,
+      "end": 4.94
+    },
+    {
+      "word": "wanted",
+      "start": 4.94,
+      "end": 5.18
+    },
+    {
+      "word": "to",
+      "start": 5.18,
+      "end": 5.42
+    },
+    {
+      "word": "absorb",
+      "start": 5.42,
+      "end": 5.78
+    },
+    {
+      "word": "every",
+      "start": 5.78,
+      "end": 6.18
+    },
+    {
+      "word": "bit",
+      "start": 6.18,
+      "end": 6.38
+    },
+    {
+      "word": "of",
+      "start": 6.38,
+      "end": 6.52
+    },
+    {
+      "word": "knowledge",
+      "start": 6.52,
+      "end": 6.82
+    },
+    {
+      "word": "I",
+      "start": 6.82,
+      "end": 7.16
+    },
+    {
+      "word": "could",
+      "start": 7.16,
+      "end": 7.32
+    },
+    {
+      "word": "find.",
+      "start": 7.32,
+      "end": 7.76
+    },
+    {
+      "word": "Then",
+      "start": 8.06,
+      "end": 8.26
+    },
+    {
+      "word": "I",
+      "start": 8.26,
+      "end": 8.44
+    },
+    {
+      "word": "wanted",
+      "start": 8.44,
+      "end": 8.64
+    },
+    {
+      "word": "to",
+      "start": 8.64,
+      "end": 8.86
+    },
+    {
+      "word": "be",
+      "start": 8.86,
+      "end": 9.0
+    },
+    {
+      "word": "free,",
+      "start": 9.0,
+      "end": 9.4
+    },
+    {
+      "word": "so",
+      "start": 9.76,
+      "end": 9.86
+    },
+    {
+      "word": "I",
+      "start": 9.86,
+      "end": 10.02
+    },
+    {
+      "word": "failed",
+      "start": 10.02,
+      "end": 10.54
+    },
+    {
+      "word": "at",
+      "start": 10.54,
+      "end": 10.82
+    },
+    {
+      "word": "business",
+      "start": 10.82,
+      "end": 11.24
+    },
+    {
+      "word": "after",
+      "start": 11.24,
+      "end": 11.9
+    },
+    {
+      "word": "business",
+      "start": 11.9,
+      "end": 12.36
+    },
+    {
+      "word": "until",
+      "start": 12.36,
+      "end": 13.04
+    },
+    {
+      "word": "one",
+      "start": 13.04,
+      "end": 13.44
+    },
+    {
+      "word": "finally",
+      "start": 13.44,
+      "end": 14.14
+    },
+    {
+      "word": "worked.",
+      "start": 14.14,
+      "end": 14.8
+    }
+  ],
+  "hook_5": [
+    {
+      "word": "15",
+      "start": 0.0,
+      "end": 0.48
+    },
+    {
+      "word": "years",
+      "start": 0.48,
+      "end": 0.8
+    },
+    {
+      "word": "digging",
+      "start": 0.8,
+      "end": 1.14
+    },
+    {
+      "word": "through",
+      "start": 1.14,
+      "end": 1.46
+    },
+    {
+      "word": "psychology,",
+      "start": 1.46,
+      "end": 2.3
+    },
+    {
+      "word": "philosophy,",
+      "start": 2.92,
+      "end": 3.58
+    },
+    {
+      "word": "money,",
+      "start": 4.06,
+      "end": 4.62
+    },
+    {
+      "word": "religion,",
+      "start": 5.12,
+      "end": 5.58
+    },
+    {
+      "word": "startups,",
+      "start": 6.12,
+      "end": 6.42
+    },
+    {
+      "word": "the",
+      "start": 6.74,
+      "end": 6.8
+    },
+    {
+      "word": "internet,",
+      "start": 6.8,
+      "end": 7.24
+    },
+    {
+      "word": "five",
+      "start": 7.66,
+      "end": 7.96
+    },
+    {
+      "word": "years",
+      "start": 7.96,
+      "end": 8.3
+    },
+    {
+      "word": "writing",
+      "start": 8.3,
+      "end": 8.72
+    },
+    {
+      "word": "it",
+      "start": 8.72,
+      "end": 8.92
+    },
+    {
+      "word": "all",
+      "start": 8.92,
+      "end": 9.12
+    },
+    {
+      "word": "down",
+      "start": 9.12,
+      "end": 9.42
+    },
+    {
+      "word": "in",
+      "start": 9.42,
+      "end": 9.84
+    },
+    {
+      "word": "public.",
+      "start": 9.84,
+      "end": 10.26
+    },
+    {
+      "word": "And",
+      "start": 10.82,
+      "end": 10.92
+    },
+    {
+      "word": "the",
+      "start": 10.92,
+      "end": 11.04
+    },
+    {
+      "word": "same",
+      "start": 11.04,
+      "end": 11.28
+    },
+    {
+      "word": "patterns",
+      "start": 11.28,
+      "end": 11.72
+    },
+    {
+      "word": "kept",
+      "start": 11.72,
+      "end": 12.1
+    },
+    {
+      "word": "showing",
+      "start": 12.1,
+      "end": 12.48
+    },
+    {
+      "word": "up",
+      "start": 12.48,
+      "end": 12.74
+    },
+    {
+      "word": "over",
+      "start": 12.74,
+      "end": 13.34
+    },
+    {
+      "word": "and",
+      "start": 13.34,
+      "end": 13.54
+    },
+    {
+      "word": "over.",
+      "start": 13.54,
+      "end": 13.8
+    }
+  ],
+  "hook_6": [
+    {
+      "word": "Those",
+      "start": 0.0,
+      "end": 0.32
+    },
+    {
+      "word": "patterns",
+      "start": 0.32,
+      "end": 0.78
+    },
+    {
+      "word": "became",
+      "start": 0.78,
+      "end": 1.2
+    },
+    {
+      "word": "one",
+      "start": 1.2,
+      "end": 1.7
+    },
+    {
+      "word": "thing.",
+      "start": 1.7,
+      "end": 2.08
+    },
+    {
+      "word": "Human",
+      "start": 2.44,
+      "end": 2.66
+    },
+    {
+      "word": "3",
+      "start": 2.66,
+      "end": 3.0
+    },
+    {
+      "word": ".0,",
+      "start": 3.0,
+      "end": 3.64
+    },
+    {
+      "word": "one",
+      "start": 4.12,
+      "end": 4.4
+    },
+    {
+      "word": "map",
+      "start": 4.4,
+      "end": 4.62
+    },
+    {
+      "word": "to",
+      "start": 4.62,
+      "end": 4.88
+    },
+    {
+      "word": "escape",
+      "start": 4.88,
+      "end": 5.26
+    },
+    {
+      "word": "mediocrity",
+      "start": 5.26,
+      "end": 6.14
+    },
+    {
+      "word": "and",
+      "start": 6.14,
+      "end": 6.3
+    },
+    {
+      "word": "actually",
+      "start": 6.3,
+      "end": 6.78
+    },
+    {
+      "word": "reach",
+      "start": 6.78,
+      "end": 7.22
+    },
+    {
+      "word": "your",
+      "start": 7.22,
+      "end": 7.64
+    },
+    {
+      "word": "potential.",
+      "start": 7.64,
+      "end": 8.1
+    }
+  ]
+}

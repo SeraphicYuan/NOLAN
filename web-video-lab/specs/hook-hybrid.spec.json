@@ -1,0 +1,142 @@
+{
+  "out": "hook_hybrid.mp4",
+  "theme": "bold-signal",
+  "fps": 30,
+  "audioDir": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook",
+  "wavDir": "/mnt/d/claudeprojects/nolan/web-video-lab/human-3.0/presentation/.tts_wav",
+  "wordsCache": "web-video-lab/human-3.0/words_hook_all.json",
+  "steps": [
+    {
+      "block": "NpcStrike",
+      "wav": "hook_1",
+      "audio": "1.mp3",
+      "anchors": [
+        "@start"
+      ],
+      "props": {}
+    },
+    {
+      "block": "ListReveal",
+      "wav": "hook_2",
+      "audio": "2.mp3",
+      "anchors": [
+        "Mind",
+        "body",
+        "spirit",
+        "relationships",
+        "money"
+      ],
+      "props": {
+        "title": "Max out every stat",
+        "items": [
+          {
+            "label": "Mind",
+            "tag": "Intellect"
+          },
+          {
+            "label": "Body",
+            "tag": "Strength"
+          },
+          {
+            "label": "Spirit",
+            "tag": "Meaning"
+          },
+          {
+            "label": "Relationships",
+            "tag": "Bonds"
+          },
+          {
+            "label": "Money",
+            "tag": "Wealth"
+          }
+        ]
+      }
+    },
+    {
+      "block": "UnlockGrid",
+      "wav": "hook_3",
+      "audio": "3.mp3",
+      "anchors": [
+        "@start",
+        "area",
+        "Bank"
+      ],
+      "props": {
+        "value": "100",
+        "kicker": "LVL",
+        "popWord": "100",
+        "captions": [
+          "NOT JACKED IN ONE PLACE — JACKED EVERYWHERE",
+          "BANK OVERFLOWING WITH GOLD"
+        ]
+      }
+    },
+    {
+      "block": "ListReveal",
+      "wav": "hook_4",
+      "audio": "4.mp3",
+      "anchors": [
+        "fitness",
+        "knowledge",
+        "free"
+      ],
+      "props": {
+        "title": "So I chased it",
+        "items": [
+          {
+            "label": "Fitness",
+            "tag": "the body"
+          },
+          {
+            "label": "Knowledge",
+            "tag": "the mind"
+          },
+          {
+            "label": "Freedom",
+            "tag": "the work"
+          }
+        ]
+      }
+    },
+    {
+      "block": "StatCount",
+      "wav": "hook_5",
+      "audio": "5.mp3",
+      "anchors": [
+        "@start",
+        "Five",
+        "patterns"
+      ],
+      "props": {
+        "accentPhrase": "same patterns"
+      }
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "hook_6",
+      "audio": "6.mp3",
+      "anchors": [
+        "HUMAN",
+        "map",
+        "potential"
+      ],
+      "props": {
+        "kicker": "one thing",
+        "lines": [
+          {
+            "text": "HUMAN 3.0",
+            "accent": true
+          },
+          {
+            "text": "One map to escape mediocrity"
+          },
+          {
+            "text": "and reach your potential.",
+            "accent": true
+          }
+        ]
+      }
+    }
+  ],
+  "captions": true
+}

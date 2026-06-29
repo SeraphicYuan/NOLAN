@@ -1,0 +1,97 @@
+{
+  "out": "hook_chapter.mp4",
+  "theme": "bold-signal",
+  "fps": 30,
+  "audioDir": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook",
+  "wavDir": "/mnt/d/claudeprojects/nolan/web-video-lab/human-3.0/presentation/.tts_wav",
+  "wordsCache": "web-video-lab/human-3.0/words_hook_all.json",
+  "steps": [
+    {
+      "block": "HeroStatement",
+      "wav": "hook_1",
+      "audio": "1.mp3",
+      "anchors": ["@start", "script"],
+      "props": {
+        "kicker": "THE TYPE",
+        "lines": [
+          { "text": "I never wanted to be an NPC.", "strike": "NPC" },
+          { "text": "Running someone else's script.", "accent": "script" }
+        ]
+      }
+    },
+    {
+      "block": "ListReveal",
+      "wav": "hook_2",
+      "audio": "2.mp3",
+      "anchors": ["Mind", "body", "spirit", "relationships", "money"],
+      "props": {
+        "title": "Max out every stat",
+        "items": [
+          { "label": "Mind", "tag": "Intellect" },
+          { "label": "Body", "tag": "Strength" },
+          { "label": "Spirit", "tag": "Meaning" },
+          { "label": "Relationships", "tag": "Connection" },
+          { "label": "Money", "tag": "Wealth" }
+        ]
+      }
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "hook_3",
+      "audio": "3.mp3",
+      "anchors": ["@start", "area", "Bank"],
+      "_needsBlock": "BigStat: one huge number (LVL 100) over a map grid that unlocks tile-by-tile",
+      "props": {
+        "kicker": "THE GOAL",
+        "lines": [
+          { "text": "A level 100 player.", "accent": "100" },
+          { "text": "Every area of the map unlocked.", "accent": "unlocked" },
+          { "text": "Bank overflowing with gold.", "accent": "gold" }
+        ]
+      }
+    },
+    {
+      "block": "ListReveal",
+      "wav": "hook_4",
+      "audio": "4.mp3",
+      "anchors": ["fitness", "knowledge", "free"],
+      "props": {
+        "title": "So I chased it",
+        "items": [
+          { "label": "Fitness", "tag": "Obsession" },
+          { "label": "Knowledge", "tag": "Absorb it all" },
+          { "label": "Freedom", "tag": "Business after business" }
+        ]
+      }
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "hook_5",
+      "audio": "5.mp3",
+      "anchors": ["@start", "Five", "patterns"],
+      "_needsBlock": "BigStat: two big numbers side by side (15 yrs researching / 5 yrs writing in public)",
+      "props": {
+        "kicker": "THE WORK",
+        "lines": [
+          { "text": "15 years digging in.", "accent": "15" },
+          { "text": "5 years writing in public.", "accent": "5" },
+          { "text": "The same patterns kept showing up.", "accent": "patterns" }
+        ]
+      }
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "hook_6",
+      "audio": "6.mp3",
+      "anchors": ["HUMAN", "map", "potential"],
+      "props": {
+        "kicker": "ONE THING",
+        "lines": [
+          { "text": "HUMAN 3.0", "accent": "HUMAN 3.0" },
+          { "text": "One map to escape mediocrity.", "accent": "escape" },
+          { "text": "And reach your potential.", "accent": "potential" }
+        ]
+      }
+    }
+  ]
+}

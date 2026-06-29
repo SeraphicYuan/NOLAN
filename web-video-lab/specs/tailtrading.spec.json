@@ -1,0 +1,101 @@
+{
+  "out": "tailtrading.mp4",
+  "theme": "midnight-press",
+  "fps": 30,
+  "captions": true,
+  "audioDir": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/.tts_wav",
+  "wavDir": "/mnt/d/claudeprojects/nolan/web-video-lab/tailtrading/.tts_wav",
+  "wordsCache": "web-video-lab/tailtrading/words.json",
+  "segments": "web-video-lab/tailtrading/segments.json",
+  "_figures": [1],
+  "steps": [
+    {
+      "block": "HeroStatement",
+      "wav": "tailtrading_1",
+      "audio": "tailtrading_1.wav",
+      "anchors": ["@start", "bleed", "profit"],
+      "props": {
+        "kicker": "The tail-hedging dilemma",
+        "lines": [
+          { "text": "You pay for what you get." },
+          { "text": "Cheap hedges under-protect. Full protection bleeds.", "accent": true },
+          { "text": "What if the crash paid you instead?", "accent": true }
+        ]
+      }
+    },
+    {
+      "block": "StatCount",
+      "wav": "tailtrading_2",
+      "audio": "tailtrading_2.wav",
+      "anchors": ["thousand", "sigma"],
+      "props": {
+        "stats": [
+          { "value": 1000, "suffix": "+", "decimals": 0, "word": "thousand", "label": "3M-1M term-structure inversions since 2004" },
+          { "value": 1.95, "suffix": "σ", "decimals": 2, "word": "sigma", "label": "average SPX move on those days" }
+        ],
+        "closer": "One clean signal flags the tail.",
+        "accentPhrase": "flags the tail"
+      }
+    },
+    {
+      "block": "ListReveal",
+      "wav": "tailtrading_3",
+      "audio": "tailtrading_3.wav",
+      "anchors": ["Delta", "Gamma", "Vega"],
+      "props": {
+        "title": "Three avenues, three Greeks",
+        "items": [
+          { "label": "Buy the rebound (leveraged call spread)", "tag": "Delta" },
+          { "label": "Harvest the whipsaw (delta-hedged short calls)", "tag": "Gamma" },
+          { "label": "Fade the spike (VIX put ladder)", "tag": "Vega" }
+        ]
+      }
+    },
+    {
+      "block": "PaperFigure",
+      "wav": "tailtrading_4",
+      "audio": "tailtrading_4.wav",
+      "anchors": ["@start"],
+      "props": {
+        "src": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/figures/fig1.png",
+        "kicker": "Three pillars, one equity curve",
+        "source": "Fig. 1 · OPRA, J.P. Morgan Equity Derivatives Strategy",
+        "highlights": [
+          { "word": "stacked", "x": 0.07, "y": 0.12, "w": 0.88, "h": 0.74, "label": "Delta + Gamma + Vega stacked" },
+          { "word": "twenty", "x": 0.44, "y": 0.05, "w": 0.13, "h": 0.82, "label": "2020 tail event" }
+        ]
+      }
+    },
+    {
+      "block": "DataTable",
+      "wav": "tailtrading_5",
+      "audio": "tailtrading_5.wav",
+      "anchors": ["@start", "drawdown"],
+      "props": {
+        "caption": "Long SPX with hedging overlays · Fig. 38, J.P. Morgan",
+        "columns": ["Metric", "SPX", "SPX + PS", "SPX + Tail + PS"],
+        "rows": [
+          ["Return", "12.5%", "10.2%", "17.1%"],
+          ["Sharpe", "0.69", "0.69", "1.11"],
+          ["Worst 1D", "-12.0%", "-10.6%", "-5.0%"],
+          ["Max DD", "-38.2%", "-31.8%", "-17.6%"]
+        ],
+        "highlightRow": 3
+      }
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "tailtrading_6",
+      "audio": "tailtrading_6.wav",
+      "anchors": ["@start", "upfront", "payday"],
+      "props": {
+        "kicker": "The bottom line",
+        "lines": [
+          { "text": "When the next tail hits, don't be afraid." },
+          { "text": "Max loss is defined upfront. You're the buyer.", "accent": true },
+          { "text": "Turn the crash into your payday.", "accent": true }
+        ]
+      }
+    }
+  ]
+}

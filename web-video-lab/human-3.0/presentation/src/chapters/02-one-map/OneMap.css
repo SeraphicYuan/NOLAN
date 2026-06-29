@@ -1,0 +1,379 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Chapter 02 · one-map — one map · knowledge is not an island
+ * Theme: bold-signal. Tokens only. All custom classes prefixed `.om-`.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.om-scene { color: var(--text); }
+.om-em   { color: var(--accent); }
+.om-mute { color: var(--text-mute); }
+
+/* shared section head */
+.om-head { display: flex; flex-direction: column; gap: var(--space-4); }
+.om-head-h {
+  font-size: 64px;
+  line-height: 1.12;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+@keyframes om-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes om-pop {
+  0%   { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ───────────────────── step 0 — pin field ──────────────────── */
+.om-s0 { position: relative; overflow: hidden; }
+.om-pinfield {
+  position: absolute;
+  inset: 40px 60px;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-auto-rows: 1fr;
+  place-items: center;
+  z-index: 0;
+  pointer-events: none;
+}
+.om-pin {
+  color: var(--text-faint);
+  opacity: 0;
+  transform: translateY(-10px) scale(0.7);
+  animation: om-pop 520ms var(--ease-overshoot) forwards;
+}
+.om-pin.is-accent { color: var(--accent); opacity: 0; }
+.om-pin svg { opacity: 0.55; }
+.om-pin.is-accent svg { opacity: 0.85; }
+
+.om-s0-body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+}
+.om-s0-body::before {
+  content: "";
+  position: absolute;
+  inset: -60px -100px;
+  background: radial-gradient(60% 60% at 30% 50%, var(--surface) 35%, transparent 100%);
+  z-index: -1;
+}
+.om-hero {
+  font-size: 132px;
+  line-height: 1.0;
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+.om-s0-sub {
+  font-family: var(--font-body);
+  font-size: 26px;
+  line-height: 1.5;
+  color: var(--text-2);
+  margin: 0;
+  max-width: 30ch;
+}
+
+/* ───────────────────── step 1 — ledger ──────────────────── */
+.om-ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+}
+.om-row {
+  display: grid;
+  grid-template-columns: 110px auto 1fr auto;
+  align-items: center;
+  gap: var(--space-5);
+  opacity: 0;
+  animation: om-rise 560ms var(--ease-quart) forwards;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: var(--space-4);
+}
+.om-row-no { font-size: 56px; color: var(--text-faint); }
+.om-row-name { font-size: 40px; letter-spacing: -0.01em; }
+.om-row-line { height: 2px; background: var(--rule); }
+.om-row-domain {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  justify-self: end;
+}
+.om-domain-cn { font-size: 40px; color: var(--accent); }
+.om-domain-en { color: var(--text-mute); }
+
+/* ───────────────────── step 2 — matrix ──────────────────── */
+.om-matrix-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+}
+.om-matrix {
+  display: grid;
+  grid-template-columns: 360px repeat(4, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+.om-mx-corner {
+  align-self: end;
+  padding-bottom: var(--space-3);
+}
+.om-mx-colhead {
+  font-size: 28px;
+  color: var(--text-2);
+  text-align: center;
+  padding-bottom: var(--space-3);
+}
+.om-mx-rowwrap {
+  display: contents;
+}
+.om-mx-rowwrap > * {
+  opacity: 0;
+  animation: om-rise 500ms var(--ease-quart) forwards;
+  animation-delay: inherit;
+}
+.om-mx-rowhead {
+  font-size: 24px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+}
+.om-mx-cell {
+  height: 72px;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  display: grid;
+  place-items: center;
+}
+.om-mx-cell.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+.om-mx-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.om-mx-note {
+  font-family: var(--font-body);
+  font-size: 24px;
+  color: var(--text-2);
+  margin: 0;
+  text-align: center;
+}
+
+/* ───────────────── step 3 — sealed boxes vs web (signature) ───────────── */
+.om-split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 90px 1.5fr;
+  align-items: center;
+  gap: var(--space-5);
+  padding-top: var(--space-5);
+}
+.om-panel-tag { margin-bottom: var(--space-5); display: block; }
+.om-boxes { display: flex; flex-direction: column; }
+.om-box-col { display: flex; flex-direction: column; gap: 28px; }
+.om-box {
+  height: 92px;
+  background: var(--surface-2);
+  border: 2px solid var(--rule);
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  color: var(--text-mute);
+  opacity: 0;
+  transform: scale(0.92);
+  animation: om-pop 460ms var(--ease-quart) forwards;
+}
+.om-vs {
+  font-size: 64px;
+  color: var(--text-faint);
+  text-align: center;
+}
+.om-web { align-self: stretch; display: flex; flex-direction: column; }
+.om-web-svg { width: 100%; height: 540px; }
+
+.om-edge {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.7;
+  animation: om-draw 620ms var(--ease-quart) forwards;
+}
+@keyframes om-draw {
+  to { stroke-dashoffset: 0; }
+}
+.om-node {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: om-pop 420ms var(--ease-overshoot) forwards;
+}
+.om-node-disc {
+  fill: var(--surface-2);
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+.om-node-label {
+  font-family: var(--font-display-cn);
+  font-weight: 700;
+  font-size: 26px;
+  fill: var(--text);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* ───────────────────── step 4 — broken archetypes ──────────────────── */
+.om-arch-row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-7);
+  align-items: center;
+  padding: var(--space-5) 0;
+}
+.om-arch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--accent);
+  opacity: 0;
+  animation: om-rise 560ms var(--ease-quart) forwards;
+}
+.om-arch-who { font-size: 34px; }
+.om-bar { display: flex; align-items: center; gap: var(--space-4); }
+.om-bar-k { width: 56px; flex: none; color: var(--text-2); }
+.om-bar-track {
+  flex: 1;
+  height: 18px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.om-bar-fill {
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: om-grow 700ms var(--ease-quart) forwards;
+}
+@keyframes om-grow { to { transform: scaleX(1); } }
+.om-bar-fill.is-strong { background: var(--accent); }
+.om-bar-fill.is-weak   { background: var(--text-faint); }
+.om-arch-flaw {
+  font-size: 24px;
+  color: var(--text-mute);
+  margin-top: var(--space-2);
+}
+.om-land {
+  font-family: var(--font-display-cn);
+  font-weight: 700;
+  font-size: 42px;
+  color: var(--text);
+  margin: 0;
+  text-align: center;
+  opacity: 0;
+  animation: om-rise 560ms var(--ease-quart) forwards;
+}
+
+/* ───────────────────── step 5 — timeline contrast ──────────────────── */
+.om-time {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: var(--space-9) 0 var(--space-7);
+}
+.om-time-axis {
+  position: relative;
+  width: 100%;
+  height: 160px;
+}
+.om-time-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--rule);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: om-grow 900ms var(--ease-expo) forwards;
+}
+.om-tick {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  animation: om-rise 480ms var(--ease-quart) forwards;
+}
+.om-tick-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-mute);
+}
+.om-tick.is-old .om-tick-dot {
+  background: var(--accent);
+  box-shadow: 0 0 24px var(--accent-glow);
+}
+.om-tick-cn { font-size: 28px; color: var(--text); white-space: nowrap; }
+.om-tick.is-old .om-tick-cn { color: var(--accent); }
+.om-tick-en { color: var(--text-mute); }
+.om-bracket {
+  position: absolute;
+  left: 64%;
+  top: calc(50% + 56px);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: var(--track-caps);
+  color: var(--text-mute);
+  border-top: 2px solid var(--rule);
+  padding-top: 10px;
+  width: 30%;
+  text-align: center;
+  opacity: 0;
+  animation: om-rise 480ms var(--ease-quart) forwards;
+}
+.om-money {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) 0 0;
+  border-top: 2px solid var(--accent);
+  opacity: 0;
+  animation: om-rise 560ms var(--ease-quart) forwards;
+}
+.om-money-chip {
+  font-size: 34px;
+  color: var(--text-mute);
+  text-decoration: line-through;
+  text-decoration-color: var(--accent);
+  flex: none;
+}
+.om-money-note {
+  font-family: var(--font-body);
+  font-size: 26px;
+  line-height: 1.4;
+  color: var(--text-2);
+}

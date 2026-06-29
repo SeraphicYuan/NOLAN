@@ -1,0 +1,62 @@
+[
+  {
+    "chapter": "transformer",
+    "step": 1,
+    "text": "In twenty-seventeen, one paper quietly rewired artificial intelligence. Its title was a flex \u2014 Attention Is All You Need.",
+    "audio": "transformer/1.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 2,
+    "text": "Back then, translation models had three problems. They were sequential \u2014 one word at a time. They couldn't be parallelized. And long-range connections faded.",
+    "audio": "transformer/2.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 3,
+    "text": "The Transformer threw all of that out. Instead, every word looks at every other word, all at once. They called it self-attention.",
+    "audio": "transformer/3.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 4,
+    "text": "The whole idea fits in one line. Attention is the softmax of Q times K transpose, scaled by the square root of d k, times V. Queries ask, keys answer, and values get blended by how well they match.",
+    "audio": "transformer/4.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 5,
+    "text": "Run that eight times in parallel \u2014 eight heads, each catching a different kind of relationship \u2014 then concatenate the results.",
+    "audio": "transformer/5.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 6,
+    "text": "But with no recurrence, the model has no sense of order. So they stamp in position using sine and cosine waves of different frequencies.",
+    "audio": "transformer/6.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 7,
+    "text": "Stack it six layers deep \u2014 an encoder and a decoder \u2014 where every layer is just attention, plus a feed-forward network, wrapped in residual connections.",
+    "audio": "transformer/7.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 8,
+    "text": "Then they ran it on English to German translation, against the best models in the world.",
+    "audio": "transformer/8.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 9,
+    "text": "Twenty-eight point four BLEU \u2014 two full points past the previous best \u2014 at a third of the compute, trained in just three and a half days.",
+    "audio": "transformer/9.mp3"
+  },
+  {
+    "chapter": "transformer",
+    "step": 10,
+    "text": "That architecture became GPT. It became BERT. It became the backbone of modern AI. Turns out, attention really was all you needed.",
+    "audio": "transformer/10.mp3"
+  }
+]

@@ -1,0 +1,10 @@
+# Regenerable media — keep code/docs/specs/segments/figures in git, not the heavy artifacts.
+# (wavs come from synth_omnivoice.py, mp3s/mp4s are renders, source/images is the raw parse dump.)
+**/.tts_wav/
+**/audio/
+**/source/images/
+**/source/paper.html
+paper.html
+*.mp4
+*.mp3
+*.wav

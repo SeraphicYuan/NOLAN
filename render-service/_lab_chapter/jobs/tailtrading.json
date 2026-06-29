@@ -1,0 +1,4172 @@
+{
+  "out": "tailtrading.mp4",
+  "theme": "midnight-press",
+  "captions": true,
+  "props": {
+    "steps": [
+      {
+        "block": "HeroStatement",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/.tts_wav/tailtrading_1.wav",
+        "durationInFrames": 771,
+        "revealFrames": [
+          0,
+          289,
+          605
+        ],
+        "words": [
+          {
+            "text": "In",
+            "startFrame": 0,
+            "endFrame": 11
+          },
+          {
+            "text": "tail",
+            "startFrame": 11,
+            "endFrame": 22
+          },
+          {
+            "text": "-risk",
+            "startFrame": 22,
+            "endFrame": 32
+          },
+          {
+            "text": "hedging,",
+            "startFrame": 32,
+            "endFrame": 47
+          },
+          {
+            "text": "you",
+            "startFrame": 56,
+            "endFrame": 59
+          },
+          {
+            "text": "pay",
+            "startFrame": 59,
+            "endFrame": 70
+          },
+          {
+            "text": "for",
+            "startFrame": 70,
+            "endFrame": 81
+          },
+          {
+            "text": "what",
+            "startFrame": 81,
+            "endFrame": 89
+          },
+          {
+            "text": "you",
+            "startFrame": 89,
+            "endFrame": 97
+          },
+          {
+            "text": "get.",
+            "startFrame": 97,
+            "endFrame": 107
+          },
+          {
+            "text": "The",
+            "startFrame": 118,
+            "endFrame": 121
+          },
+          {
+            "text": "cheap",
+            "startFrame": 121,
+            "endFrame": 131
+          },
+          {
+            "text": "hedges",
+            "startFrame": 131,
+            "endFrame": 145
+          },
+          {
+            "text": "under",
+            "startFrame": 145,
+            "endFrame": 156
+          },
+          {
+            "text": "protect",
+            "startFrame": 156,
+            "endFrame": 167
+          },
+          {
+            "text": "right",
+            "startFrame": 167,
+            "endFrame": 185
+          },
+          {
+            "text": "when",
+            "startFrame": 185,
+            "endFrame": 193
+          },
+          {
+            "text": "you",
+            "startFrame": 193,
+            "endFrame": 199
+          },
+          {
+            "text": "need",
+            "startFrame": 199,
+            "endFrame": 208
+          },
+          {
+            "text": "them.",
+            "startFrame": 208,
+            "endFrame": 215
+          },
+          {
+            "text": "And",
+            "startFrame": 228,
+            "endFrame": 233
+          },
+          {
+            "text": "the",
+            "startFrame": 233,
+            "endFrame": 239
+          },
+          {
+            "text": "ones",
+            "startFrame": 239,
+            "endFrame": 245
+          },
+          {
+            "text": "that",
+            "startFrame": 245,
+            "endFrame": 254
+          },
+          {
+            "text": "truly",
+            "startFrame": 254,
+            "endFrame": 268
+          },
+          {
+            "text": "protect",
+            "startFrame": 268,
+            "endFrame": 289
+          },
+          {
+            "text": "bleed",
+            "startFrame": 289,
+            "endFrame": 301
+          },
+          {
+            "text": "premium",
+            "startFrame": 301,
+            "endFrame": 323
+          },
+          {
+            "text": "every",
+            "startFrame": 323,
+            "endFrame": 341
+          },
+          {
+            "text": "single",
+            "startFrame": 341,
+            "endFrame": 353
+          },
+          {
+            "text": "day",
+            "startFrame": 353,
+            "endFrame": 365
+          },
+          {
+            "text": "while",
+            "startFrame": 365,
+            "endFrame": 384
+          },
+          {
+            "text": "you",
+            "startFrame": 384,
+            "endFrame": 392
+          },
+          {
+            "text": "sit",
+            "startFrame": 392,
+            "endFrame": 401
+          },
+          {
+            "text": "and",
+            "startFrame": 401,
+            "endFrame": 409
+          },
+          {
+            "text": "wait.",
+            "startFrame": 409,
+            "endFrame": 418
+          },
+          {
+            "text": "So",
+            "startFrame": 433,
+            "endFrame": 441
+          },
+          {
+            "text": "here's",
+            "startFrame": 441,
+            "endFrame": 458
+          },
+          {
+            "text": "the",
+            "startFrame": 458,
+            "endFrame": 461
+          },
+          {
+            "text": "question",
+            "startFrame": 461,
+            "endFrame": 472
+          },
+          {
+            "text": "that",
+            "startFrame": 472,
+            "endFrame": 477
+          },
+          {
+            "text": "started",
+            "startFrame": 477,
+            "endFrame": 487
+          },
+          {
+            "text": "this",
+            "startFrame": 487,
+            "endFrame": 494
+          },
+          {
+            "text": "whole",
+            "startFrame": 494,
+            "endFrame": 499
+          },
+          {
+            "text": "study.",
+            "startFrame": 499,
+            "endFrame": 511
+          },
+          {
+            "text": "What",
+            "startFrame": 521,
+            "endFrame": 524
+          },
+          {
+            "text": "if",
+            "startFrame": 524,
+            "endFrame": 535
+          },
+          {
+            "text": "a",
+            "startFrame": 535,
+            "endFrame": 545
+          },
+          {
+            "text": "strategy",
+            "startFrame": 545,
+            "endFrame": 570
+          },
+          {
+            "text": "could",
+            "startFrame": 570,
+            "endFrame": 578
+          },
+          {
+            "text": "deliver",
+            "startFrame": 578,
+            "endFrame": 591
+          },
+          {
+            "text": "real",
+            "startFrame": 591,
+            "endFrame": 605
+          },
+          {
+            "text": "profit",
+            "startFrame": 605,
+            "endFrame": 622
+          },
+          {
+            "text": "during",
+            "startFrame": 622,
+            "endFrame": 634
+          },
+          {
+            "text": "a",
+            "startFrame": 634,
+            "endFrame": 639
+          },
+          {
+            "text": "crash",
+            "startFrame": 639,
+            "endFrame": 656
+          },
+          {
+            "text": "without",
+            "startFrame": 656,
+            "endFrame": 673
+          },
+          {
+            "text": "paying",
+            "startFrame": 673,
+            "endFrame": 688
+          },
+          {
+            "text": "any",
+            "startFrame": 688,
+            "endFrame": 698
+          },
+          {
+            "text": "insurance",
+            "startFrame": 698,
+            "endFrame": 716
+          },
+          {
+            "text": "just",
+            "startFrame": 716,
+            "endFrame": 730
+          },
+          {
+            "text": "to",
+            "startFrame": 730,
+            "endFrame": 739
+          },
+          {
+            "text": "wait",
+            "startFrame": 739,
+            "endFrame": 746
+          },
+          {
+            "text": "for",
+            "startFrame": 746,
+            "endFrame": 754
+          },
+          {
+            "text": "it?",
+            "startFrame": 754,
+            "endFrame": 760
+          }
+        ],
+        "captionWords": [
+          {
+            "text": "In",
+            "startFrame": 0,
+            "endFrame": 11
+          },
+          {
+            "text": "tail-risk",
+            "startFrame": 11,
+            "endFrame": 32
+          },
+          {
+            "text": "hedging,",
+            "startFrame": 32,
+            "endFrame": 47
+          },
+          {
+            "text": "you",
+            "startFrame": 56,
+            "endFrame": 59
+          },
+          {
+            "text": "pay",
+            "startFrame": 59,
+            "endFrame": 70
+          },
+          {
+            "text": "for",
+            "startFrame": 70,
+            "endFrame": 81
+          },
+          {
+            "text": "what",
+            "startFrame": 81,
+            "endFrame": 89
+          },
+          {
+            "text": "you",
+            "startFrame": 89,
+            "endFrame": 97
+          },
+          {
+            "text": "get.",
+            "startFrame": 97,
+            "endFrame": 107
+          },
+          {
+            "text": "The",
+            "startFrame": 118,
+            "endFrame": 121
+          },
+          {
+            "text": "cheap",
+            "startFrame": 121,
+            "endFrame": 131
+          },
+          {
+            "text": "hedges",
+            "startFrame": 131,
+            "endFrame": 145
+          },
+          {
+            "text": "under-protect",
+            "startFrame": 145,
+            "endFrame": 167
+          },
+          {
+            "text": "right",
+            "startFrame": 167,
+            "endFrame": 185
+          },
+          {
+            "text": "when",
+            "startFrame": 185,
+            "endFrame": 193
+          },
+          {
+            "text": "you",
+            "startFrame": 193,
+            "endFrame": 199
+          },
+          {
+            "text": "need",
+            "startFrame": 199,
+            "endFrame": 208
+          },
+          {
+            "text": "them,",
+            "startFrame": 208,
+            "endFrame": 215
+          },
+          {
+            "text": "and",
+            "startFrame": 228,
+            "endFrame": 233
+          },
+          {
+            "text": "the",
+            "startFrame": 233,
+            "endFrame": 239
+          },
+          {
+            "text": "ones",
+            "startFrame": 239,
+            "endFrame": 245
+          },
+          {
+            "text": "that",
+            "startFrame": 245,
+            "endFrame": 254
+          },
+          {
+            "text": "truly",
+            "startFrame": 254,
+            "endFrame": 268
+          },
+          {
+            "text": "protect",
+            "startFrame": 268,
+            "endFrame": 289
+          },
+          {
+            "text": "bleed",
+            "startFrame": 289,
+            "endFrame": 301
+          },
+          {
+            "text": "premium",
+            "startFrame": 301,
+            "endFrame": 323
+          },
+          {
+            "text": "every",
+            "startFrame": 323,
+            "endFrame": 341
+          },
+          {
+            "text": "single",
+            "startFrame": 341,
+            "endFrame": 353
+          },
+          {
+            "text": "day",
+            "startFrame": 353,
+            "endFrame": 365
+          },
+          {
+            "text": "while",
+            "startFrame": 365,
+            "endFrame": 384
+          },
+          {
+            "text": "you",
+            "startFrame": 384,
+            "endFrame": 392
+          },
+          {
+            "text": "sit",
+            "startFrame": 392,
+            "endFrame": 401
+          },
+          {
+            "text": "and",
+            "startFrame": 401,
+            "endFrame": 409
+          },
+          {
+            "text": "wait.",
+            "startFrame": 409,
+            "endFrame": 418
+          },
+          {
+            "text": "So",
+            "startFrame": 433,
+            "endFrame": 441
+          },
+          {
+            "text": "here's",
+            "startFrame": 441,
+            "endFrame": 458
+          },
+          {
+            "text": "the",
+            "startFrame": 458,
+            "endFrame": 461
+          },
+          {
+            "text": "question",
+            "startFrame": 461,
+            "endFrame": 472
+          },
+          {
+            "text": "that",
+            "startFrame": 472,
+            "endFrame": 477
+          },
+          {
+            "text": "started",
+            "startFrame": 477,
+            "endFrame": 487
+          },
+          {
+            "text": "this",
+            "startFrame": 487,
+            "endFrame": 494
+          },
+          {
+            "text": "whole",
+            "startFrame": 494,
+            "endFrame": 499
+          },
+          {
+            "text": "study:",
+            "startFrame": 499,
+            "endFrame": 511
+          },
+          {
+            "text": "what",
+            "startFrame": 521,
+            "endFrame": 524
+          },
+          {
+            "text": "if",
+            "startFrame": 524,
+            "endFrame": 535
+          },
+          {
+            "text": "a",
+            "startFrame": 535,
+            "endFrame": 545
+          },
+          {
+            "text": "strategy",
+            "startFrame": 545,
+            "endFrame": 570
+          },
+          {
+            "text": "could",
+            "startFrame": 570,
+            "endFrame": 578
+          },
+          {
+            "text": "deliver",
+            "startFrame": 578,
+            "endFrame": 591
+          },
+          {
+            "text": "real",
+            "startFrame": 591,
+            "endFrame": 605
+          },
+          {
+            "text": "profit",
+            "startFrame": 605,
+            "endFrame": 622
+          },
+          {
+            "text": "during",
+            "startFrame": 622,
+            "endFrame": 634
+          },
+          {
+            "text": "a",
+            "startFrame": 634,
+            "endFrame": 639
+          },
+          {
+            "text": "crash,",
+            "startFrame": 639,
+            "endFrame": 656
+          },
+          {
+            "text": "without",
+            "startFrame": 656,
+            "endFrame": 673
+          },
+          {
+            "text": "paying",
+            "startFrame": 673,
+            "endFrame": 688
+          },
+          {
+            "text": "any",
+            "startFrame": 688,
+            "endFrame": 698
+          },
+          {
+            "text": "insurance",
+            "startFrame": 698,
+            "endFrame": 716
+          },
+          {
+            "text": "just",
+            "startFrame": 716,
+            "endFrame": 730
+          },
+          {
+            "text": "to",
+            "startFrame": 730,
+            "endFrame": 739
+          },
+          {
+            "text": "wait",
+            "startFrame": 739,
+            "endFrame": 746
+          },
+          {
+            "text": "for",
+            "startFrame": 746,
+            "endFrame": 754
+          },
+          {
+            "text": "it?",
+            "startFrame": 754,
+            "endFrame": 760
+          }
+        ],
+        "props": {
+          "kicker": "The tail-hedging dilemma",
+          "lines": [
+            {
+              "text": "You pay for what you get."
+            },
+            {
+              "text": "Cheap hedges under-protect. Full protection bleeds.",
+              "accent": true
+            },
+            {
+              "text": "What if the crash paid you instead?",
+              "accent": true
+            }
+          ]
+        }
+      },
+      {
+        "block": "StatCount",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/.tts_wav/tailtrading_2.wav",
+        "durationInFrames": 755,
+        "revealFrames": [
+          452,
+          720
+        ],
+        "words": [
+          {
+            "text": "So",
+            "startFrame": 0,
+            "endFrame": 8
+          },
+          {
+            "text": "how",
+            "startFrame": 8,
+            "endFrame": 14
+          },
+          {
+            "text": "do",
+            "startFrame": 14,
+            "endFrame": 17
+          },
+          {
+            "text": "you",
+            "startFrame": 17,
+            "endFrame": 22
+          },
+          {
+            "text": "catch",
+            "startFrame": 22,
+            "endFrame": 28
+          },
+          {
+            "text": "a",
+            "startFrame": 28,
+            "endFrame": 33
+          },
+          {
+            "text": "tail",
+            "startFrame": 33,
+            "endFrame": 43
+          },
+          {
+            "text": "while",
+            "startFrame": 43,
+            "endFrame": 61
+          },
+          {
+            "text": "it's",
+            "startFrame": 61,
+            "endFrame": 73
+          },
+          {
+            "text": "still",
+            "startFrame": 73,
+            "endFrame": 81
+          },
+          {
+            "text": "forming?",
+            "startFrame": 81,
+            "endFrame": 107
+          },
+          {
+            "text": "The",
+            "startFrame": 121,
+            "endFrame": 124
+          },
+          {
+            "text": "cleanest",
+            "startFrame": 124,
+            "endFrame": 140
+          },
+          {
+            "text": "tell",
+            "startFrame": 140,
+            "endFrame": 149
+          },
+          {
+            "text": "is",
+            "startFrame": 149,
+            "endFrame": 160
+          },
+          {
+            "text": "the",
+            "startFrame": 160,
+            "endFrame": 164
+          },
+          {
+            "text": "volatility",
+            "startFrame": 164,
+            "endFrame": 180
+          },
+          {
+            "text": "term",
+            "startFrame": 180,
+            "endFrame": 194
+          },
+          {
+            "text": "structure.",
+            "startFrame": 194,
+            "endFrame": 212
+          },
+          {
+            "text": "When",
+            "startFrame": 226,
+            "endFrame": 232
+          },
+          {
+            "text": "three",
+            "startFrame": 232,
+            "endFrame": 257
+          },
+          {
+            "text": "-month",
+            "startFrame": 257,
+            "endFrame": 265
+          },
+          {
+            "text": "implied",
+            "startFrame": 265,
+            "endFrame": 281
+          },
+          {
+            "text": "vol",
+            "startFrame": 281,
+            "endFrame": 292
+          },
+          {
+            "text": "falls",
+            "startFrame": 292,
+            "endFrame": 313
+          },
+          {
+            "text": "below",
+            "startFrame": 313,
+            "endFrame": 322
+          },
+          {
+            "text": "one",
+            "startFrame": 322,
+            "endFrame": 332
+          },
+          {
+            "text": "month,",
+            "startFrame": 332,
+            "endFrame": 340
+          },
+          {
+            "text": "the",
+            "startFrame": 348,
+            "endFrame": 350
+          },
+          {
+            "text": "curve",
+            "startFrame": 350,
+            "endFrame": 361
+          },
+          {
+            "text": "inverts,",
+            "startFrame": 361,
+            "endFrame": 389
+          },
+          {
+            "text": "and",
+            "startFrame": 395,
+            "endFrame": 397
+          },
+          {
+            "text": "that",
+            "startFrame": 397,
+            "endFrame": 403
+          },
+          {
+            "text": "signal",
+            "startFrame": 403,
+            "endFrame": 416
+          },
+          {
+            "text": "has",
+            "startFrame": 416,
+            "endFrame": 425
+          },
+          {
+            "text": "fired",
+            "startFrame": 425,
+            "endFrame": 436
+          },
+          {
+            "text": "more",
+            "startFrame": 436,
+            "endFrame": 444
+          },
+          {
+            "text": "than",
+            "startFrame": 444,
+            "endFrame": 449
+          },
+          {
+            "text": "a",
+            "startFrame": 449,
+            "endFrame": 452
+          },
+          {
+            "text": "thousand",
+            "startFrame": 452,
+            "endFrame": 464
+          },
+          {
+            "text": "times",
+            "startFrame": 464,
+            "endFrame": 479
+          },
+          {
+            "text": "since",
+            "startFrame": 479,
+            "endFrame": 494
+          },
+          {
+            "text": "2004.",
+            "startFrame": 494,
+            "endFrame": 526
+          },
+          {
+            "text": "Every",
+            "startFrame": 538,
+            "endFrame": 545
+          },
+          {
+            "text": "single",
+            "startFrame": 545,
+            "endFrame": 556
+          },
+          {
+            "text": "instance",
+            "startFrame": 556,
+            "endFrame": 569
+          },
+          {
+            "text": "landed",
+            "startFrame": 569,
+            "endFrame": 583
+          },
+          {
+            "text": "on",
+            "startFrame": 583,
+            "endFrame": 590
+          },
+          {
+            "text": "a",
+            "startFrame": 590,
+            "endFrame": 593
+          },
+          {
+            "text": "violent",
+            "startFrame": 593,
+            "endFrame": 605
+          },
+          {
+            "text": "S",
+            "startFrame": 605,
+            "endFrame": 616
+          },
+          {
+            "text": "&P",
+            "startFrame": 616,
+            "endFrame": 632
+          },
+          {
+            "text": "move,",
+            "startFrame": 632,
+            "endFrame": 653
+          },
+          {
+            "text": "averaging",
+            "startFrame": 653,
+            "endFrame": 672
+          },
+          {
+            "text": "1",
+            "startFrame": 672,
+            "endFrame": 688
+          },
+          {
+            "text": ".95",
+            "startFrame": 688,
+            "endFrame": 720
+          },
+          {
+            "text": "sigma.",
+            "startFrame": 720,
+            "endFrame": 745
+          }
+        ],
+        "captionWords": [
+          {
+            "text": "So",
+            "startFrame": 0,
+            "endFrame": 8
+          },
+          {
+            "text": "how",
+            "startFrame": 8,
+            "endFrame": 14
+          },
+          {
+            "text": "do",
+            "startFrame": 14,
+            "endFrame": 17
+          },
+          {
+            "text": "you",
+            "startFrame": 17,
+            "endFrame": 22
+          },
+          {
+            "text": "catch",
+            "startFrame": 22,
+            "endFrame": 28
+          },
+          {
+            "text": "a",
+            "startFrame": 28,
+            "endFrame": 33
+          },
+          {
+            "text": "tail",
+            "startFrame": 33,
+            "endFrame": 43
+          },
+          {
+            "text": "while",
+            "startFrame": 43,
+            "endFrame": 61
+          },
+          {
+            "text": "it's",
+            "startFrame": 61,
+            "endFrame": 73
+          },
+          {
+            "text": "still",
+            "startFrame": 73,
+            "endFrame": 81
+          },
+          {
+            "text": "forming?",
+            "startFrame": 81,
+            "endFrame": 107
+          },
+          {
+            "text": "The",
+            "startFrame": 121,
+            "endFrame": 124
+          },
+          {
+            "text": "cleanest",
+            "startFrame": 124,
+            "endFrame": 140
+          },
+          {
+            "text": "tell",
+            "startFrame": 140,
+            "endFrame": 149
+          },
+          {
+            "text": "is",
+            "startFrame": 149,
+            "endFrame": 160
+          },
+          {
+            "text": "the",
+            "startFrame": 160,
+            "endFrame": 164
+          },
+          {
+            "text": "volatility",
+            "startFrame": 164,
+            "endFrame": 180
+          },
+          {
+            "text": "term",
+            "startFrame": 180,
+            "endFrame": 194
+          },
+          {
+            "text": "structure.",
+            "startFrame": 194,
+            "endFrame": 212
+          },
+          {
+            "text": "When",
+            "startFrame": 226,
+            "endFrame": 232
+          },
+          {
+            "text": "three-month",
+            "startFrame": 232,
+            "endFrame": 265
+          },
+          {
+            "text": "implied",
+            "startFrame": 265,
+            "endFrame": 281
+          },
+          {
+            "text": "vol",
+            "startFrame": 281,
+            "endFrame": 292
+          },
+          {
+            "text": "falls",
+            "startFrame": 292,
+            "endFrame": 313
+          },
+          {
+            "text": "below",
+            "startFrame": 313,
+            "endFrame": 322
+          },
+          {
+            "text": "one-month,",
+            "startFrame": 322,
+            "endFrame": 340
+          },
+          {
+            "text": "the",
+            "startFrame": 348,
+            "endFrame": 350
+          },
+          {
+            "text": "curve",
+            "startFrame": 350,
+            "endFrame": 361
+          },
+          {
+            "text": "inverts,",
+            "startFrame": 361,
+            "endFrame": 389
+          },
+          {
+            "text": "and",
+            "startFrame": 395,
+            "endFrame": 397
+          },
+          {
+            "text": "that",
+            "startFrame": 397,
+            "endFrame": 403
+          },
+          {
+            "text": "signal",
+            "startFrame": 403,
+            "endFrame": 416
+          },
+          {
+            "text": "has",
+            "startFrame": 416,
+            "endFrame": 425
+          },
+          {
+            "text": "fired",
+            "startFrame": 425,
+            "endFrame": 436
+          },
+          {
+            "text": "more",
+            "startFrame": 436,
+            "endFrame": 444
+          },
+          {
+            "text": "than",
+            "startFrame": 444,
+            "endFrame": 449
+          },
+          {
+            "text": "a",
+            "startFrame": 449,
+            "endFrame": 452
+          },
+          {
+            "text": "thousand",
+            "startFrame": 452,
+            "endFrame": 464
+          },
+          {
+            "text": "times",
+            "startFrame": 464,
+            "endFrame": 479
+          },
+          {
+            "text": "since",
+            "startFrame": 479,
+            "endFrame": 494
+          },
+          {
+            "text": "two",
+            "startFrame": 494,
+            "endFrame": 505
+          },
+          {
+            "text": "thousand",
+            "startFrame": 505,
+            "endFrame": 516
+          },
+          {
+            "text": "four.",
+            "startFrame": 516,
+            "endFrame": 526
+          },
+          {
+            "text": "Every",
+            "startFrame": 538,
+            "endFrame": 545
+          },
+          {
+            "text": "single",
+            "startFrame": 545,
+            "endFrame": 556
+          },
+          {
+            "text": "instance",
+            "startFrame": 556,
+            "endFrame": 569
+          },
+          {
+            "text": "landed",
+            "startFrame": 569,
+            "endFrame": 583
+          },
+          {
+            "text": "on",
+            "startFrame": 583,
+            "endFrame": 590
+          },
+          {
+            "text": "a",
+            "startFrame": 590,
+            "endFrame": 593
+          },
+          {
+            "text": "violent",
+            "startFrame": 593,
+            "endFrame": 605
+          },
+          {
+            "text": "S",
+            "startFrame": 605,
+            "endFrame": 616
+          },
+          {
+            "text": "and",
+            "startFrame": 616,
+            "endFrame": 616
+          },
+          {
+            "text": "P",
+            "startFrame": 616,
+            "endFrame": 632
+          },
+          {
+            "text": "move,",
+            "startFrame": 632,
+            "endFrame": 653
+          },
+          {
+            "text": "averaging",
+            "startFrame": 653,
+            "endFrame": 672
+          },
+          {
+            "text": "one",
+            "startFrame": 672,
+            "endFrame": 688
+          },
+          {
+            "text": "point",
+            "startFrame": 688,
+            "endFrame": 698
+          },
+          {
+            "text": "nine",
+            "startFrame": 698,
+            "endFrame": 709
+          },
+          {
+            "text": "five",
+            "startFrame": 709,
+            "endFrame": 720
+          },
+          {
+            "text": "sigma.",
+            "startFrame": 720,
+            "endFrame": 745
+          }
+        ],
+        "props": {
+          "stats": [
+            {
+              "value": 1000,
+              "suffix": "+",
+              "decimals": 0,
+              "word": "thousand",
+              "label": "3M-1M term-structure inversions since 2004"
+            },
+            {
+              "value": 1.95,
+              "suffix": "\u03c3",
+              "decimals": 2,
+              "word": "sigma",
+              "label": "average SPX move on those days"
+            }
+          ],
+          "closer": "One clean signal flags the tail.",
+          "accentPhrase": "flags the tail"
+        }
+      },
+      {
+        "block": "ListReveal",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/.tts_wav/tailtrading_3.wav",
+        "durationInFrames": 913,
+        "revealFrames": [
+          184,
+          401,
+          659
+        ],
+        "words": [
+          {
+            "text": "Inside",
+            "startFrame": 0,
+            "endFrame": 16
+          },
+          {
+            "text": "these",
+            "startFrame": 16,
+            "endFrame": 26
+          },
+          {
+            "text": "tail",
+            "startFrame": 26,
+            "endFrame": 36
+          },
+          {
+            "text": "-like",
+            "startFrame": 36,
+            "endFrame": 43
+          },
+          {
+            "text": "windows,",
+            "startFrame": 43,
+            "endFrame": 59
+          },
+          {
+            "text": "the",
+            "startFrame": 77,
+            "endFrame": 80
+          },
+          {
+            "text": "paper",
+            "startFrame": 80,
+            "endFrame": 93
+          },
+          {
+            "text": "uncovers",
+            "startFrame": 93,
+            "endFrame": 118
+          },
+          {
+            "text": "three",
+            "startFrame": 118,
+            "endFrame": 137
+          },
+          {
+            "text": "distinct",
+            "startFrame": 137,
+            "endFrame": 156
+          },
+          {
+            "text": "trades.",
+            "startFrame": 156,
+            "endFrame": 173
+          },
+          {
+            "text": "In",
+            "startFrame": 181,
+            "endFrame": 184
+          },
+          {
+            "text": "Delta",
+            "startFrame": 184,
+            "endFrame": 190
+          },
+          {
+            "text": "Space,",
+            "startFrame": 190,
+            "endFrame": 202
+          },
+          {
+            "text": "you",
+            "startFrame": 213,
+            "endFrame": 215
+          },
+          {
+            "text": "buy",
+            "startFrame": 215,
+            "endFrame": 221
+          },
+          {
+            "text": "the",
+            "startFrame": 221,
+            "endFrame": 227
+          },
+          {
+            "text": "rebound,",
+            "startFrame": 227,
+            "endFrame": 237
+          },
+          {
+            "text": "a",
+            "startFrame": 244,
+            "endFrame": 244
+          },
+          {
+            "text": "leveraged",
+            "startFrame": 244,
+            "endFrame": 263
+          },
+          {
+            "text": "call",
+            "startFrame": 263,
+            "endFrame": 274
+          },
+          {
+            "text": "spread,",
+            "startFrame": 274,
+            "endFrame": 293
+          },
+          {
+            "text": "because",
+            "startFrame": 299,
+            "endFrame": 305
+          },
+          {
+            "text": "spot",
+            "startFrame": 305,
+            "endFrame": 317
+          },
+          {
+            "text": "tends",
+            "startFrame": 317,
+            "endFrame": 326
+          },
+          {
+            "text": "to",
+            "startFrame": 326,
+            "endFrame": 334
+          },
+          {
+            "text": "snap",
+            "startFrame": 334,
+            "endFrame": 343
+          },
+          {
+            "text": "violently",
+            "startFrame": 343,
+            "endFrame": 363
+          },
+          {
+            "text": "back",
+            "startFrame": 363,
+            "endFrame": 372
+          },
+          {
+            "text": "up.",
+            "startFrame": 372,
+            "endFrame": 382
+          },
+          {
+            "text": "In",
+            "startFrame": 395,
+            "endFrame": 401
+          },
+          {
+            "text": "Gamma",
+            "startFrame": 401,
+            "endFrame": 413
+          },
+          {
+            "text": "Space,",
+            "startFrame": 413,
+            "endFrame": 425
+          },
+          {
+            "text": "you",
+            "startFrame": 435,
+            "endFrame": 437
+          },
+          {
+            "text": "harvest",
+            "startFrame": 437,
+            "endFrame": 448
+          },
+          {
+            "text": "the",
+            "startFrame": 448,
+            "endFrame": 457
+          },
+          {
+            "text": "whipsaw,",
+            "startFrame": 457,
+            "endFrame": 472
+          },
+          {
+            "text": "short",
+            "startFrame": 478,
+            "endFrame": 484
+          },
+          {
+            "text": "-dated",
+            "startFrame": 484,
+            "endFrame": 493
+          },
+          {
+            "text": "calls,",
+            "startFrame": 493,
+            "endFrame": 506
+          },
+          {
+            "text": "hedged",
+            "startFrame": 520,
+            "endFrame": 532
+          },
+          {
+            "text": "daily,",
+            "startFrame": 532,
+            "endFrame": 542
+          },
+          {
+            "text": "feeding",
+            "startFrame": 559,
+            "endFrame": 565
+          },
+          {
+            "text": "on",
+            "startFrame": 565,
+            "endFrame": 572
+          },
+          {
+            "text": "wild",
+            "startFrame": 572,
+            "endFrame": 584
+          },
+          {
+            "text": "day",
+            "startFrame": 584,
+            "endFrame": 595
+          },
+          {
+            "text": "-to",
+            "startFrame": 595,
+            "endFrame": 601
+          },
+          {
+            "text": "-day",
+            "startFrame": 601,
+            "endFrame": 606
+          },
+          {
+            "text": "mean",
+            "startFrame": 606,
+            "endFrame": 619
+          },
+          {
+            "text": "reversion.",
+            "startFrame": 619,
+            "endFrame": 641
+          },
+          {
+            "text": "And",
+            "startFrame": 651,
+            "endFrame": 656
+          },
+          {
+            "text": "in",
+            "startFrame": 656,
+            "endFrame": 659
+          },
+          {
+            "text": "Vegas",
+            "startFrame": 659,
+            "endFrame": 669
+          },
+          {
+            "text": "Space,",
+            "startFrame": 669,
+            "endFrame": 678
+          },
+          {
+            "text": "you",
+            "startFrame": 692,
+            "endFrame": 694
+          },
+          {
+            "text": "fade",
+            "startFrame": 694,
+            "endFrame": 703
+          },
+          {
+            "text": "the",
+            "startFrame": 703,
+            "endFrame": 710
+          },
+          {
+            "text": "spike,",
+            "startFrame": 710,
+            "endFrame": 720
+          },
+          {
+            "text": "a",
+            "startFrame": 733,
+            "endFrame": 735
+          },
+          {
+            "text": "vix",
+            "startFrame": 735,
+            "endFrame": 742
+          },
+          {
+            "text": "-put",
+            "startFrame": 742,
+            "endFrame": 749
+          },
+          {
+            "text": "ladder,",
+            "startFrame": 749,
+            "endFrame": 761
+          },
+          {
+            "text": "betting",
+            "startFrame": 761,
+            "endFrame": 779
+          },
+          {
+            "text": "that",
+            "startFrame": 779,
+            "endFrame": 790
+          },
+          {
+            "text": "panic",
+            "startFrame": 790,
+            "endFrame": 808
+          },
+          {
+            "text": "-driven",
+            "startFrame": 808,
+            "endFrame": 819
+          },
+          {
+            "text": "implied",
+            "startFrame": 819,
+            "endFrame": 839
+          },
+          {
+            "text": "vol",
+            "startFrame": 839,
+            "endFrame": 849
+          },
+          {
+            "text": "will",
+            "startFrame": 849,
+            "endFrame": 866
+          },
+          {
+            "text": "quickly",
+            "startFrame": 866,
+            "endFrame": 878
+          },
+          {
+            "text": "normalize.",
+            "startFrame": 878,
+            "endFrame": 901
+          }
+        ],
+        "captionWords": [
+          {
+            "text": "Inside",
+            "startFrame": 0,
+            "endFrame": 16
+          },
+          {
+            "text": "these",
+            "startFrame": 16,
+            "endFrame": 26
+          },
+          {
+            "text": "tail-like",
+            "startFrame": 26,
+            "endFrame": 43
+          },
+          {
+            "text": "windows,",
+            "startFrame": 43,
+            "endFrame": 59
+          },
+          {
+            "text": "the",
+            "startFrame": 77,
+            "endFrame": 80
+          },
+          {
+            "text": "paper",
+            "startFrame": 80,
+            "endFrame": 93
+          },
+          {
+            "text": "uncovers",
+            "startFrame": 93,
+            "endFrame": 118
+          },
+          {
+            "text": "three",
+            "startFrame": 118,
+            "endFrame": 137
+          },
+          {
+            "text": "distinct",
+            "startFrame": 137,
+            "endFrame": 156
+          },
+          {
+            "text": "trades.",
+            "startFrame": 156,
+            "endFrame": 173
+          },
+          {
+            "text": "In",
+            "startFrame": 181,
+            "endFrame": 184
+          },
+          {
+            "text": "Delta",
+            "startFrame": 184,
+            "endFrame": 190
+          },
+          {
+            "text": "space,",
+            "startFrame": 190,
+            "endFrame": 202
+          },
+          {
+            "text": "you",
+            "startFrame": 213,
+            "endFrame": 215
+          },
+          {
+            "text": "buy",
+            "startFrame": 215,
+            "endFrame": 221
+          },
+          {
+            "text": "the",
+            "startFrame": 221,
+            "endFrame": 227
+          },
+          {
+            "text": "rebound,",
+            "startFrame": 227,
+            "endFrame": 237
+          },
+          {
+            "text": "a",
+            "startFrame": 244,
+            "endFrame": 244
+          },
+          {
+            "text": "leveraged",
+            "startFrame": 244,
+            "endFrame": 263
+          },
+          {
+            "text": "call",
+            "startFrame": 263,
+            "endFrame": 274
+          },
+          {
+            "text": "spread,",
+            "startFrame": 274,
+            "endFrame": 293
+          },
+          {
+            "text": "because",
+            "startFrame": 299,
+            "endFrame": 305
+          },
+          {
+            "text": "spot",
+            "startFrame": 305,
+            "endFrame": 317
+          },
+          {
+            "text": "tends",
+            "startFrame": 317,
+            "endFrame": 326
+          },
+          {
+            "text": "to",
+            "startFrame": 326,
+            "endFrame": 334
+          },
+          {
+            "text": "snap",
+            "startFrame": 334,
+            "endFrame": 343
+          },
+          {
+            "text": "violently",
+            "startFrame": 343,
+            "endFrame": 363
+          },
+          {
+            "text": "back",
+            "startFrame": 363,
+            "endFrame": 372
+          },
+          {
+            "text": "up.",
+            "startFrame": 372,
+            "endFrame": 382
+          },
+          {
+            "text": "In",
+            "startFrame": 395,
+            "endFrame": 401
+          },
+          {
+            "text": "Gamma",
+            "startFrame": 401,
+            "endFrame": 413
+          },
+          {
+            "text": "space,",
+            "startFrame": 413,
+            "endFrame": 425
+          },
+          {
+            "text": "you",
+            "startFrame": 435,
+            "endFrame": 437
+          },
+          {
+            "text": "harvest",
+            "startFrame": 437,
+            "endFrame": 448
+          },
+          {
+            "text": "the",
+            "startFrame": 448,
+            "endFrame": 457
+          },
+          {
+            "text": "whipsaw,",
+            "startFrame": 457,
+            "endFrame": 472
+          },
+          {
+            "text": "short-dated",
+            "startFrame": 478,
+            "endFrame": 493
+          },
+          {
+            "text": "calls",
+            "startFrame": 493,
+            "endFrame": 506
+          },
+          {
+            "text": "hedged",
+            "startFrame": 520,
+            "endFrame": 532
+          },
+          {
+            "text": "daily,",
+            "startFrame": 532,
+            "endFrame": 542
+          },
+          {
+            "text": "feeding",
+            "startFrame": 559,
+            "endFrame": 565
+          },
+          {
+            "text": "on",
+            "startFrame": 565,
+            "endFrame": 572
+          },
+          {
+            "text": "wild",
+            "startFrame": 572,
+            "endFrame": 584
+          },
+          {
+            "text": "day-to-day",
+            "startFrame": 584,
+            "endFrame": 606
+          },
+          {
+            "text": "mean",
+            "startFrame": 606,
+            "endFrame": 619
+          },
+          {
+            "text": "reversion.",
+            "startFrame": 619,
+            "endFrame": 641
+          },
+          {
+            "text": "And",
+            "startFrame": 651,
+            "endFrame": 656
+          },
+          {
+            "text": "in",
+            "startFrame": 656,
+            "endFrame": 659
+          },
+          {
+            "text": "Vega",
+            "startFrame": 659,
+            "endFrame": 669
+          },
+          {
+            "text": "space,",
+            "startFrame": 669,
+            "endFrame": 678
+          },
+          {
+            "text": "you",
+            "startFrame": 692,
+            "endFrame": 694
+          },
+          {
+            "text": "fade",
+            "startFrame": 694,
+            "endFrame": 703
+          },
+          {
+            "text": "the",
+            "startFrame": 703,
+            "endFrame": 710
+          },
+          {
+            "text": "spike,",
+            "startFrame": 710,
+            "endFrame": 720
+          },
+          {
+            "text": "a",
+            "startFrame": 733,
+            "endFrame": 735
+          },
+          {
+            "text": "VIX",
+            "startFrame": 735,
+            "endFrame": 742
+          },
+          {
+            "text": "put",
+            "startFrame": 742,
+            "endFrame": 749
+          },
+          {
+            "text": "ladder,",
+            "startFrame": 749,
+            "endFrame": 761
+          },
+          {
+            "text": "betting",
+            "startFrame": 761,
+            "endFrame": 779
+          },
+          {
+            "text": "that",
+            "startFrame": 779,
+            "endFrame": 790
+          },
+          {
+            "text": "panic-driven",
+            "startFrame": 790,
+            "endFrame": 819
+          },
+          {
+            "text": "implied",
+            "startFrame": 819,
+            "endFrame": 839
+          },
+          {
+            "text": "vol",
+            "startFrame": 839,
+            "endFrame": 849
+          },
+          {
+            "text": "will",
+            "startFrame": 849,
+            "endFrame": 866
+          },
+          {
+            "text": "quickly",
+            "startFrame": 866,
+            "endFrame": 878
+          },
+          {
+            "text": "normalize.",
+            "startFrame": 878,
+            "endFrame": 901
+          }
+        ],
+        "props": {
+          "title": "Three avenues, three Greeks",
+          "items": [
+            {
+              "label": "Buy the rebound (leveraged call spread)",
+              "tag": "Delta"
+            },
+            {
+              "label": "Harvest the whipsaw (delta-hedged short calls)",
+              "tag": "Gamma"
+            },
+            {
+              "label": "Fade the spike (VIX put ladder)",
+              "tag": "Vega"
+            }
+          ]
+        }
+      },
+      {
+        "block": "PaperFigure",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/.tts_wav/tailtrading_4.wav",
+        "durationInFrames": 902,
+        "revealFrames": [
+          0
+        ],
+        "words": [
+          {
+            "text": "Put",
+            "startFrame": 0,
+            "endFrame": 10
+          },
+          {
+            "text": "the",
+            "startFrame": 10,
+            "endFrame": 15
+          },
+          {
+            "text": "three",
+            "startFrame": 15,
+            "endFrame": 26
+          },
+          {
+            "text": "pillars",
+            "startFrame": 26,
+            "endFrame": 38
+          },
+          {
+            "text": "together",
+            "startFrame": 38,
+            "endFrame": 57
+          },
+          {
+            "text": "and",
+            "startFrame": 57,
+            "endFrame": 76
+          },
+          {
+            "text": "watch",
+            "startFrame": 76,
+            "endFrame": 89
+          },
+          {
+            "text": "the",
+            "startFrame": 89,
+            "endFrame": 95
+          },
+          {
+            "text": "equity",
+            "startFrame": 95,
+            "endFrame": 106
+          },
+          {
+            "text": "curve.",
+            "startFrame": 106,
+            "endFrame": 117
+          },
+          {
+            "text": "This",
+            "startFrame": 127,
+            "endFrame": 136
+          },
+          {
+            "text": "is",
+            "startFrame": 136,
+            "endFrame": 146
+          },
+          {
+            "text": "the",
+            "startFrame": 146,
+            "endFrame": 151
+          },
+          {
+            "text": "strategy's",
+            "startFrame": 151,
+            "endFrame": 178
+          },
+          {
+            "text": "actual",
+            "startFrame": 178,
+            "endFrame": 199
+          },
+          {
+            "text": "cumulative",
+            "startFrame": 199,
+            "endFrame": 232
+          },
+          {
+            "text": "profit",
+            "startFrame": 232,
+            "endFrame": 261
+          },
+          {
+            "text": "with",
+            "startFrame": 261,
+            "endFrame": 277
+          },
+          {
+            "text": "each",
+            "startFrame": 277,
+            "endFrame": 289
+          },
+          {
+            "text": "pillar's",
+            "startFrame": 289,
+            "endFrame": 311
+          },
+          {
+            "text": "contribution",
+            "startFrame": 311,
+            "endFrame": 334
+          },
+          {
+            "text": "stacked",
+            "startFrame": 334,
+            "endFrame": 354
+          },
+          {
+            "text": "on",
+            "startFrame": 354,
+            "endFrame": 364
+          },
+          {
+            "text": "top",
+            "startFrame": 364,
+            "endFrame": 372
+          },
+          {
+            "text": "of",
+            "startFrame": 372,
+            "endFrame": 376
+          },
+          {
+            "text": "the",
+            "startFrame": 376,
+            "endFrame": 380
+          },
+          {
+            "text": "others.",
+            "startFrame": 380,
+            "endFrame": 388
+          },
+          {
+            "text": "It",
+            "startFrame": 404,
+            "endFrame": 409
+          },
+          {
+            "text": "stays",
+            "startFrame": 409,
+            "endFrame": 418
+          },
+          {
+            "text": "flat",
+            "startFrame": 418,
+            "endFrame": 427
+          },
+          {
+            "text": "and",
+            "startFrame": 427,
+            "endFrame": 434
+          },
+          {
+            "text": "cost",
+            "startFrame": 434,
+            "endFrame": 442
+          },
+          {
+            "text": "-free",
+            "startFrame": 442,
+            "endFrame": 453
+          },
+          {
+            "text": "through",
+            "startFrame": 453,
+            "endFrame": 462
+          },
+          {
+            "text": "calm",
+            "startFrame": 462,
+            "endFrame": 472
+          },
+          {
+            "text": "markets.",
+            "startFrame": 472,
+            "endFrame": 489
+          },
+          {
+            "text": "Then",
+            "startFrame": 509,
+            "endFrame": 521
+          },
+          {
+            "text": "explodes",
+            "startFrame": 521,
+            "endFrame": 540
+          },
+          {
+            "text": "higher",
+            "startFrame": 540,
+            "endFrame": 555
+          },
+          {
+            "text": "through",
+            "startFrame": 555,
+            "endFrame": 564
+          },
+          {
+            "text": "the",
+            "startFrame": 564,
+            "endFrame": 569
+          },
+          {
+            "text": "2020",
+            "startFrame": 569,
+            "endFrame": 587
+          },
+          {
+            "text": "crash,",
+            "startFrame": 587,
+            "endFrame": 604
+          },
+          {
+            "text": "with",
+            "startFrame": 613,
+            "endFrame": 617
+          },
+          {
+            "text": "Delta,",
+            "startFrame": 617,
+            "endFrame": 627
+          },
+          {
+            "text": "Gamma",
+            "startFrame": 647,
+            "endFrame": 656
+          },
+          {
+            "text": "and",
+            "startFrame": 656,
+            "endFrame": 663
+          },
+          {
+            "text": "Vega",
+            "startFrame": 663,
+            "endFrame": 674
+          },
+          {
+            "text": "all",
+            "startFrame": 674,
+            "endFrame": 688
+          },
+          {
+            "text": "firing",
+            "startFrame": 688,
+            "endFrame": 704
+          },
+          {
+            "text": "at",
+            "startFrame": 704,
+            "endFrame": 709
+          },
+          {
+            "text": "once.",
+            "startFrame": 709,
+            "endFrame": 720
+          },
+          {
+            "text": "And",
+            "startFrame": 731,
+            "endFrame": 740
+          },
+          {
+            "text": "it",
+            "startFrame": 740,
+            "endFrame": 752
+          },
+          {
+            "text": "does",
+            "startFrame": 752,
+            "endFrame": 757
+          },
+          {
+            "text": "it",
+            "startFrame": 757,
+            "endFrame": 763
+          },
+          {
+            "text": "again",
+            "startFrame": 763,
+            "endFrame": 772
+          },
+          {
+            "text": "through",
+            "startFrame": 772,
+            "endFrame": 782
+          },
+          {
+            "text": "the",
+            "startFrame": 782,
+            "endFrame": 787
+          },
+          {
+            "text": "later",
+            "startFrame": 787,
+            "endFrame": 794
+          },
+          {
+            "text": "shocks",
+            "startFrame": 794,
+            "endFrame": 805
+          },
+          {
+            "text": "of",
+            "startFrame": 805,
+            "endFrame": 821
+          },
+          {
+            "text": "2022",
+            "startFrame": 821,
+            "endFrame": 841
+          },
+          {
+            "text": "and",
+            "startFrame": 841,
+            "endFrame": 863
+          },
+          {
+            "text": "2024.",
+            "startFrame": 863,
+            "endFrame": 887
+          },
+          {
+            "text": "And",
+            "startFrame": 887,
+            "endFrame": 891
+          },
+          {
+            "text": "it",
+            "startFrame": 891,
+            "endFrame": 891
+          },
+          {
+            "text": "does",
+            "startFrame": 891,
+            "endFrame": 891
+          },
+          {
+            "text": "it",
+            "startFrame": 891,
+            "endFrame": 891
+          },
+          {
+            "text": "again",
+            "startFrame": 891,
+            "endFrame": 891
+          },
+          {
+            "text": "through",
+            "startFrame": 891,
+            "endFrame": 891
+          },
+          {
+            "text": "the",
+            "startFrame": 891,
+            "endFrame": 896
+          },
+          {
+            "text": "2020",
+            "startFrame": 896,
+            "endFrame": 896
+          },
+          {
+            "text": "crash,",
+            "startFrame": 896,
+            "endFrame": 896
+          },
+          {
+            "text": "with",
+            "startFrame": 896,
+            "endFrame": 896
+          },
+          {
+            "text": "Delta,",
+            "startFrame": 896,
+            "endFrame": 896
+          },
+          {
+            "text": "Gamma",
+            "startFrame": 896,
+            "endFrame": 902
+          },
+          {
+            "text": "and",
+            "startFrame": 902,
+            "endFrame": 902
+          },
+          {
+            "text": "Vega",
+            "startFrame": 902,
+            "endFrame": 902
+          },
+          {
+            "text": "all",
+            "startFrame": 902,
+            "endFrame": 902
+          },
+          {
+            "text": "firing",
+            "startFrame": 902,
+            "endFrame": 902
+          },
+          {
+            "text": "at",
+            "startFrame": 902,
+            "endFrame": 902
+          },
+          {
+            "text": "once.",
+            "startFrame": 902,
+            "endFrame": 902
+          }
+        ],
+        "captionWords": [
+          {
+            "text": "Put",
+            "startFrame": 0,
+            "endFrame": 10
+          },
+          {
+            "text": "the",
+            "startFrame": 10,
+            "endFrame": 15
+          },
+          {
+            "text": "three",
+            "startFrame": 15,
+            "endFrame": 26
+          },
+          {
+            "text": "pillars",
+            "startFrame": 26,
+            "endFrame": 38
+          },
+          {
+            "text": "together",
+            "startFrame": 38,
+            "endFrame": 57
+          },
+          {
+            "text": "and",
+            "startFrame": 57,
+            "endFrame": 76
+          },
+          {
+            "text": "watch",
+            "startFrame": 76,
+            "endFrame": 89
+          },
+          {
+            "text": "the",
+            "startFrame": 89,
+            "endFrame": 95
+          },
+          {
+            "text": "equity",
+            "startFrame": 95,
+            "endFrame": 106
+          },
+          {
+            "text": "curve.",
+            "startFrame": 106,
+            "endFrame": 117
+          },
+          {
+            "text": "This",
+            "startFrame": 127,
+            "endFrame": 136
+          },
+          {
+            "text": "is",
+            "startFrame": 136,
+            "endFrame": 146
+          },
+          {
+            "text": "the",
+            "startFrame": 146,
+            "endFrame": 151
+          },
+          {
+            "text": "strategy's",
+            "startFrame": 151,
+            "endFrame": 178
+          },
+          {
+            "text": "actual",
+            "startFrame": 178,
+            "endFrame": 199
+          },
+          {
+            "text": "cumulative",
+            "startFrame": 199,
+            "endFrame": 232
+          },
+          {
+            "text": "profit,",
+            "startFrame": 232,
+            "endFrame": 261
+          },
+          {
+            "text": "with",
+            "startFrame": 261,
+            "endFrame": 277
+          },
+          {
+            "text": "each",
+            "startFrame": 277,
+            "endFrame": 289
+          },
+          {
+            "text": "pillar's",
+            "startFrame": 289,
+            "endFrame": 311
+          },
+          {
+            "text": "contribution",
+            "startFrame": 311,
+            "endFrame": 334
+          },
+          {
+            "text": "stacked",
+            "startFrame": 334,
+            "endFrame": 354
+          },
+          {
+            "text": "on",
+            "startFrame": 354,
+            "endFrame": 364
+          },
+          {
+            "text": "top",
+            "startFrame": 364,
+            "endFrame": 372
+          },
+          {
+            "text": "of",
+            "startFrame": 372,
+            "endFrame": 376
+          },
+          {
+            "text": "the",
+            "startFrame": 376,
+            "endFrame": 380
+          },
+          {
+            "text": "others.",
+            "startFrame": 380,
+            "endFrame": 388
+          },
+          {
+            "text": "It",
+            "startFrame": 404,
+            "endFrame": 409
+          },
+          {
+            "text": "stays",
+            "startFrame": 409,
+            "endFrame": 418
+          },
+          {
+            "text": "flat",
+            "startFrame": 418,
+            "endFrame": 427
+          },
+          {
+            "text": "and",
+            "startFrame": 427,
+            "endFrame": 434
+          },
+          {
+            "text": "cost-free",
+            "startFrame": 434,
+            "endFrame": 453
+          },
+          {
+            "text": "through",
+            "startFrame": 453,
+            "endFrame": 462
+          },
+          {
+            "text": "calm",
+            "startFrame": 462,
+            "endFrame": 472
+          },
+          {
+            "text": "markets,",
+            "startFrame": 472,
+            "endFrame": 489
+          },
+          {
+            "text": "then",
+            "startFrame": 509,
+            "endFrame": 521
+          },
+          {
+            "text": "explodes",
+            "startFrame": 521,
+            "endFrame": 540
+          },
+          {
+            "text": "higher",
+            "startFrame": 540,
+            "endFrame": 555
+          },
+          {
+            "text": "through",
+            "startFrame": 555,
+            "endFrame": 564
+          },
+          {
+            "text": "the",
+            "startFrame": 564,
+            "endFrame": 569
+          },
+          {
+            "text": "twenty",
+            "startFrame": 569,
+            "endFrame": 578
+          },
+          {
+            "text": "twenty",
+            "startFrame": 578,
+            "endFrame": 587
+          },
+          {
+            "text": "crash,",
+            "startFrame": 587,
+            "endFrame": 604
+          },
+          {
+            "text": "with",
+            "startFrame": 613,
+            "endFrame": 617
+          },
+          {
+            "text": "Delta,",
+            "startFrame": 617,
+            "endFrame": 627
+          },
+          {
+            "text": "Gamma",
+            "startFrame": 647,
+            "endFrame": 656
+          },
+          {
+            "text": "and",
+            "startFrame": 656,
+            "endFrame": 663
+          },
+          {
+            "text": "Vega",
+            "startFrame": 663,
+            "endFrame": 674
+          },
+          {
+            "text": "all",
+            "startFrame": 674,
+            "endFrame": 688
+          },
+          {
+            "text": "firing",
+            "startFrame": 688,
+            "endFrame": 704
+          },
+          {
+            "text": "at",
+            "startFrame": 704,
+            "endFrame": 709
+          },
+          {
+            "text": "once,",
+            "startFrame": 709,
+            "endFrame": 720
+          },
+          {
+            "text": "and",
+            "startFrame": 731,
+            "endFrame": 740
+          },
+          {
+            "text": "it",
+            "startFrame": 740,
+            "endFrame": 752
+          },
+          {
+            "text": "does",
+            "startFrame": 752,
+            "endFrame": 757
+          },
+          {
+            "text": "it",
+            "startFrame": 757,
+            "endFrame": 763
+          },
+          {
+            "text": "again",
+            "startFrame": 763,
+            "endFrame": 772
+          },
+          {
+            "text": "through",
+            "startFrame": 772,
+            "endFrame": 782
+          },
+          {
+            "text": "the",
+            "startFrame": 782,
+            "endFrame": 787
+          },
+          {
+            "text": "later",
+            "startFrame": 787,
+            "endFrame": 794
+          },
+          {
+            "text": "shocks",
+            "startFrame": 794,
+            "endFrame": 805
+          },
+          {
+            "text": "of",
+            "startFrame": 805,
+            "endFrame": 821
+          },
+          {
+            "text": "twenty",
+            "startFrame": 821,
+            "endFrame": 831
+          },
+          {
+            "text": "twenty-two",
+            "startFrame": 831,
+            "endFrame": 841
+          },
+          {
+            "text": "and",
+            "startFrame": 841,
+            "endFrame": 863
+          },
+          {
+            "text": "twenty",
+            "startFrame": 863,
+            "endFrame": 882
+          },
+          {
+            "text": "twenty-four.",
+            "startFrame": 882,
+            "endFrame": 902
+          }
+        ],
+        "props": {
+          "src": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/figures/fig1.png",
+          "kicker": "Three pillars, one equity curve",
+          "source": "Fig. 1 \u00b7 OPRA, J.P. Morgan Equity Derivatives Strategy",
+          "highlights": [
+            {
+              "word": "stacked",
+              "x": 0.07,
+              "y": 0.12,
+              "w": 0.88,
+              "h": 0.74,
+              "label": "Delta + Gamma + Vega stacked"
+            },
+            {
+              "word": "twenty",
+              "x": 0.44,
+              "y": 0.05,
+              "w": 0.13,
+              "h": 0.82,
+              "label": "2020 tail event"
+            }
+          ]
+        }
+      },
+      {
+        "block": "DataTable",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/.tts_wav/tailtrading_5.wav",
+        "durationInFrames": 1016,
+        "revealFrames": [
+          0,
+          834
+        ],
+        "words": [
+          {
+            "text": "Here's",
+            "startFrame": 0,
+            "endFrame": 13
+          },
+          {
+            "text": "where",
+            "startFrame": 13,
+            "endFrame": 17
+          },
+          {
+            "text": "it",
+            "startFrame": 17,
+            "endFrame": 22
+          },
+          {
+            "text": "earns",
+            "startFrame": 22,
+            "endFrame": 31
+          },
+          {
+            "text": "its",
+            "startFrame": 31,
+            "endFrame": 38
+          },
+          {
+            "text": "keep",
+            "startFrame": 38,
+            "endFrame": 47
+          },
+          {
+            "text": "as",
+            "startFrame": 47,
+            "endFrame": 57
+          },
+          {
+            "text": "a",
+            "startFrame": 57,
+            "endFrame": 61
+          },
+          {
+            "text": "diversifier.",
+            "startFrame": 61,
+            "endFrame": 88
+          },
+          {
+            "text": "Bolt",
+            "startFrame": 107,
+            "endFrame": 113
+          },
+          {
+            "text": "the",
+            "startFrame": 113,
+            "endFrame": 119
+          },
+          {
+            "text": "tail",
+            "startFrame": 119,
+            "endFrame": 127
+          },
+          {
+            "text": "trading",
+            "startFrame": 127,
+            "endFrame": 137
+          },
+          {
+            "text": "strategy",
+            "startFrame": 137,
+            "endFrame": 158
+          },
+          {
+            "text": "and",
+            "startFrame": 158,
+            "endFrame": 166
+          },
+          {
+            "text": "a",
+            "startFrame": 166,
+            "endFrame": 170
+          },
+          {
+            "text": "systematic",
+            "startFrame": 170,
+            "endFrame": 188
+          },
+          {
+            "text": "put",
+            "startFrame": 188,
+            "endFrame": 201
+          },
+          {
+            "text": "spread",
+            "startFrame": 201,
+            "endFrame": 219
+          },
+          {
+            "text": "onto",
+            "startFrame": 219,
+            "endFrame": 231
+          },
+          {
+            "text": "a",
+            "startFrame": 231,
+            "endFrame": 236
+          },
+          {
+            "text": "long",
+            "startFrame": 236,
+            "endFrame": 245
+          },
+          {
+            "text": "S",
+            "startFrame": 245,
+            "endFrame": 259
+          },
+          {
+            "text": "&P",
+            "startFrame": 259,
+            "endFrame": 273
+          },
+          {
+            "text": "portfolio",
+            "startFrame": 273,
+            "endFrame": 295
+          },
+          {
+            "text": "and",
+            "startFrame": 295,
+            "endFrame": 311
+          },
+          {
+            "text": "every",
+            "startFrame": 311,
+            "endFrame": 325
+          },
+          {
+            "text": "risk",
+            "startFrame": 325,
+            "endFrame": 337
+          },
+          {
+            "text": "number",
+            "startFrame": 337,
+            "endFrame": 346
+          },
+          {
+            "text": "improves",
+            "startFrame": 346,
+            "endFrame": 359
+          },
+          {
+            "text": "at",
+            "startFrame": 359,
+            "endFrame": 365
+          },
+          {
+            "text": "once.",
+            "startFrame": 365,
+            "endFrame": 379
+          },
+          {
+            "text": "Returns",
+            "startFrame": 389,
+            "endFrame": 407
+          },
+          {
+            "text": "climb",
+            "startFrame": 407,
+            "endFrame": 418
+          },
+          {
+            "text": "from",
+            "startFrame": 418,
+            "endFrame": 427
+          },
+          {
+            "text": "12",
+            "startFrame": 427,
+            "endFrame": 438
+          },
+          {
+            "text": ".5",
+            "startFrame": 438,
+            "endFrame": 452
+          },
+          {
+            "text": "to",
+            "startFrame": 452,
+            "endFrame": 460
+          },
+          {
+            "text": "17%.",
+            "startFrame": 460,
+            "endFrame": 494
+          },
+          {
+            "text": "The",
+            "startFrame": 494,
+            "endFrame": 505
+          },
+          {
+            "text": "shop",
+            "startFrame": 505,
+            "endFrame": 511
+          },
+          {
+            "text": "ratio",
+            "startFrame": 511,
+            "endFrame": 525
+          },
+          {
+            "text": "jumps",
+            "startFrame": 525,
+            "endFrame": 538
+          },
+          {
+            "text": "from",
+            "startFrame": 538,
+            "endFrame": 548
+          },
+          {
+            "text": "0",
+            "startFrame": 548,
+            "endFrame": 558
+          },
+          {
+            "text": ".69",
+            "startFrame": 558,
+            "endFrame": 582
+          },
+          {
+            "text": "to",
+            "startFrame": 582,
+            "endFrame": 602
+          },
+          {
+            "text": "over",
+            "startFrame": 602,
+            "endFrame": 613
+          },
+          {
+            "text": "1",
+            "startFrame": 613,
+            "endFrame": 631
+          },
+          {
+            "text": ".1",
+            "startFrame": 631,
+            "endFrame": 650
+          },
+          {
+            "text": "and",
+            "startFrame": 650,
+            "endFrame": 670
+          },
+          {
+            "text": "the",
+            "startFrame": 670,
+            "endFrame": 679
+          },
+          {
+            "text": "worst",
+            "startFrame": 679,
+            "endFrame": 691
+          },
+          {
+            "text": "single",
+            "startFrame": 691,
+            "endFrame": 707
+          },
+          {
+            "text": "day",
+            "startFrame": 707,
+            "endFrame": 718
+          },
+          {
+            "text": "is",
+            "startFrame": 718,
+            "endFrame": 727
+          },
+          {
+            "text": "more",
+            "startFrame": 727,
+            "endFrame": 738
+          },
+          {
+            "text": "than",
+            "startFrame": 738,
+            "endFrame": 749
+          },
+          {
+            "text": "halved.",
+            "startFrame": 749,
+            "endFrame": 765
+          },
+          {
+            "text": "Most",
+            "startFrame": 774,
+            "endFrame": 780
+          },
+          {
+            "text": "striking",
+            "startFrame": 780,
+            "endFrame": 794
+          },
+          {
+            "text": "of",
+            "startFrame": 794,
+            "endFrame": 801
+          },
+          {
+            "text": "all,",
+            "startFrame": 801,
+            "endFrame": 809
+          },
+          {
+            "text": "the",
+            "startFrame": 817,
+            "endFrame": 820
+          },
+          {
+            "text": "maximum",
+            "startFrame": 820,
+            "endFrame": 834
+          },
+          {
+            "text": "drawdown",
+            "startFrame": 834,
+            "endFrame": 854
+          },
+          {
+            "text": "collapses",
+            "startFrame": 854,
+            "endFrame": 872
+          },
+          {
+            "text": "from",
+            "startFrame": 872,
+            "endFrame": 885
+          },
+          {
+            "text": "minus",
+            "startFrame": 885,
+            "endFrame": 900
+          },
+          {
+            "text": "38",
+            "startFrame": 900,
+            "endFrame": 928
+          },
+          {
+            "text": "%",
+            "startFrame": 928,
+            "endFrame": 944
+          },
+          {
+            "text": "to",
+            "startFrame": 944,
+            "endFrame": 964
+          },
+          {
+            "text": "under",
+            "startFrame": 964,
+            "endFrame": 974
+          },
+          {
+            "text": "minus",
+            "startFrame": 974,
+            "endFrame": 985
+          },
+          {
+            "text": "18%.",
+            "startFrame": 985,
+            "endFrame": 1012
+          }
+        ],
+        "captionWords": [
+          {
+            "text": "Here's",
+            "startFrame": 0,
+            "endFrame": 13
+          },
+          {
+            "text": "where",
+            "startFrame": 13,
+            "endFrame": 17
+          },
+          {
+            "text": "it",
+            "startFrame": 17,
+            "endFrame": 22
+          },
+          {
+            "text": "earns",
+            "startFrame": 22,
+            "endFrame": 31
+          },
+          {
+            "text": "its",
+            "startFrame": 31,
+            "endFrame": 38
+          },
+          {
+            "text": "keep",
+            "startFrame": 38,
+            "endFrame": 47
+          },
+          {
+            "text": "as",
+            "startFrame": 47,
+            "endFrame": 57
+          },
+          {
+            "text": "a",
+            "startFrame": 57,
+            "endFrame": 61
+          },
+          {
+            "text": "diversifier.",
+            "startFrame": 61,
+            "endFrame": 88
+          },
+          {
+            "text": "Bolt",
+            "startFrame": 107,
+            "endFrame": 113
+          },
+          {
+            "text": "the",
+            "startFrame": 113,
+            "endFrame": 119
+          },
+          {
+            "text": "Tail-Trading",
+            "startFrame": 119,
+            "endFrame": 137
+          },
+          {
+            "text": "Strategy",
+            "startFrame": 137,
+            "endFrame": 158
+          },
+          {
+            "text": "and",
+            "startFrame": 158,
+            "endFrame": 166
+          },
+          {
+            "text": "a",
+            "startFrame": 166,
+            "endFrame": 170
+          },
+          {
+            "text": "systematic",
+            "startFrame": 170,
+            "endFrame": 188
+          },
+          {
+            "text": "put",
+            "startFrame": 188,
+            "endFrame": 201
+          },
+          {
+            "text": "spread",
+            "startFrame": 201,
+            "endFrame": 219
+          },
+          {
+            "text": "onto",
+            "startFrame": 219,
+            "endFrame": 231
+          },
+          {
+            "text": "a",
+            "startFrame": 231,
+            "endFrame": 236
+          },
+          {
+            "text": "long",
+            "startFrame": 236,
+            "endFrame": 245
+          },
+          {
+            "text": "S",
+            "startFrame": 245,
+            "endFrame": 259
+          },
+          {
+            "text": "and",
+            "startFrame": 259,
+            "endFrame": 259
+          },
+          {
+            "text": "P",
+            "startFrame": 259,
+            "endFrame": 273
+          },
+          {
+            "text": "portfolio,",
+            "startFrame": 273,
+            "endFrame": 295
+          },
+          {
+            "text": "and",
+            "startFrame": 295,
+            "endFrame": 311
+          },
+          {
+            "text": "every",
+            "startFrame": 311,
+            "endFrame": 325
+          },
+          {
+            "text": "risk",
+            "startFrame": 325,
+            "endFrame": 337
+          },
+          {
+            "text": "number",
+            "startFrame": 337,
+            "endFrame": 346
+          },
+          {
+            "text": "improves",
+            "startFrame": 346,
+            "endFrame": 359
+          },
+          {
+            "text": "at",
+            "startFrame": 359,
+            "endFrame": 365
+          },
+          {
+            "text": "once.",
+            "startFrame": 365,
+            "endFrame": 379
+          },
+          {
+            "text": "Returns",
+            "startFrame": 389,
+            "endFrame": 407
+          },
+          {
+            "text": "climb",
+            "startFrame": 407,
+            "endFrame": 418
+          },
+          {
+            "text": "from",
+            "startFrame": 418,
+            "endFrame": 427
+          },
+          {
+            "text": "twelve",
+            "startFrame": 427,
+            "endFrame": 438
+          },
+          {
+            "text": "and",
+            "startFrame": 438,
+            "endFrame": 443
+          },
+          {
+            "text": "a",
+            "startFrame": 443,
+            "endFrame": 448
+          },
+          {
+            "text": "half",
+            "startFrame": 448,
+            "endFrame": 452
+          },
+          {
+            "text": "to",
+            "startFrame": 452,
+            "endFrame": 460
+          },
+          {
+            "text": "seventeen",
+            "startFrame": 460,
+            "endFrame": 494
+          },
+          {
+            "text": "percent,",
+            "startFrame": 494,
+            "endFrame": 494
+          },
+          {
+            "text": "the",
+            "startFrame": 494,
+            "endFrame": 505
+          },
+          {
+            "text": "Sharpe",
+            "startFrame": 505,
+            "endFrame": 511
+          },
+          {
+            "text": "ratio",
+            "startFrame": 511,
+            "endFrame": 525
+          },
+          {
+            "text": "jumps",
+            "startFrame": 525,
+            "endFrame": 538
+          },
+          {
+            "text": "from",
+            "startFrame": 538,
+            "endFrame": 548
+          },
+          {
+            "text": "zero",
+            "startFrame": 548,
+            "endFrame": 558
+          },
+          {
+            "text": "point",
+            "startFrame": 558,
+            "endFrame": 566
+          },
+          {
+            "text": "six",
+            "startFrame": 566,
+            "endFrame": 574
+          },
+          {
+            "text": "nine",
+            "startFrame": 574,
+            "endFrame": 582
+          },
+          {
+            "text": "to",
+            "startFrame": 582,
+            "endFrame": 602
+          },
+          {
+            "text": "over",
+            "startFrame": 602,
+            "endFrame": 613
+          },
+          {
+            "text": "one",
+            "startFrame": 613,
+            "endFrame": 631
+          },
+          {
+            "text": "point",
+            "startFrame": 631,
+            "endFrame": 631
+          },
+          {
+            "text": "one,",
+            "startFrame": 631,
+            "endFrame": 650
+          },
+          {
+            "text": "and",
+            "startFrame": 650,
+            "endFrame": 670
+          },
+          {
+            "text": "the",
+            "startFrame": 670,
+            "endFrame": 679
+          },
+          {
+            "text": "worst",
+            "startFrame": 679,
+            "endFrame": 691
+          },
+          {
+            "text": "single",
+            "startFrame": 691,
+            "endFrame": 707
+          },
+          {
+            "text": "day",
+            "startFrame": 707,
+            "endFrame": 718
+          },
+          {
+            "text": "is",
+            "startFrame": 718,
+            "endFrame": 727
+          },
+          {
+            "text": "more",
+            "startFrame": 727,
+            "endFrame": 738
+          },
+          {
+            "text": "than",
+            "startFrame": 738,
+            "endFrame": 749
+          },
+          {
+            "text": "halved.",
+            "startFrame": 749,
+            "endFrame": 765
+          },
+          {
+            "text": "Most",
+            "startFrame": 774,
+            "endFrame": 780
+          },
+          {
+            "text": "striking",
+            "startFrame": 780,
+            "endFrame": 794
+          },
+          {
+            "text": "of",
+            "startFrame": 794,
+            "endFrame": 801
+          },
+          {
+            "text": "all,",
+            "startFrame": 801,
+            "endFrame": 809
+          },
+          {
+            "text": "the",
+            "startFrame": 817,
+            "endFrame": 820
+          },
+          {
+            "text": "maximum",
+            "startFrame": 820,
+            "endFrame": 834
+          },
+          {
+            "text": "drawdown",
+            "startFrame": 834,
+            "endFrame": 854
+          },
+          {
+            "text": "collapses",
+            "startFrame": 854,
+            "endFrame": 872
+          },
+          {
+            "text": "from",
+            "startFrame": 872,
+            "endFrame": 885
+          },
+          {
+            "text": "minus",
+            "startFrame": 885,
+            "endFrame": 900
+          },
+          {
+            "text": "thirty-eight",
+            "startFrame": 900,
+            "endFrame": 922
+          },
+          {
+            "text": "percent",
+            "startFrame": 922,
+            "endFrame": 944
+          },
+          {
+            "text": "to",
+            "startFrame": 944,
+            "endFrame": 964
+          },
+          {
+            "text": "under",
+            "startFrame": 964,
+            "endFrame": 974
+          },
+          {
+            "text": "minus",
+            "startFrame": 974,
+            "endFrame": 985
+          },
+          {
+            "text": "eighteen.",
+            "startFrame": 985,
+            "endFrame": 1012
+          }
+        ],
+        "props": {
+          "caption": "Long SPX with hedging overlays \u00b7 Fig. 38, J.P. Morgan",
+          "columns": [
+            "Metric",
+            "SPX",
+            "SPX + PS",
+            "SPX + Tail + PS"
+          ],
+          "rows": [
+            [
+              "Return",
+              "12.5%",
+              "10.2%",
+              "17.1%"
+            ],
+            [
+              "Sharpe",
+              "0.69",
+              "0.69",
+              "1.11"
+            ],
+            [
+              "Worst 1D",
+              "-12.0%",
+              "-10.6%",
+              "-5.0%"
+            ],
+            [
+              "Max DD",
+              "-38.2%",
+              "-31.8%",
+              "-17.6%"
+            ]
+          ],
+          "highlightRow": 3
+        }
+      },
+      {
+        "block": "HeroStatement",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/tailtrading/.tts_wav/tailtrading_6.wav",
+        "durationInFrames": 644,
+        "revealFrames": [
+          0,
+          247,
+          623
+        ],
+        "words": [
+          {
+            "text": "So",
+            "startFrame": 0,
+            "endFrame": 8
+          },
+          {
+            "text": "when",
+            "startFrame": 8,
+            "endFrame": 16
+          },
+          {
+            "text": "the",
+            "startFrame": 16,
+            "endFrame": 20
+          },
+          {
+            "text": "next",
+            "startFrame": 20,
+            "endFrame": 29
+          },
+          {
+            "text": "tail",
+            "startFrame": 29,
+            "endFrame": 38
+          },
+          {
+            "text": "event",
+            "startFrame": 38,
+            "endFrame": 47
+          },
+          {
+            "text": "arrives,",
+            "startFrame": 47,
+            "endFrame": 62
+          },
+          {
+            "text": "the",
+            "startFrame": 74,
+            "endFrame": 77
+          },
+          {
+            "text": "message",
+            "startFrame": 77,
+            "endFrame": 88
+          },
+          {
+            "text": "is",
+            "startFrame": 88,
+            "endFrame": 97
+          },
+          {
+            "text": "simple.",
+            "startFrame": 97,
+            "endFrame": 109
+          },
+          {
+            "text": "Don't",
+            "startFrame": 131,
+            "endFrame": 140
+          },
+          {
+            "text": "be",
+            "startFrame": 140,
+            "endFrame": 145
+          },
+          {
+            "text": "afraid.",
+            "startFrame": 145,
+            "endFrame": 155
+          },
+          {
+            "text": "Your",
+            "startFrame": 179,
+            "endFrame": 183
+          },
+          {
+            "text": "maximum",
+            "startFrame": 183,
+            "endFrame": 199
+          },
+          {
+            "text": "loss",
+            "startFrame": 199,
+            "endFrame": 213
+          },
+          {
+            "text": "is",
+            "startFrame": 213,
+            "endFrame": 224
+          },
+          {
+            "text": "defined",
+            "startFrame": 224,
+            "endFrame": 238
+          },
+          {
+            "text": "up",
+            "startFrame": 238,
+            "endFrame": 247
+          },
+          {
+            "text": "front",
+            "startFrame": 247,
+            "endFrame": 256
+          },
+          {
+            "text": "because",
+            "startFrame": 256,
+            "endFrame": 272
+          },
+          {
+            "text": "you're",
+            "startFrame": 272,
+            "endFrame": 283
+          },
+          {
+            "text": "almost",
+            "startFrame": 283,
+            "endFrame": 293
+          },
+          {
+            "text": "always",
+            "startFrame": 293,
+            "endFrame": 310
+          },
+          {
+            "text": "the",
+            "startFrame": 310,
+            "endFrame": 316
+          },
+          {
+            "text": "option",
+            "startFrame": 316,
+            "endFrame": 328
+          },
+          {
+            "text": "buyer",
+            "startFrame": 328,
+            "endFrame": 343
+          },
+          {
+            "text": "and",
+            "startFrame": 343,
+            "endFrame": 365
+          },
+          {
+            "text": "never",
+            "startFrame": 365,
+            "endFrame": 382
+          },
+          {
+            "text": "the",
+            "startFrame": 382,
+            "endFrame": 391
+          },
+          {
+            "text": "seller.",
+            "startFrame": 391,
+            "endFrame": 402
+          },
+          {
+            "text": "This",
+            "startFrame": 425,
+            "endFrame": 433
+          },
+          {
+            "text": "isn't",
+            "startFrame": 433,
+            "endFrame": 443
+          },
+          {
+            "text": "protection",
+            "startFrame": 443,
+            "endFrame": 460
+          },
+          {
+            "text": "you",
+            "startFrame": 460,
+            "endFrame": 472
+          },
+          {
+            "text": "bleed",
+            "startFrame": 472,
+            "endFrame": 483
+          },
+          {
+            "text": "for",
+            "startFrame": 483,
+            "endFrame": 496
+          },
+          {
+            "text": "while",
+            "startFrame": 496,
+            "endFrame": 504
+          },
+          {
+            "text": "you",
+            "startFrame": 504,
+            "endFrame": 512
+          },
+          {
+            "text": "wait.",
+            "startFrame": 512,
+            "endFrame": 518
+          },
+          {
+            "text": "It's",
+            "startFrame": 539,
+            "endFrame": 544
+          },
+          {
+            "text": "a",
+            "startFrame": 544,
+            "endFrame": 546
+          },
+          {
+            "text": "strategy",
+            "startFrame": 546,
+            "endFrame": 560
+          },
+          {
+            "text": "that",
+            "startFrame": 560,
+            "endFrame": 568
+          },
+          {
+            "text": "turns",
+            "startFrame": 568,
+            "endFrame": 578
+          },
+          {
+            "text": "the",
+            "startFrame": 578,
+            "endFrame": 584
+          },
+          {
+            "text": "crash",
+            "startFrame": 584,
+            "endFrame": 592
+          },
+          {
+            "text": "itself",
+            "startFrame": 592,
+            "endFrame": 606
+          },
+          {
+            "text": "into",
+            "startFrame": 606,
+            "endFrame": 619
+          },
+          {
+            "text": "your",
+            "startFrame": 619,
+            "endFrame": 623
+          },
+          {
+            "text": "payday.",
+            "startFrame": 623,
+            "endFrame": 635
+          }
+        ],
+        "captionWords": [
+          {
+            "text": "So",
+            "startFrame": 0,
+            "endFrame": 8
+          },
+          {
+            "text": "when",
+            "startFrame": 8,
+            "endFrame": 16
+          },
+          {
+            "text": "the",
+            "startFrame": 16,
+            "endFrame": 20
+          },
+          {
+            "text": "next",
+            "startFrame": 20,
+            "endFrame": 29
+          },
+          {
+            "text": "tail",
+            "startFrame": 29,
+            "endFrame": 38
+          },
+          {
+            "text": "event",
+            "startFrame": 38,
+            "endFrame": 47
+          },
+          {
+            "text": "arrives,",
+            "startFrame": 47,
+            "endFrame": 62
+          },
+          {
+            "text": "the",
+            "startFrame": 74,
+            "endFrame": 77
+          },
+          {
+            "text": "message",
+            "startFrame": 77,
+            "endFrame": 88
+          },
+          {
+            "text": "is",
+            "startFrame": 88,
+            "endFrame": 97
+          },
+          {
+            "text": "simple:",
+            "startFrame": 97,
+            "endFrame": 109
+          },
+          {
+            "text": "don't",
+            "startFrame": 131,
+            "endFrame": 140
+          },
+          {
+            "text": "be",
+            "startFrame": 140,
+            "endFrame": 145
+          },
+          {
+            "text": "afraid.",
+            "startFrame": 145,
+            "endFrame": 155
+          },
+          {
+            "text": "Your",
+            "startFrame": 179,
+            "endFrame": 183
+          },
+          {
+            "text": "maximum",
+            "startFrame": 183,
+            "endFrame": 199
+          },
+          {
+            "text": "loss",
+            "startFrame": 199,
+            "endFrame": 213
+          },
+          {
+            "text": "is",
+            "startFrame": 213,
+            "endFrame": 224
+          },
+          {
+            "text": "defined",
+            "startFrame": 224,
+            "endFrame": 238
+          },
+          {
+            "text": "upfront,",
+            "startFrame": 238,
+            "endFrame": 256
+          },
+          {
+            "text": "because",
+            "startFrame": 256,
+            "endFrame": 272
+          },
+          {
+            "text": "you're",
+            "startFrame": 272,
+            "endFrame": 283
+          },
+          {
+            "text": "almost",
+            "startFrame": 283,
+            "endFrame": 293
+          },
+          {
+            "text": "always",
+            "startFrame": 293,
+            "endFrame": 310
+          },
+          {
+            "text": "the",
+            "startFrame": 310,
+            "endFrame": 316
+          },
+          {
+            "text": "option",
+            "startFrame": 316,
+            "endFrame": 328
+          },
+          {
+            "text": "buyer",
+            "startFrame": 328,
+            "endFrame": 343
+          },
+          {
+            "text": "and",
+            "startFrame": 343,
+            "endFrame": 365
+          },
+          {
+            "text": "never",
+            "startFrame": 365,
+            "endFrame": 382
+          },
+          {
+            "text": "the",
+            "startFrame": 382,
+            "endFrame": 391
+          },
+          {
+            "text": "seller.",
+            "startFrame": 391,
+            "endFrame": 402
+          },
+          {
+            "text": "This",
+            "startFrame": 425,
+            "endFrame": 433
+          },
+          {
+            "text": "isn't",
+            "startFrame": 433,
+            "endFrame": 443
+          },
+          {
+            "text": "protection",
+            "startFrame": 443,
+            "endFrame": 460
+          },
+          {
+            "text": "you",
+            "startFrame": 460,
+            "endFrame": 472
+          },
+          {
+            "text": "bleed",
+            "startFrame": 472,
+            "endFrame": 483
+          },
+          {
+            "text": "for",
+            "startFrame": 483,
+            "endFrame": 496
+          },
+          {
+            "text": "while",
+            "startFrame": 496,
+            "endFrame": 504
+          },
+          {
+            "text": "you",
+            "startFrame": 504,
+            "endFrame": 512
+          },
+          {
+            "text": "wait.",
+            "startFrame": 512,
+            "endFrame": 518
+          },
+          {
+            "text": "It's",
+            "startFrame": 539,
+            "endFrame": 544
+          },
+          {
+            "text": "a",
+            "startFrame": 544,
+            "endFrame": 546
+          },
+          {
+            "text": "strategy",
+            "startFrame": 546,
+            "endFrame": 560
+          },
+          {
+            "text": "that",
+            "startFrame": 560,
+            "endFrame": 568
+          },
+          {
+            "text": "turns",
+            "startFrame": 568,
+            "endFrame": 578
+          },
+          {
+            "text": "the",
+            "startFrame": 578,
+            "endFrame": 584
+          },
+          {
+            "text": "crash",
+            "startFrame": 584,
+            "endFrame": 592
+          },
+          {
+            "text": "itself",
+            "startFrame": 592,
+            "endFrame": 606
+          },
+          {
+            "text": "into",
+            "startFrame": 606,
+            "endFrame": 619
+          },
+          {
+            "text": "your",
+            "startFrame": 619,
+            "endFrame": 623
+          },
+          {
+            "text": "payday.",
+            "startFrame": 623,
+            "endFrame": 635
+          }
+        ],
+        "props": {
+          "kicker": "The bottom line",
+          "lines": [
+            {
+              "text": "When the next tail hits, don't be afraid."
+            },
+            {
+              "text": "Max loss is defined upfront. You're the buyer.",
+              "accent": true
+            },
+            {
+              "text": "Turn the crash into your payday.",
+              "accent": true
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

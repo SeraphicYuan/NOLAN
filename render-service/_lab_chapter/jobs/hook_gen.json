@@ -1,0 +1,175 @@
+{
+  "out": "hook_chapter.mp4",
+  "theme": "bold-signal",
+  "props": {
+    "steps": [
+      {
+        "block": "HeroStatement",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook/1.mp3",
+        "durationInFrames": 270,
+        "revealFrames": [
+          0,
+          118
+        ],
+        "props": {
+          "kicker": "THE TYPE",
+          "lines": [
+            {
+              "text": "I never wanted to be an NPC.",
+              "strike": "NPC"
+            },
+            {
+              "text": "Running someone else's script.",
+              "accent": "script"
+            }
+          ]
+        }
+      },
+      {
+        "block": "ListReveal",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook/2.mp3",
+        "durationInFrames": 186,
+        "revealFrames": [
+          73,
+          94,
+          110,
+          127,
+          151
+        ],
+        "props": {
+          "title": "Max out every stat",
+          "items": [
+            {
+              "label": "Mind",
+              "tag": "Intellect"
+            },
+            {
+              "label": "Body",
+              "tag": "Strength"
+            },
+            {
+              "label": "Spirit",
+              "tag": "Meaning"
+            },
+            {
+              "label": "Relationships",
+              "tag": "Connection"
+            },
+            {
+              "label": "Money",
+              "tag": "Wealth"
+            }
+          ]
+        }
+      },
+      {
+        "block": "HeroStatement",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook/3.mp3",
+        "durationInFrames": 292,
+        "revealFrames": [
+          0,
+          79,
+          244
+        ],
+        "props": {
+          "kicker": "THE GOAL",
+          "lines": [
+            {
+              "text": "A level 100 player.",
+              "accent": "100"
+            },
+            {
+              "text": "Every area of the map unlocked.",
+              "accent": "unlocked"
+            },
+            {
+              "text": "Bank overflowing with gold.",
+              "accent": "gold"
+            }
+          ]
+        }
+      },
+      {
+        "block": "ListReveal",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook/4.mp3",
+        "durationInFrames": 454,
+        "revealFrames": [
+          109,
+          196,
+          270
+        ],
+        "props": {
+          "title": "So I chased it",
+          "items": [
+            {
+              "label": "Fitness",
+              "tag": "Obsession"
+            },
+            {
+              "label": "Knowledge",
+              "tag": "Absorb it all"
+            },
+            {
+              "label": "Freedom",
+              "tag": "Business after business"
+            }
+          ]
+        }
+      },
+      {
+        "block": "HeroStatement",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook/5.mp3",
+        "durationInFrames": 421,
+        "revealFrames": [
+          0,
+          230,
+          338
+        ],
+        "props": {
+          "kicker": "THE WORK",
+          "lines": [
+            {
+              "text": "15 years digging in.",
+              "accent": "15"
+            },
+            {
+              "text": "5 years writing in public.",
+              "accent": "5"
+            },
+            {
+              "text": "The same patterns kept showing up.",
+              "accent": "patterns"
+            }
+          ]
+        }
+      },
+      {
+        "block": "HeroStatement",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/hook/6.mp3",
+        "durationInFrames": 253,
+        "revealFrames": [
+          73,
+          132,
+          229
+        ],
+        "props": {
+          "kicker": "ONE THING",
+          "lines": [
+            {
+              "text": "HUMAN 3.0",
+              "accent": "HUMAN 3.0"
+            },
+            {
+              "text": "One map to escape mediocrity.",
+              "accent": "escape"
+            },
+            {
+              "text": "And reach your potential.",
+              "accent": "potential"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

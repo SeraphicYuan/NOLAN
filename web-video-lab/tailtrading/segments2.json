@@ -1,0 +1,22 @@
+[
+  { "chapter": "tail2", "step": 1,
+    "text": "In a real crash, most hedges either bleed you dry, or fail right when you finally need them." },
+  { "chapter": "tail2", "step": 2,
+    "text": "There's an old principle on the trading desk. You pay for what you get. Cheap protection under-protects, and full protection bleeds." },
+  { "chapter": "tail2", "step": 3,
+    "text": "So here's the trade-off in black and white. Cheap hedges cost little, but they under-protect in the tail. Full hedges protect, but they bleed premium every single day. What if you didn't have to choose?" },
+  { "chapter": "tail2", "step": 4,
+    "text": "Here's the tell. More than a thousand times since two thousand four, the volatility term structure has inverted, three-month vol dropping below one-month. And every single one of those landed on a violent move, averaging one point nine five sigma." },
+  { "chapter": "tail2", "step": 5,
+    "text": "Inside that window, the paper finds three distinct trades. First, Delta: buy the rebound. Then Gamma: harvest the whipsaw. And finally Vega: fade the VIX spike." },
+  { "chapter": "tail2", "step": 6,
+    "text": "Which brings us to the part that actually matters. The payoff." },
+  { "chapter": "tail2", "step": 7,
+    "text": "This is the strategy's real cumulative profit, each pillar stacked on the last. Flat and cost-free through calm markets, then it explodes through the twenty twenty crash, and again through the later shocks." },
+  { "chapter": "tail2", "step": 8,
+    "text": "And the edge compounds with patience. The deeper the inversion and the longer you hold, the bigger the subsequent rebound, strongest at the longer horizons." },
+  { "chapter": "tail2", "step": 9,
+    "text": "Bolt it onto a long portfolio as a diversifier, and every risk number improves at once. Returns climb, the Sharpe ratio jumps from zero point six nine to over one point one, and the maximum drawdown collapses from minus thirty-eight percent to under minus eighteen." },
+  { "chapter": "tail2", "step": 10,
+    "text": "Define your loss up front. Stay the buyer, never the seller. And turn the next crash into your payday." }
+]

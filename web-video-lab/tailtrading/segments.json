@@ -1,0 +1,32 @@
+[
+  {
+    "chapter": "tailtrading",
+    "step": 1,
+    "text": "In tail-risk hedging, you pay for what you get. The cheap hedges under-protect right when you need them, and the ones that truly protect bleed premium every single day while you sit and wait. So here's the question that started this whole study: what if a strategy could deliver real profit during a crash, without paying any insurance just to wait for it?"
+  },
+  {
+    "chapter": "tailtrading",
+    "step": 2,
+    "text": "So how do you catch a tail while it's still forming? The cleanest tell is the volatility term structure. When three-month implied vol falls below one-month, the curve inverts, and that signal has fired more than a thousand times since two thousand four. Every single instance landed on a violent S and P move, averaging one point nine five sigma."
+  },
+  {
+    "chapter": "tailtrading",
+    "step": 3,
+    "text": "Inside these tail-like windows, the paper uncovers three distinct trades. In Delta space, you buy the rebound, a leveraged call spread, because spot tends to snap violently back up. In Gamma space, you harvest the whipsaw, short-dated calls hedged daily, feeding on wild day-to-day mean reversion. And in Vega space, you fade the spike, a VIX put ladder, betting that panic-driven implied vol will quickly normalize."
+  },
+  {
+    "chapter": "tailtrading",
+    "step": 4,
+    "text": "Put the three pillars together and watch the equity curve. This is the strategy's actual cumulative profit, with each pillar's contribution stacked on top of the others. It stays flat and cost-free through calm markets, then explodes higher through the twenty twenty crash, with Delta, Gamma and Vega all firing at once, and it does it again through the later shocks of twenty twenty-two and twenty twenty-four."
+  },
+  {
+    "chapter": "tailtrading",
+    "step": 5,
+    "text": "Here's where it earns its keep as a diversifier. Bolt the Tail-Trading Strategy and a systematic put spread onto a long S and P portfolio, and every risk number improves at once. Returns climb from twelve and a half to seventeen percent, the Sharpe ratio jumps from zero point six nine to over one point one, and the worst single day is more than halved. Most striking of all, the maximum drawdown collapses from minus thirty-eight percent to under minus eighteen."
+  },
+  {
+    "chapter": "tailtrading",
+    "step": 6,
+    "text": "So when the next tail event arrives, the message is simple: don't be afraid. Your maximum loss is defined upfront, because you're almost always the option buyer and never the seller. This isn't protection you bleed for while you wait. It's a strategy that turns the crash itself into your payday."
+  }
+]

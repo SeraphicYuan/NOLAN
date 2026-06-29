@@ -1,0 +1,141 @@
+{
+  "out": "compound.mp4",
+  "theme": "bold-signal",
+  "fps": 30,
+  "audioDir": "D:/ClaudeProjects/NOLAN/web-video-lab/compound/audio",
+  "wavDir": "/mnt/d/claudeprojects/nolan/web-video-lab/compound/.tts_wav",
+  "wordsCache": "web-video-lab/compound/words.json",
+  "steps": [
+    {
+      "block": "HeroStatement",
+      "wav": "compound_1",
+      "audio": "1.mp3",
+      "anchors": [
+        "@start",
+        "world",
+        "Compound"
+      ],
+      "props": {
+        "kicker": "Einstein supposedly called it",
+        "lines": [
+          {
+            "text": "The eighth wonder",
+            "accent": true
+          },
+          {
+            "text": "of the world."
+          },
+          {
+            "text": "Compound interest.",
+            "accent": true
+          }
+        ]
+      }
+    },
+    {
+      "block": "SelfFeedingCurve",
+      "wav": "compound_2",
+      "audio": "2.mp3",
+      "anchors": [
+        "interest",
+        "interest",
+        "feeding"
+      ],
+      "bespoke": {
+        "brief": "A self-feeding growth curve that builds in three synced reveals over 'You earn interest. Then you earn interest on the interest. And the growth starts feeding itself.' Reveal 1 (first 'interest', anchor[0]): a single principal bar earns a small interest increment on top — a thin accent slab pops above the base. Reveal 2 (second 'interest' = 'interest on the interest', anchor[1]): the increment itself sprouts its own smaller increment, and an arrow loops from the top of the stack back down to its base, showing interest now earns interest. Reveal 3 ('feeding', anchor[2]): the discrete bars dissolve into a smooth exponential curve that visibly accelerates upward, with the loop arrow now continuously cycling (the curve 'feeds itself'). Drive each reveal off revealFrames; use the per-word `words` timeline so the loop-arrow snaps exactly on the second 'interest' and the curve ignites on 'feeding'. Token-faithful, Surface-wrapped."
+      },
+      "props": {}
+    },
+    {
+      "block": "ValueLadder",
+      "wav": "compound_3",
+      "audio": "3.mp3",
+      "anchors": [
+        "thousand",
+        "two",
+        "Four",
+        "Ten"
+      ],
+      "bespoke": {
+        "brief": "A doubling money ladder where the dollar figure counts up as each amount is spoken, over 'A thousand dollars at eight percent becomes two thousand in nine years. Four thousand in eighteen. Ten thousand in thirty.' Lay out a horizontal time axis with year ticks (0, 9, 18, 30). Reveal 1 (anchor[0] 'thousand'): seed $1,000 at year 0. Reveal 2 (anchor[1] 'two'): a rung rises at year 9 and a big number rolls/counts from $1,000 up to $2,000, finishing on the word 'two'. Reveal 3 (anchor[2] 'Four'): rung at year 18, number counts $2,000 -> $4,000, landing on 'Four'. Reveal 4 (anchor[3] 'Ten'): rung at year 30, number counts $4,000 -> $10,000, landing on 'Ten' — with the gaps between rungs visibly widening to show acceleration. Use the per-word `words` timeline (start/end frames of 'two','Four','Ten') to time each count-up so the rolling digits settle precisely as the spoken amount is said. Token-faithful, Surface-wrapped."
+      },
+      "props": {
+        "prefix": "$"
+      }
+    },
+    {
+      "block": "ListReveal",
+      "wav": "compound_4",
+      "audio": "4.mp3",
+      "anchors": [
+        "Time",
+        "Rate",
+        "consistent"
+      ],
+      "props": {
+        "title": "Three things decide where you land",
+        "items": [
+          {
+            "label": "Time",
+            "tag": "Horizon"
+          },
+          {
+            "label": "Rate",
+            "tag": "Return"
+          },
+          {
+            "label": "Consistency",
+            "tag": "Discipline"
+          }
+        ]
+      }
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "compound_5",
+      "audio": "5.mp3",
+      "anchors": [
+        "@start",
+        "Debt"
+      ],
+      "props": {
+        "kicker": "but it cuts both ways",
+        "lines": [
+          {
+            "text": "It cuts both ways."
+          },
+          {
+            "text": "Debt compounds against you",
+            "accent": true
+          }
+        ]
+      }
+    },
+    {
+      "block": "HeroStatement",
+      "wav": "compound_6",
+      "audio": "6.mp3",
+      "anchors": [
+        "@start",
+        "Stay",
+        "time"
+      ],
+      "props": {
+        "kicker": "so",
+        "lines": [
+          {
+            "text": "Start early.",
+            "accent": true
+          },
+          {
+            "text": "Stay in."
+          },
+          {
+            "text": "Let time do the heavy lifting.",
+            "accent": true
+          }
+        ]
+      }
+    }
+  ]
+}

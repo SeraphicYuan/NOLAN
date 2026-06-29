@@ -1,0 +1,90 @@
+{
+  "out": "one-map_chapter.mp4",
+  "theme": "bold-signal",
+  "props": {
+    "steps": [
+      {
+        "block": "HeroStatement",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/one-map/1.mp3",
+        "durationInFrames": 172,
+        "revealFrames": [15, 100],
+        "props": {
+          "kicker": "they already exist",
+          "lines": [
+            { "text": "There are already" },
+            { "text": "maps for everything.", "accent": true }
+          ]
+        }
+      },
+      {
+        "block": "ListReveal",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/one-map/2.mp3",
+        "durationInFrames": 365,
+        "revealFrames": [0, 65, 149, 223],
+        "props": {
+          "title": "Existing maps · one per domain",
+          "items": [
+            { "label": "Spiral Dynamics", "tag": "Mind" },
+            { "label": "Buddhism · Christianity", "tag": "Meaning" },
+            { "label": "Red Pill · Feminism", "tag": "Dating" },
+            { "label": "eCommerce · Consulting", "tag": "Money" }
+          ]
+        }
+      },
+      {
+        "block": "HeroStatement",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/one-map/3.mp3",
+        "durationInFrames": 228,
+        "revealFrames": [20, 150],
+        "props": {
+          "kicker": "every one shares it",
+          "lines": [
+            { "text": "They all hold real truths." },
+            { "text": "But each is locked to one domain.", "accent": true }
+          ]
+        }
+      },
+      {
+        "block": "WebVsBoxes",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/one-map/4.mp3",
+        "durationInFrames": 395,
+        "revealFrames": [10, 97, 142],
+        "props": {
+          "kicker": "not a stack of classes",
+          "headline": "Taught as boxes — it's actually a web.",
+          "boxes": ["Math", "English", "Science"],
+          "nodes": ["Mind", "Meaning", "Dating", "Body", "Money", "Career"]
+        }
+      },
+      {
+        "block": "ArchetypeCards",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/one-map/5.mp3",
+        "durationInFrames": 456,
+        "revealFrames": [38, 150, 260, 345],
+        "props": {
+          "kicker": "developed on one axis",
+          "cards": [
+            { "name": "Spiritual Teacher", "maxLabel": "Spirit", "maxVal": 0.95, "lowLabel": "Body", "lowVal": 0.2, "flaw": "a frail body" },
+            { "name": "Businessman", "maxLabel": "Wealth", "maxVal": 0.95, "lowLabel": "Relationships", "lowVal": 0.18, "flaw": "can't hold a relationship" },
+            { "name": "Alpha Male", "maxLabel": "Presence", "maxVal": 0.95, "lowLabel": "Emotion", "lowVal": 0.15, "flaw": "an emotional wreck" }
+          ],
+          "closer": "Truly developed across the board — extremely rare."
+        }
+      },
+      {
+        "block": "Timeline",
+        "audioSrc": "D:/ClaudeProjects/NOLAN/web-video-lab/human-3.0/presentation/public/audio/one-map/6.mp3",
+        "durationInFrames": 432,
+        "revealFrames": [115, 185, 220, 290],
+        "props": {
+          "kicker": "built before the internet",
+          "headline": "Built before the world it must explain",
+          "anchor": { "label": "Greek Philosophy" },
+          "ticks": [{ "label": "Internet" }, { "label": "AI" }],
+          "note": "all came after it",
+          "moneyNote": "money — barely touched, yet it runs most lives."
+        }
+      }
+    ]
+  }
+}
