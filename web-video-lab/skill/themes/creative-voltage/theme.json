@@ -24,5 +24,17 @@
     "surface": "#0033b8",
     "text": "#ffffff",
     "accent": "#d4ff00"
-  }
+  },
+  "fonts": {
+    "displayEn": "Syne",
+    "body": "Space Mono",
+    "cjk": "Noto Sans SC",
+    "mono": "Space Mono"
+  },
+  "avoidFor": [
+    "corporate",
+    "academic",
+    "finance",
+    "medical"
+  ]
 }

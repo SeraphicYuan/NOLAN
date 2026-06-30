@@ -116,7 +116,7 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 | **Phase 2.4 实现单章（×N 次，被 2.2 / 2.3 调用）** | **`references/CHAPTER-CRAFT.md`** 单一入口 —— Part 0 十条原则 / Part 1 开工 5 问 / Part 2 关系→动作决策树 / Part 3 视觉工具箱 / Part 4 时长参考 / Part 5 反 AI 味反模式 / Part 6 代码硬规则（**含 narrations.ts 强制约束**）/ Part 7 完工自检 / Part 8 反馈速查 + 当前主题的 `themes/<id>/theme.json` + 当前章节的 outline.md 段落 + **`article.md` 本章对应段落** + 素材清单 | `references/EXAMPLES/`（结构示意，不是抄袭模板）；`references/THEMES.md` 完整 token 契约 |
 | Phase 3 音频合成 | `references/AUDIO.md`（含 narrations.ts → segments.json → 任意 provider 流程，内置 minimax + openai） | `templates/scripts/tts-providers/README.md`（换 provider / 自带 TTS 时） |
 | Phase 4 录屏 + 后期 | `references/RECORDING.md`（含 `?auto=1` 自动录屏） | —— |
-| 选 / 造 / 切主题 | —— | `references/THEMES.md` |
+| 选 / 造 / 切主题 | —— | `references/THEMES.md`；**创建 / 富化 / 缺口扩充主题** → `references/THEME-PLAYBOOK.md`（端到端 checklist） |
 
 > **写章节时只读一份 `CHAPTER-CRAFT.md`**。十条原则 / 开工 self-prompting /
 > 决策树 / 反 AI 味反模式 / 完工自检全部并入这一份单一入口。`EXAMPLES/`
@@ -176,9 +176,14 @@ Phase 2.4 的"实现单章"会重复 N 次 —— 每次都要回看核心约束
 ### agent 此时要做的预备工作
 
 1. 读所有 `themes/*/theme.json` 拿 `nameZh` / `descriptionZh` / `bestFor`
-   / `mood` —— **不要硬编码清单**
+   / `mood` / `avoidFor`（反模式：命中就排除该主题）/ `fonts` —— **不要硬编码清单**
 2. 根据 `script.md` 的内容类型 / 关键词 / 语气，**主动**从主题里挑 2~3
-   套**最匹配的推荐**（匹配 `bestFor` 字段）
+   套**最匹配的推荐**（匹配 `bestFor` 字段）。可先跑打分器拿一个可解释
+   的排序，再用人工判断微调：
+   `python scripts/select_theme.py "<内容简述/script 摘要>" [--tone light|dark]`
+   —— 它读 `themes/selector.json`（英文 tag + tone/energy + 反模式）+ 各
+   `theme.json` 的 `mood`/`bestFor`，输出 top-N + 每条命中的信号（为什么）。
+   打分只是建议，最终仍由 agent 拍板。
 3. 扫一遍 `outline.md` 末尾"素材清单"部分
 
 ### 总结模板（骨架，agent 按情况填充）

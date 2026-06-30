@@ -1,0 +1,90 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · aurora-mesh
+ *   AI-era / generative aurora. Deep indigo-black canvas with a SIGNATURE
+ *   soft multi-hue radial gradient mesh (violet · magenta · teal · indigo)
+ *   diffusing across the stage like an aurora — no neon strokes (that's
+ *   neon-cyber), no grid (that's blueprint), no localized warm pool (that's
+ *   dark-botanical). Full-field, cool, luminous. Space Grotesk display +
+ *   Manrope body. For AI / LLM launches, generative art, web3, modern
+ *   SaaS keynotes, future-tech concept pieces.
+ *
+ *   Color seeds adapted (video-tuned, raised contrast) from ui-ux-pro-max
+ *   NFT/Web3 (#8B5CF6 / #0F0F23) + Generative Art (#EC4899) palettes.
+ *
+ *   character knobs:
+ *     • hero numbers   — Space Grotesk, weight 600, tight tracking
+ *     • rule           — 1px solid violet-tinted (calm, modern)
+ *     • card           — soft 18px radius + faint violet glow border
+ *     • surface        — SIGNATURE aurora mesh (4 radial blobs, screen blend)
+ *     • motion         — smooth / flowing (slightly calm intensity)
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  /* ─── palette ─── */
+  --shell:        #06050f;
+  --surface:      #0c0a1a;
+  --surface-2:    #161232;
+  --surface-3:    #221b49;
+  --text:         #ece9ff;
+  --text-2:       #c6bdf2;
+  --text-mute:    #847baa;
+  --text-faint:   #4c4670;
+  --rule:         rgba(157, 123, 255, 0.28);
+  --accent:       #9d7bff;            /* electric violet — pops, survives h.264 */
+  --accent-soft:  rgba(157, 123, 255, 0.12);
+  --accent-glow:  rgba(157, 123, 255, 0.50);
+
+  /* ─── fonts (all loaded in index.tsx) ─── */
+  --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;
+  --font-display-en: "Space Grotesk", "Inter", "Helvetica Neue", sans-serif;
+  --font-body:       "Manrope", "Noto Sans SC", -apple-system, sans-serif;
+  --font-mono:       "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --font-features:   "tnum", "ss01", "ss02";
+
+  /* ─── motion: smooth flowing ─── */
+  --dur-quick:     200ms;
+  --dur-base:      480ms;
+  --dur-slow:      760ms;
+  --dur-cinematic: 1200ms;
+  --motion-intensity: 0.9;
+  --scale-ratio:   1.28;
+
+  /* ─── design identity: luminous AI-era ─── */
+  --r-card:        18px;             /* soft modern */
+  --r-stage:       0;
+  --rule-w:        1px;
+  --rule-style:    solid;
+  --hero-num-font:    var(--font-display-en);
+  --hero-num-style:   normal;
+  --hero-num-weight:  600;
+  --hero-num-track:   -0.03em;
+  --stage-pad-x:   110px;
+  --stage-pad-y:   84px;
+  --card-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.50),
+    0 0 0 1px rgba(157, 123, 255, 0.14),
+    0 0 44px rgba(157, 123, 255, 0.08);
+  --shadow-stage:
+    0 60px 160px rgba(8, 0, 40, 0.62),
+    0 0 0 1px rgba(157, 123, 255, 0.08);
+
+  /* ─── decoration: SIGNATURE aurora mesh ───
+     Top layer = faint dither grain (SVG fractalNoise, desaturated, low
+     alpha) that decorrelates 8-bit h264 banding in the smooth dark
+     gradients — invisible at 1:1, but stops contour stepping after a
+     platform re-encode. Then a gentle center scrim, then 4 soft radial
+     blobs (violet / magenta / teal / indigo). `screen` blend makes the
+     blobs glow additively over the dark surface. */
+  --surface-pattern:
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='220'%20height='220'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.8'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='linear'%20slope='0.12'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(72% 60% at 50% 42%, rgba(6, 5, 15, 0.55), transparent 72%),
+    radial-gradient(58% 50% at 14% 8%,  rgba(124, 108, 255, 0.55), transparent 72%),
+    radial-gradient(52% 46% at 88% 16%, rgba(236, 72, 153, 0.42), transparent 72%),
+    radial-gradient(60% 56% at 84% 96%, rgba(45, 212, 191, 0.40), transparent 72%),
+    radial-gradient(54% 50% at 12% 94%, rgba(99, 102, 241, 0.46), transparent 72%);
+  --surface-pattern-size: 220px 220px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  --surface-pattern-blend: screen;
+  --surface-pattern-opacity: 1;
+
+  /* ─── soft cinematic vignette (keeps edges from clipping bright) ─── */
+  --surface-vignette: radial-gradient(circle at 50% 38%, transparent 56%, rgba(0, 0, 0, 0.42));
+}

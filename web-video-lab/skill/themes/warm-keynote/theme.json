@@ -23,5 +23,17 @@
     "surface": "#FFFFFF",
     "text": "#43302B",
     "accent": "#14B8A6"
-  }
+  },
+  "fonts": {
+    "displayEn": "Inter",
+    "body": "Inter",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "hacker",
+    "cyberpunk",
+    "vintage",
+    "children"
+  ]
 }

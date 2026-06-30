@@ -24,5 +24,17 @@
     "surface": "#0e1830",
     "text": "#e6f0ff",
     "accent": "#5fc7e8"
-  }
+  },
+  "fonts": {
+    "displayEn": "IBM Plex Mono",
+    "body": "IBM Plex Sans",
+    "cjk": "IBM Plex Sans",
+    "mono": "IBM Plex Mono"
+  },
+  "avoidFor": [
+    "lifestyle",
+    "fashion",
+    "children",
+    "beauty"
+  ]
 }

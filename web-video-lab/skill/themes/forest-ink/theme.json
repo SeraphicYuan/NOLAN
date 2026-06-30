@@ -24,5 +24,17 @@
     "surface": "#f5f1e8",
     "text": "#1a2e1f",
     "accent": "#4d7a4d"
-  }
+  },
+  "fonts": {
+    "displayEn": "Playfair Display",
+    "body": "Source Serif 4",
+    "cjk": "Noto Serif SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "cyberpunk",
+    "finance",
+    "corporate",
+    "hacker"
+  ]
 }

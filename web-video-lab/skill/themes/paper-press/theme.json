@@ -23,5 +23,17 @@
     "surface": "#efe7d6",
     "text": "#1a1714",
     "accent": "#ff4a2b"
-  }
+  },
+  "fonts": {
+    "displayEn": "Instrument Serif",
+    "body": "Manrope",
+    "cjk": "Noto Serif SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "hacker",
+    "cyberpunk",
+    "enterprise",
+    "academic"
+  ]
 }

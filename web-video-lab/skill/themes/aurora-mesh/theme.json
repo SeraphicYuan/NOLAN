@@ -1,0 +1,41 @@
+{
+  "id": "aurora-mesh",
+  "name": "Aurora Mesh",
+  "nameZh": "极光",
+  "description": "Deep indigo-black canvas with a signature soft multi-hue gradient mesh (violet / magenta / teal / indigo) diffusing across the stage like an aurora. Space Grotesk + Manrope. AI-era / generative feel — best for AI launches, generative art, web3 and modern tech keynotes.",
+  "descriptionZh": "深靛蓝黑底 + 招牌的柔和多色渐变网格(紫 / 品红 / 青 / 靛)弥散全场, 像极光. Space Grotesk + Manrope. AI 时代 / 生成式气质, 适合 AI 发布、生成艺术、web3 与现代科技 keynote.",
+  "mood": [
+    "dark",
+    "aurora",
+    "gradient",
+    "futuristic",
+    "ai",
+    "luminous"
+  ],
+  "bestFor": [
+    "AI / 大模型发布",
+    "生成式艺术 / AIGC",
+    "web3 / NFT",
+    "现代 SaaS 发布会",
+    "未来科技 / 趋势解读",
+    "概念型科普"
+  ],
+  "preview": {
+    "shell": "#06050f",
+    "surface": "#0c0a1a",
+    "text": "#ece9ff",
+    "accent": "#9d7bff"
+  },
+  "fonts": {
+    "displayEn": "Space Grotesk",
+    "body": "Manrope",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "literary",
+    "vintage",
+    "documentary",
+    "children"
+  ]
+}

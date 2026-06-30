@@ -1,0 +1,78 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · neubrutalism
+ *   Internet-native neubrutalism. Bright clean white canvas, THICK black
+ *   3px borders, HARD offset solid-black drop shadows (0 blur), a hot
+ *   magenta accent, chunky Space Grotesk, and a faint black DOT GRID.
+ *   Playful, loud, sticker-like — the opposite of aurora-mesh.
+ *
+ *   Deliberately distinct from its cousin `bauhaus-bold` (which is a warm
+ *   CREAM canvas on a DARK shell, primary BLUE accent, 0-radius pure
+ *   rectangles, Archivo Black, and a black FRAME around the whole stage,
+ *   restrained modernist). Neubrutalism instead: white on light shell,
+ *   PINK accent, 8px ROUNDED corners, dot grid, bouncy motion, NO stage
+ *   frame — the identity lives in the bordered+shadowed cards.
+ *
+ *   Color seed adapted (video-tuned) from ui-ux-pro-max Arcade/Vibrant.
+ *
+ *   character knobs:
+ *     • borders        — 3px solid BLACK everywhere (--bw-1)
+ *     • card           — 8px radius + 7px hard offset black shadow
+ *     • accent         — hot magenta (fills / bars / highlights), NO glow
+ *     • hero numbers    — Space Grotesk 700, black, near-zero tracking
+ *     • surface        — faint black dot grid (30px)
+ *     • motion         — bouncy / punchy (expressive overshoot)
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  /* ─── palette ─── */
+  --shell:        #e8e6de;            /* light shell — bright, not bauhaus's dark */
+  --surface:      #ffffff;            /* clean white, not cream */
+  --surface-2:    #f4f2ec;
+  --surface-3:    #e9e6dd;
+  --text:         #141414;            /* near-black — structural */
+  --text-2:       #3a3a3a;
+  --text-mute:    #6b6b6b;
+  --text-faint:   #9a9a9a;
+  --rule:         #141414;            /* BLACK borders + dividers */
+  --accent:       #f5197a;            /* hot magenta */
+  --accent-soft:  rgba(245, 25, 122, 0.12);
+  --accent-glow:  transparent;         /* neubrutalism is FLAT — no glow */
+
+  /* ─── fonts (all loaded in index.tsx) ─── */
+  --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;
+  --font-display-en: "Space Grotesk", "Archivo", "Helvetica Neue", sans-serif;
+  --font-body:       "Manrope", "Noto Sans SC", -apple-system, sans-serif;
+  --font-mono:       "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --font-features:   "tnum", "ss01";
+
+  /* ─── motion: bouncy / punchy ─── */
+  --dur-quick:     140ms;
+  --dur-base:      360ms;
+  --dur-slow:      600ms;
+  --dur-cinematic: 900ms;
+  --motion-intensity: 1.2;
+  --scale-ratio:   1.22;
+
+  /* ─── design identity: thick-border sticker blocks ─── */
+  --bw-1:          3px;               /* SIGNATURE — chunky black borders */
+  --r-card:        var(--r-sm);       /* 8px ROUNDED — vs bauhaus 0 */
+  --r-stage:       0;
+  --rule-w:        3px;               /* heavy dividers */
+  --rule-style:    solid;
+  --hero-num-font:    var(--font-display-en);
+  --hero-num-style:   normal;
+  --hero-num-weight:  700;
+  --hero-num-track:   -0.02em;
+  --stage-pad-x:   96px;
+  --stage-pad-y:   72px;
+  --card-shadow:   7px 7px 0 0 var(--text);   /* SIGNATURE — hard offset, 0 blur */
+  --shadow-stage:  0 0 0 1px rgba(0, 0, 0, 0.06);
+  --stage-border:  none;              /* NO frame — vs bauhaus 4px black frame */
+
+  /* ─── decoration: SIGNATURE faint black dot grid (playful) ─── */
+  --surface-pattern:
+    radial-gradient(circle, rgba(20, 20, 20, 0.14) 1.5px, transparent 1.7px);
+  --surface-pattern-size: 30px 30px;
+  --surface-pattern-blend: normal;
+  --surface-pattern-opacity: 1;
+  --surface-vignette: none;
+}

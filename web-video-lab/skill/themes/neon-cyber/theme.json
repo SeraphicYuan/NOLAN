@@ -24,5 +24,17 @@
     "surface": "#0a0f1c",
     "text": "#e8f4ff",
     "accent": "#00ffcc"
-  }
+  },
+  "fonts": {
+    "displayEn": "Clash Display",
+    "body": "Satoshi",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "lifestyle",
+    "nature",
+    "children",
+    "literary"
+  ]
 }

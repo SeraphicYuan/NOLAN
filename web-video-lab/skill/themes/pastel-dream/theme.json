@@ -24,5 +24,17 @@
     "surface": "#faf9f7",
     "text": "#1f2429",
     "accent": "#5a7c6a"
-  }
+  },
+  "fonts": {
+    "displayEn": "Plus Jakarta Sans",
+    "body": "Plus Jakarta Sans",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "enterprise",
+    "finance",
+    "hacker",
+    "technical"
+  ]
 }

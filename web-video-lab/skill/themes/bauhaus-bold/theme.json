@@ -23,5 +23,17 @@
     "surface": "#fafaf7",
     "text": "#0a0a0a",
     "accent": "#1a4cdb"
-  }
+  },
+  "fonts": {
+    "displayEn": "Archivo Black",
+    "body": "Inter",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "data",
+    "academic",
+    "children",
+    "documentary"
+  ]
 }

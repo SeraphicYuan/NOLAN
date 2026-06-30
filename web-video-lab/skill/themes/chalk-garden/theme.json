@@ -24,5 +24,17 @@
     "surface": "#1e1e24",
     "text": "#f4f4f5",
     "accent": "#fde047"
-  }
+  },
+  "fonts": {
+    "displayEn": "Patrick Hand",
+    "body": "Patrick Hand",
+    "cjk": "Patrick Hand",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "corporate",
+    "enterprise",
+    "luxury",
+    "finance"
+  ]
 }

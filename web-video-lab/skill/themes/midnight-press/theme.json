@@ -22,5 +22,16 @@
     "surface": "#1a1714",
     "text": "#f5f0e5",
     "accent": "#ff4a2b"
-  }
+  },
+  "fonts": {
+    "displayEn": "Instrument Serif",
+    "body": "Manrope",
+    "cjk": "Noto Serif SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "children",
+    "lifestyle",
+    "beauty"
+  ]
 }

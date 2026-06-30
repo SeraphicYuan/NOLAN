@@ -1,0 +1,41 @@
+{
+  "id": "neubrutalism",
+  "name": "Neubrutalism",
+  "nameZh": "新粗野",
+  "description": "Internet-native neubrutalism: bright white canvas, thick 3px black borders, hard offset solid-black shadows (no blur), a hot magenta accent, chunky Space Grotesk, and a faint black dot grid. Playful and loud — best for bold product launches, design/dev tools and trend-forward brands.",
+  "descriptionZh": "互联网原生新粗野风: 纯白底 + 3px 厚黑边 + 硬实色黑色偏移阴影(无模糊) + 品红强调色 + 粗壮 Space Grotesk + 淡黑点阵. 张扬好玩, 适合大胆的产品发布、设计 / 开发者工具与潮流品牌.",
+  "mood": [
+    "light",
+    "neubrutalism",
+    "bold",
+    "playful",
+    "high-contrast",
+    "flat"
+  ],
+  "bestFor": [
+    "大胆产品发布",
+    "设计 / 创意工具",
+    "独立开发 / indie hacker",
+    "开发者工具",
+    "潮流 / 年轻向品牌",
+    "观点鲜明的内容"
+  ],
+  "preview": {
+    "shell": "#e8e6de",
+    "surface": "#ffffff",
+    "text": "#141414",
+    "accent": "#f5197a"
+  },
+  "fonts": {
+    "displayEn": "Space Grotesk",
+    "body": "Manrope",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "academic",
+    "luxury",
+    "documentary",
+    "corporate"
+  ]
+}

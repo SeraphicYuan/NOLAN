@@ -24,5 +24,17 @@
     "surface": "#eedfc7",
     "text": "#2a1e13",
     "accent": "#a35b2a"
-  }
+  },
+  "fonts": {
+    "displayEn": "Fraunces",
+    "body": "Source Serif 4",
+    "cjk": "Noto Serif SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "corporate",
+    "technical",
+    "cyberpunk",
+    "enterprise"
+  ]
 }

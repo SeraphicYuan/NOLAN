@@ -39,7 +39,7 @@
 
 ## 内置主题
 
-23 套主题，每个都有**独立的设计 DNA** —— 不是简单的换色版。挑一个
+25 套主题，每个都有**独立的设计 DNA** —— 不是简单的换色版。挑一个
 匹配你主题情绪的，或者作为你自己主题的起点。
 
 ### 深色主题
@@ -54,6 +54,7 @@
 | `neon-cyber`      | 赛博朋克未来派。深海军底 + 电光青 + 玫红双霓虹。Clash Display + Satoshi。**青色发光网格 + 双色霓虹描边（cyan + magenta text-shadow）**是签名。snappy 节奏（380/650ms）。                                       |
 | `bold-signal`     | hero pitch-deck 暗底。Archivo Black + Space Grotesk。大橙色焦点色卡 + 制表数编号。**对角线深色渐变 + 大字标语**是签名。punchy 节奏（420/680ms）。                                                                |
 | `creative-voltage`| 复古朋克创意工作室。饱和电光蓝底 + 霓虹黄强调。Syne + Space Mono。**halftone 网点 + 偏移霓黄阴影**是签名。punchy + 能量节奏（450/720ms）。                                                                       |
+| `aurora-mesh`     | AI 时代 / 生成式极光。深靛蓝黑底 + **招牌的柔和多色渐变网格（紫 / 品红 / 青 / 靛 4 色径向 blob，screen 叠加）**弥散全场，中心留暗保正文可读。Space Grotesk + Manrope，电光紫 accent。smooth flowing 节奏。适合 AI 发布 / 生成艺术 / web3 / 现代科技 keynote。无霓虹描边（那是 neon-cyber）、无网格（那是 blueprint）、无局部暖光晕（那是 dark-botanical）。 |
 
 ### 浅色主题
 
@@ -74,6 +75,7 @@
 | `kraft-paper`        | 牛皮纸 —— **深棕当墨** + 牛皮米。Fraunces + Source Serif + 紫铜 accent。老笔记本 / 老信封感。**粗暖纸纹**是签名。慢速 tactile（1.55s）。                                                                       |
 | `dune`               | 沙丘 —— **炭褐当墨** + 沙底 + 几乎无 accent（muted clay）。Inter display + Source Serif 正文。**无装饰 + 极宽 padding（140×100）**是签名。建筑手册 / 画廊感。最慢节奏（1.75s）。                                |
 | `swiss-ikb`          | 瑞士国际主义。**极细 200 weight Inter / Helvetica** + 净暖白底 + IKB 克莱因蓝 + **1px 发丝网格 (64px)**。`r-card: 0` 直角。Massimo Vignelli / Helvetica Forever 能量。punchy + linear（400/650ms）。           |
+| `neubrutalism`       | 互联网原生新粗野。纯白底 + **3px 厚黑边 + 7px 硬实色黑色偏移阴影（无模糊）+ 8px 圆角**是签名。品红 accent（fills / bars / 高亮，**无 glow**）。Space Grotesk 粗体。**淡黑点阵 (30px)**。bouncy 动效。张扬好玩。与 `bauhaus-bold` 区分：白底（非暗 shell 上的米白）、品红（非原色蓝）、圆角（非 0 直角）、点阵、无舞台黑框。 |
 
 
 随时列出可用主题：
@@ -349,3 +351,55 @@ npm run dev
   = 布局脆弱，修布局
 - **一个主题叠三个设计签名** —— 选 ONE 个（虚线 rule / 扫描线 /
   glass slab / 纸纹 / 粗边），三个会自己打架
+
+---
+
+## 自动推荐主题（`scripts/select_theme.py`）
+
+Checkpoint-Plan 选主题时，与其肉眼扫 25 个 `theme.json`，可以先跑打分器
+拿一个**可解释的排序**，再人工微调：
+
+```bash
+python scripts/select_theme.py "LLM agent 论文深度解读" --tone dark
+python scripts/select_theme.py "fintech investor pitch" --top 3
+python scripts/select_theme.py "<brief>" --json   # 程序化使用
+```
+
+打分把两层信号合起来：
+
+- `themes/selector.json` —— 推理表：每个主题的英文 `tags`（topic 匹配面）、
+  `tone`/`energy`/`formality` 轴、`avoid` 反模式（什么内容**不该**用它）。
+  这是 `theme.json` 里**缺**的英文 / 选题匹配层；`mood` + `bestFor` 仍是主题本身的源头真相。
+- 各 `theme.json` 的 `mood`（英文）+ `bestFor`（中文，按子串匹配中文 brief）。
+
+输出每条候选的命中信号（`+tag:` / `+mood:` / `+bestFor:` / `-avoid:` /
+`±tone:`），所以推荐**可审计**，不是黑箱。`--tone` 是软偏好不是硬过滤
+（选题匹配优先）。无强匹配时回落到通用安全主题。
+
+> 新增主题时：在 `themes/<id>/` 建好后，记得在 `selector.json` 加一条
+> 对应条目（缺了会在 stderr 提示 `themes with no selector entry`）。
+
+---
+
+## 主题元数据 + 健康检查（`scripts/`）
+
+`theme.json` 除人工字段外，还有两个**派生**字段（由脚本生成，勿手改）：
+
+- `fonts` —— `{displayEn, body, cjk, mono}`，从该主题 `tokens.css` 解析出的主字体家族
+  （`tokens.css` 仍是字体的源头真相；这里只是给选主题 / 写章节的 agent 一个免解析 CSS 的速查）。
+- `avoidFor` —— 反模式标签，从 `selector.json` 提升上来。**命中内容就排除该主题**，
+  Checkpoint-Plan 选主题时 agent 会读它。
+
+维护脚本：
+
+```bash
+python scripts/enrich_themes.py          # 加/改主题后刷新 fonts + avoidFor（幂等）
+python scripts/enrich_themes.py --check  # 只报告漂移，不写（CI 友好）
+python scripts/validate_themes.py        # 健康检查：每个主题都有 theme.json+tokens.css、
+                                         # preview 4 色合法、有 selector 条目、tone 与 mood 不矛盾、
+                                         # 且 fonts/avoidFor 是最新的
+```
+
+> **新增主题清单**：建 `themes/<id>/{theme.json,tokens.css}` → 在 `selector.json` 加条目
+> → 跑 `enrich_themes.py` → 跑 `validate_themes.py` 应为 OK。若主题用了新字体，记得在
+> `_lab_chapter/src/index.tsx` 里 `loadFont` 引入，否则渲染时字体不加载。

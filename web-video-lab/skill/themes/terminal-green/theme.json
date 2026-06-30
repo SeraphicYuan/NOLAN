@@ -24,5 +24,18 @@
     "surface": "#0a0f0a",
     "text": "#d3f0d3",
     "accent": "#00ff88"
-  }
+  },
+  "fonts": {
+    "displayEn": "JetBrains Mono",
+    "body": "JetBrains Mono",
+    "cjk": "JetBrains Mono",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "lifestyle",
+    "beauty",
+    "children",
+    "luxury",
+    "fashion"
+  ]
 }

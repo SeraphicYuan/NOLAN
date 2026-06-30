@@ -24,5 +24,17 @@
     "surface": "#f5f3ee",
     "text": "#1a1a1a",
     "accent": "#c25e3a"
-  }
+  },
+  "fonts": {
+    "displayEn": "Fraunces",
+    "body": "Work Sans",
+    "cjk": "Noto Serif SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "enterprise",
+    "data",
+    "finance",
+    "children"
+  ]
 }

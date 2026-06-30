@@ -24,5 +24,17 @@
     "surface": "#f0e6d2",
     "text": "#1f1a14",
     "accent": "#8c6a48"
-  }
+  },
+  "fonts": {
+    "displayEn": "Inter",
+    "body": "Source Serif 4",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "developer",
+    "cli",
+    "finance",
+    "data"
+  ]
 }

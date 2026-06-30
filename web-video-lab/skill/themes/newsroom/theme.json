@@ -24,5 +24,17 @@
     "surface": "#f4ede0",
     "text": "#1a1a1a",
     "accent": "#c9302c"
-  }
+  },
+  "fonts": {
+    "displayEn": "Playfair Display",
+    "body": "Source Serif 4",
+    "cjk": "Noto Serif SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "playful",
+    "children",
+    "luxury",
+    "cyberpunk"
+  ]
 }

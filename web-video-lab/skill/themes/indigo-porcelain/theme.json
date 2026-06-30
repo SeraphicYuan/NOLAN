@@ -24,5 +24,17 @@
     "surface": "#f1f3f5",
     "text": "#0a1f3d",
     "accent": "#1e3a8a"
-  }
+  },
+  "fonts": {
+    "displayEn": "Playfair Display",
+    "body": "IBM Plex Sans",
+    "cjk": "Noto Serif SC",
+    "mono": "IBM Plex Mono"
+  },
+  "avoidFor": [
+    "playful",
+    "vlog",
+    "children",
+    "social"
+  ]
 }

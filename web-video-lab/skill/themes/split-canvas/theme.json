@@ -24,5 +24,16 @@
     "surface": "#f5e6dc",
     "text": "#1a1410",
     "accent": "#d24a78"
-  }
+  },
+  "fonts": {
+    "displayEn": "Outfit",
+    "body": "Outfit",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "enterprise",
+    "academic",
+    "luxury"
+  ]
 }

@@ -24,5 +24,17 @@
     "surface": "#141312",
     "text": "#e8e4df",
     "accent": "#d4a574"
-  }
+  },
+  "fonts": {
+    "displayEn": "Cormorant",
+    "body": "IBM Plex Sans",
+    "cjk": "Noto Serif SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "developer",
+    "technical",
+    "cli",
+    "data"
+  ]
 }

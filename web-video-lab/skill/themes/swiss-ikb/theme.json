@@ -24,5 +24,17 @@
     "surface": "#fafaf8",
     "text": "#0a0a0a",
     "accent": "#002fa7"
-  }
+  },
+  "fonts": {
+    "displayEn": "Inter",
+    "body": "Inter",
+    "cjk": "Noto Sans SC",
+    "mono": "JetBrains Mono"
+  },
+  "avoidFor": [
+    "playful",
+    "vintage",
+    "children",
+    "vlog"
+  ]
 }
