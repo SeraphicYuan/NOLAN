@@ -99,7 +99,7 @@
             flex: 1;
             padding: 24px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 20px;
             align-content: start;
         }
@@ -152,6 +152,9 @@
             letter-spacing: -0.01em;
             margin-bottom: 4px;
             color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .effect-category {
