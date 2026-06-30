@@ -7,7 +7,7 @@ status: active
 version: 1
 handoffs:
   - { process: flow, stage: plan, gate: A }
-uses: [explainer.script]
+uses: [common.script-style, common.outline-format, common.chapter-craft, explainer.script]
 evals: []
 ---
 
@@ -26,12 +26,12 @@ maps to the flow's **authoring mode / semi-auto** (`flows/authoring.py`). At thi
 agent drafts a per-beat **plan**, the human tweaks it, and only then does it render. Plan ≠ visual
 design:
 - **`outline`/plan plans RHYTHM + INFO-DENSITY + which motion (from the palette) + the asset
-  wishlist** — NOT the final animation. (skill: `OUTLINE-FORMAT.md`)
-- **Dual-source** (`OUTLINE-FORMAT` / `CHAPTER-CRAFT` principle 10): **`script` decides the BEATS**
+  wishlist** — NOT the final animation. (skill: `outline-format.md`)
+- **Dual-source** (`outline-format` / `chapter-craft` principle 10): **`script` decides the BEATS**
   (split by `---`, 1–2 reveals each, timed by the word-aligned VO); **the source article decides
   VISUAL INFO-DENSITY** (the info pool — numbers, quotes, cases — to draw per beat).
 
-## The craft bottom line — "this is video, not PPT" (`CHAPTER-CRAFT.md`)
+## The craft bottom line — "this is video, not PPT" (`chapter-craft.md`)
 Every beat must **demonstrate**, not text-dump:
 - **Each beat shows something *move/animate*** — a diagram, a reveal, a camera move. *A beat that
   is only text fails review.* (This is why "invent a motion if needed" exists.)
@@ -39,7 +39,7 @@ Every beat must **demonstrate**, not text-dump:
 - **No header/footer chrome; a clear hero element; comfortable color/type/rhythm.**
 - **On-screen language = the source's language** (declared in the spec/plan; don't drift).
 
-## Script style (`SCRIPT-STYLE.md`) — when the flow *generates* the script (explainer)
+## Script style (`script-style.md`) — when the flow *generates* the script (explainer)
 For the byo-everything art flow the script is the user's; for generate-from-source (explainer)
 the three bottom lines hold: **(1) info-retention ≥ 60%** (rephrase, don't summarize — keep
 facts/data/argument-chains), **(2) de-AI voice** (no fake empathy/depth/self-promotion/templated
@@ -61,8 +61,10 @@ The engine runs the mechanical path deterministically (ingest → gate → rende
 That is how the flow keeps both determinism *and* the freedom to do something new.
 
 ## Canonical skill references (depth)
-`web-video-lab/skill/SKILL.md` (workflow + checkpoints) · `web-video-lab/skill/references/CHAPTER-CRAFT.md` (motion
-craft) · `web-video-lab/skill/references/SCRIPT-STYLE.md` (de-AI script) · `web-video-lab/skill/references/OUTLINE-FORMAT.md` (plan format)
-· `web-video-lab/skill/references/THEMES.md` + `THEME-GAP-ANALYSIS.md` (theme) · `web-video-lab/skill/references/AUDIO.md` · `RECORDING.md`
-· `web-video-lab/skill/references/EXAMPLES/` (worked beats). These remain the source of truth for the methodology;
-this doc is the flow-form bridge to them.
+The shared craft now lives in `skills/common/`: `chapter-craft.md` (visual craft + content→motion
+tree + the anti-AI-look list) · `script-style.md` (de-AI script, ≥60% info retention) ·
+`outline-format.md` (plan rhythm + info-pool extraction) · `theme-craft.md` (theme creation). Theme
+tokens + catalog stay at `web-video-lab/skill/themes/` + `web-video-lab/skill/references/THEMES.md`
+(the render engine reads the tokens there). These are the source of truth for the methodology; this
+doc is the flow-form bridge to them. (The old web-page scaffold — `narrations.ts`/Vite, screen
+RECORDING, the `AUDIO` TTS path — was retired; the Remotion flow engine supersedes it.)

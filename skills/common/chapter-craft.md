@@ -1,3 +1,17 @@
+---
+id: common.chapter-craft
+name: Visual craft (chapter craft)
+kind: craft
+purpose: Per-beat visual craft — the 10 principles, the content→motion decision tree, the anti-AI-look list, completion checklist.
+status: active
+version: 1
+handoffs:
+  - { process: flow, stage: plan, gate: A }
+uses: []
+evals: []
+---
+> Extracted from the web-video-presentation skill into `skills/common/` (shared craft). The methodology is substrate-agnostic; where it references the legacy web-page idiom (`narrations.ts` / Vite), the flow-engine equivalent is `flow.spec.json` + Remotion blocks.
+
 # 章节开发指引（每章开发必读）
 
 ---
@@ -190,7 +204,7 @@ AI 生成的网页有几种共有的"视觉指纹"，**全部不要**：
     会让录屏对不上嘴
 - **动画时长必须 ≤ 该 step 的口播时长**——Auto 模式严格按音频结束推进，
   没有"等动画跑完"的兜底。动画太长 → 三选一：**写更长口播 / 拆 step
-  / 调动画速度**。详细机制见 [`AUDIO.md`](AUDIO.md)
+  / 调动画速度**。详细机制见 `the (retired) AUDIO guide`
 
 ---
 

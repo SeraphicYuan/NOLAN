@@ -8,6 +8,50 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Skill registry — manage the hybrid pipeline's prose units (2026-06-30)
+
+NOLAN is now a **hybrid** pipeline: a deterministic engine that hands off to an agent at judgment
+points (plan / author / invent / edit), where a *skill* (markdown) carries the craft. Code has a
+compiler + tests; prose rots silently. `nolan.skills` gives skills the two things they lacked —
+a **verifiable binding** and an **identity/lineage** — so drift becomes a failing check.
+
+- **`src/nolan/skills/`**: manifest frontmatter schema (`id/kind/purpose/status/version/handoffs/
+  uses/overrides/loaded_by/documents/evals`); `load_skills()`, `build_index()` → `skills/index.json`,
+  `lint_skills()`. Run `python -m nolan.skills` to regenerate + lint (exit 1 on errors).
+- **Linter** (the "test" prose never had): unique ids · valid kind · `uses`/`overrides` resolve ·
+  `loaded_by` paths still reference the skill (dead-binding) · **grammar staleness** scoped to a
+  flow's palette (`documents: {palette: <flow>}`) · malformed-manifest (a `---`-fenced doc with no
+  valid id, e.g. a YAML `": "` trap, is flagged not silently dropped). It immediately caught a real
+  bug — `EndCard` was in the explainer + common palettes but no `EndCard.tsx` exists — now removed.
+- **Two roots**: `skills/` is the consolidated home; `.claude/skills/` (harness-invoked) is
+  cataloged in place. A `.md` is a skill iff its frontmatter has an `id`, so migration is incremental.
+- **13 skills consolidated** into `skills/{common,flow,explainer,art}/` with a resolved lineage graph
+  (e.g. `flow.authoring` → `common.{script-style,outline-format,chapter-craft}` + `explainer.script`).
+  The `web-video-presentation` skill was split: shared craft → `common/`, web-page scaffold retired,
+  theme tokens kept at `web-video-lab/skill/themes/` (render hardcodes that path).
+- **Deferred**: the code-loaded `orchestrator/`+`publish/` prompts migrate with the Phase 2
+  `handoff()` seam (route through the registry loader); a per-skill feedback ledger is Phase 3.
+
+## WebUI + iPhone design-system overhaul (2026-06-30)
+
+Hardened the hub webUI (FastAPI, 21 templates + `static/nolan.css` + `nav.js`) and its mobile
+experience, guided by the ui-ux-pro-max skill (validated the existing dark-studio + cyan theme
+as correct for a creative video tool — kept, didn't re-theme). Verified with headless-Chrome /
+puppeteer screenshots at desktop + true iPhone (390px).
+
+- **Design system v2** (`static/nolan.css`, additive/backward-compatible): token scales
+  (type/spacing/radius/shadow/motion), base `h1–h6`, consolidated components (`.btn` sizes+
+  variants, `.field` hint/error, `.chip`, `table.nolan`, `.skeleton`/`.spinner`/`.inline-error`/
+  `.empty-state`, layout utilities). All pages inherit it.
+- **iPhone / shell** (`nav.js` + css): mobile **bottom-tab bar** (SVG icons, active state,
+  thumb-reach) + content spacer, 44px touch targets, `dvh`, `prefers-reduced-motion`,
+  `aria-current`/labeled nav, focus rings.
+- **Page refits**: hub (denser tiles 300→240, **title ellipsis + 2-line desc clamp**, trimmed
+  56px→34px hero), clips (same tile fix). Truncation added to dynamic names across library,
+  agents, showcase, lottie, extract, script_styles, script_projects, video_styles; showcase
+  grid 280→240. scenes left conservative (concurrent edits).
+- Deleted legacy `templates/index.html` (dead: unrouted, depended on non-existent APIs).
+
 ## New theme — `neubrutalism` (25th theme) (2026-06-30)
 
 Second gap-driven theme (the cheap, render-safe candidate from the gap analysis). Internet-

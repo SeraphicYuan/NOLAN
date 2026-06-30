@@ -78,7 +78,14 @@ The linter: unique ids · valid kind · `uses`/`overrides` resolve to real skill
 
 ## Status
 
-Migrated so far (Phase 1b): `flow/edit-contract`, `explainer/{script,scene-grammar,block-catalog}`,
-plus `scene-edit` cataloged in place. Remaining domains (web-presentation methodology,
-orchestrator/publish prompts, flow authoring + descriptors) land in Phase 1c. The
-`handoff()` seam (Phase 2) and feedback ledger (Phase 3) build on this catalog.
+13 skills cataloged across `common/` (shared craft: chapter-craft, script-style, outline-format,
+theme-craft), `flow/` (edit-contract, authoring), `explainer/` (script, scene-grammar,
+block-catalog, spec-authoring, flow), `art/` (flow), plus `scene-edit` in `.claude/skills/`.
+
+The `web-video-presentation` skill was split: its shared craft was extracted into `common/`, its
+web-page scaffold (Vite/`narrations.ts`/RECORDING/AUDIO) was retired, and its theme tokens stay at
+`web-video-lab/skill/themes/` (the render engine hardcodes that path) with the theme docs/tooling.
+
+Still loaded raw by code — the `orchestrator/` + `publish/` prompts — migrate together with the
+**Phase 2** `handoff()` seam (so they route through the registry loader, which strips frontmatter
+instead of leaking it into the prompt). The feedback ledger is **Phase 3**.

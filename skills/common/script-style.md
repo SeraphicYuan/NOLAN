@@ -1,3 +1,17 @@
+---
+id: common.script-style
+name: Script style
+kind: craft
+purpose: Article-to-narration craft — >=60% info retention, de-AI voice, keep the source language.
+status: active
+version: 1
+handoffs:
+  - { process: flow, stage: plan, gate: A }
+uses: []
+evals: []
+---
+> Extracted from the web-video-presentation skill into `skills/common/` (shared craft). The methodology is substrate-agnostic; where it references the legacy web-page idiom (`narrations.ts` / Vite), the flow-engine equivalent is `flow.spec.json` + Remotion blocks.
+
 # 文章 → 口播稿风格指南
 
 把书面文章转成"说出来不别扭"的口播稿，默认 **B 站风格**。其他平台风格
@@ -392,13 +406,13 @@ AI 写中文时有强迫症式的整齐感。**口播比文字更怕排比** —
 ### 5. 在同一次工作里产出 outline
 
 `script.md` 落盘 + 自检通过后，**不要立即停下来等用户**——按
-[`OUTLINE-FORMAT.md`](OUTLINE-FORMAT.md) 在**同一次思考**里继续产出
+[`OUTLINE-FORMAT.md`](outline-format.md) 在**同一次思考**里继续产出
 `outline.md`（章节切分 + 每步屏幕内容 + 章节级信息池），然后再进入
 Checkpoint Plan 让用户一次对齐 5 件事（稿子 / outline / 主题 / 素材
 / 开发模式）。
 
 > **流程变化提醒**：旧流程把 script / outline 切成两个 checkpoint，
-> 新版合并为一个（详见 SKILL.md「Phase 1.2 一次产出」）。理由是 outline
+> 新版合并为一个（详见 the (retired) web-presentation SKILL「Phase 1.2 一次产出」）。理由是 outline
 > 不再写动画后，它的依赖只剩"稿子切节拍 + article 抽信息池"，可以
 > 和稿子一起做完。
 

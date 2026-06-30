@@ -7,7 +7,7 @@ status: active
 version: 1
 handoffs:
   - { process: explainer, stage: author-script, gate: A }
-uses: [explainer.scene-grammar]
+uses: [explainer.scene-grammar, common.script-style]
 evals: [paper-quiz]
 ---
 

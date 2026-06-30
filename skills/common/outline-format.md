@@ -1,9 +1,23 @@
+---
+id: common.outline-format
+name: Outline / plan format
+kind: craft
+purpose: Outline format — rhythm, step counts, info-pool extraction, the dual-source principle.
+status: active
+version: 1
+handoffs:
+  - { process: flow, stage: plan, gate: A }
+uses: [common.chapter-craft]
+evals: []
+---
+> Extracted from the web-video-presentation skill into `skills/common/` (shared craft). The methodology is substrate-agnostic; where it references the legacy web-page idiom (`narrations.ts` / Vite), the flow-engine equivalent is `flow.spec.json` + Remotion blocks.
+
 # `outline.md` 格式 spec
 
 视频章节规划的产出文件。**用户可以直接编辑**，所以格式必须人类友好
 （用 markdown 不用 JSON / YAML）。
 
-!重要：阅读此文件后必须继续阅读 [`CHAPTER-CRAFT.md`](CHAPTER-CRAFT.md) 的全部内容，了解对网页效果的真实需求，然后再开始编写 outline
+!重要：阅读此文件后必须继续阅读 [`CHAPTER-CRAFT.md`](chapter-craft.md) 的全部内容，了解对网页效果的真实需求，然后再开始编写 outline
 
 > ## ⚠️ outline 是开发计划，不是视觉规划
 >
@@ -15,11 +29,11 @@
 >
 > **outline 里的 step 数是初始预估**。最终 step 数以章节实现时的
 > `narrations.ts` 为准——后者既是 step 数源，也是音频合成源
-> （详见 [`CHAPTER-CRAFT.md`](CHAPTER-CRAFT.md) 「代码层最小约束」+
-> [`AUDIO.md`](AUDIO.md)）。如果实现时章节 step 数和 outline 不一致，
+> （详见 [`CHAPTER-CRAFT.md`](chapter-craft.md) 「代码层最小约束」+
+> `the (retired) AUDIO guide`）。如果实现时章节 step 数和 outline 不一致，
 > 回过来同步 outline 即可，不需要纠结"对得严丝合缝"。
 
-> **写 outline 前必读**（双源原则，[CHAPTER-CRAFT.md Part 0 原则 10](CHAPTER-CRAFT.md#10-双源原则scriptmd-定节拍--articlemd-定画面密度)）：
+> **写 outline 前必读**（双源原则，[CHAPTER-CRAFT.md Part 0 原则 10](chapter-craft.md#10-双源原则scriptmd-定节拍--articlemd-定画面密度)）：
 >
 > - **`script.md`** —— 决定**节拍**：按 `---` 切节拍，每节拍 1~2 step、估时
 > - **`article.md`**（如有）—— 决定**画面信息密度**：每章首段抽**信息池**
@@ -58,12 +72,12 @@
 
 > **关于时长**：outline 里**只**写 step 的 `(~Ts)` 口播估时（音画对齐
 > 用），**绝对不写**动画时长 / 错峰量 / keyframe 数值。这些都在章节开发
-> 阶段决定（[`CHAPTER-CRAFT.md`](CHAPTER-CRAFT.md) Part 3 时长参考）。
+> 阶段决定（[`CHAPTER-CRAFT.md`](chapter-craft.md) Part 3 时长参考）。
 
 > **想看具象示例**：
-> - 钩子型开场结构 → [`EXAMPLES/hook-chapter/`](EXAMPLES/hook-chapter/)
-> - 列举型章节结构 → [`EXAMPLES/list-reveal/`](EXAMPLES/list-reveal/)
-> - 科技测评类（实测 / 对比 / 跑分） → [`EXAMPLES/case-tech-review/`](EXAMPLES/case-tech-review/)
+> - 钩子型开场结构 → `EXAMPLES/hook-chapter/`
+> - 列举型章节结构 → `EXAMPLES/list-reveal/`
+> - 科技测评类（实测 / 对比 / 跑分） → `EXAMPLES/case-tech-review/`
 
 ---
 
@@ -130,7 +144,7 @@ pull-quote 引用 / 数据浮层。
 完整文本回 `script.md`。`outline.md` 章节 = `script.md` 中两个明显
 主题切换之间的段落。
 
-> 音频合成（[`AUDIO.md`](AUDIO.md)）会**回到 `script.md`** 切分完整
+> 音频合成（`the (retired) AUDIO guide`）会**回到 `script.md`** 切分完整
 > 文本，**不**用 outline 节选。
 
 ---

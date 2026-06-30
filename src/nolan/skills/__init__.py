@@ -155,9 +155,28 @@ def _lint_documents(s: Skill) -> list[tuple]:
     return issues
 
 
+def _lint_malformed(roots=None) -> list[tuple]:
+    """A `.md` under the home root (`skills/`) that opens with a `---` frontmatter fence but
+    yields no usable `id` is almost always a botched manifest — a bad YAML value silently drops
+    it from the catalog, then it resurfaces only as a confusing dangling reference elsewhere.
+    Surface it directly. (`.claude/skills/` is exempt — plain SKILL.md there needn't be tagged.)"""
+    issues = []
+    home = ROOT / "skills"
+    for p in sorted(home.rglob("*.md")):
+        head = p.read_text(encoding="utf-8")[:3]
+        if head != "---":
+            continue
+        fm, _ = _parse(p.read_text(encoding="utf-8"))
+        if not fm or "id" not in fm:
+            rel = str(p.relative_to(ROOT)).replace("\\", "/")
+            issues.append(("error", "malformed-manifest", rel,
+                           "has a --- frontmatter fence but no valid id (YAML parse failed?)"))
+    return issues
+
+
 def lint_skills() -> list[tuple]:
     skills = load_skills()
-    issues: list[tuple] = []
+    issues: list[tuple] = _lint_malformed()
     seen: dict[str, str] = {}
     for s in skills:
         if s.id in seen:

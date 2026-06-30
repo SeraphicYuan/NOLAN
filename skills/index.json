@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 9,
+  "count": 13,
   "skills": [
     {
       "id": "art.flow",
@@ -22,6 +22,92 @@
       "documents": null,
       "evals": [],
       "path": "skills/art/flow.md"
+    },
+    {
+      "id": "common.chapter-craft",
+      "name": "Visual craft (chapter craft)",
+      "kind": "craft",
+      "purpose": "Per-beat visual craft \u2014 the 10 principles, the content\u2192motion decision tree, the anti-AI-look list, completion checklist.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "flow",
+          "stage": "plan",
+          "gate": "A"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/chapter-craft.md"
+    },
+    {
+      "id": "common.outline-format",
+      "name": "Outline / plan format",
+      "kind": "craft",
+      "purpose": "Outline format \u2014 rhythm, step counts, info-pool extraction, the dual-source principle.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "flow",
+          "stage": "plan",
+          "gate": "A"
+        }
+      ],
+      "uses": [
+        "common.chapter-craft"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/outline-format.md"
+    },
+    {
+      "id": "common.script-style",
+      "name": "Script style",
+      "kind": "craft",
+      "purpose": "Article-to-narration craft \u2014 >=60% info retention, de-AI voice, keep the source language.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "flow",
+          "stage": "plan",
+          "gate": "A"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/script-style.md"
+    },
+    {
+      "id": "common.theme-craft",
+      "name": "Theme craft",
+      "kind": "craft",
+      "purpose": "Create/enrich themes \u2014 token philosophy, banding, font-loader constraints, the enrich/validate workflow.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "flow",
+          "stage": "plan",
+          "gate": "A"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/theme-craft.md"
     },
     {
       "id": "explainer.block-catalog",
@@ -111,7 +197,8 @@
         }
       ],
       "uses": [
-        "explainer.scene-grammar"
+        "explainer.scene-grammar",
+        "common.script-style"
       ],
       "overrides": [],
       "loaded_by": [],
@@ -159,6 +246,9 @@
         }
       ],
       "uses": [
+        "common.script-style",
+        "common.outline-format",
+        "common.chapter-craft",
         "explainer.script"
       ],
       "overrides": [],
