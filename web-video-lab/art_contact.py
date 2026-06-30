@@ -14,6 +14,7 @@ Exit 0 = no empty beats; 1 = an empty/near-black beat was flagged.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -21,8 +22,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 RS = HERE.parent / "render-service"                       # cwd for node + ffmpeg
-NODE = "/mnt/c/Program Files/nodejs/node.exe"
-NOLAN_PY = "/mnt/d/env/nolan/python.exe"         # has Pillow; bare python3 doesn't
+_NT = os.name == "nt"
+NODE = "C:/Program Files/nodejs/node.exe" if _NT else "/mnt/c/Program Files/nodejs/node.exe"
+NOLAN_PY = "D:/env/nolan/python.exe" if _NT else "/mnt/d/env/nolan/python.exe"  # has Pillow
 FFMPEG = RS / "node_modules/@remotion/compositor-win32-x64-msvc/ffmpeg.exe"
 CHK = RS / "_lab_chapter" / "output" / "chk"
 

@@ -13,13 +13,19 @@ Autonomy (one pipeline; the mode only decides whether Gate A blocks; Gate B is a
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
 
 def _win2posix(p: str) -> str:
-    m = re.match(r"^([A-Za-z]):[\\/](.*)$", str(p))
-    return f"/mnt/{m.group(1).lower()}/" + m.group(2).replace("\\", "/") if m else str(p)
+    """Localize a path to the running interpreter (WSL python3 or nolan Windows python)."""
+    p = str(p)
+    if os.name == "nt":
+        m = re.match(r"^/mnt/([a-z])/(.*)$", p)
+        return f"{m.group(1).upper()}:/" + m.group(2) if m else p
+    m = re.match(r"^([A-Za-z]):[\\/](.*)$", p)
+    return f"/mnt/{m.group(1).lower()}/" + m.group(2).replace("\\", "/") if m else p
 
 
 def _segments(project) -> list:

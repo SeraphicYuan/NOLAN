@@ -17,6 +17,7 @@ Usage: python art_validate.py <job.json>     (exit 0 = clean, 1 = errors)
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -37,9 +38,14 @@ IMG_RE = re.compile(r"\.(jpe?g|png|webp|gif|avif)$", re.I)
 
 
 def win2posix(p: str) -> str:
-    """D:/foo/bar or D:\\foo\\bar -> /mnt/d/foo/bar so WSL can stat it."""
-    m = re.match(r"^([A-Za-z]):[\\/](.*)$", str(p))
-    return f"/mnt/{m.group(1).lower()}/" + m.group(2).replace("\\", "/") if m else str(p)
+    """Localize a path to the running interpreter so it can be stat'd — WSL python3
+    (/mnt/d/...) or the nolan Windows python that serves the WebUI/CLI (D:/...)."""
+    p = str(p)
+    if os.name == "nt":
+        m = re.match(r"^/mnt/([a-z])/(.*)$", p)
+        return f"{m.group(1).upper()}:/" + m.group(2) if m else p
+    m = re.match(r"^([A-Za-z]):[\\/](.*)$", p)
+    return f"/mnt/{m.group(1).lower()}/" + m.group(2).replace("\\", "/") if m else p
 
 
 def _known_blocks() -> set[str]:

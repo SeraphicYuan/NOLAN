@@ -4974,5 +4974,27 @@ def rerender_cmd(ctx, plan, scenes, comfyui_model, comfyui_timeout):
     click.echo(f"Done → {final}")
 
 
+@main.command('render-flow')
+@click.argument('project', type=click.Path(exists=True))
+@click.option('--mode', type=click.Choice(['auto', 'semi-auto']), default='auto',
+              help='auto: draft + render straight through; semi-auto: pause at authoring (Gate A).')
+@click.option('--no-gate', is_flag=True, help='skip the pre-render QA gate (auto mode).')
+def render_flow_cmd(project, mode, no_gate):
+    """Render a flow video (art, …) for a PROJECT via the flow runner.
+
+    The project owns its plan in flow.spec.json (flow id self-declared). auto renders +
+    delivers; semi-auto stops at authoring mode so you can tweak the plan + link assets,
+    then resume with `nolan render-flow <project> --mode auto`.
+    """
+    from nolan.flows.authoring import run
+    res = run(project, mode=mode, gate=not no_gate)
+    if mode == 'semi-auto':
+        click.echo(f"⏸  Paused at authoring → {res['plan']}")
+        click.echo(f"   {res['beats']} beats; need assets: {res['needs_assets'] or 'none'}")
+        click.echo("   Tweak the plan / link assets, then: nolan render-flow <project> --mode auto")
+    else:
+        click.echo(f"✓ Delivered → {res}")
+
+
 if __name__ == '__main__':
     main()

@@ -46,6 +46,15 @@ def _parse_project(directory: Path, scene_plan: Path) -> Dict:
                 has_audio = True
                 break
 
+    # flow projects self-declare their video type in flow.spec.json (e.g. "art")
+    video_type = None
+    flow_spec = directory / "flow.spec.json"
+    if flow_spec.exists():
+        try:
+            video_type = json.loads(flow_spec.read_text(encoding="utf-8")).get("flow")
+        except (json.JSONDecodeError, IOError):
+            pass
+
     return {
         "name": directory.name,
         "path": str(directory),
@@ -53,6 +62,7 @@ def _parse_project(directory: Path, scene_plan: Path) -> Dict:
         "scene_count": scene_count,
         "sections": section_names,
         "has_audio": has_audio,
+        "video_type": video_type,
     }
 
 
