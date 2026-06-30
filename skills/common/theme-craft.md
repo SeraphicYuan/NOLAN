@@ -15,8 +15,8 @@ evals: []
 # 主题创作 / 富化 / 扩充 指南 (Playbook)
 
 面向 **创建新主题 / 富化元数据 / 缺口扩充** 这三类任务的实操手册。
-配套：[`THEMES.md`](../../web-video-lab/skill/references/THEMES.md)（token 契约 + 内置主题清单）、
-[`THEME-GAP-ANALYSIS.md`](../../web-video-lab/skill/references/THEME-GAP-ANALYSIS.md)（缺口分析方法 + 已建/待建候选）。
+配套：[`THEMES.md`](../../themes/THEMES.md)（token 契约 + 内置主题清单）、
+[`THEME-GAP-ANALYSIS.md`](../../themes/THEME-GAP-ANALYSIS.md)（缺口分析方法 + 已建/待建候选）。
 
 > 核心原则：**一套主题 = 一套独立设计 DNA，不是换色版**。约 30 个 token +
 > **唯一一个签名装饰**（grid / 扫描线 / 纸纹 / 点阵 / 渐变网格 / 偏移阴影…，叠三个会打架）。
@@ -109,7 +109,7 @@ FF=../node_modules/@ffmpeg-installer/win32-x64/ffmpeg.exe
 ---
 
 ## B. 缺口扩充（决定造哪一套）
-方法见 [`THEME-GAP-ANALYSIS.md`](../../web-video-lab/skill/references/THEME-GAP-ANALYSIS.md)。要点：
+方法见 [`THEME-GAP-ANALYSIS.md`](../../themes/THEME-GAP-ANALYSIS.md)。要点：
 - 剔除 ui-ux-pro-max 里的**纯 web 布局 pattern**（Hero-Centric / Dashboard / Conversion… 不是审美）。
 - 候选打分维度：**真缺口性 × 内容相关性 × 全屏视频可渲染性（h.264 友好）× 与现有 25 套区分度**。
 - 排序示例：`aurora-mesh`（价值最高+安全）> `neubrutalism`（最便宜+零 banding）>

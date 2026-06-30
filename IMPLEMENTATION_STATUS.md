@@ -28,7 +28,7 @@ a **verifiable binding** and an **identity/lineage** — so drift becomes a fail
 - **13 skills consolidated** into `skills/{common,flow,explainer,art}/` with a resolved lineage graph
   (e.g. `flow.authoring` → `common.{script-style,outline-format,chapter-craft}` + `explainer.script`).
   The `web-video-presentation` skill was split: shared craft → `common/`, web-page scaffold retired,
-  theme tokens kept at `web-video-lab/skill/themes/` (render hardcodes that path).
+  theme tokens kept at `themes/` (render hardcodes that path).
 - **Deferred**: the code-loaded `orchestrator/`+`publish/` prompts migrate with the Phase 2
   `handoff()` seam (route through the registry loader); a per-skill feedback ledger is Phase 3.
 
@@ -59,7 +59,7 @@ native neubrutalism: bright white canvas, thick 3px black borders (`--bw-1: 3px`
 offset solid-black shadows (`--card-shadow: 7px 7px 0`, no blur), hot-magenta accent (no
 glow), chunky Space Grotesk, 8px rounded corners, faint black dot grid, bouncy motion.
 
-- `web-video-lab/skill/themes/neubrutalism/{tokens.css,theme.json}` + `selector.json` entry
+- `themes/neubrutalism/{tokens.css,theme.json}` + `selector.json` entry
   (ranks #1 for bold/indie/dev-tool/design briefs, well clear of bauhaus-bold).
 - Deliberately distinct from its cousin **bauhaus-bold** (cream-on-dark-shell, primary-blue,
   0-radius, Archivo Black, black stage frame, modernist-restrained): neubrutalism is
@@ -73,12 +73,12 @@ glow), chunky Space Grotesk, 8px rounded corners, faint black dot grid, bouncy m
 Phase 3 of the theme-system work. Each `theme.json` now carries two **derived** fields, and
 the system has a validator that guards its invariants as themes grow.
 
-- `web-video-lab/skill/scripts/enrich_themes.py` — writes per-theme `fonts`
+- `themes/scripts/enrich_themes.py` — writes per-theme `fonts`
   `{displayEn,body,cjk,mono}` (parsed from that theme's `tokens.css` — CSS stays source of
   truth) + `avoidFor` (anti-pattern tags promoted from `selector.json`). Idempotent;
   `--check` reports drift without writing. Applied additively to all 24 theme.json (no
   reformatting of the hand-crafted files).
-- `web-video-lab/skill/scripts/validate_themes.py` — health check: every theme has
+- `themes/scripts/validate_themes.py` — health check: every theme has
   theme.json + tokens.css, valid 4-key #hex preview, a selector entry (no orphans), tone
   agrees with mood, and enrichment is current. Exit 1 on any failure. Run: `OK — 24 themes
   valid`.
@@ -90,11 +90,11 @@ the system has a validator that guards its invariants as themes grow.
 ## New theme — `aurora-mesh` (24th theme) (2026-06-30)
 
 Gap-driven theme expansion (Phase 2 of the theme-system work). Gap analysis
-(`web-video-lab/skill/references/THEME-GAP-ANALYSIS.md`) found the 23 themes already cover
+(`themes/THEME-GAP-ANALYSIS.md`) found the 23 themes already cover
 most of ui-ux-pro-max's style taxonomy; the strongest true whitespace was an **aurora /
 gradient-mesh** AI-era look. Built end-to-end:
 
-- `web-video-lab/skill/themes/aurora-mesh/{tokens.css,theme.json}` — deep indigo-black
+- `themes/aurora-mesh/{tokens.css,theme.json}` — deep indigo-black
   canvas; signature = soft 4-blob radial gradient mesh (violet/magenta/teal/indigo, `screen`
   blend) with a center scrim for text legibility. Space Grotesk + Manrope (both already
   loaded in `_lab_chapter/src/index.tsx`), electric-violet accent. Color seeds video-adapted
@@ -114,12 +114,12 @@ gradient-mesh** AI-era look. Built end-to-end:
 Checkpoint-Plan 选主题 used to be ad-hoc: the agent eyeballed 23 `theme.json` files and
 guessed from Chinese-only `bestFor`. Added a deterministic, **explainable** scorer.
 
-- Reasoning table: `web-video-lab/skill/themes/selector.json` — adds the matching layer
+- Reasoning table: `themes/selector.json` — adds the matching layer
   the raw themes lack: per-theme English `tags`, `tone`/`energy`/`formality` axes, and
   `avoid` anti-patterns (+ a synonym map for EN/中文 topic terms). `mood`/`bestFor` stay
   source of truth. Pattern borrowed from the ui-ux-pro-max skill's `ui-reasoning.csv`,
   re-authored for video themes on the content-topic axis.
-- Scorer: `web-video-lab/skill/scripts/select_theme.py` (stdlib) — scores a brief against
+- Scorer: `themes/scripts/select_theme.py` (stdlib) — scores a brief against
   `tags` + `mood` + `bestFor` (Chinese substring) + tone, returns top-N with the exact
   signals that fired. `--tone` (soft nudge), `--top`, `--json`. Falls back to safe
   defaults on no match; warns on stderr if a theme has no selector entry.

@@ -16,7 +16,7 @@ fs.mkdirSync(publicDir, { recursive: true });
 // Stage the chosen skill theme's tokens.css → the bundle imports it as the active
 // theme. Swapping cfg.theme is the ONLY change needed to retheme (all 23 work).
 const theme = cfg.theme || "bold-signal";
-const themeCss = path.resolve(here, "../../web-video-lab/skill/themes", theme, "tokens.css");
+const themeCss = path.resolve(here, "../../themes", theme, "tokens.css");
 fs.copyFileSync(themeCss, path.join(here, "src", "styles", "_active-theme.css"));
 console.log("theme:", theme);
 

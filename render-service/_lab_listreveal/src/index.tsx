@@ -8,7 +8,7 @@ import { loadFont as fMono } from "@remotion/google-fonts/JetBrainsMono";
 import { loadFont as fInstrument } from "@remotion/google-fonts/InstrumentSerif";
 import { loadFont as fManrope } from "@remotion/google-fonts/Manrope";
 import "./styles/base.css";
-import "./styles/_active-theme.css"; // staged per-job from skill/themes/<id>/tokens.css
+import "./styles/_active-theme.css"; // staged per-job from themes/<id>/tokens.css
 import { Root } from "./Root";
 
 const o = { subsets: ["latin"], ignoreTooManyRequestsWarning: true } as const;

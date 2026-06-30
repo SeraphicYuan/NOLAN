@@ -7,7 +7,7 @@ import { loadFont as fManrope } from "@remotion/google-fonts/Manrope";
 import { loadFont as fPlexMono } from "@remotion/google-fonts/IBMPlexMono";
 import { loadFont as fPlexSans } from "@remotion/google-fonts/IBMPlexSans";
 import "./styles/base.css";
-import "./styles/_active-theme.css"; // staged per-job from skill/themes/<id>/tokens.css (Chapter only)
+import "./styles/_active-theme.css"; // staged per-job from themes/<id>/tokens.css (Chapter only)
 import { Root } from "./Root";
 
 const o = { subsets: ["latin"], ignoreTooManyRequestsWarning: true } as const;

@@ -15,7 +15,7 @@ evals: []
 
 The deterministic engine (`src/nolan/flows/`) renders; **this is where the judgment lives** —
 how to plan a video, write its script, choose/invent its motions, and avoid the "AI look." It is
-ported from the `web-video-presentation` skill (`web-video-lab/skill/`); the **methodology
+ported from the `web-video-presentation` skill (now retired; its craft lives in `skills/common/`); the **methodology
 transfers, only the old web-page scaffolding (Vite/React `narrations.ts`) is superseded** by the
 flow's block + `flow.spec.json` model. Read the linked skill references for depth — this doc maps
 them to the flow form and is the agent's contract at the plan / edit / invent hand-offs.
@@ -64,7 +64,7 @@ That is how the flow keeps both determinism *and* the freedom to do something ne
 The shared craft now lives in `skills/common/`: `chapter-craft.md` (visual craft + content→motion
 tree + the anti-AI-look list) · `script-style.md` (de-AI script, ≥60% info retention) ·
 `outline-format.md` (plan rhythm + info-pool extraction) · `theme-craft.md` (theme creation). Theme
-tokens + catalog stay at `web-video-lab/skill/themes/` + `web-video-lab/skill/references/THEMES.md`
+tokens + catalog stay at `themes/` + `themes/THEMES.md`
 (the render engine reads the tokens there). These are the source of truth for the methodology; this
 doc is the flow-form bridge to them. (The old web-page scaffold — `narrations.ts`/Vite, screen
 RECORDING, the `AUDIO` TTS path — was retired; the Remotion flow engine supersedes it.)

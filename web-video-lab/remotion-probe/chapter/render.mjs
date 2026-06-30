@@ -15,7 +15,7 @@ fs.mkdirSync(publicDir, { recursive: true });
 
 const theme = cfg.theme || "bold-signal";
 fs.copyFileSync(
-  path.resolve(here, "../../web-video-lab/skill/themes", theme, "tokens.css"),
+  path.resolve(here, "../../../themes", theme, "tokens.css"),
   path.join(here, "src", "styles", "_active-theme.css"),
 );
 console.log("theme:", theme);

@@ -24,8 +24,8 @@ source ──► INGEST (per-type) ──► job.json ──► GATE ──► R
 | Layer | Form | Where |
 |---|---|---|
 | ingest/gate/render **mechanics** | **code** (deterministic) | `src/nolan/flows/` (this package) |
-| palette (blessed/shared motions) · pacing profile · theme/fx defaults | **config** | `web-video-lab/flows/registry.json`, `web-video-lab/skill/themes/` |
-| **plan/authoring** craft · **edit/invent** craft | **skill** (agent reads it) | `skills/flow/authoring.md`, `skills/flow/edit-contract.md` (+ `web-video-lab/skill/` references) |
+| palette (blessed/shared motions) · pacing profile · theme/fx defaults | **config** | `web-video-lab/flows/registry.json`, `themes/` |
+| **plan/authoring** craft · **edit/invent** craft | **skill** (agent reads it) | `skills/flow/authoring.md`, `skills/flow/edit-contract.md` (+ `skills/common/` references) |
 
 **Principle:** the engine runs the mechanical path deterministically, but **at the plan checkpoint
 and at edit/invent it hands to an agent** reading the skill. That keeps determinism *and* the

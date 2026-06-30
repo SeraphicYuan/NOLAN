@@ -84,7 +84,7 @@ block-catalog, spec-authoring, flow), `art/` (flow), plus `scene-edit` in `.clau
 
 The `web-video-presentation` skill was split: its shared craft was extracted into `common/`, its
 web-page scaffold (Vite/`narrations.ts`/RECORDING/AUDIO) was retired, and its theme tokens stay at
-`web-video-lab/skill/themes/` (the render engine hardcodes that path) with the theme docs/tooling.
+`themes/` (the render engine hardcodes that path) with the theme docs/tooling.
 
 Still loaded raw by code — the `orchestrator/` + `publish/` prompts — migrate together with the
 **Phase 2** `handoff()` seam (so they route through the registry loader, which strips frontmatter
