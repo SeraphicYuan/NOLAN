@@ -118,3 +118,7 @@ projects/*/flow.job.json
 
 # project flow build dir (per-beat clips, concat scratch)
 projects/*/.flow/
+
+# project render outputs (large)
+projects/*/video/
+projects/*/scene_plan.json
