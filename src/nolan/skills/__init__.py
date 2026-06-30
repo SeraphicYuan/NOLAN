@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -31,6 +32,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[3]   # src/nolan/skills/__init__.py -> repo root
 SKILL_ROOTS = [ROOT / "skills", ROOT / ".claude" / "skills"]
 INDEX_PATH = ROOT / "skills" / "index.json"
+INVOCATION_LOG = ROOT / ".nolan" / "skills" / "invocations.jsonl"   # runtime telemetry (gitignored)
 SCHEMA_VERSION = 1
 
 KINDS = {"contract", "craft", "grammar", "prompt", "methodology"}
@@ -95,6 +97,39 @@ def load_skills(roots=None) -> list[Skill]:
 
 def get_skill(skill_id: str, skills=None) -> Skill | None:
     return next((s for s in (skills or load_skills()) if s.id == skill_id), None)
+
+
+def skill_path(skill_id: str) -> str | None:
+    """Repo-relative path of a skill — for CITE-style load-sites (an agent told to *read* the
+    file) as opposed to handoff()'s INJECT (the body spliced into a prompt)."""
+    s = get_skill(skill_id)
+    return s.path if s else None
+
+
+def _log_invocation(skill_id: str, version, ctx) -> None:
+    """Append one handoff to the invocation log — makes lineage observable and is the substrate
+    the Phase 3 feedback ledger ties human corrections back to (which skill version produced what)."""
+    try:
+        INVOCATION_LOG.parent.mkdir(parents=True, exist_ok=True)
+        rec = {"skill": skill_id, "version": version, "at": time.time()}
+        if ctx:
+            rec["ctx"] = ctx
+        with INVOCATION_LOG.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except OSError:
+        pass   # telemetry must never break a render
+
+
+def handoff(skill_id: str, ctx: dict | None = None, *, log: bool = True) -> str:
+    """The deterministic→judgment seam. Resolve a skill and return its BODY (frontmatter stripped)
+    for injection into an agent/LLM prompt, recording the invocation. Replaces scattered
+    `(PROMPTS_DIR / "x.md").read_text()` load-sites so the binding is one call the linter tracks."""
+    s = get_skill(skill_id)
+    if s is None:
+        raise KeyError(f"handoff: unknown skill '{skill_id}' (run `python -m nolan.skills` to list)")
+    if log:
+        _log_invocation(skill_id, s.version, ctx)
+    return s.body.lstrip("\n")
 
 
 def build_index(write: bool = True) -> dict:

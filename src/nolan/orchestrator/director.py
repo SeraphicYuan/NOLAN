@@ -17,6 +17,7 @@ from pathlib import Path
 
 import yaml
 
+from nolan.skills import handoff
 from nolan.orchestrator import state as state_mod
 from nolan.orchestrator.claude_runner import (
     ClaudeRunnerError,
@@ -31,7 +32,6 @@ from nolan.orchestrator.template_match import (
 
 
 MATCH_THRESHOLD = 0.6
-PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 # Order matters — Director runs the first not-yet-completed step on each
 # invocation. Add new specialists here.
@@ -165,7 +165,7 @@ async def _run_style_agent(
 async def _adapt_style_template(
     candidate: TemplateCandidate, ctx: ProjectContext
 ) -> tuple[str, float]:
-    system = (PROMPTS_DIR / "adapt_style.md").read_text(encoding="utf-8")
+    system = handoff("orchestrator.adapt-style")
     template_md = candidate.template_md_path().read_text(encoding="utf-8")
     target_path = ctx.project_path / "style_guide.md"
 
@@ -193,7 +193,7 @@ async def _adapt_style_template(
 async def _invent_style(
     ctx: ProjectContext, miss_reason: str
 ) -> tuple[str, float]:
-    system = (PROMPTS_DIR / "invent_style.md").read_text(encoding="utf-8")
+    system = handoff("orchestrator.invent-style")
     target_path = ctx.project_path / "style_guide.md"
 
     user = (
@@ -567,7 +567,7 @@ class Director:
         current_content = target_path.read_text(encoding="utf-8")
         prior_reasoning = self._latest_step_reasoning("match_and_adapt_style") or "(no prior reasoning available)"
 
-        system = (PROMPTS_DIR / "refine_style.md").read_text(encoding="utf-8")
+        system = handoff("orchestrator.refine-style")
         user = (
             f"# target_path\n`{path_for_agent(target_path)}`\n\n"
             f"# iteration_number\n{refine_num}\n\n"
@@ -699,7 +699,7 @@ class Director:
         # the BEFORE/AFTER as separate artifacts.
         prior_report_text = prior_report_path.read_text(encoding="utf-8")
 
-        system = (PROMPTS_DIR / "refine_clips.md").read_text(encoding="utf-8")
+        system = handoff("orchestrator.refine-clips")
         user = (
             f"# target_scene_plan_path\n`{path_for_agent(scene_plan_path)}`\n\n"
             f"# target_report_path\n`{path_for_agent(target_report_path)}`\n\n"
@@ -830,7 +830,7 @@ class Director:
 
         prior_report_text = prior_report_path.read_text(encoding="utf-8")
 
-        system = (PROMPTS_DIR / "refine_slides.md").read_text(encoding="utf-8")
+        system = handoff("orchestrator.refine-slides")
         user = (
             f"# scene_plan_path\n`{path_for_agent(scene_plan_path)}`\n\n"
             f"# target_report_path\n`{path_for_agent(target_report_path)}`\n\n"
@@ -1114,7 +1114,7 @@ class Director:
         if target_path.exists():
             target_path.unlink()
 
-        system = (PROMPTS_DIR / "script_to_scenes.md").read_text(encoding="utf-8")
+        system = handoff("orchestrator.script-to-scenes")
         user = (
             f"# target_path\n`{path_for_agent(target_path)}`\n\n"
             f"# script_path\n`{path_for_agent(script_path)}`\n\n"
@@ -1246,7 +1246,7 @@ class Director:
         # we can confirm afterward that the agent processed them.
         before_missing = self._info_scenes_missing_layout()
 
-        system = (PROMPTS_DIR / "slide_designer.md").read_text(encoding="utf-8")
+        system = handoff("orchestrator.slide-designer")
         user = (
             f"# scene_plan_path\n`{path_for_agent(scene_plan_path)}`\n\n"
             f"# style_guide_path\n`{path_for_agent(style_guide_path)}`\n\n"

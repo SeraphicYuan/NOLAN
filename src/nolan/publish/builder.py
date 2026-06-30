@@ -11,10 +11,10 @@ from pathlib import Path
 
 from . import toolkit
 from .source import load_source, slugify
+from nolan.skills import handoff
 
 REPO = Path(__file__).resolve().parents[3]
 SKILL = REPO / ".claude" / "skills" / "beautiful-article"
-PROMPTS = Path(__file__).parent / "prompts"
 
 # Offline-font css2 URLs for the typographic themes (others fall back to system fonts).
 THEME_FONTS = {
@@ -84,7 +84,7 @@ class Publisher:
 
     # ---- agent authoring ----
     def _author_prompt(self) -> str:
-        tpl = (PROMPTS / "author_article.md").read_text(encoding="utf-8")
+        tpl = handoff("publish.author-article")
         from nolan.orchestrator.claude_runner import path_for_agent
 
         return (

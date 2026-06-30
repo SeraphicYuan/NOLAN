@@ -128,3 +128,4 @@ projects/*/scene_plan.json
 
 render-service/remotion-lib/public/
 render-service/remotion-lib/jobs/_auto_*.json
+.nolan/skills/

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 13,
+  "count": 22,
   "skills": [
     {
       "id": "art.flow",
@@ -281,6 +281,202 @@
       "documents": null,
       "evals": [],
       "path": "skills/flow/edit-contract.md"
+    },
+    {
+      "id": "orchestrator.adapt-style",
+      "name": "Adapt style",
+      "kind": "prompt",
+      "purpose": "Adapt a matched style template to the project's script.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "match-and-adapt-style"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/adapt-style.md"
+    },
+    {
+      "id": "orchestrator.invent-style",
+      "name": "Invent style",
+      "kind": "prompt",
+      "purpose": "Invent a style guide from scratch when no template matches.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "invent-style"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/invent-style.md"
+    },
+    {
+      "id": "orchestrator.refine-clips",
+      "name": "Refine clips",
+      "kind": "prompt",
+      "purpose": "Re-search clips after user feedback.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "refine-clips"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/refine-clips.md"
+    },
+    {
+      "id": "orchestrator.refine-slides",
+      "name": "Refine slides",
+      "kind": "prompt",
+      "purpose": "Adjust layout specs after QA feedback.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "refine-slides"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/refine-slides.md"
+    },
+    {
+      "id": "orchestrator.refine-style",
+      "name": "Refine style",
+      "kind": "prompt",
+      "purpose": "Refine the style guide after QA feedback.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "refine-style"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/refine-style.md"
+    },
+    {
+      "id": "orchestrator.script-to-scenes",
+      "name": "Script to scenes",
+      "kind": "prompt",
+      "purpose": "Turn the narration script into scene_plan.json (excerpt + visual type per scene).",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "script-to-scenes"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/script-to-scenes.md"
+    },
+    {
+      "id": "orchestrator.select-clips",
+      "name": "Select clips",
+      "kind": "prompt",
+      "purpose": "(deprecated) LLM clip-selection pass \u2014 superseded by the in-code semantic vector matcher.",
+      "status": "deprecated",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "select-clips"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/select-clips.md"
+    },
+    {
+      "id": "orchestrator.slide-designer",
+      "name": "Slide designer",
+      "kind": "prompt",
+      "purpose": "Attach a layout_spec to text-overlay/graphic scenes.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "slide-designer"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/slide-designer.md"
+    },
+    {
+      "id": "publish.author-article",
+      "name": "Author article",
+      "kind": "prompt",
+      "purpose": "Author the article component hierarchy from the source.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "publish",
+          "stage": "author-article"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/publish/builder.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/publish/author-article.md"
     },
     {
       "id": "scene-edit",

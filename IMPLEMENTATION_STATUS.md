@@ -29,8 +29,16 @@ a **verifiable binding** and an **identity/lineage** — so drift becomes a fail
   (e.g. `flow.authoring` → `common.{script-style,outline-format,chapter-craft}` + `explainer.script`).
   The `web-video-presentation` skill was split: shared craft → `common/`, web-page scaffold retired,
   theme tokens kept at `themes/` (render hardcodes that path).
-- **Deferred**: the code-loaded `orchestrator/`+`publish/` prompts migrate with the Phase 2
-  `handoff()` seam (route through the registry loader); a per-skill feedback ledger is Phase 3.
+- **Phase 2 — `handoff()` seam**: `handoff(skill_id, ctx)` resolves a skill, returns its body
+  (frontmatter stripped) for prompt injection, and logs the invocation to
+  `.nolan/skills/invocations.jsonl` (lineage becomes observable; the log feeds Phase 3). The 8
+  `orchestrator/` + 1 `publish/` prompts moved into `skills/{orchestrator,publish}/` and
+  `director.py`/`builder.py` now call `handoff()` instead of `read_text()` — verified
+  byte-identical to the originals. `fleet.py`'s CITE-style reference resolves via `skill_path()`.
+  `select-clips` (the LLM pass the vector matcher replaced) is cataloged `deprecated`. 22 skills,
+  lint 0/0.
+- **Deferred**: a per-skill feedback ledger (Phase 3) ties human gate corrections to the skill
+  version that produced an artifact; then the `/skills` UI.
 
 ## WebUI + iPhone design-system overhaul (2026-06-30)
 

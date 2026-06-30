@@ -133,6 +133,8 @@ def _flow_context(plan_path: str, scene_ids: List[str]) -> Optional[dict]:
 def build_flow_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str], note: str, ctx: dict) -> str:
     """Flow-aware prompt — carries the flow id/theme/palette + per-beat asset state + the
     flow-edit contract (edit the spec not the view, reuse blocks, chapter-block re-render)."""
+    from nolan.skills import skill_path
+    edit_contract = skill_path("flow.edit-contract") or "skills/flow/edit-contract.md"
     spec_path = str(Path(plan_path).parent / "flow.spec.json")
     lines = []
     for bid in scene_ids:
@@ -145,7 +147,7 @@ def build_flow_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str],
         lines.append(f"{bid} ({', '.join(bits)})")
     return (
         f"You are fleet agent '{agent}' editing a FLOW video (flow='{ctx['flow']}', theme='{ctx['theme']}'). "
-        f"FIRST read skills/flow/edit-contract.md — the flow-edit contract; it OVERRIDES the generic "
+        f"FIRST read {edit_contract} — the flow-edit contract; it OVERRIDES the generic "
         f"nolan-scene-edit skill. Edit the SOURCE OF TRUTH \"{spec_path}\" (NOT scene_plan.json — that's a "
         f"regenerated view). Beat(s) to rework: {'; '.join(lines)}. Human note: \"{note}\". "
         f"Pick blocks ONLY from the palette: {', '.join(ctx['palette'])}. "
