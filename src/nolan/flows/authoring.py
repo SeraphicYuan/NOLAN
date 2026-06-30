@@ -41,11 +41,18 @@ def draft_plan(project, flow, *, llm=None) -> dict:
     (flow.palette is the menu it must pick from) — optional; the baseline is always valid.
     """
     segs = _segments(project)
+    segdir = Path(project) / "assets" / "voiceover" / "segments"
     primary = flow.palette[0] if flow.palette else "ArtworkStage"
     beats = []
     for s in segs:
+        stem = Path(s["file"]).stem
+        wf = segdir / f"{stem}.words.json"
+        narration = ""
+        if wf.exists():
+            narration = " ".join(w.get("word", "") for w in json.loads(wf.read_text(encoding="utf-8")))
         beats.append({
-            "segment": Path(s["file"]).stem,
+            "segment": stem,
+            "narration": narration[:600],                       # context for the refiner
             "block": primary,                                   # planned motion (from palette)
             "_planned_asset": None,                             # nothing bound yet
             "_wishlist": [{"want": f"a visual for “{s.get('title','')}”", "status": "find"}],
@@ -63,6 +70,46 @@ def _llm_refine(llm, beats, segs, flow):  # pragma: no cover - exercised only wi
     """Hook for an LLM to pick richer blocks (from flow.palette) + a concrete wishlist per
     beat. Returns refined beats. Kept side-effect-free + optional so the baseline stands alone."""
     return beats
+
+
+# ---------------------------------------------------------------- tmux-agent refine (Gate A)
+
+def build_authoring_prompt(agent: str, draft_path: str, palette: list) -> str:
+    """One-line prompt sent to a Claude Code tmux agent to refine an authoring draft."""
+    pal = ", ".join(palette)
+    return (
+        f"You are fleet agent '{agent}' doing AUTHORING-mode refine for an art-explainer video. "
+        f"Read the JSON draft at \"{draft_path}\" — beats[] each with 'segment', 'narration', a "
+        f"placeholder 'block', and a '_wishlist'. For EACH beat: (1) set 'block' to the best motion "
+        f"from this palette based on the narration — {pal} — e.g. a side-by-side contrast → "
+        f"ImageCompare, naming several figures → PhotoMontage, zooming a detail → DetailLoupe, a "
+        f"closing line → EndCard, else ArtworkStage; (2) rewrite '_wishlist' as a concrete list of "
+        f"the specific visual(s) you'd want for that beat, each {{want, status:'find'|'generate'}}. "
+        f"Write the refined JSON back to the SAME file \"{draft_path}\" (keep all other fields). Then "
+        f"write .nolan/agents/{agent}.json = {{\"agent\":\"{agent}\",\"state\":\"done\",\"scene_ids\":[],"
+        f"\"message\":\"authoring refined\",\"result\":[<chosen blocks>]}}. Start by writing that file "
+        f"with state 'working'. Do ONLY this; do not render."
+    )
+
+
+def dispatch_refine(project, agent: str = "nolan4", *, draft_name: str = "_authoring_draft.spec.json") -> Path:
+    """Gate A via a tmux Claude agent: write a fresh draft, then dispatch <agent> to refine it.
+
+    Returns the draft path. Poll `.nolan/agents/<agent>.json` (fleet.read_status) for state 'done',
+    then read the refined draft. Does NOT touch the canonical flow.spec.json.
+    """
+    from nolan import fleet
+    from nolan.webui.operations import _dispatch_to_tmux
+    from .project import load_flow_spec
+
+    flow, _ = load_flow_spec(project)
+    draft_path = Path(project) / ".flow" / draft_name
+    draft_path.parent.mkdir(parents=True, exist_ok=True)
+    draft_path.write_text(json.dumps(draft_plan(project, flow), indent=2, ensure_ascii=False), encoding="utf-8")
+    fleet.write_status(agent, state="dispatched", project=Path(project).name, plan=str(draft_path),
+                       scene_ids=[], note="authoring refine", message="dispatched", result=None, error=None)
+    _dispatch_to_tmux(agent, build_authoring_prompt(agent, str(draft_path), flow.palette))
+    return draft_path
 
 
 def plan_status(spec: dict) -> list:
