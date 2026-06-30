@@ -8,6 +8,7 @@ The `nolan render-flow` CLI bridge (Windows-python invocation) is a separate fol
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -16,7 +17,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 WVL = ROOT / "web-video-lab"
 RS = ROOT / "render-service"
-NODE = "/mnt/c/Program Files/nodejs/node.exe"
+# node is a Windows binary; reach it the way the running interpreter can (WSL vs nolan-win python)
+NODE = "C:/Program Files/nodejs/node.exe" if os.name == "nt" else "/mnt/c/Program Files/nodejs/node.exe"
 FFMPEG = RS / "node_modules" / "@remotion" / "compositor-win32-x64-msvc" / "ffmpeg.exe"
 
 

@@ -705,7 +705,7 @@ def create_hub_app(
     @app.post("/api/comfyui/workflows")
     async def api_comfyui_add_workflow(body: dict = Body(...)):
         from nolan.workflow_registry import get_registry, WorkflowEntry
-        from nolan.comfyui import load_workflow_file, find_prompt_nodes
+        from nolan.comfyui import load_workflow_file, find_prompt_nodes, find_style_node
         import re as _re
         name = (body.get("name") or "").strip()
         wf_json = body.get("workflow_json")
@@ -716,12 +716,14 @@ def create_hub_app(
         wf_dir.mkdir(parents=True, exist_ok=True)
         wf_path = wf_dir / f"{slug}.json"
         wf_path.write_text(json.dumps(wf_json, indent=2), encoding="utf-8")
-        # Normalize (UI→API) + auto-detect prompt node if not provided.
+        # Normalize (UI→API) + auto-detect prompt node + style selector if present.
         prompt_node = body.get("prompt_node") or None
+        style = None
         try:
             wf = load_workflow_file(wf_path)
             if not prompt_node:
                 prompt_node = find_prompt_nodes(wf).get("positive")
+            style = find_style_node(wf)
         except Exception:
             pass
         entry = WorkflowEntry(
@@ -730,6 +732,9 @@ def create_hub_app(
             prompt_node=prompt_node,
             width=int(body.get("width", 1024)), height=int(body.get("height", 1024)),
             steps=int(body.get("steps", 25)), styles=body.get("styles", []),
+            style_node=(style or {}).get("node"),
+            style_group=(style or {}).get("group"),
+            default_style=(style or {}).get("default"),
         )
         get_registry().add(entry)
         return {"saved": True, "entry": entry.to_dict()}
@@ -751,8 +756,26 @@ def create_hub_app(
             meta={"workflow": body.get("workflow")},
             config=load_config(), workflow_name=(body.get("workflow") or None), prompt=prompt,
             width=body.get("width"), height=body.get("height"), steps=body.get("steps"),
+            style=(body.get("style") or None),
         )
         return {"job_id": job.id, "type": "comfyui-sample"}
+
+    @app.get("/api/comfyui/styles")
+    async def api_comfyui_styles(workflow: str = ""):
+        """Style-selector options for a workflow (for the Sample runner dropdown)."""
+        from nolan.workflow_registry import get_registry
+        entry = get_registry().get(workflow)
+        if not entry or not entry.style_node:
+            return {"options": [], "default": None}
+        options = list(entry.styles or [])
+        if entry.style_group:
+            sp = Path("workflows") / "styles" / f"{entry.style_group}.json"
+            if sp.exists():
+                try:
+                    options = json.loads(sp.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+        return {"options": options, "default": entry.default_style}
 
     @app.get("/comfyui/preview/{filename:path}")
     async def comfyui_preview(filename: str):
@@ -2050,6 +2073,11 @@ def create_hub_app(
             raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
 
         project_path, scene_plan_path = result
+        # flow projects: refresh the scene-plan VIEW from the source-of-truth flow.spec.json
+        from nolan.flows.project import is_flow_project
+        if is_flow_project(project_path) and (project_path / "flow.job.json").exists():
+            from nolan.flows.scene_view import build_scene_plan
+            scene_plan_path = build_scene_plan(project_path)
         data = json.loads(scene_plan_path.read_text(encoding="utf-8"))
         scenes = []
         sections = list(data.get("sections", {}).keys())
@@ -2140,9 +2168,20 @@ def create_hub_app(
         result = _get_project_dir(project)
         if not result:
             raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-        _, scene_plan_path = result
+        project_path, scene_plan_path = result
         from nolan import iterate
         pipeline = iterate.detect_pipeline(scene_plan_path)
+        if pipeline == "flow":
+            # flow projects: edits write to the source-of-truth flow.spec.json (not the view).
+            from nolan.flows.edit import patch_beat
+            from nolan.flows.scene_view import beat_index, build_scene_plan
+            if not patch:
+                raise HTTPException(status_code=400,
+                                    detail="flow projects accept a direct field `patch` "
+                                           "(the LLM `note` path is the authoring-mode refine).")
+            patch_beat(project_path, beat_index(scene_id), patch)
+            build_scene_plan(project_path)
+            return {"applied": patch, "pipeline": "flow"}
         client = None
         words = None
         if note:
@@ -2175,7 +2214,7 @@ def create_hub_app(
         result = _get_project_dir(project)
         if not result:
             raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-        _, scene_plan_path = result
+        project_path, scene_plan_path = result
         from nolan import iterate
         data = iterate.load_plan_raw(scene_plan_path)
         scene = iterate.find_scene(data, scene_id)
@@ -2250,6 +2289,15 @@ def create_hub_app(
         else:
             raise HTTPException(status_code=400, detail=f"unknown op {op!r}")
 
+        # flow projects: an "add" binds the asset into the beat's block prop (the spec is
+        # truth), so the next per-beat re-render shows it. The tray view is regenerated.
+        from nolan.flows.project import is_flow_project
+        if op == "add" and is_flow_project(project_path):
+            from nolan.flows.edit import set_beat_asset
+            from nolan.flows.scene_view import beat_index, build_scene_plan
+            set_beat_asset(project_path, beat_index(scene_id), asset["src"])
+            build_scene_plan(project_path)
+            return {"assets": assets, "bound": asset["src"], "flow": True}
         # Direct save: tray edits are not render-invalidating (unlike apply_edit).
         scene["assets"] = assets
         iterate.save_plan_raw(scene_plan_path, data)

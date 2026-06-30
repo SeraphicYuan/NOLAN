@@ -15,11 +15,28 @@ Then: pacing_lint.py <job> --profile art ; render.mjs <job>
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
 _norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _to_win(p) -> str:
+    """Any path -> Windows form (D:/...). render.mjs/node always runs on Windows."""
+    m = re.match(r"^/mnt/([a-z])/(.*)$", str(p))
+    return f"{m.group(1).upper()}:/" + m.group(2) if m else str(p)
+
+
+def _localize(p) -> str:
+    """A path -> the form the CURRENT interpreter can stat (so the ingest runs under either
+    WSL python3 (/mnt/d/...) or the nolan Windows python (D:/...) — the WebUI uses the latter)."""
+    p = str(p)
+    if os.name == "nt":
+        return _to_win(p)
+    m = re.match(r"^([A-Za-z]):[\\/](.*)$", p)
+    return f"/mnt/{m.group(1).lower()}/" + m.group(2).replace("\\", "/") if m else p
 
 
 def _resolve_anchors(anchors, words_raw, fps, dur_f):
@@ -47,8 +64,8 @@ def main() -> None:
     spec = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     out = Path(sys.argv[2])
     fps = int(spec.get("fps", 30))
-    proj = Path(spec["project"])                       # POSIX path to the NOLAN project
-    win = spec.get("winProject", spec["project"])      # Windows path render.mjs will stage from
+    proj = Path(_localize(spec["project"]))            # localized to the running interpreter
+    win = _to_win(spec.get("winProject") or spec["project"])   # Windows path render.mjs stages from
     segdir = proj / "assets" / "voiceover" / "segments"
     durs = {s["file"]: s["duration"] for s in json.loads((segdir / "segments.json").read_text())["segments"]}
 
