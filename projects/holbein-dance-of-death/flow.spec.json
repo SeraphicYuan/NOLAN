@@ -82,31 +82,179 @@
     },
     {
       "segment": "02_how-death-behaves",
-      "block": "PhotoMontage",
+      "block": "PhotoGrid",
       "revealWords": [
-        "@3",
-        "@14",
-        "knight",
-        "nobility"
+        "@start",
+        "abbot",
+        "knight"
       ],
-      "hero": 2,
-      "kenBurns": true,
+      "cols": 8,
+      "rows": 5,
+      "order": "col",
+      "highlight": [
+        7,
+        22
+      ],
       "cards": [
         {
-          "src": "D:/claudeprojects/nolan/_library/images/files/ce/ce4de1cd9c9d2207fc78ad63cf3a3563b7be2b3c1dcd7a0d49b566e81936ec0a.jpg",
-          "caption": "the merchant"
+          "src": "D:/claudeprojects/nolan/_library/images/files/fc/fcef23d5251897ad7342d3ac1c04916f151f2847ba893a5deccfc092f302c607.jpg",
+          "caption": "The Emperor"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/2f/2f17620965e210ea3b0084eafa9acace06e8752f6acf1c94524789e5d89c5972.jpg",
+          "caption": "The King"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/93/93d08ab5cb872305428e04e271f62df82dc39b2bcd95e6d71e5812a3433164c3.jpg",
+          "caption": "The Cardinal"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/52/52c367deac841c76c7eb40825b21427066f67c2d24cbed4567eed4311283d6ed.jpg",
+          "caption": "The Empress"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/41/4118aac8a4df9b546ed5946dfdc345192919ebe49b95606296af82ba167da926.jpg",
+          "caption": "The Queen"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/3c/3cc88f26fc28e98b7a99d5a683c01dad2ea669b9cdda4b09035524d3faa407cb.jpg",
+          "caption": "The Bishop"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/d4/d4af1ce62bc3bb888b915ff5d0522089564b3b7c22c680e785b027d550afd445.jpg",
+          "caption": "The Duke"
         },
         {
           "src": "D:/claudeprojects/nolan/_library/images/files/1c/1c540f23a4f0d4ab2cb2c9c8821568494f465721b0319eeeaf352885b08c7c1e.jpg",
-          "caption": "the abbot"
+          "caption": "The Abbot"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/ad/ad6e3ce8bd55f38f0dec4bb4aeac410b1edde83d016bd604925793cf5414486e.jpg",
+          "caption": "The Abbess"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/ea/ea1020615fe937e92f58f1eb178dbfb92d58f61afa25212cd823597155302935.jpg",
+          "caption": "The Nobleman"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/cb/cbed2209213262a24144919807383a0bfbb1ec4aef4eb43de4e8a6fae601e317.jpg",
+          "caption": "The Canon"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/aa/aa4dfb80c3bf93a779f2e3ed6c13e61bb6fa5c2e64ef7075566115c1b1d85e7d.jpg",
+          "caption": "The Judge"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/ef/efdf6070dd2ec6c5d33cc4e235f69474b3bd46d5c1117dbfeddb0b4e9fd9c147.jpg",
+          "caption": "The Counsellor"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/1c/1c977c6960aceb89abba3322502dc88718922a18b6ab31b999d40c7c2bc4f98e.jpg",
+          "caption": "The Preacher"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/d8/d8fc0aeeaa206d233f9f6be1f23a997e6370d3bc4389212cd8405d93b3b1a647.jpg",
+          "caption": "The Priest"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/cc/ccffa49aa4e550f1e35d5cb92525c4aaf29bda9350b64665d5980c9589f06a59.jpg",
+          "caption": "The Mendicant Friar"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/cb/cb883bddf7d57c91122af6a0137fc14864c57b1c9baad4beeaf06e7c2b92656b.jpg",
+          "caption": "The Nun"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/ec/ec1829c5a5d1c94198a11949c4b5080daffb81a3de9c93df0eed457fdf957525.jpg",
+          "caption": "The Old Woman"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/90/90d631e71aeb89d00558cf2b03891675e7353975024f9ff2de7f0e0a92f90db2.jpg",
+          "caption": "The Physician"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/61/61e75cf7515585f1f19ee482bd33e541cbde29366e891e416eecd3c9fb11e921.jpg",
+          "caption": "The Astrologer"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/ce/ce4de1cd9c9d2207fc78ad63cf3a3563b7be2b3c1dcd7a0d49b566e81936ec0a.jpg",
+          "caption": "The Merchant"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/e5/e5cc6e70306a9c4b83a4b4818ba025c95b8b90f9dcefc995b6e0398c2299ed64.jpg",
+          "caption": "The Shipman"
         },
         {
           "src": "D:/claudeprojects/nolan/_library/images/files/f7/f7b20ff79e23a5f61a25180f39ff65438adbad7965e3e6cf801ff6cd33a9af33.jpg",
-          "caption": "the knight"
+          "caption": "The Knight"
         },
         {
-          "src": "D:/claudeprojects/nolan/_library/images/files/fc/fcef23d5251897ad7342d3ac1c04916f151f2847ba893a5deccfc092f302c607.jpg",
-          "caption": "the emperor"
+          "src": "D:/claudeprojects/nolan/_library/images/files/07/077f3ff62afcd3beaad84a519b2874fd92fe6e72aa0ad4e2d16cde08807f1511.jpg",
+          "caption": "The Count"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/9e/9ec89c8e408afcca56fd5257d8be6ed3e6d514c2c1a5842d628f8c5b7c5dc055.jpg",
+          "caption": "The Old Man"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/52/52ae8c8a74f31c2d8c81e1019f521989462bd59f8962e583e11edc9228022aae.jpg",
+          "caption": "The Countess"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/e5/e58e480c6e22936254abb0d94c18233ddb83d3d018f54592d90ed15371726e9f.jpg",
+          "caption": "The Noble Lady"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/d6/d6ca6050a67c67d0c69dc9c11e0a45dcbf1f11ba079dfa6d05d050ca9b79721e.jpg",
+          "caption": "The Pedlar"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/6a/6abc001b14c9599431c5bbe87a3ea10e5e319d679cb89c67dde17e12c21f0ed4.jpg",
+          "caption": "The Ploughman"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/5d/5d283b10bd9400a94763732f6f4041c038fd50664d8a2f3d67e07031412e81e2.jpg",
+          "caption": "The Young Child"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/89/8986a9a788b31386c0ef94e19a839026c483b19bbc355b154f90434599fe924e.jpg",
+          "caption": "The Last Judgment"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/09/09d2c59d57528ad853c69773c2a7f7a93a046741a514a2c652b7984a22b8f87e.jpg",
+          "caption": "The Escutcheon Of Death"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/f5/f5de5748d5067c1b5605130bbeaa9294426d95ac85a58cd0e6ce32333dc317fd.jpg",
+          "caption": "The Soldier"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/00/00a11944ae1f2cb116b110688abc84685ad4ddf7ec160a5f9db57ee9a8d1aeca.jpg",
+          "caption": "The Gamester"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/39/39de457b1bb06cefc42ac81a00993e38b1f1a71dbf6e68159c0ac51a50259703.jpg",
+          "caption": "The Drunkard"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/27/2773f71481eab231fd70a79664a8621c00ea20af9632be31e10457f6ae09301a.jpg",
+          "caption": "The Fool"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/02/0264827a52a05f53a61f7090f8c777030ef3bca6d90d657885cf01b3b86eea6a.jpg",
+          "caption": "The Robber"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/35/35bdcfe85a3b2d637649c8df6a766c149a19bd8f93d4c7823c9cd738ee69f557.jpg",
+          "caption": "The Blind Man"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/5e/5e6dd6d8b90ccfbf96dac15e427936959a9ae9e52fa80aba93bf1914bae837ed.jpg",
+          "caption": "The Waggoner"
+        },
+        {
+          "src": "D:/claudeprojects/nolan/_library/images/files/11/110fd8e86591c5cddd4e808f91435b16a275f8038c6937f291ab83e93ddf5f54.jpg",
+          "caption": "The Beggar"
         }
       ]
     },
@@ -180,7 +328,7 @@
           "y": 0.4,
           "w": 0.27,
           "h": 0.44,
-          "caption": "Death \u2014 a companion"
+          "caption": "Death — a companion"
         },
         {
           "word": "rest",
@@ -204,12 +352,12 @@
       "left": {
         "src": "D:/claudeprojects/nolan/_library/images/files/3c/3cc88f26fc28e98b7a99d5a683c01dad2ea669b9cdda4b09035524d3faa407cb.jpg",
         "label": "The Bishop",
-        "caption": "power \u2014 Death's cruelest jokes"
+        "caption": "power — Death's cruelest jokes"
       },
       "right": {
         "src": "D:/claudeprojects/nolan/_library/images/files/1c/1c977c6960aceb89abba3322502dc88718922a18b6ab31b999d40c7c2bc4f98e.jpg",
         "label": "The Preacher",
-        "caption": "spared \u2014 shown in sympathy"
+        "caption": "spared — shown in sympathy"
       },
       "verdict": "His scorn isn't aimed at faith. It's aimed at power."
     },
@@ -228,7 +376,7 @@
         "h": 0.42
       },
       "label": "the anticlerical jab",
-      "caption": "Death hauls the abbot off \u2014 a joke at the Church's expense"
+      "caption": "Death hauls the abbot off — a joke at the Church's expense"
     },
     {
       "segment": "07_close",
@@ -243,9 +391,9 @@
       "takeaways": [
         "Death drags the pope from his throne",
         "and helps the ploughman home",
-        "the same skeleton \u2014 two meanings"
+        "the same skeleton — two meanings"
       ],
-      "source": "Hans Holbein \u00b7 The Dance of Death \u00b7 Lyon, 1538"
+      "source": "Hans Holbein · The Dance of Death · Lyon, 1538"
     }
   ]
 }
