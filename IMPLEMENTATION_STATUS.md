@@ -192,6 +192,28 @@ per-scene motion registry was the wrong seam). No NOLAN core scene/motion code t
   whole Dance of Death through the runner → **byte-identical** to the standalone `art/final/`
   render (147,322,164 bytes, 11508 frames). Delivered to `projects/holbein-dance-of-death/video/`.
 
+### Explainer tenant promoted in-process (2026-06-30)
+
+The **second** flow tenant is now first-class. `web-video-lab/gen_spec.py` (the explainer's
+byo-script ingest — anchor-based chapter spec + per-step Whisper word-timestamps → render job)
+is ported into `flows/ingest.py::ingest_explainer`, wired through `flows/explainer.py`
+(`INGEST`) and registered in `get_flow`'s tenants (`{"art", "explainer"}`).
+
+- **Interpreter-agnostic**: the lab `gen_spec` only ran under WSL `python3` (its `wavDir`/
+  `wordsCache`/`segments` are `/mnt/...` POSIX paths). The port runs `_localize` on those reads
+  and `_to_win` on `audioDir` (node-side `audioSrc`), so it now runs **in-process under the nolan
+  env Windows python** like the WebUI/CLI — same as `ingest_art`.
+- **Parity verified**: `ingest_explainer` on `specs/tailtrading.spec.json` produces a job
+  **byte-identical** (canonical-JSON diff) to `gen_spec`'s — 6 steps, 5001 frames
+  (HeroStatement/StatCount/ListReveal/PaperFigure/DataTable), with computed `revealFrames` and
+  script-relabeled `captionWords`.
+- **Helpers ported**: `_NUM` (number-word↔digit so anchor "two" matches whisper "2"), `_canon`,
+  `_wav_seconds`, `_relabel_captions` (difflib carries authoritative script spelling onto whisper
+  timing), `_resolve_explainer_anchor` (`word` | `@start` | `@<sec>` | `@f<frac>`).
+- Both tenants now share the same engine below the job JSON (gate → render → deliver → scene
+  view → edit). The heavy generate-from-source half (extract_figure + OmniVoice TTS + Whisper
+  word-align) still feeds the same spec and is the remaining un-promoted explainer piece.
+
 ### Per-beat human-in-the-loop editor — 5 phases (`src/nolan/flows/`)
 
 Per-beat editing of a flow video through NOLAN's existing Scene-page iteration system. Two HITL

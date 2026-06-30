@@ -33,8 +33,8 @@ def _registry_type(flow_id: str) -> dict | None:
 
 def get_flow(flow_id: str) -> Flow:
     """Build a Flow from its tenant module (ingest adapter) + registry.json (config)."""
-    from . import art
-    tenants = {"art": art.INGEST}             # explainer.INGEST joins here when promoted
+    from . import art, explainer
+    tenants = {"art": art.INGEST, "explainer": explainer.INGEST}
     if flow_id not in tenants:
         raise ValueError(f"no flow tenant for '{flow_id}' (have: {sorted(tenants)})")
     t = _registry_type(flow_id) or {}
