@@ -58,6 +58,23 @@ per-scene motion registry was the wrong seam). No NOLAN core scene/motion code t
   whole Dance of Death through the runner → **byte-identical** to the standalone `art/final/`
   render (147,322,164 bytes, 11508 frames). Delivered to `projects/holbein-dance-of-death/video/`.
 
+### Per-beat human-in-the-loop editor — 5 phases (`src/nolan/flows/`)
+
+Per-beat editing of a flow video through NOLAN's existing Scene-page iteration system. Two HITL
+stages on one shared `projects/<slug>/flow.spec.json`; autonomy = which gate blocks. Full design
+in `web-video-lab/flows/EDITOR.md`. Backends built + tested; some frontend UX needs in-browser
+verification (marked ⚠ in EDITOR.md).
+
+- **P1 Persistence** (`project.py`) — project-owned, beat-addressable spec; `load_flow_spec`,
+  `run_flow_for_project`, `run_flow(render=False)`.
+- **P2 chapter-block render** (`render.py`) — per-beat clip → concat, dispatched by
+  `Flow.render_mechanism` (no per-type branch). Full 8-beat run = 11508 frames (== whole-comp).
+- **P3 Scene-page wiring** (`scene_view.py` + `iterate/engine.py` `flow` pipeline + `edit.py`) —
+  beats → scene rows; **selective single-beat re-render ~20s vs ~7min**; edit→re-render-one.
+- **P4 Sub-beat** (`edit.patch_focus`) — edit one focus (`beat_NN.fJ`) independently.
+- **P5 Authoring mode + autonomy** (`authoring.py`) — `draft_plan` (palette = motion menu) +
+  asset wishlist (have/find/generate) + `run(mode=auto|semi-auto)` (Gate A off/on).
+
 ## WebUI — iPhone-friendly + unified theme (2026-06-28)
 
 The hub WebUI is now responsive across the whole site and visually consistent.

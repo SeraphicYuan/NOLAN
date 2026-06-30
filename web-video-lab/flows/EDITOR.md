@@ -77,17 +77,24 @@ and missing what flows need. Additions (all optional fields, no schema breakage)
 - The project records its **flow id** → inherits palette/profile/theme via `get_flow`.
 - Reuse the existing `scene.assets[]` tray for per-beat asset bindings.
 
-## Phases
-1. **Persistence** — project-owned, beat-addressable spec; the shared object for both gates.
-2. **`chapter-block` mechanism** — one render mechanism, dispatched via `flow.render_mechanism`;
-   art/explainer/book reuse it (per-beat clip + concat; plug into `iterate/engine.py`).
-3. **Scene-page wiring (Gate B)** — beats as scene rows; comment → re-render-one; tray binds into
-   block props; palette as the "swap the blessed motion" menu (governed by the #31 soft check).
-4. **Sub-beat granularity** — per-focus override + click-to-place-region UI ("segment within a
-   beat" — the finer grain NOLAN lacks today).
-5. **Authoring mode (Gate A) + autonomy** — LLM drafts a per-beat plan from script+VO, flow-aware
-   (palette), with the asset wishlist (have/find/generate); human-tweakable; auto vs semi-auto =
-   Gate A off/on.
+## Phases — status (backend built + tested; ⚠ = frontend needs in-browser verification)
+1. ✅ **Persistence** — `flows/project.py`: `projects/<slug>/flow.spec.json` self-declares its
+   flow; `load_flow_spec` / `run_flow_for_project`. Shared object for both gates. *Tested.*
+2. ✅ **`chapter-block` mechanism** — `flows/render.py`: per-beat clip → concat, dispatched via
+   `Flow.render_mechanism` (art/explainer/book share it — no per-type branch). *Tested: full
+   8-beat run = 11508 frames, == the whole-composition render.*
+3. ✅⚠ **Scene-page wiring (Gate B)** — `flows/scene_view.build_scene_plan` projects beats into
+   the `scene_plan.json` the Scene page already renders; `iterate/engine` `flow` pipeline
+   re-renders only selected beats; `flows/edit.patch_beat` writes edits back to the spec.
+   *Tested backend: selective single-beat re-render ~20s (vs ~7min); edit→re-render-one renders
+   the change. ⚠ hub revise/tray routing + in-browser UX not yet verified.*
+4. ✅⚠ **Sub-beat granularity** — `flows/edit.patch_focus` edits one focus (`beat_NN.fJ`);
+   `scene_view` exposes focuses as sub-rows. *Tested: focus override propagates + re-renders.
+   ⚠ click-to-place region picker (frontend) not built.*
+5. ✅ **Authoring mode (Gate A) + autonomy** — `flows/authoring.py`: `draft_plan` (flow-aware,
+   palette = motion menu) + asset `wishlist`/`plan_status` (have/find/generate) + `run(mode=auto|
+   semi-auto)` (Gate A off/on). *Tested: draft, status, semi-auto pause, auto dispatch. LLM
+   refinement is an optional hook.*
 
 ## Reuses (so it's mostly wiring, not building)
 Scene page UI, comment→patch (`iterate/revise.py`), selective re-render (`iterate/engine.py`),
