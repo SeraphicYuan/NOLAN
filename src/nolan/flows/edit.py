@@ -47,3 +47,23 @@ def patch_beat(project, i: int, patch: dict, *, reingest: bool = True) -> dict:
 def set_beat_asset(project, i: int, src: str, *, key: str = "src") -> dict:
     """Tray bind — point a beat's image prop at an asset (ArtworkStage/DetailLoupe `src`)."""
     return patch_beat(project, i, {key: src})
+
+
+def patch_focus(project, i: int, j: int, changes: dict, *, reingest: bool = True) -> dict:
+    """Sub-beat edit (Phase 4) — update one focus within a beat (the 'segment within a beat').
+
+    A focus is beats[i].focuses[j] = {word, x, y, w, h, caption} — one spotlight/callout in an
+    ArtworkStage tour. Edits its region/caption independently of the rest of the beat.
+    e.g. patch_focus(p, 4, 2, {"x": 0.30, "w": 0.30, "caption": "Death, closer"})
+    """
+    project = Path(project)
+    sp = project / "flow.spec.json"
+    spec = json.loads(sp.read_text(encoding="utf-8"))
+    foc = spec["beats"][i].get("focuses") or []
+    if j >= len(foc):
+        raise IndexError(f"beat {i} has {len(foc)} focuses; no focus {j}")
+    _deep_merge(foc[j], changes)
+    sp.write_text(json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8")
+    if reingest:
+        reingest_job(project)
+    return foc[j]

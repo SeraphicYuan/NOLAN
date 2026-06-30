@@ -49,6 +49,9 @@ def build_scene_plan(project, fps: int = 30) -> Path:
             "block": st.get("block"),
             "segment": beat.get("segment"),
             "flow": flow_id,
+            # sub-beat structure (Phase 4): the focuses/callouts within this beat, each
+            # independently editable (id beat_NN.fJ) — the "segment within a beat" grain.
+            "focuses": [{"id": f"{beat_id(i)}.f{j}", **f} for j, f in enumerate(beat.get("focuses", []))],
         })
         t += dur
 
