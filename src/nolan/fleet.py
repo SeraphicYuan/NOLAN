@@ -149,9 +149,9 @@ def build_flow_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str],
         f"nolan-scene-edit skill. Edit the SOURCE OF TRUTH \"{spec_path}\" (NOT scene_plan.json — that's a "
         f"regenerated view). Beat(s) to rework: {'; '.join(lines)}. Human note: \"{note}\". "
         f"Pick blocks ONLY from the palette: {', '.join(ctx['palette'])}. "
-        f"REUSE before rebuilding: before authoring any new block, check the palette, the full "
-        f"render-service/_lab_chapter/src/blocks/library/, AND render-service/remotion-lib/src/ (PhotoGrid, "
-        f"PhotoMontage, BarCompare, … already exist there) — PORT an existing one rather than rebuild. "
+        f"REUSE before rebuilding: before authoring any new block, check the palette + the ONE block "
+        f"library render-service/remotion-lib/src/blocks/library/ (40 blocks — ArtworkStage, DetailLoupe, "
+        f"PhotoGrid, PhotoMontage, …) and reuse it; only author a genuinely new block if none fits. "
         f"Use assets already bound/added to the beat; source new only if needed. "
         f"Re-render ONLY the named beat(s) via the chapter-block mechanism: "
         f"rerender_scenes(\"{plan_path}\", {scene_ids}). Leave neighbors untouched. "
@@ -178,12 +178,39 @@ def _resolve_note_mentions(plan_path: str, scene_ids: List[str], note: str) -> s
         return note
 
 
+def current_session() -> Optional[str]:
+    """The tmux session this process runs in, or None. Used to refuse self-dispatch.
+
+    Detect ONLY via $TMUX (set when the caller is genuinely inside a tmux session — i.e. a
+    fleet agent), so we never guess. Returns None for the hub (Windows python doesn't inherit
+    $TMUX and isn't a fleet worker anyway) — a "best-effort active session" fallback was
+    rejected because it could falsely refuse a legit hub dispatch."""
+    import os
+    import shutil
+    import subprocess
+    if not os.environ.get("TMUX"):
+        return None
+    pane = os.environ.get("TMUX_PANE")
+    base = ["tmux"] if shutil.which("tmux") else ["wsl.exe", "tmux"]
+    args = base + ["display-message"] + (["-t", pane] if pane else []) + ["-p", "#S"]
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=5)
+        return r.stdout.strip() or None
+    except Exception:
+        return None
+
+
 def dispatch(agent: str, plan_path: str, project: str, scene_ids: List[str], note: str) -> dict:
     """Write the initial status and send the task to the agent's tmux session.
 
     Flow projects get a flow-aware prompt (spec-not-view, palette, block-reuse, chapter-block
     re-render); everything else gets the generic nolan-scene-edit prompt.
     """
+    # Guard against self-dispatch: an agent can't be its own fleet worker — the send-keys
+    # would type into our own input and silently no-op (status frozen at 'dispatched').
+    if agent == current_session():
+        raise ValueError(f"refusing self-dispatch: '{agent}' is THIS agent's own tmux session — "
+                         "pick a different fleet agent.")
     from nolan.webui.operations import _dispatch_to_tmux
     note = _resolve_note_mentions(str(plan_path), scene_ids, note)
     write_status(agent, state="dispatched", project=project, plan=str(plan_path),
