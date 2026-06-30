@@ -1,0 +1,88 @@
+{
+  "out": "dance-of-death.mp4",
+  "theme": "midnight-press",
+  "captions": false,
+  "fps": 30,
+  "fx": { "grade": "warm", "bloom": 0.16, "grain": 0.07, "vignette": 0.5 },
+  "project": "/mnt/d/claudeprojects/nolan/projects/holbein-dance-of-death",
+  "winProject": "D:/claudeprojects/nolan/projects/holbein-dance-of-death",
+  "_imgbase": "D:/claudeprojects/nolan/_library/images/files",
+  "beats": [
+    {
+      "segment": "00_hook", "block": "ArtworkStage",
+      "src": "D:/claudeprojects/nolan/_library/images/files/09/09d2c59d57528ad853c69773c2a7f7a93a046741a514a2c652b7984a22b8f87e.jpg",
+      "label": { "title": "The Escutcheon of Death", "artist": "Hans Holbein the Younger", "date": "c. 1526", "medium": "Woodcut", "collection": "The Dance of Death" },
+      "introHold": 50, "maxZoom": 1.5, "glide": 34,
+      "focuses": [
+        { "word": "reminder", "x": 0.40, "y": 0.10, "w": 0.24, "h": 0.28, "caption": "the hourglass" },
+        { "word": "die", "x": 0.30, "y": 0.55, "w": 0.28, "h": 0.27, "caption": "memento mori" }
+      ]
+    },
+    {
+      "segment": "01_the-work", "block": "ArtworkStage",
+      "src": "D:/claudeprojects/nolan/_library/images/files/15/152de2d8d020100a157c0304240cded20dd63be1785a3d6c337762207b44214c.jpg",
+      "label": { "title": "Title Page", "artist": "Trechsel brothers (publ.)", "date": "Lyon, 1538", "medium": "Letterpress + woodcut", "collection": "Les Simulachres de la Mort" },
+      "introHold": 60, "maxZoom": 1.4, "glide": 40,
+      "focuses": [
+        { "word": "Holbein", "x": 0.24, "y": 0.30, "w": 0.50, "h": 0.26, "caption": "designed by Hans Holbein" },
+        { "word": "Lyon", "x": 0.22, "y": 0.56, "w": 0.56, "h": 0.26, "caption": "first printed in Lyon, 1538" }
+      ]
+    },
+    {
+      "segment": "02_how-death-behaves", "block": "PhotoMontage",
+      "revealWords": ["@3", "@14", "knight", "nobility"],
+      "hero": 2, "kenBurns": true,
+      "cards": [
+        { "src": "D:/claudeprojects/nolan/_library/images/files/ce/ce4de1cd9c9d2207fc78ad63cf3a3563b7be2b3c1dcd7a0d49b566e81936ec0a.jpg", "caption": "the merchant" },
+        { "src": "D:/claudeprojects/nolan/_library/images/files/1c/1c540f23a4f0d4ab2cb2c9c8821568494f465721b0319eeeaf352885b08c7c1e.jpg", "caption": "the abbot" },
+        { "src": "D:/claudeprojects/nolan/_library/images/files/f7/f7b20ff79e23a5f61a25180f39ff65438adbad7965e3e6cf801ff6cd33a9af33.jpg", "caption": "the knight" },
+        { "src": "D:/claudeprojects/nolan/_library/images/files/fc/fcef23d5251897ad7342d3ac1c04916f151f2847ba893a5deccfc092f302c607.jpg", "caption": "the emperor" }
+      ]
+    },
+    {
+      "segment": "03_the-tradition", "block": "ArtworkStage",
+      "src": "D:/claudeprojects/nolan/_library/images/files/6f/6fbd73ccd430520a8271e1f84b3b32978aa0924237683126bbc3cb2bea71105a.jpg",
+      "label": { "title": "A Cemetery", "artist": "Hans Holbein the Younger", "date": "c. 1526", "medium": "Woodcut", "collection": "The Dance of Death" },
+      "introHold": 45, "maxZoom": 1.5, "glide": 36,
+      "focuses": [
+        { "word": "procession", "x": 0.12, "y": 0.32, "w": 0.50, "h": 0.48, "caption": "the dead, dancing" },
+        { "word": "charnel", "x": 0.28, "y": 0.03, "w": 0.60, "h": 0.28, "caption": "on charnel-house walls" }
+      ]
+    },
+    {
+      "segment": "04_the-ploughman", "block": "ArtworkStage",
+      "src": "D:/claudeprojects/nolan/_library/images/files/6a/6abc001b14c9599431c5bbe87a3ea10e5e319d679cb89c67dde17e12c21f0ed4.jpg",
+      "label": { "title": "The Ploughman", "artist": "Hans Holbein the Younger", "date": "c. 1526", "medium": "Woodcut", "collection": "The Dance of Death" },
+      "introHold": 40, "maxZoom": 1.55, "glide": 34,
+      "focuses": [
+        { "word": "peasant", "x": 0.58, "y": 0.42, "w": 0.38, "h": 0.52, "caption": "the labourer" },
+        { "word": "horses", "x": 0.04, "y": 0.46, "w": 0.42, "h": 0.38, "caption": "his tired team" },
+        { "word": "Death", "x": 0.33, "y": 0.40, "w": 0.27, "h": 0.44, "caption": "Death — a companion" },
+        { "word": "rest", "x": 0.44, "y": 0.04, "w": 0.45, "h": 0.32, "caption": "toward rest" }
+      ]
+    },
+    {
+      "segment": "05_two-readings", "block": "ImageCompare",
+      "revealWords": ["@start", "yet", "power"],
+      "kicker": "two readings",
+      "left": { "src": "D:/claudeprojects/nolan/_library/images/files/3c/3cc88f26fc28e98b7a99d5a683c01dad2ea669b9cdda4b09035524d3faa407cb.jpg", "label": "The Bishop", "caption": "power — Death's cruelest jokes" },
+      "right": { "src": "D:/claudeprojects/nolan/_library/images/files/1c/1c977c6960aceb89abba3322502dc88718922a18b6ab31b999d40c7c2bc4f98e.jpg", "label": "The Preacher", "caption": "spared — shown in sympathy" },
+      "verdict": "His scorn isn't aimed at faith. It's aimed at power."
+    },
+    {
+      "segment": "06_what-holbein-smuggled", "block": "DetailLoupe",
+      "revealWords": ["@start", "joke"],
+      "src": "D:/claudeprojects/nolan/_library/images/files/1c/1c540f23a4f0d4ab2cb2c9c8821568494f465721b0319eeeaf352885b08c7c1e.jpg",
+      "region": { "x": 0.08, "y": 0.28, "w": 0.42, "h": 0.42 },
+      "label": "the anticlerical jab",
+      "caption": "Death hauls the abbot off — a joke at the Church's expense"
+    },
+    {
+      "segment": "07_close", "block": "EndCard",
+      "revealWords": ["@start", "preacher", "satirist", "read"],
+      "headline": "A preacher, or a satirist?",
+      "takeaways": ["Death drags the pope from his throne", "and helps the ploughman home", "the same skeleton — two meanings"],
+      "source": "Hans Holbein · The Dance of Death · Lyon, 1538"
+    }
+  ]
+}

@@ -8,6 +8,56 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Art explainer flow + pre-render QA gate (2026-06-29)
+
+The `web-video-lab` art flow (image-first explainer) is proven end-to-end and hardened
+with a tiered pre-render QA gate.
+
+- **Dance of Death, all-Remotion**: the full 8-beat Holbein *Dance of Death* (6:23, 11508
+  frames) renders entirely in Remotion from real NOLAN voiceover word-timestamps (no
+  TTS/Whisper — `art_ingest.py` assembles the job). Blocks `ArtworkStage` (camera tour +
+  spotlight + wall-label), `DetailLoupe` (crop-beside-whole), `ImageCompare` (two artworks +
+  drift). Delivery: `web-video-lab/art/final/dance-of-death.mp4` (faststart).
+- **Pre-render QA gate** (`art_check.py`, cheapest-first, fail-fast) — *check per beat before
+  the full render, never after*:
+  - Tier 0 `art_validate.py` — structural (image/audio paths resolve, focus rects in-frame,
+    reveal-slot count vs block arity, block name in `LIBRARY` registry). ~1s.
+  - Tier 0 `pacing_lint.py` — temporal (WPM, first-reveal, gap, density). ~1s.
+  - Tier 1 `art_contact.py` + `still.mjs` + `_montage.py` — spatial: 1–2 `renderStill` per beat
+    through the **shared `stage.mjs`** (so stills match the real render), a labeled **contact
+    sheet**, and an auto black/empty-beat flag. ~25s for the whole video vs ~7min full render.
+- **Usage**: `python web-video-lab/art_check.py art/<name>.job.json --profile art` → GREEN gates
+  the full render. Negative-tested (bad path + out-of-bounds rect → blocked at Tier 0).
+- **Benefit**: the two defects found this build (DetailLoupe clipped off-frame; ImageCompare
+  single-panel) are Tier-1 catches surfaced in ~25s on one sheet, not at minute 7 of a render.
+  Per-beat gating is also the prerequisite for safe parallel (subagent) beat rendering.
+
+### NOLAN flow integration (`src/nolan/flows/`)
+
+The art flow is now invokable *through NOLAN* as a **flow** — a descriptor over one shared
+engine, not a per-scene motion effect (see `web-video-lab/flows/INTEGRATION.md` for why the
+per-scene motion registry was the wrong seam). No NOLAN core scene/motion code touched.
+
+- **`src/nolan/flows/`**: `base.run_flow(flow, spec)` = the shared engine (ingest → gate →
+  render → deliver); `get_flow(id)` builds a `Flow` from the tenant's ingest adapter + the
+  registry config; `art.py` is the first tenant (assemble-ingest). `render_chapter()` drives the
+  `_lab_chapter` Remotion bundle. Runs under `python3`, subprocess-out to Windows node (matches
+  the lab precedent; CLI bridge deferred).
+- **Flow = descriptor, 5 divergence axes**: ingest (code) · authoring grammar (skill/docs) ·
+  block palette · pacing profile · theme/fx defaults. Everything else (job schema, gate, render
+  engine, 39-block library, delivery) is shared. art = the explainer engine extended with an
+  assemble-ingest + the camera-tour block class + contemplative defaults.
+- **Palette differentiation wired** (was declared-but-unenforced): `registry.json` gains a
+  `common_palette`; `art_validate.py --flow <id>` soft-**warns** on blocks outside the flow's
+  palette (RAW bespoke allowed-but-flagged, shared set exempt); `--show-palette <flow>` lists the
+  blocks to reach for (authoring aid). Caught a real gap (`PhotoMontage` missing from the art
+  palette).
+- **pacing_lint gap-FAIL**: `dead_gap_fail_s` is now enforced (was warn-only) — explainer hard-
+  fails ≥9s of dead air; art's 99s threshold keeps long contemplative holds legal.
+- **Integration test**: `python -m nolan.flows.run --flow art .../dance.spec.json` rendered the
+  whole Dance of Death through the runner → **byte-identical** to the standalone `art/final/`
+  render (147,322,164 bytes, 11508 frames). Delivered to `projects/holbein-dance-of-death/video/`.
+
 ## WebUI — iPhone-friendly + unified theme (2026-06-28)
 
 The hub WebUI is now responsive across the whole site and visually consistent.

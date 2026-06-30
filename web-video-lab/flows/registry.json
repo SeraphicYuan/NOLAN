@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "_comment": "Video-type registry. Each type = a flow descriptor read by the router + pacing linter. See README.md for the 4-layer design.",
+  "common_palette": ["ChapterCard", "EndCard", "Timeline", "PullQuote"],
+  "_common_palette_note": "Structural blocks legit in ANY flow — exempt from the per-flow palette guardrail (art_validate --flow). RAW blocks (blocks/raw/) are also always allowed but flagged as bespoke.",
+  "types": [
+    {
+      "id": "explainer",
+      "name": "Paper / Article Explainer",
+      "status": "solid",
+      "summary": "Idea-dense, text-first source → narrated explainer. Generates visuals to stand in for abstract ideas; figures are exhibits.",
+      "ingest": ["generate-from-source", "byo-script"],
+      "docs": { "grammar": "SCENE_GRAMMAR.md", "script": "SCRIPT_SKILL.md", "catalog": "BLOCK_CATALOG.md" },
+      "rules": ["redraw-synthetic-lift-empirical", "front-load-the-visual-keyword", "one-insight-per-beat"],
+      "palette": [
+        "HeroStatement", "KineticHeadline", "PullQuote", "ListReveal", "StepFlow",
+        "StatCount", "ValueLadder", "BarChart", "LineChart", "Distribution", "Heatmap",
+        "DataTable", "Formula", "PaperFigure", "ComparisonVS", "Timeline",
+        "ArchetypeCards", "WebVsBoxes", "UnlockGrid", "ChapterCard", "EndCard", "LottieIcon"
+      ],
+      "pacing": {
+        "wpm": [130, 165],
+        "first_reveal_fail_s": 6.0, "first_reveal_warn_s": 3.0,
+        "dead_gap_fail_s": 9.0, "dead_gap_warn_s": 5.0,
+        "density_high_rps": 1.2
+      },
+      "defaults": { "theme": "by-topic", "transitions": "hard-cut", "fx": "optional" }
+    },
+    {
+      "id": "art",
+      "name": "Artwork Explainer",
+      "status": "scoping",
+      "summary": "Image-first. The artwork IS the subject; narration interprets what's on screen. Explanation = camera navigation (Ken Burns + spotlight + callouts) over a persistent hero image, in a gallery/series.",
+      "ingest": ["byo-everything", "byo-script"],
+      "docs": { "grammar": "art.md" },
+      "rules": ["always-lift-never-redraw", "image-is-persistent-across-beats", "contemplative-holds"],
+      "palette": [
+        "ArtworkStage", "DetailLoupe", "WallLabel", "ImageCompare", "PhotoMontage",
+        "ChapterCard", "PullQuote", "Timeline", "EndCard"
+      ],
+      "pacing": {
+        "wpm": [95, 140],
+        "first_reveal_fail_s": 8.0, "first_reveal_warn_s": 4.0,
+        "dead_gap_fail_s": 99.0, "dead_gap_warn_s": 99.0,
+        "min_hold_warn_s": 2.5,
+        "density_high_rps": 0.8
+      },
+      "defaults": { "theme": "museum-neutral", "transitions": "cross-fade", "fx": "subtle-grade+vignette" }
+    }
+  ]
+}

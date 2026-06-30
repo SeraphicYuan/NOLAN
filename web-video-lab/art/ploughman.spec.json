@@ -1,0 +1,23 @@
+{
+  "out": "ploughman.mp4",
+  "theme": "midnight-press",
+  "captions": false,
+  "fps": 30,
+  "fx": { "grade": "warm", "bloom": 0.18, "grain": 0.06, "vignette": 0.5 },
+  "project": "/mnt/d/claudeprojects/nolan/projects/holbein-dance-of-death",
+  "winProject": "D:/claudeprojects/nolan/projects/holbein-dance-of-death",
+  "beats": [
+    {
+      "segment": "04_the-ploughman",
+      "src": "D:/claudeprojects/nolan/_library/images/files/6a/6abc001b14c9599431c5bbe87a3ea10e5e319d679cb89c67dde17e12c21f0ed4.jpg",
+      "label": { "title": "The Ploughman", "artist": "Hans Holbein the Younger", "date": "c. 1526", "medium": "Woodcut", "collection": "The Dance of Death" },
+      "introHold": 40, "maxZoom": 1.55, "glide": 34,
+      "focuses": [
+        { "word": "peasant", "x": 0.58, "y": 0.42, "w": 0.38, "h": 0.52, "caption": "the labourer" },
+        { "word": "horses", "x": 0.04, "y": 0.46, "w": 0.42, "h": 0.38, "caption": "his tired team" },
+        { "word": "Death", "x": 0.33, "y": 0.40, "w": 0.27, "h": 0.44, "caption": "that figure is Death" },
+        { "word": "rest", "x": 0.44, "y": 0.04, "w": 0.45, "h": 0.32, "caption": "toward rest" }
+      ]
+    }
+  ]
+}

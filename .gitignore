@@ -104,3 +104,11 @@ beautiful-articles/_pubtest/
 # Render-service scratch
 render-service/uploads/
 render-service/remotion-lib/output/
+render-service/_lab_chapter/output/
+render-service/_lab_chapter/public/
+render-service/_lab_chapter/jobs/_auto_*.json
+
+# web-video-lab generated artifacts (jobs are regenerable from specs; renders/scratch are large)
+web-video-lab/art/*.job.json
+web-video-lab/art/_*.png
+web-video-lab/flows/_*.png
