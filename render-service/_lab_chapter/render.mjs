@@ -1,43 +1,19 @@
 // Lab probe — render a whole CHAPTER (a Series of step-blocks, each with its own
-// narration + word-timestamp reveals) to mp4 via NOLAN's Remotion. Stages the
-// theme + each step's audio. Run from render-service/ with Windows node.
+// narration + word-timestamp reveals) to mp4 via NOLAN's Remotion. Staging (theme +
+// audio + images) lives in stage.mjs, shared with the still-based checker so a
+// pre-flight still is staged identically. Run from render-service/ with Windows node.
 import { bundle } from "@remotion/bundler";
 import { selectComposition, renderMedia } from "@remotion/renderer";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { stageJob } from "./stage.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const cfg = JSON.parse(fs.readFileSync(process.argv[2], "utf-8"));
 
-const publicDir = path.join(here, "public");
-fs.mkdirSync(publicDir, { recursive: true });
-
-const theme = cfg.theme || "bold-signal";
-fs.copyFileSync(
-  path.resolve(here, "../../web-video-lab/skill/themes", theme, "tokens.css"),
-  path.join(here, "src", "styles", "_active-theme.css"),
-);
+const { compId, props, publicDir, theme } = stageJob(cfg, here);
 console.log("theme:", theme);
-
-const steps = (cfg.props && cfg.props.steps) || [];
-for (const s of steps) {
-  if (s.audioSrc) {
-    const base = path.basename(s.audioSrc);
-    fs.copyFileSync(s.audioSrc, path.join(publicDir, base));
-    s.audioSrc = base;
-  }
-  // stage a lifted figure image (PaperFigure): copy into public/, rewrite to basename.
-  if (s.props && typeof s.props.src === "string" && fs.existsSync(s.props.src)) {
-    const base = path.basename(s.props.src);
-    fs.copyFileSync(s.props.src, path.join(publicDir, base));
-    s.props = { ...s.props, src: base };
-  }
-}
-const compId = cfg.composition || "Chapter";
-const props = compId === "Montage"
-  ? { steps, transitions: cfg.transitions || [], motionBlur: !!cfg.motionBlur }
-  : { steps, captions: !!cfg.captions, ...(cfg.fx ? { fx: cfg.fx } : {}) };
 
 const serveUrl = await bundle({ entryPoint: path.join(here, "src", "index.tsx"), publicDir });
 const composition = await selectComposition({ serveUrl, id: compId, inputProps: props });

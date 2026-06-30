@@ -12,8 +12,10 @@ Runs on a gen_spec JOB json (no render needed) and reports, per beat + overall:
 We have exact word timestamps + reveal frames, so these are exact, not guesses.
 
 Usage:
-  python web-video-lab/pacing_lint.py render-service/_lab_chapter/jobs/<chapter>.json [--fps 30]
-Exit code 1 if any beat FAILs a hard threshold (use it as a pre-render gate).
+  python web-video-lab/pacing_lint.py <job>.json [--profile explainer|art] [--fps 30]
+The pacing thresholds come from the chosen flow's profile in flows/registry.json (different
+video types pace differently — paper is punchy, art is contemplative). Exit code 1 if any
+beat FAILs a hard threshold (use it as a pre-render gate).
 """
 from __future__ import annotations
 
@@ -22,19 +24,33 @@ import json
 import sys
 from pathlib import Path
 
-# thresholds (warn → yellow, fail → hard gate)
-WPM_SLOW, WPM_FAST = 105, 180
-FIRST_REVEAL_WARN, FIRST_REVEAL_FAIL = 3.0, 6.0   # seconds of empty stage
-DEAD_GAP_WARN, DEAD_GAP_FAIL = 5.0, 9.0           # seconds with no reveal
-DENSITY_HIGH = 1.2                                # reveals/sec → cluttered
+# fallback profile = the explainer flow (used if registry/profile is unavailable).
+_DEFAULT = {
+    "wpm": [130, 165],
+    "first_reveal_fail_s": 6.0, "first_reveal_warn_s": 3.0,
+    "dead_gap_fail_s": 9.0, "dead_gap_warn_s": 5.0,
+    "density_high_rps": 1.2, "min_hold_warn_s": 0.0,
+}
 
 
-def _beat(step: dict, fps: int) -> dict:
+def _load_profile(profile_id: str) -> dict:
+    reg = Path(__file__).with_name("flows") / "registry.json"
+    th = dict(_DEFAULT)
+    try:
+        types = json.loads(reg.read_text(encoding="utf-8")).get("types", [])
+        p = next((t["pacing"] for t in types if t["id"] == profile_id), None)
+        if p:
+            th.update(p)
+    except Exception:
+        pass
+    return th
+
+
+def _beat(step: dict, fps: int, th: dict) -> dict:
     dur_f = max(1, int(step.get("durationInFrames", 1)))
     dur_s = dur_f / fps
     words = step.get("words", [])
-    wc = len(words)
-    wpm = wc / (dur_s / 60) if dur_s else 0
+    wpm = len(words) / (dur_s / 60) if dur_s else 0
     reveals = sorted(set(int(r) for r in step.get("revealFrames", []) if r is not None))
     first_s = (reveals[0] / fps) if reveals else 0.0
     # leading empty stage = first reveal time (THE black-screen signal). Inter-anchor gap is
@@ -43,14 +59,22 @@ def _beat(step: dict, fps: int) -> dict:
     inter_f = max((b - a) for a, b in zip(reveals, reveals[1:])) if len(reveals) >= 2 else 0
     gap_s = inter_f / fps
     dens = (len(reveals) / dur_s) if dur_s else 0
+    wpm_lo, wpm_hi = th["wpm"]
     flags = []
-    if first_s >= FIRST_REVEAL_FAIL: flags.append(("FAIL", f"first reveal {first_s:.1f}s (late payload / empty stage)"))
-    elif first_s >= FIRST_REVEAL_WARN: flags.append(("warn", f"first reveal {first_s:.1f}s"))
-    if gap_s >= DEAD_GAP_FAIL: flags.append(("warn", f"{gap_s:.1f}s between reveals"))
-    elif gap_s >= DEAD_GAP_WARN: flags.append(("warn", f"{gap_s:.1f}s between reveals"))
-    if wpm > WPM_FAST: flags.append(("warn", f"fast {wpm:.0f} wpm"))
-    elif 0 < wpm < WPM_SLOW: flags.append(("warn", f"slow {wpm:.0f} wpm"))
-    if dens > DENSITY_HIGH: flags.append(("warn", f"dense {dens:.1f} reveals/s"))
+    if first_s >= th["first_reveal_fail_s"]:
+        flags.append(("FAIL", f"first reveal {first_s:.1f}s (late payload / empty stage)"))
+    elif first_s >= th["first_reveal_warn_s"]:
+        flags.append(("warn", f"first reveal {first_s:.1f}s"))
+    if gap_s >= th.get("dead_gap_fail_s", 9.0):
+        flags.append(("FAIL", f"{gap_s:.1f}s dead air between reveals"))
+    elif gap_s >= th["dead_gap_warn_s"]:
+        flags.append(("warn", f"{gap_s:.1f}s between reveals"))
+    if wpm > wpm_hi: flags.append(("warn", f"fast {wpm:.0f} wpm"))
+    elif 0 < wpm < wpm_lo: flags.append(("warn", f"slow {wpm:.0f} wpm"))
+    if dens > th["density_high_rps"]: flags.append(("warn", f"dense {dens:.1f} reveals/s"))
+    # art-style: a beat that holds too briefly on its image reads as rushed.
+    if th.get("min_hold_warn_s", 0) and dur_s < th["min_hold_warn_s"]:
+        flags.append(("warn", f"rushed {dur_s:.1f}s hold"))
     return {"block": step.get("block", "?"), "dur_s": dur_s, "wpm": wpm,
             "first_s": first_s, "gap_s": gap_s, "dens": dens, "flags": flags}
 
@@ -58,17 +82,19 @@ def _beat(step: dict, fps: int) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("job")
+    ap.add_argument("--profile", default="explainer", help="flow id in flows/registry.json")
     ap.add_argument("--fps", type=int, default=30)
     a = ap.parse_args()
+    th = _load_profile(a.profile)
     job = json.loads(Path(a.job).read_text(encoding="utf-8"))
     steps = job.get("props", {}).get("steps", [])
     fps = a.fps
 
-    print(f"\nPACING · {Path(a.job).name} · {len(steps)} beats\n" + "─" * 78)
+    print(f"\nPACING · {Path(a.job).name} · {len(steps)} beats · profile={a.profile}\n" + "─" * 78)
     print(f"{'#':>2} {'block':16} {'dur':>5} {'wpm':>4} {'1st':>5} {'gap':>5} {'r/s':>4}  flags")
     total_f, total_w, failed = 0, 0, 0
     for i, st in enumerate(steps, 1):
-        b = _beat(st, fps)
+        b = _beat(st, fps, th)
         total_f += b["dur_s"] * fps; total_w += st.get("words", []) and len(st["words"]) or 0
         tag = " ".join(f"[{lvl}] {msg}" for lvl, msg in b["flags"]) or "ok"
         if any(lvl == "FAIL" for lvl, _ in b["flags"]): failed += 1
