@@ -67,7 +67,7 @@ def main() -> None:
     proj = Path(_localize(spec["project"]))            # localized to the running interpreter
     win = _to_win(spec.get("winProject") or spec["project"])   # Windows path render.mjs stages from
     segdir = proj / "assets" / "voiceover" / "segments"
-    durs = {s["file"]: s["duration"] for s in json.loads((segdir / "segments.json").read_text())["segments"]}
+    durs = {s["file"]: s["duration"] for s in json.loads((segdir / "segments.json").read_text(encoding="utf-8"))["segments"]}
 
     steps = []
     for b in spec["beats"]:
@@ -86,7 +86,8 @@ def main() -> None:
             "words": words,
             "props": {k: v for k, v in b.items() if k in (
                 "src", "left", "right", "region", "cards", "hero", "kenBurns", "label", "focuses",
-                "headline", "takeaways", "source", "verdict", "kicker", "introHold", "maxZoom", "glide")},
+                "headline", "takeaways", "source", "verdict", "kicker", "introHold", "maxZoom", "glide",
+                "cols", "rows", "order", "highlight")},
         })
         print(f"{seg:28} {dur_f:5}f  {len(words):3} words  {len(b.get('focuses', []))} focuses")
 

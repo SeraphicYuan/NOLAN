@@ -2313,6 +2313,39 @@ def create_hub_app(
         iterate.save_plan_raw(scene_plan_path, data)
         return {"assets": assets}
 
+    def _flow_project_path(project: str) -> Path:
+        """Resolve a flow project by name (works before any render/scene_plan exists)."""
+        pp = (projects_dir / project) if projects_dir else None
+        if not (pp and pp.exists()):
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        from nolan.flows.project import is_flow_project
+        if not is_flow_project(pp):
+            raise HTTPException(status_code=400, detail=f"'{project}' is not a flow project")
+        return pp
+
+    @app.post("/scenes/api/flow/refine")
+    async def scenes_flow_refine(payload: dict = Body(...)):
+        """Authoring mode (Gate A): dispatch a fleet agent to refine the per-beat plan."""
+        project = payload.get("project")
+        agent = payload.get("agent") or "nolan4"
+        if not project:
+            raise HTTPException(status_code=400, detail="project required")
+        pp = _flow_project_path(project)
+        from nolan.flows.authoring import dispatch_refine
+        draft = await asyncio.to_thread(dispatch_refine, pp, agent)
+        return {"dispatched": agent, "draft": str(draft)}
+
+    @app.post("/scenes/api/flow/accept")
+    async def scenes_flow_accept(payload: dict = Body(...)):
+        """Authoring mode (Gate A → accepted): promote the refined draft to flow.spec.json."""
+        project = payload.get("project")
+        if not project:
+            raise HTTPException(status_code=400, detail="project required")
+        pp = _flow_project_path(project)
+        from nolan.flows.authoring import accept_draft
+        plan = await asyncio.to_thread(accept_draft, pp)
+        return {"accepted": True, "scene_plan": str(plan)}
+
     @app.get("/scenes/api/frame-thumb")
     async def scenes_frame_thumb(src: str, t: float = 0.0, project: str = None):
         """A single cached JPEG frame from a video at time `t` — for clip thumbnails."""

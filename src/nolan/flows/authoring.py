@@ -55,11 +55,12 @@ def draft_plan(project, flow, *, llm=None) -> dict:
             "narration": narration[:600],                       # context for the refiner
             "block": primary,                                   # planned motion (from palette)
             "_planned_asset": None,                             # nothing bound yet
-            "_wishlist": [{"want": f"a visual for “{s.get('title','')}”", "status": "find"}],
+            "_wishlist": [{"want": f"a visual for: {s.get('title', '')}", "status": "find"}],
         })
     if llm is not None:
         beats = _llm_refine(llm, beats, segs, flow)
-    return {"flow": flow.id, "theme": flow.defaults.get("theme", "midnight-press"),
+    return {"flow": flow.id, "out": f"{Path(project).name}.mp4",
+            "theme": flow.defaults.get("theme", "midnight-press"),
             "captions": False, "fps": 30,
             "project": str(Path(project).resolve()),
             "palette": flow.palette,                            # the motion menu (authoring aid)
@@ -90,6 +91,25 @@ def build_authoring_prompt(agent: str, draft_path: str, palette: list) -> str:
         f"\"message\":\"authoring refined\",\"result\":[<chosen blocks>]}}. Start by writing that file "
         f"with state 'working'. Do ONLY this; do not render."
     )
+
+
+def accept_draft(project, *, draft_name: str = "_authoring_draft.spec.json") -> Path:
+    """Promote a refined authoring draft -> the project's flow.spec.json (Gate A → accepted).
+
+    Re-ingests + rebuilds the Scene-page view, so the planned beats show up as rows (without
+    clips until rendered). Returns the scene_plan.json path. Intended for a fresh plan; on a
+    project that already has a rich spec this replaces it with the (asset-less) draft.
+    """
+    project = Path(project)
+    draft = project / ".flow" / draft_name
+    if not draft.exists():
+        raise FileNotFoundError(f"no authoring draft at {draft} — run dispatch_refine first")
+    spec = json.loads(draft.read_text(encoding="utf-8"))
+    (project / "flow.spec.json").write_text(json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8")
+    from .edit import reingest_job
+    from .scene_view import build_scene_plan
+    reingest_job(project)
+    return build_scene_plan(project)
 
 
 def dispatch_refine(project, agent: str = "nolan4", *, draft_name: str = "_authoring_draft.spec.json") -> Path:
