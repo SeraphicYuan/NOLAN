@@ -23,7 +23,7 @@ should plan beats against this spine (skip what a paper lacks):
 (table/chart) → Figure walk-through → Ablation/Comparison → Takeaway/Punchline`.
 Each maps to blocks: Hook→HeroStatement/KineticHeadline; Problem→ListReveal/ComparisonVS;
 Method→StepFlow/ArchStack(bespoke); Formula→Formula; Results→DataTable/BarChart/LineChart/
-Distribution/Heatmap; Figure→PaperFigure; Comparison→ComparisonVS; Takeaway→EndCard.
+Distribution/Heatmap; Figure→PaperFigure; Comparison→ComparisonVS; Takeaway→HeroStatement/ChapterCard.
 Long papers get **ChapterCard** dividers between acts.
 
 ## Audio is the master clock
@@ -52,6 +52,6 @@ paper after watching?** A cheap agent-driven harness:
 3. **Score** — % correct = a comprehension proxy. Diff the misses against the questions to
    find what the video failed to convey → those become script/beat revisions.
 Two gaps the literature says everyone leaves open (we can own): **equations** (we redraw them
-via KaTeX) and **citations** (we attribute lifted figures + can add an EndCard source). Track
+via KaTeX) and **citations** (we attribute lifted figures + can add a closing source citation). Track
 both as eval dimensions. (Implement as a small two-agent script when we want to A/B scripts;
 the spec is the contract.)

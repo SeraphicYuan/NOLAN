@@ -147,7 +147,7 @@ sweeps to a region as the narration names it. Prep the asset first with `extract
 | land a memorable line / define a term | **PullQuote** |
 | sequential steps / method / pipeline | **StepFlow** |
 | kinetic per-word headline | **KineticHeadline** |
-| section divider / closing card | **ChapterCard** / **EndCard** |
+| section divider | **ChapterCard** |
 | a themed icon / checkmark / counter | **LottieIcon** |
 
 ## Chart tier (library-boost Wave 2 — visx/d3 geometry, frame-driven reveal)
@@ -188,9 +188,8 @@ Deterministic SVG, token-themed, reveal driven by the frame/word timeline.
 - props: `{ text, accentWords?:[string], align?:"left"|"center" }`.
 - **anchors: 1** (`@start`); words rise/scale/un-blur on their spoken frames.
 
-### ChapterCard / EndCard — section divider + closer
+### ChapterCard — section divider
 - ChapterCard: `{ index?, title, subtitle? }` — **anchors: 2** [index cue, title cue].
-- EndCard: `{ headline?, takeaways?:[string], source? }` — **anchors: [headline, then per-takeaway]**.
 
 ### LottieIcon — a themed Lottie asset (icon / checkmark / counter)
 - props: `{ src, size?, caption?, loop?, monochrome? }` (`src` = abs path to a keyframed,

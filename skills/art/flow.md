@@ -1,3 +1,16 @@
+---
+id: art.flow
+name: Art flow descriptor
+kind: methodology
+purpose: When-to-use + grammar + palette for the image-first artwork explainer flow.
+status: active
+version: 1
+handoffs:
+  - { process: art, stage: plan, gate: A }
+uses: []
+evals: []
+---
+
 # Flow: Artwork Explainer (`art`) — scope
 
 The inverse of the explainer flow: **image-first**. The artwork IS the subject; the narration
@@ -29,7 +42,7 @@ generate** — and the heavy step is free, because the voiceover is already word
 - **Rules**: always-lift-never-redraw · the image is *persistent* across a beat's tour · holds
   are long (let the eye look) · the wall-label grounds every piece.
 - Series structure: optional `ChapterCard` between pieces; a `Timeline` for historical context;
-  `PullQuote` for a contemporary voice; `EndCard` to close.
+  `PullQuote` for a contemporary voice; `ChapterCard` to close.
 
 ## Palette
 - ✅ **ArtworkStage** (built) — full-bleed image + word-synced Ken Burns tour + spotlight +
@@ -42,7 +55,7 @@ generate** — and the heavy step is free, because the voiceover is already word
   slow deterministic Ken Burns drift so a held woodcut never sits dead-static.
 - ◻ **WallLabel** (scope) — currently inline in ArtworkStage; promote to standalone for
   label-only beats.
-- Reuse: ChapterCard, PullQuote, Timeline, EndCard.
+- Reuse: ChapterCard, PullQuote, Timeline.
 
 ## Pacing profile (linter `--profile art`)
 WPM 95–140 (contemplative) · dead-gap checks OFF (long holds are correct here) · **min-hold

@@ -1,7 +1,28 @@
 {
   "schema_version": 1,
-  "count": 5,
+  "count": 9,
   "skills": [
+    {
+      "id": "art.flow",
+      "name": "Art flow descriptor",
+      "kind": "methodology",
+      "purpose": "When-to-use + grammar + palette for the image-first artwork explainer flow.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "art",
+          "stage": "plan",
+          "gate": "A"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/art/flow.md"
+    },
     {
       "id": "explainer.block-catalog",
       "name": "Explainer block catalog",
@@ -24,6 +45,31 @@
       },
       "evals": [],
       "path": "skills/explainer/block-catalog.md"
+    },
+    {
+      "id": "explainer.flow",
+      "name": "Explainer flow descriptor",
+      "kind": "methodology",
+      "purpose": "When-to-use + grammar + palette for the paper/article explainer flow.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "explainer",
+          "stage": "plan",
+          "gate": "A"
+        }
+      ],
+      "uses": [
+        "explainer.scene-grammar",
+        "explainer.script",
+        "explainer.block-catalog"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/explainer/flow.md"
     },
     {
       "id": "explainer.scene-grammar",
@@ -74,6 +120,52 @@
         "paper-quiz"
       ],
       "path": "skills/explainer/script.md"
+    },
+    {
+      "id": "explainer.spec-authoring",
+      "name": "Explainer spec authoring",
+      "kind": "craft",
+      "purpose": "The per-beat agent contract \u2014 choose a library block or author a bespoke one, and write the spec.json.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "explainer",
+          "stage": "author-spec",
+          "gate": "A"
+        }
+      ],
+      "uses": [
+        "explainer.block-catalog"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/explainer/spec-authoring.md"
+    },
+    {
+      "id": "flow.authoring",
+      "name": "Flow authoring & craft",
+      "kind": "craft",
+      "purpose": "The plan-checkpoint craft layer \u2014 outline rhythm, dual-source, motion selection/invention \u2014 before planning or editing a flow video.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "flow",
+          "stage": "plan",
+          "gate": "A"
+        }
+      ],
+      "uses": [
+        "explainer.script"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/flow/authoring.md"
     },
     {
       "id": "flow.edit-contract",

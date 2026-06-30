@@ -50,6 +50,6 @@ segment/orchestrator project — these rules override the generic `nolan-scene-e
    `message`, and a `result` list. Start by writing `state: "working"`.
 
 ## Quick orientation
-- The spec/palette/render design: `web-video-lab/flows/INTEGRATION.md`, `web-video-lab/flows/EDITOR.md`, `web-video-lab/flows/art.md`.
+- The spec/palette/render design: `web-video-lab/flows/INTEGRATION.md`, `web-video-lab/flows/EDITOR.md`, `skills/art/flow.md`.
 - One beat = one block over one voiceover segment; its duration is pinned to that segment, so a
   visual edit never reflows the timeline — that's why a single beat re-renders independently.

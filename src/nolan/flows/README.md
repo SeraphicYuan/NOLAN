@@ -6,7 +6,7 @@ explainer/paper-video, book, …) built as **one shared engine with routing at a
 ingest.** Read this before changing anything here.
 
 > If you're an agent **editing a beat** of a flow video, read **`skills/flow/edit-contract.md`**
-> (the edit contract). If you're **planning/authoring**, read **`web-video-lab/flows/AUTHORING.md`**
+> (the edit contract). If you're **planning/authoring**, read **`skills/flow/authoring.md`**
 > (the craft). This file is the *architecture*. Skills are cataloged in `skills/` (run
 > `python -m nolan.skills` to lint).
 
@@ -25,7 +25,7 @@ source ──► INGEST (per-type) ──► job.json ──► GATE ──► R
 |---|---|---|
 | ingest/gate/render **mechanics** | **code** (deterministic) | `src/nolan/flows/` (this package) |
 | palette (blessed/shared motions) · pacing profile · theme/fx defaults | **config** | `web-video-lab/flows/registry.json`, `web-video-lab/skill/themes/` |
-| **plan/authoring** craft · **edit/invent** craft | **skill** (agent reads it) | `web-video-lab/flows/AUTHORING.md`, `skills/flow/edit-contract.md` (+ `web-video-lab/skill/` references) |
+| **plan/authoring** craft · **edit/invent** craft | **skill** (agent reads it) | `skills/flow/authoring.md`, `skills/flow/edit-contract.md` (+ `web-video-lab/skill/` references) |
 
 **Principle:** the engine runs the mechanical path deterministically, but **at the plan checkpoint
 and at edit/invent it hands to an agent** reading the skill. That keeps determinism *and* the
@@ -100,4 +100,4 @@ dispatch — is **reused unchanged**. (Explainer's row already exists in `regist
 ## See also
 `web-video-lab/flows/`: `INTEGRATION.md` (why a flow path, not the motion registry) ·
 `web-video-lab/flows/EDITOR.md` (the per-beat HITL design) · `web-video-lab/flows/CONSOLIDATION.md` (this defrag) · `skills/flow/edit-contract.md` /
-`AUTHORING.md` (the skill layer) · `registry.json` (the type config).
+`skills/flow/authoring.md` (the skill layer) · `registry.json` (the type config).

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "_comment": "Video-type registry. Each type = a flow descriptor read by the router + pacing linter. See README.md for the 4-layer design.",
-  "common_palette": ["ChapterCard", "EndCard", "Timeline", "PullQuote"],
+  "common_palette": ["ChapterCard", "Timeline", "PullQuote"],
   "_common_palette_note": "Structural blocks legit in ANY flow — exempt from the per-flow palette guardrail (art_validate --flow). RAW blocks (blocks/raw/) are also always allowed but flagged as bespoke.",
   "types": [
     {
@@ -16,7 +16,7 @@
         "HeroStatement", "KineticHeadline", "PullQuote", "ListReveal", "StepFlow",
         "StatCount", "ValueLadder", "BarChart", "LineChart", "Distribution", "Heatmap",
         "DataTable", "Formula", "PaperFigure", "ComparisonVS", "Timeline",
-        "ArchetypeCards", "WebVsBoxes", "UnlockGrid", "ChapterCard", "EndCard", "LottieIcon"
+        "ArchetypeCards", "WebVsBoxes", "UnlockGrid", "ChapterCard", "LottieIcon"
       ],
       "pacing": {
         "wpm": [130, 165],
@@ -33,11 +33,11 @@
       "status": "scoping",
       "summary": "Image-first. The artwork IS the subject; narration interprets what's on screen. Explanation = camera navigation (Ken Burns + spotlight + callouts) over a persistent hero image, in a gallery/series.",
       "ingest": ["byo-everything", "byo-script"],
-      "docs": { "grammar": "art.md" },
+      "docs": { "grammar": "skills/art/flow.md" },
       "rules": ["always-lift-never-redraw", "image-is-persistent-across-beats", "contemplative-holds"],
       "palette": [
         "ArtworkStage", "DetailLoupe", "WallLabel", "ImageCompare", "PhotoMontage", "PhotoGrid",
-        "ChapterCard", "PullQuote", "Timeline", "EndCard"
+        "ChapterCard", "PullQuote", "Timeline"
       ],
       "pacing": {
         "wpm": [95, 140],
