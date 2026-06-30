@@ -211,8 +211,30 @@ is ported into `flows/ingest.py::ingest_explainer`, wired through `flows/explain
   `_wav_seconds`, `_relabel_captions` (difflib carries authoritative script spelling onto whisper
   timing), `_resolve_explainer_anchor` (`word` | `@start` | `@<sec>` | `@f<frac>`).
 - Both tenants now share the same engine below the job JSON (gate → render → deliver → scene
-  view → edit). The heavy generate-from-source half (extract_figure + OmniVoice TTS + Whisper
-  word-align) still feeds the same spec and is the remaining un-promoted explainer piece.
+  view → edit).
+
+### Explainer generate-from-source asset-prep promoted (2026-06-30)
+
+The explainer's **second ingest mode** (`generate-from-source`, registry.json) is now promoted
+in-process as `flows/source.py` — the *deterministic* half: turning a source paper into the
+chapter spec's input assets. (Spec authoring — pick figures, write script, place anchors — stays
+a skill handoff to the agent; `ingest_explainer` then assembles.) Exposed on the tenant as
+`explainer.PREPARE`.
+
+- **`figure_catalog` / `extract_figure`** (PIL) — catalog a MinerU `content.md` or arXiv HTML's
+  figures, then lift one (trim near-white margins, optional matte→transparent) for the
+  `PaperFigure` block (lift-empirical, don't fabricate). Port of `extract_figure.py`.
+- **`synthesize_segments`** (`nolan.tts`) — narration wavs via OmniVoice local voice-cloning;
+  `<chapter>_<step>.wav` → the spec's `wav` assets. Port of `synth_omnivoice.py`.
+- **`word_timestamps`** (`nolan.whisper`) — per-wav word timings → the `wordsCache` shape
+  `ingest_explainer` reads. Port of `word_timestamps_batch.py` (loads whisper once).
+- **Interpreter-agnostic + lazy heavy imports**: `_localize` on path args; tts/whisper/PIL
+  imported inside the functions so importing the module stays cheap. The lab probes couldn't even
+  run under WSL `python3` (no PIL); these run in-process under the nolan env python.
+- **Parity verified**: `figure_catalog` is byte-identical to `extract_figure.py --list` on
+  tailtrading's `content.md` (38 figs) and Transformer's `paper.html` (8 figs); `extract_figure`
+  lifts+trims a real figure (894×528 RGBA). TTS/Whisper verified by import + signature (a live
+  run needs the CUDA/model env).
 
 ### Per-beat human-in-the-loop editor — 5 phases (`src/nolan/flows/`)
 
