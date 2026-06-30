@@ -85,6 +85,12 @@ def run_flow(flow, spec_path, *, gate: bool = True, render: bool = True, deliver
         mp4 = render_chapter(job_path)                 # whole-composition master
     dest = Path(deliver_to) if deliver_to else (Path(spec["project"]) / "video" / out_name)
     dest = deliver(mp4, dest)
+    # refresh the Scene-page view (Gate B) so the flow project shows its beats as scenes
+    proj = Path(spec.get("project", spec_path.parent))
+    if (proj / "flow.spec.json").exists():
+        from .scene_view import build_scene_plan
+        build_scene_plan(proj)
+        print(f"[flow:{flow.id}] scene view -> {proj/'scene_plan.json'}")
     print(f"[flow:{flow.id}] delivered -> {dest}")
     return dest
 

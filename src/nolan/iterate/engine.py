@@ -51,6 +51,8 @@ def detect_pipeline(plan_path) -> str:
     """
     p = Path(plan_path)
     parent = p.parent
+    if (parent / "flow.spec.json").exists():
+        return "flow"
     if (parent / "segment_meta.json").exists():
         return "segment"
     if (parent / ".orchestrator").exists():
@@ -107,6 +109,8 @@ def rerender_scenes(
     plan_path = Path(plan_path)
     pipeline = pipeline or detect_pipeline(plan_path)
     ids = set(scene_ids)
+    if pipeline == "flow":
+        return _rerender_flow(plan_path, ids)
     if pipeline == "segment":
         return _rerender_segment(
             plan_path, ids, llm_client=llm_client, nolan_config=nolan_config,
@@ -114,6 +118,34 @@ def rerender_scenes(
             comfyui_timeout=comfyui_timeout,
         )
     return _rerender_orchestrator(plan_path, ids, llm_client=llm_client, nolan_config=nolan_config)
+
+
+def _rerender_flow(plan_path: Path, ids: set) -> Optional[Path]:
+    """Flow pipeline (chapter-block): re-render ONLY the selected beats, then re-concat.
+
+    A beat is independently re-renderable (its duration is pinned to its VO segment), so
+    untouched beats keep their existing clips and only the named beats are re-rendered.
+    """
+    from nolan.flows.render import render_beats, concat_beats
+    from nolan.flows.scene_view import beat_index, build_scene_plan
+
+    project = plan_path.parent
+    job = project / "flow.job.json"
+    work = project / ".flow" / "clips"
+    n = len(json.loads(job.read_text(encoding="utf-8")).get("props", {}).get("steps", []))
+
+    sel = sorted({beat_index(s) for s in ids if s.startswith("beat_")})
+    render_beats(job, work, only=sel)                      # re-render selected only
+    clips = [work / f"beat_{i:02d}.mp4" for i in range(n)]
+    missing = [c for c in clips if not c.exists()]
+    if missing:
+        raise FileNotFoundError(f"missing beat clips (run a full render first): {missing}")
+
+    out_name = json.loads(job.read_text(encoding="utf-8")).get("out", "final.mp4")
+    final = project / "video" / out_name
+    concat_beats(clips, final)
+    build_scene_plan(project)                              # refresh the Scene-page view
+    return final
 
 
 def _rerender_segment(plan_path: Path, ids: set, *, llm_client, nolan_config,
