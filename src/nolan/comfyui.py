@@ -2,11 +2,14 @@
 
 import json
 import asyncio
+import logging
 import random
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 def load_workflow_file(workflow_path: Path) -> Dict[str, Any]:
@@ -167,6 +170,54 @@ def find_prompt_nodes(workflow: Dict[str, Any]) -> Dict[str, str]:
                     result["positive"] = node_id
 
     return result
+
+
+def find_style_node(workflow: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Find an in-workflow style selector (ComfyUI-Easy-Use 'easy stylesSelector').
+
+    Returns {"node": id, "input": "select_styles", "group": <styles group>,
+    "default": <current selection>} or None if the workflow has no style selector.
+    """
+    for node_id, node_data in workflow.items():
+        if node_data.get("class_type") == "easy stylesSelector":
+            inputs = node_data.get("inputs", {})
+            sel = inputs.get("select_styles", "")
+            # select_styles may be comma-separated with a leading empty element.
+            default = sel.strip().lstrip(",").strip() if isinstance(sel, str) else ""
+            return {
+                "node": node_id,
+                "input": "select_styles",
+                "group": inputs.get("styles") if isinstance(inputs.get("styles"), str) else None,
+                "default": default or None,
+            }
+    return None
+
+
+def _comfy_execution_error(history_entry: Dict[str, Any]) -> Optional[str]:
+    """Extract a human-readable error from a ComfyUI /history entry, if it failed.
+
+    ComfyUI records completed prompts (success OR error) in /history. On failure
+    the entry's status is 'error' and the detail lives in status.messages as
+    (event, data) tuples like ('execution_error', {...}). Returns None on success.
+    """
+    status = (history_entry or {}).get("status", {})
+    if not isinstance(status, dict):
+        return None
+    status_str = status.get("status_str", "")
+    completed = status.get("completed", True)
+    if status_str != "error" and completed:
+        return None  # success / still considered fine
+    for msg in status.get("messages", []) or []:
+        if not (isinstance(msg, (list, tuple)) and len(msg) == 2):
+            continue
+        event, data = msg
+        if event in ("execution_error", "execution_interrupted") and isinstance(data, dict):
+            node = data.get("node_type") or data.get("node_id") or "?"
+            detail = data.get("exception_message") or data.get("exception_type") or str(data)
+            return f"{detail} (node {node})"
+    if status_str == "error":
+        return "execution error (no detail reported by ComfyUI)"
+    return None
 
 
 # Default workflow template for text-to-image
@@ -435,17 +486,41 @@ class ComfyUIClient:
 
         Returns:
             Execution result with image info.
+
+        Raises:
+            RuntimeError: if ComfyUI reports an execution error (e.g. OOM, missing
+                model), or if /history keeps returning non-200 responses.
+            TimeoutError: if generation doesn't complete within `timeout`.
         """
         elapsed = 0.0
+        http_errors = 0  # consecutive non-200 responses from /history
 
         async with httpx.AsyncClient() as client:
             while elapsed < timeout:
                 response = await client.get(f"{self.base_url}/history/{prompt_id}")
 
                 if response.status_code == 200:
+                    http_errors = 0
                     history = response.json()
                     if prompt_id in history:
-                        return history[prompt_id]
+                        entry = history[prompt_id]
+                        err = _comfy_execution_error(entry)
+                        if err:
+                            raise RuntimeError(f"ComfyUI generation failed: {err}")
+                        return entry
+                else:
+                    # Don't silently poll for the full timeout on server errors —
+                    # log every miss and fail fast after a short consecutive run.
+                    http_errors += 1
+                    logger.warning(
+                        "ComfyUI /history/%s returned HTTP %s (%d in a row)",
+                        prompt_id, response.status_code, http_errors,
+                    )
+                    if http_errors >= 5:
+                        raise RuntimeError(
+                            f"ComfyUI /history returned HTTP {response.status_code} "
+                            f"{http_errors}x in a row — aborting wait (prompt {prompt_id})."
+                        )
 
                 await asyncio.sleep(poll_interval)
                 elapsed += poll_interval

@@ -46,7 +46,8 @@
         </div>
         <div class="card">
           <h2>Sample runner</h2>
-          <div class="field"><label>Workflow</label><select id="sampleWf"></select></div>
+          <div class="field"><label>Workflow</label><select id="sampleWf" onchange="loadStyles()"></select></div>
+          <div class="field" id="styleField" style="display:none;"><label>Style</label><select id="sampleStyle"></select></div>
           <div class="field"><label>Prompt</label><textarea id="samplePrompt" placeholder="a cinematic wide shot of…"></textarea></div>
           <div class="row">
             <div class="field"><label>Width</label><input id="sw" type="number" placeholder="(workflow default)"></div>
@@ -114,7 +115,21 @@
             '<div style="margin-top:6px;">'+(w.styles||[]).map(t=>'<span class="tag">'+t+'</span>').join('')+'</div>';
           box.appendChild(div);
         });
+        loadStyles();
       });
+    }
+    function loadStyles(){
+      var wf=document.getElementById("sampleWf").value;
+      var field=document.getElementById("styleField"), sel=document.getElementById("sampleStyle");
+      if(!wf){ field.style.display="none"; return; }
+      fetch("/api/comfyui/styles?workflow="+encodeURIComponent(wf)).then(r=>r.json()).then(d=>{
+        var opts=d.options||[];
+        if(!opts.length){ field.style.display="none"; sel.innerHTML=""; return; }
+        sel.innerHTML="";
+        var none=document.createElement("option"); none.value=""; none.textContent="(no style)"; sel.appendChild(none);
+        opts.forEach(function(s){ var o=document.createElement("option"); o.value=s; o.textContent=s; if(s===d.default)o.selected=true; sel.appendChild(o); });
+        field.style.display="";
+      }).catch(()=>{ field.style.display="none"; });
     }
     function delWf(n){ if(!confirm('Delete '+n+'?'))return; fetch('/api/comfyui/workflows/'+encodeURIComponent(n),{method:'DELETE'}).then(()=>loadWorkflows()); }
     document.getElementById("wfFile").addEventListener("change",function(e){
@@ -138,6 +153,7 @@
       NolanJobs.start("/api/comfyui/sample",{
         workflow:document.getElementById("sampleWf").value,
         prompt:document.getElementById("samplePrompt").value,
+        style:document.getElementById("sampleStyle").value||null,
         width:parseInt(document.getElementById("sw").value)||null,
         height:parseInt(document.getElementById("sh").value)||null,
         steps:parseInt(document.getElementById("ss").value)||null

@@ -76,6 +76,24 @@
         "cinematic",
         "fast"
       ]
+    },
+    {
+      "name": "krea2-style-select",
+      "description": "Krea 2 Turbo text-to-image with Fooocus style selector",
+      "builtin": null,
+      "file": "workflows/image/krea2-style-select.json",
+      "checkpoint": "krea2_turbo_fp8_scaled.safetensors",
+      "prompt_node": "80",
+      "width": 1600,
+      "height": 904,
+      "steps": 8,
+      "styles": [
+        "fooocus_styles"
+      ],
+      "style_node": "77",
+      "style_input": "select_styles",
+      "style_group": "fooocus_styles",
+      "default_style": "artstyle-pop art"
     }
   ]
 }

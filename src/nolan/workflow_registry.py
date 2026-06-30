@@ -27,7 +27,12 @@ class WorkflowEntry:
     width: int = 1920
     height: int = 1080
     steps: int = 20
-    styles: List[str] = field(default_factory=list)  # e.g. ["photoreal","illustration"]
+    styles: List[str] = field(default_factory=list)  # display tags, e.g. ["photoreal","illustration"]
+    # Optional in-workflow style selector (e.g. ComfyUI-Easy-Use "easy stylesSelector").
+    style_node: Optional[str] = None       # node id of the style selector
+    style_input: str = "select_styles"     # input key to override on that node
+    style_group: Optional[str] = None      # style list file in workflows/styles/<group>.json
+    default_style: Optional[str] = None    # default selection
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -117,6 +122,10 @@ class WorkflowRegistry:
             kwargs["workflow_file"] = Path(entry.file)
             if entry.prompt_node:
                 kwargs["prompt_node"] = entry.prompt_node
+            # Apply a chosen style to the workflow's style-selector node.
+            style = overrides.get("style")
+            if entry.style_node and style:
+                kwargs["node_overrides"] = [f"{entry.style_node}:{entry.style_input}={style}"]
         # builtin/default → leave workflow None (ComfyUIClient uses DEFAULT_WORKFLOW)
         return ComfyUIClient(**kwargs), entry
 

@@ -824,11 +824,11 @@ async def comfyui_status(config) -> dict:
 
 async def comfyui_sample(job, *, config, workflow_name: Optional[str], prompt: str,
                          width: Optional[int] = None, height: Optional[int] = None,
-                         steps: Optional[int] = None):
+                         steps: Optional[int] = None, style: Optional[str] = None):
     """Generate a single sample image from a registered workflow → scratch preview."""
     from nolan.workflow_registry import get_registry
     reg = get_registry()
-    overrides = {k: v for k, v in (("width", width), ("height", height), ("steps", steps)) if v}
+    overrides = {k: v for k, v in (("width", width), ("height", height), ("steps", steps), ("style", style)) if v}
     client, entry = reg.build_client(workflow_name, config, **overrides)
     job.set_progress(0.1, f"Generating sample with '{entry.name if entry else workflow_name}'…")
     if not await client.check_connection():
