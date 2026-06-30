@@ -102,11 +102,95 @@ def build_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str], note
     )
 
 
+def _flow_context(plan_path: str, scene_ids: List[str]) -> Optional[dict]:
+    """If plan_path belongs to a flow project, gather context for a flow-aware prompt; else None."""
+    project = Path(plan_path).parent
+    spec_f = project / "flow.spec.json"
+    if not spec_f.exists():
+        return None
+    spec = json.loads(spec_f.read_text(encoding="utf-8"))
+    flow_id = spec.get("flow", "flow")
+    palette: List[str] = []
+    try:
+        reg = json.loads((_REPO_ROOT / "web-video-lab" / "flows" / "registry.json").read_text(encoding="utf-8"))
+        t = next((t for t in reg.get("types", []) if t["id"] == flow_id), None)
+        palette = (t or {}).get("palette", [])
+    except (OSError, json.JSONDecodeError):
+        pass
+    beats = {}
+    try:
+        rows = [s for sec in json.loads(Path(plan_path).read_text(encoding="utf-8")).get("sections", {}).values() for s in sec]
+        for r in rows:
+            if r.get("id") in scene_ids:
+                beats[r["id"]] = {"block": r.get("block"),
+                                  "tray": [a.get("src") for a in (r.get("assets") or [])],
+                                  "wishlist": [w.get("want") for w in (r.get("wishlist") or []) if w.get("want")]}
+    except (OSError, json.JSONDecodeError):
+        pass
+    return {"flow": flow_id, "theme": spec.get("theme"), "palette": palette, "beats": beats}
+
+
+def build_flow_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str], note: str, ctx: dict) -> str:
+    """Flow-aware prompt — carries the flow id/theme/palette + per-beat asset state + the
+    flow-edit contract (edit the spec not the view, reuse blocks, chapter-block re-render)."""
+    spec_path = str(Path(plan_path).parent / "flow.spec.json")
+    lines = []
+    for bid in scene_ids:
+        b = ctx["beats"].get(bid, {})
+        bits = [f"block={b.get('block')}"]
+        if b.get("tray"):
+            bits.append(f"the human added {len(b['tray'])} asset(s) to its tray — use them")
+        if b.get("wishlist"):
+            bits.append("wishlist: " + "; ".join(b["wishlist"]))
+        lines.append(f"{bid} ({', '.join(bits)})")
+    return (
+        f"You are fleet agent '{agent}' editing a FLOW video (flow='{ctx['flow']}', theme='{ctx['theme']}'). "
+        f"FIRST read web-video-lab/flows/FLOW_EDIT.md — the flow-edit contract; it OVERRIDES the generic "
+        f"nolan-scene-edit skill. Edit the SOURCE OF TRUTH \"{spec_path}\" (NOT scene_plan.json — that's a "
+        f"regenerated view). Beat(s) to rework: {'; '.join(lines)}. Human note: \"{note}\". "
+        f"Pick blocks ONLY from the palette: {', '.join(ctx['palette'])}. "
+        f"REUSE before rebuilding: before authoring any new block, check the palette, the full "
+        f"render-service/_lab_chapter/src/blocks/library/, AND render-service/remotion-lib/src/ (PhotoGrid, "
+        f"PhotoMontage, BarCompare, … already exist there) — PORT an existing one rather than rebuild. "
+        f"Use assets already bound/added to the beat; source new only if needed. "
+        f"Re-render ONLY the named beat(s) via the chapter-block mechanism: "
+        f"rerender_scenes(\"{plan_path}\", {scene_ids}). Leave neighbors untouched. "
+        f"Report to .nolan/agents/{agent}.json (state working->done|error, scene_ids, message, result); "
+        f"start by writing state 'working'."
+    )
+
+
+def _resolve_note_mentions(plan_path: str, scene_ids: List[str], note: str) -> str:
+    """Expand `@<asset-id>` mentions in the note using the named scenes' bound assets."""
+    if not note or "@" not in note:
+        return note
+    try:
+        from nolan.iterate.engine import load_plan_raw, find_scene
+        from nolan.iterate.revise import resolve_asset_mentions
+        data = load_plan_raw(Path(plan_path))
+        assets = []
+        for sid in scene_ids:
+            s = find_scene(data, sid)
+            if s:
+                assets.extend(s.get("assets") or [])
+        return resolve_asset_mentions(note, assets)
+    except Exception:
+        return note
+
+
 def dispatch(agent: str, plan_path: str, project: str, scene_ids: List[str], note: str) -> dict:
-    """Write the initial status and send the task to the agent's tmux session."""
+    """Write the initial status and send the task to the agent's tmux session.
+
+    Flow projects get a flow-aware prompt (spec-not-view, palette, block-reuse, chapter-block
+    re-render); everything else gets the generic nolan-scene-edit prompt.
+    """
     from nolan.webui.operations import _dispatch_to_tmux
+    note = _resolve_note_mentions(str(plan_path), scene_ids, note)
     write_status(agent, state="dispatched", project=project, plan=str(plan_path),
                  scene_ids=scene_ids, note=note, message="dispatched", result=None, error=None,
                  started_at=time.time())
-    _dispatch_to_tmux(agent, build_dispatch_prompt(agent, str(plan_path), scene_ids, note))
+    ctx = _flow_context(str(plan_path), scene_ids)
+    prompt = (build_flow_dispatch_prompt(agent, str(plan_path), scene_ids, note, ctx) if ctx
+              else build_dispatch_prompt(agent, str(plan_path), scene_ids, note))
+    _dispatch_to_tmux(agent, prompt)
     return read_status(agent)
