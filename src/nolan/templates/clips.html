@@ -35,7 +35,7 @@
         .card .thumb .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.7); color: #f1f5f9; font-size: 11px; font-family: ui-monospace, monospace; padding: 2px 6px; border-radius: 5px; }
         .card .body { padding: 12px 14px; }
         .card .meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-        .card .label { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; margin-bottom: 6px; }
+        .card .label { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card .desc { font-size: 13px; line-height: 1.5; color: var(--text-primary); margin: 6px 0; }
         .tag { background: #0f2f3a; color: #7fd3e0; border-radius: 6px; padding: 2px 8px; font-size: 11px; }
         .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
@@ -44,7 +44,7 @@
 
         /* Frame.io-style gallery: cards flow into a responsive grid so the 16:9
            thumbs stay a sensible size; section headers/empty rows span full width. */
-        #savedClips, #snippetResults { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+        #savedClips, #snippetResults { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; align-items: start; }
         #savedClips .empty, #snippetResults .empty, #snippetResults .section-title { grid-column: 1 / -1; }
         #playerPanel { position: sticky; top: 10px; z-index: 5; }
         #clipPlayer { width: 100%; max-height: 320px; border-radius: 10px; background:#000; }

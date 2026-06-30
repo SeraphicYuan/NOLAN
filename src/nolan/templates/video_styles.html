@@ -23,7 +23,7 @@
         .list .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s; }
         .list .card:hover { border-color: #475569; }
         .list .card.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary)); }
-        .card .name { font-weight: 600; font-size: 14px; }
+        .card .name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .card .meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
         .badge { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: #0f2f3a; color: #7fd3e0; }
         .badge.no { background: var(--bg-tertiary); color: var(--text-secondary); }

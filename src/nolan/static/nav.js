@@ -38,6 +38,28 @@
     ]},
   ];
 
+  // Inline stroke icons (replace ad-hoc emoji; inherit currentColor).
+  function svg(p) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+  }
+  var ICON = {
+    home:   svg('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>'),
+    studio: svg('<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>'),
+    scenes: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M8 5v14"/>'),
+    clips:  svg('<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.5 15.5M14.5 9.5L20 20"/>'),
+    voices: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  };
+
+  // Bottom-tab bar (mobile only): primary destinations within thumb reach.
+  var tabs = [
+    { id: "home",   label: "Hub",    href: "/",        icon: ICON.home },
+    { id: "studio", label: "Studio", href: "/studio",  icon: ICON.studio },
+    { id: "scenes", label: "Scenes", href: "/scenes",  icon: ICON.scenes },
+    { id: "clips",  label: "Clips",  href: "/clips",   icon: ICON.clips },
+    { id: "voices", label: "Voices", href: "/voices",  icon: ICON.voices },
+  ];
+
   function build() {
     var body = document.body;
 
@@ -56,12 +78,13 @@
     var aside = document.createElement("aside");
     aside.className = "nolan-sidebar";
     var html = '<a class="nolan-brand" href="/">NOLAN</a>';
-    html += '<nav class="nolan-navgroups">';
+    html += '<nav class="nolan-navgroups" aria-label="Primary">';
     groups.forEach(function (g) {
       if (g.title) html += '<div class="nolan-section">' + g.title + "</div>";
       g.items.forEach(function (l) {
-        html += '<a class="nolan-link' + (l.id === active ? " active" : "") +
-          '" href="' + l.href + '">' + l.label + "</a>";
+        var on = l.id === active;
+        html += '<a class="nolan-link' + (on ? " active" : "") + '" href="' + l.href + '"' +
+          (on ? ' aria-current="page"' : "") + ">" + l.label + "</a>";
       });
     });
     html += "</nav>";
@@ -106,6 +129,21 @@
     aside.addEventListener("click", function (e) {
       if (e.target && e.target.classList.contains("nolan-link")) setOpen(false);
     });
+
+    // 6) Mobile bottom-tab bar — primary destinations within thumb reach.
+    var tabbar = document.createElement("nav");
+    tabbar.className = "nolan-tabbar";
+    tabbar.setAttribute("aria-label", "Primary (mobile)");
+    tabbar.innerHTML = tabs.map(function (t) {
+      var on = t.id === active;
+      return '<a href="' + t.href + '" class="' + (on ? "active" : "") + '"' +
+        (on ? ' aria-current="page"' : "") + ">" + t.icon + "<span>" + t.label + "</span></a>";
+    }).join("");
+    body.appendChild(tabbar);
+    // Spacer so the fixed tab bar never covers page content (robust vs inline body padding).
+    var spacer = document.createElement("div");
+    spacer.className = "nolan-tabbar-spacer";
+    main.appendChild(spacer);
 
     startHealth();
   }

@@ -75,8 +75,8 @@ body {
     user-select: none;
 }
 .project-header:hover { background: rgba(14, 165, 233, 0.04); }
-.project-name { font-size: 15px; font-weight: 600; }
-.project-slug { font-size: 12px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+.project-name { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-slug { font-size: 12px; color: var(--text-muted); font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spacer { flex: 1; }
 .status-badge {
     font-size: 11px;
