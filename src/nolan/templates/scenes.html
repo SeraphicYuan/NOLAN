@@ -662,6 +662,10 @@
                 <option value="missing">Missing</option>
             </select>
             <button id="refreshBtn" class="refresh-btn" onclick="refreshView()" title="Reload scenes + re-rendered clips (after an agent finishes)">↻ Refresh</button>
+            <span id="flowControls" style="display:none;">
+                <button class="refresh-btn" onclick="flowRefine()" title="Authoring mode (Gate A): dispatch an agent to refine the per-beat plan (blocks from the palette + asset wishlist)">✨ Refine plan</button>
+                <button class="refresh-btn" onclick="flowAccept()" title="Promote the refined draft to the project's plan">✓ Accept draft</button>
+            </span>
             <div class="stats" id="stats">Loading...</div>
         </div>
     </header>
@@ -846,6 +850,12 @@
                                 <div class="meta-row">
                                     <span class="meta-label">Prompt:</span>
                                     <span class="meta-value">${esc(scene.comfyui_prompt.substring(0, 100))}${scene.comfyui_prompt.length > 100 ? '...' : ''}</span>
+                                </div>
+                            ` : ''}
+                            ${(scene.wishlist && scene.wishlist.length && !assetPath) ? `
+                                <div class="meta-row wishlist-row" title="Authoring shopping list — add a matching asset via the tray">
+                                    <span class="meta-label">🛒 Needs:</span>
+                                    <span class="meta-value">${scene.wishlist.map(w => esc(w.want || '') + (w.status ? ` (${esc(w.status)})` : '')).join('; ')}</span>
                                 </div>
                             ` : ''}
                         </div>
@@ -1224,6 +1234,39 @@
             renderScenes();
         }
 
+        // Authoring mode (Gate A): refine the per-beat plan via a fleet agent, then accept it.
+        async function flowRefine() {
+            if (!currentProject) return;
+            const stats = document.getElementById('stats');
+            stats.textContent = '✨ Dispatching agent to refine the plan…';
+            try {
+                const r = await fetch('/scenes/api/flow/refine', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: currentProject })
+                });
+                const d = await r.json();
+                stats.textContent = r.ok
+                    ? `Refining via ${d.dispatched} — watch the fleet panel, then ✓ Accept draft.`
+                    : ('Refine error: ' + (d.detail || r.status));
+            } catch (e) { stats.textContent = 'Refine error: ' + e.message; }
+        }
+
+        async function flowAccept() {
+            if (!currentProject) return;
+            if (!confirm("Promote the refined draft to this project's plan? (replaces the current plan)")) return;
+            const stats = document.getElementById('stats');
+            stats.textContent = 'Accepting draft…';
+            try {
+                const r = await fetch('/scenes/api/flow/accept', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: currentProject })
+                });
+                const d = await r.json();
+                if (r.ok) { await loadSceneData(); }
+                else { stats.textContent = 'Accept error: ' + (d.detail || r.status); }
+            } catch (e) { stats.textContent = 'Accept error: ' + e.message; }
+        }
+
         async function applyNote(id) {
             const note = document.getElementById(`note-${id}`).value.trim();
             const st = document.getElementById(`editstatus-${id}`);
@@ -1536,6 +1579,9 @@
                 sections = scenesData.sections;
                 currentPipeline = scenesData.pipeline || 'segment';
                 editableFields = scenesData.editable_fields || [];
+                // authoring-mode controls (Refine / Accept) only for flow projects
+                const fc = document.getElementById('flowControls');
+                if (fc) fc.style.display = (currentPipeline === 'flow') ? '' : 'none';
                 selectedScenes.clear();
                 editedScenes.clear();
 
