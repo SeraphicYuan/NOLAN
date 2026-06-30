@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parents[3]   # src/nolan/skills/__init__.py -> r
 SKILL_ROOTS = [ROOT / "skills", ROOT / ".claude" / "skills"]
 INDEX_PATH = ROOT / "skills" / "index.json"
 INVOCATION_LOG = ROOT / ".nolan" / "skills" / "invocations.jsonl"   # runtime telemetry (gitignored)
+FEEDBACK_LOG = ROOT / ".nolan" / "skills" / "feedback.jsonl"        # human gate corrections (gitignored)
 SCHEMA_VERSION = 1
 
 KINDS = {"contract", "craft", "grammar", "prompt", "methodology"}
@@ -130,6 +131,66 @@ def handoff(skill_id: str, ctx: dict | None = None, *, log: bool = True) -> str:
     if log:
         _log_invocation(skill_id, s.version, ctx)
     return s.body.lstrip("\n")
+
+
+# ─────────────────────────── feedback ledger (Phase 3) ───────────────────────────
+# A skill is prose; the only "test" of a craft skill is whether its output gets corrected at a
+# HITL gate. Logging every correction AGAINST THE SKILL VERSION that produced the artifact turns
+# the gates NOLAN already has into a revision signal: corrections accumulate per (skill, version)
+# and become the changelog for the next revision. Bumping a skill's `version` retires its open
+# feedback (those corrections were about the prior version).
+def _read_jsonl(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    out = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+    return out
+
+
+def record_feedback(skill_id: str, note: str, *, ctx: dict | None = None) -> dict:
+    """Record one human correction against the skill version that produced the artifact."""
+    s = get_skill(skill_id)
+    rec = {"skill": skill_id, "version": (s.version if s else None),
+           "note": (note or "").strip(), "at": time.time()}
+    if ctx:
+        rec["ctx"] = ctx
+    try:
+        FEEDBACK_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with FEEDBACK_LOG.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except OSError:
+        pass   # a logging failure must never break an edit
+    return rec
+
+
+def skill_feedback(skill_id: str) -> list[dict]:
+    return [r for r in _read_jsonl(FEEDBACK_LOG) if r.get("skill") == skill_id]
+
+
+def skill_health(skill_id: str) -> dict:
+    """Per-skill signal: invocations + feedback (total, and 'open' = recorded against the CURRENT
+    version, i.e. not yet addressed by a revision). High open-feedback = a revision candidate."""
+    s = get_skill(skill_id)
+    cur = s.version if s else None
+    inv = [r for r in _read_jsonl(INVOCATION_LOG) if r.get("skill") == skill_id]
+    fb = skill_feedback(skill_id)
+    open_fb = [r for r in fb if r.get("version") == cur]
+    return {"skill": skill_id, "version": cur, "status": (s.status if s else None),
+            "invocations": len(inv), "feedback_total": len(fb), "feedback_open": len(open_fb),
+            "last_feedback_at": max((r.get("at", 0) for r in fb), default=None)}
+
+
+def health_report() -> list[dict]:
+    """Every skill with any feedback, worst (most open corrections) first — the revision queue."""
+    rows = [skill_health(s.id) for s in load_skills()]
+    rows = [r for r in rows if r["feedback_total"]]
+    return sorted(rows, key=lambda r: (-r["feedback_open"], -r["feedback_total"]))
 
 
 def build_index(write: bool = True) -> dict:

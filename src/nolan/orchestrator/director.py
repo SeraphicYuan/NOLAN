@@ -531,6 +531,18 @@ class Director:
         if not feedback_text:
             raise DirectorError(f"feedback file {feedback_path.name} is empty")
 
+        # Feedback ledger: a human correction at this gate is a signal about the skill that
+        # AUTHORED the artifact being refined — record it against that producer's version.
+        producer = {
+            "match_and_adapt_style": "orchestrator.adapt-style",
+            "select_clips": "orchestrator.select-clips",
+            "slide_designer": "orchestrator.slide-designer",
+        }.get(target_step)
+        if producer:
+            from nolan.skills import record_feedback
+            record_feedback(producer, feedback_text,
+                            ctx={"project": ctx.slug, "step": target_step, "file": feedback_path.name})
+
         return await refine_dispatch[target_step](
             ctx, state, feedback_path, feedback_text,
         )

@@ -37,8 +37,17 @@ a **verifiable binding** and an **identity/lineage** — so drift becomes a fail
   byte-identical to the originals. `fleet.py`'s CITE-style reference resolves via `skill_path()`.
   `select-clips` (the LLM pass the vector matcher replaced) is cataloged `deprecated`. 22 skills,
   lint 0/0.
-- **Deferred**: a per-skill feedback ledger (Phase 3) ties human gate corrections to the skill
-  version that produced an artifact; then the `/skills` UI.
+- **Phase 3 — feedback ledger**: `record_feedback(skill_id, note, ctx)` logs a human gate
+  correction against the skill VERSION that produced the artifact (`.nolan/skills/feedback.jsonl`);
+  `skill_health()`/`health_report()` surface the **revision queue** (skills with the most *open*
+  corrections — those against the current version). Bumping a skill's `version` retires its open
+  feedback (the corrections were about the prior version) while `feedback_total` persists — so the
+  ledger is the changelog for the next revision. Wired at the two real HITL gates: the orchestrator
+  refine dispatcher (`run_refine_step` → the producing skill) and the flow Scene-page edit
+  (`fleet.dispatch`'s human note → `flow.edit-contract`/`scene-edit`). `python -m nolan.skills
+  health` prints the queue. Verified end-to-end incl. the version-reset semantics.
+- **Next**: the `/skills` UI (list · detail + lineage graph · health/revision queue), reading the
+  generated `skills/index.json` + the ledger.
 
 ## WebUI + iPhone design-system overhaul (2026-06-30)
 

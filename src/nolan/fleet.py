@@ -219,6 +219,16 @@ def dispatch(agent: str, plan_path: str, project: str, scene_ids: List[str], not
                  scene_ids=scene_ids, note=note, message="dispatched", result=None, error=None,
                  started_at=time.time())
     ctx = _flow_context(str(plan_path), scene_ids)
+    # Feedback ledger: the human's beat-edit note is a correction at the Scene-page gate (Gate B).
+    # Record it against the skill that governs the edit — the flow-edit contract for flow projects,
+    # the generic scene-edit skill otherwise.
+    if note:
+        try:
+            from nolan.skills import record_feedback
+            record_feedback("flow.edit-contract" if ctx else "scene-edit", note,
+                            ctx={"project": project, "beats": scene_ids})
+        except Exception:
+            pass   # ledger must never block a dispatch
     prompt = (build_flow_dispatch_prompt(agent, str(plan_path), scene_ids, note, ctx) if ctx
               else build_dispatch_prompt(agent, str(plan_path), scene_ids, note))
     _dispatch_to_tmux(agent, prompt)
