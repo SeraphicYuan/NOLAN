@@ -1,6 +1,6 @@
 """chapter-block render mechanism — render each beat to its own clip, concat to final.
 
-This is what makes per-beat re-render real: a beat renders as a single-step `_lab_chapter`
+This is what makes per-beat re-render real: a beat renders as a single-step `remotion-lib`
 job, so it's an independent clip — and because its duration is pinned to its voiceover
 segment, editing a beat's visuals never reflows the timeline. art/explainer/book all share
 this mechanism (dispatched via Flow.render_mechanism). See web-video-lab/flows/EDITOR.md.
@@ -29,7 +29,7 @@ def render_beat(job_path, i: int, work_dir) -> Path:
     out_name = f"beat_{i:02d}.mp4"
     bjp = work_dir / f"_beat_{i:02d}.job.json"
     bjp.write_text(json.dumps(_beat_job(job, i, out_name)), encoding="utf-8")
-    clip = render_chapter(bjp)                      # -> _lab_chapter/output/beat_<i>.mp4
+    clip = render_chapter(bjp)                      # -> remotion-lib/output/beat_<i>.mp4
     dest = work_dir / out_name
     dest.write_bytes(Path(clip).read_bytes())       # collect into the work dir
     return dest

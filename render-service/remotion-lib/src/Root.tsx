@@ -10,6 +10,10 @@ import {PremiumCard} from './PremiumCard';
 import {PhotoMontage} from './PhotoMontage';
 import {PhotoGrid} from './PhotoGrid';
 import {Showcase} from './Showcase';
+// Folded-in flow bundle (was _lab_chapter): the Chapter Series + its blocks.
+import {Chapter} from './Chapter';
+import {Montage, montageDuration, type MontageStep, type Transition} from './Montage';
+import {FXSpike} from './Effects';
 
 // Curated Remotion source — one composition per registered scene type.
 // Shared style (`theme`) + per-effect style vars (lineStyle/barStyle/shapeStyle/…).
@@ -17,6 +21,14 @@ const dur = ({props}: {props: {durationInFrames?: number}}) => ({
   durationInFrames: props.durationInFrames ?? 120,
 });
 const common = {fps: 30, width: 1920, height: 1080} as const;
+
+// Chapter length = sum of the steps' durations (one Series.Sequence each, hard cuts).
+const calcChapter = ({props}: {props: {steps?: {durationInFrames?: number}[]}}) => ({
+  durationInFrames: (props?.steps || []).reduce((a, s) => a + (s.durationInFrames || 0), 0) || 120,
+});
+const calcMontage = ({props}: {props: {steps?: MontageStep[]; transitions?: Transition[]}}) => ({
+  durationInFrames: montageDuration(props?.steps || [], props?.transitions || []),
+});
 
 export const Root: React.FC = () => {
   return (
@@ -85,6 +97,19 @@ export const Root: React.FC = () => {
         defaultProps={{segments: [], introTitle: 'NOLAN · Remotion Motion Library', perFrames: 120, introFrames: 60, durationInFrames: 900}}
         calculateMetadata={dur}
       />
+      {/* ── flow bundle: the Chapter Series of step-blocks (+ Montage, FXSpike) ── */}
+      <Composition
+        id="Chapter" component={Chapter as React.FC<Record<string, unknown>>}
+        durationInFrames={120} {...common}
+        defaultProps={{steps: [], captions: false}} calculateMetadata={calcChapter}
+      />
+      <Composition
+        id="Montage" component={Montage as React.FC<Record<string, unknown>>}
+        durationInFrames={120} {...common}
+        defaultProps={{steps: [], transitions: [], motionBlur: false}} calculateMetadata={calcMontage}
+      />
+      <Composition id="FXSpike" component={FXSpike as React.FC<Record<string, unknown>>}
+        durationInFrames={60} {...common} />
     </>
   );
 };

@@ -14,7 +14,7 @@ from pathlib import Path
 
 from ..base import ROOT
 
-BLOCKS = ROOT / "render-service" / "_lab_chapter" / "src" / "blocks"
+BLOCKS = ROOT / "render-service" / "remotion-lib" / "src" / "blocks"
 LIB_INDEX = BLOCKS / "library" / "index.ts"
 RAW_DIR = BLOCKS / "raw"
 REGISTRY = ROOT / "web-video-lab" / "flows" / "registry.json"

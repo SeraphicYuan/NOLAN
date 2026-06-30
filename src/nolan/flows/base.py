@@ -35,15 +35,15 @@ def run_gate(job_path: Path, flow_id: str) -> None:
 
 
 def render_chapter(job_path: Path) -> Path:
-    """Render a Chapter job to mp4 via the _lab_chapter Remotion bundle (Windows node)."""
+    """Render a Chapter job to mp4 via the remotion-lib Remotion bundle (Windows node)."""
     cfg = json.loads(Path(job_path).read_text(encoding="utf-8"))
-    r = subprocess.run([NODE, "_lab_chapter/render.mjs", _win(job_path)],
+    r = subprocess.run([NODE, "remotion-lib/render.mjs", _win(job_path)],
                        cwd=str(RS), capture_output=True, text=True)
     if r.returncode != 0:
         print(r.stdout[-2000:]); print(r.stderr[-2000:])
         raise RuntimeError(f"render failed for {job_path.name}")
     print(r.stdout.strip().splitlines()[-1] if r.stdout.strip() else "rendered")
-    return RS / "_lab_chapter" / "output" / cfg.get("out", "chapter.mp4")
+    return RS / "remotion-lib" / "output" / cfg.get("out", "chapter.mp4")
 
 
 def deliver(mp4: Path, dest: Path) -> Path:

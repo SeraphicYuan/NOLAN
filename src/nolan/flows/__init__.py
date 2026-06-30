@@ -1,7 +1,7 @@
 """Video flows — a flow is a DESCRIPTOR over one shared engine, not a second pipeline.
 
 art, explainer, … all share the job-JSON contract, the QA gate structure, the
-`_lab_chapter` render engine, and the 39-block library. A `Flow` carries only the parts
+`remotion-lib` render engine, and the 39-block library. A `Flow` carries only the parts
 that genuinely differ: the ingest adapter (code), and the profile/palette/defaults (config
 from web-video-lab/flows/registry.json). See web-video-lab/flows/INTEGRATION.md.
 """

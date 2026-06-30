@@ -34,8 +34,8 @@ parallelism — "spoken AI-feel is worse than written"), **(3) keep the source l
 
 ## Motion selection & invention (ties to `FLOW_EDIT.md`)
 1. **Reach for the flow's palette first** (the blessed motions) + the shared/common set.
-2. **Reuse before building** — check the full `_lab_chapter` library AND `remotion-lib/` and PORT;
-   never rebuild an existing block (see `FLOW_EDIT.md`).
+2. **Reuse before building** — check the one block library `render-service/remotion-lib/src/blocks/
+   library/` (40 blocks); never rebuild an existing block (see `FLOW_EDIT.md`).
 3. **Invent (RAW) only when nothing fits** — then design it per the craft bottom line above; a
    bespoke one-off lives in `blocks/raw/` (allowed, flagged). This is the escape hatch that keeps
    the system open-ended.

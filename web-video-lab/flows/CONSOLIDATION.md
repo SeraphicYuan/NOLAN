@@ -114,15 +114,20 @@ adapter (only if a new acquisition mode) + a registry row.
 
 ---
 
-## Track 2 — unify the two Remotion block libraries (harder, separate)
+## Track 2 — unify the two Remotion bundles ✅ DONE
 
-`_lab_chapter` blocks (Chapter-step contract, 39) vs `remotion-lib` effects (standalone `<Composition>`,
-~9) — two bundles, different composition models, overlapping (PhotoGrid/PhotoMontage).
-- **A** shared block source both bundles wrap (medium).
-- **B** one canonical bundle, retire `remotion-lib` — true cure, but **touches NOLAN's per-scene
-  motion path** (segment/orchestrator) → high risk.
-- **C** the reuse-rule discipline (already built in FLOW_EDIT).
-**Recommendation: C now (done), B as a separate future project** with its own regression pass.
+There were two bundles: the temporary lab `_lab_chapter/` (Chapter-step blocks, 40) and the
+NOLAN-integrated `remotion-lib/` (standalone `<Composition>` effects, used by the per-scene motion
+path). **`_lab_chapter` was folded INTO `remotion-lib`** (the canonical NOLAN bundle) and retired:
+- _lab_chapter's `blocks/` + `Chapter`/`Montage` + `stage.mjs`/`still.mjs` moved into `remotion-lib/src/`.
+- Its deps (@visx/katex/lottie/flubber/roughjs/d3) merged into `render-service/package.json` (+ `react`
+  pinned `^18.3.1` to satisfy both Remotion and @visx); `npm install`.
+- `remotion-lib/render.mjs` **unified** — branches on job shape: flow `Chapter` (stage + steps) vs
+  motion single-comp. `Root.tsx` registers 13 comps (10 effects + Chapter + Montage + FXSpike).
+- Flow wiring re-pointed (`flows/base.py`, `render.py`, `gate/contact.py`, `gate/validate.py`).
+- **Verified:** gate green, flow beat render, AND the motion path (`remotion_source.render`) all
+  render through `remotion-lib`. `_lab_chapter/` deleted.
+Result: **ONE render bundle, ONE block library** — no dupes, no temp folder, agents see one place.
 
 ---
 

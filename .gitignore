@@ -125,3 +125,6 @@ projects/*/scene_plan.json
 
 # fleet runtime state
 .nolan/agents/
+
+render-service/remotion-lib/public/
+render-service/remotion-lib/jobs/_auto_*.json

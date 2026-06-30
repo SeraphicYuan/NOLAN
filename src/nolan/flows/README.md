@@ -38,7 +38,7 @@ freedom to do something new (e.g. invent a new block). Don't rigidify the edges 
 | `base.py` | `run_flow` / `run_flow_for_project` — the **shared engine**; `render_chapter`, `deliver`, `_win` |
 | **ingest** | `ingest.py` (`ingest_art` — art = assemble byo-everything) · `art.py` (the art tenant names it). *Explainer adds `ingest/explainer.py` when promoted.* |
 | **gate/** | `run_gate(job, flow)` → `validate.py` (structural + palette) · `pacing.py` (wpm/reveal/gap/density) · `contact.py` (1–2 stills/beat → labeled sheet, subprocesses node `still.mjs` + ffmpeg) · `montage.py` (Pillow sheet, in-process) |
-| `render.py` | **chapter-block** mechanism: each beat → single-step `_lab_chapter` job → clip; concat |
+| `render.py` | **chapter-block** mechanism: each beat → single-step `remotion-lib` job → clip; concat |
 | `scene_view.py` | `build_scene_plan(project)` — projects beats into the `scene_plan.json` the Scene page reads |
 | `edit.py` | `patch_beat` / `patch_focus` / `set_beat_asset` — edits write to `flow.spec.json` (source of truth) |
 | `authoring.py` | Gate-A plan-time HITL: `draft_plan`, `plan_status`, `accept_draft`, `run(mode=auto\|semi-auto)`, `dispatch_refine` (to a tmux agent) |
@@ -47,7 +47,7 @@ freedom to do something new (e.g. invent a new block). Don't rigidify the edges 
 ## Runtimes (post-consolidation)
 The engine runs **in-process under the nolan env python** (`D:\env\nolan\python.exe`) — what the
 WebUI/CLI use; has Pillow + FastAPI. Only two things are subprocessed because they're external
-runtimes: **Windows node** (the Remotion render: `_lab_chapter/render.mjs`, `still.mjs`) and
+runtimes: **Windows node** (the Remotion render: `remotion-lib/render.mjs`, `still.mjs`) and
 **ffmpeg** (concat/faststart/blackframe). `base._win` + `ingest._localize` make paths work for the
 Windows node/ffmpeg regardless of how the python is launched. **Heads-up:** that console is cp1252
 — keep `print()`s ASCII or cp1252-safe (`· × —` are fine; `✓ → ⏸` are not).
@@ -56,7 +56,7 @@ Windows node/ffmpeg regardless of how the python is launched. **Heads-up:** that
 `nolan render-flow <project> --mode auto` (`cli_legacy.render_flow_cmd`) → `authoring.run` →
 `base.run_flow_for_project` → `load_flow_spec` → **ingest** (`flow.ingest` → `ingest_art`, writes
 `projects/<slug>/flow.job.json`) → **gate** (`run_gate` in-process: validate+palette, pacing,
-contact) → **render** (`render.py` per-beat clips via node `_lab_chapter/render.mjs` + the 39-block
+contact) → **render** (`render.py` per-beat clips via node `remotion-lib/render.mjs` + the 39-block
 library + theme `tokens.css`; concat) → **deliver** (ffmpeg faststart → `projects/<slug>/video/`) →
 **scene view** (`build_scene_plan` → `scene_plan.json`).
 
@@ -86,10 +86,12 @@ Everything else — gate, render, deliver, scene_view, edit, authoring, Scene-pa
 dispatch — is **reused unchanged**. (Explainer's row already exists in `registry.json`.)
 
 ## Gotchas / open items
-- **Two Remotion block libraries** — `_lab_chapter/src/blocks/library/` (39, Chapter-step) and
-  `remotion-lib/src/` (NOLAN motion effects). They overlap (PhotoGrid/PhotoMontage); an agent must
-  **reuse/port, not rebuild** (`FLOW_EDIT.md` rule 3). True unification is Track 2 in
-  `web-video-lab/flows/CONSOLIDATION.md` (deferred — touches the per-scene motion path).
+- **One bundle, two component shapes** — `remotion-lib/` is now the single render bundle (the temp
+  `_lab_chapter/` was folded in + retired, Track 2 in `CONSOLIDATION.md`). It hosts both
+  `src/blocks/library/` (40 Chapter-step blocks, the flow library) and `src/*.tsx` standalone
+  `<Composition>` effects (the per-scene motion path). `render.mjs` branches on job shape. Reuse the
+  one library; never rebuild (`FLOW_EDIT.md` rule 3). Minor residual dup: PhotoGrid/PhotoMontage
+  exist as both a block and an effect-Composition — eventually mergeable, not urgent.
 - **cp1252 prints** (above).
 - **Standalone shims**: `web-video-lab/{art_ingest,art_check,…}.py` are thin CLI wrappers re-exporting
   this package (kept for standalone runs + the docs).

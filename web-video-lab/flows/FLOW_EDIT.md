@@ -14,14 +14,12 @@ segment/orchestrator project — these rules override the generic `nolan-scene-e
    `web-video-lab/flows/registry.json`, or run `python web-video-lab/art_validate.py
    --show-palette <flow>`. Out-of-palette blocks warn at the gate.
 
-3. **REUSE before you rebuild — never rebuild a block that already exists.** Before authoring a
-   new block, check, in order:
-   (a) the flow palette; (b) the full library `render-service/_lab_chapter/src/blocks/library/`
-   (39+ blocks); (c) **`render-service/remotion-lib/src/`** — NOLAN's other Remotion bundle, which
-   already has many blocks (PhotoGrid, PhotoMontage, BarCompare, RouteMap, …). If it exists in
-   remotion-lib but not `_lab_chapter`, **PORT it** (copy + adapt to the block contract
-   `{...props, revealFrames, words, durationInFrames}`) rather than rebuild from scratch. Only
-   author a genuinely new block if none exists anywhere.
+3. **REUSE before you rebuild — never rebuild a block that already exists.** There is ONE block
+   library now: `render-service/remotion-lib/src/blocks/library/` (40 blocks). Before authoring a
+   new block, check (a) the flow palette, then (b) that full library (ArtworkStage, DetailLoupe,
+   ImageCompare, PhotoGrid, PhotoMontage, BarChart, RouteMap, …). New blocks go in that one
+   directory (contract `{...props, revealFrames, words, durationInFrames}`). Only author a
+   genuinely new block if none exists.
 
 4. **Use the assets already attached.** The beat may already have a bound asset (`src`/`cards`/
    `left`/`right`) and the human may have **added assets to its tray** (`scene.assets[]`) or left

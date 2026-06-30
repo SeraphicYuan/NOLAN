@@ -16,7 +16,7 @@ from pathlib import Path
 from ..base import FFMPEG, NODE, RS, _win
 from .montage import build_sheet
 
-CHK = RS / "_lab_chapter" / "output" / "chk"
+CHK = RS / "remotion-lib" / "output" / "chk"
 
 
 def contact(job_path, fracs=(0.55, 0.92), sheet_name=None):
@@ -44,8 +44,8 @@ def contact(job_path, fracs=(0.55, 0.92), sheet_name=None):
     print(f"CONTACT · {job_path.name} · {len(steps)} beats × {len(fracs)} = {len(samples)} stills")
     print("-" * 78)
 
-    r = subprocess.run([NODE, "_lab_chapter/still.mjs", _win(job_path),
-                        _win(samples_path), "_lab_chapter/output/chk"],
+    r = subprocess.run([NODE, "remotion-lib/still.mjs", _win(job_path),
+                        _win(samples_path), "remotion-lib/output/chk"],
                        cwd=str(RS), capture_output=True, text=True)
     if r.returncode != 0:
         print(r.stdout[-2000:]); print(r.stderr[-2000:])
@@ -53,7 +53,7 @@ def contact(job_path, fracs=(0.55, 0.92), sheet_name=None):
 
     empties, cells = [], []
     for idx, beat, block, f, frame in legend:
-        bf = subprocess.run([str(FFMPEG), "-i", f"_lab_chapter/output/chk/sheet_{idx:03d}.png",
+        bf = subprocess.run([str(FFMPEG), "-i", f"remotion-lib/output/chk/sheet_{idx:03d}.png",
                             "-vf", "blackframe=amount=0:threshold=32", "-f", "null", "-"],
                            cwd=str(RS), capture_output=True, text=True)
         m = re.search(r"pblack:(\d+)", bf.stderr)
@@ -65,12 +65,12 @@ def contact(job_path, fracs=(0.55, 0.92), sheet_name=None):
                       "label": f"b{beat} {block} {int(f*100)}% f{frame}"})
         print(f" {'EMPTY' if empty else 'ok':<5} beat {beat:<2} {block:<14} frac {f:>4}  frame {frame:>6}  pblack={pblack:>3}%")
 
-    sheet = RS / "_lab_chapter" / "output" / sheet_name
+    sheet = RS / "remotion-lib" / "output" / sheet_name
     build_sheet({"base": str(CHK), "out": str(sheet), "cols": len(fracs), "rows": len(steps),
                  "cellw": 640, "cells": cells})
 
     print("-" * 78)
-    print(f"sheet -> render-service/_lab_chapter/output/{sheet_name}   (grid {len(fracs)}×{len(steps)})")
+    print(f"sheet -> render-service/remotion-lib/output/{sheet_name}   (grid {len(fracs)}×{len(steps)})")
     for beat, block, frame, pb in empties:
         print(f" [EMPTY] beat {beat} {block} @ frame {frame} is {pb}% black")
     print(f"{len(empties)} empty/near-black beat(s)")
