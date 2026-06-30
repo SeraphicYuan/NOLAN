@@ -521,6 +521,21 @@
         .pk-card.on { border-color: var(--warning); }
         .pk-check { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; line-height: 16px; text-align: center; font-size: 11px; border-radius: 50%; background: var(--warning); color: var(--bg-primary); opacity: 0; }
         .pk-card.on .pk-check { opacity: 1; }
+        .pk-eye { position: absolute; top: 4px; left: 4px; width: 18px; height: 18px; line-height: 18px; text-align: center; font-size: 11px; border-radius: 4px; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; opacity: 0; transition: opacity .12s; }
+        .pk-card:hover .pk-eye { opacity: 1; }
+        .tray-eye { position: absolute; top: 2px; right: 20px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 10px; padding: 1px 4px; }
+        .lightbox-cap { position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); color: #e5e7eb; background: rgba(0,0,0,.55); padding: 4px 12px; border-radius: 6px; font-size: 13px; max-width: 80vw; text-align: center; }
+        .lightbox-cap:empty { display: none; }
+        .tray-card[draggable] { cursor: grab; }
+        .tray-card[draggable]:active { cursor: grabbing; }
+        .scene-row.drop-target { outline: 2px dashed var(--accent); outline-offset: -4px; background: color-mix(in srgb, var(--accent) 8%, transparent); }
+        .mention-pop { position: absolute; z-index: 400; max-height: 280px; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.45); padding: 4px; }
+        .mention-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+        .mention-item:hover { background: var(--bg-tertiary); }
+        .mention-item img { width: 40px; height: 28px; object-fit: cover; border-radius: 4px; background: var(--bg-primary); flex: 0 0 auto; }
+        .mention-item b { color: var(--accent); font-weight: 600; }
+        .mention-item .mi-kind { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+        .mention-item .mi-label { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .picker-subbar { gap: 14px; padding: 8px 14px 0; flex-wrap: wrap; }
         .subseg { font-size: 11px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px; }
         .subbtn { background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 11px; }
@@ -692,6 +707,8 @@
     <div class="lightbox" id="lightbox">
         <span class="lightbox-close">&times;</span>
         <img id="lightboxImg" src="" alt="Full size">
+        <video id="lightboxVid" src="" controls playsinline style="display:none; max-width:92vw; max-height:84vh; border-radius:8px;"></video>
+        <div id="lightboxCap" class="lightbox-cap"></div>
     </div>
 
     <script>
@@ -817,7 +834,10 @@
                      data-status="${status}"
                      data-start="${scene.start_seconds || 0}"
                      data-end="${scene.end_seconds || 0}"
-                     id="scene-${index}">
+                     data-scene-id="${scene.id}"
+                     id="scene-${index}"
+                     ondragover="sceneDragOver(event)" ondragleave="sceneDragLeave(event)"
+                     ondrop="sceneFileDrop(event,'${scene.id}')">
                     <div class="scene-details">
                         <div class="scene-header">
                             <label class="scene-select" title="Queue this scene for re-render">
@@ -898,7 +918,7 @@
                                 </div>
                                 <div class="edit-body" id="body-note-${scene.id}">
                                     <textarea id="note-${scene.id}" class="edit-note" rows="2"
-                                        placeholder="e.g. make it grimmer  ·  or: rework to Remotion kinetic text"></textarea>
+                                        placeholder="e.g. make it grimmer  ·  type @ to reference an asset  ·  or: rework to Remotion kinetic text"></textarea>
                                     <div class="note-actions">
                                         <button class="apply-btn" onclick="applyNote('${scene.id}')" title="Fast LLM — instant text/prompt tweaks">⚡ Quick edit (LLM)</button>
                                         <span class="note-or">or hand to an agent:</span>
@@ -1054,7 +1074,10 @@
             const assets = scene.assets || [];
             if (!assets.length) return `<div class="tray-empty">No assets yet — search below to add pictures.</div>`;
             return assets.map((a, i) => `
-                <div class="tray-card">
+                <div class="tray-card" draggable="true"
+                     ondragstart="trayDragStart(event,'${scene.id}','${a.id}')"
+                     ondragover="event.preventDefault()"
+                     ondrop="trayDrop(event,'${scene.id}','${a.id}')">
                     <span class="tray-idx">${i}</span>
                     <span class="tray-kind ${a.kind||'image'}" title="${a.kind||'image'}">${(a.kind||'image')==='image'?'IMG':(a.kind==='clip'||a.kind==='video'?'VID':a.kind.toUpperCase())}</span>
                     <img class="tray-thumb" src="${a.thumb || assetUrl(a.src)}" alt="">
@@ -1062,6 +1085,7 @@
                         <div class="tray-label" title="id=${a.id}">${esc(a.label || a.id)}</div>
                         ${placeDots(scene.id, a)}
                     </div>
+                    <button class="tray-eye" title="preview" onclick="previewAsset('${scene.id}','${a.id}')">⤢</button>
                     <button class="tray-x" title="remove" onclick="assetOp('${scene.id}',{op:'remove',asset_id:'${a.id}'})">✕</button>
                 </div>`).join('');
         }
@@ -1086,6 +1110,96 @@
         function assetSetPlace(sceneId, assetId, place) {
             assetOp(sceneId, {op:'set_place', asset_id: assetId, place}).catch(e => alert(e.message));
         }
+        // ---------- Drag & drop (desktop): reorder tray + drop local files onto a scene ----------
+        let _trayDrag = null;
+        function trayDragStart(e, sceneId, aid) {
+            _trayDrag = { sceneId, aid };
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', aid); } catch (x) {}
+        }
+        function trayDrop(e, sceneId, targetId) {
+            e.preventDefault(); e.stopPropagation();
+            if (!_trayDrag || _trayDrag.sceneId !== sceneId) { _trayDrag = null; return; }
+            const scene = allScenes.find(s => s.id === sceneId); if (!scene) { _trayDrag = null; return; }
+            const ids = (scene.assets || []).map(a => a.id);
+            const from = ids.indexOf(_trayDrag.aid), to = ids.indexOf(targetId);
+            _trayDrag = null;
+            if (from < 0 || to < 0 || from === to) return;
+            ids.splice(to, 0, ids.splice(from, 1)[0]);
+            assetOp(sceneId, { op: 'reorder', order: ids }).catch(err => alert(err.message));
+        }
+        function sceneDragOver(e) {
+            if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+                e.preventDefault();
+                e.currentTarget.classList.add('drop-target');
+            }
+        }
+        function sceneDragLeave(e) { e.currentTarget.classList.remove('drop-target'); }
+        async function sceneFileDrop(e, sceneId) {
+            const files = e.dataTransfer && e.dataTransfer.files;
+            if (!files || !files.length) return;   // tray reorder (no files) — ignore here
+            e.preventDefault(); e.stopPropagation();
+            e.currentTarget.classList.remove('drop-target');
+            for (const file of files) {
+                if (!/^(image|video)\//.test(file.type)) continue;
+                try {
+                    const fd = new FormData();
+                    fd.append('project', currentProject); fd.append('file', file);
+                    const res = await fetch('/scenes/api/scene/upload', { method: 'POST', body: fd });
+                    const j = await res.json();
+                    if (!res.ok) throw new Error(j.detail || 'upload failed');
+                    await assetOp(sceneId, { op: 'add', source: 'path', path: j.path, kind: j.kind, label: j.label });
+                } catch (err) { alert('Drop failed: ' + err.message); }
+            }
+        }
+
+        // ---------- @-mention: reference a scene's bound assets inside a comment ----------
+        (function () {
+            let pop = null, curTa = null, matchStart = 0;
+            function ensure() {
+                if (!pop) { pop = document.createElement('div'); pop.className = 'mention-pop'; pop.style.display = 'none'; document.body.appendChild(pop); }
+                return pop;
+            }
+            function hide() { if (pop) pop.style.display = 'none'; curTa = null; }
+            function sceneFor(ta) { const id = (ta.id || '').replace(/^note-/, ''); return allScenes.find(s => s.id === id); }
+            document.addEventListener('input', function (e) {
+                const ta = e.target;
+                if (!ta.classList || !ta.classList.contains('edit-note')) return;
+                const before = ta.value.slice(0, ta.selectionStart);
+                const m = before.match(/@(\w*)$/);
+                if (!m) return hide();
+                const scene = sceneFor(ta); const assets = (scene && scene.assets) || [];
+                if (!assets.length) return hide();
+                const q = m[1].toLowerCase();
+                const hits = assets.filter(a => (a.id + ' ' + (a.label || '')).toLowerCase().includes(q)).slice(0, 8);
+                if (!hits.length) return hide();
+                curTa = ta; matchStart = ta.selectionStart - m[0].length;
+                const p = ensure();
+                p.innerHTML = hits.map(a => `<div class="mention-item" data-id="${a.id}">
+                    <img src="${a.thumb || assetUrl(a.src)}" onerror="this.style.visibility='hidden'">
+                    <b>@${a.id}</b><span class="mi-kind">${a.kind || 'image'}</span>
+                    <span class="mi-label">${esc((a.label || '').slice(0, 40))}</span></div>`).join('');
+                const r = ta.getBoundingClientRect();
+                p.style.left = (r.left + window.scrollX) + 'px';
+                p.style.top = (r.bottom + window.scrollY + 2) + 'px';
+                p.style.width = Math.max(240, r.width) + 'px';
+                p.style.display = 'block';
+            });
+            document.addEventListener('click', function (e) {
+                if (!pop || pop.style.display === 'none') return;
+                const item = e.target.closest && e.target.closest('.mention-item');
+                if (item && curTa) {
+                    const id = item.getAttribute('data-id');
+                    const ta = curTa, pos = ta.selectionStart;
+                    ta.value = ta.value.slice(0, matchStart) + '@' + id + ' ' + ta.value.slice(pos);
+                    const np = matchStart + id.length + 2;
+                    ta.focus(); ta.setSelectionRange(np, np);
+                    hide();
+                } else if (!pop.contains(e.target)) hide();
+            });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(); });
+        })();
+
         // ---------- Asset picker drawer (browse + search, multi-select) ----------
         let pickerScene = null, pickerTab = 'pictures', pickerSel = new Map(), pickerItems = [];
         let vidScope = 'project', vidSource = 'clips', vidVideo = null, pickerVideos = [];
@@ -1197,6 +1311,7 @@
                 const on = pickerSel.has(pickKey(it));
                 return `<div class="pk-card${on?' on':''}" data-key="${pickKey(it)}" onclick="togglePick(${i})">
                     <img src="${it.thumb}" loading="lazy" alt=""><span>${esc((it.label||'').slice(0,42))}</span>
+                    <i class="pk-eye" title="preview" onclick="event.stopPropagation();previewItem(${i})">⤢</i>
                     <i class="pk-check">✓</i></div>`;
             }).join('');
         }
@@ -1435,17 +1550,55 @@
             } catch (e) { st.textContent = 'Dispatch error: ' + e.message; }
         }
 
-        // Open lightbox
-        function openLightbox(src) {
-            const lightbox = document.getElementById('lightbox');
+        // ---------- Preview modal (image OR in/out-bounded clip) ----------
+        function _lbReset() {
             const img = document.getElementById('lightboxImg');
-            img.src = src;
-            lightbox.classList.add('active');
+            const vid = document.getElementById('lightboxVid');
+            img.style.display = 'none'; img.src = '';
+            vid.style.display = 'none'; try { vid.pause(); } catch (e) {}
+            vid.src = ''; vid.onloadedmetadata = null; vid.ontimeupdate = null;
+            document.getElementById('lightboxCap').textContent = '';
         }
-
-        // Close lightbox
-        document.getElementById('lightbox').addEventListener('click', function() {
-            this.classList.remove('active');
+        function openLightbox(src, cap) {
+            _lbReset();
+            const img = document.getElementById('lightboxImg');
+            img.src = src; img.style.display = '';
+            document.getElementById('lightboxCap').textContent = cap || '';
+            document.getElementById('lightbox').classList.add('active');
+        }
+        function openClipPreview(src, start, end, cap) {
+            _lbReset();
+            const vid = document.getElementById('lightboxVid');
+            start = +start || 0; end = (end != null && +end > start) ? +end : null;
+            vid.src = `/scenes/api/source-video?project=${encodeURIComponent(currentProject)}&src=${encodeURIComponent(src)}`;
+            vid.style.display = '';
+            vid.onloadedmetadata = () => { try { vid.currentTime = start; vid.play().catch(() => {}); } catch (e) {} };
+            // bound playback to the clip's out-point (loop the segment)
+            vid.ontimeupdate = () => { if (end != null && vid.currentTime >= end) vid.currentTime = start; };
+            document.getElementById('lightboxCap').textContent = cap || '';
+            document.getElementById('lightbox').classList.add('active');
+        }
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+            _lbReset();
+        }
+        // Preview a picker result (image → full pic; clip/segment → bounded video).
+        function previewItem(i) {
+            const it = pickerItems[i]; if (!it) return;
+            if (it.source === 'library') return openLightbox(it.thumb, it.label);
+            const p = it.payload || {};
+            openClipPreview(p.source_video_path, p.clip_start, p.clip_end, it.label);
+        }
+        // Preview a bound tray asset.
+        function previewAsset(sceneId, assetId) {
+            const scene = allScenes.find(s => s.id === sceneId); if (!scene) return;
+            const a = (scene.assets || []).find(x => x.id === assetId); if (!a) return;
+            if (a.kind === 'clip' || a.kind === 'video') return openClipPreview(a.src, a.clip_start, a.clip_end, a.label || a.id);
+            openLightbox(a.thumb || assetUrl(a.src), a.label || a.id);
+        }
+        // Close on backdrop or × click — never when interacting with the media itself.
+        document.getElementById('lightbox').addEventListener('click', function (e) {
+            if (e.target === this || e.target.classList.contains('lightbox-close')) closeLightbox();
         });
 
         // Seek audio to time and set range

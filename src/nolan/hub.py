@@ -2376,6 +2376,53 @@ def create_hub_app(
             return FileResponse(str(out), media_type="image/jpeg")
         raise HTTPException(status_code=404, detail="could not extract frame")
 
+    @app.get("/scenes/api/source-video")
+    async def scenes_source_video(src: str, project: str = None):
+        """Stream an original source video (HTTP range-enabled) for clip preview.
+
+        FileResponse honours the Range header, so the picker's preview player can
+        seek straight to a clip's in-point without materializing the clip.
+        """
+        cands = [Path(src)]
+        if project:
+            pr = _get_project_dir(project)
+            if pr:
+                cands.append(pr[0] / src)
+        cands.append(Path(__file__).resolve().parents[2] / src)
+        path = next((c for c in cands if c.exists()), None)
+        if not path:
+            raise HTTPException(status_code=404, detail="video not found")
+        mt = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
+              ".mkv": "video/x-matroska", ".m4v": "video/mp4"}.get(path.suffix.lower(), "video/mp4")
+        return FileResponse(str(path), media_type=mt)
+
+    @app.post("/scenes/api/scene/upload")
+    async def scenes_scene_upload(project: str = Form(...), file: UploadFile = File(...)):
+        """Save a dropped local image/video into the project; returns a path to attach.
+
+        The drag-and-drop handler in the Scenes page calls this, then attaches the
+        returned path via the existing `op=add, source=path` asset flow.
+        """
+        import re as _re, shutil
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        project_path, _ = result
+        name = _re.sub(r"[^A-Za-z0-9._-]+", "_", Path(file.filename or "upload").name) or "upload"
+        dest_dir = project_path / "assets" / "uploads"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / name
+        i = 1
+        while dest.exists():
+            dest = dest_dir / f"{Path(name).stem}_{i}{Path(name).suffix}"
+            i += 1
+        with dest.open("wb") as f:
+            shutil.copyfileobj(file.file, f)
+        ext = dest.suffix.lower()
+        kind = "clip" if ext in (".mp4", ".webm", ".mov", ".mkv", ".m4v") else "image"
+        rel = str(dest.relative_to(project_path)).replace("\\", "/")
+        return {"path": rel, "kind": kind, "label": Path(name).stem}
+
     # ComfyUI model -> (workflow file, prompt node) for generated scenes.
     _COMFY_WF = {"flux-dev": ("workflows/image/flux-dev-fp8.json", "6"),
                  "z-image": ("workflows/image/basic-z-image.json", "27")}

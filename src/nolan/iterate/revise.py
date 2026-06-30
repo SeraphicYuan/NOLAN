@@ -67,6 +67,34 @@ def _assets_summary(assets) -> str:
     return "\nBOUND ASSETS (reference in a photo_brief by {ref:'<id>'}):\n" + "\n".join(lines) + "\n" if lines else ""
 
 
+_MENTION_RE = re.compile(r"@([A-Za-z]\w*)")
+
+
+def resolve_asset_mentions(note: Optional[str], assets) -> Optional[str]:
+    """Expand `@<asset-id>` mentions in a human note into explicit references.
+
+    The Scenes UI lets a human type `@a1` to point precisely at a bound asset.
+    We replace it with `[asset a1 "label" (kind[, in-out])]` so both the revise
+    LLM (which references assets by id) and a dispatched Claude agent get an
+    unambiguous pointer instead of guessing from prose. Unknown ids are left as-is.
+    """
+    import os
+    if not note or not assets:
+        return note
+    idx = {str(a.get("id")): a for a in assets if isinstance(a, dict)}
+    def _sub(m):
+        a = idx.get(m.group(1))
+        if not a:
+            return m.group(0)
+        label = a.get("label") or os.path.basename(str(a.get("src", ""))) or m.group(1)
+        kind = a.get("kind", "image")
+        span = ""
+        if kind in ("clip", "video") and a.get("clip_start") is not None:
+            span = f", {a.get('clip_start')}-{a.get('clip_end')}s"
+        return f'[asset {m.group(1)} "{label}" ({kind}{span})]'
+    return _MENTION_RE.sub(_sub, note)
+
+
 def _extract_json(text: str) -> dict:
     m = re.search(r"\{.*\}", text, re.DOTALL)
     if not m:
@@ -88,6 +116,7 @@ async def revise_scene(scene: dict, note: str, client, pipeline: str,
     system = _GUIDE.format(fields=", ".join(sorted(wl)))
     scene_json = json.dumps({k: v for k, v in scene.items() if k != "assets"}, default=str)[:2500]
     assets_block = _assets_summary(scene.get("assets"))
+    note = resolve_asset_mentions(note, scene.get("assets"))  # expand @a1 -> explicit reference
     prompt = (f"SCENE:\n{scene_json}\n{assets_block}\nHUMAN NOTE:\n{note}\n\n"
               "Return the JSON patch now.")
     raw = await client.generate(prompt, system_prompt=system)
