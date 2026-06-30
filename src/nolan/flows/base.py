@@ -1,9 +1,9 @@
-"""Shared flow engine — ingest → gate → render → deliver, flow-agnostic.
+"""Shared flow engine — ingest -> gate -> render -> deliver, flow-agnostic.
 
 Everything downstream of the job JSON is identical across flows; only the ingest adapter
-and the profile/palette (carried by the Flow) differ. Matches the lab orchestration
-precedent: runs under WSL python3, subprocess-out to Windows node for the Remotion render.
-The `nolan render-flow` CLI bridge (Windows-python invocation) is a separate follow-up.
+and the profile/palette (carried by the Flow) differ. Runs IN-PROCESS under the nolan env
+python (ingest + gate are imported, not subprocessed); only node (the Remotion render) and
+ffmpeg are subprocessed. See src/nolan/flows/README.md for the full design.
 """
 from __future__ import annotations
 
@@ -11,11 +11,9 @@ import json
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-WVL = ROOT / "web-video-lab"
 RS = ROOT / "render-service"
 # node is a Windows binary; reach it the way the running interpreter can (WSL vs nolan-win python)
 NODE = "C:/Program Files/nodejs/node.exe" if os.name == "nt" else "/mnt/c/Program Files/nodejs/node.exe"
@@ -30,11 +28,10 @@ def _win(p) -> str:
 
 
 def run_gate(job_path: Path, flow_id: str) -> None:
-    """Pre-render gate (Tier 0 validate+palette+pacing, Tier 1 contact). Raises if blocked."""
-    rc = subprocess.run([sys.executable, str(WVL / "art_check.py"), str(job_path),
-                         "--profile", flow_id]).returncode
-    if rc != 0:
-        raise RuntimeError(f"GATE BLOCKED job {job_path.name} (flow={flow_id}) — fix before render")
+    """Pre-render gate (Tier 0 validate+palette+pacing, Tier 1 contact), in-process.
+    Lazy import avoids a cycle (gate modules import this module's constants)."""
+    from .gate import run_gate as _run_gate
+    _run_gate(job_path, flow_id)
 
 
 def render_chapter(job_path: Path) -> Path:

@@ -4989,11 +4989,11 @@ def render_flow_cmd(project, mode, no_gate):
     from nolan.flows.authoring import run
     res = run(project, mode=mode, gate=not no_gate)
     if mode == 'semi-auto':
-        click.echo(f"⏸  Paused at authoring → {res['plan']}")
+        click.echo(f"[paused] authoring -> {res['plan']}")
         click.echo(f"   {res['beats']} beats; need assets: {res['needs_assets'] or 'none'}")
         click.echo("   Tweak the plan / link assets, then: nolan render-flow <project> --mode auto")
     else:
-        click.echo(f"✓ Delivered → {res}")
+        click.echo(f"[ok] delivered -> {res}")
 
 
 if __name__ == '__main__':

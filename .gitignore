@@ -122,3 +122,6 @@ projects/*/.flow/
 # project render outputs (large)
 projects/*/video/
 projects/*/scene_plan.json
+
+# fleet runtime state
+.nolan/agents/
