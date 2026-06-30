@@ -36,7 +36,7 @@
       "docs": { "grammar": "art.md" },
       "rules": ["always-lift-never-redraw", "image-is-persistent-across-beats", "contemplative-holds"],
       "palette": [
-        "ArtworkStage", "DetailLoupe", "WallLabel", "ImageCompare", "PhotoMontage",
+        "ArtworkStage", "DetailLoupe", "WallLabel", "ImageCompare", "PhotoMontage", "PhotoGrid",
         "ChapterCard", "PullQuote", "Timeline", "EndCard"
       ],
       "pacing": {

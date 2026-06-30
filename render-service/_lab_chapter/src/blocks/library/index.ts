@@ -22,6 +22,7 @@ import { LowerThird } from "./LowerThird";
 import { NewsHeadline } from "./NewsHeadline";
 import { PaperFigure } from "./PaperFigure";
 import { PercentBar } from "./PercentBar";
+import { PhotoGrid } from "./PhotoGrid";
 import { PhotoMontage } from "./PhotoMontage";
 import { PieCallout } from "./PieCallout";
 import { ProgressBar } from "./ProgressBar";
@@ -38,4 +39,4 @@ import { ValueLadder } from "./ValueLadder";
 import { VerdictCard } from "./VerdictCard";
 import { WebVsBoxes } from "./WebVsBoxes";
 
-export const LIBRARY = { ArchetypeCards, ArtworkStage, BarChart, ChapterCard, EndCard, ComparisonVS, DataTable, DetailLoupe, Distribution, Flashback, Formula, Heatmap, HeroStatement, ImageCompare, KineticHeadline, LineChart, ListReveal, LocationStamp, LoopDiagram, LottieIcon, LowerThird, NewsHeadline, PaperFigure, PercentBar, PhotoMontage, PieCallout, ProgressBar, PullQuote, QuestionCard, Ranking, SourceCitation, StatCount, StepFlow, Timeline, TweetCard, UnlockGrid, ValueLadder, VerdictCard, WebVsBoxes };
+export const LIBRARY = { ArchetypeCards, ArtworkStage, BarChart, ChapterCard, EndCard, ComparisonVS, DataTable, DetailLoupe, Distribution, Flashback, Formula, Heatmap, HeroStatement, ImageCompare, KineticHeadline, LineChart, ListReveal, LocationStamp, LoopDiagram, LottieIcon, LowerThird, NewsHeadline, PaperFigure, PercentBar, PhotoGrid, PhotoMontage, PieCallout, ProgressBar, PullQuote, QuestionCard, Ranking, SourceCitation, StatCount, StepFlow, Timeline, TweetCard, UnlockGrid, ValueLadder, VerdictCard, WebVsBoxes };

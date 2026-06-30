@@ -8,6 +8,140 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## New theme — `neubrutalism` (25th theme) (2026-06-30)
+
+Second gap-driven theme (the cheap, render-safe candidate from the gap analysis). Internet-
+native neubrutalism: bright white canvas, thick 3px black borders (`--bw-1: 3px`), hard
+offset solid-black shadows (`--card-shadow: 7px 7px 0`, no blur), hot-magenta accent (no
+glow), chunky Space Grotesk, 8px rounded corners, faint black dot grid, bouncy motion.
+
+- `web-video-lab/skill/themes/neubrutalism/{tokens.css,theme.json}` + `selector.json` entry
+  (ranks #1 for bold/indie/dev-tool/design briefs, well clear of bauhaus-bold).
+- Deliberately distinct from its cousin **bauhaus-bold** (cream-on-dark-shell, primary-blue,
+  0-radius, Archivo Black, black stage frame, modernist-restrained): neubrutalism is
+  white/light, magenta, rounded, dot-grid, no stage frame, playful.
+- Verified by real `still.mjs` renders (hero / cards / table / bar) — flat hard look, all
+  accent-driven (magenta bars, pink table-highlight, no glow). Light theme + flat color =
+  zero banding risk, no dither needed.
+
+## Theme metadata enrichment + health check (2026-06-30)
+
+Phase 3 of the theme-system work. Each `theme.json` now carries two **derived** fields, and
+the system has a validator that guards its invariants as themes grow.
+
+- `web-video-lab/skill/scripts/enrich_themes.py` — writes per-theme `fonts`
+  `{displayEn,body,cjk,mono}` (parsed from that theme's `tokens.css` — CSS stays source of
+  truth) + `avoidFor` (anti-pattern tags promoted from `selector.json`). Idempotent;
+  `--check` reports drift without writing. Applied additively to all 24 theme.json (no
+  reformatting of the hand-crafted files).
+- `web-video-lab/skill/scripts/validate_themes.py` — health check: every theme has
+  theme.json + tokens.css, valid 4-key #hex preview, a selector entry (no orphans), tone
+  agrees with mood, and enrichment is current. Exit 1 on any failure. Run: `OK — 24 themes
+  valid`.
+- Wired `avoidFor` into SKILL.md Checkpoint-Plan prep step 1 (agent excludes a theme when
+  content hits its anti-patterns). Documented in `references/THEMES.md`.
+- **Deferred (YAGNI)**: per-theme chart-pairing hints — overlaps the separate data-shape→
+  chart-type picker idea and was speculative; left out rather than guessed.
+
+## New theme — `aurora-mesh` (24th theme) (2026-06-30)
+
+Gap-driven theme expansion (Phase 2 of the theme-system work). Gap analysis
+(`web-video-lab/skill/references/THEME-GAP-ANALYSIS.md`) found the 23 themes already cover
+most of ui-ux-pro-max's style taxonomy; the strongest true whitespace was an **aurora /
+gradient-mesh** AI-era look. Built end-to-end:
+
+- `web-video-lab/skill/themes/aurora-mesh/{tokens.css,theme.json}` — deep indigo-black
+  canvas; signature = soft 4-blob radial gradient mesh (violet/magenta/teal/indigo, `screen`
+  blend) with a center scrim for text legibility. Space Grotesk + Manrope (both already
+  loaded in `_lab_chapter/src/index.tsx`), electric-violet accent. Color seeds video-adapted
+  from the skill's NFT/Web3 + Generative-Art palettes. No code registration needed — themes
+  are staged by `stage.mjs` copying `tokens.css` → `_active-theme.css`.
+- `selector.json` entry added → ranks #1 for AI/LLM and web3 briefs.
+- **Verified by real render**: `still.mjs` via **Windows node** (WSL node's esbuild binary is
+  win32-only) on a text-centric job; legibility + signature confirmed at 1080p.
+- **Banding tested + fixed**: rendered a 6s h264 mp4, extracted frames with the bundled
+  ffmpeg. 1:1 clean; 6× shadow-lift showed mild 8-bit banding (platform re-encode risk).
+  Fix: a faint SVG-fractalNoise dither layer added to `--surface-pattern` (desaturated,
+  alpha 0.12). Re-render under the same 6× lift → contours gone, grain invisible at 1:1.
+- Best for: AI/大模型发布, 生成式艺术, web3/NFT, 现代 SaaS keynote, 未来科技/概念解读.
+
+## Theme selector — explainable theme recommendation (2026-06-30)
+
+Checkpoint-Plan 选主题 used to be ad-hoc: the agent eyeballed 23 `theme.json` files and
+guessed from Chinese-only `bestFor`. Added a deterministic, **explainable** scorer.
+
+- Reasoning table: `web-video-lab/skill/themes/selector.json` — adds the matching layer
+  the raw themes lack: per-theme English `tags`, `tone`/`energy`/`formality` axes, and
+  `avoid` anti-patterns (+ a synonym map for EN/中文 topic terms). `mood`/`bestFor` stay
+  source of truth. Pattern borrowed from the ui-ux-pro-max skill's `ui-reasoning.csv`,
+  re-authored for video themes on the content-topic axis.
+- Scorer: `web-video-lab/skill/scripts/select_theme.py` (stdlib) — scores a brief against
+  `tags` + `mood` + `bestFor` (Chinese substring) + tone, returns top-N with the exact
+  signals that fired. `--tone` (soft nudge), `--top`, `--json`. Falls back to safe
+  defaults on no match; warns on stderr if a theme has no selector entry.
+- Usage: `python scripts/select_theme.py "<brief>" [--tone dark] [--top 3]`. Wired into
+  SKILL.md Checkpoint-Plan prep step 2 and documented in `references/THEMES.md`.
+
+## Flow art block — `PhotoGrid` (2026-06-30)
+
+New `_lab_chapter` library block **`PhotoGrid`** for the art flow: a full `cols×rows` wall
+of image tiles that builds **column-by-column**, settles into the complete grid, then
+**pulses a couple of named tiles** (each fades IN → holds → fades OUT, accent ring +
+caption, the rest dim back) on their narration cues. Pure function of frame + grid shape,
+so 40 tiles is just data.
+
+- Block: `render-service/_lab_chapter/src/blocks/library/PhotoGrid.tsx` (registered in
+  `library/index.ts`; added to the **art palette** in `web-video-lab/flows/registry.json`).
+- Ingest passthrough: `cols` / `rows` / `order` / `highlight` added to the `art_ingest.py`
+  prop whitelist. Contract: `revealFrames[0]` = fill start; `revealFrames[1..]` pair with
+  `highlight[]` tile indices.
+- First use: holbein-dance-of-death `beat_02` — a 5×8 grid of all 40 Dance-of-Death
+  woodcuts, filling col-by-col, then highlighting *the abbot* and *the knight* as the
+  voiceover names them ("hauls an abbot away… skewers a knight").
+
+## Scenes page — asset preview, drag-drop, @-mention comments (2026-06-30)
+
+Three human-in-the-loop upgrades to the Scene Plan Viewer (`templates/scenes.html`),
+all additive — existing tap-to-add/select flows are unchanged.
+
+- **Preview on add (pictures + clips)**: a ⤢ button on every picker result and tray
+  card opens a modal — full image for pictures; for clips a `<video>` seeked to the
+  clip's in-point and JS-bounded to its out-point (loops the segment). Backed by a new
+  range-enabled `GET /scenes/api/source-video` (Starlette FileResponse honours `Range`,
+  verified `206 + content-range`), so clips play without being materialized.
+- **Drag & drop (desktop)**: tray cards are draggable to reorder the montage (persists via
+  the existing `op:"reorder"`); dropping local image/video files onto a scene row uploads
+  them (`POST /scenes/api/scene/upload` → project `assets/uploads/`) and attaches via the
+  existing `op:"add", source:"path"`. Desktop-only by design (no native touch DnD); mobile
+  keeps the picker.
+- **@-mention in comments**: typing `@` in a scene's comment box autocompletes that scene's
+  bound assets (thumbnail + id + label). The note keeps `@a1` tokens, which
+  `revise.resolve_asset_mentions()` expands server-side to `[asset a1 "label" (kind, in-out)]`
+  for **both** the revise-LLM (`revise_scene`) and the dispatched Claude agent
+  (`fleet.dispatch`) — so instructions point precisely at a picture/clip.
+
+## ComfyUI — style-selector workflows (2026-06-30)
+
+Registered ComfyUI workflows can now expose an in-graph **style selector**
+(ComfyUI-Easy-Use `easy stylesSelector`) as a pickable dropdown in the Sample runner.
+
+- **WorkflowEntry** gained `style_node` / `style_input` (default `select_styles`) /
+  `style_group` / `default_style` (`workflow_registry.py`). `build_client(..., style=…)`
+  emits `node_overrides=["<style_node>:select_styles=<style>"]` so the chosen style is
+  applied without touching the prompt chain.
+- **Auto-detect**: `find_style_node()` (`comfyui.py`) finds the selector node + its group +
+  default; the `POST /api/comfyui/workflows` handler fills the style fields automatically.
+- **Style list**: served by `GET /api/comfyui/styles?workflow=<slug>` from a local
+  `workflows/styles/<group>.json` (ComfyUI's `object_info` does NOT expose Easy-Use styles).
+- **UI**: the `/comfyui` Sample runner shows a Style dropdown only for workflows that have a
+  selector; it threads `style` through `comfyui_sample` → `build_client`.
+- **First workflow added**: `krea2-style-select` (Krea 2 Turbo t2i; prompt node 80, style
+  node 77, 275 Fooocus styles). Prompt → node 80 (PrimitiveStringMultiline, NOT the
+  style-fed CLIPTextEncode). Verified by a real generation (1600×904, sai-cinematic applied).
+- **Adding more**: drop the API-format JSON via `/comfyui` → "Add workflow"; any
+  `easy stylesSelector` is detected automatically (add a `workflows/styles/<group>.json`
+  for its dropdown list).
+
 ## Art explainer flow + pre-render QA gate (2026-06-29)
 
 The `web-video-lab` art flow (image-first explainer) is proven end-to-end and hardened
