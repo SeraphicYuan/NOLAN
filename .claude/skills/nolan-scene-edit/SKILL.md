@@ -1,6 +1,15 @@
 ---
 name: nolan-scene-edit
 description: Rework ONE scene in a NOLAN scene_plan.json from a human note — route it to the right NOLAN capability (motion python/remotion, ComfyUI gen, library b-roll search, or layout_spec), apply the change, validate, and re-render only that scene. Use when asked to edit / rework / redo / regenerate / "use Remotion for" / "recreate this effect on" a specific scene. This is the agent (Claude Code) path for the /scenes iteration UI — for edits a plain LLM can't route correctly.
+id: scene-edit
+kind: contract
+purpose: Route a single-scene edit to the right NOLAN capability, apply, validate, re-render only that scene.
+status: active
+version: 1
+handoffs:
+  - { process: scene-edit, stage: beat-edit, gate: B }
+loaded_by: [src/nolan/fleet.py]
+evals: []
 ---
 
 # NOLAN scene edit (agent path)

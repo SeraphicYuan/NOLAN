@@ -1,3 +1,17 @@
+---
+id: explainer.block-catalog
+name: Explainer block catalog
+kind: grammar
+purpose: The authoring contract for explainer blocks — every block, its props, and anchor spec.
+status: active
+version: 1
+handoffs:
+  - { process: explainer, stage: author-spec, gate: A }
+documents:
+  palette: explainer
+evals: []
+---
+
 # Video block catalog — the authoring contract
 
 This is what a chapter-spec author (the skill's chapter agent) reads to turn a

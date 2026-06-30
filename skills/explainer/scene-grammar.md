@@ -1,3 +1,16 @@
+---
+id: explainer.scene-grammar
+name: Explainer scene grammar
+kind: grammar
+purpose: Section scene taxonomy (Hook→Problem→Method→Results→Takeaway) + the comprehension eval.
+status: active
+version: 1
+handoffs:
+  - { process: explainer, stage: author-spec, gate: A }
+uses: [explainer.block-catalog]
+evals: [paper-quiz]
+---
+
 # Scene grammar + comprehension eval (library-boost Wave 3, authoring layer)
 
 Borrowed from the paper→video literature (Paper2Video, Data Player, PPTAgent) — the

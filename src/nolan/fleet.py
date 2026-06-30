@@ -145,7 +145,7 @@ def build_flow_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str],
         lines.append(f"{bid} ({', '.join(bits)})")
     return (
         f"You are fleet agent '{agent}' editing a FLOW video (flow='{ctx['flow']}', theme='{ctx['theme']}'). "
-        f"FIRST read web-video-lab/flows/FLOW_EDIT.md — the flow-edit contract; it OVERRIDES the generic "
+        f"FIRST read skills/flow/edit-contract.md — the flow-edit contract; it OVERRIDES the generic "
         f"nolan-scene-edit skill. Edit the SOURCE OF TRUTH \"{spec_path}\" (NOT scene_plan.json — that's a "
         f"regenerated view). Beat(s) to rework: {'; '.join(lines)}. Human note: \"{note}\". "
         f"Pick blocks ONLY from the palette: {', '.join(ctx['palette'])}. "

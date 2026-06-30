@@ -10,7 +10,7 @@
       "status": "solid",
       "summary": "Idea-dense, text-first source → narrated explainer. Generates visuals to stand in for abstract ideas; figures are exhibits.",
       "ingest": ["generate-from-source", "byo-script"],
-      "docs": { "grammar": "SCENE_GRAMMAR.md", "script": "SCRIPT_SKILL.md", "catalog": "BLOCK_CATALOG.md" },
+      "docs": { "grammar": "skills/explainer/scene-grammar.md", "script": "skills/explainer/script.md", "catalog": "skills/explainer/block-catalog.md" },
       "rules": ["redraw-synthetic-lift-empirical", "front-load-the-visual-keyword", "one-insight-per-beat"],
       "palette": [
         "HeroStatement", "KineticHeadline", "PullQuote", "ListReveal", "StepFlow",

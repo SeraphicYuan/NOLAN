@@ -1,3 +1,17 @@
+---
+id: flow.edit-contract
+name: Flow beat-edit contract
+kind: contract
+purpose: Hard rules for an agent reworking one beat of a flow video (edit the spec, reuse blocks, re-render only that beat).
+status: active
+version: 1
+handoffs:
+  - { process: flow, stage: beat-edit, gate: B }
+overrides: [scene-edit]
+loaded_by: [src/nolan/fleet.py]
+evals: []
+---
+
 # Flow-edit contract — for an agent reworking a beat of a flow video
 
 You were dispatched to edit one beat of a **flow** video (art, …). A flow project is NOT a
@@ -36,6 +50,6 @@ segment/orchestrator project — these rules override the generic `nolan-scene-e
    `message`, and a `result` list. Start by writing `state: "working"`.
 
 ## Quick orientation
-- The spec/palette/render design: `web-video-lab/flows/INTEGRATION.md`, `EDITOR.md`, `art.md`.
+- The spec/palette/render design: `web-video-lab/flows/INTEGRATION.md`, `web-video-lab/flows/EDITOR.md`, `web-video-lab/flows/art.md`.
 - One beat = one block over one voiceover segment; its duration is pinned to that segment, so a
   visual edit never reflows the timeline — that's why a single beat re-renders independently.

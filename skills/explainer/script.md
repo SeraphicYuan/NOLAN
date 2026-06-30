@@ -1,3 +1,16 @@
+---
+id: explainer.script
+name: Explainer script authoring
+kind: craft
+purpose: Author the narration from a source paper — 7 stages (extract → arc → draft → tighten → verify → gate → score).
+status: active
+version: 1
+handoffs:
+  - { process: explainer, stage: author-script, gate: A }
+uses: [explainer.scene-grammar]
+evals: [paper-quiz]
+---
+
 # Script skill — source (paper/article) → video transcript
 
 A structured, multi-stage process for writing the NARRATION (the `segments.json`) — the
@@ -18,7 +31,7 @@ real fix.)
    claims/numbers (each with the source line for VERIFY), the must-show figures (which are
    empirical → lift, which are synthetic → redraw), and the single most surprising hook.
 2. **ARC** — structure into the scene taxonomy (`Hook → Problem → Key idea → Method →
-   Results → Payoff → Close`; see SCENE_GRAMMAR.md). **One insight per beat.** 6–12 beats.
+   Results → Payoff → Close`; see scene-grammar.md). **One insight per beat.** 6–12 beats.
    Assign each beat a block (apply the redraw-vs-lift rule) and its anchor word(s).
 3. **DRAFT** — write each beat's narration, 2–4 spoken sentences. **Front-load the anchor**
    (rule above). Conversational, concrete, active voice. Numbers as spoken words ("two

@@ -5,9 +5,10 @@ you can then **review and edit per beat** in the Scene page. It is a *multi-type
 explainer/paper-video, book, …) built as **one shared engine with routing at a single step —
 ingest.** Read this before changing anything here.
 
-> If you're an agent **editing a beat** of a flow video, read **`web-video-lab/flows/FLOW_EDIT.md`**
+> If you're an agent **editing a beat** of a flow video, read **`skills/flow/edit-contract.md`**
 > (the edit contract). If you're **planning/authoring**, read **`web-video-lab/flows/AUTHORING.md`**
-> (the craft). This file is the *architecture*.
+> (the craft). This file is the *architecture*. Skills are cataloged in `skills/` (run
+> `python -m nolan.skills` to lint).
 
 ## The one idea
 A "flow" (video type) is a **descriptor**, not a pipeline. Everything below the **job JSON** is
@@ -24,7 +25,7 @@ source ──► INGEST (per-type) ──► job.json ──► GATE ──► R
 |---|---|---|
 | ingest/gate/render **mechanics** | **code** (deterministic) | `src/nolan/flows/` (this package) |
 | palette (blessed/shared motions) · pacing profile · theme/fx defaults | **config** | `web-video-lab/flows/registry.json`, `web-video-lab/skill/themes/` |
-| **plan/authoring** craft · **edit/invent** craft | **skill** (agent reads it) | `web-video-lab/flows/AUTHORING.md`, `FLOW_EDIT.md` (+ `web-video-lab/skill/` references) |
+| **plan/authoring** craft · **edit/invent** craft | **skill** (agent reads it) | `web-video-lab/flows/AUTHORING.md`, `skills/flow/edit-contract.md` (+ `web-video-lab/skill/` references) |
 
 **Principle:** the engine runs the mechanical path deterministically, but **at the plan checkpoint
 and at edit/invent it hands to an agent** reading the skill. That keeps determinism *and* the
@@ -69,7 +70,7 @@ library + theme `tokens.css`; concat) → **deliver** (ffmpeg faststart → `pro
 - `/scenes/api/flow/refine` → `authoring.dispatch_refine` (sends a per-beat plan to a tmux agent).
 - `/scenes/api/flow/accept` → `authoring.accept_draft` (promote a refined draft → `flow.spec.json`).
 - Agent edits are dispatched **flow-aware** (`fleet.build_flow_dispatch_prompt`): carries flow id,
-  theme, palette, per-beat tray/wishlist, the edit contract, points to `FLOW_EDIT.md`.
+  theme, palette, per-beat tray/wishlist, the edit contract, points to `skills/flow/edit-contract.md`.
 
 ## Why a beat re-renders independently
 Each beat's `durationInFrames` is **pinned to its voiceover segment**, so a visual edit (swap
@@ -87,10 +88,10 @@ dispatch — is **reused unchanged**. (Explainer's row already exists in `regist
 
 ## Gotchas / open items
 - **One bundle, two component shapes** — `remotion-lib/` is now the single render bundle (the temp
-  `_lab_chapter/` was folded in + retired, Track 2 in `CONSOLIDATION.md`). It hosts both
+  `_lab_chapter/` was folded in + retired, Track 2 in `web-video-lab/flows/CONSOLIDATION.md`). It hosts both
   `src/blocks/library/` (40 Chapter-step blocks, the flow library) and `src/*.tsx` standalone
   `<Composition>` effects (the per-scene motion path). `render.mjs` branches on job shape. Reuse the
-  one library; never rebuild (`FLOW_EDIT.md` rule 3). Minor residual dup: PhotoGrid/PhotoMontage
+  one library; never rebuild (`skills/flow/edit-contract.md` rule 3). Minor residual dup: PhotoGrid/PhotoMontage
   exist as both a block and an effect-Composition — eventually mergeable, not urgent.
 - **cp1252 prints** (above).
 - **Standalone shims**: `web-video-lab/{art_ingest,art_check,…}.py` are thin CLI wrappers re-exporting
@@ -98,5 +99,5 @@ dispatch — is **reused unchanged**. (Explainer's row already exists in `regist
 
 ## See also
 `web-video-lab/flows/`: `INTEGRATION.md` (why a flow path, not the motion registry) ·
-`EDITOR.md` (the per-beat HITL design) · `CONSOLIDATION.md` (this defrag) · `FLOW_EDIT.md` /
+`web-video-lab/flows/EDITOR.md` (the per-beat HITL design) · `web-video-lab/flows/CONSOLIDATION.md` (this defrag) · `skills/flow/edit-contract.md` /
 `AUTHORING.md` (the skill layer) · `registry.json` (the type config).

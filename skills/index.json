@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "count": 5,
+  "skills": [
+    {
+      "id": "explainer.block-catalog",
+      "name": "Explainer block catalog",
+      "kind": "grammar",
+      "purpose": "The authoring contract for explainer blocks \u2014 every block, its props, and anchor spec.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "explainer",
+          "stage": "author-spec",
+          "gate": "A"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "palette": "explainer"
+      },
+      "evals": [],
+      "path": "skills/explainer/block-catalog.md"
+    },
+    {
+      "id": "explainer.scene-grammar",
+      "name": "Explainer scene grammar",
+      "kind": "grammar",
+      "purpose": "Section scene taxonomy (Hook\u2192Problem\u2192Method\u2192Results\u2192Takeaway) + the comprehension eval.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "explainer",
+          "stage": "author-spec",
+          "gate": "A"
+        }
+      ],
+      "uses": [
+        "explainer.block-catalog"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [
+        "paper-quiz"
+      ],
+      "path": "skills/explainer/scene-grammar.md"
+    },
+    {
+      "id": "explainer.script",
+      "name": "Explainer script authoring",
+      "kind": "craft",
+      "purpose": "Author the narration from a source paper \u2014 7 stages (extract \u2192 arc \u2192 draft \u2192 tighten \u2192 verify \u2192 gate \u2192 score).",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "explainer",
+          "stage": "author-script",
+          "gate": "A"
+        }
+      ],
+      "uses": [
+        "explainer.scene-grammar"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [
+        "paper-quiz"
+      ],
+      "path": "skills/explainer/script.md"
+    },
+    {
+      "id": "flow.edit-contract",
+      "name": "Flow beat-edit contract",
+      "kind": "contract",
+      "purpose": "Hard rules for an agent reworking one beat of a flow video (edit the spec, reuse blocks, re-render only that beat).",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "flow",
+          "stage": "beat-edit",
+          "gate": "B"
+        }
+      ],
+      "uses": [],
+      "overrides": [
+        "scene-edit"
+      ],
+      "loaded_by": [
+        "src/nolan/fleet.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/flow/edit-contract.md"
+    },
+    {
+      "id": "scene-edit",
+      "name": "nolan-scene-edit",
+      "kind": "contract",
+      "purpose": "Route a single-scene edit to the right NOLAN capability, apply, validate, re-render only that scene.",
+      "status": "active",
+      "version": 1,
+      "handoffs": [
+        {
+          "process": "scene-edit",
+          "stage": "beat-edit",
+          "gate": "B"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/fleet.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": ".claude/skills/nolan-scene-edit/SKILL.md"
+    }
+  ]
+}
