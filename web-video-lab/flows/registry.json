@@ -24,6 +24,7 @@
         "dead_gap_fail_s": 9.0, "dead_gap_warn_s": 5.0,
         "density_high_rps": 1.2
       },
+      "render_mechanism": "chapter-block",
       "defaults": { "theme": "by-topic", "transitions": "hard-cut", "fx": "optional" }
     },
     {
@@ -45,6 +46,7 @@
         "min_hold_warn_s": 2.5,
         "density_high_rps": 0.8
       },
+      "render_mechanism": "chapter-block",
       "defaults": { "theme": "museum-neutral", "transitions": "cross-fade", "fx": "subtle-grade+vignette" }
     }
   ]

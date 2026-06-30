@@ -115,3 +115,6 @@ web-video-lab/flows/_*.png
 
 # project-owned flow build artifact
 projects/*/flow.job.json
+
+# project flow build dir (per-beat clips, concat scratch)
+projects/*/.flow/

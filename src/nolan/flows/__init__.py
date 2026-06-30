@@ -23,6 +23,7 @@ class Flow:
     profile: str                              # pacing/palette/defaults key in registry.json
     palette: list = field(default_factory=list)
     defaults: dict = field(default_factory=dict)
+    render_mechanism: str = "chapter-block"   # how a beat (re)renders — shared across flow types
 
 
 def _registry_type(flow_id: str) -> dict | None:
@@ -38,4 +39,5 @@ def get_flow(flow_id: str) -> Flow:
         raise ValueError(f"no flow tenant for '{flow_id}' (have: {sorted(tenants)})")
     t = _registry_type(flow_id) or {}
     return Flow(id=flow_id, ingest=tenants[flow_id], profile=flow_id,
-                palette=t.get("palette", []), defaults=t.get("defaults", {}))
+                palette=t.get("palette", []), defaults=t.get("defaults", {}),
+                render_mechanism=t.get("render_mechanism", "chapter-block"))

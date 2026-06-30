@@ -75,9 +75,14 @@ def run_flow(flow, spec_path, *, gate: bool = True, render: bool = True, deliver
     if not render:
         print(f"[flow:{flow.id}] gate-only (render skipped) -> {job_path}")
         return job_path
-    print(f"[flow:{flow.id}] render")
-    mp4 = render_chapter(job_path)
     out_name = json.loads(job_path.read_text(encoding="utf-8")).get("out", "chapter.mp4")
+    print(f"[flow:{flow.id}] render ({flow.render_mechanism})")
+    if flow.render_mechanism == "chapter-block":
+        from .render import render_flow                # per-beat clips -> concat
+        work = job_path.parent / ".flow" / "clips"
+        mp4 = render_flow(job_path, work, work.parent / out_name)
+    else:
+        mp4 = render_chapter(job_path)                 # whole-composition master
     dest = Path(deliver_to) if deliver_to else (Path(spec["project"]) / "video" / out_name)
     dest = deliver(mp4, dest)
     print(f"[flow:{flow.id}] delivered -> {dest}")
