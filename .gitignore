@@ -112,3 +112,6 @@ render-service/_lab_chapter/jobs/_auto_*.json
 web-video-lab/art/*.job.json
 web-video-lab/art/_*.png
 web-video-lab/flows/_*.png
+
+# project-owned flow build artifact
+projects/*/flow.job.json

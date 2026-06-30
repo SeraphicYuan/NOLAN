@@ -56,11 +56,12 @@ def deliver(mp4: Path, dest: Path) -> Path:
     return dest
 
 
-def run_flow(flow, spec_path, *, gate: bool = True, deliver_to=None) -> Path:
-    """Run one flow end to end. Returns the delivered mp4 path.
+def run_flow(flow, spec_path, *, gate: bool = True, render: bool = True, deliver_to=None) -> Path:
+    """Run one flow. Returns the delivered mp4 (or the job path if render=False).
 
     flow      — a Flow (see __init__.get_flow)
-    spec_path — the authored flow spec (e.g. art/dance.spec.json)
+    spec_path — the flow spec (project-owned flow.spec.json, or a lab spec)
+    render    — False stops after the gate (validate the plan without a full render)
     """
     spec_path = Path(spec_path)
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
@@ -71,6 +72,9 @@ def run_flow(flow, spec_path, *, gate: bool = True, deliver_to=None) -> Path:
     if gate:
         print(f"[flow:{flow.id}] gate")
         run_gate(job_path, flow.id)
+    if not render:
+        print(f"[flow:{flow.id}] gate-only (render skipped) -> {job_path}")
+        return job_path
     print(f"[flow:{flow.id}] render")
     mp4 = render_chapter(job_path)
     out_name = json.loads(job_path.read_text(encoding="utf-8")).get("out", "chapter.mp4")
@@ -78,3 +82,10 @@ def run_flow(flow, spec_path, *, gate: bool = True, deliver_to=None) -> Path:
     dest = deliver(mp4, dest)
     print(f"[flow:{flow.id}] delivered -> {dest}")
     return dest
+
+
+def run_flow_for_project(project, **kw) -> Path:
+    """Project-centric entry: resolve the project's flow + project-owned spec, then run."""
+    from .project import load_flow_spec
+    flow, spec_path = load_flow_spec(project)
+    return run_flow(flow, spec_path, **kw)
