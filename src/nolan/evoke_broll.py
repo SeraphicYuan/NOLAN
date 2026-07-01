@@ -119,8 +119,43 @@ def _accept_prompt(line: str, emotion: str, cands: List[dict]) -> str:
             '"unmatched_reason": "<one line: why nothing fit — only if pick is empty>"}')
 
 
+_SCORE_SYS = (
+    "You are a documentary editor grading candidate b-roll shots (described by their CONTENT) for "
+    "how well they work as EVOCATIVE b-roll under a line — mood over literal illustration. Reply STRICT JSON.")
+
+
+def _library_score_prompt(line: str, emotion: str, period: str, locale: str, cands: List[dict]) -> str:
+    ctx = ""
+    if period or locale:
+        ctx = (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
+               "Pure landscape/nature/abstract is UNIVERSAL (fits any era/place); only man-made content "
+               "carries a period or culture.\n")
+    items = "\n".join(f'[{i}] {c.get("desc", "")[:180]}' for i, c in enumerate(cands))
+    return (f'LINE: "{line}"\nTARGET EMOTION: {emotion}\n{ctx}\n'
+            f"CANDIDATE SHOTS (by their content description):\n{items}\n\n"
+            "Score EACH as evocative b-roll. JSON: {\"scores\": [{\"i\": <index>, "
+            '"mood": <0-10 evokes the emotion>, "nonliteral": <0-10, 10=oblique>, '
+            '"universal": <true|false>, "period_ok": <0-10; 10 if universal or no period given>, '
+            '"locale_ok": <0-10; 10 if universal or no locale given>, '
+            '"flags": "<anachronism/wrong-locale markers; empty if none>", "why": "<=12 words"}]}')
+
+
+def available_video_providers(config) -> List[dict]:
+    """List the stock-VIDEO providers currently available (for the UI pool control)."""
+    from .image_search import ImageSearchClient, _DEFER_LAST
+    src = config.image_sources
+    client = ImageSearchClient(pexels_api_key=src.pexels_api_key, pixabay_api_key=src.pixabay_api_key,
+                               smithsonian_api_key=src.smithsonian_api_key, keys=src.provider_keys())
+    keyless = {"archive", "nasa_video", "coverr_video"}
+    out = []
+    for name in client.video_providers():
+        out.append({"name": name, "keyless": name in keyless,
+                    "deferred": name in _DEFER_LAST, "default": True})
+    return out
+
+
 class EvokeBrollSearch:
-    """Stateless-ish evocative b-roll searcher over stock video (cheap tiers)."""
+    """Evocative b-roll searcher over stock video (cheap tiers) OR the indexed library."""
 
     def __init__(self, config=None, progress: Optional[Callable[[float, str], None]] = None):
         self.config = config or load_config()
@@ -133,6 +168,8 @@ class EvokeBrollSearch:
         self._dl = ImageScorer()                      # reuse its browser-headed _download_image
         self._progress = progress or (lambda f, m: None)
         self._sem = None                              # created lazily inside search() (running loop)
+        self._vs = None                               # VectorSearch (library mode), lazy
+        self._index = None
 
     # ---- per-candidate vision scoring (mood + period/locale gate) ----
     async def _score(self, cand: dict, emotion: str, line: str, period: str, locale: str) -> dict:
@@ -165,11 +202,14 @@ class EvokeBrollSearch:
         p, l = c.get("period_ok"), c.get("locale_ok")
         return (p is not None and p < 5) or (l is not None and l < 5)
 
-    async def search(self, line: str, *, period: str = "", locale: str = "", literalness: float = 0.25,
-                     mood: Optional[str] = None, max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
+    async def search(self, line: str, *, mode: str = "stock", period: str = "", locale: str = "",
+                     literalness: float = 0.25, mood: Optional[str] = None,
+                     sources: Optional[List[str]] = None, project: Optional[str] = None,
+                     max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
         line = (line or "").strip()
         if not line:
             raise ValueError("line is required")
+        mode = "library" if mode == "library" else "stock"
         self._sem = asyncio.Semaphore(4)              # bind to the running loop
         gated = bool(period or locale)
 
@@ -180,27 +220,28 @@ class EvokeBrollSearch:
         emotion = br.get("target_emotion", "")
         metaphors = [m for m in br.get("visual_metaphors", []) if m][:max_metaphors]
 
-        # 2. retrieve stock video (cheap tiered fan-out)
-        self._progress(0.22, f"Fetching stock video for {len(metaphors)} metaphors…")
-        pool: dict = {}
-        for m in metaphors:
-            for h in await asyncio.to_thread(self.stock.search_assets, m, "video", None, per_metaphor):
-                if h.url not in pool:
-                    pool[h.url] = {
-                        "url": h.url, "source": h.source,
-                        "duration": round(h.duration) if h.duration else None,
-                        "poster": h.preview_image_url or h.thumbnail_url, "metaphor": m}
-        cands = list(pool.values())[:10]              # cap vision calls
+        # 2. retrieve candidates from the chosen pool
+        self._progress(0.22, f"Retrieving {mode} b-roll for {len(metaphors)} metaphors…")
+        if mode == "library":
+            cands = await self._retrieve_library(metaphors, per_metaphor, project)
+        else:
+            cands = await self._retrieve_stock(metaphors, per_metaphor, sources)
+        pool_n = len(cands)
         if not cands:
-            return {"status": "UNMATCHED", "reason": "no stock footage found for these metaphors",
-                    "line": line, "emotion": emotion, "metaphors": metaphors,
-                    "picks": [], "considered": [], "counts": {"pool": 0, "kept": 0, "filtered": 0}}
+            return {"status": "UNMATCHED", "mode": mode, "line": line, "emotion": emotion,
+                    "metaphors": metaphors, "picks": [], "considered": [],
+                    "reason": ("no library segments found" if mode == "library" else "no stock footage found") + " for these metaphors",
+                    "counts": {"pool": 0, "kept": 0, "filtered": 0}}
 
-        # 3. vision score + period/locale gate
-        self._progress(0.45, f"Vision-scoring {len(cands)} clips…")
-        scores = await asyncio.gather(*[self._score(c, emotion, line, period, locale) for c in cands])
-        for c, s in zip(cands, scores):
-            c.update(s)
+        # 3. score (vision on stills for stock; text on descriptions for library) + period/locale gate
+        if mode == "library":
+            self._progress(0.45, f"Scoring {len(cands)} library segments…")
+            await self._score_library(cands, emotion, line, period, locale)
+        else:
+            self._progress(0.45, f"Vision-scoring {len(cands)} clips…")
+            scores = await asyncio.gather(*[self._score(c, emotion, line, period, locale) for c in cands])
+            for c, s in zip(cands, scores):
+                c.update(s)
         scored = [c for c in cands if c.get("mood") is not None]
         kept = [c for c in scored if not self._anachronistic(c, gated)]
         filtered = [c for c in scored if self._anachronistic(c, gated)]
@@ -226,6 +267,61 @@ class EvokeBrollSearch:
 
         considered = filtered + [c for i, c in enumerate(kept) if i not in chosen]
         self._progress(1.0, status)
-        return {"status": status, "reason": reason, "line": line, "emotion": emotion,
+        return {"status": status, "reason": reason, "mode": mode, "line": line, "emotion": emotion,
                 "metaphors": metaphors, "picks": picked, "considered": considered,
-                "counts": {"pool": len(pool), "kept": len(kept), "filtered": len(filtered)}}
+                "counts": {"pool": pool_n, "kept": len(kept), "filtered": len(filtered)}}
+
+    # ---- retrieval: stock (real footage) or library (indexed segments) ----
+    async def _retrieve_stock(self, metaphors, per_metaphor, sources):
+        pool: dict = {}
+        for m in metaphors:
+            hits = await asyncio.to_thread(self.stock.search_assets, m, "video", sources or None, per_metaphor)
+            for h in hits:
+                if h.url not in pool:
+                    pool[h.url] = {"kind": "stock", "url": h.url, "source": h.source,
+                                   "duration": round(h.duration) if h.duration else None,
+                                   "poster": h.preview_image_url or h.thumbnail_url, "metaphor": m}
+        return list(pool.values())[:10]
+
+    async def _retrieve_library(self, metaphors, per_metaphor, project):
+        vs = self._vector()
+        pid = self._index.resolve_project(project) if (project and self._index) else None
+        pool: dict = {}
+        for m in metaphors:
+            hits = await asyncio.to_thread(vs.search, m, per_metaphor, "segments", pid)
+            for r in hits:
+                key = (r.video_path, round(r.timestamp_start, 1))
+                if key in pool:
+                    continue
+                from urllib.parse import quote
+                start, end = int(r.timestamp_start), int(r.timestamp_end or r.timestamp_start + 5)
+                pool[key] = {"kind": "library", "source": "library",
+                             "video_name": Path(r.video_path).name,
+                             "url": f"/library/video/{quote(r.video_path, safe='')}#t={start},{end}",
+                             "duration": (end - start) or None, "ts_start": start, "ts_end": end,
+                             "desc": r.description or "", "metaphor": m}
+        return list(pool.values())[:10]
+
+    # ---- library scoring: one batch text pass over the segments' descriptions ----
+    async def _score_library(self, cands, emotion, line, period, locale):
+        try:
+            j = _extract_json(await self.llm.generate(
+                _library_score_prompt(line, emotion, period, locale, cands), _SCORE_SYS))
+            by_i = {s.get("i"): s for s in j.get("scores", [])}
+        except Exception:
+            by_i = {}
+        for i, c in enumerate(cands):
+            s = by_i.get(i)
+            if s:
+                c.update({"mood": s.get("mood"), "nonliteral": s.get("nonliteral"),
+                          "universal": bool(s.get("universal")), "period_ok": s.get("period_ok"),
+                          "locale_ok": s.get("locale_ok"), "flags": s.get("flags", ""), "why": s.get("why", "")})
+
+    def _vector(self):
+        if self._vs is None:
+            from .indexer import VideoIndex
+            from .vector_search import VectorSearch
+            db = Path(self.config.indexing.database).expanduser()
+            self._index = VideoIndex(db)
+            self._vs = VectorSearch(db.parent / "vectors", index=self._index)
+        return self._vs

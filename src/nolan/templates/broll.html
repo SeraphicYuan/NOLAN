@@ -38,6 +38,15 @@
     .dropped h3 { color: #c98a8a; font-size: 13px; margin: 18px 0 6px; }
     .dropped .clip { opacity: .55; filter: grayscale(.5); }
     #job { margin: 16px 0; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .modebtn { background: var(--bg-primary); color: var(--text-secondary); border: 0; border-radius: 0;
+      padding: 8px 16px; font-weight: 600; cursor: pointer; }
+    .modebtn.active { background: var(--accent, #4c7dff); color: #fff; }
+    .provs { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+    .provs label { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--text-primary);
+      font-size: 13px; cursor: pointer; }
+    .provs .tag { font-size: 10px; color: var(--text-secondary); border: 1px solid var(--border);
+      border-radius: 4px; padding: 0 4px; }
   </style>
   <script src="/static/nav.js" data-active="broll"></script>
 </head>
@@ -61,6 +70,13 @@
         <div><label>Mood steer <span class="hint">(optional — override the inferred emotion)</span></label>
           <input id="mood" type="text" placeholder="e.g. ominous, foreboding"></div>
       </div>
+      <label>Source pool</label>
+      <div class="seg">
+        <button type="button" class="modebtn active" data-mode="stock">Stock video</button>
+        <button type="button" class="modebtn" data-mode="library">My library</button>
+      </div>
+      <div id="providers"><label style="margin-top:12px">Stock providers <span class="hint">(uncheck to exclude — defaults are the cheap tiers)</span></label>
+        <div id="provlist" class="provs hint">loading…</div></div>
       <div class="ctrls">
         <span><label style="display:inline">Literalness</label>
           <input id="lit" type="range" min="0" max="1" step="0.05" value="0.25">
@@ -82,6 +98,29 @@
       litv.textContent = v.toFixed(2) + (v <= 0.35 ? " (abstract)" : v <= 0.7 ? " (semi-literal)" : " (literal)");
     };
 
+    // Source-pool mode toggle (stock vs library) + stock-provider checkboxes.
+    var currentMode = "stock";
+    var provWrap = document.getElementById("providers");
+    document.querySelectorAll(".modebtn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.querySelectorAll(".modebtn").forEach(function (x) { x.classList.remove("active"); });
+        b.classList.add("active");
+        currentMode = b.dataset.mode;
+        provWrap.style.display = (currentMode === "stock") ? "block" : "none";
+      });
+    });
+    fetch("/api/broll/providers").then(function (r) { return r.json(); }).then(function (d) {
+      var el = document.getElementById("provlist");
+      if (!d.providers || !d.providers.length) { el.textContent = "no stock video providers configured (set PEXELS/PIXABAY keys)"; return; }
+      el.className = "provs";
+      el.innerHTML = d.providers.map(function (p) {
+        var tag = p.keyless ? '<span class="tag">keyless</span>' : '<span class="tag">keyed</span>';
+        return '<label><input type="checkbox" class="prov" value="' + p.name + '"' + (p.default ? " checked" : "") + "> " + p.name + " " + tag + "</label>";
+      }).join("");
+    }).catch(function () { document.getElementById("provlist").textContent = "failed to load providers"; });
+
+    function fmtT(s) { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
+
     function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
@@ -92,20 +131,25 @@
     }
 
     function clipCard(c, dropped) {
+      var isLib = c.kind === "library";
       var poster = c.poster ? ' poster="' + esc(c.poster) + '"' : "";
-      var player = /\.mp4($|\?)/.test(c.url)
-        ? '<video' + poster + ' preload="none" controls muted loop><source src="' + esc(c.url) + '"></video>'
-        : (c.poster ? '<img class="noposter" src="' + esc(c.poster) + '">' : '<div class="noposter"></div>');
+      var player = isLib
+        ? '<video preload="none" controls muted src="' + esc(c.url) + '"></video>'
+        : (/\.mp4($|\?)/.test(c.url)
+            ? '<video' + poster + ' preload="none" controls muted loop><source src="' + esc(c.url) + '"></video>'
+            : (c.poster ? '<img class="noposter" src="' + esc(c.poster) + '">' : '<div class="noposter"></div>'));
       var place = c.universal ? '<span class="chip" style="background:#2f5f7a">universal</span>'
                              : chip("per", c.period_ok) + chip("loc", c.locale_ok);
       var flag = c.flags ? '<span class="chip" style="background:#7a2f2f">' + esc(c.flags) + '</span>' : "";
       var rej = dropped && c.reject ? '<span class="chip" style="background:#5a3a1a">' + esc(c.reject) + '</span>' : "";
-      var dur = c.duration ? c.duration + "s" : "?";
+      var srcline = isLib
+        ? esc(c.video_name) + ' · ' + fmtT(c.ts_start) + '–' + fmtT(c.ts_end) + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"'
+        : esc(c.source) + ' · ' + (c.duration ? c.duration + "s" : "?") + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"';
       return '<div class="clip">' + player + '<div class="m">' +
         chip("mood", c.mood) + chip("evoc", c.nonliteral) + place + flag + rej +
         '<div class="why">' + esc(c.why) + '</div>' +
-        '<div style="color:#888;margin-top:4px">' + esc(c.source) + ' · ' + dur + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"</div>' +
-        '<a class="src" href="' + esc(c.url) + '" target="_blank">open clip ↗</a></div></div>';
+        '<div style="color:#888;margin-top:4px">' + srcline + '</div>' +
+        '<a class="src" href="' + esc(c.url) + '" target="_blank">open ↗</a></div></div>';
     }
 
     function renderResult(res) {
@@ -135,12 +179,15 @@
       document.getElementById("results").innerHTML = "";
       var btn = this; btn.disabled = true;
       var body = {
-        line: line,
+        line: line, mode: currentMode,
         period: document.getElementById("period").value.trim(),
         locale: document.getElementById("locale").value.trim(),
         mood: document.getElementById("mood").value.trim(),
         literalness: parseFloat(lit.value)
       };
+      if (currentMode === "stock") {
+        body.sources = Array.prototype.map.call(document.querySelectorAll(".prov:checked"), function (c) { return c.value; });
+      }
       NolanJobs.start("/api/broll/evoke", body, {
         into: document.getElementById("job"),
         onDone: function (job) {
