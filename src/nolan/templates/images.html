@@ -83,6 +83,14 @@
         <label for="license">License contains</label>
         <input type="text" id="license" placeholder="e.g. CC0" style="width:120px;">
       </div>
+      <div>
+        <label for="cutmodel">Cutout model</label>
+        <select id="cutmodel">
+          <option value="isnet">isnet (fast)</option>
+          <option value="birefnet">birefnet (best)</option>
+          <option value="u2net">u2net</option>
+        </select>
+      </div>
       <button id="go">Search</button>
     </div>
 
@@ -134,6 +142,7 @@
           '<div class="lic">'+esc(r.license||"?")+'</div>'+
           '<div>'+esc(r.source||"")+' '+dims+'</div>'+
           '<div class="actions">'+src+promote+
+            '<button class="reject" style="color:var(--accent);border-color:var(--accent);" onclick="cutout('+r.id+',this)">Cut out</button>'+
             '<button class="reject" onclick="reject('+r.id+',this)">Reject</button></div>'+
         '</div></div>';
     }
@@ -175,6 +184,18 @@
         .catch(function(e){ btn.disabled=false; btn.textContent="Promote"; alert("Promote failed: "+e.message); });
     }
     window.promote = promote;
+
+    function cutout(id, btn){
+      var model = (document.getElementById("cutmodel")||{}).value || "isnet";
+      var body = {scope: scopeEl.value, project: projEl.value.trim() || null, model: model};
+      var orig = btn.textContent; btn.disabled = true; btn.textContent = "cutting…";
+      fetch("/api/images/"+id+"/cutout", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)})
+        .then(function(r){ if(!r.ok) return r.text().then(function(t){throw new Error(t);}); return r.json(); })
+        .then(function(){ btn.textContent = "✓ cutout"; run(); })
+        .catch(function(e){ btn.disabled=false; btn.textContent=orig; alert("Cutout failed: "+e.message); });
+    }
+    window.cutout = cutout;
 
     function addByUrl(){
       var url = document.getElementById("addurl").value.trim();

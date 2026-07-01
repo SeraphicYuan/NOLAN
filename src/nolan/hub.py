@@ -523,6 +523,49 @@ def create_hub_app(
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    @app.post("/api/images/{asset_id}/cutout")
+    async def api_images_cutout(asset_id: int, body: dict = Body(default={})):
+        """Remove an image's background -> new transparent-PNG asset in the same library."""
+        import asyncio as _asyncio
+        import os
+        import tempfile
+        model = body.get("model", "isnet")
+        scope = body.get("scope", "global")
+        project = body.get("project")
+
+        def _do():
+            from nolan.cutout import remove_background
+            lib = _open_imagelib(scope, project)
+            a = lib.catalog.get(asset_id)
+            if not a:
+                raise HTTPException(status_code=404, detail="asset not found")
+            src = (lib.base / a.path).resolve()
+            if not str(src).startswith(str(lib.base.resolve())) or not src.exists():
+                raise HTTPException(status_code=404, detail="file missing")
+            rgba = remove_background(str(src), model=model,
+                                     alpha_matting=bool(body.get("alpha_matting")))
+            tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+            try:
+                rgba.save(tmp.name)
+                tmp.close()
+                title = (a.title or f"asset {asset_id}") + " (cutout)"
+                new_asset, created = lib.add_file(
+                    tmp.name, source="cutout", title=title,
+                    tags=["cutout", model], describe=False)
+            finally:
+                try:
+                    os.unlink(tmp.name)
+                except OSError:
+                    pass
+            return {**_img_dict(new_asset, None, scope, project), "created": created}
+
+        try:
+            return await _asyncio.to_thread(_do)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"cutout failed: {e}")
+
     @app.get("/api/images/stats")
     async def api_images_stats(scope: str = "global", project: str = None):
         return _open_imagelib(scope, project).stats()
