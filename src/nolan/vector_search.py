@@ -386,69 +386,147 @@ class VectorSearch:
             if progress_callback:
                 progress_callback(i + 1, total_videos, f"Syncing: {Path(video_path).name}")
 
-            # Delete existing vectors for this video (in case of re-index)
-            self.delete_video_vectors(video_id)
-
-            # Sync segments for this video
-            segments = self.index.get_segments_by_video_id(video_id)
-
-            for j, segment in enumerate(segments):
-                text = self._build_segment_text(segment)
-                if not text:
-                    continue
-
-                doc_id = f"seg_{video_id}_{j}"
-                metadata = self._segment_to_metadata(segment, video_id, vid_project_id)
-
-                # Track indexed_at for incremental sync (detects re-indexing)
-                if indexed_at:
-                    metadata["indexed_at"] = indexed_at
-
-                # Store description for retrieval
-                metadata["description"] = segment.combined_summary or segment.frame_description
-                if segment.transcript:
-                    metadata["transcript"] = segment.transcript[:1000]  # Limit size
-
-                # Sanitize metadata to ensure ChromaDB compatibility
-                metadata = self._sanitize_metadata(metadata)
-
-                segments_collection.upsert(
-                    ids=[doc_id],
-                    documents=[text],
-                    metadatas=[metadata]
-                )
-                segments_added += 1
-
-            # Sync clusters for this video
-            clusters = self.index.get_clusters_by_video_id(video_id)
-
-            for cluster in clusters:
-                text = self._build_cluster_text(cluster)
-                if not text:
-                    continue
-
-                doc_id = f"cluster_{video_id}_{cluster['cluster_index']}"
-                metadata = self._cluster_to_metadata(cluster, video_id, vid_project_id)
-
-                # Track indexed_at for incremental sync (detects re-indexing)
-                if indexed_at:
-                    metadata["indexed_at"] = indexed_at
-
-                # Store summary for retrieval
-                if cluster.get("cluster_summary"):
-                    metadata["description"] = cluster["cluster_summary"]
-
-                # Sanitize metadata to ensure ChromaDB compatibility
-                metadata = self._sanitize_metadata(metadata)
-
-                clusters_collection.upsert(
-                    ids=[doc_id],
-                    documents=[text],
-                    metadatas=[metadata]
-                )
-                clusters_added += 1
+            s_added, c_added = self._embed_video(
+                video_id, vid_project_id, indexed_at,
+                segments_collection, clusters_collection,
+            )
+            segments_added += s_added
+            clusters_added += c_added
 
         return {"segments": segments_added, "clusters": clusters_added, "skipped": skipped}
+
+    def _embed_video(self, video_id, vid_project_id, indexed_at,
+                     segments_collection=None, clusters_collection=None):
+        """(Re-)embed all segments + clusters of ONE video into ChromaDB.
+
+        Deletes any existing vectors for the video first (safe re-index), then upserts.
+        Returns (segments_added, clusters_added). Shared by the full sync loop and the
+        single-video `sync_video()` path so both stay identical.
+        """
+        if segments_collection is None:
+            segments_collection = self._get_segments_collection()
+        if clusters_collection is None:
+            clusters_collection = self._get_clusters_collection()
+
+        self.delete_video_vectors(video_id)
+        segments_added = 0
+        clusters_added = 0
+
+        # Sync segments for this video
+        segments = self.index.get_segments_by_video_id(video_id)
+        for j, segment in enumerate(segments):
+            text = self._build_segment_text(segment)
+            if not text:
+                continue
+
+            doc_id = f"seg_{video_id}_{j}"
+            metadata = self._segment_to_metadata(segment, video_id, vid_project_id)
+
+            # Track indexed_at for incremental sync (detects re-indexing)
+            if indexed_at:
+                metadata["indexed_at"] = indexed_at
+
+            # Store description for retrieval
+            metadata["description"] = segment.combined_summary or segment.frame_description
+            if segment.transcript:
+                metadata["transcript"] = segment.transcript[:1000]  # Limit size
+
+            # Sanitize metadata to ensure ChromaDB compatibility
+            metadata = self._sanitize_metadata(metadata)
+
+            segments_collection.upsert(ids=[doc_id], documents=[text], metadatas=[metadata])
+            segments_added += 1
+
+        # Sync clusters for this video
+        clusters = self.index.get_clusters_by_video_id(video_id)
+        for cluster in clusters:
+            text = self._build_cluster_text(cluster)
+            if not text:
+                continue
+
+            doc_id = f"cluster_{video_id}_{cluster['cluster_index']}"
+            metadata = self._cluster_to_metadata(cluster, video_id, vid_project_id)
+
+            if indexed_at:
+                metadata["indexed_at"] = indexed_at
+            if cluster.get("cluster_summary"):
+                metadata["description"] = cluster["cluster_summary"]
+
+            metadata = self._sanitize_metadata(metadata)
+            clusters_collection.upsert(ids=[doc_id], documents=[text], metadatas=[metadata])
+            clusters_added += 1
+
+        return segments_added, clusters_added
+
+    def sync_video(self, video_id: int) -> Dict[str, int]:
+        """Embed a SINGLE video by id (manual 'make this searchable' action)."""
+        import sqlite3
+        if self.index is None:
+            raise ValueError("No VideoIndex provided. Cannot sync.")
+        with sqlite3.connect(self.index.db_path) as conn:
+            row = conn.execute(
+                "SELECT project_id, indexed_at FROM videos WHERE id = ?", (video_id,)
+            ).fetchone()
+        if not row:
+            raise ValueError(f"No video with id {video_id}")
+        s, c = self._embed_video(video_id, row[0], row[1])
+        return {"segments": s, "clusters": c}
+
+    def get_embedding_status(self, project_id: Optional[str] = None) -> Dict[str, Any]:
+        """Per-video embedding state for the library UI — computed live from the vector
+        store + SQLite (no stored flag that could drift). A video is:
+          - "unembedded": no vectors present            → invisible to semantic search
+          - "stale":      re-indexed since last embed    → search returns old content
+          - "synced":     vectors match current index    → fully searchable
+        """
+        import sqlite3
+        # One scan of the vector store: embedded count + embedded indexed_at per video.
+        embedded_counts: Dict[int, int] = {}
+        embedded_ts: Dict[int, str] = {}
+        try:
+            res = self._get_segments_collection().get(include=["metadatas"])
+            for m in (res.get("metadatas") or []):
+                vid = m.get("video_id")
+                if vid is None:
+                    continue
+                embedded_counts[vid] = embedded_counts.get(vid, 0) + 1
+                if m.get("indexed_at"):
+                    embedded_ts[vid] = m["indexed_at"]
+        except Exception:
+            pass
+
+        with sqlite3.connect(self.index.db_path) as conn:
+            q = ("SELECT v.id, v.path, v.indexed_at, COUNT(s.id) "
+                 "FROM videos v LEFT JOIN segments s ON s.video_id = v.id ")
+            params: list = []
+            if project_id:
+                q += "WHERE v.project_id = ? "
+                params.append(project_id)
+            q += "GROUP BY v.id ORDER BY v.indexed_at DESC"
+            rows = conn.execute(q, params).fetchall()
+
+        videos = []
+        n_unembedded = n_stale = n_synced = 0
+        for vid, path, indexed_at, seg_count in rows:
+            emb_n = embedded_counts.get(vid, 0)
+            emb_ts = embedded_ts.get(vid)
+            if emb_n == 0:
+                state = "unembedded"; n_unembedded += 1
+            elif indexed_at and emb_ts and emb_ts != indexed_at:
+                state = "stale"; n_stale += 1
+            else:
+                state = "synced"; n_synced += 1
+            videos.append({
+                "video_id": vid, "path": path, "name": Path(path).name if path else "",
+                "segments": seg_count, "embedded": emb_n, "state": state,
+                "searchable": state == "synced",
+            })
+        return {
+            "videos": videos,
+            "summary": {"total": len(videos), "unembedded": n_unembedded,
+                        "stale": n_stale, "synced": n_synced,
+                        "needs_embedding": n_unembedded + n_stale},
+        }
 
     def search(
         self,

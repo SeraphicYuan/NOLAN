@@ -234,6 +234,21 @@ async def sync_vectors(job, *, db_path: Path, project_id: Optional[str] = None):
     return result if isinstance(result, dict) else {"synced": True}
 
 
+async def embed_video(job, *, db_path: Path, video_id: int):
+    """Embed a single indexed video into the vector store (manual 'make searchable')."""
+    from nolan.indexer import VideoIndex
+    from nolan.vector_search import VectorSearch
+
+    index = VideoIndex(db_path)
+    vs = VectorSearch(db_path.parent / "vectors", index=index)
+    job.set_progress(0.1, "Embedding video…")
+    result = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: vs.sync_video(video_id)
+    )
+    job.set_progress(1.0, "Video embedded — now searchable")
+    return result
+
+
 def _scene_plan_path(project_name: str) -> Path:
     return Path("projects") / project_name / "scene_plan.json"
 

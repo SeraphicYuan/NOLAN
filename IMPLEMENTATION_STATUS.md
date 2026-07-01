@@ -8,6 +8,43 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Vector embedding status + auto-reconcile (2026-07-01)
+
+Indexing a video populates SQLite segments but embedding into the vector store was a
+best-effort afterthought (CLI auto-synced but swallowed failures; the hub didn't at all),
+so videos could be indexed-but-unsearchable and drift silently. Now:
+
+- **Live embedding status** (`VectorSearch.get_embedding_status()`): per-video state —
+  `synced` / `stale` (re-indexed since embed) / `unembedded` — computed from the vector
+  store + SQLite (no stored flag that can lie). Plus a summary (`needs_embedding`).
+- **Single-video embed** (`VectorSearch.sync_video(id)`, shared `_embed_video` helper) and
+  op `operations.embed_video`.
+- **Hub API:** `GET /library/api/embedding-status`, `POST /library/api/videos/{path}/embed`,
+  `POST /library/api/reconcile-vectors`. Hub **startup auto-reconciles** (incremental → cheap
+  if nothing to do; non-blocking background job) so stragglers get embedded automatically.
+- **Library UI:** per-video badge (searchable / stale / not embedded), a manual **Embed**
+  button, and an **Embed all** banner when any video isn't searchable.
+
+Verified: status / single-embed / unembedded-detection and all endpoints (incl. 404) pass.
+
+## Background removal (cutout) — rembg (2026-07-01)
+
+Turn any image/frame into a transparent RGBA cutout for compositing over scenes.
+CPU-based, runs **off the GPU lock** (no contention with ComfyUI/OmniVoice), always available.
+
+- `src/nolan/cutout.py` — `remove_background(img, model) -> PIL RGBA` + `cutout_file(src, dst, model)`.
+  Lazy import, per-model session cache. Models: **isnet** (default, fast), **birefnet** (best
+  edges/hair, ~1GB, slower), **u2net** (baseline) + extras (u2netp, isnet-anime, birefnet-portrait, silueta).
+  Optional `alpha_matting` for soft/hairy edges.
+- CLI: `nolan cutout IMAGE [-m isnet|birefnet|u2net] [-o out.png] [--alpha-matting] [--to-library]`.
+- Hub: `POST /api/images/{id}/cutout {model,scope,project}` → adds the cutout back as a new
+  library asset (source="cutout", tags=["cutout", model]); "Cut out" button + model selector on `/images`.
+- Verified: all 3 models produce clean RGBA cutouts on a real image (birefnet tightest edges;
+  isnet ≈ u2net; isnet ~1–2s/img CPU).
+- **Dependency caveat**: `pip install rembg[cpu]` upgrades numpy/pillow past what opencv/moviepy
+  pin. Fix: keep `numpy<2.3` + `pillow<12` (satisfies opencv+moviepy; rembg still runs fine at
+  runtime despite its stricter declared pins). Verified opencv+moviepy+rembg all import together.
+
 ## Skill registry — manage the hybrid pipeline's prose units (2026-06-30)
 
 NOLAN is now a **hybrid** pipeline: a deterministic engine that hands off to an agent at judgment

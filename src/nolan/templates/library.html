@@ -1069,12 +1069,16 @@
         // Load video list
         async function loadVideos() {
             try {
-                let url = '/library/api/videos';
-                if (currentProject) {
-                    url += `?project=${encodeURIComponent(currentProject)}`;
-                }
-                const resp = await fetch(url);
+                const projQ = currentProject ? `?project=${encodeURIComponent(currentProject)}` : '';
+                // Fetch the video list and per-video embedding (searchability) state together.
+                const [resp, statusResp] = await Promise.all([
+                    fetch('/library/api/videos' + projQ),
+                    fetch('/library/api/embedding-status' + projQ),
+                ]);
                 const data = await resp.json();
+                const status = await statusResp.json().catch(() => ({ videos: [], summary: {} }));
+                const stateByPath = {};
+                (status.videos || []).forEach(s => { stateByPath[s.path] = s; });
                 const list = document.getElementById('videoList');
 
                 if (data.videos.length === 0) {
@@ -1087,15 +1091,35 @@
                     return;
                 }
 
-                list.innerHTML = data.videos.map((v, i) => `
+                const summary = status.summary || {};
+                const banner = (summary.needs_embedding > 0) ? `
+                    <div class="embed-banner" style="background:#3a2a12;border:1px solid #7a5a1e;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                        <span>&#9888; ${summary.needs_embedding} video(s) not searchable yet
+                            &middot; ${summary.unembedded} unembedded, ${summary.stale} stale</span>
+                        <button onclick="embedAll(this)" style="cursor:pointer;white-space:nowrap;">Embed all</button>
+                    </div>` : '';
+
+                list.innerHTML = banner + data.videos.map((v, i) => {
+                    const st = stateByPath[v.path] || {};
+                    const searchable = !!st.searchable;
+                    const label = st.state === 'unembedded' ? '&#9675; not embedded'
+                                : st.state === 'stale' ? '&#9681; stale'
+                                : '&#9679; searchable';
+                    const color = searchable ? '#4ec9a4' : (st.state === 'stale' ? '#d8a03a' : '#8a8a8a');
+                    const embedBtn = (st.state && st.state !== 'synced')
+                        ? `<button class="embed-btn" onclick="event.stopPropagation(); embedVideo('${encodeURIComponent(v.path)}', this)" style="cursor:pointer;font-size:11px;padding:1px 6px;">Embed</button>`
+                        : '';
+                    return `
                     <div class="video-item" data-index="${i}" data-path="${encodeURIComponent(v.path)}">
                         <div class="video-item-name">${escapeHtml(v.name)}</div>
                         <div class="video-item-meta">
                             <span>${v.duration_formatted}</span>
                             <span>${v.segment_count} segments</span>
+                            <span style="color:${color};" title="${st.state || ''} (${st.embedded || 0}/${v.segment_count} embedded)">${label}</span>
+                            ${embedBtn}
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
 
                 // Store videos for click handler
                 window._videos = data.videos;
@@ -1114,6 +1138,40 @@
                     </div>
                 `;
             }
+        }
+
+        // Poll a background job until it finishes; update the button label with progress.
+        async function pollJob(jobId, btn, label) {
+            for (let k = 0; k < 800; k++) {
+                await new Promise(r => setTimeout(r, 1500));
+                try {
+                    const j = await (await fetch(`/api/jobs/${jobId}`)).json();
+                    if (btn && j.progress != null) btn.textContent = `${label} ${Math.round(j.progress * 100)}%`;
+                    if (j.status === 'done') return true;
+                    if (j.status === 'error' || j.status === 'cancelled') return false;
+                } catch (e) { /* transient */ }
+            }
+            return false;
+        }
+
+        // Manually embed ONE video so it becomes semantically searchable.
+        async function embedVideo(encPath, btn) {
+            btn.disabled = true; btn.textContent = 'Embedding…';
+            try {
+                const j = await (await fetch(`/library/api/videos/${encPath}/embed`, { method: 'POST' })).json();
+                await pollJob(j.job_id, btn, 'Embedding');
+            } catch (e) { /* ignore */ }
+            loadVideos();
+        }
+
+        // Embed ALL unembedded/stale videos (reconcile) in one pass.
+        async function embedAll(btn) {
+            btn.disabled = true; btn.textContent = 'Embedding…';
+            try {
+                const j = await (await fetch('/library/api/reconcile-vectors', { method: 'POST' })).json();
+                await pollJob(j.job_id, btn, 'Embedding');
+            } catch (e) { /* ignore */ }
+            loadVideos();
         }
 
         // Select video

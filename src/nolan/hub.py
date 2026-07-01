@@ -159,6 +159,13 @@ def create_hub_app(
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+    # Tonal b-roll prototype gallery (period/locale-gated evocative b-roll). Served as static
+    # so its local poster stills resolve; remote clips stream from the stock CDN. View at
+    # /tonal-broll/ (reachable over the Tailscale-exposed hub).
+    tonal_dir = Path(__file__).parent.parent.parent / "projects" / "_library" / "_tonal_broll"
+    if tonal_dir.exists():
+        app.mount("/tonal-broll", StaticFiles(directory=str(tonal_dir), html=True), name="tonal_broll")
+
     # ==================== Job Manager (background operations) ====================
     from nolan.webui.jobs import get_job_manager
     job_manager = get_job_manager()

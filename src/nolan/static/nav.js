@@ -20,6 +20,7 @@
     { title: "Assets", items: [
       { id: "library", label: "Library", href: "/library" },
       { id: "clips", label: "Clips", href: "/clips" },
+      { id: "tonal-broll", label: "Tonal B-roll", href: "/tonal-broll/" },
       { id: "voices", label: "Voices", href: "/voices" },
     ]},
     { title: "Produce", items: [
