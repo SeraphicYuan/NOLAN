@@ -3,15 +3,15 @@
 Wraps `rembg` (ONNX, CPU-capable, runs off the GPU lock so it never queues
 behind ComfyUI/OmniVoice). Three model families are exposed:
 
-    isnet     -> isnet-general-use   (default; fast, strong general cutouts)
-    birefnet  -> birefnet-general    (best edges/hair, heavier/slower)
+    birefnet  -> birefnet-general    (default; best edges/hair, heavier/slower)
+    isnet     -> isnet-general-use   (fast, strong general cutouts)
     u2net     -> u2net               (classic baseline)
 
     from nolan.cutout import remove_background, cutout_file
 
-    img = remove_background("photo.jpg")                 # PIL RGBA, isnet
-    img = remove_background("hair.jpg", model="birefnet") # finer matting
-    out = cutout_file("frame.png", model="isnet")         # writes frame.cutout.png
+    img = remove_background("photo.jpg")                # PIL RGBA, birefnet (best edges)
+    img = remove_background("frame.png", model="isnet") # ~14x faster, good enough for batch
+    out = cutout_file("frame.png")                      # writes frame.cutout.png
 
 First use of a model downloads its weights once (rembg cache, ~/.u2net or
 $U2NET_HOME). Sessions are cached per-model for the life of the process.
@@ -34,7 +34,7 @@ MODELS = {
     "birefnet-portrait": "birefnet-portrait",
     "silueta": "silueta",
 }
-DEFAULT_MODEL = "isnet"
+DEFAULT_MODEL = "birefnet"
 
 _SESSIONS: dict = {}
 

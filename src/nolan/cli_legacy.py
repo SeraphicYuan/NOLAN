@@ -5001,8 +5001,8 @@ def render_flow_cmd(project, mode, no_gate):
 @click.option('--model', '-m',
               type=click.Choice(['isnet', 'birefnet', 'u2net', 'u2netp',
                                  'isnet-anime', 'birefnet-portrait', 'silueta']),
-              default='isnet', show_default=True,
-              help='Background-removal model (isnet=fast, birefnet=best edges).')
+              default='birefnet', show_default=True,
+              help='Background-removal model (birefnet=best edges [default], isnet=~14x faster).')
 @click.option('--output', '-o', type=click.Path(), default=None,
               help='Output PNG path (default: <image>.cutout.png).')
 @click.option('--alpha-matting', is_flag=True,

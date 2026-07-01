@@ -178,6 +178,27 @@ def create_hub_app(
     async def jobs_cancel(job_id: str):
         return {"cancelled": job_manager.cancel(job_id)}
 
+    @app.on_event("startup")
+    async def _auto_reconcile_vectors():
+        """On boot, embed any indexed-but-unsearchable videos (incremental → cheap if
+        nothing to do). Non-blocking: runs as a background job so the hub stays responsive."""
+        try:
+            from nolan.config import load_config
+            from nolan.indexer import VideoIndex
+            from nolan.vector_search import VectorSearch
+            from nolan.webui import operations
+            eff = db_path or Path(load_config().indexing.database).expanduser()
+            if not (eff and Path(eff).exists() and (Path(eff).parent / "vectors").exists()):
+                return
+            vs = VectorSearch(Path(eff).parent / "vectors", index=VideoIndex(Path(eff)))
+            summary = vs.get_embedding_status()["summary"]
+            if summary["needs_embedding"] > 0:
+                job_manager.start(
+                    "sync-vectors", operations.sync_vectors, db_path=Path(eff), project_id=None,
+                )
+        except Exception:
+            pass  # never block hub startup on reconcile
+
     async def _render_service_up() -> bool:
         try:
             async with httpx.AsyncClient(timeout=2.0) as client:
@@ -529,7 +550,7 @@ def create_hub_app(
         import asyncio as _asyncio
         import os
         import tempfile
-        model = body.get("model", "isnet")
+        model = body.get("model", "birefnet")
         scope = body.get("scope", "global")
         project = body.get("project")
 
@@ -572,7 +593,7 @@ def create_hub_app(
         import asyncio as _asyncio
         from io import BytesIO
         from starlette.responses import Response
-        model = body.get("model", "isnet")
+        model = body.get("model", "birefnet")
         scope = body.get("scope", "global")
         project = body.get("project")
 
@@ -1181,6 +1202,39 @@ def create_hub_app(
                 "people": r.people, "location": r.location, "objects": r.objects,
             } for r in results]
             return {"query": q, "results": formatted, "total": len(formatted), "vector_stats": stats}
+
+        @app.get("/library/api/embedding-status")
+        async def library_embedding_status(project: Optional[str] = Query(default=None)):
+            """Per-video embedding state (searchable / stale / unembedded) + summary."""
+            from nolan.vector_search import VectorSearch
+            vector_db_path = db_path.parent / "vectors"
+            vs = VectorSearch(vector_db_path, index=index)
+            project_id = index.resolve_project(project) if project else None
+            return vs.get_embedding_status(project_id=project_id)
+
+        @app.post("/library/api/videos/{video_path:path}/embed")
+        async def library_embed_video(video_path: str):
+            """Manually embed ONE indexed video so it becomes semantically searchable."""
+            from nolan.webui import operations
+            path = unquote(video_path)
+            with sqlite3.connect(db_path) as conn:
+                row = conn.execute("SELECT id FROM videos WHERE path = ?", (path,)).fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail=f"No indexed video at {path}")
+            job = job_manager.start(
+                "embed-video", operations.embed_video,
+                db_path=db_path, video_id=row[0],
+            )
+            return {"job_id": job.id, "type": "embed-video", "video_id": row[0]}
+
+        @app.post("/library/api/reconcile-vectors")
+        async def library_reconcile_vectors():
+            """Embed ALL unembedded/stale videos in one incremental pass (idempotent)."""
+            from nolan.webui import operations
+            job = job_manager.start(
+                "sync-vectors", operations.sync_vectors, db_path=db_path, project_id=None,
+            )
+            return {"job_id": job.id, "type": "sync-vectors"}
 
         @app.get("/library/api/stats")
         async def library_stats():
