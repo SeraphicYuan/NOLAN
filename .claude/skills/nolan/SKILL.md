@@ -1,0 +1,104 @@
+---
+name: nolan
+description: >
+  Orientation + router for working on the NOLAN codebase (turns essays/artworks into
+  narrated videos). Read this FIRST on any non-trivial NOLAN task — it maps the two flows,
+  the skill registry, every subsystem + where it lives, the key commands, and the
+  cross-cutting runtime gotchas that repeatedly bite (Windows-python-from-WSL, the GPU lock,
+  the shared-working-tree/git-index hazard with concurrent agents, the numpy/Pillow pins).
+  It is a MAP that points into the code + skills/ registry — it does not duplicate them.
+  Use when: starting to explore NOLAN, unsure which subsystem/skill owns a task, or hitting
+  an environment/build error.
+---
+
+# NOLAN — the map
+
+NOLAN turns a source (markdown essay, paper, or artwork) into a narrated video: script →
+scene plan → assets (library / stock / ComfyUI-gen / cutouts) → render (Remotion) → assemble.
+
+**This file orients; it doesn't contain the rules.** Rules live in `CLAUDE.md`. Durable facts
+live in memory (`MEMORY.md`). Pipeline judgment prose lives in `skills/<domain>/*.md`. This is
+the index that ties them together — read the pointed-to file for detail.
+
+## The two flows
+
+Both pick one **theme** and run a source through gates: **Gate A** = plan-time HITL (authoring),
+**Gate B** = render-time HITL (per-beat edits).
+
+- **explainer** — idea-dense text → narrated explainer; visuals stand in for abstract ideas.
+  Skill: `skills/explainer/flow.md` (+ `script.md`, `scene-grammar.md`, `block-catalog.md`).
+- **art** — image-first; the artwork IS the subject; narration interprets it (Ken Burns /
+  spotlight / callouts). Skill: `skills/art/flow.md`.
+- Engine: `src/nolan/flows/` (`explainer.py`, `art.py`, `authoring.py`, `edit.py`, `ingest.py`,
+  `gate/`). CLI: `nolan render-flow <project>`.
+
+## The skill system (how to find the right prose)
+
+A **skill** = any `.md` with an `id:` in frontmatter. Two roots, one catalog:
+- `skills/<domain>/*.md` — pipeline judgment prose, injected at gates via
+  `handoff(skill_id)` (`src/nolan/skills/__init__.py`). Domains: `common` (cross-flow craft),
+  `explainer`, `art`, `flow`, `orchestrator` (one-shot prompts), `publish`.
+- `.claude/skills/*/SKILL.md` — harness-invocable Claude Code skills (this one;
+  `nolan-scene-edit`; `beautiful-article`). Cataloged in place — **moving breaks invocation.**
+- Catalog: `skills/index.json`. Lint/regenerate: `python -m nolan.skills`. Browse: `/skills`
+  hub page (Registry / Lineage / Health). `kind` ∈ {contract, craft, grammar, prompt, methodology}.
+
+→ To change *how the pipeline reasons* at a stage, edit the skill in `skills/<domain>/`, not code.
+
+## Subsystem map (where things live)
+
+| Area | Path | What / entry |
+|---|---|---|
+| Core pipeline | `src/nolan/{parser,script,scenes,llm}.py` | essay → script → scene plan. `nolan process` |
+| Orchestrator | `src/nolan/orchestrator/director.py` | linear pipeline; uses `orchestrator.*` skills |
+| Flows engine | `src/nolan/flows/` | art/explainer flow + gates. `nolan render-flow` |
+| Scene iteration | `src/nolan/iterate/` | review/edit N scenes, re-render only those. `nolan revise-scene` / `rerender`; `/scenes` |
+| Build from segment | `src/nolan/segment/` | span/script/VO → design→render→assemble. `nolan build-from-segment` |
+| Picture library | `src/nolan/imagelib/` | persistent CLIP-searchable image store. `nolan images`; `/images` |
+| Stock/image search | `src/nolan/image_search.py` | Unsplash/Pexels/Pixabay (rate-limited) |
+| Asset extraction | `src/nolan/extractors/` | URL → hi-def images. `nolan extract-assets`; `/extract` |
+| Cutout (bg removal) | `src/nolan/cutout.py` | rembg RGBA cutouts (isnet/birefnet/u2net). `nolan cutout`; `/images` "Cut out" |
+| ComfyUI gen | `src/nolan/comfyui.py`, `workflows/` | image gen via ComfyUI (:8080, Windows-only) |
+| Motion specs | `src/nolan/motion/` | NL scene design → validated spec → render |
+| TTS / voices | `src/nolan/{tts,voice_library,voiceover}.py` | OmniVoice (separate CUDA env). `/voices`, `/tts` |
+| Themes | `themes/` (25+ dirs) | video themes + `selector.json` + `scripts/select_theme.py`. See `themes/THEME-PLAYBOOK.md` |
+| Renderer | `render-service/remotion-lib/` | Remotion render (`render.mjs`/`still.mjs`/`stage.mjs`) |
+| Hub webUI | `src/nolan/hub.py` (FastAPI) + `templates/` + `static/` | design system in `static/nolan.css`, shell in `nav.js`. Port **8011** |
+| Fleet / agents | `src/nolan/fleet.py` | dispatches to tmux Claude agents; `/agents` |
+| Publish | `src/nolan/publish/` | final render/assemble + article path. `/publish` |
+
+Full CLI: `nolan --help` (Click; commands in `src/nolan/cli_legacy.py`).
+
+## Runtime gotchas (these cost hours if unknown)
+
+- **Python is the Windows env**, even from WSL: `D:\env\nolan\python.exe` (WSL:
+  `/mnt/d/env/nolan/python.exe`), pip `D:\env\nolan\Scripts\pip.exe`. Run with `-X utf8` on
+  Windows or ffmpeg cp1252 decode crashes corrupt scene detection.
+- **Rendering needs Windows node**: WSL `node` can't build (esbuild binary is win32) — use
+  `/mnt/c/Program Files/nodejs/node.exe`. Bundled ffmpeg: `render-service/node_modules/@ffmpeg-installer`.
+- **GPU lock**: ComfyUI + OmniVoice TTS serialize on `get_gpu_lock()`. Prefer CPU work
+  (e.g. rembg cutout) so it doesn't queue behind renders/TTS.
+- **Dependency pins**: keep `numpy<2.3` + `Pillow<12` (opencv/moviepy need them). rembg is the
+  optional `[cutout]` extra, pinned `<2.0.76` to stay numpy<2.3-compatible.
+- **Concurrent agents share ONE working tree + git index** (tmux agents). The branch can change
+  under you; the index can carry another agent's staged files. **Commit with an explicit
+  pathspec** (`git commit -m "…" -- <your files>`) and land on master via an **isolated worktree
+  cherry-pick** — never a whole-branch fast-forward (it publishes others' WIP).
+- **Hub**: port **8011** (avoid 8001 — SPARTA). Tailnet via `tailscale serve --tcp=8011`.
+- **UI screenshots**: Windows Chrome headless, or puppeteer (`render-service/node_modules`) for
+  device-emulated (iPhone) viewports — Chrome `--window-size` won't honor <484px CSS width.
+
+## Where knowledge lives (keep these distinct)
+
+- `CLAUDE.md` — **rules & conventions** you must follow.
+- memory (`MEMORY.md` + files) — **durable facts** across sessions (verify paths before acting).
+- `skills/<domain>/*.md` — **pipeline judgment prose** (via `handoff()`), tracked in the registry.
+- `.claude/skills/*/SKILL.md` — **invocable** Claude Code skills.
+- **this file** — the **map/router**. Add pointers here; put detail in the right place above.
+
+## Conventions
+
+- **Language layering** (don't flatten to all-English): code/ids/keys/`tags`/`mood` = English;
+  product pairs = `x` + `xZh`; audience free-text (`bestFor`, narration) = Chinese; engine docs
+  (`IMPLEMENTATION_STATUS`, comments) = English; skill agent-docs = Chinese, consistent per file.
+- After a feature, update `IMPLEMENTATION_STATUS.md` (CLAUDE.md rule).
