@@ -1270,17 +1270,21 @@
         function renderContextTags(ctx) {
             if (!ctx) return '';
 
+            // inferred_context fields can arrive as an array, a comma-string, or a bare
+            // value depending on the vision model — coerce to a string[] so we never
+            // call .forEach on a non-array (which used to throw and abort the render).
+            const asList = v => Array.isArray(v)
+                ? v
+                : (typeof v === 'string' && v.trim() ? v.split(',').map(s => s.trim()).filter(Boolean) : []);
+
             const tags = [];
 
-            if (ctx.people && ctx.people.length) {
-                ctx.people.forEach(p => tags.push(`<span class="context-tag people">${escapeHtml(p)}</span>`));
-            }
+            asList(ctx.people).forEach(p => tags.push(`<span class="context-tag people">${escapeHtml(String(p))}</span>`));
             if (ctx.location) {
-                tags.push(`<span class="context-tag location">${escapeHtml(ctx.location)}</span>`);
+                const loc = Array.isArray(ctx.location) ? ctx.location.join(', ') : ctx.location;
+                if (loc) tags.push(`<span class="context-tag location">${escapeHtml(String(loc))}</span>`);
             }
-            if (ctx.objects && ctx.objects.length) {
-                ctx.objects.slice(0, 3).forEach(o => tags.push(`<span class="context-tag objects">${escapeHtml(o)}</span>`));
-            }
+            asList(ctx.objects).slice(0, 3).forEach(o => tags.push(`<span class="context-tag objects">${escapeHtml(String(o))}</span>`));
 
             return tags.length ? `<div class="segment-context">${tags.join('')}</div>` : '';
         }
