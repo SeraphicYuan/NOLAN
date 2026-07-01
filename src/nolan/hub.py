@@ -540,6 +540,39 @@ def create_hub_app(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"cutout failed: {e}")
 
+    @app.post("/api/images/{asset_id}/cutout/preview")
+    async def api_images_cutout_preview(asset_id: int, body: dict = Body(default={})):
+        """Preview a cutout as a transparent PNG — does NOT save to the library."""
+        import asyncio as _asyncio
+        from io import BytesIO
+        from starlette.responses import Response
+        model = body.get("model", "isnet")
+        scope = body.get("scope", "global")
+        project = body.get("project")
+
+        def _do():
+            from nolan.cutout import remove_background
+            lib = _open_imagelib(scope, project)
+            a = lib.catalog.get(asset_id)
+            if not a:
+                raise HTTPException(status_code=404, detail="asset not found")
+            src = (lib.base / a.path).resolve()
+            if not str(src).startswith(str(lib.base.resolve())) or not src.exists():
+                raise HTTPException(status_code=404, detail="file missing")
+            rgba = remove_background(str(src), model=model,
+                                     alpha_matting=bool(body.get("alpha_matting")))
+            buf = BytesIO()
+            rgba.save(buf, format="PNG")
+            return buf.getvalue()
+
+        try:
+            data = await _asyncio.to_thread(_do)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"cutout failed: {e}")
+        return Response(content=data, media_type="image/png")
+
     @app.get("/api/images/stats")
     async def api_images_stats(scope: str = "global", project: str = None):
         return _open_imagelib(scope, project).stats()

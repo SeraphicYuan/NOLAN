@@ -142,7 +142,7 @@
           '<div class="lic">'+esc(r.license||"?")+'</div>'+
           '<div>'+esc(r.source||"")+' '+dims+'</div>'+
           '<div class="actions">'+src+promote+
-            '<button class="reject" style="color:var(--accent);border-color:var(--accent);" onclick="cutout('+r.id+',this)">Cut out</button>'+
+            '<button class="reject" style="color:var(--accent);border-color:var(--accent);" onclick="openCutout('+r.id+')">Cut out</button>'+
             '<button class="reject" onclick="reject('+r.id+',this)">Reject</button></div>'+
         '</div></div>';
     }
@@ -185,17 +185,53 @@
     }
     window.promote = promote;
 
-    function cutout(id, btn){
-      var model = (document.getElementById("cutmodel")||{}).value || "isnet";
-      var body = {scope: scopeEl.value, project: projEl.value.trim() || null, model: model};
-      var orig = btn.textContent; btn.disabled = true; btn.textContent = "cutting…";
-      fetch("/api/images/"+id+"/cutout", {method:"POST",
-        headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)})
-        .then(function(r){ if(!r.ok) return r.text().then(function(t){throw new Error(t);}); return r.json(); })
-        .then(function(){ btn.textContent = "✓ cutout"; run(); })
-        .catch(function(e){ btn.disabled=false; btn.textContent=orig; alert("Cutout failed: "+e.message); });
+    var cutState = {id:null, scope:null, project:null, url:null};
+    function cutBody(){
+      return {scope: cutState.scope, project: cutState.project,
+              model: document.getElementById("cutModalModel").value,
+              alpha_matting: document.getElementById("cutModalMatting").checked};
     }
-    window.cutout = cutout;
+    function openCutout(id){
+      cutState.id = id; cutState.scope = scopeEl.value; cutState.project = projEl.value.trim() || null;
+      var pr = encodeURIComponent(cutState.project || "");
+      document.getElementById("cutBefore").src =
+        "/api/images/raw?scope="+encodeURIComponent(cutState.scope)+"&project="+pr+"&id="+id;
+      var after = document.getElementById("cutAfter");
+      after.style.display = "none"; after.removeAttribute("src");
+      document.getElementById("cutHint").style.display = "";
+      document.getElementById("cutSaveBtn").disabled = true;
+      document.getElementById("cutStatus").textContent = "";
+      var tm = (document.getElementById("cutmodel")||{}).value;
+      if (tm) document.getElementById("cutModalModel").value = tm;
+      document.getElementById("cutModal").style.display = "flex";
+    }
+    function cutRun(){
+      var st = document.getElementById("cutStatus"); st.textContent = "rendering… (first birefnet run downloads ~1GB)";
+      var b = document.getElementById("cutRunBtn"); b.disabled = true;
+      fetch("/api/images/"+cutState.id+"/cutout/preview", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body: JSON.stringify(cutBody())})
+        .then(function(r){ if(!r.ok) return r.text().then(function(t){throw new Error(t);}); return r.blob(); })
+        .then(function(blob){
+          if (cutState.url) URL.revokeObjectURL(cutState.url);
+          cutState.url = URL.createObjectURL(blob);
+          var a = document.getElementById("cutAfter"); a.src = cutState.url; a.style.display = "";
+          document.getElementById("cutHint").style.display = "none";
+          document.getElementById("cutSaveBtn").disabled = false;
+          st.textContent = "preview ready"; b.disabled = false;
+        })
+        .catch(function(e){ st.textContent = "error: "+e.message; b.disabled = false; });
+    }
+    function cutSave(){
+      var st = document.getElementById("cutStatus"); st.textContent = "saving…";
+      var b = document.getElementById("cutSaveBtn"); b.disabled = true;
+      fetch("/api/images/"+cutState.id+"/cutout", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body: JSON.stringify(cutBody())})
+        .then(function(r){ if(!r.ok) return r.text().then(function(t){throw new Error(t);}); return r.json(); })
+        .then(function(){ cutClose(); run(); })
+        .catch(function(e){ st.textContent = "save failed: "+e.message; b.disabled = false; });
+    }
+    function cutClose(){ document.getElementById("cutModal").style.display = "none"; }
+    window.openCutout = openCutout; window.cutRun = cutRun; window.cutSave = cutSave; window.cutClose = cutClose;
 
     function addByUrl(){
       var url = document.getElementById("addurl").value.trim();
@@ -227,5 +263,47 @@
 
     run();  // initial browse
   </script>
+
+  <!-- Cutout (remove background) preview panel -->
+  <div id="cutModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+       z-index:300; align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto;">
+    <div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:14px;
+         padding:24px; width:100%; max-width:780px;">
+      <h2 style="margin:0 0 14px; font-size:20px;">Remove background</h2>
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+        <label style="font-size:13px;">Model
+          <select id="cutModalModel" style="margin-left:4px; background:var(--bg-primary);
+                  color:var(--text-primary); border:1px solid var(--border); border-radius:6px; padding:4px 8px;">
+            <option value="isnet">isnet (fast)</option>
+            <option value="birefnet">birefnet (best edges)</option>
+            <option value="u2net">u2net</option>
+          </select>
+        </label>
+        <label style="font-size:13px; display:flex; align-items:center; gap:5px;">
+          <input type="checkbox" id="cutModalMatting"> alpha matting</label>
+        <button class="btn sm" id="cutRunBtn" onclick="cutRun()">Preview</button>
+        <span id="cutStatus" style="font-size:12px; color:var(--text-secondary);"></span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Before</div>
+          <img id="cutBefore" alt="" style="width:100%; border-radius:8px; border:1px solid var(--border);">
+        </div>
+        <div>
+          <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">After (transparent)</div>
+          <div style="border-radius:8px; border:1px solid var(--border); min-height:140px;
+               display:flex; align-items:center; justify-content:center; overflow:hidden;
+               background:repeating-conic-gradient(#c8c8cc 0% 25%, #97979d 0% 50%) 0/22px 22px;">
+            <img id="cutAfter" alt="" style="max-width:100%; display:none;">
+            <span id="cutHint" style="font-size:12px; color:#333;">Click Preview</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button class="btn ghost" onclick="cutClose()">Close</button>
+        <button class="btn" id="cutSaveBtn" onclick="cutSave()" disabled>Save to library</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
