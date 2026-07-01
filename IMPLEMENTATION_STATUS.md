@@ -46,8 +46,13 @@ a **verifiable binding** and an **identity/lineage** — so drift becomes a fail
   refine dispatcher (`run_refine_step` → the producing skill) and the flow Scene-page edit
   (`fleet.dispatch`'s human note → `flow.edit-contract`/`scene-edit`). `python -m nolan.skills
   health` prints the queue. Verified end-to-end incl. the version-reset semantics.
-- **Next**: the `/skills` UI (list · detail + lineage graph · health/revision queue), reading the
-  generated `skills/index.json` + the ledger.
+- **`/skills` UI** (hub page): three views over the registry — **Registry** (skills grouped by
+  domain: kind/status badges, purpose, an "N open" correction badge; click → detail drawer with
+  forward+reverse lineage chips, health stats, the correction ledger, and the rendered doc),
+  **Lineage** (an SVG graph — nodes by domain column, `uses`/`overrides` edges, hover-to-highlight,
+  click → detail), and **Health** (the lint result + the revision queue). Backed by
+  `nolan.skills.ui_index/ui_detail/ui_graph` and `/api/skills[/{id}|/graph]` in `hub.py`; linked in
+  the sidebar (System group). The skill-management system (Phases 1–3 + UI) is complete.
 
 ## WebUI + iPhone design-system overhaul (2026-06-30)
 

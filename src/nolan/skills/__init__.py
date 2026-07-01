@@ -193,6 +193,64 @@ def health_report() -> list[dict]:
     return sorted(rows, key=lambda r: (-r["feedback_open"], -r["feedback_total"]))
 
 
+# ─────────────────────────────── UI data (the /skills page) ───────────────────────────────
+def ui_index() -> list[dict]:
+    """List rows for the /skills page: meta + domain + a compact health summary, grouped-sortable."""
+    skills = load_skills()
+    inv = _read_jsonl(INVOCATION_LOG)
+    fb = _read_jsonl(FEEDBACK_LOG)
+    inv_n, fb_open, fb_tot = {}, {}, {}
+    cur = {s.id: s.version for s in skills}
+    for r in inv:
+        inv_n[r.get("skill")] = inv_n.get(r.get("skill"), 0) + 1
+    for r in fb:
+        k = r.get("skill")
+        fb_tot[k] = fb_tot.get(k, 0) + 1
+        if r.get("version") == cur.get(k):
+            fb_open[k] = fb_open.get(k, 0) + 1
+    rows = []
+    for s in skills:
+        rows.append({**s.meta(), "domain": s.id.split(".")[0],
+                     "n_uses": len(s.uses), "n_loaded_by": len(s.loaded_by),
+                     "health": {"invocations": inv_n.get(s.id, 0),
+                                "feedback_open": fb_open.get(s.id, 0),
+                                "feedback_total": fb_tot.get(s.id, 0)}})
+    return sorted(rows, key=lambda r: (r["domain"], r["id"]))
+
+
+def ui_detail(skill_id: str) -> dict | None:
+    """Full detail for one skill: meta + body + forward AND reverse lineage + health + feedback."""
+    skills = load_skills()
+    s = get_skill(skill_id, skills)
+    if s is None:
+        return None
+    used_by = [x.id for x in skills if skill_id in x.uses]
+    overridden_by = [x.id for x in skills if skill_id in x.overrides]
+    fb = sorted(skill_feedback(skill_id), key=lambda r: r.get("at", 0), reverse=True)[:25]
+    return {**s.meta(), "body": s.body,
+            "lineage": {"uses": s.uses, "used_by": used_by, "overrides": s.overrides,
+                        "overridden_by": overridden_by, "loaded_by": s.loaded_by,
+                        "handoffs": s.handoffs},
+            "health": skill_health(skill_id), "feedback": fb}
+
+
+def ui_graph() -> dict:
+    """Lineage graph: nodes (by domain/kind) + uses/overrides edges, for the overview view."""
+    skills = load_skills()
+    ids = {s.id for s in skills}
+    nodes = [{"id": s.id, "kind": s.kind, "domain": s.id.split(".")[0], "status": s.status}
+             for s in skills]
+    edges = []
+    for s in skills:
+        for u in s.uses:
+            if u in ids:
+                edges.append({"from": s.id, "to": u, "type": "uses"})
+        for o in s.overrides:
+            if o in ids:
+                edges.append({"from": s.id, "to": o, "type": "overrides"})
+    return {"nodes": nodes, "edges": edges}
+
+
 def build_index(write: bool = True) -> dict:
     """Generate the catalog the UI/linter read. Deterministic (no timestamp) so the
     checked-in artifact only changes when a skill changes."""

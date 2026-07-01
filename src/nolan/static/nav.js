@@ -34,6 +34,7 @@
     ]},
     { title: "System", items: [
       { id: "agents", label: "Agents", href: "/agents" },
+      { id: "skills", label: "Skills", href: "/skills" },
       { id: "settings", label: "Settings", href: "/settings" },
     ]},
   ];

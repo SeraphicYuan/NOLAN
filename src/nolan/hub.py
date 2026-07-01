@@ -260,6 +260,32 @@ def create_hub_app(
             return tpl.read_text(encoding="utf-8")
         return "<h1>publish.html not found</h1>"
 
+    # ── Skills registry UI (the hybrid pipeline's agent-facing skills) ──
+    @app.get("/skills", response_class=HTMLResponse)
+    async def skills_page():
+        tpl = templates_dir / "skills.html"
+        if tpl.exists():
+            return tpl.read_text(encoding="utf-8")
+        return "<h1>skills.html not found</h1>"
+
+    @app.get("/api/skills")
+    async def skills_index():
+        from nolan import skills as sk
+        return {"skills": sk.ui_index(), "lint": [list(i) for i in sk.lint_skills()]}
+
+    @app.get("/api/skills/graph")
+    async def skills_graph():
+        from nolan import skills as sk
+        return sk.ui_graph()
+
+    @app.get("/api/skills/{skill_id}")
+    async def skill_detail(skill_id: str):
+        from nolan import skills as sk
+        d = sk.ui_detail(skill_id)
+        if d is None:
+            raise HTTPException(status_code=404, detail=f"no skill '{skill_id}'")
+        return d
+
     @app.post("/api/publish")
     async def api_publish(body: dict = Body(...)):
         from nolan.config import load_config

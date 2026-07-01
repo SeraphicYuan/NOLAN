@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOLAN Skills</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg-primary:#0f172a; --bg-secondary:#1e293b; --bg-tertiary:#334155;
+  --text-primary:#f1f5f9; --text-secondary:#94a3b8; --text-muted:#64748b;
+  --accent:#0ea5e9; --accent-hover:#38bdf8; --success:#22c55e; --warning:#f59e0b;
+  --danger:#ef4444; --purple:#a78bfa; --border:#26324a;
+}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg-primary); color:var(--text-primary); min-height:100vh; font-size:14px;
+  line-height:1.55; padding:32px 24px 64px; }
+.container { max-width:1280px; margin:0 auto; }
+.header { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px;}
+.header h1 { font-size:26px; font-weight:680; letter-spacing:-0.02em; }
+.subtitle { color:var(--text-secondary); font-size:13px; }
+.tabs { display:flex; gap:4px; margin:18px 0 22px; border-bottom:1px solid var(--border); }
+.tab { padding:8px 14px; cursor:pointer; color:var(--text-secondary); font-weight:560; font-size:13px;
+  border-bottom:2px solid transparent; margin-bottom:-1px; }
+.tab.active { color:var(--text-primary); border-bottom-color:var(--accent); }
+.mono { font-family:'JetBrains Mono','SF Mono',ui-monospace,monospace; }
+.muted { color:var(--text-muted); }
+/* list */
+.domain { margin-bottom:22px; }
+.domain h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted);
+  margin-bottom:8px; font-weight:680; }
+.skill-row { display:flex; align-items:center; gap:12px; padding:11px 14px; background:var(--bg-secondary);
+  border:1px solid var(--border); border-radius:10px; margin-bottom:7px; cursor:pointer; transition:.12s; }
+.skill-row:hover { border-color:var(--accent); background:#1c2942; }
+.skill-row .sid { font-size:13px; font-weight:600; min-width:230px; }
+.skill-row .sp { color:var(--text-secondary); font-size:12.5px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.badge { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;}
+.k-contract{background:rgba(239,68,68,.16); color:#fca5a5;}
+.k-craft{background:rgba(14,165,233,.16); color:#7dd3fc;}
+.k-grammar{background:rgba(167,139,250,.16); color:#c4b5fd;}
+.k-prompt{background:rgba(245,158,11,.16); color:#fcd34d;}
+.k-methodology{background:rgba(34,197,94,.16); color:#86efac;}
+.st-deprecated{background:rgba(100,116,139,.2); color:#94a3b8;}
+.st-draft{background:rgba(245,158,11,.16); color:#fcd34d;}
+.fb-open{background:rgba(239,68,68,.18); color:#fca5a5;}
+.chip { display:inline-block; font-size:11.5px; padding:3px 9px; border-radius:7px; background:var(--bg-tertiary);
+  color:var(--text-secondary); margin:2px 4px 2px 0; cursor:pointer; border:1px solid transparent; }
+.chip:hover { border-color:var(--accent); color:var(--text-primary); }
+.chip.dim { cursor:default; opacity:.8; }
+/* detail drawer */
+.scrim { position:fixed; inset:0; background:rgba(2,6,23,.6); opacity:0; pointer-events:none; transition:.18s; z-index:40;}
+.scrim.on { opacity:1; pointer-events:auto; }
+.drawer { position:fixed; top:0; right:0; height:100vh; width:min(720px,94vw); background:var(--bg-primary);
+  border-left:1px solid var(--border); transform:translateX(100%); transition:.2s; z-index:50; overflow-y:auto;
+  padding:26px 28px 60px; }
+.drawer.on { transform:translateX(0); }
+.drawer .close { position:absolute; top:18px; right:22px; cursor:pointer; color:var(--text-muted); font-size:22px; }
+.drawer h3 { font-size:19px; font-weight:680; letter-spacing:-.01em; }
+.dmeta { display:flex; gap:8px; align-items:center; margin:8px 0 4px; flex-wrap:wrap; }
+.section { margin-top:20px; }
+.section h4 { font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted); margin-bottom:8px; font-weight:700;}
+.stats { display:flex; gap:18px; }
+.stat { background:var(--bg-secondary); border:1px solid var(--border); border-radius:9px; padding:10px 16px; }
+.stat .n { font-size:21px; font-weight:700; } .stat .l { font-size:11px; color:var(--text-muted); }
+.fbitem { background:var(--bg-secondary); border:1px solid var(--border); border-left:3px solid var(--warning);
+  border-radius:7px; padding:8px 11px; margin-bottom:6px; font-size:12.5px; }
+.fbitem .meta { color:var(--text-muted); font-size:11px; margin-top:3px; }
+.body { margin-top:10px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px;
+  padding:18px 20px; font-size:13.5px; }
+.body h1,.body h2,.body h3 { margin:16px 0 8px; line-height:1.3; letter-spacing:-.01em; }
+.body h1{font-size:18px;} .body h2{font-size:16px;} .body h3{font-size:14px; color:var(--accent-hover);}
+.body p { margin:8px 0; color:var(--text-secondary); } .body strong{color:var(--text-primary);}
+.body ul,.body ol { margin:8px 0 8px 22px; color:var(--text-secondary); } .body li{margin:3px 0;}
+.body code { background:var(--bg-tertiary); padding:1px 5px; border-radius:4px; font-size:12px; font-family:'JetBrains Mono',monospace; color:#7dd3fc;}
+.body pre { background:#0b1220; border:1px solid var(--border); border-radius:8px; padding:12px; overflow-x:auto; margin:10px 0;}
+.body pre code{background:none; color:var(--text-secondary); padding:0;}
+.body a { color:var(--accent-hover); text-decoration:none; } .body a:hover{text-decoration:underline;}
+.body hr{border:none; border-top:1px solid var(--border); margin:14px 0;}
+.body table{border-collapse:collapse; margin:10px 0; font-size:12.5px;} .body th,.body td{border:1px solid var(--border); padding:5px 9px; text-align:left;} .body th{background:var(--bg-tertiary);}
+/* graph */
+#graph { width:100%; background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; }
+.gnode rect { rx:7; stroke:var(--border); cursor:pointer; }
+.gnode text { font-size:11px; fill:var(--text-primary); pointer-events:none; font-family:'JetBrains Mono',monospace;}
+.gnode.dim { opacity:.25; } .gedge.dim { opacity:.06; }
+.gcol-label { font-size:11px; fill:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
+/* health */
+.qtable { width:100%; border-collapse:collapse; font-size:13px; }
+.qtable th,.qtable td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); }
+.qtable th { color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+.qtable tr[data-id]{cursor:pointer;} .qtable tr[data-id]:hover{background:var(--bg-secondary);}
+.lintok{color:var(--success);} .linterr{color:var(--danger);} .lintwarn{color:var(--warning);}
+.empty{color:var(--text-muted); padding:24px; text-align:center;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div><h1>Skills</h1><div class="subtitle" id="subtitle">loading…</div></div>
+    <div class="subtitle" id="lintline"></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-view="list">Registry</div>
+    <div class="tab" data-view="graph">Lineage</div>
+    <div class="tab" data-view="health">Health</div>
+  </div>
+  <div id="view-list"></div>
+  <div id="view-graph" style="display:none"></div>
+  <div id="view-health" style="display:none"></div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer"><span class="close" id="dclose">&times;</span><div id="dbody"></div></div>
+
+<script src="/static/nav.js" data-active="skills"></script>
+<script>
+var STATE = { skills: [], byId: {}, lint: [] };
+
+function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function kindBadge(k){ return '<span class="badge k-'+k+'">'+k+'</span>'; }
+
+// compact markdown -> html (headings, bold, italic, code, fences, lists, links, hr, tables)
+function md(src){
+  var lines = (src||"").split("\n"), out=[], i=0;
+  function inl(t){
+    t = esc(t);
+    t = t.replace(/`([^`]+)`/g,'<code>$1</code>');
+    t = t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    t = t.replace(/(^|[^*])\*([^*]+)\*/g,'$1<em>$2</em>');
+    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>');
+    return t;
+  }
+  while(i<lines.length){
+    var ln = lines[i];
+    if(/^```/.test(ln)){ var buf=[]; i++; while(i<lines.length && !/^```/.test(lines[i])){ buf.push(esc(lines[i])); i++; } i++; out.push('<pre><code>'+buf.join("\n")+'</code></pre>'); continue; }
+    var h = ln.match(/^(#{1,4})\s+(.*)/); if(h){ var n=h[1].length; out.push('<h'+n+'>'+inl(h[2])+'</h'+n+'>'); i++; continue; }
+    if(/^---+\s*$/.test(ln)){ out.push('<hr>'); i++; continue; }
+    if(/^\s*[-*]\s+/.test(ln)){ out.push('<ul>'); while(i<lines.length && /^\s*[-*]\s+/.test(lines[i])){ out.push('<li>'+inl(lines[i].replace(/^\s*[-*]\s+/,''))+'</li>'); i++; } out.push('</ul>'); continue; }
+    if(/^\s*\d+\.\s+/.test(ln)){ out.push('<ol>'); while(i<lines.length && /^\s*\d+\.\s+/.test(lines[i])){ out.push('<li>'+inl(lines[i].replace(/^\s*\d+\.\s+/,''))+'</li>'); i++; } out.push('</ol>'); continue; }
+    if(/^\|.*\|/.test(ln)){ var rows=[]; while(i<lines.length && /^\|.*\|/.test(lines[i])){ rows.push(lines[i]); i++; }
+      var html='<table>'; rows.forEach(function(r,ri){ if(/^\|[\s:|-]+\|$/.test(r))return; var cells=r.split('|').slice(1,-1); var tag=ri===0?'th':'td';
+        html+='<tr>'+cells.map(function(c){return '<'+tag+'>'+inl(c.trim())+'</'+tag+'>';}).join('')+'</tr>'; }); html+='</table>'; out.push(html); continue; }
+    if(ln.trim()===""){ i++; continue; }
+    out.push('<p>'+inl(ln)+'</p>'); i++;
+  }
+  return out.join("\n");
+}
+
+function chip(id, clickable){
+  if(STATE.byId[id] || clickable) return '<span class="chip" data-go="'+esc(id)+'">'+esc(id)+'</span>';
+  return '<span class="chip dim">'+esc(id)+'</span>';
+}
+
+function renderList(){
+  var byDom = {};
+  STATE.skills.forEach(function(s){ (byDom[s.domain]=byDom[s.domain]||[]).push(s); });
+  var html="";
+  Object.keys(byDom).sort().forEach(function(dom){
+    html += '<div class="domain"><h2>'+esc(dom)+'</h2>';
+    byDom[dom].forEach(function(s){
+      var badges = kindBadge(s.kind);
+      if(s.status!=="active") badges += ' <span class="badge st-'+s.status+'">'+s.status+'</span>';
+      if(s.health.feedback_open>0) badges += ' <span class="badge fb-open">'+s.health.feedback_open+' open</span>';
+      html += '<div class="skill-row" data-go="'+esc(s.id)+'">'+
+        '<span class="sid mono">'+esc(s.id)+'</span>'+
+        '<span class="sp">'+esc(s.purpose||"")+'</span>'+ badges + '</div>';
+    });
+    html += '</div>';
+  });
+  document.getElementById("view-list").innerHTML = html || '<div class="empty">no skills</div>';
+}
+
+function renderDetail(id){
+  fetch("/api/skills/"+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
+    var lg = d.lineage, h = d.health;
+    function row(label, arr, clickable){ if(!arr || !arr.length) return "";
+      return '<div style="margin-bottom:6px"><span class="muted" style="font-size:11px">'+label+'</span><br>'+arr.map(function(x){return chip(typeof x==="string"?x:JSON.stringify(x), clickable);}).join("")+'</div>'; }
+    var handoffs = (lg.handoffs||[]).map(function(ho){ var p=[ho.process,ho.stage,ho.gate?("gate "+ho.gate):null].filter(Boolean).join(" · "); return '<span class="chip dim">'+esc(p)+'</span>'; }).join("");
+    var fb = d.feedback.length ? d.feedback.map(function(f){
+      var when = f.at ? new Date(f.at*1000).toLocaleString() : "";
+      var ctx = f.ctx ? (" · "+esc(JSON.stringify(f.ctx))) : "";
+      return '<div class="fbitem">'+esc(f.note||"")+'<div class="meta">v'+esc(String(f.version))+' · '+esc(when)+ctx+'</div></div>';
+    }).join("") : '<div class="muted" style="font-size:12.5px">no corrections recorded</div>';
+    var html =
+      '<h3 class="mono">'+esc(d.id)+'</h3>'+
+      '<div class="dmeta">'+kindBadge(d.kind)+
+        (d.status!=="active"?' <span class="badge st-'+d.status+'">'+d.status+'</span>':'')+
+        ' <span class="muted">v'+esc(String(d.version))+'</span> <span class="muted mono" style="font-size:11px">'+esc(d.path)+'</span></div>'+
+      '<p style="color:var(--text-secondary); margin:6px 0 4px">'+esc(d.purpose||"")+'</p>'+
+      '<div class="section"><h4>Health</h4><div class="stats">'+
+        '<div class="stat"><div class="n">'+h.invocations+'</div><div class="l">invocations</div></div>'+
+        '<div class="stat"><div class="n">'+h.feedback_total+'</div><div class="l">corrections</div></div>'+
+        '<div class="stat"><div class="n" style="color:'+(h.feedback_open?'var(--danger)':'var(--text-primary)')+'">'+h.feedback_open+'</div><div class="l">open (this version)</div></div>'+
+      '</div></div>'+
+      '<div class="section"><h4>Lineage</h4>'+
+        row("uses →", lg.uses) + row("← used by", lg.used_by) +
+        row("overrides", lg.overrides) + row("overridden by", lg.overridden_by) +
+        (lg.loaded_by&&lg.loaded_by.length?'<div style="margin-bottom:6px"><span class="muted" style="font-size:11px">loaded by</span><br>'+lg.loaded_by.map(function(x){return '<span class="chip dim mono">'+esc(x)+'</span>';}).join("")+'</div>':'')+
+        (handoffs?'<div><span class="muted" style="font-size:11px">handoffs</span><br>'+handoffs+'</div>':'')+
+      '</div>'+
+      '<div class="section"><h4>Corrections (feedback ledger)</h4>'+fb+'</div>'+
+      '<div class="section"><h4>Document</h4><div class="body">'+md(d.body)+'</div></div>';
+    document.getElementById("dbody").innerHTML = html;
+    document.getElementById("scrim").classList.add("on");
+    document.getElementById("drawer").classList.add("on");
+  });
+}
+function closeDrawer(){ document.getElementById("scrim").classList.remove("on"); document.getElementById("drawer").classList.remove("on"); }
+
+function renderGraph(){
+  fetch("/api/skills/graph").then(function(r){return r.json();}).then(function(g){
+    var doms = []; g.nodes.forEach(function(n){ if(doms.indexOf(n.domain)<0) doms.push(n.domain); });
+    var order = ["common","explainer","flow","art","orchestrator","publish","scene-edit"];
+    doms.sort(function(a,b){ var ia=order.indexOf(a), ib=order.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+    var COLW=210, ROWH=46, padX=24, padY=46, nodeW=180, nodeH=30;
+    var pos={}, colCount={};
+    g.nodes.forEach(function(n){ n.col = doms.indexOf(n.domain); });
+    doms.forEach(function(d,ci){ var ns=g.nodes.filter(function(n){return n.domain===d;}); ns.forEach(function(n,ri){
+      pos[n.id]={ x:padX+ci*COLW, y:padY+ri*ROWH, cx:padX+ci*COLW+nodeW/2, cy:padY+ri*ROWH+nodeH/2 }; }); colCount[d]=ns.length; });
+    var maxRows = Math.max.apply(null, doms.map(function(d){return colCount[d];}));
+    var W = padX*2 + doms.length*COLW, H = padY + maxRows*ROWH + 20;
+    var kc = {contract:'#ef4444',craft:'#0ea5e9',grammar:'#a78bfa',prompt:'#f59e0b',methodology:'#22c55e'};
+    var svg = '<svg id="graph" viewBox="0 0 '+W+' '+H+'" style="min-height:'+Math.min(H,640)+'px">';
+    // column labels
+    doms.forEach(function(d,ci){ svg += '<text class="gcol-label" x="'+(padX+ci*COLW)+'" y="26">'+esc(d)+'</text>'; });
+    // edges
+    g.edges.forEach(function(e){ var a=pos[e.from], b=pos[e.to]; if(!a||!b)return;
+      var mx=(a.cx+b.cx)/2; var col = e.type==="overrides"?'#a78bfa':'#0ea5e9'; var dash=e.type==="overrides"?'4 4':'';
+      svg += '<path class="gedge" data-from="'+esc(e.from)+'" data-to="'+esc(e.to)+'" d="M'+a.cx+','+a.cy+' C'+mx+','+a.cy+' '+mx+','+b.cy+' '+b.cx+','+b.cy+'" fill="none" stroke="'+col+'" stroke-width="1.4" stroke-dasharray="'+dash+'" opacity=".5"/>'; });
+    // nodes
+    g.nodes.forEach(function(n){ var p=pos[n.id]; var fill=kc[n.kind]||'#334155';
+      var label = n.id.indexOf(".")>=0 ? n.id.split(".").slice(1).join(".") : n.id;
+      svg += '<g class="gnode" data-go="'+esc(n.id)+'" data-id="'+esc(n.id)+'">'+
+        '<rect x="'+p.x+'" y="'+p.y+'" width="'+nodeW+'" height="'+nodeH+'" rx="7" fill="'+fill+'22" stroke="'+fill+'"/>'+
+        '<text x="'+(p.x+10)+'" y="'+(p.y+19)+'">'+esc(label)+(n.status!=="active"?" *":"")+'</text></g>'; });
+    svg += '</svg>';
+    svg += '<div class="subtitle" style="margin-top:10px"><span style="color:#0ea5e9">—</span> uses &nbsp; <span style="color:#a78bfa">- -</span> overrides &nbsp; · &nbsp; node color = kind &nbsp; · &nbsp; * = deprecated</div>';
+    document.getElementById("view-graph").innerHTML = svg;
+    // hover highlight
+    document.querySelectorAll("#graph .gnode").forEach(function(el){
+      el.addEventListener("mouseenter", function(){ var id=el.getAttribute("data-id"); highlight(id); });
+      el.addEventListener("mouseleave", function(){ highlight(null); });
+    });
+  });
+}
+function highlight(id){
+  document.querySelectorAll("#graph .gnode").forEach(function(el){
+    el.classList.toggle("dim", !!id && el.getAttribute("data-id")!==id && !isConnected(id, el.getAttribute("data-id")));
+  });
+  document.querySelectorAll("#graph .gedge").forEach(function(el){
+    var on = !id || el.getAttribute("data-from")===id || el.getAttribute("data-to")===id;
+    el.classList.toggle("dim", !on);
+  });
+}
+function isConnected(id, other){ return document.querySelector('#graph .gedge[data-from="'+id+'"][data-to="'+other+'"]') || document.querySelector('#graph .gedge[data-from="'+other+'"][data-to="'+id+'"]'); }
+
+function renderHealth(){
+  var rows = STATE.skills.filter(function(s){return s.health.feedback_total>0;})
+    .sort(function(a,b){ return (b.health.feedback_open-a.health.feedback_open)||(b.health.feedback_total-a.health.feedback_total); });
+  var lintErr = STATE.lint.filter(function(i){return i[0]==="error";}), lintWarn = STATE.lint.filter(function(i){return i[0]==="warn";});
+  var html = '<div class="section"><h4>Lint</h4>';
+  if(!STATE.lint.length) html += '<span class="lintok">✓ 0 errors, 0 warnings — all bindings + staleness clean</span>';
+  else { html += '<span class="'+(lintErr.length?'linterr':'lintwarn')+'">'+lintErr.length+' error(s), '+lintWarn.length+' warning(s)</span>';
+    STATE.lint.forEach(function(i){ html += '<div class="fbitem" style="border-left-color:'+(i[0]==="error"?"var(--danger)":"var(--warning)")+'"><span class="mono">'+esc(i[1])+'</span> · '+esc(i[2])+' — '+esc(i[3])+'</div>'; }); }
+  html += '</div>';
+  html += '<div class="section"><h4>Revision queue — skills with corrections (most open first)</h4>';
+  if(!rows.length) html += '<div class="muted" style="font-size:12.5px">no corrections recorded yet — gates log them via the feedback ledger</div>';
+  else { html += '<table class="qtable"><tr><th>skill</th><th>kind</th><th>ver</th><th>invocations</th><th>corrections</th><th>open</th></tr>';
+    rows.forEach(function(s){ html += '<tr data-go="'+esc(s.id)+'"><td class="mono">'+esc(s.id)+'</td><td>'+kindBadge(s.kind)+'</td><td>v'+esc(String(s.version))+'</td><td>'+s.health.invocations+'</td><td>'+s.health.feedback_total+'</td><td>'+(s.health.feedback_open?'<span class="badge fb-open">'+s.health.feedback_open+'</span>':'0')+'</td></tr>'; });
+    html += '</table>'; }
+  html += '</div>';
+  document.getElementById("view-health").innerHTML = html;
+}
+
+function switchView(v){
+  document.querySelectorAll(".tab").forEach(function(t){ t.classList.toggle("active", t.getAttribute("data-view")===v); });
+  ["list","graph","health"].forEach(function(x){ document.getElementById("view-"+x).style.display = x===v?"block":"none"; });
+  if(v==="graph") renderGraph(); if(v==="health") renderHealth();
+}
+
+// global click: open detail from any [data-go]
+document.addEventListener("click", function(e){
+  var go = e.target.closest("[data-go]"); if(go){ renderDetail(go.getAttribute("data-go")); return; }
+});
+document.querySelectorAll(".tab").forEach(function(t){ t.addEventListener("click", function(){ switchView(t.getAttribute("data-view")); }); });
+document.getElementById("dclose").addEventListener("click", closeDrawer);
+document.getElementById("scrim").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeDrawer(); });
+
+fetch("/api/skills").then(function(r){return r.json();}).then(function(d){
+  STATE.skills = d.skills; STATE.lint = d.lint || [];
+  STATE.skills.forEach(function(s){ STATE.byId[s.id]=s; });
+  var doms = {}; STATE.skills.forEach(function(s){ doms[s.domain]=1; });
+  var errs = STATE.lint.filter(function(i){return i[0]==="error";}).length;
+  var warns = STATE.lint.filter(function(i){return i[0]==="warn";}).length;
+  document.getElementById("subtitle").textContent = STATE.skills.length+" skills · "+Object.keys(doms).length+" domains";
+  document.getElementById("lintline").innerHTML = errs||warns
+    ? '<span class="'+(errs?'linterr':'lintwarn')+'">'+errs+' err · '+warns+' warn</span>'
+    : '<span class="lintok">✓ lint clean</span>';
+  renderList();
+});
+</script>
+</body>
+</html>
