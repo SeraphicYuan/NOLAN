@@ -18,7 +18,8 @@ dependencies = [
     "httpx>=0.24",
     "pydantic>=2.0",
     "faster-whisper>=1.0",
-    "Pillow>=10.0",
+    "numpy>=2,<2.3",       # opencv-python / moviepy require <2.3 — pin so nothing upgrades it
+    "Pillow>=10.0,<12",    # moviepy requires <12
     "chromadb>=0.4",
     "sentence-transformers>=2.2",
 ]
@@ -27,6 +28,12 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
+]
+# Background removal / cutouts (nolan cutout, /images "Cut out"). Heavy ONNX
+# stack, so opt-in. Pinned <2.0.76: rembg 2.0.76 declares numpy>=2.3 / pillow>=12.1
+# which conflict with opencv/moviepy; 2.0.69 runs fine on numpy<2.3 / pillow<12.
+cutout = [
+    "rembg[cpu]>=2.0.69,<2.0.76",
 ]
 
 [project.scripts]

@@ -4996,5 +4996,50 @@ def render_flow_cmd(project, mode, no_gate):
         click.echo(f"[ok] delivered -> {res}")
 
 
+@main.command()
+@click.argument('image', type=click.Path(exists=True))
+@click.option('--model', '-m',
+              type=click.Choice(['isnet', 'birefnet', 'u2net', 'u2netp',
+                                 'isnet-anime', 'birefnet-portrait', 'silueta']),
+              default='isnet', show_default=True,
+              help='Background-removal model (isnet=fast, birefnet=best edges).')
+@click.option('--output', '-o', type=click.Path(), default=None,
+              help='Output PNG path (default: <image>.cutout.png).')
+@click.option('--alpha-matting', is_flag=True,
+              help='Refine soft / hairy edges (slower; good for birefnet + portraits).')
+@click.option('--to-library', is_flag=True,
+              help='Also add the cutout to the global picture library (tagged "cutout").')
+def cutout(image, model, output, alpha_matting, to_library):
+    """Remove an image background -> transparent RGBA PNG cutout.
+
+    IMAGE is the source photo/frame. First use of a model downloads its weights once.
+
+    Examples:
+
+        nolan cutout photo.jpg
+
+        nolan cutout portrait.jpg -m birefnet --alpha-matting
+
+        nolan cutout frame.png -o subject.png --to-library
+    """
+    from nolan.cutout import cutout_file
+
+    src = Path(image)
+    extra = ' + alpha-matting' if alpha_matting else ''
+    click.echo(f"Cutout: {src.name}  (model={model}{extra})")
+    out = cutout_file(src, output, model=model, alpha_matting=alpha_matting)
+    click.echo(f"  -> {out}")
+
+    if to_library:
+        try:
+            from nolan.imagelib import ImageLibrary
+            lib = ImageLibrary("global")
+            lib.add_file(str(out), source="cutout", tags=["cutout", model],
+                         describe=False)
+            click.echo("  added to picture library (global)")
+        except Exception as e:
+            click.echo(f"  [warn] library add failed: {e}")
+
+
 if __name__ == '__main__':
     main()
