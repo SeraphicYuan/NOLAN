@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evocative B-roll · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1160px; margin: 32px auto; padding: 0 20px; }
+    h1 { font-size: 25px; font-weight: 680; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .sub { color: var(--text-secondary); margin-bottom: 22px; font-size: 13px; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    label { display: block; font-size: 12px; color: var(--text-secondary); margin: 10px 0 4px; }
+    textarea, input[type=text] { width: 100%; box-sizing: border-box; background: var(--bg-primary);
+      border: 1px solid var(--border); color: var(--text-primary); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+    textarea { resize: vertical; min-height: 52px; }
+    .row { display: flex; gap: 14px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 220px; }
+    .ctrls { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    input[type=range] { width: 180px; vertical-align: middle; }
+    button { background: var(--accent, #4c7dff); color: #fff; border: 0; border-radius: 8px;
+      padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
+    .hint { color: var(--text-secondary); font-size: 12px; }
+    .status { display: inline-block; border-radius: 6px; padding: 3px 11px; font-weight: 700; font-size: 13px; }
+    .ok { background: #1f7a4d; color: #fff; } .no { background: #8a2f2f; color: #fff; }
+    .reason { color: #e0a0a0; font-size: 13px; margin: 8px 0 14px; }
+    .meta2 { color: var(--text-secondary); font-size: 12.5px; margin: 6px 0 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .clip { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .clip video, .clip .noposter { width: 100%; height: 176px; object-fit: cover; background: #000; display: block; }
+    .clip .m { padding: 8px 10px; font-size: 12px; }
+    .chip { display: inline-block; border-radius: 5px; padding: 1px 6px; margin: 0 5px 4px 0; font-weight: 600; color: #fff; }
+    .why { color: var(--text-secondary); margin-top: 5px; }
+    .src { color: #6ea8fe; text-decoration: none; font-size: 11px; }
+    .dropped h3 { color: #c98a8a; font-size: 13px; margin: 18px 0 6px; }
+    .dropped .clip { opacity: .55; filter: grayscale(.5); }
+    #job { margin: 16px 0; }
+  </style>
+  <script src="/static/nav.js" data-active="broll"></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Evocative B-roll <span class="hint">· stock</span></h1>
+    <div class="sub">Find <b>tonal</b> b-roll that carries a line's <b>emotion</b>, not a literal illustration — LLM metaphor
+      bridge → cheap stock-video tiers → vision scoring + period/locale gate → a "would an editor use this?" cut
+      (or <b>unmatched</b> when nothing fits). Nature/abstract is treated as timeless.</div>
+
+    <div class="card">
+      <label>Narration line</label>
+      <textarea id="line" placeholder="e.g. For ten years he wandered, a stranger to his own home, aching for a shore he might never reach."></textarea>
+      <div class="row">
+        <div><label>Story period <span class="hint">(optional — enables the anachronism gate)</span></label>
+          <input id="period" type="text" placeholder="e.g. ancient classical antiquity — no modern tech/vehicles/cities"></div>
+        <div><label>Story locale <span class="hint">(optional — enables the wrong-culture gate)</span></label>
+          <input id="locale" type="text" placeholder="e.g. Ancient Greece / the Mediterranean / Western classical"></div>
+      </div>
+      <div class="row">
+        <div><label>Mood steer <span class="hint">(optional — override the inferred emotion)</span></label>
+          <input id="mood" type="text" placeholder="e.g. ominous, foreboding"></div>
+      </div>
+      <div class="ctrls">
+        <span><label style="display:inline">Literalness</label>
+          <input id="lit" type="range" min="0" max="1" step="0.05" value="0.25">
+          <span id="litv" class="hint">0.25 (abstract)</span></span>
+        <button id="go">Search stock</button>
+        <span id="err" style="color:#e0a0a0;font-size:13px"></span>
+      </div>
+    </div>
+
+    <div id="job"></div>
+    <div id="results"></div>
+  </div>
+
+  <script src="/static/jobs.js"></script>
+  <script>
+    var lit = document.getElementById("lit"), litv = document.getElementById("litv");
+    lit.oninput = function () {
+      var v = parseFloat(lit.value);
+      litv.textContent = v.toFixed(2) + (v <= 0.35 ? " (abstract)" : v <= 0.7 ? " (semi-literal)" : " (literal)");
+    };
+
+    function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+    function chip(label, v) {
+      if (v == null) return '<span class="chip" style="background:#444">' + label + ' ?</span>';
+      var col = v >= 8 ? "#1f7a4d" : v >= 5 ? "#7a6a1f" : "#7a2f2f";
+      return '<span class="chip" style="background:' + col + '">' + label + ' ' + v + '/10</span>';
+    }
+
+    function clipCard(c, dropped) {
+      var poster = c.poster ? ' poster="' + esc(c.poster) + '"' : "";
+      var player = /\.mp4($|\?)/.test(c.url)
+        ? '<video' + poster + ' preload="none" controls muted loop><source src="' + esc(c.url) + '"></video>'
+        : (c.poster ? '<img class="noposter" src="' + esc(c.poster) + '">' : '<div class="noposter"></div>');
+      var place = c.universal ? '<span class="chip" style="background:#2f5f7a">universal</span>'
+                             : chip("per", c.period_ok) + chip("loc", c.locale_ok);
+      var flag = c.flags ? '<span class="chip" style="background:#7a2f2f">' + esc(c.flags) + '</span>' : "";
+      var rej = dropped && c.reject ? '<span class="chip" style="background:#5a3a1a">' + esc(c.reject) + '</span>' : "";
+      var dur = c.duration ? c.duration + "s" : "?";
+      return '<div class="clip">' + player + '<div class="m">' +
+        chip("mood", c.mood) + chip("evoc", c.nonliteral) + place + flag + rej +
+        '<div class="why">' + esc(c.why) + '</div>' +
+        '<div style="color:#888;margin-top:4px">' + esc(c.source) + ' · ' + dur + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"</div>' +
+        '<a class="src" href="' + esc(c.url) + '" target="_blank">open clip ↗</a></div></div>';
+    }
+
+    function renderResult(res) {
+      var r = document.getElementById("results");
+      if (!res) { r.innerHTML = '<div class="reason">No result.</div>'; return; }
+      var st = res.status === "MATCHED"
+        ? '<span class="status ok">MATCHED · ' + res.picks.length + '</span>'
+        : '<span class="status no">UNMATCHED</span>';
+      var html = '<div style="margin-top:8px">' + st + '</div>';
+      html += '<div class="meta2">emotion: <b>' + esc(res.emotion) + '</b> · metaphors: ' +
+        esc((res.metaphors || []).join("  ·  ")) + ' · pool ' + res.counts.pool + ', kept ' + res.counts.kept + ', gated ' + res.counts.filtered + '</div>';
+      if (res.status === "UNMATCHED")
+        html += '<div class="reason">∅ left unmatched — ' + esc(res.reason) + ' (better a gap than a wrong shot)</div>';
+      if (res.picks && res.picks.length)
+        html += '<div class="grid">' + res.picks.map(function (c) { return clipCard(c, false); }).join("") + '</div>';
+      if (res.considered && res.considered.length)
+        html += '<div class="dropped"><h3>✗ considered but rejected (wrong period/locale, or below the use-bar)</h3>' +
+          '<div class="grid">' + res.considered.map(function (c) { return clipCard(c, true); }).join("") + '</div></div>';
+      r.innerHTML = html;
+    }
+
+    document.getElementById("go").addEventListener("click", function () {
+      var line = document.getElementById("line").value.trim();
+      var err = document.getElementById("err");
+      err.textContent = "";
+      if (!line) { err.textContent = "Enter a narration line."; return; }
+      document.getElementById("results").innerHTML = "";
+      var btn = this; btn.disabled = true;
+      var body = {
+        line: line,
+        period: document.getElementById("period").value.trim(),
+        locale: document.getElementById("locale").value.trim(),
+        mood: document.getElementById("mood").value.trim(),
+        literalness: parseFloat(lit.value)
+      };
+      NolanJobs.start("/api/broll/evoke", body, {
+        into: document.getElementById("job"),
+        onDone: function (job) {
+          btn.disabled = false;
+          if (job.status === "done" && job.result) renderResult(job.result);
+          else err.textContent = "Failed: " + (job.error || job.status);
+        }
+      }).catch(function (e) { btn.disabled = false; err.textContent = "Error: " + e.message; });
+    });
+  </script>
+</body>
+</html>

@@ -385,6 +385,27 @@ def create_hub_app(
         )
         return {"job_id": job.id, "type": "design"}
 
+    # ==================== Evocative (tonal) b-roll search ====================
+
+    @app.get("/broll", response_class=HTMLResponse)
+    async def broll_page():
+        return (templates_dir / "broll.html").read_text(encoding="utf-8")
+
+    @app.post("/api/broll/evoke")
+    async def api_broll_evoke(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        line = (body.get("line") or "").strip()
+        if not line:
+            raise HTTPException(status_code=400, detail="line is required")
+        job = job_manager.start(
+            "evoke-broll", operations.evoke_broll, config=load_config(),
+            line=line, period=(body.get("period") or "").strip(),
+            locale=(body.get("locale") or "").strip(),
+            literalness=body.get("literalness", 0.25), mood=(body.get("mood") or None),
+        )
+        return {"job_id": job.id, "type": "evoke-broll"}
+
     # ==================== Vector index management ====================
 
     @app.post("/api/sync-vectors")

@@ -249,6 +249,18 @@ async def embed_video(job, *, db_path: Path, video_id: int):
     return result
 
 
+async def evoke_broll(job, *, config, line: str, period: str = "", locale: str = "",
+                      literalness: float = 0.25, mood: Optional[str] = None):
+    """Evocative (tonal) b-roll search over stock video — returns matched picks | unmatched."""
+    from nolan.evoke_broll import EvokeBrollSearch
+
+    searcher = EvokeBrollSearch(config=config, progress=lambda f, m: job.set_progress(min(0.99, f), m))
+    result = await searcher.search(line, period=period, locale=locale,
+                                   literalness=float(literalness), mood=(mood or None))
+    job.set_progress(1.0, f"{result['status']} — {len(result['picks'])} clip(s)")
+    return result
+
+
 def _scene_plan_path(project_name: str) -> Path:
     return Path("projects") / project_name / "scene_plan.json"
 
