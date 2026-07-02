@@ -206,6 +206,22 @@ def _coerce(raw: dict, ctx: ScriptContext, profile: str) -> Optional[TempoPlan]:
     return TempoPlan(slug=ctx.slug, profile=profile, beats=beats, source="llm")
 
 
+def motion_for_tempo(bt: BeatTempo, kind: str = "image") -> tuple:
+    """Map a beat's tempo → (motion_id, duration_seconds) for the still-motion renderer.
+    Energy sets both the treatment and how long it breathes — the renderable tempo lever.
+    A moving CLIP plays 'as-is' unless the beat is driving (then a subtle push)."""
+    e = bt.energy
+    if kind in ("stock", "library"):                       # already-moving footage
+        return ("subtle-push" if e >= 0.75 else "as-is", round(5.5 - 3.0 * e, 1))
+    if e < 0.35:                                            # breathe — long, still or slow pull-out
+        return ("hold" if e < 0.22 else "ken-burns-out", 5.5)
+    if e < 0.6:
+        return ("ken-burns-in", 4.5)
+    if e < 0.78:
+        return ("ken-burns-in", 3.5)
+    return ("ken-burns-in", 2.6)                           # drive — fast push
+
+
 def apply_to_plan(plan, tempo: TempoPlan) -> dict:
     """Write a TempoPlan's per-beat rhythm onto an orchestrator ScenePlan.
 
