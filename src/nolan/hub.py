@@ -190,6 +190,19 @@ def create_hub_app(
     async def jobs_cancel(job_id: str):
         return {"cancelled": job_manager.cancel(job_id)}
 
+    @app.get("/library/api/tmux-sessions")
+    async def list_tmux_sessions():
+        """List tmux sessions available as agent-dispatch targets.
+
+        Top-level (not gated behind the library DB) so the agent selector on
+        /script-projects and /script-styles works regardless of library state.
+        Path kept under /library/api for frontend back-compat."""
+        from nolan.webui import operations
+        import asyncio as _asyncio
+        sessions = await _asyncio.get_event_loop().run_in_executor(
+            None, operations.list_tmux_sessions)
+        return {"sessions": sessions}
+
     @app.on_event("startup")
     async def _auto_reconcile_vectors():
         """On boot, embed any indexed-but-unsearchable videos (incremental → cheap if
@@ -1432,15 +1445,6 @@ def create_hub_app(
             )
             return {"job_id": job.id, "type": "materialize-clip"}
 
-        @app.get("/library/api/tmux-sessions")
-        async def list_tmux_sessions():
-            """List tmux sessions available as analysis-agent targets."""
-            from nolan.webui import operations
-            import asyncio as _asyncio
-            sessions = await _asyncio.get_event_loop().run_in_executor(
-                None, operations.list_tmux_sessions)
-            return {"sessions": sessions}
-
         @app.post("/library/api/clips/{clip_id}/analyze-effect")
         async def clips_analyze_effect(clip_id: str, body: dict = Body(default={})):
             """Dispatch a clip to a tmux Claude agent for effect analysis."""
@@ -1808,13 +1812,13 @@ def create_hub_app(
 
     @app.post("/api/script-projects/{slug}/run")
     async def script_projects_run(slug: str, body: dict = Body(default={})):
-        """Dispatch a script pipeline phase: prep | draft | v3 (auto) | auto (legacy v2)."""
+        """Dispatch a script pipeline phase: prep | draft | v3 (auto). v3 is default."""
         from nolan.webui import operations
         if not script_project_store.exists(slug):
             raise HTTPException(status_code=404, detail="project not found")
         phase = (body.get("phase") or "v3").strip()   # v3 is the default pipeline
-        if phase not in ("prep", "draft", "auto", "v3"):
-            raise HTTPException(status_code=400, detail="phase must be prep/draft/auto/v3")
+        if phase not in ("prep", "draft", "v3"):
+            raise HTTPException(status_code=400, detail="phase must be prep/draft/v3")
         session = (body.get("session") or "nolan2").strip() or "nolan2"
         job = job_manager.start(
             "script-phase", operations.run_script_phase,

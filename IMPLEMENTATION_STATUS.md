@@ -28,6 +28,19 @@ still agent-native (a task brief dispatched to a `nolan2` tmux Claude agent) but
   `drafts/`, `factcheck.md`, `citations.md`, `report.md`; the legacy one-shot writer (`/write`) is
   retained as an A/B baseline; drafts are promoted to `script.md` (not clobbered). Modes: auto/semi;
   per-project narrative style is now editable in the detail panel.
+- **Cemented (2026-07-02):** now that the A/B favored v3, the intermediate **v2 auto path was
+  retired** (`auto_task` + its `_angles_block`/`_draft_block` helpers; the `phase="auto"` route
+  option; the UI's dead `auto` label). v3 (auto via `phase=v3` + semi via `prep`→`draft`) is the
+  **sole grounded pipeline**; the **v1 one-shot** (`write_script_task`, `/write`, the "⧗ Baseline"
+  button) is kept as the only A/B comparator. `/run` accepts `prep|draft|v3` (v3 default). WebUI:
+  `runControls`/`btnV3` (was `v2Controls`/`btnAuto`). Test: `scripts/test_scriptwriter.py` covers
+  the v3 briefs (spine-infer, beat-map, resonance scoring, honored supplied angle) + v2 retirement.
+- **Agent selector fix:** `/script-projects` now has an **Agent** dropdown (populated from
+  `/library/api/tmux-sessions`, mirroring `/script-styles`); `runPhase`/`writeScript` send the
+  chosen `session` in the POST body. Previously no selector existed and the frontend sent no
+  `session`, so every run silently defaulted to `nolan2`. The `/library/api/tmux-sessions`
+  endpoint was also **moved out of the `if db_path` library gate to top-level** (it only runs
+  `tmux ls`), so the agent selector works regardless of library state; path kept for back-compat.
 - **Validated by A/B across 3 subjects × 3 guide types** (Great Books = biographical spine,
   art-stories = mystery spine, stickman = data-grounded-argument spine): v3 inferred all three
   spine types correctly and was **≥ the baseline everywhere** — a large win where the angle is blank

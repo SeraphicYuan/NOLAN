@@ -53,7 +53,7 @@
 
 <div class="wrap">
     <h1>📝 Script Projects</h1>
-    <div class="sub">Turn a <b>subject + a narrative style + context sources</b> into a grounded, Director-ready <code>script.md</code>. The writer fetches sources, grounds the facts, drafts in your chosen voice, and fact-checks before finalizing.</div>
+    <div class="sub">Turn a <b>subject + a narrative style + context sources</b> into a grounded, Director-ready <code>script.md</code>. The <b>v3</b> writer grounds the facts, finds a <b>resonant angle</b> of the type your style guide implies, beat-maps it onto the guide's retention structure, then drafts and fact-checks. Run it in one pass (auto) or gate the angle yourself (semi).</div>
 
     <div class="grid">
         <!-- LEFT: project library + create -->
@@ -68,6 +68,12 @@
                     <input id="newMinutes" type="number" value="8" min="1" max="30" style="width:80px;" title="Target minutes">
                 </div>
                 <input id="newPivot" type="text" placeholder="Hidden-detail pivot (optional)" style="width:100%; margin-top:8px;">
+                <div class="row" style="margin-top:8px;">
+                    <select id="newMode" style="flex:1;" title="Semi = you pick the angle at a gate; Auto = Claude runs end-to-end">
+                        <option value="semi">Semi-auto (you pick the angle)</option>
+                        <option value="auto">Auto (Claude picks the angle)</option>
+                    </select>
+                </div>
                 <button class="primary" style="margin-top:10px;" onclick="createProject()">+ Create project</button>
             </div>
             <div class="section-title">Projects</div>
@@ -80,11 +86,25 @@
                 <div class="row" style="justify-content:space-between;">
                     <div><span class="name" id="dName" style="font-size:17px;"></span></div>
                     <div class="row">
-                        <button class="primary" onclick="writeScript()">✍ Write script</button>
+                        <select id="dStyle" onchange="setStyle()" title="Narrative style (voice guide)" style="max-width:190px;"></select>
+                        <select id="dMode" onchange="setMode()" title="Semi = pick angle at a gate; Auto = end-to-end">
+                            <option value="semi">Semi-auto</option>
+                            <option value="auto">Auto</option>
+                        </select>
                         <button class="danger" onclick="deleteProject()">Delete</button>
                     </div>
                 </div>
                 <div class="meta" id="dMeta" style="color:var(--text-secondary); font-size:12px; margin-top:6px;"></div>
+                <div class="row" id="runControls" style="margin-top:10px; gap:6px; flex-wrap:wrap;">
+                    <label style="font-size:12px;color:var(--text-secondary);align-self:center;">Agent:</label>
+                    <select id="agentSelect" title="Which tmux Claude agent to dispatch the run to"></select>
+                    <button onclick="loadSessions('agentSelect')" title="Refresh agent sessions">⟳</button>
+                    <button class="primary" id="btnPrep" onclick="runPhase('prep')">① Prepare (research + angles)</button>
+                    <button id="btnDraft" onclick="runPhase('draft')">② Write with angle</button>
+                    <button class="primary" id="btnV3" onclick="runPhase('v3')" title="v3: infer spine-type from the guide → resonant angle → beat-map → draft">▶ Run (v3 auto)</button>
+                    <span style="flex:1"></span>
+                    <button id="btnBaseline" onclick="writeScript()" title="legacy one-shot writer — kept for A/B only">⧗ Baseline</button>
+                </div>
                 <div class="jobstatus" id="jobStatus"></div>
             </div>
 
@@ -107,6 +127,32 @@
                     <input id="srcFile" type="file" accept=".txt,.md,.srt,.vtt" style="flex:1;">
                     <button onclick="uploadFile()">+ Upload</button>
                 </div>
+                <label class="fld">Or a YouTube link (subtitles fetched now — no video)</label>
+                <div class="row">
+                    <input id="srcYt" type="text" placeholder="https://youtube.com/watch?v=…" style="flex:1;">
+                    <button onclick="addYoutube()">+ YouTube</button>
+                </div>
+                <label class="fld">Or an ingested Library video (uses its transcript)</label>
+                <div class="row">
+                    <select id="srcLib" style="flex:1;"><option value="">Loading videos…</option></select>
+                    <button onclick="addLibraryVideo()">+ Library</button>
+                </div>
+                <label class="fld">Or a MinerU book (.md / .txt — long OK, uncapped)</label>
+                <div class="row">
+                    <input id="srcBook" type="file" accept=".md,.txt" style="flex:1;">
+                    <button onclick="uploadBook()">+ Book</button>
+                </div>
+            </div>
+
+            <div class="panel" id="anglePanel">
+                <div class="section-title" style="margin-top:0;">Thesis / angle</div>
+                <div class="empty" id="angleHint">Run ① Prepare to generate candidate angles, then pick one (semi-auto).</div>
+                <label class="fld">Chosen angle (paste the thesis from angles.md)</label>
+                <textarea id="chosenAngle" placeholder="e.g. Venezuela's collapse wasn't caused by oil — it was caused by what oil let them ignore."></textarea>
+                <div class="row" style="margin-top:6px;">
+                    <button onclick="viewArtifact('angles')">View angles.md</button>
+                    <button class="primary" onclick="setAngle()">Set chosen angle</button>
+                </div>
             </div>
 
             <div class="panel">
@@ -115,8 +161,11 @@
                     <div class="row">
                         <button onclick="viewArtifact('brief')">Brief</button>
                         <button onclick="viewArtifact('facts')">Facts</button>
+                        <button onclick="viewArtifact('angles')">Angles</button>
+                        <button onclick="viewArtifact('beatmap')">Beat-map</button>
                         <button onclick="viewArtifact('factcheck')">Fact-check</button>
                         <button onclick="viewArtifact('citations')">Citations</button>
+                        <button onclick="viewArtifact('report')">Report</button>
                     </div>
                 </div>
                 <pre id="artView" class="empty">Select an artifact (or click a source above) to view it here.</pre>
@@ -124,7 +173,15 @@
 
             <div class="panel">
                 <div class="row" style="justify-content:space-between;">
-                    <div class="section-title" style="margin-top:0;">script.md</div>
+                    <div class="section-title" style="margin-top:0;">Drafts (A/B) — promote a winner to script.md</div>
+                    <button onclick="loadDrafts()">Refresh</button>
+                </div>
+                <div id="draftList"><div class="empty">No drafts yet.</div></div>
+            </div>
+
+            <div class="panel">
+                <div class="row" style="justify-content:space-between;">
+                    <div class="section-title" style="margin-top:0;">script.md (promoted)</div>
                     <button onclick="loadScript()">Refresh</button>
                 </div>
                 <pre id="scriptView" class="empty">Not written yet.</pre>
@@ -154,8 +211,24 @@ async function loadStyles() {
     const data = await api('/api/script-styles');
     const sel = $('newStyle');
     const withGuide = (data.styles || []).filter(s => s.has_guide);
+    window._styles = withGuide;
     if (!withGuide.length) { sel.innerHTML = '<option value="">No style guides yet — build one in Script Styles</option>'; return; }
     sel.innerHTML = withGuide.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+}
+function fillStyleSelect(currentId) {
+    const st = window._styles || [];
+    let opts = st.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`);
+    if (currentId && !st.some(s => s.id === currentId)) opts.unshift(`<option value="${esc(currentId)}">${esc(currentId)}</option>`);
+    $('dStyle').innerHTML = opts.join('') || `<option value="${esc(currentId || '')}">${esc(currentId || '(none)')}</option>`;
+    $('dStyle').value = currentId || '';
+}
+async function setStyle() {
+    const style_id = $('dStyle').value;
+    try {
+        await api('/api/script-projects/' + current + '/style', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ style_id }) });
+        $('jobStatus').textContent = 'Narrative style set → ' + style_id;
+        select(current);
+    } catch (e) { alert('Style: ' + e.message); }
 }
 
 async function loadProjects() {
@@ -175,7 +248,8 @@ async function createProject() {
     const style_id = $('newStyle').value;
     if (!subject || !style_id) { alert('Subject and a style guide are required.'); return; }
     const body = { subject, style_id, name: subject, angle: $('newAngle').value.trim(),
-                   pivot: $('newPivot').value.trim(), target_minutes: parseFloat($('newMinutes').value) || 8 };
+                   pivot: $('newPivot').value.trim(), target_minutes: parseFloat($('newMinutes').value) || 8,
+                   mode: $('newMode').value };
     const data = await api('/api/script-projects', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
     $('newSubject').value = ''; $('newAngle').value = ''; $('newPivot').value = '';
     await loadProjects();
@@ -188,11 +262,89 @@ async function select(slug) {
     $('detail').classList.remove('hidden');
     $('detailEmpty').classList.add('hidden');
     $('dName').textContent = p.name;
-    $('dMeta').textContent = `subject: ${p.subject} · style: ${p.style_id} · ~${p.target_minutes} min` +
-        (p.angle ? ` · angle: ${p.angle}` : '') + (p.pivot ? ` · pivot: ${p.pivot}` : '');
+    $('dMeta').textContent = `subject: ${p.subject} · style: ${p.style_id} · ~${p.target_minutes} min · mode: ${p.mode || 'semi'}` +
+        (p.pivot ? ` · pivot: ${p.pivot}` : '');
+    fillStyleSelect(p.style_id);
+    $('dMode').value = p.mode || 'semi';
+    applyMode(p.mode || 'semi');
+    $('chosenAngle').value = p.chosen_angle || '';
+    if (p.chosen_angle) { $('angleHint').textContent = 'Angle set ✓ — click ② Write with angle.'; $('angleHint').classList.remove('empty'); }
+    else if (p.has_angles) { $('angleHint').textContent = 'Angles ready — view them, paste your pick below, Set, then ② Write.'; $('angleHint').classList.remove('empty'); }
+    else { $('angleHint').textContent = 'Run ① Prepare to generate candidate angles, then pick one (semi-auto).'; $('angleHint').classList.add('empty'); }
     renderSources(p.sources || []);
+    renderDrafts(p.drafts || []);
+    loadLibraryVideos();
     loadScript();
     loadProjects();
+}
+
+function applyMode(mode) {
+    $('btnPrep').style.display = mode === 'semi' ? '' : 'none';
+    $('btnDraft').style.display = mode === 'semi' ? '' : 'none';
+    $('btnV3').style.display = mode === 'auto' ? '' : 'none';
+    $('anglePanel').style.display = mode === 'semi' ? '' : 'none';
+}
+async function setMode() {
+    const mode = $('dMode').value;
+    await api('/api/script-projects/' + current + '/mode', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ mode }) });
+    applyMode(mode);
+}
+async function setAngle() {
+    const angle = $('chosenAngle').value.trim();
+    if (!angle) { alert('Paste an angle first (from angles.md).'); return; }
+    await api('/api/script-projects/' + current + '/choose-angle', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ angle }) });
+    $('angleHint').textContent = 'Angle set ✓ — now click ② Write with angle.'; $('angleHint').classList.remove('empty');
+}
+async function addYoutube() {
+    const url = $('srcYt').value.trim(); if (!url) return;
+    $('jobStatus').textContent = 'Fetching YouTube subtitles…';
+    try {
+        await api('/api/script-projects/' + current + '/add-source', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ kind: 'youtube', url }) });
+        $('srcYt').value = ''; $('jobStatus').textContent = ''; select(current);
+    } catch (e) { $('jobStatus').textContent = 'YouTube: ' + e.message; }
+}
+async function loadLibraryVideos() {
+    const sel = $('srcLib');
+    try {
+        const d = await api('/library/api/videos');
+        const vids = (d.videos || []).filter(v => (v.segment_count || 0) > 0);
+        sel.innerHTML = '<option value="">— pick an ingested video —</option>' +
+            vids.map(v => `<option value="${esc(v.path)}">${esc(v.name)} (${esc(v.segment_count || 0)} segs)</option>`).join('');
+    } catch (e) { sel.innerHTML = '<option value="">(library unavailable)</option>'; }
+}
+async function addLibraryVideo() {
+    const video_path = $('srcLib').value; if (!video_path) return;
+    $('jobStatus').textContent = 'Pulling transcript…';
+    try {
+        await api('/api/script-projects/' + current + '/add-source', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ kind: 'library-video', video_path }) });
+        $('jobStatus').textContent = ''; select(current);
+    } catch (e) { $('jobStatus').textContent = 'Library: ' + e.message; }
+}
+async function uploadBook() {
+    const f = $('srcBook').files[0]; if (!f) return;
+    const fd = new FormData(); fd.append('file', f); fd.append('kind', 'mineru-book');
+    $('jobStatus').textContent = 'Uploading book…';
+    await fetch('/api/script-projects/' + current + '/upload-file', { method: 'POST', body: fd }).then(r => { if (!r.ok) throw new Error('upload failed'); });
+    $('srcBook').value = ''; $('jobStatus').textContent = ''; select(current);
+}
+function renderDrafts(drafts) {
+    const el = $('draftList');
+    if (!drafts.length) { el.innerHTML = '<div class="empty">No drafts yet.</div>'; return; }
+    el.innerHTML = drafts.map(dr => `<div class="src">
+        <span style="cursor:pointer;" title="view" onclick="viewDraft('${esc(dr.name)}')">${esc(dr.name)} · ${esc(dr.words)} words</span>
+        <button class="primary" style="padding:2px 10px;" onclick="promoteDraft('${esc(dr.name)}')">Promote →</button></div>`).join('');
+}
+async function loadDrafts() {
+    try { const d = await api('/api/script-projects/' + current + '/drafts'); renderDrafts(d.drafts || []); }
+    catch (e) { renderDrafts([]); }
+}
+async function viewDraft(name) {
+    const r = await api('/api/script-projects/' + current + '/draft/' + encodeURIComponent(name));
+    $('scriptView').textContent = r.content; $('scriptView').classList.remove('empty');
+}
+async function promoteDraft(name) {
+    await api('/api/script-projects/' + current + '/promote-draft/' + encodeURIComponent(name), { method: 'POST' });
+    $('jobStatus').textContent = name + ' promoted to script.md ✓'; loadScript();
 }
 
 function renderSources(sources) {
@@ -248,31 +400,57 @@ async function viewSource(sid) {
 }
 
 let pollTimer = null;
-async function writeScript() {
+function pollJob(jobId, doneText) {
     if (pollTimer) clearInterval(pollTimer);
-    $('jobStatus').textContent = 'Dispatching writer…';
-    let r;
-    try {
-        r = await api('/api/script-projects/' + current + '/write', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
-    } catch (e) { $('jobStatus').textContent = 'Error: ' + e.message; return; }
-    const jobId = r.job_id;
     pollTimer = setInterval(async () => {
         try {
             const j = await api('/api/jobs/' + jobId);
             const pct = Math.round((j.progress || 0) * 100);
-            $('jobStatus').textContent = `Writer [${j.status}] ${pct}% — ${j.message || ''}`;
+            $('jobStatus').textContent = `[${j.status}] ${pct}% — ${j.message || ''}`;
             if (j.status === 'done' || j.status === 'error' || j.status === 'cancelled') {
                 clearInterval(pollTimer); pollTimer = null;
                 if (j.status === 'done') {
                     const res = j.result || {};
-                    $('jobStatus').textContent = res.dispatched
-                        ? 'Dispatched to the writer agent. It is fetching sources, grounding facts, drafting & fact-checking — refresh script.md / artifacts in a bit.'
-                        : ('Dispatch failed: ' + (res.dispatch_error || 'unknown'));
+                    $('jobStatus').textContent = (res.dispatched === false)
+                        ? ('Dispatch failed: ' + (res.dispatch_error || 'unknown'))
+                        : doneText;
                 }
                 select(current);
             }
         } catch (e) { clearInterval(pollTimer); pollTimer = null; $('jobStatus').textContent = 'Job poll error: ' + e.message; }
     }, 1000);
+}
+async function loadSessions(selId) {
+    try {
+        const r = await fetch('/library/api/tmux-sessions');
+        const data = await r.json();
+        const sessions = data.sessions || [];
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        sel.innerHTML = (sessions.length ? sessions : ['nolan2'])
+            .map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+        if (sessions.includes('nolan2')) sel.value = 'nolan2';
+    } catch(e){}
+}
+function pickedSession() { return ($('agentSelect') || {}).value || 'nolan2'; }
+
+async function writeScript() {
+    const session = pickedSession();
+    $('jobStatus').textContent = 'Dispatching baseline writer → ' + session + '…';
+    try {
+        const r = await api('/api/script-projects/' + current + '/write', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ session }) });
+        pollJob(r.job_id, 'Baseline (one-shot) writer dispatched to ' + session + ' — refresh script.md / artifacts shortly.');
+    } catch (e) { $('jobStatus').textContent = 'Error: ' + e.message; }
+}
+async function runPhase(phase) {
+    const label = { prep: 'Preparing (research + angles)', draft: 'Drafting the chosen angle', v3: 'Running v3 pipeline (infer spine → angle → beat-map → draft)' }[phase];
+    if (phase === 'draft' && !$('chosenAngle').value.trim()) { if (!confirm('No angle set — the agent will use the top-ranked one. Continue?')) return; }
+    const session = pickedSession();
+    $('jobStatus').textContent = 'Dispatching: ' + label + ' → ' + session + '…';
+    try {
+        const r = await api('/api/script-projects/' + current + '/run', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phase, session }) });
+        pollJob(r.job_id, label + ' dispatched to ' + session + ' — refresh artifacts / drafts in a bit.');
+    } catch (e) { $('jobStatus').textContent = 'Error: ' + e.message; }
 }
 
 async function loadScript() {
@@ -293,6 +471,7 @@ async function deleteProject() {
 
 loadStyles();
 loadProjects();
+loadSessions('agentSelect');
 </script>
 </body>
 </html>

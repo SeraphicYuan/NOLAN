@@ -2087,14 +2087,15 @@ async def write_script(job, *, store_root, slug: str, session: str = "nolan2"):
 
 
 async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2",
-                           phase: str = "auto"):
-    """Dispatch a v2 script-pipeline phase to a tmux Claude agent.
+                           phase: str = "v3"):
+    """Dispatch a v3 script-pipeline phase to a tmux Claude agent.
 
-    phase ∈ {prep, draft, auto}: prep = fetch+ground+propose angles (semi-auto gate 1),
-    draft = draft chosen angle+fact-check (gate 2), auto = the whole pipeline in one pass
-    (Claude picks the angle). Coexists with :func:`write_script` (the one-shot baseline).
+    phase ∈ {prep, draft, v3}: prep = fetch+ground+propose angles (semi-auto gate 1),
+    draft = beat-map chosen angle+draft+fact-check (gate 2), v3 = the whole pipeline in
+    one pass (Claude picks a resonant, right-type angle). Coexists with
+    :func:`write_script` (the one-shot v1 baseline, kept for A/B).
     """
-    from nolan.scriptwriter import ScriptProjectStore, prep_task, draft_task, auto_task, v3_task
+    from nolan.scriptwriter import ScriptProjectStore, prep_task, draft_task, v3_task
     from pathlib import Path as _Path
 
     store = ScriptProjectStore(_Path(store_root))
@@ -2103,11 +2104,10 @@ async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2
 
     builders = {
         "prep": (prep_task, "prep_task.md", "research + propose angles"),
-        "draft": (draft_task, "draft_task.md", "draft chosen angle + fact-check"),
-        "auto": (auto_task, "auto_task.md", "full auto script"),
+        "draft": (draft_task, "draft_task.md", "beat-map chosen angle + draft + fact-check"),
         "v3": (v3_task, "v3_task.md", "v3 (resonant angle, guide-true retention)"),
     }
-    builder, fname, label = builders.get(phase, builders["auto"])
+    builder, fname, label = builders.get(phase, builders["v3"])
 
     job.set_progress(0.2, f"Writing {phase} task brief…")
     task_path = store.scriptgen_dir(slug) / fname

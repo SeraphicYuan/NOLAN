@@ -5,8 +5,10 @@ Verifies:
      script.md with the Total Duration marker) plus the scriptgen/ workspace.
   2. add_source handles pasted text (saved to raw/, status=fetched) and bare URLs
      (status=pending); the sources manifest reflects them.
-  3. write_script_task embeds the style-guide path, sources, output contract,
-     and the grounded-but-graceful policy.
+  3. write_script_task (v1 baseline) embeds the style-guide path, sources, output
+     contract, and the grounded-but-graceful policy.
+  3c. v3 briefs (prep/draft/v3) carry the spine-infer + beat-map + resonance +
+      report steps, and honor a supplied angle. v2 (auto_task) is retired.
   4. list/get/remove_source/delete behave.
 
 Usage:
@@ -19,7 +21,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.nolan.scriptwriter import ScriptProjectStore, write_script_task
+import src.nolan.scriptwriter as sw
+from src.nolan.scriptwriter import (
+    ScriptProjectStore, write_script_task, prep_task, draft_task, v3_task,
+)
 
 ROOT = "projects/_swtest_root"
 
@@ -70,6 +75,42 @@ def main():
     assert store.read_source_text(slug, p["id"]).strip().startswith("Holbein"), "source text unreadable"
     assert store.read_source_text(slug, u["id"]) is None, "pending url has no text yet"
     print("artifact/source reads OK")
+
+    # 3c: v3 is the cemented flow — prep/draft/v3 briefs carry the v3 steps.
+    prep = prep_task(slug, store)
+    for needle in ["INFER the **spine type**", "angles.md", "STOP",
+                   "script_styles/art-stories/style_guide.md"]:
+        assert needle in prep, f"prep_task missing: {needle!r}"
+    assert "beatmap.md" not in prep, "prep must stop before beat-mapping"
+
+    draft = draft_task(slug, store)
+    for needle in ["beatmap.md", "drafts/draft-", "factcheck.md", "report.md",
+                   "CONSTITUTION"]:
+        assert needle in draft, f"draft_task missing: {needle!r}"
+
+    v3 = v3_task(slug, store)
+    for needle in ["INFER the **spine type**", "beatmap.md", "report.md",
+                   "script_styles/art-stories/style_guide.md",
+                   f"projects/{slug}/script.md"]:
+        assert needle in v3, f"v3_task missing: {needle!r}"
+    # supplied angle is honored (project was created with an angle) — not re-derived.
+    assert 'SUPPLIED this angle: "death as the great leveler"' in v3, \
+        "v3 should honor the supplied angle"
+    assert "Resonance" not in v3, "honored-angle path shouldn't re-score angles"
+
+    # no-angle project → v3 proposes+scores angles on resonance/evidence/style-fit.
+    slug2 = store.create("No Angle Test", subject="A subject with no supplied angle",
+                         style_id="art-stories", target_minutes=6)
+    v3b = v3_task(slug2, store)
+    for needle in ["INFER the **spine type**", "Resonance", "Style-fit", "**[CHOSEN]**"]:
+        assert needle in v3b, f"v3_task (no-angle) missing: {needle!r}"
+    assert "SUPPLIED this angle" not in v3b, "no-angle path shouldn't claim a supplied angle"
+    store.delete(slug2)
+    print("v3 briefs OK — spine-infer + beat-map + report; honors angle, else scores angles")
+
+    # 3d: regression — v2 (auto_task) is retired, not importable.
+    assert not hasattr(sw, "auto_task"), "auto_task (v2) should be retired"
+    print("v2 retirement OK — auto_task no longer exported")
 
     # 4: list / remove / delete.
     assert any(x["slug"] == slug for x in store.list())

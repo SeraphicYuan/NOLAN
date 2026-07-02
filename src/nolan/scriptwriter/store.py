@@ -92,6 +92,18 @@ class ScriptProjectStore:
     def citations_path(self, slug: str) -> Path:
         return self.scriptgen_dir(slug) / "citations.md"
 
+    def angles_path(self, slug: str) -> Path:
+        return self.scriptgen_dir(slug) / "angles.md"
+
+    def beatmap_path(self, slug: str) -> Path:
+        return self.scriptgen_dir(slug) / "beatmap.md"
+
+    def report_path(self, slug: str) -> Path:
+        return self.scriptgen_dir(slug) / "report.md"
+
+    def drafts_dir(self, slug: str) -> Path:
+        return self.scriptgen_dir(slug) / "drafts"
+
     def script_path(self, slug: str) -> Path:
         return self.project_dir(slug) / "script.md"
 
@@ -116,7 +128,7 @@ class ScriptProjectStore:
     # --- crud ------------------------------------------------------------------
     def create(self, name: str, *, subject: str, style_id: str,
                angle: str = "", pivot: str = "", target_minutes: float = 8.0,
-               description: str = "") -> str:
+               description: str = "", mode: str = "semi") -> str:
         """Scaffold a Director-ready project + scriptgen workspace; return slug."""
         base = slugify(name or subject, "script")
         slug, n = base, 2
@@ -152,6 +164,8 @@ class ScriptProjectStore:
             "pivot": pivot,
             "target_minutes": float(target_minutes),
             "description": description or subject,
+            "mode": mode if mode in ("auto", "semi") else "semi",
+            "chosen_angle": "",          # set at the semi-auto gate (or by auto)
             "created_at": datetime.now().isoformat(),
             "status": "new",
             "sources": [],
@@ -172,7 +186,12 @@ class ScriptProjectStore:
         m["source_count"] = len(m.get("sources", []))
         m["has_facts"] = self.facts_path(slug).exists()
         m["has_factcheck"] = self.factcheck_path(slug).exists()
+        m["has_angles"] = self.angles_path(slug).exists()
+        m["has_report"] = self.report_path(slug).exists()
         m["has_script"] = self._script_written(slug)
+        m.setdefault("mode", "semi")
+        m.setdefault("chosen_angle", "")
+        m["drafts"] = self.list_drafts(slug)
         return m
 
     def list(self) -> List[Dict[str, Any]]:
@@ -270,7 +289,67 @@ class ScriptProjectStore:
             "factcheck": self.factcheck_path(slug),
             "citations": self.citations_path(slug),
             "sources": self.sources_manifest_path(slug),
+            "angles": self.angles_path(slug),
+            "beatmap": self.beatmap_path(slug),
+            "report": self.report_path(slug),
         }.get(name)
+
+    # --- mode / chosen angle / drafts (v2 gated flow) --------------------------
+    def set_mode(self, slug: str, mode: str) -> Dict[str, Any]:
+        meta = self._load_meta(slug)
+        meta["mode"] = mode if mode in ("auto", "semi") else "semi"
+        self._save_meta(meta)
+        return meta
+
+    def set_chosen_angle(self, slug: str, angle: str) -> Dict[str, Any]:
+        meta = self._load_meta(slug)
+        meta["chosen_angle"] = (angle or "").strip()
+        self._save_meta(meta)
+        self._write_brief(meta)  # brief reflects the picked angle
+        return meta
+
+    def set_style(self, slug: str, style_id: str) -> Dict[str, Any]:
+        """Change the narrative style (voice guide) on an existing project."""
+        meta = self._load_meta(slug)
+        meta["style_id"] = (style_id or "").strip() or meta.get("style_id")
+        self._save_meta(meta)
+        self._write_brief(meta)  # brief shows the style
+        return meta
+
+    def list_drafts(self, slug: str) -> List[Dict[str, Any]]:
+        d = self.drafts_dir(slug)
+        if not d.exists():
+            return []
+        out = []
+        for p in sorted(d.glob("*.md")):
+            try:
+                words = len(p.read_text(encoding="utf-8").split())
+            except OSError:
+                words = 0
+            out.append({"name": p.name, "words": words,
+                        "path": str(Path("scriptgen") / "drafts" / p.name)})
+        return out
+
+    def draft_path(self, slug: str, name: str) -> Optional[Path]:
+        # constrain to the drafts dir (no traversal)
+        safe = Path(name).name
+        p = self.drafts_dir(slug) / safe
+        return p if p.exists() else None
+
+    def read_draft(self, slug: str, name: str) -> Optional[str]:
+        p = self.draft_path(slug, name)
+        return p.read_text(encoding="utf-8") if p else None
+
+    def promote_draft(self, slug: str, name: str) -> bool:
+        """Copy a draft to the Director-ready script.md (the winner of an A/B)."""
+        p = self.draft_path(slug, name)
+        if not p:
+            return False
+        self.script_path(slug).write_text(p.read_text(encoding="utf-8"), encoding="utf-8")
+        meta = self._load_meta(slug)
+        meta["promoted_draft"] = Path(name).name
+        self._save_meta(meta)
+        return True
 
     def read_artifact(self, slug: str, name: str) -> Optional[str]:
         """Read a named scriptgen artifact (brief/facts/factcheck/citations/sources)."""
@@ -310,8 +389,13 @@ class ScriptProjectStore:
             lines.append("_No sources yet._")
         for s in meta.get("sources", []):
             loc = s.get("text_path") or s.get("url") or ""
+            wc = s.get("word_count")
+            size = ""
+            if isinstance(wc, int):
+                # flag large sources so grounding chunk-reads them (don't dump whole)
+                size = f" · {wc:,} words" + ("  ⚠ LARGE — chunk-read" if wc > 8000 else "")
             lines.append(
                 f"- **[{s['id']}]** ({s['kind']}, {s['status']}) "
-                f"{s.get('title') or ''} — {loc}".rstrip())
+                f"{s.get('title') or ''} — {loc}{size}".rstrip())
         self.sources_manifest_path(slug).parent.mkdir(parents=True, exist_ok=True)
         self.sources_manifest_path(slug).write_text("\n".join(lines) + "\n", encoding="utf-8")
