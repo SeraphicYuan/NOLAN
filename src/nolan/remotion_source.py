@@ -51,6 +51,7 @@ def render(
     image: Optional[str] = None,
     cards: Optional[List[Dict[str, Any]]] = None,
     background: Optional[str] = None,
+    foreground: Optional[str] = None,
     codec: str = "h264",
     timeout: float = 180.0,
 ) -> Path:
@@ -68,6 +69,8 @@ def render(
         job["image"] = image
     if background:
         job["background"] = background
+    if foreground:
+        job["foreground"] = foreground
     if cards:
         job["cards"] = cards
 

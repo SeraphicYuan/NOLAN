@@ -40,7 +40,8 @@ if (isFlow) {
   };
   if (cfg.video) stage(cfg.video, 'videoSrc');
   if (cfg.image) stage(cfg.image, 'mapSrc');
-  if (cfg.background) stage(cfg.background, 'background'); // photo-montage table image
+  if (cfg.background) stage(cfg.background, 'background'); // photo-montage table image / still-motion base
+  if (cfg.foreground) stage(cfg.foreground, 'foreground'); // still-motion parallax subject cutout
   if (cfg.cards) {
     props.cards = cfg.cards.map((c) => {
       const base = path.basename(c.src);

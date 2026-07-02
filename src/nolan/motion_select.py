@@ -34,7 +34,7 @@ MOTION_VOCAB = {
     "ken-burns-pan": {"label": "Ken Burns — pan", "kinds": ["image", "stock", "library"],
                       "means": "drift along a leading line / reveal in reading order", "available": True},
     "parallax":      {"label": "2.5D parallax", "kinds": ["image"],
-                      "means": "fake depth / immersion — 'you are there'", "available": False},
+                      "means": "fake depth / immersion — 'you are there'", "available": True},
     "atmospheric":   {"label": "atmospheric overlay", "kinds": ["image", "stock", "library"],
                       "means": "drifting particles/fog/grain — mood; makes a flat frame feel shot", "available": False},
     "rack-focus":    {"label": "rack focus", "kinds": ["image"],

@@ -9,6 +9,7 @@ import {RouteMap} from './RouteMap';
 import {PremiumCard} from './PremiumCard';
 import {PhotoMontage} from './PhotoMontage';
 import {PhotoGrid} from './PhotoGrid';
+import {StillMotion} from './StillMotion';
 import {Showcase} from './Showcase';
 // Folded-in flow bundle (was _lab_chapter): the Chapter Series + its blocks.
 import {Chapter} from './Chapter';
@@ -89,6 +90,15 @@ export const Root: React.FC = () => {
           focusIndex: undefined as any, focusAt: undefined as any, focusMove: 0.7,
           focusHold: 1.6, focusScale: 0.8, margin: 0.05, frame: 'polaroid' as const,
           background: '#241016', vignette: 0.5, theme: undefined as any, durationInFrames: 360,
+        }}
+        calculateMetadata={dur}
+      />
+      <Composition
+        id="StillMotion" component={StillMotion} durationInFrames={120} {...common}
+        defaultProps={{
+          background: '' as string, foreground: undefined as any,
+          treatment: 'ken-burns-in' as const, target: {x: 0.5, y: 0.5},
+          direction: 'right' as const, durationInFrames: 120,
         }}
         calculateMetadata={dur}
       />
