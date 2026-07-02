@@ -118,11 +118,12 @@
 
       // Stage 3 — Match assets
       var matchBody =
-        '<button class="btn" onclick="runJob(\'/api/match\',{project:current,kind:\'broll-video\'},\'job3\')">Match b-roll (video + archival)</button> ' +
+        '<label class="inline" title="Name specific, era-correct real assets (paintings/artifacts/places) from the model\'s knowledge, using the project script as context — instead of generic queries."><input type="checkbox" id="knowledgeMatch"> 🧠 knowledge</label> ' +
+        '<button class="btn" onclick="runJob(\'/api/match\',{project:current,kind:\'broll-video\',knowledge:document.getElementById(\'knowledgeMatch\').checked},\'job3\')">Match b-roll (video + archival)</button> ' +
         '<button class="btn secondary" onclick="runJob(\'/api/match\',{project:current,kind:\'clips\'},\'job3\')">Match library clips</button> ' +
         '<button class="btn secondary" onclick="runJob(\'/api/generate\',{project:current},\'job3\')">Generate (ComfyUI)</button> ' +
         'Stock images: <select id="src" class="inline"><option>wikimedia</option><option>loc</option><option>ddgs</option><option>all</option></select> ' +
-        '<button class="btn ghost" onclick="runJob(\'/api/match\',{project:current,kind:\'broll\',source:document.getElementById(\'src\').value},\'job3\')">images only</button>' +
+        '<button class="btn ghost" onclick="runJob(\'/api/match\',{project:current,kind:\'broll\',source:document.getElementById(\'src\').value,knowledge:document.getElementById(\'knowledgeMatch\').checked},\'job3\')">images only</button>' +
         '<div class="job-widget" id="job3" style="display:none;"></div>';
       html += stage(3, "Review &amp; match assets",
         badge(st.matched > 0, st.matched + "/" + st.scenes + " matched"),

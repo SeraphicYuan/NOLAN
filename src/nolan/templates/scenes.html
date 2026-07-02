@@ -272,6 +272,12 @@
         .status-badge.missing { background: #9d0208; color: #ffccd5; }
         .status-badge.rendered { background: #006d77; color: #83c5be; }
 
+        /* tempo (editorial arc) row */
+        .scene-tempo { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; }
+        .tempo-bar { position: relative; width: 90px; height: 6px; background: #23232b; border-radius: 3px; overflow: hidden; }
+        .tempo-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; }
+        .tempo-chip { font-size: 0.66rem; padding: 0.12rem 0.4rem; border-radius: 5px; background: #2a2a34; color: #c7c7d0; letter-spacing: 0.02em; }
+
         /* Expandable details */
         .scene-expand {
             margin-top: 0.5rem;
@@ -678,7 +684,10 @@
             </select>
             <button id="refreshBtn" class="refresh-btn" onclick="refreshView()" title="Reload scenes + re-rendered clips (after an agent finishes)">↻ Refresh</button>
             <span id="flowControls" style="display:none;">
-                <button class="refresh-btn" onclick="flowRefine()" title="Authoring mode (Gate A): dispatch an agent to refine the per-beat plan (blocks from the palette + asset wishlist)">✨ Refine plan</button>
+                <label style="font-size:.72rem;color:var(--text-secondary)">agent:</label>
+                <select id="flowAgent" title="Which NOLAN tmux agent runs the refine" style="font-size:.72rem;padding:2px 5px;background:var(--bg-primary,#111);color:var(--text-primary,#eee);border:1px solid #333;border-radius:5px"></select>
+                <button class="refresh-btn" onclick="loadFlowAgents()" title="Refresh agent sessions">⟳</button>
+                <button class="refresh-btn" onclick="flowRefine()" title="Authoring mode (Gate A): dispatch the chosen agent to refine the per-beat plan (blocks from the palette + asset wishlist)">✨ Refine plan</button>
                 <button class="refresh-btn" onclick="flowAccept()" title="Promote the refined draft to the project's plan">✓ Accept draft</button>
             </span>
             <div class="stats" id="stats">Loading...</div>
@@ -854,6 +863,15 @@
                             <span class="scene-type ${scene.visual_type || 'unknown'}">${scene.visual_type || 'unknown'}</span>
                             <span class="status-badge ${status}">${status}</span>
                         </div>
+
+                        ${scene.energy != null ? `
+                        <div class="scene-tempo" title="Editorial arc (tempo_enrich): energy + the transition/motion it chose">
+                            <span class="tempo-bar"><span class="tempo-fill" style="width:${Math.round(scene.energy*100)}%;background:${scene.energy>=0.7?'#f2c14e':scene.energy>=0.5?'#7aa2f7':'#6b7280'}"></span></span>
+                            <span class="tempo-chip">⚡ ${scene.energy.toFixed(2)}</span>
+                            ${scene.transition ? `<span class="tempo-chip">✂ ${esc(scene.transition)}</span>` : ''}
+                            ${scene.motion_speed ? `<span class="tempo-chip">▶ ${esc(scene.motion_speed)}</span>` : ''}
+                        </div>
+                        ` : ''}
 
                         ${scene.narration_excerpt ? `
                             <div class="scene-narration">"${esc(scene.narration_excerpt)}"</div>
@@ -1349,19 +1367,33 @@
             renderScenes();
         }
 
-        // Authoring mode (Gate A): refine the per-beat plan via a fleet agent, then accept it.
+        // Populate the flow-refine agent selector from the live tmux sessions (script_projects pattern).
+        async function loadFlowAgents() {
+            const sel = document.getElementById('flowAgent'); if (!sel) return;
+            try {
+                const sessions = ((await (await fetch('/library/api/tmux-sessions')).json()).sessions) || [];
+                const list = sessions.length ? sessions : ['nolan4'];
+                const cur = sel.value;
+                sel.innerHTML = list.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+                if (list.includes(cur)) sel.value = cur;
+                else if (list.includes('nolan4')) sel.value = 'nolan4';
+            } catch (e) { sel.innerHTML = '<option value="nolan4">nolan4</option>'; }
+        }
+
+        // Authoring mode (Gate A): refine the per-beat plan via the chosen NOLAN agent, then accept it.
         async function flowRefine() {
             if (!currentProject) return;
             const stats = document.getElementById('stats');
-            stats.textContent = '✨ Dispatching agent to refine the plan…';
+            const agent = (document.getElementById('flowAgent') || {}).value || 'nolan4';
+            stats.textContent = `✨ Dispatching ${agent} to refine the plan…`;
             try {
                 const r = await fetch('/scenes/api/flow/refine', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ project: currentProject })
+                    body: JSON.stringify({ project: currentProject, agent })
                 });
                 const d = await r.json();
                 stats.textContent = r.ok
-                    ? `Refining via ${d.dispatched} — watch the fleet panel, then ✓ Accept draft.`
+                    ? `Refining via ${d.dispatched || agent} — watch the fleet panel, then ✓ Accept draft.`
                     : ('Refine error: ' + (d.detail || r.status));
             } catch (e) { stats.textContent = 'Refine error: ' + e.message; }
         }
@@ -1734,7 +1766,11 @@
                 editableFields = scenesData.editable_fields || [];
                 // authoring-mode controls (Refine / Accept) only for flow projects
                 const fc = document.getElementById('flowControls');
-                if (fc) fc.style.display = (currentPipeline === 'flow') ? '' : 'none';
+                if (fc) {
+                    const isFlow = (currentPipeline === 'flow');
+                    fc.style.display = isFlow ? '' : 'none';
+                    if (isFlow) loadFlowAgents();
+                }
                 selectedScenes.clear();
                 editedScenes.clear();
 
