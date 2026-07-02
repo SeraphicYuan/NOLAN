@@ -38,6 +38,7 @@ MATCH_THRESHOLD = 0.6
 PIPELINE_STEPS = [
     "match_and_adapt_style",
     "script_to_scenes",
+    "tempo_enrich",
     "select_clips",
     "slide_designer",
     "render",
@@ -306,6 +307,8 @@ class Director:
             return await self._run_match_and_adapt_style_step(ctx, state)
         if next_name == "script_to_scenes":
             return await self._run_script_to_scenes_step(ctx, state)
+        if next_name == "tempo_enrich":
+            return await self._run_tempo_enrich_step(ctx, state)
         if next_name == "select_clips":
             return await self._run_select_clips_step(ctx, state)
         if next_name == "slide_designer":
@@ -329,6 +332,8 @@ class Director:
             return "match_and_adapt_style"
         if not (self.project_path / "scene_plan.json").exists():
             return "script_to_scenes"
+        if "tempo_enrich" not in completed:
+            return "tempo_enrich"
         if "select_clips" not in completed:
             return "select_clips"
         if self._info_scenes_missing_layout() > 0:
@@ -1451,6 +1456,101 @@ class Director:
             f"Report at `.orchestrator/modules/clip_selector/last_report.md`.",
             f"`scene_plan.json` updated in place; snapshot in "
             f"`.orchestrator/history/step_{record.step_num:02d}_select_clips/`.",
+        ]
+        return _write_checkpoint(self.project_path, record.step_num, summary_lines)
+
+    async def _run_tempo_enrich_step(
+        self,
+        ctx: ProjectContext,
+        state: state_mod.DirectorState,
+    ) -> Path:
+        """Editorial Arc post-pass: annotate the scene plan with rhythm (energy/transition/
+        motion_speed) using WHOLE-SCRIPT context. Deterministic, no agent — runs after
+        script_to_scenes so downstream motion/asset choices can read the arc. See
+        nolan.tempo_plan / nolan.script_context."""
+        record = state_mod.append_step(state, "tempo_enrich")
+        state.status = "running"
+        state_mod.save_state(self.project_path, state)
+
+        scene_plan_path = self.project_path / "scene_plan.json"
+        if not scene_plan_path.exists():
+            err = "scene_plan.json missing — script_to_scenes must run first."
+            state_mod.finish_step(record, status="error", notes=err)
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(err)
+
+        def _enrich() -> dict:
+            from nolan.config import load_config
+            from nolan.llm import create_text_llm
+            from nolan.scenes import ScenePlan
+            from nolan.script_context import ScriptContext
+            from nolan.tempo_plan import design_tempo, apply_to_plan, profile_for
+
+            sctx = ScriptContext.load(self.project_path)
+            plan = ScenePlan.load(str(scene_plan_path))
+            profile = profile_for(sctx)
+            if not sctx.beats:
+                return {"beats": 0, "profile": profile, "source": "skipped",
+                        "applied": {"sections": 0, "scenes": 0, "matched": 0}, "tempo": None}
+            try:
+                llm = create_text_llm(load_config())
+            except Exception:
+                llm = None
+            tempo = design_tempo(sctx, llm=llm)
+            applied = apply_to_plan(plan, tempo)
+            plan.save(str(scene_plan_path))
+            return {"beats": len(sctx.beats), "profile": profile, "source": tempo.source,
+                    "applied": applied, "tempo": tempo.to_dict()}
+
+        try:
+            result = await asyncio.to_thread(_enrich)
+        except Exception as exc:
+            state_mod.finish_step(record, status="error", notes=str(exc))
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(f"tempo_enrich failed: {exc}") from exc
+
+        applied = result["applied"]
+        # human-readable report of the arc
+        lines = [f"# Tempo Enrich Report", "",
+                 f"Profile **{result['profile']}** · arc source **{result['source']}** · "
+                 f"annotated **{applied['matched']}/{applied['scenes']}** scenes across "
+                 f"{applied['sections']} sections.", ""]
+        if result["tempo"]:
+            lines.append("| beat | energy | pace | transition | motion |")
+            lines.append("|---|---|---|---|---|")
+            for b in result["tempo"]["beats"]:
+                lines.append(f"| {b['title'][:40]} | {b['energy']:.2f} | {b['pace_dir']} | "
+                             f"{b['transition']} | {b['motion_speed']} |")
+        else:
+            lines.append("_No script beats found (no script.md headings) — tempo skipped._")
+        report_body = "\n".join(lines) + "\n"
+        report_path = (_orchestrator_dir(self.project_path) / "modules" / "tempo_enrich"
+                       / "last_report.md")
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(report_body, encoding="utf-8")
+
+        _snapshot_history(
+            self.project_path, record.step_num, "tempo_enrich",
+            {"report.md": report_body,
+             "scene_plan.json": scene_plan_path.read_text(encoding="utf-8"),
+             "reasoning.md": (f"# Step {record.step_num}: tempo_enrich\n\n"
+                              "Whole-script Editorial Arc pass — wrote per-scene energy / "
+                              "transition / motion_speed (the levers script_to_scenes leaves "
+                              f"flat).\n\n{report_body}")},
+        )
+
+        state_mod.finish_step(record, status="completed")
+        state.status = "awaiting_review"
+        state.current_step = "checkpoint_after_tempo_enrich"
+        state_mod.save_state(self.project_path, state)
+
+        summary_lines = [
+            f"tempo_enrich annotated {applied['matched']}/{applied['scenes']} scenes with the "
+            f"editorial arc ({result['profile']} profile, {result['source']}).",
+            "`scene_plan.json` gained per-scene `energy` / `transition` / `motion_speed`.",
+            f"Report at `.orchestrator/modules/tempo_enrich/last_report.md`.",
         ]
         return _write_checkpoint(self.project_path, record.step_num, summary_lines)
 
