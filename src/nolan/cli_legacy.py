@@ -5041,5 +5041,119 @@ def cutout(image, model, output, alpha_matting, to_library):
             click.echo(f"  [warn] library add failed: {e}")
 
 
+@main.command('broll')
+@click.argument('line')
+@click.option('--operator', '-op', type=click.Choice(['tonal', 'conceptual', 'ironic', 'trait', 'relational']),
+              default='tonal', help='Pairing operator.')
+@click.option('--mode', '-m', type=click.Choice(['stock', 'library', 'generate']), default='stock',
+              help='Asset source: stock / your indexed library / Krea-2 generation.')
+@click.option('--period', default='', help='Story period (enables the anachronism gate).')
+@click.option('--locale', default='', help='Story locale (enables the wrong-culture gate).')
+@click.option('--literalness', '-l', type=float, default=0.25, help='0=abstract … 1=literal.')
+@click.option('--mood', default=None, help='Mood steer (tonal).')
+@click.option('--media', multiple=True, type=click.Choice(['video', 'image']), help='Asset types (default both).')
+@click.option('--gen-style', default='Fooocus Cinematic', help='Fooocus style for generate mode.')
+@click.option('--project', '-p', default=None, help='Library-mode project scope.')
+@click.option('--output', '-o', type=click.Path(), default=None, help='Write the full result as JSON.')
+@click.option('--render', is_flag=True, help='Render the top pick(s) with their recommended motion to mp4.')
+@click.option('--out-dir', type=click.Path(), default='broll_out', help='Output dir for --render.')
+@click.pass_context
+def broll(ctx, line, operator, mode, period, locale, literalness, mood, media, gen_style, project, output, render, out_dir):
+    """Narrative→asset b-roll pairing for a narration LINE.
+
+    Finds b-roll that carries the line's meaning via a pairing OPERATOR, from stock / your
+    library / Krea-2 generation, gates on period/locale, abstains when nothing fits, and
+    recommends a motion for each pick. `--render` turns the recommended motion into mp4.
+
+    Examples:
+
+      nolan broll "a lone figure watches the sea at dusk, full of grief"
+
+      nolan broll "he maneuvered and waited for them to overextend" -op conceptual
+
+      nolan broll "they toasted profits while the people queued for food" -op relational --render
+    """
+    import asyncio
+    import json
+    config = ctx.obj['config']
+    from nolan.evoke_broll import EvokeBrollSearch
+
+    searcher = EvokeBrollSearch(config=config, progress=lambda f, m: click.echo(f"  [{f:.2f}] {m}", err=True))
+    r = asyncio.run(searcher.search(
+        line, operator=operator, mode=mode, period=period, locale=locale, literalness=literalness,
+        mood=mood, media=(list(media) or None), gen_style=gen_style, project=project))
+
+    click.echo(f"\n{r['status']}  ·  {operator}/{mode}  ·  {r.get('goal_label', 'goal')}: {r.get('goal', '')}")
+    if r['status'] == 'UNMATCHED' and r.get('reason'):
+        click.echo(f"  reason: {r['reason']}")
+
+    def _show(c):
+        mo = c.get('motion') or {}
+        loc = c.get('video_name') or c.get('source') or ''
+        click.echo(f"  - [{c.get('kind')}] fit={c.get('mood')} 2nd={c.get('nonliteral')}  "
+                   f"motion={mo.get('id')}  {loc}")
+        if c.get('why'):
+            click.echo(f"      {c['why']}")
+        click.echo(f"      {c.get('url', '')}")
+
+    if r.get('sides'):
+        click.echo(f"  synthesis: {r.get('synthesis', '')}")
+        for s in r['sides']:
+            click.echo(f"\n  SIDE '{s['label']}': {len(s['picks'])} pick(s)")
+            for c in s['picks']:
+                _show(c)
+    else:
+        for c in r['picks']:
+            _show(c)
+
+    if output:
+        Path(output).write_text(json.dumps(r, indent=2, default=str), encoding='utf-8')
+        click.echo(f"\n-> {output}")
+
+    if render:
+        _broll_render(r, Path(out_dir))
+
+
+def _broll_localize_img(src, outdir):
+    """Resolve a pick's still (served /broll-gen path or remote URL) to a local jpg for rendering."""
+    import hashlib
+    import io
+    from PIL import Image
+    from nolan.evoke_broll import GEN_DIR
+    from nolan.image_search import ImageScorer
+    if src.startswith('/broll-gen/'):
+        return GEN_DIR / src.split('/broll-gen/', 1)[1]
+    data = ImageScorer()._download_image(src)
+    if not data:
+        return None
+    out = Path(outdir) / f"src_{hashlib.md5(src.encode()).hexdigest()[:10]}.jpg"
+    Image.open(io.BytesIO(data)).convert('RGB').save(out, 'JPEG', quality=90)
+    return out
+
+
+def _broll_render(r, out_dir):
+    """Render the recommended motion for image picks (or split-screen for relational) to mp4."""
+    from nolan.still_motion import render_still, render_split
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if r.get('sides'):
+        pa = r['sides'][0]['picks'][0] if r['sides'][0]['picks'] else None
+        pb = r['sides'][1]['picks'][0] if len(r['sides']) > 1 and r['sides'][1]['picks'] else None
+        if pa and pb:
+            la, lb = _broll_localize_img(pa['url'], out_dir), _broll_localize_img(pb['url'], out_dir)
+            if la and lb:
+                o = render_split(str(la), str(lb), out_dir / 'split.mp4', 4.0,
+                                 r['sides'][0]['label'], r['sides'][1]['label'])
+                click.echo(f"  rendered split-screen -> {o}")
+        return
+    for i, c in enumerate(r['picks']):
+        if c.get('kind') == 'image' and c.get('url'):
+            li = _broll_localize_img(c['url'], out_dir)
+            if li:
+                mid = (c.get('motion') or {}).get('id', 'ken-burns-in')
+                o = render_still(str(li), mid, out_dir / f'pick{i}_{mid}.mp4', 4.0)
+                click.echo(f"  rendered {mid} -> {o}")
+
+
 if __name__ == '__main__':
     main()
