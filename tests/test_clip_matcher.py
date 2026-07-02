@@ -1,13 +1,54 @@
 """Tests for the nolan.clip_matcher module."""
 
 import pytest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, AsyncMock
 from nolan.clip_matcher import (
     ClipCandidate,
     MatchResult,
     ClipMatcher,
+    ClipMatchingConfig,
 )
 from nolan.scenes import Scene
+
+
+class TestScriptContextInjection:
+    """ClipMatcher.set_script_context enriches retrieval query + LLM selection prompt."""
+
+    def _matcher(self):
+        return ClipMatcher(MagicMock(), MagicMock(), ClipMatchingConfig())
+
+    def _scene(self):
+        return Scene(id="s1", visual_type="b-roll", narration_excerpt="the horse was brought in",
+                     visual_description="a large wooden horse", search_query="wooden horse")
+
+    def test_domain_hint_enriches_query(self):
+        m = self._matcher()
+        sc = self._scene()
+        assert "Homer" not in m.build_search_query(sc)          # no context yet
+        m.set_script_context(SimpleNamespace(subject="Homer", locale="ancient Greece",
+                                             brief=lambda max_chars=1200: "SUBJECT: Homer"))
+        q = m.build_search_query(sc)
+        assert "Homer" in q and "ancient Greece" in q           # domain appended for retrieval
+
+    def test_brief_enriches_selection_prompt(self):
+        m = self._matcher()
+        m.set_script_context(SimpleNamespace(subject="Homer", locale="",
+                                             brief=lambda max_chars=1200: "SUBJECT: Homer\nSPINE: the poem"))
+        cand = ClipCandidate(video_path="/v.mp4", timestamp_start=0.0, timestamp_end=5.0,
+                             description="d", transcript="t", similarity_score=0.8,
+                             people=[], location="")
+        prompt = m._build_selection_prompt(self._scene(), [cand], 5.0)
+        assert "WHOLE-SCRIPT CONTEXT" in prompt and "the poem" in prompt
+
+    def test_no_context_is_backward_compatible(self):
+        m = self._matcher()
+        # no set_script_context call → query + prompt unchanged (no crash, no context block)
+        assert m.domain_hint == "" and m.script_brief == ""
+        cand = ClipCandidate(video_path="/v.mp4", timestamp_start=0.0, timestamp_end=5.0,
+                             description="d", transcript="t", similarity_score=0.8,
+                             people=[], location="")
+        assert "WHOLE-SCRIPT CONTEXT" not in m._build_selection_prompt(self._scene(), [cand], 5.0)
 
 
 class TestClipCandidate:

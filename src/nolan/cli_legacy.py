@@ -2165,6 +2165,17 @@ async def _match_clips(config, scene_plan_path, candidates, min_similarity, proj
     # Initialize matcher
     matcher = ClipMatcher(vector_search, llm, match_config)
 
+    # Whole-script context: load the ScriptContext from the plan's project dir so retrieval +
+    # LLM selection are subject/era aware (bare "the horse" → the Trojan horse in this script).
+    try:
+        from nolan.script_context import ScriptContext
+        _sctx = ScriptContext.load(Path(scene_plan_path).parent)
+        if _sctx.beats:
+            matcher.set_script_context(_sctx)
+            click.echo(f"  (context: {_sctx.subject or _sctx.slug})")
+    except Exception:
+        pass
+
     # Progress callback
     def progress(current, total, message):
         click.echo(f"[{current}/{total}] {message}")

@@ -60,6 +60,21 @@ class ClipMatcher:
         self.llm = llm_client
         self.config = config
         self._selection_cache: Dict[str, Optional[MatchResult]] = {}
+        # Optional whole-script context (nolan.script_context) — set via set_script_context().
+        # domain_hint enriches the retrieval query; script_brief grounds the LLM selection.
+        self.domain_hint: str = ""
+        self.script_brief: str = ""
+
+    def set_script_context(self, ctx) -> None:
+        """Give the matcher whole-script context so a bare scene query ('the horse') retrieves
+        and selects with the subject/era in mind ('the Trojan horse, Homer, ancient Greece')."""
+        if ctx is None:
+            return
+        self.domain_hint = " ".join(x for x in (ctx.subject, ctx.locale) if x).strip()
+        try:
+            self.script_brief = ctx.brief(max_chars=1200)
+        except Exception:
+            self.script_brief = ""
 
     def build_search_query(self, scene: Scene) -> str:
         """Build enriched search query from scene fields.
@@ -75,6 +90,8 @@ class ClipMatcher:
             parts.append(scene.visual_description)
         if scene.search_query:
             parts.append(scene.search_query)
+        if self.domain_hint:                       # whole-script domain so bare queries disambiguate
+            parts.append(self.domain_hint)
 
         return " | ".join(parts) if parts else ""
 
@@ -368,9 +385,10 @@ Candidate {i + 1}:
   - Similarity: {c.similarity_score:.2f}
 """)
 
+        ctx_block = f"WHOLE-SCRIPT CONTEXT (for judging fit):\n{self.script_brief}\n\n" if self.script_brief else ""
         return f"""You are selecting the best video clip for a video essay scene.
 
-SCENE REQUIREMENTS:
+{ctx_block}SCENE REQUIREMENTS:
 - Visual Type: {scene.visual_type}
 - Narration: "{scene.narration_excerpt}"
 - Visual Description: {scene.visual_description}
