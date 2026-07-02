@@ -122,7 +122,35 @@ _OP = {
         "axis2": "10=pointed but not heavy-handed, 0=on-the-nose or unrelated",
         "accept": "it must clearly UNDERCUT the line (show the opposite / the cost / the hollow reality), land as deliberate irony, and not merely illustrate the words",
     },
+    "trait": {
+        "noun": "trait",
+        "judge": "Judge the FRAME as embodying the TRAIT through an exemplary activity — does the action read as a person of that quality?",
+        "match": "how well it embodies the trait via a telling activity",
+        "match_lib": "embodies the trait via a telling activity",
+        "axis2": "10=fresh/telling activity, 0=generic or on-the-nose",
+        "accept": "it must show an activity that EMBODIES the trait (a person of that quality doing the thing), read clearly, and not be a tired cliché",
+    },
 }
+
+
+_TRAIT_BRIDGE_SYS = (
+    "You are a video-essay editor who conveys a PERSON'S QUALITY through an EMBODYING ACTIVITY — the "
+    "archetypal thing someone of that trait does (discipline→pre-dawn training, patience→fly-fishing / "
+    "watchmaking, precision→surgery / calligraphy, obsession→repeated practice). Reply STRICT JSON.")
+
+
+def _trait_bridge_prompt(line: str, period: str, locale: str, literalness: float) -> str:
+    ctx = ""
+    if period or locale:
+        ctx = (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
+               "Keep the activities period/locale-plausible.\n")
+    return (f'LINE: "{line}"\n{ctx}'
+            "Identify the character TRAIT/quality in this line. Choose 1-3 archetypal ACTIVITIES a person of "
+            "that trait would do (that visibly embody it). Give concrete visual SEARCH PHRASES of those activities.\n"
+            'Return JSON: {"trait": "the quality (2-4 words)", '
+            '"activities": [{"activity": "e.g. pre-dawn training", "why": "why it embodies the trait"}], '
+            '"visual_metaphors": ["5-7 SHORT search phrases of the embodying activity in action"], '
+            '"avoid_literal": ["the literal person/label we should NOT just show"]}')
 
 
 _IRONIC_BRIDGE_SYS = (
@@ -316,6 +344,11 @@ class EvokeBrollSearch:
             br = _extract_json(await self.llm.generate(
                 _ironic_bridge_prompt(line, period, locale, literalness), _IRONIC_BRIDGE_SYS))
             goal = (br.get("irony", "") or br.get("surface", "")).strip()
+        elif operator == "trait":
+            br = _extract_json(await self.llm.generate(
+                _trait_bridge_prompt(line, period, locale, literalness), _TRAIT_BRIDGE_SYS))
+            acts = ", ".join(a.get("activity", "") for a in br.get("activities", []) if a.get("activity"))
+            goal = (br.get("trait", "") + (f" — via {acts}" if acts else "")).strip()
         else:
             br = _extract_json(await self.llm.generate(
                 _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))
