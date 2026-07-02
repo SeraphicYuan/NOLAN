@@ -457,6 +457,13 @@ class EvokeBrollSearch:
         line = (line or "").strip()
         if not line:
             raise ValueError("line is required")
+        # L3 — agentic auto-pairing: a planner picks the operator from whole-script context,
+        # runs it, and retries with a fallback if it comes back UNMATCHED.
+        if operator == "auto":
+            return await self._auto_pair(
+                line, mode=mode, period=period, locale=locale, literalness=literalness, mood=mood,
+                sources=sources, project=project, media=media, gen_style=gen_style, beat=beat,
+                max_metaphors=max_metaphors, per_metaphor=per_metaphor)
         operator = operator if operator in _OP else "tonal"
         mode = mode if mode in ("stock", "library", "generate") else "stock"
         media = [m for m in (media or ["video", "image"]) if m in ("video", "image")] or ["video", "image"]
@@ -596,6 +603,79 @@ class EvokeBrollSearch:
             out["quantity"] = quantity
             out["presentation"] = "stat-over"
         return out
+
+    # ---- L3: agentic auto-pairing (planner → run → retry) ----
+    async def _auto_plan(self, ctx, beat: int, line: str) -> dict:
+        """LLM planner: given whole-script context, pick the pairing operator (+ a fallback)."""
+        bc = ctx.beat_context(beat) if (ctx and ctx.beats) else ""
+        prompt = (
+            f"{ctx.brief(max_chars=1400)}\n\n{bc}\n\n"
+            f'THIS BEAT LINE: "{line}"\n\n'
+            "Decide the best b-roll PAIRING approach for THIS beat, plus a fallback:\n"
+            "- knowledge: the beat names/implies a SPECIFIC real thing (a titled artwork, an artifact, "
+            "a place, a named person/event) — source the actual thing.\n"
+            "- tonal: mood/atmosphere with no concrete subject — evocative footage that carries the feeling.\n"
+            "- conceptual: an abstract idea whose mechanic maps to a filmable domain (strategy→chess).\n"
+            "- ironic: the image should CONTRADICT the words, for critique/irony.\n"
+            "- trait: a person's quality shown via an embodying activity.\n"
+            "- relational: the beat is built on a CONTRAST/pair of two things (rendered split-screen).\n"
+            "- scale: the beat hinges on a big NUMBER worth dramatizing (count-up).\n"
+            'Reply STRICT JSON: {"primary": "<operator>", "fallback": "<operator>", "why": "<=20 words"}')
+        sys = ("You are the lead editor of a video essay deciding HOW to source b-roll for one beat. "
+               "You know the whole script. Pick the approach that will land best. Reply STRICT JSON.")
+        try:
+            j = _extract_json(await self.llm.generate(prompt, sys))
+        except Exception:
+            j = {}
+        if not isinstance(j, dict):
+            j = {}
+        prim = j.get("primary") if j.get("primary") in _OP else "knowledge"
+        fb = j.get("fallback") if j.get("fallback") in _OP else "tonal"
+        if fb == prim:
+            fb = "tonal" if prim != "tonal" else "conceptual"
+        return {"primary": prim, "fallback": fb, "why": (j.get("why") or "")[:160]}
+
+    async def _auto_pair(self, line: str, *, mode, period, locale, literalness, mood, sources,
+                         project, media, gen_style, beat, max_metaphors, per_metaphor) -> dict:
+        """Pick an operator from context, run it, and fall back once if it comes back UNMATCHED."""
+        ctx = None
+        if project:
+            try:
+                from .script_context import ScriptContext
+                ctx = ScriptContext.load(project)
+            except Exception:
+                ctx = None
+        if ctx is None:
+            self._progress(1.0, "UNMATCHED")
+            return {"status": "UNMATCHED", "operator": "auto", "mode": mode, "line": line,
+                    "emotion": "", "goal": "", "goal_label": "auto", "bridge": {}, "metaphors": [],
+                    "picks": [], "considered": [], "reason": "auto needs a project context — pick a project",
+                    "counts": {"pool": 0, "kept": 0, "filtered": 0}}
+
+        self._progress(0.05, "Planning the pairing approach…")
+        plan = await self._auto_plan(ctx, beat if beat is not None else 0, line)
+        order, tried = [plan["primary"], plan["fallback"]], []
+        last = None
+        for i, op in enumerate(order):
+            self._progress(0.1 + 0.4 * i, f"Trying {op}…")
+            res = await self.search(line, operator=op, mode=mode, period=period, locale=locale,
+                                    literalness=literalness, mood=mood, sources=sources, project=project,
+                                    media=media, gen_style=gen_style, beat=beat,
+                                    max_metaphors=max_metaphors, per_metaphor=per_metaphor)
+            tried.append({"operator": op, "status": res.get("status"), "picks": len(res.get("picks") or [])})
+            last = res
+            if res.get("status") == "MATCHED":
+                res["auto"] = {"chosen": op, "primary": plan["primary"], "fallback": plan["fallback"],
+                               "why": plan["why"], "tried": tried}
+                self._progress(1.0, f"MATCHED via {op}")
+                return res
+        last = last or {}
+        last["auto"] = {"chosen": None, "primary": plan["primary"], "fallback": plan["fallback"],
+                        "why": plan["why"], "tried": tried}
+        last["operator"] = "auto"
+        last.setdefault("reason", f"neither {plan['primary']} nor {plan['fallback']} found a fit")
+        self._progress(1.0, "UNMATCHED")
+        return last
 
     # ---- retrieval: stock (real footage) or library (indexed segments) ----
     async def _retrieve_stock(self, metaphors, per_metaphor, sources, media=("video", "image")):

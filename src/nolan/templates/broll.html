@@ -72,6 +72,7 @@
         <button type="button" class="opbtn" data-op="relational">Relational (A vs B)</button>
         <button type="button" class="opbtn" data-op="scale">Scale (count-up)</button>
         <button type="button" class="opbtn" data-op="knowledge">Knowledge (real assets)</button>
+        <button type="button" class="opbtn" data-op="auto">Auto (agent picks)</button>
       </div>
       <div id="ophint" class="hint" style="margin:6px 0 2px">Footage that carries the line's <b>emotion</b>.</div>
       <label style="margin-top:12px">Script context <span class="hint">(optional — search WITH the whole script; picks a beat's line + grounds era/culture. Required for Knowledge.)</span></label>
@@ -145,7 +146,8 @@
       trait: "The archetypal <b>activity</b> a person of this quality does (discipline→training, patience→watchmaking).",
       relational: "Two <b>colliding</b> shots — A vs B make a third meaning (Eisenstein). Rendered as split-screen.",
       scale: "A big <b>number</b> counts up over a <b>tangible referent</b> (stadium, city, grains of sand) — styled by the video theme.",
-      knowledge: "Taps the model's <b>knowledge</b> to name the <b>specific real asset</b> (the actual painting/vase/place, by title) — needs a script context."
+      knowledge: "Taps the model's <b>knowledge</b> to name the <b>specific real asset</b> (the actual painting/vase/place, by title) — needs a script context.",
+      auto: "An <b>agent</b> reads the whole script and <b>picks the pairing approach</b> for this beat (knowledge/tonal/relational/…), then runs it and retries a fallback — needs a script context."
     };
     document.querySelectorAll(".opbtn").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -157,7 +159,7 @@
       });
     });
     // chip labels per operator: [primary-fit, secondary-axis]
-    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"], scale: ["scale", "clean"], knowledge: ["match", "quality"] };
+    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"], scale: ["scale", "clean"], knowledge: ["match", "quality"], auto: ["fit", "2nd"] };
     var lastOp = "tonal";
 
     // Source-pool mode toggle (stock vs library) + stock-provider checkboxes.
@@ -349,6 +351,18 @@
         ? '<span class="status ok">MATCHED · ' + res.picks.length + '</span>'
         : '<span class="status no">UNMATCHED</span>';
       var html = '<div style="margin-top:8px">' + st + '</div>';
+
+      // auto (agent): show the pairing decision + what it tried
+      if (res.auto) {
+        var a = res.auto;
+        var tried = (a.tried || []).map(function (t) {
+          return '<span class="chip" style="background:' + (t.status === "MATCHED" ? "#1f7a4d" : "#7a2f2f") +
+            '">' + esc(t.operator) + " · " + esc(t.status || "?") + (t.picks ? " (" + t.picks + ")" : "") + "</span>";
+        }).join(" ");
+        html += '<div class="meta2">🤖 agent chose <b>' + esc(a.chosen || a.primary) + '</b>' +
+          (a.chosen && a.chosen !== a.primary ? ' (fell back from ' + esc(a.primary) + ')' : '') +
+          ' — ' + esc(a.why) + '<div style="margin-top:4px">tried: ' + tried + '</div></div>';
+      }
 
       // relational (A vs B): synthesis + a split-screen button + two labeled sides
       if (res.sides) {

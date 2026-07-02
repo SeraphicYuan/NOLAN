@@ -26,6 +26,7 @@ with sync_playwright() as p:
                       (".opbtn[data-op='relational']", "relational operator"),
                       (".opbtn[data-op='scale']", "scale operator"),
                       (".opbtn[data-op='knowledge']", "knowledge operator"),
+                      (".opbtn[data-op='auto']", "auto operator"),
                       ("#statTheme", "count-up theme selector"),
                       ("#ctxProject", "context project selector"),
                       ("#ctxBeat", "context beat selector"),
