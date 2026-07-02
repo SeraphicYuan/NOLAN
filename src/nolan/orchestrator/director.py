@@ -1131,12 +1131,25 @@ class Director:
         if target_path.exists():
             target_path.unlink()
 
+        # Context-injection: hand the agent the scriptgen grounding it doesn't otherwise see —
+        # facts.md (anchor visuals to real, specific subjects) + beatmap.md (per-beat pace tags).
+        _sg = self.project_path / "scriptgen"
+        grounding = ""
+        if (_sg / "facts.md").exists():
+            grounding += ("# facts_path (grounded fact sheet — anchor visuals to these; prefer NAMING "
+                          "the specific real subject, e.g. a titled artwork/artifact/place, over generic "
+                          f"stock)\n`{path_for_agent(_sg / 'facts.md')}`\n\n")
+        if (_sg / "beatmap.md").exists():
+            grounding += ("# beatmap_path (retention/pacing plan — each beat is tagged pace:accelerate|"
+                          f"decelerate; honor that rhythm)\n`{path_for_agent(_sg / 'beatmap.md')}`\n\n")
+
         system = handoff("orchestrator.script-to-scenes")
         user = (
             f"# target_path\n`{path_for_agent(target_path)}`\n\n"
             f"# script_path\n`{path_for_agent(script_path)}`\n\n"
             f"# style_guide_path\n`{path_for_agent(style_guide_path)}`\n\n"
             f"# structure_skeleton_path\n`{skeleton_arg}`\n\n"
+            f"{grounding}"
             f"# Project metadata\n"
             f"- slug: {ctx.slug}\n"
             f"- name: {ctx.name}\n"

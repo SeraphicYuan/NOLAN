@@ -73,6 +73,7 @@ Other rules:
 1. **Read the script.** Identify section boundaries from `## Heading [start - end]` lines and parse the per-section duration from the bracketed times when present.
 2. **Read the style guide's Pacing section.** Match the per-section pacing windows (Hook fast, Conclusion slower, etc.) to actual scene-length targets.
 3. **Read the structure skeleton** (if provided). For each section, note `beat_count_hint` and `required_beats`. Use as scaffold for content beats.
+3b. **Read the grounding docs when provided** (`facts_path`, `beatmap_path`). Use `facts.md` to anchor visuals to the *specific real* subjects the script rests on — prefer NAMING the actual titled artwork / artifact / place / person in `visual_description`, `search_query`, and `comfyui_prompt` over generic stock ("Turner's *Ulysses Deriding Polyphemus*" or "the Siren Vase, British Museum" beats "ancient greek scene"). Use `beatmap.md`'s per-beat `pace:accelerate|decelerate` tags to reinforce the pacing windows (accelerate → more, shorter beats; decelerate → fewer, longer holds).
 4. **For each section, break the narration into beats:**
    - Match the section's pacing window from the style guide
    - Pick a `visual_type` from the declared vocabulary that fits the beat (b-roll for a scene the library can supply, generated-image for symbolic or historical content, text-overlay for quotes / cadence-phrase moments / section markers, graphic for maps/timelines/charts)
