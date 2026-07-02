@@ -197,7 +197,8 @@ def _parse_script_beats(script_md: str) -> List[ScriptBeat]:
         head = parts[i].strip()
         body = parts[i + 1] if i + 1 < len(parts) else ""
         tc = ""
-        m = re.search(r"\[(\d{1,2}:\d{2})\]", head)
+        # matches "[0:55]" and range forms "[0:00 - 0:35]" / "[0:00–0:35]"
+        m = re.search(r"\[(\d{1,2}:\d{2})(?:\s*[-–—]\s*\d{1,2}:\d{2})?\]", head)
         if m:
             tc = m.group(1)
             head = head[:m.start()].strip(" -—·")

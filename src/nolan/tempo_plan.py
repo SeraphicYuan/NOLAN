@@ -260,6 +260,38 @@ def apply_to_plan(plan, tempo: TempoPlan) -> dict:
     return {"sections": n_sec, "scenes": n_sc, "matched": matched}
 
 
+def apply_to_flow_spec(spec: dict, tempo: TempoPlan) -> dict:
+    """Write a TempoPlan onto a FLOW `flow.spec.json` (the art/explainer pipeline).
+
+    FLOW beats already carry per-beat MOTION knobs (`introHold`, `maxZoom`) — unlike the
+    orchestrator's flat scenes — so tempo here DRIVES those: a low-energy beat gets a longer
+    hold + gentler zoom (breathe); a high-energy beat gets a short hold + stronger push (drive).
+    Also stamps `_energy` / `_transition` / `_motion_speed` as metadata. Beats map to BeatTempo
+    positionally (flow beats and script beats are the same ordered list); mutates `spec` in place.
+
+    Only MODULATES knobs the beat already declares, relative to the block's own baseline (the
+    art pipeline sets deliberate values — introHold in frames, maxZoom ~1.4-1.5 — so we scale,
+    never overwrite with absolutes). Never invents fields a block doesn't use."""
+    beats = spec.get("beats") or []
+    tb = tempo.beats
+    n = min(len(beats), len(tb))
+    for i in range(n):
+        b, bt = beats[i], tb[i]
+        e = bt.energy
+        b["_energy"] = round(e, 3)
+        b["_transition"] = bt.transition
+        b["_motion_speed"] = bt.motion_speed
+        ih = b.get("introHold")
+        if isinstance(ih, (int, float)) and ih > 0:       # scale the hold: low e breathes, high e cuts in
+            scaled = ih * (1.3 - 0.9 * e)                 # e=0 → 1.3x, e=1 → 0.4x
+            b["introHold"] = int(round(scaled)) if isinstance(ih, int) else round(scaled, 2)
+        mz = b.get("maxZoom")
+        if isinstance(mz, (int, float)) and mz > 1.0:     # modulate zoom depth around the block's choice
+            amt = mz - 1.0
+            b["maxZoom"] = round(1.0 + amt * (0.7 + 0.6 * e), 3)   # e=0 → 0.7x gentler, e=1 → 1.3x push
+    return {"beats": len(beats), "matched": n}
+
+
 def design_tempo(ctx: ScriptContext, *, profile: str = "", llm=None) -> TempoPlan:
     """Design a TempoPlan for a script. Uses the LLM for the arc when given one, else rules.
     Always returns a full plan (one BeatTempo per script beat)."""

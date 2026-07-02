@@ -168,6 +168,38 @@ class TestApplyToPlan:
         close = plan.sections["The close"][0]
         assert build.energy > close.energy
 
+    def test_timecode_range_stripped(self, tmp_path):
+        # FLOW-style headings use a range "[0:00 - 0:35]"; the title must come out clean
+        p = tmp_path / "rng"
+        (p / "scriptgen").mkdir(parents=True)
+        (p / "script.md").write_text(
+            "# Video Script\n\n## Hook [0:00 - 0:35]\n\nText.\n\n## Close [7:00 - 7:21]\n\nEnd.\n",
+            encoding="utf-8")
+        ctx = ScriptContext.load(p)
+        assert [b.title for b in ctx.beats] == ["Hook", "Close"]
+        assert ctx.beats[0].timecode == "0:00"
+
+    def test_apply_to_flow_spec_modulates_relatively(self, tmp_path):
+        from nolan.tempo_plan import apply_to_flow_spec
+        ctx = ScriptContext.load(_make_project(tmp_path))
+        tempo = design_tempo(ctx)                            # 3 beats: decel/accel/decel
+        spec = {"beats": [
+            {"segment": "b0", "introHold": 50, "maxZoom": 1.5},   # low-energy hook
+            {"segment": "b1", "introHold": 50, "maxZoom": 1.5},   # accelerate build
+            {"segment": "b2", "block": "TextCard"},               # no motion knobs
+        ]}
+        res = apply_to_flow_spec(spec, tempo)
+        assert res == {"beats": 3, "matched": 3}
+        # every beat stamped with metadata
+        for b in spec["beats"]:
+            assert b["_energy"] is not None and b["_transition"] in ("cut", "dissolve", "fade")
+        # the accelerate beat cuts in faster (shorter hold) than the decelerate hook
+        assert spec["beats"][1]["introHold"] < spec["beats"][0]["introHold"]
+        # values stay near the block's baseline (modulated, not overwritten to absolutes)
+        assert 15 <= spec["beats"][0]["introHold"] <= 70
+        # a block without the knobs is left alone (no invented fields)
+        assert "introHold" not in spec["beats"][2] and "maxZoom" not in spec["beats"][2]
+
     def test_roundtrip_preserves_tempo(self, tmp_path):
         from nolan.scenes import Scene, ScenePlan
         from nolan.tempo_plan import apply_to_plan
