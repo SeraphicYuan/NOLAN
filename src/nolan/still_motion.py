@@ -83,6 +83,33 @@ def render_split(left_img, right_img, out_path, duration: float = 4.0,
     return out_path
 
 
+def render_stat_over(media_path, value, out_path, *, prefix: str = "", suffix: str = "",
+                     caption: str = "", decimals: int = 0, theme=None, accent: str = "",
+                     kind: str = "image", duration: float = 5.0, fps: int = 30) -> Path:
+    """Render the SCALE count-up (StatOver) over a tangible-referent still or clip.
+
+    Number + caption styling comes entirely from `theme` (resolveTheme in the composition),
+    so the stat matches the rest of the video. kind='video' uses live footage as the backdrop.
+    """
+    from nolan import remotion_source
+    out_path = Path(out_path)
+    frames = max(30, int(round(duration * fps)))
+    props = {"value": value, "prefix": prefix or "", "suffix": suffix or "",
+             "caption": caption or "", "decimals": int(decimals or 0)}
+    if theme:
+        props["theme"] = theme
+    if accent:
+        props["accent"] = accent
+    media = str(Path(media_path).resolve())
+    kw = {"video": media} if kind == "video" else {"background": media}
+    produced = remotion_source.render("StatOver", props, out_path.name, duration_frames=frames, **kw)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if Path(produced).resolve() != out_path.resolve():
+        import shutil
+        shutil.copy(produced, out_path)
+    return out_path
+
+
 def render_clip_montage(clips, out_path, transition: str = "fade", trans_frames: int = 16, fps: int = 30) -> Path:
     """Assemble b-roll clips/stills into one video with shot-to-shot transitions (ClipMontage).
 

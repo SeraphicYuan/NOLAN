@@ -5043,8 +5043,9 @@ def cutout(image, model, output, alpha_matting, to_library):
 
 @main.command('broll')
 @click.argument('line')
-@click.option('--operator', '-op', type=click.Choice(['tonal', 'conceptual', 'ironic', 'trait', 'relational']),
+@click.option('--operator', '-op', type=click.Choice(['tonal', 'conceptual', 'ironic', 'trait', 'relational', 'scale']),
               default='tonal', help='Pairing operator.')
+@click.option('--theme', default='dark-editorial', help='Count-up theme for the scale operator (styles number/caption).')
 @click.option('--mode', '-m', type=click.Choice(['stock', 'library', 'generate']), default='stock',
               help='Asset source: stock / your indexed library / Krea-2 generation.')
 @click.option('--period', default='', help='Story period (enables the anachronism gate).')
@@ -5058,7 +5059,7 @@ def cutout(image, model, output, alpha_matting, to_library):
 @click.option('--render', is_flag=True, help='Render the top pick(s) with their recommended motion to mp4.')
 @click.option('--out-dir', type=click.Path(), default='broll_out', help='Output dir for --render.')
 @click.pass_context
-def broll(ctx, line, operator, mode, period, locale, literalness, mood, media, gen_style, project, output, render, out_dir):
+def broll(ctx, line, operator, mode, theme, period, locale, literalness, mood, media, gen_style, project, output, render, out_dir):
     """Narrative→asset b-roll pairing for a narration LINE.
 
     Finds b-roll that carries the line's meaning via a pairing OPERATOR, from stock / your
@@ -5084,6 +5085,9 @@ def broll(ctx, line, operator, mode, period, locale, literalness, mood, media, g
         mood=mood, media=(list(media) or None), gen_style=gen_style, project=project))
 
     click.echo(f"\n{r['status']}  ·  {operator}/{mode}  ·  {r.get('goal_label', 'goal')}: {r.get('goal', '')}")
+    if r.get('quantity'):
+        q = r['quantity']
+        click.echo(f"  count-up: {q.get('prefix', '')}{q.get('display') or q.get('value')}{q.get('suffix', '')} — {q.get('caption', '')}")
     if r['status'] == 'UNMATCHED' and r.get('reason'):
         click.echo(f"  reason: {r['reason']}")
 
@@ -5111,7 +5115,7 @@ def broll(ctx, line, operator, mode, period, locale, literalness, mood, media, g
         click.echo(f"\n-> {output}")
 
     if render:
-        _broll_render(r, Path(out_dir))
+        _broll_render(r, Path(out_dir), theme=theme)
 
 
 def _broll_localize_img(src, outdir):
@@ -5131,11 +5135,23 @@ def _broll_localize_img(src, outdir):
     return out
 
 
-def _broll_render(r, out_dir):
-    """Render the recommended motion for image picks (or split-screen for relational) to mp4."""
-    from nolan.still_motion import render_still, render_split
+def _broll_render(r, out_dir, theme='dark-editorial'):
+    """Render the recommended motion for image picks (or split-screen / scale count-up) to mp4."""
+    from nolan.still_motion import render_still, render_split, render_stat_over
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    if r.get('quantity') and r.get('picks'):
+        q = r['quantity']
+        for i, c in enumerate(r['picks']):
+            src = c.get('poster') or c.get('url')
+            li = _broll_localize_img(src, out_dir) if src else None
+            if li:
+                o = render_stat_over(str(li), q['value'], out_dir / f'stat{i}.mp4',
+                                     prefix=q.get('prefix', ''), suffix=q.get('suffix', ''),
+                                     caption=q.get('caption', ''), decimals=int(q.get('decimals', 0)),
+                                     theme=theme, duration=5.0)
+                click.echo(f"  rendered count-up ({theme}) -> {o}")
+        return
     if r.get('sides'):
         pa = r['sides'][0]['picks'][0] if r['sides'][0]['picks'] else None
         pb = r['sides'][1]['picks'][0] if len(r['sides']) > 1 and r['sides'][1]['picks'] else None

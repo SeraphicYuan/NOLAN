@@ -12,6 +12,7 @@ import {PhotoGrid} from './PhotoGrid';
 import {StillMotion} from './StillMotion';
 import {ClipMontage, clipMontageDuration} from './ClipMontage';
 import {SplitScreen} from './SplitScreen';
+import {StatOver} from './StatOver';
 import {Showcase} from './Showcase';
 // Folded-in flow bundle (was _lab_chapter): the Chapter Series + its blocks.
 import {Chapter} from './Chapter';
@@ -116,6 +117,13 @@ export const Root: React.FC = () => {
         id="SplitScreen" component={SplitScreen} durationInFrames={120} {...common}
         defaultProps={{background: '' as string, foreground: '' as string,
           leftLabel: '' as string, rightLabel: '' as string, durationInFrames: 120}}
+        calculateMetadata={dur}
+      />
+      <Composition
+        id="StatOver" component={StatOver} durationInFrames={150} {...common}
+        defaultProps={{value: 0, prefix: '', suffix: '', caption: '', decimals: 0,
+          background: undefined as any, videoSrc: undefined as any,
+          accent: undefined as any, theme: undefined as any, durationInFrames: 150}}
         calculateMetadata={dur}
       />
       <Composition

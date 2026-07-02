@@ -68,8 +68,18 @@
         <button type="button" class="opbtn" data-op="ironic">Ironic counterpoint</button>
         <button type="button" class="opbtn" data-op="trait">Trait embodiment</button>
         <button type="button" class="opbtn" data-op="relational">Relational (A vs B)</button>
+        <button type="button" class="opbtn" data-op="scale">Scale (count-up)</button>
       </div>
       <div id="ophint" class="hint" style="margin:6px 0 2px">Footage that carries the line's <b>emotion</b>.</div>
+      <div id="scaleopts" style="display:none;margin:8px 0 2px">
+        <label style="display:inline">Count-up theme <span class="hint">(styles the number &amp; caption — as in the video)</span></label>
+        <select id="statTheme" style="margin-left:8px;padding:4px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px">
+          <option value="dark-editorial">dark-editorial</option>
+          <option value="light">light</option>
+          <option value="high-contrast">high-contrast</option>
+        </select>
+        <input id="statAccent" type="text" placeholder="accent override (e.g. #ff2d55)" style="margin-left:8px;padding:4px 8px;width:190px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px">
+      </div>
       <label style="margin-top:12px">Narration line</label>
       <textarea id="line" placeholder="e.g. For ten years he wandered, a stranger to his own home, aching for a shore he might never reach."></textarea>
       <div class="row">
@@ -123,7 +133,8 @@
       conceptual: "A concrete domain whose <b>mechanic mirrors the idea</b> (strategy→chess, collapse→dominoes).",
       ironic: "Footage that <b>contradicts</b> the line — the gap between what's said and what's real (Adam Curtis).",
       trait: "The archetypal <b>activity</b> a person of this quality does (discipline→training, patience→watchmaking).",
-      relational: "Two <b>colliding</b> shots — A vs B make a third meaning (Eisenstein). Rendered as split-screen."
+      relational: "Two <b>colliding</b> shots — A vs B make a third meaning (Eisenstein). Rendered as split-screen.",
+      scale: "A big <b>number</b> counts up over a <b>tangible referent</b> (stadium, city, grains of sand) — styled by the video theme."
     };
     document.querySelectorAll(".opbtn").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -131,10 +142,11 @@
         b.classList.add("active");
         currentOp = b.dataset.op;
         document.getElementById("ophint").innerHTML = OPHINT[currentOp] || "";
+        document.getElementById("scaleopts").style.display = (currentOp === "scale") ? "block" : "none";
       });
     });
     // chip labels per operator: [primary-fit, secondary-axis]
-    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"] };
+    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"], scale: ["scale", "clean"] };
     var lastOp = "tonal";
 
     // Source-pool mode toggle (stock vs library) + stock-provider checkboxes.
@@ -215,6 +227,35 @@
       setTimeout(function () { if (btn.textContent === "rendering…") btn.textContent = label; }, 100);
     }
 
+    // SCALE: render the count-up (StatOver) over a referent still, styled by the chosen theme.
+    var lastQty = null;
+    async function previewStat(btn) {
+      var d = btn.dataset; btn.disabled = true; btn.textContent = "rendering…";
+      var q = lastQty || {};
+      try {
+        var start = await (await fetch("/api/broll/stat", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            src: d.src, value: q.value, prefix: q.prefix || "", suffix: q.suffix || "",
+            caption: q.caption || "", decimals: q.decimals || 0,
+            theme: document.getElementById("statTheme").value,
+            accent: document.getElementById("statAccent").value.trim()
+          })
+        })).json();
+        var job = await pollJobResult(start.job_id);
+        if (job.status === "done" && job.result && job.result.url) {
+          var card = btn.closest(".clip");
+          var media = card.querySelector("img, video");
+          var v = document.createElement("video");
+          v.src = job.result.url; v.controls = true; v.muted = true; v.loop = true; v.autoplay = true;
+          v.style.cssText = "width:100%;height:176px;object-fit:cover;background:#000;display:block";
+          if (media) media.replaceWith(v);
+          btn.textContent = "↺ re-render count-up";
+        } else { btn.textContent = "failed"; }
+      } catch (e) { btn.textContent = "error"; }
+      btn.disabled = false;
+    }
+
     function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
@@ -248,6 +289,10 @@
       var prevBtn = (isImg && !dropped) ? '<button class="pv" data-src="' + esc(c.url) +
         '" data-motion="' + esc((c.motion && c.motion.id) || 'ken-burns-in') + '" data-kind="' + esc(c.kind) +
         '" onclick="previewMotion(this)">&#9654; preview motion</button> ' : '';
+      // scale operator: a count-up render button on every pick (renders over its still/poster)
+      if (lastOp === "scale" && !dropped)
+        prevBtn += '<button class="pv" data-src="' + esc(c.poster || c.url) +
+          '" onclick="previewStat(this)">&#9654; render count-up</button> ';
       return '<div class="clip">' + player + '<div class="m">' +
         chip(lbl[0], c.mood) + chip(lbl[1], c.nonliteral) + place + flag + rej + motion +
         '<div class="why">' + esc(c.why) + '</div>' +
@@ -259,6 +304,7 @@
       var r = document.getElementById("results");
       if (!res) { r.innerHTML = '<div class="reason">No result.</div>'; return; }
       lastOp = res.operator || "tonal";
+      lastQty = res.quantity || null;
       var st = res.status === "MATCHED"
         ? '<span class="status ok">MATCHED · ' + res.picks.length + '</span>'
         : '<span class="status no">UNMATCHED</span>';
@@ -287,6 +333,13 @@
 
       html += '<div class="meta2">' + esc(res.goal_label || "emotion") + ': <b>' + esc(res.emotion) + '</b> · metaphors: ' +
         esc((res.metaphors || []).join("  ·  ")) + ' · pool ' + res.counts.pool + ', kept ' + res.counts.kept + ', gated ' + res.counts.filtered + '</div>';
+      // scale: show the number that will count up over the chosen referent
+      if (res.quantity) {
+        var q = res.quantity;
+        html += '<div class="meta2" style="font-size:15px">count-up: <b style="color:var(--accent,#4c7dff)">' +
+          esc(q.prefix) + esc(q.display || q.value) + esc(q.suffix) + '</b> — ' + esc(q.caption) +
+          ' <span class="hint">(pick a referent below, choose a theme above, then “render count-up”)</span></div>';
+      }
       if (res.status === "UNMATCHED")
         html += '<div class="reason">∅ left unmatched — ' + esc(res.reason) + ' (better a gap than a wrong shot)</div>';
       if (res.picks && res.picks.length)

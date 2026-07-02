@@ -24,6 +24,8 @@ with sync_playwright() as p:
                       (".opbtn[data-op='ironic']", "ironic operator"),
                       (".opbtn[data-op='trait']", "trait operator"),
                       (".opbtn[data-op='relational']", "relational operator"),
+                      (".opbtn[data-op='scale']", "scale operator"),
+                      ("#statTheme", "count-up theme selector"),
                       (".modebtn[data-mode='stock']", "stock mode"),
                       (".modebtn[data-mode='library']", "library mode"),
                       (".modebtn[data-mode='generate']", "generate mode"),
@@ -43,6 +45,14 @@ with sync_playwright() as p:
     page.click(".modebtn[data-mode='stock']")
     check("providers shown again in stock mode",
           page.eval_on_selector("#providers", "el => getComputedStyle(el).display") != "none")
+
+    # scale operator reveals the count-up theme options
+    check("scale opts hidden by default",
+          page.eval_on_selector("#scaleopts", "el => getComputedStyle(el).display") == "none")
+    page.click(".opbtn[data-op='scale']")
+    check("scale opts shown when scale active",
+          page.eval_on_selector("#scaleopts", "el => getComputedStyle(el).display") != "none")
+    check("scale hint updated", "count" in page.inner_html("#ophint").lower())
 
     browser.close()
 

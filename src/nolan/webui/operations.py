@@ -316,6 +316,26 @@ async def preview_split(job, *, config, left_src: str, right_src: str,
     return {"url": f"/broll-gen/previews/{out.name}"}
 
 
+async def preview_stat(job, *, config, src: str, value: float, prefix: str = "", suffix: str = "",
+                       caption: str = "", decimals: int = 0, theme: str = "dark-editorial",
+                       accent: str = ""):
+    """Render the SCALE count-up (StatOver) over a referent still → served mp4, styled by `theme`."""
+    import hashlib
+    from nolan.evoke_broll import GEN_DIR
+    from nolan.still_motion import render_stat_over
+    prev = GEN_DIR / "previews"; prev.mkdir(parents=True, exist_ok=True)
+    job.set_progress(0.12, "Fetching referent still…")
+    local = await _local_still(src, prev)
+    key = f"{src}|{value}|{prefix}|{suffix}|{caption}|{theme}|{accent}"
+    out = prev / f"stat_{hashlib.md5(key.encode()).hexdigest()[:12]}.mp4"
+    job.set_progress(0.35, f"Rendering count-up ({theme})…")
+    await asyncio.get_event_loop().run_in_executor(None, lambda: render_stat_over(
+        str(local), float(value), out, prefix=prefix, suffix=suffix, caption=caption,
+        decimals=int(decimals or 0), theme=(theme or "dark-editorial"), accent=(accent or ""), duration=5.0))
+    job.set_progress(1.0, "count-up ready")
+    return {"url": f"/broll-gen/previews/{out.name}", "theme": theme}
+
+
 def _scene_plan_path(project_name: str) -> Path:
     return Path("projects") / project_name / "scene_plan.json"
 

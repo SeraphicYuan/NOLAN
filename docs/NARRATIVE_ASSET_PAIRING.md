@@ -62,7 +62,7 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 
 | Operator | Logic → example | Build notes |
 |---|---|---|
-| **Scale / tangibility** | a number → a body-sized referent. "$1B"→stadiums, city blocks, grains of sand; "fills X pools" | **quantity extraction** → pick a referent → **compose with motion on the number/words** (counters, kinetic text) over/with the asset. Remotion + motion lib, not just a clip |
+| **Scale / tangibility** ✅ *built* | a number → a body-sized referent. "100B stars"→grains of sand; "$1B"→stadiums/city blocks | operator #6 on /broll (Approach: Scale). Bridge = **quantity extraction** (derives a number even when implied) + a period-safe/timeless **tangible referent** → referent b-roll scored for *scale + negative space* → **StatOver** count-up composition renders the number over the footage. **First asset + motion-composition operator.** Number/caption **styled by the video THEME** (`resolveTheme`), not hardcoded |
 | **Process / mechanism analogy** | a "how it works" → a physical machine that behaves the same. overheating→boiling pot / pressure gauge; feedback loop→thermostat/snowball; bottleneck→hourglass | mechanism extraction → analogy; **clip/pictures + a motion** that shows the mechanism running |
 | **Geographic anchoring** | a place / a *movement* → maps, satellite push-ins, route lines | `route-map` motion exists; bridge extracts place/route |
 | **Data-as-shape** | a trend → a chart whose **silhouette mirrors the emotional arc** (rise=hope, crash=despair, the "K") | `bar-compare` / `line-chart` / `k-shape` motions exist; bridge maps the arc → chart shape |
@@ -120,8 +120,9 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 - ✅ **Tonal/evocative** — `src/nolan/evoke_broll.py`, `/broll` page (stock + library modes,
   provider selection, period/locale gate, listwise accept / UNMATCHED). See `IMPLEMENTATION_STATUS.md`.
 - ✅ **Conceptual-isomorphic** — operator #2 on `/broll` (Approach toggle). Bridge maps concept→mechanic→isomorphic carrier domain(s); scoring judges metaphor-fit + freshness (cliché-avoidance).
-- 🎯 Everything else above is **designed, not built** — each is a meaty, independently
-  buildable+testable feature (a new operator = bridge + aptness gate + its asset source + motion).
+- ✅ **Ironic counterpoint / Trait-embodiment / Relational** — operators #3/#4/#5 on `/broll`.
+- ✅ **Scale / tangibility** — operator #6 on `/broll` (Approach: Scale). Bridge extracts/derives the quantity + a period-safe **tangible referent**; referent b-roll is scored for scale + negative space; the **StatOver** Remotion composition renders a theme-styled count-up over the footage (still poster or generated referent). **First asset+motion composition operator.** The count-up number and caption are styled by the video **theme** (`resolveTheme` in `theme.ts`, as counter/kinetic-text), selectable on `/broll` (dark-editorial | light | high-contrast + accent override) and via `nolan broll --theme`. Falls back to **UNMATCHED** when no number exists or stock lacks a clean referent (precision > coverage).
+- 🎯 **Rhythm / tempo** (the last operator) is **designed, not built** — it needs the deep script link.
 
 
 ## Still-motion build TODO (step 2 render effects)

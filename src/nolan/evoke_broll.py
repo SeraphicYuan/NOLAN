@@ -138,7 +138,48 @@ _OP = {
         "axis2": "10=striking/cinematic, 0=weak or generic",
         "accept": "it must clearly and strikingly depict this side of the pair and read at a glance",
     },
+    "scale": {   # the tangible REFERENT a big number counts up over (a stadium crowd, a city grid, grains of sand)
+        "noun": "referent",
+        "judge": "Judge the FRAME as a TANGIBLE REFERENT for a big NUMBER — a countable mass, a vast space, "
+                 "or a human-scale object that makes the quantity graspable. It must have a calm, uncluttered "
+                 "area a large count-up number can sit over legibly.",
+        "match": "how well it makes a big quantity tangible/graspable",
+        "match_lib": "makes a big quantity tangible/graspable",
+        "axis2": "10=clean, has room for a big number overlay, 0=busy/cluttered",
+        "accept": "it must give the number a tangible sense of scale AND have calm negative space for a large "
+                  "count-up overlay to read clearly",
+    },
 }
+
+
+_SCALE_BRIDGE_SYS = (
+    "You are a data-driven video-essay editor (in the vein of Vox / Neil Halloran) who makes a big ABSTRACT "
+    "NUMBER hit home by counting it up over a TANGIBLE REFERENT — footage whose scale makes the quantity "
+    "graspable (a packed stadium, a city grid from above, coins stacking, grains of sand). Reply STRICT JSON.")
+
+
+def _scale_bridge_prompt(line: str, period: str, locale: str, literalness: float) -> str:
+    ctx = ""
+    if period or locale:
+        ctx = (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
+               "CRUCIAL: the referent footage must be period/locale-plausible or TIMELESS. Timeless referents "
+               "are natural/elemental: grains of sand, drops of the sea, stars in the night sky, blades of "
+               "grass, a swarm, falling leaves, a vast mountain range. For man-made mass, use only "
+               "period-plausible imagery (an army of soldiers, a harbor of wooden ships, a marching column). "
+               "NEVER pick modern-scale clichés (packed stadium, parking lot, city skyline, freeway) unless "
+               "the period is explicitly modern.\n")
+    return (f'LINE: "{line}"\n{ctx}'
+            "Find the one QUANTITY in this line worth dramatizing (a count, size, duration, sum, distance). "
+            "If the line only implies it ('a vast fleet', 'countless dead'), DERIVE a defensible round number. "
+            "Then choose a TANGIBLE REFERENT whose footage makes that number feel real, and give concrete "
+            "visual SEARCH PHRASES of that referent. Prefer a referent with calm negative space for the number.\n"
+            'Return JSON: {"quantity": {"value": <number, digits only, no commas>, '
+            '"prefix": "<e.g. $ or empty>", "suffix": "<e.g. B, %, years, or empty>", '
+            '"caption": "<what the number counts, <=6 words>", "display": "<human-readable, e.g. 40,320>"}, '
+            '"referent": {"label": "<the tangible referent, 2-4 words>", '
+            '"visual_metaphors": ["4-6 SHORT search phrases of the referent footage in action"]}, '
+            '"why": "<why this referent makes the number tangible, 1 sentence>", '
+            '"avoid_literal": ["the literal subject we should NOT just show"]}')
 
 
 _RELATIONAL_BRIDGE_SYS = (
@@ -433,11 +474,17 @@ class EvokeBrollSearch:
                 _trait_bridge_prompt(line, period, locale, literalness), _TRAIT_BRIDGE_SYS))
             acts = ", ".join(a.get("activity", "") for a in br.get("activities", []) if a.get("activity"))
             goal = (br.get("trait", "") + (f" — via {acts}" if acts else "")).strip()
+        elif operator == "scale":
+            br = _extract_json(await self.llm.generate(
+                _scale_bridge_prompt(line, period, locale, literalness), _SCALE_BRIDGE_SYS))
+            ref = br.get("referent", {}) or {}
+            goal = (ref.get("label", "") or "").strip()
+            metaphors = [m for m in ref.get("visual_metaphors", []) if m][:max_metaphors]
         else:
             br = _extract_json(await self.llm.generate(
                 _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))
             goal = br.get("target_emotion", "")
-        if operator != "relational":
+        if operator not in ("relational", "scale"):
             metaphors = [m for m in br.get("visual_metaphors", []) if m][:max_metaphors]
 
         _kw = dict(mode=mode, period=period, locale=locale, sources=sources, media=media,
@@ -470,6 +517,27 @@ class EvokeBrollSearch:
                     "considered": a["considered"] + b["considered"],
                     "counts": {"pool": a["pool"] + b["pool"], "kept": a["kept"] + b["kept"], "filtered": a["filtered"] + b["filtered"]}}
 
+        # --- scale: validate we actually have a number to count up (else abstain) ---
+        quantity = None
+        if operator == "scale":
+            q = br.get("quantity", {}) or {}
+            try:
+                val = float(q.get("value"))
+            except (TypeError, ValueError):
+                val = None
+            if val is None or not goal:
+                self._progress(1.0, "UNMATCHED")
+                return {"status": "UNMATCHED", "operator": operator, "mode": mode, "line": line,
+                        "emotion": goal, "goal": goal, "goal_label": _OP[operator]["noun"], "bridge": br,
+                        "metaphors": metaphors, "picks": [], "considered": [], "quantity": None,
+                        "presentation": "stat-over",
+                        "reason": "no quantifiable scale in the line",
+                        "counts": {"pool": 0, "kept": 0, "filtered": 0}}
+            decimals = 0 if val == int(val) else len(str(val).split(".")[-1])
+            quantity = {"value": val, "prefix": q.get("prefix", "") or "", "suffix": q.get("suffix", "") or "",
+                        "caption": q.get("caption", "") or "", "display": q.get("display", "") or "",
+                        "decimals": min(decimals, 2)}
+
         # --- normal operators: one selection ---
         self._progress(0.3, f"Retrieving + scoring {mode} b-roll…")
         sel = await self._select(line, metaphors, goal, operator, max_picks=5, **_kw)
@@ -478,10 +546,14 @@ class EvokeBrollSearch:
         if sel["pool"] == 0:
             reason = {"library": "no library segments found", "generate": "generation produced nothing"}.get(mode, "no stock footage found") + " for these metaphors"
         self._progress(1.0, status)
-        return {"status": status, "reason": reason, "operator": operator, "mode": mode, "line": line,
-                "emotion": goal, "goal": goal, "goal_label": _OP[operator]["noun"], "bridge": br,
-                "metaphors": metaphors, "picks": sel["picks"], "considered": sel["considered"],
-                "counts": {"pool": sel["pool"], "kept": sel["kept"], "filtered": sel["filtered"]}}
+        out = {"status": status, "reason": reason, "operator": operator, "mode": mode, "line": line,
+               "emotion": goal, "goal": goal, "goal_label": _OP[operator]["noun"], "bridge": br,
+               "metaphors": metaphors, "picks": sel["picks"], "considered": sel["considered"],
+               "counts": {"pool": sel["pool"], "kept": sel["kept"], "filtered": sel["filtered"]}}
+        if operator == "scale":
+            out["quantity"] = quantity
+            out["presentation"] = "stat-over"
+        return out
 
     # ---- retrieval: stock (real footage) or library (indexed segments) ----
     async def _retrieve_stock(self, metaphors, per_metaphor, sources, media=("video", "image")):

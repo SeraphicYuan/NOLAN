@@ -247,6 +247,17 @@ REGISTRY: List[MotionEffect] = [
                  _p("right_label", "string", "caption under the right half", default="")],
         shared=[], duration_default=4.0),
     MotionEffect(
+        "stat-over", "remotion", "data",
+        "SCALE payoff: a big count-up NUMBER over a tangible-referent shot (stadium crowd / city "
+        "aerial / grains of sand) + a caption. Number and caption are styled from the video THEME.", "StatOver",
+        content=[_p("image", "string", "the tangible-referent still path", required=True),
+                 _p("value", "number", "the number to count up to", required=True),
+                 _p("prefix", "string", 'e.g. "$"', default=""),
+                 _p("suffix", "string", 'e.g. "B", "%"', default=""),
+                 _p("caption", "string", "what the number means", default=""),
+                 _p("decimals", "int", "decimal places", default=0)],
+        shared=["theme", "accent"], duration_default=5.0),
+    MotionEffect(
         "clip-montage", "remotion", "composition",
         "Assemble b-roll clips/stills into one video with shot-to-shot transitions "
         "(dissolve/slide/wipe/clockWipe/cut) via @remotion/transitions.", "ClipMontage",

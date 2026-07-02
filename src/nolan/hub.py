@@ -451,6 +451,24 @@ def create_hub_app(
         )
         return {"job_id": job.id, "type": "broll-split"}
 
+    @app.post("/api/broll/stat")
+    async def api_broll_stat(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        src = (body.get("src") or "").strip()
+        if not src:
+            raise HTTPException(status_code=400, detail="src is required")
+        if body.get("value") in (None, ""):
+            raise HTTPException(status_code=400, detail="value is required")
+        job = job_manager.start(
+            "broll-stat", operations.preview_stat, config=load_config(),
+            src=src, value=body.get("value"), prefix=(body.get("prefix") or ""),
+            suffix=(body.get("suffix") or ""), caption=(body.get("caption") or ""),
+            decimals=int(body.get("decimals") or 0), theme=(body.get("theme") or "dark-editorial"),
+            accent=(body.get("accent") or ""),
+        )
+        return {"job_id": job.id, "type": "broll-stat"}
+
     # ==================== Vector index management ====================
 
     @app.post("/api/sync-vectors")
@@ -1790,11 +1808,11 @@ def create_hub_app(
 
     @app.post("/api/script-projects/{slug}/run")
     async def script_projects_run(slug: str, body: dict = Body(default={})):
-        """Dispatch a v2 pipeline phase: prep | draft | auto."""
+        """Dispatch a script pipeline phase: prep | draft | v3 (auto) | auto (legacy v2)."""
         from nolan.webui import operations
         if not script_project_store.exists(slug):
             raise HTTPException(status_code=404, detail="project not found")
-        phase = (body.get("phase") or "auto").strip()
+        phase = (body.get("phase") or "v3").strip()   # v3 is the default pipeline
         if phase not in ("prep", "draft", "auto", "v3"):
             raise HTTPException(status_code=400, detail="phase must be prep/draft/auto/v3")
         session = (body.get("session") or "nolan2").strip() or "nolan2"

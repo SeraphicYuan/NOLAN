@@ -76,13 +76,19 @@ def _render_still_family(spec: Dict[str, Any], out_path: Path) -> Path:
     if target == "ClipMontage":
         return still_motion.render_clip_montage(c["clips"], out_path, transition=c.get("transition", "fade"),
                                                 trans_frames=int(c.get("trans_frames", 16)))
+    if target == "StatOver":
+        return still_motion.render_stat_over(
+            c["image"], c["value"], out_path, prefix=c.get("prefix", ""), suffix=c.get("suffix", ""),
+            caption=c.get("caption", ""), decimals=int(c.get("decimals", 0)),
+            theme=spec.get("theme"), accent=spec.get("accent", ""),
+            kind=("video" if c.get("kind") == "video" else "image"), duration=dur)
     raise ValueError(f"unknown still-family target: {target}")
 
 
 def render(spec: Dict[str, Any], out_path) -> Path:
     """Render a *validated* spec to out_path (mp4)."""
     out_path = Path(out_path)
-    if spec.get("target") in ("StillMotion", "SplitScreen", "ClipMontage"):
+    if spec.get("target") in ("StillMotion", "SplitScreen", "ClipMontage", "StatOver"):
         return _render_still_family(spec, out_path)
     if spec.get("backend") == "python":
         return _render_python(spec, out_path)

@@ -8,6 +8,32 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Script Projects — v3 pipeline + new source types (2026-07-02)
+
+Reworked the grounded script writer (`src/nolan/scriptwriter/`, `/script-projects`). The writer is
+still agent-native (a task brief dispatched to a `nolan2` tmux Claude agent) but is now **v3**.
+
+- **New source types** (`add_source` + hub routes + UI): **YouTube** link → subtitles fetched at
+  add-time (`youtube.py:fetch_transcript`, no video download); **Library video** → its transcript
+  concatenated from indexed segments (a picker); **MinerU book** (.md) → stored **uncapped** (no
+  truncation anywhere in the source→writer path; large sources are flagged ⚠ LARGE + chunk-read).
+- **v3 = the default pipeline** (`tasks.v3_task`; auto in one pass, or semi via `prep_task`→gate→
+  `draft_task`). The design principle: **the style guide is the constitution.** v3 (1) grounds facts
+  with a rich taxonomy (`src·purpose·beat·conf·role`), (2) **infers the spine *type* from the guide**
+  (human/mystery/argument/… — not hardcoded) and picks a **resonant, right-type angle** scored on
+  resonance + evidence + style-fit, (3) **beat-maps** it onto the guide's own Hook/Structure/Pacing/
+  DON'T sections (retention comes from the guide, not a boilerplate), (4) drafts, fact-checks, and
+  writes a run **report**. A supplied brief angle is **honored** (short-circuits the gate).
+- **Persistence / A/B:** every run keeps `facts.md`, `angles.md`, `beatmap.md`, versioned
+  `drafts/`, `factcheck.md`, `citations.md`, `report.md`; the legacy one-shot writer (`/write`) is
+  retained as an A/B baseline; drafts are promoted to `script.md` (not clobbered). Modes: auto/semi;
+  per-project narrative style is now editable in the detail panel.
+- **Validated by A/B across 3 subjects × 3 guide types** (Great Books = biographical spine,
+  art-stories = mystery spine, stickman = data-grounded-argument spine): v3 inferred all three
+  spine types correctly and was **≥ the baseline everywhere** — a large win where the angle is blank
+  and there's an under-exploited resonant framing (Homer), converging with the baseline where the
+  guide is prescriptive and/or the angle is supplied (Holbein, AI-data-centers).
+
 ## Evocative (tonal) b-roll search (2026-07-01)
 
 `/broll` page + `src/nolan/evoke_broll.py` — find b-roll that carries a line's **emotion**,
@@ -21,6 +47,34 @@ This is **operator #1** of a general **narrative→asset pairing engine**. The f
 space (conceptual/isomorphic, scale, ironic counterpoint, trait-embodiment, relational, rhythm…)
 and how each extends to ComfyUI generation + Remotion/motion composition is mapped in
 **`docs/NARRATIVE_ASSET_PAIRING.md`** (design roadmap).
+
+### Scale / tangibility operator — count-up over footage (2026-07-02)
+
+Operator #6 on `/broll` (**Approach: Scale**). A big number is made tangible by counting it
+up over a body-sized referent. Bridge: **quantity extraction** (derives a defensible number
+even when only implied — "a vast fleet" → 1,200) + a **period-safe / timeless tangible
+referent** ("100 billion stars" → grains of sand; hard periods avoid modern-scale clichés).
+The referent b-roll is scored for *scale + calm negative space*, then the **`StatOver`**
+Remotion composition renders the count-up over the still/footage. Abstains (**UNMATCHED**)
+when there's no number or stock lacks a clean referent (precision > coverage).
+
+**Theme-aware** (the key requirement): the count-up number + caption are styled entirely by
+the video **theme** via `resolveTheme` in `render-service/remotion-lib/src/theme.ts` (same as
+counter / kinetic-text — `th.fontFamily / th.fg / th.accent / th.bg`), **not hardcoded**.
+Theme is selectable on `/broll` (dark-editorial | light | high-contrast + optional accent
+override) and via `nolan broll --theme`.
+
+- **Composition**: `StatOver.tsx` (registered in `Root.tsx`) — count-up via `interpolate`,
+  comma formatting, tabular-nums, theme-keyed legibility scrim; still (`background`) or live
+  footage (`videoSrc`) backdrop.
+- **Motion registry**: `stat-over` `MotionEffect` (`src/nolan/motion/registry.py`); executor
+  routes it to `nolan.still_motion.render_stat_over` (shared params `theme`, `accent`).
+- **Endpoints**: `POST /api/broll/stat` → `operations.preview_stat`. CLI `nolan broll -op scale
+  [--theme] [--render]`. Usage: `nolan broll "…100 billion stars…" -op scale --render`.
+
+**Example:** *"There are a hundred billion stars in our galaxy alone."* → bridge derives
+100,000,000,000, picks the grains-of-sand referent, retrieves stock, and renders the number
+counting up over falling sand in the chosen theme's accent.
 
 ## Vector embedding status + auto-reconcile (2026-07-01)
 
@@ -1134,6 +1188,12 @@ mirror of the Clips/effects (visual-craft) feature.
   **synthesis task to a selectable tmux Claude agent** which authors
   `style_guide.md` (Voice, Hook patterns, Narrative structure, Pacing, Rhetorical
   devices, Do/Don't, Exemplars, and a copy-pasteable "How to Apply" block).
+  Each transcript is capped at `extract_max_chars` (default **200k**) via
+  `_sample_for_extraction`, which keeps a **head+tail sample (~60/40)** rather than
+  a head-only slice — long-form videos (e.g. 30-min explainers) otherwise lost
+  their endings, corrupting the `closing`/`narrative_structure` extracts. The
+  `_meta.truncated` flag still records when a transcript overflowed the cap.
+  Test: `scripts/test_script_style_extraction.py`.
 - **UI** — `/script-styles` page: style library (left) + per-style detail (add
   transcripts → analyze → view guide), with an agent-session dropdown.
 - Endpoints: `GET/POST /api/script-styles`, `GET/DELETE /api/script-styles/{id}`,
