@@ -88,6 +88,16 @@ body {
 }
 .status-fresh { background: rgba(148, 163, 184, 0.15); color: var(--text-secondary); }
 .status-running { background: rgba(14, 165, 233, 0.18); color: var(--accent-hover); }
+/* pipeline progress strip */
+.pipeline-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 2px; }
+.pstep { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(148,163,184,0.12);
+    color: var(--text-secondary); border: 1px solid transparent; white-space: nowrap; }
+.pstep.done { background: rgba(34,197,94,0.16); color: #86efac; }
+.pstep.next { background: rgba(14,165,233,0.20); color: var(--accent-hover); border-color: var(--accent-hover); font-weight: 600; }
+.pstep.error { background: rgba(239,68,68,0.18); color: #fca5a5; }
+.pstep-arrow { color: var(--text-secondary); opacity: 0.5; font-size: 10px; }
+.agent-select { font-size: 12px; padding: 4px 7px; background: var(--bg-primary, #0f172a); color: var(--text-primary, #e2e8f0);
+    border: 1px solid rgba(148,163,184,0.3); border-radius: 6px; margin-right: 6px; }
 .status-running::before {
     content: '';
     display: inline-block;
@@ -787,6 +797,19 @@ function renderProvenance(prov) {
     return rows.join('<br>');
 }
 
+const STEP_LABELS = {
+    match_and_adapt_style: 'style', script_to_scenes: 'scenes', tempo_enrich: 'tempo',
+    select_clips: 'clips', slide_designer: 'slides', render: 'render'
+};
+function renderPipeline(pipeline) {
+    if (!pipeline || !pipeline.length) return '';
+    const chips = pipeline.map(s => {
+        const mark = s.status === 'done' ? '✓ ' : s.status === 'error' ? '✕ ' : s.status === 'next' ? '▶ ' : '';
+        return `<span class="pstep ${s.status}" title="${escapeHtml(s.step)} — ${s.status}">${mark}${escapeHtml(STEP_LABELS[s.step] || s.step)}</span>`;
+    }).join('<span class="pstep-arrow">→</span>');
+    return `<div class="row"><div class="label">Pipeline</div><div class="value"><div class="pipeline-strip">${chips}</div></div></div>`;
+}
+
 function renderProject(p, checkpointBody, streamData) {
     const expanded = expandedSlugs.has(p.slug);
     const isRunning = p.status === 'running';
@@ -806,6 +829,7 @@ function renderProject(p, checkpointBody, streamData) {
             <span class="status-badge ${statusClass(p.status)}">${escapeHtml(p.status)}</span>
         </div>
         <div class="project-body">
+            ${renderPipeline(p.pipeline)}
             <div class="row"><div class="label">Current Step</div><div class="value"><code>${escapeHtml(p.current_step)}</code></div></div>
             <div class="row"><div class="label">Last Updated</div><div class="value">${fmtTs(p.last_updated)}</div></div>
             <div class="row"><div class="label">Templates</div><div class="value">${renderProvenance(p.template_provenance)}</div></div>
@@ -817,8 +841,11 @@ function renderProject(p, checkpointBody, streamData) {
                 ${renderHistory(p.step_history || [], p.history_snapshots || [], p)}
             </div>
             <div class="actions">
+                <select class="agent-select" id="run-agent-${escapeHtml(p.slug)}" title="Run locally on the hub, or dispatch to a chosen NOLAN agent">
+                    <option value="">run here (local)</option>
+                </select>
                 <button class="primary" onclick="runAgent('${escapeHtml(p.slug)}')" ${isRunning ? 'disabled' : ''}>
-                    ${isRunning ? 'Running…' : 'Run orchestrate'}
+                    ${isRunning ? 'Running…' : '▶ Run next step'}
                 </button>
             </div>
             <div class="feedback-box">
@@ -854,6 +881,7 @@ async function refresh() {
             const streams = Object.fromEntries(streamsArr);
             const html = projects.map(p => renderProject(p, checkpoints[p.slug], streams[p.slug])).join('');
             document.getElementById('projects').innerHTML = html;
+            populateRunAgents();
         }
         status.textContent = `Updated ${new Date().toLocaleTimeString()}`;
 
@@ -876,6 +904,21 @@ function toggleProject(slug) {
     refresh();
 }
 
+// Fill every run-agent selector with the live NOLAN tmux sessions ("run here" stays default).
+let _agentSessions = null;
+async function populateRunAgents() {
+    if (_agentSessions === null) {
+        try { _agentSessions = ((await (await fetch('/library/api/tmux-sessions')).json()).sessions) || []; }
+        catch (e) { _agentSessions = []; }
+    }
+    document.querySelectorAll('[id^="run-agent-"]').forEach(sel => {
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">run here (local)</option>'
+            + _agentSessions.map(s => `<option value="${escapeHtml(s)}">on ${escapeHtml(s)}</option>`).join('');
+        sel.value = cur;
+    });
+}
+
 function showToast(msg, isError) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -886,13 +929,20 @@ function showToast(msg, isError) {
 
 async function runAgent(slug) {
     try {
-        const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/run`, { method: 'POST' });
+        const sel = document.getElementById(`run-agent-${slug}`);
+        const agent = sel ? sel.value : '';
+        const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/run`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(agent ? { agent } : {})
+        });
         if (!res.ok) {
             const t = await res.text();
             throw new Error(t || `HTTP ${res.status}`);
         }
         const data = await res.json();
-        showToast(`Started orchestrate (pid ${data.pid})`);
+        showToast(data.mode === 'dispatched'
+            ? `Dispatched to ${data.agent} — watch its session`
+            : `Started orchestrate (pid ${data.pid})`);
         refresh();
     } catch (err) {
         showToast(`Failed to run: ${err.message}`, true);

@@ -100,6 +100,33 @@ def list_history_snapshots(project_path: Path) -> list[dict[str, Any]]:
     return snapshots
 
 
+def pipeline_progress(project_path: Path) -> list[dict[str, Any]]:
+    """The full ordered pipeline with a per-step status (done | error | next | pending),
+    so the dashboard can show the WHOLE pipeline (incl. steps not yet run, e.g. tempo_enrich)
+    and what runs next — not just the completed history."""
+    from nolan.orchestrator.director import PIPELINE_STEPS, Director
+    state = state_mod.load_state(project_path)
+    completed = {s.name for s in state.step_history if s.status == "completed"}
+    errored = [s.name for s in state.step_history if s.status == "error"]
+    last_error = errored[-1] if errored else None
+    try:
+        nxt = Director(project_path)._next_step_name(state)
+    except Exception:
+        nxt = None
+    out: list[dict[str, Any]] = []
+    for step in PIPELINE_STEPS:
+        if step == last_error and step not in completed:
+            st = "error"
+        elif step in completed:
+            st = "done"
+        elif step == nxt:
+            st = "next"
+        else:
+            st = "pending"
+        out.append({"step": step, "status": st})
+    return out
+
+
 def project_summary(project_path: Path) -> dict[str, Any]:
     state = state_mod.load_state(project_path)
     style_guide_path = project_path / "style_guide.md"
@@ -120,6 +147,7 @@ def project_summary(project_path: Path) -> dict[str, Any]:
         "template_provenance": asdict(state.template_provenance),
         "has_style_guide": style_guide_path.exists(),
         "has_checkpoint": (_orchestrator_dir(project_path) / "CHECKPOINT.md").exists(),
+        "pipeline": pipeline_progress(project_path),
         "feedback_files": feedback_files,
         "consumed_feedback": list(state.consumed_feedback),
         "unconsumed_feedback_count": unconsumed,
@@ -324,13 +352,30 @@ def trigger_orchestrate(
     project_path: Path,
     repo_root: Path,
     refine_target: str | None = None,
+    agent: str | None = None,
 ) -> dict[str, Any]:
-    """Spawn `nolan orchestrate <project>` as a detached background process.
+    """Advance `nolan orchestrate <project>` by one step (or a `--refine --target` pass).
 
-    Default mode advances the pipeline by one step. If `refine_target` is
-    given, runs `--refine --target <refine_target>` instead. The dashboard
-    polls state files; no PID tracking needed for v1.
+    Two run targets:
+      - default (`agent` falsy): spawn a detached background subprocess on the hub host.
+      - `agent` given: DISPATCH the run to that NOLAN tmux Claude agent (the user chose which
+        agent runs it) — the agent executes the command and reports. The dashboard polls state
+        files either way; no PID tracking needed.
     """
+    tail = f" --refine --target {refine_target}" if refine_target else ""
+    cmd_str = f"python -m nolan orchestrate {project_path}{tail}"
+
+    if agent:
+        from nolan.webui.operations import _dispatch_to_tmux
+        prompt = (
+            f"Advance the NOLAN orchestrate pipeline for project `{project_path.name}`: from the "
+            f"repo root, run `{cmd_str}` to execute the next pipeline step, then briefly report the "
+            f"resulting `.orchestrator/CHECKPOINT.md`."
+        )
+        _dispatch_to_tmux(agent, prompt)
+        return {"agent": agent, "command": cmd_str, "mode": "dispatched",
+                "stdout_log": None, "stderr_log": None}
+
     python_bin = sys.executable
     cmd = [python_bin, "-m", "nolan", "orchestrate", str(project_path)]
     if refine_target:
