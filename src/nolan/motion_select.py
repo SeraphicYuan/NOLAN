@@ -25,6 +25,9 @@ def _extract_json(txt: str):
 
 
 # kinds: "image" (stock photo), "stock" (stock video clip), "library" (indexed video segment)
+# NOTE: the still-image ids below are exactly the `treatment` enum of the registry `still-motion`
+# effect (src/nolan/motion/registry.py) — a recommendation here compiles to a still-motion spec.
+# "as-is" = passthrough (play the clip, no render); "subtle-push" = a light push (video Ken Burns, TODO).
 MOTION_VOCAB = {
     # --- stills need real motion ---
     "ken-burns-in":  {"label": "Ken Burns — push in", "kinds": ["image", "stock", "library"],

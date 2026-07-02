@@ -60,9 +60,30 @@ def _render_remotion(spec: Dict[str, Any], out_path: Path) -> Path:
     return out_path
 
 
+def _render_still_family(spec: Dict[str, Any], out_path: Path) -> Path:
+    """still-motion / split-screen / clip-montage — delegate to nolan.still_motion, which handles
+    the rembg cutout (parallax/rack-focus) + staging that the generic Remotion path doesn't."""
+    from nolan import still_motion
+    c = {**spec.get("content", {}), **spec.get("style", {})}
+    dur = spec.get("duration", 4.0)
+    target = spec["target"]
+    if target == "StillMotion":
+        return still_motion.render_still(c["image"], c.get("treatment", "ken-burns-in"), out_path,
+                                         duration=dur, direction=c.get("direction", "right"))
+    if target == "SplitScreen":
+        return still_motion.render_split(c["left"], c["right"], out_path, duration=dur,
+                                         left_label=c.get("left_label", ""), right_label=c.get("right_label", ""))
+    if target == "ClipMontage":
+        return still_motion.render_clip_montage(c["clips"], out_path, transition=c.get("transition", "fade"),
+                                                trans_frames=int(c.get("trans_frames", 16)))
+    raise ValueError(f"unknown still-family target: {target}")
+
+
 def render(spec: Dict[str, Any], out_path) -> Path:
     """Render a *validated* spec to out_path (mp4)."""
     out_path = Path(out_path)
+    if spec.get("target") in ("StillMotion", "SplitScreen", "ClipMontage"):
+        return _render_still_family(spec, out_path)
     if spec.get("backend") == "python":
         return _render_python(spec, out_path)
     return _render_remotion(spec, out_path)

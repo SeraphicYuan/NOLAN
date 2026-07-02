@@ -224,6 +224,37 @@ REGISTRY: List[MotionEffect] = [
                _p("margin", "number", "outer grid margin, fraction", default=0.05),
                _p("vignette", "number", "edge darkening 0..1", default=0.5)],
         shared=["theme"], duration_default=10.0),
+
+    # ---- Still → motion / assembly (Remotion; executor routes these to nolan.still_motion) ----
+    MotionEffect(
+        "still-motion", "remotion", "camera",
+        "Turn ONE still into a moving shot: motivated Ken Burns (push/pull/pan, origin on the "
+        "salient subject), 2.5D parallax (rembg cutout over a blurred bg), rack-focus, blur-in, "
+        "or an atmospheric overlay. The parallax/rack-focus cutout is derived automatically.", "StillMotion",
+        content=[_p("image", "string", "the still image path", required=True),
+                 _p("treatment", "enum", "how to animate the still",
+                    values=["ken-burns-in", "ken-burns-out", "ken-burns-pan", "parallax",
+                            "rack-focus", "blur-in", "atmospheric", "hold"], default="ken-burns-in"),
+                 _p("direction", "enum", "pan/parallax direction", values=["left", "right"], default="right")],
+        shared=[], duration_default=4.0),
+    MotionEffect(
+        "split-screen", "remotion", "composition",
+        "The relational/dialectical collision: two stills side by side (left|right) with opposing "
+        "slow pushes, a divider, and optional labels — shot A + shot B make a third meaning.", "SplitScreen",
+        content=[_p("left", "string", "left image path", required=True),
+                 _p("right", "string", "right image path", required=True),
+                 _p("left_label", "string", "caption under the left half", default=""),
+                 _p("right_label", "string", "caption under the right half", default="")],
+        shared=[], duration_default=4.0),
+    MotionEffect(
+        "clip-montage", "remotion", "composition",
+        "Assemble b-roll clips/stills into one video with shot-to-shot transitions "
+        "(dissolve/slide/wipe/clockWipe/cut) via @remotion/transitions.", "ClipMontage",
+        content=[_p("clips", "array", "[{path, kind:'video'|'image', duration(sec)}] in order", required=True),
+                 _p("transition", "enum", "transition between every pair",
+                    values=["fade", "slide", "wipe", "clockWipe", "cut"], default="fade"),
+                 _p("trans_frames", "int", "transition length in frames", default=16)],
+        shared=[], duration_default=8.0),
 ]
 
 BY_ID = {e.id: e for e in REGISTRY}
