@@ -13,7 +13,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-_TREATMENTS = {"ken-burns-in", "ken-burns-out", "ken-burns-pan", "parallax", "hold"}
+_TREATMENTS = {"ken-burns-in", "ken-burns-out", "ken-burns-pan", "parallax",
+               "rack-focus", "blur-in", "atmospheric", "hold"}
+_NEED_CUTOUT = {"parallax", "rack-focus"}
 
 
 def _salient(image_path, want_cutout: bool, out_dir: Path):
@@ -45,10 +47,10 @@ def render_still(image_path, motion_id: str = "ken-burns-in", out_path=None,
     target, fg = {"x": 0.5, "y": 0.5}, None
     if treatment != "hold":
         try:
-            target, fg = _salient(image_path, want_cutout=(treatment == "parallax"), out_dir=out_path.parent)
+            target, fg = _salient(image_path, want_cutout=(treatment in _NEED_CUTOUT), out_dir=out_path.parent)
         except Exception:
             pass
-    if treatment == "parallax" and not fg:
+    if treatment in _NEED_CUTOUT and not fg:
         treatment = "ken-burns-in"                       # no subject found → graceful fallback
 
     frames = max(30, int(round(duration * 30)))

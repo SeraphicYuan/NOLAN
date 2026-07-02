@@ -123,3 +123,16 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 - ✅ **Conceptual-isomorphic** — operator #2 on `/broll` (Approach toggle). Bridge maps concept→mechanic→isomorphic carrier domain(s); scoring judges metaphor-fit + freshness (cliché-avoidance).
 - 🎯 Everything else above is **designed, not built** — each is a meaty, independently
   buildable+testable feature (a new operator = bridge + aptness gate + its asset source + motion).
+
+
+## Still-motion build TODO (step 2 render effects)
+
+Motion-library (Remotion) effects, each keyed to a `motion_select` id; built + visually tested one by one:
+1. **Motivated Ken Burns** (salient-target push/pull/pan) — ✅ built (StillMotion)
+2. **Parallax / 2.5D** (via cutout/rembg subject/background) — ✅ built
+3. **Atmospheric overlays** (drifting motes + vignette + grade-drift) — ✅ built (light-leak/fog: future)
+4. **Rack focus** + **blur-in** (depth/cutout) — ✅ built
+5. **Transitions / match-cut**
+6. **Cinemagraph / image-to-video** — ⏸ TODO: ComfyUI workflow (user will provide). 
+
+**Asset generation:** ComfyUI **Krea 2** model for generating stills when stock/library miss (the 'generate when nothing fits' source).
