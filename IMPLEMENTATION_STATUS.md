@@ -8,6 +8,20 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Evocative (tonal) b-roll search (2026-07-01)
+
+`/broll` page + `src/nolan/evoke_broll.py` — find b-roll that carries a line's **emotion**,
+not a literal illustration. Pipeline: LLM **metaphor bridge** → **stock** (cheap tiers) or
+**library** (BGE vectors) retrieval → **vision scoring + period/locale gate** (nature/abstract =
+universal) → **listwise "would an editor cut this?" accept**, returning matched picks or
+**UNMATCHED(reason)** (precision over coverage). UI: Stock↔Library toggle, per-provider
+checkboxes, literalness slider, mood steer. Endpoints `GET/POST /api/broll/*`.
+
+This is **operator #1** of a general **narrative→asset pairing engine**. The full operator
+space (conceptual/isomorphic, scale, ironic counterpoint, trait-embodiment, relational, rhythm…)
+and how each extends to ComfyUI generation + Remotion/motion composition is mapped in
+**`docs/NARRATIVE_ASSET_PAIRING.md`** (design roadmap).
+
 ## Vector embedding status + auto-reconcile (2026-07-01)
 
 Indexing a video populates SQLite segments but embedding into the vector store was a
