@@ -405,6 +405,7 @@ def create_hub_app(
         if not line:
             raise HTTPException(status_code=400, detail="line is required")
         srcs = body.get("sources")
+        med = body.get("media")
         job = job_manager.start(
             "evoke-broll", operations.evoke_broll, config=load_config(),
             line=line, operator=(body.get("operator") or "tonal"),
@@ -412,6 +413,7 @@ def create_hub_app(
             period=(body.get("period") or "").strip(), locale=(body.get("locale") or "").strip(),
             literalness=body.get("literalness", 0.25), mood=(body.get("mood") or None),
             sources=(srcs if isinstance(srcs, list) and srcs else None),
+            media=(med if isinstance(med, list) and med else None),
             project=(body.get("project") or None),
         )
         return {"job_id": job.id, "type": "evoke-broll"}

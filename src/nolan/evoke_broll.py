@@ -149,7 +149,8 @@ def _vision_prompt(line: str, goal: str, period: str, locale: str, operator: str
         'culture-specific man-made content>, '
         '"period_ok": <0-10 fit with the story period; 10 if universal or no period given>, '
         '"locale_ok": <0-10 fit with the story locale; 10 if universal or no locale given>, '
-        '"flags": "<anachronism/wrong-locale markers e.g. \'modern car\',\'contemporary clothing\'; empty if none>", '
+        '"flags": "<disqualifiers: anachronism/wrong-locale e.g. \'modern car\'; OR \'watermark\' / '
+        '\'heavy overlaid text\' / \'stock-photo graphic\' for unusable stills; empty if none>", '
         '"why": "<=12 words"}')
 
 
@@ -247,6 +248,10 @@ class EvokeBrollSearch:
 
     @staticmethod
     def _anachronistic(c: dict, gated: bool) -> bool:
+        flags = (c.get("flags") or "").lower()
+        # unusable stills (watermark / overlaid text / stock-photo graphic) are always out
+        if any(w in flags for w in ("watermark", "overlaid text", "heavy text", "text overlay", "stock-photo graphic")):
+            return True
         if not gated or c.get("universal"):
             return False
         p, l = c.get("period_ok"), c.get("locale_ok")
@@ -255,12 +260,14 @@ class EvokeBrollSearch:
     async def search(self, line: str, *, operator: str = "tonal", mode: str = "stock",
                      period: str = "", locale: str = "", literalness: float = 0.25,
                      mood: Optional[str] = None, sources: Optional[List[str]] = None,
-                     project: Optional[str] = None, max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
+                     project: Optional[str] = None, media: Optional[List[str]] = None,
+                     max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
         line = (line or "").strip()
         if not line:
             raise ValueError("line is required")
         operator = operator if operator in _OP else "tonal"
         mode = "library" if mode == "library" else "stock"
+        media = [m for m in (media or ["video", "image"]) if m in ("video", "image")] or ["video", "image"]
         self._sem = asyncio.Semaphore(4)              # bind to the running loop
         gated = bool(period or locale)
 
@@ -282,7 +289,7 @@ class EvokeBrollSearch:
         if mode == "library":
             cands = await self._retrieve_library(metaphors, per_metaphor, project)
         else:
-            cands = await self._retrieve_stock(metaphors, per_metaphor, sources)
+            cands = await self._retrieve_stock(metaphors, per_metaphor, sources, media)
         pool_n = len(cands)
         if not cands:
             return {"status": "UNMATCHED", "operator": operator, "mode": mode, "line": line,
@@ -304,7 +311,7 @@ class EvokeBrollSearch:
         kept = [c for c in scored if not self._anachronistic(c, gated)]
         filtered = [c for c in scored if self._anachronistic(c, gated)]
         for c in filtered:
-            c["reject"] = f"period/locale: {c.get('flags') or 'clash'}"
+            c["reject"] = f"gated: {c.get('flags') or 'period/locale clash'}"
 
         # 4. listwise acceptance (or abstain)
         picked, status, reason, chosen = [], "UNMATCHED", "no period/locale-safe footage survived", set()
@@ -323,6 +330,12 @@ class EvokeBrollSearch:
                 if i not in chosen:
                     c["reject"] = "below use-bar"
 
+        # 5. motion-selection: how to animate each accepted asset (motivated, per operator + kind)
+        if picked:
+            self._progress(0.92, "Choosing motion…")
+            from .motion_select import recommend_motions
+            await recommend_motions(self.llm, line, goal, operator, picked)
+
         considered = filtered + [c for i, c in enumerate(kept) if i not in chosen]
         self._progress(1.0, status)
         return {"status": status, "reason": reason, "operator": operator, "mode": mode, "line": line,
@@ -331,16 +344,24 @@ class EvokeBrollSearch:
                 "counts": {"pool": pool_n, "kept": len(kept), "filtered": len(filtered)}}
 
     # ---- retrieval: stock (real footage) or library (indexed segments) ----
-    async def _retrieve_stock(self, metaphors, per_metaphor, sources):
+    async def _retrieve_stock(self, metaphors, per_metaphor, sources, media=("video", "image")):
         pool: dict = {}
         for m in metaphors:
-            hits = await asyncio.to_thread(self.stock.search_assets, m, "video", sources or None, per_metaphor)
-            for h in hits:
-                if h.url not in pool:
-                    pool[h.url] = {"kind": "stock", "url": h.url, "source": h.source,
-                                   "duration": round(h.duration) if h.duration else None,
-                                   "poster": h.preview_image_url or h.thumbnail_url, "metaphor": m}
-        return list(pool.values())[:10]
+            for mt in media:
+                # video-provider selection applies to video only; images use the image fan-out
+                srcs = (sources or None) if mt == "video" else None
+                hits = await asyncio.to_thread(self.stock.search_assets, m, mt, srcs, per_metaphor)
+                for h in hits:
+                    if h.url in pool:
+                        continue
+                    if mt == "image":
+                        pool[h.url] = {"kind": "image", "url": h.url, "source": h.source,
+                                       "duration": None, "poster": h.thumbnail_url or h.url, "metaphor": m}
+                    else:
+                        pool[h.url] = {"kind": "stock", "url": h.url, "source": h.source,
+                                       "duration": round(h.duration) if h.duration else None,
+                                       "poster": h.preview_image_url or h.thumbnail_url, "metaphor": m}
+        return list(pool.values())[:12]
 
     async def _retrieve_library(self, metaphors, per_metaphor, project):
         vs = self._vector()

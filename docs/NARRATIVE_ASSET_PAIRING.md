@@ -27,13 +27,17 @@ Beyond simple clip-matching, the engine has to graduate from *"which clip?"* to
 1. **Asset sourcing is multi-source**, chosen per operator:
    - **library search** (indexed video segments, BGE vectors) — built
    - **stock search** (Pexels/Pixabay/… cheap tiers) — built
-   - **picture search** (the picture library / CLIP) — exists, to wire in
+   - **picture search** (stock photos / picture library / CLIP) — ✅ wired in (stills join the stock pool; scored directly)
    - **ComfyUI generation** — when no found asset fits, *generate* it (stills, and
      eventually paired stills driven into a motion)
 2. **Composition is a first-class layer**, not an afterthought:
    - the **motion library** + **Remotion** apply the *right motion* to numbers, words,
      pictures and clips (Ken Burns, kinetic text, counters, bar/line/k-shape, pair-morphs…)
    - so an operator's output is an **asset spec + a motion spec**, not a bare URL.
+   - ✅ **motion-selection layer** (`src/nolan/motion_select.py`): maps (operator + line intent + asset
+     kind) → a *motivated* motion (push-in=significance, pull-out=isolation, parallax=immersion, hold=
+     restraint …). Recommends the right treatment now; render effects light up as built (Ken Burns/hold/
+     as-is available; parallax/atmospheric/rack-focus/blur-in/cinemagraph planned).
 3. **Rhythm/tempo needs a deep link to the script** (pacing, energy, emphasis) — see D.
 
 ---

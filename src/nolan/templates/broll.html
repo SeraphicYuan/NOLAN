@@ -81,7 +81,12 @@
         <button type="button" class="modebtn active" data-mode="stock">Stock video</button>
         <button type="button" class="modebtn" data-mode="library">My library</button>
       </div>
-      <div id="providers"><label style="margin-top:12px">Stock providers <span class="hint">(uncheck to exclude — defaults are the cheap tiers)</span></label>
+      <div id="media"><label style="margin-top:12px">Asset types <span class="hint">(stills join the pool; they get a recommended motion)</span></label>
+        <div class="provs">
+          <label><input type="checkbox" class="med" value="video" checked> video clips</label>
+          <label><input type="checkbox" class="med" value="image" checked> photos</label>
+        </div></div>
+      <div id="providers"><label style="margin-top:12px">Stock video providers <span class="hint">(uncheck to exclude — defaults are the cheap tiers)</span></label>
         <div id="provlist" class="provs hint">loading…</div></div>
       <div class="ctrls">
         <span><label style="display:inline">Literalness</label>
@@ -130,7 +135,9 @@
         document.querySelectorAll(".modebtn").forEach(function (x) { x.classList.remove("active"); });
         b.classList.add("active");
         currentMode = b.dataset.mode;
-        provWrap.style.display = (currentMode === "stock") ? "block" : "none";
+        var show = (currentMode === "stock") ? "block" : "none";
+        provWrap.style.display = show;
+        document.getElementById("media").style.display = show;
       });
     });
     fetch("/api/broll/providers").then(function (r) { return r.json(); }).then(function (d) {
@@ -157,21 +164,26 @@
     function clipCard(c, dropped) {
       var lbl = CHIPS[lastOp] || CHIPS.tonal;
       var isLib = c.kind === "library";
+      var isImg = c.kind === "image";
       var poster = c.poster ? ' poster="' + esc(c.poster) + '"' : "";
-      var player = isLib
-        ? '<video preload="none" controls muted src="' + esc(c.url) + '"></video>'
-        : (/\.mp4($|\?)/.test(c.url)
-            ? '<video' + poster + ' preload="none" controls muted loop><source src="' + esc(c.url) + '"></video>'
-            : (c.poster ? '<img class="noposter" src="' + esc(c.poster) + '">' : '<div class="noposter"></div>'));
+      var motion = c.motion ? '<span class="chip" style="background:#3a5f3a" title="recommended motion">▶ ' + esc(c.motion.label || c.motion.id) + '</span>' : "";
+      var player = isImg
+        ? '<img class="noposter" src="' + esc(c.poster || c.url) + '">'
+        : isLib
+          ? '<video preload="none" controls muted src="' + esc(c.url) + '"></video>'
+          : (/\.mp4($|\?)/.test(c.url)
+              ? '<video' + poster + ' preload="none" controls muted loop><source src="' + esc(c.url) + '"></video>'
+              : (c.poster ? '<img class="noposter" src="' + esc(c.poster) + '">' : '<div class="noposter"></div>'));
       var place = c.universal ? '<span class="chip" style="background:#2f5f7a">universal</span>'
                              : chip("per", c.period_ok) + chip("loc", c.locale_ok);
       var flag = c.flags ? '<span class="chip" style="background:#7a2f2f">' + esc(c.flags) + '</span>' : "";
       var rej = dropped && c.reject ? '<span class="chip" style="background:#5a3a1a">' + esc(c.reject) + '</span>' : "";
       var srcline = isLib
         ? esc(c.video_name) + ' · ' + fmtT(c.ts_start) + '–' + fmtT(c.ts_end) + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"'
-        : esc(c.source) + ' · ' + (c.duration ? c.duration + "s" : "?") + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"';
+        : (isImg ? esc(c.source) + ' · photo' : esc(c.source) + ' · ' + (c.duration ? c.duration + "s" : "?"))
+          + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"';
       return '<div class="clip">' + player + '<div class="m">' +
-        chip(lbl[0], c.mood) + chip(lbl[1], c.nonliteral) + place + flag + rej +
+        chip(lbl[0], c.mood) + chip(lbl[1], c.nonliteral) + place + flag + rej + motion +
         '<div class="why">' + esc(c.why) + '</div>' +
         '<div style="color:#888;margin-top:4px">' + srcline + '</div>' +
         '<a class="src" href="' + esc(c.url) + '" target="_blank">open ↗</a></div></div>';
@@ -213,6 +225,7 @@
       };
       if (currentMode === "stock") {
         body.sources = Array.prototype.map.call(document.querySelectorAll(".prov:checked"), function (c) { return c.value; });
+        body.media = Array.prototype.map.call(document.querySelectorAll(".med:checked"), function (c) { return c.value; });
       }
       NolanJobs.start("/api/broll/evoke", body, {
         into: document.getElementById("job"),

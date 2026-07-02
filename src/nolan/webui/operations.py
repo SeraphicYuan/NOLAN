@@ -251,14 +251,16 @@ async def embed_video(job, *, db_path: Path, video_id: int):
 
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",
                       period: str = "", locale: str = "", literalness: float = 0.25,
-                      mood: Optional[str] = None, sources: Optional[list] = None, project: Optional[str] = None):
+                      mood: Optional[str] = None, sources: Optional[list] = None,
+                      project: Optional[str] = None, media: Optional[list] = None):
     """Narrative→asset pairing search (tonal | conceptual …) — stock or library. matched | unmatched."""
     from nolan.evoke_broll import EvokeBrollSearch
 
     searcher = EvokeBrollSearch(config=config, progress=lambda f, m: job.set_progress(min(0.99, f), m))
     result = await searcher.search(line, operator=operator, mode=mode, period=period, locale=locale,
                                    literalness=float(literalness), mood=(mood or None),
-                                   sources=(sources or None), project=(project or None))
+                                   sources=(sources or None), project=(project or None),
+                                   media=(media or None))
     job.set_progress(1.0, f"{result['status']} — {len(result['picks'])} clip(s)")
     return result
 
@@ -1300,6 +1302,29 @@ def _parse_json_object(raw: str) -> dict:
     return {"_unparsed": raw[:2000]}
 
 
+_EXTRACT_TRIM_MARKER = "\n\n[…transcript trimmed for length…]\n\n"
+
+
+def _sample_for_extraction(text: str, max_chars: int) -> str:
+    """Cap ``text`` to ``max_chars`` for the extraction LLM, keeping BOTH ends.
+
+    Style analysis needs the opening *and* the closing (hook, sign-off, overall
+    arc), so a naive head slice (``text[:max_chars]``) silently discards the
+    ending — exactly the part the ``closing``/``narrative_structure`` fields
+    depend on. When the text overflows, keep ~60% from the head and ~40% from
+    the tail with an elision marker between them. Output length never exceeds
+    ``max_chars``.
+    """
+    if max_chars <= 0 or len(text) <= max_chars:
+        return text
+    budget = max_chars - len(_EXTRACT_TRIM_MARKER)
+    if budget <= 0:  # cap smaller than the marker itself — degrade to head slice
+        return text[:max_chars]
+    head = (budget * 3) // 5
+    tail = budget - head
+    return text[:head] + _EXTRACT_TRIM_MARKER + text[-tail:]
+
+
 def _is_rate_limit_error(msg: str) -> bool:
     """True if an error looks like a YouTube rate-limit (HTTP 429)."""
     m = (msg or "").lower()
@@ -1890,7 +1915,7 @@ patterns were consistent across the corpus vs occasional.
 
 
 async def analyze_style(job, *, config, store_root, style_id: str,
-                        session: str = "nolan2", extract_max_chars: int = 20000):
+                        session: str = "nolan2", extract_max_chars: int = 200000):
     """Stage B (hybrid): per-transcript LLM extraction, then dispatch the
     synthesis to a tmux Claude agent which writes ``style_guide.md``.
     """
@@ -1913,7 +1938,7 @@ async def analyze_style(job, *, config, store_root, style_id: str,
     for i, t in enumerate(texts):
         job.set_progress(0.05 + 0.7 * (i / total if total else 0),
                          f"Analyzing [{i+1}/{total}] {t['title'][:60]}")
-        body = t["text"][:extract_max_chars]
+        body = _sample_for_extraction(t["text"], extract_max_chars)
         prompt = _EXTRACT_PROMPT.format(title=t["title"], text=body)
         try:
             raw = await llm.generate(prompt)
