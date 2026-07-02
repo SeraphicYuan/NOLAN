@@ -89,6 +89,36 @@ override) and via `nolan broll --theme`.
 100,000,000,000, picks the grains-of-sand referent, retrieves stock, and renders the number
 counting up over falling sand in the chosen theme's accent.
 
+## Rhythm/tempo + full-script context (ScriptContext) (2026-07-02)
+
+Three pipeline-agnostic modules that give asset/motion/tempo decisions the whole-script context
+they lack today (every current stage decides from one line in isolation). Built after running the
+real orchestrator on the Homer script to scope the gaps empirically.
+
+- **`script_context.py`** — `ScriptContext.load(project)` assembles the `scriptgen/` workspace:
+  `script.md` beats + timecodes, `beatmap.md` `pace:a|d` tags + coverage, `facts.md` clusters,
+  meta/spine. `brief()` + `beat_context(i)` are the prompt-ready digests.
+- **`tempo_plan.py`** — `design_tempo(ctx, llm)` runs ONE whole-script Editorial Arc pass →
+  per-beat energy curve + render levers (transition cut/dissolve/fade, motion_speed, shots),
+  toward the per-flow pacing profile (punchy/contemplative); rule-based fallback from the pace
+  seed. `apply_to_plan(plan, tempo)` writes `transition`/`energy`/`motion_speed` onto every scene
+  (mapped by section=beat). `motion_for_tempo(bt)` → (motion_id, duration) is the renderable lever.
+  Scene model gained `energy` + `motion_speed` (round-tripped).
+- **`knowledge_query.py`** — `expand_queries(ctx, beat, llm)` taps the model's knowledge to name
+  SPECIFIC era-correct assets (artist+title) + derives period/locale; `build_scene_lead_map` feeds
+  `match_broll_v2(knowledge=True)` (via `build_query_variants(lead_queries=…)`), replacing the
+  proper-noun-stripping fallback.
+
+**Validated on the real Homer plan (57 scenes):** flat all-hard-cuts → arc-driven fade/dissolve/cut;
+knowledge queries retrieved the genuine Turner *Ulysses Deriding Polyphemus* + a Blinding-of-
+Polyphemus sculptural group. Preview: `scripts/tempo_gallery.py` → `/broll-gen/tempo_homer.html`.
+Design + gap analysis in `docs/NARRATIVE_ASSET_PAIRING.md`. Tests: `tests/test_tempo_context.py` (13).
+
+**Architecture note:** keep `nolan orchestrate` (a strong agent spine — its `script_to_scenes`
+agent already paces via per-section duration+cut-density and writes semi-specific queries). These
+modules layer on as deterministic post-passes (own the empty fill levers: transition/energy/motion
++ query depth) + a future context-injection of `ScriptContext` into the agent prompts. Not a rewrite.
+
 ## Vector embedding status + auto-reconcile (2026-07-01)
 
 Indexing a video populates SQLite segments but embedding into the vector store was a
