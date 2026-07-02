@@ -1,0 +1,66 @@
+{
+  "slug": "ai-data-center-debate",
+  "name": "AI Data Center Debate",
+  "subject": "AI Data Center Debate",
+  "style_id": "channel-stickman-talks",
+  "angle": "",
+  "pivot": "",
+  "target_minutes": 8.0,
+  "description": "AI Data Center Debate",
+  "mode": "auto",
+  "chosen_angle": "",
+  "created_at": "2026-07-02T12:41:29.168625",
+  "status": "new",
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "youtube",
+      "title": "Exposing The Dark Side of America's AI Data Center Explosion | View From Above | Business Insider",
+      "url": "https://youtu.be/t-8TDOFqkQA?si=3c3ItCwMvP42UVVF",
+      "added_at": "2026-07-02T12:41:40.533739",
+      "text_path": "sources\\raw\\S1-exposing-the-dark-side-of-americas-ai-da.md",
+      "word_count": 4361,
+      "status": "fetched"
+    },
+    {
+      "id": "S2",
+      "kind": "youtube",
+      "title": "Here's What Nobody's Telling You About AI Data Centers | Ep. 1780",
+      "url": "https://youtu.be/wEm1ZpL1PAg?si=TFWdPdh1H8kS_NkU",
+      "added_at": "2026-07-02T12:42:16.370733",
+      "text_path": "sources\\raw\\S2-heres-what-nobodys-telling-you-about-ai-.md",
+      "word_count": 7883,
+      "status": "fetched"
+    },
+    {
+      "id": "S3",
+      "kind": "youtube",
+      "title": "How data centers work and why AI is driving their growth",
+      "url": "https://youtu.be/3Yh9OddmgS0?si=HAt0aByuGjA5QJTM",
+      "added_at": "2026-07-02T12:43:24.616192",
+      "text_path": "sources\\raw\\S3-how-data-centers-work-and-why-ai-is-driv.md",
+      "word_count": 242,
+      "status": "fetched"
+    },
+    {
+      "id": "S4",
+      "kind": "youtube",
+      "title": "We Saw What AI Data Centers Don't Want You to See",
+      "url": "https://youtu.be/5p426fSlYH4?si=4GHZwDA4tfAqiL5F",
+      "added_at": "2026-07-02T12:44:03.418465",
+      "text_path": "sources\\raw\\S4-we-saw-what-ai-data-centers-dont-want-yo.md",
+      "word_count": 3485,
+      "status": "fetched"
+    },
+    {
+      "id": "S5",
+      "kind": "youtube",
+      "title": "What’s Inside an AI Data Center?",
+      "url": "https://youtu.be/WNt_1bSODIo?si=43DX1R4hXBuwMYPU",
+      "added_at": "2026-07-02T12:44:44.035219",
+      "text_path": "sources\\raw\\S5-whats-inside-an-ai-data-center.md",
+      "word_count": 2425,
+      "status": "fetched"
+    }
+  ]
+}

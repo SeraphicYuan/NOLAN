@@ -37,5 +37,6 @@
       "status": "fetched",
       "text_path": "sources/raw/S3-artdex-mystery-holbein.md"
     }
-  ]
+  ],
+  "mode": "auto"
 }

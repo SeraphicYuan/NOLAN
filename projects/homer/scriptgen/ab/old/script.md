@@ -1,0 +1,33 @@
+# Video Script
+
+**Total Duration:** 8:00
+
+---
+
+## The Man of Many Turns [0:00 - 0:55]
+
+"Tell me of the man." So begins the oldest adventure story in the Western world — with a single word, *man*, and a poet asking a Muse to sing him a life he cannot see. The poet's name, we are told, was Homer. He was blind. And around 700 BC, in the hillside villages of an ancient Greece only just learning to write, he — or they — set down two poems that would become the foundation of Western literature: the *Iliad*, the siege of Troy, and its sequel, the *Odyssey*, the story of one soldier's ten-year struggle to get home. This is a story about coming home. But it is also, strangely, a story about a man who survives by becoming *nobody* — sung by a poet who is himself almost nobody at all.
+
+## The Poet We Cannot Find [0:55 - 2:05]
+
+Here is the first mystery, and it is not *in* the poem — it *is* the poem. We know almost nothing about Homer. Seven different cities claimed him as their citizen. He was said to be blind, though the sheer visual richness of his verse makes even that doubtful. And in 1795, a German scholar named Wolf gave the puzzle its lasting name — the Homeric Question — when he argued that the *Iliad* and the *Odyssey* were never written by one man at one desk at all. They *grew*. They were *sung* — handed down across generations of oral poets, each remembering, polishing, adding, in an age balanced on the very border between speech and writing. And here is the beautiful proof, hidden inside the poem itself: partway through, a blind singer named Demodocus rises at a feast and sings the fall of Troy — a portrait of the poet, tucked into his own creation, as if Homer signed his work in the only way a blind man could.
+
+## The World That Sang It [2:05 - 3:05]
+
+You can hear how it was made in its own grain. Over and over, the same phrases return — "rosy-fingered Dawn," "grey-eyed Athena," "resourceful Odysseus" — not clumsiness, but *machinery*: the fixed epithets an oral poet leans on to carry a story of thousands of lines in his memory and his rhythm. A century ago, scholars found singers in the mountains of the Balkans still doing exactly this, improvising poems as long as the *Odyssey* with no written text at all. And the world the poem remembers was real enough. The Troy it sings of stood around 1200 BC; a businessman-turned-treasure-hunter named Heinrich Schliemann — led there, in truth, by an Englishman named Frank Calvert — dug it out of a hillside in what is now Turkey. Clay tablets from that lost Bronze-Age Greece, written in a script we call Linear B, were finally decoded in 1952 — dry palace ledgers, mostly, counting grain and sheep and offerings, but proof that behind the myth stood a real world of kings and palaces and record-keeping. The *Odyssey*, then, is not history — but it is not pure invention either. It is memory, sung into shape.
+
+## A Kingdom of Wolves [3:05 - 3:55]
+
+And what a memory. The premise is almost unbearably human. Twenty years Odysseus has been gone — ten at war, ten lost at sea — and on his island of Ithaca the vultures have gathered. Over a hundred suitors, certain he is dead, camp in his halls, devour his herds, and press his wife Penelope to choose one of them. She is his equal in cunning. She promises to marry once she has finished weaving a burial shroud — then unpicks her day's work every night by lamplight, holding them off for three long years. Their son Telemachus, an infant when his father sailed, has grown to a man in a house full of strangers eating his inheritance. This is what Odysseus is fighting to reach. Not glory. A wife. A son. A home.
+
+## Nobody's Story [3:55 - 5:15]
+
+But the adventures we remember — the monsters, the witch, the singing rocks — are stranger than they seem. Notice this: in a poem of twenty-four books, the Cyclops and the Sirens and the six-headed Scylla appear in only four — and only inside a story Odysseus himself tells to a foreign king. It is as if Homer quarantines the fantastic, sets it apart from the realism of the rest, and lets us wonder how much of it to believe — for we have only the word of Odysseus, and Odysseus is a liar. A magnificent one. Trapped in the cave of the Cyclops Polyphemus, he escapes by giving a false name: *Nobody.* So that when the blinded giant bellows for help, his neighbours hear only that *nobody* is hurting him. It is his cleverest trick. And it is his undoing, too, when pride makes him shout his real name across the waves — and the giant's father, Poseidon, curses him to wander ten more years. To come home, this man must first survive by being no one at all.
+
+## The Cost of Coming Home [5:15 - 6:30]
+
+The *Odyssey* keeps setting his homecoming beside a darker one. Again and again it names Agamemnon — the warlord who sailed home from Troy swiftly, proudly, in the open, and was cut down at his own table by an unfaithful wife and her lover. Odysseus does the opposite: he comes home slowly, secretly, in disguise, to a wife who never wavered. Penelope against Clytemnestra — patience against betrayal. And down among the dead, Odysseus meets Achilles, the greatest warrior who ever lived, who traded a long quiet life for a short and glorious one — and the great hero tells him he would rather be a landless slave among the living than a king over all the dead. There is the whole argument of the poem in a single breath. The *Iliad* worships glory, and its hero chose to die young and famous. The *Odyssey* answers: *stay alive.* Come home. Endure. The plank you cling to after the shipwreck is worth more than any crown — and the man who keeps hold of it is a new kind of hero, one whose greatness is not his sword but his stubborn, patient will to survive.
+
+## The Song That Never Ends [6:30 - 8:00]
+
+And he does come home — disguised as a beggar, known at first only to his old dog and his old nurse, until he alone can string his great bow and send an arrow clean through twelve axe-heads, and take back his hall. Then the poem gives us its quietest miracle: a husband and wife, sitting together in the dark, simply *knowing* each other again after twenty years. Nearly three thousand years later, we are still telling this story. Every quest, every long road home — from *Beowulf* to the reluctant hero of a superhero film — walks a path Homer laid down. And still the scholars argue over who he was, or whether "he" was ever one man at all. But perhaps that is the last echo of his hero's oldest trick. Odysseus survived by being Nobody — and Homer, the blind singer we can never quite find, survives the very same way: not as a man, but as a voice, still singing us the way home.

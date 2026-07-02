@@ -1,0 +1,7 @@
+name: AI Data Center Debate
+slug: ai-data-center-debate
+description: AI Data Center Debate
+source_videos:
+- source/
+output_dir: output/
+assets_dir: assets/

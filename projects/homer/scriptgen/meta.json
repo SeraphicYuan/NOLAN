@@ -1,0 +1,55 @@
+{
+  "slug": "homer",
+  "name": "Homer",
+  "subject": "Homer",
+  "style_id": "channel-great-books-explained",
+  "angle": "",
+  "pivot": "",
+  "target_minutes": 8.0,
+  "description": "Homer",
+  "created_at": "2026-07-01T23:34:23.872469",
+  "status": "new",
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "library-video",
+      "title": "1. THE ODYSSEY - The Entire Story.mp4",
+      "url": "projects\\_library\\source\\1. THE ODYSSEY - The Entire Story.mp4",
+      "added_at": "2026-07-02T00:07:03.004469",
+      "text_path": "sources\\raw\\S1-1-the-odyssey-the-entire-storymp4.md",
+      "word_count": 22175,
+      "status": "fetched"
+    },
+    {
+      "id": "S2",
+      "kind": "library-video",
+      "title": "The Odyssey Explained In 25 Minutes ｜ Best Greek Mythology Documentary.mp4",
+      "url": "projects\\_library\\source\\The Odyssey Explained In 25 Minutes ｜ Best Greek Mythology Documentary.mp4",
+      "added_at": "2026-07-02T00:07:28.353861",
+      "text_path": "sources\\raw\\S2-the-odyssey-explained-in-25-minutes-best.md",
+      "word_count": 5437,
+      "status": "fetched"
+    },
+    {
+      "id": "S3",
+      "kind": "library-video",
+      "title": "荷马史诗是伪作？起底西方伪史论的荒诞叙事！.mp4",
+      "url": "projects\\_library\\source\\荷马史诗是伪作？起底西方伪史论的荒诞叙事！.mp4",
+      "added_at": "2026-07-02T00:07:32.817071",
+      "text_path": "sources\\raw\\S3-荷马史诗是伪作起底西方伪史论的荒诞叙事mp4.md",
+      "word_count": 564,
+      "status": "fetched"
+    },
+    {
+      "id": "S4",
+      "kind": "youtube",
+      "title": "What Is The Real Meaning Behind The Odyssey By Homer? | Literary Classics",
+      "url": "https://www.youtube.com/watch?v=AzLcBTSEnKo",
+      "added_at": "2026-07-02T00:22:59.350730",
+      "text_path": "sources\\raw\\S4-what-is-the-real-meaning-behind-the-odys.md",
+      "word_count": 4282,
+      "status": "fetched"
+    }
+  ],
+  "mode": "auto"
+}

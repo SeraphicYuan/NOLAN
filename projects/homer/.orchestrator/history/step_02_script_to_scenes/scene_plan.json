@@ -1,0 +1,514 @@
+{
+  "sections": {
+    "Hook — the poet nobody can find": [
+      {
+        "id": "scene_001",
+        "start": "0:00",
+        "duration": "6s",
+        "narration_excerpt": "Seven cities of the ancient world each swore that Homer was born on their soil — and not one of them could produce the man.",
+        "visual_type": "graphic",
+        "visual_description": "Section-opening map card: an antique-styled map of the Aegean with seven cities (Smyrna, Chios, Colophon, Salamis, Rhodes, Argos, Athens) each glowing and labelled, each with a claiming banner — but the space where a portrait should sit stays empty. Serif title treatment."
+      },
+      {
+        "id": "scene_002",
+        "start": "0:06",
+        "duration": "6s",
+        "narration_excerpt": "He is said to have been blind, though the sheer visual dazzle of his verse makes even that doubtful.",
+        "visual_type": "generated-image",
+        "visual_description": "Close portrait of an aged blind bard, eyes clouded and unseeing, yet the darkness around his face carries faint reflections of vivid scenes — ships, fire, sea — as if he sees everything inwardly.",
+        "comfyui_prompt": "cinematic close-up portrait of an ancient blind Greek bard, milky clouded eyes, weathered face, faint dreamlike reflections of ships and wine-dark sea shimmering in the surrounding darkness, chiaroscuro torchlight, mythic photorealism, 35mm, shallow depth of field"
+      },
+      {
+        "id": "scene_003",
+        "start": "0:12",
+        "duration": "6s",
+        "narration_excerpt": "And lately a chorus of voices online has gone further still, insisting that Homer never lived at all,",
+        "visual_type": "generated-image",
+        "visual_description": "Symbolic composition: pages of ancient verse dissolving and scattering into fragments, no human figure present — the author erased, only floating text-shards drifting apart.",
+        "comfyui_prompt": "aged parchment pages of ancient Greek verse breaking apart into drifting fragments, ink dissolving into dark void, no figure, symbolic and cinematic, cold blue-grey palette, moody atmosphere, high detail"
+      },
+      {
+        "id": "scene_004",
+        "start": "0:18",
+        "duration": "6s",
+        "narration_excerpt": "that the epics are a forgery stitched together by later hands.",
+        "visual_type": "graphic",
+        "visual_description": "Diagrammatic card: torn manuscript strips being stitched together by dotted seams, with the word “FORGERY?” set in serif type, question mark emphasized to keep the even hand rather than assert the claim."
+      },
+      {
+        "id": "scene_005",
+        "start": "0:24",
+        "duration": "6s",
+        "narration_excerpt": "It is a strange accusation to level at the two poems Western literature was built on.",
+        "visual_type": "b-roll",
+        "visual_description": "Museum-grade still of an early illuminated or papyrus manuscript page of the Iliad/Odyssey, Greek text visible, treated as an artifact under gallery light.",
+        "search_query": "ancient Greek Odyssey Iliad manuscript papyrus page museum"
+      },
+      {
+        "id": "scene_006",
+        "start": "0:30",
+        "duration": "6s",
+        "narration_excerpt": "Stranger still when you realize the poem answers it — because tucked into the eighth book of the Odyssey, singing at a feast, is a blind bard named Demodocus,",
+        "visual_type": "generated-image",
+        "visual_description": "A torchlit Bronze-Age Phaeacian hall at a feast; a blind bard sits with a lyre, mid-song, the crowd leaning in around him.",
+        "comfyui_prompt": "torchlit Bronze-Age Greek banquet hall, a blind bard playing a lyre and singing at a feast, seated nobles listening, warm firelight, cinematic mythic realism, volumetric light, painterly detail"
+      },
+      {
+        "id": "scene_007",
+        "start": "0:36",
+        "duration": "7s",
+        "narration_excerpt": "whose song moves the hall to tears while the man himself sits unseen in the corner.",
+        "visual_type": "generated-image",
+        "visual_description": "Same hall, focus shifts to a nameless cloaked stranger (Odysseus) weeping quietly in shadow while the bard remains unnoticed in the corner — the song more present than either man.",
+        "comfyui_prompt": "a cloaked stranger weeping silently in the shadowed corner of a torchlit ancient Greek feast hall, tears on his face, a blind bard barely visible singing beyond him, emotional cinematic lighting, mythic realism, shallow focus"
+      },
+      {
+        "id": "scene_008",
+        "start": "0:43",
+        "duration": "6s",
+        "narration_excerpt": "Homer, it seems, painted his own portrait",
+        "visual_type": "b-roll",
+        "visual_description": "The idealized ancient marble bust of the blind “Homer,” shot as a museum still, sightless carved eyes catching gallery light.",
+        "search_query": "ancient marble bust of Homer blind poet museum sculpture"
+      },
+      {
+        "id": "scene_009",
+        "start": "0:49",
+        "duration": "6s",
+        "narration_excerpt": "and hid it inside his masterpiece.",
+        "visual_type": "generated-image",
+        "visual_description": "Recurring motif established: a solitary figure receding across wine-dark water toward the horizon, small and unreachable — the through-line image of the whole essay.",
+        "comfyui_prompt": "a lone silhouetted figure in a small boat receding across a vast wine-dark sea toward the horizon at dusk, tiny against endless water, atmospheric haze, cinematic wide shot, mythic melancholy, deep reds and indigo"
+      }
+    ],
+    "Thesis": [
+      {
+        "id": "scene_010",
+        "start": "0:55",
+        "duration": "10s",
+        "narration_excerpt": "The Odyssey is the first and greatest story ever told about coming home.",
+        "visual_type": "text-overlay",
+        "visual_description": "Section-opening thesis card: the line set large in a literary serif face, centered on a dark wine-dark-sea gradient — the controlling statement given room to register."
+      },
+      {
+        "id": "scene_011",
+        "start": "1:05",
+        "duration": "10s",
+        "narration_excerpt": "And its author is the one figure in it who never arrives — a voice over the water, forever just out of reach.",
+        "visual_type": "generated-image",
+        "visual_description": "Reprise of the receding-figure motif: the distant voice/figure over water, this time framed so the viewer is straining after it — the author who never docks.",
+        "comfyui_prompt": "distant lone figure barely visible on the wine-dark sea, seen from shore, forever out of reach at the horizon, soft evening light, atmospheric perspective, cinematic mythic realism, longing mood"
+      },
+      {
+        "id": "scene_012",
+        "start": "1:15",
+        "duration": "10s",
+        "narration_excerpt": "What Ithaca is to Odysseus, Homer is to us. We spend the whole poem straining for a shore we will never quite touch.",
+        "visual_type": "generated-image",
+        "visual_description": "Viewer-POV shot from a boat straining toward a distant island shore (Ithaca) that never seems to grow nearer — the unreachable homecoming as metaphor.",
+        "comfyui_prompt": "first person point of view from the prow of an ancient boat straining toward a distant Greek island shore that remains far away, calm sea, golden hour haze, cinematic longing, photoreal mythic atmosphere"
+      }
+    ],
+    "The life that isn't — and the mirror in Book 8": [
+      {
+        "id": "scene_013",
+        "start": "1:25",
+        "duration": "9s",
+        "narration_excerpt": "Every great book seems to come with a life to explain it — a childhood wound, a lost love, a war.",
+        "visual_type": "text-overlay",
+        "visual_description": "Section-marker card “The life that isn't” in serif type, with the narration line beneath as a subtitle refrain over a dim textured background."
+      },
+      {
+        "id": "scene_014",
+        "start": "1:34",
+        "duration": "9s",
+        "narration_excerpt": "Homer gives us almost nothing.",
+        "visual_type": "generated-image",
+        "visual_description": "An empty stone pedestal in a museum niche where a portrait bust should stand — a blank, dust-lit absence standing in for the missing biography.",
+        "comfyui_prompt": "an empty stone pedestal in a shadowed museum niche where a portrait bust should be, dust motes in a single shaft of light, absence and emptiness, cinematic, muted stone palette, photoreal"
+      },
+      {
+        "id": "scene_015",
+        "start": "1:43",
+        "duration": "10s",
+        "narration_excerpt": "Around 700 BC, twenty-eight centuries ago, someone shaped these lines into their final grandeur —",
+        "visual_type": "graphic",
+        "visual_description": "Timeline card placing a single marker at ~700 BC on a long horizontal timeline (with “28 centuries ago” annotation), the rest of the line fading into uncertainty at both ends."
+      },
+      {
+        "id": "scene_016",
+        "start": "1:53",
+        "duration": "9s",
+        "narration_excerpt": "but that someone dissolves the moment you reach for him. He may not even have been a single person.",
+        "visual_type": "generated-image",
+        "visual_description": "A shadowy human figure dissolving into many overlapping silhouettes as a hand reaches toward it — the author fragmenting into a tradition of many.",
+        "comfyui_prompt": "a shadowy human figure dissolving and splitting into many overlapping translucent silhouettes as a hand reaches toward it, dark atmospheric void, symbolic, cinematic, cold desaturated palette, high detail"
+      },
+      {
+        "id": "scene_017",
+        "start": "2:02",
+        "duration": "10s",
+        "narration_excerpt": "And so, denied a biography, we look instead at what Homer chose to put on the page.",
+        "visual_type": "b-roll",
+        "visual_description": "Museum still of a page of the Odyssey's Greek text (Book 8), close on the columns of script, treated as evidence we turn to in place of a life.",
+        "search_query": "Homer Odyssey ancient Greek manuscript text page book 8"
+      },
+      {
+        "id": "scene_018",
+        "start": "2:12",
+        "duration": "10s",
+        "narration_excerpt": "He gave us Demodocus — a poet the Muse had touched, as the poem says, by taking his eyes and granting him \"the sweet singing art.\"",
+        "visual_type": "text-overlay",
+        "visual_description": "Epithet-refrain card: “the sweet singing art” set in the recurring serif refrain style, with “Demodocus” named beneath — establishing the poem's own language as texture."
+      },
+      {
+        "id": "scene_019",
+        "start": "2:22",
+        "duration": "11s",
+        "narration_excerpt": "At the Phaeacian court, Demodocus sings of the fall of Troy, of the wooden horse and the cleverest of the Greeks —",
+        "visual_type": "generated-image",
+        "visual_description": "The Phaeacian court listening as the bard sings; his song visualized above the hall as a spectral image of the great wooden horse before the walls of burning Troy.",
+        "comfyui_prompt": "a blind bard singing in a Phaeacian royal hall, above him a spectral vision of the giant wooden horse before the burning walls of Troy, layered dreamlike composition, torchlight below and firelight vision above, cinematic mythic realism"
+      },
+      {
+        "id": "scene_020",
+        "start": "2:33",
+        "duration": "10s",
+        "narration_excerpt": "not knowing that the cleverest of the Greeks is sitting right in front of him, a nameless stranger. And Odysseus pulls his cloak over his head and weeps.",
+        "visual_type": "text-overlay",
+        "visual_description": "Quiet insight card over a dim image of a hooded weeping figure: type notes that the man the song is about sits unrecognized in the room — the poem's mirror moment stated plainly."
+      },
+      {
+        "id": "scene_021",
+        "start": "2:43",
+        "duration": "8s",
+        "narration_excerpt": "It is the whole poem in miniature. The singer is blind. The song is more alive in the room than the man it's about.",
+        "visual_type": "generated-image",
+        "visual_description": "A luminous, almost living current of song filling the torchlit hall while both the blind singer and the cloaked man recede into shadow — the song outshining its makers.",
+        "comfyui_prompt": "a glowing luminous current of music and voice filling a torchlit ancient hall, the blind singer and a cloaked listener fading into shadow at the edges, the song rendered as radiant living light, symbolic cinematic mythic realism"
+      },
+      {
+        "id": "scene_022",
+        "start": "2:51",
+        "duration": "9s",
+        "narration_excerpt": "We could say that here, in a nameless bard, Homer tells us exactly who he is — a voice that outlasts its body, a maker who vanishes into what he makes.",
+        "visual_type": "generated-image",
+        "visual_description": "Reprise of the through-line motif at the Book 8 mirror: the bard's silhouette thinning into the receding-voice-over-water image — the maker dissolving into his own song.",
+        "comfyui_prompt": "a bard's silhouette dissolving into a receding voice over wine-dark water, body fading to mist while the song continues outward toward the horizon, symbolic double-exposure, cinematic mythic melancholy, deep reds and indigo"
+      }
+    ],
+    "Sung, not written": [
+      {
+        "id": "scene_023",
+        "start": "3:00",
+        "duration": "9s",
+        "narration_excerpt": "Because that is what these poems were — not books, but songs.",
+        "visual_type": "text-overlay",
+        "visual_description": "Section-marker card “Sung, not written” in serif type, with “not books, but songs” as the emphasized refrain over a dark textured ground."
+      },
+      {
+        "id": "scene_024",
+        "start": "3:09",
+        "duration": "11s",
+        "narration_excerpt": "The story and many of its very lines were handed to Homer by generations of oral poets who had sung them for centuries before anyone wrote them down.",
+        "visual_type": "generated-image",
+        "visual_description": "A lineage of singers stretching back in time — successive bards around successive fires handing the same song down a receding chain of generations.",
+        "comfyui_prompt": "a long receding chain of ancient bards, each singing by a fire, stretching back into the distance across centuries, the same song passed hand to hand, warm firelight fading to deep time, cinematic mythic realism, epic composition"
+      },
+      {
+        "id": "scene_025",
+        "start": "3:20",
+        "duration": "11s",
+        "narration_excerpt": "We know such singers were real: as late as the early twentieth century, scholars found bards in the mountains of the former Yugoslavia reciting poems as long as the Odyssey itself, from memory, without a single written note.",
+        "visual_type": "b-roll",
+        "visual_description": "Early-twentieth-century photograph of a South Slavic guslar bard playing the gusle and singing from memory in a mountain village — documentary evidence of the living oral tradition.",
+        "search_query": "guslar South Slavic epic singer gusle early 20th century photograph Yugoslavia"
+      },
+      {
+        "id": "scene_026",
+        "start": "3:31",
+        "duration": "9s",
+        "narration_excerpt": "Which reframes something readers have complained about for ages. Homer repeats himself —",
+        "visual_type": "generated-image",
+        "visual_description": "A scroll or column of verse in which the same phrases recur, softly highlighted down the page — the repetition made visible before it is reframed.",
+        "comfyui_prompt": "a long scroll of ancient Greek verse where identical phrases recur down the columns, the repeated lines gently glowing, symbolic close-up, warm parchment tones, cinematic, high detail"
+      },
+      {
+        "id": "scene_027",
+        "start": "3:40",
+        "duration": "11s",
+        "narration_excerpt": "\"swift-footed Achilles,\" \"gray-eyed Athena,\" Dawn arriving again and again \"with her rosy fingers,\" the sea forever \"wine-dark.\"",
+        "visual_type": "text-overlay",
+        "visual_description": "Signature epithet-refrain card: the four epithets stacked and animated in the recurring serif refrain style — “swift-footed Achilles,” “gray-eyed Athena,” “rosy-fingered Dawn,” “wine-dark sea” — the poem's own music as typography."
+      },
+      {
+        "id": "scene_028",
+        "start": "3:51",
+        "duration": "9s",
+        "narration_excerpt": "It reads like a poet running low on ideas. It is the opposite.",
+        "visual_type": "generated-image",
+        "visual_description": "A visual reversal: what looked like a worn, repetitive groove resolves into a mnemonic scaffold of gripped handholds — the repeated phrases revealed as structure, not fatigue.",
+        "comfyui_prompt": "an abstract cinematic image of repeated carved grooves resolving into a climbing wall of handholds, a metaphor of memory scaffolding, warm stone and firelight, symbolic, photoreal, dramatic lighting"
+      },
+      {
+        "id": "scene_029",
+        "start": "4:00",
+        "duration": "11s",
+        "narration_excerpt": "Those fixed phrases are the machinery of memory, the handholds a singer grips to build a vast poem in real time before a live crowd.",
+        "visual_type": "generated-image",
+        "visual_description": "A bard performing live before a rapt crowd, hands mid-gesture as if gripping the handholds of the verse, building the poem in real time in a firelit gathering.",
+        "comfyui_prompt": "an ancient bard performing live before a rapt firelit crowd, hands raised mid-gesture composing the poem in real time, intense expression, warm torchlight, cinematic mythic realism, dynamic composition"
+      },
+      {
+        "id": "scene_030",
+        "start": "4:11",
+        "duration": "10s",
+        "narration_excerpt": "Even the shape we know is an afterthought: the Odyssey's twenty-four books, one for each letter of the Greek alphabet, were carved up some four hundred years after it was composed.",
+        "visual_type": "graphic",
+        "visual_description": "Diagram card: the 24 Greek alphabet letters (α–ω) mapped to 24 book-divisions, with a timeline note showing the division happened ~400 years after composition."
+      },
+      {
+        "id": "scene_031",
+        "start": "4:21",
+        "duration": "9s",
+        "narration_excerpt": "The poem was a living breath long before it was a fixed text. And a breath has no single author. It belongs to everyone who ever drew it.",
+        "visual_type": "generated-image",
+        "visual_description": "A single exhaled breath of luminous air dispersing outward and shared among many faintly-lit faces — authorship diffusing into everyone who ever sang it.",
+        "comfyui_prompt": "a luminous exhaled breath of glowing air dispersing outward over many dimly lit human faces in darkness, shared and authorless, symbolic ethereal composition, cinematic, soft golden light, mythic atmosphere"
+      }
+    ],
+    "The wanderer earns his myth": [
+      {
+        "id": "scene_032",
+        "start": "4:30",
+        "duration": "9s",
+        "narration_excerpt": "Now watch what this vanished, sightless poet chose to make his hero.",
+        "visual_type": "text-overlay",
+        "visual_description": "Cadence-phrase key-insight card: “Now watch…” set as the recurring observe-the-blind-poet's-choices signal, serif type over a dim mythic ground — marks the section and the takeaway beat."
+      },
+      {
+        "id": "scene_033",
+        "start": "4:39",
+        "duration": "9s",
+        "narration_excerpt": "Not the strongest man at Troy — the cleverest. In a world that worshipped Achilles and brute glory, Homer built his second epic around a man who wins by wits.",
+        "visual_type": "generated-image",
+        "visual_description": "A contrast composition: the brute-strong warrior (Achilles) blazing in armor on one side, and on the other the thoughtful, calculating Odysseus — glory versus cunning.",
+        "comfyui_prompt": "split cinematic composition, a hulking armored Greek warrior blazing with martial glory on one side versus a lean thoughtful cunning hero calculating on the other, contrast of brute strength and intelligence, torchlit mythic realism, dramatic lighting"
+      },
+      {
+        "id": "scene_034",
+        "start": "4:48",
+        "duration": "10s",
+        "narration_excerpt": "Trapped in the cave of the Cyclops Polyphemus, a son of the sea-god Poseidon, Odysseus does not fight — he thinks.",
+        "visual_type": "generated-image",
+        "visual_description": "The dark cave of the Cyclops: the giant Polyphemus looms in shadow while Odysseus, small and thinking rather than fighting, studies the sharpened stake and the sleeping giant.",
+        "comfyui_prompt": "interior of a vast dark Cyclops cave, an enormous one-eyed giant looming in shadow, a small clever man studying a sharpened stake and calculating, firelit, ominous scale, cinematic mythic realism, dramatic chiaroscuro"
+      },
+      {
+        "id": "scene_035",
+        "start": "4:58",
+        "duration": "9s",
+        "narration_excerpt": "He gives his name as \"Nobody,\" blinds the giant with a sharpened stake, and rides to freedom clinging beneath a ram.",
+        "visual_type": "graphic",
+        "visual_description": "Small diagrammatic card: a “Name given: NOBODY” label beside a simple diagram of a man clinging to the underside of a ram slipping past the blinded giant at the cave mouth."
+      },
+      {
+        "id": "scene_036",
+        "start": "5:07",
+        "duration": "9s",
+        "narration_excerpt": "Later, to hear the Sirens and live, he has his crew stop their ears with wax and lash him to the mast.",
+        "visual_type": "b-roll",
+        "visual_description": "The Greek red-figure “Siren Vase” image of Odysseus lashed to the mast as the Sirens circle — museum-grade vase painting still.",
+        "search_query": "Odysseus and the Sirens Greek vase painting Siren Vase red-figure British Museum"
+      },
+      {
+        "id": "scene_037",
+        "start": "5:16",
+        "duration": "11s",
+        "narration_excerpt": "Notice the pattern the blind poet keeps drawing: his hero triumphs not by looking but by *seeing* — by inner sight,",
+        "visual_type": "text-overlay",
+        "visual_description": "Cadence-phrase key-insight card: “Notice…” refrain, with the contrast “not by looking but by seeing— by inner sight” set in serif type over a darkened field."
+      },
+      {
+        "id": "scene_038",
+        "start": "5:27",
+        "duration": "9s",
+        "narration_excerpt": "by cunning so sharp that the help of Athena, goddess of wisdom, becomes impossible to tell apart from Odysseus's own racing mind.",
+        "visual_type": "generated-image",
+        "visual_description": "Athena, goddess of wisdom, standing just behind Odysseus and half-merging with him — her guidance and his own racing thought rendered as one indistinguishable glow.",
+        "comfyui_prompt": "the goddess Athena in armor standing behind a thinking Odysseus, her form half-merging with his, their minds joined as a shared glow of wisdom, ethereal double-exposure, cinematic mythic realism, cool luminous light"
+      },
+      {
+        "id": "scene_039",
+        "start": "5:36",
+        "duration": "8s",
+        "narration_excerpt": "And notice his one great failure. Sailing away, drunk on victory, he shouts his real name back at the blinded Cyclops. That single boast lets Polyphemus curse him — and buys Odysseus ten more years lost at sea.",
+        "visual_type": "generated-image",
+        "visual_description": "Odysseus standing in his ship shouting his name back at the shore where the blinded Cyclops rears up to hurl a boulder and curse him — the fatal boast that costs him ten years.",
+        "comfyui_prompt": "a man standing triumphant and reckless at the stern of an ancient ship shouting back toward a rocky shore where a blinded one-eyed giant rears up in fury to curse him, stormy sea, dramatic cinematic mythic realism, dusk light"
+      }
+    ],
+    "The ground under the myth — and the 200-year question": [
+      {
+        "id": "scene_040",
+        "start": "5:44",
+        "duration": "7s",
+        "narration_excerpt": "For a long time all of this was assumed to be pure fantasy.",
+        "visual_type": "text-overlay",
+        "visual_description": "Section-marker card in serif type over a faint map/timeline texture: the line stated plainly, setting up the archaeology turn."
+      },
+      {
+        "id": "scene_041",
+        "start": "5:51",
+        "duration": "9s",
+        "narration_excerpt": "Then, in 1873, a merchant-turned-digger named Heinrich Schliemann struck gold in a Turkish hillside and declared he had found Troy —",
+        "visual_type": "b-roll",
+        "visual_description": "Museum-grade paired stills: a historical portrait of Heinrich Schliemann and a photograph of the excavated ruins at Hisarlik (Troy) with the year 1873 captioned.",
+        "search_query": "Heinrich Schliemann portrait Troy excavation Hisarlik ruins 1873 photograph"
+      },
+      {
+        "id": "scene_042",
+        "start": "6:00",
+        "duration": "7s",
+        "narration_excerpt": "though the site had really been identified first by a British diplomat, Frank Calvert, whom history mostly forgot.",
+        "visual_type": "text-overlay",
+        "visual_description": "On-screen credit-restoring name card: “Frank Calvert — British diplomat, identified the site first,” giving the forgotten figure his due as the narration requires."
+      },
+      {
+        "id": "scene_043",
+        "start": "6:07",
+        "duration": "7s",
+        "narration_excerpt": "Decades later, clay tablets in a lost script were cracked open: in 1952 Michael Ventris proved they recorded an early Greek.",
+        "visual_type": "b-roll",
+        "visual_description": "Museum still of a Linear B clay tablet, close on the incised script, with a 1952 / Michael Ventris caption.",
+        "search_query": "Linear B clay tablet Mycenaean script museum photograph"
+      },
+      {
+        "id": "scene_044",
+        "start": "6:14",
+        "duration": "6s",
+        "narration_excerpt": "The Bronze-Age world the poem remembers was no blank — it had palaces, kings, and writing.",
+        "visual_type": "generated-image",
+        "visual_description": "A reconstructed Mycenaean Bronze-Age palace — megaron with painted columns, a throne, scribes at work — showing a literate, kingly world behind the myth.",
+        "comfyui_prompt": "a reconstructed Mycenaean Bronze-Age palace interior, painted columns and a great throne room, kings and scribes at work, frescoed walls, warm daylight, cinematic historical realism, rich detail"
+      },
+      {
+        "id": "scene_045",
+        "start": "6:20",
+        "duration": "8s",
+        "narration_excerpt": "So was Homer real? Back in 1795 the scholar Friedrich Wolf argued the epics had accreted from that older oral tradition, no single hand behind them —",
+        "visual_type": "graphic",
+        "visual_description": "Master timeline card: oral tradition → ~700 BC composition → 24 books carved up ~400 years later → 1795 Wolf → 1873 Schliemann/Calvert → 1952 Ventris, with the 1795 Wolf marker highlighted."
+      },
+      {
+        "id": "scene_046",
+        "start": "6:28",
+        "duration": "6s",
+        "narration_excerpt": "and turned Homer, overnight, from an object of worship into a two-hundred-year academic question that is still open.",
+        "visual_type": "graphic",
+        "visual_description": "The same timeline extends a bracket from 1795 to the present labelled “the 200-year question — still open,” the endpoint left deliberately unresolved."
+      },
+      {
+        "id": "scene_047",
+        "start": "6:34",
+        "duration": "6s",
+        "narration_excerpt": "But here the honest answer matters more than the loud one. The poems sit between myth, literature, and memory.",
+        "visual_type": "generated-image",
+        "visual_description": "A three-way balance composition: the poems held at the meeting point of three overlapping zones labelled myth, literature, and memory — complexity, not a single verdict.",
+        "comfyui_prompt": "a symbolic composition of an open ancient book suspended at the overlap of three luminous overlapping fields representing myth, literature and memory, balanced and complex, cinematic, soft layered light, mythic tone"
+      },
+      {
+        "id": "scene_048",
+        "start": "6:40",
+        "duration": "6s",
+        "narration_excerpt": "A tangled history of versions is not a forgery — no more than the rival manuscripts of a great classic make it a fake.",
+        "visual_type": "b-roll",
+        "visual_description": "Museum stills of two rival manuscript pages of the same classical text set side by side, their variant readings visible — difference as scholarship, not fraud.",
+        "search_query": "rival medieval manuscript variant pages classical text side by side library"
+      },
+      {
+        "id": "scene_049",
+        "start": "6:46",
+        "duration": "6s",
+        "narration_excerpt": "The scholar admits the complexity; only the conspiracy-monger flattens it into \"all invented.\"",
+        "visual_type": "generated-image",
+        "visual_description": "Even-handed contrast: a layered, richly branching scholarly diagram of the tradition on one side versus a crude flattening stamp “ALL INVENTED” on the other — dramatizing complexity vs. flattening without mocking the skeptic.",
+        "comfyui_prompt": "symbolic split image, on one side a richly layered branching diagram of textual tradition rendered with depth and nuance, on the other a crude flat single stamp, contrast of complexity versus oversimplification, clean cinematic, neutral tone, no faces"
+      },
+      {
+        "id": "scene_050",
+        "start": "6:52",
+        "duration": "7s",
+        "narration_excerpt": "That Homer will not resolve into a single certain man is not a hole in the record. It is the poem, wearing the face of its poet.",
+        "visual_type": "generated-image",
+        "visual_description": "The blind-Homer bust and the pages of the poem superimpose into one another — the poem itself becoming the face we look for, the missing man reframed as no gap at all.",
+        "comfyui_prompt": "the marble bust of blind Homer dissolving into and out of pages of ancient verse, the poem becoming a face, symbolic double-exposure, cinematic mythic realism, warm museum light, contemplative mood"
+      }
+    ],
+    "Recognition and homecoming": [
+      {
+        "id": "scene_051",
+        "start": "6:59",
+        "duration": "10s",
+        "narration_excerpt": "Which is why the ending aches the way it does. After twenty years — ten at war, ten lost at sea — Odysseus comes home in disguise, and even home does not know him.",
+        "visual_type": "graphic",
+        "visual_description": "Section-opening timeline card: a twenty-year span split into “10 years at war” and “10 years lost at sea,” ending at a home that fails to recognize the returning figure."
+      },
+      {
+        "id": "scene_052",
+        "start": "7:09",
+        "duration": "10s",
+        "narration_excerpt": "His wife Penelope has held off more than a hundred suitors, weaving a burial shroud by day and unravelling it by night, buying three years with her loom.",
+        "visual_type": "generated-image",
+        "visual_description": "Penelope at her great loom by lamplight, weaving by day and quietly unravelling the shroud by night — patient cunning that mirrors her husband's.",
+        "comfyui_prompt": "Penelope weaving at a large ancient loom by warm lamplight, half-woven burial shroud, quietly unravelling threads in the shadows, patient and sorrowful expression, cinematic mythic realism, intimate interior, painterly detail"
+      },
+      {
+        "id": "scene_053",
+        "start": "7:19",
+        "duration": "10s",
+        "narration_excerpt": "Odysseus is recognized at last not by his face but by hidden signs: an old nurse feels the boar-scar on his thigh;",
+        "visual_type": "b-roll",
+        "visual_description": "Greek vase painting still of the recognition scene — the old nurse Eurycleia washing Odysseus's feet and finding the boar-scar — museum-grade artifact image.",
+        "search_query": "Eurycleia washing Odysseus feet boar scar recognition Greek vase painting"
+      },
+      {
+        "id": "scene_054",
+        "start": "7:29",
+        "duration": "10s",
+        "narration_excerpt": "Penelope tests him with a secret only they share — a marriage bed he built with his own hands around a living olive tree, still rooted in the earth, a bed that cannot be moved. He is known, in the end, by what only love could know.",
+        "visual_type": "generated-image",
+        "visual_description": "The immovable marriage bed built around a living olive tree still rooted in the ground of the bedchamber — the secret sign that finally proves him, warm and intimate.",
+        "comfyui_prompt": "an ancient bedchamber where a carved wooden marriage bed is built around a living olive tree still rooted in the earth through the floor, green leaves above the bed, warm intimate lamplight, cinematic mythic realism, tender atmosphere"
+      }
+    ],
+    "Close": [
+      {
+        "id": "scene_055",
+        "start": "7:39",
+        "duration": "9s",
+        "narration_excerpt": "The poem's own verdict comes from the underworld, where the ghost of mighty Achilles tells Odysseus he would rather be a landless servant among the living than king over all the dead.",
+        "visual_type": "text-overlay",
+        "visual_description": "Dedicated Achilles-quote card: “rather be a landless servant among the living than king over all the dead” set in the serif refrain style over a dim underworld ground — the poem's verdict, in its own words."
+      },
+      {
+        "id": "scene_056",
+        "start": "7:48",
+        "duration": "8s",
+        "narration_excerpt": "Stay alive. Get home. The journey, not the glory, is the thing. Odysseus is recognized, and let home at last — the one gift the poem quietly withholds from its maker.",
+        "visual_type": "generated-image",
+        "visual_description": "Odysseus finally stepping onto the shore of Ithaca at dawn, home at last — the homecoming granted to the hero but not to the poet.",
+        "comfyui_prompt": "Odysseus stepping ashore onto his home island of Ithaca at dawn, weary and finally home, golden morning light over a calm bay, cinematic mythic realism, hopeful warm palette, wide establishing shot"
+      },
+      {
+        "id": "scene_057",
+        "start": "7:56",
+        "duration": "9s",
+        "narration_excerpt": "We will never dock at Homer. And perhaps that is exactly right. A poem about a voice carried home across the water should keep its poet out there still — blind, nameless, singing, forever just over the horizon.",
+        "visual_type": "generated-image",
+        "visual_description": "Final held image and motif close: the solitary receding figure/voice over the wine-dark water, blind and nameless, singing, held just at the horizon and never reached — the through-line resolved by staying unresolved.",
+        "comfyui_prompt": "a lone silhouetted bard-figure receding across the wine-dark sea toward the horizon at dusk, forever just out of reach, still singing, tiny against endless water, atmospheric haze, cinematic mythic melancholy, deep reds and indigo, held final wide shot"
+      }
+    ]
+  }
+}

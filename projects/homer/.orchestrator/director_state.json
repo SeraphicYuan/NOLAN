@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "project_slug": "homer",
+  "iteration_count": 0,
+  "current_step": "checkpoint_after_select_clips",
+  "status": "awaiting_review",
+  "started_at": "2026-07-02T19:52:12+00:00",
+  "last_updated": "2026-07-02T21:16:17+00:00",
+  "step_history": [
+    {
+      "step_num": 1,
+      "name": "match_and_adapt_style",
+      "started_at": "2026-07-02T19:52:12+00:00",
+      "finished_at": "2026-07-02T19:53:40+00:00",
+      "status": "completed",
+      "notes": ""
+    },
+    {
+      "step_num": 2,
+      "name": "script_to_scenes",
+      "started_at": "2026-07-02T19:53:48+00:00",
+      "finished_at": "2026-07-02T20:01:10+00:00",
+      "status": "completed",
+      "notes": ""
+    },
+    {
+      "step_num": 3,
+      "name": "tempo_enrich",
+      "started_at": "2026-07-02T20:36:17+00:00",
+      "finished_at": "2026-07-02T20:36:31+00:00",
+      "status": "completed",
+      "notes": ""
+    },
+    {
+      "step_num": 4,
+      "name": "select_clips",
+      "started_at": "2026-07-02T21:15:17+00:00",
+      "finished_at": "2026-07-02T21:16:17+00:00",
+      "status": "completed",
+      "notes": ""
+    }
+  ],
+  "template_provenance": {
+    "style_template_id": "essay-doc-explainer-v1",
+    "style_template_version": 1,
+    "style_match_score": 0.89,
+    "style_was_fallback": false,
+    "scene_plan_template_id": "essay-thesis-evidence-v1",
+    "scene_plan_template_version": 1,
+    "scene_plan_match_score": 0.94,
+    "scene_plan_was_fallback": false
+  },
+  "max_tokens_per_step": 200000,
+  "consumed_feedback": []
+}

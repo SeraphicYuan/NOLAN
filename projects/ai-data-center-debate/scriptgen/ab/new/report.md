@@ -1,0 +1,14 @@
+# Script run report — AI Data Center Debate
+
+- **Mode:** auto   **Style:** channel-stickman-talks   **Target:** 8.0 min (~1,200 words)   **Format:** explainer/threat ("how concerned should we be?")
+- **Sources used:** [S1] BI "Exposing The Dark Side…" (4,361w) · [S2] "Here's What Nobody's Telling You…" / Daily Wire (7,883w, chunk-read) · [S3] "How data centers work…" (242w) · [S4] "We Saw What AI Data Centers Don't Want You to See" (3,485w) · [S5] "What's Inside an AI Data Center?" (2,425w)
+- **Angle chosen:** *The real fight isn't "is AI good or bad" — it's who pays and who decides; trillion-dollar companies are shifting the costs (bills, water, quiet, sometimes homes) onto communities that never got a vote, while profits and tax breaks flow elsewhere.*
+  - rejected: **A2** speed-without-guardrails (folded in as the "who decides" beat); **A3** the backup-generator-permit secrecy reveal (used as texture); **A4** Jevons/efficiency-won't-save-us (environmental slice only); **A5** "we were promised the cloud" (too emotional, risks the hysteria trap).
+- **Draft:** `scriptgen/ab/new/drafts/draft-01.md` — 1,319 words → 8:47 (~10% over the 1,200 target; kept for a fair, fully two-sided treatment)
+- **Fact-check:** 35 of 35 claims source-backed · 0 unverified claims presented as certain · 0 cut · 2 single-source claims (national-water "5% of golf courses"; blackout/diesel myth-busts) deliberately softened with hedges.
+
+## Notes
+- **Steelman: yes, genuinely two-sided.** The video makes the cost/consent case, then gives the boosters real airtime — Loudoun County's 38%-of-revenue windfall and property-tax cut, the "national water is only ~5% of golf courses" reality check, the blackout/diesel myth-busts, and the fact these centers back tools 900M people use — before landing on a "they're probably both right, to some degree" verdict. It also explicitly disavows the viral hysteria (per [S2]).
+- **Source lean & handling.** Four of five sources lean critical/exposé; the steelman leans hard on [S5] (a partly-booster explainer), which is the right use of a favorable source. [S2] is partisan commentary — facts drawn from it are ones it attributes to named outlets (Fortune, NYT, WSJ, Guardian, WaPo); its one original stat (5%-of-golf-courses) is single-sourced and softened.
+- **Risky/thin claims a producer should watch:** the "$800B in 2026 / >$1T in 2027" and "single data center > half a million homes" figures ([S4]/[S2]) are tagged `claimed` in facts.md and were kept out of the script's hardest assertions. If this goes to publish, spot-verify the Dominion "+50% bills" and Lake Tahoe "May 2027" figures against the original Fortune/BI reporting.
+- **Isolation:** all artifacts written under `scriptgen/ab/new/` only (facts, angles, drafts/draft-01, factcheck, citations, report, script). The project's real `scriptgen/` files and sibling `ab/old`, `ab/v3` were not touched.

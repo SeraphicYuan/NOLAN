@@ -1,0 +1,7 @@
+name: Homer
+slug: homer
+description: Homer
+source_videos:
+- source/
+output_dir: output/
+assets_dir: assets/
