@@ -252,15 +252,16 @@ async def embed_video(job, *, db_path: Path, video_id: int):
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",
                       period: str = "", locale: str = "", literalness: float = 0.25,
                       mood: Optional[str] = None, sources: Optional[list] = None,
-                      project: Optional[str] = None, media: Optional[list] = None):
-    """Narrative→asset pairing search (tonal | conceptual …) — stock or library. matched | unmatched."""
+                      project: Optional[str] = None, media: Optional[list] = None,
+                      gen_style: str = "Fooocus Cinematic"):
+    """Narrative→asset pairing search (tonal | conceptual …) — stock / library / generate. matched | unmatched."""
     from nolan.evoke_broll import EvokeBrollSearch
 
     searcher = EvokeBrollSearch(config=config, progress=lambda f, m: job.set_progress(min(0.99, f), m))
     result = await searcher.search(line, operator=operator, mode=mode, period=period, locale=locale,
                                    literalness=float(literalness), mood=(mood or None),
                                    sources=(sources or None), project=(project or None),
-                                   media=(media or None))
+                                   media=(media or None), gen_style=(gen_style or "Fooocus Cinematic"))
     job.set_progress(1.0, f"{result['status']} — {len(result['picks'])} clip(s)")
     return result
 
@@ -2013,6 +2014,49 @@ async def write_script(job, *, store_root, slug: str, session: str = "nolan2"):
     return {"slug": slug, "session": session, "task_file": task_posix,
             "script_file": script_posix, "dispatched": dispatched,
             "dispatch_error": dispatch_error}
+
+
+async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2",
+                           phase: str = "auto"):
+    """Dispatch a v2 script-pipeline phase to a tmux Claude agent.
+
+    phase ∈ {prep, draft, auto}: prep = fetch+ground+propose angles (semi-auto gate 1),
+    draft = draft chosen angle+fact-check (gate 2), auto = the whole pipeline in one pass
+    (Claude picks the angle). Coexists with :func:`write_script` (the one-shot baseline).
+    """
+    from nolan.scriptwriter import ScriptProjectStore, prep_task, draft_task, auto_task
+    from pathlib import Path as _Path
+
+    store = ScriptProjectStore(_Path(store_root))
+    if not store.exists(slug):
+        raise RuntimeError(f"script project not found: {slug}")
+
+    builders = {
+        "prep": (prep_task, "prep_task.md", "research + propose angles"),
+        "draft": (draft_task, "draft_task.md", "draft chosen angle + fact-check"),
+        "auto": (auto_task, "auto_task.md", "full auto script"),
+    }
+    builder, fname, label = builders.get(phase, builders["auto"])
+
+    job.set_progress(0.2, f"Writing {phase} task brief…")
+    task_path = store.scriptgen_dir(slug) / fname
+    task_path.write_text(builder(slug, store), encoding="utf-8")
+    task_posix = f"projects/{slug}/scriptgen/{fname}"
+
+    job.set_progress(0.7, f"Dispatching to {session}…")
+    message = (f"New NOLAN script task ({label}) — please read and complete "
+               f"{task_posix} now, following it exactly.")
+    dispatched, dispatch_error = True, None
+    try:
+        await asyncio.get_event_loop().run_in_executor(
+            None, _dispatch_to_tmux, session, message)
+        job.set_progress(1.0, f"Dispatched to {session}")
+    except Exception as e:
+        dispatched, dispatch_error = False, str(e)
+        job.set_progress(1.0, f"Dispatch failed: {e}")
+
+    return {"slug": slug, "session": session, "phase": phase, "task_file": task_posix,
+            "dispatched": dispatched, "dispatch_error": dispatch_error}
 
 
 # ==================== Video-style analysis (visual style guides) ====================

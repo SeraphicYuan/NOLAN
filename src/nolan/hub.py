@@ -166,6 +166,11 @@ def create_hub_app(
     if tonal_dir.exists():
         app.mount("/tonal-broll", StaticFiles(directory=str(tonal_dir), html=True), name="tonal_broll")
 
+    # Generated (Krea-2 / ComfyUI) evocative-b-roll stills, served for the /broll gallery.
+    gen_dir = Path(__file__).parent.parent.parent / "projects" / "_library" / "_broll_generated"
+    gen_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/broll-gen", StaticFiles(directory=str(gen_dir)), name="broll_gen")
+
     # ==================== Job Manager (background operations) ====================
     from nolan.webui.jobs import get_job_manager
     job_manager = get_job_manager()
@@ -415,6 +420,7 @@ def create_hub_app(
             sources=(srcs if isinstance(srcs, list) and srcs else None),
             media=(med if isinstance(med, list) and med else None),
             project=(body.get("project") or None),
+            gen_style=(body.get("gen_style") or "Fooocus Cinematic"),
         )
         return {"job_id": job.id, "type": "evoke-broll"}
 
@@ -1618,6 +1624,7 @@ def create_hub_app(
             pivot=(body.get("pivot") or "").strip(),
             target_minutes=float(body.get("target_minutes") or 8.0),
             description=(body.get("description") or "").strip(),
+            mode=(body.get("mode") or "semi").strip(),
         )
         # C1: link the new FS project to the library DB so it's one project, not two.
         if db_path and db_path.exists():
@@ -1650,19 +1657,63 @@ def create_hub_app(
         kind = (body.get("kind") or "").strip()
         url = (body.get("url") or "").strip() or None
         text = body.get("text") or None
-        if kind not in ("url", "paste", "file", "reference"):
-            raise HTTPException(status_code=400, detail="kind must be url/paste/file/reference")
+        title = (body.get("title") or "").strip()
+        allowed = ("url", "paste", "file", "reference", "youtube", "library-video", "mineru-book")
+        if kind not in allowed:
+            raise HTTPException(status_code=400, detail=f"kind must be one of {allowed}")
+
+        if kind == "youtube":
+            # Fetch subtitles only (no video) at add-time → source text is 'fetched'.
+            if not url:
+                raise HTTPException(status_code=400, detail="url required for kind=youtube")
+            try:
+                from nolan.youtube import YouTubeClient
+                res = await asyncio.to_thread(YouTubeClient().fetch_transcript, url)
+            except Exception as e:
+                raise HTTPException(status_code=502,
+                                    detail=f"could not fetch YouTube subtitles: {e}")
+            text = res.get("text")
+            if not (text or "").strip():
+                raise HTTPException(status_code=502, detail="no subtitles found for that video")
+            title = title or res.get("title") or url
+            entry = script_project_store.add_source(
+                slug, kind="youtube", title=title, url=url, text=text)
+            return {"source": entry}
+
+        if kind == "library-video":
+            # Use an already-ingested library video's transcript (concatenated segments).
+            video_path = (body.get("video_path") or url or "").strip()
+            if not video_path:
+                raise HTTPException(status_code=400, detail="video_path required for kind=library-video")
+            if not (db_path and db_path.exists()):
+                raise HTTPException(status_code=400, detail="library index not available")
+            from nolan.indexer import VideoIndex
+            segs = await asyncio.to_thread(VideoIndex(db_path).get_segments, video_path)
+            transcript = "\n".join(s.transcript for s in segs
+                                   if getattr(s, "transcript", None))
+            if not transcript.strip():
+                raise HTTPException(status_code=400, detail="that video has no transcript indexed")
+            title = title or Path(video_path).name
+            entry = script_project_store.add_source(
+                slug, kind="library-video", title=title, url=video_path, text=transcript)
+            return {"source": entry}
+
+        # text-carrying kinds: url (pending) / paste / file / reference / mineru-book
         if kind == "url" and not url:
             raise HTTPException(status_code=400, detail="url required for kind=url")
-        if kind in ("paste", "file") and not text:
-            raise HTTPException(status_code=400, detail="text required for kind=paste/file")
-        entry = script_project_store.add_source(
-            slug, kind=kind, title=(body.get("title") or "").strip(), url=url, text=text)
+        if kind in ("paste", "file", "mineru-book") and not text:
+            raise HTTPException(status_code=400, detail=f"text required for kind={kind}")
+        entry = script_project_store.add_source(slug, kind=kind, title=title, url=url, text=text)
         return {"source": entry}
 
     @app.post("/api/script-projects/{slug}/upload-file")
-    async def script_projects_upload_file(slug: str, file: UploadFile = File(...)):
-        """Add an uploaded .txt/.md/.srt/.vtt source to a project (saved to raw/)."""
+    async def script_projects_upload_file(slug: str, file: UploadFile = File(...),
+                                          kind: str = Form("file")):
+        """Add an uploaded source (.txt/.md/.srt/.vtt, or a MinerU book .md) to a project.
+
+        `kind` = 'file' (default) or 'mineru-book'. No length cap — long books are stored
+        whole; grounding chunk-reads them.
+        """
         if not script_project_store.exists(slug):
             raise HTTPException(status_code=404, detail="project not found")
         raw = await file.read()
@@ -1680,8 +1731,76 @@ def create_hub_app(
         else:
             text = raw.decode("utf-8", errors="replace")
         title = Path(file.filename or "uploaded").stem or "uploaded"
-        entry = script_project_store.add_source(slug, kind="file", title=title, text=text)
+        k = kind if kind in ("file", "mineru-book") else "file"
+        entry = script_project_store.add_source(slug, kind=k, title=title, text=text)
         return {"source": entry}
+
+    @app.post("/api/script-projects/{slug}/mode")
+    async def script_projects_set_mode(slug: str, body: dict = Body(...)):
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        m = script_project_store.set_mode(slug, (body.get("mode") or "semi").strip())
+        return {"mode": m.get("mode")}
+
+    @app.post("/api/script-projects/{slug}/style")
+    async def script_projects_set_style(slug: str, body: dict = Body(...)):
+        """Change the narrative style (voice guide) on an existing project."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        style_id = (body.get("style_id") or "").strip()
+        if not style_store.exists(style_id):
+            raise HTTPException(status_code=400, detail=f"unknown style_id: {style_id}")
+        m = script_project_store.set_style(slug, style_id)
+        return {"style_id": m.get("style_id")}
+
+    @app.post("/api/script-projects/{slug}/choose-angle")
+    async def script_projects_choose_angle(slug: str, body: dict = Body(...)):
+        """Semi-auto gate: record the human-picked angle before drafting."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        m = script_project_store.set_chosen_angle(slug, body.get("angle") or "")
+        return {"chosen_angle": m.get("chosen_angle")}
+
+    @app.post("/api/script-projects/{slug}/run")
+    async def script_projects_run(slug: str, body: dict = Body(default={})):
+        """Dispatch a v2 pipeline phase: prep | draft | auto."""
+        from nolan.webui import operations
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        phase = (body.get("phase") or "auto").strip()
+        if phase not in ("prep", "draft", "auto"):
+            raise HTTPException(status_code=400, detail="phase must be prep/draft/auto")
+        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        job = job_manager.start(
+            "script-phase", operations.run_script_phase,
+            meta={"slug": slug, "phase": phase, "session": session},
+            store_root="projects", slug=slug, session=session, phase=phase,
+        )
+        return {"job_id": job.id, "type": "script-phase", "phase": phase}
+
+    @app.get("/api/script-projects/{slug}/drafts")
+    async def script_projects_drafts(slug: str):
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        return {"drafts": script_project_store.list_drafts(slug)}
+
+    @app.get("/api/script-projects/{slug}/draft/{name}")
+    async def script_projects_draft(slug: str, name: str):
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        content = script_project_store.read_draft(slug, name)
+        if content is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        return {"slug": slug, "name": name, "content": content}
+
+    @app.post("/api/script-projects/{slug}/promote-draft/{name}")
+    async def script_projects_promote_draft(slug: str, name: str):
+        """Promote a draft to the Director-ready script.md (the A/B winner)."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        if not script_project_store.promote_draft(slug, name):
+            raise HTTPException(status_code=404, detail="draft not found")
+        return {"promoted": name}
 
     @app.post("/api/script-projects/{slug}/remove-source/{sid}")
     async def script_projects_remove_source(slug: str, sid: str):

@@ -28,8 +28,7 @@ Beyond simple clip-matching, the engine has to graduate from *"which clip?"* to
    - **library search** (indexed video segments, BGE vectors) — built
    - **stock search** (Pexels/Pixabay/… cheap tiers) — built
    - **picture search** (stock photos / picture library / CLIP) — ✅ wired in (stills join the stock pool; scored directly)
-   - **ComfyUI generation** — when no found asset fits, *generate* it (stills, and
-     eventually paired stills driven into a motion)
+   - **ComfyUI generation** — ✅ Krea-2 `mode=generate` (a still per metaphor); paired-stills→motion = future
 2. **Composition is a first-class layer**, not an afterthought:
    - the **motion library** + **Remotion** apply the *right motion* to numbers, words,
      pictures and clips (Ken Burns, kinetic text, counters, bar/line/k-shape, pair-morphs…)
@@ -135,4 +134,4 @@ Motion-library (Remotion) effects, each keyed to a `motion_select` id; built + v
 5. **Transitions** — ✅ built (ClipMontage / @remotion/transitions: dissolve/slide/wipe/clockWipe/cut). *match-cut* (shape/motion continuity across a cut) = advanced/future. (ffmpeg xfade unavailable here → Remotion.)
 6. **Cinemagraph / image-to-video** — ⏸ TODO: ComfyUI workflow (user will provide). 
 
-**Asset generation:** ComfyUI **Krea 2** model for generating stills when stock/library miss (the 'generate when nothing fits' source).
+**Asset generation:** ✅ ComfyUI **Krea 2** (`krea2-style-select`) generation source — `mode=generate` makes a still per metaphor (fooocus style, default 'Fooocus Cinematic'), served at `/broll-gen/`, scored/gated/animated like any still. Auto-fallback ('when nothing fits') = future.

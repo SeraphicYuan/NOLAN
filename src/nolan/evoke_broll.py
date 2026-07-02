@@ -19,6 +19,7 @@ ingest. No expensive/paid tiers. See docs + the /broll hub page.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import io
 import json
 import os
@@ -26,6 +27,10 @@ import re
 import tempfile
 from pathlib import Path
 from typing import Callable, List, Optional
+
+# generated stills land here and are served by the hub at GEN_URL (mounted in hub.py)
+GEN_DIR = Path("projects/_library/_broll_generated")
+GEN_URL = "/broll-gen"
 
 from .config import load_config
 from .llm import create_text_llm
@@ -225,7 +230,7 @@ class EvokeBrollSearch:
     # ---- per-candidate vision scoring (fit + period/locale gate) ----
     async def _score(self, cand: dict, goal: str, line: str, period: str, locale: str, operator: str = "tonal") -> dict:
         from PIL import Image
-        url = cand.get("poster")
+        url = cand.get("local") or cand.get("poster")     # generated stills have a local path
         data = await asyncio.to_thread(self._dl._download_image, url) if url else None
         if not data:
             return {}
@@ -261,12 +266,13 @@ class EvokeBrollSearch:
                      period: str = "", locale: str = "", literalness: float = 0.25,
                      mood: Optional[str] = None, sources: Optional[List[str]] = None,
                      project: Optional[str] = None, media: Optional[List[str]] = None,
+                     gen_style: str = "Fooocus Cinematic",
                      max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
         line = (line or "").strip()
         if not line:
             raise ValueError("line is required")
         operator = operator if operator in _OP else "tonal"
-        mode = "library" if mode == "library" else "stock"
+        mode = mode if mode in ("stock", "library", "generate") else "stock"
         media = [m for m in (media or ["video", "image"]) if m in ("video", "image")] or ["video", "image"]
         self._sem = asyncio.Semaphore(4)              # bind to the running loop
         gated = bool(period or locale)
@@ -288,15 +294,17 @@ class EvokeBrollSearch:
         self._progress(0.22, f"Retrieving {mode} b-roll for {len(metaphors)} metaphors…")
         if mode == "library":
             cands = await self._retrieve_library(metaphors, per_metaphor, project)
+        elif mode == "generate":
+            cands = await self._retrieve_generate(metaphors, gen_style)
         else:
             cands = await self._retrieve_stock(metaphors, per_metaphor, sources, media)
         pool_n = len(cands)
         if not cands:
+            _none = {"library": "no library segments found", "generate": "generation produced nothing"}.get(mode, "no stock footage found")
             return {"status": "UNMATCHED", "operator": operator, "mode": mode, "line": line,
                     "emotion": goal, "goal": goal, "goal_label": _OP[operator]["noun"], "bridge": br,
                     "metaphors": metaphors, "picks": [], "considered": [],
-                    "reason": ("no library segments found" if mode == "library" else "no stock footage found") + " for these metaphors",
-                    "counts": {"pool": 0, "kept": 0, "filtered": 0}}
+                    "reason": _none + " for these metaphors", "counts": {"pool": 0, "kept": 0, "filtered": 0}}
 
         # 3. score (vision on stills for stock; text on descriptions for library) + period/locale gate
         if mode == "library":
@@ -381,6 +389,24 @@ class EvokeBrollSearch:
                              "duration": (end - start) or None, "ts_start": start, "ts_end": end,
                              "desc": r.description or "", "metaphor": m}
         return list(pool.values())[:10]
+
+    # ---- generation: Krea-2 (ComfyUI) makes a still per metaphor when found footage misses ----
+    async def _retrieve_generate(self, metaphors, style):
+        from nolan.workflow_registry import get_registry
+        GEN_DIR.mkdir(parents=True, exist_ok=True)
+        client, _ = get_registry().build_client("krea2-style-select", self.config, style=f",{style}")
+        cands = []
+        for m in metaphors[:5]:
+            out = GEN_DIR / f"{hashlib.md5((m + '|' + style).encode()).hexdigest()[:12]}.png"
+            try:
+                if not out.exists():
+                    await client.generate(f"{m}, cinematic, highly detailed", out, timeout=200)
+            except Exception:
+                continue
+            cands.append({"kind": "image", "source": "krea2 (generated)",
+                          "url": f"{GEN_URL}/{out.name}", "poster": f"{GEN_URL}/{out.name}",
+                          "local": str(out.resolve()), "duration": None, "metaphor": m})
+        return cands
 
     # ---- library scoring: one batch text pass over the segments' descriptions ----
     async def _score_library(self, cands, goal, line, period, locale, operator="tonal"):
