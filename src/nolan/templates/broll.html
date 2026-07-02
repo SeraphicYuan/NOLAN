@@ -47,6 +47,9 @@
       font-size: 13px; cursor: pointer; }
     .provs .tag { font-size: 10px; color: var(--text-secondary); border: 1px solid var(--border);
       border-radius: 4px; padding: 0 4px; }
+    .pv { background: #3a5f3a; color: #fff; border: 0; border-radius: 5px; padding: 2px 8px;
+      font-size: 11px; font-weight: 600; cursor: pointer; margin-right: 8px; }
+    .pv:disabled { opacity: .6; cursor: default; }
   </style>
   <script src="/static/nav.js" data-active="broll"></script>
 </head>
@@ -153,6 +156,41 @@
 
     function fmtT(s) { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
 
+    // Poll a job to completion, resolve with the finished job object.
+    function pollJobResult(jobId) {
+      return new Promise(function (resolve) {
+        (function tick() {
+          fetch("/api/jobs/" + jobId).then(function (r) { return r.json(); }).then(function (j) {
+            if (j.status === "done" || j.status === "error" || j.status === "cancelled") resolve(j);
+            else setTimeout(tick, 1500);
+          }).catch(function () { setTimeout(tick, 2500); });
+        })();
+      });
+    }
+
+    // Render a still pick with its recommended motion, then swap the card image for the clip.
+    async function previewMotion(btn) {
+      var d = btn.dataset; var label = btn.textContent; btn.disabled = true; btn.textContent = "rendering…";
+      try {
+        var start = await (await fetch("/api/broll/preview", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({src: d.src, motion_id: d.motion, kind: d.kind})
+        })).json();
+        var job = await pollJobResult(start.job_id);
+        if (job.status === "done" && job.result && job.result.url) {
+          var card = btn.closest(".clip");
+          var media = card.querySelector("img, video");
+          var v = document.createElement("video");
+          v.src = job.result.url; v.controls = true; v.muted = true; v.loop = true; v.autoplay = true;
+          v.style.cssText = "width:100%;height:176px;object-fit:cover;background:#000;display:block";
+          if (media) media.replaceWith(v);
+          btn.textContent = "↺ re-render";
+        } else { btn.textContent = "failed"; }
+      } catch (e) { btn.textContent = "error"; }
+      btn.disabled = false;
+      setTimeout(function () { if (btn.textContent === "rendering…") btn.textContent = label; }, 100);
+    }
+
     function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
@@ -183,11 +221,14 @@
         ? esc(c.video_name) + ' · ' + fmtT(c.ts_start) + '–' + fmtT(c.ts_end) + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"'
         : (isImg ? esc(c.source) + ' · photo' : esc(c.source) + ' · ' + (c.duration ? c.duration + "s" : "?"))
           + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"';
+      var prevBtn = (isImg && !dropped) ? '<button class="pv" data-src="' + esc(c.url) +
+        '" data-motion="' + esc((c.motion && c.motion.id) || 'ken-burns-in') + '" data-kind="' + esc(c.kind) +
+        '" onclick="previewMotion(this)">&#9654; preview motion</button> ' : '';
       return '<div class="clip">' + player + '<div class="m">' +
         chip(lbl[0], c.mood) + chip(lbl[1], c.nonliteral) + place + flag + rej + motion +
         '<div class="why">' + esc(c.why) + '</div>' +
         '<div style="color:#888;margin-top:4px">' + srcline + '</div>' +
-        '<a class="src" href="' + esc(c.url) + '" target="_blank">open ↗</a></div></div>';
+        prevBtn + '<a class="src" href="' + esc(c.url) + '" target="_blank">open ↗</a></div></div>';
     }
 
     function renderResult(res) {

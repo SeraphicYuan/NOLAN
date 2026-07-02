@@ -266,6 +266,34 @@ async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: 
     return result
 
 
+async def preview_motion(job, *, config, src: str, motion_id: str = "ken-burns-in", kind: str = "image"):
+    """Render one still pick with its recommended motion → a short served mp4 (the /broll preview)."""
+    import hashlib, io
+    from PIL import Image
+    from nolan.evoke_broll import GEN_DIR
+    from nolan.still_motion import render_still
+    from nolan.image_search import ImageScorer
+
+    prev = GEN_DIR / "previews"
+    prev.mkdir(parents=True, exist_ok=True)
+    job.set_progress(0.12, "Fetching still…")
+    if src.startswith("/broll-gen/"):
+        local = GEN_DIR / src.split("/broll-gen/", 1)[1]      # generated still already local
+    else:
+        data = await asyncio.get_event_loop().run_in_executor(None, ImageScorer()._download_image, src)
+        if not data:
+            raise RuntimeError("could not fetch image")
+        local = prev / f"src_{hashlib.md5(src.encode()).hexdigest()[:12]}.jpg"
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: Image.open(io.BytesIO(data)).convert("RGB").save(local, "JPEG", quality=90))
+
+    out = prev / f"{hashlib.md5((src + '|' + motion_id).encode()).hexdigest()[:12]}.mp4"
+    job.set_progress(0.35, f"Rendering {motion_id}…")
+    await asyncio.get_event_loop().run_in_executor(None, lambda: render_still(str(local), motion_id, out, 4.0))
+    job.set_progress(1.0, "preview ready")
+    return {"url": f"/broll-gen/previews/{out.name}", "motion": motion_id}
+
+
 def _scene_plan_path(project_name: str) -> Path:
     return Path("projects") / project_name / "scene_plan.json"
 

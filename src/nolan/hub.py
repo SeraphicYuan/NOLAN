@@ -424,6 +424,19 @@ def create_hub_app(
         )
         return {"job_id": job.id, "type": "evoke-broll"}
 
+    @app.post("/api/broll/preview")
+    async def api_broll_preview(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        src = (body.get("src") or "").strip()
+        if not src:
+            raise HTTPException(status_code=400, detail="src is required")
+        job = job_manager.start(
+            "broll-preview", operations.preview_motion, config=load_config(),
+            src=src, motion_id=(body.get("motion_id") or "ken-burns-in"), kind=(body.get("kind") or "image"),
+        )
+        return {"job_id": job.id, "type": "broll-preview"}
+
     # ==================== Vector index management ====================
 
     @app.post("/api/sync-vectors")
