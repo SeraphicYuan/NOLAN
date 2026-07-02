@@ -106,10 +106,41 @@ def accept_draft(project, *, draft_name: str = "_authoring_draft.spec.json") -> 
         raise FileNotFoundError(f"no authoring draft at {draft} — run dispatch_refine first")
     spec = json.loads(draft.read_text(encoding="utf-8"))
     (project / "flow.spec.json").write_text(json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8")
+    apply_tempo(project)                             # Gate A: stamp the editorial arc onto the beats
     from .edit import reingest_job
     from .scene_view import build_scene_plan
     reingest_job(project)
     return build_scene_plan(project)
+
+
+def apply_tempo(project, *, llm=None) -> dict:
+    """FLOW tempo pass — modulate the flow.spec.json beats' motion knobs (introHold/maxZoom) by
+    the whole-script editorial arc. The FLOW parallel of the orchestrator's `tempo_enrich` step.
+    Idempotent, best-effort (never raises into Gate A). Returns a small summary."""
+    project = Path(project)
+    sp = project / "flow.spec.json"
+    if not sp.exists():
+        return {"applied": 0, "reason": "no flow.spec.json"}
+    try:
+        from nolan.script_context import ScriptContext
+        from nolan.tempo_plan import design_tempo, apply_to_flow_spec
+        ctx = ScriptContext.load(project)
+        if not ctx.beats:
+            return {"applied": 0, "reason": "no script beats"}
+        spec = json.loads(sp.read_text(encoding="utf-8"))
+        if llm is None:
+            try:
+                from nolan.config import load_config
+                from nolan.llm import create_text_llm
+                llm = create_text_llm(load_config())
+            except Exception:
+                llm = None
+        tempo = design_tempo(ctx, llm=llm)
+        res = apply_to_flow_spec(spec, tempo)
+        sp.write_text(json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8")
+        return {"applied": res["matched"], "beats": res["beats"], "source": tempo.source}
+    except Exception as e:
+        return {"applied": 0, "reason": str(e)}
 
 
 def dispatch_refine(project, agent: str = "nolan4", *, draft_name: str = "_authoring_draft.spec.json") -> Path:
@@ -154,6 +185,7 @@ def author(project, flow, *, overwrite: bool = False) -> Path:
     sp = Path(project) / "flow.spec.json"
     if overwrite or not sp.exists():
         sp.write_text(json.dumps(draft_plan(project, flow), indent=2, ensure_ascii=False), encoding="utf-8")
+        apply_tempo(project)                         # annotate the fresh draft with the editorial arc
     return sp
 
 
