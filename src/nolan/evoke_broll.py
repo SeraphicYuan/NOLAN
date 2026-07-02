@@ -130,7 +130,33 @@ _OP = {
         "axis2": "10=fresh/telling activity, 0=generic or on-the-nose",
         "accept": "it must show an activity that EMBODIES the trait (a person of that quality doing the thing), read clearly, and not be a tired cliché",
     },
+    "relational": {   # one SIDE of a dialectical pair — scored as a clear, striking depiction of that side
+        "noun": "side",
+        "judge": "Judge the FRAME for how clearly and strikingly it DEPICTS THIS SIDE of the juxtaposition.",
+        "match": "how clearly/strikingly it depicts this side",
+        "match_lib": "depicts this side",
+        "axis2": "10=striking/cinematic, 0=weak or generic",
+        "accept": "it must clearly and strikingly depict this side of the pair and read at a glance",
+    },
 }
+
+
+_RELATIONAL_BRIDGE_SYS = (
+    "You are a montage editor in the tradition of Eisenstein/Kuleshov — you make meaning by COLLIDING two "
+    "shots: shot A + shot B create a third idea neither holds alone. Reply STRICT JSON.")
+
+
+def _relational_bridge_prompt(line: str, period: str, locale: str, literalness: float) -> str:
+    ctx = ""
+    if period or locale:
+        ctx = (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
+               "Keep both sides' imagery period/locale-plausible.\n")
+    return (f'LINE: "{line}"\n{ctx}'
+            "Find the DIALECTICAL PAIR: two contrasting/opposing elements whose juxtaposition creates a THIRD "
+            "meaning (the synthesis). For EACH side give a short label + concrete visual SEARCH PHRASES.\n"
+            'Return JSON: {"synthesis": "the third idea the collision creates (1 sentence)", '
+            '"sides": [{"label": "side A (2-4 words)", "visual_metaphors": ["3-5 search phrases for side A"]}, '
+            '{"label": "side B (2-4 words)", "visual_metaphors": ["3-5 search phrases for side B"]}]}')
 
 
 _TRAIT_BRIDGE_SYS = (
@@ -318,6 +344,59 @@ class EvokeBrollSearch:
         p, l = c.get("period_ok"), c.get("locale_ok")
         return (p is not None and p < 5) or (l is not None and l < 5)
 
+    async def _select(self, line, metaphors, goal, operator, *, mode, period, locale, sources, media,
+                      project, gen_style, per_metaphor, gated, max_picks=5) -> dict:
+        """One retrieve → score → period/locale gate → listwise-accept → motion pass.
+        Returns {picks, considered, pool, kept, filtered, reason}. Shared by the normal path and
+        each side of the relational operator."""
+        from .motion_select import recommend_motions
+        if not metaphors:
+            return {"picks": [], "considered": [], "pool": 0, "kept": 0, "filtered": 0, "reason": "no metaphors"}
+        if mode == "library":
+            cands = await self._retrieve_library(metaphors, per_metaphor, project)
+        elif mode == "generate":
+            cands = await self._retrieve_generate(metaphors, gen_style)
+        else:
+            cands = await self._retrieve_stock(metaphors, per_metaphor, sources, media)
+        pool_n = len(cands)
+        if not cands:
+            return {"picks": [], "considered": [], "pool": 0, "kept": 0, "filtered": 0, "reason": "no footage found"}
+
+        if mode == "library":
+            await self._score_library(cands, goal, line, period, locale, operator)
+        else:
+            scores = await asyncio.gather(*[self._score(c, goal, line, period, locale, operator) for c in cands])
+            for c, s in zip(cands, scores):
+                c.update(s)
+        scored = [c for c in cands if c.get("mood") is not None]
+        kept = [c for c in scored if not self._anachronistic(c, gated)]
+        filtered = [c for c in scored if self._anachronistic(c, gated)]
+        for c in filtered:
+            c["reject"] = f"gated: {c.get('flags') or 'period/locale clash'}"
+
+        picked, chosen, reason = [], set(), ""
+        if kept:
+            kept.sort(key=lambda c: -((c.get("mood") or 0) + (c.get("nonliteral") or 0) * 0.3
+                                      + (0.5 if c.get("universal") else 0)))
+            res = _extract_json(await self.llm.generate(_accept_prompt(line, goal, kept, operator), _LISTWISE_SYS))
+            order = [i for i in res.get("pick", []) if 0 <= i < len(kept)][:max_picks]
+            chosen = set(order)
+            if order:
+                picked = [kept[i] for i in order]
+            else:
+                reason = res.get("unmatched_reason") or "nothing cleared the use-bar"
+            for i, c in enumerate(kept):
+                if i not in chosen:
+                    c["reject"] = "below use-bar"
+        else:
+            reason = "no period/locale-safe footage survived"
+
+        if picked:
+            await recommend_motions(self.llm, line, goal, operator, picked)
+        considered = filtered + [c for i, c in enumerate(kept) if i not in chosen]
+        return {"picks": picked, "considered": considered, "pool": pool_n,
+                "kept": len(kept), "filtered": len(filtered), "reason": reason}
+
     async def search(self, line: str, *, operator: str = "tonal", mode: str = "stock",
                      period: str = "", locale: str = "", literalness: float = 0.25,
                      mood: Optional[str] = None, sources: Optional[List[str]] = None,
@@ -335,7 +414,12 @@ class EvokeBrollSearch:
 
         # 1. bridge (operator-specific): produce a `goal` string + concrete visual search phrases
         self._progress(0.08, "Bridging…")
-        if operator == "conceptual":
+        if operator == "relational":
+            br = _extract_json(await self.llm.generate(
+                _relational_bridge_prompt(line, period, locale, literalness), _RELATIONAL_BRIDGE_SYS))
+            goal = br.get("synthesis", "")
+            metaphors = [m for s in br.get("sides", []) for m in s.get("visual_metaphors", []) if m][:8]
+        elif operator == "conceptual":
             br = _extract_json(await self.llm.generate(
                 _conceptual_bridge_prompt(line, period, locale, literalness), _CONCEPTUAL_BRIDGE_SYS))
             doms = ", ".join(d.get("domain", "") for d in br.get("domains", []) if d.get("domain"))
@@ -353,68 +437,51 @@ class EvokeBrollSearch:
             br = _extract_json(await self.llm.generate(
                 _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))
             goal = br.get("target_emotion", "")
-        metaphors = [m for m in br.get("visual_metaphors", []) if m][:max_metaphors]
+        if operator != "relational":
+            metaphors = [m for m in br.get("visual_metaphors", []) if m][:max_metaphors]
 
-        # 2. retrieve candidates from the chosen pool
-        self._progress(0.22, f"Retrieving {mode} b-roll for {len(metaphors)} metaphors…")
-        if mode == "library":
-            cands = await self._retrieve_library(metaphors, per_metaphor, project)
-        elif mode == "generate":
-            cands = await self._retrieve_generate(metaphors, gen_style)
-        else:
-            cands = await self._retrieve_stock(metaphors, per_metaphor, sources, media)
-        pool_n = len(cands)
-        if not cands:
-            _none = {"library": "no library segments found", "generate": "generation produced nothing"}.get(mode, "no stock footage found")
-            return {"status": "UNMATCHED", "operator": operator, "mode": mode, "line": line,
-                    "emotion": goal, "goal": goal, "goal_label": _OP[operator]["noun"], "bridge": br,
-                    "metaphors": metaphors, "picks": [], "considered": [],
-                    "reason": _none + " for these metaphors", "counts": {"pool": 0, "kept": 0, "filtered": 0}}
+        _kw = dict(mode=mode, period=period, locale=locale, sources=sources, media=media,
+                   project=project, gen_style=gen_style, per_metaphor=per_metaphor, gated=gated)
 
-        # 3. score (vision on stills for stock; text on descriptions for library) + period/locale gate
-        if mode == "library":
-            self._progress(0.45, f"Scoring {len(cands)} library segments…")
-            await self._score_library(cands, goal, line, period, locale, operator)
-        else:
-            self._progress(0.45, f"Scoring {len(cands)} clips…")
-            scores = await asyncio.gather(*[self._score(c, goal, line, period, locale, operator) for c in cands])
-            for c, s in zip(cands, scores):
-                c.update(s)
-        scored = [c for c in cands if c.get("mood") is not None]
-        kept = [c for c in scored if not self._anachronistic(c, gated)]
-        filtered = [c for c in scored if self._anachronistic(c, gated)]
-        for c in filtered:
-            c["reject"] = f"gated: {c.get('flags') or 'period/locale clash'}"
+        # --- relational: two sub-selections (side A + side B) that collide ---
+        if operator == "relational":
+            sides = br.get("sides", [])[:2]
+            if len(sides) < 2:
+                self._progress(1.0, "UNMATCHED")
+                return {"status": "UNMATCHED", "operator": operator, "mode": mode, "line": line,
+                        "emotion": goal, "goal": goal, "goal_label": "synthesis", "synthesis": goal, "bridge": br,
+                        "metaphors": metaphors, "picks": [], "considered": [], "sides": [],
+                        "reason": "could not find a dialectical pair", "counts": {"pool": 0, "kept": 0, "filtered": 0}}
+            self._progress(0.25, f"Side A: {sides[0].get('label', '')}…")
+            a = await self._select(line, [m for m in sides[0].get("visual_metaphors", []) if m][:5],
+                                   sides[0].get("label", ""), operator, max_picks=2, **_kw)
+            self._progress(0.6, f"Side B: {sides[1].get('label', '')}…")
+            b = await self._select(line, [m for m in sides[1].get("visual_metaphors", []) if m][:5],
+                                   sides[1].get("label", ""), operator, max_picks=2, **_kw)
+            status = "MATCHED" if (a["picks"] and b["picks"]) else "UNMATCHED"
+            reason = "" if status == "MATCHED" else f"couldn't complete the pair (side A: {len(a['picks'])}, side B: {len(b['picks'])})"
+            self._progress(1.0, status)
+            return {"status": status, "reason": reason, "operator": operator, "mode": mode, "line": line,
+                    "emotion": goal, "goal": goal, "goal_label": "synthesis", "synthesis": goal, "bridge": br,
+                    "presentation": "split-screen",
+                    "sides": [{"label": sides[0].get("label", ""), "picks": a["picks"], "considered": a["considered"]},
+                              {"label": sides[1].get("label", ""), "picks": b["picks"], "considered": b["considered"]}],
+                    "metaphors": metaphors, "picks": a["picks"] + b["picks"],
+                    "considered": a["considered"] + b["considered"],
+                    "counts": {"pool": a["pool"] + b["pool"], "kept": a["kept"] + b["kept"], "filtered": a["filtered"] + b["filtered"]}}
 
-        # 4. listwise acceptance (or abstain)
-        picked, status, reason, chosen = [], "UNMATCHED", "no period/locale-safe footage survived", set()
-        if kept:
-            self._progress(0.82, "Final cut decision…")
-            kept.sort(key=lambda c: -((c.get("mood") or 0) + (c.get("nonliteral") or 0) * 0.3
-                                      + (0.5 if c.get("universal") else 0)))
-            res = _extract_json(await self.llm.generate(_accept_prompt(line, goal, kept, operator), _LISTWISE_SYS))
-            order = [i for i in res.get("pick", []) if 0 <= i < len(kept)]
-            chosen = set(order)
-            if order:
-                status, reason, picked = "MATCHED", "", [kept[i] for i in order]
-            else:
-                reason = res.get("unmatched_reason") or "nothing cleared the use-bar"
-            for i, c in enumerate(kept):
-                if i not in chosen:
-                    c["reject"] = "below use-bar"
-
-        # 5. motion-selection: how to animate each accepted asset (motivated, per operator + kind)
-        if picked:
-            self._progress(0.92, "Choosing motion…")
-            from .motion_select import recommend_motions
-            await recommend_motions(self.llm, line, goal, operator, picked)
-
-        considered = filtered + [c for i, c in enumerate(kept) if i not in chosen]
+        # --- normal operators: one selection ---
+        self._progress(0.3, f"Retrieving + scoring {mode} b-roll…")
+        sel = await self._select(line, metaphors, goal, operator, max_picks=5, **_kw)
+        status = "MATCHED" if sel["picks"] else "UNMATCHED"
+        reason = "" if sel["picks"] else sel["reason"]
+        if sel["pool"] == 0:
+            reason = {"library": "no library segments found", "generate": "generation produced nothing"}.get(mode, "no stock footage found") + " for these metaphors"
         self._progress(1.0, status)
         return {"status": status, "reason": reason, "operator": operator, "mode": mode, "line": line,
                 "emotion": goal, "goal": goal, "goal_label": _OP[operator]["noun"], "bridge": br,
-                "metaphors": metaphors, "picks": picked, "considered": considered,
-                "counts": {"pool": pool_n, "kept": len(kept), "filtered": len(filtered)}}
+                "metaphors": metaphors, "picks": sel["picks"], "considered": sel["considered"],
+                "counts": {"pool": sel["pool"], "kept": sel["kept"], "filtered": sel["filtered"]}}
 
     # ---- retrieval: stock (real footage) or library (indexed segments) ----
     async def _retrieve_stock(self, metaphors, per_metaphor, sources, media=("video", "image")):

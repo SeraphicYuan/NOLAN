@@ -75,7 +75,7 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 |---|---|---|
 | **Ironic counterpoint** ✅ *built* | the image **contradicts** the words for critique/comedy. VO praises progress → a landfill | operator #3 on /broll (Approach: Ironic). Bridge = surface message → ironic truth → contradicting imagery; scores irony + edge |
 | **Historical rhyme** | now vs then; a modern line over archival that "rhymes" (2008 line ↔ 1929) | pair a contemporary + an archival asset; temporal juxtaposition |
-| **Dialectical montage (Eisenstein/Kuleshov)** | shot A + shot B → a *third* idea neither holds. workers + slaughterhouse | **pair generation + a collision motion**; the deepest, highest-ceiling operator |
+| **Relational / dialectical** ✅ *built* | shot A + shot B → a *third* idea neither holds. gilded excess + starving labor | operator #5 on /broll: bridge finds a dialectical PAIR → two sub-selections (side A/B) → SplitScreen collision render |
 | **Before / after · time-transformation** | change → time-lapse, decay/growth, morph | **generate a pair** (before, after) → **morph/dissolve motion** |
 | **Binary / VS framing** | an opposition → split-screen, tug-of-war, boxing, diverging roads | `comparison`/VS motion exists; bridge extracts the two sides |
 | **Match cut / graphic match** | link two ideas by shared shape/motion across a cut. circle→sun→coin; bone→spacecraft (*2001*) | craft-level; needs shape/motion continuity matching across a pair |

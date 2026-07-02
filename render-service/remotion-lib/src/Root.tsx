@@ -11,6 +11,7 @@ import {PhotoMontage} from './PhotoMontage';
 import {PhotoGrid} from './PhotoGrid';
 import {StillMotion} from './StillMotion';
 import {ClipMontage, clipMontageDuration} from './ClipMontage';
+import {SplitScreen} from './SplitScreen';
 import {Showcase} from './Showcase';
 // Folded-in flow bundle (was _lab_chapter): the Chapter Series + its blocks.
 import {Chapter} from './Chapter';
@@ -110,6 +111,12 @@ export const Root: React.FC = () => {
         id="ClipMontage" component={ClipMontage} durationInFrames={120} {...common}
         defaultProps={{cards: [] as any[], transitions: [] as any[]}}
         calculateMetadata={calcClipMontage}
+      />
+      <Composition
+        id="SplitScreen" component={SplitScreen} durationInFrames={120} {...common}
+        defaultProps={{background: '' as string, foreground: '' as string,
+          leftLabel: '' as string, rightLabel: '' as string, durationInFrames: 120}}
+        calculateMetadata={dur}
       />
       <Composition
         id="Showcase" component={Showcase} durationInFrames={900} {...common}

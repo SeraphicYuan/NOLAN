@@ -437,6 +437,20 @@ def create_hub_app(
         )
         return {"job_id": job.id, "type": "broll-preview"}
 
+    @app.post("/api/broll/split")
+    async def api_broll_split(body: dict = Body(...)):
+        from nolan.config import load_config
+        from nolan.webui import operations
+        left, right = (body.get("left_src") or "").strip(), (body.get("right_src") or "").strip()
+        if not left or not right:
+            raise HTTPException(status_code=400, detail="left_src and right_src are required")
+        job = job_manager.start(
+            "broll-split", operations.preview_split, config=load_config(),
+            left_src=left, right_src=right,
+            left_label=(body.get("left_label") or ""), right_label=(body.get("right_label") or ""),
+        )
+        return {"job_id": job.id, "type": "broll-split"}
+
     # ==================== Vector index management ====================
 
     @app.post("/api/sync-vectors")
@@ -1781,8 +1795,8 @@ def create_hub_app(
         if not script_project_store.exists(slug):
             raise HTTPException(status_code=404, detail="project not found")
         phase = (body.get("phase") or "auto").strip()
-        if phase not in ("prep", "draft", "auto"):
-            raise HTTPException(status_code=400, detail="phase must be prep/draft/auto")
+        if phase not in ("prep", "draft", "auto", "v3"):
+            raise HTTPException(status_code=400, detail="phase must be prep/draft/auto/v3")
         session = (body.get("session") or "nolan2").strip() or "nolan2"
         job = job_manager.start(
             "script-phase", operations.run_script_phase,

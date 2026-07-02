@@ -266,32 +266,54 @@ async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: 
     return result
 
 
-async def preview_motion(job, *, config, src: str, motion_id: str = "ken-burns-in", kind: str = "image"):
-    """Render one still pick with its recommended motion → a short served mp4 (the /broll preview)."""
+async def _local_still(src: str, prev):
+    """Resolve a pick's still (served /broll-gen path or remote URL) to a local jpg."""
     import hashlib, io
     from PIL import Image
     from nolan.evoke_broll import GEN_DIR
-    from nolan.still_motion import render_still
     from nolan.image_search import ImageScorer
-
-    prev = GEN_DIR / "previews"
-    prev.mkdir(parents=True, exist_ok=True)
-    job.set_progress(0.12, "Fetching still…")
     if src.startswith("/broll-gen/"):
-        local = GEN_DIR / src.split("/broll-gen/", 1)[1]      # generated still already local
-    else:
-        data = await asyncio.get_event_loop().run_in_executor(None, ImageScorer()._download_image, src)
-        if not data:
-            raise RuntimeError("could not fetch image")
-        local = prev / f"src_{hashlib.md5(src.encode()).hexdigest()[:12]}.jpg"
-        await asyncio.get_event_loop().run_in_executor(
-            None, lambda: Image.open(io.BytesIO(data)).convert("RGB").save(local, "JPEG", quality=90))
+        return GEN_DIR / src.split("/broll-gen/", 1)[1]
+    data = await asyncio.get_event_loop().run_in_executor(None, ImageScorer()._download_image, src)
+    if not data:
+        raise RuntimeError("could not fetch image")
+    out = prev / f"src_{hashlib.md5(src.encode()).hexdigest()[:12]}.jpg"
+    await asyncio.get_event_loop().run_in_executor(
+        None, lambda: Image.open(io.BytesIO(data)).convert("RGB").save(out, "JPEG", quality=90))
+    return out
 
+
+async def preview_motion(job, *, config, src: str, motion_id: str = "ken-burns-in", kind: str = "image"):
+    """Render one still pick with its recommended motion → a short served mp4 (the /broll preview)."""
+    import hashlib
+    from nolan.evoke_broll import GEN_DIR
+    from nolan.still_motion import render_still
+    prev = GEN_DIR / "previews"; prev.mkdir(parents=True, exist_ok=True)
+    job.set_progress(0.12, "Fetching still…")
+    local = await _local_still(src, prev)
     out = prev / f"{hashlib.md5((src + '|' + motion_id).encode()).hexdigest()[:12]}.mp4"
     job.set_progress(0.35, f"Rendering {motion_id}…")
     await asyncio.get_event_loop().run_in_executor(None, lambda: render_still(str(local), motion_id, out, 4.0))
     job.set_progress(1.0, "preview ready")
     return {"url": f"/broll-gen/previews/{out.name}", "motion": motion_id}
+
+
+async def preview_split(job, *, config, left_src: str, right_src: str,
+                        left_label: str = "", right_label: str = ""):
+    """Render the relational operator's split-screen 'collision' of two picks → served mp4."""
+    import hashlib
+    from nolan.evoke_broll import GEN_DIR
+    from nolan.still_motion import render_split
+    prev = GEN_DIR / "previews"; prev.mkdir(parents=True, exist_ok=True)
+    job.set_progress(0.15, "Fetching stills…")
+    left = await _local_still(left_src, prev)
+    right = await _local_still(right_src, prev)
+    out = prev / f"split_{hashlib.md5((left_src + '|' + right_src).encode()).hexdigest()[:12]}.mp4"
+    job.set_progress(0.4, "Rendering split-screen…")
+    await asyncio.get_event_loop().run_in_executor(
+        None, lambda: render_split(str(left), str(right), out, 4.0, left_label, right_label))
+    job.set_progress(1.0, "split-screen ready")
+    return {"url": f"/broll-gen/previews/{out.name}"}
 
 
 def _scene_plan_path(project_name: str) -> Path:
@@ -2052,7 +2074,7 @@ async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2
     draft = draft chosen angle+fact-check (gate 2), auto = the whole pipeline in one pass
     (Claude picks the angle). Coexists with :func:`write_script` (the one-shot baseline).
     """
-    from nolan.scriptwriter import ScriptProjectStore, prep_task, draft_task, auto_task
+    from nolan.scriptwriter import ScriptProjectStore, prep_task, draft_task, auto_task, v3_task
     from pathlib import Path as _Path
 
     store = ScriptProjectStore(_Path(store_root))
@@ -2063,6 +2085,7 @@ async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2
         "prep": (prep_task, "prep_task.md", "research + propose angles"),
         "draft": (draft_task, "draft_task.md", "draft chosen angle + fact-check"),
         "auto": (auto_task, "auto_task.md", "full auto script"),
+        "v3": (v3_task, "v3_task.md", "v3 (resonant angle, guide-true retention)"),
     }
     builder, fname, label = builders.get(phase, builders["auto"])
 

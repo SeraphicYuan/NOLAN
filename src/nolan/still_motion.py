@@ -66,6 +66,23 @@ def render_still(image_path, motion_id: str = "ken-burns-in", out_path=None,
     return out_path
 
 
+def render_split(left_img, right_img, out_path, duration: float = 4.0,
+                 left_label: str = "", right_label: str = "", fps: int = 30) -> Path:
+    """Render two stills as a SplitScreen 'collision' clip (the relational operator's payoff)."""
+    from nolan import remotion_source
+    out_path = Path(out_path)
+    frames = max(30, int(round(duration * fps)))
+    produced = remotion_source.render(
+        "SplitScreen", {"leftLabel": left_label or "", "rightLabel": right_label or ""},
+        out_path.name, duration_frames=frames,
+        background=str(Path(left_img).resolve()), foreground=str(Path(right_img).resolve()))
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if Path(produced).resolve() != out_path.resolve():
+        import shutil
+        shutil.copy(produced, out_path)
+    return out_path
+
+
 def render_clip_montage(clips, out_path, transition: str = "fade", trans_frames: int = 16, fps: int = 30) -> Path:
     """Assemble b-roll clips/stills into one video with shot-to-shot transitions (ClipMontage).
 

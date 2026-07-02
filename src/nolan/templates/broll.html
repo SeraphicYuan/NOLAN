@@ -67,6 +67,7 @@
         <button type="button" class="opbtn" data-op="conceptual">Conceptual metaphor</button>
         <button type="button" class="opbtn" data-op="ironic">Ironic counterpoint</button>
         <button type="button" class="opbtn" data-op="trait">Trait embodiment</button>
+        <button type="button" class="opbtn" data-op="relational">Relational (A vs B)</button>
       </div>
       <div id="ophint" class="hint" style="margin:6px 0 2px">Footage that carries the line's <b>emotion</b>.</div>
       <label style="margin-top:12px">Narration line</label>
@@ -121,7 +122,8 @@
       tonal: "Footage that carries the line's <b>emotion</b>.",
       conceptual: "A concrete domain whose <b>mechanic mirrors the idea</b> (strategy→chess, collapse→dominoes).",
       ironic: "Footage that <b>contradicts</b> the line — the gap between what's said and what's real (Adam Curtis).",
-      trait: "The archetypal <b>activity</b> a person of this quality does (discipline→training, patience→watchmaking)."
+      trait: "The archetypal <b>activity</b> a person of this quality does (discipline→training, patience→watchmaking).",
+      relational: "Two <b>colliding</b> shots — A vs B make a third meaning (Eisenstein). Rendered as split-screen."
     };
     document.querySelectorAll(".opbtn").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -132,7 +134,7 @@
       });
     });
     // chip labels per operator: [primary-fit, secondary-axis]
-    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"] };
+    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"] };
     var lastOp = "tonal";
 
     // Source-pool mode toggle (stock vs library) + stock-provider checkboxes.
@@ -170,6 +172,24 @@
           }).catch(function () { setTimeout(tick, 2500); });
         })();
       });
+    }
+
+    // Render the relational split-screen collision of the two sides' top picks.
+    async function splitScreen(btn) {
+      var d = btn.dataset; var label = btn.textContent; btn.disabled = true; btn.textContent = "rendering…";
+      try {
+        var start = await (await fetch("/api/broll/split", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({left_src: d.l, right_src: d.r, left_label: d.ll, right_label: d.rl})
+        })).json();
+        var job = await pollJobResult(start.job_id);
+        if (job.status === "done" && job.result && job.result.url) {
+          document.getElementById("splitout").innerHTML =
+            '<video src="' + job.result.url + '" controls autoplay muted loop style="width:100%;max-width:820px;border-radius:10px;display:block"></video>';
+          btn.textContent = "↺ re-render split-screen";
+        } else { btn.textContent = "failed"; }
+      } catch (e) { btn.textContent = "error"; }
+      btn.disabled = false;
     }
 
     // Render a still pick with its recommended motion, then swap the card image for the clip.
@@ -243,6 +263,28 @@
         ? '<span class="status ok">MATCHED · ' + res.picks.length + '</span>'
         : '<span class="status no">UNMATCHED</span>';
       var html = '<div style="margin-top:8px">' + st + '</div>';
+
+      // relational (A vs B): synthesis + a split-screen button + two labeled sides
+      if (res.sides) {
+        html += '<div class="meta2">synthesis: <b>' + esc(res.synthesis || res.emotion) + '</b> · pool ' +
+          res.counts.pool + ', kept ' + res.counts.kept + '</div>';
+        if (res.status === "UNMATCHED") html += '<div class="reason">∅ ' + esc(res.reason) + '</div>';
+        var A = res.sides[0] && res.sides[0].picks[0], B = res.sides[1] && res.sides[1].picks[0];
+        if (A && B) {
+          html += '<div style="margin:8px 0 12px"><button class="pv" onclick="splitScreen(this)" data-l="' +
+            esc(A.url) + '" data-r="' + esc(B.url) + '" data-ll="' + esc(res.sides[0].label) + '" data-rl="' +
+            esc(res.sides[1].label) + '">&#9654; render split-screen (' + esc(res.sides[0].label) + ' | ' +
+            esc(res.sides[1].label) + ')</button></div><div id="splitout" style="margin-bottom:14px"></div>';
+        }
+        res.sides.forEach(function (side) {
+          html += '<h3 style="color:#bbb;font-size:15px;margin:14px 0 6px">' + esc(side.label) + '</h3>';
+          html += '<div class="grid">' + (side.picks.length
+            ? side.picks.map(function (c) { return clipCard(c, false); }).join("")
+            : '<div class="reason">nothing for this side</div>') + '</div>';
+        });
+        r.innerHTML = html; return;
+      }
+
       html += '<div class="meta2">' + esc(res.goal_label || "emotion") + ': <b>' + esc(res.emotion) + '</b> · metaphors: ' +
         esc((res.metaphors || []).join("  ·  ")) + ' · pool ' + res.counts.pool + ', kept ' + res.counts.kept + ', gated ' + res.counts.filtered + '</div>';
       if (res.status === "UNMATCHED")
