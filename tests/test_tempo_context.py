@@ -142,3 +142,41 @@ class TestTempoPlan:
         (p / "script.md").write_text("# Video Script\n", encoding="utf-8")
         plan = design_tempo(ScriptContext.load(p))
         assert plan.beats == []
+
+
+class TestApplyToPlan:
+    def test_annotates_scenes_by_section(self, tmp_path):
+        from nolan.scenes import Scene, ScenePlan
+        from nolan.tempo_plan import apply_to_plan
+        ctx = ScriptContext.load(_make_project(tmp_path))
+        tempo = design_tempo(ctx)                            # rules
+        # a scene plan whose SECTION titles == the script beat titles
+        plan = ScenePlan()
+        plan.sections["Hook — the shock"] = [Scene(id="s1", narration_excerpt="x"),
+                                             Scene(id="s2", narration_excerpt="y")]
+        plan.sections["The build"] = [Scene(id="s3", narration_excerpt="z")]
+        plan.sections["The close"] = [Scene(id="s4", narration_excerpt="w")]
+        res = apply_to_plan(plan, tempo)
+        assert res == {"sections": 3, "scenes": 4, "matched": 4}
+        # every scene got a transition + energy + motion_speed (was None before)
+        for sc in plan.all_scenes:
+            assert sc.transition in ("cut", "dissolve", "fade")
+            assert sc.energy is not None
+            assert sc.motion_speed in ("slow", "medium", "fast")
+        # the accelerate "build" beat should be hotter than the decelerate "close"
+        build = plan.sections["The build"][0]
+        close = plan.sections["The close"][0]
+        assert build.energy > close.energy
+
+    def test_roundtrip_preserves_tempo(self, tmp_path):
+        from nolan.scenes import Scene, ScenePlan
+        from nolan.tempo_plan import apply_to_plan
+        ctx = ScriptContext.load(_make_project(tmp_path))
+        plan = ScenePlan()
+        plan.sections["The build"] = [Scene(id="s3", narration_excerpt="z")]
+        apply_to_plan(plan, design_tempo(ctx))
+        out = tmp_path / "sp.json"
+        plan.save(str(out))
+        reloaded = ScenePlan.load(str(out))
+        sc = reloaded.sections["The build"][0]
+        assert sc.energy is not None and sc.motion_speed in ("slow", "medium", "fast")

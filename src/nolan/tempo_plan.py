@@ -23,7 +23,7 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from .script_context import ScriptContext
+from .script_context import ScriptContext, _norm_title
 
 # per-profile shaping — mirrors web-video-lab/flows/registry.json pacing intent
 _PROFILES = {
@@ -204,6 +204,44 @@ def _coerce(raw: dict, ctx: ScriptContext, profile: str) -> Optional[TempoPlan]:
                                transition=trans or dtrans, motion_speed=speed or dspeed,
                                shots=shots, reason=(it.get("reason") or "")[:120]))
     return TempoPlan(slug=ctx.slug, profile=profile, beats=beats, source="llm")
+
+
+def apply_to_plan(plan, tempo: TempoPlan) -> dict:
+    """Write a TempoPlan's per-beat rhythm onto an orchestrator ScenePlan.
+
+    The scene-plan's SECTIONS are the script beats (section title == script heading), so each
+    section maps to one BeatTempo by title. Every scene in that section receives the beat's
+    `transition`, `energy`, and `motion_speed` — the two levers the planner leaves flat
+    (transitions are 100% empty; there is no energy signal for motion selection to read).
+
+    Mutates `plan` in place (caller saves). Returns {sections, scenes, matched} counts."""
+    by_title = {_norm_title(b.title): b for b in tempo.beats}
+    titles = list(by_title.keys())
+    n_sec = n_sc = matched = 0
+    for section_title, scenes in plan.sections.items():
+        n_sec += 1
+        stoks = set(_norm_title(section_title).split())
+        bt = by_title.get(_norm_title(section_title))
+        if bt is None and stoks:                          # fuzzy fallback on token overlap
+            best, best_score = None, 0.0
+            for t in titles:
+                ttoks = set(t.split())
+                if not ttoks:
+                    continue
+                score = len(stoks & ttoks) / max(1, len(stoks | ttoks))
+                if score > best_score:
+                    best, best_score = by_title[t], score
+            if best_score >= 0.3:
+                bt = best
+        for sc in scenes:
+            n_sc += 1
+            if bt is None:
+                continue
+            sc.transition = bt.transition
+            sc.energy = round(bt.energy, 3)
+            sc.motion_speed = bt.motion_speed
+            matched += 1
+    return {"sections": n_sec, "scenes": n_sc, "matched": matched}
 
 
 def design_tempo(ctx: ScriptContext, *, profile: str = "", llm=None) -> TempoPlan:

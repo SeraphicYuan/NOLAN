@@ -352,6 +352,10 @@ class Scene:
     animation_params: Optional[Dict] = None # {zoom_from, zoom_to, focus_x, focus_y, direction}
     transition: Optional[str] = None        # cut, fade, dissolve, wipe
 
+    # === Rhythm/tempo (set by the Editorial Arc pass — nolan.tempo_plan) ===
+    energy: Optional[float] = None          # 0..1 target intensity for this beat (whole-script arc)
+    motion_speed: Optional[str] = None      # slow | medium | fast — biases motion selection
+
     # === Sync Points (Step 1 hints trigger/action, Step 4 adds time) ===
     sync_points: List[SyncPoint] = field(default_factory=list)
 
@@ -472,6 +476,8 @@ class ScenePlan:
             animation_type=data.get("animation_type"),
             animation_params=data.get("animation_params"),
             transition=data.get("transition"),
+            energy=data.get("energy"),
+            motion_speed=data.get("motion_speed"),
             sync_points=sync_points,
             layers=layers,
             infographic=data.get("infographic"),
