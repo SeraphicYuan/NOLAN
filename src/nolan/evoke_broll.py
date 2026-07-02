@@ -635,9 +635,39 @@ class EvokeBrollSearch:
             fb = "tonal" if prim != "tonal" else "conceptual"
         return {"primary": prim, "fallback": fb, "why": (j.get("why") or "")[:160]}
 
+    async def _auto_judge(self, ctx, beat: int, line: str, operator: str, picks: list) -> dict:
+        """Meta-judge: does this MATCHED set genuinely serve THIS beat (subject/mood/rhythm), or is
+        it accepted-but-weak filler? Returns {score 0-10, verdict accept|reject, why}."""
+        if not picks:
+            return {"score": 0, "verdict": "reject", "why": "no picks"}
+        items = "\n".join(
+            f"[{i}] {p.get('kind')} from {p.get('source')} — {(p.get('why') or '')[:90]}"
+            for i, p in enumerate(picks[:5]))
+        bc = ctx.beat_context(beat) if (ctx and ctx.beats) else ""
+        prompt = (f"{bc}\n\nBEAT LINE: \"{line}\"\nPAIRING APPROACH USED: {operator}\n\n"
+                  f"The pipeline accepted these b-roll picks:\n{items}\n\n"
+                  "As a demanding lead editor, judge whether these are a GENUINELY STRONG pairing for "
+                  "THIS beat — right subject/mood, and right for the beat's pacing (drive vs breathe) — "
+                  "not generic filler that merely passed a gate. Score 0-10 and accept or reject.\n"
+                  'STRICT JSON: {"score": <0-10>, "verdict": "accept|reject", "why": "<=15 words"}')
+        sys = "You are a demanding lead editor doing a final quality check on b-roll picks. Reply STRICT JSON."
+        try:
+            j = _extract_json(await self.llm.generate(prompt, sys))
+        except Exception:
+            j = {}
+        if not isinstance(j, dict):
+            j = {}
+        try:
+            score = max(0.0, min(10.0, float(j.get("score"))))
+        except (TypeError, ValueError):
+            score = 6.0
+        verdict = "reject" if (str(j.get("verdict")).lower() == "reject" or score < 5) else "accept"
+        return {"score": round(score, 1), "verdict": verdict, "why": (j.get("why") or "")[:120]}
+
     async def _auto_pair(self, line: str, *, mode, period, locale, literalness, mood, sources,
                          project, media, gen_style, beat, max_metaphors, per_metaphor) -> dict:
-        """Pick an operator from context, run it, and fall back once if it comes back UNMATCHED."""
+        """Pick an operator from context, run it, META-JUDGE the picks, and fall back if the result
+        is UNMATCHED *or* judged weak. Returns the accepted result, else the highest-judged one."""
         ctx = None
         if project:
             try:
@@ -652,28 +682,48 @@ class EvokeBrollSearch:
                     "picks": [], "considered": [], "reason": "auto needs a project context — pick a project",
                     "counts": {"pool": 0, "kept": 0, "filtered": 0}}
 
-        self._progress(0.05, "Planning the pairing approach…")
+        self._progress(0.04, "Planning the pairing approach…")
         plan = await self._auto_plan(ctx, beat if beat is not None else 0, line)
-        order, tried = [plan["primary"], plan["fallback"]], []
-        last = None
+        order, tried, matched = [plan["primary"], plan["fallback"]], [], []
         for i, op in enumerate(order):
-            self._progress(0.1 + 0.4 * i, f"Trying {op}…")
+            self._progress(0.08 + 0.35 * i, f"Trying {op}…")
             res = await self.search(line, operator=op, mode=mode, period=period, locale=locale,
                                     literalness=literalness, mood=mood, sources=sources, project=project,
                                     media=media, gen_style=gen_style, beat=beat,
                                     max_metaphors=max_metaphors, per_metaphor=per_metaphor)
-            tried.append({"operator": op, "status": res.get("status"), "picks": len(res.get("picks") or [])})
-            last = res
+            step = {"operator": op, "status": res.get("status"), "picks": len(res.get("picks") or [])}
             if res.get("status") == "MATCHED":
-                res["auto"] = {"chosen": op, "primary": plan["primary"], "fallback": plan["fallback"],
-                               "why": plan["why"], "tried": tried}
-                self._progress(1.0, f"MATCHED via {op}")
-                return res
-        last = last or {}
-        last["auto"] = {"chosen": None, "primary": plan["primary"], "fallback": plan["fallback"],
-                        "why": plan["why"], "tried": tried}
-        last["operator"] = "auto"
-        last.setdefault("reason", f"neither {plan['primary']} nor {plan['fallback']} found a fit")
+                self._progress(0.24 + 0.35 * i, f"Judging {op} picks…")
+                jm = await self._auto_judge(ctx, beat if beat is not None else 0, line, op, res.get("picks") or [])
+                res["auto_judgment"] = jm
+                step["judge"] = jm["score"]
+                step["verdict"] = jm["verdict"]
+                matched.append((op, res, jm))
+                tried.append(step)
+                if jm["verdict"] == "accept":
+                    res["auto"] = {"chosen": op, "primary": plan["primary"], "fallback": plan["fallback"],
+                                   "why": plan["why"], "tried": tried, "judge": jm}
+                    self._progress(1.0, f"MATCHED via {op} (judge {jm['score']})")
+                    return res
+                continue                          # judged weak → try the fallback
+            tried.append(step)
+
+        # none accepted: return the highest-judged MATCHED result (best effort), else UNMATCHED
+        if matched:
+            op, res, jm = max(matched, key=lambda x: x[2]["score"])
+            res["auto"] = {"chosen": op, "primary": plan["primary"], "fallback": plan["fallback"],
+                           "why": plan["why"], "tried": tried, "judge": jm,
+                           "note": "judge accepted none; returning the strongest"}
+            res["operator"] = "auto"
+            self._progress(1.0, f"MATCHED via {op} (best-effort, judge {jm['score']})")
+            return res
+        last = {"status": "UNMATCHED", "operator": "auto", "mode": mode, "line": line,
+                "emotion": "", "goal": "", "goal_label": "auto", "bridge": {}, "metaphors": [],
+                "picks": [], "considered": [],
+                "reason": f"neither {plan['primary']} nor {plan['fallback']} found a fit",
+                "counts": {"pool": 0, "kept": 0, "filtered": 0},
+                "auto": {"chosen": None, "primary": plan["primary"], "fallback": plan["fallback"],
+                         "why": plan["why"], "tried": tried}}
         self._progress(1.0, "UNMATCHED")
         return last
 

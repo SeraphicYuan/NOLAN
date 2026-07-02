@@ -30,6 +30,19 @@ PROJECTS_ROOT = Path("projects")
 _PACE_NORM = {"a": "accelerate", "d": "decelerate", "a→d": "accelerate→decelerate",
               "d→a": "decelerate→accelerate", "": ""}
 
+# pace → rough energy 0..1 (a cheap, LLM-free rhythm signal for the pairing/query prompts;
+# the render-time TempoPlan computes the full arc-shaped curve — this is just enough context)
+_PACE_ENERGY = {"accelerate": 0.78, "decelerate": 0.3, "accelerate→decelerate": 0.6,
+                "decelerate→accelerate": 0.5, "": 0.5}
+
+
+def _rhythm_hint(energy: float) -> str:
+    if energy >= 0.62:
+        return "DRIVE — fast cuts, punchy/graphic assets, energetic motion; avoid slow lingering shots"
+    if energy <= 0.4:
+        return "BREATHE — long holds, a single strong evocative/lingering asset, slow motion"
+    return "STEADY — moderate pace, balanced asset weight"
+
 
 def _norm_title(s: str) -> str:
     """Lowercase alnum tokens for fuzzy title matching across the three docs."""
@@ -151,6 +164,10 @@ class ScriptContext:
             if j == idx:
                 if nb.serves:
                     parts.append(f"    intent: {nb.serves}")
+                # rhythm/tempo signal so operator choice + query generation match the pacing
+                energy = _PACE_ENERGY.get(nb.pace, 0.5)
+                pace_txt = f"{nb.pace} " if nb.pace else ""
+                parts.append(f"    pacing: {pace_txt}energy≈{energy:.2f} → {_rhythm_hint(energy)}")
                 if nb.covers:
                     parts.append(f"    sources: {', '.join(nb.covers)}")
                 if nb.narration:

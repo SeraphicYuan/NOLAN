@@ -53,3 +53,34 @@ def test_all_operators_are_pickable():
     for op in ("tonal", "conceptual", "ironic", "trait", "relational", "scale", "knowledge"):
         p = _plan('{"primary": "%s", "fallback": "tonal", "why": "x"}' % op)
         assert p["primary"] == op
+
+
+# ---- meta-judge ----
+def _judge(reply, picks=None):
+    s = _searcher(reply)
+    picks = picks if picks is not None else [{"kind": "image", "source": "artic", "why": "the real vase"}]
+    return asyncio.run(s._auto_judge(_ctx(), 0, "a line", "knowledge", picks))
+
+
+def test_judge_accept():
+    j = _judge('{"score": 8, "verdict": "accept", "why": "the actual work, clean"}')
+    assert j["verdict"] == "accept" and j["score"] == 8.0
+
+
+def test_judge_reject_explicit():
+    j = _judge('{"score": 7, "verdict": "reject", "why": "wrong era"}')
+    assert j["verdict"] == "reject"                       # explicit reject wins even with a decent score
+
+
+def test_judge_low_score_forces_reject():
+    j = _judge('{"score": 3, "verdict": "accept", "why": "meh"}')
+    assert j["verdict"] == "reject"                       # score < 5 → reject regardless
+
+
+def test_judge_empty_picks_reject():
+    assert _judge("{}", picks=[])["verdict"] == "reject"
+
+
+def test_judge_clamps_and_defaults():
+    assert _judge('{"score": 99}')["score"] == 10.0       # clamp
+    assert _judge("not json")["score"] == 6.0             # default when unparseable

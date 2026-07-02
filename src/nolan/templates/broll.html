@@ -356,12 +356,15 @@
       if (res.auto) {
         var a = res.auto;
         var tried = (a.tried || []).map(function (t) {
-          return '<span class="chip" style="background:' + (t.status === "MATCHED" ? "#1f7a4d" : "#7a2f2f") +
-            '">' + esc(t.operator) + " · " + esc(t.status || "?") + (t.picks ? " (" + t.picks + ")" : "") + "</span>";
+          var jc = (t.judge != null) ? " · judge " + t.judge + "/10" + (t.verdict ? " " + t.verdict : "") : "";
+          return '<span class="chip" style="background:' + (t.verdict === "accept" ? "#1f7a4d" : t.status === "MATCHED" ? "#7a6a1f" : "#7a2f2f") +
+            '">' + esc(t.operator) + " · " + esc(t.status || "?") + (t.picks ? " (" + t.picks + ")" : "") + esc(jc) + "</span>";
         }).join(" ");
+        var jm = a.judge ? ' <span class="chip" style="background:#2f5f7a">judge ' + a.judge.score + '/10 · ' + esc(a.judge.verdict) + '</span>' : '';
         html += '<div class="meta2">🤖 agent chose <b>' + esc(a.chosen || a.primary) + '</b>' +
-          (a.chosen && a.chosen !== a.primary ? ' (fell back from ' + esc(a.primary) + ')' : '') +
-          ' — ' + esc(a.why) + '<div style="margin-top:4px">tried: ' + tried + '</div></div>';
+          (a.chosen && a.chosen !== a.primary ? ' (fell back from ' + esc(a.primary) + ')' : '') + jm +
+          ' — ' + esc(a.why) + (a.note ? ' <i>(' + esc(a.note) + ')</i>' : '') +
+          '<div style="margin-top:4px">tried: ' + tried + '</div></div>';
       }
 
       // relational (A vs B): synthesis + a split-screen button + two labeled sides
