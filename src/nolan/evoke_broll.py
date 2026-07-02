@@ -114,7 +114,35 @@ _OP = {
         "axis2": "10=fresh/surprising, 0=tired cliché",
         "accept": "it must clearly and aptly convey the concept as a metaphor, read at a glance, and not be a tired cliché",
     },
+    "ironic": {
+        "noun": "counterpoint",
+        "judge": "Judge the FRAME as IRONIC COUNTERPOINT — does it CONTRADICT/undercut the line (expose the gap between what's said and what's real), not illustrate it?",
+        "match": "how sharply it ironically undercuts the line",
+        "match_lib": "ironically undercuts the line",
+        "axis2": "10=pointed but not heavy-handed, 0=on-the-nose or unrelated",
+        "accept": "it must clearly UNDERCUT the line (show the opposite / the cost / the hollow reality), land as deliberate irony, and not merely illustrate the words",
+    },
 }
+
+
+_IRONIC_BRIDGE_SYS = (
+    "You are a video-essay editor in the vein of Adam Curtis — you cut IRONIC COUNTERPOINT: footage that "
+    "CONTRADICTS the narration to expose the gap between what is said and what is real. Reply STRICT JSON.")
+
+
+def _ironic_bridge_prompt(line: str, period: str, locale: str, literalness: float) -> str:
+    ctx = ""
+    if period or locale:
+        ctx = (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
+               "Keep the counterpoint imagery period/locale-plausible or timeless.\n")
+    return (f'LINE (the narration / surface claim): "{line}"\n{ctx}'
+            "Identify the line's SURFACE MESSAGE and the IRONIC TRUTH that undercuts it (the cost, the "
+            "opposite, the hollow reality). Give concrete visual SEARCH PHRASES of footage that CONTRADICTS "
+            "the line for pointed irony — NOT footage that illustrates it.\n"
+            'Return JSON: {"surface": "what the line claims (few words)", '
+            '"irony": "the undercutting truth (1 sentence)", '
+            '"visual_metaphors": ["5-7 SHORT search phrases of the CONTRADICTING imagery"], '
+            '"avoid_literal": ["the on-message imagery that would just illustrate the line"]}')
 
 
 def _conceptual_bridge_prompt(line: str, period: str, locale: str, literalness: float) -> str:
@@ -284,6 +312,10 @@ class EvokeBrollSearch:
                 _conceptual_bridge_prompt(line, period, locale, literalness), _CONCEPTUAL_BRIDGE_SYS))
             doms = ", ".join(d.get("domain", "") for d in br.get("domains", []) if d.get("domain"))
             goal = (br.get("concept", "") + (f" — via {doms}" if doms else "")).strip()
+        elif operator == "ironic":
+            br = _extract_json(await self.llm.generate(
+                _ironic_bridge_prompt(line, period, locale, literalness), _IRONIC_BRIDGE_SYS))
+            goal = (br.get("irony", "") or br.get("surface", "")).strip()
         else:
             br = _extract_json(await self.llm.generate(
                 _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))

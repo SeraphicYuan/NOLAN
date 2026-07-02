@@ -73,7 +73,7 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 
 | Operator | Logic → example | Build notes |
 |---|---|---|
-| **Ironic counterpoint** | the image **contradicts** the words for critique/comedy. VO praises progress → a landfill | bridge inverts: "find the shot that *undercuts* this line." single-clip first; pair later |
+| **Ironic counterpoint** ✅ *built* | the image **contradicts** the words for critique/comedy. VO praises progress → a landfill | operator #3 on /broll (Approach: Ironic). Bridge = surface message → ironic truth → contradicting imagery; scores irony + edge |
 | **Historical rhyme** | now vs then; a modern line over archival that "rhymes" (2008 line ↔ 1929) | pair a contemporary + an archival asset; temporal juxtaposition |
 | **Dialectical montage (Eisenstein/Kuleshov)** | shot A + shot B → a *third* idea neither holds. workers + slaughterhouse | **pair generation + a collision motion**; the deepest, highest-ceiling operator |
 | **Before / after · time-transformation** | change → time-lapse, decay/growth, morph | **generate a pair** (before, after) → **morph/dissolve motion** |
