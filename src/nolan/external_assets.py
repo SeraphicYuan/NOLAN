@@ -33,7 +33,7 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
                              project_root: Path, describer=None, ingest_lib=None,
                              max_results: int = 4, score_cap: int = 4,
                              sim_gate: float = 0.30, library_first_gate: float = 0.45,
-                             log=None) -> Optional[str]:
+                             lead_queries=None, log=None) -> Optional[str]:
     """Unified description-based b-roll match (Phases 2-3).
 
     1. **Library-first**: hybrid (BGE description + CLIP) search over ``libs`` using
@@ -97,7 +97,7 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
             if best and best[2].score >= sim_gate:
                 return _attach_from_lib(best, "library")
         return None
-    variants = build_query_variants(scene)
+    variants = build_query_variants(scene, lead_queries=lead_queries)
     cands = _search(client, variants, "image", vid_sources, max_results)
     if not cands:
         return None
@@ -124,14 +124,23 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
     return None
 
 
-def build_query_variants(scene) -> list:
+def build_query_variants(scene, lead_queries=None) -> list:
     """Generate search queries broad→specific for a scene.
 
     The scene designer's queries are often too literal (proper nouns, years) for
     stock/archival libraries. We try the original, then progressively broader
     variants (drop years/proper-nouns), then a generic phrase from the description.
+
+    ``lead_queries`` (optional) are knowledge-driven, whole-script-aware search phrases —
+    e.g. specific era-correct artworks named by the model ("Waterhouse Ulysses and the
+    Sirens 1891"). When given, they are tried FIRST (most specific), ahead of the
+    proper-noun-stripping fallback below. See ``nolan.knowledge_query``.
     """
     out = []
+    for lq in (lead_queries or []):
+        lq = (lq or "").strip()
+        if lq:
+            out.append(lq)
     q = (getattr(scene, "search_query", "") or "").strip()
     if q:
         out.append(q)
@@ -165,7 +174,7 @@ def _search(client, variants, media_type, vid_sources, max_results):
 def external_match_for_scene(scene, *, client, scorer, vid_sources, out_dir: Path,
                              project_root: Path, prefer_video: bool = True,
                              max_results: int = 4, score_cap: int = 4, gate: int = 4,
-                             use_vision: bool = False, log=None) -> Optional[str]:
+                             use_vision: bool = False, lead_queries=None, log=None) -> Optional[str]:
     """Find + attach the best external asset for one scene.
 
     Sets ``scene.matched_clip`` (video, by reference) or ``scene.matched_asset``
@@ -178,7 +187,7 @@ def external_match_for_scene(scene, *, client, scorer, vid_sources, out_dir: Pat
     """
     import httpx
 
-    variants = build_query_variants(scene)
+    variants = build_query_variants(scene, lead_queries=lead_queries)
     cands = []
     if prefer_video and vid_sources:
         cands = _search(client, variants, "video", vid_sources, max_results)

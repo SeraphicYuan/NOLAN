@@ -127,6 +127,33 @@ def expand_queries(ctx: ScriptContext, beat_idx: int, *, llm, kind: str = "any",
                             source="llm" if (named or queries) else "empty")
 
 
+def build_scene_lead_map(ctx: ScriptContext, scenes, *, llm, kind: str = "any",
+                         n: int = 6, log=None) -> dict:
+    """Map each scene → its knowledge-driven lead search phrases, running ONE expand_queries
+    per beat (cached) and reusing it for every scene that covers that beat.
+
+    `scenes` are plan Scene objects (need `.id` + `.narration_excerpt`/`.search_query`).
+    Returns {scene_id: [phrase, ...]}. Scenes that don't map to a beat get []."""
+    by_beat: dict = {}                     # beat_idx -> [phrases]
+    out: dict = {}
+    for sc in scenes:
+        text = (getattr(sc, "narration_excerpt", "") or getattr(sc, "search_query", "")
+                or getattr(sc, "visual_description", "") or "")
+        beat = ctx.find_beat(text)
+        sid = getattr(sc, "id", None)
+        if beat is None or sid is None:
+            if sid is not None:
+                out[sid] = []
+            continue
+        if beat.idx not in by_beat:
+            kq = expand_queries(ctx, beat.idx, llm=llm, kind=kind, n=n)
+            by_beat[beat.idx] = kq.all_queries()
+            if log:
+                log(f"beat {beat.idx} '{beat.title[:40]}': {len(by_beat[beat.idx])} knowledge queries")
+        out[sid] = by_beat[beat.idx]
+    return out
+
+
 # ---- utils (shared shape with tempo_plan) -----------------------------------
 def _run(coro):
     import asyncio
