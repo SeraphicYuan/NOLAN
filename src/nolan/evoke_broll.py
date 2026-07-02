@@ -149,6 +149,16 @@ _OP = {
         "accept": "it must give the number a tangible sense of scale AND have calm negative space for a large "
                   "count-up overlay to read clearly",
     },
+    "knowledge": {   # the SPECIFIC real, era-correct asset the model names from its own knowledge
+        "noun": "subject",
+        "judge": "Judge the FRAME as a faithful, high-quality depiction of the SPECIFIC named subject "
+                 "(a particular artwork / artifact / place). Reward the real thing, cleanly shown.",
+        "match": "how well it IS the specific named subject, clearly and cleanly shown",
+        "match_lib": "is the specific named subject, cleanly shown",
+        "axis2": "10=the genuine work/subject in good quality, 0=generic or wrong subject",
+        "accept": "it must actually be the specific named subject (right work/artifact/place), be good "
+                  "quality, and be free of watermarks/overlaid text",
+    },
 }
 
 
@@ -442,7 +452,7 @@ class EvokeBrollSearch:
                      period: str = "", locale: str = "", literalness: float = 0.25,
                      mood: Optional[str] = None, sources: Optional[List[str]] = None,
                      project: Optional[str] = None, media: Optional[List[str]] = None,
-                     gen_style: str = "Fooocus Cinematic",
+                     gen_style: str = "Fooocus Cinematic", beat: Optional[int] = None,
                      max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
         line = (line or "").strip()
         if not line:
@@ -451,40 +461,72 @@ class EvokeBrollSearch:
         mode = mode if mode in ("stock", "library", "generate") else "stock"
         media = [m for m in (media or ["video", "image"]) if m in ("video", "image")] or ["video", "image"]
         self._sem = asyncio.Semaphore(4)              # bind to the running loop
+
+        # ScriptContext: when a project is given, load whole-script context so the bridge (and the
+        # knowledge operator) reason with the full script, not one line in isolation.
+        ctx, cblock = None, ""
+        if project:
+            try:
+                from .script_context import ScriptContext
+                ctx = ScriptContext.load(project)
+                if ctx.beats and beat is not None:
+                    cblock = ctx.beat_context(beat)
+            except Exception:
+                ctx = None
+        pre = (cblock + "\n\n") if cblock else ""     # prepended to every bridge prompt
         gated = bool(period or locale)
 
         # 1. bridge (operator-specific): produce a `goal` string + concrete visual search phrases
         self._progress(0.08, "Bridging…")
         if operator == "relational":
             br = _extract_json(await self.llm.generate(
-                _relational_bridge_prompt(line, period, locale, literalness), _RELATIONAL_BRIDGE_SYS))
+                pre + _relational_bridge_prompt(line, period, locale, literalness), _RELATIONAL_BRIDGE_SYS))
             goal = br.get("synthesis", "")
             metaphors = [m for s in br.get("sides", []) for m in s.get("visual_metaphors", []) if m][:8]
         elif operator == "conceptual":
             br = _extract_json(await self.llm.generate(
-                _conceptual_bridge_prompt(line, period, locale, literalness), _CONCEPTUAL_BRIDGE_SYS))
+                pre + _conceptual_bridge_prompt(line, period, locale, literalness), _CONCEPTUAL_BRIDGE_SYS))
             doms = ", ".join(d.get("domain", "") for d in br.get("domains", []) if d.get("domain"))
             goal = (br.get("concept", "") + (f" — via {doms}" if doms else "")).strip()
         elif operator == "ironic":
             br = _extract_json(await self.llm.generate(
-                _ironic_bridge_prompt(line, period, locale, literalness), _IRONIC_BRIDGE_SYS))
+                pre + _ironic_bridge_prompt(line, period, locale, literalness), _IRONIC_BRIDGE_SYS))
             goal = (br.get("irony", "") or br.get("surface", "")).strip()
         elif operator == "trait":
             br = _extract_json(await self.llm.generate(
-                _trait_bridge_prompt(line, period, locale, literalness), _TRAIT_BRIDGE_SYS))
+                pre + _trait_bridge_prompt(line, period, locale, literalness), _TRAIT_BRIDGE_SYS))
             acts = ", ".join(a.get("activity", "") for a in br.get("activities", []) if a.get("activity"))
             goal = (br.get("trait", "") + (f" — via {acts}" if acts else "")).strip()
         elif operator == "scale":
             br = _extract_json(await self.llm.generate(
-                _scale_bridge_prompt(line, period, locale, literalness), _SCALE_BRIDGE_SYS))
+                pre + _scale_bridge_prompt(line, period, locale, literalness), _SCALE_BRIDGE_SYS))
             ref = br.get("referent", {}) or {}
             goal = (ref.get("label", "") or "").strip()
             metaphors = [m for m in ref.get("visual_metaphors", []) if m][:max_metaphors]
+        elif operator == "knowledge":
+            if ctx is None:
+                self._progress(1.0, "UNMATCHED")
+                return {"status": "UNMATCHED", "operator": operator, "mode": mode, "line": line,
+                        "emotion": "", "goal": "", "goal_label": _OP[operator]["noun"], "bridge": {},
+                        "metaphors": [], "picks": [], "considered": [],
+                        "reason": "the knowledge operator needs a project context — pick a project",
+                        "counts": {"pool": 0, "kept": 0, "filtered": 0}}
+            from .knowledge_query import expand_queries
+            kq = await asyncio.to_thread(expand_queries, ctx, (beat if beat is not None else 0),
+                                         llm=self.llm, kind="any", n=max_metaphors)
+            br = kq.to_dict()
+            goal = f"{ctx.subject or 'the topic'} — specific real assets"
+            metaphors = kq.all_queries()[:max_metaphors]
+            if not period:
+                period = kq.period
+            if not locale:
+                locale = kq.locale
+            gated = bool(period or locale)
         else:
             br = _extract_json(await self.llm.generate(
-                _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))
+                pre + _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))
             goal = br.get("target_emotion", "")
-        if operator not in ("relational", "scale"):
+        if operator not in ("relational", "scale", "knowledge"):
             metaphors = [m for m in br.get("visual_metaphors", []) if m][:max_metaphors]
 
         _kw = dict(mode=mode, period=period, locale=locale, sources=sources, media=media,

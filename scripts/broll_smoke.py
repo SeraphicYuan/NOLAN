@@ -25,7 +25,10 @@ with sync_playwright() as p:
                       (".opbtn[data-op='trait']", "trait operator"),
                       (".opbtn[data-op='relational']", "relational operator"),
                       (".opbtn[data-op='scale']", "scale operator"),
+                      (".opbtn[data-op='knowledge']", "knowledge operator"),
                       ("#statTheme", "count-up theme selector"),
+                      ("#ctxProject", "context project selector"),
+                      ("#ctxBeat", "context beat selector"),
                       (".modebtn[data-mode='stock']", "stock mode"),
                       (".modebtn[data-mode='library']", "library mode"),
                       (".modebtn[data-mode='generate']", "generate mode"),
@@ -53,6 +56,12 @@ with sync_playwright() as p:
     check("scale opts shown when scale active",
           page.eval_on_selector("#scaleopts", "el => getComputedStyle(el).display") != "none")
     check("scale hint updated", "count" in page.inner_html("#ophint").lower())
+
+    # context projects populate the dropdown, and picking a beat enables the beat selector
+    page.wait_for_timeout(1200)
+    check("context projects loaded", len(page.query_selector_all("#ctxProject option")) > 1)
+    page.click(".opbtn[data-op='knowledge']")
+    check("knowledge hint updated", "knowledge" in page.inner_html("#ophint").lower())
 
     browser.close()
 

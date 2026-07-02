@@ -58,7 +58,9 @@
     <h1>Evocative B-roll <span class="hint">· stock</span></h1>
     <div class="sub">Find <b>tonal</b> b-roll that carries a line's <b>emotion</b>, not a literal illustration — LLM metaphor
       bridge → cheap stock-video tiers → vision scoring + period/locale gate → a "would an editor use this?" cut
-      (or <b>unmatched</b> when nothing fits). Nature/abstract is treated as timeless.</div>
+      (or <b>unmatched</b> when nothing fits). Nature/abstract is treated as timeless.
+      &nbsp;·&nbsp; galleries: <a href="/broll-gen/tempo_homer.html" target="_blank" style="color:var(--accent,#4c7dff)">tempo + knowledge (Homer)</a>
+      &nbsp;·&nbsp; <a href="/broll-gen/scale_samples.html" target="_blank" style="color:var(--accent,#4c7dff)">scale count-up</a></div>
 
     <div class="card">
       <label>Approach</label>
@@ -69,8 +71,16 @@
         <button type="button" class="opbtn" data-op="trait">Trait embodiment</button>
         <button type="button" class="opbtn" data-op="relational">Relational (A vs B)</button>
         <button type="button" class="opbtn" data-op="scale">Scale (count-up)</button>
+        <button type="button" class="opbtn" data-op="knowledge">Knowledge (real assets)</button>
       </div>
       <div id="ophint" class="hint" style="margin:6px 0 2px">Footage that carries the line's <b>emotion</b>.</div>
+      <label style="margin-top:12px">Script context <span class="hint">(optional — search WITH the whole script; picks a beat's line + grounds era/culture. Required for Knowledge.)</span></label>
+      <div class="row">
+        <div><select id="ctxProject" style="width:100%;padding:6px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px">
+          <option value="">— no context (free line) —</option></select></div>
+        <div><select id="ctxBeat" style="width:100%;padding:6px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px" disabled>
+          <option value="">— pick a project first —</option></select></div>
+      </div>
       <div id="scaleopts" style="display:none;margin:8px 0 2px">
         <label style="display:inline">Count-up theme <span class="hint">(styles the number &amp; caption — as in the video)</span></label>
         <select id="statTheme" style="margin-left:8px;padding:4px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px">
@@ -134,7 +144,8 @@
       ironic: "Footage that <b>contradicts</b> the line — the gap between what's said and what's real (Adam Curtis).",
       trait: "The archetypal <b>activity</b> a person of this quality does (discipline→training, patience→watchmaking).",
       relational: "Two <b>colliding</b> shots — A vs B make a third meaning (Eisenstein). Rendered as split-screen.",
-      scale: "A big <b>number</b> counts up over a <b>tangible referent</b> (stadium, city, grains of sand) — styled by the video theme."
+      scale: "A big <b>number</b> counts up over a <b>tangible referent</b> (stadium, city, grains of sand) — styled by the video theme.",
+      knowledge: "Taps the model's <b>knowledge</b> to name the <b>specific real asset</b> (the actual painting/vase/place, by title) — needs a script context."
     };
     document.querySelectorAll(".opbtn").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -146,7 +157,7 @@
       });
     });
     // chip labels per operator: [primary-fit, secondary-axis]
-    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"], scale: ["scale", "clean"] };
+    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"], scale: ["scale", "clean"], knowledge: ["match", "quality"] };
     var lastOp = "tonal";
 
     // Source-pool mode toggle (stock vs library) + stock-provider checkboxes.
@@ -161,6 +172,35 @@
         provWrap.style.display = show;
         document.getElementById("media").style.display = show;
       });
+    });
+    // Script context: project + beat dropdowns. Selecting a beat auto-fills the narration line.
+    var CTX = {};                                     // slug -> {subject, beats:[...]}
+    var projSel = document.getElementById("ctxProject"), beatSel = document.getElementById("ctxBeat");
+    fetch("/api/broll/projects").then(function (r) { return r.json(); }).then(function (d) {
+      (d.projects || []).forEach(function (p) {
+        CTX[p.slug] = p;
+        var o = document.createElement("option"); o.value = p.slug;
+        o.textContent = p.subject + " (" + p.beats.length + " beats)";
+        projSel.appendChild(o);
+      });
+    }).catch(function () {});
+    projSel.addEventListener("change", function () {
+      var p = CTX[projSel.value];
+      beatSel.innerHTML = "";
+      if (!p) { beatSel.disabled = true; beatSel.innerHTML = '<option value="">— pick a project first —</option>'; return; }
+      beatSel.disabled = false;
+      var o0 = document.createElement("option"); o0.value = ""; o0.textContent = "— whole script (beat 0) —"; beatSel.appendChild(o0);
+      p.beats.forEach(function (b) {
+        var o = document.createElement("option"); o.value = b.idx;
+        o.textContent = (b.idx + 1) + ". " + b.title + (b.timecode ? " [" + b.timecode + "]" : "");
+        beatSel.appendChild(o);
+      });
+    });
+    beatSel.addEventListener("change", function () {
+      var p = CTX[projSel.value]; if (!p) return;
+      var idx = beatSel.value === "" ? 0 : parseInt(beatSel.value, 10);
+      var b = p.beats[idx];
+      if (b && b.narration) document.getElementById("line").value = b.narration.trim();
     });
     fetch("/api/broll/providers").then(function (r) { return r.json(); }).then(function (d) {
       var el = document.getElementById("provlist");
@@ -364,6 +404,11 @@
         mood: document.getElementById("mood").value.trim(),
         literalness: parseFloat(lit.value)
       };
+      // script context: pass the selected project (+ beat) so the search runs WITH the full script
+      if (projSel.value) {
+        body.project = projSel.value;
+        if (beatSel.value !== "") body.beat = parseInt(beatSel.value, 10);
+      }
       if (currentMode === "stock") {
         body.sources = Array.prototype.map.call(document.querySelectorAll(".prov:checked"), function (c) { return c.value; });
         body.media = Array.prototype.map.call(document.querySelectorAll(".med:checked"), function (c) { return c.value; });
