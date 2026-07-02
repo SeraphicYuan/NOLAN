@@ -135,3 +135,10 @@ Motion-library (Remotion) effects, each keyed to a `motion_select` id; built + v
 6. **Cinemagraph / image-to-video** — ⏸ TODO: ComfyUI workflow (user will provide). 
 
 **Asset generation:** ✅ ComfyUI **Krea 2** (`krea2-style-select`) generation source — `mode=generate` makes a still per metaphor (fooocus style, default 'Fooocus Cinematic'), served at `/broll-gen/`, scored/gated/animated like any still. Auto-fallback ('when nothing fits') = future.
+
+
+## QA / integration status
+
+- **Motion library**: still-motion / split-screen / clip-montage are first-class `MotionEffect`s in `src/nolan/motion/registry.py` (executor routes them to `nolan.still_motion`); reachable by every spec-system pipeline + in `build_guide()`.
+- **CLI**: `nolan broll LINE` (operators / modes / `--render`) surfaces the pairing engine + motion-pick layer.
+- **WebUI smoke test**: `scripts/broll_smoke.py` (headless chromium) — asserts no JS errors and that the operator/mode/media toggles, provider load, and show/hide wiring work. GREEN.
