@@ -64,3 +64,26 @@ def render_still(image_path, motion_id: str = "ken-burns-in", out_path=None,
         import shutil
         shutil.copy(produced, out_path)
     return out_path
+
+
+def render_clip_montage(clips, out_path, transition: str = "fade", trans_frames: int = 16, fps: int = 30) -> Path:
+    """Assemble b-roll clips/stills into one video with shot-to-shot transitions (ClipMontage).
+
+    clips: list of {"path", "kind": "video"|"image", "duration": seconds}. transition applies
+    between every pair (fade|slide|wipe|clockWipe|cut). Uses @remotion/transitions (no ffmpeg xfade).
+    """
+    from nolan import remotion_source
+    out_path = Path(out_path)
+    cards = [{"src": str(Path(c["path"]).resolve()), "kind": c.get("kind", "video"),
+              "durationInFrames": max(1, int(round(c.get("duration", 3.0) * fps)))} for c in clips]
+    n_trans = max(0, len(cards) - 1)
+    transitions = [{"type": transition, "durationInFrames": trans_frames}] * n_trans
+    overlap = 0 if transition == "cut" else trans_frames * n_trans
+    total = max(30, sum(c["durationInFrames"] for c in cards) - overlap)
+    produced = remotion_source.render("ClipMontage", {"transitions": transitions},
+                                      out_path.name, duration_frames=total, cards=cards)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if Path(produced).resolve() != out_path.resolve():
+        import shutil
+        shutil.copy(produced, out_path)
+    return out_path

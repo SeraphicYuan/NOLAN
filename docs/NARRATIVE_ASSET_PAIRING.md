@@ -132,7 +132,7 @@ Motion-library (Remotion) effects, each keyed to a `motion_select` id; built + v
 2. **Parallax / 2.5D** (via cutout/rembg subject/background) — ✅ built
 3. **Atmospheric overlays** (drifting motes + vignette + grade-drift) — ✅ built (light-leak/fog: future)
 4. **Rack focus** + **blur-in** (depth/cutout) — ✅ built
-5. **Transitions / match-cut**
+5. **Transitions** — ✅ built (ClipMontage / @remotion/transitions: dissolve/slide/wipe/clockWipe/cut). *match-cut* (shape/motion continuity across a cut) = advanced/future. (ffmpeg xfade unavailable here → Remotion.)
 6. **Cinemagraph / image-to-video** — ⏸ TODO: ComfyUI workflow (user will provide). 
 
 **Asset generation:** ComfyUI **Krea 2** model for generating stills when stock/library miss (the 'generate when nothing fits' source).

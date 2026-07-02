@@ -10,6 +10,7 @@ import {PremiumCard} from './PremiumCard';
 import {PhotoMontage} from './PhotoMontage';
 import {PhotoGrid} from './PhotoGrid';
 import {StillMotion} from './StillMotion';
+import {ClipMontage, clipMontageDuration} from './ClipMontage';
 import {Showcase} from './Showcase';
 // Folded-in flow bundle (was _lab_chapter): the Chapter Series + its blocks.
 import {Chapter} from './Chapter';
@@ -29,6 +30,9 @@ const calcChapter = ({props}: {props: {steps?: {durationInFrames?: number}[]}}) 
 });
 const calcMontage = ({props}: {props: {steps?: MontageStep[]; transitions?: Transition[]}}) => ({
   durationInFrames: montageDuration(props?.steps || [], props?.transitions || []),
+});
+const calcClipMontage = ({props}: {props: {cards?: any[]; transitions?: any[]}}) => ({
+  durationInFrames: clipMontageDuration(props?.cards || [], props?.transitions || []),
 });
 
 export const Root: React.FC = () => {
@@ -101,6 +105,11 @@ export const Root: React.FC = () => {
           direction: 'right' as const, durationInFrames: 120,
         }}
         calculateMetadata={dur}
+      />
+      <Composition
+        id="ClipMontage" component={ClipMontage} durationInFrames={120} {...common}
+        defaultProps={{cards: [] as any[], transitions: [] as any[]}}
+        calculateMetadata={calcClipMontage}
       />
       <Composition
         id="Showcase" component={Showcase} durationInFrames={900} {...common}
