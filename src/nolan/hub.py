@@ -407,7 +407,8 @@ def create_hub_app(
         srcs = body.get("sources")
         job = job_manager.start(
             "evoke-broll", operations.evoke_broll, config=load_config(),
-            line=line, mode=(body.get("mode") or "stock"),
+            line=line, operator=(body.get("operator") or "tonal"),
+            mode=(body.get("mode") or "stock"),
             period=(body.get("period") or "").strip(), locale=(body.get("locale") or "").strip(),
             literalness=body.get("literalness", 0.25), mood=(body.get("mood") or None),
             sources=(srcs if isinstance(srcs, list) and srcs else None),

@@ -48,7 +48,7 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 | Operator | Logic → example | Build notes |
 |---|---|---|
 | **Tonal / emotional** ✅ *built* | line's *feeling* → mood footage. "a stranger to his own home" → cold empty shore | bridge = mood metaphors; stock+library; period/locale gate |
-| **Conceptual-isomorphic** ⭐ *next* | the concept's *mechanic* → a domain with the **same structure**. strategy→chess; collapse→dominoes; fragile stability→Jenga/house-of-cards; opposing forces→tug-of-war; systems→clockwork; emergent order→murmuration; inevitability→a river | bridge = "name the mechanic, find an isomorphic carrier domain" + a **conceptual-aptness** gate (fit + cliché-avoidance). Often best **generated (ComfyUI)** + a motion |
+| **Conceptual-isomorphic** ✅ *built* | the concept's *mechanic* → a domain with the **same structure**. strategy→chess; collapse→dominoes; fragile stability→Jenga/house-of-cards; opposing forces→tug-of-war; systems→clockwork; emergent order→murmuration; inevitability→a river | bridge = "name the mechanic, find an isomorphic carrier domain" + a **conceptual-aptness** gate (fit + cliché-avoidance). Often best **generated (ComfyUI)** + a motion |
 | **Trait / behavior embodiment** | a person's quality → the archetypal *activity that exemplifies it*. patience→fishing/watchmaking; precision→surgery/calligraphy; discipline→training/running; obsession→repeated practice | bridge = trait → exemplar activity; b-roll/stock search |
 | **Archetypal / mythic / art-historical** | a situation → shared iconography. hubris→Icarus; rebirth→phoenix; underdog→David & Goliath; betrayal→Judas; vain power→Ozymandias/ruins; judgment→the scales | bridge = situation → iconography; strong candidate for **ComfyUI generation** |
 | **Sensory / textural (synesthetic)** | a sensory *adjective* → tactile macro. "cold, calculating"→frost forming; friction→sparks; decay→rust/rot time-lapse; warmth→embers | bridge = sensory→texture; stock macro + often a slow motion |
@@ -116,5 +116,6 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 
 - ✅ **Tonal/evocative** — `src/nolan/evoke_broll.py`, `/broll` page (stock + library modes,
   provider selection, period/locale gate, listwise accept / UNMATCHED). See `IMPLEMENTATION_STATUS.md`.
+- ✅ **Conceptual-isomorphic** — operator #2 on `/broll` (Approach toggle). Bridge maps concept→mechanic→isomorphic carrier domain(s); scoring judges metaphor-fit + freshness (cliché-avoidance).
 - 🎯 Everything else above is **designed, not built** — each is a meaty, independently
   buildable+testable feature (a new operator = bridge + aptness gate + its asset source + motion).

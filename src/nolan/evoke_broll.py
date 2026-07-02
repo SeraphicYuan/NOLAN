@@ -84,19 +84,67 @@ def _bridge_prompt(line: str, period: str, locale: str, literalness: float, mood
             '"avoid_literal": ["literal subjects a naive search would return that we should NOT show"]}')
 
 
-def _vision_prompt(line: str, emotion: str, period: str, locale: str) -> str:
-    base = (f'A still frame from a stock video, considered as EVOCATIVE b-roll under the line:\n'
-            f'"{line}"\nTarget emotion: {emotion}\n')
+_CONCEPTUAL_BRIDGE_SYS = (
+    "You are a video-essay editor who visualizes ABSTRACT ideas through CONCEPTUAL METAPHOR — you find a "
+    "concrete domain whose MECHANIC is structurally the same as the idea (strategy→chess, cascade/collapse→"
+    "dominoes, fragile balance→Jenga, opposing forces→tug-of-war, systems→clockwork, emergent order→a "
+    "murmuration). Reply STRICT JSON.")
+
+# Per-operator phrasing so the vision/library/accept prompts read correctly for each pairing style.
+# The score fields stay `mood` (primary fit) + `nonliteral` (secondary axis); only the wording changes.
+_OP = {
+    "tonal": {
+        "noun": "emotion",
+        "judge": "Judge the FRAME as mood b-roll (color, light, composition) — NOT literal illustration.",
+        "match": "how strongly its atmosphere EVOKES the emotion",
+        "match_lib": "evokes the emotion",
+        "axis2": "10=oblique/evocative, 0=literally depicts the subject",
+        "accept": "the mood must be right, it must be evocative (not literal), and it must actually work on screen",
+    },
+    "conceptual": {
+        "noun": "concept",
+        "judge": "Judge the FRAME as a visual METAPHOR for the concept — does its subject/action mirror the concept's mechanic and read at a glance?",
+        "match": "how clearly it reads as an apt visual metaphor for the concept",
+        "match_lib": "reads as an apt visual metaphor for the concept",
+        "axis2": "10=fresh/surprising, 0=tired cliché",
+        "accept": "it must clearly and aptly convey the concept as a metaphor, read at a glance, and not be a tired cliché",
+    },
+}
+
+
+def _conceptual_bridge_prompt(line: str, period: str, locale: str, literalness: float) -> str:
+    ctx = ""
+    if period or locale:
+        ctx = (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
+               "Prefer carrier domains that are period/locale-plausible or timeless; avoid anachronistic "
+               "or wrong-culture ones.\n")
+    fresh = "Prefer FRESH, non-obvious domains." if literalness <= 0.5 else "Familiar, clear domains are fine."
+    return (f'LINE: "{line}"\n{ctx}{fresh}\n'
+            "Identify the abstract CONCEPT in this line and its underlying MECHANIC (how it works, structurally). "
+            "Choose 1-3 concrete CARRIER DOMAINS whose mechanic is ISOMORPHIC (same structure), vivid and filmable. "
+            "Give concrete visual SEARCH PHRASES of those domains IN ACTION.\n"
+            'Return JSON: {"concept": "the abstract idea (2-5 words)", '
+            '"mechanic": "the structural mechanic (1 sentence)", '
+            '"domains": [{"domain": "e.g. chess", "why": "why its mechanic is isomorphic"}], '
+            '"visual_metaphors": ["5-7 SHORT concrete search phrases of the carrier domain(s) in action, e.g. '
+            "'gloved hand moving a chess knight', 'dominoes toppling in a chain'\"], "
+            '"avoid_literal": ["the line\'s literal subject we should NOT show"]}')
+
+
+def _vision_prompt(line: str, goal: str, period: str, locale: str, operator: str = "tonal") -> str:
+    op = _OP.get(operator, _OP["tonal"])
+    base = (f'A still frame from a stock video, considered as b-roll under the line:\n'
+            f'"{line}"\nTarget {op["noun"]}: {goal}\n')
     if period or locale:
         base += (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
                  "CRUCIAL: pure landscape/nature/natural-elements and pure abstract texture are UNIVERSAL — "
                  "they fit ANY era or place. Only man-made objects, people, clothing, architecture, "
                  "text/signage, technology or vehicles carry a period or culture.\n")
     return base + (
-        "Judge the FRAME as mood b-roll (color, light, composition) — NOT literal illustration.\n"
+        f"{op['judge']}\n"
         "Reply STRICT JSON only: {"
-        '"mood": <0-10 how strongly its atmosphere EVOKES the emotion>, '
-        '"nonliteral": <0-10, 10=oblique/evocative, 0=literally depicts the subject>, '
+        f'"mood": <0-10 {op["match"]}>, '
+        f'"nonliteral": <0-10, {op["axis2"]}>, '
         '"universal": <true|false — true if pure nature/natural-element/abstract with NO era- or '
         'culture-specific man-made content>, '
         '"period_ok": <0-10 fit with the story period; 10 if universal or no period given>, '
@@ -105,36 +153,38 @@ def _vision_prompt(line: str, emotion: str, period: str, locale: str) -> str:
         '"why": "<=12 words"}')
 
 
-def _accept_prompt(line: str, emotion: str, cands: List[dict]) -> str:
+def _accept_prompt(line: str, goal: str, cands: List[dict], operator: str = "tonal") -> str:
+    op = _OP.get(operator, _OP["tonal"])
     items = "\n".join(
         f'[{i}] mood {c.get("mood")}/10, {"universal nature/abstract" if c.get("universal") else "man-made"} — {c.get("why")}'
         for i, c in enumerate(cands))
-    return (f'LINE: "{line}"\nTARGET EMOTION: {emotion}\n\n'
+    return (f'LINE: "{line}"\nTARGET {op["noun"].upper()}: {goal}\n\n'
             "These candidate shots already passed a period/locale screen. Each description is what the frame "
             f"ACTUALLY shows (from a vision model):\n{items}\n\n"
-            "Choose ONLY shots a professional editor would genuinely cut under this line — the mood must be "
-            "right, it must be evocative (not literal), and it must actually work on screen. Prefer varied "
-            "evocations (avoid near-duplicates). If NONE clear that bar, pick nothing — abstaining is correct.\n"
+            f"Choose ONLY shots a professional editor would genuinely cut under this line — {op['accept']}. "
+            "Prefer varied options (avoid near-duplicates). If NONE clear that bar, pick nothing — abstaining is correct.\n"
             'JSON: {"pick": [<indices best-first, up to 5, ONLY genuine uses>], '
             '"unmatched_reason": "<one line: why nothing fit — only if pick is empty>"}')
 
 
 _SCORE_SYS = (
-    "You are a documentary editor grading candidate b-roll shots (described by their CONTENT) for "
-    "how well they work as EVOCATIVE b-roll under a line — mood over literal illustration. Reply STRICT JSON.")
+    "You are a documentary editor grading candidate b-roll shots (described by their CONTENT) for how well "
+    "they work as b-roll under a line. Reply STRICT JSON.")
 
 
-def _library_score_prompt(line: str, emotion: str, period: str, locale: str, cands: List[dict]) -> str:
+def _library_score_prompt(line: str, goal: str, period: str, locale: str, cands: List[dict],
+                          operator: str = "tonal") -> str:
+    op = _OP.get(operator, _OP["tonal"])
     ctx = ""
     if period or locale:
         ctx = (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
                "Pure landscape/nature/abstract is UNIVERSAL (fits any era/place); only man-made content "
                "carries a period or culture.\n")
     items = "\n".join(f'[{i}] {c.get("desc", "")[:180]}' for i, c in enumerate(cands))
-    return (f'LINE: "{line}"\nTARGET EMOTION: {emotion}\n{ctx}\n'
+    return (f'LINE: "{line}"\nTARGET {op["noun"].upper()}: {goal}\n{ctx}\n'
             f"CANDIDATE SHOTS (by their content description):\n{items}\n\n"
-            "Score EACH as evocative b-roll. JSON: {\"scores\": [{\"i\": <index>, "
-            '"mood": <0-10 evokes the emotion>, "nonliteral": <0-10, 10=oblique>, '
+            "Score EACH. JSON: {\"scores\": [{\"i\": <index>, "
+            f'"mood": <0-10 {op["match_lib"]}>, "nonliteral": <0-10, {op["axis2"]}>, '
             '"universal": <true|false>, "period_ok": <0-10; 10 if universal or no period given>, '
             '"locale_ok": <0-10; 10 if universal or no locale given>, '
             '"flags": "<anachronism/wrong-locale markers; empty if none>", "why": "<=12 words"}]}')
@@ -171,8 +221,8 @@ class EvokeBrollSearch:
         self._vs = None                               # VectorSearch (library mode), lazy
         self._index = None
 
-    # ---- per-candidate vision scoring (mood + period/locale gate) ----
-    async def _score(self, cand: dict, emotion: str, line: str, period: str, locale: str) -> dict:
+    # ---- per-candidate vision scoring (fit + period/locale gate) ----
+    async def _score(self, cand: dict, goal: str, line: str, period: str, locale: str, operator: str = "tonal") -> dict:
         from PIL import Image
         url = cand.get("poster")
         data = await asyncio.to_thread(self._dl._download_image, url) if url else None
@@ -184,7 +234,7 @@ class EvokeBrollSearch:
             os.close(fd)
             Image.open(io.BytesIO(data)).convert("RGB").save(tmp, "JPEG", quality=80)
             async with self._sem:
-                j = _extract_json(await self.vision.describe_image(Path(tmp), _vision_prompt(line, emotion, period, locale)))
+                j = _extract_json(await self.vision.describe_image(Path(tmp), _vision_prompt(line, goal, period, locale, operator)))
             return {"mood": j.get("mood"), "nonliteral": j.get("nonliteral"),
                     "universal": bool(j.get("universal")), "period_ok": j.get("period_ok"),
                     "locale_ok": j.get("locale_ok"), "flags": j.get("flags", ""), "why": j.get("why", "")}
@@ -202,22 +252,29 @@ class EvokeBrollSearch:
         p, l = c.get("period_ok"), c.get("locale_ok")
         return (p is not None and p < 5) or (l is not None and l < 5)
 
-    async def search(self, line: str, *, mode: str = "stock", period: str = "", locale: str = "",
-                     literalness: float = 0.25, mood: Optional[str] = None,
-                     sources: Optional[List[str]] = None, project: Optional[str] = None,
-                     max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
+    async def search(self, line: str, *, operator: str = "tonal", mode: str = "stock",
+                     period: str = "", locale: str = "", literalness: float = 0.25,
+                     mood: Optional[str] = None, sources: Optional[List[str]] = None,
+                     project: Optional[str] = None, max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
         line = (line or "").strip()
         if not line:
             raise ValueError("line is required")
+        operator = operator if operator in _OP else "tonal"
         mode = "library" if mode == "library" else "stock"
         self._sem = asyncio.Semaphore(4)              # bind to the running loop
         gated = bool(period or locale)
 
-        # 1. bridge
-        self._progress(0.08, "Bridging metaphors…")
-        br = _extract_json(await self.llm.generate(
-            _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))
-        emotion = br.get("target_emotion", "")
+        # 1. bridge (operator-specific): produce a `goal` string + concrete visual search phrases
+        self._progress(0.08, "Bridging…")
+        if operator == "conceptual":
+            br = _extract_json(await self.llm.generate(
+                _conceptual_bridge_prompt(line, period, locale, literalness), _CONCEPTUAL_BRIDGE_SYS))
+            doms = ", ".join(d.get("domain", "") for d in br.get("domains", []) if d.get("domain"))
+            goal = (br.get("concept", "") + (f" — via {doms}" if doms else "")).strip()
+        else:
+            br = _extract_json(await self.llm.generate(
+                _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))
+            goal = br.get("target_emotion", "")
         metaphors = [m for m in br.get("visual_metaphors", []) if m][:max_metaphors]
 
         # 2. retrieve candidates from the chosen pool
@@ -228,7 +285,8 @@ class EvokeBrollSearch:
             cands = await self._retrieve_stock(metaphors, per_metaphor, sources)
         pool_n = len(cands)
         if not cands:
-            return {"status": "UNMATCHED", "mode": mode, "line": line, "emotion": emotion,
+            return {"status": "UNMATCHED", "operator": operator, "mode": mode, "line": line,
+                    "emotion": goal, "goal": goal, "goal_label": _OP[operator]["noun"], "bridge": br,
                     "metaphors": metaphors, "picks": [], "considered": [],
                     "reason": ("no library segments found" if mode == "library" else "no stock footage found") + " for these metaphors",
                     "counts": {"pool": 0, "kept": 0, "filtered": 0}}
@@ -236,10 +294,10 @@ class EvokeBrollSearch:
         # 3. score (vision on stills for stock; text on descriptions for library) + period/locale gate
         if mode == "library":
             self._progress(0.45, f"Scoring {len(cands)} library segments…")
-            await self._score_library(cands, emotion, line, period, locale)
+            await self._score_library(cands, goal, line, period, locale, operator)
         else:
-            self._progress(0.45, f"Vision-scoring {len(cands)} clips…")
-            scores = await asyncio.gather(*[self._score(c, emotion, line, period, locale) for c in cands])
+            self._progress(0.45, f"Scoring {len(cands)} clips…")
+            scores = await asyncio.gather(*[self._score(c, goal, line, period, locale, operator) for c in cands])
             for c, s in zip(cands, scores):
                 c.update(s)
         scored = [c for c in cands if c.get("mood") is not None]
@@ -254,7 +312,7 @@ class EvokeBrollSearch:
             self._progress(0.82, "Final cut decision…")
             kept.sort(key=lambda c: -((c.get("mood") or 0) + (c.get("nonliteral") or 0) * 0.3
                                       + (0.5 if c.get("universal") else 0)))
-            res = _extract_json(await self.llm.generate(_accept_prompt(line, emotion, kept), _LISTWISE_SYS))
+            res = _extract_json(await self.llm.generate(_accept_prompt(line, goal, kept, operator), _LISTWISE_SYS))
             order = [i for i in res.get("pick", []) if 0 <= i < len(kept)]
             chosen = set(order)
             if order:
@@ -267,7 +325,8 @@ class EvokeBrollSearch:
 
         considered = filtered + [c for i, c in enumerate(kept) if i not in chosen]
         self._progress(1.0, status)
-        return {"status": status, "reason": reason, "mode": mode, "line": line, "emotion": emotion,
+        return {"status": status, "reason": reason, "operator": operator, "mode": mode, "line": line,
+                "emotion": goal, "goal": goal, "goal_label": _OP[operator]["noun"], "bridge": br,
                 "metaphors": metaphors, "picks": picked, "considered": considered,
                 "counts": {"pool": pool_n, "kept": len(kept), "filtered": len(filtered)}}
 
@@ -303,10 +362,10 @@ class EvokeBrollSearch:
         return list(pool.values())[:10]
 
     # ---- library scoring: one batch text pass over the segments' descriptions ----
-    async def _score_library(self, cands, emotion, line, period, locale):
+    async def _score_library(self, cands, goal, line, period, locale, operator="tonal"):
         try:
             j = _extract_json(await self.llm.generate(
-                _library_score_prompt(line, emotion, period, locale, cands), _SCORE_SYS))
+                _library_score_prompt(line, goal, period, locale, cands, operator), _SCORE_SYS))
             by_i = {s.get("i"): s for s in j.get("scores", [])}
         except Exception:
             by_i = {}

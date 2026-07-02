@@ -39,9 +39,9 @@
     .dropped .clip { opacity: .55; filter: grayscale(.5); }
     #job { margin: 16px 0; }
     .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-    .modebtn { background: var(--bg-primary); color: var(--text-secondary); border: 0; border-radius: 0;
+    .modebtn, .opbtn { background: var(--bg-primary); color: var(--text-secondary); border: 0; border-radius: 0;
       padding: 8px 16px; font-weight: 600; cursor: pointer; }
-    .modebtn.active { background: var(--accent, #4c7dff); color: #fff; }
+    .modebtn.active, .opbtn.active { background: var(--accent, #4c7dff); color: #fff; }
     .provs { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
     .provs label { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--text-primary);
       font-size: 13px; cursor: pointer; }
@@ -58,7 +58,13 @@
       (or <b>unmatched</b> when nothing fits). Nature/abstract is treated as timeless.</div>
 
     <div class="card">
-      <label>Narration line</label>
+      <label>Approach</label>
+      <div class="seg">
+        <button type="button" class="opbtn active" data-op="tonal">Evocative (tonal)</button>
+        <button type="button" class="opbtn" data-op="conceptual">Conceptual metaphor</button>
+      </div>
+      <div id="ophint" class="hint" style="margin:6px 0 2px">Footage that carries the line's <b>emotion</b>.</div>
+      <label style="margin-top:12px">Narration line</label>
       <textarea id="line" placeholder="e.g. For ten years he wandered, a stranger to his own home, aching for a shore he might never reach."></textarea>
       <div class="row">
         <div><label>Story period <span class="hint">(optional — enables the anachronism gate)</span></label>
@@ -98,6 +104,24 @@
       litv.textContent = v.toFixed(2) + (v <= 0.35 ? " (abstract)" : v <= 0.7 ? " (semi-literal)" : " (literal)");
     };
 
+    // Operator (pairing approach) toggle.
+    var currentOp = "tonal";
+    var OPHINT = {
+      tonal: "Footage that carries the line's <b>emotion</b>.",
+      conceptual: "A concrete domain whose <b>mechanic mirrors the idea</b> (strategy→chess, collapse→dominoes)."
+    };
+    document.querySelectorAll(".opbtn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.querySelectorAll(".opbtn").forEach(function (x) { x.classList.remove("active"); });
+        b.classList.add("active");
+        currentOp = b.dataset.op;
+        document.getElementById("ophint").innerHTML = OPHINT[currentOp] || "";
+      });
+    });
+    // chip labels per operator: [primary-fit, secondary-axis]
+    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"] };
+    var lastOp = "tonal";
+
     // Source-pool mode toggle (stock vs library) + stock-provider checkboxes.
     var currentMode = "stock";
     var provWrap = document.getElementById("providers");
@@ -131,6 +155,7 @@
     }
 
     function clipCard(c, dropped) {
+      var lbl = CHIPS[lastOp] || CHIPS.tonal;
       var isLib = c.kind === "library";
       var poster = c.poster ? ' poster="' + esc(c.poster) + '"' : "";
       var player = isLib
@@ -146,7 +171,7 @@
         ? esc(c.video_name) + ' · ' + fmtT(c.ts_start) + '–' + fmtT(c.ts_end) + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"'
         : esc(c.source) + ' · ' + (c.duration ? c.duration + "s" : "?") + ' · via "' + esc((c.metaphor || "").slice(0, 40)) + '"';
       return '<div class="clip">' + player + '<div class="m">' +
-        chip("mood", c.mood) + chip("evoc", c.nonliteral) + place + flag + rej +
+        chip(lbl[0], c.mood) + chip(lbl[1], c.nonliteral) + place + flag + rej +
         '<div class="why">' + esc(c.why) + '</div>' +
         '<div style="color:#888;margin-top:4px">' + srcline + '</div>' +
         '<a class="src" href="' + esc(c.url) + '" target="_blank">open ↗</a></div></div>';
@@ -155,11 +180,12 @@
     function renderResult(res) {
       var r = document.getElementById("results");
       if (!res) { r.innerHTML = '<div class="reason">No result.</div>'; return; }
+      lastOp = res.operator || "tonal";
       var st = res.status === "MATCHED"
         ? '<span class="status ok">MATCHED · ' + res.picks.length + '</span>'
         : '<span class="status no">UNMATCHED</span>';
       var html = '<div style="margin-top:8px">' + st + '</div>';
-      html += '<div class="meta2">emotion: <b>' + esc(res.emotion) + '</b> · metaphors: ' +
+      html += '<div class="meta2">' + esc(res.goal_label || "emotion") + ': <b>' + esc(res.emotion) + '</b> · metaphors: ' +
         esc((res.metaphors || []).join("  ·  ")) + ' · pool ' + res.counts.pool + ', kept ' + res.counts.kept + ', gated ' + res.counts.filtered + '</div>';
       if (res.status === "UNMATCHED")
         html += '<div class="reason">∅ left unmatched — ' + esc(res.reason) + ' (better a gap than a wrong shot)</div>';
@@ -179,7 +205,7 @@
       document.getElementById("results").innerHTML = "";
       var btn = this; btn.disabled = true;
       var body = {
-        line: line, mode: currentMode,
+        line: line, operator: currentOp, mode: currentMode,
         period: document.getElementById("period").value.trim(),
         locale: document.getElementById("locale").value.trim(),
         mood: document.getElementById("mood").value.trim(),
