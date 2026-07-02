@@ -2,11 +2,41 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-02-01
+**Last Updated:** 2026-07-02
 
 ## Summary
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
+
+## Script v3 — style-fidelity upgrade: craft-vs-clothing + voice pass (2026-07-02)
+
+**What changed.** The v3 pipeline honored the style guide's *skeleton* (structure) but was losing its
+*muscle* (rhetorical devices / sentence-level style) and *color* (vivid anchors) to draft-time recall,
+and was blindly copying *channel-identity furniture* (sponsor reads, persona catchphrases like "I'm
+literally a stickman"). Root cause: only structure was committed to an artifact; everything else
+depended on recall. Fixed in the shared task-brief generator (`src/nolan/scriptwriter/tasks.py`), so
+`prep_task` / `draft_task` / `v3_task` and every future project inherit it:
+
+- **`_STYLE_KERNEL` (the four layers).** A guide mixes SKELETON + MUSCLE + SKIN (honor fully) and
+  CLOTHING (channel identity). Rule: **skip** sponsor/coded-URL reads; **adapt-or-skip** persona
+  labels / catchphrase sign-offs / recurring-segment names (take the *function*, never copy the
+  literal identity); use the guide's **Exemplar Lines** only as a cadence tuning-fork.
+- **Facts legend** now preserves vivid comparators, **bundles each claim's rebuttal on the same line**
+  (so in-beat steel-manning survives), and orders hook facts **concrete-first**.
+- **Beat line commits BONE + MUSCLE + COLOR:** every `beatmap.md` beat now carries `devices:` (named
+  from the guide's Rhetorical-Devices/Sentence-level catalog) + `anchors:` (the exact facts/quotes to
+  deploy), and a top-of-file **clothing-decisions** block.
+- **New "voice pass" step → `stylecheck.md`** — the style twin of the fact-check: verify every
+  `[universal]` device landed, revise flattened beats toward the guide's exemplars, confirm no
+  identity content leaked. The device budget is a **floor, not a quota** (a device may be withheld
+  when a beat reads better without it).
+
+**Validation.** Re-ran all three script projects (three distinct guides — great-books braid, stickman
+both-sides argument, art-stories mystery — plus both the supplied-angle and no-angle paths and the
+⚠ LARGE chunk-read path). A blind agent driven only by the regenerated `v3_task.md` matched or beat
+the hand-tuned inline runs *and* fixed the clothing handling those runs themselves got wrong (e.g.
+adapted "I'm literally a stickman" → a neutral equivalent; skipped the sponsor). Prior outputs are
+preserved under each project's `scriptgen/ab/`. Guard test `scripts/test_scriptwriter.py` stays green.
 
 ## Script Projects — v3 pipeline + new source types (2026-07-02)
 
