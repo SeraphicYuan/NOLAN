@@ -1154,10 +1154,14 @@
                     ? `<img src="${esc(c.poster || c.url)}">`
                     : (c.poster ? `<img src="${esc(c.poster)}">` : `<video src="${esc(c.url)}" muted></video>`);
                 const kind = isVid ? 'video' : 'image';
+                // data-attrs + a real listener (below) — inline onclick with a URL breaks the attribute quoting
                 return `<div class="ss-pick">${media}<div class="ss-meta">${esc(c.source || '')} · ${esc((c.why || '').slice(0, 40))}</div>` +
-                    `<button onclick="attachAsset('${id}', ${JSON.stringify(c.url)}, '${kind}', ${JSON.stringify(c.source || '')})">Attach →</button></div>`;
+                    `<button class="ss-attach" data-url="${esc(c.url)}" data-kind="${kind}" data-source="${esc(c.source || '')}">Attach →</button></div>`;
             }).join('');
             out.innerHTML = trace + `<div class="ss-grid">${cards}</div>`;
+            out.querySelectorAll('.ss-attach').forEach(btn => {
+                btn.addEventListener('click', () => attachAsset(id, btn.dataset.url, btn.dataset.kind, btn.dataset.source));
+            });
         }
         async function attachAsset(id, url, kind, source) {
             const st = document.getElementById(`ss-status-${id}`);
