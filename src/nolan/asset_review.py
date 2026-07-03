@@ -246,10 +246,18 @@ def _chip(label, v):
 
 
 def _card(c: dict) -> str:
-    isimg = c.get("kind") == "image"
-    src = c.get("poster") or c.get("url") or ""
-    media = (f'<img src="{_esc(src)}" loading="lazy">' if (isimg or c.get("poster"))
-             else f'<div class="noimg">{_esc(c.get("kind") or "?")}</div>')
+    kind = c.get("kind")
+    url = c.get("url") or ""
+    poster = c.get("poster") or ""
+    # Library clips carry a playable /library/video/… url (with a #t=start,end range) but no poster —
+    # render them as an inline <video> (hover to play) instead of a dead grey box.
+    if kind == "library" and url:
+        media = (f'<video src="{_esc(url)}" preload="metadata" muted playsinline controls '
+                 f'onmouseenter="this.play()" onmouseleave="this.pause()"></video>')
+    elif kind == "image" or poster:
+        media = f'<img src="{_esc(poster or url)}" loading="lazy">'
+    else:
+        media = f'<div class="noimg">{_esc(kind or "?")}</div>'
     place = ('<span class="ch" style="background:#2f5f7a">universal</span>' if c.get("universal")
              else _chip("per", c.get("period_ok")) + _chip("loc", c.get("locale_ok")))
     flag = f'<span class="ch" style="background:#7a2f2f">{_esc(c.get("flags"))}</span>' if c.get("flags") else ""
@@ -314,7 +322,7 @@ def render_gallery(review: dict) -> str:
 .shot{{margin:8px 0;padding:7px;border:1px dashed #2e2e38;border-radius:7px}}
 .shot-h{{font-size:11px;color:#c7c7d0;margin-bottom:6px}}.shot-i{{color:#9a9aa2;font-weight:400;margin-top:2px}}
 .card{{border:1px solid #26262e;border-radius:7px;overflow:hidden;background:#000}}.card.accepted{{border-color:#2d6a4f}}
-.card img{{width:100%;height:78px;object-fit:cover;display:block}}.noimg{{height:78px;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px}}
+.card img,.card video{{width:100%;height:78px;object-fit:cover;display:block;background:#000}}.noimg{{height:78px;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px}}
 .m{{padding:5px 6px;background:#131318}}.ch{{display:inline-block;font-size:9px;padding:1px 5px;border-radius:4px;margin:1px 2px 0 0;color:#fff}}
 .why{{font-size:10px;color:#aaa;margin-top:3px}}.src{{font-size:9px;color:#777;margin-top:2px}}.empty{{color:#555;font-size:12px;padding:8px}}
 </style></head><body><div class="wrap"><h1>Asset Review · {_esc(review.get("project"))}</h1>
