@@ -495,7 +495,15 @@ class EvokeBrollSearch:
                         cblock = ctx.beat_context(beat)
             except Exception:
                 ctx = None
-        pre = (cblock + "\n\n") if cblock else ""     # prepended to every bridge prompt
+        # prepended to every operator bridge: the whole-script brief (subject/spine/arc) + this
+        # beat's context (neighbours/intent/rhythm/facts) — so plain operators get FULL context too,
+        # not just the auto planner.
+        _cbits = []
+        if ctx is not None and ctx.beats:
+            _cbits.append(ctx.brief(max_chars=1200))
+        if cblock:
+            _cbits.append(cblock)
+        pre = ("\n\n".join(_cbits) + "\n\n") if _cbits else ""
         gated = bool(period or locale)
 
         # 1. bridge (operator-specific): produce a `goal` string + concrete visual search phrases
