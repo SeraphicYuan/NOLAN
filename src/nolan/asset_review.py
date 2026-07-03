@@ -252,7 +252,8 @@ def _card(c: dict) -> str:
     # Library clips carry a playable /library/video/… url (with a #t=start,end range) but no poster —
     # render them as an inline <video> (hover to play) instead of a dead grey box.
     if kind == "library" and url:
-        media = (f'<video src="{_esc(url)}" preload="metadata" muted playsinline controls '
+        pv = f' poster="{_esc(poster)}"' if poster else ""
+        media = (f'<video src="{_esc(url)}"{pv} preload="metadata" muted playsinline controls '
                  f'onmouseenter="this.play()" onmouseleave="this.pause()"></video>')
     elif kind == "image" or poster:
         media = f'<img src="{_esc(poster or url)}" loading="lazy">'
@@ -270,6 +271,60 @@ def _card(c: dict) -> str:
             f'<div class="src">{_esc(c.get("source"))}'
             + (' · <b style="color:#95d5b2">picked</b>' if c.get("accepted") and c.get("_picked") else '')
             + '</div></div></div>')
+
+
+_GEN_DIR = Path("projects") / "_library" / "_broll_generated"
+
+
+def _lib_poster_url(url: Optional[str]) -> Optional[str]:
+    """Extract a representative poster frame for a /library/video/…#t=start,end clip.
+
+    Library <video> elements have no poster, so cards render black until played — and
+    segment boundaries are often black cuts. Grab a frame at the segment MIDPOINT
+    (cached by video+timestamp), retrying a little later if the frame looks black.
+    """
+    if not url or "/library/video/" not in url:
+        return None
+    import hashlib
+    from urllib.parse import unquote
+    base, _, frag = url.partition("#t=")
+    vpath = unquote(base.split("/library/video/", 1)[1])
+    src = Path(vpath)
+    if not src.exists():
+        return None
+    start = end = 0.0
+    if frag:
+        parts = frag.split(",")
+        try:
+            start = float(parts[0])
+            end = float(parts[1]) if len(parts) > 1 else start + 4
+        except ValueError:
+            start, end = 0.0, 4.0
+    mid = (start + end) / 2 if end > start else start + 1
+    h = hashlib.md5((vpath + f"@{mid:.1f}").encode()).hexdigest()[:12]
+    out = _GEN_DIR / f"lib_{h}.jpg"
+    if not out.exists():
+        try:
+            from .ffmpeg_utils import extract_poster
+            extract_poster(src, mid, out)
+            # near-black frames compress tiny — retry nearer the segment end
+            if out.stat().st_size < 6000 and (end - start) > 2:
+                extract_poster(src, min(end - 0.5, start + 2), out)
+        except Exception:
+            return None
+    return f"/broll-gen/{out.name}"
+
+
+def _ensure_lib_posters(review: dict) -> None:
+    """Backfill a poster frame on every library card so it shows content, not black."""
+    for b in review.get("beats", []):
+        for r in (b.get("results") or {}).values():
+            for sh in (r.get("shots") or []):
+                for c in sh.get("top5", []):
+                    if c.get("kind") == "library" and not c.get("poster"):
+                        p = _lib_poster_url(c.get("url"))
+                        if p:
+                            c["poster"] = p
 
 
 def render_gallery(review: dict) -> str:
@@ -333,6 +388,7 @@ def render_gallery(review: dict) -> str:
 def write_gallery(project: str, review: dict) -> Path:
     out = Path("projects") / "_library" / "_broll_generated" / f"asset_review_{project}.html"
     out.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_lib_posters(review)
     out.write_text(render_gallery(review), encoding="utf-8")
     return out
 

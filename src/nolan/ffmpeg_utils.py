@@ -48,6 +48,22 @@ def extract_subclip(src, start, duration, out, *, width: int = 1920,
     return out
 
 
+def extract_poster(src, t, out, *, width: int = 360) -> Path:
+    """Extract a single frame at time ``t`` (seconds) of ``src`` to a jpg thumbnail.
+
+    Input-seeking (``-ss`` before ``-i``) so it stays fast even on large files.
+    """
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [FFMPEG, "-y", "-ss", f"{max(0.0, float(t)):.3f}", "-i", str(src),
+           "-frames:v", "1", "-vf", f"scale={int(width)}:-2", "-q:v", "3",
+           "-loglevel", "error", str(out)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode:
+        raise RuntimeError(f"ffmpeg poster failed: {r.stderr[-300:]}")
+    return out
+
+
 def silent_audio(duration: float, out) -> Path:
     """Produce a silent stereo WAV of the given duration (lavfi anullsrc)."""
     out = Path(out)
