@@ -29,6 +29,8 @@ with sync_playwright() as p:
           or page.query_selector("#sceneList") is not None)
     tempo = page.query_selector_all(".scene-tempo")
     check("tempo chips present (homer)", len(tempo) > 0)
+    check("super-search panel present", page.query_selector(".super-search") is not None)
+    check("super-search operator menu", page.query_selector(".ss-op") is not None)
     check("energy chip shows a value", "⚡" in (page.content()))
     check("tempo bar has a fill", page.query_selector(".tempo-fill") is not None)
 

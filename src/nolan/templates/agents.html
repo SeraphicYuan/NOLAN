@@ -826,6 +826,7 @@ function renderProject(p, checkpointBody, streamData) {
             <span class="project-slug">${escapeHtml(p.path)}</span>
             <span class="spacer"></span>
             <span class="iteration-pill">iter ${p.iteration_count}</span>
+            ${p.started === false ? '<span class="status-badge status-fresh" title="Director-ready; run to bootstrap the pipeline">not started</span>' : ''}
             <span class="status-badge ${statusClass(p.status)}">${escapeHtml(p.status)}</span>
         </div>
         <div class="project-body">

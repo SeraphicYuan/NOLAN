@@ -155,8 +155,29 @@ def project_summary(project_path: Path) -> dict[str, Any]:
     }
 
 
+def _director_ready(p: Path) -> bool:
+    """A project the Director can run: has project.yaml + script.md (e.g. straight from
+    Script Projects), even if `nolan orchestrate` hasn't bootstrapped `.orchestrator/` yet."""
+    return p.is_dir() and (p / "project.yaml").exists() and (p / "script.md").exists()
+
+
 def list_all_projects(projects_root: Path) -> list[dict[str, Any]]:
-    return [project_summary(p) for p in discover_projects(projects_root)]
+    """Projects for the dashboard: any that have started (`.orchestrator/`) OR are Director-ready
+    (so a fresh Script-Projects script shows up with a 'Run' button that bootstraps the pipeline)."""
+    if not projects_root.exists():
+        return []
+    out: list[dict[str, Any]] = []
+    for p in sorted(projects_root.iterdir()):
+        started = (p / ".orchestrator").exists()
+        if not (started or _director_ready(p)):
+            continue
+        try:
+            s = project_summary(p)
+        except Exception:
+            continue
+        s["started"] = started
+        out.append(s)
+    return out
 
 
 def write_feedback(project_path: Path, body: str) -> Path:

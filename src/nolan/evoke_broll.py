@@ -149,6 +149,16 @@ _OP = {
         "accept": "it must give the number a tangible sense of scale AND have calm negative space for a large "
                   "count-up overlay to read clearly",
     },
+    "literal": {   # plain keyword search — the frame should literally SHOW the subject (no bridge)
+        "noun": "subject",
+        "judge": "Judge whether the FRAME literally and clearly SHOWS the subject described in the line "
+                 "(the actual thing named), as a straightforward depiction.",
+        "match": "how clearly it literally shows the described subject",
+        "match_lib": "literally shows the described subject",
+        "axis2": "10=clear, direct depiction, 0=only tangential",
+        "accept": "it must clearly and literally show the subject named in the line, in good quality, "
+                  "free of watermarks/overlaid text",
+    },
     "knowledge": {   # the SPECIFIC real, era-correct asset the model names from its own knowledge
         "noun": "subject",
         "judge": "Judge the FRAME as a faithful, high-quality depiction of the SPECIFIC named subject "
@@ -476,8 +486,13 @@ class EvokeBrollSearch:
             try:
                 from .script_context import ScriptContext
                 ctx = ScriptContext.load(project)
-                if ctx.beats and beat is not None:
-                    cblock = ctx.beat_context(beat)
+                if ctx.beats:
+                    if beat is None:                      # auto-locate the beat from the line (for /scenes
+                        b = ctx.find_beat(line)           # super-search, which passes narration but no index)
+                        if b is not None:
+                            beat = b.idx
+                    if beat is not None:
+                        cblock = ctx.beat_context(beat)
             except Exception:
                 ctx = None
         pre = (cblock + "\n\n") if cblock else ""     # prepended to every bridge prompt
@@ -510,6 +525,13 @@ class EvokeBrollSearch:
             ref = br.get("referent", {}) or {}
             goal = (ref.get("label", "") or "").strip()
             metaphors = [m for m in ref.get("visual_metaphors", []) if m][:max_metaphors]
+        elif operator == "literal":
+            # plain keyword search — no LLM bridge; the line itself is the query (+ a keyword variant)
+            br = {"literal": line}
+            goal = line[:80]
+            kw = " ".join(w for w in re.findall(r"[A-Za-z0-9']+", line) if len(w) > 3)[:80]
+            metaphors = [line] + ([kw] if kw and kw.lower() != line.lower() else [])
+            metaphors = metaphors[:max_metaphors]
         elif operator == "knowledge":
             if ctx is None:
                 self._progress(1.0, "UNMATCHED")
@@ -533,7 +555,7 @@ class EvokeBrollSearch:
             br = _extract_json(await self.llm.generate(
                 pre + _bridge_prompt(line, period, locale, literalness, mood), _BRIDGE_SYS))
             goal = br.get("target_emotion", "")
-        if operator not in ("relational", "scale", "knowledge"):
+        if operator not in ("relational", "scale", "knowledge", "literal"):
             metaphors = [m for m in br.get("visual_metaphors", []) if m][:max_metaphors]
 
         _kw = dict(mode=mode, period=period, locale=locale, sources=sources, media=media,
@@ -612,6 +634,7 @@ class EvokeBrollSearch:
             f"{ctx.brief(max_chars=1400)}\n\n{bc}\n\n"
             f'THIS BEAT LINE: "{line}"\n\n'
             "Decide the best b-roll PAIRING approach for THIS beat, plus a fallback:\n"
+            "- literal: the beat names a concrete, common subject best shown plainly (a keyword search).\n"
             "- knowledge: the beat names/implies a SPECIFIC real thing (a titled artwork, an artifact, "
             "a place, a named person/event) — source the actual thing.\n"
             "- tonal: mood/atmosphere with no concrete subject — evocative footage that carries the feeling.\n"

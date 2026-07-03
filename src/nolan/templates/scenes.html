@@ -465,6 +465,21 @@
             margin-top: 8px; padding: 10px; border: 1px solid var(--border);
             border-radius: 8px; background: var(--bg-secondary);
         }
+        /* per-beat super search */
+        .super-search { margin-top: 8px; padding: 10px; border: 1px solid var(--accent, #4c7dff);
+            border-radius: 8px; background: var(--bg-secondary); }
+        .ss-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .ss-op { padding: 4px 8px; background: var(--bg-primary, #0f172a); color: var(--text-primary, #e2e8f0);
+            border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+        .ss-controls button { padding: 5px 12px; border-radius: 6px; border: 0; background: var(--accent, #4c7dff);
+            color: #fff; cursor: pointer; font-size: 12px; }
+        .ss-status { font-size: 12px; color: var(--text-secondary); }
+        .ss-trace { font-size: 11px; color: var(--text-secondary); margin: 6px 0; }
+        .ss-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+        .ss-pick { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #000; }
+        .ss-pick img, .ss-pick video { width: 100%; height: 92px; object-fit: cover; display: block; }
+        .ss-pick .ss-meta { padding: 4px 6px; font-size: 10px; color: var(--text-secondary); background: var(--bg-secondary); }
+        .ss-pick button { width: 100%; border: 0; padding: 4px; font-size: 11px; background: #2d6a4f; color: #d8f3dc; cursor: pointer; }
         .edit-mode-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
         .tab-btn {
             background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-secondary);
@@ -928,6 +943,25 @@
 
                         <div class="scene-edit">
                             <button class="edit-toggle" onclick="toggleEdit('${scene.id}')">✎ Edit / comment</button>
+                            <button class="edit-toggle" onclick="superSearchToggle('${scene.id}')" title="Context-aware asset search for THIS beat (the /broll engine, project + beat prefilled)">🔎 Super search</button>
+                            <div class="super-search" id="ss-${scene.id}" style="display:none;">
+                                <div class="ss-controls">
+                                    <select class="ss-op" id="ss-op-${scene.id}">
+                                        <option value="auto">Auto (agent picks)</option>
+                                        <option value="literal">Literal (keyword)</option>
+                                        <option value="tonal">Evocative</option>
+                                        <option value="knowledge">Knowledge (real)</option>
+                                        <option value="conceptual">Conceptual</option>
+                                        <option value="ironic">Ironic</option>
+                                        <option value="trait">Trait</option>
+                                        <option value="relational">Relational</option>
+                                        <option value="scale">Scale</option>
+                                    </select>
+                                    <button onclick="superSearch('${scene.id}')">Search this beat</button>
+                                    <span class="ss-status" id="ss-status-${scene.id}"></span>
+                                </div>
+                                <div class="ss-results" id="ss-results-${scene.id}"></div>
+                            </div>
                             <div class="edit-panel" id="edit-${scene.id}" style="display:none;">
                                 <div class="edit-mode-tabs">
                                     <button class="tab-btn active" id="tab-note-${scene.id}" onclick="setEditMode('${scene.id}','note')">Comment</button>
@@ -1066,6 +1100,77 @@
         function toggleEdit(id) {
             const p = document.getElementById(`edit-${id}`);
             p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+        }
+
+        // Per-beat super search — the /broll pairing engine WITH the loaded project + this scene's
+        // beat as context (auto-located server-side from the narration).
+        function superSearchToggle(id) {
+            const p = document.getElementById(`ss-${id}`);
+            p.style.display = (p.style.display === 'none') ? 'block' : 'none';
+        }
+        function _pollSS(jobId) {
+            return new Promise(resolve => {
+                (function tick() {
+                    fetch(`/api/jobs/${jobId}`).then(r => r.json()).then(j => {
+                        if (['done', 'error', 'cancelled'].includes(j.status)) resolve(j);
+                        else setTimeout(tick, 1500);
+                    }).catch(() => setTimeout(tick, 2500));
+                })();
+            });
+        }
+        async function superSearch(id) {
+            const scene = allScenes.find(s => s.id === id);
+            const line = scene ? (scene.narration_excerpt || scene.visual_description || '') : '';
+            if (!line) { return; }
+            const op = (document.getElementById(`ss-op-${id}`) || {}).value || 'auto';
+            const st = document.getElementById(`ss-status-${id}`);
+            const out = document.getElementById(`ss-results-${id}`);
+            st.textContent = `searching (${op})…`; out.innerHTML = '';
+            try {
+                const start = await (await fetch('/scenes/api/scene/super-search', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: currentProject, line, operator: op, media: ['image', 'video'] })
+                })).json();
+                const job = await _pollSS(start.job_id);
+                if (job.status !== 'done' || !job.result) { st.textContent = 'failed: ' + (job.error || job.status); return; }
+                renderSSPicks(id, job.result);
+            } catch (e) { st.textContent = 'error: ' + e.message; }
+        }
+        function renderSSPicks(id, res) {
+            const st = document.getElementById(`ss-status-${id}`);
+            const out = document.getElementById(`ss-results-${id}`);
+            let trace = '';
+            if (res.auto) {
+                const a = res.auto;
+                trace = `<div class="ss-trace">🤖 chose <b>${escapeHtml(a.chosen || a.primary)}</b>` +
+                    (a.judge ? ` · judge ${a.judge.score}/10` : '') + ` — ${escapeHtml(a.why || '')}</div>`;
+            }
+            const picks = res.picks || [];
+            st.textContent = `${res.status} · ${picks.length} pick(s)`;
+            if (!picks.length) { out.innerHTML = trace + `<div class="ss-trace">Nothing fit (${escapeHtml(res.reason || '')}).</div>`; return; }
+            const cards = picks.map(c => {
+                const isVid = c.kind === 'video' || /\.mp4($|\?)/.test(c.url || '');
+                const media = (c.kind === 'image')
+                    ? `<img src="${escapeHtml(c.poster || c.url)}">`
+                    : (c.poster ? `<img src="${escapeHtml(c.poster)}">` : `<video src="${escapeHtml(c.url)}" muted></video>`);
+                const kind = isVid ? 'video' : 'image';
+                return `<div class="ss-pick">${media}<div class="ss-meta">${escapeHtml(c.source || '')} · ${escapeHtml((c.why || '').slice(0, 40))}</div>` +
+                    `<button onclick="attachAsset('${id}', ${JSON.stringify(c.url)}, '${kind}', ${JSON.stringify(c.source || '')})">Attach →</button></div>`;
+            }).join('');
+            out.innerHTML = trace + `<div class="ss-grid">${cards}</div>`;
+        }
+        async function attachAsset(id, url, kind, source) {
+            const st = document.getElementById(`ss-status-${id}`);
+            st.textContent = 'attaching…';
+            try {
+                const start = await (await fetch('/scenes/api/scene/attach', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: currentProject, scene_id: id, url, kind, source })
+                })).json();
+                const job = await _pollSS(start.job_id);
+                if (job.status === 'done') { st.textContent = '✓ attached — reloading'; await loadSceneData(); }
+                else st.textContent = 'attach failed: ' + (job.error || job.status);
+            } catch (e) { st.textContent = 'error: ' + e.message; }
         }
         function setEditMode(id, mode) {
             ['note','assets','fields'].forEach(m => {

@@ -361,6 +361,40 @@ async def preview_stat(job, *, config, src: str, value: float, prefix: str = "",
     return {"url": f"/broll-gen/previews/{out.name}", "theme": theme}
 
 
+async def attach_scene_asset(job, *, config, project_name: str, scene_id: str, url: str,
+                             kind: str = "image", source: str = "", title: str = ""):
+    """Attach a super-search pick to a scene: download an image into assets/broll/ and set
+    matched_asset, or reference a video via matched_clip. Persists scene_plan.json."""
+    import shutil
+    from nolan.scenes import ScenePlan
+    plan_path = _scene_plan_path(project_name)
+    if not plan_path.exists():
+        raise RuntimeError(f"No scene_plan.json for '{project_name}'.")
+    plan = ScenePlan.load(str(plan_path))
+    scene = next((s for s in plan.all_scenes if s.id == scene_id), None)
+    if scene is None:
+        raise RuntimeError(f"scene '{scene_id}' not found")
+    job.set_progress(0.2, "Attaching…")
+    if kind == "video":
+        scene.matched_clip = {"external_url": url, "source": source or "super-search", "title": title,
+                              "media_type": "video", "external": True, "preview_image_url": None}
+        scene.matched_asset = None
+        out = f"video:{source or 'super-search'}"
+    else:
+        out_dir = plan_path.parent / "assets" / "broll"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        local = await _local_still(url, out_dir)          # downloads (or resolves /broll-gen) → local Path
+        dest = out_dir / f"{scene_id}{Path(local).suffix or '.jpg'}"
+        if Path(local).resolve() != dest.resolve():
+            shutil.copy(local, dest)
+        scene.matched_asset = str(dest.relative_to(plan_path.parent)).replace("\\", "/")
+        scene.matched_clip = None
+        out = f"image:{source or 'super-search'}"
+    plan.save(str(plan_path))
+    job.set_progress(1.0, "attached")
+    return {"scene_id": scene_id, "attached": out, "matched_asset": scene.matched_asset}
+
+
 def _scene_plan_path(project_name: str) -> Path:
     return Path("projects") / project_name / "scene_plan.json"
 

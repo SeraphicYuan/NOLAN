@@ -2583,6 +2583,39 @@ def create_hub_app(
             raise HTTPException(status_code=404, detail=str(e))
         return {"applied": applied, "pipeline": pipeline}
 
+    @app.post("/scenes/api/scene/super-search")
+    async def scenes_super_search(body: dict = Body(...)):
+        """Per-beat super search from the Scene Plan Viewer — the /broll pairing engine WITH the
+        loaded project as context and the scene's beat auto-located. Returns a job."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        line = (body.get("line") or "").strip()
+        if not (project and line):
+            raise HTTPException(status_code=400, detail="project and line are required")
+        med = body.get("media")
+        job = job_manager.start(
+            "super-search", operations.evoke_broll, config=load_config(),
+            line=line, operator=(body.get("operator") or "auto"), mode=(body.get("mode") or "stock"),
+            project=project, media=(med if isinstance(med, list) and med else None))
+        return {"job_id": job.id, "type": "super-search"}
+
+    @app.post("/scenes/api/scene/attach")
+    async def scenes_scene_attach(body: dict = Body(...)):
+        """Attach a super-search pick to a scene (download image → matched_asset, or video ref)."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        scene_id = (body.get("scene_id") or "").strip()
+        url = (body.get("url") or "").strip()
+        if not (project and scene_id and url):
+            raise HTTPException(status_code=400, detail="project, scene_id, url are required")
+        job = job_manager.start(
+            "attach-asset", operations.attach_scene_asset, config=load_config(),
+            project_name=project, scene_id=scene_id, url=url, kind=(body.get("kind") or "image"),
+            source=(body.get("source") or ""), title=(body.get("title") or ""))
+        return {"job_id": job.id, "type": "attach-asset"}
+
     @app.post("/scenes/api/scene/assets")
     async def scenes_scene_assets(payload: dict = Body(...)):
         """Manage a scene's asset tray (add/remove/reorder/place/label).
@@ -2919,7 +2952,7 @@ def create_hub_app(
         async def agents_stream(slug: str, since: int = 0):
             project_path = projects_dir / slug
             if not (project_path / ".orchestrator").exists():
-                raise HTTPException(status_code=404, detail="project has no .orchestrator/")
+                return {"slug": slug, "modules": []}   # not started yet — no streams, not an error
             return {
                 "slug": slug,
                 "modules": agents_dashboard.read_all_streams(project_path, since_seq=since),

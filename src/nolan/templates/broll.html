@@ -66,6 +66,7 @@
       <label>Approach</label>
       <div class="seg">
         <button type="button" class="opbtn active" data-op="tonal">Evocative (tonal)</button>
+        <button type="button" class="opbtn" data-op="literal">Literal (keyword)</button>
         <button type="button" class="opbtn" data-op="conceptual">Conceptual metaphor</button>
         <button type="button" class="opbtn" data-op="ironic">Ironic counterpoint</button>
         <button type="button" class="opbtn" data-op="trait">Trait embodiment</button>
@@ -141,6 +142,7 @@
     var currentOp = "tonal";
     var OPHINT = {
       tonal: "Footage that carries the line's <b>emotion</b>.",
+      literal: "Plain <b>keyword</b> search — footage that literally shows the subject (no metaphor bridge).",
       conceptual: "A concrete domain whose <b>mechanic mirrors the idea</b> (strategy→chess, collapse→dominoes).",
       ironic: "Footage that <b>contradicts</b> the line — the gap between what's said and what's real (Adam Curtis).",
       trait: "The archetypal <b>activity</b> a person of this quality does (discipline→training, patience→watchmaking).",
@@ -159,7 +161,7 @@
       });
     });
     // chip labels per operator: [primary-fit, secondary-axis]
-    var CHIPS = { tonal: ["mood", "evoc"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"], scale: ["scale", "clean"], knowledge: ["match", "quality"], auto: ["fit", "2nd"] };
+    var CHIPS = { tonal: ["mood", "evoc"], literal: ["shows", "direct"], conceptual: ["fit", "fresh"], ironic: ["irony", "edge"], trait: ["fit", "telling"], relational: ["fit", "strike"], scale: ["scale", "clean"], knowledge: ["match", "quality"], auto: ["fit", "2nd"] };
     var lastOp = "tonal";
 
     // Source-pool mode toggle (stock vs library) + stock-provider checkboxes.

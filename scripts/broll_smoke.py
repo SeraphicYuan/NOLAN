@@ -20,6 +20,7 @@ with sync_playwright() as p:
 
     for sel, name in [("#line", "narration box"), ("#go", "search button"),
                       (".opbtn[data-op='tonal']", "tonal operator"),
+                      (".opbtn[data-op='literal']", "literal operator"),
                       (".opbtn[data-op='conceptual']", "conceptual operator"),
                       (".opbtn[data-op='ironic']", "ironic operator"),
                       (".opbtn[data-op='trait']", "trait operator"),
