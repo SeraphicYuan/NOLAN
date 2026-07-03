@@ -5057,8 +5057,8 @@ def cutout(image, model, output, alpha_matting, to_library):
 @click.option('--operator', '-op', type=click.Choice(['tonal', 'literal', 'conceptual', 'ironic', 'trait', 'relational', 'scale', 'knowledge', 'auto']),
               default='tonal', help='Pairing operator (auto = agent picks).')
 @click.option('--theme', default='dark-editorial', help='Count-up theme for the scale operator (styles number/caption).')
-@click.option('--mode', '-m', type=click.Choice(['stock', 'library', 'generate']), default='stock',
-              help='Asset source: stock / your indexed library / Krea-2 generation.')
+@click.option('--mode', '-m', type=click.Choice(['stock', 'library', 'generate', 'both']), default='stock',
+              help='Asset source: stock / your indexed library / Krea-2 generation / both (stock+library).')
 @click.option('--period', default='', help='Story period (enables the anachronism gate).')
 @click.option('--locale', default='', help='Story locale (enables the wrong-culture gate).')
 @click.option('--literalness', '-l', type=float, default=0.25, help='0=abstract … 1=literal.')

@@ -30,7 +30,8 @@ def _tag(c: dict, accepted: bool) -> dict:
             "mood": c.get("mood"), "nonliteral": c.get("nonliteral"), "universal": c.get("universal"),
             "period_ok": c.get("period_ok"), "locale_ok": c.get("locale_ok"),
             "flags": c.get("flags") or "", "why": c.get("why") or "", "reject": c.get("reject") or "",
-            "metaphor": c.get("metaphor") or "", "accepted": accepted, "score": round(_score(c), 2)}
+            "metaphor": c.get("metaphor") or "", "accepted": accepted, "score": round(_score(c), 2),
+            "fallback": bool(c.get("fallback"))}
 
 
 def top5(result: dict) -> List[dict]:
@@ -45,6 +46,60 @@ def top5(result: dict) -> List[dict]:
     return cards[:5]
 
 
+_DECOMP_SYS = ("You are a video editor breaking one narration beat into the distinct b-roll SHOTS "
+               "it actually needs on screen. Reply STRICT JSON.")
+
+
+async def _decompose_beat(ctx: ScriptContext, beat, tempo, llm, *, extra: str = "") -> list:
+    """Beat → a list of concrete SHOTS ([{intent, operator}]). A beat often needs several assets
+    ('a marble bust' then 'a misty wine-dark sea'); the count follows the tempo cut-density."""
+    bt = tempo.get(beat.idx) if hasattr(tempo, "get") else None
+    n = max(1, min(4, (bt.shots if bt else 2)))
+    pace = ("DRIVE — punchy; distinct shots" if (bt and bt.energy >= 0.6)
+            else "BREATHE — few, lingering" if (bt and bt.energy <= 0.4) else "steady")
+    prompt = (f"{ctx.brief(max_chars=1000)}\n\nBEAT: {beat.title}\nNARRATION: {beat.narration[:420]}\n"
+              f"PACING: {pace} (~{n} shot(s))\n" + (f"DIRECTOR NOTE: {extra}\n" if extra else "") +
+              f"\nBreak THIS beat into up to {n} distinct visual SHOT(s) — the actual assets it needs, "
+              "in order. Different shots should show DIFFERENT things (don't repeat). For each shot pick "
+              "the best sourcing operator.\n"
+              'STRICT JSON: {"shots":[{"intent":"<concrete visual: what the shot literally shows>",'
+              '"operator":"literal|tonal|conceptual|ironic|trait|relational|scale|knowledge"}]}')
+    from .evoke_broll import _OP
+    raw = _extract_json(await llm.generate(prompt, _DECOMP_SYS))
+    shots = []
+    for s in (raw.get("shots") or [])[:n]:
+        if isinstance(s, dict) and s.get("intent"):
+            op = s.get("operator") if s.get("operator") in _OP else "auto"
+            shots.append({"intent": str(s["intent"])[:220], "operator": op})
+    return shots or [{"intent": beat.narration[:200] or beat.title, "operator": "auto"}]
+
+
+async def _acquire_shot(searcher, project: str, beat_idx: int, shot: dict, media, gen_style: str) -> dict:
+    """Search one shot (stock + library) and, if nothing clears the bar, GENERATE a Krea-2 fallback
+    (tagged so a human editor sees it's synthetic)."""
+    res = await searcher.search(shot["intent"], operator=shot["operator"], mode="both",
+                                project=project, beat=beat_idx, media=(media or ["image", "video"]),
+                                per_metaphor=3, max_metaphors=4)
+    cards = top5(res)
+    picked = (res.get("picks") or [{}])[0].get("url") if res.get("picks") else None
+    used_fallback = False
+    if not res.get("picks"):                          # nothing accepted → Krea-2 fallback
+        try:
+            g = await searcher.search(shot["intent"], operator="literal", mode="generate",
+                                      project=project, beat=beat_idx, media=["image"],
+                                      per_metaphor=1, max_metaphors=1, gen_style=gen_style)
+            gen = (g.get("picks") or g.get("considered") or [])
+            if gen:
+                fb = dict(gen[0]); fb["fallback"] = True
+                card = _tag(fb, True); card["fallback"] = True
+                cards = [card] + cards
+                picked = fb.get("url"); used_fallback = True
+        except Exception:
+            pass
+    return {"intent": shot["intent"], "operator": shot["operator"], "status": res.get("status"),
+            "top5": cards[:5], "picked": picked, "fallback": used_fallback}
+
+
 def _beat_row(ctx: ScriptContext, beat, tempo=None) -> dict:
     """The per-beat header (narration + tempo/rhythm) that every brain shares."""
     row = {"beat_idx": beat.idx, "title": beat.title, "timecode": beat.timecode,
@@ -57,30 +112,38 @@ def _beat_row(ctx: ScriptContext, beat, tempo=None) -> dict:
     return row
 
 
-# ---- brain: engine (per-beat auto, baseline) --------------------------------
+def _brain_summary(shot_results: list) -> dict:
+    return {"shots": shot_results,
+            "matched": sum(1 for s in shot_results if s.get("picked") and not s.get("fallback")),
+            "fallbacks": sum(1 for s in shot_results if s.get("fallback"))}
+
+
+# ---- brain: engine (per-beat decompose → per-shot acquire, baseline) -------------------------
 async def run_engine(project: str, *, media: Optional[List[str]] = None, beats: Optional[List[int]] = None,
                      progress: Callable[[float, str], None] = None) -> dict:
-    """Baseline brain: each beat's `auto` search independently, in-process, full per-beat context."""
+    """Baseline brain: decompose each beat into shots (per-beat context), acquire each (stock+library,
+    Krea-2 fallback). No cross-beat planning."""
     from .config import load_config
+    from .llm import create_text_llm
     from .evoke_broll import EvokeBrollSearch
     progress = progress or (lambda f, m: None)
     ctx = ScriptContext.load(project)
     tempo = _tempo_map(ctx)
+    llm = create_text_llm(load_config())
     searcher = EvokeBrollSearch(config=load_config())
     idxs = beats if beats is not None else [b.idx for b in ctx.beats]
     rows = []
     for n, i in enumerate(idxs):
         beat = ctx.beats[i]
-        progress(n / max(1, len(idxs)), f"beat {i}: {beat.title[:30]}…")
+        base = n / max(1, len(idxs))
+        progress(base, f"beat {i}: decompose…")
+        shots = await _decompose_beat(ctx, beat, tempo, llm)
+        shot_results = []
+        for si, shot in enumerate(shots):
+            progress(base, f"beat {i} shot {si + 1}/{len(shots)} [{shot['operator']}]…")
+            shot_results.append(await _acquire_shot(searcher, project, i, shot, media, "Fooocus Cinematic"))
         row = _beat_row(ctx, beat, tempo)
-        res = await searcher.search(beat.narration[:600] or beat.title, operator="auto", mode="stock",
-                                    project=project, beat=i, media=(media or ["image", "video"]),
-                                    per_metaphor=3, max_metaphors=5)
-        a = res.get("auto") or {}
-        row["results"]["engine"] = {"status": res.get("status"), "operator": a.get("chosen") or res.get("operator"),
-                                    "why": a.get("why") or "", "judge": (a.get("judge") or {}).get("score"),
-                                    "picked": (res.get("picks") or [{}])[0].get("url") if res.get("picks") else None,
-                                    "top5": top5(res)}
+        row["results"]["engine"] = _brain_summary(shot_results)
         rows.append(row)
     progress(1.0, "done")
     return {"project": project, "brains": ["engine"], "beats": rows}
@@ -142,17 +205,16 @@ async def run_plan(project: str, *, media: Optional[List[str]] = None, beats: Op
     rows = []
     for n, i in enumerate(idxs):
         beat = ctx.beats[i]
-        p = plan.get(i, {})
-        op = p.get("operator") if p.get("operator") in _OP else "auto"
-        note = p.get("note", "")
-        progress(0.05 + 0.9 * n / max(1, len(idxs)), f"beat {i} via {op}…")
+        note = plan.get(i, {}).get("note", "")        # cross-beat director note → guides decomposition
+        base = 0.05 + 0.9 * n / max(1, len(idxs))
+        progress(base, f"beat {i}: decompose (plan note)…")
+        shots = await _decompose_beat(ctx, beat, tempo, llm, extra=note)
+        shot_results = []
+        for si, shot in enumerate(shots):
+            progress(base, f"beat {i} shot {si + 1}/{len(shots)} [{shot['operator']}]…")
+            shot_results.append(await _acquire_shot(searcher, project, i, shot, media, "Fooocus Cinematic"))
         row = _beat_row(ctx, beat, tempo)
-        res = await searcher.search(beat.narration[:600] or beat.title, operator=op, mode="stock",
-                                    project=project, beat=i, extra_context=note,
-                                    media=(media or ["image", "video"]), per_metaphor=3, max_metaphors=5)
-        row["results"]["plan"] = {"status": res.get("status"), "operator": op, "why": note,
-                                  "picked": (res.get("picks") or [{}])[0].get("url") if res.get("picks") else None,
-                                  "top5": top5(res)}
+        row["results"]["plan"] = {**_brain_summary(shot_results), "why": note}
         rows.append(row)
     progress(1.0, "done")
     return {"project": project, "brains": ["plan"], "beats": rows}
@@ -192,9 +254,10 @@ def _card(c: dict) -> str:
              else _chip("per", c.get("period_ok")) + _chip("loc", c.get("locale_ok")))
     flag = f'<span class="ch" style="background:#7a2f2f">{_esc(c.get("flags"))}</span>' if c.get("flags") else ""
     rej = f'<span class="ch" style="background:#5a3a1a">{_esc(c.get("reject"))}</span>' if (c.get("reject") and not c.get("accepted")) else ""
+    fb = '<span class="ch" style="background:#7b2cbf">⚙ fallback (Krea-2)</span>' if c.get("fallback") else ""
     cls = "card accepted" if c.get("accepted") else "card"
     return (f'<div class="{cls}">{media}<div class="m">'
-            f'{_chip("fit", c.get("mood"))}{_chip("2nd", c.get("nonliteral"))}{place}{flag}{rej}'
+            f'{_chip("fit", c.get("mood"))}{_chip("2nd", c.get("nonliteral"))}{place}{flag}{rej}{fb}'
             f'<div class="why">{_esc((c.get("why") or c.get("reject") or "")[:80])}</div>'
             f'<div class="src">{_esc(c.get("source"))}'
             + (' · <b style="color:#95d5b2">picked</b>' if c.get("accepted") and c.get("_picked") else '')
@@ -217,18 +280,24 @@ def render_gallery(review: dict) -> str:
             if not r:
                 cols.append(f'<div class="brain"><div class="bh">{_esc(_BRAIN_LABEL.get(br, br))}</div><div class="empty">—</div></div>')
                 continue
-            picked = r.get("picked")
-            cards = ""
-            for c in r.get("top5", []):
-                c = dict(c); c["_picked"] = (c.get("url") == picked)
-                cards += _card(c)
-            st = r.get("status", "?")
-            meta = (f'<span class="st {"ok" if st == "MATCHED" else "no"}">{st}</span> '
-                    f'via <b>{_esc(r.get("operator"))}</b>'
-                    + (f' · judge {r.get("judge")}/10' if r.get("judge") is not None else '')
-                    + (f'<div class="rw">{_esc((r.get("why") or "")[:90])}</div>' if r.get("why") else ''))
-            cols.append(f'<div class="brain"><div class="bh">{_esc(_BRAIN_LABEL.get(br, br))} · {meta}</div>'
-                        f'<div class="grid">{cards or "<div class=empty>no candidates</div>"}</div></div>')
+            shots = r.get("shots") or []
+            summary = (f'{len(shots)} shot(s) · {r.get("matched", 0)} matched'
+                       + (f' · {r.get("fallbacks", 0)} fallback' if r.get("fallbacks") else '')
+                       + (f'<div class="rw">note: {_esc((r.get("why") or "")[:90])}</div>' if r.get("why") else ''))
+            shots_html = ""
+            for si, sh in enumerate(shots):
+                picked = sh.get("picked")
+                cards = ""
+                for c in sh.get("top5", []):
+                    c = dict(c); c["_picked"] = (c.get("url") == picked)
+                    cards += _card(c)
+                st = sh.get("status", "?")
+                fbtag = ' <span class="ch" style="background:#7b2cbf">fallback</span>' if sh.get("fallback") else ""
+                shots_html += (f'<div class="shot"><div class="shot-h">◆ shot {si + 1} '
+                               f'<span class="st {"ok" if st == "MATCHED" else "no"}">{st}</span> '
+                               f'[{_esc(sh.get("operator"))}]{fbtag}<div class="shot-i">{_esc((sh.get("intent") or "")[:110])}</div></div>'
+                               f'<div class="grid">{cards or "<div class=empty>no candidates</div>"}</div></div>')
+            cols.append(f'<div class="brain"><div class="bh">{_esc(_BRAIN_LABEL.get(br, br))} · {summary}</div>{shots_html}</div>')
         rows.append(f'<div class="beat">{head}<div class="brains">{"".join(cols)}</div></div>')
 
     return f'''<!doctype html><html><head><meta charset="utf-8">
@@ -242,6 +311,8 @@ def render_gallery(review: dict) -> str:
 .brain{{background:#131318;padding:10px}}.bh{{font-size:12px;color:#c7c7d0;margin-bottom:8px;font-weight:600}}.rw{{font-weight:400;color:#8a8a92;margin-top:3px;font-size:11px}}
 .st{{padding:1px 6px;border-radius:4px;font-size:11px}}.st.ok{{background:#1f7a4d}}.st.no{{background:#7a2f2f}}
 .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}}
+.shot{{margin:8px 0;padding:7px;border:1px dashed #2e2e38;border-radius:7px}}
+.shot-h{{font-size:11px;color:#c7c7d0;margin-bottom:6px}}.shot-i{{color:#9a9aa2;font-weight:400;margin-top:2px}}
 .card{{border:1px solid #26262e;border-radius:7px;overflow:hidden;background:#000}}.card.accepted{{border-color:#2d6a4f}}
 .card img{{width:100%;height:78px;object-fit:cover;display:block}}.noimg{{height:78px;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px}}
 .m{{padding:5px 6px;background:#131318}}.ch{{display:inline-block;font-size:9px;padding:1px 5px;border-radius:4px;margin:1px 2px 0 0;color:#fff}}
@@ -280,14 +351,17 @@ async def run_agent(project: str, *, agent: str = "nolan4", media: Optional[List
     prompt = (
         f"Acquire b-roll for the video-essay project '{project}' BEAT BY BEAT. First read the full "
         f"context: projects/{project}/script.md, projects/{project}/scriptgen/beatmap.md, "
-        f"projects/{project}/scriptgen/facts.md, and projects/{project}/scene_plan.json (note each "
-        f"scene's energy/transition/motion_speed — that's the intended rhythm). Reason across the "
-        f"WHOLE arc: do NOT repeat imagery between beats, keep any recurring motif deliberate, and "
-        f"match each beat's energy (drive→punchy/graphic, breathe→one lingering asset).\n\n"
-        f"For EACH of these beats, pick the best operator and run the search:\n{beat_list}\n\n"
-        f"Run (from the repo root) per beat:\n"
-        f"  D:\\env\\nolan\\python.exe -X utf8 -m nolan broll \"<the beat's key line>\" -op <operator> "
-        f"-p {project} --beat <idx> -m stock {mset} -o projects/{project}/.agent_broll/beat_<idx>.json\n"
+        f"projects/{project}/scriptgen/facts.md, and projects/{project}/scene_plan.json (each scene's "
+        f"energy/transition/motion_speed = the intended rhythm). Reason across the WHOLE arc: do NOT "
+        f"repeat imagery between beats, keep any recurring motif deliberate, match each beat's energy.\n\n"
+        f"For EACH beat below, DECOMPOSE it into the distinct SHOTS it needs on screen — a beat often "
+        f"needs several assets (e.g. 'a marble bust of Homer' then 'a misty wine-dark sea'); ~1–4 shots "
+        f"by pacing. For EACH shot run (from the repo root):\n"
+        f"  D:\\env\\nolan\\python.exe -X utf8 -m nolan broll \"<the shot's concrete visual>\" -op <operator> "
+        f"-p {project} --beat <idx> -m both {mset} -o projects/{project}/.agent_broll/beat_<idx>_shot_<j>.json\n"
+        f"Then write projects/{project}/.agent_broll/beat_<idx>.json as a manifest:\n"
+        f'  {{"shots":[{{"intent":"<shot visual>","operator":"<op>","file":"beat_<idx>_shot_<j>.json"}}, …]}}\n'
+        f"Beats:\n{beat_list}\n"
         f"Operators: literal, tonal, conceptual, ironic, trait, relational, scale, knowledge, auto.\n"
         f"Do ALL {len(idxs)} beats (idx: {', '.join(map(str, idxs))}). Reply 'ASSET REVIEW DONE' when finished.")
     progress(0.02, f"dispatching to {agent}…")
@@ -304,18 +378,30 @@ async def run_agent(project: str, *, agent: str = "nolan4", media: Optional[List
     for i in idxs:
         beat = ctx.beats[i]
         row = _beat_row(ctx, beat, tempo)
-        f = outdir / f"beat_{i}.json"
-        res = {}
-        if f.exists():
+        manifest = outdir / f"beat_{i}.json"
+        shot_results = []
+        if manifest.exists():
             try:
-                res = json.loads(f.read_text(encoding="utf-8"))
+                man = json.loads(manifest.read_text(encoding="utf-8"))
             except Exception:
+                man = {}
+            for sh in (man.get("shots") or []):
                 res = {}
-        row["results"]["agent"] = {
-            "status": res.get("status", "PENDING"), "operator": res.get("operator"),
-            "why": (res.get("auto") or {}).get("why") or res.get("goal", ""),
-            "picked": (res.get("picks") or [{}])[0].get("url") if res.get("picks") else None,
-            "top5": top5(res) if res else []}
+                fp = outdir / (sh.get("file") or "")
+                if fp.exists():
+                    try:
+                        res = json.loads(fp.read_text(encoding="utf-8"))
+                    except Exception:
+                        res = {}
+                shot_results.append({
+                    "intent": sh.get("intent", ""), "operator": sh.get("operator") or res.get("operator"),
+                    "status": res.get("status", "PENDING"),
+                    "picked": (res.get("picks") or [{}])[0].get("url") if res.get("picks") else None,
+                    "fallback": False, "top5": top5(res) if res else []})
+        if not shot_results:
+            shot_results = [{"intent": "(no output)", "operator": None, "status": "PENDING",
+                             "picked": None, "fallback": False, "top5": []}]
+        row["results"]["agent"] = _brain_summary(shot_results)
         rows.append(row)
     progress(1.0, "done")
     return {"project": project, "brains": ["agent"], "beats": rows}
