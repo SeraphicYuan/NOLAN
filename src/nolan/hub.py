@@ -434,8 +434,17 @@ def create_hub_app(
             media=(med if isinstance(med, list) and med else None),
             project=(body.get("project") or None),
             gen_style=(body.get("gen_style") or "Fooocus Cinematic"),
+            beat=(body.get("beat") if isinstance(body.get("beat"), int) else None),
         )
         return {"job_id": job.id, "type": "evoke-broll"}
+
+    @app.get("/api/broll/projects")
+    async def api_broll_projects():
+        """Projects with a script → selectable as ScriptContext on /broll (with their beats)."""
+        from nolan.webui import operations
+        import asyncio as _a
+        projects = await _a.get_event_loop().run_in_executor(None, operations.list_context_projects)
+        return {"projects": projects}
 
     @app.post("/api/broll/preview")
     async def api_broll_preview(body: dict = Body(...)):
@@ -878,6 +887,8 @@ def create_hub_app(
                 max_results=int(body.get("max_results", 4)),
                 use_vision=bool(body.get("use_vision", False)),
                 semantic=bool(body.get("semantic", True)),
+                knowledge=bool(body.get("knowledge", False)),
+                knowledge_kind=str(body.get("knowledge_kind", "any")),
             )
             return {"job_id": job.id, "type": "match"}
         job = job_manager.start(
@@ -2926,11 +2937,12 @@ def create_hub_app(
             return {"slug": slug, "path": str(path.relative_to(project_path))}
 
         @app.post("/api/agents/{slug}/run")
-        async def agents_run(slug: str):
+        async def agents_run(slug: str, body: dict = Body(default={})):
             project_path = projects_dir / slug
             if not project_path.exists():
                 raise HTTPException(status_code=404, detail="project not found")
-            return agents_dashboard.trigger_orchestrate(project_path, repo_root)
+            agent = (body.get("agent") or "").strip() or None   # dispatch to a chosen NOLAN agent, else run locally
+            return agents_dashboard.trigger_orchestrate(project_path, repo_root, agent=agent)
 
         @app.post("/api/agents/{slug}/refine")
         async def agents_refine(slug: str, body: dict = Body(...)):

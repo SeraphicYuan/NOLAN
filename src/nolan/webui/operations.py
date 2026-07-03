@@ -253,17 +253,42 @@ async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: 
                       period: str = "", locale: str = "", literalness: float = 0.25,
                       mood: Optional[str] = None, sources: Optional[list] = None,
                       project: Optional[str] = None, media: Optional[list] = None,
-                      gen_style: str = "Fooocus Cinematic"):
-    """Narrative→asset pairing search (tonal | conceptual …) — stock / library / generate. matched | unmatched."""
+                      gen_style: str = "Fooocus Cinematic", beat: Optional[int] = None):
+    """Narrative→asset pairing search (tonal | conceptual | knowledge …) — stock / library / generate.
+    When `project` (+ optional `beat`) is given, the search runs WITH whole-script ScriptContext."""
     from nolan.evoke_broll import EvokeBrollSearch
 
     searcher = EvokeBrollSearch(config=config, progress=lambda f, m: job.set_progress(min(0.99, f), m))
     result = await searcher.search(line, operator=operator, mode=mode, period=period, locale=locale,
                                    literalness=float(literalness), mood=(mood or None),
                                    sources=(sources or None), project=(project or None),
-                                   media=(media or None), gen_style=(gen_style or "Fooocus Cinematic"))
+                                   media=(media or None), gen_style=(gen_style or "Fooocus Cinematic"),
+                                   beat=beat)
     job.set_progress(1.0, f"{result['status']} — {len(result['picks'])} clip(s)")
     return result
+
+
+def list_context_projects() -> list:
+    """Projects that carry a script (script.md) → usable as ScriptContext on /broll.
+    Returns [{slug, subject, beats:[{idx,title,timecode}]}] for the context dropdowns."""
+    from nolan.script_context import ScriptContext
+    out = []
+    root = Path("projects")
+    if not root.exists():
+        return out
+    for d in sorted(root.iterdir()):
+        if not d.is_dir() or not (d / "script.md").exists():
+            continue
+        try:
+            ctx = ScriptContext.load(d)
+        except Exception:
+            continue
+        if not ctx.beats:
+            continue
+        out.append({"slug": ctx.slug, "subject": ctx.subject or ctx.slug,
+                    "beats": [{"idx": b.idx, "title": b.title, "timecode": b.timecode,
+                               "narration": b.narration[:600]} for b in ctx.beats]})
+    return out
 
 
 async def _local_still(src: str, prev):
@@ -349,7 +374,8 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
                          scorer_model: str = "qwen/qwen3-vl-8b-instruct",
                          use_library: bool = True, library_gate: int = 5,
                          use_vision: bool = False, semantic: bool = True,
-                         sim_gate: float = 0.30):
+                         sim_gate: float = 0.30, knowledge: bool = False,
+                         knowledge_kind: str = "any"):
     """Video-first, multi-source b-roll matcher with query-variant fallback.
 
     Speed-optimized: (1) scenes processed concurrently, (2) candidates cheaply
@@ -422,6 +448,25 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
                 job.log(f"semantic match unavailable, falling back: {e}")
                 ingest_lib = None
 
+        # Knowledge-driven lead queries: one whole-script-aware pass names specific,
+        # era-correct assets per beat (see nolan.knowledge_query), tried FIRST in the
+        # external search. Built once, keyed by scene id; empty map = feature off.
+        lead_map = {}
+        if knowledge:
+            try:
+                from nolan.script_context import ScriptContext
+                from nolan.knowledge_query import build_scene_lead_map
+                from nolan.llm import create_text_llm
+                kctx = ScriptContext.load(project_name)
+                if kctx.beats:
+                    lead_map = build_scene_lead_map(kctx, broll, llm=create_text_llm(config),
+                                                    kind=knowledge_kind, log=job.log)
+                    job.log(f"knowledge queries ready for {sum(1 for v in lead_map.values() if v)} scenes")
+                else:
+                    job.log("knowledge mode: no script beats found, skipping")
+            except Exception as e:
+                job.log(f"knowledge mode unavailable: {e}")
+
         state = {"done": 0, "matched": 0, "from_library": 0}
         lock = threading.Lock()
         lib_lock = threading.Lock()
@@ -483,7 +528,7 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
                 scene, client=client, scorer=scorer, vid_sources=vid_sources,
                 out_dir=out_dir, project_root=plan_path.parent, prefer_video=prefer_video,
                 max_results=max_results, score_cap=score_cap, gate=4,
-                use_vision=use_vision, log=job.log)
+                use_vision=use_vision, lead_queries=lead_map.get(scene.id), log=job.log)
             ok = bool(kind)
             with lock:
                 state["done"] += 1
@@ -500,7 +545,8 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
             kind = semantic_match_for_scene(
                 scene, libs=libs, client=client, scorer=scorer, vid_sources=vid_sources,
                 out_dir=out_dir, project_root=plan_path.parent, ingest_lib=ingest_lib,
-                max_results=max_results, score_cap=score_cap, sim_gate=sim_gate, log=job.log)
+                max_results=max_results, score_cap=score_cap, sim_gate=sim_gate,
+                lead_queries=lead_map.get(scene.id), log=job.log)
             state["done"] += 1
             if kind:
                 state["matched"] += 1
