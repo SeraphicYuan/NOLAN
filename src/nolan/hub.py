@@ -1203,40 +1203,71 @@ def create_hub_app(
         async def library_list_videos(
             project: Optional[str] = Query(default=None),
         ):
-            """List all indexed videos."""
+            """List all indexed videos, each with its full (many-to-many) project list."""
             with sqlite3.connect(db_path) as conn:
+                # resolve a project filter (slug or id) to an id, then filter via the join table
+                pid = None
                 if project:
-                    cursor = conn.execute("""
-                        SELECT v.path, v.duration, v.indexed_at, v.has_transcript,
-                               COUNT(s.id) as segment_count, v.project_id,
-                               p.slug as project_slug, p.name as project_name
-                        FROM videos v
-                        LEFT JOIN segments s ON v.id = s.video_id
-                        LEFT JOIN projects p ON v.project_id = p.id
-                        WHERE p.slug = ? OR p.id = ?
-                        GROUP BY v.id ORDER BY v.indexed_at DESC
-                    """, (project, project))
-                else:
-                    cursor = conn.execute("""
-                        SELECT v.path, v.duration, v.indexed_at, v.has_transcript,
-                               COUNT(s.id) as segment_count, v.project_id,
-                               p.slug as project_slug, p.name as project_name
-                        FROM videos v
-                        LEFT JOIN segments s ON v.id = s.video_id
-                        LEFT JOIN projects p ON v.project_id = p.id
-                        GROUP BY v.id ORDER BY v.indexed_at DESC
-                    """)
+                    prow = conn.execute("SELECT id FROM projects WHERE slug = ? OR id = ?",
+                                        (project, project)).fetchone()
+                    pid = prow[0] if prow else project
+                # video → its projects (join table ∪ legacy videos.project_id)
+                vp = {}
+                for vidid, ppid, pslug, pname in conn.execute("""
+                        SELECT vp.video_id, p.id, p.slug, p.name FROM video_projects vp
+                        JOIN projects p ON p.id = vp.project_id"""):
+                    vp.setdefault(vidid, []).append({"id": ppid, "slug": pslug, "name": pname})
+                for vidid, ppid, pslug, pname in conn.execute("""
+                        SELECT v.id, p.id, p.slug, p.name FROM videos v
+                        JOIN projects p ON p.id = v.project_id WHERE v.project_id IS NOT NULL"""):
+                    lst = vp.setdefault(vidid, [])
+                    if not any(x["id"] == ppid for x in lst):
+                        lst.append({"id": ppid, "slug": pslug, "name": pname})
+                where = ("WHERE v.id IN (SELECT video_id FROM video_projects WHERE project_id = ?) "
+                         "OR v.project_id = ?") if pid else ""
+                params = (pid, pid) if pid else ()
+                cursor = conn.execute(f"""
+                    SELECT v.id, v.path, v.duration, v.indexed_at, v.has_transcript, COUNT(s.id)
+                    FROM videos v LEFT JOIN segments s ON v.id = s.video_id
+                    {where}
+                    GROUP BY v.id ORDER BY v.indexed_at DESC
+                """, params)
                 videos = []
                 for row in cursor.fetchall():
-                    video_path = Path(row[0])
+                    projs = vp.get(row[0], [])
                     videos.append({
-                        "path": row[0], "name": video_path.name,
-                        "duration": row[1], "duration_formatted": _format_duration(row[1]),
-                        "indexed_at": row[2], "has_transcript": bool(row[3]),
-                        "segment_count": row[4], "project_id": row[5],
-                        "project_slug": row[6], "project_name": row[7],
+                        "id": row[0], "path": row[1], "name": Path(row[1]).name,
+                        "duration": row[2], "duration_formatted": _format_duration(row[2]),
+                        "indexed_at": row[3], "has_transcript": bool(row[4]),
+                        "segment_count": row[5], "projects": projs,
+                        "project_slug": projs[0]["slug"] if projs else None,
+                        "project_name": projs[0]["name"] if projs else None,
                     })
-                return {"videos": videos, "total": len(videos), "project_filter": project}
+                # all projects (for the add-to-project dropdown)
+                all_projects = [{"id": r[0], "slug": r[1], "name": r[2]}
+                                for r in conn.execute("SELECT id, slug, name FROM projects ORDER BY name")]
+                return {"videos": videos, "total": len(videos), "project_filter": project,
+                        "all_projects": all_projects}
+
+        @app.post("/library/api/videos/{video_path:path}/projects")
+        async def library_video_projects(video_path: str, body: dict = Body(...)):
+            """Add/remove a video's project association (many-to-many, no re-embed)."""
+            from nolan.indexer import VideoIndex
+            action = (body.get("action") or "add").strip()
+            project = (body.get("project") or "").strip()
+            if not project:
+                raise HTTPException(status_code=400, detail="project is required")
+            idx = VideoIndex(db_path)
+            vid = idx.get_video_id_by_path(video_path)
+            if vid is None:
+                raise HTTPException(status_code=404, detail="video not found")
+            ppid = idx.resolve_project(project) or project
+            if action == "remove":
+                idx.remove_video_from_project(vid, ppid)
+            else:
+                idx.add_video_to_project(vid, ppid)
+            return {"video_id": vid, "action": action, "project": ppid,
+                    "projects": idx.get_video_projects(vid)}
 
         @app.get("/library/api/videos/{video_path:path}/segments")
         async def library_get_segments(video_path: str):

@@ -254,6 +254,12 @@
             border-left: 3px solid var(--accent);
         }
 
+        .video-projects { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+        .vp-chip { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #2a3a4a; color: #a8dadc;
+            cursor: pointer; border: 1px solid transparent; }
+        .vp-chip:hover { border-color: #d8a0a0; color: #ffccd5; }
+        .vp-add { font-size: 10px; padding: 1px 4px; background: #1a1a1f; color: #9a9aa2; border: 1px solid #333;
+            border-radius: 6px; cursor: pointer; }
         .video-item-name {
             font-size: 14px;
             font-weight: 550;
@@ -1099,6 +1105,7 @@
                         <button onclick="embedAll(this)" style="cursor:pointer;white-space:nowrap;">Embed all</button>
                     </div>` : '';
 
+                window._allProjects = data.all_projects || window._allProjects || [];
                 list.innerHTML = banner + data.videos.map((v, i) => {
                     const st = stateByPath[v.path] || {};
                     const searchable = !!st.searchable;
@@ -1109,6 +1116,9 @@
                     const embedBtn = (st.state && st.state !== 'synced')
                         ? `<button class="embed-btn" onclick="event.stopPropagation(); embedVideo('${encodeURIComponent(v.path)}', this)" style="cursor:pointer;font-size:11px;padding:1px 6px;">Embed</button>`
                         : '';
+                    const chips = (v.projects || []).map(p =>
+                        `<span class="vp-chip" onclick="event.stopPropagation();vpRemove('${encodeURIComponent(v.path)}','${p.slug}')" title="click to remove from ${escapeHtml(p.name)}">${escapeHtml(p.slug)} &times;</span>`).join('');
+                    const opts = (window._allProjects || []).map(p => `<option value="${p.slug}">${escapeHtml(p.name)}</option>`).join('');
                     return `
                     <div class="video-item" data-index="${i}" data-path="${encodeURIComponent(v.path)}">
                         <div class="video-item-name">${escapeHtml(v.name)}</div>
@@ -1118,10 +1128,11 @@
                             <span style="color:${color};" title="${st.state || ''} (${st.embedded || 0}/${v.segment_count} embedded)">${label}</span>
                             ${embedBtn}
                         </div>
+                        <div class="video-projects">${chips}<select class="vp-add" onclick="event.stopPropagation()" onchange="vpAdd('${encodeURIComponent(v.path)}', this)"><option value="">+ project</option>${opts}</select></div>
                     </div>`;
                 }).join('');
 
-                // Store videos for click handler
+                // Store videos + projects for click handler + the add-to-project control
                 window._videos = data.videos;
 
                 // Add click handlers
@@ -1155,6 +1166,26 @@
         }
 
         // Manually embed ONE video so it becomes semantically searchable.
+        // Add/remove a video's project association (many-to-many, no re-embed).
+        async function vpAdd(encPath, sel) {
+            const project = sel.value; if (!project) return;
+            sel.value = '';
+            try {
+                await fetch(`/library/api/videos/${encPath}/projects`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project, action: 'add' }) });
+                loadVideos();
+            } catch (e) { alert('add failed: ' + e.message); }
+        }
+        async function vpRemove(encPath, slug) {
+            try {
+                await fetch(`/library/api/videos/${encPath}/projects`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: slug, action: 'remove' }) });
+                loadVideos();
+            } catch (e) { alert('remove failed: ' + e.message); }
+        }
+
         async function embedVideo(encPath, btn) {
             btn.disabled = true; btn.textContent = 'Embedding…';
             try {

@@ -35,6 +35,7 @@ class SemanticSearchResult:
     objects: List[str] = None
     cluster_id: Optional[int] = None
     segment_id: Optional[int] = None
+    video_id: Optional[int] = None
 
     def __post_init__(self):
         if self.people is None:
@@ -552,33 +553,31 @@ class VectorSearch:
         """
         results = []
 
-        # Build ChromaDB where filter
-        where_filter = self._build_where_filter(project_id, people_filter, location_filter)
+        # Project scope comes from the many-to-many join table (NOT the embedded metadata), so a
+        # video's project membership can change with no re-embed. We resolve the project's video-id
+        # set and POST-FILTER; other filters (people/location) still use the ChromaDB where clause.
+        allowed_ids = None
+        if project_id and getattr(self, "index", None) is not None:
+            try:
+                allowed_ids = self.index.get_project_video_ids(project_id)
+            except Exception:
+                allowed_ids = None
+        where_filter = self._build_where_filter(None, people_filter, location_filter)
+        # Fetch extra when post-filtering so enough in-scope results survive.
+        fetch = limit * 6 if allowed_ids is not None else limit
 
         # Add query prefix for BGE model (improves retrieval quality)
         query_text = QUERY_PREFIX + query
 
-        # Search segments
         if search_level in ("segments", "both"):
-            segment_results = self._search_collection(
-                self._get_segments_collection(),
-                query_text,
-                limit,
-                where_filter,
-                "segment"
-            )
-            results.extend(segment_results)
-
-        # Search clusters
+            results.extend(self._search_collection(
+                self._get_segments_collection(), query_text, fetch, where_filter, "segment"))
         if search_level in ("clusters", "both"):
-            cluster_results = self._search_collection(
-                self._get_clusters_collection(),
-                query_text,
-                limit,
-                where_filter,
-                "cluster"
-            )
-            results.extend(cluster_results)
+            results.extend(self._search_collection(
+                self._get_clusters_collection(), query_text, fetch, where_filter, "cluster"))
+
+        if allowed_ids is not None:
+            results = [r for r in results if r.video_id in allowed_ids]
 
         # Sort by score and limit
         results.sort(key=lambda r: r.score, reverse=True)
@@ -672,6 +671,7 @@ class VectorSearch:
                 score=score,
                 content_type=content_type,
                 video_path=metadata.get("video_path", ""),
+                video_id=metadata.get("video_id"),
                 timestamp_start=metadata.get("timestamp_start", 0),
                 timestamp_end=metadata.get("timestamp_end", 0),
                 description=metadata.get("description", ""),

@@ -417,17 +417,24 @@ class EvokeBrollSearch:
             cands = await self._retrieve_library(metaphors, per_metaphor, project)
         elif mode == "generate":
             cands = await self._retrieve_generate(metaphors, gen_style)
+        elif mode == "both":                          # stock + indexed library in ONE pool
+            stock_c = await self._retrieve_stock(metaphors, per_metaphor, sources, media)
+            lib_c = await self._retrieve_library(metaphors, per_metaphor, project)
+            cands = stock_c + lib_c
         else:
             cands = await self._retrieve_stock(metaphors, per_metaphor, sources, media)
         pool_n = len(cands)
         if not cands:
             return {"picks": [], "considered": [], "pool": 0, "kept": 0, "filtered": 0, "reason": "no footage found"}
 
-        if mode == "library":
-            await self._score_library(cands, goal, line, period, locale, operator)
-        else:
-            scores = await asyncio.gather(*[self._score(c, goal, line, period, locale, operator) for c in cands])
-            for c, s in zip(cands, scores):
+        # library candidates are scored by their text description; stock by vision on the frame.
+        lib_cands = [c for c in cands if c.get("kind") == "library"]
+        vis_cands = [c for c in cands if c.get("kind") != "library"]
+        if lib_cands:
+            await self._score_library(lib_cands, goal, line, period, locale, operator)
+        if vis_cands:
+            scores = await asyncio.gather(*[self._score(c, goal, line, period, locale, operator) for c in vis_cands])
+            for c, s in zip(vis_cands, scores):
                 c.update(s)
         scored = [c for c in cands if c.get("mood") is not None]
         kept = [c for c in scored if not self._anachronistic(c, gated)]
@@ -475,7 +482,7 @@ class EvokeBrollSearch:
                 sources=sources, project=project, media=media, gen_style=gen_style, beat=beat,
                 max_metaphors=max_metaphors, per_metaphor=per_metaphor)
         operator = operator if operator in _OP else "tonal"
-        mode = mode if mode in ("stock", "library", "generate") else "stock"
+        mode = mode if mode in ("stock", "library", "generate", "both") else "stock"
         media = [m for m in (media or ["video", "image"]) if m in ("video", "image")] or ["video", "image"]
         self._sem = asyncio.Semaphore(4)              # bind to the running loop
 
@@ -793,9 +800,12 @@ class EvokeBrollSearch:
                                        "poster": h.preview_image_url or h.thumbnail_url, "metaphor": m}
         return list(pool.values())[:12]
 
-    async def _retrieve_library(self, metaphors, per_metaphor, project):
+    async def _retrieve_library(self, metaphors, per_metaphor, project, *, scope_project: bool = True):
         vs = self._vector()
-        pid = self._index.resolve_project(project) if (project and self._index) else None
+        # Project-scoped by default: VectorSearch post-filters to this project's videos (the
+        # many-to-many association — add videos to a project with no re-embed). scope_project=False
+        # searches the whole indexed library.
+        pid = (self._index.resolve_project(project) if (project and self._index) else None) if scope_project else None
         pool: dict = {}
         for m in metaphors:
             hits = await asyncio.to_thread(vs.search, m, per_metaphor, "segments", pid)

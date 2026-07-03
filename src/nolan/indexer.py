@@ -144,6 +144,23 @@ class VideoIndex:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_videos_fingerprint ON videos(fingerprint)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_videos_project ON videos(project_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug)")
+            # Many-to-many video↔project association (decoupled from the embeddings, so adding a
+            # video to a project is one row and needs NO re-embed; a video can be in many projects).
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS video_projects (
+                    video_id INTEGER NOT NULL,
+                    project_id TEXT NOT NULL,
+                    added_at TEXT,
+                    PRIMARY KEY (video_id, project_id)
+                )
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_video_projects_project ON video_projects(project_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_video_projects_video ON video_projects(video_id)")
+            # Backfill from the legacy single videos.project_id (one-time, idempotent).
+            conn.execute("""
+                INSERT OR IGNORE INTO video_projects (video_id, project_id, added_at)
+                SELECT id, project_id, indexed_at FROM videos WHERE project_id IS NOT NULL AND project_id != ''
+            """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS frame_cache (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -428,6 +445,14 @@ class VideoIndex:
                 """, (fingerprint, path, duration, checksum, datetime.now().isoformat(), project_id))
                 video_id = cursor.lastrowid
 
+            # Also record the association in the many-to-many join table (the source of truth for
+            # search scope). videos.project_id is kept for back-compat; the join table is additive,
+            # so ingesting the same video under another project just adds a row (no re-embed).
+            if project_id:
+                active_conn.execute(
+                    "INSERT OR IGNORE INTO video_projects (video_id, project_id, added_at) VALUES (?, ?, ?)",
+                    (video_id, project_id, datetime.now().isoformat()))
+
             if conn is None:
                 active_conn.commit()
             return video_id
@@ -491,22 +516,54 @@ class VideoIndex:
             row = cursor.fetchone()
             return row[0] if row else None
 
-    def get_videos_by_project(self, project_id: str) -> List[Dict[str, Any]]:
-        """Get all videos belonging to a project.
+    # ---- video ↔ project association (many-to-many, no re-embed) ----
+    def add_video_to_project(self, video_id: int, project_id: str) -> bool:
+        """Associate a video with a project (idempotent). No re-embed — the project scope is a
+        pure SQL fact that VectorSearch post-filters on. Returns True if newly added."""
+        from datetime import datetime
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO video_projects (video_id, project_id, added_at) VALUES (?, ?, ?)",
+                (video_id, project_id, datetime.now().isoformat()))
+            return cur.rowcount > 0
 
-        Args:
-            project_id: Project ID to filter by.
+    def remove_video_from_project(self, video_id: int, project_id: str) -> bool:
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.execute(
+                "DELETE FROM video_projects WHERE video_id = ? AND project_id = ?", (video_id, project_id))
+            return cur.rowcount > 0
+
+    def get_project_video_ids(self, project_id: str) -> set:
+        """The set of video_ids in a project (join table + legacy videos.project_id)."""
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute("SELECT video_id FROM video_projects WHERE project_id = ?", (project_id,)).fetchall()
+            legacy = conn.execute("SELECT id FROM videos WHERE project_id = ?", (project_id,)).fetchall()
+        return {r[0] for r in rows} | {r[0] for r in legacy}
+
+    def get_video_projects(self, video_id: int) -> List[Dict[str, Any]]:
+        """Projects a video belongs to (join table ∪ legacy), as project dicts."""
+        with sqlite3.connect(self.db_path) as conn:
+            ids = {r[0] for r in conn.execute(
+                "SELECT project_id FROM video_projects WHERE video_id = ?", (video_id,)).fetchall()}
+            legacy = conn.execute("SELECT project_id FROM videos WHERE id = ?", (video_id,)).fetchone()
+        if legacy and legacy[0]:
+            ids.add(legacy[0])
+        return [p for p in (self.get_project(pid) for pid in ids) if p]
+
+    def get_videos_by_project(self, project_id: str) -> List[Dict[str, Any]]:
+        """Get all videos belonging to a project (via the many-to-many join table ∪ legacy).
 
         Returns:
             List of video dictionaries with id, path, duration, indexed_at.
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("""
-                SELECT id, path, duration, indexed_at, fingerprint
-                FROM videos
-                WHERE project_id = ?
-                ORDER BY indexed_at DESC
-            """, (project_id,))
+                SELECT DISTINCT v.id, v.path, v.duration, v.indexed_at, v.fingerprint
+                FROM videos v
+                WHERE v.id IN (SELECT video_id FROM video_projects WHERE project_id = ?)
+                   OR v.project_id = ?
+                ORDER BY v.indexed_at DESC
+            """, (project_id, project_id))
             return [
                 {
                     "id": row[0],
