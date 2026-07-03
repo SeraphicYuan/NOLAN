@@ -710,7 +710,7 @@
                      onclick="selectEffect('${effect.id}')">
                     <div class="effect-preview">
                         ${effect.preview
-                            ? `<video src="/showcase/preview/${effect.preview}" muted loop onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>`
+                            ? `<video src="/showcase/preview/${effect.preview.split('/').pop()}" muted loop onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>`
                             : getEffectIcon(effect.category)
                         }
                     </div>
@@ -770,7 +770,7 @@
             content.innerHTML = `
                 <div class="detail-preview">
                     ${selectedEffect.preview
-                        ? `<video src="/showcase/preview/${selectedEffect.preview}" muted loop autoplay></video>`
+                        ? `<video src="/showcase/preview/${selectedEffect.preview.split('/').pop()}" muted loop autoplay></video>`
                         : `<span style="font-size: 64px">${getEffectIcon(selectedEffect.category)}</span>`
                     }
                 </div>

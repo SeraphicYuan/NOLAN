@@ -8,6 +8,21 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Showcase previews wired (2026-07-03)
+
+**What changed.** The `/showcase` page ("Motion Effects Showcase") was fully built and wired but
+every thumbnail was blank: (1) the effect card `<video>` src double-prepended the `/previews/`
+path (`/showcase/preview//previews/x.mp4` → 404), and (2) no preview clips had ever been rendered
+(`render-service/public/previews/` was empty). Fixed the URL by stripping to the basename
+(`effect.preview.split('/').pop()`), and added `scripts/gen_showcase_previews.py` which batch-renders
+a short clip for every effect from the render service (`:3010`) using each effect's `defaults`,
+copying the output into `public/previews/<name>.mp4`.
+
+**Usage.** `D:\env\nolan\python.exe -X utf8 scripts/gen_showcase_previews.py` (optionally pass
+effect ids to render a subset). **Result:** 52/53 effects render (only `audio-waveform` fails —
+needs an audio asset). Thumbnails load and animate on hover; verified via a real-browser screenshot
+of `/showcase`.
+
 ## Script v3 — style-fidelity upgrade: craft-vs-clothing + voice pass (2026-07-02)
 
 **What changed.** The v3 pipeline honored the style guide's *skeleton* (structure) but was losing its
