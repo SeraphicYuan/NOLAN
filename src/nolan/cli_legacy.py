@@ -5189,7 +5189,8 @@ def _broll_render(r, out_dir, theme='dark-editorial'):
 @click.option('--beats', default=None, help='Comma list of beat indices (default: all beats).')
 @click.option('--media', multiple=True, type=click.Choice(['image', 'video']), help='Asset types (default image).')
 @click.option('--agent', default='nolan4', help='NOLAN tmux agent for the agent brain.')
-def acquire_review(project, brains, beats, media, agent):
+@click.option('--add', is_flag=True, help='Merge into an existing review (do not clear other brains).')
+def acquire_review(project, brains, beats, media, agent, add):
     """Beat-by-beat asset acquisition with full project context — saves the TOP-5 + tags per beat
     (regardless of match) and renders a review gallery. Compare brains: engine / plan / agent.
 
@@ -5200,7 +5201,7 @@ def acquire_review(project, brains, beats, media, agent):
     br = tuple(b.strip() for b in brains.split(',') if b.strip())
     bt = [int(x) for x in beats.split(',')] if beats else None
     r = asyncio.run(run_review(project, brains=br, beats=bt, media=(list(media) or None),
-                               agent=agent, progress=lambda f, m: click.echo(f'[{f:.2f}] {m}')))
+                               agent=agent, fresh=(not add), progress=lambda f, m: click.echo(f'[{f:.2f}] {m}')))
     click.echo(f"\ndone — {len(r['beats'])} beats · brains {r['brains']}")
     click.echo(f"gallery: /broll-gen/asset_review_{project}.html  (also projects/{project}/asset_review.json)")
 
