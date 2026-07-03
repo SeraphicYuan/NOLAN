@@ -171,6 +171,25 @@ def create_hub_app(
     gen_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/broll-gen", StaticFiles(directory=str(gen_dir)), name="broll_gen")
 
+    @app.get("/api/broll-galleries")
+    async def api_broll_galleries():
+        """List generated gallery HTML files under _broll_generated for one-click access."""
+        import re
+        items = []
+        for p in sorted(gen_dir.glob("*.html"), key=lambda f: f.stat().st_mtime, reverse=True):
+            label = p.stem.replace("_", " ").strip()
+            # try the <title> for a nicer label
+            try:
+                head = p.read_text(encoding="utf-8", errors="ignore")[:2000]
+                m = re.search(r"<title>(.*?)</title>", head, re.I | re.S)
+                if m and m.group(1).strip():
+                    label = m.group(1).strip()
+            except OSError:
+                pass
+            items.append({"name": p.stem, "url": f"/broll-gen/{p.name}",
+                          "label": label, "mtime": p.stat().st_mtime})
+        return {"galleries": items}
+
     # ==================== Job Manager (background operations) ====================
     from nolan.webui.jobs import get_job_manager
     job_manager = get_job_manager()
