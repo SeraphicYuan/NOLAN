@@ -2583,6 +2583,23 @@ def create_hub_app(
             raise HTTPException(status_code=404, detail=str(e))
         return {"applied": applied, "pipeline": pipeline}
 
+    @app.post("/api/asset-review")
+    async def api_asset_review(body: dict = Body(...)):
+        """Run beat-by-beat asset acquisition review across brains (engine/plan/agent) → gallery."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        if not project:
+            raise HTTPException(status_code=400, detail="project is required")
+        brains = body.get("brains") if isinstance(body.get("brains"), list) and body.get("brains") else ["engine"]
+        job = job_manager.start(
+            "asset-review", operations.asset_review_job, config=load_config(),
+            project=project, brains=brains, beats=body.get("beats"),
+            media=(body.get("media") if isinstance(body.get("media"), list) else None),
+            agent=(body.get("agent") or "nolan4"))
+        return {"job_id": job.id, "type": "asset-review",
+                "gallery": f"/broll-gen/asset_review_{project}.html"}
+
     @app.post("/scenes/api/scene/super-search")
     async def scenes_super_search(body: dict = Body(...)):
         """Per-beat super search from the Scene Plan Viewer — the /broll pairing engine WITH the

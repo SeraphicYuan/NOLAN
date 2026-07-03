@@ -395,6 +395,18 @@ async def attach_scene_asset(job, *, config, project_name: str, scene_id: str, u
     return {"scene_id": scene_id, "attached": out, "matched_asset": scene.matched_asset}
 
 
+async def asset_review_job(job, *, config, project: str, brains=None, beats=None, media=None,
+                           agent: str = "nolan4"):
+    """Beat-by-beat asset acquisition review (top-5 + tags per beat) across brains → served gallery."""
+    from nolan.asset_review import run_review
+    brains = tuple(brains or ["engine"])
+    r = await run_review(project, brains=brains, beats=beats, media=media, agent=agent,
+                         progress=lambda f, m: job.set_progress(min(0.99, f), m))
+    job.set_progress(1.0, f"{len(r['beats'])} beats · {', '.join(r['brains'])}")
+    return {"project": project, "brains": r["brains"], "beats": len(r["beats"]),
+            "gallery": f"/broll-gen/asset_review_{project}.html"}
+
+
 def _scene_plan_path(project_name: str) -> Path:
     return Path("projects") / project_name / "scene_plan.json"
 

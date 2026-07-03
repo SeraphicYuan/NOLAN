@@ -5054,8 +5054,8 @@ def cutout(image, model, output, alpha_matting, to_library):
 
 @main.command('broll')
 @click.argument('line')
-@click.option('--operator', '-op', type=click.Choice(['tonal', 'conceptual', 'ironic', 'trait', 'relational', 'scale']),
-              default='tonal', help='Pairing operator.')
+@click.option('--operator', '-op', type=click.Choice(['tonal', 'literal', 'conceptual', 'ironic', 'trait', 'relational', 'scale', 'knowledge', 'auto']),
+              default='tonal', help='Pairing operator (auto = agent picks).')
 @click.option('--theme', default='dark-editorial', help='Count-up theme for the scale operator (styles number/caption).')
 @click.option('--mode', '-m', type=click.Choice(['stock', 'library', 'generate']), default='stock',
               help='Asset source: stock / your indexed library / Krea-2 generation.')
@@ -5065,12 +5065,13 @@ def cutout(image, model, output, alpha_matting, to_library):
 @click.option('--mood', default=None, help='Mood steer (tonal).')
 @click.option('--media', multiple=True, type=click.Choice(['video', 'image']), help='Asset types (default both).')
 @click.option('--gen-style', default='Fooocus Cinematic', help='Fooocus style for generate mode.')
-@click.option('--project', '-p', default=None, help='Library-mode project scope.')
+@click.option('--project', '-p', default=None, help='Project scope + ScriptContext (whole-script context).')
+@click.option('--beat', type=int, default=None, help='Beat index in the project script (context-aware search).')
 @click.option('--output', '-o', type=click.Path(), default=None, help='Write the full result as JSON.')
 @click.option('--render', is_flag=True, help='Render the top pick(s) with their recommended motion to mp4.')
 @click.option('--out-dir', type=click.Path(), default='broll_out', help='Output dir for --render.')
 @click.pass_context
-def broll(ctx, line, operator, mode, theme, period, locale, literalness, mood, media, gen_style, project, output, render, out_dir):
+def broll(ctx, line, operator, mode, theme, period, locale, literalness, mood, media, gen_style, project, beat, output, render, out_dir):
     """Narrative→asset b-roll pairing for a narration LINE.
 
     Finds b-roll that carries the line's meaning via a pairing OPERATOR, from stock / your
@@ -5093,7 +5094,7 @@ def broll(ctx, line, operator, mode, theme, period, locale, literalness, mood, m
     searcher = EvokeBrollSearch(config=config, progress=lambda f, m: click.echo(f"  [{f:.2f}] {m}", err=True))
     r = asyncio.run(searcher.search(
         line, operator=operator, mode=mode, period=period, locale=locale, literalness=literalness,
-        mood=mood, media=(list(media) or None), gen_style=gen_style, project=project))
+        mood=mood, media=(list(media) or None), gen_style=gen_style, project=project, beat=beat))
 
     click.echo(f"\n{r['status']}  ·  {operator}/{mode}  ·  {r.get('goal_label', 'goal')}: {r.get('goal', '')}")
     if r.get('quantity'):
@@ -5180,6 +5181,28 @@ def _broll_render(r, out_dir, theme='dark-editorial'):
                 mid = (c.get('motion') or {}).get('id', 'ken-burns-in')
                 o = render_still(str(li), mid, out_dir / f'pick{i}_{mid}.mp4', 4.0)
                 click.echo(f"  rendered {mid} -> {o}")
+
+
+@main.command('acquire-review')
+@click.argument('project')
+@click.option('--brains', default='engine', help='Comma list: engine,plan,agent (large-context brains).')
+@click.option('--beats', default=None, help='Comma list of beat indices (default: all beats).')
+@click.option('--media', multiple=True, type=click.Choice(['image', 'video']), help='Asset types (default image).')
+@click.option('--agent', default='nolan4', help='NOLAN tmux agent for the agent brain.')
+def acquire_review(project, brains, beats, media, agent):
+    """Beat-by-beat asset acquisition with full project context — saves the TOP-5 + tags per beat
+    (regardless of match) and renders a review gallery. Compare brains: engine / plan / agent.
+
+      nolan acquire-review homer --brains engine,plan,agent
+    """
+    import asyncio
+    from nolan.asset_review import run_review
+    br = tuple(b.strip() for b in brains.split(',') if b.strip())
+    bt = [int(x) for x in beats.split(',')] if beats else None
+    r = asyncio.run(run_review(project, brains=br, beats=bt, media=(list(media) or None),
+                               agent=agent, progress=lambda f, m: click.echo(f'[{f:.2f}] {m}')))
+    click.echo(f"\ndone — {len(r['beats'])} beats · brains {r['brains']}")
+    click.echo(f"gallery: /broll-gen/asset_review_{project}.html  (also projects/{project}/asset_review.json)")
 
 
 if __name__ == '__main__':

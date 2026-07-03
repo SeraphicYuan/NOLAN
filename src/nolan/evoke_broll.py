@@ -463,7 +463,7 @@ class EvokeBrollSearch:
                      mood: Optional[str] = None, sources: Optional[List[str]] = None,
                      project: Optional[str] = None, media: Optional[List[str]] = None,
                      gen_style: str = "Fooocus Cinematic", beat: Optional[int] = None,
-                     max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
+                     extra_context: str = "", max_metaphors: int = 5, per_metaphor: int = 3) -> dict:
         line = (line or "").strip()
         if not line:
             raise ValueError("line is required")
@@ -503,6 +503,8 @@ class EvokeBrollSearch:
             _cbits.append(ctx.brief(max_chars=1200))
         if cblock:
             _cbits.append(cblock)
+        if extra_context:                              # cross-beat guidance from the plan brain
+            _cbits.append("DIRECTOR NOTE FOR THIS BEAT: " + extra_context.strip())
         pre = ("\n\n".join(_cbits) + "\n\n") if _cbits else ""
         gated = bool(period or locale)
 
@@ -715,13 +717,14 @@ class EvokeBrollSearch:
 
         self._progress(0.04, "Planning the pairing approach…")
         plan = await self._auto_plan(ctx, beat if beat is not None else 0, line)
-        order, tried, matched = [plan["primary"], plan["fallback"]], [], []
+        order, tried, matched, attempts = [plan["primary"], plan["fallback"]], [], [], []
         for i, op in enumerate(order):
             self._progress(0.08 + 0.35 * i, f"Trying {op}…")
             res = await self.search(line, operator=op, mode=mode, period=period, locale=locale,
                                     literalness=literalness, mood=mood, sources=sources, project=project,
                                     media=media, gen_style=gen_style, beat=beat,
                                     max_metaphors=max_metaphors, per_metaphor=per_metaphor)
+            attempts.append(res)
             step = {"operator": op, "status": res.get("status"), "picks": len(res.get("picks") or [])}
             if res.get("status") == "MATCHED":
                 self._progress(0.24 + 0.35 * i, f"Judging {op} picks…")
@@ -748,6 +751,18 @@ class EvokeBrollSearch:
             res["operator"] = "auto"
             self._progress(1.0, f"MATCHED via {op} (best-effort, judge {jm['score']})")
             return res
+        # UNMATCHED: return the RICHEST attempt (most picks+considered) so the candidates it looked
+        # at aren't lost — the review/gallery still shows the top-N considered with tags.
+        richest = max(attempts, key=lambda r: len(r.get("picks") or []) + len(r.get("considered") or []),
+                      default=None)
+        if richest and (richest.get("picks") or richest.get("considered")):
+            richest["status"] = "UNMATCHED"
+            richest["operator"] = "auto"
+            richest["reason"] = f"neither {plan['primary']} nor {plan['fallback']} cleared the bar"
+            richest["auto"] = {"chosen": None, "primary": plan["primary"], "fallback": plan["fallback"],
+                               "why": plan["why"], "tried": tried}
+            self._progress(1.0, "UNMATCHED")
+            return richest
         last = {"status": "UNMATCHED", "operator": "auto", "mode": mode, "line": line,
                 "emotion": "", "goal": "", "goal_label": "auto", "bridge": {}, "metaphors": [],
                 "picks": [], "considered": [],
