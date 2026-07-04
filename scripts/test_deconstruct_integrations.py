@@ -98,8 +98,17 @@ def test_clone(extract, td: Path):
     assert meta["cloned_from_deconstruction"] == "odyssey-test"
     ref = json.loads((pdir / "scriptgen" / "reference_structure.json").read_text(encoding="utf-8"))
     assert ref["beats"] and "operator" in ref["beats"][0]
+
+    # the dispatched brief must carry the structure-override clause (the live
+    # Aeneid run proved the default brief lets the agent supersede the clone)
+    from src.nolan.scriptwriter import ScriptProjectStore, draft_task, v3_task
+    store = ScriptProjectStore(td / "projects")
+    for builder in (v3_task, draft_task):
+        t = builder(res["project_slug"], store)
+        assert "CLONED beat structure" in t and "Do NOT rewrite" in t, builder.__name__
+        assert "Plan the retention curve BEFORE drafting" not in t, builder.__name__
     print(f"clone OK — project {res['project_slug']}: {res['beats']} beats, "
-          f"budget {total}w ≈ {6*150}w, provenance + reference recorded")
+          f"budget {total}w ≈ {6*150}w, provenance + reference + override brief")
 
 
 def test_case_studies_brief():

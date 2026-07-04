@@ -235,7 +235,7 @@ fact-check and report. Facts are in `{sg}/facts.md`; angles in `{sg}/angles.md`.
 
 **Chosen angle (the spine — write to THIS):** {chosen}
 
-{_beatmap_block(sg, style_id)}
+{_cloned_beatmap_block(sg, style_id, meta['cloned_from_deconstruction']) if meta.get('cloned_from_deconstruction') else _beatmap_block(sg, style_id)}
 
 {_draft_v3_block(base, sg, style_id, tw, minutes)}
 
@@ -291,6 +291,21 @@ Score each 1–5 on THREE axes and SHOW the scores:
 "is it real / who wrote it" debate when the guide's spine is human-thematic). Such material is
 *grounding* + a possible hook, not the spine. Mark the winner `**[CHOSEN]**` with one sentence
 on why it wins on **resonance + style-fit**."""
+
+
+def _cloned_beatmap_block(sg: str, style_id: str, cloned_from: str) -> str:
+    return f"""## Step — Use the CLONED beat structure → `{sg}/beatmap.md` (already written)
+This project's `{sg}/beatmap.md` was seeded from the deconstruction `{cloned_from}` —
+a real video's proven beat structure. **It INTENTIONALLY OVERRIDES the style guide's
+Narrative Structure / beat sequence — that is the point of clone mode. Do NOT rewrite,
+re-derive, or replace it**, even if it conflicts with the guide's structure or DON'Ts.
+Division of authority:
+- **Cloned beatmap governs STRUCTURE:** beat order, functions, pacing tags, word budgets.
+- **Style guide governs VOICE within beats:** hook craft, sentence style, transitions,
+  devices, diction, the close.
+Thread the chosen angle through the cloned beats; a beat's reference narration is flavor,
+never content. If you believe the cloned structure hurts the video, say so in `report.md`
+(one paragraph, with reasons) — but FOLLOW it in the draft."""
 
 
 def _beatmap_block(sg: str, style_id: str) -> str:
@@ -373,7 +388,7 @@ it must never reorganize the guide's structure.
 
 {_angles_v3_block(sg, style_id, meta.get('angle') or '')}
 
-{_beatmap_block(sg, style_id)}
+{_cloned_beatmap_block(sg, style_id, meta['cloned_from_deconstruction']) if meta.get('cloned_from_deconstruction') else _beatmap_block(sg, style_id)}
 
 {_draft_v3_block(base, sg, style_id, tw, minutes)}
 
