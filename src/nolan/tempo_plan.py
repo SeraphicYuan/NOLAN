@@ -223,10 +223,17 @@ def blend_with_reference(plan: TempoPlan, reference: dict,
     if not plan.beats or not ref_beats or weight <= 0:
         return plan
 
-    # content-only normalized spans (ad time removed)
-    total = sum(max(0.01, (b.get("t1") or 0) - (b.get("t0") or 0)) for b in ref_beats)
+    # Function-aware alignment: hooks and closes match by FUNCTION, not
+    # position — a reference hook is often seconds long (a fast montage) and
+    # pure positional alignment washes it out under its long slow neighbor.
+    hooks = [b for b in ref_beats if b.get("function") == "hook"]
+    closes = [b for b in ref_beats if b.get("function") == "close"]
+    body = [b for b in ref_beats if b not in hooks and b not in closes] or ref_beats
+
+    # body-only normalized spans (ads + endpoint beats removed)
+    total = sum(max(0.01, (b.get("t1") or 0) - (b.get("t0") or 0)) for b in body)
     spans, cursor = [], 0.0
-    for b in ref_beats:
+    for b in body:
         length = max(0.01, (b.get("t1") or 0) - (b.get("t0") or 0)) / total
         spans.append((cursor, cursor + length, float(b["energy"])))
         cursor += length
@@ -242,8 +249,13 @@ def blend_with_reference(plan: TempoPlan, reference: dict,
     n = len(plan.beats)
     energies = []
     for i, bt in enumerate(plan.beats):
-        f = (i + 0.5) / n
-        e = min(0.95, max(0.05, (1 - w) * bt.energy + w * ref_energy(f)))
+        if i == 0 and hooks:
+            e_ref = max(float(b["energy"]) for b in hooks)   # the hook's spike
+        elif i == n - 1 and closes:
+            e_ref = float(closes[-1]["energy"])              # land like the reference lands
+        else:
+            e_ref = ref_energy((i + 0.5) / n)
+        e = min(0.95, max(0.05, (1 - w) * bt.energy + w * e_ref))
         energies.append(round(e, 2))
     for i, bt in enumerate(plan.beats):
         bt.energy = energies[i]

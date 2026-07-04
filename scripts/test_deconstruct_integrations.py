@@ -207,7 +207,25 @@ def test_tempo_blend():
     plan2 = TempoPlan(slug="t", profile="balanced", beats=[BeatTempo(idx=0, title="A", energy=0.3)])
     assert blend_with_reference(plan2, {"beats": []}).beats[0].energy == 0.3
     assert blend_with_reference(plan2, reference, weight=0).source == "rules"
-    print("tempo blend OK — shape cloned, ads excluded, levers re-derived, degrades cleanly")
+
+    # hook-washout regression (found live on the-aeneid): a TINY reference hook
+    # (7s of 30min) must still lift the script's first beat — function-aware
+    # alignment, not positional, at the endpoints.
+    plan3 = TempoPlan(slug="t", profile="balanced", source="rules", beats=[
+        BeatTempo(idx=i, title=t, energy=0.40)
+        for i, t in enumerate(["Hook", "B1", "B2", "Close"])])
+    tiny_hook_ref = {"beats": [
+        {"title": "hook montage", "function": "hook", "t0": 0, "t1": 7, "energy": 0.9},
+        {"title": "long slow body", "function": "evidence", "t0": 7, "t1": 1700, "energy": 0.3},
+        {"title": "outro", "function": "close", "t0": 1700, "t1": 1710, "energy": 0.85},
+    ]}
+    out3 = blend_with_reference(plan3, tiny_hook_ref, weight=0.5)
+    es3 = [b.energy for b in out3.beats]
+    assert es3[0] == 0.65, es3       # hook lifted by the 0.9 spike, not washed to 0.3
+    assert es3[1] == 0.35 and es3[2] == 0.35, es3   # body maps body→body
+    assert es3[-1] == 0.62, es3      # close matches the reference's fast outro
+    print("tempo blend OK — shape cloned, ads excluded, levers re-derived, "
+          "hook/close function-matched, degrades cleanly")
 
 
 def test_scene_hints_prompt():
