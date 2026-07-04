@@ -132,7 +132,7 @@ def test_extract_e2e(td: Path):
     print("extract e2e OK — beats+tempo+operators, plan schema, frames, task brief, store")
 
 
-def test_montage_collapse():
+def test_montage_explosion():
     from src.nolan.deconstruct.extract import _draft_plan
     shots = [{"shot_index": i, "timestamp_start": float(i), "timestamp_end": i + 1.0,
               "asset_type": "photo", "rep_timestamp": i + 0.5} for i in range(12)]
@@ -142,8 +142,68 @@ def test_montage_collapse():
               "dominant_treatment": "as-is"}]
     plan = _draft_plan("v.mp4", beats, shots, ["x"] * 12)
     scenes = plan["sections"]["Montage"]
-    assert len(scenes) == 1 and "montage of 12 shots" in scenes[0]["visual_description"]
-    print("montage collapse OK — >8-shot beat becomes one scene")
+    # per-shot fidelity: 12 scenes, each tagged with the montage group
+    assert len(scenes) == 12, len(scenes)
+    assert all(s.get("montage_group") == "Montage" for s in scenes)
+    # small beats stay untagged
+    beats2 = [dict(beats[0], last_shot=3, t1=4.0, title="Small")]
+    plan2 = _draft_plan("v.mp4", beats2, shots[:4], ["x"] * 4)
+    assert all("montage_group" not in s for s in plan2["sections"]["Small"])
+    print("montage explosion OK — per-shot scenes with montage_group tag")
+
+
+def test_snap_beats():
+    from src.nolan.deconstruct.beats import snap_beats
+    shots = []
+    for i in range(10):
+        s = {"shot_index": i, "timestamp_start": float(i * 2),
+             "timestamp_end": float(i * 2 + 2), "asset_type": "painting",
+             "on_screen_text": None}
+        shots.append(s)
+    shots[5]["asset_type"] = "text-card"          # true chapter card at 5
+    beats = [{"title": "A", "function": "context", "first_shot": 0, "last_shot": 3},
+             {"title": "B", "function": "evidence", "first_shot": 4, "last_shot": 9}]
+    n = snap_beats(beats, shots)                   # boundary at 4 → snap to 5
+    assert n == 1 and beats[1]["first_shot"] == 5 and beats[0]["last_shot"] == 4, beats
+    # no delimiter near boundary → untouched
+    beats2 = [{"title": "A", "function": "context", "first_shot": 0, "last_shot": 1},
+              {"title": "B", "function": "evidence", "first_shot": 2, "last_shot": 9}]
+    shots2 = [dict(s, asset_type="painting") for s in shots]
+    assert snap_beats(beats2, shots2) == 0 and beats2[1]["first_shot"] == 2
+    # short on-screen title also counts as a delimiter
+    shots3 = [dict(s, asset_type="painting", on_screen_text=None) for s in shots]
+    shots3[3]["on_screen_text"] = "THE CYCLOPS"
+    beats3 = [{"title": "A", "function": "context", "first_shot": 0, "last_shot": 1},
+              {"title": "B", "function": "evidence", "first_shot": 2, "last_shot": 9}]
+    assert snap_beats(beats3, shots3) == 1 and beats3[1]["first_shot"] == 3
+    print("snap beats OK — text-card + on-screen-title snapping, no-op without delimiters")
+
+
+def test_identity_crosscheck():
+    from src.nolan.deconstruct.identity import cross_check_identities
+    shots = [
+        {"shot_index": 0, "asset_type": "painting", "identity_hint": "The Oath of the Horatii"},
+        {"shot_index": 1, "asset_type": "painting", "identity_hint": "Aurora by Boucher"},
+        {"shot_index": 2, "asset_type": "painting", "identity_hint": None},
+        {"shot_index": 3, "asset_type": "live-footage", "identity_hint": None},  # not a candidate
+    ]
+    said = ["as David's Oath of the Horatii shows", "the sirens sang", "a dark seascape", "waves"]
+    mock = MockLLM(json.dumps({"checks": [
+        {"shot": 0, "named": "The Oath of the Horatii by Jacques-Louis David", "matches_guess": True},
+        {"shot": 1, "named": None, "matches_guess": False},
+        {"shot": 2, "named": "The Ninth Wave by Aivazovsky", "matches_guess": False}]}))
+    res = asyncio.run(cross_check_identities(shots, said, llm=mock))
+    assert res["source"] == "llm" and res["checked"] == 3
+    assert shots[0]["identity_source"] == "narration-confirmed"
+    assert shots[1]["identity_source"] == "vision-claim"           # unverified survives as claim
+    assert shots[2]["identity_source"] == "narration-named"
+    assert shots[2]["identity_hint"].startswith("The Ninth Wave")  # narration wins
+    assert "identity_source" not in shots[3]
+    # no LLM → hints degrade to vision-claim, nothing invented
+    shots2 = [{"shot_index": 0, "asset_type": "painting", "identity_hint": "X"}]
+    res2 = asyncio.run(cross_check_identities(shots2, ["some words"], llm=None))
+    assert res2["source"] == "none" and shots2[0]["identity_source"] == "vision-claim"
+    print("identity cross-check OK — confirmed/named/claim grading, narration wins, no-LLM safe")
 
 
 def test_hub_routes(td: Path):
@@ -168,7 +228,9 @@ def test_hub_routes(td: Path):
 def main():
     test_beats()
     test_operators()
-    test_montage_collapse()
+    test_montage_explosion()
+    test_snap_beats()
+    test_identity_crosscheck()
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
         test_extract_e2e(Path(td))
         test_hub_routes(Path(td))

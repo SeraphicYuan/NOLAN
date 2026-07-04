@@ -66,8 +66,14 @@ _MOTION_SYS = (
 def _motion_prompt(line: str, goal: str, operator: str, picks: List[dict]) -> str:
     vocab = "\n".join(f'- {mid} ({v["label"]}): {v["means"]} [kinds: {"/".join(v["kinds"])}]'
                       for mid, v in MOTION_VOCAB.items())
-    items = "\n".join(f'[{i}] kind={p.get("kind", "image")} — {p.get("why", "") or p.get("desc", "")}'
-                      for i, p in enumerate(picks))
+    def _item(i, p):
+        s = f'[{i}] kind={p.get("kind", "image")} — {p.get("why", "") or p.get("desc", "")}'
+        sf = p.get("shot_facts") or {}
+        if sf.get("treatment_hint") or sf.get("camera_motion"):
+            s += (f'  [measured in source: camera {sf.get("camera_motion", "?")}, '
+                  f'native treatment {sf.get("treatment_hint", "?")}]')
+        return s
+    items = "\n".join(_item(i, p) for i, p in enumerate(picks))
     return (f'LINE: "{line}"\nTARGET: {goal}\nPAIRING OPERATOR: {operator}\n\n'
             f"MOTION VOCABULARY:\n{vocab}\n\n"
             f"CHOSEN ASSETS — animate EACH; pick one motion id VALID for its kind:\n{items}\n\n"

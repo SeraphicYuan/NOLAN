@@ -47,6 +47,41 @@ energy/pace_dir/transition/motion_speed via `_levers` run in reverse), **motion 
   v7→v8 migration), `scripts/test_deconstruct.py` (mock-LLM beats/operators, extract E2E,
   plan schema, task brief, hub wiring).
 
+### Hardening + pipeline integrations (2026-07-04, round 2)
+
+**Quality fixes** (all Odyssey-run-evidenced): recovered plans now emit **per-shot scenes
+with `montage_group` tags** (no more >8-shot collapse — internal cut rhythm is replayable);
+**transcript identity cross-check** (`deconstruct/identity.py`, batched text-LLM) grades every
+asset identity `narration-confirmed | narration-named | vision-claim` (narration wins; the
+agent brief says web-verify remaining vision-claims); **beat-boundary snapping**
+(`beats.snap_beats`) moves LLM beat starts to nearby chapter/text-card delimiter shots.
+
+**UI**: per-beat **shot drill-down table** (camera/subject/treatment/asset/on-screen-text/
+identity+source), minimal **markdown renderer** for breakdown.md, `?video=` deep-link, and a
+**🔬 Deconstruct** button on every Library video row. Smoke-tested over HTTP on a test-port
+hub against the real Odyssey deconstruction (page, list, meta, artifacts, frames, 400s).
+
+**Creation-pipeline integrations**:
+- **Template export** (`deconstruct/export.py` + `POST .../export-template` + UI): recovered
+  beat structure → `assets/templates/scene_plans/decon-<slug>-v1/` (meta+skeleton+template.md)
+  in the exact shape `orchestrator.template_match` scores — verified the matcher loads and
+  ranks it. The real Odyssey structure is exported.
+- **Clone mode** (`deconstruct/clone.py` + `POST .../clone` + UI): seeds a NEW script project
+  whose `scriptgen/beatmap.md` is the recovered structure (constitution directive, per-beat
+  pace tags from measured energy, word budgets scaled to target minutes, sponsor beats noted
+  but excluded, provenance in meta + `reference_structure.json`). The v3 scriptwriter flow
+  continues unchanged — this is the deconstruct→write bridge.
+- **Video-style case studies**: `analyze_video_style` now passes any existing deconstruction
+  breakdowns of corpus videos into the synthesis brief as citable beat-level evidence.
+- **Retrieval enrichment**: `VideoIndex.get_shots_overlapping` + evoke_broll library
+  candidates carry measured `shot_facts` (asset_type/camera/subject/treatment/framing), which
+  surface in the library score prompt and the motion-pick prompt.
+- **Roadmap**: `docs/NARRATIVE_ASSET_PAIRING.md` gains the **masterwork raid** operator row
+  (evidence: Odyssey breakdown) + notes deconstruction as the operator-space evidence engine.
+- Tests: `scripts/test_deconstruct_integrations.py` (runs against the REAL Odyssey extract:
+  template export + matcher scoring, clone budgets/ad-exclusion/provenance, case-study brief,
+  overlap lookup + prompt surfacing, new routes).
+
 ## Showcase previews wired (2026-07-03)
 
 **What changed.** The `/showcase` page ("Motion Effects Showcase") was fully built and wired but

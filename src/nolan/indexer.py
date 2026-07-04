@@ -1728,6 +1728,19 @@ class VideoIndex:
                 (video_id,))
             return [dict(r) for r in cursor.fetchall()]
 
+    def get_shots_overlapping(self, video_path: str, t0: float,
+                              t1: float) -> List[Dict[str, Any]]:
+        """Shot rows overlapping [t0, t1) for a video path (retrieval enrichment)."""
+        vid = self.get_video_id_by_path(video_path)
+        if vid is None:
+            return []
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM shots WHERE video_id = ? AND timestamp_start < ? "
+                "AND timestamp_end > ? ORDER BY shot_index", (vid, t1, t0))
+            return [dict(r) for r in cursor.fetchall()]
+
     def update_shot_vision_facts(self, shot_id: int, *, asset_type: Optional[str] = None,
                                  framing: Optional[str] = None,
                                  on_screen_text: Optional[str] = None,

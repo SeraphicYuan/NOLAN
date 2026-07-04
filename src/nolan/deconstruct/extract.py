@@ -30,7 +30,8 @@ from nolan.video_style.pairing import (LITERAL_MIN, TONAL_MAX, compose_shown,
 from nolan.visual_facts import (ASSET_TYPE_TO_VISUAL, ensure_visual_facts,
                                 extract_rep_frame)
 
-from .beats import segment_beats
+from .beats import segment_beats, snap_beats
+from .identity import cross_check_identities
 from .operators import classify_operators
 
 EXTRACT_VERSION = 1
@@ -121,16 +122,21 @@ def _draft_plan(video_path: str, beats: List[Dict[str, Any]],
                 shots: List[Dict[str, Any]], shot_said: List[str]) -> Dict[str, Any]:
     """Deterministic draft recovered_plan.json in scene_plan schema.
 
-    One scene per shot for short beats; montage beats (>8 shots) collapse to
-    a single scene so the plan stays reviewable. The synthesis agent refines.
+    ALWAYS one scene per shot, so the internal cut rhythm of montage beats is
+    replayable. Scenes inside a large beat (>8 shots) carry a
+    ``montage_group`` tag; a consumer that wants a reviewable overview may
+    collapse on it, but the plan itself keeps full fidelity. The synthesis
+    agent refines descriptions/prompts.
     """
+    MONTAGE_MIN = 9    # beats with at least this many shots get group-tagged
+
     def fmt(t: float) -> str:
         return f"{int(t // 60)}:{int(t % 60):02d}"
 
     sections: Dict[str, List[Dict[str, Any]]] = {}
     n = 0
 
-    def scene(t0, t1, said, vt, desc, beat) -> Dict[str, Any]:
+    def scene(t0, t1, said, vt, desc, beat, group=None) -> Dict[str, Any]:
         nonlocal n
         n += 1
         sc = {"id": f"scene_{n:03d}", "start": fmt(t0),
@@ -141,28 +147,24 @@ def _draft_plan(video_path: str, beats: List[Dict[str, Any]],
               "motion_speed": beat.get("motion_speed"),
               "recovered": {"operator": beat.get("operator"),
                             "treatment": beat.get("dominant_treatment")}}
+        if group:
+            sc["montage_group"] = group
         return sc
 
     for b in beats:
         rows = shots[b["first_shot"]:b["last_shot"] + 1]
         key = f"{b['title']}"
         sections[key] = []
-        if len(rows) > 8:
-            types = [r.get("asset_type") for r in rows if r.get("asset_type")]
-            vt = ASSET_TYPE_TO_VISUAL.get(
-                max(set(types), key=types.count) if types else "other", "b-roll")
+        group = key if len(rows) >= MONTAGE_MIN else None
+        for i, r in enumerate(rows):
+            vt = ASSET_TYPE_TO_VISUAL.get(r.get("asset_type") or "other", "b-roll")
+            desc = r.get("identity_hint") or r.get("asset_type") or ""
+            if r.get("identity_source") == "vision-claim":
+                desc = f"{desc} (unverified)" if desc else desc
             sections[key].append(scene(
-                b["t0"], b["t1"], b.get("said"), vt,
-                f"montage of {len(rows)} shots ({', '.join(sorted(set(types))[:4]) or 'mixed'})",
-                b))
-        else:
-            for i, r in enumerate(rows):
-                vt = ASSET_TYPE_TO_VISUAL.get(r.get("asset_type") or "other", "b-roll")
-                desc = r.get("identity_hint") or r.get("asset_type") or ""
-                sections[key].append(scene(
-                    r["timestamp_start"], r["timestamp_end"],
-                    shot_said[b["first_shot"] + i] if b["first_shot"] + i < len(shot_said) else "",
-                    vt, desc, b))
+                r["timestamp_start"], r["timestamp_end"],
+                shot_said[b["first_shot"] + i] if b["first_shot"] + i < len(shot_said) else "",
+                vt, desc, b, group=group))
     return {"sections": sections,
             "_meta": {"source": "deconstruction-draft", "video_path": str(video_path),
                       "generated_at": datetime.now().isoformat()}}
@@ -178,8 +180,14 @@ async def build_extract(video_path: str, index, *, llm=None, embed=None,
     duration = max((s["timestamp_end"] for s in shots), default=0.0)
     shot_said, shot_shown = _align_to_shots(shots, segs)
 
+    # Tier-2 identity pass: ground vision identity claims in the narration.
+    identity_res = await cross_check_identities(shots, shot_said, llm=llm)
+
     beat_res = await segment_beats(shots, shot_said, duration, llm=llm)
     beats = beat_res["beats"]
+    snapped = snap_beats(beats, shots) if beat_res["source"] == "llm" else 0
+    _MARK = {"narration-confirmed": " ✓narration", "narration-named": " ✓narration",
+             "vision-claim": " (unverified)"}
     for b in beats:
         rows = shots[b["first_shot"]:b["last_shot"] + 1]
         b["t0"], b["t1"] = rows[0]["timestamp_start"], rows[-1]["timestamp_end"]
@@ -189,7 +197,9 @@ async def build_extract(video_path: str, index, *, llm=None, embed=None,
             t for t in shot_shown[b["first_shot"]:b["last_shot"] + 1] if t))[:1200]
         types = sorted({r.get("asset_type") for r in rows if r.get("asset_type")})
         b["asset_types"] = ", ".join(types)
-        idents = sorted({r.get("identity_hint") for r in rows if r.get("identity_hint")})
+        idents = sorted({(r.get("identity_hint") or "")
+                         + _MARK.get(r.get("identity_source") or "", "")
+                         for r in rows if r.get("identity_hint")})
         if idents:
             b["identified_assets"] = idents
 
@@ -226,7 +236,9 @@ async def build_extract(video_path: str, index, *, llm=None, embed=None,
         "segment_count": len(segs),
         "beats": beats,
         "beat_source": beat_res["source"],
+        "beats_snapped": snapped,
         "operator_source": op_res["source"],
+        "identity_check": identity_res,
         "shots": shots,
         "notes": ["transition values are derived from recovered energy via the"
                   " forward tempo mapping (dissolves are not measured in v1)"],

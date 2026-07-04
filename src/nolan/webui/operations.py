@@ -2297,9 +2297,27 @@ async def analyze_video_style(job, *, config, store_root, db_path, style_id: str
             errors.append({"slug": slug, "error": str(e)})
             job.log(f"  ! {slug}: {e}")
 
+    # Deconstruction case studies: if a corpus video has been deconstructed
+    # (breakdown written), hand its beat-level analysis to the synthesis agent.
+    case_studies = []
+    try:
+        from nolan.deconstruct import DeconstructionStore
+        dstore = DeconstructionStore(_Path("video_deconstructions"))
+        for s in sources:
+            dslug = dstore.slug_for(s["video_path"])
+            m = dstore.get(dslug)
+            if m and m.get("has_breakdown"):
+                case_studies.append(f"video_deconstructions/{dslug}/breakdown.md")
+    except Exception:
+        pass
+    if case_studies:
+        job.log(f"including {len(case_studies)} deconstruction case stud"
+                f"{'y' if len(case_studies) == 1 else 'ies'}")
+
     job.set_progress(0.9, "Writing synthesis brief…")
     store.task_path(style_id).write_text(
-        video_style_synthesis_task(style_id, name, analyzed), encoding="utf-8")
+        video_style_synthesis_task(style_id, name, analyzed, case_studies=case_studies),
+        encoding="utf-8")
     task_posix = f"video_styles/{style_id}/synthesis_task.md"
     guide_posix = f"video_styles/{style_id}/video_style_guide.md"
 

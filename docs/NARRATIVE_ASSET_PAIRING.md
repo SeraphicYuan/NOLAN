@@ -54,6 +54,7 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 | **Conceptual-isomorphic** ✅ *built* | the concept's *mechanic* → a domain with the **same structure**. strategy→chess; collapse→dominoes; fragile stability→Jenga/house-of-cards; opposing forces→tug-of-war; systems→clockwork; emergent order→murmuration; inevitability→a river | bridge = "name the mechanic, find an isomorphic carrier domain" + a **conceptual-aptness** gate (fit + cliché-avoidance). Often best **generated (ComfyUI)** + a motion |
 | **Trait / behavior embodiment** ✅ *built* | a person's quality → the archetypal *activity that exemplifies it*. patience→fishing/watchmaking; precision→surgery/calligraphy; discipline→training/running; obsession→repeated practice | bridge = trait → exemplar activity; b-roll/stock search |
 | **Archetypal / mythic / art-historical** | a situation → shared iconography. hubris→Icarus; rebirth→phoenix; underdog→David & Goliath; betrayal→Judas; vain power→Ozymandias/ruins; judgment→the scales | bridge = situation → iconography; strong candidate for **ComfyUI generation** |
+| **Masterwork raid (composition-matched sourcing)** 🔬 *evidence: Odyssey deconstruction* | a beat's *emotion/composition* → a real public-domain masterwork that fits, **even when it depicts something else**. prideful vow→*Oath of the Horatii*; crew despair→*Oedipus at Colonus*; decadent feast→*Romans of the Decadence*; a giant→Goya's *Fall of the Titans* | Discovered by deconstructing a mythology channel (`video_deconstructions/the-odyssey-explained…/breakdown.md`): of ~76 named works a large share are non-subject stand-ins picked by compositional/emotional fit — museum look at $0 art budget. Bridge = scene-type + emotion query over a **public-domain art corpus** (imagelib + extract-assets are the plumbing); `knowledge` extended from "the named asset" to "any real masterwork whose composition carries the beat". Prefer SOURCING over generating — authenticity is the point |
 | **Sensory / textural (synesthetic)** | a sensory *adjective* → tactile macro. "cold, calculating"→frost forming; friction→sparks; decay→rust/rot time-lapse; warmth→embers | bridge = sensory→texture; stock macro + often a slow motion |
 | **Idiom literalization (wit)** | a figure of speech shown *literally*. "throwing money away"→burning cash; "drowning in debt"→underwater | bridge = detect idiom → literal scene; generate or stock |
 
@@ -114,6 +115,13 @@ For each: the mapping logic · a concrete example · who does it · how we'd bui
 4. **Trait-embodiment** — clean bridge, very reusable.
 5. **Relational / dialectical** — the operator that gives the tool a *point of view* (pairs + gen + motion).
 6. **Rhythm / tempo** — the invisible finish; requires the deep script link.
+
+**Evidence engine:** the video-deconstruction feature (`/deconstruct`, `src/nolan/deconstruct/`)
+now reverse-engineers real videos into this operator vocabulary — each breakdown is field
+evidence for which unbuilt operators real editors actually use, and how. First yield: the
+**masterwork raid** row above (Odyssey run, 2026-07-04) plus two reusable presets — the
+*accreting journey map* (progressive `route-map` pins per episode) and *two-tier titling*
+(circular portrait name-card for WHO + full-screen chapter card for WHERE).
 
 ## Status
 

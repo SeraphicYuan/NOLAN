@@ -329,7 +329,14 @@ def _library_score_prompt(line: str, goal: str, period: str, locale: str, cands:
         ctx = (f"STORY PERIOD: {period or 'unspecified'}\nSTORY LOCALE: {locale or 'unspecified'}\n"
                "Pure landscape/nature/abstract is UNIVERSAL (fits any era/place); only man-made content "
                "carries a period or culture.\n")
-    items = "\n".join(f'[{i}] {c.get("desc", "")[:180]}' for i, c in enumerate(cands))
+    def _item(i, c):
+        line = f'[{i}] {c.get("desc", "")[:180]}'
+        sf = c.get("shot_facts") or {}
+        if sf:
+            facts = ", ".join(f"{k.replace('_', ' ')}: {v}" for k, v in sf.items())
+            line += f"  [measured: {facts}]"
+        return line
+    items = "\n".join(_item(i, c) for i, c in enumerate(cands))
     return (f'LINE: "{line}"\nTARGET {op["noun"].upper()}: {goal}\n{ctx}\n'
             f"CANDIDATE SHOTS (by their content description):\n{items}\n\n"
             "Score EACH. JSON: {\"scores\": [{\"i\": <index>, "
@@ -815,11 +822,28 @@ class EvokeBrollSearch:
                     continue
                 from urllib.parse import quote
                 start, end = int(r.timestamp_start), int(r.timestamp_end or r.timestamp_start + 5)
-                pool[key] = {"kind": "library", "source": "library",
-                             "video_name": Path(r.video_path).name,
-                             "url": f"/library/video/{quote(r.video_path, safe='')}#t={start},{end}",
-                             "duration": (end - start) or None, "ts_start": start, "ts_end": end,
-                             "desc": r.description or "", "metaphor": m}
+                cand = {"kind": "library", "source": "library",
+                        "video_name": Path(r.video_path).name,
+                        "url": f"/library/video/{quote(r.video_path, safe='')}#t={start},{end}",
+                        "duration": (end - start) or None, "ts_start": start, "ts_end": end,
+                        "desc": r.description or "", "metaphor": m}
+                # Enrich with measured per-shot visual facts when the library has
+                # them (visual_facts / deconstruction runs populate `shots`): the
+                # scorer then sees asset type + real camera motion, not just the
+                # vision-text description.
+                try:
+                    shots = self._index.get_shots_overlapping(r.video_path, start, end)
+                except Exception:
+                    shots = []
+                if shots:
+                    best = max(shots, key=lambda s: min(s.get("timestamp_end") or end, end)
+                               - max(s.get("timestamp_start") or start, start))
+                    facts = {k: best.get(k) for k in
+                             ("asset_type", "camera_motion", "subject_motion",
+                              "treatment_hint", "framing") if best.get(k)}
+                    if facts:
+                        cand["shot_facts"] = facts
+                pool[key] = cand
         return list(pool.values())[:10]
 
     # ---- generation: Krea-2 (ComfyUI) makes a still per metaphor when found footage misses ----

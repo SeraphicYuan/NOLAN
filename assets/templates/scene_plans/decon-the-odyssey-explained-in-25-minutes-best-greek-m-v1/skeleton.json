@@ -1,0 +1,299 @@
+{
+  "template_id": "decon-the-odyssey-explained-in-25-minutes-best-greek-m-v1",
+  "default_runtime_seconds": 1784,
+  "runtime_range_seconds": [
+    1248,
+    2319
+  ],
+  "sections": [
+    {
+      "name": "Intro Montage",
+      "purpose": "hook beat — pairs narration via the 'tonal' operator; dominant motion: hold",
+      "duration_pct": [
+        1,
+        1
+      ],
+      "pacing": "standard",
+      "scene_duration_hint_seconds": [
+        1,
+        2
+      ],
+      "beat_count_hint": [
+        9,
+        15
+      ]
+    },
+    {
+      "name": "The Epic Poems",
+      "purpose": "context beat — pairs narration via the 'tonal' operator; dominant motion: hold",
+      "duration_pct": [
+        5,
+        8
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        8,
+        15
+      ],
+      "beat_count_hint": [
+        8,
+        12
+      ]
+    },
+    {
+      "name": "Departure from Troy",
+      "purpose": "context beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        3,
+        5
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        8,
+        15
+      ],
+      "beat_count_hint": [
+        4,
+        8
+      ]
+    },
+    {
+      "name": "The Lotus Eaters",
+      "purpose": "evidence beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        2,
+        4
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        13,
+        24
+      ],
+      "beat_count_hint": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "Polyphemus the Cyclops",
+      "purpose": "evidence beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        8,
+        12
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        9,
+        18
+      ],
+      "beat_count_hint": [
+        10,
+        16
+      ]
+    },
+    {
+      "name": "Bag of Winds",
+      "purpose": "evidence beat — pairs narration via the 'tonal' operator; dominant motion: hold",
+      "duration_pct": [
+        7,
+        10
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        13,
+        24
+      ],
+      "beat_count_hint": [
+        6,
+        10
+      ]
+    },
+    {
+      "name": "Circe the Witch",
+      "purpose": "evidence beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        9,
+        13
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        9,
+        17
+      ],
+      "beat_count_hint": [
+        11,
+        19
+      ]
+    },
+    {
+      "name": "The Underworld",
+      "purpose": "evidence beat — pairs narration via the 'tonal' operator; dominant motion: hold",
+      "duration_pct": [
+        2,
+        4
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        8,
+        14
+      ],
+      "beat_count_hint": [
+        4,
+        6
+      ]
+    },
+    {
+      "name": "The Sirens",
+      "purpose": "evidence beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        4,
+        7
+      ],
+      "pacing": "standard",
+      "scene_duration_hint_seconds": [
+        11,
+        21
+      ],
+      "beat_count_hint": [
+        4,
+        8
+      ]
+    },
+    {
+      "name": "Masterworks Sponsorship",
+      "purpose": "other beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        5,
+        8
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        8,
+        14
+      ],
+      "beat_count_hint": [
+        8,
+        14
+      ]
+    },
+    {
+      "name": "Scylla and Charybdis",
+      "purpose": "evidence beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        3,
+        4
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        14,
+        26
+      ],
+      "beat_count_hint": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "Cattle of the Sun",
+      "purpose": "evidence beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        4,
+        6
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        10,
+        18
+      ],
+      "beat_count_hint": [
+        4,
+        8
+      ]
+    },
+    {
+      "name": "Calypso's Island",
+      "purpose": "evidence beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        5,
+        8
+      ],
+      "pacing": "standard",
+      "scene_duration_hint_seconds": [
+        9,
+        17
+      ],
+      "beat_count_hint": [
+        7,
+        11
+      ]
+    },
+    {
+      "name": "Return to Phaeacia",
+      "purpose": "evidence beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        8,
+        12
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        11,
+        20
+      ],
+      "beat_count_hint": [
+        9,
+        15
+      ]
+    },
+    {
+      "name": "Return to Ithaca",
+      "purpose": "turn beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        7,
+        10
+      ],
+      "pacing": "standard",
+      "scene_duration_hint_seconds": [
+        10,
+        19
+      ],
+      "beat_count_hint": [
+        8,
+        12
+      ]
+    },
+    {
+      "name": "The Suitors' Downfall",
+      "purpose": "close beat — pairs narration via the 'literal' operator; dominant motion: hold",
+      "duration_pct": [
+        7,
+        10
+      ],
+      "pacing": "slow",
+      "scene_duration_hint_seconds": [
+        11,
+        21
+      ],
+      "beat_count_hint": [
+        7,
+        11
+      ]
+    },
+    {
+      "name": "Outro Montage",
+      "purpose": "close beat — pairs narration via the 'text-graphic' operator; dominant motion: hold",
+      "duration_pct": [
+        1,
+        1
+      ],
+      "pacing": "standard",
+      "scene_duration_hint_seconds": [
+        1,
+        2
+      ],
+      "beat_count_hint": [
+        17,
+        29
+      ]
+    }
+  ]
+}

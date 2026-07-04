@@ -2416,6 +2416,33 @@ def create_hub_app(
             raise HTTPException(status_code=404, detail="frame not found")
         return FileResponse(str(fp), media_type="image/jpeg")
 
+    @app.post("/api/deconstruct/{slug}/export-template")
+    async def deconstruct_export_template(slug: str):
+        """Promote the recovered structure to a matchable scene-plan template."""
+        from nolan.deconstruct.export import export_scene_plan_template
+        meta = deconstruct_store.get(slug)
+        extract = deconstruct_store.read_extract(slug)
+        if meta is None or extract is None:
+            raise HTTPException(status_code=404, detail="deconstruction/extract not found")
+        res = export_scene_plan_template(extract, slug, meta.get("title") or slug)
+        return res
+
+    @app.post("/api/deconstruct/{slug}/clone")
+    async def deconstruct_clone(slug: str, body: dict = Body(...)):
+        """Seed a new script project with this deconstruction's beat structure."""
+        from nolan.deconstruct.clone import clone_to_script_project
+        extract = deconstruct_store.read_extract(slug)
+        if extract is None:
+            raise HTTPException(status_code=404, detail="no extract for this deconstruction")
+        subject = (body.get("subject") or "").strip()
+        style_id = (body.get("style_id") or "").strip()
+        if not subject or not style_id:
+            raise HTTPException(status_code=400, detail="subject and style_id required")
+        res = clone_to_script_project(
+            extract, slug, subject=subject, style_id=style_id,
+            target_minutes=float(body.get("target_minutes") or 8.0))
+        return res
+
     # ==================== Showcase Routes ====================
 
     showcase_template = templates_dir / "showcase.html"

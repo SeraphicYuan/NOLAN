@@ -10,8 +10,16 @@ from __future__ import annotations
 from typing import List
 
 
-def video_style_synthesis_task(style_id: str, name: str, slugs: List[str]) -> str:
+def video_style_synthesis_task(style_id: str, name: str, slugs: List[str],
+                               case_studies: List[str] = None) -> str:
     base = f"video_styles/{style_id}"
+    cs_block = ""
+    if case_studies:
+        cs_lines = "\n".join(f"  - `{p}`" for p in case_studies)
+        cs_block = (f"- **Deconstruction case studies** — beat-level editorial breakdowns "
+                    f"of corpus videos (beats, pairing operators, tempo curve, motion, "
+                    f"asset inventory). Your RICHEST evidence: cite their beats when "
+                    f"stating a pattern:\n{cs_lines}\n")
     return f"""# NOLAN video style-guide synthesis: "{name}"
 
 The per-video extraction is done. Your job is the **synthesis**: distill a single,
@@ -27,7 +35,7 @@ can be cloned.
   style reads from the vision model), and **`pairing`** (the script↔visual
   relationship — see below).
 - Sampled frames to look at: `{base}/frames/<slug>/*.jpg`
-
+{cs_block}
 ## What to do
 1. Read all extracts; open the frames to ground your reading. The computed numbers
    (palette, pacing, directness distribution) are the **objective backbone** — trust

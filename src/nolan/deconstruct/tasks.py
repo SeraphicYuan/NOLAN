@@ -62,8 +62,11 @@ recovered plan so it reads as a replayable recipe.
 - Ground every claim in the extract or a frame you actually opened; cite beat
   indices. Never contradict a measured fact (timings, cut counts, motion) —
   interpret it.
-- Identity hints are CLAIMS, not verified facts — keep that framing unless the
-  narration itself names the asset (then say "named in narration").
+- Asset identities carry an `identity_source`: `narration-confirmed` /
+  `narration-named` may be stated as fact (the narration names them);
+  `vision-claim` is UNVERIFIED — where you have web access, verify
+  vision-claims with a quick search before asserting them, else keep the
+  "likely / unverified" framing. Never upgrade a claim without evidence.
 - Operator vocabulary is fixed (literal / knowledge / tonal / conceptual /
   ironic / trait / relational / scale / text-graphic / unclear) — no new labels.
 - Keep it specific and example-driven; a producer should be able to apply the

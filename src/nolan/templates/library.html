@@ -1116,6 +1116,7 @@
                     const embedBtn = (st.state && st.state !== 'synced')
                         ? `<button class="embed-btn" onclick="event.stopPropagation(); embedVideo('${encodeURIComponent(v.path)}', this)" style="cursor:pointer;font-size:11px;padding:1px 6px;">Embed</button>`
                         : '';
+                    const deconBtn = `<button onclick="event.stopPropagation(); location.href='/deconstruct?video=${encodeURIComponent(v.path)}'" title="Reverse-engineer this video's editorial plan (beats, pairing, tempo, motion)" style="cursor:pointer;font-size:11px;padding:1px 6px;">🔬 Deconstruct</button>`;
                     const chips = (v.projects || []).map(p =>
                         `<span class="vp-chip" onclick="event.stopPropagation();vpRemove('${encodeURIComponent(v.path)}','${p.slug}')" title="click to remove from ${escapeHtml(p.name)}">${escapeHtml(p.slug)} &times;</span>`).join('');
                     const opts = (window._allProjects || []).map(p => `<option value="${p.slug}">${escapeHtml(p.name)}</option>`).join('');
@@ -1127,6 +1128,7 @@
                             <span>${v.segment_count} segments</span>
                             <span style="color:${color};" title="${st.state || ''} (${st.embedded || 0}/${v.segment_count} embedded)">${label}</span>
                             ${embedBtn}
+                            ${deconBtn}
                         </div>
                         <div class="video-projects">${chips}<select class="vp-add" onclick="event.stopPropagation()" onchange="vpAdd('${encodeURIComponent(v.path)}', this)"><option value="">+ project</option>${opts}</select></div>
                     </div>`;

@@ -1,0 +1,30 @@
+{
+  "id": "decon-the-odyssey-explained-in-25-minutes-best-greek-m-v1",
+  "kind": "scene_plan",
+  "version": 1,
+  "name": "Deconstructed: The Odyssey Explained In 25 Minutes ｜ Best Greek Mythology D",
+  "genres": [
+    "documentary",
+    "explainer",
+    "history",
+    "mythology"
+  ],
+  "duration_range": [
+    1248,
+    2319
+  ],
+  "tags": [
+    "op-literal",
+    "op-text-graphic",
+    "op-tonal",
+    "beats-17",
+    "recovered-structure",
+    "sponsor-slot"
+  ],
+  "summary": "Structure recovered from a real video (17 beats, 1784s). Function arc: hook → context → evidence → other → turn → close. Dominant pairing operators: literal, text-graphic, tonal.",
+  "provenance": {
+    "derived_from_deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "video_path": "projects\\_library\\source\\The Odyssey Explained In 25 Minutes ｜ Best Greek Mythology Documentary.mp4",
+    "promoted_at": "2026-07-04"
+  }
+}

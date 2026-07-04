@@ -116,6 +116,41 @@ def _fallback_beats(shots: List[Dict[str, Any]], n_beats: int = 6) -> List[Dict[
     return beats
 
 
+def _is_delimiter(shot: Dict[str, Any]) -> bool:
+    """True for shots that read as editorial section markers (chapter cards)."""
+    if shot.get("asset_type") == "text-card":
+        return True
+    txt = (shot.get("on_screen_text") or "").strip()
+    dur = (shot.get("timestamp_end", 0) or 0) - (shot.get("timestamp_start", 0) or 0)
+    # short title burned into a brief shot = a chapter/name card
+    return bool(txt) and len(txt) <= 48 and 0 < dur <= 6.0
+
+
+def snap_beats(beats: List[Dict[str, Any]], shots: List[Dict[str, Any]],
+               window: int = 2) -> int:
+    """Snap beat starts to nearby delimiter shots (chapter/text cards).
+
+    LLM boundaries bleed by ~1 shot at episode seams; a text-card within
+    ``window`` shots of a boundary is near-certain evidence of where the
+    editor actually cut the section. Deterministic; returns snaps applied.
+    """
+    snapped = 0
+    for i in range(1, len(beats)):
+        b, prev = beats[i], beats[i - 1]
+        first = b["first_shot"]
+        best = None
+        for j in range(max(prev["first_shot"] + 1, first - window),
+                       min(b["last_shot"], first + window) + 1):
+            if j < len(shots) and _is_delimiter(shots[j]):
+                if best is None or abs(j - first) < abs(best - first):
+                    best = j
+        if best is not None and best != first:
+            b["first_shot"] = best
+            prev["last_shot"] = best - 1
+            snapped += 1
+    return snapped
+
+
 async def segment_beats(shots: List[Dict[str, Any]], shot_said: List[str],
                         duration: float, llm=None) -> Dict[str, Any]:
     """Return {"beats": [...], "source": "llm"|"fallback"}.
