@@ -1483,11 +1483,33 @@ class Director:
             _plan = _ScenePlan.load(str(scene_plan_path))
             _scenes = _plan.all_scenes
             _matched = sum(1 for s in _scenes if getattr(s, "matched_clip", None))
+
+            # Archival-art sourcing: scenes typed for real public-domain
+            # artworks (masterwork-raid vocabulary) can't be served by the
+            # video matcher — route them through the museum/Commons image
+            # pipeline (library-first, describe+ingest, matched_asset).
+            art_line = ""
+            from nolan.art_sourcing import DEFAULT_SCENE_TYPES, source_art_for_plan
+            if any(getattr(s, "visual_type", None) in DEFAULT_SCENE_TYPES
+                   for s in _scenes):
+                try:
+                    art = source_art_for_plan(
+                        scene_plan_path, self.project_path, load_config())
+                    art_line = (
+                        f"\nArchival-art sourcing: matched **{art['matched']}/"
+                        f"{art['considered']}** art scenes "
+                        f"({', '.join(f'{k}:{v}' for k, v in art['by_kind'].items()) or 'none'})"
+                        + (f"; unmatched: {', '.join(art['misses'][:8])}"
+                           if art["misses"] else "") + ".\n")
+                except Exception as art_exc:      # sourcing enhances, never blocks
+                    art_line = f"\nArchival-art sourcing failed: {art_exc}\n"
+
             report_path.write_text(
                 "# Clip Selection Report (vector matcher)\n\n"
                 f"Matched **{_matched}/{len(_scenes)}** scenes to library clips via semantic "
-                "vector search.\n\n"
-                "Consolidated step: this replaces the previous LLM clip-selection pass "
+                "vector search.\n"
+                + art_line +
+                "\nConsolidated step: this replaces the previous LLM clip-selection pass "
                 "(~12 min) with the fast vector matcher (seconds, no token cost). The "
                 "vector matcher ranks by embedding similarity over the same segment "
                 "descriptions an LLM would read.\n",

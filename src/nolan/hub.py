@@ -2473,6 +2473,22 @@ def create_hub_app(
         n_scenes = sum(len(v) for v in _json.loads(plan).get("sections", {}).values())
         return {"project_slug": project_slug, "scenes": n_scenes, "backed_up": backed_up}
 
+    @app.post("/api/source-art")
+    async def source_art_run(body: dict = Body(...)):
+        """Source public-domain artworks for a project's archival-art scenes (job)."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        project = (body.get("project") or "").strip()
+        if not project:
+            raise HTTPException(status_code=400, detail="project required")
+        if not (Path("projects") / project / "scene_plan.json").exists():
+            raise HTTPException(status_code=404, detail="project has no scene_plan.json")
+        job = job_manager.start(
+            "source-art", operations.source_art,
+            meta={"project": project},
+            config=load_config(), project=project)
+        return {"job_id": job.id, "type": "source-art"}
+
     @app.post("/api/script-projects/{slug}/attach-deconstruction")
     async def script_projects_attach_deconstruction(slug: str, body: dict = Body(...)):
         """Attach a deconstruction's structure to an EXISTING script project."""

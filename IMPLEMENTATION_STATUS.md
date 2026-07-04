@@ -82,6 +82,33 @@ hub against the real Odyssey deconstruction (page, list, meta, artifacts, frames
   template export + matcher scoring, clone budgets/ad-exclusion/provenance, case-study brief,
   overlap lookup + prompt surfacing, new routes).
 
+### Archival-art sourcing — the masterwork-raid step (2026-07-04, round 4)
+
+`src/nolan/art_sourcing.py` — scenes typed `archival-art` (named paintings/manuscripts/
+statues) get REAL public-domain images. Deliberately a THIN ROUTER over existing
+subsystems: museum/PD providers already in `image_search.py` (Commons/Met/ArtIC/
+Cleveland/Rijksmuseum/Wellcome/LoC/+keyed) via a new `ART_SOURCES` preset;
+`external_assets.semantic_match_for_scene` (library-first → ingest → CLIP) with a new
+`img_sources` passthrough; `imagelib` for license-aware persistence/dedup/reuse.
+
+- **Exact-title pass first**: the scene query usually NAMES the work — candidates are
+  ranked by fuzzy title-token overlap (generic medium words stripped, which also fixes
+  zero-recall long queries on Commons search). CLIP cannot tell Bernini's Aeneas group
+  from any other marble; title text can. Semantic CLIP path is the fallback.
+- **Download hardening**: verify the download RETURN VALUE and temp-then-move (a stale
+  file at dest must never be blessed — found live); **curl fallback** for Wikimedia's
+  upload edge, which TLS-fingerprint-blocks python-httpx regardless of User-Agent.
+- Wired into **Director step 4** (after the video vector matcher; report line added) and
+  standalone via `POST /api/source-art`. Stamps `scene.matched_asset`
+  (project-relative — rendered by `nolan assemble` as a Ken-Burns still) +
+  `resolved_source = "art:exact|library|ingest:<provider>"`.
+- **Live validation (the-aeneid): 21/21 archival-art scenes matched**, named works
+  verified by hash/inspection: the actual Vergilius Vaticanus, Bernini's Aeneas group
+  (10.8MB Commons original, CC0), Augustus of Prima Porta, the Virgil mosaic,
+  'Virgil Reading the Aeneid' (ArtIC), Delacroix's Barque de Dante.
+- Tests: `scripts/test_art_sourcing.py` (title matching, stale-file regression,
+  img_sources threading, exact-pass stamping).
+
 ### Reference-guided production (2026-07-04, round 3)
 
 A deconstruction-referenced project now flows coherently through the whole pipeline —

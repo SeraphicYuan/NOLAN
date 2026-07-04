@@ -33,7 +33,7 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
                              project_root: Path, describer=None, ingest_lib=None,
                              max_results: int = 4, score_cap: int = 4,
                              sim_gate: float = 0.30, library_first_gate: float = 0.45,
-                             lead_queries=None, log=None) -> Optional[str]:
+                             lead_queries=None, img_sources=None, log=None) -> Optional[str]:
     """Unified description-based b-roll match (Phases 2-3).
 
     1. **Library-first**: hybrid (BGE description + CLIP) search over ``libs`` using
@@ -98,7 +98,7 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
                 return _attach_from_lib(best, "library")
         return None
     variants = build_query_variants(scene, lead_queries=lead_queries)
-    cands = _search(client, variants, "image", vid_sources, max_results)
+    cands = _search(client, variants, "image", vid_sources, max_results, img_sources)
     if not cands:
         return None
     for c in cands:
@@ -160,11 +160,13 @@ def build_query_variants(scene, lead_queries=None) -> list:
     return res or ["archival documentary footage"]
 
 
-def _search(client, variants, media_type, vid_sources, max_results):
+def _search(client, variants, media_type, vid_sources, max_results, img_sources=None):
     for variant in variants:
         kw = {"media_type": media_type, "max_results": max_results}
         if media_type == "video" and vid_sources:
             kw["sources"] = vid_sources
+        if media_type == "image" and img_sources:
+            kw["sources"] = img_sources        # e.g. museum/PD-art providers
         cands = client.search_assets(variant, **kw)
         if cands:
             return cands
@@ -174,7 +176,8 @@ def _search(client, variants, media_type, vid_sources, max_results):
 def external_match_for_scene(scene, *, client, scorer, vid_sources, out_dir: Path,
                              project_root: Path, prefer_video: bool = True,
                              max_results: int = 4, score_cap: int = 4, gate: int = 4,
-                             use_vision: bool = False, lead_queries=None, log=None) -> Optional[str]:
+                             use_vision: bool = False, lead_queries=None,
+                             img_sources=None, log=None) -> Optional[str]:
     """Find + attach the best external asset for one scene.
 
     Sets ``scene.matched_clip`` (video, by reference) or ``scene.matched_asset``
@@ -192,7 +195,7 @@ def external_match_for_scene(scene, *, client, scorer, vid_sources, out_dir: Pat
     if prefer_video and vid_sources:
         cands = _search(client, variants, "video", vid_sources, max_results)
     if not cands:
-        cands = _search(client, variants, "image", vid_sources, max_results)
+        cands = _search(client, variants, "image", vid_sources, max_results, img_sources)
     if not cands:
         return None
 

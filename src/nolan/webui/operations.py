@@ -2425,6 +2425,32 @@ async def deconstruct_video(job, *, config, store_root, db_path, video_path: str
             "dispatch_error": dispatch_error}
 
 
+# ==================== Archival-art sourcing (masterwork raid) ====================
+
+
+async def source_art(job, *, config, project: str):
+    """Source real public-domain artworks for a project's archival-art scenes.
+
+    Thin job wrapper over :func:`nolan.art_sourcing.source_art_for_plan`
+    (library-first → museum/Commons providers → describe+ingest →
+    ``matched_asset``). Also runs inside Director step 4; this endpoint exists
+    for standalone re-runs from the UI.
+    """
+    from pathlib import Path as _Path
+    from nolan.art_sourcing import source_art_for_plan
+
+    project_root = _Path("projects") / project
+    plan_path = project_root / "scene_plan.json"
+    if not plan_path.exists():
+        raise RuntimeError(f"no scene_plan.json in project: {project}")
+
+    job.set_progress(0.1, "Sourcing artworks (library → museums/Commons → ingest)…")
+    result = await asyncio.to_thread(
+        source_art_for_plan, plan_path, project_root, config, log=job.log)
+    job.set_progress(1.0, f"Art sourcing: {result['matched']}/{result['considered']} matched")
+    return {"project": project, **result}
+
+
 # ==================== Publish (source -> beautiful HTML article) ====================
 
 async def publish_article(job, *, src: str, theme: str = "press", type: str = "explainer",
