@@ -58,6 +58,23 @@
       border-radius: 8px; padding: 5px 11px; font-size: 12.5px; font-weight: 500; transition: .12s; }
     .gbtn:hover { border-color: var(--accent, #4c7dff); color: var(--accent, #4c7dff); }
     .gbtn::before { content: "↗"; font-size: 12px; opacity: .7; }
+    .beatsplit { display: flex; gap: 14px; align-items: stretch; margin-top: 5px; }
+    .beatpick { flex: 0 0 44%; max-width: 44%; }
+    .allbeats { display: block; font-size: 13px; margin: 0 0 5px; cursor: pointer; }
+    .beatlist { max-height: 176px; overflow-y: auto; border: 1px solid #333; border-radius: 6px;
+      padding: 5px 8px; background: var(--bg-primary); }
+    .beatlist .brow { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 3px 4px;
+      border-radius: 4px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .beatlist .brow:hover { background: rgba(255,255,255,.05); }
+    .beatlist .brow.active { background: rgba(76,125,255,.14); }
+    .beatlist .brow .bn { color: var(--text-secondary); }
+    .beatlist.dim { opacity: .45; pointer-events: none; }
+    .beatprev { flex: 1; min-width: 0; border: 1px solid #333; border-radius: 6px; padding: 9px 11px;
+      background: var(--bg-primary); font-size: 12.5px; color: var(--text-secondary); overflow-y: auto; max-height: 176px; }
+    .beatprev .pt { color: var(--text-primary); font-weight: 600; font-size: 13px; }
+    .beatprev .ptc { color: #8a8a92; font-weight: 400; }
+    .beatprev .pn { margin-top: 6px; line-height: 1.5; }
+    @media (max-width: 640px) { .beatsplit { flex-direction: column; } .beatpick { flex: none; max-width: 100%; } }
   </style>
   <script src="/static/nav.js" data-active="broll"></script>
 </head>
@@ -82,8 +99,8 @@
             <option value="">— pick a project —</option></select>
         </div>
         <div>
-          <label>Beats <span class="hint">(blank = all; or e.g. 0,5)</span></label>
-          <input id="arBeats" type="text" placeholder="all" style="width:100%;padding:6px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px">
+          <label>Agent <span class="hint">(runs the 'agent' brain)</span></label>
+          <select id="arAgent" style="width:100%;padding:6px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px"></select>
         </div>
       </div>
       <label style="margin-top:12px">Brains</label>
@@ -92,9 +109,13 @@
         <label><input type="checkbox" class="arbrain" value="plan"> plan <span class="tag">large-context</span></label>
         <label><input type="checkbox" class="arbrain" value="agent"> agent <span class="tag">autonomous</span></label>
       </div>
-      <div id="arAgentRow" style="margin-top:10px;display:none">
-        <label style="display:inline">Agent <span class="hint">(runs the 'agent' brain — pick an idle one)</span></label>
-        <select id="arAgent" style="margin-left:8px;padding:4px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px"></select>
+      <label style="margin-top:12px">Beats <span class="hint">(tick <b>All</b>, a range, or specific ones — click a beat to preview it)</span></label>
+      <div class="beatsplit">
+        <div class="beatpick">
+          <label class="allbeats"><input type="checkbox" id="arAllBeats" checked> <b>All beats</b></label>
+          <div id="arBeatList" class="beatlist"><span class="ghint">— pick a project —</span></div>
+        </div>
+        <div class="beatprev" id="arBeatPreview"><span class="ghint">Select a beat to see its authored narration.</span></div>
       </div>
       <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
         <button id="arRun">Run review</button>
@@ -194,14 +215,15 @@
       var runBtn = document.getElementById("arRun");
       if (!runBtn) return;
       var status = document.getElementById("arStatus");
-      var agentRow = document.getElementById("arAgentRow");
       var agentSel = document.getElementById("arAgent");
+      var projSelAR = document.getElementById("arProject");
+      var allBeats = document.getElementById("arAllBeats");
+      var beatList = document.getElementById("arBeatList");
+      var beatPrev = document.getElementById("arBeatPreview");
       function brains() {
         return Array.prototype.slice.call(document.querySelectorAll(".arbrain:checked"))
           .map(function (c) { return c.value; });
       }
-      function syncAgentRow() { agentRow.style.display = brains().indexOf("agent") >= 0 ? "block" : "none"; }
-      document.querySelectorAll(".arbrain").forEach(function (c) { c.addEventListener("change", syncAgentRow); });
       function fallbackAgent() { var o = document.createElement("option"); o.value = "nolan4"; o.textContent = "nolan4"; agentSel.appendChild(o); }
       fetch("/scenes/api/fleet").then(function (r) { return r.json(); }).then(function (d) {
         agentSel.innerHTML = "";
@@ -213,17 +235,49 @@
         if (!agentSel.options.length) fallbackAgent();
       }).catch(fallbackAgent);
 
+      // Beat picker: build per-project rows (All / range / specific) + click-to-preview.
+      function currentBeats() { var p = CTX[projSelAR.value]; return (p && p.beats) || []; }
+      function previewBeat(b, row) {
+        beatList.querySelectorAll(".brow.active").forEach(function (r) { r.classList.remove("active"); });
+        if (row) row.classList.add("active");
+        beatPrev.innerHTML = '<div class="pt">' + (b.idx + 1) + '. ' + esc(b.title || "") +
+          (b.timecode ? ' <span class="ptc">[' + esc(b.timecode) + ']</span>' : '') + '</div>' +
+          '<div class="pn">' + esc((b.narration || "(no narration)").trim()) + '</div>';
+      }
+      function syncDim() { beatList.classList.toggle("dim", allBeats.checked); }
+      function buildBeats() {
+        var beats = currentBeats();
+        allBeats.checked = true; syncDim();
+        beatPrev.innerHTML = '<span class="ghint">Select a beat to see its authored narration.</span>';
+        if (!beats.length) { beatList.innerHTML = '<span class="ghint">— pick a project —</span>'; return; }
+        beatList.innerHTML = "";
+        beats.forEach(function (b) {
+          var row = document.createElement("div"); row.className = "brow"; row.dataset.idx = b.idx;
+          row.innerHTML = '<input type="checkbox" class="arbeat" value="' + b.idx + '">' +
+            '<span class="bn">' + (b.idx + 1) + '.</span> ' + esc(b.title || ("beat " + b.idx)) +
+            (b.timecode ? ' <span class="ptc">[' + esc(b.timecode) + ']</span>' : '');
+          var cb = row.querySelector(".arbeat");
+          cb.addEventListener("change", function () { if (cb.checked) { allBeats.checked = false; syncDim(); } previewBeat(b, row); });
+          row.addEventListener("click", function (e) { if (e.target !== cb) previewBeat(b, row); });
+          beatList.appendChild(row);
+        });
+      }
+      allBeats.addEventListener("change", function () {
+        if (allBeats.checked) beatList.querySelectorAll(".arbeat:checked").forEach(function (c) { c.checked = false; });
+        syncDim();
+      });
+      projSelAR.addEventListener("change", buildBeats);
+
       runBtn.addEventListener("click", function () {
-        var project = document.getElementById("arProject").value;
+        var project = projSelAR.value;
         var br = brains();
         if (!project) { status.textContent = "pick a project"; return; }
         if (!br.length) { status.textContent = "pick at least one brain"; return; }
-        var beatsRaw = (document.getElementById("arBeats").value || "").trim();
         var beats = null;
-        if (beatsRaw) {
-          beats = beatsRaw.split(",").map(function (s) { return parseInt(s.trim(), 10); })
-            .filter(function (n) { return !isNaN(n); });
-          if (!beats.length) beats = null;
+        if (!allBeats.checked) {
+          beats = Array.prototype.slice.call(beatList.querySelectorAll(".arbeat:checked"))
+            .map(function (c) { return parseInt(c.value, 10); });
+          if (!beats.length) { status.textContent = "tick All beats, or select at least one"; return; }
         }
         var body = { project: project, brains: br };
         if (beats) body.beats = beats;
