@@ -70,6 +70,38 @@
 
     <div id="galleries" class="galleries"><span class="ghint">Loading galleries…</span></div>
 
+    <div class="card" id="arCard">
+      <label>Asset Review <span class="hint">· run the 3 brains beat-by-beat → comparison gallery</span></label>
+      <div class="hint" style="margin:6px 0 10px">Decomposes each beat into shots and acquires the top-5 assets per shot across brains —
+        <b>engine</b> (per-beat baseline), <b>plan</b> (one large-context pass, cross-beat aware),
+        <b>agent</b> (autonomous Claude holding the whole project). The result opens in the <b>Galleries</b> row above.</div>
+      <div class="row">
+        <div>
+          <label>Project</label>
+          <select id="arProject" style="width:100%;padding:6px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px">
+            <option value="">— pick a project —</option></select>
+        </div>
+        <div>
+          <label>Beats <span class="hint">(blank = all; or e.g. 0,5)</span></label>
+          <input id="arBeats" type="text" placeholder="all" style="width:100%;padding:6px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px">
+        </div>
+      </div>
+      <label style="margin-top:12px">Brains</label>
+      <div class="provs" id="arBrains">
+        <label><input type="checkbox" class="arbrain" value="engine" checked> engine <span class="tag">baseline</span></label>
+        <label><input type="checkbox" class="arbrain" value="plan"> plan <span class="tag">large-context</span></label>
+        <label><input type="checkbox" class="arbrain" value="agent"> agent <span class="tag">autonomous</span></label>
+      </div>
+      <div id="arAgentRow" style="margin-top:10px;display:none">
+        <label style="display:inline">Agent <span class="hint">(runs the 'agent' brain — pick an idle one)</span></label>
+        <select id="arAgent" style="margin-left:8px;padding:4px 8px;background:var(--bg-primary);color:var(--text-primary);border:1px solid #333;border-radius:6px"></select>
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
+        <button id="arRun">Run review</button>
+        <span id="arStatus" class="hint"></span>
+      </div>
+    </div>
+
     <div class="card">
       <label>Approach</label>
       <div class="seg">
@@ -141,7 +173,7 @@
   <script src="/static/jobs.js"></script>
   <script>
     // Populate the generated-gallery quick links (one click instead of typing the URL).
-    (function loadGalleries() {
+    function loadGalleries() {
       var box = document.getElementById("galleries");
       if (!box) return;
       fetch("/api/broll-galleries").then(function (r) { return r.json(); }).then(function (d) {
@@ -154,6 +186,71 @@
         });
         box.innerHTML = html;
       }).catch(function () { box.innerHTML = '<span class="ghint">Could not load galleries.</span>'; });
+    }
+    loadGalleries();
+
+    // Asset Review — run the 3 brains beat-by-beat, poll progress, link the gallery.
+    (function initAssetReview() {
+      var runBtn = document.getElementById("arRun");
+      if (!runBtn) return;
+      var status = document.getElementById("arStatus");
+      var agentRow = document.getElementById("arAgentRow");
+      var agentSel = document.getElementById("arAgent");
+      function brains() {
+        return Array.prototype.slice.call(document.querySelectorAll(".arbrain:checked"))
+          .map(function (c) { return c.value; });
+      }
+      function syncAgentRow() { agentRow.style.display = brains().indexOf("agent") >= 0 ? "block" : "none"; }
+      document.querySelectorAll(".arbrain").forEach(function (c) { c.addEventListener("change", syncAgentRow); });
+      function fallbackAgent() { var o = document.createElement("option"); o.value = "nolan4"; o.textContent = "nolan4"; agentSel.appendChild(o); }
+      fetch("/scenes/api/fleet").then(function (r) { return r.json(); }).then(function (d) {
+        agentSel.innerHTML = "";
+        (d.agents || []).forEach(function (a) {
+          var o = document.createElement("option"); o.value = a.agent;
+          o.textContent = a.agent + (a.session_alive ? " · live" : " · idle");
+          agentSel.appendChild(o);
+        });
+        if (!agentSel.options.length) fallbackAgent();
+      }).catch(fallbackAgent);
+
+      runBtn.addEventListener("click", function () {
+        var project = document.getElementById("arProject").value;
+        var br = brains();
+        if (!project) { status.textContent = "pick a project"; return; }
+        if (!br.length) { status.textContent = "pick at least one brain"; return; }
+        var beatsRaw = (document.getElementById("arBeats").value || "").trim();
+        var beats = null;
+        if (beatsRaw) {
+          beats = beatsRaw.split(",").map(function (s) { return parseInt(s.trim(), 10); })
+            .filter(function (n) { return !isNaN(n); });
+          if (!beats.length) beats = null;
+        }
+        var body = { project: project, brains: br };
+        if (beats) body.beats = beats;
+        if (br.indexOf("agent") >= 0) body.agent = agentSel.value || "nolan4";
+        runBtn.disabled = true;
+        status.textContent = "starting… (" + br.join(", ") + (beats ? "; beats " + beats.join(",") : "; all beats") + ")";
+        fetch("/api/asset-review", {
+          method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+        }).then(function (r) { return r.json(); }).then(function (start) {
+          if (!start.job_id) { status.textContent = "error: " + (start.detail || "no job started"); runBtn.disabled = false; return; }
+          (function tick() {
+            fetch("/api/jobs/" + start.job_id).then(function (r) { return r.json(); }).then(function (j) {
+              if (j.status === "done") {
+                status.innerHTML = 'done · <a class="gbtn" href="' + start.gallery + '" target="_blank" rel="noopener" style="padding:2px 8px">open gallery ↗</a>';
+                loadGalleries();
+                runBtn.disabled = false;
+              } else if (j.status === "error" || j.status === "cancelled") {
+                status.textContent = j.status + ": " + (j.message || j.error || "");
+                runBtn.disabled = false;
+              } else {
+                status.textContent = "running… " + Math.round((j.progress || 0) * 100) + "% " + (j.message || "");
+                setTimeout(tick, 1500);
+              }
+            }).catch(function () { setTimeout(tick, 2500); });
+          })();
+        }).catch(function (e) { status.textContent = "error: " + e; runBtn.disabled = false; });
+      });
     })();
 
     var lit = document.getElementById("lit"), litv = document.getElementById("litv");
@@ -204,12 +301,15 @@
     // Script context: project + beat dropdowns. Selecting a beat auto-fills the narration line.
     var CTX = {};                                     // slug -> {subject, beats:[...]}
     var projSel = document.getElementById("ctxProject"), beatSel = document.getElementById("ctxBeat");
+    var arProjSel = document.getElementById("arProject");
     fetch("/api/broll/projects").then(function (r) { return r.json(); }).then(function (d) {
       (d.projects || []).forEach(function (p) {
         CTX[p.slug] = p;
-        var o = document.createElement("option"); o.value = p.slug;
-        o.textContent = p.subject + " (" + p.beats.length + " beats)";
+        var label = p.subject + " (" + p.beats.length + " beats)";
+        var o = document.createElement("option"); o.value = p.slug; o.textContent = label;
         projSel.appendChild(o);
+        var o2 = document.createElement("option"); o2.value = p.slug; o2.textContent = label;
+        arProjSel.appendChild(o2);
       });
     }).catch(function () {});
     projSel.addEventListener("change", function () {
