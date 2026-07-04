@@ -19,7 +19,7 @@ class VideoIndex:
     """SQLite-backed video index with content-based fingerprints."""
 
     # Schema version for migrations
-    SCHEMA_VERSION = 7
+    SCHEMA_VERSION = 8
 
     def __init__(self, db_path: Path):
         """Initialize the index.
@@ -73,6 +73,12 @@ class VideoIndex:
 
             if current_version < 7:
                 self._migrate_to_v7(conn)
+                cursor = conn.execute("SELECT version FROM schema_version LIMIT 1")
+                row = cursor.fetchone()
+                current_version = row[0] if row else 0
+
+            if current_version < 8:
+                self._migrate_to_v8(conn)
 
             # Create tables with new schema
             conn.execute("""
@@ -184,8 +190,31 @@ class VideoIndex:
                     cached_at TEXT
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS shots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    video_id INTEGER NOT NULL,
+                    shot_index INTEGER,
+                    timestamp_start REAL,
+                    timestamp_end REAL,
+                    cut_score REAL,
+                    camera_motion TEXT,
+                    motion_magnitude REAL,
+                    subject_motion TEXT,
+                    treatment_hint TEXT,
+                    rep_timestamp REAL,
+                    asset_type TEXT,
+                    framing TEXT,
+                    on_screen_text TEXT,
+                    identity_hint TEXT,
+                    facts_version INTEGER,
+                    created_at TEXT,
+                    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+                )
+            """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_frame_cache_lookup ON frame_cache(fingerprint, timestamp, transcript_hash, inference_enabled)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_transcript_cache_lookup ON transcript_alignment_cache(fingerprint, transcript_hash, timestamps_hash)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_shots_video ON shots(video_id, shot_index)")
             conn.commit()
 
     def _migrate_to_v2(self, conn: sqlite3.Connection, from_version: int) -> None:
@@ -390,6 +419,49 @@ class VideoIndex:
             """)
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_saved_clips_project ON saved_clips(project_id)"
+            )
+
+        conn.execute("DELETE FROM schema_version")
+        conn.execute("INSERT INTO schema_version (version) VALUES (?)", (self.SCHEMA_VERSION,))
+        conn.commit()
+
+    def _migrate_to_v8(self, conn: sqlite3.Connection) -> None:
+        """Migrate to v8 schema (add shots table — per-shot visual facts).
+
+        Shots are cut-to-cut intervals with deterministic motion facts
+        (camera/subject motion, treatment hint) plus optional vision-derived
+        facts (asset type, framing, on-screen text, identity hint). Written by
+        ``nolan.visual_facts``; consumed by the deconstruction feature, clip
+        matching, and video-style analysis.
+        """
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='shots'"
+        )
+        if cursor.fetchone() is None:
+            conn.execute("""
+                CREATE TABLE shots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    video_id INTEGER NOT NULL,
+                    shot_index INTEGER,
+                    timestamp_start REAL,
+                    timestamp_end REAL,
+                    cut_score REAL,
+                    camera_motion TEXT,
+                    motion_magnitude REAL,
+                    subject_motion TEXT,
+                    treatment_hint TEXT,
+                    rep_timestamp REAL,
+                    asset_type TEXT,
+                    framing TEXT,
+                    on_screen_text TEXT,
+                    identity_hint TEXT,
+                    facts_version INTEGER,
+                    created_at TEXT,
+                    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_shots_video ON shots(video_id, shot_index)"
             )
 
         conn.execute("DELETE FROM schema_version")
@@ -1613,6 +1685,65 @@ class VideoIndex:
             cursor = conn.execute("DELETE FROM saved_clips WHERE id = ?", (clip_id,))
             conn.commit()
             return cursor.rowcount > 0
+
+    # ------------------------- shots (per-shot visual facts) -------------------------
+
+    _SHOT_COLS = ("shot_index", "timestamp_start", "timestamp_end", "cut_score",
+                  "camera_motion", "motion_magnitude", "subject_motion",
+                  "treatment_hint", "rep_timestamp", "asset_type", "framing",
+                  "on_screen_text", "identity_hint", "facts_version")
+
+    def clear_shots(self, video_id: int) -> None:
+        """Remove all shot rows for a video (before a facts re-run)."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("DELETE FROM shots WHERE video_id = ?", (video_id,))
+            conn.commit()
+
+    def add_shots_bulk(self, video_id: int, shots: List[Dict[str, Any]]) -> int:
+        """Insert shot rows (dicts keyed like _SHOT_COLS; missing keys → NULL)."""
+        if not shots:
+            return 0
+        now = datetime.now().isoformat()
+        rows = [tuple(s.get(c) for c in self._SHOT_COLS) + (now,) for s in shots]
+        cols = ", ".join(self._SHOT_COLS)
+        ph = ", ".join("?" for _ in range(len(self._SHOT_COLS) + 2))
+        with sqlite3.connect(self.db_path) as conn:
+            conn.executemany(
+                f"INSERT INTO shots (video_id, {cols}, created_at) VALUES ({ph})",
+                [(video_id,) + r for r in rows])
+            conn.commit()
+        return len(rows)
+
+    def get_shots(self, video_path: str) -> List[Dict[str, Any]]:
+        """All shot rows for a video by path (separator-insensitive), time-ordered."""
+        vid = self.get_video_id_by_path(video_path)
+        return self.get_shots_by_video_id(vid) if vid is not None else []
+
+    def get_shots_by_video_id(self, video_id: int) -> List[Dict[str, Any]]:
+        """All shot rows for a video id, time-ordered, as dicts (with id)."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM shots WHERE video_id = ? ORDER BY shot_index",
+                (video_id,))
+            return [dict(r) for r in cursor.fetchall()]
+
+    def update_shot_vision_facts(self, shot_id: int, *, asset_type: Optional[str] = None,
+                                 framing: Optional[str] = None,
+                                 on_screen_text: Optional[str] = None,
+                                 identity_hint: Optional[str] = None) -> None:
+        """Attach vision-derived facts to one shot row (only non-None fields)."""
+        sets, vals = [], []
+        for col, v in (("asset_type", asset_type), ("framing", framing),
+                       ("on_screen_text", on_screen_text), ("identity_hint", identity_hint)):
+            if v is not None:
+                sets.append(f"{col} = ?")
+                vals.append(v)
+        if not sets:
+            return
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(f"UPDATE shots SET {', '.join(sets)} WHERE id = ?", (*vals, shot_id))
+            conn.commit()
 
 
 def compute_checksum(path: Path, chunk_size: int = 8192) -> str:

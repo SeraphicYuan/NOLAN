@@ -16,6 +16,7 @@
       { id: "script-styles", label: "Script Styles", href: "/script-styles" },
       { id: "script-projects", label: "Script Projects", href: "/script-projects" },
       { id: "video-styles", label: "Video Styles", href: "/video-styles" },
+      { id: "deconstruct", label: "Deconstruct", href: "/deconstruct" },
     ]},
     { title: "Assets", items: [
       { id: "library", label: "Library", href: "/library" },

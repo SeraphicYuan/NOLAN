@@ -8,6 +8,45 @@
 
 NOLAN is a CLI tool that transforms structured essays into video production packages with scripts, scene plans, and organized assets ready for video editing.
 
+## Video Deconstruction — the inverse Director (2026-07-04)
+
+Reverse-engineer an **ingested library video** into its editorial plan, emitting the
+FORWARD pipeline's vocabularies so the result is comparable/replayable:
+beats → per-beat **pairing operator** (evoke_broll vocabulary: literal/knowledge/tonal/
+conceptual/ironic/trait/relational/scale/text-graphic), **tempo** (tempo_plan's
+energy/pace_dir/transition/motion_speed via `_levers` run in reverse), **motion treatment**
+(motion-library vocabulary: hold/ken-burns-*/as-is/subtle-push), and a draft
+`recovered_plan.json` in scene_plan schema.
+
+- **Tier 1 — visual facts** (`src/nolan/visual_facts.py`, no LLM for motion): shot
+  detection (reuses the sampler's `.scores.json` cache, falls back to HSV cut detection),
+  **optical-flow motion classification** (Farneback; median flow → pan/tilt, radial
+  divergence → push-in/pull-out, camera-speed-adaptive moving-pixel fraction → subject
+  motion), optional **structured vision facts** per shot (asset_type/framing/
+  on_screen_text/identity_hint — same providers as ingestion). Persisted to the new
+  **`shots` table (library schema v8)** with `facts_version` for incremental re-runs;
+  accessors `add_shots_bulk/get_shots/clear_shots/update_shot_vision_facts`.
+  Deterministic rows persist BEFORE the vision pass; vision runs **concurrently**
+  (semaphore, 5) and writes through per row — observable mid-run, crash-safe, and a
+  motion-only run can be **vision-backfilled** later without recompute.
+- **Tier 2 — interpretation** (`src/nolan/deconstruct/`): editorial **beats** (text-LLM,
+  single call, gap/overlap repair, deterministic fallback), **operator classification**
+  (batched text-LLM with a BGE said↔shown directness prior from `video_style.pairing`;
+  band fallback), deterministic **tempo recovery**, evidence frame per beat, draft plan
+  assembly (montage beats >8 shots collapse to one scene). Artifacts in
+  `video_deconstructions/<slug>/` (extract.json, recovered_plan.json, frames/,
+  synthesis_task.md).
+- **Engines:** ~95% API-layer like ingestion (OpenCV + vision API + `create_text_llm`,
+  i.e. OpenRouter qwen/gemini per config); ONE tmux Claude-agent dispatch at the end
+  writes `breakdown.md` (beat sheet, asset inventory with ComfyUI prompts, editorial
+  patterns) and refines the plan — mirrors `analyze_video_style`.
+- **Hub:** `/deconstruct` page (library picker, agent selector, beat timeline colored by
+  function with energy fill, per-beat cards with evidence frames, artifact viewers);
+  routes `GET/POST /api/deconstruct*`; nav entry under Create.
+- Tests: `scripts/test_visual_facts.py` (classifier + E2E on a generated 3-scene video +
+  v7→v8 migration), `scripts/test_deconstruct.py` (mock-LLM beats/operators, extract E2E,
+  plan schema, task brief, hub wiring).
+
 ## Showcase previews wired (2026-07-03)
 
 **What changed.** The `/showcase` page ("Motion Effects Showcase") was fully built and wired but

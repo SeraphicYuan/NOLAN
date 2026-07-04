@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOLAN Deconstruct</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 18px; }
+        h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+        .sub { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 20px; }
+        .panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        input, select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); padding: 9px 12px; font-size: 14px; font-family: inherit; }
+        button { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        button:hover { background: #475569; }
+        button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+        .list { display: flex; flex-direction: column; gap: 8px; }
+        .list .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+        .list .card:hover { border-color: #475569; }
+        .list .card.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary)); }
+        .card .name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .card .meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .badge { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: #0f2f3a; color: #7fd3e0; }
+        .badge.no { background: var(--bg-tertiary); color: var(--text-secondary); }
+        .grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+        .section-title { font-size: 15px; font-weight: 600; margin: 16px 0 8px; }
+        .jobstatus { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+        .empty { color: var(--text-secondary); font-size: 13px; padding: 8px 0; }
+        pre { white-space: pre-wrap; background: var(--bg-primary); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; max-height: 480px; overflow: auto; font-size: 12px; line-height: 1.55; }
+        label.fld { font-size: 12px; color: var(--text-secondary); display: block; margin: 8px 0 3px; }
+        .hidden { display: none; }
+        /* beat timeline */
+        .timeline { display: flex; height: 46px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+        .tl-beat { position: relative; min-width: 6px; cursor: pointer; }
+        .tl-beat .e { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,.28); }
+        .tl-beat:hover { filter: brightness(1.25); }
+        .legend { font-size: 11px; color: var(--text-secondary); margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .legend .k { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+        .beat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
+        .beat .hdr { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+        .beat .facts { color: var(--text-secondary); font-size: 12px; margin-top: 4px; }
+        .beat .why { font-size: 12px; margin-top: 6px; }
+        .beat img { max-width: 200px; border-radius: 6px; margin-top: 8px; border: 1px solid var(--border); }
+        .pickbox { max-height: 240px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; }
+        .pick { font-size: 12px; padding: 6px 2px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr !important; }
+            .row { flex-direction: column; align-items: stretch; }
+            .row > * { width: 100% !important; }
+        }
+    </style>
+</head>
+<body>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="deconstruct"></script>
+
+<div class="wrap">
+    <h1>🔬 Deconstruct</h1>
+    <div class="sub">Reverse-engineer an ingested library video into its <b>editorial plan</b>: beats, why each asset sits under each line (<b>pairing operators</b>), the <b>tempo curve</b> (energy / transitions), and the <b>motion</b> on assets — plus a replayable <code>recovered_plan.json</code> in scene-plan schema.</div>
+
+    <div class="grid">
+        <!-- LEFT: run + library picker + past deconstructions -->
+        <div>
+            <div class="panel">
+                <div class="section-title" style="margin-top:0;">Deconstruct a library video</div>
+                <label class="fld">Indexed library video</label>
+                <div class="pickbox" id="videoPick"><div class="empty">Loading videos…</div></div>
+                <div class="row" style="margin-top:10px;">
+                    <label style="font-size:12px;color:var(--text-secondary);">Agent:</label>
+                    <select id="agentSelect"></select>
+                    <button onclick="loadSessions('agentSelect')" title="Refresh agent sessions">⟳</button>
+                </div>
+                <div class="row" style="margin-top:8px;">
+                    <select id="provider" title="Vision provider for per-shot facts">
+                        <option value="openrouter">openrouter vision</option>
+                        <option value="gemini">gemini vision</option>
+                        <option value="ollama">ollama vision</option>
+                    </select>
+                    <select id="profile" title="Tempo profile used to scale recovered energy">
+                        <option value="balanced">balanced</option>
+                        <option value="punchy">punchy</option>
+                        <option value="contemplative">contemplative</option>
+                    </select>
+                </div>
+                <div class="row" style="margin-top:8px;">
+                    <label style="font-size:12px;"><input type="checkbox" id="useVision" checked> vision shot-facts</label>
+                    <label style="font-size:12px;"><input type="checkbox" id="useLlm" checked> LLM beats/operators</label>
+                </div>
+                <button class="primary" style="margin-top:10px;" onclick="runDeconstruct()">🔬 Deconstruct</button>
+                <div class="jobstatus" id="jobStatus"></div>
+            </div>
+            <div class="section-title">Deconstructions</div>
+            <div class="list" id="decList"><div class="empty">Loading…</div></div>
+        </div>
+
+        <!-- RIGHT: selected deconstruction -->
+        <div id="detail" class="hidden">
+            <div class="panel">
+                <div class="row" style="justify-content:space-between;">
+                    <div class="name" id="dName" style="font-size:17px;"></div>
+                    <button class="danger" onclick="deleteDec()">Delete</button>
+                </div>
+                <div class="meta" id="dMeta" style="color:var(--text-secondary);font-size:12px;margin-top:6px;"></div>
+                <div class="section-title">Beat timeline <span style="font-weight:400;color:var(--text-secondary);font-size:12px;">(width = duration, fill = energy, color = function)</span></div>
+                <div class="timeline" id="timeline"></div>
+                <div class="legend" id="legend"></div>
+            </div>
+            <div class="panel">
+                <div class="row" style="justify-content:space-between;">
+                    <div class="section-title" style="margin-top:0;">Beats</div>
+                    <div class="row">
+                        <button onclick="viewArtifact('breakdown')">breakdown.md</button>
+                        <button onclick="viewArtifact('plan')">recovered_plan.json</button>
+                        <button onclick="viewArtifact('extract')">extract.json</button>
+                        <button onclick="viewArtifact('task')">task</button>
+                    </div>
+                </div>
+                <div id="beats"></div>
+            </div>
+            <div class="panel">
+                <div class="section-title" style="margin-top:0;">Artifact</div>
+                <pre id="artView" class="empty">Pick an artifact above.</pre>
+            </div>
+        </div>
+        <div id="detailEmpty" class="empty" style="padding-top:40px;">Select or run a deconstruction.</div>
+    </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let current = null, pickedVideo = null, pollTimer = null;
+const FN_COLORS = { hook:'#c2410c', context:'#1d4ed8', evidence:'#047857', turn:'#7c3aed', close:'#be123c', other:'#475569' };
+
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function api(url, opts) {
+    const r = await fetch(url, opts);
+    if (!r.ok) throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail || r.statusText);
+    return r.json();
+}
+async function loadSessions(selId) {
+    try {
+        const data = await api('/library/api/tmux-sessions');
+        const sessions = data.sessions || [];
+        const sel = $(selId);
+        sel.innerHTML = (sessions.length ? sessions : ['nolan2']).map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+        if (sessions.includes('nolan2')) sel.value = 'nolan2';
+    } catch(e){}
+}
+async function loadVideos() {
+    try {
+        const data = await api('/library/api/videos');
+        const vids = data.videos || [];
+        $('videoPick').innerHTML = vids.length ? vids.map(v =>
+            `<div class="pick"><span title="${esc(v.path)}">${esc((v.path||'').split(/[\\\/]/).pop())}</span>
+             <button onclick="pickVideo('${esc(v.path).replace(/\\/g,'\\\\')}')">Pick</button></div>`).join('')
+            : '<div class="empty">No indexed videos.</div>';
+    } catch(e) { $('videoPick').innerHTML = `<div class="empty">videos: ${esc(e.message)}</div>`; }
+}
+function pickVideo(p) { pickedVideo = p; $('jobStatus').textContent = 'Picked: ' + p.split(/[\\\/]/).pop(); }
+
+async function loadList() {
+    try {
+        const data = await api('/api/deconstruct');
+        const items = data.deconstructions || [];
+        $('decList').innerHTML = items.length ? items.map(d => `
+            <div class="card ${d.slug===current?'active':''}" onclick="select('${esc(d.slug)}')">
+                <div class="name">${esc(d.title)}</div>
+                <div class="meta">${d.has_breakdown?'<span class="badge">breakdown ✓</span>':'<span class="badge no">no breakdown</span>'}
+                ${d.has_extract?'<span class="badge">extract ✓</span>':''} · ${esc(d.status||'')}</div>
+            </div>`).join('') : '<div class="empty">None yet.</div>';
+    } catch(e) { $('decList').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+async function runDeconstruct() {
+    if (!pickedVideo) { alert('Pick a library video first.'); return; }
+    const body = { video_path: pickedVideo, session: ($('agentSelect')||{}).value || 'nolan2',
+                   provider: $('provider').value, profile: $('profile').value,
+                   enable_vision: $('useVision').checked, use_llm: $('useLlm').checked };
+    $('jobStatus').textContent = 'Deconstructing → ' + body.session + '…';
+    try {
+        const r = await api('/api/deconstruct/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        pollJob(r.job_id);
+    } catch (e) { $('jobStatus').textContent = 'Error: ' + e.message; }
+}
+function pollJob(jobId) {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+        try {
+            const j = await api('/api/jobs/' + jobId);
+            $('jobStatus').textContent = (j.message || j.status) + (j.progress!=null ? ` (${Math.round(j.progress*100)}%)` : '');
+            if (j.status === 'completed' || j.status === 'failed') {
+                clearInterval(pollTimer); pollTimer = null;
+                loadList();
+                if (j.status === 'completed' && j.result && j.result.slug) select(j.result.slug);
+            }
+        } catch (e) { clearInterval(pollTimer); pollTimer = null; $('jobStatus').textContent = 'poll error: ' + e.message; }
+    }, 1500);
+}
+
+async function select(slug) {
+    current = slug;
+    let meta;
+    try { meta = await api('/api/deconstruct/' + slug); } catch(e) { return; }
+    $('detail').classList.remove('hidden'); $('detailEmpty').classList.add('hidden');
+    $('dName').textContent = meta.title;
+    $('dMeta').textContent = `${meta.video_path} · ${meta.status}` + (meta.has_breakdown ? ' · breakdown ready' : ' · agent may still be writing breakdown');
+    renderExtract(slug);
+    loadList();
+}
+async function renderExtract(slug) {
+    let ex;
+    try { ex = JSON.parse((await api(`/api/deconstruct/${slug}/artifact/extract`)).content); }
+    catch(e) { $('timeline').innerHTML=''; $('beats').innerHTML = `<div class="empty">no extract yet</div>`; return; }
+    const beats = ex.beats || [], dur = ex.duration || 1;
+    $('timeline').innerHTML = beats.map((b,i) => {
+        const w = Math.max(0.6, (b.t1-b.t0)/dur*100);
+        const col = FN_COLORS[b.function] || FN_COLORS.other;
+        return `<div class="tl-beat" style="width:${w}%;background:${col}" title="${esc(b.title)} (${b.function}) e=${b.energy}" onclick="document.getElementById('beat_${i}').scrollIntoView({behavior:'smooth'})">
+                <div class="e" style="height:${Math.round((b.energy||0)*100)}%"></div></div>`;
+    }).join('');
+    const fns = [...new Set(beats.map(b=>b.function))];
+    $('legend').innerHTML = fns.map(f=>`<span><span class="k" style="background:${FN_COLORS[f]||FN_COLORS.other}"></span>${esc(f)}</span>`).join('')
+        + ` <span>· beats:${esc(ex.beat_source)} · operators:${esc(ex.operator_source)} · ${ex.shot_count} shots</span>`;
+    $('beats').innerHTML = beats.map((b,i) => `
+        <div class="beat" id="beat_${i}">
+            <div class="hdr"><span>${i+1}. ${esc(b.title)} <span class="badge">${esc(b.function)}</span></span>
+                <span>${fmt(b.t0)}–${fmt(b.t1)}</span></div>
+            <div class="facts">op: <b>${esc(b.operator)}</b> (${esc(b.operator_confidence)}) · e=${b.energy} ${esc(b.pace_dir)} · ${b.cuts_per_min} cuts/min · ${esc(b.motion_speed)} · treat: ${esc(b.dominant_treatment||'—')}${b.directness!=null?` · directness ${b.directness} (${esc(b.band)})`:''}${b.identified_assets?` · assets: ${esc(b.identified_assets.join('; '))}`:''}</div>
+            ${b.said?`<div class="why">🗣 "${esc(b.said.slice(0,220))}${b.said.length>220?'…':''}"</div>`:''}
+            ${b.operator_why?`<div class="why">🎯 ${esc(b.operator_why)}</div>`:''}
+            ${b.frame?`<img loading="lazy" src="/api/deconstruct/${esc(current)}/frame/${esc(b.frame)}">`:''}
+        </div>`).join('') || '<div class="empty">no beats</div>';
+}
+function fmt(t){ t=Math.round(t||0); return `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`; }
+
+async function viewArtifact(name) {
+    try {
+        const r = await api(`/api/deconstruct/${current}/artifact/${name}`);
+        $('artView').textContent = r.content; $('artView').classList.remove('empty');
+    } catch (e) { $('artView').textContent = `no ${name} yet (${e.message})`; $('artView').classList.add('empty'); }
+}
+async function deleteDec() {
+    if (!confirm('Delete this deconstruction?')) return;
+    await api('/api/deconstruct/' + current, { method: 'DELETE' });
+    current = null; $('detail').classList.add('hidden'); $('detailEmpty').classList.remove('hidden');
+    loadList();
+}
+
+loadVideos(); loadList(); loadSessions('agentSelect');
+</script>
+</body>
+</html>

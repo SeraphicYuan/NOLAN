@@ -2319,6 +2319,94 @@ async def analyze_video_style(job, *, config, store_root, db_path, style_id: str
             "dispatched": dispatched, "dispatch_error": dispatch_error}
 
 
+# ==================== Video deconstruction (inverse Director) ====================
+
+
+async def deconstruct_video(job, *, config, store_root, db_path, video_path: str,
+                            session: str = "nolan2", provider: str = "openrouter",
+                            enable_vision: bool = True, use_llm: bool = True,
+                            profile: str = "balanced"):
+    """Deconstruct one ingested library video into beats + pairing + tempo.
+
+    API layer (like ingestion): visual facts (OpenCV + vision API), beats and
+    operator classification (text LLM), tempo recovery (deterministic). Then
+    dispatches ONE synthesis task to a tmux Claude agent which writes
+    ``breakdown.md`` and refines ``recovered_plan.json``. Mirrors
+    :func:`analyze_video_style`.
+    """
+    from pathlib import Path as _Path
+    from nolan.deconstruct import (DeconstructionStore, build_extract,
+                                   deconstruction_synthesis_task)
+    from nolan.indexer import VideoIndex
+    from nolan.llm import create_text_llm
+    from nolan.video_style import pairing as pairing_mod
+    from nolan.vision import create_vision_provider
+
+    index = VideoIndex(_Path(db_path))
+    if index.get_video_id_by_path(video_path) is None:
+        raise RuntimeError(f"video not in library index: {video_path}")
+
+    store = DeconstructionStore(_Path(store_root))
+    title = _Path(video_path).stem
+    slug = store.create(video_path, title=title)
+
+    job.set_progress(0.05, "Setting up analysis providers…")
+    llm = None
+    if use_llm:
+        try:
+            llm = create_text_llm(config)
+        except Exception as e:
+            job.log(f"text LLM unavailable ({e}) — beats/operators use fallbacks")
+    try:
+        embedder = pairing_mod.make_bge_embedder()
+    except Exception as e:
+        embedder = None
+        job.log(f"BGE embedder unavailable ({e}) — no directness prior")
+    vision = None
+    if enable_vision:
+        try:
+            vp = create_vision_provider(_select_vision(config, provider, None, None, None))
+            vision = vp if await vp.check_connection() else None
+            if vision is None:
+                job.log(f"vision provider '{provider}' unreachable — shot facts stay motion-only")
+        except Exception as e:
+            job.log(f"vision setup failed ({e}) — shot facts stay motion-only")
+
+    job.set_progress(0.15, "Extracting: shots → motion → beats → operators → tempo…")
+    extract, plan = await build_extract(
+        video_path, index, llm=llm, embed=embedder, vision_provider=vision,
+        frames_dir=store.frames_dir(slug), profile=profile)
+    store.write_extract(slug, extract)
+    store.write_plan(slug, plan)
+    store.set_status(slug, "extracted")
+    job.log(f"extract: {extract['shot_count']} shots → {len(extract['beats'])} beats "
+            f"(beats:{extract['beat_source']}, operators:{extract['operator_source']})")
+
+    job.set_progress(0.9, "Writing synthesis brief…")
+    store.task_path(slug).write_text(
+        deconstruction_synthesis_task(slug, title, video_path), encoding="utf-8")
+    task_posix = f"video_deconstructions/{slug}/synthesis_task.md"
+    breakdown_posix = f"video_deconstructions/{slug}/breakdown.md"
+
+    job.set_progress(0.94, f"Dispatching synthesis to {session}…")
+    message = (f"New NOLAN video deconstruction synthesis task — please read and "
+               f"complete {task_posix} now, writing the breakdown to {breakdown_posix} "
+               f"and refining the recovered plan.")
+    dispatched, dispatch_error = True, None
+    try:
+        await asyncio.get_event_loop().run_in_executor(None, _dispatch_to_tmux, session, message)
+        job.set_progress(1.0, f"Extracted {len(extract['beats'])} beats; synthesis dispatched to {session}")
+    except Exception as e:
+        dispatched, dispatch_error = False, str(e)
+        job.set_progress(1.0, f"Extracted; dispatch failed: {e}")
+
+    return {"slug": slug, "session": session, "shots": extract["shot_count"],
+            "beats": len(extract["beats"]), "beat_source": extract["beat_source"],
+            "operator_source": extract["operator_source"], "task_file": task_posix,
+            "breakdown_file": breakdown_posix, "dispatched": dispatched,
+            "dispatch_error": dispatch_error}
+
+
 # ==================== Publish (source -> beautiful HTML article) ====================
 
 async def publish_article(job, *, src: str, theme: str = "press", type: str = "explainer",

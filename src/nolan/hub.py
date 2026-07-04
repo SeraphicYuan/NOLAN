@@ -2348,6 +2348,74 @@ def create_hub_app(
             raise HTTPException(status_code=404, detail="no extract yet")
         return ex
 
+    # ==================== Video deconstruction (inverse Director) ====================
+
+    from nolan.deconstruct import DeconstructionStore
+    deconstruct_store = DeconstructionStore(Path("video_deconstructions"))
+    deconstruct_template = templates_dir / "deconstruct.html"
+
+    @app.get("/deconstruct", response_class=HTMLResponse)
+    async def deconstruct_page():
+        if deconstruct_template.exists():
+            return deconstruct_template.read_text(encoding="utf-8")
+        return "<h1>deconstruct.html not found</h1>"
+
+    @app.get("/api/deconstruct")
+    async def deconstruct_list():
+        return {"deconstructions": deconstruct_store.list()}
+
+    @app.post("/api/deconstruct/run")
+    async def deconstruct_run(body: dict = Body(...)):
+        """Deconstruct one ingested library video (job + agent dispatch)."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        video_path = (body.get("video_path") or "").strip()
+        if not video_path:
+            raise HTTPException(status_code=400, detail="video_path required")
+        config = load_config()
+        effective_db = db_path or Path(config.indexing.database).expanduser()
+        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        job = job_manager.start(
+            "deconstruct-video", operations.deconstruct_video,
+            meta={"video_path": video_path, "session": session},
+            config=config, store_root="video_deconstructions",
+            db_path=effective_db, video_path=video_path, session=session,
+            provider=(body.get("provider") or "openrouter"),
+            enable_vision=bool(body.get("enable_vision", True)),
+            use_llm=bool(body.get("use_llm", True)),
+            profile=(body.get("profile") or "balanced"))
+        return {"job_id": job.id, "type": "deconstruct-video"}
+
+    @app.get("/api/deconstruct/{slug}")
+    async def deconstruct_get(slug: str):
+        meta = deconstruct_store.get(slug)
+        if meta is None:
+            raise HTTPException(status_code=404, detail="deconstruction not found")
+        return meta
+
+    @app.delete("/api/deconstruct/{slug}")
+    async def deconstruct_delete(slug: str):
+        if not deconstruct_store.delete(slug):
+            raise HTTPException(status_code=404, detail="deconstruction not found")
+        return {"deleted": slug}
+
+    @app.get("/api/deconstruct/{slug}/artifact/{name}")
+    async def deconstruct_artifact(slug: str, name: str):
+        """Read an artifact: extract | plan | breakdown | task."""
+        if name not in ("extract", "plan", "breakdown", "task"):
+            raise HTTPException(status_code=400, detail="name must be extract/plan/breakdown/task")
+        content = deconstruct_store.read_text(slug, name)
+        if content is None:
+            raise HTTPException(status_code=404, detail=f"no {name} yet")
+        return {"slug": slug, "name": name, "content": content}
+
+    @app.get("/api/deconstruct/{slug}/frame/{fname}")
+    async def deconstruct_frame(slug: str, fname: str):
+        fp = deconstruct_store.frames_dir(slug) / Path(fname).name
+        if not fp.exists():
+            raise HTTPException(status_code=404, detail="frame not found")
+        return FileResponse(str(fp), media_type="image/jpeg")
+
     # ==================== Showcase Routes ====================
 
     showcase_template = templates_dir / "showcase.html"
