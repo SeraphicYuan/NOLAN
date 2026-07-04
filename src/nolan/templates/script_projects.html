@@ -105,6 +105,12 @@
                     <span style="flex:1"></span>
                     <button id="btnBaseline" onclick="writeScript()" title="legacy one-shot writer — kept for A/B only">⧗ Baseline</button>
                 </div>
+                <div class="row" style="margin-top:8px; gap:6px;">
+                    <label style="font-size:12px;color:var(--text-secondary);align-self:center;">Reference structure:</label>
+                    <select id="decSelect" style="max-width:280px;"><option value="">(none — from a deconstruction)</option></select>
+                    <button onclick="attachDeconstruction()" title="Seed this project's beatmap.md + reference_structure.json with a deconstructed video's beat structure — the v3 writer treats it as the structural constitution; Director tempo/scene steps use it too">📎 Attach</button>
+                    <span id="refBadge" class="badge hidden"></span>
+                </div>
                 <div class="jobstatus" id="jobStatus"></div>
                 <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap;align-items:center;">
                     <span style="font-size:12px;color:var(--text-secondary)">Once the script is ready →</span>
@@ -267,6 +273,9 @@ async function select(slug) {
     $('detail').classList.remove('hidden');
     $('detailEmpty').classList.add('hidden');
     $('dName').textContent = p.name;
+    const rb = $('refBadge');
+    if (p.cloned_from_deconstruction) { rb.textContent = '📎 ' + p.cloned_from_deconstruction; rb.classList.remove('hidden'); }
+    else rb.classList.add('hidden');
     $('dMeta').textContent = `subject: ${p.subject} · style: ${p.style_id} · ~${p.target_minutes} min · mode: ${p.mode || 'semi'}` +
         (p.pivot ? ` · pivot: ${p.pivot}` : '');
     fillStyleSelect(p.style_id);
@@ -439,6 +448,38 @@ async function loadSessions(selId) {
 }
 function pickedSession() { return ($('agentSelect') || {}).value || 'nolan2'; }
 
+async function loadDeconstructions() {
+    try {
+        const d = await api('/api/deconstruct');
+        const items = (d.deconstructions || []).filter(x => x.has_extract);
+        $('decSelect').innerHTML = '<option value="">(none — from a deconstruction)</option>' +
+            items.map(x => `<option value="${esc(x.slug)}">${esc(x.title)}</option>`).join('');
+    } catch(e){}
+}
+async function attachDeconstruction() {
+    if (!current) { alert('Select a project first.'); return; }
+    const dec = $('decSelect').value;
+    if (!dec) { alert('Pick a deconstruction.'); return; }
+    const doAttach = async (replace) => api('/api/script-projects/' + current + '/attach-deconstruction',
+        { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ deconstruction: dec, replace_beatmap: replace }) });
+    try {
+        const r = await doAttach(false);
+        $('jobStatus').textContent = `✓ attached ${dec} (${r.beats} beats) — beatmap.md + reference_structure.json seeded`;
+        select(current);
+    } catch (e) {
+        if (String(e.message).includes('beatmap')) {
+            if (confirm('This project already has a beatmap.md. Replace it with the cloned structure?')) {
+                const r = await doAttach(true);
+                $('jobStatus').textContent = `✓ attached ${dec} (${r.beats} beats) — previous beatmap replaced`;
+                select(current);
+                return;
+            }
+        }
+        $('jobStatus').textContent = 'Attach error: ' + e.message;
+    }
+}
+
 async function writeScript() {
     const session = pickedSession();
     $('jobStatus').textContent = 'Dispatching baseline writer → ' + session + '…';
@@ -477,6 +518,7 @@ async function deleteProject() {
 loadStyles();
 loadProjects();
 loadSessions('agentSelect');
+loadDeconstructions();
 </script>
 </body>
 </html>

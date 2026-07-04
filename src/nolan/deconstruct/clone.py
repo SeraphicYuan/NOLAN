@@ -70,6 +70,36 @@ def build_cloned_beatmap(extract: Dict[str, Any], dec_slug: str,
     return "\n".join(lines)
 
 
+def _write_reference(extract: Dict[str, Any], dec_slug: str, store, slug: str) -> None:
+    """Write reference_structure.json — the recovered beats for downstream steps
+    (draft agent, Director scene hints, tempo cloning)."""
+    (store.scriptgen_dir(slug) / "reference_structure.json").write_text(
+        json.dumps({"deconstruction": dec_slug,
+                    "video_path": extract.get("video_path"),
+                    "duration": extract.get("duration"),
+                    "beats": [{k: b.get(k) for k in
+                               ("title", "function", "operator", "energy",
+                                "pace_dir", "transition", "motion_speed",
+                                "dominant_treatment", "asset_types",
+                                "t0", "t1", "shot_count")}
+                              for b in (extract.get("beats") or [])]},
+                   indent=2, ensure_ascii=False),
+        encoding="utf-8")
+
+
+def _seed(extract: Dict[str, Any], dec_slug: str, store, slug: str,
+          target_minutes: float) -> None:
+    """Seed beatmap + reference + provenance meta on a project."""
+    store.beatmap_path(slug).write_text(
+        build_cloned_beatmap(extract, dec_slug, float(target_minutes)),
+        encoding="utf-8")
+    meta = store._load_meta(slug)
+    meta["cloned_from_deconstruction"] = dec_slug
+    meta["cloned_at"] = datetime.now().isoformat()
+    store._save_meta(meta)
+    _write_reference(extract, dec_slug, store, slug)
+
+
 def clone_to_script_project(extract: Dict[str, Any], dec_slug: str, *,
                             subject: str, style_id: str,
                             target_minutes: float = 8.0,
@@ -85,29 +115,39 @@ def clone_to_script_project(extract: Dict[str, Any], dec_slug: str, *,
         target_minutes=float(target_minutes),
         description=(f"{subject} — structure cloned from deconstruction "
                      f"'{dec_slug}'"))
-
-    # seed the constitution
-    store.beatmap_path(slug).write_text(
-        build_cloned_beatmap(extract, dec_slug, float(target_minutes)),
-        encoding="utf-8")
-
-    # record provenance in meta (and keep the store's derived fields intact)
-    meta = store._load_meta(slug)
-    meta["cloned_from_deconstruction"] = dec_slug
-    meta["cloned_at"] = datetime.now().isoformat()
-    store._save_meta(meta)
-
-    # reference copy of the recovered beats for the draft agent
-    (store.scriptgen_dir(slug) / "reference_structure.json").write_text(
-        json.dumps({"deconstruction": dec_slug,
-                    "video_path": extract.get("video_path"),
-                    "beats": [{k: b.get(k) for k in
-                               ("title", "function", "operator", "energy",
-                                "pace_dir", "transition", "motion_speed",
-                                "dominant_treatment", "t0", "t1", "shot_count")}
-                              for b in (extract.get("beats") or [])]},
-                   indent=2, ensure_ascii=False),
-        encoding="utf-8")
+    _seed(extract, dec_slug, store, slug, target_minutes)
     return {"project_slug": slug, "beatmap": str(store.beatmap_path(slug)),
+            "beats": len([b for b in (extract.get("beats") or [])
+                          if b.get("function") != "other"])}
+
+
+def attach_reference(extract: Dict[str, Any], dec_slug: str, project_slug: str, *,
+                     replace_beatmap: bool = False,
+                     store_root="projects") -> Dict[str, Any]:
+    """Attach a deconstruction to an EXISTING script project.
+
+    Seeds the same artifacts clone mode creates (constitution ``beatmap.md``,
+    ``reference_structure.json``, provenance meta → the clone-aware v3/draft
+    brief triggers automatically). Refuses to overwrite an existing
+    ``beatmap.md`` unless ``replace_beatmap`` — a hand-written or agent-written
+    beat-map is real work; overwriting must be explicit.
+    """
+    from pathlib import Path
+
+    from nolan.scriptwriter import ScriptProjectStore
+
+    store = ScriptProjectStore(Path(store_root))
+    if not store.exists(project_slug):
+        raise ValueError(f"script project not found: {project_slug}")
+    bm = store.beatmap_path(project_slug)
+    if bm.exists() and not replace_beatmap:
+        raise ValueError("project already has a beatmap.md — pass "
+                         "replace_beatmap=true to overwrite it")
+    replaced = bm.exists()
+    meta = store._load_meta(project_slug)
+    _seed(extract, dec_slug, store, project_slug,
+          float(meta.get("target_minutes", 8.0)))
+    return {"project_slug": project_slug, "attached": dec_slug,
+            "beatmap_replaced": replaced,
             "beats": len([b for b in (extract.get("beats") or [])
                           if b.get("function") != "other"])}

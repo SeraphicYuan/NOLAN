@@ -1142,6 +1142,14 @@ class Director:
         if (_sg / "beatmap.md").exists():
             grounding += ("# beatmap_path (retention/pacing plan — each beat is tagged pace:accelerate|"
                           f"decelerate; honor that rhythm)\n`{path_for_agent(_sg / 'beatmap.md')}`\n\n")
+        if (_sg / "reference_structure.json").exists():
+            grounding += ("# reference_structure_path (a REAL video's recovered editorial plan this "
+                          "project was cloned from / references — per beat: pairing `operator` (how "
+                          "the reference relates visuals to narration: literal/tonal/conceptual/…), "
+                          "`dominant_treatment` (its motion grammar), `asset_types`, and measured "
+                          "energy. Use it to CHOOSE visual_type + visual treatment per section like "
+                          "the reference does; it complements, never overrides, the style guide's "
+                          f"visual vocabulary)\n`{path_for_agent(_sg / 'reference_structure.json')}`\n\n")
 
         system = handoff("orchestrator.script-to-scenes")
         user = (
@@ -1511,6 +1519,18 @@ class Director:
             except Exception:
                 llm = None
             tempo = design_tempo(sctx, llm=llm)
+            # Tempo cloning: when the project carries an attached/cloned
+            # deconstruction (reference_structure.json), blend the reference
+            # video's MEASURED energy curve with the script-derived one.
+            ref_path = self.project_path / "scriptgen" / "reference_structure.json"
+            if ref_path.exists():
+                try:
+                    import json as _json
+                    from nolan.tempo_plan import blend_with_reference
+                    tempo = blend_with_reference(
+                        tempo, _json.loads(ref_path.read_text(encoding="utf-8")))
+                except Exception:
+                    pass  # the reference is an enhancement, never a blocker
             applied = apply_to_plan(plan, tempo)
             plan.save(str(scene_plan_path))
             return {"beats": len(sctx.beats), "profile": profile, "source": tempo.source,

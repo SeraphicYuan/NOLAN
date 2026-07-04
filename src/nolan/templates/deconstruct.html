@@ -129,6 +129,11 @@
                     <input id="cloneMin" type="number" value="8" min="1" max="30" style="width:64px;" title="target minutes">
                     <button class="primary" onclick="cloneStructure()" title="Create a script project whose beatmap.md is seeded with this video's recovered beat structure">🧬 Clone structure → script project</button>
                 </div>
+                <div class="row" style="margin-top:8px;">
+                    <input id="sendPlanProject" type="text" list="projList" placeholder="existing project slug" style="flex:1;min-width:160px;">
+                    <datalist id="projList"></datalist>
+                    <button onclick="sendPlan()" title="Copy the recovered plan into that project as scene_plan.json — the /scenes page and Director steps 3–6 (tempo/clips/slides/render) then operate on it">🎬 Send recovered plan → project</button>
+                </div>
                 <div class="jobstatus" id="useStatus"></div>
             </div>
             <div class="panel">
@@ -325,6 +330,33 @@ async function viewArtifact(name) {
         $('artViewMd').classList.add('hidden');
     }
 }
+async function loadProjectsInto(datalistId) {
+    try {
+        const d = await api('/api/script-projects');
+        $(datalistId).innerHTML = (d.projects||[]).map(p => `<option value="${esc(p.slug)}">`).join('');
+    } catch(e){}
+}
+async function sendPlan() {
+    if (!current) return;
+    const project_slug = $('sendPlanProject').value.trim();
+    if (!project_slug) { alert('Enter a project slug.'); return; }
+    $('useStatus').textContent = 'Sending recovered plan…';
+    try {
+        const r = await api(`/api/deconstruct/${current}/send-plan`, { method:'POST',
+            headers:{'Content-Type':'application/json'}, body: JSON.stringify({ project_slug }) });
+        $('useStatus').innerHTML = `✓ scene_plan.json (${r.scenes} scenes) written to <b>${esc(r.project_slug)}</b>${r.backed_up?' (previous plan → .bak)':''} — open <a href="/scenes" style="color:var(--accent)">Scenes</a> or run Director steps 3–6.`;
+    } catch (e) {
+        if (String(e.message).includes('confirm')) {
+            if (confirm('Project already has a scene_plan.json. Replace it? (a .bak is kept)')) {
+                const r = await api(`/api/deconstruct/${current}/send-plan`, { method:'POST',
+                    headers:{'Content-Type':'application/json'}, body: JSON.stringify({ project_slug, confirm: true }) });
+                $('useStatus').innerHTML = `✓ replaced — ${r.scenes} scenes written to <b>${esc(r.project_slug)}</b> (previous plan → .bak)`;
+                return;
+            }
+        }
+        $('useStatus').textContent = 'Send error: ' + e.message;
+    }
+}
 async function loadStylesInto(selId) {
     try {
         const d = await api('/api/script-styles');
@@ -360,7 +392,7 @@ async function deleteDec() {
     loadList();
 }
 
-loadVideos(); loadList(); loadSessions('agentSelect'); loadStylesInto('cloneStyle');
+loadVideos(); loadList(); loadSessions('agentSelect'); loadStylesInto('cloneStyle'); loadProjectsInto('projList');
 // deep-link from the Library page: /deconstruct?video=<path>
 const _qv = new URLSearchParams(location.search).get('video');
 if (_qv) pickVideo(_qv);

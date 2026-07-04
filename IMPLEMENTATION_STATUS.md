@@ -82,6 +82,33 @@ hub against the real Odyssey deconstruction (page, list, meta, artifacts, frames
   template export + matcher scoring, clone budgets/ad-exclusion/provenance, case-study brief,
   overlap lookup + prompt surfacing, new routes).
 
+### Reference-guided production (2026-07-04, round 3)
+
+A deconstruction-referenced project now flows coherently through the whole pipeline —
+the reference shapes structure, scenes, and tempo, not just the script's beatmap:
+
+- **Attach to existing project** (`clone.attach_reference` + `POST
+  /api/script-projects/{slug}/attach-deconstruction` + a Reference row on
+  `/script-projects`): seeds the same artifacts clone mode creates on ANY existing
+  project; refuses to overwrite an existing `beatmap.md` without `replace_beatmap`
+  (409 → confirm in the UI). Badge shows the attached reference.
+- **Tempo cloning** (`tempo_plan.blend_with_reference` + Director `tempo_enrich`
+  wiring): the reference video's MEASURED energy curve (ads excluded, position-
+  normalized) blends 50/50 with the script-derived curve; transition/motion_speed/
+  shots re-derived via `_levers`, pace_dir recomputed, source = `…+reference`.
+  Deterministic; degrades to current behavior with no reference.
+- **Scene-planning hints**: the Director's `script_to_scenes` prompt injects
+  `reference_structure_path` (per-beat operator / dominant_treatment / asset_types)
+  when present; `skills/orchestrator/script-to-scenes.md` §3c explains how the agent
+  leans on the reference's choices within the style guide's vocabulary.
+- **Send recovered plan → project** (`POST /api/deconstruct/{slug}/send-plan` + UI):
+  copies `recovered_plan.json` (scene_plan schema, per-shot scenes) into a project's
+  `scene_plan.json` — the `/scenes` page and Director steps 3–6 operate on it.
+  Existing plan requires `confirm` and is backed up to `scene_plan.json.bak`.
+- HTTP-smoke-tested end-to-end on a test-port hub (attach fresh/409/replace,
+  send-plan fresh/409/confirm+bak, 47-scene Odyssey plan landing on disk, UI controls).
+  Tests extended in `test_deconstruct_integrations.py` (attach, blend, wiring).
+
 ## Showcase previews wired (2026-07-03)
 
 **What changed.** The `/showcase` page ("Motion Effects Showcase") was fully built and wired but

@@ -2443,6 +2443,53 @@ def create_hub_app(
             target_minutes=float(body.get("target_minutes") or 8.0))
         return res
 
+    @app.post("/api/deconstruct/{slug}/send-plan")
+    async def deconstruct_send_plan(slug: str, body: dict = Body(...)):
+        """Copy recovered_plan.json into a project as its scene_plan.json.
+
+        The recovered plan is scene_plan-schema by construction, so the /scenes
+        page and Director steps 3-6 (tempo/clips/slides/render) operate on it.
+        An existing scene_plan.json requires confirm=true and is backed up.
+        """
+        import json as _json
+        plan = deconstruct_store.read_extract(slug) and deconstruct_store.read_text(slug, "plan")
+        if not plan:
+            raise HTTPException(status_code=404, detail="no recovered plan for this deconstruction")
+        project_slug = (body.get("project_slug") or "").strip()
+        if not project_slug:
+            raise HTTPException(status_code=400, detail="project_slug required")
+        pdir = Path("projects") / project_slug
+        if not (pdir / "project.yaml").exists():
+            raise HTTPException(status_code=404, detail=f"project not found: {project_slug}")
+        target = pdir / "scene_plan.json"
+        backed_up = False
+        if target.exists():
+            if not body.get("confirm"):
+                raise HTTPException(status_code=409,
+                                    detail="project already has scene_plan.json — pass confirm=true to replace (a .bak is kept)")
+            target.replace(pdir / "scene_plan.json.bak")
+            backed_up = True
+        target.write_text(plan, encoding="utf-8")
+        n_scenes = sum(len(v) for v in _json.loads(plan).get("sections", {}).values())
+        return {"project_slug": project_slug, "scenes": n_scenes, "backed_up": backed_up}
+
+    @app.post("/api/script-projects/{slug}/attach-deconstruction")
+    async def script_projects_attach_deconstruction(slug: str, body: dict = Body(...)):
+        """Attach a deconstruction's structure to an EXISTING script project."""
+        from nolan.deconstruct.clone import attach_reference
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="script project not found")
+        dec_slug = (body.get("deconstruction") or "").strip()
+        extract = deconstruct_store.read_extract(dec_slug) if dec_slug else None
+        if extract is None:
+            raise HTTPException(status_code=404, detail="deconstruction/extract not found")
+        try:
+            res = attach_reference(extract, dec_slug, slug,
+                                   replace_beatmap=bool(body.get("replace_beatmap")))
+        except ValueError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        return res
+
     # ==================== Showcase Routes ====================
 
     showcase_template = templates_dir / "showcase.html"

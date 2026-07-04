@@ -152,13 +152,85 @@ def test_retrieval_enrichment(td: Path):
     print("retrieval enrichment OK — overlap lookup + facts in score & motion prompts")
 
 
+def test_attach(extract, td: Path):
+    from src.nolan.deconstruct.clone import attach_reference
+    from src.nolan.scriptwriter import ScriptProjectStore, v3_task
+
+    store = ScriptProjectStore(td / "projects")
+    slug = store.create("Existing Project", subject="Some subject",
+                        style_id="channel-great-books-explained", target_minutes=7)
+    # fresh project (no beatmap) → attach succeeds
+    res = attach_reference(extract, "odyssey-test", slug, store_root=td / "projects")
+    assert res["attached"] == "odyssey-test" and not res["beatmap_replaced"]
+    bm = store.beatmap_path(slug).read_text(encoding="utf-8")
+    assert "CLONED STRUCTURE" in bm
+    assert (store.scriptgen_dir(slug) / "reference_structure.json").exists()
+    meta = json.loads((store.scriptgen_dir(slug) / "meta.json").read_text(encoding="utf-8"))
+    assert meta["cloned_from_deconstruction"] == "odyssey-test"
+    # the clone-aware brief triggers on attached projects too
+    assert "CLONED beat structure" in v3_task(slug, store)
+    # existing beatmap → refuse without replace flag
+    try:
+        attach_reference(extract, "odyssey-test", slug, store_root=td / "projects")
+        assert False, "should refuse to overwrite beatmap"
+    except ValueError as e:
+        assert "replace_beatmap" in str(e)
+    res2 = attach_reference(extract, "odyssey-test", slug,
+                            replace_beatmap=True, store_root=td / "projects")
+    assert res2["beatmap_replaced"]
+    print("attach OK — seeds artifacts, brief triggers, clobber-guard + explicit replace")
+
+
+def test_tempo_blend():
+    from src.nolan.tempo_plan import BeatTempo, TempoPlan, blend_with_reference
+
+    plan = TempoPlan(slug="t", profile="balanced", source="rules", beats=[
+        BeatTempo(idx=0, title="A", energy=0.30),
+        BeatTempo(idx=1, title="B", energy=0.30),
+        BeatTempo(idx=2, title="C", energy=0.30),
+        BeatTempo(idx=3, title="D", energy=0.30),
+    ])
+    reference = {"beats": [
+        {"title": "hook", "function": "hook", "t0": 0, "t1": 10, "energy": 0.9},
+        {"title": "ad", "function": "other", "t0": 10, "t1": 40, "energy": 0.9},  # excluded
+        {"title": "body", "function": "evidence", "t0": 40, "t1": 90, "energy": 0.5},
+        {"title": "close", "function": "close", "t0": 90, "t1": 100, "energy": 0.2},
+    ]}
+    out = blend_with_reference(plan, reference, weight=0.5)
+    es = [b.energy for b in out.beats]
+    assert es[0] > 0.45, es          # pulled up toward the 0.9 hook
+    assert es[-1] < 0.30, es         # pulled down toward the 0.2 close
+    assert out.source == "rules+reference"
+    assert all("reference curve" in b.reason for b in out.beats)
+    assert out.beats[0].transition in ("cut", "dissolve", "fade")  # levers re-derived
+    # degrade: empty reference or zero weight → untouched
+    plan2 = TempoPlan(slug="t", profile="balanced", beats=[BeatTempo(idx=0, title="A", energy=0.3)])
+    assert blend_with_reference(plan2, {"beats": []}).beats[0].energy == 0.3
+    assert blend_with_reference(plan2, reference, weight=0).source == "rules"
+    print("tempo blend OK — shape cloned, ads excluded, levers re-derived, degrades cleanly")
+
+
+def test_scene_hints_prompt():
+    # the Director injects reference_structure_path into the script_to_scenes
+    # prompt; verify the injection text + the skill spec documents it
+    src = Path("src/nolan/orchestrator/director.py").read_text(encoding="utf-8")
+    assert "reference_structure_path" in src and "reference_structure.json" in src
+    skill = Path("skills/orchestrator/script-to-scenes.md").read_text(encoding="utf-8")
+    assert "reference_structure_path" in skill and "dominant_treatment" in skill
+    # tempo cloning wiring present in the tempo_enrich step
+    assert "blend_with_reference" in src
+    print("scene hints + tempo wiring OK — director prompt + skill spec updated")
+
+
 def test_new_hub_routes(td: Path):
     from src.nolan.indexer import VideoIndex
     VideoIndex(td / "lib.db")
     from src.nolan.hub import create_hub_app
     app = create_hub_app(db_path=td / "lib.db")
     routes = {getattr(r, "path", "") for r in app.routes}
-    for p in ("/api/deconstruct/{slug}/export-template", "/api/deconstruct/{slug}/clone"):
+    for p in ("/api/deconstruct/{slug}/export-template", "/api/deconstruct/{slug}/clone",
+              "/api/deconstruct/{slug}/send-plan",
+              "/api/script-projects/{slug}/attach-deconstruction"):
         assert p in routes, f"missing {p}"
     print("hub routes OK — export-template + clone registered")
 
@@ -170,9 +242,12 @@ def main():
         td = Path(td)
         test_template_export(extract, td)
         test_clone(extract, td)
+        test_attach(extract, td)
         test_case_studies_brief()
         test_retrieval_enrichment(td)
+        test_scene_hints_prompt()
         test_new_hub_routes(td)
+    test_tempo_blend()
     print("\nOK - deconstruction integrations verified.")
 
 

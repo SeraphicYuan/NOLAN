@@ -206,6 +206,56 @@ def _coerce(raw: dict, ctx: ScriptContext, profile: str) -> Optional[TempoPlan]:
     return TempoPlan(slug=ctx.slug, profile=profile, beats=beats, source="llm")
 
 
+def blend_with_reference(plan: TempoPlan, reference: dict,
+                         weight: float = 0.5) -> TempoPlan:
+    """Tempo cloning: blend a reference video's MEASURED energy curve into the plan.
+
+    ``reference`` is a ``reference_structure.json`` dict (written by clone/attach:
+    beats with t0/t1/energy/function). Sponsor beats (function == "other") are
+    excluded and the timeline renormalized, so content aligns to content. Each
+    script beat's energy blends with the reference energy at the same normalized
+    position (``weight`` = how much the reference shape wins); transition /
+    motion_speed / shots are re-derived from the blended energy and pace_dir is
+    recomputed. Degrades to the input plan when the reference is empty.
+    """
+    ref_beats = [b for b in (reference.get("beats") or [])
+                 if b.get("function") != "other" and b.get("energy") is not None]
+    if not plan.beats or not ref_beats or weight <= 0:
+        return plan
+
+    # content-only normalized spans (ad time removed)
+    total = sum(max(0.01, (b.get("t1") or 0) - (b.get("t0") or 0)) for b in ref_beats)
+    spans, cursor = [], 0.0
+    for b in ref_beats:
+        length = max(0.01, (b.get("t1") or 0) - (b.get("t0") or 0)) / total
+        spans.append((cursor, cursor + length, float(b["energy"])))
+        cursor += length
+
+    def ref_energy(f: float) -> float:
+        for lo, hi, e in spans:
+            if lo <= f < hi:
+                return e
+        return spans[-1][2]
+
+    prof = _PROFILES.get(plan.profile, _PROFILES["balanced"])
+    w = min(1.0, max(0.0, weight))
+    n = len(plan.beats)
+    energies = []
+    for i, bt in enumerate(plan.beats):
+        f = (i + 0.5) / n
+        e = min(0.95, max(0.05, (1 - w) * bt.energy + w * ref_energy(f)))
+        energies.append(round(e, 2))
+    for i, bt in enumerate(plan.beats):
+        bt.energy = energies[i]
+        bt.pace_dir = _pace_dir(energies[i - 1] if i else None, energies[i],
+                                energies[i + 1] if i + 1 < n else None)
+        bt.transition, bt.motion_speed, bt.shots = _levers(energies[i], prof)
+        bt.reason = (bt.reason + " · " if bt.reason else "") + \
+            f"blended w/ reference curve (w={w:g})"
+    plan.source = f"{plan.source}+reference"
+    return plan
+
+
 def motion_for_tempo(bt: BeatTempo, kind: str = "image") -> tuple:
     """Map a beat's tempo → (motion_id, duration_seconds) for the still-motion renderer.
     Energy sets both the treatment and how long it breathes — the renderable tempo lever.
