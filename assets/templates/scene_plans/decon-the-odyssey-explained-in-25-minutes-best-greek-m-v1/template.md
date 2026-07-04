@@ -1,4 +1,4 @@
-# Deconstructed: The Odyssey Explained In 25 Minutes ｜ Best Greek Mythology D
+# Deconstructed: The Odyssey Explained In 25 Minutes
 
 Structure recovered from a real video (17 beats, 1784s). Function arc: hook → context → evidence → other → turn → close. Dominant pairing operators: literal, text-graphic, tonal.
 

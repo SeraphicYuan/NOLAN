@@ -69,7 +69,10 @@ def export_scene_plan_template(extract: Dict[str, Any], slug: str, title: str,
         "version": 1,
         "name": f"Deconstructed: {title[:60]}",
         "genres": genres or ["documentary", "explainer", "history", "mythology"],
-        "duration_range": [int(duration * 0.7), int(duration * 1.3)],
+        # The skeleton is %-based, so the structure scales to any runtime —
+        # don't lock the range to the SOURCE video's length (that would make
+        # e.g. an 8-min project unmatchable against a 30-min reference).
+        "duration_range": [max(180, int(duration * 0.25)), int(duration * 1.5)],
         "tags": ([f"op-{o}" for o in operators]
                  + [f"beats-{len(beats)}", "recovered-structure"]
                  + (["sponsor-slot"] if has_ad else [])),

@@ -125,6 +125,47 @@ def _select_match(
     )
 
 
+def _pinned_reference_template(project_path: Path,
+                               repo_root: Path) -> TemplateCandidate | None:
+    """The scene-plan template exported from this project's attached
+    deconstruction (matched via template meta provenance), or None.
+
+    A cloned/attached project names its intended structure explicitly, so the
+    matcher's open scoring — which e.g. penalizes a duration mismatch with the
+    SOURCE video's length — must not override it.
+    """
+    import json
+    meta_path = project_path / "scriptgen" / "meta.json"
+    if not meta_path.exists():
+        return None
+    try:
+        dec = json.loads(meta_path.read_text(encoding="utf-8")).get(
+            "cloned_from_deconstruction")
+    except Exception:
+        return None
+    if not dec:
+        return None
+    root = repo_root / "assets" / "templates" / "scene_plans"
+    if not root.exists():
+        return None
+    for tdir in sorted(root.iterdir()):
+        mp = tdir / "meta.json"
+        if not mp.exists():
+            continue
+        try:
+            m = json.loads(mp.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if (m.get("provenance") or {}).get("derived_from_deconstruction") == dec:
+            return TemplateCandidate(
+                template_id=m.get("id", tdir.name),
+                version=int(m.get("version", 1)),
+                name=m.get("name", tdir.name), kind="scene_plan", score=1.0,
+                score_breakdown={"pinned_by_reference": 1.0},
+                template_dir=tdir, summary=m.get("summary", ""))
+    return None
+
+
 def _stream_log_path(project_path: Path, agent_name: str) -> Path:
     return (
         project_path
@@ -402,6 +443,15 @@ class Director:
 
         chosen_style, style_reason = _select_match(style_candidates, MATCH_THRESHOLD)
         chosen_scene, scene_reason = _select_match(scene_candidates, MATCH_THRESHOLD)
+
+        # Reference pin: a project cloned from / attached to a deconstruction
+        # names its intended structure. If that deconstruction was exported as
+        # a scene-plan template, PIN it — open scoring must not override an
+        # explicit reference (e.g. on duration mismatch with the source video).
+        pinned = _pinned_reference_template(self.project_path, self.repo_root)
+        if pinned is not None:
+            chosen_scene = pinned
+            scene_reason = "pinned by the project's attached deconstruction reference"
 
         summary_lines: list[str] = []
 

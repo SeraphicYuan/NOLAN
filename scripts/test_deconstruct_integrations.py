@@ -62,6 +62,8 @@ def test_template_export(extract, td: Path):
         assert sec["duration_pct"][0] <= sec["duration_pct"][1]
         assert sec["beat_count_hint"][0] >= 1
     assert (tdir / "template.md").exists()
+    # %-based skeleton → range must reach well below the source length
+    assert meta["duration_range"][0] <= int(extract["duration"] * 0.3), meta["duration_range"]
 
     # the Director's matcher can actually load + score it
     cands = match_scene_plan_template(
@@ -178,7 +180,13 @@ def test_attach(extract, td: Path):
     res2 = attach_reference(extract, "odyssey-test", slug,
                             replace_beatmap=True, store_root=td / "projects")
     assert res2["beatmap_replaced"]
-    print("attach OK — seeds artifacts, brief triggers, clobber-guard + explicit replace")
+    # step-1 pin: exported template with matching provenance gets pinned
+    from src.nolan.deconstruct.export import export_scene_plan_template
+    from src.nolan.orchestrator.director import _pinned_reference_template
+    export_scene_plan_template(extract, "odyssey-test", "Ref", dest_root=td / "assets" / "templates" / "scene_plans")
+    pin = _pinned_reference_template(td / "projects" / slug, td)
+    assert pin is not None and pin.score_breakdown == {"pinned_by_reference": 1.0}, pin
+    print("attach OK — seeds artifacts, brief triggers, clobber-guard + replace, step-1 pin")
 
 
 def test_tempo_blend():
