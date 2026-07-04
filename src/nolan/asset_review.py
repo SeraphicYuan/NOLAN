@@ -49,6 +49,11 @@ def top5(result: dict) -> List[dict]:
 _DECOMP_SYS = ("You are a video editor breaking one narration beat into the distinct b-roll SHOTS "
                "it actually needs on screen. Reply STRICT JSON.")
 
+# The motion applied to a shot's asset once found — maps to nolan's motion-spec registry
+# (still-motion / split-screen / clip-montage) plus 'clip' = play found footage as-is. This is a
+# DECISION only (data); a later batch process renders it — the API LLM never applies motion itself.
+_MOTIONS = {"still-motion", "clip", "split-screen", "clip-montage"}
+
 
 async def _decompose_beat(ctx: ScriptContext, beat, tempo, llm, *, extra: str = "") -> list:
     """Beat → a list of concrete SHOTS ([{intent, operator}]). A beat often needs several assets
@@ -61,17 +66,24 @@ async def _decompose_beat(ctx: ScriptContext, beat, tempo, llm, *, extra: str = 
               f"PACING: {pace} (~{n} shot(s))\n" + (f"DIRECTOR NOTE: {extra}\n" if extra else "") +
               f"\nBreak THIS beat into up to {n} distinct visual SHOT(s) — the actual assets it needs, "
               "in order. Different shots should show DIFFERENT things (don't repeat). For each shot pick "
-              "the best sourcing operator.\n"
+              "the best sourcing OPERATOR and the MOTION to apply once the asset is found:\n"
+              "  still-motion  — Ken Burns push/pull/pan or 2.5D parallax on ONE still (default for a photo/artwork)\n"
+              "  clip          — play found FOOTAGE as-is (use when the shot wants a video clip, not a still)\n"
+              "  split-screen  — two contrasting stills side by side, A vs B (pair with relational/ironic)\n"
+              "  clip-montage  — several assets cut together with transitions (busy / high-energy beats)\n"
+              "Match motion to PACING (BREATHE → lingering still-motion; DRIVE → montage/quicker cuts) and to the operator.\n"
               'STRICT JSON: {"shots":[{"intent":"<concrete visual: what the shot literally shows>",'
-              '"operator":"literal|tonal|conceptual|ironic|trait|relational|scale|knowledge"}]}')
+              '"operator":"literal|tonal|conceptual|ironic|trait|relational|scale|knowledge",'
+              '"motion":"still-motion|clip|split-screen|clip-montage"}]}')
     from .evoke_broll import _OP
     raw = _extract_json(await llm.generate(prompt, _DECOMP_SYS))
     shots = []
     for s in (raw.get("shots") or [])[:n]:
         if isinstance(s, dict) and s.get("intent"):
             op = s.get("operator") if s.get("operator") in _OP else "auto"
-            shots.append({"intent": str(s["intent"])[:220], "operator": op})
-    return shots or [{"intent": beat.narration[:200] or beat.title, "operator": "auto"}]
+            mo = s.get("motion") if s.get("motion") in _MOTIONS else ("split-screen" if op == "relational" else "still-motion")
+            shots.append({"intent": str(s["intent"])[:220], "operator": op, "motion": mo})
+    return shots or [{"intent": beat.narration[:200] or beat.title, "operator": "auto", "motion": "still-motion"}]
 
 
 async def _acquire_shot(searcher, project: str, beat_idx: int, shot: dict, media, gen_style: str) -> dict:
@@ -96,8 +108,8 @@ async def _acquire_shot(searcher, project: str, beat_idx: int, shot: dict, media
                 picked = fb.get("url"); used_fallback = True
         except Exception:
             pass
-    return {"intent": shot["intent"], "operator": shot["operator"], "status": res.get("status"),
-            "top5": cards[:5], "picked": picked, "fallback": used_fallback}
+    return {"intent": shot["intent"], "operator": shot["operator"], "motion": shot.get("motion"),
+            "status": res.get("status"), "top5": cards[:5], "picked": picked, "fallback": used_fallback}
 
 
 def _beat_row(ctx: ScriptContext, beat, tempo=None) -> dict:
@@ -356,9 +368,11 @@ def render_gallery(review: dict) -> str:
                     cards += _card(c)
                 st = sh.get("status", "?")
                 fbtag = ' <span class="ch" style="background:#7b2cbf">fallback</span>' if sh.get("fallback") else ""
+                mo = sh.get("motion")
+                motag = f' <span class="ch" style="background:#3a4a7a">🎬 {_esc(mo)}</span>' if mo else ""
                 shots_html += (f'<div class="shot"><div class="shot-h">◆ shot {si + 1} '
                                f'<span class="st {"ok" if st == "MATCHED" else "no"}">{st}</span> '
-                               f'[{_esc(sh.get("operator"))}]{fbtag}<div class="shot-i">{_esc((sh.get("intent") or "")[:110])}</div></div>'
+                               f'[{_esc(sh.get("operator"))}]{motag}{fbtag}<div class="shot-i">{_esc((sh.get("intent") or "")[:110])}</div></div>'
                                f'<div class="grid">{cards or "<div class=empty>no candidates</div>"}</div></div>')
             cols.append(f'<div class="brain"><div class="bh">{_esc(_BRAIN_LABEL.get(br, br))} · {summary}</div>{shots_html}</div>')
         rows.append(f'<div class="beat">{head}<div class="brains">{"".join(cols)}</div></div>')
