@@ -30,7 +30,7 @@ def register(app, ctx):
         """Serve the showcase page."""
         return showcase_template.read_text(encoding="utf-8")
 
-    @app.get("/showcase/api/effects")
+    @app.get("/api/showcase/effects")
     async def showcase_list_effects(category: Optional[str] = None):
         """List effects from render service."""
         try:
@@ -46,7 +46,7 @@ def register(app, ctx):
         except httpx.HTTPStatusError:
             raise HTTPException(status_code=503, detail="Render service error")
 
-    @app.get("/showcase/api/effects/{effect_id}")
+    @app.get("/api/showcase/effects/{effect_id}")
     async def showcase_get_effect(effect_id: str):
         """Get specific effect details."""
         try:
@@ -61,7 +61,7 @@ def register(app, ctx):
         except httpx.ConnectError:
             raise HTTPException(status_code=503, detail="Render service unavailable")
 
-    @app.post("/showcase/api/upload")
+    @app.post("/api/showcase/upload")
     async def showcase_upload(file: UploadFile = File(...)):
         """Upload file for effects."""
         import uuid
@@ -72,7 +72,7 @@ def register(app, ctx):
         filepath.write_bytes(content)
         return {"filename": filename, "path": str(filepath.absolute()), "size": len(content)}
 
-    @app.post("/showcase/api/render")
+    @app.post("/api/showcase/render")
     async def showcase_render(effect: str = Form(...), params: str = Form(...)):
         """Submit render job."""
         try:
@@ -90,7 +90,7 @@ def register(app, ctx):
         except httpx.ConnectError:
             raise HTTPException(status_code=503, detail="Render service unavailable")
 
-    @app.get("/showcase/api/render/status/{job_id}")
+    @app.get("/api/showcase/render/status/{job_id}")
     async def showcase_render_status(job_id: str):
         """Get render job status."""
         try:
@@ -101,7 +101,7 @@ def register(app, ctx):
         except httpx.ConnectError:
             raise HTTPException(status_code=503, detail="Render service unavailable")
 
-    @app.get("/showcase/api/render/result/{job_id}")
+    @app.get("/api/showcase/render/result/{job_id}")
     async def showcase_render_result(job_id: str):
         """Get render job result."""
         try:

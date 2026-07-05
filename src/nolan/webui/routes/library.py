@@ -38,7 +38,7 @@ def register(app, ctx):
             """Serve the library viewer page."""
             return library_template.read_text(encoding="utf-8")
 
-        @app.get("/library/api/projects")
+        @app.get("/api/library/projects")
         async def library_list_projects():
             """List all projects with video counts."""
             with sqlite3.connect(db_path) as conn:
@@ -58,7 +58,7 @@ def register(app, ctx):
                     })
                 return {"projects": projects, "total": len(projects)}
 
-        @app.get("/library/api/videos")
+        @app.get("/api/library/videos")
         async def library_list_videos(
             project: Optional[str] = Query(default=None),
         ):
@@ -108,7 +108,7 @@ def register(app, ctx):
                 return {"videos": videos, "total": len(videos), "project_filter": project,
                         "all_projects": all_projects}
 
-        @app.post("/library/api/videos/{video_path:path}/projects")
+        @app.post("/api/library/videos/{video_path:path}/projects")
         async def library_video_projects(video_path: str, body: dict = Body(...)):
             """Add/remove a video's project association (many-to-many, no re-embed)."""
             from nolan.indexer import VideoIndex
@@ -128,7 +128,7 @@ def register(app, ctx):
             return {"video_id": vid, "action": action, "project": ppid,
                     "projects": idx.get_video_projects(vid)}
 
-        @app.get("/library/api/videos/{video_path:path}/segments")
+        @app.get("/api/library/videos/{video_path:path}/segments")
         async def library_get_segments(video_path: str):
             """Get segments for a video."""
             video_path = unquote(video_path)
@@ -141,7 +141,7 @@ def register(app, ctx):
                 "total": len(segments),
             }
 
-        @app.get("/library/api/videos/{video_path:path}/clusters")
+        @app.get("/api/library/videos/{video_path:path}/clusters")
         async def library_get_clusters(video_path: str):
             """Get clusters for a video."""
             from nolan.clustering import cluster_segments
@@ -157,7 +157,7 @@ def register(app, ctx):
                 clusters = [_stored_cluster_to_dict(c, index) for c in clusters]
             return {"video_path": video_path, "clusters": clusters, "total": len(clusters)}
 
-        @app.get("/library/api/search")
+        @app.get("/api/library/search")
         async def library_search(
             q: str = Query(..., min_length=1),
             limit: int = Query(default=50, le=200),
@@ -179,7 +179,7 @@ def register(app, ctx):
                 results["cluster_count"] = len(cluster_results)
             return results
 
-        @app.get("/library/api/search/semantic")
+        @app.get("/api/library/search/semantic")
         async def library_semantic_search(
             q: str = Query(..., min_length=1),
             limit: int = Query(default=20, le=100),
@@ -208,7 +208,7 @@ def register(app, ctx):
             } for r in results]
             return {"query": q, "results": formatted, "total": len(formatted), "vector_stats": stats}
 
-        @app.get("/library/api/embedding-status")
+        @app.get("/api/library/embedding-status")
         async def library_embedding_status(project: Optional[str] = Query(default=None)):
             """Per-video embedding state (searchable / stale / unembedded) + summary."""
             from nolan.vector_search import VectorSearch
@@ -217,7 +217,7 @@ def register(app, ctx):
             project_id = index.resolve_project(project) if project else None
             return vs.get_embedding_status(project_id=project_id)
 
-        @app.post("/library/api/videos/{video_path:path}/embed")
+        @app.post("/api/library/videos/{video_path:path}/embed")
         async def library_embed_video(video_path: str):
             """Manually embed ONE indexed video so it becomes semantically searchable."""
             from nolan.webui import operations
@@ -232,7 +232,7 @@ def register(app, ctx):
             )
             return {"job_id": job.id, "type": "embed-video", "video_id": row[0]}
 
-        @app.post("/library/api/reconcile-vectors")
+        @app.post("/api/library/reconcile-vectors")
         async def library_reconcile_vectors():
             """Embed ALL unembedded/stale videos in one incremental pass (idempotent)."""
             from nolan.webui import operations
@@ -241,7 +241,7 @@ def register(app, ctx):
             )
             return {"job_id": job.id, "type": "sync-vectors"}
 
-        @app.get("/library/api/stats")
+        @app.get("/api/library/stats")
         async def library_stats():
             """Get library statistics."""
             with sqlite3.connect(db_path) as conn:
@@ -291,14 +291,14 @@ def register(app, ctx):
                 ids.append(resolved)
             return ids or None
 
-        @app.get("/library/api/clips")
+        @app.get("/api/library/clips")
         async def clips_list(projects: Optional[str] = Query(default=None)):
             """List saved clips, optionally scoped to a set of projects."""
             scope = _resolve_scope(projects)
             return {"clips": index.list_saved_clips(project_ids=scope),
                     "scope": scope}
 
-        @app.post("/library/api/clips")
+        @app.post("/api/library/clips")
         async def clips_create(body: dict = Body(...)):
             """Create a saved clip from a manual in/out selection."""
             source = (body.get("source_video_path") or "").strip()
@@ -324,13 +324,13 @@ def register(app, ctx):
             )
             return {"clip": index.get_saved_clip(clip_id)}
 
-        @app.delete("/library/api/clips/{clip_id}")
+        @app.delete("/api/library/clips/{clip_id}")
         async def clips_delete(clip_id: str):
             if not index.delete_saved_clip(clip_id):
                 raise HTTPException(status_code=404, detail="clip not found")
             return {"deleted": clip_id}
 
-        @app.post("/library/api/clips/{clip_id}/materialize")
+        @app.post("/api/library/clips/{clip_id}/materialize")
         async def clips_materialize(clip_id: str, body: dict = Body(default={})):
             """Materialize a saved clip (none|file|frames) as a background job."""
             from nolan.webui import operations
@@ -346,7 +346,7 @@ def register(app, ctx):
             )
             return {"job_id": job.id, "type": "materialize-clip"}
 
-        @app.post("/library/api/clips/{clip_id}/analyze-effect")
+        @app.post("/api/library/clips/{clip_id}/analyze-effect")
         async def clips_analyze_effect(clip_id: str, body: dict = Body(default={})):
             """Dispatch a clip to a tmux Claude agent for effect analysis."""
             from nolan.webui import operations
@@ -362,7 +362,7 @@ def register(app, ctx):
             )
             return {"job_id": job.id, "type": "analyze-effect"}
 
-        @app.get("/library/api/clips/{clip_id}/analysis")
+        @app.get("/api/library/clips/{clip_id}/analysis")
         async def clips_analysis(clip_id: str):
             """Return the nolan2 agent's effect-analysis findings, if written yet."""
             analysis = Path("projects") / "_clips" / clip_id / "effect_analysis.md"
@@ -370,7 +370,7 @@ def register(app, ctx):
                 raise HTTPException(status_code=404, detail="no analysis yet")
             return {"clip_id": clip_id, "content": analysis.read_text(encoding="utf-8")}
 
-        @app.get("/library/api/clips/search")
+        @app.get("/api/library/clips/search")
         async def clips_search(
             q: str = Query(default="", description="keyword query (optional)"),
             projects: Optional[str] = Query(default=None),

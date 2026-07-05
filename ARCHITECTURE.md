@@ -132,7 +132,10 @@ word-synced premium reveals, still-motion vocabulary, annotate fix, voice
 dedup, library-policy unification, hub route-module split
 (`webui/routes/`, 18 modules), canonical /api/<domain> convention with
 legacy aliases, /tts alias removed.) Remaining:
-- Legacy-prefixed API aliases (/library/api/* etc.) removal once external
-  callers migrate.
 - node-side effects/presets + motion-canvas engine deletion (needs a
-  render-service rebuild); python layout renderers after Remotion bake-in.
+  render-service rebuild).
+- python layout renderers deletion — gated on Remotion bake-in: a few real
+  projects rendering with ZERO "remotion layout render failed" fallback
+  warnings; the classes also still serve old backend="python" motion specs.
+(Legacy /<domain>/api/ prefixes fully removed 2026-07-05 — canonical
+/api/<domain>/... is the only convention.)

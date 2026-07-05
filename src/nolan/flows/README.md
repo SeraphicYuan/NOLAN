@@ -62,13 +62,13 @@ library + theme `tokens.css`; concat) → **deliver** (ffmpeg faststart → `pro
 **scene view** (`build_scene_plan` → `scene_plan.json`).
 
 ## Review + edit (Scene page — `src/nolan/hub.py`, `templates/scenes.html`)
-- `/scenes/api/scenes/flat` refreshes the view (`build_scene_plan`) and serves beats as scene rows.
-- `/scenes/api/scene/revise` (direct field patch) → `edit.patch_beat` → `flow.spec.json` → re-ingest.
-- `/scenes/api/scene/assets` add → `edit.set_beat_asset` binds into the beat's block prop.
-- `/scenes/api/rerender` → `iterate/engine.py::_rerender_flow` (dispatched by `detect_pipeline → "flow"`)
+- `/api/scenes/scenes/flat` refreshes the view (`build_scene_plan`) and serves beats as scene rows.
+- `/api/scenes/scene/revise` (direct field patch) → `edit.patch_beat` → `flow.spec.json` → re-ingest.
+- `/api/scenes/scene/assets` add → `edit.set_beat_asset` binds into the beat's block prop.
+- `/api/scenes/rerender` → `iterate/engine.py::_rerender_flow` (dispatched by `detect_pipeline → "flow"`)
   → re-renders **only** the selected beats (`render.render_beats`) + re-concats. ~20s for one beat.
-- `/scenes/api/flow/refine` → `authoring.dispatch_refine` (sends a per-beat plan to a tmux agent).
-- `/scenes/api/flow/accept` → `authoring.accept_draft` (promote a refined draft → `flow.spec.json`).
+- `/api/scenes/flow/refine` → `authoring.dispatch_refine` (sends a per-beat plan to a tmux agent).
+- `/api/scenes/flow/accept` → `authoring.accept_draft` (promote a refined draft → `flow.spec.json`).
 - Agent edits are dispatched **flow-aware** (`fleet.build_flow_dispatch_prompt`): carries flow id,
   theme, palette, per-beat tray/wishlist, the edit contract, points to `skills/flow/edit-contract.md`.
 

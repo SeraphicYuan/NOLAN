@@ -59,7 +59,7 @@ def register(app, ctx):
     async def jobs_cancel(job_id: str):
         return {"cancelled": job_manager.cancel(job_id)}
 
-    @app.get("/library/api/tmux-sessions")
+    @app.get("/api/library/tmux-sessions")
     async def list_tmux_sessions():
         """List tmux sessions available as agent-dispatch targets.
 

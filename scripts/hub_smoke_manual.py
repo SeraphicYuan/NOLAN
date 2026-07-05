@@ -12,7 +12,7 @@ def test_endpoints():
     endpoints = [
         ("http://127.0.0.1:8099/", "Landing"),
         ("http://127.0.0.1:8099/showcase", "Showcase"),
-        ("http://127.0.0.1:8099/showcase/api/effects", "Effects API"),
+        ("http://127.0.0.1:8099/api/showcase/effects", "Effects API"),
     ]
 
     results = []

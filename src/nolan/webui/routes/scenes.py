@@ -58,13 +58,13 @@ def register(app, ctx):
             return scenes_template.read_text(encoding="utf-8")
         return "<h1>Scenes template not found</h1>"
 
-    @app.get("/scenes/api/projects")
+    @app.get("/api/scenes/projects")
     async def scenes_list_projects():
         """List available projects for scenes viewer."""
         projects = scan_projects(projects_dir) if projects_dir else []
         return {"projects": projects, "total": len(projects)}
 
-    @app.get("/scenes/api/scenes/flat")
+    @app.get("/api/scenes/scenes/flat")
     async def scenes_get_flat(project: str = Query(..., description="Project name")):
         """Get scenes as flat list for a specific project."""
         result = _get_project_dir(project)
@@ -90,7 +90,7 @@ def register(app, ctx):
         return {"scenes": scenes, "sections": sections, "project": project,
                 "pipeline": pipeline, "editable_fields": sorted(editable_fields(pipeline))}
 
-    @app.get("/scenes/api/audio-info")
+    @app.get("/api/scenes/audio-info")
     async def scenes_audio_info(project: str = Query(..., description="Project name")):
         """Get voiceover audio info for a specific project."""
         result = _get_project_dir(project)
@@ -155,7 +155,7 @@ def register(app, ctx):
                                                                     "application/octet-stream"))
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    @app.post("/scenes/api/scene/revise")
+    @app.post("/api/scenes/scene/revise")
     async def scenes_revise(payload: dict = Body(...)):
         """Apply a human comment (`note`) or a direct field `patch` to one scene."""
         project = payload.get("project")
@@ -214,7 +214,7 @@ def register(app, ctx):
         return {"job_id": job.id, "type": "asset-review",
                 "gallery": f"/broll-gen/asset_review_{project}.html"}
 
-    @app.post("/scenes/api/scene/super-search")
+    @app.post("/api/scenes/scene/super-search")
     async def scenes_super_search(body: dict = Body(...)):
         """Per-beat super search from the Scene Plan Viewer — the /broll pairing engine WITH the
         loaded project as context and the scene's beat auto-located. Returns a job."""
@@ -231,7 +231,7 @@ def register(app, ctx):
             project=project, media=(med if isinstance(med, list) and med else None))
         return {"job_id": job.id, "type": "super-search"}
 
-    @app.post("/scenes/api/scene/attach")
+    @app.post("/api/scenes/scene/attach")
     async def scenes_scene_attach(body: dict = Body(...)):
         """Attach a super-search pick to a scene (download image → matched_asset, or video ref)."""
         from nolan.config import load_config
@@ -247,7 +247,7 @@ def register(app, ctx):
             source=(body.get("source") or ""), title=(body.get("title") or ""))
         return {"job_id": job.id, "type": "attach-asset"}
 
-    @app.post("/scenes/api/scene/assets")
+    @app.post("/api/scenes/scene/assets")
     async def scenes_scene_assets(payload: dict = Body(...)):
         """Manage a scene's asset tray (add/remove/reorder/place/label).
 
@@ -305,7 +305,7 @@ def register(app, ctx):
                         asset[k] = float(payload[k])
                 if payload.get("label"):
                     asset["label"] = payload["label"]
-                asset["thumb"] = (f"/scenes/api/frame-thumb?project={project}"
+                asset["thumb"] = (f"/api/scenes/frame-thumb?project={project}"
                                   f"&src={quote(str(src))}&t={asset.get('clip_start', 0)}")
             elif source == "path":
                 p = payload.get("path")
@@ -362,7 +362,7 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail=f"'{project}' is not a flow project")
         return pp
 
-    @app.post("/scenes/api/flow/refine")
+    @app.post("/api/scenes/flow/refine")
     async def scenes_flow_refine(payload: dict = Body(...)):
         """Authoring mode (Gate A): dispatch a fleet agent to refine the per-beat plan."""
         project = payload.get("project")
@@ -374,7 +374,7 @@ def register(app, ctx):
         draft = await asyncio.to_thread(dispatch_refine, pp, agent)
         return {"dispatched": agent, "draft": str(draft)}
 
-    @app.post("/scenes/api/flow/accept")
+    @app.post("/api/scenes/flow/accept")
     async def scenes_flow_accept(payload: dict = Body(...)):
         """Authoring mode (Gate A → accepted): promote the refined draft to flow.spec.json."""
         project = payload.get("project")
@@ -385,7 +385,7 @@ def register(app, ctx):
         plan = await asyncio.to_thread(accept_draft, pp)
         return {"accepted": True, "scene_plan": str(plan)}
 
-    @app.get("/scenes/api/frame-thumb")
+    @app.get("/api/scenes/frame-thumb")
     async def scenes_frame_thumb(src: str, t: float = 0.0, project: str = None):
         """A single cached JPEG frame from a video at time `t` — for clip thumbnails."""
         import hashlib
@@ -415,7 +415,7 @@ def register(app, ctx):
             return FileResponse(str(out), media_type="image/jpeg")
         raise HTTPException(status_code=404, detail="could not extract frame")
 
-    @app.get("/scenes/api/source-video")
+    @app.get("/api/scenes/source-video")
     async def scenes_source_video(src: str, project: str = None):
         """Stream an original source video (HTTP range-enabled) for clip preview.
 
@@ -435,7 +435,7 @@ def register(app, ctx):
               ".mkv": "video/x-matroska", ".m4v": "video/mp4"}.get(path.suffix.lower(), "video/mp4")
         return FileResponse(str(path), media_type=mt)
 
-    @app.post("/scenes/api/scene/upload")
+    @app.post("/api/scenes/scene/upload")
     async def scenes_scene_upload(project: str = Form(...), file: UploadFile = File(...)):
         """Save a dropped local image/video into the project; returns a path to attach.
 
@@ -466,7 +466,7 @@ def register(app, ctx):
     _COMFY_WF = {"flux-dev": ("workflows/image/flux-dev-fp8.json", "6"),
                  "z-image": ("workflows/image/basic-z-image.json", "27")}
 
-    @app.post("/scenes/api/rerender")
+    @app.post("/api/scenes/rerender")
     async def scenes_rerender(payload: dict = Body(...)):
         """Re-render the named scenes (background job); reassembles when done."""
         project = payload.get("project")
@@ -515,13 +515,13 @@ def register(app, ctx):
                                 wf=wf, node=node, model=model)
         return {"job_id": job.id, "pipeline": pipeline, "model": model}
 
-    @app.get("/scenes/api/fleet")
+    @app.get("/api/scenes/fleet")
     async def scenes_fleet():
         """Live scene-edit agents (nolan* tmux sessions) joined with their status files."""
         from nolan import fleet
         return {"agents": fleet.fleet()}
 
-    @app.post("/scenes/api/dispatch")
+    @app.post("/api/scenes/dispatch")
     async def scenes_dispatch(payload: dict = Body(...)):
         """Send selected scene(s) + a note to a named Claude Code agent (tmux)."""
         from nolan import fleet

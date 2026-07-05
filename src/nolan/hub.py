@@ -201,24 +201,8 @@ def create_hub_app(
                    deconstruct, showcase, scenes, agents):
         module.register(app, ctx)
 
-    # One /api convention (deferred #8): every legacy-prefixed API route is
-    # ALSO registered at its canonical /api/<domain>/... path. Templates use
-    # the canonical form; the legacy paths remain as aliases for external
-    # callers until a removal pass.
-    from fastapi.routing import APIRoute
-    _canonical = {"/library/api/": "/api/library/",
-                  "/scenes/api/": "/api/scenes/",
-                  "/showcase/api/": "/api/showcase/"}
-    for route in list(app.routes):
-        if not isinstance(route, APIRoute):
-            continue
-        for legacy, canon in _canonical.items():
-            if route.path.startswith(legacy):
-                app.add_api_route(
-                    canon + route.path[len(legacy):], route.endpoint,
-                    methods=sorted(route.methods or []),
-                    name=f"{route.name}_canonical", include_in_schema=False)
-
+    # One /api convention: every API route lives at /api/<domain>/... — the
+    # legacy /<domain>/api/ prefixes were removed once all callers migrated.
     return app
 
 
