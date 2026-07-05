@@ -4,6 +4,28 @@
 **Status:** Complete
 **Last Updated:** 2026-07-04
 
+## Architecture Consolidation — Phases 4–5 (2026-07-05)
+
+**Phase 4 — surface consolidation:**
+- CLI split: the 5,263-line `cli_legacy.py` is now 17 domain modules under
+  `src/nolan/cli/` (process/index/generate/render/assets/library/audio/youtube/
+  projects/search/hub/templates/video_gen/orchestrate/iterate/publish + _root);
+  every moved section byte-identical, `nolan --help` unchanged (39 commands),
+  `cli_legacy.py` is an 89-name compat shim for external helper imports.
+- TTS Studio merged into Voices (one voice page; /tts 307→/voices alias).
+- Orphan pages adopted into nav: /process, /library/add, /images, /extract.
+- One job model verified: everything runs through `webui/jobs.JobManager`.
+- Deferred (documented in ARCHITECTURE.md): hub APIRouter split, URL renames.
+
+**Phase 5 — Project Dashboard replaces Studio (D3):** /studio is Director-
+centric — 9-step pipeline chips + Run next/Run all, artifact badges
+(script/scenes/matched/rendered/voiceover/final/voice/premium), inline final
+player (`GET /api/project/{p}/final`); manual stage jobs collapsed to an
+override section.
+
+Known test-infra note: `tests/test_hub.py` calls `os._exit(0)` and silently
+kills full-suite pytest runs at ~38% — run suites in groups or fix in Phase 6.
+
 ## Architecture Consolidation — Phase 3 (2026-07-05)
 
 **Remotion-first rendering + FLOW absorption.**
