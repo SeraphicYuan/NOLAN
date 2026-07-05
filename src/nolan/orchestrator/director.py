@@ -466,7 +466,8 @@ class Director:
                 (self.project_path / "scene_plan.json").read_text(encoding="utf-8"))
             spec = author_soundtrack(
                 plan, music=cfg["music"], music_gain_db=cfg["gain"],
-                sfx=cfg["sfx"], mood=cfg["mood"])
+                sfx=cfg["sfx"], mood=cfg["mood"],
+                sfx_provider=cfg.get("sfx_provider", "freesound"))
             spec_path = save_soundtrack(spec, self.project_path)
         except Exception as exc:
             err = f"soundtrack authoring failed: {exc}"
@@ -510,7 +511,8 @@ class Director:
                 return f" + soundtrack ({spec['track']['file']})"
             mix_soundtrack(final, scene_plan, music=cfg["music"],
                            music_gain_db=cfg["gain"], sfx=cfg["sfx"],
-                           mood=cfg["mood"])
+                           mood=cfg["mood"],
+                           sfx_provider=cfg.get("sfx_provider", "freesound"))
             return " + music/sfx soundtrack (ad-hoc — no soundtrack.json)"
         except Exception as exc:
             logger.warning("soundtrack mix failed: %s", exc)
@@ -560,6 +562,7 @@ class Director:
         ctx: ProjectContext,
         state: state_mod.DirectorState,
     ) -> Path:
+        """Match a style template to the script and adapt it into the project style guide."""
         record = state_mod.append_step(state, "match_and_adapt_style")
         state.status = "running"
         state_mod.save_state(self.project_path, state)
@@ -1542,6 +1545,7 @@ class Director:
         ctx: ProjectContext,
         state: state_mod.DirectorState,
     ) -> Path:
+        """Turn script.md into the sectioned scene plan (the central artifact)."""
         record = state_mod.append_step(state, "script_to_scenes")
         state.status = "running"
         state_mod.save_state(self.project_path, state)
@@ -1705,6 +1709,7 @@ class Director:
         ctx: ProjectContext,
         state: state_mod.DirectorState,
     ) -> Path:
+        """Author layout_specs (the 23 templates) for info scenes."""
         record = state_mod.append_step(state, "slide_designer")
         state.status = "running"
         state_mod.save_state(self.project_path, state)
@@ -1840,6 +1845,7 @@ class Director:
         ctx: ProjectContext,
         state: state_mod.DirectorState,
     ) -> Path:
+        """Resolve footage + archival-art scenes through the asset engine."""
         record = state_mod.append_step(state, "select_clips")
         state.status = "running"
         state_mod.save_state(self.project_path, state)

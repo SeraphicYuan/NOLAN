@@ -40,6 +40,7 @@
     ]},
     { title: "System", items: [
       { id: "agents", label: "Agents", href: "/agents" },
+      { id: "map", label: "NOLAN Map", href: "/map" },
       { id: "skills", label: "Skills", href: "/skills" },
       { id: "settings", label: "Settings", href: "/settings" },
     ]},
