@@ -114,7 +114,7 @@ async function createStyle() {
 
 async function loadSessions(selId) {
     try {
-        const r = await fetch('/library/api/tmux-sessions');
+        const r = await fetch('/api/library/tmux-sessions');
         const data = await r.json();
         const sessions = data.sessions || [];
         const sel = document.getElementById(selId);

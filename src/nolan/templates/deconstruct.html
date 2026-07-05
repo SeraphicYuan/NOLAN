@@ -171,7 +171,7 @@ async function api(url, opts) {
 }
 async function loadSessions(selId) {
     try {
-        const data = await api('/library/api/tmux-sessions');
+        const data = await api('/api/library/tmux-sessions');
         const sessions = data.sessions || [];
         const sel = $(selId);
         sel.innerHTML = (sessions.length ? sessions : ['nolan2']).map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
@@ -180,7 +180,7 @@ async function loadSessions(selId) {
 }
 async function loadVideos() {
     try {
-        const data = await api('/library/api/videos');
+        const data = await api('/api/library/videos');
         const vids = data.videos || [];
         $('videoPick').innerHTML = vids.length ? vids.map(v =>
             `<div class="pick"><span title="${esc(v.path)}">${esc((v.path||'').split(/[\\\/]/).pop())}</span>

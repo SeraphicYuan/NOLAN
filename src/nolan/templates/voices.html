@@ -240,7 +240,7 @@ async function loadRenderProjects() {
 }
 async function loadLibVideos(){
     try {
-        const r = await fetch('/library/api/videos'); const d = await r.json();
+        const r = await fetch('/api/library/videos'); const d = await r.json();
         document.getElementById('libVideo').innerHTML = '<option value="">— pick a library video —</option>' +
             (d.videos||[]).map(v=>`<option value="${esc(v.path)}">${esc(v.name)}</option>`).join('');
     } catch(e){ /* no library DB */ }
@@ -318,7 +318,7 @@ async function loadLibVideo(){
     let snips = [];
     for (const kind of ['segments','clusters']) {
         try {
-            const r = await fetch('/library/api/videos/'+encodeURIComponent(libPath)+'/'+kind);
+            const r = await fetch('/api/library/videos/'+encodeURIComponent(libPath)+'/'+kind);
             if(r.ok){ const d = await r.json(); (d[kind]||[]).forEach(s=>snips.push({kind, start:s.timestamp_start, end:s.timestamp_end, label:(s.combined_summary||s.cluster_summary||s.frame_description||'').slice(0,60)})); }
         } catch(e){}
     }

@@ -641,8 +641,8 @@
 
             try {
                 const url = category && category !== 'all'
-                    ? `/showcase/api/effects?category=${category}`
-                    : '/showcase/api/effects';
+                    ? `/api/showcase/effects?category=${category}`
+                    : '/api/showcase/effects';
                 const response = await fetch(url);
 
                 if (!response.ok) {
@@ -1114,7 +1114,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
 
-                const response = await fetch('/showcase/api/upload', {
+                const response = await fetch('/api/showcase/upload', {
                     method: 'POST',
                     body: formData
                 });
@@ -1183,7 +1183,7 @@
                 formData.append('effect', selectedEffect.id);
                 formData.append('params', JSON.stringify(params));
 
-                const response = await fetch('/showcase/api/render', {
+                const response = await fetch('/api/showcase/render', {
                     method: 'POST',
                     body: formData
                 });
@@ -1209,11 +1209,11 @@
             if (!currentJobId) return;
 
             try {
-                const response = await fetch(`/showcase/api/render/status/${currentJobId}`);
+                const response = await fetch(`/api/showcase/render/status/${currentJobId}`);
                 const status = await response.json();
 
                 if (status.status === 'done') {
-                    const resultResponse = await fetch(`/showcase/api/render/result/${currentJobId}`);
+                    const resultResponse = await fetch(`/api/showcase/render/result/${currentJobId}`);
                     const result = await resultResponse.json();
                     showResult('done', 'Render complete!', result.video_path);
                     document.getElementById('generateBtn').disabled = false;

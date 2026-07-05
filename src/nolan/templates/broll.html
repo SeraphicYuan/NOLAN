@@ -225,7 +225,7 @@
           .map(function (c) { return c.value; });
       }
       function fallbackAgent() { var o = document.createElement("option"); o.value = "nolan4"; o.textContent = "nolan4"; agentSel.appendChild(o); }
-      fetch("/scenes/api/fleet").then(function (r) { return r.json(); }).then(function (d) {
+      fetch("/api/scenes/fleet").then(function (r) { return r.json(); }).then(function (d) {
         agentSel.innerHTML = "";
         (d.agents || []).forEach(function (a) {
           var o = document.createElement("option"); o.value = a.agent;

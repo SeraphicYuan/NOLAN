@@ -118,7 +118,7 @@ function esc(t) {
 
 async function loadProjects() {
     try {
-        const r = await fetch('/library/api/projects');
+        const r = await fetch('/api/library/projects');
         const data = await r.json();
         projects = data.projects || [];
         const box = document.getElementById('scopeProjects');
@@ -151,7 +151,7 @@ async function runSearch() {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (scope) params.set('projects', scope);
-    const r = await fetch('/library/api/clips/search?' + params.toString());
+    const r = await fetch('/api/library/clips/search?' + params.toString());
     if (!r.ok) { document.getElementById('snippetResults').innerHTML = '<div class="empty">Search failed.</div>'; return; }
     const data = await r.json();
     renderSaved(data.saved_clips || []);
@@ -261,7 +261,7 @@ function previewClip(path, start, end, label) {
 
 async function saveSnippet(path, start, end) {
     const label = prompt('Label for this clip (optional):', '') ?? '';
-    const r = await fetch('/library/api/clips', {
+    const r = await fetch('/api/library/clips', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source_video_path: path, clip_start: start, clip_end: end, label: label || null, project: selectedScope() ? selectedScope().split(',')[0] : null }),
     });
@@ -271,14 +271,14 @@ async function saveSnippet(path, start, end) {
 
 async function deleteClip(id) {
     if (!confirm('Delete clip ' + id + '?')) return;
-    await fetch('/library/api/clips/' + id, { method: 'DELETE' });
+    await fetch('/api/library/clips/' + id, { method: 'DELETE' });
     runSearch();
 }
 
 async function materialize(id, form) {
     const status = document.getElementById('job-' + id);
     status.textContent = 'Starting ' + form + ' materialization…';
-    const r = await fetch('/library/api/clips/' + id + '/materialize', {
+    const r = await fetch('/api/library/clips/' + id + '/materialize', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ form }),
     });
@@ -290,7 +290,7 @@ async function materialize(id, form) {
 async function loadSessions() {
     const sel = document.getElementById('agentSelect');
     try {
-        const r = await fetch('/library/api/tmux-sessions');
+        const r = await fetch('/api/library/tmux-sessions');
         const data = await r.json();
         const sessions = data.sessions || [];
         if (!sessions.length) {
@@ -312,7 +312,7 @@ async function analyzeEffect(id) {
     const status = document.getElementById('job-' + id);
     const session = selectedAgent();
     status.textContent = `Extracting frames & dispatching to ${session}…`;
-    const r = await fetch('/library/api/clips/' + id + '/analyze-effect', {
+    const r = await fetch('/api/library/clips/' + id + '/analyze-effect', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session }),
     });
@@ -352,7 +352,7 @@ async function pollJob(jobId, statusEl, form) {
 
 async function viewAnalysis(id) {
     const status = document.getElementById('job-' + id);
-    const r = await fetch('/library/api/clips/' + id + '/analysis');
+    const r = await fetch('/api/library/clips/' + id + '/analysis');
     if (!r.ok) {
         status.innerHTML = '⏳ No findings yet — nolan2 may still be working. Try again shortly.';
         return;

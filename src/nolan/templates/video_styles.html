@@ -177,7 +177,7 @@ function renderSources(sources) {
 async function loadVideos() {
     const box = $('pickBox');
     try {
-        const data = await api('/library/api/videos');
+        const data = await api('/api/library/videos');
         if (!data.videos.length) { box.innerHTML = '<div class="empty">No indexed videos in the library.</div>'; return; }
         box.innerHTML = data.videos.map(v => `
             <div class="pick">

@@ -320,7 +320,7 @@ async function addYoutube() {
 async function loadLibraryVideos() {
     const sel = $('srcLib');
     try {
-        const d = await api('/library/api/videos');
+        const d = await api('/api/library/videos');
         const vids = (d.videos || []).filter(v => (v.segment_count || 0) > 0);
         sel.innerHTML = '<option value="">— pick an ingested video —</option>' +
             vids.map(v => `<option value="${esc(v.path)}">${esc(v.name)} (${esc(v.segment_count || 0)} segs)</option>`).join('');
@@ -436,7 +436,7 @@ function pollJob(jobId, doneText) {
 }
 async function loadSessions(selId) {
     try {
-        const r = await fetch('/library/api/tmux-sessions');
+        const r = await fetch('/api/library/tmux-sessions');
         const data = await r.json();
         const sessions = data.sessions || [];
         const sel = document.getElementById(selId);

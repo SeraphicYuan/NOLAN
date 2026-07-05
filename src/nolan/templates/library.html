@@ -1019,7 +1019,7 @@
         // Load stats
         async function loadStats() {
             try {
-                const resp = await fetch('/library/api/stats');
+                const resp = await fetch('/api/library/stats');
                 const data = await resp.json();
                 document.getElementById('stats').innerHTML = `
                     <span>${data.video_count} videos</span>
@@ -1034,7 +1034,7 @@
         // Load projects
         async function loadProjects() {
             try {
-                const resp = await fetch('/library/api/projects');
+                const resp = await fetch('/api/library/projects');
                 const data = await resp.json();
                 const select = document.getElementById('projectFilter');
 
@@ -1078,8 +1078,8 @@
                 const projQ = currentProject ? `?project=${encodeURIComponent(currentProject)}` : '';
                 // Fetch the video list and per-video embedding (searchability) state together.
                 const [resp, statusResp] = await Promise.all([
-                    fetch('/library/api/videos' + projQ),
-                    fetch('/library/api/embedding-status' + projQ),
+                    fetch('/api/library/videos' + projQ),
+                    fetch('/api/library/embedding-status' + projQ),
                 ]);
                 const data = await resp.json();
                 const status = await statusResp.json().catch(() => ({ videos: [], summary: {} }));
@@ -1173,7 +1173,7 @@
             const project = sel.value; if (!project) return;
             sel.value = '';
             try {
-                await fetch(`/library/api/videos/${encPath}/projects`, {
+                await fetch(`/api/library/videos/${encPath}/projects`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project, action: 'add' }) });
                 loadVideos();
@@ -1181,7 +1181,7 @@
         }
         async function vpRemove(encPath, slug) {
             try {
-                await fetch(`/library/api/videos/${encPath}/projects`, {
+                await fetch(`/api/library/videos/${encPath}/projects`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project: slug, action: 'remove' }) });
                 loadVideos();
@@ -1191,7 +1191,7 @@
         async function embedVideo(encPath, btn) {
             btn.disabled = true; btn.textContent = 'Embedding…';
             try {
-                const j = await (await fetch(`/library/api/videos/${encPath}/embed`, { method: 'POST' })).json();
+                const j = await (await fetch(`/api/library/videos/${encPath}/embed`, { method: 'POST' })).json();
                 await pollJob(j.job_id, btn, 'Embedding');
             } catch (e) { /* ignore */ }
             loadVideos();
@@ -1201,7 +1201,7 @@
         async function embedAll(btn) {
             btn.disabled = true; btn.textContent = 'Embedding…';
             try {
-                const j = await (await fetch('/library/api/reconcile-vectors', { method: 'POST' })).json();
+                const j = await (await fetch('/api/library/reconcile-vectors', { method: 'POST' })).json();
                 await pollJob(j.job_id, btn, 'Embedding');
             } catch (e) { /* ignore */ }
             loadVideos();
@@ -1234,7 +1234,7 @@
         // Load segments
         async function loadSegments(path) {
             try {
-                const resp = await fetch(`/library/api/videos/${encodeURIComponent(path)}/segments`);
+                const resp = await fetch(`/api/library/videos/${encodeURIComponent(path)}/segments`);
                 const data = await resp.json();
                 currentSegments = data.segments;
             } catch (err) {
@@ -1246,7 +1246,7 @@
         // Load clusters
         async function loadClusters(path) {
             try {
-                const resp = await fetch(`/library/api/videos/${encodeURIComponent(path)}/clusters`);
+                const resp = await fetch(`/api/library/videos/${encodeURIComponent(path)}/clusters`);
                 const data = await resp.json();
                 currentClusters = data.clusters;
             } catch (err) {
@@ -1426,7 +1426,7 @@
                 params.set('fields', fields.join(','));
             }
 
-            const resp = await fetch(`/library/api/search?${params}`);
+            const resp = await fetch(`/api/library/search?${params}`);
 
             if (!resp.ok) {
                 const error = await resp.json();
@@ -1456,7 +1456,7 @@
                 params.set('project', currentProject);
             }
 
-            const resp = await fetch(`/library/api/search/semantic?${params}`);
+            const resp = await fetch(`/api/library/search/semantic?${params}`);
 
             if (!resp.ok) {
                 const error = await resp.json();
@@ -1743,7 +1743,7 @@
             const usedFullSegment = (cutIn === null && cutOut === null);
             setCutStatus('Saving…');
             try {
-                const resp = await fetch('/library/api/clips', {
+                const resp = await fetch('/api/library/clips', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

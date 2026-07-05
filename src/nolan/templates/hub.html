@@ -348,7 +348,7 @@
                 if (data.library.available) {
                     // Fetch actual stats
                     try {
-                        const statsResp = await fetch('/library/api/stats');
+                        const statsResp = await fetch('/api/library/stats');
                         const stats = await statsResp.json();
                         const status = document.getElementById('library-status');
                         status.textContent = `${stats.video_count} videos`;
@@ -404,7 +404,7 @@
         // Check render service
         async function checkRenderService() {
             try {
-                const resp = await fetch('/showcase/api/effects');
+                const resp = await fetch('/api/showcase/effects');
                 if (resp.ok) {
                     const data = await resp.json();
                     const status = document.getElementById('showcase-status');

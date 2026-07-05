@@ -1127,7 +1127,7 @@
             const out = document.getElementById(`ss-results-${id}`);
             st.textContent = `searching (${op})…`; out.innerHTML = '';
             try {
-                const start = await (await fetch('/scenes/api/scene/super-search', {
+                const start = await (await fetch('/api/scenes/scene/super-search', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project: currentProject, line, operator: op, media: ['image', 'video'] })
                 })).json();
@@ -1167,7 +1167,7 @@
             const st = document.getElementById(`ss-status-${id}`);
             st.textContent = 'attaching…';
             try {
-                const start = await (await fetch('/scenes/api/scene/attach', {
+                const start = await (await fetch('/api/scenes/scene/attach', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project: currentProject, scene_id: id, url, kind, source })
                 })).json();
@@ -1222,7 +1222,7 @@
         }
         async function assetOp(sceneId, body) {
             body.project = currentProject; body.scene_id = sceneId;
-            const res = await fetch('/scenes/api/scene/assets', {
+            const res = await fetch('/api/scenes/scene/assets', {
                 method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
             const j = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(j.detail || res.statusText);
@@ -1272,7 +1272,7 @@
                 try {
                     const fd = new FormData();
                     fd.append('project', currentProject); fd.append('file', file);
-                    const res = await fetch('/scenes/api/scene/upload', { method: 'POST', body: fd });
+                    const res = await fetch('/api/scenes/scene/upload', { method: 'POST', body: fd });
                     const j = await res.json();
                     if (!res.ok) throw new Error(j.detail || 'upload failed');
                     await assetOp(sceneId, { op: 'add', source: 'path', path: j.path, kind: j.kind, label: j.label });
@@ -1362,7 +1362,7 @@
         function setVidScope(s) { vidScope = s; vidVideo = null; renderSub(); loadPicker(); }
         function setVidSource(s) { vidSource = s; vidVideo = null; renderSub(); loadPicker(); }
         function pickKey(it) { return `${it.source}:${it.k}`; }
-        function thumbUrl(src, t) { return `/scenes/api/frame-thumb?project=${encodeURIComponent(currentProject)}&src=${encodeURIComponent(src)}&t=${t||0}`; }
+        function thumbUrl(src, t) { return `/api/scenes/frame-thumb?project=${encodeURIComponent(currentProject)}&src=${encodeURIComponent(src)}&t=${t||0}`; }
 
         async function loadPicker() {
             const q = document.getElementById('pickerQ').value.trim();
@@ -1387,7 +1387,7 @@
         }
         async function fetchClips(q) {
             const proj = vidScope === 'project' ? currentProject : '';
-            const j = await (await fetch(`/library/api/clips?projects=${encodeURIComponent(proj)}`)).json();
+            const j = await (await fetch(`/api/library/clips?projects=${encodeURIComponent(proj)}`)).json();
             let clips = j.clips || [];
             if (q) { const ql = q.toLowerCase(); clips = clips.filter(c =>
                 ((c.label||'') + ' ' + (c.video_name||'')).toLowerCase().includes(ql)); }
@@ -1399,13 +1399,13 @@
         }
         async function fetchVideos(q) {
             const proj = vidScope === 'project' ? currentProject : '';
-            const j = await (await fetch(`/library/api/videos${proj?`?project=${encodeURIComponent(proj)}`:''}`)).json();
+            const j = await (await fetch(`/api/library/videos${proj?`?project=${encodeURIComponent(proj)}`:''}`)).json();
             let vids = j.videos || [];
             if (q) { const ql = q.toLowerCase(); vids = vids.filter(v => (v.name||'').toLowerCase().includes(ql)); }
             return vids;
         }
         async function fetchSegments(videoPath, q) {
-            const j = await (await fetch(`/library/api/videos/${encodeURIComponent(videoPath)}/segments`)).json();
+            const j = await (await fetch(`/api/library/videos/${encodeURIComponent(videoPath)}/segments`)).json();
             let segs = j.segments || [];
             if (q) { const ql = q.toLowerCase(); segs = segs.filter(s =>
                 ((s.frame_description||'') + ' ' + (s.transcript||'')).toLowerCase().includes(ql)); }
@@ -1461,7 +1461,7 @@
         }
 
         async function postRevise(body) {
-            const res = await fetch('/scenes/api/scene/revise', {
+            const res = await fetch('/api/scenes/scene/revise', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body) });
             const j = await res.json().catch(() => ({}));
@@ -1470,7 +1470,7 @@
         }
 
         async function refreshScenes() {
-            const res = await fetch(`/scenes/api/scenes/flat?project=${encodeURIComponent(currentProject)}`);
+            const res = await fetch(`/api/scenes/scenes/flat?project=${encodeURIComponent(currentProject)}`);
             const data = await res.json();
             allScenes = data.scenes;
             renderScenes();
@@ -1480,7 +1480,7 @@
         async function loadFlowAgents() {
             const sel = document.getElementById('flowAgent'); if (!sel) return;
             try {
-                const sessions = ((await (await fetch('/library/api/tmux-sessions')).json()).sessions) || [];
+                const sessions = ((await (await fetch('/api/library/tmux-sessions')).json()).sessions) || [];
                 const list = sessions.length ? sessions : ['nolan4'];
                 const cur = sel.value;
                 sel.innerHTML = list.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
@@ -1496,7 +1496,7 @@
             const agent = (document.getElementById('flowAgent') || {}).value || 'nolan4';
             stats.textContent = `✨ Dispatching ${agent} to refine the plan…`;
             try {
-                const r = await fetch('/scenes/api/flow/refine', {
+                const r = await fetch('/api/scenes/flow/refine', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project: currentProject, agent })
                 });
@@ -1513,7 +1513,7 @@
             const stats = document.getElementById('stats');
             stats.textContent = 'Accepting draft…';
             try {
-                const r = await fetch('/scenes/api/flow/accept', {
+                const r = await fetch('/api/scenes/flow/accept', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project: currentProject })
                 });
@@ -1562,7 +1562,7 @@
             const model = (document.getElementById('rerenderModel') || {}).value || 'flux-dev';
             msg.textContent = 'Submitting…';
             try {
-                const res = await fetch('/scenes/api/rerender', {
+                const res = await fetch('/api/scenes/rerender', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project: currentProject, scene_ids: ids, comfyui_model: model }) });
                 const j = await res.json().catch(() => ({}));
@@ -1610,7 +1610,7 @@
         // ---------- Fleet: dispatch scenes to Claude Code agents + status board ----------
         async function loadFleet() {
             try {
-                const r = await fetch('/scenes/api/fleet');
+                const r = await fetch('/api/scenes/fleet');
                 fleetAgents = (await r.json()).agents || [];
             } catch (e) { fleetAgents = []; }
             renderFleet();
@@ -1663,7 +1663,7 @@
             if (!agent) { msg.textContent = 'No live agent to send to.'; return; }
             msg.textContent = `Dispatching to ${agent}…`;
             try {
-                const res = await fetch('/scenes/api/dispatch', {
+                const res = await fetch('/api/scenes/dispatch', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project: currentProject, scene_ids: ids, note, agent }) });
                 const j = await res.json().catch(() => ({}));
@@ -1681,7 +1681,7 @@
             if (!agent) { st.textContent = 'No live agent to send to.'; return; }
             st.textContent = `Dispatching to ${agent}…`;
             try {
-                const res = await fetch('/scenes/api/dispatch', {
+                const res = await fetch('/api/scenes/dispatch', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ project: currentProject, scene_ids: [id], note, agent }) });
                 const j = await res.json().catch(() => ({}));
@@ -1711,7 +1711,7 @@
             _lbReset();
             const vid = document.getElementById('lightboxVid');
             start = +start || 0; end = (end != null && +end > start) ? +end : null;
-            vid.src = `/scenes/api/source-video?project=${encodeURIComponent(currentProject)}&src=${encodeURIComponent(src)}`;
+            vid.src = `/api/scenes/source-video?project=${encodeURIComponent(currentProject)}&src=${encodeURIComponent(src)}`;
             vid.style.display = '';
             vid.onloadedmetadata = () => { try { vid.currentTime = start; vid.play().catch(() => {}); } catch (e) {} };
             // bound playback to the clip's out-point (loop the segment)
@@ -1820,7 +1820,7 @@
         // Load projects list
         async function loadProjects() {
             try {
-                const res = await fetch('/scenes/api/projects');
+                const res = await fetch('/api/scenes/projects');
                 const data = await res.json();
                 projects = data.projects || [];
 
@@ -1867,7 +1867,7 @@
                     '<div class="loading">Loading scene plan...</div>';
 
                 // Load scenes
-                const scenesRes = await fetch(`/scenes/api/scenes/flat?project=${encodeURIComponent(currentProject)}`);
+                const scenesRes = await fetch(`/api/scenes/scenes/flat?project=${encodeURIComponent(currentProject)}`);
                 const scenesData = await scenesRes.json();
                 allScenes = scenesData.scenes;
                 sections = scenesData.sections;
@@ -1897,7 +1897,7 @@
                 renderScenes();
 
                 // Load audio
-                const audioRes = await fetch(`/scenes/api/audio-info?project=${encodeURIComponent(currentProject)}`);
+                const audioRes = await fetch(`/api/scenes/audio-info?project=${encodeURIComponent(currentProject)}`);
                 const audioData = await audioRes.json();
                 const audioContainer = document.getElementById('audioContainer');
                 const audioPlayer = document.getElementById('audioPlayer');

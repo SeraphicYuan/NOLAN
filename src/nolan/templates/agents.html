@@ -1110,7 +1110,7 @@ function toggleProject(slug) {
 let _agentSessions = null;
 async function populateRunAgents() {
     if (_agentSessions === null) {
-        try { _agentSessions = ((await (await fetch('/library/api/tmux-sessions')).json()).sessions) || []; }
+        try { _agentSessions = ((await (await fetch('/api/library/tmux-sessions')).json()).sessions) || []; }
         catch (e) { _agentSessions = []; }
     }
     document.querySelectorAll('[id^="run-agent-"]').forEach(sel => {
