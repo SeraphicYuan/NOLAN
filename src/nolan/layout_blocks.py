@@ -315,7 +315,9 @@ ADAPTERS: Dict[str, Callable[[dict], _Adapted]] = {
 # "reject" = no faithful truncation exists → adapter returns None and the
 # scene falls back to the python renderer (which wraps/scales).
 BLOCK_BUDGETS: Dict[str, Dict[str, tuple]] = {
-    "PullQuote": {"quote": (220, "reject"), "attribution": (70, "trim"),
+    # quote is VERBATIM — the block adapts (designed type tiers down to
+    # reading size at 480 chars); reject only past what reading size holds.
+    "PullQuote": {"quote": (480, "reject"), "attribution": (70, "trim"),
                   "term": (40, "reject"), "definition": (240, "trim"),
                   "accentPhrase": (60, "trim")},
     "StatCount": {"stats[]": (3, "reject"), "stats[].label": (60, "trim"),

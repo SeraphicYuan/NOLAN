@@ -59,6 +59,7 @@ export const PullQuote: React.FC<PullQuoteProps> = ({
   definition = "",
   revealFrames,
   words = [],
+  durationInFrames = 120,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -112,6 +113,7 @@ export const PullQuote: React.FC<PullQuoteProps> = ({
                 words={words}
                 frame={frame}
                 fps={fps}
+                durationInFrames={durationInFrames}
               />
             )}
           </div>
@@ -131,10 +133,23 @@ const QuoteBody: React.FC<{
   words: Word[];
   frame: number;
   fps: number;
-}> = ({ quote, accentPhrase, attribution, rf0, rf1, words, frame, fps }) => {
+  durationInFrames: number;
+}> = ({ quote, accentPhrase, attribution, rf0, rf1, words, frame, fps, durationInFrames }) => {
   const tokens = quote.split(/\s+/).filter(Boolean);
   const accentIdx = accentIndexSet(tokens, accentPhrase);
-  const stagger = 4; // fallback per-word cadence when no word timeline is given
+  // Fallback per-word cadence when no word timeline is given — budgeted so the
+  // WHOLE quote lands within ~70% of the step (long quotes must not out-run
+  // their beat; real word timings override this entirely).
+  const stagger = Math.max(
+    1, Math.min(4, Math.floor((durationInFrames * 0.7 - rf0) / Math.max(1, tokens.length))));
+
+  // A quote is VERBATIM — the layout yields, not the words. Designed type
+  // tiers (not continuous autofit): short lines keep the oversized display
+  // look; longer passages step down to reading-display sizes and wrap.
+  const qlen = quote.length;
+  const quoteSize =
+    qlen <= 180 ? "var(--t-h1)" : qlen <= 320 ? "var(--t-h2)" : "34px";
+  const quoteLead = qlen <= 180 ? "var(--lh-head)" : 1.35;
 
   // Big decorative opening quote mark — accent, low opacity, fades in with bar.
   const markAppear = interpolate(frame, [rf0, rf0 + 8], [0, 1], clamp);
@@ -168,8 +183,8 @@ const QuoteBody: React.FC<{
           flexWrap: "wrap",
           fontFamily: "var(--font-display-cn)",
           fontWeight: 700,
-          fontSize: "var(--t-h1)",
-          lineHeight: "var(--lh-head)",
+          fontSize: quoteSize,
+          lineHeight: quoteLead,
           letterSpacing: "var(--track-tight)",
           color: "var(--text)",
         }}

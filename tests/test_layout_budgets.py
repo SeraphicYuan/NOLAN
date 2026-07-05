@@ -72,3 +72,13 @@ def test_budget_paths_resolve_for_every_declared_block():
         assert adapted, template
         produced.add(adapted[0])
     assert set(BLOCK_BUDGETS) <= produced | {"StatCount"}
+
+
+def test_verbatim_quote_ceiling_is_reading_size():
+    # 300-char quote: within the block's designed type tiers -> accepted
+    q = ("so hard and huge a task it was to found the roman race — " * 5)[:300]
+    adapted = adapt("quote", {"quote": q})
+    assert adapted and adapted[0] == "PullQuote"
+    assert adapted[1]["quote"] == q             # verbatim, untouched
+    # past reading-size capacity -> reject (python renderer wraps full-screen)
+    assert adapt("quote", {"quote": "x" * 500}) is None
