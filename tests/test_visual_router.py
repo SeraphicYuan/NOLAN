@@ -144,8 +144,9 @@ class TestVisualRouter:
 
         decision = router.route(scene)
 
-        # Should fall back to library since no match above 99%
-        assert decision.route == "library"
+        # No Lottie match above 99% — lower-third falls back to the built-in
+        # python template (library is the fallback only for unsupported types).
+        assert decision.route == "python-template"
 
     def test_template_visual_types_defined(self):
         """Template visual types are defined."""

@@ -4,6 +4,23 @@
 **Status:** Complete
 **Last Updated:** 2026-07-04
 
+## Architecture Consolidation — Phase 6 (2026-07-05) — CONSOLIDATION COMPLETE
+
+- `ARCHITECTURE.md` — the living map of the consolidated system (pipeline,
+  contracts, engines, surfaces, test nets, deferred work).
+- Dead code removed: jitter/lottiefiles/lottieflow scraper downloaders (zero
+  callers; downloaders/ keeps models+utils). Kept with rationale:
+  infographic_client/icons, video_gen, visual_router (live CLI commands),
+  python renderer classes (Remotion fallback until bake-in), motion_select
+  (evoke_broll), node-side effects/presets + motion-canvas engine (deletion
+  needs a render-service rebuild — deferred).
+- Test infra: `tests/test_hub.py` (a manual server script whose os._exit(0)
+  silently killed every full-suite pytest run at ~38%) moved to
+  scripts/hub_smoke_manual.py; stale expectations fixed (sampler default,
+  visual_router fallback); missing-fixture tests now skip. FIRST-EVER clean
+  full-suite run: 674 passed / 0 failed.
+- /tts→/voices alias intentionally KEPT (created this phase; remove later).
+
 ## Architecture Consolidation — Phases 4–5 (2026-07-05)
 
 **Phase 4 — surface consolidation:**

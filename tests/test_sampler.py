@@ -23,7 +23,7 @@ class TestSamplerConfig:
     def test_defaults(self):
         """Test default configuration values."""
         config = SamplerConfig()
-        assert config.strategy == SamplingStrategy.HYBRID
+        assert config.strategy == SamplingStrategy.FFMPEG_SCENE
         assert config.fixed_interval == 5.0
         assert config.min_interval == 1.0
         assert config.max_interval == 30.0
