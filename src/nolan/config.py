@@ -33,7 +33,12 @@ class ComfyUIConfig:
     """ComfyUI connection configuration."""
     host: str = "127.0.0.1"
     port: int = 8188
-    workflow: str = "default"
+    # Registry workflow name (workflows/registry.json). `nolan generate`
+    # resolves through the registry when no --workflow file is given.
+    workflow: str = "krea2-style-select"
+    # Fooocus style applied via the workflow's style-selector node (krea2).
+    # Leading comma is added automatically. Empty = keep the workflow's baked style.
+    style: str = "Dark Moody Atmosphere"
     width: int = 1920
     height: int = 1080
     steps: int = 20

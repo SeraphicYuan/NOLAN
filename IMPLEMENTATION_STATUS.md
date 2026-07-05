@@ -82,6 +82,35 @@ hub against the real Odyssey deconstruction (page, list, meta, artifacts, frames
   template export + matcher scoring, clone budgets/ad-exclusion/provenance, case-study brief,
   overlap lookup + prompt surfacing, new routes).
 
+### Full-video chain fixes — timing, motion, krea2 default (2026-07-04, round 5)
+
+Found while producing the first end-to-end reference-guided video (the-aeneid,
+7:07 final.mp4 = cloned structure + tempo + 21 masterworks + 15 krea2 paintings +
+18 layout cards + cloned-voice narration):
+
+- **Narration owns duration** (three sites): `render_scene` and
+  `stamp_tempo_motions` now prefer the ALIGNED window over the planner's "Ns"
+  estimate, and `annotate_scene_plan` no longer overwrites aligned times with
+  cumulative estimates (it was destroying `nolan align`'s work after every render).
+- **`nolan align` now TILES scene windows** (`scenes.tile_scene_windows`): align
+  gives each scene only its matched-words span, so pauses belonged to no scene and
+  video ran ~25% shorter than audio; each scene now extends to the next scene's
+  start (last → audio end), so total video ≡ narration.
+- **Tempo→motion stamping** (`render.stamp_tempo_motions`, wired into the Director
+  render step): image-backed scenes get a validated `still-motion` spec — treatment
+  from the (reference-blended) energy via `motion_for_tempo`, duration from the
+  aligned window. 36 Aeneid stills rendered via Remotion at the cloned rhythm.
+- **`layout_spec` is a real Scene field** (parse + serialize): previously it
+  survived only until the next `ScenePlan.load/save`, which silently wiped all
+  slide_designer output (bit the-aeneid; restored via refine + feedback file).
+- **krea2 is the default generation workflow**: `nolan generate` resolves
+  `config.comfyui.workflow` (default `krea2-style-select`) through the workflow
+  registry with `config.comfyui.style` (default "Dark Moody Atmosphere", leading
+  comma handled) applied to the style-selector node; an explicit `--workflow`
+  keeps manual control; falls back to the built-in SDXL workflow on registry errors.
+- Voice cloning from a library video needs ONE segment:
+  `VoiceLibrary.create_from_clip(video_path, t0, t1, ref_text=<segment transcript>)`.
+
 ### Archival-art sourcing — the masterwork-raid step (2026-07-04, round 4)
 
 `src/nolan/art_sourcing.py` — scenes typed `archival-art` (named paintings/manuscripts/

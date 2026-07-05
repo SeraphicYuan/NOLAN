@@ -1027,6 +1027,15 @@ class Director:
         silent_audio_path = scratch / "silent.wav"
         report_path = scratch / "last_report.md"
 
+        # 0. Tempo→motion: give image-backed stills a still-motion spec driven
+        # by their authored (reference-blended) energy, so they render as
+        # motion clips at the planned rhythm instead of assemble's generic
+        # Ken Burns.
+        try:
+            stamped = render_mod.stamp_tempo_motions(scene_plan, self.project_path)
+        except Exception:
+            stamped = 0
+
         # 1. Render every scene that we know how to render.
         try:
             outcomes = render_mod.render_all(

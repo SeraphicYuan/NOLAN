@@ -225,7 +225,13 @@ def render_scene(
 
     scene_id = scene.get("id", "unknown")
     visual_type = scene.get("visual_type", "")
-    duration = parse_duration(scene.get("duration", "5s"))
+    # Prefer the ALIGNED window (`nolan align`) over the planner's estimate —
+    # the narration owns duration; the plan string is only a fallback.
+    _ss, _es = scene.get("start_seconds"), scene.get("end_seconds")
+    if _ss is not None and _es is not None and float(_es) > float(_ss):
+        duration = float(_es) - float(_ss)
+    else:
+        duration = parse_duration(scene.get("duration", "5s"))
     target = output_dir / f"{scene_id}.mp4"
     spec_template = (scene.get("layout_spec") or {}).get("template")
 
@@ -254,6 +260,49 @@ def _skip_reason(scene: dict, visual_type: str, spec_template: str | None) -> st
     if spec_template:
         return f"template `{spec_template}` not renderable (custom or unknown)"
     return f"no renderable asset for visual_type `{visual_type}`"
+
+
+def stamp_tempo_motions(scene_plan: dict, project_path: Path) -> int:
+    """Give image-backed scenes a tempo-driven still-motion spec (in place).
+
+    matched_asset/generated_asset stills otherwise fall through to assemble's
+    generic Ken Burns. This maps each scene's authored/recovered ``energy``
+    (stamped by tempo_enrich, reference-blended when the project carries a
+    deconstruction) to the motion library's treatment via ``motion_for_tempo``
+    — so a calm museum beat holds/breathes and a driving beat pushes in,
+    at the planned rhythm. Returns the number of scenes stamped.
+    """
+    from nolan.motion.spec import validate
+    from nolan.tempo_plan import BeatTempo, motion_for_tempo
+
+    stamped = 0
+    for scenes in (scene_plan.get("sections") or {}).values():
+        if not isinstance(scenes, list):
+            continue
+        for scene in scenes:
+            if not isinstance(scene, dict) or scene.get("motion_spec"):
+                continue
+            img = scene.get("matched_asset") or (
+                f"assets/generated/{scene['generated_asset']}"
+                if scene.get("generated_asset") else None)
+            if not img or scene.get("energy") is None:
+                continue
+            bt = BeatTempo(idx=0, title=scene.get("id") or "",
+                           energy=float(scene["energy"]),
+                           motion_speed=scene.get("motion_speed") or "medium")
+            treatment, dur = motion_for_tempo(bt, kind="image")
+            # narration owns DURATION (aligned window); tempo owns TREATMENT
+            _ss, _es = scene.get("start_seconds"), scene.get("end_seconds")
+            if _ss is not None and _es is not None and float(_es) > float(_ss):
+                dur = float(_es) - float(_ss)
+            raw = {"effect": "still-motion", "duration": dur,
+                   "content": {"image": str(project_path / img),
+                               "treatment": treatment}}
+            spec, _errors = validate(raw)
+            if spec:
+                scene["motion_spec"] = spec
+                stamped += 1
+    return stamped
 
 
 def render_all(
@@ -297,7 +346,11 @@ def annotate_scene_plan(
             if outcome and outcome.rendered_clip:
                 scene["rendered_clip"] = outcome.rendered_clip
                 rendered += 1
-            duration = parse_duration(scene.get("duration", "5s"))
+            _ss, _es = scene.get("start_seconds"), scene.get("end_seconds")
+            if _ss is not None and _es is not None and float(_es) > float(_ss):
+                duration = float(_es) - float(_ss)   # keep aligned duration
+            else:
+                duration = parse_duration(scene.get("duration", "5s"))
             scene["start_seconds"] = cursor
             scene["end_seconds"] = cursor + duration
             cursor += duration

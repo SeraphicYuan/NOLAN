@@ -375,7 +375,8 @@ class Scene:
 
     # === Asset Results (populated in Step 2/3) ===
     skip_generation: bool = False
-    matched_asset: Optional[str] = None      # Downloaded b-roll image
+    matched_asset: Optional[str] = None
+    layout_spec: Optional[str] = None    # slide_designer JSON (info scenes)      # Downloaded b-roll image
     generated_asset: Optional[str] = None    # AI-generated image
     infographic_asset: Optional[str] = None  # Static SVG infographic
     infographic_asset_png: Optional[str] = None  # PNG preview for infographics
@@ -484,6 +485,7 @@ class ScenePlan:
             text_style=data.get("text_style"),
             skip_generation=data.get("skip_generation", False),
             matched_asset=data.get("matched_asset"),
+            layout_spec=data.get("layout_spec"),
             generated_asset=data.get("generated_asset"),
             infographic_asset=data.get("infographic_asset"),
             infographic_asset_png=data.get("infographic_asset_png"),
@@ -877,3 +879,28 @@ class SceneDesigner:
             if match:
                 return json.loads(match.group())
             raise ValueError(f"Could not parse JSON object from response: {response[:200]}")
+
+
+def tile_scene_windows(plan: "ScenePlan", audio_duration: float) -> int:
+    """Make aligned scene windows TILE the audio (no gaps, no overlaps).
+
+    `nolan align` gives each scene the span of its own matched words; the
+    pauses/breaths between scenes belong to no scene, so summed durations run
+    shorter than the audio and picture-sound sync drifts. Tiling extends each
+    scene to the next scene's start (the last one to the audio end): a scene
+    simply holds through the pause that follows it. Returns scenes adjusted.
+    """
+    scenes = [s for section in plan.sections.values() for s in section]
+    starts = [s.start_seconds for s in scenes]
+    n = 0
+    for i, scene in enumerate(scenes):
+        if starts[i] is None:
+            continue
+        nxt = next((starts[j] for j in range(i + 1, len(scenes))
+                    if starts[j] is not None), audio_duration)
+        new_end = max(float(nxt), float(starts[i]) + 1.0)
+        if scene.end_seconds != new_end:
+            scene.end_seconds = new_end
+            n += 1
+    return n
+

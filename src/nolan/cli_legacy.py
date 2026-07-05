@@ -1062,17 +1062,33 @@ async def _generate_images(config, project_path, scene_id, workflow_path=None, p
 
     plan = ScenePlan.load(str(plan_path))
 
-    # Initialize ComfyUI client
-    client = ComfyUIClient(
-        host=config.comfyui.host,
-        port=config.comfyui.port,
-        width=config.comfyui.width,
-        height=config.comfyui.height,
-        steps=config.comfyui.steps,
-        workflow_file=workflow_path,
-        prompt_node=prompt_node,
-        node_overrides=overrides
-    )
+    # Initialize ComfyUI client. With no explicit --workflow file, resolve the
+    # configured REGISTRY workflow (default: krea2-style-select) + config style
+    # via the workflow registry; explicit --workflow keeps full manual control.
+    client = None
+    if workflow_path is None and prompt_node is None and not overrides:
+        try:
+            from nolan.workflow_registry import get_registry
+            style = (getattr(config.comfyui, "style", "") or "").strip()
+            kw = {}
+            if style:
+                kw["style"] = style if style.startswith(",") else "," + style
+            client, _entry = get_registry().build_client(
+                getattr(config.comfyui, "workflow", None), config, **kw)
+        except Exception as exc:
+            click.echo(f"  (registry workflow unavailable: {exc} — using built-in default)")
+            client = None
+    if client is None:
+        client = ComfyUIClient(
+            host=config.comfyui.host,
+            port=config.comfyui.port,
+            width=config.comfyui.width,
+            height=config.comfyui.height,
+            steps=config.comfyui.steps,
+            workflow_file=workflow_path,
+            prompt_node=prompt_node,
+            node_overrides=overrides
+        )
 
     # Check connection
     if not await client.check_connection():
@@ -2453,6 +2469,21 @@ def align(ctx, scene_plan, audio_file, model, language, save_words):
                 low_confidence += 1
             else:
                 no_match += 1
+
+    # Tile the windows to the audio: extend each scene to the next scene's
+    # start (last one to audio end) so pauses belong to the preceding scene
+    # and total video duration equals the narration.
+    try:
+        from nolan.scenes import tile_scene_windows
+        import json as _json
+        import subprocess as _sp
+        _pr = _sp.run(["ffprobe", "-v", "quiet", "-print_format", "json",
+                       "-show_format", str(audio_file)], capture_output=True, text=True)
+        audio_dur = float(_json.loads(_pr.stdout)["format"]["duration"])
+        tiled = tile_scene_windows(plan, float(audio_dur))
+        click.echo(f"  Tiled {tiled} scene windows to the audio ({audio_dur:.1f}s)")
+    except Exception as exc:
+        click.echo(f"  (tiling skipped: {exc})")
 
     # Save updated plan
     plan.save(str(scene_plan_path))
