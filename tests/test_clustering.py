@@ -301,53 +301,52 @@ class TestStoryBoundaryDetector:
 
     @pytest.fixture
     def yes_llm(self):
-        """LLM that always says YES."""
+        """LLM that reports a boundary after segment 0."""
         class MockLLM:
             async def generate(self, prompt):
-                return "YES"
+                return "[0]"
         return MockLLM()
 
     @pytest.fixture
     def no_llm(self):
-        """LLM that always says NO."""
+        """LLM that reports no boundaries."""
         class MockLLM:
             async def generate(self, prompt):
-                return "NO"
+                return "[]"
         return MockLLM()
 
     @pytest.mark.asyncio
-    async def test_detect_boundary_yes(self, yes_llm):
-        """Boundary detected when LLM says YES."""
+    async def test_detect_boundaries_batch_yes(self, yes_llm):
+        """Boundary index parsed from the LLM's JSON array."""
         detector = StoryBoundaryDetector(yes_llm)
         seg1 = make_segment(0.0, 5.0)
         seg2 = make_segment(5.0, 10.0)
 
-        result = await detector.detect_boundary(seg1, seg2)
-        assert result is True
+        result = await detector.detect_boundaries_batch([seg1, seg2])
+        assert result == [0]
 
     @pytest.mark.asyncio
-    async def test_detect_boundary_no(self, no_llm):
-        """No boundary when LLM says NO."""
+    async def test_detect_boundaries_batch_no(self, no_llm):
+        """Empty array -> no boundaries."""
         detector = StoryBoundaryDetector(no_llm)
         seg1 = make_segment(0.0, 5.0)
         seg2 = make_segment(5.0, 10.0)
 
-        result = await detector.detect_boundary(seg1, seg2)
-        assert result is False
+        result = await detector.detect_boundaries_batch([seg1, seg2])
+        assert result == []
 
     @pytest.mark.asyncio
-    async def test_refine_clusters_splits(self, yes_llm):
-        """Clusters are split at detected boundaries."""
-        detector = StoryBoundaryDetector(yes_llm)
-        seg1 = make_segment(0.0, 5.0)
-        seg2 = make_segment(5.0, 10.0)
-        seg3 = make_segment(10.0, 15.0)
+    async def test_detect_boundaries_batch_validates_indices(self):
+        """Out-of-range/duplicate indices are filtered; result is sorted+unique."""
+        class NoisyLLM:
+            async def generate(self, prompt):
+                return "boundaries: [1, 0, 0, 5, -1]"
 
-        cluster = SceneCluster(id=0, segments=[seg1, seg2, seg3])
-        refined = await detector.refine_clusters([cluster])
+        detector = StoryBoundaryDetector(NoisyLLM())
+        segs = [make_segment(i * 5.0, (i + 1) * 5.0) for i in range(3)]
 
-        # Should split into 3 clusters (boundary between each)
-        assert len(refined) == 3
+        result = await detector.detect_boundaries_batch(segs)
+        assert result == [0, 1]   # 5 and -1 rejected, dupes collapsed
 
     @pytest.mark.asyncio
     async def test_refine_clusters_no_split(self, no_llm):
