@@ -4,6 +4,25 @@
 **Status:** Complete
 **Last Updated:** 2026-07-04
 
+## Architecture Consolidation — Phase 3 (2026-07-05)
+
+**Remotion-first rendering + FLOW absorption.**
+
+- `render_layout` is Remotion-first: all 23 layout templates render through the
+  curated flow-blocks library (`src/nolan/layout_blocks.py` adapters, one-step
+  Chapter jobs); Python renderers remain the automatic per-scene fallback and
+  the only path under `NOLAN_LEGACY_RENDER=1`.
+- Motion registry: one backend per intent — counter/title/lower-third/comparison
+  now on the "block" backend (same ids/params); python photo-montage removed.
+- **Premium render mode** (`src/nolan/premium_render.py`, D2): every beat renders
+  as ONE Remotion Chapter with per-scene VO slices baked in — FLOW's driver fed
+  from scene_plan + beat anchors. The section WAV is the timing authority
+  (windows normalized, frame-exact boundaries), so video ≡ narration by
+  construction. Opt in with `render_mode: premium` in project.yaml; the Director
+  render step dispatches; ineligible scenes fail the run with ids listed.
+- Acceptance: the-aeneid copy premium-rendered end-to-end — 427.8s vs 427.4s
+  narration (0.44s), 8 beat Chapters, 54 block scenes, frames visually verified.
+
 ## Architecture Consolidation — Phase 2 (2026-07-05)
 
 **One asset engine**: `src/nolan/asset_engine.py` — the single scene→asset

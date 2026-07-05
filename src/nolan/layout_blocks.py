@@ -83,7 +83,14 @@ def _counter(p) -> _Adapted:
 def _statistic(p) -> _Adapted:
     value = _num(p.get("value"))
     if value is None:
-        return None                      # e.g. "2.3M" with odd formatting → Python renderer
+        # Non-numeric "statistic" (e.g. Roman numerals "XI ANNI"): a count-up
+        # makes no sense — render as big display type instead.
+        if not p.get("value"):
+            return None
+        lines = [{"text": str(p["value"]), "accent": True}]
+        if p.get("label"):
+            lines.append({"text": str(p["label"])})
+        return "HeroStatement", {"lines": lines}
     raw = str(p.get("value", ""))
     m = re.search(r"-?\d[\d,]*\.?\d*", raw)
     prefix = p.get("prefix") or (raw[:m.start()].strip() if m else "")

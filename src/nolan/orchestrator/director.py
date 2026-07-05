@@ -1274,6 +1274,42 @@ class Director:
         output_dir.mkdir(parents=True, exist_ok=True)
         final_video_path = output_dir / "final.mp4"
 
+        # Premium render mode (project.yaml: render_mode: premium): every beat
+        # renders as ONE Remotion Chapter with baked per-scene VO — FLOW's
+        # driver fed from the scene plan. Explicit opt-in fails honestly when
+        # a scene can't map to a Chapter block (no silent fallback).
+        render_mode = None
+        try:
+            _meta = yaml.safe_load(
+                (self.project_path / "project.yaml").read_text(encoding="utf-8"))
+            if isinstance(_meta, dict):
+                render_mode = _meta.get("render_mode")
+        except Exception:
+            pass
+        if render_mode == "premium":
+            from nolan.premium_render import PremiumIneligible, render_premium
+            try:
+                final = render_premium(self.project_path, output=final_video_path)
+            except PremiumIneligible as exc:
+                err = f"premium render not possible: {exc}"
+                state_mod.finish_step(record, status="error", notes=err)
+                state.status = "error"
+                state_mod.save_state(self.project_path, state)
+                raise DirectorError(err) from exc
+            except Exception as exc:
+                err = f"premium render failed: {type(exc).__name__}: {exc}"
+                state_mod.finish_step(record, status="error", notes=err)
+                state.status = "error"
+                state_mod.save_state(self.project_path, state)
+                raise DirectorError(err) from exc
+            size_mb = final.stat().st_size / (1024 * 1024)
+            note = (f"premium render: {len(scene_plan.get('sections') or {})} "
+                    f"beat Chapters -> {final.name} ({size_mb:.1f} MB)")
+            state_mod.finish_step(record, status="completed", notes=note)
+            state.status = "awaiting_review"
+            state_mod.save_state(self.project_path, state)
+            return _write_checkpoint(self.project_path, record.step_num, [note])
+
         scratch = _orchestrator_dir(self.project_path) / "modules" / "render"
         scratch.mkdir(parents=True, exist_ok=True)
         silent_audio_path = scratch / "silent.wav"

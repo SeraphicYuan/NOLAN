@@ -177,7 +177,22 @@ Each phase is independently shippable; no big-bang. Effort in focused sessions (
 > semantics) onto the engine's library tier; merge `nolan/voiceover.py` into
 > `voice_pipeline`; evoke_broll operators as the query layer for every tier.
 
-### Phase 3 — One renderer story (≈3–4 S, largest) — needs Decision D1/D2
+### Phase 3 — One renderer story (≈3–4 S, largest) — needs Decision D1/D2 — **CORE DONE**
+> 3a (db9d670): render_layout is Remotion-first — all 23 layout templates render
+> through the curated flow blocks via one-step Chapter jobs (`layout_blocks.py`
+> adapters); Python renderers = automatic fallback + NOLAN_LEGACY_RENDER=1.
+> 3b (8ff5d60): motion registry one-backend-per-intent — counter/title/
+> lower-third/comparison on the new "block" backend (same ids/params); python
+> photo-montage removed (pro owns the intent); line-chart + loop-diagram remain
+> python (no faithful block yet).
+> 3c: premium render mode (`premium_render.py`) — every beat renders as ONE
+> Chapter with per-scene VO slices baked in (FLOW's driver fed from scene_plan
+> + beat anchors); `render_mode: premium` in project.yaml, Director render step
+> dispatches; ineligible scenes fail the run honestly with ids listed.
+> Deferred to Phase 6: physical deletion of render-service effects/presets +
+> motion-canvas engine (no live pipeline callers; another agent is active in
+> render-service), python renderer classes (still the fallback), FLOW spec
+> ingestion as a scene-plan view.
 - Canonical stack: **Remotion blocks library**. Map slide_designer's 22 layout templates
   to same-named blocks (Timeline, Ranking, PullQuote, TweetCard, NewsHeadline,
   LocationStamp, ProgressBar, PercentBar, SourceCitation, ChapterCard, LineChart,
