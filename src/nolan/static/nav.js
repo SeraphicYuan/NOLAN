@@ -13,6 +13,7 @@
     { items: [{ id: "home", label: "Hub", href: "/" }] },
     { title: "Create", items: [
       { id: "studio", label: "Studio", href: "/studio" },
+      { id: "process", label: "New from Essay", href: "/process" },
       { id: "script-styles", label: "Script Styles", href: "/script-styles" },
       { id: "script-projects", label: "Script Projects", href: "/script-projects" },
       { id: "video-styles", label: "Video Styles", href: "/video-styles" },
@@ -20,13 +21,15 @@
     ]},
     { title: "Assets", items: [
       { id: "library", label: "Library", href: "/library" },
+      { id: "ingest", label: "Add to Library", href: "/library/add" },
       { id: "clips", label: "Clips", href: "/clips" },
+      { id: "images", label: "Picture Library", href: "/images" },
+      { id: "extract", label: "Extract Assets", href: "/extract" },
       { id: "broll", label: "Evocative B-roll", href: "/broll" },
       { id: "tonal-broll", label: "Tonal B-roll (gallery)", href: "/tonal-broll/" },
       { id: "voices", label: "Voices", href: "/voices" },
     ]},
     { title: "Produce", items: [
-      { id: "tts", label: "TTS Studio", href: "/tts" },
       { id: "scenes", label: "Scenes", href: "/scenes" },
       { id: "lottie", label: "Lottie", href: "/lottie" },
       { id: "comfyui", label: "ComfyUI", href: "/comfyui" },

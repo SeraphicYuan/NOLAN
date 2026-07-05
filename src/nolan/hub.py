@@ -2131,14 +2131,12 @@ def create_hub_app(
                   p.suffix.lower(), "application/octet-stream")
         return FileResponse(p, media_type=mt)
 
-    # ---- TTS Studio (single-utterance playground) ----
-    tts_template = templates_dir / "tts.html"
-
-    @app.get("/tts", response_class=HTMLResponse)
+    # ---- TTS Studio — merged into the Voices page (Phase 4). /tts is an
+    # alias kept through the transition (removed in Phase 6). ----
+    @app.get("/tts")
     async def tts_page():
-        if tts_template.exists():
-            return tts_template.read_text(encoding="utf-8")
-        return "<h1>tts.html not found</h1>"
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse("/voices", status_code=307)
 
     @app.post("/api/tts/sample")
     async def tts_sample_upload(file: UploadFile = File(...)):
