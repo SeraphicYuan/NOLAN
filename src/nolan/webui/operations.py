@@ -518,7 +518,13 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
         lib_lock = threading.Lock()
 
         def _try_library(scene, variants):
-            """Reuse a library asset if one vision-scores >= library_gate."""
+            """Reuse a library asset if one vision-scores >= library_gate.
+
+            Same hybrid (CLIP+BGE) lookup policy as the asset engine's library
+            tier; the semantics that differ are deliberate — this op vision-
+            gates and COPIES the pick into the project (curated Studio flow),
+            while the engine links the library asset in place (auto pipeline).
+            """
             import shutil
             q = (getattr(scene, "search_query", "") or scene.visual_description
                  or (variants[0] if variants else ""))
@@ -526,7 +532,7 @@ async def match_broll_v2(job, *, config, project_name: str, prefer_video: bool =
             with lib_lock:
                 for lib in libs:
                     try:
-                        for h in lib.search(q, k=score_cap):
+                        for h in lib.search_hybrid(q, k=score_cap):
                             cands.append((str(lib.base / h.asset.path), h.asset))
                     except Exception:
                         pass

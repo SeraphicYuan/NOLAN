@@ -130,5 +130,5 @@ alignment (body dedup pending).
 - hub.py APIRouter split (200 routes defined in one `create_hub_app` closure —
   needs state-to-dependency conversion; dedicated session).
 - URL convention normalization (4 conventions in the wild; alias-then-remove).
-- `voiceover.py` ↔ `voice_pipeline.py` body dedup; `match_broll_v2._try_library`
-  onto the engine's library tier.
+- (voice body dedup + library-tier policy unification landed 2026-07-05;
+  match_broll_v2 keeps its deliberate copy/vision-gate semantics.)
