@@ -225,8 +225,13 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
 
 
 def render_premium(project_path: Path, *, theme: str = None,
-                   fps: int = 30, output: Path = None) -> Path:
-    """Render the whole plan as per-section Chapters + concat. Returns final."""
+                   fps: int = 30, output: Path = None,
+                   gate: bool = None) -> Path:
+    """Render the whole plan as per-section Chapters + concat. Returns final.
+
+    ``gate`` (default on; project.yaml `premium_gate: false` opts out) runs
+    FLOW's contact-sheet pre-flight over every section job before rendering.
+    """
     from nolan.flows.base import render_chapter
     from nolan.flows.render import concat_beats
 
@@ -242,14 +247,17 @@ def render_premium(project_path: Path, *, theme: str = None,
             f"premium mode needs beat anchors: {len(wavs)} section wavs vs "
             f"{len(sections)} plan sections (run voiceover + align first)")
 
+    meta = {}
+    try:
+        import yaml
+        meta = yaml.safe_load(
+            (project_path / "project.yaml").read_text(encoding="utf-8")) or {}
+    except Exception:
+        pass
     if theme is None:
-        try:
-            import yaml
-            meta = yaml.safe_load(
-                (project_path / "project.yaml").read_text(encoding="utf-8")) or {}
-            theme = meta.get("theme") or "bold-signal"
-        except Exception:
-            theme = "bold-signal"
+        theme = meta.get("theme") or "bold-signal"
+    if gate is None:
+        gate = meta.get("premium_gate", True) is not False
 
     work = project_path / "assets" / "premium" / "_work"
     jobs_dir = project_path / "assets" / "premium" / "jobs"
@@ -275,6 +283,7 @@ def render_premium(project_path: Path, *, theme: str = None,
             + "; ".join(blockers[:6]))
 
     clips = []
+    job_paths = []
     for i, ((name, scenes), wav, (sec_start, _d)) in enumerate(
             zip(sections, wavs, spans)):
         logger.info("premium: word timings for section %d/%d", i + 1, len(sections))
@@ -285,8 +294,32 @@ def render_premium(project_path: Path, *, theme: str = None,
             work_dir=work, theme=theme, fps=fps, section_words=section_words)
         job_path = jobs_dir / f"premium_{i:04d}.json"
         job_path.write_text(json.dumps(job, indent=2), encoding="utf-8")
-        logger.info("premium: rendering section %d/%d (%s, %d scenes)",
-                    i + 1, len(sections), name[:40], len(scenes))
+        job_paths.append((i, name, job_path))
+
+    # Contact-sheet pre-flight (FLOW's Tier-1 gate, reused verbatim + the
+    # edge-overflow check): one cheap still per step fraction catches
+    # empty/near-black beats and text escaping the frame BEFORE the expensive
+    # render. Explicit opt-out: project.yaml `premium_gate: false`.
+    if gate:
+        from nolan.flows.gate.contact import contact
+        problems = []
+        for i, name, job_path in job_paths:
+            flags, sheet = contact(job_path, overflow=True,
+                                   sheet_name=f"premium_{i:04d}.contact.png")
+            for beat, block, frame, what in flags:
+                problems.append(
+                    f"section {i} ({name[:30]}) step {beat} [{block}] "
+                    f"frame {frame}: {what}")
+            logger.info("premium gate: section %d contact sheet -> %s", i, sheet)
+        if problems:
+            raise PremiumIneligible(
+                f"pre-flight gate flagged {len(problems)} problem(s) — review "
+                "the contact sheets under render-service/remotion-lib/output/: "
+                + "; ".join(problems[:8]))
+
+    for i, name, job_path in job_paths:
+        logger.info("premium: rendering section %d/%d (%s)",
+                    i + 1, len(sections), name[:40])
         clips.append(render_chapter(job_path))
 
     final = Path(output) if output else project_path / "output" / "final.mp4"

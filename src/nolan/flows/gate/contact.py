@@ -18,9 +18,39 @@ from .montage import build_sheet
 
 CHK = RS / "remotion-lib" / "output" / "chk"
 
+# Full-bleed media blocks: bright pixels at the frame edge are the IMAGE, not
+# escaping text — the overflow heuristic skips these.
+_MEDIA_BLOCKS = {"ArtworkStage", "PhotoMontage", "PhotoGrid", "Flashback",
+                 "ImageCompare", "PaperFigure", "DetailLoupe", "LottieIcon",
+                 "RouteMap"}
 
-def contact(job_path, fracs=(0.55, 0.92), sheet_name=None):
-    """Render diagnostic stills + a contact sheet. Returns (empties:list, sheet_path)."""
+
+def _edge_overflow(png_path, band_frac: float = 0.012, brightness: int = 170,
+                   density: float = 0.004) -> str:
+    """'left'/'right' if glyph-bright pixels crowd an outer edge band, else ''.
+
+    Text blocks on the dark theme never legitimately touch the outer ~1% of
+    the frame — a bright streak there means content escaped its slot (the
+    class of defect where tick labels pile through the right edge).
+    """
+    from PIL import Image
+    import numpy as np
+    img = np.asarray(Image.open(png_path).convert("L"))
+    h, w = img.shape
+    band = max(4, int(w * band_frac))
+    for side, sl in (("left", img[:, :band]), ("right", img[:, w - band:])):
+        if (sl > brightness).mean() > density:
+            return side
+    return ""
+
+
+def contact(job_path, fracs=(0.55, 0.92), sheet_name=None, overflow=False):
+    """Render diagnostic stills + a contact sheet. Returns (flags:list, sheet_path).
+
+    flags entries: (beat, block, frame, pblack:int) for empty/near-black
+    beats, plus — when ``overflow=True`` — (beat, block, frame,
+    "overflow-left/right") for text escaping the frame on non-media blocks.
+    """
     job_path = Path(job_path)
     sheet_name = sheet_name or (job_path.stem.replace(".job", "") + ".contact.png")
     job = json.loads(job_path.read_text(encoding="utf-8"))
@@ -61,9 +91,18 @@ def contact(job_path, fracs=(0.55, 0.92), sheet_name=None):
         empty = pblack >= 98
         if empty:
             empties.append((beat, block, frame, pblack))
-        cells.append({"file": f"sheet_{idx:03d}.png", "empty": empty,
+        over = ""
+        if overflow and not empty and block not in _MEDIA_BLOCKS:
+            try:
+                over = _edge_overflow(CHK / f"sheet_{idx:03d}.png")
+            except Exception:
+                over = ""
+            if over:
+                empties.append((beat, block, frame, f"overflow-{over}"))
+        cells.append({"file": f"sheet_{idx:03d}.png", "empty": empty or bool(over),
                       "label": f"b{beat} {block} {int(f*100)}% f{frame}"})
-        print(f" {'EMPTY' if empty else 'ok':<5} beat {beat:<2} {block:<14} frac {f:>4}  frame {frame:>6}  pblack={pblack:>3}%")
+        flag = "EMPTY" if empty else (f"OVER-{over[:1].upper()}" if over else "ok")
+        print(f" {flag:<6} beat {beat:<2} {block:<14} frac {f:>4}  frame {frame:>6}  pblack={pblack:>3}%")
 
     sheet = RS / "remotion-lib" / "output" / sheet_name
     build_sheet({"base": str(CHK), "out": str(sheet), "cols": len(fracs), "rows": len(steps),
@@ -72,6 +111,7 @@ def contact(job_path, fracs=(0.55, 0.92), sheet_name=None):
     print("-" * 78)
     print(f"sheet -> render-service/remotion-lib/output/{sheet_name}   (grid {len(fracs)}×{len(steps)})")
     for beat, block, frame, pb in empties:
-        print(f" [EMPTY] beat {beat} {block} @ frame {frame} is {pb}% black")
+        what = f"{pb}% black" if isinstance(pb, int) else str(pb)
+        print(f" [FLAG] beat {beat} {block} @ frame {frame}: {what}")
     print(f"{len(empties)} empty/near-black beat(s)")
     return empties, sheet

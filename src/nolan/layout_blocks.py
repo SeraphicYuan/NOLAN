@@ -123,8 +123,10 @@ def _timeline(p) -> _Adapted:
 
 
 def _ranking(p) -> _Adapted:
+    # No [:6] slice here — a truncated ranking lies. The Ranking budget
+    # rejects >6 items and the python renderer (which fits more) takes over.
     items = []
-    for it in (p.get("items") or [])[:6]:
+    for it in (p.get("items") or []):
         if isinstance(it, (list, tuple)) and len(it) >= 2:
             items.append({"name": str(it[0]), "value": str(it[1])})
         elif isinstance(it, dict):
@@ -303,13 +305,132 @@ ADAPTERS: Dict[str, Callable[[dict], _Adapted]] = {
 }
 
 
+# --- content budgets ----------------------------------------------------------
+# Every block has an implicit layout budget its designer assumed; violating it
+# is how text piles up or escapes the frame. Budgets are declared ONCE here —
+# at the same choke point every consumer routes through (render_layout, the
+# motion "block" backend, premium mode) — so there is no second enforcement
+# path to drift. Paths: "field", "parent.field", "list[]" (count),
+# "list[].field". Policy: "trim" = ellipsize (safe for descriptive text);
+# "reject" = no faithful truncation exists → adapter returns None and the
+# scene falls back to the python renderer (which wraps/scales).
+BLOCK_BUDGETS: Dict[str, Dict[str, tuple]] = {
+    "PullQuote": {"quote": (220, "reject"), "attribution": (70, "trim"),
+                  "term": (40, "reject"), "definition": (240, "trim"),
+                  "accentPhrase": (60, "trim")},
+    "StatCount": {"stats[]": (3, "reject"), "stats[].label": (60, "trim"),
+                  "stats[].prefix": (6, "trim"), "stats[].suffix": (8, "trim")},
+    "StepFlow": {"steps[]": (5, "reject"), "steps[].label": (18, "trim"),
+                 "steps[].detail": (80, "trim"), "kicker": (60, "trim")},
+    "Ranking": {"items[]": (6, "reject"), "items[].name": (42, "trim"),
+                "items[].value": (16, "trim"), "title": (70, "trim")},
+    "ComparisonVS": {"left.title": (44, "reject"), "right.title": (44, "reject"),
+                     "left.points[]": (3, "reject"), "right.points[]": (3, "reject"),
+                     "kicker": (44, "trim"), "verdict": (110, "trim")},
+    "QuestionCard": {"question": (160, "reject"), "context": (70, "trim"),
+                     "accentPhrase": (60, "trim")},
+    "ChapterCard": {"title": (60, "reject"), "subtitle": (110, "trim")},
+    "HeroStatement": {"lines[]": (3, "reject"), "lines[].text": (60, "reject")},
+    "ListReveal": {"items[]": (6, "reject"), "items[].label": (60, "trim"),
+                   "title": (70, "trim")},
+    "LowerThird": {"name": (44, "reject"), "title": (70, "trim")},
+    "SourceCitation": {"sourceName": (80, "reject"), "publication": (60, "trim"),
+                       "author": (60, "trim"), "url": (90, "trim")},
+    "VerdictCard": {"verdict": (120, "reject"), "supportingText": (200, "trim")},
+    "LocationStamp": {"location": (44, "reject"), "sublocation": (90, "trim"),
+                      "coordinates": (44, "trim")},
+    "ProgressBar": {"label": (70, "trim"), "milestones[]": (6, "reject"),
+                    "milestones[].": (20, "trim")},
+    "PercentBar": {"label": (60, "reject"), "context": (90, "trim")},
+    "TweetCard": {"content": (280, "reject"), "username": (40, "trim"),
+                  "handle": (30, "trim")},
+    "NewsHeadline": {"headline": (110, "reject"), "source": (44, "trim"),
+                     "label": (24, "trim")},
+}
+
+
+def _trim(s: str, limit: int) -> str:
+    s = str(s)
+    return s if len(s) <= limit else s[: max(1, limit - 1)].rstrip() + "…"
+
+
+def _budget_targets(props: dict, path: str):
+    """Yield (container, key, kind) for a budget path. kind: 'text'|'count'.
+
+    Supported forms: "field" · "parent.field" · "parent.list[]" ·
+    "list[]" (count) · "list[].field" · "list[]." (bare string items).
+    """
+    parts = path.split(".")
+    head = parts[0]
+    if head.endswith("[]"):
+        lst = props.get(head[:-2])
+        if not isinstance(lst, list):
+            return
+        if len(parts) == 1:
+            yield props, head[:-2], "count"
+        elif parts[1] == "":                    # "list[]." — bare string items
+            for i, v in enumerate(lst):
+                if isinstance(v, str):
+                    yield lst, i, "text"
+        else:
+            for item in lst:
+                if isinstance(item, dict) and parts[1] in item:
+                    yield item, parts[1], "text"
+    elif len(parts) == 2:
+        sub = props.get(head)
+        if isinstance(sub, dict):
+            if parts[1].endswith("[]"):
+                if isinstance(sub.get(parts[1][:-2]), list):
+                    yield sub, parts[1][:-2], "count"
+            elif parts[1] in sub:
+                yield sub, parts[1], "text"
+    elif head in props:
+        yield props, head, "text"
+
+
+def _enforce_budgets(block: str, props: dict) -> Optional[dict]:
+    """Apply the block's content budgets. None -> reject (use the fallback)."""
+    budgets = BLOCK_BUDGETS.get(block)
+    if not budgets:
+        return props
+    for path, (limit, policy) in budgets.items():
+        # "a.b[]" count paths route through the two-part branch
+        for container, key, kind in _budget_targets(props, path):
+            value = container[key]
+            if kind == "count":
+                if len(value) > limit:
+                    logger.info("budget reject: %s %s has %d items (max %d)",
+                                block, path, len(value), limit)
+                    return None
+            else:
+                if value is not None and len(str(value)) > limit:
+                    if policy == "reject":
+                        logger.info("budget reject: %s %s is %d chars (max %d)",
+                                    block, path, len(str(value)), limit)
+                        return None
+                    container[key] = _trim(value, limit)
+    return props
+
+
 def adapt(template: str, params: dict) -> _Adapted:
-    """(block_name, props) for a template's layout params, or None."""
+    """(block_name, props) for a template's layout params, or None.
+
+    Budget-enforced: over-limit descriptive text is ellipsized; content whose
+    truncation would lie (quotes, headlines, counts over a block's capacity)
+    rejects the mapping and the caller falls back to the python renderer.
+    """
     fn = ADAPTERS.get(template)
     if fn is None:
         return None
     try:
-        return fn(params or {})
+        adapted = fn(params or {})
+        if not adapted:
+            return None
+        block, props = adapted
+        props = _enforce_budgets(block, props)
+        if props is None:
+            return None
+        return block, props
     except Exception as exc:
         logger.warning("layout->block adaptation failed for %s: %s", template, exc)
         return None
