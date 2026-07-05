@@ -676,6 +676,64 @@
                 max-width: 100%;
             }
         }
+
+        /* ===== slim scan rows + Scene Inspector drawer (card redesign) ===== */
+        .srow { display: flex; align-items: center; gap: 12px; padding: 9px 12px;
+                background: var(--bg-secondary); border: 1px solid var(--border);
+                border-radius: 10px; margin-bottom: 6px; cursor: pointer; }
+        .srow:hover { border-color: var(--text-secondary); }
+        .srow.selected-row { outline: 2px solid var(--accent); outline-offset: 1px; }
+        .srow.drop-target { border-color: var(--accent); }
+        .srow .sthumb { flex: 0 0 84px; width: 84px; height: 48px; border-radius: 6px;
+                overflow: hidden; background: #000; display: flex; align-items: center;
+                justify-content: center; color: var(--text-secondary); font-size: 18px; }
+        .srow .sthumb img, .srow .sthumb video { width: 100%; height: 100%; object-fit: cover; }
+        .srow .smain { flex: 1; min-width: 0; }
+        .srow .sline1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .srow .sid { font-weight: 700; font-size: 13px; }
+        .srow .stime { font-size: 11px; color: var(--text-secondary); cursor: pointer; }
+        .srow .stime:hover { color: var(--accent); }
+        .srow .snarr { font-size: 12px; color: var(--text-secondary); white-space: nowrap;
+                overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+        .chip { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+                border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap; }
+        .chip.prov-search, .chip.prov-search-bridged { color: #7aa2f7; border-color: #7aa2f7; }
+        .chip.prov-library, .chip.prov-library-bridged { color: #9ece6a; border-color: #9ece6a; }
+        .chip.prov-art { color: #e0af68; border-color: #e0af68; }
+        .chip.prov-generated { color: #bb9af7; border-color: #bb9af7; }
+        .chip.prov-motion { color: #7dcfff; border-color: #7dcfff; }
+        .chip.prov-none { color: var(--danger); border-color: var(--danger); }
+        .sdot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+        .sdot.ok { background: var(--success); } .sdot.miss { background: var(--danger); }
+        .sdot.pend { background: #f2c14e; }
+        /* drawer */
+        .insp-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); opacity: 0;
+                pointer-events: none; transition: opacity .15s; z-index: 60; }
+        .insp-backdrop.open { opacity: 1; pointer-events: auto; }
+        .insp { position: fixed; top: 0; right: -560px; width: 540px; max-width: 96vw; height: 100vh;
+                background: var(--bg-primary); border-left: 1px solid var(--border); z-index: 61;
+                transition: right .18s ease; display: flex; flex-direction: column; }
+        .insp.open { right: 0; }
+        .insp-hd { padding: 14px 18px; border-bottom: 1px solid var(--border);
+                display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .insp-hd .sid { font-size: 15px; font-weight: 700; }
+        .insp-x { margin-left: auto; background: none; border: 1px solid var(--border);
+                color: var(--text-secondary); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+        .insp-body { flex: 1; overflow-y: auto; padding: 14px 18px 80px; }
+        .insp-prev { border-radius: 10px; overflow: hidden; background: #000; margin-bottom: 12px; }
+        .insp-prev img, .insp-prev video { width: 100%; max-height: 260px; object-fit: contain; display: block; }
+        .igrp { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+        .igrp > .ihd { padding: 9px 12px; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+                text-transform: uppercase; color: var(--text-secondary); background: var(--bg-secondary);
+                display: flex; justify-content: space-between; align-items: baseline; }
+        .igrp > .ihd .fx { font-size: 10px; font-weight: 500; text-transform: none;
+                letter-spacing: 0; color: var(--accent); }
+        .igrp > .ibody { padding: 12px; }
+        .insp-narr { font-size: 13px; color: var(--text-primary); font-style: italic; line-height: 1.55; }
+        .insp-note { font-size: 11px; color: var(--text-secondary); margin-top: 6px; line-height: 1.5; }
+        .insp-foot { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 18px;
+                background: var(--bg-secondary); border-top: 1px solid var(--border);
+                display: flex; gap: 10px; align-items: center; }
     </style>
 </head>
 <body>
@@ -728,6 +786,13 @@
         </div>
     </main>
 
+    <div class="insp-backdrop" id="inspBackdrop" onclick="closeInspector()"></div>
+    <aside class="insp" id="insp" aria-label="Scene inspector">
+        <div class="insp-hd" id="inspHd"></div>
+        <div class="insp-body" id="inspBody"></div>
+        <div class="insp-foot" id="inspFoot"></div>
+    </aside>
+
     <div class="lightbox" id="lightbox">
         <span class="lightbox-close">&times;</span>
         <img id="lightboxImg" src="" alt="Full size">
@@ -747,6 +812,7 @@
         let currentPipeline = 'segment';      // 'segment' | 'orchestrator'
         let editableFields = [];
         let selectedScenes = new Set();       // scene ids queued for re-render
+        let inspectorScene = null;            // scene id open in the Inspector drawer
         let editedScenes = new Set();         // scene ids edited this session, pending re-render
 
         // Range playback state
@@ -817,186 +883,54 @@
         }
 
         // Render a single scene row
+        function provChip(scene) {
+            const src = scene.resolved_source || '';
+            if (!src) return '';
+            const head = src.split('(')[0].split(':')[0];
+            return `<span class="chip prov-${esc(head)}" title="resolved_source: ${esc(src)}">${esc(head)}</span>`;
+        }
+
         function renderScene(scene, index) {
-            // A scene edited this session but not yet re-rendered shows "edited" (not "missing").
             const pendingEdit = editedScenes.has(scene.id) && !scene.rendered_clip;
             const status = pendingEdit ? 'edited' : getAssetStatus(scene);
             const assetPath = getAssetPath(scene);
             const duration = (scene.end_seconds || 0) - (scene.start_seconds || 0);
-
             const isVideo = assetPath && (assetPath.endsWith('.mp4') || assetPath.endsWith('.webm'));
-            const isSvg = assetPath && assetPath.endsWith('.svg');
 
-            let assetHtml = '';
+            let thumb = '<span>?</span>';
             if (assetPath) {
                 const url = fileUrl(assetPath);
-                if (isVideo) {
-                    assetHtml = `<video src="${url}" controls></video>`;
-                } else {
-                    assetHtml = `<img src="${url}" alt="${scene.id}" onclick="openLightbox('${url}')">`;
-                }
-                assetHtml += `<div class="asset-path">${assetPath}</div>`;
+                thumb = isVideo ? `<video src="${url}" muted preload="metadata"></video>`
+                                : `<img src="${url}" alt="" loading="lazy">`;
             } else if (pendingEdit) {
-                assetHtml = `
-                    <div class="asset-placeholder edited">
-                        <div class="asset-placeholder-icon">✎</div>
-                        <div>edited — Re-render to see it</div>
-                    </div>
-                `;
-            } else {
-                assetHtml = `
-                    <div class="asset-placeholder">
-                        <div class="asset-placeholder-icon">?</div>
-                        <div>No asset</div>
-                    </div>
-                `;
+                thumb = '<span title="edited — re-render to see it">✎</span>';
             }
+            const dot = status === 'missing' ? 'miss' : (status === 'edited' ? 'pend' : 'ok');
 
             return `
-                <div class="scene-row ${status === 'missing' ? 'missing-asset' : ''}"
-                     data-section="${esc(scene._section)}"
-                     data-status="${status}"
-                     data-start="${scene.start_seconds || 0}"
-                     data-end="${scene.end_seconds || 0}"
-                     data-scene-id="${scene.id}"
-                     id="scene-${index}"
+                <div class="srow ${scene.id === inspectorScene ? 'selected-row' : ''}"
+                     data-section="${esc(scene._section)}" data-status="${status}"
+                     data-scene-id="${scene.id}" id="scene-${index}"
+                     onclick="openInspector('${scene.id}')"
                      ondragover="sceneDragOver(event)" ondragleave="sceneDragLeave(event)"
                      ondrop="sceneFileDrop(event,'${scene.id}')">
-                    <div class="scene-details">
-                        <div class="scene-header">
-                            <label class="scene-select" title="Queue this scene for re-render">
-                                <input type="checkbox" ${selectedScenes.has(scene.id) ? 'checked' : ''}
-                                       onchange="toggleSelect('${scene.id}', this.checked)">
-                            </label>
-                            <span class="scene-id">${scene.id}</span>
-                            <span class="scene-timing" onclick="seekTo(${scene.start_seconds || 0}, ${scene.end_seconds || 0}, '${scene.id}')" title="Click to play this scene's audio">
-                                ${formatTime(scene.start_seconds)} - ${formatTime(scene.end_seconds)} (${duration.toFixed(1)}s)
-                            </span>
+                    <label class="scene-select" title="Queue for re-render" onclick="event.stopPropagation()">
+                        <input type="checkbox" ${selectedScenes.has(scene.id) ? 'checked' : ''}
+                               onchange="toggleSelect('${scene.id}', this.checked)">
+                    </label>
+                    <span class="sdot ${dot}" title="${status}"></span>
+                    <div class="sthumb">${thumb}</div>
+                    <div class="smain">
+                        <div class="sline1">
+                            <span class="sid">${scene.id}</span>
+                            <span class="stime" onclick="event.stopPropagation(); seekTo(${scene.start_seconds || 0}, ${scene.end_seconds || 0}, '${scene.id}')"
+                                  title="Play this scene's narration">${formatTime(scene.start_seconds)}–${formatTime(scene.end_seconds)} · ${duration.toFixed(1)}s</span>
+                            <span class="chip">${esc(scene.visual_type || '?')}</span>
+                            ${provChip(scene)}
+                            ${scene.energy != null ? `<span class="chip" title="energy (tempo_enrich)">⚡ ${scene.energy.toFixed(2)}</span>` : ''}
+                            ${scene.motion_speed ? `<span class="chip">▶ ${esc(scene.motion_speed)}</span>` : ''}
                         </div>
-
-                        <div class="scene-status">
-                            <span class="scene-type ${scene.visual_type || 'unknown'}">${scene.visual_type || 'unknown'}</span>
-                            <span class="status-badge ${status}">${status}</span>
-                        </div>
-
-                        ${scene.energy != null ? `
-                        <div class="scene-tempo" title="Editorial arc (tempo_enrich): energy + the transition/motion it chose">
-                            <span class="tempo-bar"><span class="tempo-fill" style="width:${Math.round(scene.energy*100)}%;background:${scene.energy>=0.7?'#f2c14e':scene.energy>=0.5?'#7aa2f7':'#6b7280'}"></span></span>
-                            <span class="tempo-chip">⚡ ${scene.energy.toFixed(2)}</span>
-                            ${scene.transition ? `<span class="tempo-chip">✂ ${esc(scene.transition)}</span>` : ''}
-                            ${scene.motion_speed ? `<span class="tempo-chip">▶ ${esc(scene.motion_speed)}</span>` : ''}
-                        </div>
-                        ` : ''}
-
-                        ${scene.narration_excerpt ? `
-                            <div class="scene-narration">"${esc(scene.narration_excerpt)}"</div>
-                        ` : ''}
-
-                        <div class="scene-meta">
-                            ${scene.search_query ? `
-                                <div class="meta-row">
-                                    <span class="meta-label">Query:</span>
-                                    <span class="meta-value">${esc(scene.search_query)}</span>
-                                </div>
-                            ` : ''}
-                            ${scene.comfyui_prompt ? `
-                                <div class="meta-row">
-                                    <span class="meta-label">Prompt:</span>
-                                    <span class="meta-value">${esc(scene.comfyui_prompt.substring(0, 100))}${scene.comfyui_prompt.length > 100 ? '...' : ''}</span>
-                                </div>
-                            ` : ''}
-                            ${(scene.wishlist && scene.wishlist.length && !assetPath) ? `
-                                <div class="meta-row wishlist-row" title="Authoring shopping list — add a matching asset via the tray">
-                                    <span class="meta-label">🛒 Needs:</span>
-                                    <span class="meta-value">${scene.wishlist.map(w => esc(w.want || '') + (w.status ? ` (${esc(w.status)})` : '')).join('; ')}</span>
-                                </div>
-                            ` : ''}
-                        </div>
-
-                        <div class="scene-expand">
-                            <button class="expand-btn" onclick="toggleExpand(${index})">+ Show more details</button>
-                            <div class="scene-full-details" id="details-${index}">
-                                ${scene.visual_description ? `
-                                    <div class="detail-section">
-                                        <div class="detail-section-title">Visual Description</div>
-                                        <div class="detail-section-content">${esc(scene.visual_description)}</div>
-                                    </div>
-                                ` : ''}
-                                ${scene.sync_points && scene.sync_points.length > 0 ? `
-                                    <div class="detail-section">
-                                        <div class="detail-section-title">Sync Points</div>
-                                        <div class="detail-section-content">${JSON.stringify(scene.sync_points, null, 2)}</div>
-                                    </div>
-                                ` : ''}
-                                ${scene.infographic ? `
-                                    <div class="detail-section">
-                                        <div class="detail-section-title">Infographic Spec</div>
-                                        <div class="detail-section-content">${JSON.stringify(scene.infographic, null, 2)}</div>
-                                    </div>
-                                ` : ''}
-                                <div class="detail-section">
-                                    <div class="detail-section-title">Section</div>
-                                    <div class="detail-section-content">${esc(scene._section)}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="scene-edit">
-                            <button class="edit-toggle" onclick="toggleEdit('${scene.id}')">✎ Edit / comment</button>
-                            <button class="edit-toggle" onclick="superSearchToggle('${scene.id}')" title="Context-aware asset search for THIS beat (the /broll engine, project + beat prefilled)">🔎 Super search</button>
-                            <div class="super-search" id="ss-${scene.id}" style="display:none;">
-                                <div class="ss-controls">
-                                    <select class="ss-op" id="ss-op-${scene.id}">
-                                        <option value="auto">Auto (agent picks)</option>
-                                        <option value="literal">Literal (keyword)</option>
-                                        <option value="tonal">Evocative</option>
-                                        <option value="knowledge">Knowledge (real)</option>
-                                        <option value="conceptual">Conceptual</option>
-                                        <option value="ironic">Ironic</option>
-                                        <option value="trait">Trait</option>
-                                        <option value="relational">Relational</option>
-                                        <option value="scale">Scale</option>
-                                    </select>
-                                    <button onclick="superSearch('${scene.id}')">Search this beat</button>
-                                    <span class="ss-status" id="ss-status-${scene.id}"></span>
-                                </div>
-                                <div class="ss-results" id="ss-results-${scene.id}"></div>
-                            </div>
-                            <div class="edit-panel" id="edit-${scene.id}" style="display:none;">
-                                <div class="edit-mode-tabs">
-                                    <button class="tab-btn active" id="tab-note-${scene.id}" onclick="setEditMode('${scene.id}','note')">Comment</button>
-                                    <button class="tab-btn" id="tab-assets-${scene.id}" onclick="setEditMode('${scene.id}','assets')">Assets${(scene.assets&&scene.assets.length)?` (${scene.assets.length})`:''}</button>
-                                    <button class="tab-btn" id="tab-fields-${scene.id}" onclick="setEditMode('${scene.id}','fields')">Edit fields</button>
-                                </div>
-                                <div class="edit-body" id="body-note-${scene.id}">
-                                    <textarea id="note-${scene.id}" class="edit-note" rows="2"
-                                        placeholder="e.g. make it grimmer  ·  type @ to reference an asset  ·  or: rework to Remotion kinetic text"></textarea>
-                                    <div class="note-actions">
-                                        <button class="apply-btn" onclick="applyNote('${scene.id}')" title="Fast LLM — instant text/prompt tweaks">⚡ Quick edit (LLM)</button>
-                                        <span class="note-or">or hand to an agent:</span>
-                                        <select class="js-agent-select scene-agent" id="sceneAgent-${scene.id}"></select>
-                                        <button class="agent-btn" onclick="dispatchSceneToAgent('${scene.id}')" title="Claude Code agent — hard edits (Remotion, recreate effect, validate)">Send to Claude →</button>
-                                    </div>
-                                </div>
-                                <div class="edit-body" id="body-assets-${scene.id}" style="display:none;">
-                                    <div class="asset-tray" id="tray-${scene.id}">${assetTrayHtml(scene)}</div>
-                                    <button class="apply-btn" onclick="openPicker('${scene.id}')">＋ Add from library</button>
-                                    <div class="edit-hint">Curate the pictures &amp; clips this scene can use, then reference them in a Comment (e.g. "grid of these, zoom the Knight when the VO says 'crash'"). Click a card's grid dot to set where it sits.</div>
-                                </div>
-                                <div class="edit-body" id="body-fields-${scene.id}" style="display:none;">
-                                    ${inlineEditFields(scene).map(f => `
-                                        <label class="field-edit">
-                                            <span class="field-label">${f}</span>
-                                            <input id="field-${scene.id}-${f}" value="${(scene[f] ?? '').toString().replace(/"/g, '&quot;')}">
-                                        </label>`).join('')}
-                                    <button class="apply-btn" onclick="applyFields('${scene.id}')">Apply edits</button>
-                                </div>
-                                <div class="edit-status" id="editstatus-${scene.id}"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="asset-preview">
-                        ${assetHtml}
+                        ${scene.narration_excerpt ? `<div class="snarr">“${esc(scene.narration_excerpt)}”</div>` : ''}
                     </div>
                 </div>
             `;
@@ -1053,6 +987,157 @@
 
             updateRerenderBar();
             refreshAgentSelect();   // populate per-scene agent dropdowns right away
+        }
+
+        // ---------- Scene Inspector (ONE editor, opened per scene) ----------
+        // The drawer reuses the pre-existing per-scene element ids
+        // (ss-*, note-*, field-*, tray-*, sceneAgent-*) so every existing
+        // function — superSearch, attachAsset, applyNote, applyFields,
+        // dispatchSceneToAgent, tray ops — works unchanged.
+        function openInspector(id) {
+            inspectorScene = id;
+            renderInspector();
+            document.getElementById('insp').classList.add('open');
+            document.getElementById('inspBackdrop').classList.add('open');
+            renderScenes();
+        }
+        function closeInspector() {
+            inspectorScene = null;
+            document.getElementById('insp').classList.remove('open');
+            document.getElementById('inspBackdrop').classList.remove('open');
+            renderScenes();
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInspector(); });
+
+        const GROUP_FIELDS = {
+            show: ['search_query', 'comfyui_prompt', 'visual_type'],
+            move: ['duration'],
+            say:  ['narration_excerpt', 'visual_description'],
+        };
+
+        function fieldInputs(scene, names) {
+            const editable = inlineEditFields(scene);
+            return names.filter(f => editable.includes(f)).map(f => `
+                <label class="field-edit">
+                    <span class="field-label">${f}</span>
+                    <input id="field-${scene.id}-${f}" value="${(scene[f] ?? '').toString().replace(/"/g, '&quot;')}">
+                </label>`).join('');
+        }
+
+        function renderInspector() {
+            const scene = allScenes.find(s => s.id === inspectorScene);
+            if (!scene) { closeInspector(); return; }
+            const assetPath = getAssetPath(scene);
+            const isVideo = assetPath && (assetPath.endsWith('.mp4') || assetPath.endsWith('.webm'));
+            const dur = (scene.end_seconds || 0) - (scene.start_seconds || 0);
+
+            document.getElementById('inspHd').innerHTML = `
+                <span class="sid">${scene.id}</span>
+                <span class="stime" onclick="seekTo(${scene.start_seconds || 0}, ${scene.end_seconds || 0}, '${scene.id}')"
+                      title="Play this scene's narration">▶ ${formatTime(scene.start_seconds)}–${formatTime(scene.end_seconds)} · ${dur.toFixed(1)}s</span>
+                <span class="chip">${esc(scene.visual_type || '?')}</span>
+                ${provChip(scene)}
+                <button class="insp-x" onclick="closeInspector()">✕ close</button>`;
+
+            const preview = assetPath
+                ? (isVideo ? `<video src="${fileUrl(assetPath)}" controls></video>`
+                           : `<img src="${fileUrl(assetPath)}" onclick="openLightbox('${fileUrl(assetPath)}')">`)
+                : '<div class="insp-note" style="padding:18px;text-align:center;">no asset yet</div>';
+
+            document.getElementById('inspBody').innerHTML = `
+                <div class="insp-prev">${preview}</div>
+                ${scene.resolved_source ? `<div class="insp-note" style="margin:-4px 0 10px;">provenance: <b>${esc(scene.resolved_source)}</b> — how the asset engine resolved this scene</div>` : ''}
+
+                <div class="igrp">
+                    <div class="ihd">What it shows <span class="fx">edits here → re-match + re-render this scene</span></div>
+                    <div class="ibody">
+                        ${fieldInputs(scene, GROUP_FIELDS.show)}
+                        <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                            <button class="apply-btn" onclick="applyFields('${scene.id}')">Apply edits</button>
+                            <button class="edit-toggle" onclick="ssToggleInsp('${scene.id}')">🔎 Super search this beat</button>
+                            <button class="apply-btn" onclick="openPicker('${scene.id}')">＋ Add from library</button>
+                        </div>
+                        <div class="super-search" id="ss-${scene.id}" style="display:none;">
+                            <div class="ss-controls">
+                                <select class="ss-op" id="ss-op-${scene.id}">
+                                    <option value="auto">Auto (agent picks)</option>
+                                    <option value="literal">Literal (keyword)</option>
+                                    <option value="tonal">Evocative</option>
+                                    <option value="knowledge">Knowledge (real)</option>
+                                    <option value="conceptual">Conceptual</option>
+                                    <option value="ironic">Ironic</option>
+                                    <option value="trait">Trait</option>
+                                    <option value="relational">Relational</option>
+                                    <option value="scale">Scale</option>
+                                </select>
+                                <button onclick="superSearch('${scene.id}')">Search</button>
+                                <span class="ss-status" id="ss-status-${scene.id}"></span>
+                            </div>
+                            <div class="ss-results" id="ss-results-${scene.id}"></div>
+                        </div>
+                        <div class="asset-tray" id="tray-${scene.id}">${assetTrayHtml(scene)}</div>
+                        <div class="insp-note">The tray is this scene's curated asset set — reference cards in a Comment below
+                            (e.g. "grid of these, zoom the Knight on 'crash'"). Grid dots suggest placement to the agent.</div>
+                    </div>
+                </div>
+
+                <div class="igrp">
+                    <div class="ihd">How it moves <span class="fx">edits here → re-render this scene</span></div>
+                    <div class="ibody">
+                        <div class="insp-note">energy <b>${scene.energy != null ? scene.energy.toFixed(2) : '—'}</b>
+                            · motion <b>${esc(scene.motion_speed || '—')}</b>
+                            · transition <b>${esc(scene.transition || '—')}</b>
+                            ${scene.motion_spec ? ` · motion_spec: <b>${esc(scene.motion_spec.effect || '?')}</b>` : ''}
+                            ${scene.layout_spec ? ` · layout: <b>${esc((scene.layout_spec.template) || '?')}</b>` : ''}</div>
+                        ${fieldInputs(scene, GROUP_FIELDS.move)}
+                        <div class="insp-note">Deeper motion/layout changes: use a Comment (the agent rewrites the spec) — raw spec editing is deliberately not exposed here.</div>
+                    </div>
+                </div>
+
+                <div class="igrp">
+                    <div class="ihd">What it says <span class="fx">narration is locked to the voiceover</span></div>
+                    <div class="ibody">
+                        <div class="insp-narr">“${esc(scene.narration_excerpt || '')}”</div>
+                        <div class="insp-note">Changing narration needs re-voiceover + re-align — edit script.md and re-run those steps from the Dashboard; editing the excerpt here would silently desync.</div>
+                    </div>
+                </div>
+
+                <div class="igrp">
+                    <div class="ihd">Tell the agent <span class="fx">comment → revise → re-render</span></div>
+                    <div class="ibody">
+                        <textarea id="note-${scene.id}" class="edit-note" rows="2"
+                            placeholder="e.g. make it grimmer · type @ to reference a tray asset · rework to kinetic text"></textarea>
+                        <div class="note-actions">
+                            <button class="apply-btn" onclick="applyNote('${scene.id}')" title="Fast LLM — instant text/prompt tweaks">⚡ Quick edit</button>
+                            <span class="note-or">or</span>
+                            <select class="js-agent-select scene-agent" id="sceneAgent-${scene.id}"></select>
+                            <button class="agent-btn" onclick="dispatchSceneToAgent('${scene.id}')" title="Claude agent — hard edits (Remotion, recreate effect)">Send to agent →</button>
+                        </div>
+                        <div class="insp-note">Quick edit = one LLM pass over this scene's fields. Agent = a Claude session for structural work.</div>
+                    </div>
+                </div>
+
+                <div class="igrp">
+                    <div class="ihd">Details</div>
+                    <div class="ibody">
+                        ${scene.visual_description ? `<div class="insp-note"><b>visual description:</b> ${esc(scene.visual_description)}</div>` : ''}
+                        <div class="insp-note"><b>section:</b> ${esc(scene._section)}</div>
+                        ${assetPath ? `<div class="insp-note"><b>asset:</b> ${esc(assetPath)}</div>` : ''}
+                        ${scene.rendered_clip ? `<div class="insp-note"><b>rendered:</b> ${esc(scene.rendered_clip)}</div>` : ''}
+                    </div>
+                </div>
+                <div class="edit-status" id="editstatus-${scene.id}"></div>`;
+
+            document.getElementById('inspFoot').innerHTML = `
+                <button class="apply-btn" onclick="toggleSelect('${scene.id}', true); renderScenes();">↻ Queue re-render</button>
+                <span class="insp-note" style="margin:0;">${selectedScenes.has(scene.id) ? 'queued — use the re-render bar' : 'edits invalidate the old clip; queue + run re-render when ready'}</span>`;
+
+            refreshAgentSelect();
+        }
+
+        function ssToggleInsp(id) {
+            const el = document.getElementById('ss-' + id);
+            if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
         }
 
         // ---------- Iteration: select / edit / comment / re-render ----------
@@ -1490,6 +1575,9 @@
             const data = await res.json();
             allScenes = data.scenes;
             renderScenes();
+            // scene DATA changed — refresh the open Inspector (list repaints
+            // alone deliberately don't, to preserve an in-progress comment)
+            if (inspectorScene) renderInspector();
         }
 
         // Populate the flow-refine agent selector from the live tmux sessions (script_projects pattern).
