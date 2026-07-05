@@ -2,6 +2,34 @@
 
 Things deliberately left to refine as we use the features. Newest first.
 
+## SFX auto-cue pass — decide *which* beats get a sound effect (future / exploratory)
+- [ ] **Auto-annotate `scene_plan.json` with `sfx` cues.** The SFX provider layer
+      (`sfx_search.py`: Freesound + Mixkit) and the placement engine (`audio_mix.py`
+      sources per-scene `sfx` cues and lands them on the beat) are DONE — but cues are
+      opt-in, hand-written today. This is the missing *decision layer*: a pass that reads
+      each beat (narration text, `visual_type`, on-screen motion/action, section role,
+      tempo/energy) and emits `sfx` cues automatically, which the existing wiring then
+      sources + places. It's the SFX sibling of the b-roll pairing engine — a bridge from
+      beat-intent → asset query → source → place; conceptually an "SFX operator."
+      **Two flavors:** (1) heuristic — trigger words + scene-type map (cheap, deterministic,
+      limited vocab); (2) **LLM-based** (preferred, fits the capability-routing policy) — model
+      proposes 0–N cues per beat with query/timing/volume. **The whole design tension is
+      RESTRAINT** (auto-SFX wants to over-sprinkle → cheesy): budget it (top-N most-warranted
+      beats / clear action-onomatopoeia only), and write cues as a *reviewable annotation* on
+      the plan (human prunes before the mix) — never bake straight into audio. Matches the
+      agent contract: propose → deterministic budget gate → accept. Build LLM version first.
+
+## Editable rough-cut export → hand off to a human editor (future / exploratory)
+- [ ] **One-way timeline export (NOT live NLE control).** Today NOLAN is creator-facing and
+      publishes finished video directly, so this is deliberately OFF the critical path. Explore
+      it only if a real "let a human editor finish the cut" need shows up. If it does: NOLAN's
+      `scene_plan` / assembly already *is* a timeline spec, so emit it as an **editable project**
+      a human opens in their own tool — via **OpenTimelineIO (OTIO)** as the adapter to
+      **FCPXML / EDL / DaVinci Resolve / MLT**. Scope = a small static exporter (NOLAN does the
+      ~80% rough assembly; the editor polishes), *not* a live two-way NLE API integration —
+      that was rejected as off-thesis (fights the automation goal), version-fragile, and a
+      duplicate of NOLAN's own renderer. Cheap to add later; do not pre-build speculatively.
+
 ## build-from-segment (`src/nolan/segment/`)
 - [ ] **Precise VO alignment.** `assign_timing` currently tiles the span proportional to
       narration word-count. Upgrade to per-line/word alignment: use the SRT line times

@@ -4,6 +4,27 @@
 **Status:** Complete
 **Last Updated:** 2026-07-05
 
+## SFX search + fetch — pluggable provider layer wired into audio_mix (2026-07-05)
+
+Automated the manual "search + download a sound effect" step. New `sfx_search.py`
+mirrors `image_search.py`: an `SFXResult` + `SFXProvider` registry with two providers —
+**FreesoundProvider** (official APIv2, token auth, CC-licensed, HQ-preview download; needs
+`FREESOUND_API_KEY`) and **MixkitProvider** (best-effort scrape of mixkit.co category
+pages; no API). Results cache into `projects/_library/sfx/` with an `sfx.json` manifest
+(license + attribution recorded). `config.py` gains `freesound_api_key`.
+
+Wired into `audio_mix.py`: a scene may declare an `sfx` cue (string / dict `{query,at,
+volume}` / list); `author_soundtrack` sources it via the provider and adds a content event
+that lands AT the beat (`lead 0.0`), distinct from transition whooshes (`lead 0.45`
+pre-roll). `sfx_provider` threads through `mix_soundtrack` / `resolve_music_config` /
+director (`project.yaml sfx_provider: freesound|mixkit`, default freesound). Backward-
+compatible (old specs default lead 0.45); opt-in (scenes without `sfx` unchanged).
+
+Verified live: Freesound + Mixkit search→download→valid-MP3→manifest→idempotent, plus the
+audio_mix authoring integration (cues parsed, sourced, placed, correct leads). Example:
+`examples/sfx_search.py`. Deferred (see `todo.md`): an **auto-cue pass** that decides which
+beats get an effect — the decision layer feeding this placement layer.
+
 ## Asset-library curation UX + shortlist→essay bridge (2026-07-05)
 
 Reworked the Picture / Video / Clip library pages from per-card "button soup"

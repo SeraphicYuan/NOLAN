@@ -97,6 +97,62 @@ def section_energies(plan: Dict[str, Any]) -> List[Tuple[float, float, float]]:
     return out
 
 
+def _scene_sfx_cues(plan: Dict[str, Any]):
+    """Yield ``(t_seconds, query, volume)`` from per-scene ``sfx`` cues in the plan.
+
+    A scene may declare ``sfx`` as a string (``"coin pickup"``), a dict
+    (``{"query": ..., "at": "start"|"end", "volume": ...}``), or a list of those.
+    Opt-in: scenes without an ``sfx`` field contribute nothing, so the default
+    soundtrack is unchanged until the Director/designer marks a beat.
+    """
+    for scenes in (plan.get("sections") or {}).values():
+        if not isinstance(scenes, list):
+            continue
+        for s in scenes:
+            if not isinstance(s, dict) or not s.get("sfx"):
+                continue
+            cue = s["sfx"]
+            for it in (cue if isinstance(cue, list) else [cue]):
+                if isinstance(it, str):
+                    query, at, vol = it, "start", 0.7
+                elif isinstance(it, dict):
+                    query = it.get("query") or it.get("q") or ""
+                    at, vol = it.get("at", "start"), float(it.get("volume", 0.7))
+                else:
+                    continue
+                if not query:
+                    continue
+                t = (float(s.get("end_seconds") or 0) if at == "end"
+                     else float(s.get("start_seconds") or 0))
+                yield (round(t, 3), query, vol)
+
+
+def _source_scene_sfx(plan: Dict[str, Any], provider: str = "freesound"):
+    """Source each scene SFX cue via the provider layer → mix events.
+
+    Best-effort: a cue that can't be sourced (no key / no result / offline) is
+    skipped with a log, never breaking the soundtrack. Each distinct query is
+    sourced once (``source_sfx`` also caches to the library).
+    """
+    from .sfx_search import source_sfx  # stdlib-only; lazy keeps import light
+    events: List[Dict[str, Any]] = []
+    cached: Dict[str, Optional[Path]] = {}
+    for t, query, vol in _scene_sfx_cues(plan):
+        if query not in cached:
+            try:
+                cached[query] = source_sfx(query, provider=provider)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("sfx source failed for %r: %s", query, exc)
+                cached[query] = None
+        path = cached[query]
+        if not path:
+            logger.info("sfx cue skipped (unsourced): %r", query)
+            continue
+        events.append({"t": t, "kind": "sfx", "query": query,
+                       "file": str(path), "volume": vol, "lead": 0.0})
+    return events
+
+
 def select_track(tracks: List[Dict[str, Any]], plan: Dict[str, Any],
                  mood: str = "") -> Optional[Dict[str, Any]]:
     """Closest mean-energy track (mood filter first when given)."""
@@ -144,6 +200,7 @@ def ensure_whoosh(sfx_dir: Path = None) -> Optional[Path]:
 def author_soundtrack(plan: Dict[str, Any], *,
                       music: Optional[Path] = None, music_gain_db: float = -12.0,
                       sfx: bool = True, mood: str = "",
+                      sfx_provider: str = "freesound",
                       library: Path = None) -> Dict[str, Any]:
     """Author the soundtrack SPEC — the reviewable artifact, no audio touched.
 
@@ -186,7 +243,10 @@ def author_soundtrack(plan: Dict[str, Any], *,
             for start, _end, energy in section_energies(plan):
                 if start > 1.0:
                     events.append({"t": round(start, 3), "kind": "whoosh",
-                                   "file": str(whoosh), "volume": 0.5})
+                                   "file": str(whoosh), "volume": 0.5, "lead": 0.45})
+        # content-matched SFX: per-scene cues sourced via the provider layer
+        # (Freesound/Mixkit) and landed AT the beat (lead 0.0).
+        events += _source_scene_sfx(plan, provider=sfx_provider)
 
     return {
         "version": 1,
@@ -256,7 +316,9 @@ def mix_from_spec(video: Path, spec: Dict[str, Any], out: Path = None) -> Path:
               if Path(e.get("file", "")).exists()][:24]
     for j, e in enumerate(events):
         inputs += ["-i", str(e["file"])]
-        delay_ms = max(0, int((float(e["t"]) - 0.45) * 1000))   # land ON the cut
+        # whoosh transitions pre-roll (lead 0.45s) to land ON the cut; content
+        # SFX carry lead 0.0 to land AT the beat. Default 0.45 keeps old specs valid.
+        delay_ms = max(0, int((float(e["t"]) - float(e.get("lead", 0.45))) * 1000))
         graph += (f";[{2 + j}:a]volume={float(e.get('volume', 0.5))},"
                   f"adelay={delay_ms}|{delay_ms},"
                   f"apad=whole_dur={duration:.3f}[sfx{j}]")
@@ -283,6 +345,7 @@ def mix_from_spec(video: Path, spec: Dict[str, Any], out: Path = None) -> Path:
 def mix_soundtrack(video: Path, plan: Dict[str, Any], out: Path = None, *,
                    music: Optional[Path] = None, music_gain_db: float = -12.0,
                    sfx: bool = True, mood: str = "",
+                   sfx_provider: str = "freesound",
                    library: Path = None) -> Path:
     """Author + execute in one call (ad-hoc mixes, segment builder, tests).
 
@@ -291,13 +354,15 @@ def mix_soundtrack(video: Path, plan: Dict[str, Any], out: Path = None, *,
     step executes it with `mix_from_spec`.
     """
     spec = author_soundtrack(plan, music=music, music_gain_db=music_gain_db,
-                             sfx=sfx, mood=mood, library=library)
+                             sfx=sfx, mood=mood, sfx_provider=sfx_provider,
+                             library=library)
     return mix_from_spec(video, spec, out)
 
 
 def resolve_music_config(project_path: Path) -> Dict[str, Any]:
     """project.yaml music settings: {enabled, music(path|None), gain, sfx, mood}."""
-    cfg = {"enabled": False, "music": None, "gain": -14.0, "sfx": True, "mood": ""}
+    cfg = {"enabled": False, "music": None, "gain": -14.0, "sfx": True, "mood": "",
+           "sfx_provider": "freesound"}
     try:
         import yaml
         meta = yaml.safe_load(
@@ -314,4 +379,5 @@ def resolve_music_config(project_path: Path) -> Dict[str, Any]:
     cfg["gain"] = float(meta.get("music_gain_db", -14.0))
     cfg["sfx"] = meta.get("sfx", True) is not False
     cfg["mood"] = str(meta.get("music_mood", "") or "")
+    cfg["sfx_provider"] = str(meta.get("sfx_provider", "freesound") or "freesound")
     return cfg

@@ -125,6 +125,7 @@ class ImageSourcesConfig:
     rijksmuseum_api_key: str = ""  # https://data.rijksmuseum.nl/object-metadata/api/
     harvard_art_api_key: str = ""  # https://harvardartmuseums.org/collections/api
     coverr_api_key: str = ""       # https://coverr.co/ (API access)
+    freesound_api_key: str = ""    # SFX audio — https://freesound.org/apiv2/apply/
 
     def provider_keys(self) -> dict:
         """Map for ImageSearchClient(keys=...)."""
@@ -193,6 +194,7 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
     config.image_sources.rijksmuseum_api_key = os.getenv("RIJKSMUSEUM_API_KEY", "")
     config.image_sources.harvard_art_api_key = os.getenv("HARVARD_ART_API_KEY", "")
     config.image_sources.coverr_api_key = os.getenv("COVERR_API_KEY", "")
+    config.image_sources.freesound_api_key = os.getenv("FREESOUND_API_KEY", "")
 
     # Auto-detect config file if not provided
     if config_path is None:
