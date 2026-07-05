@@ -176,6 +176,7 @@
       document.getElementById("stats").innerHTML =
         stat(st.has_script ? '✓' : '—', 'script', st.has_script) +
         stat(st.scenes || 0, 'scenes', st.has_scene_plan) +
+        (st.shortlist ? stat(st.shortlist, 'shortlisted', true) : '') +
         stat((st.matched || 0) + '/' + (st.scenes || 0), 'matched', st.scenes > 0 && st.matched >= st.scenes) +
         stat(st.rendered || 0, 'rendered', st.rendered > 0) +
         stat(st.has_voiceover ? '✓' : '—', 'voiceover', st.has_voiceover) +

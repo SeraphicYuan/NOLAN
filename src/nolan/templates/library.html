@@ -237,13 +237,24 @@
         }
 
         .video-item {
-            padding: 10px 12px;
+            padding: 8px 10px;
             border-radius: 10px;
             cursor: pointer;
             margin-bottom: 2px;
             border-left: 3px solid transparent;
             transition: background 0.15s, border-color 0.15s;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
         }
+        /* Real poster frame (a scene from ~5% in) so videos are recognisable
+           at a glance instead of a text row. */
+        .vi-thumb {
+            width: 76px; height: 44px; flex: 0 0 auto;
+            border-radius: 6px; object-fit: cover;
+            background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-primary));
+        }
+        .vi-body { min-width: 0; flex: 1; }
 
         .video-item:hover {
             background: var(--bg-tertiary);
@@ -268,19 +279,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-        }
-
-        /* Small media affordance — signals "video" without fabricating a thumbnail. */
-        .video-item-name::before {
-            content: '\25B6';
-            font-size: 8px;
-            color: var(--text-secondary);
-            margin-right: 8px;
-            vertical-align: 1px;
-        }
-
-        .video-item.active .video-item-name::before {
-            color: var(--accent);
         }
 
         .video-item-meta {
@@ -336,6 +334,17 @@
             border-color: var(--accent);
             color: white;
         }
+
+        /* Per-video header actions (Deconstruct / Embed) — shown for the selected
+           video instead of a button on every sidebar row. */
+        .video-actions { display: flex; gap: 8px; }
+        .va-btn {
+            padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+            background: color-mix(in srgb, var(--accent) 14%, transparent);
+            border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+            color: var(--text-primary);
+        }
+        .va-btn:hover { background: color-mix(in srgb, var(--accent) 26%, transparent); border-color: var(--accent); }
 
         .main-content {
             flex: 1;
@@ -850,6 +859,7 @@
                     <button class="tab" data-tab="clusters" onclick="switchTab('clusters')">Clusters</button>
                     <button id="fullVideoBtn" class="tab hidden" onclick="showFullVideo()" title="Open the whole video and scrub freely to cut a clip">✂ Cut from full video</button>
                 </div>
+                <div class="video-actions" id="videoActions"></div>
             </div>
 
             <div class="main-content">
@@ -1106,6 +1116,8 @@
                     </div>` : '';
 
                 window._allProjects = data.all_projects || window._allProjects || [];
+                // Stash embed-state per path so the header actions (Embed) can read it.
+                window._videoStateByPath = stateByPath;
                 list.innerHTML = banner + data.videos.map((v, i) => {
                     const st = stateByPath[v.path] || {};
                     const searchable = !!st.searchable;
@@ -1113,24 +1125,24 @@
                                 : st.state === 'stale' ? '&#9681; stale'
                                 : '&#9679; searchable';
                     const color = searchable ? '#4ec9a4' : (st.state === 'stale' ? '#d8a03a' : '#8a8a8a');
-                    const embedBtn = (st.state && st.state !== 'synced')
-                        ? `<button class="embed-btn" onclick="event.stopPropagation(); embedVideo('${encodeURIComponent(v.path)}', this)" style="cursor:pointer;font-size:11px;padding:1px 6px;">Embed</button>`
-                        : '';
-                    const deconBtn = `<button onclick="event.stopPropagation(); location.href='/deconstruct?video=${encodeURIComponent(v.path)}'" title="Reverse-engineer this video's editorial plan (beats, pairing, tempo, motion)" style="cursor:pointer;font-size:11px;padding:1px 6px;">🔬 Deconstruct</button>`;
+                    // Poster from ~5% in (skip black intros); frame-thumb caches server-side.
+                    const thumbT = Math.max(1, Math.round((v.duration || 0) * 0.05));
+                    const thumb = `/api/scenes/frame-thumb?src=${encodeURIComponent(v.path)}&t=${thumbT}`;
                     const chips = (v.projects || []).map(p =>
                         `<span class="vp-chip" onclick="event.stopPropagation();vpRemove('${encodeURIComponent(v.path)}','${p.slug}')" title="click to remove from ${escapeHtml(p.name)}">${escapeHtml(p.slug)} &times;</span>`).join('');
                     const opts = (window._allProjects || []).map(p => `<option value="${p.slug}">${escapeHtml(p.name)}</option>`).join('');
                     return `
                     <div class="video-item" data-index="${i}" data-path="${encodeURIComponent(v.path)}">
-                        <div class="video-item-name">${escapeHtml(v.name)}</div>
-                        <div class="video-item-meta">
-                            <span>${v.duration_formatted}</span>
-                            <span>${v.segment_count} segments</span>
-                            <span style="color:${color};" title="${st.state || ''} (${st.embedded || 0}/${v.segment_count} embedded)">${label}</span>
-                            ${embedBtn}
-                            ${deconBtn}
+                        <img class="vi-thumb" loading="lazy" src="${thumb}" alt="" onerror="this.style.visibility='hidden'">
+                        <div class="vi-body">
+                            <div class="video-item-name">${escapeHtml(v.name)}</div>
+                            <div class="video-item-meta">
+                                <span>${v.duration_formatted}</span>
+                                <span>${v.segment_count} segments</span>
+                                <span style="color:${color};" title="${st.state || ''} (${st.embedded || 0}/${v.segment_count} embedded)">${label}</span>
+                            </div>
+                            <div class="video-projects">${chips}<select class="vp-add" onclick="event.stopPropagation()" onchange="vpAdd('${encodeURIComponent(v.path)}', this)"><option value="">+ project</option>${opts}</select></div>
                         </div>
-                        <div class="video-projects">${chips}<select class="vp-add" onclick="event.stopPropagation()" onchange="vpAdd('${encodeURIComponent(v.path)}', this)"><option value="">+ project</option>${opts}</select></div>
                     </div>`;
                 }).join('');
 
@@ -1221,6 +1233,7 @@
             const name = path.split(/[/\\]/).pop();
             document.getElementById('currentTitle').textContent = name;
             document.getElementById('fullVideoBtn').classList.remove('hidden');
+            renderVideoActions(path);
 
             // Load data
             await Promise.all([
@@ -1229,6 +1242,21 @@
             ]);
 
             renderContent();
+        }
+
+        // Per-video actions live in the header (not on every sidebar row) — shown
+        // for the selected video only. Deconstruct = reverse-engineer the plan;
+        // Embed = make it searchable (only when not already synced).
+        function renderVideoActions(path) {
+            const box = document.getElementById('videoActions');
+            if (!box) return;
+            const st = (window._videoStateByPath || {})[path] || {};
+            const enc = encodeURIComponent(path);
+            const embed = (st.state && st.state !== 'synced')
+                ? `<button class="va-btn" onclick="embedVideo('${enc}', this)">Embed</button>` : '';
+            box.innerHTML =
+                `<button class="va-btn" title="Reverse-engineer this video's editorial plan (beats, pairing, tempo, motion)" onclick="location.href='/deconstruct?video=${enc}'">🔬 Deconstruct</button>` +
+                embed;
         }
 
         // Load segments

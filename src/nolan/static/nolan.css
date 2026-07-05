@@ -404,3 +404,132 @@ table.nolan tbody tr:hover { background: color-mix(in srgb, var(--surface-3) 50%
   }
 }
 html { scroll-behavior: smooth; }
+
+/* ============================================================
+   Asset-library curation system — shared by the Pictures, Videos
+   and Clips pages via static/select.js + static/shortlist.js.
+   Multi-select + contextual action bar + poster thumbs + a
+   per-project shortlist tray. Class prefix: ns- (nolan-select).
+   ============================================================ */
+
+/* Selectable cards get a checkbox badge (top-left) injected by
+   select.js on refresh(). It appears on hover, or always in select
+   mode. The page marks its grid .ns-grid; cards must be positioned. */
+.ns-grid .ns-selectable { position: relative; }
+.ns-check {
+  position: absolute; top: 8px; left: 8px; z-index: 3;
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: rgba(15,23,42,.72);
+  display: flex; align-items: center; justify-content: center;
+  color: transparent; font-size: 13px; font-weight: 700; line-height: 1;
+  cursor: pointer; opacity: 0; transform: scale(.9);
+  transition: opacity .12s, transform .12s, background .12s, border-color .12s;
+  pointer-events: none;
+}
+.ns-selectable:hover .ns-check,
+.ns-select-mode .ns-check { opacity: 1; transform: scale(1); pointer-events: auto; }
+.ns-selected .ns-check {
+  opacity: 1; transform: scale(1); pointer-events: auto;
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.ns-selected { outline: 2px solid var(--accent); outline-offset: -1px; }
+.ns-select-mode .ns-selectable { cursor: pointer; }
+
+/* The "Select" mode toggle a page renders in its toolbar (a .btn.ghost). */
+.ns-mode-toggle.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Sticky contextual action bar — slides up when >=1 item is selected. */
+.ns-action-bar {
+  position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 160%);
+  z-index: 200; display: flex; align-items: center; gap: 10px;
+  max-width: calc(100vw - 32px);
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px 12px;
+  box-shadow: 0 16px 44px rgba(0,0,0,.45);
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), opacity .18s; opacity: 0;
+}
+.ns-action-bar.show { transform: translate(-50%, 0); opacity: 1; }
+.ns-ab-count { font-size: 13px; font-weight: 600; color: var(--text-primary);
+  padding: 0 6px; white-space: nowrap; }
+.ns-ab-count b { color: var(--accent); }
+.ns-ab-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.ns-action-bar .btn { padding: 7px 12px; font-size: 13px; }
+.ns-ab-clear { background: transparent; border: none; color: var(--text-secondary);
+  cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 6px; border-radius: 6px; }
+.ns-ab-clear:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+
+/* Poster thumbnail for video/clip cards (replaces gradient placeholders). */
+.ns-thumb {
+  position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden;
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-primary));
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.ns-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ns-thumb .ns-play {
+  position: absolute; width: 44px; height: 44px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 24%, transparent); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+  padding-left: 3px; transition: background .15s, transform .12s; pointer-events: none;
+}
+.ns-thumb:hover .ns-play { background: var(--accent); color: #fff; transform: scale(1.06); }
+.ns-thumb .ns-dur {
+  position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.7);
+  color: #f1f5f9; font-size: 11px; font-family: ui-monospace, monospace;
+  padding: 2px 6px; border-radius: 5px; }
+
+/* Project switcher (shortlist target). */
+.ns-project-switch { display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-secondary); }
+.ns-project-switch select {
+  background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+
+/* Floating shortlist tray button + drawer. */
+.ns-tray-fab {
+  position: fixed; right: 20px; bottom: 20px; z-index: 190;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  color: var(--text-primary); border-radius: 999px; padding: 10px 16px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.ns-tray-fab:hover { border-color: var(--accent); }
+.ns-tray-fab .ns-tray-badge {
+  background: var(--accent); color: #fff; border-radius: 999px;
+  min-width: 20px; height: 20px; padding: 0 6px; font-size: 12px;
+  display: inline-flex; align-items: center; justify-content: center; }
+
+.ns-tray-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5);
+  z-index: 210; opacity: 0; pointer-events: none; transition: opacity .18s; }
+.ns-tray-backdrop.open { opacity: 1; pointer-events: auto; }
+.ns-tray {
+  position: fixed; top: 0; right: 0; height: 100dvh; width: min(380px, 92vw);
+  z-index: 220; background: var(--bg-secondary); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; transform: translateX(100%);
+  transition: transform .2s cubic-bezier(.2,.8,.2,1); }
+.ns-tray.open { transform: translateX(0); }
+.ns-tray-head { padding: 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ns-tray-head h3 { font-size: 16px; font-weight: 650; margin: 0; }
+.ns-tray-body { flex: 1; overflow-y: auto; padding: 12px 16px; display: grid; gap: 8px; }
+.ns-tray-item { display: flex; gap: 10px; align-items: center;
+  background: var(--bg-primary); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px; }
+.ns-tray-item img { width: 52px; height: 40px; object-fit: cover; border-radius: 6px;
+  background: var(--bg-tertiary); flex: 0 0 auto; }
+.ns-tray-item .ns-ti-label { flex: 1; font-size: 12px; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ns-tray-item .ns-ti-kind { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; }
+.ns-tray-item .ns-ti-rm { background: transparent; border: none; color: var(--text-secondary);
+  cursor: pointer; font-size: 16px; padding: 4px; }
+.ns-tray-item .ns-ti-rm:hover { color: var(--danger); }
+.ns-tray-foot { padding: 14px 16px; border-top: 1px solid var(--border); display: grid; gap: 8px; }
+.ns-tray-empty { color: var(--text-secondary); font-size: 13px; text-align: center; padding: 30px 10px; }
+
+@media (max-width: 768px) {
+  .ns-action-bar { left: 8px; right: 8px; bottom: 8px; transform: translateY(160%);
+    max-width: none; border-radius: 12px; }
+  .ns-action-bar.show { transform: translateY(0); }
+  .ns-tray-fab { right: 12px; bottom: 12px; }
+}

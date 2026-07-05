@@ -57,10 +57,13 @@
 </head>
 <body>
   <script src="/static/nav.js" data-active="images"></script>
+  <script src="/static/select.js"></script>
+  <script src="/static/shortlist.js"></script>
   <div class="wrap">
     <h1>Picture Library</h1>
     <p class="sub">Persistent, license-aware image store with CLIP semantic search.
-       Leave the box empty to browse newest; type to search by meaning.</p>
+       Leave the box empty to browse newest; type to search by meaning.
+       Hover a card to select — or hit <b>Select</b> for multi-select, then act on them together.</p>
 
     <div class="bar">
       <div style="flex:1;">
@@ -106,6 +109,14 @@
       <button id="addbtn">Add</button>
     </div>
 
+    <div class="bar" style="margin-top:10px; justify-content:space-between; align-items:center;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button id="selectToggle" class="btn ghost ns-mode-toggle" style="width:auto;">Select</button>
+        <span class="sub" style="margin:0;">click cards to select · shift-click for a range</span>
+      </div>
+      <div id="shortlistSwitch"></div>
+    </div>
+
     <div id="meta" class="meta"></div>
     <div id="grid" class="grid"></div>
   </div>
@@ -129,30 +140,32 @@
       return p;
     }
 
+    // Clean, media-forward tile. Verbs (cut out / reject / promote / shortlist)
+    // live in the contextual action bar once you select — no per-card buttons.
     function tile(r){
       var sc = (r.score != null) ? '<span class="score">'+r.score.toFixed(3)+'</span>' : '';
       var dims = (r.width && r.height) ? r.width+"x"+r.height : "";
       var src = r.source_url ? '<a href="'+esc(r.source_url)+'" target="_blank" rel="noopener">source</a>' : '';
-      var promote = projEl.value.trim()
-        ? '<button class="reject" style="color:#818cf8;" onclick="promote('+r.id+',this)">Promote</button>' : '';
       return '<div class="tile" data-id="'+r.id+'">'+
         '<div class="imgwrap">'+sc+'<a href="'+esc(r.raw)+'" target="_blank" rel="noopener">'+
           '<img loading="lazy" src="'+esc(r.raw)+'" alt=""></a></div>'+
         '<div class="body"><div class="ttl">'+esc(r.title||"(untitled)")+'</div>'+
           '<div class="lic">'+esc(r.license||"?")+'</div>'+
-          '<div>'+esc(r.source||"")+' '+dims+'</div>'+
-          '<div class="actions">'+src+promote+
-            '<button class="reject" style="color:var(--accent);border-color:var(--accent);" onclick="openCutout('+r.id+')">Cut out</button>'+
-            '<button class="reject" onclick="reject('+r.id+',this)">Reject</button></div>'+
+          '<div class="actions"><span>'+esc(r.source||"")+' '+dims+'</span>'+src+'</div>'+
         '</div></div>';
     }
 
+    // Map id -> result so action-bar verbs can read title/thumb/scope per item.
+    var _byId = {};
     function render(results, label){
+      _byId = {};
+      results.forEach(function(r){ _byId[r.id] = r; });
       meta.textContent = results.length + " " + label;
       grid.innerHTML = results.length
         ? results.map(tile).join("")
         : '<div class="empty">Nothing here yet. Save assets via the Extract page or '+
           '<code>nolan image-search --save</code>.</div>';
+      if (window._sel) window._sel.refresh();
     }
 
     function run(){
@@ -165,25 +178,73 @@
       }).catch(function(e){ meta.textContent = "Error: "+e.message; });
     }
 
-    function reject(id, btn){
-      var body = {scope: scopeEl.value, project: projEl.value.trim() || null};
-      fetch("/api/images/"+id+"/reject", {method:"POST",
-        headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)})
-        .then(function(){ var t=btn.closest(".tile"); if(t) t.remove(); });
+    // ---- bulk action-bar verbs (operate on the current selection) ----
+    // fetch() only rejects on network errors, so we must inspect .ok per call
+    // and report how many actually failed — otherwise a 400/500 silently
+    // "succeeds" and the selection clears as if the action worked.
+    function postEach(ids, urlFn, body){
+      return Promise.all(ids.map(function(id){
+        return fetch(urlFn(id), {method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify(body)}).then(function(r){ return r.ok; }, function(){ return false; });
+      })).then(function(oks){ return oks.filter(function(x){return !x;}).length; });
     }
-    window.reject = reject;
 
-    function promote(id, btn){
-      var proj = projEl.value.trim();
-      if (!proj){ alert("Set the Project field to promote from."); return; }
-      btn.disabled = true; btn.textContent = "…";
-      fetch("/api/images/"+id+"/promote", {method:"POST",
-        headers:{"Content-Type":"application/json"}, body: JSON.stringify({project: proj})})
-        .then(function(r){ if(!r.ok) return r.text().then(function(t){throw new Error(t);}); return r.json(); })
-        .then(function(){ btn.textContent = "✓ global"; })
-        .catch(function(e){ btn.disabled=false; btn.textContent="Promote"; alert("Promote failed: "+e.message); });
+    function bulkReject(ids){
+      var body = {scope: scopeEl.value, project: projEl.value.trim() || null};
+      postEach(ids, function(id){ return "/api/images/"+id+"/reject"; }, body)
+        .then(function(fails){
+          if (fails) alert(fails+" of "+ids.length+" reject(s) failed.");
+          window._sel.clear(); run();
+        });
     }
-    window.promote = promote;
+
+    function bulkPromote(ids){
+      var proj = projEl.value.trim();
+      if (!proj){ alert("Promote copies a project image into the global library — set the Project field (and Scope = project) first."); return; }
+      meta.textContent = "Promoting "+ids.length+"…";
+      postEach(ids, function(id){ return "/api/images/"+id+"/promote"; }, {project: proj})
+        .then(function(fails){
+          if (fails) alert(fails+" of "+ids.length+" promote(s) failed (only project-scoped images can be promoted).");
+          window._sel.clear(); run();
+        });
+    }
+
+    // 1 selected → the preview modal; N>1 → batch-save cutouts with the default model.
+    function bulkCutout(ids){
+      if (ids.length === 1){ openCutout(ids[0]); return; }
+      if (!confirm("Remove background on "+ids.length+" images (no preview)?")) return;
+      var model = (document.getElementById("cutmodel")||{}).value || "birefnet";
+      var body = {scope: scopeEl.value, project: projEl.value.trim() || null, model: model};
+      var done = 0, fails = 0;
+      meta.textContent = "Cutting out 0/"+ids.length+"… (first birefnet run downloads ~1GB)";
+      ids.reduce(function(p, id){
+        return p.then(function(){
+          return fetch("/api/images/"+id+"/cutout", {method:"POST",
+            headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)})
+            .then(function(r){ if(!r.ok) fails++; }, function(){ fails++; })
+            .then(function(){ done++; meta.textContent = "Cutting out "+done+"/"+ids.length+"…"; });
+        });
+      }, Promise.resolve()).then(function(){
+        if (fails) alert(fails+" of "+ids.length+" cutout(s) failed.");
+        window._sel.clear(); run();
+      });
+    }
+
+    function bulkShortlist(ids){
+      var scope = scopeEl.value, proj = projEl.value.trim() || null;
+      var items = ids.map(function(id){
+        var r = _byId[id] || {};
+        return {
+          key: "img:"+id+":"+scope+(proj?":"+proj:""),
+          kind: "image",
+          label: r.title || ("#"+id),
+          thumb: r.raw || ("/api/images/raw?scope="+encodeURIComponent(scope)+"&project="+encodeURIComponent(proj||"")+"&id="+id),
+          payload: {op:"add", source:"library", image_id: id, scope: scope,
+                    scope_project: proj, label: r.title || ""}
+        };
+      });
+      NolanShortlist.add(items).then(function(ok){ if(ok) window._sel.clear(); });
+    }
 
     var cutState = {id:null, scope:null, project:null, url:null};
     function cutBody(){
@@ -253,13 +314,25 @@
     document.getElementById("go").addEventListener("click", run);
     qEl.addEventListener("keydown", function(e){ if(e.key==="Enter") run(); });
 
-    // Visual selection: highlight the image tile you click.
-    document.addEventListener("click", function(e){
-      var tile = e.target.closest(".tile");
-      if (!tile) return;
-      document.querySelectorAll(".tile.selected").forEach(function(t){ t.classList.remove("selected"); });
-      tile.classList.add("selected");
+    // Multi-select + contextual action bar (shared component).
+    window._sel = NolanSelect.attach({
+      grid: "#grid", card: ".tile", id: "data-id",
+      actions: [
+        { label: "Cut out", cls: "secondary", run: bulkCutout },
+        { label: "Add to shortlist", cls: "success", run: bulkShortlist },
+        { label: "Promote", cls: "secondary", run: bulkPromote },
+        { label: "Reject", danger: true, confirm: "Reject N image(s)?", run: bulkReject },
+      ],
     });
+    var selToggle = document.getElementById("selectToggle");
+    selToggle.addEventListener("click", function(){
+      var on = window._sel.toggleMode();
+      selToggle.classList.toggle("on", on);
+      selToggle.textContent = on ? "Done" : "Select";
+    });
+
+    // Per-project shortlist target + tray.
+    NolanShortlist.init({ mount: "#shortlistSwitch" });
 
     run();  // initial browse
   </script>

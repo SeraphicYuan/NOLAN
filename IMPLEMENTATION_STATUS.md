@@ -2,7 +2,44 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-04
+**Last Updated:** 2026-07-05
+
+## Asset-library curation UX + shortlist→essay bridge (2026-07-05)
+
+Reworked the Picture / Video / Clip library pages from per-card "button soup"
+into a **curate → select → act** model, and added a per-project **shortlist**
+that bridges the libraries to a project's scenes.
+
+**What changed**
+- Shared components: `static/select.js` (`NolanSelect` — multi-select +
+  contextual bottom action bar; click / shift-click / hover-checkbox; call
+  `refresh()` after a re-render) and `static/shortlist.js` (`NolanShortlist` —
+  project switcher + floating tray + "Send to essay"); shared CSS in
+  `nolan.css` under the `ns-` prefix.
+- **Pictures** (`images.html`): clean tiles; a **Select** mode reveals
+  multi-select; verbs moved to the action bar — **Cut out** (1 → preview modal,
+  N → batch), Reject, Promote, **Add to shortlist**.
+- **Videos** (`library.html`): real poster thumbnails on the sidebar rows
+  (via `/api/scenes/frame-thumb`); the per-row **Deconstruct**/**Embed**
+  buttons moved into the **header** for the selected video (the list is
+  single-select, so a per-row button soup / multi-bar didn't fit).
+- **Clips** (`clips.html`): real poster thumbnails; the 5 per-card buttons
+  replaced by the action bar — Materialize file/frames, Analyze effect,
+  **Add to shortlist**, Delete.
+- **Bridge (Option A — project pool):** `nolan/shortlist.py` +
+  `routes/shortlist.py` persist `projects/<slug>/shortlist.json`; items are
+  stored in the exact `op:add` payload shape the `/scenes` picker consumes, so
+  the picker's new **Shortlist** tab feeds scenes through the existing
+  `POST /api/scenes/scene/assets` seam — no pipeline fork. `/studio` shows a
+  `shortlisted` count. "Send to essay" opens `/scenes?project=…&shortlist=1`.
+
+**Usage:** library page → **Select** → pick assets → **Add to shortlist**
+(target set by the "Essay" switcher) → tray **Send to essay** → on `/scenes`,
+a scene's **＋ Add from library → Shortlist** tab adds them to the scene.
+
+**Verified:** in-process TestClient + live hub — all pages 200, shortlist CRUD
++ dedup + bad-project 404, frame-thumb returns JPEG, studio status carries
+`shortlist`; all inline template JS + both modules syntax-clean.
 
 ## Architecture Consolidation — Phase 6 (2026-07-05) — CONSOLIDATION COMPLETE
 

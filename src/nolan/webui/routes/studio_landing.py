@@ -64,6 +64,11 @@ def register(app, ctx):
                 status["error"] = str(e)
         finals = list(base.glob("*.mp4")) + list((base / "output").glob("*.mp4")) if base.exists() else []
         status["has_final"] = len(finals) > 0
+        try:
+            from nolan import shortlist as _sl
+            status["shortlist"] = len(_sl.load(base))
+        except Exception:
+            status["shortlist"] = 0
         status["has_voiceover"] = (base / "assets" / "voiceover" / "voiceover.mp3").exists()
         try:
             import yaml as _yaml

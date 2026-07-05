@@ -1335,7 +1335,8 @@
             document.getElementById('pickerTitle').textContent = 'Add assets → ' + sceneId;
             document.getElementById('pickerDrawer').classList.add('open');
             document.getElementById('pickerBackdrop').classList.add('open');
-            setPickerTab('pictures');
+            // Arriving from a library "Send to essay" opens straight on Shortlist.
+            setPickerTab(window._shortlistIntent ? 'shortlist' : 'pictures');
         }
         function closePicker() {
             document.getElementById('pickerDrawer').classList.remove('open');
@@ -1346,6 +1347,7 @@
             pickerTab = tab; vidVideo = null;
             document.getElementById('ptab-pictures').classList.toggle('active', tab === 'pictures');
             document.getElementById('ptab-videos').classList.toggle('active', tab === 'videos');
+            document.getElementById('ptab-shortlist').classList.toggle('active', tab === 'shortlist');
             document.getElementById('pickerQ').placeholder = tab === 'pictures'
                 ? 'search pictures (blank = browse all)…' : 'filter by name…';
             renderSub(); loadPicker();
@@ -1370,6 +1372,7 @@
             grid.innerHTML = '<div class="loading">Loading…</div>';
             try {
                 if (pickerTab === 'pictures') return renderItems(await fetchPictures(q), grid);
+                if (pickerTab === 'shortlist') return renderItems(await fetchShortlist(q), grid);
                 if (vidSource === 'clips') return renderItems(await fetchClips(q), grid);
                 if (!vidVideo) return renderVideoList(await fetchVideos(q), grid);
                 return renderItems(await fetchSegments(vidVideo, q), grid, true);
@@ -1384,6 +1387,19 @@
                 source: 'library', k: h.id, thumb: h.raw, label: h.title || ('#' + h.id),
                 payload: {op:'add', source:'library', image_id: h.id, scope: h.scope || 'global',
                           scope_project: h.scope_project || null, label: h.title || ''} }));
+        }
+        // The per-project shortlist: assets curated from the Picture/Clip
+        // libraries. Items are already in op:add payload shape, so adding one to
+        // a scene goes through the same path as any other picker source.
+        async function fetchShortlist(q) {
+            if (!currentProject) return [];
+            const j = await (await fetch('/api/shortlist?project=' + encodeURIComponent(currentProject))).json();
+            let items = j.items || [];
+            if (q) { const ql = q.toLowerCase(); items = items.filter(it => (it.label || '').toLowerCase().includes(ql)); }
+            return items.map(it => ({
+                source: (it.payload && it.payload.source) || it.kind, k: it.key,
+                thumb: it.thumb, label: it.label, payload: it.payload,
+            }));
         }
         async function fetchClips(q) {
             const proj = vidScope === 'project' ? currentProject : '';
@@ -1836,6 +1852,9 @@
 
                 // Set from URL or auto-select if only one project
                 currentProject = getProjectFromUrl();
+                // A library "Send to essay" lands here with ?shortlist=1 — make
+                // the asset picker open on the Shortlist tab from then on.
+                window._shortlistIntent = new URLSearchParams(window.location.search).get('shortlist') === '1';
                 if (!currentProject && projects.length === 1) {
                     currentProject = projects[0].name;
                     updateUrl(currentProject);
@@ -1958,6 +1977,7 @@
     <div class="picker-tabs">
         <button class="ptab active" id="ptab-pictures" onclick="setPickerTab('pictures')">Pictures</button>
         <button class="ptab" id="ptab-videos" onclick="setPickerTab('videos')">Videos / Clips</button>
+        <button class="ptab" id="ptab-shortlist" onclick="setPickerTab('shortlist')">🎞 Shortlist</button>
     </div>
     <div class="picker-subbar" id="pickerSub" style="display:none"></div>
     <div class="picker-search">
