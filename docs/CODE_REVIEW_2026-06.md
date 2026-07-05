@@ -44,7 +44,7 @@ Picture Library, Video Library + their modules and the hub/web layer. Findings b
 | C1 Unify the project model (slug-keyed `Project`, FS↔DB link) | ◑ **in progress** — `src/nolan/projects.py` + `GET /api/projects` + `nolan projects status/backfill` + FS↔DB link on script-create DONE & tested (`docs/PROJECT_MODEL_DESIGN.md`, `tests/test_projects.py`). Migrating the 4 legacy listing endpoints onto it deferred (needs web render-testing). |
 | C2 One render path (merge 3 dispatchers, shared ffmpeg/registry) | ⏳ deferred — needs render testing |
 | C3 Decide script contract (script.json vs script.md; `style_guide.md` name collision) | ⏳ deferred |
-| C4 Split hub.py into APIRouters; split indexer.py | ⏳ deferred — large |
+| C4 Split hub.py into APIRouters; split indexer.py | ◑ **hub half done (2026-07)** — hub.py 3,361→286 lines; the ~200 routes moved verbatim into 18 `src/nolan/webui/routes/*.py` modules (`register(app, ctx)` per section; `ctx` = SimpleNamespace of the old closure locals). Route-surface parity verified (207 before = 207 after), hub tests green, live hub restarted + smoked. indexer.py split still deferred. |
 | C5 Shared base template + adopt NolanJobs everywhere | ⏳ deferred — large frontend pass |
 | C6 Collapse 4 search endpoints; factor duplicate FileResponse handlers | ⏳ deferred (partial: media-types) |
 | C7 Shared helpers (`dispatch_agent_task` ×3, `slugify` ×3, vector_search upsert ×2) | ⏳ deferred |
