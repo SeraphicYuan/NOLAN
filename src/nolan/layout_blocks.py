@@ -106,20 +106,20 @@ def _statistic(p) -> _Adapted:
 
 
 def _timeline(p) -> _Adapted:
+    # The blocks library has NO general chronology block: its `Timeline` is a
+    # bespoke rhetorical device (anchor far-left, ticks crowded far-right, the
+    # gap is the argument) and long tick labels pile up unreadably. A dated
+    # sequence maps faithfully to StepFlow: year = the node label, event text
+    # = the detail line, connectors draw on in order. >5 events -> None
+    # (the python TimelineRenderer wraps and scales for long chronologies).
     events = [e for e in (p.get("events") or [])
               if isinstance(e, dict) and (e.get("year") or e.get("label"))]
-    if not events:
+    if not events or len(events) > 5:
         return None
-    ticks = [{"label": " — ".join(x for x in (str(e.get("year", "")).strip(),
-                                              str(e.get("label", "")).strip()) if x)}
-             for e in events]
-    return "Timeline", {
-        "headline": p.get("title") or None,
-        "anchor": {"label": str(events[0].get("year", "")) or ticks[0]["label"]},
-        "ticks": ticks,
-        "note": str(p.get("title") or ""),
-        "moneyNote": "",
-    }
+    steps = [{"label": str(e.get("year", "")).strip() or str(i + 1),
+              "detail": str(e.get("label", "")).strip()}
+             for i, e in enumerate(events)]
+    return "StepFlow", _clean({"kicker": p.get("title"), "steps": steps})
 
 
 def _ranking(p) -> _Adapted:
