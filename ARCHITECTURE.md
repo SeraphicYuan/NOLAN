@@ -98,15 +98,18 @@ knows — omit for global search; the project imagelib is discovered from
 
 ## Sound design (SOTA roadmap #1)
 
-`src/nolan/audio_mix.py` — the post-assembly soundtrack stage: music library
-(`projects/_library/music/` + optional `music.json` mood/energy manifest),
-energy-arc track selection, loudness-normalized bed (−16 LUFS) ducked under
-the narration by a real sidechain compressor, synthesized transition whooshes
-at beat boundaries. ONE implementation, three thin callers: the Director's
-render step (standard + premium, via `_mix_soundtrack_if_configured`) and the
-segment builder. Opt-in per project: `music: auto|<path>` in project.yaml
-(`music_gain_db`, `music_mood`, `sfx:` tune it). The full craft roadmap lives
-in docs/SOTA_ROADMAP.md.
+`src/nolan/audio_mix.py` — authoring/execution split, like every pipeline
+stage: the Director's **soundtrack step** (after align, before render)
+AUTHORS `soundtrack.json` — chosen track (energy-arc match over the music
+library at `projects/_library/music/` + `music.json` manifest), the runner-up
+candidates, gain/duck/fade parameters, SFX event placements at beat
+boundaries — as a checkpointed, human-editable artifact. The render step then
+EXECUTES it (`mix_from_spec`): bed loudness-normalized to −16 LUFS before
+gain, ducked under narration by a real sidechain compressor, whooshes landing
+on the cuts; video stream never re-encoded. One implementation; the segment
+builder and ad-hoc callers use the author+execute composition
+(`mix_soundtrack`). Opt-in per project: `music: auto|<path>` in project.yaml
+(`music_gain_db`, `music_mood`, `sfx:`). Craft roadmap: docs/SOTA_ROADMAP.md.
 
 ## One voice pipeline
 

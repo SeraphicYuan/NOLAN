@@ -135,3 +135,35 @@ def test_mix_requires_music():
     with pytest.raises(RuntimeError):
         mix_soundtrack("x.mp4", PLAN, "y.mp4", music=None,
                        library="Z:/definitely/missing")
+
+
+# --- authoring/execution split (the Director's soundtrack step) -----------------
+
+def test_author_soundtrack_spec(tmp_path):
+    from nolan.audio_mix import author_soundtrack, save_soundtrack, load_soundtrack
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    for name, e in [("calm.mp3", 0.2), ("mid.mp3", 0.5), ("epic.mp3", 0.9)]:
+        (lib / name).write_bytes(b"x")
+    (lib / "music.json").write_text(json.dumps(
+        [{"file": f, "energy": e} for f, e in
+         [("calm.mp3", 0.2), ("mid.mp3", 0.5), ("epic.mp3", 0.9)]]))
+    spec = author_soundtrack(PLAN, library=lib, sfx=False)
+    assert spec["track"]["file"] == "mid.mp3"          # PLAN mean energy 0.55
+    assert [a["file"] for a in spec["alternatives"]]   # runner-ups recorded
+    assert spec["sfx_events"] == []
+    # round-trips through the artifact
+    path = save_soundtrack(spec, tmp_path)
+    assert path.name == "soundtrack.json"
+    assert load_soundtrack(tmp_path)["track"]["file"] == "mid.mp3"
+
+
+def test_author_places_sfx_on_beat_boundaries(tmp_path):
+    from nolan.audio_mix import author_soundtrack
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    (lib / "t.mp3").write_bytes(b"x")
+    spec = author_soundtrack(PLAN, library=lib, sfx=True)
+    # PLAN's second section starts at 10.0 (first at 0.0 is excluded)
+    assert [e["t"] for e in spec["sfx_events"]] == [10.0]
+    assert spec["sfx_events"][0]["kind"] == "whoosh"

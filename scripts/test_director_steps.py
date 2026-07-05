@@ -52,8 +52,9 @@ def completed_state(proj: Path, *names):
 
 
 def main():
-    assert PIPELINE_STEPS[-4:] == [
-        "generate_assets", "voiceover", "align_narration", "render"], PIPELINE_STEPS
+    assert PIPELINE_STEPS[-5:] == [
+        "generate_assets", "voiceover", "align_narration", "soundtrack",
+        "render"], PIPELINE_STEPS
 
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
         proj = make_project(Path(td))
@@ -80,7 +81,15 @@ def main():
         rec = [s for s in st.step_history if s.name == "voiceover"][-1]
         assert rec.status == "completed" and "skipped" in rec.notes, rec.notes
 
-        # no voiceover.mp3 -> align is skipped entirely, straight to render
+        # no voiceover.mp3 -> align skipped -> soundtrack authoring is next
+        assert d._next_step_name(st) == "soundtrack", d._next_step_name(st)
+
+        # -- 2b. soundtrack skip path (no music configured) -------------------
+        cp = asyncio.run(d._run_soundtrack_step(None, st))
+        assert cp.exists()
+        st = state_mod.load_state(proj)
+        rec = [s for s in st.step_history if s.name == "soundtrack"][-1]
+        assert rec.status == "completed" and "skipped" in rec.notes, rec.notes
         assert d._next_step_name(st) == "render", d._next_step_name(st)
 
         # -- 3. hand-made narration is respected: align runs, voiceover doesn't

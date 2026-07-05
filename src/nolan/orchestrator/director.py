@@ -47,6 +47,7 @@ PIPELINE_STEPS = [
     "generate_assets",
     "voiceover",
     "align_narration",
+    "soundtrack",
     "render",
 ]
 
@@ -366,6 +367,8 @@ class Director:
             return await self._run_voiceover_step(ctx, state)
         if next_name == "align_narration":
             return await self._run_align_narration_step(ctx, state)
+        if next_name == "soundtrack":
+            return await self._run_soundtrack_step(ctx, state)
         if next_name == "render":
             return await self._run_render_step(ctx, state)
         raise DirectorError(f"unknown pipeline step: {next_name}")
@@ -402,6 +405,10 @@ class Director:
             return "voiceover"
         if "align_narration" not in completed and voiceover_mp3.exists():
             return "align_narration"
+        # Artifact-presence: a hand-authored/edited soundtrack.json is respected.
+        if ("soundtrack" not in completed
+                and not (self.project_path / "soundtrack.json").exists()):
+            return "soundtrack"
         final_video = self.project_path / "output" / "final.mp4"
         if not final_video.exists():
             return "render"
@@ -426,22 +433,85 @@ class Director:
                     count += 1
         return count
 
-    def _mix_soundtrack_if_configured(self, final: Path, scene_plan: dict) -> str:
-        """Run the sound-design mix when project.yaml opts in. Returns a note.
+    async def _run_soundtrack_step(
+        self,
+        ctx: ProjectContext,
+        state: state_mod.DirectorState,
+    ) -> Path:
+        """AUTHOR the soundtrack (the reviewable decision, no audio touched).
 
-        The mix enhances a finished cut; a failure is reported loudly in the
-        step notes but never destroys the (already correct) narrated video.
+        Writes soundtrack.json — chosen track, the runner-up candidates,
+        gain/duck/fade parameters, and SFX event placements at the beat
+        boundaries. Review/edit it (or swap `track` to an alternative) before
+        the render step EXECUTES it. Skips with a note when project.yaml has
+        no `music:` — the final simply carries narration only.
         """
-        from nolan.audio_mix import mix_soundtrack, resolve_music_config
+        from nolan.audio_mix import author_soundtrack, resolve_music_config, save_soundtrack
+
+        record = state_mod.append_step(state, "soundtrack")
+        state.status = "running"
+        state_mod.save_state(self.project_path, state)
 
         cfg = resolve_music_config(self.project_path)
         if not cfg["enabled"]:
+            note = ("skipped — no music configured (set `music: auto` or a "
+                    "track path in project.yaml); final will carry narration only.")
+            state_mod.finish_step(record, status="completed", notes=note)
+            state.status = "awaiting_review"
+            state_mod.save_state(self.project_path, state)
+            return _write_checkpoint(self.project_path, record.step_num, [note])
+
+        try:
+            plan = json.loads(
+                (self.project_path / "scene_plan.json").read_text(encoding="utf-8"))
+            spec = author_soundtrack(
+                plan, music=cfg["music"], music_gain_db=cfg["gain"],
+                sfx=cfg["sfx"], mood=cfg["mood"])
+            spec_path = save_soundtrack(spec, self.project_path)
+        except Exception as exc:
+            err = f"soundtrack authoring failed: {exc}"
+            state_mod.finish_step(record, status="error", notes=err)
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(err) from exc
+
+        alts = ", ".join(a["file"] for a in spec.get("alternatives", [])) or "none"
+        summary = [
+            f"Soundtrack authored: **{spec['track']['file']}** "
+            f"({spec['track']['source']}), {len(spec.get('sfx_events', []))} "
+            f"transition sfx, gain {spec['music_gain_db']} dB.",
+            f"Alternatives: {alts}.",
+            f"Review/edit `{spec_path.name}` (swap track, drop sfx events, "
+            "adjust gain/duck) — the render step executes it as written.",
+        ]
+        state_mod.finish_step(record, status="completed", notes=summary[0])
+        state.status = "awaiting_review"
+        state_mod.save_state(self.project_path, state)
+        return _write_checkpoint(self.project_path, record.step_num, summary)
+
+    def _mix_soundtrack_if_configured(self, final: Path, scene_plan: dict) -> str:
+        """EXECUTE the authored soundtrack.json against the finished cut.
+
+        Falls back to ad-hoc author+mix when a project opted into music but
+        has no spec (pre-step projects). A failure is reported loudly in the
+        step notes but never destroys the (already correct) narrated video.
+        """
+        from nolan.audio_mix import (
+            load_soundtrack, mix_from_spec, mix_soundtrack, resolve_music_config,
+        )
+
+        spec = load_soundtrack(self.project_path)
+        cfg = resolve_music_config(self.project_path)
+        if spec is None and not cfg["enabled"]:
             return ""
         try:
+            if spec is not None:
+                mix_from_spec(final, spec)
+                return f" + soundtrack ({spec['track']['file']})"
             mix_soundtrack(final, scene_plan, music=cfg["music"],
                            music_gain_db=cfg["gain"], sfx=cfg["sfx"],
                            mood=cfg["mood"])
-            return " + music/sfx soundtrack"
+            return " + music/sfx soundtrack (ad-hoc — no soundtrack.json)"
         except Exception as exc:
             logger.warning("soundtrack mix failed: %s", exc)
             return f" (soundtrack mix FAILED: {exc})"

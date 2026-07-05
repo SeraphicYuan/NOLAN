@@ -139,68 +139,129 @@ def ensure_whoosh(sfx_dir: Path = None) -> Optional[Path]:
     return dest
 
 
+# --- authoring (the Director's soundtrack step) --------------------------------
+
+def author_soundtrack(plan: Dict[str, Any], *,
+                      music: Optional[Path] = None, music_gain_db: float = -12.0,
+                      sfx: bool = True, mood: str = "",
+                      library: Path = None) -> Dict[str, Any]:
+    """Author the soundtrack SPEC — the reviewable artifact, no audio touched.
+
+    Chooses the track (energy-arc match, with the runner-up candidates kept in
+    the spec so a human can swap without re-running selection), computes the
+    SFX event placements from the beat boundaries, and records the mix
+    parameters. Saved as ``soundtrack.json``; `mix_from_spec` executes it.
+    """
+    tracks = load_music_library(library)
+    chosen = None
+    candidates: List[Dict[str, Any]] = []
+    if music:
+        chosen = {"file": Path(music).name, "path": str(Path(music)),
+                  "energy": None, "mood": "", "source": "explicit"}
+    else:
+        sections = section_energies(plan)
+        target = (sum(e for _, _, e in sections) / len(sections)) if sections else 0.5
+        pool = tracks
+        if mood:
+            tagged = [t for t in tracks
+                      if mood.lower() in (t["mood"].lower(),
+                                          *[x.lower() for x in t["tags"]])]
+            if tagged:
+                pool = tagged
+        ranked = sorted(pool, key=lambda t: abs(t["energy"] - target))
+        if not ranked:
+            raise RuntimeError(
+                "no music available — drop license-safe tracks into "
+                f"{MUSIC_LIBRARY} (e.g. from the YouTube Audio Library)")
+        chosen = {"file": ranked[0]["file"], "path": str(ranked[0]["path"]),
+                  "energy": ranked[0]["energy"], "mood": ranked[0]["mood"],
+                  "source": f"auto (target energy {target:.2f})"}
+        candidates = [{"file": t["file"], "energy": t["energy"], "mood": t["mood"]}
+                      for t in ranked[1:4]]
+
+    events = []
+    if sfx:
+        whoosh = ensure_whoosh()
+        if whoosh:
+            for start, _end, energy in section_energies(plan):
+                if start > 1.0:
+                    events.append({"t": round(start, 3), "kind": "whoosh",
+                                   "file": str(whoosh), "volume": 0.5})
+
+    return {
+        "version": 1,
+        "track": chosen,
+        "alternatives": candidates,
+        "music_gain_db": music_gain_db,
+        "loudnorm_lufs": -16,
+        "fade_in_s": 2.0, "fade_out_s": 4.0,
+        "duck": {"threshold": 0.04, "ratio": 4, "attack_ms": 25, "release_ms": 400},
+        "sfx_events": events,
+    }
+
+
+def save_soundtrack(spec: Dict[str, Any], project_path: Path) -> Path:
+    p = Path(project_path) / "soundtrack.json"
+    p.write_text(json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8")
+    return p
+
+
+def load_soundtrack(project_path: Path) -> Optional[Dict[str, Any]]:
+    p = Path(project_path) / "soundtrack.json"
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("soundtrack.json unreadable: %s", exc)
+        return None
+
+
 # --- the mix -------------------------------------------------------------------
 
-def mix_soundtrack(video: Path, plan: Dict[str, Any], out: Path = None, *,
-                   music: Optional[Path] = None, music_gain_db: float = -12.0,
-                   sfx: bool = True, mood: str = "",
-                   library: Path = None) -> Path:
-    """Lay a ducked music bed (+ transition whooshes) under a finished video.
-
-    The track is loudness-normalized (-16 LUFS) BEFORE ``music_gain_db`` is
-    applied, so the gain means the same thing for every library track; the
-    sidechain then ducks it moderately under the narration (audible bed, not
-    wallpaper — swells in pauses). ``music``: explicit path, or None to
-    auto-select from the library. Returns ``out`` (defaults to in-place
-    replace). The video stream is stream-copied — never re-encoded.
-    """
+def mix_from_spec(video: Path, spec: Dict[str, Any], out: Path = None) -> Path:
+    """Execute an authored soundtrack spec — mechanical, no decisions here."""
     video = Path(video)
     replace = out is None
     out = Path(out) if out else video.with_name(video.stem + ".mix.mp4")
 
-    track = Path(music) if music else None
-    if track is None:
-        chosen = select_track(load_music_library(library), plan, mood=mood)
-        if not chosen:
-            raise RuntimeError(
-                "no music available — drop license-safe tracks into "
-                f"{MUSIC_LIBRARY} (e.g. from the YouTube Audio Library)")
-        track = chosen["path"]
-        logger.info("music: %s (energy %.2f)", chosen["file"], chosen["energy"])
+    track = Path(spec["track"]["path"])
     if not track.exists():
-        raise RuntimeError(f"music track not found: {track}")
-
+        raise RuntimeError(f"soundtrack track not found: {track} "
+                           "(edit soundtrack.json or the music library)")
     duration = _ffprobe_duration(video)
-    gain = 10 ** (music_gain_db / 20.0)
+    gain = 10 ** (float(spec.get("music_gain_db", -12.0)) / 20.0)
+    duck = spec.get("duck", {})
+    fade_in = float(spec.get("fade_in_s", 2.0))
+    fade_out = float(spec.get("fade_out_s", 4.0))
+    lufs = float(spec.get("loudnorm_lufs", -16))
 
     inputs = [_ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
               "-i", str(video), "-stream_loop", "-1", "-i", str(track)]
-    # music chain: trim to length, level, fade in/out, then DUCK under the VO
-    # with a real sidechain compressor keyed by the narration track.
-    fade_out_start = max(0.0, duration - 4.0)
+    fade_out_start = max(0.0, duration - fade_out)
     graph = (
         f"[1:a]atrim=0:{duration:.3f},"
-        f"loudnorm=I=-16:TP=-2:LRA=11,volume={gain:.4f},"
-        f"afade=t=in:st=0:d=2,afade=t=out:st={fade_out_start:.3f}:d=4[mus];"
-        f"[mus][0:a]sidechaincompress=threshold=0.04:ratio=4:attack=25:"
-        f"release=400:makeup=1[duck]"
+        f"loudnorm=I={lufs}:TP=-2:LRA=11,volume={gain:.4f},"
+        f"afade=t=in:st=0:d={fade_in},"
+        f"afade=t=out:st={fade_out_start:.3f}:d={fade_out}[mus];"
+        f"[mus][0:a]sidechaincompress="
+        f"threshold={duck.get('threshold', 0.04)}:ratio={duck.get('ratio', 4)}:"
+        f"attack={duck.get('attack_ms', 25)}:release={duck.get('release_ms', 400)}:"
+        f"makeup=1[duck]"
     )
     mix_ins = "[0:a][duck]"
     n_mix = 2
 
-    events: List[float] = []
-    if sfx:
-        whoosh = ensure_whoosh()
-        boundaries = [s for s, _e, _en in section_energies(plan) if s > 1.0]
-        if whoosh and boundaries:
-            events = sorted(boundaries)[:24]
-            for j, t in enumerate(events):
-                inputs += ["-i", str(whoosh)]
-                delay_ms = max(0, int((t - 0.45) * 1000))   # land ON the cut
-                graph += (f";[{2 + j}:a]volume=0.5,adelay={delay_ms}|{delay_ms},"
-                          f"apad=whole_dur={duration:.3f}[sfx{j}]")
-                mix_ins += f"[sfx{j}]"
-                n_mix += 1
+    events = [e for e in spec.get("sfx_events", [])
+              if Path(e.get("file", "")).exists()][:24]
+    for j, e in enumerate(events):
+        inputs += ["-i", str(e["file"])]
+        delay_ms = max(0, int((float(e["t"]) - 0.45) * 1000))   # land ON the cut
+        graph += (f";[{2 + j}:a]volume={float(e.get('volume', 0.5))},"
+                  f"adelay={delay_ms}|{delay_ms},"
+                  f"apad=whole_dur={duration:.3f}[sfx{j}]")
+        mix_ins += f"[sfx{j}]"
+        n_mix += 1
 
     graph += (f";{mix_ins}amix=inputs={n_mix}:duration=first:"
               f"dropout_transition=3:normalize=0[a]")
@@ -215,8 +276,23 @@ def mix_soundtrack(video: Path, plan: Dict[str, Any], out: Path = None, *,
     if replace:
         out.replace(video)
         out = video
-    logger.info("soundtrack: music + %d transition sfx -> %s", len(events), out)
+    logger.info("soundtrack: %s + %d sfx -> %s",
+                spec["track"]["file"], len(events), out)
     return out
+
+def mix_soundtrack(video: Path, plan: Dict[str, Any], out: Path = None, *,
+                   music: Optional[Path] = None, music_gain_db: float = -12.0,
+                   sfx: bool = True, mood: str = "",
+                   library: Path = None) -> Path:
+    """Author + execute in one call (ad-hoc mixes, segment builder, tests).
+
+    The Director pipeline splits this: the `soundtrack` step authors and
+    checkpoints the spec (soundtrack.json — human-reviewable); the render
+    step executes it with `mix_from_spec`.
+    """
+    spec = author_soundtrack(plan, music=music, music_gain_db=music_gain_db,
+                             sfx=sfx, mood=mood, library=library)
+    return mix_from_spec(video, spec, out)
 
 
 def resolve_music_config(project_path: Path) -> Dict[str, Any]:
