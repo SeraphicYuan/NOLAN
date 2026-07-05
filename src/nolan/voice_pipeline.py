@@ -60,6 +60,48 @@ async def _free_comfyui_vram(config) -> None:
         pass  # ComfyUI not running / no /free — fine, we proceed anyway
 
 
+def build_tts_items(bodies, *, ref_audio=None, ref_text=None, instruct=None,
+                    speed=None, language_id=None) -> list:
+    """The per-section synthesis batch, one consistent voice across sections.
+
+    Shared by the async project core (synthesize_voiceover) and the sync
+    segment-builder core (nolan.voiceover.produce_voiceover) — the SAME item
+    schema OmniVoice's synthesize_batch consumes (ids sec_0000…).
+    """
+    items = []
+    for i, body in enumerate(bodies):
+        it = {"id": f"sec_{i:04d}", "text": body}
+        if ref_audio:
+            it["ref_audio"] = ref_audio
+        if ref_text:
+            it["ref_text"] = ref_text
+        if instruct:
+            it["instruct"] = instruct
+        if speed is not None:
+            it["speed"] = speed
+        if language_id:
+            it["language_id"] = language_id
+        items.append(it)
+    return items
+
+
+def concat_wavs_to_mp3(ordered, list_file, out_mp3, *, tempo: float = 1.0) -> None:
+    """ffmpeg concat of section wavs -> voiceover.mp3 (optional atempo). Sync."""
+    import subprocess
+    Path(list_file).write_text(
+        "".join(f"file '{Path(p).resolve().as_posix()}'\n" for p in ordered),
+        encoding="utf-8")
+    cmd = [_ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error", "-f", "concat",
+           "-safe", "0", "-i", str(list_file)]
+    if _tempo_on(tempo):
+        cmd += ["-filter:a", f"atempo={float(tempo):.3f}"]
+    cmd += ["-ar", "44100", str(out_mp3)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(
+            f"voiceover concat failed: {(r.stderr or r.stdout or '')[:400]}")
+
+
 async def synthesize_voiceover(*, config, project: str = None, script_project: str = None,
                                project_dir: Path = None,
                                mode: str = "full", voice_id: str = None,
@@ -135,20 +177,9 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
         log("No voice reference/instruct — OmniVoice will auto-pick a voice "
             "PER SECTION, so sections may not match. Pick/clone a voice for consistency.")
 
-    items = []
-    for i, s in enumerate(sections):
-        it = {"id": f"sec_{i:04d}", "text": s["body"]}
-        if ref_audio:
-            it["ref_audio"] = ref_audio
-        if ref_text:
-            it["ref_text"] = ref_text
-        if instruct:
-            it["instruct"] = instruct
-        if speed is not None:
-            it["speed"] = speed
-        if language_id:
-            it["language_id"] = language_id
-        items.append(it)
+    items = build_tts_items(
+        [s["body"] for s in sections], ref_audio=ref_audio, ref_text=ref_text,
+        instruct=instruct, speed=speed, language_id=language_id)
 
     vo_dir = base / "assets" / "voiceover"
     work = vo_dir / "_work"
@@ -207,21 +238,9 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
     # full mode: concat -> voiceover.mp3
     progress(0.9, "Concatenating voiceover…")
     ordered = [produced[it["id"]] for it in items if it["id"] in produced]
-    list_file = work / "_concat.txt"
-    list_file.write_text("".join(f"file '{p.resolve().as_posix()}'\n" for p in ordered),
-                         encoding="utf-8")
     out_mp3 = vo_dir / "voiceover.mp3"
-    cmd = [_ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error", "-f", "concat",
-           "-safe", "0", "-i", str(list_file)]
-    if _tempo_on(tempo):
-        cmd += ["-filter:a", f"atempo={float(tempo):.3f}"]
-    cmd += ["-ar", "44100", str(out_mp3)]
-    proc = await asyncio.create_subprocess_exec(
-        *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
-    )
-    _, err = await proc.communicate()
-    if proc.returncode != 0:
-        raise RuntimeError(f"voiceover concat failed: {(err or b'').decode(errors='replace')[:400]}")
+    await asyncio.to_thread(concat_wavs_to_mp3, ordered, work / "_concat.txt",
+                            out_mp3, tempo=tempo)
 
     progress(1.0, f"Voiceover ready ({len(ordered)} sections) → {out_mp3}")
     return {"mode": "full", "project": label, "voiceover": str(out_mp3),

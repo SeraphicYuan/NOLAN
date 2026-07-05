@@ -19,20 +19,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
-def _ffmpeg() -> str:
-    try:
-        import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        return "ffmpeg"
-
-
-def _wav_duration(p: Path) -> float:
-    try:
-        with wave.open(str(p), "rb") as w:
-            return round(w.getnframes() / float(w.getframerate()), 3)
-    except Exception:
-        return 0.0
+# Shared audio helpers live in the voice pipeline (one home for TTS plumbing).
+from nolan.voice_pipeline import (  # noqa: E402
+    _ffmpeg_exe as _ffmpeg,
+    _wav_duration,
+    build_tts_items,
+    concat_wavs_to_mp3,
+)
 
 
 def _run(cmd: list) -> None:
@@ -99,16 +92,8 @@ def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
     if not bodies:
         raise RuntimeError("no narration to synthesize")
 
-    items = []
-    for i, (_t, body) in enumerate(bodies):
-        it = {"id": f"sec_{i:04d}", "text": body}
-        if ref_audio:
-            it["ref_audio"] = ref_audio
-        if ref_text:
-            it["ref_text"] = ref_text
-        if instruct:
-            it["instruct"] = instruct
-        items.append(it)
+    items = build_tts_items([b for _t, b in bodies], ref_audio=ref_audio,
+                            ref_text=ref_text, instruct=instruct)
 
     if progress:
         progress(0.2, f"Synthesizing {len(items)} sections")
@@ -137,12 +122,9 @@ def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
 
     if progress:
         progress(0.7, "Concatenating voiceover")
-    list_file = work / "_concat.txt"
-    list_file.write_text("".join(f"file '{p.resolve().as_posix()}'\n" for p in ordered),
-                         encoding="utf-8")
     mp3 = vo_dir / "voiceover.mp3"
-    _run([_ffmpeg(), "-y", "-hide_banner", "-loglevel", "error", "-f", "concat",
-          "-safe", "0", "-i", str(list_file), "-ar", "44100", str(mp3)])
+    # tempo=1.0: per-section wavs were already paced above (captions align to them)
+    concat_wavs_to_mp3(ordered, work / "_concat.txt", mp3, tempo=1.0)
 
     return {"voiceover": str(mp3), "sections": out_sections,
             "total": round(sum(s["duration"] for s in out_sections), 3)}
