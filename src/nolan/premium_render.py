@@ -60,6 +60,48 @@ def _slice_wav(src: Path, offset: float, duration: float, dest: Path) -> Path:
     return dest
 
 
+def _section_words(wav: Path) -> List[Dict[str, Any]]:
+    """Word-level timestamps for one section wav (CPU whisper), or [].
+
+    Feeds the blocks' word-sync (`words`) and reveal cues (`revealFrames`) —
+    the same contract FLOW computes upstream. Degrades gracefully: no
+    whisper → empty words → blocks reveal at frame 0 (pre-word-sync look).
+    """
+    try:
+        from nolan.whisper import WHISPER_AVAILABLE, WhisperConfig, WhisperTranscriber
+        if not WHISPER_AVAILABLE:
+            return []
+        tr = WhisperTranscriber(WhisperConfig(
+            model_size="base", device="cpu", compute_type="int8"))
+        return [{"t0": float(w.start), "t1": float(w.end),
+                 "text": (w.word or "").strip()}
+                for w in tr.transcribe_words(wav) if (w.word or "").strip()]
+    except Exception as exc:
+        logger.warning("word timings unavailable for %s: %s", wav.name, exc)
+        return []
+
+
+def _step_words(section_words: List[Dict[str, Any]], start_s: float,
+                end_s: float, fps: int, frames: int) -> Tuple[list, list]:
+    """(words, revealFrames) for one step spanning [start_s, end_s) of its section.
+
+    Words become step-relative frames. Reveal cues: primary content lands on
+    the FIRST spoken word of the step; the secondary line (attribution/
+    definition/closer per block) cues ~60% through the step's words.
+    """
+    words = []
+    for w in section_words:
+        if w["t1"] <= start_s or w["t0"] >= end_s:
+            continue
+        f0 = max(0, int(round((w["t0"] - start_s) * fps)))
+        f1 = min(frames, max(f0 + 1, int(round((w["t1"] - start_s) * fps))))
+        words.append({"text": w["text"], "startFrame": f0, "endFrame": f1})
+    if not words:
+        return [], []
+    second = words[min(len(words) - 1, int(len(words) * 0.6))]["startFrame"]
+    return words, [words[0]["startFrame"], second]
+
+
 def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
                 duration_s: float) -> Tuple[str, Dict[str, Any]]:
     """(block, props) for a scene, or raise PremiumIneligible."""
@@ -109,7 +151,8 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                       project_path: Path, section_wav: Path,
                       section_start: float, out_name: str,
                       work_dir: Path, theme: str = "bold-signal",
-                      fps: int = 30) -> Dict[str, Any]:
+                      fps: int = 30,
+                      section_words: List[Dict[str, Any]] = None) -> Dict[str, Any]:
     """A FLOW-shaped Chapter job for one beat-anchored section.
 
     The section WAV is the timing authority: scene windows are normalized
@@ -139,9 +182,11 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
         block, props = _scene_step(scene, project_path, fps, dur)
         clip_wav = _slice_wav(section_wav, f_prev / fps, dur,
                               work_dir / f"{scene.get('id', 'scene')}.wav")
+        words, reveals = _step_words(section_words or [], f_prev / fps,
+                                     f_prev / fps + dur, fps, frames)
         steps.append({
             "block": block, "props": props,
-            "revealFrames": [], "words": [],
+            "revealFrames": reveals, "words": words,
             "audioSrc": str(clip_wav),
             "durationInFrames": frames,
         })
@@ -203,10 +248,12 @@ def render_premium(project_path: Path, *, theme: str = None,
     clips = []
     for i, ((name, scenes), wav, (sec_start, _d)) in enumerate(
             zip(sections, wavs, spans)):
+        logger.info("premium: word timings for section %d/%d", i + 1, len(sections))
+        section_words = _section_words(wav)
         job = build_section_job(
             name, scenes, project_path=project_path, section_wav=wav,
             section_start=sec_start, out_name=f"premium_{i:04d}.mp4",
-            work_dir=work, theme=theme, fps=fps)
+            work_dir=work, theme=theme, fps=fps, section_words=section_words)
         job_path = jobs_dir / f"premium_{i:04d}.json"
         job_path.write_text(json.dumps(job, indent=2), encoding="utf-8")
         logger.info("premium: rendering section %d/%d (%s, %d scenes)",
