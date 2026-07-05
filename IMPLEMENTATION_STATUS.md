@@ -4,6 +4,21 @@
 **Status:** Complete
 **Last Updated:** 2026-07-04
 
+## Architecture Consolidation — Phase 2 (2026-07-05)
+
+**One asset engine**: `src/nolan/asset_engine.py` — the single scene→asset
+resolution ladder (motion → archival-art exact-title → footage vector search →
+picture-library stills → external providers → generate), promoted from the
+segment builder's proven `AssetResolver`. Every resolution writes an auditable
+`resolved_source`; scene *dicts* resolve losslessly via `resolve_dicts` (Phase 0
+contract). `AssetEngine.from_config` wires the standard backends lazily.
+
+Thin callers now: segment resolver (compat shim; the builder's four duplicate
+tier factories are deleted), Director `select_clips` (footage + art through the
+engine, honest `none(<reason>)` on misses), iterate's b-roll reresolve.
+Parity verified on real plans (venezuela 25/25 vs old 8 matches, football
+134/134 vs 16 — same matcher/gate, fuller index). Tests: `tests/test_asset_engine.py`.
+
 ## Architecture Consolidation — Phases 0–1 (2026-07-04)
 
 **Phase 0 — safety net** (`bab7c50`): `ScenePlan` is a lossless, versioned contract

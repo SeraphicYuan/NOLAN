@@ -194,38 +194,34 @@ def _rerender_segment(plan_path: Path, ids: set, *, llm_client, nolan_config,
 
 
 def _reresolve_broll_dicts(stale: list, llm_client, nolan_config) -> int:
-    """Re-match stale b-roll scene *dicts* to library clips via ClipMatcher.
+    """Re-match stale b-roll scene *dicts* to library clips via the asset engine.
 
-    Operates on raw dicts (a temp Scene is built only to call the matcher) so the
-    orchestrator's `layout_spec` scenes are never round-tripped/lost.
+    `resolve_dicts` round-trips each dict through the lossless Scene contract
+    (unknown keys like `layout_spec` survive) and mutates it in place. Search
+    tier only — an edited b-roll scene should get footage or stay unresolved,
+    not silently become a generated card.
     """
-    if not (stale and llm_client and nolan_config):
+    if not (stale and nolan_config):
         return 0
     try:
-        from nolan.scenes import Scene
-        from nolan.clip_matcher import ClipMatcher
-        from nolan.vector_search import VectorSearch
-        from nolan.indexer import VideoIndex
+        from nolan.asset_engine import AssetEngine, EngineConfig
         db = Path(nolan_config.indexing.database).expanduser()
         if not db.exists():
             return 0
-        vs = VectorSearch(db_path=db.parent / "vectors", index=VideoIndex(db))
-        # Pure vector matching (llm_client=None) — fast/free/robust, like select_clips.
-        cm = ClipMatcher(vector_search=vs, llm_client=None,
-                         config=getattr(nolan_config, "clip_matching", nolan_config))
-        from nolan.segment.render import _run_async
+        engine = AssetEngine.from_config(
+            nolan_config,
+            config=EngineConfig(enable_library=False, enable_external=False,
+                                enable_generation=False, enable_motion=False,
+                                enable_art=False),
+            index_db=db,
+        )
     except Exception:  # noqa: BLE001 - no index/vectors -> skip, render uses existing pick
         return 0
     n = 0
     for d in stale:
         try:
-            sc = Scene(id=d.get("id", "x"), visual_type=d.get("visual_type", "b-roll"),
-                       search_query=d.get("search_query", ""),
-                       visual_description=d.get("visual_description", ""),
-                       narration_excerpt=d.get("narration_excerpt", ""))
-            mc = _run_async(cm.match_scene(sc, project_id=None))   # match_scene is async
-            if mc:
-                d["matched_clip"] = mc
+            engine.resolve_dicts([d])
+            if d.get("matched_clip"):
                 n += 1
         except Exception:  # noqa: BLE001 - one bad match shouldn't abort the batch
             pass

@@ -1737,53 +1737,52 @@ class Director:
         if report_path.exists():
             report_path.unlink()
 
-        # Consolidated clip selection: use the fast semantic vector matcher instead
-        # of a full LLM re-selection pass. The vector matcher reads the same
-        # embeddings an LLM would, is ~free and near-instant, and writes
-        # matched_clip into scene_plan.json directly. (Was a ~12-min Claude pass.)
+        # Consolidated clip selection: ONE asset engine (nolan.asset_engine)
+        # resolves footage scenes (library vector search → picture-library
+        # stills) and archival-art scenes (exact-title museum pass → semantic
+        # fallback). Every touched scene gets an auditable resolved_source.
         try:
+            from nolan.asset_engine import (
+                ART_TYPES, FOOTAGE_TYPES, AssetEngine, EngineConfig,
+            )
             from nolan.config import load_config
-            from nolan.cli_legacy import _match_clips
             from nolan.scenes import ScenePlan as _ScenePlan
 
-            await _match_clips(
-                load_config(), str(scene_plan_path),
-                candidates=None, min_similarity=None, project=None,
-                skip_existing=False, dry_run=False, search_level=None, concurrency=8,
+            engine = AssetEngine.from_config(
+                load_config(),
+                # Selection only: no generation tags, no motion authoring —
+                # slide_designer and generate_assets own those stages.
+                config=EngineConfig(enable_generation=False,
+                                    enable_motion=False),
+                project_path=self.project_path,
             )
             _plan = _ScenePlan.load(str(scene_plan_path))
             _scenes = _plan.all_scenes
+            _targets = [
+                s for s in _scenes
+                if (s.visual_type or "").lower().strip()
+                in (FOOTAGE_TYPES | ART_TYPES)
+            ]
+            counts = engine.resolve_all(_targets)
+            _plan.save(str(scene_plan_path))
             _matched = sum(1 for s in _scenes if getattr(s, "matched_clip", None))
-
-            # Archival-art sourcing: scenes typed for real public-domain
-            # artworks (masterwork-raid vocabulary) can't be served by the
-            # video matcher — route them through the museum/Commons image
-            # pipeline (library-first, describe+ingest, matched_asset).
-            art_line = ""
-            from nolan.art_sourcing import DEFAULT_SCENE_TYPES, source_art_for_plan
-            if any(getattr(s, "visual_type", None) in DEFAULT_SCENE_TYPES
-                   for s in _scenes):
-                try:
-                    art = source_art_for_plan(
-                        scene_plan_path, self.project_path, load_config())
-                    art_line = (
-                        f"\nArchival-art sourcing: matched **{art['matched']}/"
-                        f"{art['considered']}** art scenes "
-                        f"({', '.join(f'{k}:{v}' for k, v in art['by_kind'].items()) or 'none'})"
-                        + (f"; unmatched: {', '.join(art['misses'][:8])}"
-                           if art["misses"] else "") + ".\n")
-                except Exception as art_exc:      # sourcing enhances, never blocks
-                    art_line = f"\nArchival-art sourcing failed: {art_exc}\n"
+            _art_hits = sum(
+                1 for s in _targets
+                if str(getattr(s, "resolved_source", "")).startswith("art"))
+            _stills = sum(
+                1 for s in _targets
+                if str(getattr(s, "resolved_source", "")).startswith("library"))
 
             report_path.write_text(
-                "# Clip Selection Report (vector matcher)\n\n"
-                f"Matched **{_matched}/{len(_scenes)}** scenes to library clips via semantic "
-                "vector search.\n"
-                + art_line +
-                "\nConsolidated step: this replaces the previous LLM clip-selection pass "
-                "(~12 min) with the fast vector matcher (seconds, no token cost). The "
-                "vector matcher ranks by embedding similarity over the same segment "
-                "descriptions an LLM would read.\n",
+                "# Clip Selection Report (asset engine)\n\n"
+                f"Resolved **{len(_targets)}** footage/art scenes via the unified "
+                f"asset engine: {_matched} library video matches, {_art_hits} "
+                f"archival artworks, {_stills} picture-library stills.\n\n"
+                f"By source: "
+                f"{', '.join(f'{k}: {v}' for k, v in sorted(counts.items()))}\n\n"
+                "Ladder: footage → vector clip search (gate 0.5) → picture-library "
+                "stills; archival-art → exact-title museum pass → semantic fallback. "
+                "Unresolved scenes report `none(<reason>)` — no silent gaps.\n",
                 encoding="utf-8",
             )
         except Exception as exc:

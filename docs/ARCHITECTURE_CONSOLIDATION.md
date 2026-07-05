@@ -159,13 +159,23 @@ Each phase is independently shippable; no big-bang. Effort in focused sessions (
 - Acceptance: `nolan orchestrate <project> --auto` = narrated, sync-exact final.mp4;
   Agents page runs it; the-aeneid reproducible with zero custom scripts.
 
-### Phase 2 — One asset engine (≈1–2 S)
+### Phase 2 — One asset engine (≈1–2 S) — **DONE**
 - Promote segment `AssetResolver` to `nolan/assets/engine.py`; tiers = ClipMatcher →
   imagelib/external (semantic+ingest) → art_sourcing exact-title → stock → generate;
   evoke_broll operators become the query/bridge layer feeding every tier.
 - Director step 4, Studio match, `/scenes` super-search, match_broll_v2 → thin callers.
 - Acceptance: four front doors reduced to one module + adapters; parity test on a
   fixture plan (same or better match rate than each retired path).
+> Shipped as `nolan/asset_engine.py` (a `nolan/assets/` package would shadow the
+> existing `nolan/assets.py` AssetManager). Ladder = motion → art exact-title →
+> footage vector search → library stills (hybrid) → external → generate, with
+> `resolved_source` written uniformly and a lossless `resolve_dicts` adapter.
+> Thin callers: segment resolver (shim; builder's 4 factory dupes deleted),
+> Director select_clips, iterate reresolve. Parity: venezuela 25/25 vs old 8,
+> football 134/134 vs old 16 footage matches; 45 unit tests.
+> Carry-overs → Phase 4: `match_broll_v2._try_library` (vision-gated copy
+> semantics) onto the engine's library tier; merge `nolan/voiceover.py` into
+> `voice_pipeline`; evoke_broll operators as the query layer for every tier.
 
 ### Phase 3 — One renderer story (≈3–4 S, largest) — needs Decision D1/D2
 - Canonical stack: **Remotion blocks library**. Map slide_designer's 22 layout templates

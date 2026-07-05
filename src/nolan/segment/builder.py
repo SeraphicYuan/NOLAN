@@ -88,156 +88,34 @@ class SegmentBuilder:
         assign_timing(scenes, seg.duration)
         return scenes
 
-    def _make_search_fn(self, seg: SegmentInput) -> Optional[Callable]:
-        if self._search_fn:
-            return self._search_fn
-        if not seg.index_db:
-            return None
-        if not Path(seg.index_db).exists():
+    def _resolver(self, seg: SegmentInput) -> AssetResolver:
+        """Build the shared asset engine wired to this segment's backends.
+
+        The tier factories (ClipMatcher search, imagelib stills, external
+        providers, lazy motion authoring) live in `nolan.asset_engine` now —
+        one proven implementation for every pipeline. `search_fn` passed to
+        the builder (tests) overrides the engine's default.
+        """
+        import dataclasses
+
+        from nolan.asset_engine import AssetEngine
+
+        rcfg = dataclasses.replace(self.cfg.resolver, enable_external=self.cfg.enable_external)
+        if seg.index_db and not Path(seg.index_db).exists():
             logger.warning("index_db not found at %s — b-roll scenes will escalate to "
                            "generation/card (no library search).", seg.index_db)
-            return None
-        try:
-            from nolan.indexer import VideoIndex
-            from nolan.vector_search import VectorSearch
-            from nolan.clip_matcher import ClipMatcher
-            vs = VectorSearch(db_path=Path(seg.index_db).parent / "vectors", index=VideoIndex(Path(seg.index_db)))
-            # Pure vector matching (no LLM selection pass) — fast, free, and robust; mirrors
-            # the orchestrator's select_clips step. (The LLM-selection path can return None.)
-            cm = ClipMatcher(vector_search=vs, llm_client=None,
-                             config=getattr(self.nolan_config, "clip_matching", self.nolan_config))
-
-            from .render import _run_async
-
-            def fn(scene):
-                try:
-                    # match_scene is async; the resolver calls this synchronously.
-                    return _run_async(cm.match_scene(scene, project_id=seg.project_id))
-                except Exception:
-                    return None
-            return fn
-        except Exception:
-            return None
-
-    def _make_library_fn(self, seg: SegmentInput) -> Optional[Callable]:
-        """Picture-library still search (CLIP), tried after a segment-search miss.
-
-        Lazy: the CLIP model + libraries load on the first footage scene only.
-        Returns the absolute path of the best hit clearing `library_threshold`.
-        """
-        if not self.cfg.resolver.enable_library:
-            return None
-        state: dict = {}
-
-        def fn(scene):
-            if "libs" not in state:
-                try:
-                    from nolan.imagelib import ClipEmbedder, ImageLibrary
-                    emb = ClipEmbedder()
-                    libs = [ImageLibrary("global", embedder=emb)]
-                    if seg.project_id and (Path("projects") / seg.project_id / "imagelib").exists():
-                        libs.append(ImageLibrary("project", project=seg.project_id, embedder=emb))
-                    state["libs"] = libs
-                except Exception:
-                    state["libs"] = []
-            libs = state["libs"]
-            if not libs:
-                return None
-            q = (getattr(scene, "search_query", "") or scene.visual_description
-                 or getattr(scene, "narration_excerpt", "") or "")
-            if not q:
-                return None
-            best = None
-            for lib in libs:
-                try:
-                    for h in lib.search(q, k=3):
-                        if best is None or h.score > best[1]:
-                            best = (str(lib.abs_path(h.asset)), h.score)
-                except Exception:
-                    pass
-            if best and best[1] >= self.cfg.resolver.library_threshold:
-                return best[0]
-            return None
-        return fn
-
-    def _make_external_fn(self, seg: SegmentInput) -> Optional[Callable]:
-        """External stock/archival provider search (P2), tried after library miss.
-
-        Shares match-broll's finder (`external_assets.external_match_for_scene`):
-        provider search → quality pre-filter → vision score → attach video clip by
-        reference / download image. Lazy: client + scorer build on first footage miss.
-        """
-        if not self.cfg.enable_external:
-            return None
-        state: dict = {}
-
-        def fn(scene):
-            if "client" not in state:
-                try:
-                    from nolan.image_search import ImageScorer, ImageSearchClient
-                    from nolan.cli_legacy import _scoring_vision_config
-                    cfg = self.nolan_config
-                    img = getattr(cfg, "image_sources", None)
-                    client = ImageSearchClient(
-                        pexels_api_key=getattr(img, "pexels_api_key", None),
-                        pixabay_api_key=getattr(img, "pixabay_api_key", None),
-                        smithsonian_api_key=getattr(img, "smithsonian_api_key", None),
-                        keys=img.provider_keys() if img and hasattr(img, "provider_keys") else None,
-                    )
-                    sv = _scoring_vision_config(cfg, "openrouter")
-                    sv["model"] = "qwen/qwen3-vl-8b-instruct"
-                    state["client"] = client
-                    state["scorer"] = ImageScorer(vision_provider="openrouter", vision_config=sv)
-                    state["vid"] = client.video_providers()
-                except Exception:
-                    state["client"] = None
-            if not state.get("client"):
-                return None
-            from nolan.external_assets import external_match_for_scene
-            out_dir = Path(self.cfg.out_dir) / "assets" / "broll"
-            try:
-                # Images, not video: the segment pipeline has no materialize step, so
-                # downloaded stills (matched_asset → assemble) are render-ready whereas
-                # external video clips (by reference) would need trimming first.
-                return external_match_for_scene(
-                    scene, client=state["client"], scorer=state["scorer"],
-                    vid_sources=state["vid"], out_dir=out_dir, project_root=Path(self.cfg.out_dir),
-                    prefer_video=False, gate=4)
-            except Exception:
-                return None
-        return fn
-
-    def _make_motion_fn(self, seg: SegmentInput) -> Optional[Callable]:
-        """Lazy motion authoring: graphic/text/data scene with no motion_spec ->
-        compile one from its visual intent via the nolan.motion spec system.
-
-        Replaces the eager design-stage `author_motion` pass — runs only for scenes
-        that actually reach the resolver's motion branch.
-        """
-        if self.llm is None:
-            return None
-        from nolan.motion import compile_spec
-        from .render import _run_async
-
-        def fn(scene):
-            brief = (getattr(scene, "visual_description", "") or
-                     getattr(scene, "narration_excerpt", "") or "").strip()
-            if not brief:
-                return None
-            try:
-                spec, _errors = _run_async(compile_spec(brief, self.llm))
-            except Exception:
-                return None
-            return spec if spec.get("backend") else None
-        return fn
-
-    def _resolver(self, seg: SegmentInput) -> AssetResolver:
-        import dataclasses
-        rcfg = dataclasses.replace(self.cfg.resolver, enable_external=self.cfg.enable_external)
-        return AssetResolver(rcfg, search_fn=self._make_search_fn(seg),
-                             library_fn=self._make_library_fn(seg),
-                             external_fn=self._make_external_fn(seg),
-                             motion_fn=self._make_motion_fn(seg))
+        engine = AssetEngine.from_config(
+            self.nolan_config, config=rcfg,
+            project_path=Path(self.cfg.out_dir),
+            index_db=Path(seg.index_db) if seg.index_db else None,
+            project_id=seg.project_id, llm_client=self.llm)
+        if not seg.index_db:
+            # No segment index -> no clip search (from_config would otherwise
+            # fall back to the global index, which is Director semantics).
+            engine.search_fn = None
+        if self._search_fn:
+            engine.search_fn = self._search_fn
+        return engine
 
     def _resolve(self, scenes, seg: SegmentInput) -> dict:
         return self._resolver(seg).resolve_all(scenes)
