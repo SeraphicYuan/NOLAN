@@ -85,7 +85,20 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         if not p.is_absolute():
             p = project_path / asset
         if p.exists():
-            return "ArtworkStage", {"src": str(p)}
+            # ArtworkStage's camera is keyframed ONLY by focus regions — with
+            # none it holds a static frame. Synthesize a centered focus scaled
+            # by the scene's authored energy (higher energy → tighter push) so
+            # every still gets the establish → glide → pull-back move.
+            energy = 0.5
+            try:
+                energy = float(scene.get("energy") or 0.5)
+            except (TypeError, ValueError):
+                pass
+            side = max(0.45, min(0.8, 0.78 - 0.35 * energy))
+            focus = {"word": "", "x": round((1 - side) / 2, 3),
+                     "y": round((1 - side) / 2, 3),
+                     "w": side, "h": side}
+            return "ArtworkStage", {"src": str(p), "focuses": [focus]}
 
     raise PremiumIneligible(
         f"scene {scene.get('id')} ({scene.get('visual_type')}) has no "
