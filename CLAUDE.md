@@ -1,323 +1,109 @@
-# Directory Restrictions
-- NEVER read, write, edit, or create files outside the current project directory
-- NEVER use absolute paths that reference locations outside this folder
-- All paths must be relative to the project root or within its subdirectories
-- If a task requires accessing external files, ask for permission first
-
-You can also combine it with bash restrictions:
-
-# Workspace Boundaries
-Stay within D:\ClaudeProjects\NOLAN and its subdirectories only.
-- Do not access parent directories (no `../` paths leading outside the project)
-- Do not use absolute paths to system directories
-- All bash commands must operate within the project folder
-
-# Python Environment Rules
-- This project uses a Conda environment named `nolan`.
-- Always use the python binary located at: `D:\env\nolan\python.exe`
-- Always use pip from: `D:\env\nolan\Scripts\pip.exe`
-- Do not use system python or create a new .venv folder.
-
-# Documentation Rules
-After completing any new feature, update the corresponding documentation:
-- Default update goes to "IMPLEMENTATION_STATUS.md"
-- If there's no corresponding documentation (*.md), create it when necessary
-- Keep updates concise: what changed, usage example, benefits
-
-# Tool Permissions
-- Before asking for user approval on any tool use, check `.claude/settings.local.json` first
-- If the command pattern is listed in the `permissions.allow` array, proceed without asking
-- Only ask for approval if the command is NOT covered by existing permissions
-
-# Claude Domaine
-- Strictly stay within this folder
-
-# Notification Rule
-- When requiring user approval for any action, play a notification sound first
-- Use PowerShell to play a 3-tone ascending sound: `powershell -c "[console]::beep(1000,200); [console]::beep(1200,200); [console]::beep(1500,300)"`
-- This helps alert the user that attention is needed
-
-# Project Defaults
-- Default Gemini model: `gemini-3-flash-preview`
-
-# Quality Assurance Protocol
-After completing any task, follow this self-review loop:
-
-1. **Verify the result** - Actually test/run/check the output of your work
-2. **Identify issues** - Look for bugs, edge cases, missing functionality, or room for improvement
-3. **Fix and iterate** - If issues found, fix them immediately
-4. **Repeat** - Continue the loop until satisfied that:
-   - The code works correctly (tests pass, no errors)
-   - The output meets the user's stated purpose
-   - The implementation aligns with project goals (HERMES: reliable information aggregation)
-   - No obvious improvements remain
-
-**Do not** mark work as complete or report success until this loop is satisfied.
-**Do not** wait for user to find bugs - proactively catch them yourself.
-
-Examples of what to check:
-- Run the code and verify output makes sense
-- Check edge cases (empty input, missing data, errors)
-- Review generated files for correctness
-- Test the user-facing experience end-to-end
-- Compare actual vs expected behavior
-
-# Code Review Protocol (Karpathy-Inspired)
-
-Before writing or modifying code, apply these four principles:
-
-## 1. Think Before Coding
-**No silent assumptions. Explicit reasoning only.**
-
-- State uncertainties clearly - don't guess
-- When ambiguity exists, present options and ask
-- Question your approach if simpler alternatives exist
-- If confused, ask for clarification before proceeding
-
-**Bad:** Silently assume the user wants async when they said "fetch"
-**Good:** "Should this be sync or async? The current codebase uses X pattern."
-
-## 2. Simplicity First
-**Minimal, focused solutions. YAGNI ruthlessly.**
-
-- Implement ONLY what was requested
-- Avoid abstractions unless used 3+ times
-- Skip error handling for impossible scenarios
-- Target 50 lines over 200 lines when both work
-- No speculative features ("might need later")
-
-**Bad:** Create AbstractFetcherFactory for one RSS fetcher
-**Good:** Simple RSSFetcher class, refactor when needed
-
-## 3. Surgical Changes
-**Touch only what's necessary. Leave everything else alone.**
-
-- Modify only code directly related to the request
-- Don't refactor working code while fixing bugs
-- Preserve existing style (quotes, indentation, naming)
-- Don't "improve" unrelated code you happen to see
-- Remove only imports/variables YOUR changes made obsolete
-
-**Bad:** While fixing a bug, also reformat the file and rename variables
-**Good:** Fix the bug. Period.
-
-## 4. Goal-Driven Execution
-**Define success criteria before coding.**
-
-Transform vague requests into testable goals:
-- "Add validation" → "Write test for invalid input, make it pass"
-- "Improve performance" → "Reduce response time from X to Y ms"
-- "Fix the bug" → "Reproduce with test, verify test fails, fix, verify passes"
-
-**Every task should end with verification:**
-```
-1. What does "done" look like?
-2. How will I verify it works?
-3. Run verification before reporting success
-```
-
-## Code Review Checklist
-
-When reviewing your own code (or receiving review), check:
-
-| Category | Question |
-|----------|----------|
-| **Assumptions** | Did I make any silent assumptions? Should I have asked? |
-| **Scope** | Did I change only what was requested? Any scope creep? |
-| **Simplicity** | Is there a simpler way? Can I delete code and still pass? |
-| **Side Effects** | Did I touch unrelated code, comments, or formatting? |
-| **Verification** | Did I actually run and test this? Evidence? |
-| **Style** | Does it match surrounding code conventions? |
-
-## When to Apply Rigor
-
-**Full rigor (all 4 principles):**
-- New features
-- Bug fixes
-- Refactoring
-- Multi-file changes
-
-**Light touch (common sense):**
-- Typo fixes
-- Single-line obvious changes
-- Config value updates
-
-# Examples Folder
-
-The `examples/` folder showcases NOLAN's capabilities with self-contained, runnable scripts.
-
-## Purpose
-- Demonstrate individual features and modules
-- Provide copy-paste starting points for users
-- Test that core functionality works end-to-end
-
-## Naming Convention
-```
-examples/
-├── 01_youtube_download.py      # Basic: download a video
-├── 02_transcription.py         # Basic: transcribe audio
-├── 03_frame_sampling.py        # Basic: extract frames
-├── 04_vision_analysis.py       # Analyze frames with Gemini
-├── 05_full_indexing.py         # Complete hybrid indexing
-├── render_quote.py             # Render a quote effect
-├── render_counter.py           # Render a stat counter
-├── render_with_layout.py       # Use layout system
-├── pipeline_essay_video.py     # Full essay-to-video pipeline
-└── README.md                   # Index of all examples
-```
-
-Use numbered prefixes (`01_`, `02_`) for learning progressions. Use descriptive names for standalone demos.
-
-## Example Structure
-Each example should:
-1. **Be self-contained** - Run independently with minimal setup
-2. **Include docstring** - Explain what it demonstrates
-3. **Use hardcoded test data** - No external dependencies
-4. **Print clear output** - Show what's happening
-5. **Handle errors gracefully** - Useful error messages
-
-Template:
-```python
-"""Example: [Feature Name]
-
-Demonstrates how to use [module/feature] for [use case].
-
-Usage:
-    python examples/example_name.py
-
-Output:
-    [Describe expected output]
-"""
-
-from pathlib import Path
-from src.nolan.module import Feature
-
-def main():
-    # Example code here
-    print("Result:", result)
-
-if __name__ == "__main__":
-    main()
-```
-
-## When to Create Examples
-- After implementing a new feature
-- When a module's usage isn't obvious from the API
-- When users ask "how do I use X?"
-
-## Updating Examples
-- If a module API changes, update its example
-- Run examples after major refactors to verify they work
-
-# Video Analysis Workflow
-
-**Trigger words:** "analyze video", "video analysis", "study this video", "what techniques"
-
-When the user wants to analyze a video (for text overlays, visual effects, techniques, etc.):
-
-## 1. Create Project Folder
-
-```
-video_analysis/
-├── <project_slug>/           # Use descriptive name (e.g., "adlerian_selfhelp")
-│   ├── source/               # Downloaded video + subtitles
-│   ├── frames/               # Extracted frames (if needed)
-│   ├── analyze.py            # Analysis script
-│   ├── index.db              # SQLite segment database
-│   ├── findings.md           # Key insights and results
-│   └── techniques.json       # Raw extracted data
-```
-
-## 2. Analysis Pipeline
-
-Use NOLAN's built-in video analysis tools:
-
-```python
-from src.nolan.youtube import YouTubeClient
-from src.nolan.indexer import VideoIndex, HybridVideoIndexer
-from src.nolan.vision import create_vision_provider, VisionConfig
-from src.nolan.sampler import FFmpegSceneSampler
-from src.nolan.whisper import WhisperTranscriber, WhisperConfig
-
-# 1. Download video
-client = YouTubeClient(output_dir=Path("source"))
-result = client.download(url)
-
-# 2. Create indexer with frame analysis
-index = VideoIndex(Path("index.db"))
-vision = create_vision_provider(VisionConfig(provider="gemini"))
-sampler = FFmpegSceneSampler(min_interval=2.0, max_interval=10.0)
-whisper = WhisperTranscriber(WhisperConfig(model_size="base"))
-
-indexer = HybridVideoIndexer(
-    vision_provider=vision,
-    index=index,
-    sampler=sampler,
-    whisper_transcriber=whisper,
-    enable_transcript=True,
-    enable_inference=True
-)
-
-# 3. Run indexing
-segment_count = await indexer.index_video(video_path)
-
-# 4. Query segments
-segments = index.get_segments(str(video_path))
-```
-
-## 3. Generate findings.md
-
-Include in findings:
-- **Video Info**: URL, title, duration, segments analyzed
-- **Summary**: Key findings in numbered list
-- **Techniques Detected**: Tables with timestamps and descriptions
-  - Text overlays
-  - Visual effects
-  - Color schemes
-  - Layout patterns
-- **NOLAN Templates**: Which existing templates can be used
-- **New Templates Needed**: Patterns that need new implementations
-
-## 4. Look For
-
-When analyzing videos for techniques:
-- **Text Cards**: Quote presentations, key statements
-- **Annotations**: Underlines, highlights, circles, arrows
-- **Transitions**: Fades, slides, zooms
-- **Data Visualization**: Stats, percentages, comparisons
-- **Typography**: Font choices, animations, timing
-- **Color Usage**: Mood, emphasis, branding
-- **Layout Patterns**: Lower thirds, full-screen, split-screen
-
-## 5. Promoting Techniques to NOLAN
-
-When implementing a technique discovered from video analysis:
-
-1. **Create the template/effect** in `src/nolan/renderer/scenes/` or `effects.py`
-2. **Add tests** in `scripts/test_<template_name>.py`
-3. **Update findings.md** with a "Promoted to NOLAN" section:
-
-```markdown
-## Promoted to NOLAN
-
-| Technique | Template/Effect | File | Date |
-|-----------|-----------------|------|------|
-| Portrait slide + reveal | `portrait_reveal` | `scenes/portrait_reveal.py` | 2026-02-01 |
-| Position animation | `MoveTo` effect | `effects.py` | 2026-02-01 |
-```
-
-4. **Update IMPLEMENTATION_STATUS.md** with the new template count
-
-This creates a traceable link between video analysis insights and implemented features.
-
-## Module Reference
-
-| Module | What it does |
-|--------|--------------|
-| `youtube.py` | Download videos, get metadata |
-| `sampler.py` | Frame extraction strategies (FFmpeg-based) |
-| `whisper.py` | Speech-to-text transcription |
-| `vision.py` | Frame analysis (Gemini/Ollama) |
-| `indexer.py` | SQLite segment storage, project management |
-| `vector_search.py` | Semantic search across segments |
-| `clustering.py` | Scene grouping and story boundaries |
+# CLAUDE.md — NOLAN operating manual
+
+This file is loaded into EVERY session. It is the contract; details live in
+the linked docs. Radically updated 2026-07-05 after the architecture
+consolidation.
+
+## What NOLAN is
+
+Automate video-essay making: **script → authored plan → asset/motion/effect/
+words/charts/tempo/voiceover matching → render**, with the human in the loop
+at any artifact they choose to edit. Target: high-quality YouTube video
+essays across topics and styles.
+
+- `ARCHITECTURE.md` — the living map of the system (read it before touching
+  pipeline/engine code; update it when a contract changes).
+- `/map` on the hub (port 8011) — the LIVE introspected catalog: spine,
+  organs, labs, skills, surfaces, health. `docs/SOTA_ROADMAP.md` — the craft
+  roadmap. `IMPLEMENTATION_STATUS.md` — the change journal.
+
+## The taxonomy (place new code deliberately)
+
+- **SPINE** — the 10 Director steps (`orchestrator/director.py`
+  PIPELINE_STEPS). Ordered, checkpointed, artifact-producing, resumable.
+- **ORGANS** — engines steps call (asset_engine, voice_pipeline, audio_mix,
+  layout_blocks, premium_render, motion/, render_dispatch, …). Standalone
+  modules, no UI, injectable tiers, honest failures.
+- **LABS** — human exploration tools that FEED artifacts (script/video
+  styles, deconstruct, clips→motion promotion, broll lab, library/ingest).
+  Labs never write pipeline artifacts except through explicit handoffs.
+- **SKILLS + AGENTS** — the hybrid half (see policy below). Skills are the
+  typed registry in `skills/index.json`; agents are the tmux fleet
+  (nolan1–6) dispatched for open-ended work.
+
+## Capability routing policy (apply to every new feature)
+
+- **Deterministic code** where correctness is computable: timing, mixing,
+  gating, matching thresholds, assembly, contracts.
+- **LLM API calls** (qwen via OpenRouter etc.) for cheap structured
+  judgment: bridging, scoring, describing, classification.
+- **Agent + skill** for open-ended synthesis and taste: script voice, scene
+  design, effect design, refinement from human comments.
+- **The agent contract:** an agent's output is a PROPOSAL artifact that
+  passes a deterministic gate before becoming canonical (draft → validate →
+  accept). Never give agents side-doors into canonical artifacts.
+- Agent-authored artifacts carry provenance: skill@version, agent, model,
+  date, input reference.
+
+## Non-negotiable invariants
+
+- **scene_plan.json is lossless** (schema v2): unknown keys survive every
+  round-trip (Scene.extra / ScenePlan.meta). Never strip what you don't know.
+- **Narration owns duration**: per-section VO wavs
+  (assets/voiceover/_work/sec_*.wav) are THE beat anchors; video ≡ narration.
+- **Failures are loud**: non-zero exits, error states in step history, no
+  silent caps, no rc-0-on-failure. If a feature bounds coverage, it reports
+  what it dropped.
+- **Verify like an editor**: after rendering anything, extract frames and
+  LOOK at them; after audio work, measure it (band RMS, duration deltas).
+
+## Environment
+
+- Conda env `nolan`: python `D:\env\nolan\python.exe`, pip
+  `D:\env\nolan\Scripts\pip.exe`. No system python, no new venvs.
+- **Always `python -X utf8`** — cp1252 crashes corrupt scene detection and
+  break → · characters.
+- Stay inside `D:\ClaudeProjects\NOLAN`. Ask before touching anything
+  outside.
+- Ports: hub 8011 (NEVER 8001 — SPARTA owns it), render-service 3010,
+  ComfyUI 8080 (Windows-only reachable). Hub restart: find the python.exe
+  PID on 127.0.0.1:8011 via netstat, taskkill it (NEVER the tailscaled PID
+  also on 8011), relaunch `D:\tmp\start_hub.cmd` detached.
+- Node (render-service) runs Windows-side; render.mjs/still.mjs bundle per
+  invocation — TSX edits take effect on the next render, no build step.
+  stage.mjs needs ABSOLUTE media paths (node CWD = render-service/).
+- Default Gemini model: `gemini-3-flash-preview`.
+
+## Working discipline
+
+- **Concurrent agents share this tree.** Before staging: check `git status`
+  and per-file hunk maps; stage ONLY your hunks (surgical `git apply
+  --cached` with a hunk filter when a file is shared). Never `git add -A`.
+  Commit to master; no branches. Land or leave others' WIP explicitly —
+  never mix it silently into your commits.
+- **CRLF files exist** (cli_legacy shim history, IMPLEMENTATION_STATUS.md,
+  webui/operations.py, some templates/skills). Edit with the Edit tool, or
+  in python read with `newline=''`, preserve `\r\n` on write. Check with
+  `file` before scripted edits.
+- **Think before coding; simplicity first; surgical changes; goal-driven
+  execution** (state "done" criteria up front; verify before reporting).
+  Full rigor for features/fixes/refactors; light touch for typos/configs.
+- **QA loop**: run it, look at the output, fix, repeat. Do not report
+  success without evidence. Tests to run by area: `scripts/test_e2e_smoke.py`
+  (render/assemble chain — THE net), `scripts/test_director_steps.py`
+  (pipeline sequencing), `tests/` pytest suites per module (asset engine,
+  premium, audio_mix, budgets, system_map honesty, hub_*). The full
+  `tests/` suite runs clean (~3 min).
+- **UI wiring discipline**: every control states which artifact field it
+  writes and which consumer reads it — a control that can't answer that gets
+  removed. UI edit grammar: artifact → view → edit → show what re-runs →
+  re-run.
+- Update docs after features: IMPLEMENTATION_STATUS.md entry (CRLF!),
+  ARCHITECTURE.md if a contract changed.
+
+## Notification rule
+
+Before asking for user approval on any action, play the alert:
+`powershell -c "[console]::beep(1000,200); [console]::beep(1200,200); [console]::beep(1500,300)"`
+Check `.claude/settings.local.json` permissions first; only ask if not
+covered.
