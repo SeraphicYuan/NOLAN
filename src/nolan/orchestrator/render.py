@@ -357,8 +357,12 @@ def annotate_scene_plan(
 ) -> tuple[float, int]:
     """Apply rendered_clip + start_seconds/end_seconds onto scene_plan in place.
 
-    Timecodes are derived from the existing `start` and `duration` fields so
-    `nolan assemble` can place each clip on the timeline.
+    Beat-aligned windows are the timing authority: scenes that already carry
+    a valid start/end keep it VERBATIM (re-tiling them from planner durations
+    is what once stretched an aligned beat from 76.5s to 127.5s). Only scenes
+    WITHOUT a valid window are placed after their predecessor using the
+    planner's duration estimate — so unaligned plans still tile sequentially
+    from 0, exactly as before.
 
     Returns (total_seconds, rendered_count).
     """
@@ -377,12 +381,12 @@ def annotate_scene_plan(
                 rendered += 1
             _ss, _es = scene.get("start_seconds"), scene.get("end_seconds")
             if _ss is not None and _es is not None and float(_es) > float(_ss):
-                duration = float(_es) - float(_ss)   # keep aligned duration
+                cursor = max(cursor, float(_es))     # aligned window kept as-is
             else:
                 duration = parse_duration(scene.get("duration", "5s"))
-            scene["start_seconds"] = cursor
-            scene["end_seconds"] = cursor + duration
-            cursor += duration
+                scene["start_seconds"] = cursor
+                scene["end_seconds"] = cursor + duration
+                cursor += duration
     return cursor, rendered
 
 

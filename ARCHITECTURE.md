@@ -131,8 +131,4 @@ alignment (body dedup pending).
   needs state-to-dependency conversion; dedicated session).
 - URL convention normalization (4 conventions in the wild; alias-then-remove).
 - `voiceover.py` ↔ `voice_pipeline.py` body dedup; `match_broll_v2._try_library`
-  onto the engine's library tier; evoke_broll operators as the retrieval query
-  layer for every engine tier.
-- `annotate_scene_plan` re-tiles windows from planner durations when aligned
-  windows are absent — premium mode is immune; standard mode is capped by
-  audio at assemble, but the re-tiling should be removed.
+  onto the engine's library tier.
