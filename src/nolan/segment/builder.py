@@ -169,16 +169,23 @@ class SegmentBuilder:
         return out
 
     def _mix_music(self, video: Path, music: Path, out: Path) -> Path:
-        """P3: duck a music bed under the existing VO."""
-        import imageio_ffmpeg
-        ff = imageio_ffmpeg.get_ffmpeg_exe()
-        cmd = [ff, "-y", "-i", str(video), "-i", str(music),
-               "-filter_complex",
-               f"[1:a]volume={self.cfg.music_gain}[m];[0:a][m]amix=inputs=2:duration=first:dropout_transition=2[a]",
-               "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-shortest",
-               "-loglevel", "error", str(out)]
-        subprocess.run(cmd, check=True, capture_output=True)
-        return out
+        """Duck a music bed under the existing VO (shared sound-design stage).
+
+        Was a constant-gain amix; now the real sidechain mix + transition sfx
+        from nolan.audio_mix — one soundtrack implementation everywhere.
+        """
+        import json as _json
+        import math
+
+        from nolan.audio_mix import mix_soundtrack
+        plan_path = self.cfg.out_dir / "scene_plan.json"
+        try:
+            plan = _json.loads(plan_path.read_text(encoding="utf-8"))
+        except Exception:
+            plan = {"sections": {}}
+        gain_db = 20 * math.log10(max(1e-4, float(self.cfg.music_gain)))
+        return mix_soundtrack(video, plan, out, music=music,
+                              music_gain_db=gain_db)
 
     def _save_plan(self, scenes, seg: SegmentInput) -> Path:
         ScenePlan(sections={"segment": scenes}).save(str(self.cfg.out_dir / "scene_plan.json"))

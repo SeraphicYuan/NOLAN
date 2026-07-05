@@ -426,6 +426,26 @@ class Director:
                     count += 1
         return count
 
+    def _mix_soundtrack_if_configured(self, final: Path, scene_plan: dict) -> str:
+        """Run the sound-design mix when project.yaml opts in. Returns a note.
+
+        The mix enhances a finished cut; a failure is reported loudly in the
+        step notes but never destroys the (already correct) narrated video.
+        """
+        from nolan.audio_mix import mix_soundtrack, resolve_music_config
+
+        cfg = resolve_music_config(self.project_path)
+        if not cfg["enabled"]:
+            return ""
+        try:
+            mix_soundtrack(final, scene_plan, music=cfg["music"],
+                           music_gain_db=cfg["gain"], sfx=cfg["sfx"],
+                           mood=cfg["mood"])
+            return " + music/sfx soundtrack"
+        except Exception as exc:
+            logger.warning("soundtrack mix failed: %s", exc)
+            return f" (soundtrack mix FAILED: {exc})"
+
     def _generated_scenes_missing_asset(self) -> int:
         """Count 'generated' scenes whose ComfyUI image doesn't exist yet."""
         plan_path = self.project_path / "scene_plan.json"
@@ -1305,6 +1325,7 @@ class Director:
             size_mb = final.stat().st_size / (1024 * 1024)
             note = (f"premium render: {len(scene_plan.get('sections') or {})} "
                     f"beat Chapters -> {final.name} ({size_mb:.1f} MB)")
+            note += self._mix_soundtrack_if_configured(final, scene_plan)
             state_mod.finish_step(record, status="completed", notes=note)
             state.status = "awaiting_review"
             state_mod.save_state(self.project_path, state)
@@ -1381,6 +1402,11 @@ class Director:
             state.status = "error"
             state_mod.save_state(self.project_path, state)
             raise DirectorError(err) from exc
+
+        # 4b. Sound design (project.yaml `music:`): ducked music bed +
+        # transition sfx laid under the finished cut, in place.
+        audio_note += self._mix_soundtrack_if_configured(
+            final_video_path, scene_plan)
 
         # 5. Write the report + snapshot.
         report_body = render_mod.render_summary_report(outcomes, total_duration)
