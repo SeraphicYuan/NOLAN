@@ -86,8 +86,10 @@ def _step_words(section_words: List[Dict[str, Any]], start_s: float,
     """(words, revealFrames) for one step spanning [start_s, end_s) of its section.
 
     Words become step-relative frames. Reveal cues: primary content lands on
-    the FIRST spoken word of the step; the secondary line (attribution/
-    definition/closer per block) cues ~60% through the step's words.
+    the FIRST spoken word — but capped at ~0.4s, because scene boundaries sit
+    on speech pauses and a step whose narration starts with a breath would
+    otherwise hold an empty card. The secondary line (attribution/definition/
+    closer per block) stays truly word-synced at ~60% through the step's words.
     """
     words = []
     for w in section_words:
@@ -98,8 +100,9 @@ def _step_words(section_words: List[Dict[str, Any]], start_s: float,
         words.append({"text": w["text"], "startFrame": f0, "endFrame": f1})
     if not words:
         return [], []
+    primary = min(words[0]["startFrame"], int(round(fps * 0.4)))
     second = words[min(len(words) - 1, int(len(words) * 0.6))]["startFrame"]
-    return words, [words[0]["startFrame"], second]
+    return words, [primary, max(second, primary)]
 
 
 def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,

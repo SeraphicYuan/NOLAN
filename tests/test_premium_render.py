@@ -99,7 +99,7 @@ def test_section_job_carries_words_and_reveals(tmp_path):
                             section_words=words)
     step = job["props"]["steps"][0]
     assert step["words"] == [{"text": "hello", "startFrame": 15, "endFrame": 27}]
-    assert step["revealFrames"] == [15, 15]
+    assert step["revealFrames"] == [12, 15]     # primary capped at 0.4s
 
 
 # --- still-motion vocabulary ---------------------------------------------------
@@ -132,3 +132,13 @@ def test_still_motion_honors_stamped_direction():
 def test_still_motion_alternates_lanes_by_ordinal():
     xs = [_still_motion_props({}, ordinal=i)["focuses"][0]["x"] for i in range(3)]
     assert len(set(xs)) == 3                    # center / left / right
+
+
+def test_primary_reveal_capped_for_late_first_word():
+    # narration starts 2s into the step (pause at the boundary) — the card
+    # must not hold empty: primary reveal capped at 0.4s, secondary stays
+    # on the spoken word.
+    words = [{"t0": 2.0, "t1": 2.4, "text": "late"}]
+    ws, reveals = _step_words(words, 0.0, 4.0, fps=30, frames=120)
+    assert ws[0]["startFrame"] == 60
+    assert reveals == [12, 60]
