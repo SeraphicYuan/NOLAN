@@ -103,7 +103,7 @@ def _step_words(section_words: List[Dict[str, Any]], start_s: float,
 
 
 def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
-                duration_s: float) -> Tuple[str, Dict[str, Any]]:
+                duration_s: float, ordinal: int = 0) -> Tuple[str, Dict[str, Any]]:
     """(block, props) for a scene, or raise PremiumIneligible."""
     from nolan.layout_blocks import adapt
 
@@ -127,24 +127,49 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         if not p.is_absolute():
             p = project_path / asset
         if p.exists():
-            # ArtworkStage's camera is keyframed ONLY by focus regions — with
-            # none it holds a static frame. Synthesize a centered focus scaled
-            # by the scene's authored energy (higher energy → tighter push) so
-            # every still gets the establish → glide → pull-back move.
-            energy = 0.5
-            try:
-                energy = float(scene.get("energy") or 0.5)
-            except (TypeError, ValueError):
-                pass
-            side = max(0.45, min(0.8, 0.78 - 0.35 * energy))
-            focus = {"word": "", "x": round((1 - side) / 2, 3),
-                     "y": round((1 - side) / 2, 3),
-                     "w": side, "h": side}
-            return "ArtworkStage", {"src": str(p), "focuses": [focus]}
+            props = {"src": str(p)}
+            props.update(_still_motion_props(scene, ordinal))
+            return "ArtworkStage", props
 
     raise PremiumIneligible(
         f"scene {scene.get('id')} ({scene.get('visual_type')}) has no "
         "Chapter-block mapping (needs layout_spec or a still asset)")
+
+
+def _still_motion_props(scene: Dict[str, Any], ordinal: int = 0) -> Dict[str, Any]:
+    """Camera-tour props for a still, from the scene's authored tempo.
+
+    ArtworkStage keyframes its camera ONLY from focus regions — this is where
+    the treatment vocabulary lands: energy sets zoom tightness, motion_speed
+    sets glide/hold pacing, and placement honors a stamped still-motion
+    direction (else alternates center/left/right by ordinal so consecutive
+    stills don't all push the same way).
+    """
+    energy = 0.5
+    try:
+        energy = float(scene.get("energy") or 0.5)
+    except (TypeError, ValueError):
+        pass
+    speed = str(scene.get("motion_speed") or "medium").lower()
+
+    side = max(0.45, min(0.8, 0.78 - 0.35 * energy))
+    ms = scene.get("motion_spec") or {}
+    direction = ((ms.get("content") or {}).get("direction")
+                 or ms.get("direction") or "")
+    if direction == "left":
+        x = 0.06
+    elif direction == "right":
+        x = 1 - side - 0.06
+    else:
+        lane = ordinal % 3
+        x = {0: (1 - side) / 2, 1: 0.08, 2: 1 - side - 0.08}[lane]
+    y = (1 - side) / 2
+
+    glide = {"slow": 34, "medium": 26, "fast": 18}.get(speed, 26)
+    intro = {"slow": 48, "medium": 40, "fast": 26}.get(speed, 40)
+    return {"focuses": [{"word": "", "x": round(x, 3), "y": round(y, 3),
+                         "w": side, "h": side}],
+            "glide": glide, "introHold": intro}
 
 
 def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
@@ -179,7 +204,8 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
     for scene, f1 in zip(scenes, bounds):
         frames = max(f1 - f_prev, 2)
         dur = frames / fps
-        block, props = _scene_step(scene, project_path, fps, dur)
+        block, props = _scene_step(scene, project_path, fps, dur,
+                                   ordinal=len(steps))
         clip_wav = _slice_wav(section_wav, f_prev / fps, dur,
                               work_dir / f"{scene.get('id', 'scene')}.wav")
         words, reveals = _step_words(section_words or [], f_prev / fps,

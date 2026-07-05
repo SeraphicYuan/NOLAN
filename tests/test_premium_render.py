@@ -100,3 +100,35 @@ def test_section_job_carries_words_and_reveals(tmp_path):
     step = job["props"]["steps"][0]
     assert step["words"] == [{"text": "hello", "startFrame": 15, "endFrame": 27}]
     assert step["revealFrames"] == [15, 15]
+
+
+# --- still-motion vocabulary ---------------------------------------------------
+
+from nolan.premium_render import _still_motion_props
+
+
+def test_still_motion_energy_sets_tightness():
+    calm = _still_motion_props({"energy": 0.1})["focuses"][0]
+    tense = _still_motion_props({"energy": 0.9})["focuses"][0]
+    assert tense["w"] < calm["w"]               # higher energy -> tighter push
+
+
+def test_still_motion_speed_sets_pacing():
+    slow = _still_motion_props({"motion_speed": "slow"})
+    fast = _still_motion_props({"motion_speed": "fast"})
+    assert slow["glide"] > fast["glide"]
+    assert slow["introHold"] > fast["introHold"]
+
+
+def test_still_motion_honors_stamped_direction():
+    left = _still_motion_props({"motion_spec": {"content": {"direction": "left"}}})["focuses"][0]
+    right = _still_motion_props({"motion_spec": {"direction": "right"}})["focuses"][0]
+    left_center = left["x"] + left["w"] / 2
+    right_center = right["x"] + right["w"] / 2
+    assert left_center < 0.5 < right_center
+    assert right["x"] + right["w"] > 0.9        # hugs the right edge
+
+
+def test_still_motion_alternates_lanes_by_ordinal():
+    xs = [_still_motion_props({}, ordinal=i)["focuses"][0]["x"] for i in range(3)]
+    assert len(set(xs)) == 3                    # center / left / right
