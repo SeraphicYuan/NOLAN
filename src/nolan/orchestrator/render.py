@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import logging
 import re
 import subprocess
 from dataclasses import dataclass
@@ -156,6 +157,9 @@ def _adapt_special_params(template: str, params: dict) -> dict:
     return out
 
 
+logger = logging.getLogger(__name__)
+
+
 class RenderError(RuntimeError):
     pass
 
@@ -174,15 +178,34 @@ def render_layout(
 ) -> Path | None:
     """Render a text-overlay/graphic scene from its layout_spec.
 
+    Remotion-first (Phase 3): templates render through the curated blocks
+    library via a one-step Chapter job; the legacy Python renderers remain the
+    automatic fallback (and the only path under NOLAN_LEGACY_RENDER=1).
+
     Returns None for `custom` templates or unknown templates — assembly will
     fill those slots with a black frame.
     """
+    import os
+
     spec = scene.get("layout_spec") or {}
     template = spec.get("template")
     if not template:
         return None
     if template == "custom":
         return None
+
+    if os.environ.get("NOLAN_LEGACY_RENDER") != "1":
+        try:
+            from nolan.layout_blocks import render_layout_block
+            clip = render_layout_block(
+                template, spec.get("params") or {}, duration,
+                output_path, fps=fps, scene_id=str(scene.get("id") or ""))
+            if clip:
+                return clip
+        except Exception as exc:
+            logger.warning(
+                "remotion layout render failed for %s (%s) — python fallback: %s",
+                scene.get("id"), template, exc)
 
     registry = _build_renderer_registry()
     cls = registry.get(template)
