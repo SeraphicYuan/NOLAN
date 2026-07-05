@@ -904,3 +904,54 @@ def tile_scene_windows(plan: "ScenePlan", audio_duration: float) -> int:
             n += 1
     return n
 
+
+def anchor_scenes_to_sections(plan: "ScenePlan",
+                              section_durations: "list[float]") -> int:
+    """Beat-anchored sync: confine each section's scenes to its KNOWN audio span.
+
+    When the voiceover is synthesized per-section and concatenated, the section
+    boundaries in the audio are exact (cumulative file durations) — no speech
+    matching involved. Within a section, whisper-aligned starts are kept when
+    they fall inside the span in order; otherwise scene windows are distributed
+    proportionally by narration word count. Scenes then tile the section, so
+    sync error can never propagate across a beat boundary. Returns scenes set.
+    """
+    sections = list(plan.sections.values())
+    if len(sections) != len(section_durations):
+        raise ValueError(f"{len(sections)} plan sections vs "
+                         f"{len(section_durations)} audio sections")
+    n = 0
+    cursor = 0.0
+    for scenes, dur in zip(sections, section_durations):
+        s0, s1 = cursor, cursor + float(dur)
+        cursor = s1
+        if not scenes:
+            continue
+        # keep whisper starts that are usable: inside the span, strictly increasing
+        starts = []
+        last = s0
+        usable = True
+        for sc in scenes:
+            st = sc.start_seconds
+            if st is None or st < last or st >= s1:
+                usable = False
+                break
+            starts.append(float(st))
+            last = float(st)
+        if not usable:
+            # proportional by narration length (words), min 1s per scene
+            words = [max(1, len((sc.narration_excerpt or "").split()))
+                     for sc in scenes]
+            total = float(sum(words))
+            starts, acc = [], s0
+            for w in words:
+                starts.append(acc)
+                acc += (s1 - s0) * (w / total)
+        # tile within the section (first scene owns the leading pause)
+        starts[0] = s0
+        for i, sc in enumerate(scenes):
+            sc.start_seconds = round(starts[i], 3)
+            sc.end_seconds = round(starts[i + 1] if i + 1 < len(scenes) else s1, 3)
+            n += 1
+    return n
+

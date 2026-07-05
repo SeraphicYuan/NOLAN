@@ -2474,16 +2474,31 @@ def align(ctx, scene_plan, audio_file, model, language, save_words):
     # start (last one to audio end) so pauses belong to the preceding scene
     # and total video duration equals the narration.
     try:
-        from nolan.scenes import tile_scene_windows
         import json as _json
         import subprocess as _sp
-        _pr = _sp.run(["ffprobe", "-v", "quiet", "-print_format", "json",
-                       "-show_format", str(audio_file)], capture_output=True, text=True)
-        audio_dur = float(_json.loads(_pr.stdout)["format"]["duration"])
-        tiled = tile_scene_windows(plan, float(audio_dur))
-        click.echo(f"  Tiled {tiled} scene windows to the audio ({audio_dur:.1f}s)")
+        from pathlib import Path as _P
+
+        def _dur(f):
+            _pr = _sp.run(["ffprobe", "-v", "quiet", "-print_format", "json",
+                           "-show_format", str(f)], capture_output=True, text=True)
+            return float(_json.loads(_pr.stdout)["format"]["duration"])
+
+        # Beat-anchored mode: when the VO was synthesized per-section (the
+        # generate-voiceover pipeline keeps _work/sec_NNNN.wav), the section
+        # boundaries in the audio are EXACT — confine each section's scenes
+        # to its span so sync error can never cross a beat boundary.
+        sec_files = sorted(_P(str(audio_file)).parent.glob("_work/sec_*.wav"))
+        if sec_files and len(sec_files) == len(plan.sections):
+            from nolan.scenes import anchor_scenes_to_sections
+            n = anchor_scenes_to_sections(plan, [_dur(f) for f in sec_files])
+            click.echo(f"  Beat-anchored {n} scenes to {len(sec_files)} exact section spans")
+        else:
+            from nolan.scenes import tile_scene_windows
+            audio_dur = _dur(audio_file)
+            tiled = tile_scene_windows(plan, float(audio_dur))
+            click.echo(f"  Tiled {tiled} scene windows to the audio ({audio_dur:.1f}s)")
     except Exception as exc:
-        click.echo(f"  (tiling skipped: {exc})")
+        click.echo(f"  (window tiling skipped: {exc})")
 
     # Save updated plan
     plan.save(str(scene_plan_path))
