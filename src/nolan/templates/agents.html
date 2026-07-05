@@ -300,6 +300,30 @@ body {
     color: var(--text-secondary);
 }
 
+.runlog-block {
+    margin-top: 6px;
+    padding: 14px 16px;
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    max-height: 300px;
+    overflow: auto;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    color: #fca5a5;
+}
+.runlog-block .runlog-label {
+    display: block;
+    color: var(--danger);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 10px;
+    margin-bottom: 6px;
+}
+
 .stream-block {
     margin-top: 16px;
     background: var(--bg-primary);
@@ -393,6 +417,27 @@ button:hover { background: var(--accent); border-color: var(--accent); }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 button.primary { background: var(--accent); border-color: var(--accent); }
 button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+.output-link { color: var(--accent-hover); text-decoration: none; font-weight: 600; }
+.output-link:hover { text-decoration: underline; }
+
+.fb-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--bg-tertiary);
+    font-size: 13px;
+}
+.fb-item:last-child { border-bottom: none; }
+.fb-name { font-family: ui-monospace, monospace; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.fb-badge.consumed { background: rgba(34, 197, 94, 0.16); color: #86efac; }
+.fb-badge.pending { background: rgba(245, 158, 11, 0.18); color: var(--warning); }
+.fb-time { color: var(--text-muted); font-size: 11px; font-family: ui-monospace, monospace; }
+.fb-del { padding: 2px 9px; font-size: 12px; background: transparent; border: 1px solid var(--bg-tertiary); color: var(--text-muted); border-radius: 6px; }
+.fb-del:hover { border-color: var(--danger); color: var(--danger); background: transparent; }
 
 .feedback-box { margin-top: 12px; }
 .feedback-box textarea {
@@ -508,6 +553,18 @@ async function fetchCheckpoint(slug) {
 
 async function fetchStream(slug) {
     const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/stream`);
+    if (!res.ok) return null;
+    return await res.json();
+}
+
+async function fetchPlan(slug) {
+    const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/plan`);
+    if (!res.ok) return null;
+    return await res.json();
+}
+
+async function fetchRunLog(slug) {
+    const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/runlog`);
     if (!res.ok) return null;
     return await res.json();
 }
@@ -811,13 +868,139 @@ function renderPipeline(pipeline) {
     return `<div class="row"><div class="label">Pipeline</div><div class="value"><div class="pipeline-strip">${chips}</div></div></div>`;
 }
 
-function renderProject(p, checkpointBody, streamData) {
+// Read-only inline viewer for the authored plan (style_guide.md + scene_plan.json summary).
+function renderPlanPanel(slug, plan) {
+    if (!plan || (!plan.has_plan && !plan.has_style_guide)) return '';
+    const panelId = `plan-${slug}`;
+    const styleHtml = plan.style_guide
+        ? `<div class="artifact-file">
+             <div class="artifact-header"><span class="artifact-name">style_guide.md</span></div>
+             <div class="artifact-body markdown">${renderMarkdown(plan.style_guide)}</div>
+           </div>`
+        : '';
+    const sectionsHtml = (plan.sections || []).map(sec => {
+        const rows = sec.scenes.map(sc => `
+            <tr>
+                <td><code>${escapeHtml(sc.id || '')}</code></td>
+                <td>${escapeHtml(sc.visual_type || '')}</td>
+                <td>${sc.energy != null ? Number(sc.energy).toFixed(2) : ''}</td>
+                <td>${escapeHtml(sc.motion_speed || '')}</td>
+                <td>${escapeHtml(sc.transition || '')}</td>
+                <td>${escapeHtml((sc.narration_excerpt || '').slice(0, 120))}</td>
+            </tr>`).join('');
+        return `<div class="artifact-file">
+            <div class="artifact-header"><span class="artifact-name">${escapeHtml(sec.name)}</span>
+                <span class="artifact-meta">${sec.scenes.length} scene${sec.scenes.length===1?'':'s'}</span></div>
+            <div class="artifact-body markdown"><table>
+                <tr><th>id</th><th>visual</th><th>energy</th><th>motion</th><th>transition</th><th>narration</th></tr>
+                ${rows}
+            </table></div>
+        </div>`;
+    }).join('');
+    const count = plan.scene_count || 0;
+    const bits = [];
+    if (plan.has_plan) bits.push(`${count} scene${count===1?'':'s'}`);
+    if (plan.has_style_guide) bits.push('style guide');
+    const summary = bits.join(' · ') || 'no plan yet';
+    return `<div class="row"><div class="label">Authored Plan</div><div class="value">
+        <a class="artifact-toggle" style="margin-left:0" onclick="toggleArtifactPanel('${panelId}')">▸ ${summary}</a>
+        <div class="artifact-panel" id="${panelId}">${styleHtml}${sectionsHtml}</div>
+    </div></div>`;
+}
+
+// Red run-log block shown when a local orchestrate run failed (status=error).
+function renderRunLog(logData) {
+    if (!logData) return '';
+    const body = logData.stderr || logData.stdout;
+    if (!body) return '';
+    const which = logData.stderr ? 'stderr' : 'stdout';
+    return `<div class="row"><div class="label">Run Log</div><div class="value">
+        <div class="runlog-block"><span class="runlog-label">last_run.${which}.log (tail)</span>${escapeHtml(body)}</div>
+    </div></div>`;
+}
+
+// Saved-feedback list with consumed/pending badge + delete (was write-only before).
+function renderFeedbackList(p) {
+    const files = p.feedback_files || [];
+    if (!files.length) return '';
+    const consumed = new Set(p.consumed_feedback || []);
+    const rows = files.map(f => {
+        const badge = consumed.has(f.name)
+            ? '<span class="fb-badge consumed">consumed</span>'
+            : '<span class="fb-badge pending">pending</span>';
+        const ts = f.mtime ? fmtTs(new Date(f.mtime * 1000).toISOString()) : '';
+        return `<div class="fb-item">
+            <span class="fb-name">${escapeHtml(f.name)}</span>
+            ${badge}
+            <span class="fb-time">${ts}</span>
+            <button class="fb-del" title="Delete this feedback file"
+                onclick="deleteFeedback('${escapeHtml(p.slug)}', '${escapeHtml(f.name)}')">✕</button>
+        </div>`;
+    }).join('');
+    return `<div class="history"><h4>Saved Feedback (${files.length})</h4>${rows}</div>`;
+}
+
+async function deleteFeedback(slug, name) {
+    if (!confirm(`Delete ${name}?`)) return;
+    try {
+        const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/feedback/${encodeURIComponent(name)}`, { method: 'DELETE' });
+        if (!res.ok) { const t = await res.text(); throw new Error(t || `HTTP ${res.status}`); }
+        showToast(`Deleted ${name}`);
+        refresh();
+    } catch (err) {
+        showToast(`Failed to delete: ${err.message}`, true);
+    }
+}
+
+// --- Preserve ephemeral UI state across the full-list re-render (#1 feedback text, #7 open panels) ---
+function captureEphemeralState() {
+    const st = { textareas: {}, selects: {}, panels: [], tools: [], focus: null };
+    document.querySelectorAll('textarea[id^="feedback-"]').forEach(t => {
+        if (t.value) st.textareas[t.id] = { value: t.value, start: t.selectionStart, end: t.selectionEnd };
+    });
+    document.querySelectorAll('select[id^="run-agent-"]').forEach(s => {
+        if (s.value) st.selects[s.id] = s.value;
+    });
+    document.querySelectorAll('.artifact-panel.expanded[id]').forEach(p => st.panels.push(p.id));
+    document.querySelectorAll('.stream-tool.expanded').forEach(t => {
+        const key = t.getAttribute('data-toolid') || t.getAttribute('data-resultfor');
+        if (key) st.tools.push(key);
+    });
+    const ae = document.activeElement;
+    if (ae && ae.id) st.focus = ae.id;
+    return st;
+}
+
+function restoreEphemeralState(st) {
+    if (!st) return;
+    for (const [id, info] of Object.entries(st.textareas)) {
+        const t = document.getElementById(id);
+        if (t) { t.value = info.value; try { t.setSelectionRange(info.start, info.end); } catch (e) {} }
+    }
+    for (const [id, val] of Object.entries(st.selects)) {
+        const s = document.getElementById(id);
+        if (s && [...s.options].some(o => o.value === val)) s.value = val;
+    }
+    st.panels.forEach(id => { const p = document.getElementById(id); if (p) p.classList.add('expanded'); });
+    if (st.tools.length) {
+        const set = new Set(st.tools);
+        document.querySelectorAll('.stream-tool').forEach(t => {
+            const key = t.getAttribute('data-toolid') || t.getAttribute('data-resultfor');
+            if (key && set.has(key)) t.classList.add('expanded');
+        });
+    }
+    if (st.focus) { const el = document.getElementById(st.focus); if (el) el.focus(); }
+}
+
+function renderProject(p, checkpointBody, streamData, planData, runLogData) {
     const expanded = expandedSlugs.has(p.slug);
     const isRunning = p.status === 'running';
     const checkpointHtml = p.has_checkpoint && expanded && checkpointBody
         ? `<div class="row"><div class="label">Latest Checkpoint</div><div class="value"><div class="checkpoint-block">${escapeHtml(checkpointBody)}</div></div></div>`
         : '';
     const streamHtml = expanded && streamData ? renderStreamPanel(p.slug, streamData) : '';
+    const planHtml = expanded ? renderPlanPanel(p.slug, planData) : '';
+    const runLogHtml = expanded ? renderRunLog(runLogData) : '';
 
     return `
     <div class="project ${expanded ? 'expanded' : ''}" data-slug="${escapeHtml(p.slug)}">
@@ -836,6 +1019,9 @@ function renderProject(p, checkpointBody, streamData) {
             <div class="row"><div class="label">Last Updated</div><div class="value">${fmtTs(p.last_updated)}</div></div>
             <div class="row"><div class="label">Templates</div><div class="value">${renderProvenance(p.template_provenance)}</div></div>
             <div class="row"><div class="label">Style Guide</div><div class="value">${p.has_style_guide ? '<code>style_guide.md</code> present' : '<span class="secondary">not yet generated</span>'}</div></div>
+            ${p.has_output ? `<div class="row"><div class="label">Output</div><div class="value"><a class="output-link" href="/api/agents/${encodeURIComponent(p.slug)}/output" target="_blank" rel="noopener">▶ final.mp4</a></div></div>` : ''}
+            ${planHtml}
+            ${runLogHtml}
             ${checkpointHtml}
             ${streamHtml}
             <div class="history">
@@ -849,7 +1035,10 @@ function renderProject(p, checkpointBody, streamData) {
                 <button class="primary" onclick="runAgent('${escapeHtml(p.slug)}')" ${isRunning ? 'disabled' : ''}>
                     ${isRunning ? 'Running…' : '▶ Run next step'}
                 </button>
+                <button onclick="runAgent('${escapeHtml(p.slug)}', true)" ${isRunning ? 'disabled' : ''}
+                    title="Run all remaining steps in sequence (nolan orchestrate --auto)">▶▶ Run all</button>
             </div>
+            ${renderFeedbackList(p)}
             <div class="feedback-box">
                 <textarea id="feedback-${escapeHtml(p.slug)}" placeholder="Write feedback to apply on next refine pass (saved as review_<n>.md)…"></textarea>
                 <div class="actions" style="margin-top: 8px; padding-top: 0; border-top: none;">
@@ -875,15 +1064,26 @@ async function refresh() {
                 .map(p => fetchCheckpoint(p.slug).then(body => [p.slug, body]));
             const streamPromises = expandedProjects
                 .map(p => fetchStream(p.slug).then(data => [p.slug, data]));
-            const [checkpointsArr, streamsArr] = await Promise.all([
+            const planPromises = expandedProjects
+                .map(p => fetchPlan(p.slug).then(data => [p.slug, data]));
+            const runLogPromises = expandedProjects
+                .filter(p => p.status === 'error')
+                .map(p => fetchRunLog(p.slug).then(data => [p.slug, data]));
+            const [checkpointsArr, streamsArr, plansArr, runLogsArr] = await Promise.all([
                 Promise.all(checkpointPromises),
                 Promise.all(streamPromises),
+                Promise.all(planPromises),
+                Promise.all(runLogPromises),
             ]);
             const checkpoints = Object.fromEntries(checkpointsArr);
             const streams = Object.fromEntries(streamsArr);
-            const html = projects.map(p => renderProject(p, checkpoints[p.slug], streams[p.slug])).join('');
+            const plans = Object.fromEntries(plansArr);
+            const runLogs = Object.fromEntries(runLogsArr);
+            const html = projects.map(p => renderProject(p, checkpoints[p.slug], streams[p.slug], plans[p.slug], runLogs[p.slug])).join('');
+            const ephemeral = captureEphemeralState();   // preserve in-progress feedback + open panels across re-render
             document.getElementById('projects').innerHTML = html;
             populateRunAgents();
+            restoreEphemeralState(ephemeral);
         }
         status.textContent = `Updated ${new Date().toLocaleTimeString()}`;
 
@@ -929,22 +1129,26 @@ function showToast(msg, isError) {
     setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-async function runAgent(slug) {
+async function runAgent(slug, auto) {
     try {
         const sel = document.getElementById(`run-agent-${slug}`);
         const agent = sel ? sel.value : '';
+        const payload = {};
+        if (agent) payload.agent = agent;
+        if (auto) payload.auto = true;
         const res = await fetch(`/api/agents/${encodeURIComponent(slug)}/run`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(agent ? { agent } : {})
+            body: JSON.stringify(payload)
         });
         if (!res.ok) {
             const t = await res.text();
             throw new Error(t || `HTTP ${res.status}`);
         }
         const data = await res.json();
+        const label = auto ? 'full pipeline (--auto)' : 'orchestrate';
         showToast(data.mode === 'dispatched'
             ? `Dispatched to ${data.agent} — watch its session`
-            : `Started orchestrate (pid ${data.pid})`);
+            : `Started ${label} (pid ${data.pid})`);
         refresh();
     } catch (err) {
         showToast(`Failed to run: ${err.message}`, true);

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import asdict
@@ -146,6 +147,7 @@ def project_summary(project_path: Path) -> dict[str, Any]:
         "step_history": [asdict(s) for s in state.step_history],
         "template_provenance": asdict(state.template_provenance),
         "has_style_guide": style_guide_path.exists(),
+        "has_output": (project_path / "output" / "final.mp4").exists(),
         "has_checkpoint": (_orchestrator_dir(project_path) / "CHECKPOINT.md").exists(),
         "pipeline": pipeline_progress(project_path),
         "feedback_files": feedback_files,
@@ -178,6 +180,18 @@ def list_all_projects(projects_root: Path) -> list[dict[str, Any]]:
         s["started"] = started
         out.append(s)
     return out
+
+
+def delete_feedback(project_path: Path, name: str) -> bool:
+    """Delete a saved feedback file. `name` is validated to the `review_<n>.md`
+    shape so it can't traverse out of the feedback folder."""
+    if not re.fullmatch(r"review_\d+\.md", name):
+        raise ValueError("invalid feedback name")
+    target = _orchestrator_dir(project_path) / "feedback" / name
+    if not target.exists():
+        return False
+    target.unlink()
+    return True
 
 
 def write_feedback(project_path: Path, body: str) -> Path:
@@ -374,23 +388,33 @@ def trigger_orchestrate(
     repo_root: Path,
     refine_target: str | None = None,
     agent: str | None = None,
+    auto: bool = False,
 ) -> dict[str, Any]:
-    """Advance `nolan orchestrate <project>` by one step (or a `--refine --target` pass).
+    """Advance `nolan orchestrate <project>` by one step, run the whole pipeline
+    (`--auto`), or run a `--refine --target` pass.
 
     Two run targets:
       - default (`agent` falsy): spawn a detached background subprocess on the hub host.
       - `agent` given: DISPATCH the run to that NOLAN tmux Claude agent (the user chose which
         agent runs it) — the agent executes the command and reports. The dashboard polls state
         files either way; no PID tracking needed.
+    `auto` and `refine_target` are mutually exclusive (the CLI rejects both); `auto` wins here.
     """
-    tail = f" --refine --target {refine_target}" if refine_target else ""
+    if auto:
+        tail = " --auto"
+    elif refine_target:
+        tail = f" --refine --target {refine_target}"
+    else:
+        tail = ""
     cmd_str = f"python -m nolan orchestrate {project_path}{tail}"
 
     if agent:
         from nolan.webui.operations import _dispatch_to_tmux
+        what = ("run every remaining pipeline step" if auto
+                else "execute the next pipeline step")
         prompt = (
             f"Advance the NOLAN orchestrate pipeline for project `{project_path.name}`: from the "
-            f"repo root, run `{cmd_str}` to execute the next pipeline step, then briefly report the "
+            f"repo root, run `{cmd_str}` to {what}, then briefly report the "
             f"resulting `.orchestrator/CHECKPOINT.md`."
         )
         _dispatch_to_tmux(agent, prompt)
@@ -399,7 +423,9 @@ def trigger_orchestrate(
 
     python_bin = sys.executable
     cmd = [python_bin, "-m", "nolan", "orchestrate", str(project_path)]
-    if refine_target:
+    if auto:
+        cmd.append("--auto")
+    elif refine_target:
         cmd.extend(["--refine", "--target", refine_target])
 
     log_dir = _orchestrator_dir(project_path)
@@ -422,7 +448,7 @@ def trigger_orchestrate(
         "command": " ".join(cmd),
         "stdout_log": str(stdout_log),
         "stderr_log": str(stderr_log),
-        "mode": "refine" if refine_target else "advance",
+        "mode": "auto" if auto else ("refine" if refine_target else "advance"),
     }
 
 
@@ -434,3 +460,63 @@ def unconsumed_feedback_count(project_path: Path) -> int:
     if not folder.exists():
         return 0
     return sum(1 for f in folder.glob("review_*.md") if f.name not in consumed)
+
+
+def read_authored_plan(project_path: Path) -> dict[str, Any]:
+    """Read-only view of the authored plan for the agents dashboard: the live
+    `style_guide.md` plus a compact per-scene summary of `scene_plan.json`
+    (the outputs of steps 1–3), so it can be inspected without leaving /agents."""
+    style_path = project_path / "style_guide.md"
+    plan_path = project_path / "scene_plan.json"
+    style_guide = (
+        style_path.read_text(encoding="utf-8") if style_path.exists() else None
+    )
+    sections: list[dict[str, Any]] = []
+    scene_count = 0
+    if plan_path.exists():
+        try:
+            data = json.loads(plan_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            data = {}
+        for name, scenes in (data.get("sections") or {}).items():
+            rows = []
+            for sc in scenes:
+                rows.append({
+                    "id": sc.get("id"),
+                    "visual_type": sc.get("visual_type"),
+                    "energy": sc.get("energy"),
+                    "motion_speed": sc.get("motion_speed"),
+                    "transition": sc.get("transition"),
+                    "duration": sc.get("duration"),
+                    "narration_excerpt": sc.get("narration_excerpt"),
+                })
+                scene_count += 1
+            sections.append({"name": name, "scenes": rows})
+    return {
+        "has_plan": plan_path.exists(),
+        "has_style_guide": style_path.exists(),
+        "style_guide": style_guide,
+        "sections": sections,
+        "scene_count": scene_count,
+        "plan_path": str(plan_path),
+        "style_guide_path": str(style_path),
+    }
+
+
+def read_run_logs(project_path: Path, max_lines: int = 40) -> dict[str, Any]:
+    """Tail the last local `orchestrate` subprocess logs so a failed run is visible
+    in the dashboard instead of only surfacing as `status: error` with no detail."""
+    od = _orchestrator_dir(project_path)
+
+    def tail(name: str) -> str | None:
+        fp = od / name
+        if not fp.exists():
+            return None
+        try:
+            text = fp.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return None
+        body = "\n".join(text.splitlines()[-max_lines:]).strip()
+        return body or None
+
+    return {"stderr": tail("last_run.stderr.log"), "stdout": tail("last_run.stdout.log")}

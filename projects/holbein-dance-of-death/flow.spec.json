@@ -25,7 +25,7 @@
         "medium": "Woodcut",
         "collection": "The Dance of Death"
       },
-      "introHold": 50,
+      "introHold": 43,
       "maxZoom": 1.5,
       "glide": 34,
       "focuses": [
@@ -45,7 +45,10 @@
           "h": 0.27,
           "caption": "memento mori"
         }
-      ]
+      ],
+      "_energy": 0.5,
+      "_transition": "cut",
+      "_motion_speed": "medium"
     },
     {
       "segment": "01_the-work",
@@ -58,8 +61,8 @@
         "medium": "Letterpress + woodcut",
         "collection": "Les Simulachres de la Mort"
       },
-      "introHold": 60,
-      "maxZoom": 1.4,
+      "introHold": 62,
+      "maxZoom": 1.352,
       "glide": 40,
       "focuses": [
         {
@@ -78,7 +81,10 @@
           "h": 0.26,
           "caption": "first printed in Lyon, 1538"
         }
-      ]
+      ],
+      "_energy": 0.3,
+      "_transition": "dissolve",
+      "_motion_speed": "slow"
     },
     {
       "segment": "02_how-death-behaves",
@@ -256,7 +262,10 @@
           "src": "D:/claudeprojects/nolan/_library/images/files/11/110fd8e86591c5cddd4e808f91435b16a275f8038c6937f291ab83e93ddf5f54.jpg",
           "caption": "The Beggar"
         }
-      ]
+      ],
+      "_energy": 0.35,
+      "_transition": "dissolve",
+      "_motion_speed": "slow"
     },
     {
       "segment": "03_the-tradition",
@@ -269,8 +278,8 @@
         "medium": "Woodcut",
         "collection": "The Dance of Death"
       },
-      "introHold": 45,
-      "maxZoom": 1.5,
+      "introHold": 40,
+      "maxZoom": 1.485,
       "glide": 36,
       "focuses": [
         {
@@ -289,7 +298,10 @@
           "h": 0.28,
           "caption": "on charnel-house walls"
         }
-      ]
+      ],
+      "_energy": 0.45,
+      "_transition": "cut",
+      "_motion_speed": "medium"
     },
     {
       "segment": "04_the-ploughman",
@@ -302,8 +314,8 @@
         "medium": "Woodcut",
         "collection": "The Dance of Death"
       },
-      "introHold": 40,
-      "maxZoom": 1.55,
+      "introHold": 30,
+      "maxZoom": 1.583,
       "glide": 34,
       "focuses": [
         {
@@ -338,7 +350,10 @@
           "h": 0.32,
           "caption": "toward rest"
         }
-      ]
+      ],
+      "_energy": 0.6,
+      "_transition": "cut",
+      "_motion_speed": "fast"
     },
     {
       "segment": "05_two-readings",
@@ -359,7 +374,10 @@
         "label": "The Preacher",
         "caption": "spared — shown in sympathy"
       },
-      "verdict": "His scorn isn't aimed at faith. It's aimed at power."
+      "verdict": "His scorn isn't aimed at faith. It's aimed at power.",
+      "_energy": 0.25,
+      "_transition": "fade",
+      "_motion_speed": "slow"
     },
     {
       "segment": "06_what-holbein-smuggled",
@@ -376,7 +394,10 @@
         "h": 0.42
       },
       "label": "the anticlerical jab",
-      "caption": "Death hauls the abbot off — a joke at the Church's expense"
+      "caption": "Death hauls the abbot off — a joke at the Church's expense",
+      "_energy": 0.3,
+      "_transition": "dissolve",
+      "_motion_speed": "slow"
     },
     {
       "segment": "07_close",
@@ -393,7 +414,10 @@
         "and helps the ploughman home",
         "the same skeleton — two meanings"
       ],
-      "source": "Hans Holbein · The Dance of Death · Lyon, 1538"
+      "source": "Hans Holbein · The Dance of Death · Lyon, 1538",
+      "_energy": 0.4,
+      "_transition": "dissolve",
+      "_motion_speed": "slow"
     }
   ]
 }

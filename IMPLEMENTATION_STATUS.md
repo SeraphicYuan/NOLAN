@@ -2401,3 +2401,49 @@ the KNOWN script words (correct spelling of proper nouns/numbers), no new deps.
 - UI: "Captions (SRT)" button in the TTS Studio Project Voiceover panel; SRT/VTT/
   word-JSON download links appear once generated.
 - Word JSON ({word,start,end}) is ready for kinetic/karaoke caption effects.
+
+## Agents dashboard: Run-all + authored-plan viewer (2026-07)
+
+Two gaps closed on the `/agents` (Orchestrator Dashboard) page:
+
+- **Run all (`--auto`)**: `trigger_orchestrate()` gains an `auto` flag (dashboard.py);
+  `POST /api/agents/{slug}/run` reads `body.auto` and forwards it (hub.py). New
+  "▶▶ Run all" button runs every remaining Director step in one go, vs. the existing
+  single-step "▶ Run next step". Works both locally and dispatched-to-agent.
+- **Authored-plan viewer**: new `read_authored_plan()` (dashboard.py) + `GET
+  /api/agents/{slug}/plan` return the live `style_guide.md` and a compact per-scene
+  summary of `scene_plan.json` (id / visual_type / energy / motion_speed / transition /
+  narration). Rendered inline on the expanded project card as a collapsible "Authored
+  Plan" panel — inspect steps 1–3 output without leaving /agents.
+
+Usage: open a project on /agents → "Authored Plan ▸" to read the plan; "▶▶ Run all"
+to run the whole pipeline. Verified via TestClient (/plan 200, /run forwards auto) and
+node JS syntax check.
+
+### Agents dashboard fixes: state preservation + run-log surfacing (2026-07)
+
+- **#1/#7 ephemeral-state preservation**: `refresh()` rebuilt the whole project list
+  via `innerHTML` every poll (2.5s while running), wiping in-progress feedback text,
+  open artifact/plan/tool panels, and agent-select values. Added
+  `captureEphemeralState()`/`restoreEphemeralState()` around the re-render to preserve
+  textarea content + caret/focus, selected agent, and expanded panels.
+- **#2 run failures now visible**: `read_run_logs()` (dashboard.py) tails
+  `.orchestrator/last_run.{stderr,stdout}.log`; `GET /api/agents/{slug}/runlog` serves
+  it; the page fetches it for expanded `error`-status projects and shows a red "Run Log"
+  block — previously a failed local run showed only `status: error` with no detail.
+
+Verified: Python syntax + `read_run_logs` tail behavior; `/runlog` and `/agents` 200 via
+TestClient; node JS syntax check; presence of new UI strings.
+
+### Agents dashboard: output link (#5) + feedback management (#6) (2026-07)
+
+- **#5 View output**: `project_summary` reports `has_output` (output/final.mp4 exists);
+  `GET /api/agents/{slug}/output` serves it; expanded card shows an "Output → ▶ final.mp4"
+  link when present.
+- **#6 Feedback management**: the page now renders `feedback_files` as a "Saved Feedback"
+  list with consumed/pending badges + a delete (✕) button. `delete_feedback()`
+  (name-validated to review_<n>.md) + `DELETE /api/agents/{slug}/feedback/{name}`.
+  Previously feedback was write-only.
+
+Verified via TestClient: /output 200 present / 404 absent; DELETE 200/400(bad name)/404;
+has_output toggles; node JS syntax; new UI strings present.

@@ -3200,7 +3200,47 @@ def create_hub_app(
             if not project_path.exists():
                 raise HTTPException(status_code=404, detail="project not found")
             agent = (body.get("agent") or "").strip() or None   # dispatch to a chosen NOLAN agent, else run locally
-            return agents_dashboard.trigger_orchestrate(project_path, repo_root, agent=agent)
+            auto = bool(body.get("auto"))   # run all remaining steps (--auto) vs. advance one
+            return agents_dashboard.trigger_orchestrate(project_path, repo_root, agent=agent, auto=auto)
+
+        @app.get("/api/agents/{slug}/plan")
+        async def agents_plan(slug: str):
+            """Read-only authored plan (style_guide.md + scene_plan.json summary) for inline viewing."""
+            project_path = projects_dir / slug
+            if not project_path.exists():
+                raise HTTPException(status_code=404, detail="project not found")
+            return agents_dashboard.read_authored_plan(project_path)
+
+        @app.get("/api/agents/{slug}/runlog")
+        async def agents_runlog(slug: str):
+            """Tail of the last local orchestrate subprocess logs (for surfacing run failures)."""
+            project_path = projects_dir / slug
+            if not project_path.exists():
+                raise HTTPException(status_code=404, detail="project not found")
+            return agents_dashboard.read_run_logs(project_path)
+
+        @app.get("/api/agents/{slug}/output")
+        async def agents_output(slug: str):
+            """Serve the rendered final.mp4 for a project (the render step's output)."""
+            project_path = projects_dir / slug
+            final = project_path / "output" / "final.mp4"
+            if not project_path.exists() or not final.exists():
+                raise HTTPException(status_code=404, detail="no rendered output")
+            return FileResponse(final, media_type="video/mp4")
+
+        @app.delete("/api/agents/{slug}/feedback/{name}")
+        async def agents_feedback_delete(slug: str, name: str):
+            """Delete a saved feedback file (review_<n>.md)."""
+            project_path = projects_dir / slug
+            if not project_path.exists():
+                raise HTTPException(status_code=404, detail="project not found")
+            try:
+                ok = agents_dashboard.delete_feedback(project_path, name)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+            if not ok:
+                raise HTTPException(status_code=404, detail="feedback file not found")
+            return {"deleted": name}
 
         @app.post("/api/agents/{slug}/refine")
         async def agents_refine(slug: str, body: dict = Body(...)):
