@@ -90,6 +90,46 @@ def register(app, ctx):
             raise HTTPException(status_code=404, detail="no final video")
         return FileResponse(str(fp), media_type="video/mp4")
 
+    # ---- Artifact view/edit (the uniform artifact grammar): the Step
+    # Inspector reads and saves per-step artifacts through these. ----
+
+    _ARTIFACTS = {"soundtrack": "soundtrack.json",
+                  "style_guide": "style_guide.md",
+                  "script": "script.md"}
+
+    def _artifact_path(project: str, name: str) -> Path:
+        rel = _ARTIFACTS.get(name)
+        if not rel:
+            raise HTTPException(status_code=404, detail=f"unknown artifact '{name}'")
+        base = (Path("projects") / project).resolve()
+        if Path("projects").resolve() not in base.parents:
+            raise HTTPException(status_code=404, detail="bad project")
+        return base / rel
+
+    @app.get("/api/project/{project}/artifact/{name}")
+    async def api_project_artifact(project: str, name: str):
+        fp = _artifact_path(project, name)
+        if not fp.exists():
+            return {"exists": False, "name": fp.name, "content": ""}
+        return {"exists": True, "name": fp.name,
+                "content": fp.read_text(encoding="utf-8")}
+
+    @app.put("/api/project/{project}/artifact/{name}")
+    async def api_project_artifact_save(project: str, name: str,
+                                        body: dict = Body(...)):
+        """Save a hand-edited artifact. JSON artifacts must parse — the same
+        honest-failure policy as everywhere else (no saving a broken spec)."""
+        fp = _artifact_path(project, name)
+        content = body.get("content", "")
+        if fp.suffix == ".json":
+            try:
+                json.loads(content)
+            except Exception as exc:
+                raise HTTPException(status_code=422,
+                                    detail=f"not valid JSON: {exc}")
+        fp.write_text(content, encoding="utf-8")
+        return {"saved": True, "name": fp.name, "bytes": len(content)}
+
     # ==================== Landing Page ====================
 
     @app.get("/", response_class=HTMLResponse)

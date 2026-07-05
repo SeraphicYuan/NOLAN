@@ -155,6 +155,16 @@ def create_hub_app(
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+    # Cache-busting for a fast-moving local tool: /static revalidates on every
+    # load (unchanged files are free 304s), so nav/css/js changes appear
+    # without hard refreshes.
+    @app.middleware("http")
+    async def _static_no_cache(request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/static"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     # Tonal b-roll prototype gallery (period/locale-gated evocative b-roll). Served as static
     # so its local poster stills resolve; remote clips stream from the stock CDN. View at
     # /tonal-broll/ (reachable over the Tailscale-exposed hub).
