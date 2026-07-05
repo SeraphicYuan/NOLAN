@@ -2,7 +2,31 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-02
+**Last Updated:** 2026-07-04
+
+## Architecture Consolidation — Phases 0–1 (2026-07-04)
+
+**Phase 0 — safety net** (`bab7c50`): `ScenePlan` is a lossless, versioned contract
+(schema_version 2; unknown scene keys survive in `Scene.extra`, top-level keys in
+`ScenePlan.meta`); `nolan assemble -o` resolves relative paths against CWD and exits
+non-zero on failure; `scripts/test_e2e_smoke.py` runs a fixture project through
+anchor→stamp→render→annotate→assemble and asserts video ≡ audio duration + losslessness.
+
+**Phase 1 — one narrated pipeline**: the Director now runs
+`… slide_designer → generate_assets (ComfyUI, registry workflow + style suffix)
+→ voiceover (local TTS, shared core) → align_narration (beat-anchored) → render
+(assembles with the narration)`. `nolan orchestrate <project> --auto` produces a
+narrated, sync-exact final.mp4 with zero custom scripts.
+
+- VO core extracted to `src/nolan/voice_pipeline.py`; the webUI Voices op is a thin
+  adapter over it (no drift possible). Voice resolution everywhere =
+  `nolan.voiceover.resolve_voice_ref` (project.yaml `voice_id` → `tts.default_voice`).
+- Voice-less projects still work: voiceover step skips with a clear note and the
+  final is silent — set `voice_id:` in project.yaml to narrate.
+- Scene iteration (`rerender_scenes`) keeps the narration in final.mp4 instead of
+  replacing it with silence.
+- Tests: `scripts/test_director_steps.py` (step sequencing + skip paths),
+  `scripts/test_e2e_smoke.py`, plus a live `orchestrate --auto` acceptance run.
 
 ## Summary
 

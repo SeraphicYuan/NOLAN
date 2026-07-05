@@ -44,6 +44,9 @@ PIPELINE_STEPS = [
     "tempo_enrich",
     "select_clips",
     "slide_designer",
+    "generate_assets",
+    "voiceover",
+    "align_narration",
     "render",
 ]
 
@@ -357,6 +360,12 @@ class Director:
             return await self._run_select_clips_step(ctx, state)
         if next_name == "slide_designer":
             return await self._run_slide_designer_step(ctx, state)
+        if next_name == "generate_assets":
+            return await self._run_generate_assets_step(ctx, state)
+        if next_name == "voiceover":
+            return await self._run_voiceover_step(ctx, state)
+        if next_name == "align_narration":
+            return await self._run_align_narration_step(ctx, state)
         if next_name == "render":
             return await self._run_render_step(ctx, state)
         raise DirectorError(f"unknown pipeline step: {next_name}")
@@ -382,6 +391,17 @@ class Director:
             return "select_clips"
         if self._info_scenes_missing_layout() > 0:
             return "slide_designer"
+        if ("generate_assets" not in completed
+                and self._generated_scenes_missing_asset() > 0):
+            return "generate_assets"
+        voiceover_mp3 = (
+            self.project_path / "assets" / "voiceover" / "voiceover.mp3"
+        )
+        # Artifact-presence: a hand-made (or webUI-made) voiceover is respected.
+        if "voiceover" not in completed and not voiceover_mp3.exists():
+            return "voiceover"
+        if "align_narration" not in completed and voiceover_mp3.exists():
+            return "align_narration"
         final_video = self.project_path / "output" / "final.mp4"
         if not final_video.exists():
             return "render"
@@ -403,6 +423,32 @@ class Director:
                 if not isinstance(s, dict):
                     continue
                 if s.get("visual_type") in INFO_SCENE_TYPES and not s.get("layout_spec"):
+                    count += 1
+        return count
+
+    def _generated_scenes_missing_asset(self) -> int:
+        """Count 'generated' scenes whose ComfyUI image doesn't exist yet."""
+        plan_path = self.project_path / "scene_plan.json"
+        if not plan_path.exists():
+            return 0
+        try:
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return 0
+        gen_dir = self.project_path / "assets" / "generated"
+        count = 0
+        for scenes in (plan.get("sections") or {}).values():
+            if not isinstance(scenes, list):
+                continue
+            for s in scenes:
+                if not isinstance(s, dict):
+                    continue
+                if s.get("visual_type") not in ("generated", "generated-image"):
+                    continue
+                if s.get("skip_generation"):
+                    continue
+                asset = s.get("generated_asset") or f"{s.get('id')}.png"
+                if not (gen_dir / asset).exists():
                     count += 1
         return count
 
@@ -986,6 +1032,207 @@ class Director:
         ]
         return _write_checkpoint(self.project_path, record.step_num, summary_lines)
 
+    async def _run_generate_assets_step(
+        self,
+        ctx: ProjectContext,
+        state: state_mod.DirectorState,
+    ) -> Path:
+        """Generate ComfyUI imagery for every 'generated' scene missing its PNG.
+
+        Reuses the proven CLI generator (`_generate_images`, registry-default
+        workflow = krea2 + configured style) one scene at a time so partial
+        progress persists and re-runs only fill gaps. Fails honestly when
+        ComfyUI is unreachable — black-frame gaps must not ship silently.
+        """
+        from nolan.cli_legacy import _generate_images
+        from nolan.comfyui import ComfyUIClient
+        from nolan.config import load_config
+        from nolan.scenes import ScenePlan
+
+        record = state_mod.append_step(state, "generate_assets")
+        state.status = "running"
+        state_mod.save_state(self.project_path, state)
+
+        config = load_config()
+        plan_path = self.project_path / "scene_plan.json"
+        plan = ScenePlan.load(str(plan_path))
+        gen_dir = self.project_path / "assets" / "generated"
+        pending = [
+            s for s in plan.all_scenes
+            if s.visual_type in ("generated", "generated-image")
+            and not s.skip_generation
+            and not (gen_dir / (s.generated_asset or f"{s.id}.png")).exists()
+        ]
+
+        if not pending:
+            note = "no generated scenes pending — nothing to do"
+            state_mod.finish_step(record, status="completed", notes=note)
+            state.status = "awaiting_review"
+            state_mod.save_state(self.project_path, state)
+            return _write_checkpoint(self.project_path, record.step_num, [note])
+
+        client = ComfyUIClient(host=config.comfyui.host, port=config.comfyui.port)
+        if not await client.check_connection():
+            err = (
+                f"ComfyUI unreachable at {config.comfyui.host}:"
+                f"{config.comfyui.port} with {len(pending)} scenes to generate "
+                "— start ComfyUI and re-run, or set skip_generation on scenes."
+            )
+            state_mod.finish_step(record, status="error", notes=err)
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(err)
+
+        # Style cohesion: distilled style_guide suffix on every prompt (same
+        # behavior as the webUI Generate op).
+        style_suffix = ""
+        try:
+            from nolan.webui.operations import _distill_style_suffix
+            style_suffix = await _distill_style_suffix(
+                config, self.project_path / "style_guide.md")
+        except Exception as exc:
+            logger.warning("style suffix distillation failed: %s", exc)
+
+        failures: list[str] = []
+        for scene in pending:
+            try:
+                await _generate_images(
+                    config, self.project_path, scene.id,
+                    prompt_suffix=style_suffix)
+            except Exception as exc:
+                failures.append(f"{scene.id}: {exc}")
+        still_missing = self._generated_scenes_missing_asset()
+
+        summary = [
+            f"Generated {len(pending) - still_missing}/{len(pending)} pending "
+            f"scenes via ComfyUI (registry workflow"
+            f"{' + style suffix' if style_suffix else ''}).",
+        ]
+        if failures:
+            summary.append(f"Failures: {failures[:5]}")
+        status = "completed" if still_missing == 0 else "error"
+        state_mod.finish_step(
+            record, status=status, notes=" | ".join(summary))
+        state.status = "awaiting_review" if status == "completed" else "error"
+        state_mod.save_state(self.project_path, state)
+        if status == "error":
+            raise DirectorError(
+                f"{still_missing} generated scenes still missing images: "
+                + "; ".join(failures[:5]))
+        return _write_checkpoint(self.project_path, record.step_num, summary)
+
+    async def _run_voiceover_step(
+        self,
+        ctx: ProjectContext,
+        state: state_mod.DirectorState,
+    ) -> Path:
+        """Narrate the script with local TTS (shared `nolan.voice_pipeline` core).
+
+        Voice resolution: the SAME ladder every pipeline uses
+        (`nolan.voiceover.resolve_voice_ref`): project.yaml `voice_id` →
+        config `tts.default_voice` → skip with a clear note (final stays
+        silent). Full mode leaves per-section anchors in
+        assets/voiceover/_work/ which the align step uses for beat-exact sync.
+        """
+        from nolan.config import load_config
+        from nolan.voiceover import resolve_voice_ref
+
+        record = state_mod.append_step(state, "voiceover")
+        state.status = "running"
+        state_mod.save_state(self.project_path, state)
+
+        config = load_config()
+        ref_audio, ref_text, voice_id = resolve_voice_ref(
+            self.project_path, config)
+
+        if not config.tts.enabled or not voice_id:
+            note = (
+                "skipped — "
+                + ("TTS disabled in nolan.yaml" if not config.tts.enabled
+                   else "no voice resolved (set voice_id: in project.yaml "
+                        "or tts.default_voice in nolan.yaml; the voice must "
+                        "exist in the voice library)")
+                + "; final video will be silent."
+            )
+            state_mod.finish_step(record, status="completed", notes=note)
+            state.status = "awaiting_review"
+            state_mod.save_state(self.project_path, state)
+            return _write_checkpoint(self.project_path, record.step_num, [note])
+
+        from nolan.voice_pipeline import synthesize_voiceover
+
+        kind = ("script_project"
+                if (self.project_path / "script.md").exists() else "project")
+        try:
+            result = await synthesize_voiceover(
+                config=config,
+                project_dir=self.project_path,
+                log=lambda msg: logger.info("voiceover: %s", msg),
+                ref_audio=ref_audio,
+                ref_text=ref_text,
+                **{kind: ctx.slug},
+            )
+        except Exception as exc:
+            err = f"voiceover synthesis failed: {type(exc).__name__}: {exc}"
+            state_mod.finish_step(record, status="error", notes=err)
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(err) from exc
+
+        summary = [
+            f"Voiceover ready: {result.get('sections')} sections, voice "
+            f"'{voice_id}' → {result.get('voiceover')}",
+        ]
+        if result.get("missing"):
+            summary.append(f"Sections with no audio: {result['missing']}")
+        state_mod.finish_step(record, status="completed",
+                              notes=" | ".join(summary))
+        state.status = "awaiting_review"
+        state_mod.save_state(self.project_path, state)
+        return _write_checkpoint(self.project_path, record.step_num, summary)
+
+    async def _run_align_narration_step(
+        self,
+        ctx: ProjectContext,
+        state: state_mod.DirectorState,
+    ) -> Path:
+        """Beat-anchor scene timings to the narration (`nolan align`).
+
+        Shells out to the proven aligner: per-section wavs in
+        assets/voiceover/_work/ pin each section's exact audio span; whisper
+        refines scene boundaries within them; windows are tiled gap-free so
+        video ≡ narration and sync errors cannot cross beats.
+        """
+        import subprocess
+        import sys
+
+        record = state_mod.append_step(state, "align_narration")
+        state.status = "running"
+        state_mod.save_state(self.project_path, state)
+
+        plan_path = self.project_path / "scene_plan.json"
+        audio_path = self.project_path / "assets" / "voiceover" / "voiceover.mp3"
+        proc = subprocess.run(
+            [sys.executable, "-X", "utf8", "-m", "nolan", "align",
+             str(plan_path), str(audio_path)],
+            cwd=str(self.repo_root), capture_output=True, text=True,
+        )
+        if proc.returncode != 0:
+            err = ("`nolan align` failed (rc=%d): %s" % (
+                proc.returncode, (proc.stderr or proc.stdout).strip()[:800]))
+            state_mod.finish_step(record, status="error", notes=err)
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(err)
+
+        tail = (proc.stdout or "").strip().splitlines()[-6:]
+        summary = ["Scene timings aligned to narration (beat-anchored)."] + tail
+        state_mod.finish_step(record, status="completed",
+                              notes=summary[0])
+        state.status = "awaiting_review"
+        state_mod.save_state(self.project_path, state)
+        return _write_checkpoint(self.project_path, record.step_num, summary)
+
     async def _run_render_step(
         self,
         ctx: ProjectContext,
@@ -993,8 +1240,10 @@ class Director:
     ) -> Path:
         """Render every scene to per-scene MP4s and assemble a final video.
 
-        v1: silent audio (no TTS yet), generated-image scenes skipped (assemble
-        fills with black frames). See `src/nolan/orchestrator/render.py`.
+        Assembles WITH the project narration (assets/voiceover/voiceover.mp3,
+        produced by the voiceover step and beat-aligned by align_narration)
+        when it exists; falls back to silent audio for voice-less projects.
+        See `src/nolan/orchestrator/render.py`.
         """
         from nolan.orchestrator import render as render_mod
 
@@ -1062,22 +1311,31 @@ class Director:
             encoding="utf-8",
         )
 
-        # 3. Generate a silent audio track of the right length.
-        try:
-            render_mod.generate_silent_audio(total_duration, silent_audio_path)
-        except render_mod.RenderError as exc:
-            err = f"silent audio generation failed: {exc}"
-            state_mod.finish_step(record, status="error", notes=err)
-            state.status = "error"
-            state_mod.save_state(self.project_path, state)
-            raise DirectorError(err) from exc
+        # 3. Pick the audio track: real narration when it exists, else silence.
+        voiceover_path = (
+            self.project_path / "assets" / "voiceover" / "voiceover.mp3"
+        )
+        if voiceover_path.exists():
+            audio_path = voiceover_path
+            audio_note = f"narration ({voiceover_path.name})"
+        else:
+            try:
+                render_mod.generate_silent_audio(total_duration, silent_audio_path)
+            except render_mod.RenderError as exc:
+                err = f"silent audio generation failed: {exc}"
+                state_mod.finish_step(record, status="error", notes=err)
+                state.status = "error"
+                state_mod.save_state(self.project_path, state)
+                raise DirectorError(err) from exc
+            audio_path = silent_audio_path
+            audio_note = "silent (no voiceover generated)"
 
         # 4. Shell out to `nolan assemble` for the final stitch.
         try:
             render_mod.call_assemble(
                 project_path=self.project_path,
                 scene_plan_path=scene_plan_path,
-                audio_path=silent_audio_path,
+                audio_path=audio_path,
                 output_path=final_video_path,
                 repo_root=self.repo_root,
             )
@@ -1113,7 +1371,7 @@ class Director:
                     f"- Total runtime: {total_duration:.1f}s\n"
                     f"- Final video: `output/final.mp4` "
                     f"({final_size_mb:.1f} MB)\n"
-                    f"- Audio: silent (TTS not yet integrated)\n"
+                    f"- Audio: {audio_note}\n"
                 ),
             },
         )

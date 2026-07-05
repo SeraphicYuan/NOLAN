@@ -799,7 +799,8 @@ function renderProvenance(prov) {
 
 const STEP_LABELS = {
     match_and_adapt_style: 'style', script_to_scenes: 'scenes', tempo_enrich: 'tempo',
-    select_clips: 'clips', slide_designer: 'slides', render: 'render'
+    select_clips: 'clips', slide_designer: 'slides', generate_assets: 'comfyui',
+    voiceover: 'voice', align_narration: 'align', render: 'render'
 };
 function renderPipeline(pipeline) {
     if (!pipeline || !pipeline.length) return '';

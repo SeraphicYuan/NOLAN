@@ -135,7 +135,7 @@ Key commitments:
 
 Each phase is independently shippable; no big-bang. Effort in focused sessions (S).
 
-### Phase 0 — Safety net (≈1–2 S) — do first, blocks nothing
+### Phase 0 — Safety net (≈1–2 S) — do first, blocks nothing — **DONE** (bab7c50)
 - **E2E smoke test**: tiny fixture project (3 beats, stub assets, 20s TTS or fixture VO)
   through script→plan→assets→VO→align→render→assemble; asserts video≡audio duration,
   no black frames, plan round-trip lossless. THE regression net for everything below.
@@ -144,7 +144,13 @@ Each phase is independently shippable; no big-bang. Effort in focused sessions (
   rc-0-on-failure (assemble `-o` class); absolute-path discipline helper.
 - Acceptance: smoke test green in CI-able script; a fuzz round-trip test proves losslessness.
 
-### Phase 1 — One pipeline, narrated (≈2 S) — highest user value
+### Phase 1 — One pipeline, narrated (≈2 S) — highest user value — **DONE**
+> Shipped: Director steps `generate_assets → voiceover → align_narration` before
+> `render`; render/iterate assemble with real narration when it exists. VO core
+> extracted to `nolan/voice_pipeline.py` (webUI op = thin adapter); voice ladder
+> unified on `nolan.voiceover.resolve_voice_ref`. Carry-over to Phase 2:
+> merge `nolan/voiceover.py` (segment builder's sync VO + captions) into
+> `voice_pipeline` and collapse the remaining aligner duplication.
 - Director gains first-class steps: **generate (ComfyUI) → voiceover (per-beat) →
   align (beat-anchored) → render → assemble(narrated)**. Retires the silent-audio design
   and the need for hand drivers. Segment builder's `_voiceover_stage` and beat-anchoring

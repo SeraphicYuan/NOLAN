@@ -257,10 +257,17 @@ def _rerender_orchestrator(plan_path: Path, ids: set, *, llm_client=None, nolan_
     total_duration, _ = render_mod.annotate_scene_plan(data, outcomes)
     save_plan_raw(plan_path, data)
 
-    scratch = project_path / ".orchestrator" / "modules" / "render"
-    scratch.mkdir(parents=True, exist_ok=True)
-    silent = scratch / "silent.wav"
-    render_mod.generate_silent_audio(total_duration, silent)
+    # Same audio choice as the Director's render step: real narration when the
+    # project has one, else a silent track (iterating a scene must never strip
+    # the voiceover from final.mp4).
+    voiceover = project_path / "assets" / "voiceover" / "voiceover.mp3"
+    if voiceover.exists():
+        audio = voiceover
+    else:
+        scratch = project_path / ".orchestrator" / "modules" / "render"
+        scratch.mkdir(parents=True, exist_ok=True)
+        audio = scratch / "silent.wav"
+        render_mod.generate_silent_audio(total_duration, audio)
 
     output_dir = project_path / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -268,6 +275,6 @@ def _rerender_orchestrator(plan_path: Path, ids: set, *, llm_client=None, nolan_
     repo_root = Path(__file__).resolve().parents[3]   # src/nolan/iterate -> repo root
     render_mod.call_assemble(
         project_path=project_path, scene_plan_path=plan_path,
-        audio_path=silent, output_path=final, repo_root=repo_root,
+        audio_path=audio, output_path=final, repo_root=repo_root,
     )
     return final
