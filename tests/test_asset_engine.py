@@ -112,3 +112,78 @@ def test_resolve_dicts_is_lossless_and_in_place():
 
 def test_art_types_membership():
     assert "archival-art" in ART_TYPES
+
+
+# --- operator bridge (query-expansion layer) --------------------------------
+
+def test_bridge_not_called_when_literal_hits():
+    calls = []
+    def bridge(s):
+        calls.append(s.id)
+        return ["should not be used"]
+    e = AssetEngine(EngineConfig(),
+                    search_fn=lambda s: {"similarity_score": 0.8, "video_path": "v.mp4"},
+                    bridge_fn=bridge)
+    s = scene()
+    assert e.resolve(s) == "search(0.80)"
+    assert calls == []          # cost guard: no LLM bridge on a literal hit
+
+
+def test_bridged_search_hit():
+    def search(s):
+        # literal query misses; the metaphor probe hits
+        if s.search_query == "a moth circling a flame":
+            return {"similarity_score": 0.71, "video_path": "moth.mp4"}
+        return None
+    e = AssetEngine(EngineConfig(),
+                    search_fn=search,
+                    bridge_fn=lambda s: ["weathered hands", "a moth circling a flame"])
+    s = scene(search_query="the pain of becoming yourself")
+    assert e.resolve(s) == "search-bridged(0.71)"
+    assert s.matched_clip["video_path"] == "moth.mp4"
+
+
+def test_bridged_library_hit():
+    def library(s):
+        return "/lib/moth.jpg" if s.search_query == "a moth circling a flame" else None
+    e = AssetEngine(EngineConfig(enable_generation=False),
+                    search_fn=lambda s: None,
+                    library_fn=library,
+                    bridge_fn=lambda s: ["a moth circling a flame"])
+    s = scene(search_query="the pain of becoming yourself")
+    assert e.resolve(s) == "library-bridged(search-miss)"
+    assert s.matched_asset == "/lib/moth.jpg"
+
+
+def test_bridge_called_once_per_scene():
+    calls = []
+    def bridge(s):
+        calls.append(1)
+        return ["metaphor one", "metaphor two"]
+    e = AssetEngine(EngineConfig(enable_generation=False),
+                    search_fn=lambda s: None,      # search tier probes both, misses
+                    library_fn=lambda s: None,     # library tier probes both, misses
+                    bridge_fn=bridge)
+    s = scene()
+    assert e.resolve(s) == "none(search-miss)"
+    assert len(calls) == 1     # one bridge call shared across tiers
+
+
+def test_bridge_failure_contained():
+    def bridge(s):
+        raise RuntimeError("LLM down")
+    e = AssetEngine(EngineConfig(enable_generation=False),
+                    search_fn=lambda s: None,
+                    bridge_fn=bridge)
+    s = scene()
+    assert e.resolve(s) == "none(search-miss)"
+
+
+def test_bridge_disabled_by_config():
+    calls = []
+    e = AssetEngine(EngineConfig(enable_bridge=False, enable_generation=False),
+                    search_fn=lambda s: None,
+                    bridge_fn=lambda s: calls.append(1) or ["m"])
+    s = scene()
+    assert e.resolve(s) == "none(search-miss)"
+    assert calls == []

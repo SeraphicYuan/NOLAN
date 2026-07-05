@@ -52,9 +52,12 @@ cannot cross beats.
 motion_spec present → done
 archival-art → exact-title museum pass → semantic fallback
 footage      → vector clip search (ClipMatcher, gate 0.5)
+             → operator BRIDGE on miss: tonal/conceptual metaphor queries
+               (evoke_broll prompts) re-probe the search tier
 generated    → comfyui_prompt
 graphic/text → lazy motion authoring (LLM)
-escalation   → picture-library stills (hybrid CLIP+BGE) → external providers → generate → none(reason)
+escalation   → picture-library stills (hybrid CLIP+BGE; bridged queries too)
+             → external providers → generate → none(reason)
 ```
 
 Every resolution writes an auditable `scene.resolved_source`.

@@ -346,6 +346,40 @@ def _library_score_prompt(line: str, goal: str, period: str, locale: str, cands:
             '"flags": "<anachronism/wrong-locale markers; empty if none>", "why": "<=12 words"}]}')
 
 
+async def bridge_queries(llm, line: str, *, operators=("tonal", "conceptual"),
+                         period: str = "", locale: str = "",
+                         literalness: float = 0.5, max_queries: int = 6) -> List[str]:
+    """Light operator bridge for the asset engine's query-expansion layer.
+
+    Reuses the SAME operator prompts as the full evoke pipeline (no second
+    bridge implementation), but returns only the concrete visual-metaphor
+    search phrases — retrieval and gating stay wherever the caller lives.
+    Only the judgment-safe operators (tonal/conceptual) belong in automated
+    runs; ironic/relational picks want human review. Failures are contained
+    (a dead LLM just yields []).
+    """
+    out: List[str] = []
+    seen = set()
+    for op in operators:
+        try:
+            if op == "conceptual":
+                br = _extract_json(await llm.generate(
+                    _conceptual_bridge_prompt(line, period, locale, literalness),
+                    _CONCEPTUAL_BRIDGE_SYS))
+            else:  # tonal — the original evocative bridge
+                br = _extract_json(await llm.generate(
+                    _bridge_prompt(line, period, locale, literalness, None),
+                    _BRIDGE_SYS))
+            for m in br.get("visual_metaphors", []) or []:
+                key = str(m).strip().lower()
+                if key and key not in seen:
+                    seen.add(key)
+                    out.append(str(m).strip())
+        except Exception:
+            continue
+    return out[:max_queries]
+
+
 def available_video_providers(config) -> List[dict]:
     """List the stock-VIDEO providers currently available (for the UI pool control)."""
     from .image_search import ImageSearchClient, _DEFER_LAST

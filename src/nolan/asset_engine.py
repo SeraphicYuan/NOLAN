@@ -48,6 +48,8 @@ class EngineConfig:
     library_threshold: float = 0.24        # hybrid-similarity floor for a usable still
     enable_motion: bool = True             # lazily author a motion_spec for graphic/text scenes
     enable_art: bool = True                # exact-title museum pass for archival-art scenes
+    enable_bridge: bool = True             # operator query-expansion after a literal miss
+    bridge_operators: tuple = ("tonal", "conceptual")   # judgment-safe operators for auto runs
 
 
 class AssetEngine:
@@ -56,13 +58,15 @@ class AssetEngine:
                  external_fn: Optional[Callable] = None,    # scene -> truthy kind|None; sets matched_clip/matched_asset
                  library_fn: Optional[Callable] = None,     # scene -> matched_asset path|None (picture library)
                  motion_fn: Optional[Callable] = None,      # scene -> motion_spec dict|None (lazy authoring)
-                 art_fn: Optional[Callable] = None):        # scene -> truthy kind|None; sets matched_asset (exact-title art)
+                 art_fn: Optional[Callable] = None,         # scene -> truthy kind|None; sets matched_asset (exact-title art)
+                 bridge_fn: Optional[Callable] = None):     # scene -> [metaphor query, ...] (operator bridge)
         self.cfg = config or EngineConfig()
         self.search_fn = search_fn
         self.external_fn = external_fn
         self.library_fn = library_fn
         self.motion_fn = motion_fn
         self.art_fn = art_fn
+        self.bridge_fn = bridge_fn
 
     # --- public -----------------------------------------------------------
     def resolve(self, scene) -> str:
@@ -124,6 +128,15 @@ class AssetEngine:
                 if mc and float(mc.get("similarity_score", 1.0)) >= self.cfg.search_threshold:
                     scene.matched_clip = mc
                     return f"search({mc.get('similarity_score', 0):.2f})"
+                # Operator bridge: the literal query missed — retry the search
+                # tier with metaphor queries (tonal/conceptual by default).
+                for probe, query in self._bridge_probes(scene):
+                    mc = self.search_fn(probe)
+                    if mc and float(mc.get("similarity_score", 1.0)) >= self.cfg.search_threshold:
+                        scene.matched_clip = mc
+                        logger.info("bridge matched %s via %r",
+                                    getattr(scene, "id", "?"), query)
+                        return f"search-bridged({mc.get('similarity_score', 0):.2f})"
             return self._escalate(scene, reason="search-miss")
 
         if vt in GENERATED_TYPES:
@@ -139,6 +152,37 @@ class AssetEngine:
 
         return self._escalate(scene, reason=f"no-motion-for-{vt or 'unknown'}")
 
+    def _bridge_probes(self, scene):
+        """Yield (probe_scene, query) pairs for the operator bridge, lazily.
+
+        The bridge runs at most once per scene (queries cached on the engine
+        call), only when configured and wired. Probe scenes carry the metaphor
+        as BOTH search_query and visual_description so embedding-based tiers
+        rank on the metaphor, not the original literal text.
+        """
+        if not (self.cfg.enable_bridge and self.bridge_fn):
+            return
+        queries = getattr(scene, "_bridge_queries_cache", None)
+        if queries is None:
+            try:
+                queries = list(self.bridge_fn(scene) or [])
+            except Exception as exc:
+                logger.warning("bridge failed for %s: %s",
+                               getattr(scene, "id", "?"), exc)
+                queries = []
+            try:
+                object.__setattr__(scene, "_bridge_queries_cache", queries)
+            except Exception:
+                pass
+        if not queries:
+            return
+        from nolan.scenes import Scene
+        for q in queries:
+            yield Scene(id=getattr(scene, "id", "probe"),
+                        visual_type=scene.visual_type or "b-roll",
+                        search_query=q, visual_description=q,
+                        narration_excerpt=""), q
+
     def _escalate(self, scene, reason: str) -> str:
         # Picture library (curated stills) before external providers / generation.
         if self.cfg.enable_library and self.library_fn:
@@ -146,6 +190,13 @@ class AssetEngine:
             if asset:
                 scene.matched_asset = asset
                 return f"library({reason})"
+            for probe, query in self._bridge_probes(scene):
+                asset = self.library_fn(probe)
+                if asset:
+                    scene.matched_asset = asset
+                    logger.info("bridge matched still for %s via %r",
+                                getattr(scene, "id", "?"), query)
+                    return f"library-bridged({reason})"
         if self.cfg.enable_external and self.external_fn:
             # external_fn finds + attaches the asset (sets scene.matched_clip for a
             # video, or scene.matched_asset for an image) and returns a truthy kind.
@@ -205,6 +256,7 @@ class AssetEngine:
             external_fn=cls._default_external_fn(nolan_config, project_path) if cfg.enable_external else None,
             motion_fn=cls._default_motion_fn(llm_client) if llm_client else None,
             art_fn=cls._default_art_fn(nolan_config, project_path) if project_path else None,
+            bridge_fn=cls._default_bridge_fn(nolan_config, cfg) if cfg.enable_bridge else None,
         )
 
     @staticmethod
@@ -355,6 +407,35 @@ class AssetEngine:
                     sim_gate=0.24, lead_queries=lead, img_sources=state["sources"])
             except Exception:
                 return None
+        return fn
+
+    @staticmethod
+    def _default_bridge_fn(nolan_config, cfg: EngineConfig) -> Optional[Callable]:
+        """Operator bridge (evoke_broll prompts) — metaphor queries for a scene.
+
+        Lazy: the text LLM builds on the first bridged scene. One bridge call
+        covers all retrieval tiers for that scene (the engine caches queries).
+        """
+        state: dict = {}
+
+        def fn(scene):
+            if "llm" not in state:
+                try:
+                    from nolan.llm import create_text_llm
+                    state["llm"] = create_text_llm(nolan_config)
+                except Exception:
+                    state["llm"] = None
+            if not state.get("llm"):
+                return []
+            line = (getattr(scene, "narration_excerpt", "") or
+                    getattr(scene, "search_query", "") or
+                    getattr(scene, "visual_description", "") or "").strip()
+            if not line:
+                return []
+            from nolan.evoke_broll import bridge_queries
+            from nolan.segment.render import _run_async
+            return _run_async(bridge_queries(
+                state["llm"], line, operators=tuple(cfg.bridge_operators)))
         return fn
 
     @staticmethod
