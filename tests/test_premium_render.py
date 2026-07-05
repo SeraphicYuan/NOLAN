@@ -142,3 +142,54 @@ def test_primary_reveal_capped_for_late_first_word():
     ws, reveals = _step_words(words, 0.0, 4.0, fps=30, frames=120)
     assert ws[0]["startFrame"] == 60
     assert reveals == [12, 60]
+
+
+# --- nine-dot tray placements drive the composition ---------------------------
+
+from nolan.premium_render import _scene_step
+
+
+def _tray_scene(tmp_path, places):
+    import cv2, numpy as np
+    assets = []
+    for i, place in enumerate(places):
+        p = tmp_path / f"tray{i}.jpg"
+        cv2.imwrite(str(p), (np.random.default_rng(i).random((90, 160, 3)) * 255).astype("uint8"))
+        a = {"id": f"a{i+1}", "kind": "image", "src": str(p)}
+        if place:
+            a["place"] = list(place)
+        assets.append(a)
+    return {"id": "s1", "visual_type": "archival-art", "assets": assets,
+            "energy": 0.5}
+
+
+def test_two_placed_tray_images_become_a_montage(tmp_path):
+    scene = _tray_scene(tmp_path, [(0.2, 0.25), (0.8, 0.78)])
+    block, props = _scene_step(scene, tmp_path, 30, 4.0)
+    assert block == "PhotoMontage"
+    assert [(c["x"], c["y"]) for c in props["cards"]] == [(0.2, 0.25), (0.8, 0.78)]
+
+
+def test_one_placed_tray_image_targets_the_camera(tmp_path):
+    scene = _tray_scene(tmp_path, [(0.8, 0.25)])
+    block, props = _scene_step(scene, tmp_path, 30, 4.0)
+    assert block == "ArtworkStage"
+    f = props["focuses"][0]
+    # focus region centered on the chosen dot (clamped to frame)
+    assert abs((f["x"] + f["w"] / 2) - 0.8) < 0.15
+    assert abs((f["y"] + f["h"] / 2) - 0.25) < 0.15
+
+
+def test_unplaced_tray_stays_comment_only(tmp_path):
+    scene = _tray_scene(tmp_path, [None, None])
+    scene["matched_asset"] = str(tmp_path / "tray0.jpg")
+    block, props = _scene_step(scene, tmp_path, 30, 4.0)
+    assert block == "ArtworkStage"
+    assert props["src"].endswith("tray0.jpg")   # normal still path, no montage
+
+
+def test_layout_spec_outranks_tray(tmp_path):
+    scene = _tray_scene(tmp_path, [(0.5, 0.5), (0.2, 0.2)])
+    scene["layout_spec"] = {"template": "quote", "params": {"quote": "arma"}}
+    block, _ = _scene_step(scene, tmp_path, 30, 4.0)
+    assert block == "PullQuote"

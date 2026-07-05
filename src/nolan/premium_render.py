@@ -105,6 +105,30 @@ def _step_words(section_words: List[Dict[str, Any]], start_s: float,
     return words, [primary, max(second, primary)]
 
 
+def _tray_placements(scene: Dict[str, Any],
+                     project_path: Path) -> List[Tuple[Path, Tuple[float, float], str]]:
+    """Human-PLACED tray images: [(abs_path, (x, y), caption)].
+
+    The Scenes page's nine-dot grid stores `place: [x, y]` on curated tray
+    assets — only placed images drive rendering (unplaced tray entries remain
+    comment references, per the tray contract).
+    """
+    out = []
+    for a in scene.get("assets") or []:
+        if a.get("kind") != "image" or not a.get("src") or not a.get("place"):
+            continue
+        p = Path(a["src"])
+        if not p.is_absolute():
+            p = Path(project_path) / a["src"]
+        if p.exists():
+            try:
+                x, y = float(a["place"][0]), float(a["place"][1])
+            except (TypeError, ValueError, IndexError):
+                continue
+            out.append((p, (x, y), str(a.get("label") or "")))
+    return out
+
+
 def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
                 duration_s: float, ordinal: int = 0) -> Tuple[str, Dict[str, Any]]:
     """(block, props) for a scene, or raise PremiumIneligible."""
@@ -121,6 +145,20 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         adapted = adapt(template, spec.get("params") or {})
         if adapted:
             return adapted
+
+    # Human-placed tray assets outrank the automatic still: the nine-dot
+    # placements ARE the composition. 2+ placed images -> a montage with the
+    # cards at their chosen spots; exactly one -> the camera pushes to it.
+    placed = _tray_placements(scene, project_path)
+    if len(placed) >= 2:
+        cards = [{"src": str(p), "x": round(x, 3), "y": round(y, 3),
+                  **({"caption": cap} if cap else {})}
+                 for p, (x, y), cap in placed]
+        return "PhotoMontage", {"cards": cards}
+    if len(placed) == 1:
+        p, (x, y), _cap = placed[0]
+        return "ArtworkStage", {"src": str(p),
+                                **_still_motion_props(scene, ordinal, center=(x, y))}
 
     asset = scene.get("matched_asset") or (
         f"assets/generated/{scene['generated_asset']}"
@@ -139,14 +177,16 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         "Chapter-block mapping (needs layout_spec or a still asset)")
 
 
-def _still_motion_props(scene: Dict[str, Any], ordinal: int = 0) -> Dict[str, Any]:
+def _still_motion_props(scene: Dict[str, Any], ordinal: int = 0,
+                        center: Tuple[float, float] = None) -> Dict[str, Any]:
     """Camera-tour props for a still, from the scene's authored tempo.
 
     ArtworkStage keyframes its camera ONLY from focus regions — this is where
     the treatment vocabulary lands: energy sets zoom tightness, motion_speed
-    sets glide/hold pacing, and placement honors a stamped still-motion
-    direction (else alternates center/left/right by ordinal so consecutive
-    stills don't all push the same way).
+    sets glide/hold pacing. Placement precedence: an explicit ``center``
+    (a human's nine-dot tray placement — the camera pushes exactly there) →
+    a stamped still-motion direction → center/left/right lane alternation by
+    ordinal so consecutive stills don't all push the same way.
     """
     energy = 0.5
     try:
@@ -159,14 +199,17 @@ def _still_motion_props(scene: Dict[str, Any], ordinal: int = 0) -> Dict[str, An
     ms = scene.get("motion_spec") or {}
     direction = ((ms.get("content") or {}).get("direction")
                  or ms.get("direction") or "")
-    if direction == "left":
-        x = 0.06
+    if center is not None:
+        x = max(0.0, min(1.0 - side, float(center[0]) - side / 2))
+        y = max(0.0, min(1.0 - side, float(center[1]) - side / 2))
+    elif direction == "left":
+        x, y = 0.06, (1 - side) / 2
     elif direction == "right":
-        x = 1 - side - 0.06
+        x, y = 1 - side - 0.06, (1 - side) / 2
     else:
         lane = ordinal % 3
         x = {0: (1 - side) / 2, 1: 0.08, 2: 1 - side - 0.08}[lane]
-    y = (1 - side) / 2
+        y = (1 - side) / 2
 
     glide = {"slow": 34, "medium": 26, "fast": 18}.get(speed, 26)
     intro = {"slow": 48, "medium": 40, "fast": 26}.get(speed, 40)
