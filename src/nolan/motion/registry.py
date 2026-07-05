@@ -119,34 +119,38 @@ REGISTRY: List[MotionEffect] = [
         style=[_p("cardStyle", "enum", values=["glass", "gradient", "spotlight"], default="glass")],
         shared=["theme"], duration_default=4.0),
 
-    # ---- Python ----
+    # ---- Curated Remotion blocks (Phase 3: one backend per intent) ----
+    # Same effect ids + params as before; the executor's block path adapts
+    # them to the flow-blocks library. Old specs stamped backend="python"
+    # still render via the retained Python classes.
     MotionEffect(
-        "counter", "python", "data",
-        "Animated count-up number with a caption (a stat reveal).", "CounterRenderer",
+        "counter", "block", "data",
+        "Animated count-up number with a caption (a stat reveal).", "StatCount",
         content=[_p("value", "int", "the number (digits only)", required=True),
                  _p("label", "string", "caption", default=""),
                  _p("prefix", "string", 'leading sign/symbol before the number, e.g. "+", "$", "-". Use "+" for growth/increase.', default=""),
                  _p("suffix", "string", 'units after the number, e.g. "%", "B", "x"', default="")],
-        style=[_p("tone", "enum", values=["neutral", "success", "danger"], default="neutral")],
         shared=["position"], duration_default=4.0),
     MotionEffect(
-        "title", "python", "text",
-        "Animated title card (title + subtitle + accent line).", "TitleRenderer",
+        "title", "block", "text",
+        "Animated title card (title + subtitle + accent line).", "HeroStatement",
         content=[_p("title", "string", required=True), _p("subtitle", "string", default="")],
         shared=["position"], duration_default=4.0),
     MotionEffect(
-        "lower-third", "python", "text",
-        "Lower-third name/title caption.", "LowerThirdRenderer",
+        "lower-third", "block", "text",
+        "Lower-third name/title caption.", "LowerThird",
         content=[_p("name", "string", "primary line", required=True),
                  _p("title", "string", "secondary line", default="")],
         shared=["position"], duration_default=4.0),
     MotionEffect(
-        "comparison", "python", "data",
-        "Two-sided VS comparison.", "ComparisonRenderer",
+        "comparison", "block", "data",
+        "Two-sided VS comparison.", "ComparisonVS",
         content=[_p("left_text", "string", required=True), _p("right_text", "string", required=True),
                  _p("left_subtitle", "string", default=""), _p("right_subtitle", "string", default=""),
                  _p("center_label", "string", default="VS")],
         duration_default=4.0),
+
+    # ---- Python ----
     MotionEffect(
         "line-chart", "python", "rich-chart",
         "Animated single-series line chart (rise/crash/rally).", "LineChartRenderer",
@@ -160,21 +164,8 @@ REGISTRY: List[MotionEffect] = [
         content=[_p("nodes", "string[]", "node labels in cycle order", required=True),
                  _p("title", "string", default=""), _p("center_label", "string", default="")],
         duration_default=7.0),
-    MotionEffect(
-        "photo-montage", "python", "image",
-        "'Photos on a table' montage: Polaroid-framed stills on a textured surface, "
-        "a slow Ken Burns camera, and one hero card that slides in with a handwritten "
-        "caption. Best for historical figures/archival stills.", "PhotoMontageRenderer",
-        content=[_p("hero", "object",
-                    "the sliding/captioned card: {image_path, caption?, x?, y?, scale?, "
-                    "rotation?, slide_from?}", required=True),
-                 _p("cards", "array",
-                    "settled background cards: [{image_path, x, y, scale?, rotation?, caption?}] "
-                    "with x,y as 0..1 of the frame", default=[]),
-                 _p("background", "string", "optional table-texture image path", default=None),
-                 _p("slide_from", "enum", "hero entry direction",
-                    values=["left", "right", "up", "down"], default="right")],
-        duration_default=10.0),
+    # ("photo-montage" (python) removed in Phase 3 — photo-montage-pro owns the
+    #  intent; no stored specs referenced the python variant.)
     MotionEffect(
         "photo-montage-pro", "remotion", "photo-montage",
         "'Photos on a table' montage with a per-card motion system (Remotion): each card "

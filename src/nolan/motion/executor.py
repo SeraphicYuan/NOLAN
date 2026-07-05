@@ -85,11 +85,30 @@ def _render_still_family(spec: Dict[str, Any], out_path: Path) -> Path:
     raise ValueError(f"unknown still-family target: {target}")
 
 
+def _render_block(spec: Dict[str, Any], out_path: Path) -> Path:
+    """Text/data intents served by the curated Remotion blocks (Phase 3).
+
+    These effects share their param names with the same-named layout
+    templates, so the layout->block adapters apply directly.
+    """
+    from nolan.layout_blocks import render_layout_block
+
+    template = str(spec["effect"]).replace("-", "_")
+    params = {**spec.get("content", {}), **spec.get("style", {})}
+    clip = render_layout_block(template, params, spec.get("duration", 4.0),
+                               out_path, scene_id=str(spec.get("effect")))
+    if clip is None:
+        raise ValueError(f"block adapter produced no mapping for {template}")
+    return clip
+
+
 def render(spec: Dict[str, Any], out_path) -> Path:
     """Render a *validated* spec to out_path (mp4)."""
     out_path = Path(out_path)
     if spec.get("target") in ("StillMotion", "SplitScreen", "ClipMontage", "StatOver"):
         return _render_still_family(spec, out_path)
+    if spec.get("backend") == "block":
+        return _render_block(spec, out_path)
     if spec.get("backend") == "python":
         return _render_python(spec, out_path)
     return _render_remotion(spec, out_path)
