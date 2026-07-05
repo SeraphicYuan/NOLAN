@@ -1,6 +1,8 @@
 # NOLAN Architecture Consolidation Plan
 
-**Date:** 2026-07-04 · **Status:** proposed (decisions pending, see §6)
+**Date:** 2026-07-04 · **Status:** APPROVED — all decisions taken (see §6), execution started
+**Decisions:** D1 Remotion-canonical ✓ · D2 FLOW absorbed as premium render mode ✓ ·
+D3 Studio → Project Dashboard ✓ · D4 alias old routes, remove in Phase 6 ✓ · D5 published order ✓
 **Basis:** full-surface + redundancy audits, plus the-aeneid end-to-end production run
 (which required manual CLI/python driving and surfaced 7 wiring defects, all since fixed).
 
