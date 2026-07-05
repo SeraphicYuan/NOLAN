@@ -12,7 +12,7 @@
   var groups = [
     { items: [{ id: "home", label: "Hub", href: "/" }] },
     { title: "Create", items: [
-      { id: "studio", label: "Studio", href: "/studio" },
+      { id: "studio", label: "Project Dashboard", href: "/studio" },
       { id: "process", label: "New from Essay", href: "/process" },
       { id: "script-styles", label: "Script Styles", href: "/script-styles" },
       { id: "script-projects", label: "Script Projects", href: "/script-projects" },

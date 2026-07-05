@@ -3,48 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Studio · NOLAN</title>
+  <title>Project Dashboard · NOLAN</title>
   <link rel="stylesheet" href="/static/nolan.css">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
            background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
-    .wrap { max-width: 880px; margin: 28px auto; padding: 0 20px; }
+    .wrap { max-width: 940px; margin: 28px auto; padding: 0 20px; }
     h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
     .sub { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; line-height: 1.5; }
-    .picker { display: flex; gap: 12px; align-items: center; margin-bottom: 24px; }
+    .picker { display: flex; gap: 12px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; }
     .picker select { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border);
                      border-radius: 8px; padding: 10px 12px; font-size: 14px; min-width: 240px; }
-    .stage { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+    .panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
              padding: 18px 20px; margin-bottom: 16px; }
-    .stage-head { display: flex; align-items: center; gap: 12px; }
-    .stage-num { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-tertiary);
-                 display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
-    .stage-num.done { background: var(--success); color: #06280f; }
-    .stage-title { font-size: 16px; font-weight: 600; flex: 1; }
-    .stage-status { font-size: 13px; color: var(--text-secondary); }
-    .stage-body { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .arm { color: var(--text-secondary); text-align: center; font-size: 18px; margin: -4px 0; }
+    .panel h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
     .empty { color: var(--text-secondary); font-size: 14px; padding: 40px; text-align: center; }
+    .pipeline-strip { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .pstep { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+             background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-secondary); }
+    .pstep.done { color: var(--success); border-color: var(--success); }
+    .pstep.error { color: var(--danger); border-color: var(--danger); }
+    .pstep.next { color: var(--accent); border-color: var(--accent); }
+    .pstep-arrow { color: var(--text-secondary); font-size: 11px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+    .stat-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stat { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 10px;
+            padding: 10px 14px; min-width: 92px; }
+    .stat .v { font-size: 18px; font-weight: 700; }
+    .stat .k { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; }
+    .stat.ok .v { color: var(--success); }
+    .stat.warn .v { color: var(--text-secondary); }
+    video.final { width: 100%; max-height: 420px; border-radius: 10px; background: #000; margin-top: 12px; }
+    .note { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
     input.inline { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border);
                    border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+    select.inline { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border);
+                    border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+    details.manual summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--text-secondary); }
+    details.manual .body { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border);
+            color: var(--text-secondary); }
+    .pill.premium { color: #e8b45a; border-color: #e8b45a; }
     @media (max-width: 768px) {
       .wrap { padding: 0 14px; }
       .picker { flex-direction: column; align-items: stretch; }
       .picker select { min-width: 0; width: 100%; font-size: 16px; }
-      .picker .btn { width: 100%; text-align: center; box-sizing: border-box; }
-      .stage { padding: 16px; }
-      .stage-body { flex-direction: column; align-items: stretch; }
-      .stage-body button, .stage-body .btn { width: 100%; text-align: center; box-sizing: border-box; }
-      select.inline, input.inline { width: 100%; font-size: 16px; box-sizing: border-box; }
-      .empty { padding: 32px 14px; }
+      .row, details.manual .body { flex-direction: column; align-items: stretch; }
+      .row button, .row .btn, details.manual .body button { width: 100%; text-align: center; box-sizing: border-box; }
     }
   </style>
 </head>
 <body>
   <script src="/static/nav.js" data-active="studio"></script>
   <div class="wrap">
-    <h1>Project Studio</h1>
-    <div class="sub">The full loop for one project: ingest source → process essay → review assets → render &amp; assemble.</div>
+    <h1>Project Dashboard</h1>
+    <div class="sub">One project, one view: the Director pipeline (script → scenes → assets → voiceover → aligned render), its artifacts, and the final video. Manual per-stage jobs live under “Manual controls”.</div>
 
     <div class="picker">
       <select id="project" onchange="onSelect()"><option value="">— select a project —</option></select>
@@ -52,15 +65,58 @@
       <a class="btn ghost" href="/library/add">+ Add to library</a>
     </div>
 
-    <div id="stages"></div>
+    <div id="content" style="display:none;">
+      <div class="panel">
+        <h2>Pipeline <span class="pill" id="modePill"></span></h2>
+        <div class="pipeline-strip" id="pipeline"></div>
+        <div class="note" id="pipeNote"></div>
+        <div class="row">
+          <button class="btn" onclick="runStep(false)">▶ Run next step</button>
+          <button class="btn secondary" onclick="runStep(true)">⏩ Run all (auto)</button>
+          <a class="btn ghost" id="agentsLink" href="/agents">Open in Agents (checkpoints, plan, feedback)</a>
+          <span class="note" id="runStatus"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Artifacts</h2>
+        <div class="stat-badges" id="stats"></div>
+        <div id="finalBox"></div>
+      </div>
+
+      <div class="panel">
+        <details class="manual">
+          <summary>Manual controls (override the pipeline per stage)</summary>
+          <div class="body">
+            <label class="inline" title="Name specific, era-correct real assets from the model's knowledge, using the project script as context."><input type="checkbox" id="knowledgeMatch"> 🧠 knowledge</label>
+            <button class="btn" onclick="runJob('/api/match',{project:current,kind:'broll-video',knowledge:document.getElementById('knowledgeMatch').checked},'jobM')">Match b-roll (video + archival)</button>
+            <button class="btn secondary" onclick="runJob('/api/match',{project:current,kind:'clips'},'jobM')">Match library clips</button>
+            <button class="btn secondary" onclick="runJob('/api/generate',{project:current},'jobM')">Generate (ComfyUI)</button>
+            <span>Stock images: <select id="src" class="inline"><option>wikimedia</option><option>loc</option><option>ddgs</option><option>all</option></select></span>
+            <button class="btn ghost" onclick="runJob('/api/match',{project:current,kind:'broll',source:document.getElementById('src').value,knowledge:document.getElementById('knowledgeMatch').checked},'jobM')">images only</button>
+            <button class="btn" onclick="runJob('/api/materialize-clips',{project:current},'jobM')">Fetch &amp; trim matched clips</button>
+            <button class="btn" onclick="runJob('/api/render-clips',{project:current},'jobM')">Render clips</button>
+            <span>Audio: <input id="audio" class="inline" placeholder="narration .wav/.mp3 (optional)" size="30"></span>
+            <button class="btn secondary" onclick="runJob('/api/assemble',{project:current,audio_file:document.getElementById('audio').value},'jobM')">Assemble final</button>
+            <div class="job-widget" id="jobM" style="display:none;"></div>
+          </div>
+        </details>
+      </div>
+    </div>
     <div id="empty" class="empty">Select a project above, or create one.</div>
   </div>
 
   <script src="/static/jobs.js"></script>
   <script>
     var current = null;
+    var STEP_LABELS = {
+      match_and_adapt_style: 'style', script_to_scenes: 'scenes', tempo_enrich: 'tempo',
+      select_clips: 'clips', slide_designer: 'slides', generate_assets: 'comfyui',
+      voiceover: 'voice', align_narration: 'align', render: 'render'
+    };
 
     function qs(name) { return new URLSearchParams(location.search).get(name); }
+    function esc(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
 
     function loadProjects() {
       fetch("/api/status").then(function (r) { return r.json(); }).then(function (s) {
@@ -74,76 +130,76 @@
       });
     }
 
-    function badge(ok, label) {
-      return '<span class="badge ' + (ok ? "done" : "pending") + '">' + (ok ? "✓ " : "") + label + "</span>";
-    }
-
-    function stage(num, title, statusHtml, bodyHtml, done) {
-      return '<div class="stage"><div class="stage-head"><div class="stage-num ' + (done ? "done" : "") + '">' + num +
-        '</div><div class="stage-title">' + title + '</div><div class="stage-status">' + statusHtml + "</div></div>" +
-        '<div class="stage-body">' + bodyHtml + '</div></div>';
-    }
-
     function onSelect() {
       current = document.getElementById("project").value;
-      if (!current) { document.getElementById("stages").innerHTML = ""; document.getElementById("empty").style.display = "block"; return; }
-      document.getElementById("empty").style.display = "none";
-      refresh();
+      var has = !!current;
+      document.getElementById("content").style.display = has ? "block" : "none";
+      document.getElementById("empty").style.display = has ? "none" : "block";
+      if (has) refresh();
     }
 
     function refresh() {
       fetch("/api/project/" + encodeURIComponent(current) + "/status")
-        .then(function (r) { return r.json(); })
-        .then(render);
+        .then(function (r) { return r.json(); }).then(renderStats);
+      fetch("/api/agents/" + encodeURIComponent(current) + "/state")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(renderPipeline)
+        .catch(function () { renderPipeline(null); });
+      document.getElementById("agentsLink").href = "/agents?project=" + encodeURIComponent(current);
     }
 
-    function render(st) {
-      var html = "";
-      // Stage 1 — Source / ingest
-      html += stage(1, "Source footage",
-        st.source_videos + " video(s) in source/",
-        '<a class="btn secondary" href="/library/add">Add to library</a>' +
-        '<a class="btn ghost" href="/library">Browse library</a>',
-        st.source_videos > 0);
-      html += '<div class="arm">↓</div>';
+    function renderPipeline(st) {
+      var strip = document.getElementById("pipeline");
+      var note = document.getElementById("pipeNote");
+      if (!st || !st.pipeline || !st.pipeline.length) {
+        strip.innerHTML = '<span class="note">Pipeline not started — “Run next step” begins with the style guide.</span>';
+        note.textContent = "";
+        return;
+      }
+      strip.innerHTML = st.pipeline.map(function (s) {
+        var mark = s.status === 'done' ? '✓ ' : s.status === 'error' ? '✕ ' : s.status === 'next' ? '▶ ' : '';
+        return '<span class="pstep ' + s.status + '" title="' + esc(s.step) + ' — ' + s.status + '">' +
+          mark + esc(STEP_LABELS[s.step] || s.step) + '</span>';
+      }).join('<span class="pstep-arrow">→</span>');
+      var last = (st.step_history || []).slice(-1)[0];
+      note.textContent = 'status: ' + (st.status || '?') +
+        (last ? (' · last: ' + last.name + ' (' + last.status + ')' + (last.notes ? ' — ' + String(last.notes).slice(0, 140) : '')) : '');
+    }
 
-      // Stage 2 — Process
-      html += stage(2, "Script & scene plan",
-        badge(st.has_script, "script") + " " + badge(st.has_scene_plan, st.scenes + " scenes"),
-        (st.has_scene_plan
-          ? '<a class="btn secondary" href="/scenes?project=' + encodeURIComponent(current) + '">Open in Scenes</a>'
-          : '<a class="btn" href="/process">Generate from essay</a>'),
-        st.has_scene_plan);
-      html += '<div class="arm">↓</div>';
+    function renderStats(st) {
+      var pill = document.getElementById("modePill");
+      pill.textContent = st.render_mode === 'premium' ? '✦ premium render' : '';
+      pill.className = 'pill' + (st.render_mode === 'premium' ? ' premium' : '');
+      function stat(v, k, ok) {
+        return '<div class="stat ' + (ok ? 'ok' : 'warn') + '"><div class="v">' + v + '</div><div class="k">' + k + '</div></div>';
+      }
+      document.getElementById("stats").innerHTML =
+        stat(st.has_script ? '✓' : '—', 'script', st.has_script) +
+        stat(st.scenes || 0, 'scenes', st.has_scene_plan) +
+        stat((st.matched || 0) + '/' + (st.scenes || 0), 'matched', st.scenes > 0 && st.matched >= st.scenes) +
+        stat(st.rendered || 0, 'rendered', st.rendered > 0) +
+        stat(st.has_voiceover ? '✓' : '—', 'voiceover', st.has_voiceover) +
+        stat(st.has_final ? '✓' : '—', 'final', st.has_final) +
+        (st.voice_id ? stat(esc(st.voice_id), 'voice', true) : '');
+      document.getElementById("finalBox").innerHTML = st.has_final
+        ? '<video class="final" controls preload="metadata" src="/api/project/' + encodeURIComponent(current) + '/final"></video>'
+        : '<div class="note">No final video yet — run the pipeline above.</div>';
+    }
 
-      // Stage 3 — Match assets
-      var matchBody =
-        '<label class="inline" title="Name specific, era-correct real assets (paintings/artifacts/places) from the model\'s knowledge, using the project script as context — instead of generic queries."><input type="checkbox" id="knowledgeMatch"> 🧠 knowledge</label> ' +
-        '<button class="btn" onclick="runJob(\'/api/match\',{project:current,kind:\'broll-video\',knowledge:document.getElementById(\'knowledgeMatch\').checked},\'job3\')">Match b-roll (video + archival)</button> ' +
-        '<button class="btn secondary" onclick="runJob(\'/api/match\',{project:current,kind:\'clips\'},\'job3\')">Match library clips</button> ' +
-        '<button class="btn secondary" onclick="runJob(\'/api/generate\',{project:current},\'job3\')">Generate (ComfyUI)</button> ' +
-        'Stock images: <select id="src" class="inline"><option>wikimedia</option><option>loc</option><option>ddgs</option><option>all</option></select> ' +
-        '<button class="btn ghost" onclick="runJob(\'/api/match\',{project:current,kind:\'broll\',source:document.getElementById(\'src\').value,knowledge:document.getElementById(\'knowledgeMatch\').checked},\'job3\')">images only</button>' +
-        '<div class="job-widget" id="job3" style="display:none;"></div>';
-      html += stage(3, "Review &amp; match assets",
-        badge(st.matched > 0, st.matched + "/" + st.scenes + " matched"),
-        st.has_scene_plan ? matchBody : '<span class="stage-status">needs a scene plan first</span>',
-        st.scenes > 0 && st.matched >= st.scenes);
-      html += '<div class="arm">↓</div>';
-
-      // Stage 4 — Render & assemble
-      var renderBody =
-        '<button class="btn" onclick="runJob(\'/api/materialize-clips\',{project:current},\'job4\')">Fetch &amp; trim matched clips</button> ' +
-        '<button class="btn" onclick="runJob(\'/api/render-clips\',{project:current},\'job4\')">Render clips</button> ' +
-        'Audio: <input id="audio" class="inline" placeholder="path to narration .wav/.mp3 (optional)" size="34"> ' +
-        '<button class="btn secondary" onclick="runJob(\'/api/assemble\',{project:current,audio_file:document.getElementById(\'audio\').value},\'job4\')">Assemble final</button>' +
-        '<div class="job-widget" id="job4" style="display:none;"></div>';
-      html += stage(4, "Render &amp; assemble",
-        badge(st.rendered > 0, st.rendered + " rendered") + " " + badge(st.has_final, "final video"),
-        st.has_scene_plan ? renderBody : '<span class="stage-status">needs a scene plan first</span>',
-        st.has_final);
-
-      document.getElementById("stages").innerHTML = html;
+    function runStep(auto) {
+      var st = document.getElementById("runStatus");
+      st.textContent = auto ? "Starting full run…" : "Starting next step…";
+      fetch("/api/agents/" + encodeURIComponent(current) + "/run", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auto: !!auto }),
+      }).then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error(t || r.statusText); });
+        return r.json();
+      }).then(function (d) {
+        st.textContent = "✓ started (pid " + (d.pid || "?") + ") — progress shows here and on the Agents page.";
+        setTimeout(refresh, 4000);
+        setTimeout(refresh, 15000);
+      }).catch(function (e) { st.textContent = "failed: " + e.message; });
     }
 
     function runJob(url, body, widgetId) {

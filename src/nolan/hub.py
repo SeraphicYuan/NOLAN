@@ -1127,7 +1127,26 @@ def create_hub_app(
                 status["error"] = str(e)
         finals = list(base.glob("*.mp4")) + list((base / "output").glob("*.mp4")) if base.exists() else []
         status["has_final"] = len(finals) > 0
+        status["has_voiceover"] = (base / "assets" / "voiceover" / "voiceover.mp3").exists()
+        try:
+            import yaml as _yaml
+            _meta = _yaml.safe_load((base / "project.yaml").read_text(encoding="utf-8")) or {}
+            status["render_mode"] = _meta.get("render_mode") or "standard"
+            status["voice_id"] = _meta.get("voice_id") or ""
+        except Exception:
+            status["render_mode"], status["voice_id"] = "standard", ""
         return status
+
+    @app.get("/api/project/{project}/final")
+    async def api_project_final(project: str):
+        """Stream a project's final video (output/final.mp4)."""
+        base = (Path("projects") / project).resolve()
+        if Path("projects").resolve() not in base.parents:
+            raise HTTPException(status_code=404, detail="bad project")
+        fp = base / "output" / "final.mp4"
+        if not fp.exists():
+            raise HTTPException(status_code=404, detail="no final video")
+        return FileResponse(str(fp), media_type="video/mp4")
 
     # ==================== Landing Page ====================
 
