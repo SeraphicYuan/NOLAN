@@ -2831,7 +2831,11 @@ def assemble(ctx, scene_plan, audio_file, output, resolution, fps, transition, t
 
     scene_plan_path = Path(scene_plan)
     audio_path = Path(audio_file)
-    output_path = scene_plan_path.parent / output if not Path(output).is_absolute() else Path(output)
+    # Relative -o resolves against the CWD (standard CLI expectation) — it
+    # previously resolved against the PLAN's directory, silently writing to
+    # <plan_dir>/<relative> while callers believed rc=0 meant success.
+    output_path = Path(output).resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Parse resolution
     width, height = map(int, resolution.split('x'))
@@ -3089,7 +3093,7 @@ def assemble(ctx, scene_plan, audio_file, output, resolution, fps, transition, t
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             click.echo(f"Error concatenating: {result.stderr}")
-            return
+            raise SystemExit(1)
 
         # Step 3: Add audio
         click.echo("\nAdding audio...")
@@ -3107,8 +3111,11 @@ def assemble(ctx, scene_plan, audio_file, output, resolution, fps, transition, t
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             click.echo(f"Error adding audio: {result.stderr}")
-            return
+            raise SystemExit(1)
 
+    if not output_path.exists() or output_path.stat().st_size < 1024:
+        click.echo(f"ERROR: assembly produced no output at {output_path}")
+        raise SystemExit(1)
     click.echo(f"\nDone! Output: {output_path}")
 
     # Get file size

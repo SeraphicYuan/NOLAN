@@ -5,6 +5,7 @@ import re
 import asyncio
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
+from dataclasses import fields as _dc_fields
 from typing import List, Dict, Optional, Any
 
 from nolan.script import ScriptSection
@@ -387,20 +388,40 @@ class Scene:
 
     # === SRT Cues (attached in Step 4) ===
     subtitle_cues: List[Any] = field(default_factory=list)  # SubtitleCue objects
+    # Lossless round-trip: unknown keys survive here (schema contract v2)
+    extra: Dict[str, Any] = field(default_factory=dict)
+
+
+_SCENE_FIELD_NAMES = {f.name for f in _dc_fields(Scene)}
 
 
 @dataclass
 class ScenePlan:
     """Complete scene plan for a video."""
     sections: Dict[str, List[Scene]] = field(default_factory=dict)
+    # Non-"sections" top-level keys (e.g. _meta) — preserved on round-trip.
+    meta: Dict[str, Any] = field(default_factory=dict)
+
+    SCHEMA_VERSION = 2
+
+    @staticmethod
+    def _scene_to_dict(scene: "Scene") -> Dict:
+        """Scene → dict, folding preserved unknown keys back to the top level."""
+        d = asdict(scene)
+        extra = d.pop("extra", None) or {}
+        for k, v in extra.items():
+            d.setdefault(k, v)
+        return d
 
     def to_json(self, indent: int = 2) -> str:
-        """Export to JSON string."""
-        data = {
-            "sections": {
-                title: [asdict(scene) for scene in scenes]
-                for title, scenes in self.sections.items()
-            }
+        """Export to JSON string (lossless: schema_version + preserved meta/extra)."""
+        data = {"schema_version": self.SCHEMA_VERSION}
+        for k, v in (self.meta or {}).items():
+            if k not in ("sections", "schema_version"):
+                data[k] = v
+        data["sections"] = {
+            title: [self._scene_to_dict(scene) for scene in scenes]
+            for title, scenes in self.sections.items()
         }
         return json.dumps(data, indent=indent)
 
@@ -416,6 +437,8 @@ class ScenePlan:
             data = json.load(f)
 
         plan = cls()
+        plan.meta = {k: v for k, v in data.items()
+                     if k not in ("sections", "schema_version")}
         for title, scenes_data in data["sections"].items():
             plan.sections[title] = [
                 cls._scene_from_dict(scene) for scene in scenes_data
@@ -494,6 +517,9 @@ class ScenePlan:
             motion_spec=data.get("motion_spec"),
             resolved_source=data.get("resolved_source"),
             subtitle_cues=data.get("subtitle_cues", []),
+            # lossless: any key this schema doesn't know survives in `extra`
+            extra={k: v for k, v in data.items()
+                   if k not in _SCENE_FIELD_NAMES and k != "extra"},
         )
 
     @property

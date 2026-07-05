@@ -9,6 +9,7 @@ See docs/plans/2026-04-26-two-layer-orchestrator.md.
 from __future__ import annotations
 
 import asyncio
+import logging
 import json
 import re
 from dataclasses import dataclass
@@ -35,6 +36,8 @@ MATCH_THRESHOLD = 0.6
 
 # Order matters — Director runs the first not-yet-completed step on each
 # invocation. Add new specialists here.
+logger = logging.getLogger(__name__)
+
 PIPELINE_STEPS = [
     "match_and_adapt_style",
     "script_to_scenes",
@@ -1033,8 +1036,9 @@ class Director:
         # Ken Burns.
         try:
             stamped = render_mod.stamp_tempo_motions(scene_plan, self.project_path)
-        except Exception:
+        except Exception as stamp_exc:
             stamped = 0
+            logger.warning("tempo-motion stamping failed: %s", stamp_exc)
 
         # 1. Render every scene that we know how to render.
         try:

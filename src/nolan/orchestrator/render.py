@@ -233,7 +233,13 @@ def render_scene(
     else:
         duration = parse_duration(scene.get("duration", "5s"))
     target = output_dir / f"{scene_id}.mp4"
-    spec_template = (scene.get("layout_spec") or {}).get("template")
+    _ls = scene.get("layout_spec")
+    if isinstance(_ls, str):           # both shapes exist in the wild
+        try:
+            _ls = json.loads(_ls)
+        except Exception:
+            _ls = {}
+    spec_template = (_ls or {}).get("template")
 
     try:
         kind = render_one(scene, target, duration=duration)
