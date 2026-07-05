@@ -106,7 +106,7 @@ alignment (body dedup pending).
   Voices (voice library + TTS studio + project voiceover, merged), Library /
   Add / Clips / Picture Library / Extract / Evocative B-roll, Deconstruct,
   Script Styles/Projects, Video Styles, Lottie, ComfyUI, Publish, Showcase,
-  Skills, Settings. `/tts` → 307 `/voices` (transition alias).
+  Skills, Settings.
 - **CLI**: `nolan.cli` package (domain modules; `cli_legacy` is a compat shim
   for helper imports). Entry: `from nolan.cli import main`.
 - **render-service** (:3010, Node): legacy HTTP engines (Lottie path) + the
@@ -127,8 +127,12 @@ alignment (body dedup pending).
 
 ## Known deferred work
 
-- hub.py APIRouter split (200 routes defined in one `create_hub_app` closure —
-  needs state-to-dependency conversion; dedicated session).
-- URL convention normalization (4 conventions in the wild; alias-then-remove).
-- (voice body dedup + library-tier policy unification landed 2026-07-05;
-  match_broll_v2 keeps its deliberate copy/vision-gate semantics.)
+(The 2026-07-05 deferred list #1–#9 is fully landed: operator bridge,
+word-synced premium reveals, still-motion vocabulary, annotate fix, voice
+dedup, library-policy unification, hub route-module split
+(`webui/routes/`, 18 modules), canonical /api/<domain> convention with
+legacy aliases, /tts alias removed.) Remaining:
+- Legacy-prefixed API aliases (/library/api/* etc.) removal once external
+  callers migrate.
+- node-side effects/presets + motion-canvas engine deletion (needs a
+  render-service rebuild); python layout renderers after Remotion bake-in.

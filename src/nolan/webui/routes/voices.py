@@ -193,12 +193,8 @@ def register(app, ctx):
                   p.suffix.lower(), "application/octet-stream")
         return FileResponse(p, media_type=mt)
 
-    # ---- TTS Studio — merged into the Voices page (Phase 4). /tts is an
-    # alias kept through the transition (removed in Phase 6). ----
-    @app.get("/tts")
-    async def tts_page():
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse("/voices", status_code=307)
+    # (TTS Studio merged into this page; the /tts transition alias was
+    #  removed once nothing referenced it — deferred item #9.)
 
     @app.post("/api/tts/sample")
     async def tts_sample_upload(file: UploadFile = File(...)):
