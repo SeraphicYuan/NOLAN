@@ -75,6 +75,15 @@ knows — omit for global search; the project imagelib is discovered from
   Chapter job via `remotion_source.render`). Python renderers
   (`renderer/scenes/`) are the automatic per-scene fallback;
   `NOLAN_LEGACY_RENDER=1` forces them.
+- **Content budgets** (`layout_blocks.BLOCK_BUDGETS`): every mapping enforces
+  its block's layout budget at `adapt()` — the single choke point all
+  consumers route through. Descriptive text ellipsizes; untrimmable content
+  (quotes, headlines, over-capacity item counts) rejects the mapping → python
+  fallback. No silent caps.
+- **Premium pre-flight gate**: before rendering, every section job runs FLOW's
+  Tier-1 contact-sheet pass (+ an edge-overflow check for text escaping the
+  frame on non-media blocks); failures list section/step/block and save
+  labeled contact sheets. Opt-out: project.yaml `premium_gate: false`.
 - **Motion specs**: `src/nolan/motion/` registry is one-backend-per-intent —
   `block` (curated blocks), `remotion` (compositions), `python` (line-chart,
   loop-diagram only). Executor: `motion/executor.py`.
