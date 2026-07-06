@@ -48,6 +48,7 @@ from nolan.cli import (  # noqa: E402,F401
     publish,
     capabilities,
     brief_cmd,
+    music,
 )
 
 # The main group is the entry point

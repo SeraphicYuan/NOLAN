@@ -197,6 +197,77 @@ def ensure_whoosh(sfx_dir: Path = None) -> Optional[Path]:
 
 # --- authoring (the Director's soundtrack step) --------------------------------
 
+def ensure_riser(sfx_dir: Path = None) -> Optional[Path]:
+    """A rising noise swell (~2.2s) that peaks at a cut — synthesized once.
+
+    Drop a better one into projects/_library/sfx/riser.wav to override.
+    """
+    sfx_dir = Path(sfx_dir) if sfx_dir else SFX_LIBRARY
+    sfx_dir.mkdir(parents=True, exist_ok=True)
+    dest = sfx_dir / "riser.wav"
+    if dest.exists():
+        return dest
+    r = subprocess.run(
+        [_ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
+         "-f", "lavfi", "-i", "anoisesrc=color=pink:duration=2.2:amplitude=0.4",
+         "-af", ("highpass=f=200,lowpass=f=6000,"
+                 "afade=t=in:st=0:d=1.9:curve=exp,afade=t=out:st=1.9:d=0.3"),
+         str(dest)], capture_output=True, text=True)
+    return dest if r.returncode == 0 and dest.exists() else None
+
+
+def ensure_hit(sfx_dir: Path = None) -> Optional[Path]:
+    """A short low impact thump (~0.4s) for data-punch moments — synthesized once.
+
+    Drop a better one into projects/_library/sfx/hit.wav to override.
+    """
+    sfx_dir = Path(sfx_dir) if sfx_dir else SFX_LIBRARY
+    sfx_dir.mkdir(parents=True, exist_ok=True)
+    dest = sfx_dir / "hit.wav"
+    if dest.exists():
+        return dest
+    r = subprocess.run(
+        [_ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
+         "-f", "lavfi", "-i", "sine=frequency=62:duration=0.4",
+         "-af", "afade=t=out:st=0.03:d=0.35,volume=1.6,alimiter=limit=0.9",
+         str(dest)], capture_output=True, text=True)
+    return dest if r.returncode == 0 and dest.exists() else None
+
+
+# scene treatments that earn a data-punch hit (numbers landing hard)
+_HIT_MOTION_EFFECTS = {"stat-over", "bar-compare", "k-shape", "counter",
+                       "annotate-stat"}
+_HIT_TEMPLATES = {"statistic", "stat_comparison", "bar_chart", "line_chart",
+                  "counter"}
+
+
+def _data_punch_events(plan: Dict[str, Any], hit: Path) -> List[Dict[str, Any]]:
+    """Soft impact hits where a data treatment lands on a driving beat.
+
+    Only energetic scenes (≥0.5) qualify, at most one hit per 15s — sound
+    design is punctuation, not a drum track.
+    """
+    events: List[Dict[str, Any]] = []
+    last_t = -999.0
+    scenes = [s for sc in (plan.get("sections") or {}).values()
+              if isinstance(sc, list) for s in sc if isinstance(s, dict)]
+    scenes.sort(key=lambda s: float(s.get("start_seconds") or 0))
+    for s in scenes:
+        t = float(s.get("start_seconds") or 0)
+        if t - last_t < 15.0 or float(s.get("energy") or 0.5) < 0.5:
+            continue
+        effect = ((s.get("motion_spec") or {}).get("effect")
+                  if isinstance(s.get("motion_spec"), dict) else None)
+        spec = s.get("layout_spec")
+        template = spec.get("template") if isinstance(spec, dict) else None
+        if effect in _HIT_MOTION_EFFECTS or template in _HIT_TEMPLATES:
+            events.append({"t": round(t, 3), "kind": "hit", "file": str(hit),
+                           "volume": 0.5, "lead": 0.0,
+                           "why": f"{s.get('id')}: {effect or template}"})
+            last_t = t
+    return events
+
+
 def author_soundtrack(plan: Dict[str, Any], *,
                       music: Optional[Path] = None, music_gain_db: float = -12.0,
                       sfx: bool = True, mood: str = "",
@@ -239,14 +310,32 @@ def author_soundtrack(plan: Dict[str, Any], *,
     events = []
     if sfx:
         whoosh = ensure_whoosh()
+        sections = section_energies(plan)
         if whoosh:
-            for start, _end, energy in section_energies(plan):
+            # volume 0.7: 0.5 measured INAUDIBLE under narration+duck in the
+            # 2-beat test (hi-band RMS at the seam was below its neighbors)
+            for start, _end, _energy in sections:
                 if start > 1.0:
                     events.append({"t": round(start, 3), "kind": "whoosh",
-                                   "file": str(whoosh), "volume": 0.5, "lead": 0.45})
+                                   "file": str(whoosh), "volume": 0.7, "lead": 0.45})
+        # risers: when the NEXT section jumps up the energy arc, a swell
+        # peaking at the seam telegraphs the shift (the editor's build)
+        riser = ensure_riser()
+        if riser:
+            for (s0, _e0, en0), (s1, _e1, en1) in zip(sections, sections[1:]):
+                if en1 - en0 >= 0.2 and s1 > 2.5:
+                    events.append({"t": round(s1, 3), "kind": "riser",
+                                   "file": str(riser), "volume": 0.55,
+                                   "lead": 2.0})
+        # data punches: a soft hit where a stat/chart treatment lands on a
+        # driving beat (≥0.5 energy, ≥15s apart — punctuation, not a drum track)
+        hit = ensure_hit()
+        if hit:
+            events += _data_punch_events(plan, hit)
         # content-matched SFX: per-scene cues sourced via the provider layer
         # (Freesound/Mixkit) and landed AT the beat (lead 0.0).
         events += _source_scene_sfx(plan, provider=sfx_provider)
+        events.sort(key=lambda e: e["t"])
 
     return {
         "version": 1,
@@ -341,6 +430,46 @@ def mix_from_spec(video: Path, spec: Dict[str, Any], out: Path = None) -> Path:
     logger.info("soundtrack: %s + %d sfx -> %s",
                 spec["track"]["file"], len(events), out)
     return out
+
+def _segment_rms_db(path: Path, start: float, dur: float) -> Optional[float]:
+    r = subprocess.run(
+        [_ffmpeg(), "-ss", f"{max(0.0, start):.3f}", "-t", f"{dur:.3f}",
+         "-i", str(path), "-af", "astats=metadata=1", "-f", "null", "-"],
+        capture_output=True, text=True)
+    import re as _re
+    m = _re.findall(r"RMS level dB: (-?[\d.]+)", r.stderr)
+    try:
+        return float(m[-1]) if m else None
+    except ValueError:
+        return None
+
+
+def measure_sfx_audibility(mixed: Path, spec: Dict[str, Any],
+                           min_delta_db: float = 1.0) -> List[Dict[str, Any]]:
+    """Verify-like-an-editor for the mix: is each authored SFX event audible?
+
+    Compares RMS in the event's window against the second before it on the
+    MIXED output. The 2-beat test shipped a whoosh nobody could hear and
+    nothing caught it — this names inaudible events so a human (or a later
+    pass) can raise volumes instead of trusting the spec.
+    """
+    out: List[Dict[str, Any]] = []
+    for e in (spec.get("sfx_events") or [])[:24]:
+        t0 = float(e["t"]) - float(e.get("lead", 0.45))
+        dur = 2.2 if e.get("kind") == "riser" else 0.8
+        during = _segment_rms_db(mixed, t0, dur)
+        before = _segment_rms_db(mixed, t0 - 1.2, 1.0)
+        delta = (during - before) if (during is not None and before is not None) else None
+        audible = bool(delta is not None and delta >= min_delta_db)
+        out.append({"t": e["t"], "kind": e.get("kind", "sfx"),
+                    "delta_db": round(delta, 1) if delta is not None else None,
+                    "audible": audible})
+        if not audible:
+            logger.warning("sfx %s@%.1fs measured INAUDIBLE (Δ %s dB) — raise "
+                           "its volume in soundtrack.json",
+                           e.get("kind"), e["t"], delta)
+    return out
+
 
 def mix_soundtrack(video: Path, plan: Dict[str, Any], out: Path = None, *,
                    music: Optional[Path] = None, music_gain_db: float = -12.0,

@@ -504,7 +504,8 @@ class Director:
         step notes but never destroys the (already correct) narrated video.
         """
         from nolan.audio_mix import (
-            load_soundtrack, mix_from_spec, mix_soundtrack, resolve_music_config,
+            load_soundtrack, measure_sfx_audibility, mix_from_spec,
+            mix_soundtrack, resolve_music_config,
         )
 
         spec = load_soundtrack(self.project_path)
@@ -514,7 +515,18 @@ class Director:
         try:
             if spec is not None:
                 mix_from_spec(final, spec)
-                return f" + soundtrack ({spec['track']['file']})"
+                # verify like an editor: measure that authored events are
+                # actually audible in the mix, and SAY so in the checkpoint
+                checks = measure_sfx_audibility(final, spec)
+                dead = [c for c in checks if not c["audible"]]
+                note = f" + soundtrack ({spec['track']['file']}"
+                if checks:
+                    note += (f"; sfx {len(checks) - len(dead)}/{len(checks)} audible"
+                             + (f" — INAUDIBLE: "
+                                + ", ".join(f"{c['kind']}@{c['t']}s" for c in dead[:4])
+                                + " — raise volumes in soundtrack.json"
+                                if dead else ""))
+                return note + ")"
             mix_soundtrack(final, scene_plan, music=cfg["music"],
                            music_gain_db=cfg["gain"], sfx=cfg["sfx"],
                            mood=cfg["mood"],

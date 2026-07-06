@@ -166,6 +166,64 @@ def test_author_places_sfx_on_beat_boundaries(tmp_path):
     lib.mkdir()
     (lib / "t.mp3").write_bytes(b"x")
     spec = author_soundtrack(PLAN, library=lib, sfx=True)
-    # PLAN's second section starts at 10.0 (first at 0.0 is excluded)
-    assert [e["t"] for e in spec["sfx_events"]] == [10.0]
-    assert spec["sfx_events"][0]["kind"] == "whoosh"
+    # PLAN's second section starts at 10.0 (first at 0.0 is excluded);
+    # v2 may add a riser at the same seam when the energy arc jumps
+    whooshes = [e for e in spec["sfx_events"] if e["kind"] == "whoosh"]
+    assert [e["t"] for e in whooshes] == [10.0]
+    assert all(e["t"] == 10.0 for e in spec["sfx_events"])
+
+
+# --- soundtrack v2: risers, hits, audibility ------------------------------------
+
+def test_riser_on_energy_jump(tmp_path, monkeypatch):
+    from nolan import audio_mix as am
+    plan = {"sections": {
+        "quiet": [{"start_seconds": 0.0, "end_seconds": 20.0, "energy": 0.3}],
+        "drive": [{"start_seconds": 20.0, "end_seconds": 40.0, "energy": 0.8}]}}
+    monkeypatch.setattr(am, "_source_scene_sfx", lambda *a, **k: [])
+    track = tmp_path / "t.mp3"
+    track.write_bytes(b"x")
+    spec = am.author_soundtrack(plan, music=track)
+    kinds = {e["kind"] for e in spec["sfx_events"]}
+    assert "riser" in kinds                       # 0.3 -> 0.8 telegraphed
+    riser = next(e for e in spec["sfx_events"] if e["kind"] == "riser")
+    assert riser["t"] == 20.0 and riser["lead"] == 2.0
+    whoosh = next(e for e in spec["sfx_events"] if e["kind"] == "whoosh")
+    assert whoosh["volume"] >= 0.7                # the buried-whoosh lesson
+
+
+def test_data_punch_events_rate_limited(tmp_path):
+    from nolan.audio_mix import _data_punch_events, ensure_hit
+    hit = ensure_hit(tmp_path)
+    scenes = [{"id": f"s{i}", "start_seconds": i * 5.0, "end_seconds": i * 5.0 + 5,
+               "energy": 0.8,
+               "layout_spec": {"template": "statistic", "params": {}}}
+              for i in range(6)]
+    plan = {"sections": {"A": scenes}}
+    events = _data_punch_events(plan, hit)
+    assert len(events) == 2                       # 30s of scenes, >=15s apart
+    assert all(e["kind"] == "hit" for e in events)
+
+
+def test_data_punch_skips_calm_scenes(tmp_path):
+    from nolan.audio_mix import _data_punch_events, ensure_hit
+    hit = ensure_hit(tmp_path)
+    plan = {"sections": {"A": [{"id": "s1", "start_seconds": 0, "energy": 0.3,
+                                "layout_spec": {"template": "statistic"}}]}}
+    assert _data_punch_events(plan, hit) == []
+
+
+def test_measure_sfx_audibility_flags_silence(tmp_path):
+    # a mixed file that is PURE TONE everywhere: the "event" adds nothing,
+    # so the measurement must call it inaudible
+    import subprocess
+    from nolan.audio_mix import _ffmpeg, measure_sfx_audibility
+    mixed = tmp_path / "m.mp4"
+    subprocess.run([_ffmpeg(), "-y", "-v", "quiet",
+                    "-f", "lavfi", "-i", "sine=frequency=300:duration=8",
+                    "-f", "lavfi", "-i", "color=black:s=64x64:d=8",
+                    "-map", "1:v", "-map", "0:a", "-shortest", str(mixed)],
+                   check=True)
+    checks = measure_sfx_audibility(
+        mixed, {"sfx_events": [{"t": 4.0, "kind": "whoosh", "lead": 0.45}]})
+    assert len(checks) == 1 and checks[0]["audible"] is False
