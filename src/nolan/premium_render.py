@@ -418,8 +418,11 @@ def render_premium(project_path: Path, *, theme: str = None,
             (project_path / "project.yaml").read_text(encoding="utf-8")) or {}
     except Exception:
         pass
+    from nolan.project_brief import load_brief, resolve_render_look
+    brief = load_brief(project_path)
+    accent = None
     if theme is None:
-        theme = meta.get("theme") or "bold-signal"
+        theme, accent = resolve_render_look(meta, brief)
     if gate is None:
         gate = meta.get("premium_gate", True) is not False
     try:                                   # project.yaml `j_cut_frames: 0` disables
@@ -465,6 +468,8 @@ def render_premium(project_path: Path, *, theme: str = None,
             section_start=sec_start, out_name=f"premium_{i:04d}.mp4",
             work_dir=work, theme=theme, fps=fps, section_words=section_words,
             j_cut_frames=j_cut)
+        if accent:                       # brief accent override (staged by stage.mjs)
+            job["accent"] = accent
         job_path = jobs_dir / f"premium_{i:04d}.json"
         job_path.write_text(json.dumps(job, indent=2), encoding="utf-8")
         job_paths.append((i, name, job_path))

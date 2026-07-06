@@ -85,6 +85,10 @@ ARTIFACTS = [
     {"name": "style_guide.md", "produced_by": "match_and_adapt_style",
      "consumed_by": "script_to_scenes, generate_assets (style suffix)",
      "contract": "voice + visual language for the project"},
+    {"name": "brief.json", "produced_by": "match_and_adapt_style (brief compiler)",
+     "consumed_by": "render (theme+accent), soundtrack (music_mood), voiceover (voice)",
+     "contract": "the guide COMPILED to validated tokens — theme via the "
+                 "explainable selector, gated by nolan.brief.validate_brief"},
     {"name": "scene_plan.json", "produced_by": "script_to_scenes (+ every step mutates)",
      "consumed_by": "everything downstream",
      "contract": "LOSSLESS schema v2 — unknown keys survive (Scene.extra / ScenePlan.meta)"},

@@ -29,10 +29,13 @@ export function stageJob(cfg, here, { stageAudio = true } = {}) {
   fs.mkdirSync(publicDir, { recursive: true });
 
   const theme = cfg.theme || "bold-signal";
-  fs.copyFileSync(
-    path.resolve(here, "../../themes", theme, "tokens.css"),
-    path.join(here, "src", "styles", "_active-theme.css"),
-  );
+  let tokens = fs.readFileSync(path.resolve(here, "../../themes", theme, "tokens.css"), "utf8");
+  // brief.json accent override (compiled from the style guide) — appended so it
+  // wins the cascade; contact sheets share this path so they can't diverge.
+  if (typeof cfg.accent === "string" && /^#[0-9a-fA-F]{6}$/.test(cfg.accent)) {
+    tokens += `\n:root { --accent: ${cfg.accent}; }\n`;
+  }
+  fs.writeFileSync(path.join(here, "src", "styles", "_active-theme.css"), tokens);
 
   const steps = (cfg.props && cfg.props.steps) || [];
   for (const s of steps) {

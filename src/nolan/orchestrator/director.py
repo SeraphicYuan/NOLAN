@@ -674,6 +674,35 @@ class Director:
             },
         )
 
+        # Compile the brief: the guide is prose for humans/script agents; the
+        # render side needs DECISIONS. brief.json carries theme (explainable
+        # selector pick), accent, music mood, voice — validated, reviewable
+        # in the Step Inspector, consumed by render/soundtrack/voiceover.
+        try:
+            from nolan.project_brief import compile_brief, save_brief
+            from nolan.config import load_config
+            from nolan.llm import create_text_llm
+            _llm = None
+            try:
+                _llm = create_text_llm(load_config())
+            except Exception:
+                _llm = None
+            _brief = await compile_brief(self.project_path, llm=_llm,
+                                         style_guide=style_guide)
+            save_brief(self.project_path, _brief)
+            summary_lines.append(
+                f"Brief compiled: theme **{_brief['theme']}** "
+                f"({'; '.join(_brief['theme_why'][:4])}) · "
+                f"mood '{_brief['music_mood']}' · voice "
+                f"{_brief['voice_id'] or '(default)'} · accent "
+                f"{_brief['accent'] or '(theme)'} — `brief.json` "
+                f"(alternatives: "
+                f"{', '.join(a['id'] for a in _brief['theme_alternatives'])})")
+        except Exception as exc:
+            # a failed compile must be VISIBLE but not sink the style step
+            summary_lines.append(f"Brief compile FAILED: {exc} — render will "
+                                 "fall back to defaults until re-run.")
+
         state_mod.finish_step(record, status="completed")
         state.status = "awaiting_review"
         state.current_step = "checkpoint_after_match_and_adapt_style"

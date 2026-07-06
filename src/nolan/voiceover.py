@@ -50,7 +50,8 @@ def _section_title(s: Any, i: int) -> str:
 
 def resolve_voice_ref(project_dir: Path, config, voice_id_override: Optional[str] = None):
     """Resolve the build voice: --voice override → project.yaml voice_id →
-    config.tts.default_voice → None (OmniVoice auto). Returns (ref_audio, ref_text, voice_id).
+    project brief.json (compiled casting) → config.tts.default_voice → None
+    (OmniVoice auto). Returns (ref_audio, ref_text, voice_id).
     """
     from nolan.voice_library import VoiceLibrary
     vid = (voice_id_override or "").strip() or None
@@ -63,6 +64,12 @@ def resolve_voice_ref(project_dir: Path, config, voice_id_override: Optional[str
                 vid = (data.get("voice_id") or (data.get("tts") or {}).get("voice_id") or "").strip() or None
             except Exception:
                 vid = None
+    if not vid:
+        try:
+            from nolan.project_brief import load_brief
+            vid = ((load_brief(Path(project_dir)) or {}).get("voice_id") or "").strip() or None
+        except Exception:
+            vid = None
     if not vid:
         vid = (getattr(config.tts, "default_voice", "") or "").strip() or None
     if not vid:

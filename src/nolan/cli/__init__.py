@@ -47,6 +47,7 @@ from nolan.cli import (  # noqa: E402,F401
     iterate,
     publish,
     capabilities,
+    brief_cmd,
 )
 
 # The main group is the entry point

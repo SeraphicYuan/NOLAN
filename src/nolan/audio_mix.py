@@ -360,24 +360,41 @@ def mix_soundtrack(video: Path, plan: Dict[str, Any], out: Path = None, *,
 
 
 def resolve_music_config(project_path: Path) -> Dict[str, Any]:
-    """project.yaml music settings: {enabled, music(path|None), gain, sfx, mood}."""
+    """Music settings: {enabled, music(path|None), gain, sfx, mood}.
+
+    project.yaml `music:` is the human's word — a path or `auto` enables, and
+    `none|false|off` disables ABSOLUTELY. When project.yaml is silent, the
+    compiled brief (brief.json) enables auto selection with its music_mood —
+    a pipeline project gets a bed by default instead of silence."""
     cfg = {"enabled": False, "music": None, "gain": -14.0, "sfx": True, "mood": "",
            "sfx_provider": "freesound"}
+    meta: Dict[str, Any] = {}
     try:
         import yaml
         meta = yaml.safe_load(
             (Path(project_path) / "project.yaml").read_text(encoding="utf-8")) or {}
     except Exception:
-        return cfg
+        pass
     music = meta.get("music")
-    if not music or str(music).lower() in ("none", "false", "off"):
-        return cfg
+    if music is not None and str(music).lower() in ("none", "false", "off"):
+        return cfg                              # explicit opt-out is final
+    brief = None
+    if not music:
+        try:
+            from nolan.project_brief import load_brief
+            brief = load_brief(Path(project_path))
+        except Exception:
+            brief = None
+        if brief is None:
+            return cfg                          # no music key, no brief → silent
+        music = "auto"                          # brief turns the bed on
     cfg["enabled"] = True
     if str(music).lower() != "auto":
         p = Path(str(music))
         cfg["music"] = p if p.is_absolute() else Path(project_path) / p
     cfg["gain"] = float(meta.get("music_gain_db", -14.0))
     cfg["sfx"] = meta.get("sfx", True) is not False
-    cfg["mood"] = str(meta.get("music_mood", "") or "")
+    cfg["mood"] = str(meta.get("music_mood", "") or "") or str(
+        (brief or {}).get("music_mood", "") or "")
     cfg["sfx_provider"] = str(meta.get("sfx_provider", "freesound") or "freesound")
     return cfg

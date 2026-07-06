@@ -95,6 +95,7 @@ def register(app, ctx):
 
     _ARTIFACTS = {"soundtrack": "soundtrack.json",
                   "style_guide": "style_guide.md",
+                  "brief": "brief.json",
                   "script": "script.md"}
 
     def _artifact_path(project: str, name: str) -> Path:
