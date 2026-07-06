@@ -100,7 +100,7 @@
   };
 
   // ---- selection API ----
-  NolanSelect.prototype.getSelected = function () { return Array.prototype.slice.call(this.selected); };
+  NolanSelect.prototype.getSelected = function () { return Array.from(this.selected); };  // Sets are not array-like — slice.call(Set) returned [] and every bulk verb silently no-oped
   NolanSelect.prototype.count = function () { return this.selected.size; };
   NolanSelect.prototype.clear = function () {
     this.selected.clear(); this._anchor = null;
