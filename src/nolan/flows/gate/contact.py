@@ -46,21 +46,30 @@ _TEXT_BLOCKS = {
 }
 
 
-def _edge_overflow(png_path, band_frac: float = 0.012, brightness: int = 170,
+def _edge_overflow(png_path, band_frac: float = 0.012, contrast: int = 70,
                    density: float = 0.004) -> str:
-    """'left'/'right' if glyph-bright pixels crowd an outer edge band, else ''.
+    """'left'/'right' if glyphs (pixels CONTRASTING the background) crowd an
+    outer edge band, else ''.
 
-    Text blocks on the dark theme never legitimately touch the outer ~1% of
-    the frame — a bright streak there means content escaped its slot (the
-    class of defect where tick labels pile through the right edge).
+    Text never legitimately touches the outer ~1% of the frame — content
+    there escaped its slot (tick labels piling through the right edge). The
+    original heuristic used ABSOLUTE brightness (>170), which assumed dark
+    themes: kraft-paper's bright paper background flagged every clean card
+    (the Homer test's 8 false positives). Now the background level is
+    estimated from the frame's corner patches and overflow means glyph-like
+    CONTRAST against it — theme-polarity-independent.
     """
     from PIL import Image
     import numpy as np
-    img = np.asarray(Image.open(png_path).convert("L"))
+    img = np.asarray(Image.open(png_path).convert("L")).astype(np.int16)
     h, w = img.shape
     band = max(4, int(w * band_frac))
+    pad = max(8, int(min(h, w) * 0.03))
+    corners = np.concatenate([img[:pad, :pad].ravel(), img[:pad, -pad:].ravel(),
+                              img[-pad:, :pad].ravel(), img[-pad:, -pad:].ravel()])
+    bg = float(np.median(corners))
     for side, sl in (("left", img[:, :band]), ("right", img[:, w - band:])):
-        if (sl > brightness).mean() > density:
+        if (np.abs(sl - bg) > contrast).mean() > density:
             return side
     return ""
 
