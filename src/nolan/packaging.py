@@ -168,7 +168,8 @@ async def build_package(project_path: Path, llm=None,
                 {"text": thumb_text,
                  "accent_words": [thumb_text.split()[-1].lower()]},
                 3.0, pkg / "_thumb_card.mp4", scene_id="thumb",
-                theme=(brief or {}).get("theme"))
+                theme=(brief or {}).get("theme"),
+                lang="en" if thumb_text.isascii() else "cn")
             if clip:
                 dest = pkg / "thumb_card.png"
                 subprocess.run([_ffmpeg(), "-y", "-v", "quiet", "-ss", "2.4",

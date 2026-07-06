@@ -52,7 +52,7 @@ export const KineticHeadline: React.FC<KineticHeadlineProps> = ({
         padding: "0 var(--space-9)" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.28em 0.32em",
           justifyContent: align === "center" ? "center" : "flex-start",
-          fontFamily: "var(--font-display-cn)", fontWeight: 800,
+          fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 800,
           fontSize: "var(--t-h1)", lineHeight: "var(--lh-head, 1.08)",
           letterSpacing: "var(--track-tight)", maxWidth: "82%" }}>
           {tokens.map((tok, i) => {

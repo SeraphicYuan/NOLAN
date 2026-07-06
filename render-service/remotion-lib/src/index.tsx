@@ -8,6 +8,7 @@ import { loadFont as fPlexMono } from "@remotion/google-fonts/IBMPlexMono";
 import { loadFont as fPlexSans } from "@remotion/google-fonts/IBMPlexSans";
 import "./styles/base.css";
 import "./styles/_active-theme.css"; // staged per-job from themes/<id>/tokens.css (Chapter only)
+import "./theme-fonts"; // loads the ACTIVE theme's font families (font-drift fix)
 import { Root } from "./Root";
 
 const o = { subsets: ["latin"], ignoreTooManyRequestsWarning: true } as const;

@@ -110,7 +110,7 @@ export const Ranking: React.FC<RankingProps> = ({
               <span
                 style={{
                   flex: 1,
-                  fontFamily: "var(--font-display-cn)",
+                  fontFamily: "var(--font-display, var(--font-display-cn))",
                   fontWeight: isTop ? 900 : 700,
                   fontSize: "var(--t-h2)",
                   lineHeight: 1.1,

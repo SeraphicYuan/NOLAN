@@ -108,7 +108,7 @@ export const PhotoMontage: React.FC<PhotoMontageProps> = ({
                   {card.caption ? (
                     isHero ? (
                       <span style={{
-                        fontFamily: "var(--font-display-cn)",
+                        fontFamily: "var(--font-display, var(--font-display-cn))",
                         fontStyle: "italic",
                         fontWeight: 600,
                         fontSize: 26,

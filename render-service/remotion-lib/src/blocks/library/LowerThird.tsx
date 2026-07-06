@@ -103,7 +103,7 @@ export const LowerThird: React.FC<LowerThirdProps> = ({
           >
             <div
               style={{
-                fontFamily: "var(--font-display-cn)",
+                fontFamily: "var(--font-display, var(--font-display-cn))",
                 fontSize: "var(--t-h2)",
                 lineHeight: 1.05,
                 color: "var(--text)",

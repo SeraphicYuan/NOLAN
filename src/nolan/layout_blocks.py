@@ -640,6 +640,7 @@ def render_layout_block(
     fps: int = 30,
     scene_id: str = "",
     theme: Optional[str] = None,
+    lang: Optional[str] = None,
 ) -> Optional[Path]:
     """Render a layout scene through its Remotion block. None -> no mapping."""
     adapted = adapt(template, params)
@@ -655,7 +656,8 @@ def render_layout_block(
     out_name = f"layout_{scene_id or template}_{uuid.uuid4().hex[:8]}.mp4"
     rendered = remotion_source.render(
         "Chapter", {"steps": [step], "captions": False,
-                    **({"theme": theme} if theme else {})},
+                    **({"theme": theme} if theme else {}),
+                    **({"lang": lang} if lang else {})},
         out_name=out_name, duration_frames=frames)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

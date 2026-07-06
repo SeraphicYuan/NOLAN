@@ -121,7 +121,7 @@ export const NewsHeadline: React.FC<NewsHeadlineProps> = ({
         >
           <div
             style={{
-              fontFamily: "var(--font-display-cn)",
+              fontFamily: "var(--font-display, var(--font-display-cn))",
               fontWeight: 800,
               fontSize: "var(--t-h1)",
               lineHeight: "var(--lh-head)",

@@ -99,7 +99,7 @@ export const SourceCitation: React.FC<SourceCitationProps> = ({
 
         <div style={{ overflow: "hidden", paddingBottom: "0.08em" }}>
           <div style={{
-            fontFamily: "var(--font-display-cn)",
+            fontFamily: "var(--font-display, var(--font-display-cn))",
             fontWeight: 800,
             fontSize: "var(--t-h2)",
             lineHeight: 1.12,

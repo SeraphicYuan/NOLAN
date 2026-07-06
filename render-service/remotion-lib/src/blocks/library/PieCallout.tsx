@@ -126,7 +126,7 @@ export const PieCallout: React.FC<PieCalloutProps> = ({
           }}>
             {infoTitle ? (
               <div style={{
-                fontFamily: "var(--font-display-cn)", fontSize: "var(--t-h2)",
+                fontFamily: "var(--font-display, var(--font-display-cn))", fontSize: "var(--t-h2)",
                 lineHeight: 1.15, color: "var(--text)",
               }}>{infoTitle}</div>
             ) : null}

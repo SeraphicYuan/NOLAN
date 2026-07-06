@@ -30,7 +30,7 @@ const Panel: React.FC<{ side: Side; from: number; t: number; frame: number; dur:
       boxShadow: "0 24px 70px rgba(0,0,0,0.55)", transformOrigin: "center",
       transform: `scale(${1 + 0.04 * k}) translate(${dir * 7 * k}px, ${-5 * k}px)` }} />
     {side.label ? (
-      <div style={{ fontFamily: "var(--font-display-cn)", fontWeight: 700, fontSize: 28, color: "var(--text)" }}>{side.label}</div>
+      <div style={{ fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 700, fontSize: 28, color: "var(--text)" }}>{side.label}</div>
     ) : null}
     {side.caption ? (
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 15, letterSpacing: "var(--track-caps)", textTransform: "uppercase",
@@ -64,7 +64,7 @@ export const ImageCompare: React.FC<ImageCompareProps> = ({ kicker, left, right,
       </div>
       {verdict ? (
         <div style={{ opacity: vt, transform: `translateY(${interpolate(vt, [0, 1], [16, 0])}px)`,
-          fontFamily: "var(--font-display-cn)", fontWeight: 700, fontSize: "var(--t-h2)", color: "var(--text)",
+          fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 700, fontSize: "var(--t-h2)", color: "var(--text)",
           textAlign: "center", maxWidth: "70%" }}>{verdict}</div>
       ) : null}
     </AbsoluteFill>

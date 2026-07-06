@@ -48,6 +48,11 @@ export function stageJob(cfg, here, { stageAudio = true } = {}) {
   if (accentOverride) {
     tokens += `\n:root { --accent: ${accentOverride}; }\n`;
   }
+  // language-aware display face (the font-drift fix, part 2): blocks read
+  // --font-display; an English job aliases it to the EN face, everything
+  // else keeps the CN face (the blocks' historical default).
+  const lang = cfg.lang === "en" ? "en" : "cn";
+  tokens += `\n:root { --font-display: var(--font-display-${lang}); }\n`;
   fs.writeFileSync(path.join(here, "src", "styles", "_active-theme.css"), tokens);
 
   // One theme system (SOTA #3): the hosted motion comps style via theme.ts
@@ -56,13 +61,22 @@ export function stageJob(cfg, here, { stageAudio = true } = {}) {
   // this the comps rendered dark-editorial no matter what the brief picked.
   const tok = {};
   for (const m of tokens.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+);/g)) tok[m[1]] = m[2].trim();
+  // first-choice family per font token — theme-fonts.ts loads these in the
+  // bundle so the theme's typography actually renders (the font-drift fix)
+  const fam = (v) => String(v || "").split(",")[0].trim().replace(/^["']|["']$/g, "");
+  const fonts = [...new Set(
+    ["font-display-en", "font-display-cn", "font-body", "font-mono"]
+      .map((k) => fam(tok[k])).filter(Boolean),
+  )];
   fs.writeFileSync(
     path.join(here, "src", "styles", "_active-theme.json"),
     JSON.stringify({
       theme,
       bg: tok["surface"], fg: tok["text"], muted: tok["text-2"],
       accent: accentOverride || tok["accent"],
-      fontFamily: tok["font-display-en"] || tok["font-body"] || "",
+      fontFamily: (lang === "en" ? tok["font-display-en"] : tok["font-display-cn"])
+        || tok["font-display-en"] || tok["font-body"] || "",
+      fonts,
     }, null, 1),
   );
 

@@ -112,7 +112,7 @@ export const ArtworkStage: React.FC<ArtworkStageProps> = ({
         <div style={{ position: "absolute", left: "var(--space-9)", top: "var(--space-7)", opacity: labelOp,
           transform: `translateY(${interpolate(labelOp, [0, 1], [-14, 0])}px)`, borderLeft: "3px solid var(--accent)",
           paddingLeft: "var(--space-4)", maxWidth: 460 }}>
-          <div style={{ fontFamily: "var(--font-display-cn)", fontWeight: 700, fontSize: 30, color: "var(--text)", lineHeight: 1.1 }}>{label.title}</div>
+          <div style={{ fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 700, fontSize: 30, color: "var(--text)", lineHeight: 1.1 }}>{label.title}</div>
           {label.artist || label.date ? (
             <div style={{ fontFamily: "var(--font-body)", fontStyle: "italic", fontSize: 20, color: "var(--text-2)", marginTop: 6 }}>
               {[label.artist, label.date].filter(Boolean).join(", ")}</div>

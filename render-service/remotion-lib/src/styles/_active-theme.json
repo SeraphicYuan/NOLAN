@@ -3,6 +3,11 @@
  "bg": "#0033b8",
  "fg": "#ffffff",
  "muted": "#e8eaff",
- "accent": "#00FFFF",
- "fontFamily": "\"Syne\", \"Archivo Black\", \"Inter\", sans-serif"
+ "accent": "#d4ff00",
+ "fontFamily": "\"Syne\", \"Archivo Black\", \"Inter\", sans-serif",
+ "fonts": [
+  "Syne",
+  "Noto Sans SC",
+  "Space Mono"
+ ]
 }

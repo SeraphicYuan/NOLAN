@@ -106,7 +106,7 @@ export const Flashback: React.FC<FlashbackProps> = ({
             letterSpacing: "var(--track-caps)", textTransform: "uppercase", color: "var(--text-mute)" }}>
             — flashback —
           </div>
-          <div style={{ fontFamily: "var(--font-display-cn)", fontWeight: 700, fontSize: "var(--t-h1)",
+          <div style={{ fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 700, fontSize: "var(--t-h1)",
             lineHeight: 1, color: "var(--text)", textShadow: "0 6px 28px rgba(0,0,0,0.6)" }}>
             {yearText}
           </div>

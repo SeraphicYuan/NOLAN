@@ -99,7 +99,7 @@ export const ComparisonVS: React.FC<ComparisonVSProps> = ({
 
         <div
           style={{
-            fontFamily: "var(--font-display-cn)",
+            fontFamily: "var(--font-display, var(--font-display-cn))",
             fontWeight: 900,
             fontSize: "var(--t-h2)",
             lineHeight: 1.05,

@@ -181,7 +181,7 @@ const QuoteBody: React.FC<{
         style={{
           display: "flex",
           flexWrap: "wrap",
-          fontFamily: "var(--font-display-cn)",
+          fontFamily: "var(--font-display, var(--font-display-cn))",
           fontWeight: 700,
           fontSize: quoteSize,
           lineHeight: quoteLead,
@@ -261,7 +261,7 @@ const DefinitionBody: React.FC<{
         <div
           style={{
             display: "inline-block",
-            fontFamily: "var(--font-display-cn)",
+            fontFamily: "var(--font-display, var(--font-display-cn))",
             fontWeight: 700,
             fontSize: "var(--t-display-2)",
             lineHeight: "var(--lh-head)",
@@ -279,7 +279,7 @@ const DefinitionBody: React.FC<{
         style={{
           marginTop: "var(--space-5)",
           maxWidth: "22em",
-          fontFamily: "var(--font-display-cn)",
+          fontFamily: "var(--font-display, var(--font-display-cn))",
           fontWeight: 400,
           fontSize: "var(--t-h2)",
           lineHeight: "var(--lh-head)",

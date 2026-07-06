@@ -1,0 +1,7 @@
+name: Homer 2-Beat Pipeline Test
+slug: homer-2beat-test
+description: Art-history vertical slice — 2 beats of the Homer essay through the full pipeline (font-drift regression test)
+render_mode: premium
+test_project: true
+output_dir: output/
+assets_dir: assets/

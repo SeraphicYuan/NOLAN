@@ -82,7 +82,7 @@ export const LocationStamp: React.FC<LocationStampProps> = ({
         {/* Location name — masks up under the clipped row. */}
         <div style={{ overflow: "hidden", paddingBottom: "0.08em" }}>
           <div style={{
-            fontFamily: "var(--font-display-cn)",
+            fontFamily: "var(--font-display, var(--font-display-cn))",
             fontWeight: 900,
             fontSize: "var(--t-h1)",
             lineHeight: 1.04,

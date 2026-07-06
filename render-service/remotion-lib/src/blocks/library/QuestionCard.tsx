@@ -99,7 +99,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           ) : null}
 
           <div style={{
-            fontFamily: "var(--font-display-cn)", fontWeight: 700,
+            fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 700,
             fontSize: "var(--t-h1)", lineHeight: "var(--lh-head)",
             color: "var(--text)",
             transform: `translateY(${qY}px)`, opacity: qOpacity,

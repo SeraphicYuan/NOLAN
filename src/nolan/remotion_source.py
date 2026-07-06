@@ -67,6 +67,8 @@ def render(
     # stage.mjs reads it from the job top level, so lift it there.
     if isinstance(props, dict) and props.get("steps") and props.get("theme"):
         job["theme"] = props.pop("theme")
+    if isinstance(props, dict) and props.get("steps") and props.get("lang"):
+        job["lang"] = props.pop("lang")
     if video:
         job["video"] = video
     if image:

@@ -132,7 +132,7 @@ export const StepFlow: React.FC<StepFlowProps> = ({
 
                   {/* Label */}
                   <div style={{
-                    fontFamily: "var(--font-display-cn)", fontWeight: 900,
+                    fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 900,
                     fontSize: "var(--t-h2)", lineHeight: 1.08,
                     color: isActive ? "var(--text)" : "var(--text-2)",
                     marginTop: "var(--space-5)",

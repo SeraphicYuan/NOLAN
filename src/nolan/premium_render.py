@@ -513,6 +513,16 @@ def render_premium(project_path: Path, *, theme: str = None,
         raise PremiumIneligible(
             f"{len(blockers)} premium blocker(s): " + "; ".join(blockers[:6]))
 
+    # Language of the piece → which display face the theme alias resolves to.
+    # Blocks read --font-display; an English essay should get the theme's EN
+    # face (Syne, Archivo…), not the CJK face's latin glyphs (the font drift
+    # the 2-beat tests exposed). CJK-share > 15% of narration → cn.
+    _narr = " ".join((s.get("narration_excerpt") or "")
+                     for sc in (plan.get("sections") or {}).values()
+                     if isinstance(sc, list) for s in sc if isinstance(s, dict))
+    _cjk = sum(1 for ch in _narr if "一" <= ch <= "鿿")
+    lang = "cn" if _narr and _cjk / max(1, len(_narr)) > 0.15 else "en"
+
     clips = []
     job_paths = []
     for i, ((name, scenes), wav, (sec_start, _d)) in enumerate(
@@ -528,6 +538,7 @@ def render_premium(project_path: Path, *, theme: str = None,
             j_cut_frames=j_cut, captions=captions)
         if accent:                       # brief accent override (staged by stage.mjs)
             job["accent"] = accent
+        job["lang"] = lang               # font-display face: en vs cn (stage.mjs)
         if draft:
             job["scale"] = 0.5
         if brief and isinstance(brief.get("grade"), dict):

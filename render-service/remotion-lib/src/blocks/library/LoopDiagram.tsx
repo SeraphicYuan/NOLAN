@@ -111,7 +111,7 @@ export const LoopDiagram: React.FC<LoopDiagramProps> = ({
       <div style={{ display: "flex", flexDirection: "column", height: "100%", alignItems: "center" }}>
         {title ? (
           <div style={{
-            fontFamily: "var(--font-display-cn)", fontWeight: 900,
+            fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 900,
             fontSize: "var(--t-h2)", lineHeight: 1.1, color: "var(--text)",
             textAlign: "center", maxWidth: "26ch",
             opacity: titleApp, transform: `translateY(${titleY}px)`,
@@ -193,7 +193,7 @@ export const LoopDiagram: React.FC<LoopDiagramProps> = ({
                     textAnchor="middle"
                     dominantBaseline="central"
                     style={{
-                      fontFamily: "var(--font-display-cn)",
+                      fontFamily: "var(--font-display, var(--font-display-cn))",
                       fontWeight: 900,
                       fontSize: 26,
                       fill: "var(--text)",
