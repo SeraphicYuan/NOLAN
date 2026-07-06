@@ -335,6 +335,29 @@ def register(app, ctx):
                     a.pop("place", None)
             else:
                 a["label"] = payload.get("label", "")
+        elif op == "pin":
+            # Human PIN: THIS asset for THIS beat. The asset engine returns
+            # "pinned:human" for the scene and never re-resolves it; premium
+            # renders it ahead of matched/auto assets. Pin a tray asset by id,
+            # or pass src/kind directly.
+            a = _find(payload.get("asset_id")) if payload.get("asset_id") else None
+            src = (a or {}).get("src") or payload.get("src")
+            if not src:
+                raise HTTPException(status_code=400, detail="asset_id or src required")
+            pin = {"src": str(src),
+                   "kind": (a or {}).get("kind") or payload.get("kind", "image"),
+                   "by": "human"}
+            for key in ("clip_start",):
+                v = (a or {}).get(key, payload.get(key))
+                if v is not None:
+                    pin[key] = float(v)
+            note = (payload.get("note") or "").strip()
+            if note:
+                pin["note"] = note
+                scene["human_note"] = note
+            scene["pinned_asset"] = pin
+        elif op == "unpin":
+            scene.pop("pinned_asset", None)
         else:
             raise HTTPException(status_code=400, detail=f"unknown op {op!r}")
 

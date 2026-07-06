@@ -419,6 +419,8 @@ PLAN_FIELD_CONSUMERS: Dict[str, str] = {
     "assets":            "src/nolan/premium_render.py",   # nine-dot tray
     "place":             "src/nolan/premium_render.py",
     "sfx":               "src/nolan/audio_mix.py",
+    "pinned_asset":      "src/nolan/premium_render.py",   # human pin (also asset_engine tier -1)
+    "human_note":        "src/nolan/orchestrator/director.py",  # directive -> motion_design prompt
 }
 
 

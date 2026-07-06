@@ -81,5 +81,22 @@ def remove(project_dir: Path, keys: List[str]) -> List[Dict[str, Any]]:
     return items
 
 
+def set_note(project_dir: Path, key: str, note: str) -> List[Dict[str, Any]]:
+    """Attach a human note to one item (by ``key``). Notes ride into the
+    pipeline: when the tier-0 matcher picks the item, its note lands on the
+    scene as ``human_note`` — a directive the design passes must follow."""
+    items = load(project_dir)
+    for it in items:
+        if it.get("key") == key:
+            note = (note or "").strip()
+            if note:
+                it["note"] = note
+            else:
+                it.pop("note", None)
+            break
+    save(project_dir, items)
+    return items
+
+
 def clear(project_dir: Path) -> None:
     save(project_dir, [])

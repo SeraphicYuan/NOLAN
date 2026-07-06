@@ -4,6 +4,30 @@
 **Status:** Complete
 **Last Updated:** 2026-07-06
 
+## Shortlist→pipeline: selects, pins, directives, review tray, citations (2026-07-06)
+
+The human-in-the-loop layer (quality program step 4) — real-editorial "selects" discipline.
+**Tier 0**: `AssetEngine` now shops the project's `shortlist.json` BEFORE searching the
+world (`_default_shortlist_fn`): images score via the picture library's hybrid search
+restricted to shortlisted ids (soft human-trusting threshold 0.20), clips match on their
+curated LABEL (same title-token coverage as the museum pass); no-reuse claims apply.
+**Pins**: `/api/scenes/scene/assets` gains `op:"pin"/"unpin"` — THIS asset for THIS beat;
+the engine returns `pinned:human` before every tier INCLUDING an agent's motion_spec, and
+premium honors a pin placed after matching without re-running select_clips (image →
+ArtworkStage w/ saliency push; clip → Video step). **Directives**: shortlist notes
+(`POST /api/shortlist/note`) and pin notes land as `scene.human_note`;
+`Director._human_directives` injects them into the motion_design prompt as
+follow-these-over-your-own-judgment lines. **Review tray**: `AssetEngine.record_candidates`
+(called in select_clips) stores the top-3 library runner-ups per matched scene in
+`scene.asset_candidates`; the /scenes drawer shows "Matching also considered" with
+one-click 📌-use (by index — Windows paths can't ride inline handlers), plus pin buttons
+and a pinned-banner on the tray. **Citations rider**: archival-art scenes with
+`asset_license.title` now render the museum-label ArtworkStage `label` (title +
+collection) — the credibility convention every reference channel has. **Archival film
+rider**: confirmed InternetArchiveProvider (keyless video) already rides
+`video_providers()` into the external tier. `pinned_asset`/`human_note` registered in
+PLAN_FIELD_CONSUMERS. 9 new tests (tests/test_shortlist_tier.py); suite 846 passed.
+
 ## Camera grammar + effect execution audit — same name, same craft (2026-07-06)
 
 The Ken Burns "zip back" fix and everything the bench audit surfaced with it. New

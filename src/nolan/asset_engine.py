@@ -80,6 +80,8 @@ class EngineConfig:
     enable_external: bool = False          # stock/archival providers
     enable_library: bool = True            # picture-library stills
     library_threshold: float = 0.24        # hybrid-similarity floor for a usable still
+    enable_shortlist: bool = True          # tier 0: the project's human selects pool
+    shortlist_threshold: float = 0.20      # softer than library — a human chose these
     enable_motion: bool = True             # lazily author a motion_spec for graphic/text scenes
     enable_art: bool = True                # exact-title museum pass for archival-art scenes
     enable_bridge: bool = True             # operator query-expansion after a literal miss
@@ -93,7 +95,8 @@ class AssetEngine:
                  library_fn: Optional[Callable] = None,     # scene -> matched_asset path|None (picture library)
                  motion_fn: Optional[Callable] = None,      # scene -> motion_spec dict|None (lazy authoring)
                  art_fn: Optional[Callable] = None,         # scene -> truthy kind|None; sets matched_asset (exact-title art)
-                 bridge_fn: Optional[Callable] = None):     # scene -> [metaphor query, ...] (operator bridge)
+                 bridge_fn: Optional[Callable] = None,      # scene -> [metaphor query, ...] (operator bridge)
+                 shortlist_fn: Optional[Callable] = None):  # scene -> truthy kind|None; sets matched_asset/clip (tier 0)
         self.cfg = config or EngineConfig()
         self.search_fn = search_fn
         self.external_fn = external_fn
@@ -101,6 +104,7 @@ class AssetEngine:
         self.motion_fn = motion_fn
         self.art_fn = art_fn
         self.bridge_fn = bridge_fn
+        self.shortlist_fn = shortlist_fn
         # No-reuse ledger: the same asset matched to two scenes reads as a
         # rerun, not an edit. A tier hit whose asset is already claimed is
         # treated as a MISS (logged) and escalation continues.
@@ -152,8 +156,44 @@ class AssetEngine:
 
     # --- internals ----------------------------------------------------------
     def _resolve(self, scene) -> str:
+        # Human PIN (the /scenes picker "pin" op): this exact asset, this
+        # beat, decided by a person — outranks every automatic tier AND an
+        # agent's motion_spec. Never re-resolved.
+        pinned = (getattr(scene, "extra", None) or {}).get("pinned_asset")
+        if isinstance(pinned, dict) and pinned.get("src"):
+            if pinned.get("kind") == "clip":
+                scene.matched_clip = {
+                    "video_path": pinned["src"],
+                    "clip_start": float(pinned.get("clip_start") or 0.0),
+                    "similarity_score": 1.0, "pinned": True}
+            else:
+                scene.matched_asset = pinned["src"]
+            return "pinned:human"
+
         if scene.motion_spec:
             return f"motion:{scene.motion_spec.get('effect', '?')}"
+
+        # Tier 0 — the SELECTS pool: a human curated this project's shortlist,
+        # so matching shops there before it searches the world (real-editorial
+        # dailies→selects discipline). Soft-gated: shortlist_fn applies its
+        # own (human-trusting) threshold. No-reuse applies like any tier.
+        if self.cfg.enable_shortlist and self.shortlist_fn:
+            before = (scene.matched_asset, scene.matched_clip)
+            kind = None
+            try:
+                kind = self.shortlist_fn(scene)
+            except Exception as exc:
+                logger.warning("shortlist tier failed for %s: %s",
+                               getattr(scene, "id", "?"), exc)
+            if kind:
+                mc = scene.matched_clip if isinstance(scene.matched_clip, dict) else None
+                key = scene.matched_asset or (
+                    f"{mc.get('video_path')}@{mc.get('clip_start')}" if mc else None)
+                if self._claim(key):
+                    return f"shortlist:{kind}"
+                logger.info("shortlist item already used — %s falls through",
+                            getattr(scene, "id", "?"))
+                scene.matched_asset, scene.matched_clip = before
 
         vt = (scene.visual_type or "").lower().strip()
 
@@ -314,7 +354,161 @@ class AssetEngine:
             motion_fn=cls._default_motion_fn(llm_client) if llm_client else None,
             art_fn=cls._default_art_fn(nolan_config, project_path) if project_path else None,
             bridge_fn=cls._default_bridge_fn(nolan_config, cfg) if cfg.enable_bridge else None,
+            shortlist_fn=(cls._default_shortlist_fn(cfg, project_path)
+                          if cfg.enable_shortlist and project_path else None),
         )
+
+    @staticmethod
+    def record_candidates(scenes, *, project_id: Optional[str] = None,
+                          k: int = 3) -> int:
+        """Review-tray data: for every scene that resolved to a still, store
+        the top-k OTHER library candidates (path + score + thumb hint) in
+        ``scene.extra["asset_candidates"]`` so the /scenes drawer can offer
+        one-click swaps. Read-only over the libraries; never changes a match.
+        """
+        try:
+            from nolan.external_assets import scene_query_text
+            from nolan.imagelib import ImageLibrary
+            libs = [ImageLibrary("global")]
+            if project_id:
+                try:
+                    libs.append(ImageLibrary("project", project=project_id))
+                except Exception:
+                    pass
+        except Exception as exc:
+            logger.info("candidate recording unavailable: %s", exc)
+            return 0
+        done = 0
+        for s in scenes:
+            if not getattr(s, "matched_asset", None):
+                continue
+            if (getattr(s, "extra", None) or {}).get("pinned_asset"):
+                continue                        # human already decided
+            query = scene_query_text(s) or (getattr(s, "search_query", "") or "")
+            if not query:
+                continue
+            chosen = str(s.matched_asset)
+            cands = []
+            for lib in libs:
+                try:
+                    hits = lib.search_hybrid(query, k=k + 2)
+                except Exception:
+                    continue
+                for h in hits:
+                    p = str(lib.abs_path(h.asset))
+                    if p == chosen or any(c["src"] == p for c in cands):
+                        continue
+                    cands.append({"src": p, "score": round(h.score, 3),
+                                  "source": h.asset.source or lib.scope,
+                                  "id": h.asset.id, "scope": lib.scope})
+            cands.sort(key=lambda c: c["score"], reverse=True)
+            if cands and hasattr(s, "extra"):
+                s.extra["asset_candidates"] = cands[:k]
+                done += 1
+        return done
+
+    @staticmethod
+    def _default_shortlist_fn(cfg: EngineConfig, project_path: Path) -> Optional[Callable]:
+        """Tier 0 — match against the project's human-curated shortlist.
+
+        Images (``img:<id>:<scope>`` keys) are scored by the picture library's
+        hybrid search restricted to shortlisted ids; a hit above the (soft,
+        human-trusting) ``shortlist_threshold`` is copied in as the scene
+        still. Clips (``clip:<video>@<start>``) match on their curated LABEL
+        (same title-token coverage the museum pass uses). A winning item's
+        note/label rides along as a human directive
+        (``scene.extra["human_note"]``) for the design passes downstream.
+        """
+        state: dict = {}
+
+        def _items():
+            if "items" not in state:
+                from nolan import shortlist
+                state["items"] = shortlist.load(project_path)
+            return state["items"]
+
+        def _libs():
+            if "libs" not in state:
+                from nolan.imagelib import ImageLibrary
+                libs = {}
+                for it in _items():
+                    key = str(it.get("key") or "")
+                    if key.startswith("img:"):
+                        _, iid, scope = key.split(":", 2)
+                        pl = (it.get("payload") or {})
+                        lk = (scope, pl.get("scope_project"))
+                        if lk not in libs:
+                            try:
+                                libs[lk] = ImageLibrary(scope, project=pl.get("scope_project"))
+                            except Exception:
+                                libs[lk] = None
+                state["libs"] = libs
+            return state["libs"]
+
+        def fn(scene):
+            items = _items()
+            if not items:
+                return None
+            from nolan.art_sourcing import _title_match
+            from nolan.external_assets import scene_query_text
+            query = scene_query_text(scene) or (getattr(scene, "search_query", "") or "")
+            if not query:
+                return None
+
+            # images: hybrid-search each shortlisted library, keep shortlisted ids
+            img_ids = {}
+            for it in items:
+                key = str(it.get("key") or "")
+                if key.startswith("img:"):
+                    _, iid, scope = key.split(":", 2)
+                    img_ids.setdefault((scope, (it.get("payload") or {}).get("scope_project")), {})[int(iid)] = it
+            best = None      # (score, lib, asset, item)
+            for lk, wanted in img_ids.items():
+                lib = _libs().get(lk)
+                if lib is None:
+                    continue
+                try:
+                    hits = lib.search_hybrid(query, k=24)
+                except Exception:
+                    hits = []
+                for h in hits:
+                    it = wanted.get(h.asset.id)
+                    if it and h.score >= cfg.shortlist_threshold:
+                        if best is None or h.score > best[0]:
+                            best = (h.score, lib, h.asset, it)
+            if best:
+                score, lib, asset, it = best
+                src = lib.abs_path(asset)
+                if src.exists():
+                    scene.matched_asset = str(src)
+                    note = (it.get("note") or "").strip()
+                    if note and hasattr(scene, "extra"):
+                        scene.extra["human_note"] = note
+                    return f"image({score:.2f})"
+
+            # clips: curated label vs the scene query (title-token coverage)
+            for it in items:
+                key = str(it.get("key") or "")
+                if not key.startswith("clip:"):
+                    continue
+                label = str(it.get("label") or "")
+                if _title_match(query, label) < 0.5:
+                    continue
+                pl = it.get("payload") or {}
+                vp = pl.get("source_video_path")
+                if not vp:
+                    continue
+                scene.matched_clip = {
+                    "video_path": vp,
+                    "clip_start": float(pl.get("clip_start") or 0.0),
+                    "similarity_score": 1.0, "shortlist": True}
+                note = (it.get("note") or "").strip()
+                if note and hasattr(scene, "extra"):
+                    scene.extra["human_note"] = note
+                return "clip:label"
+            return None
+
+        return fn
 
     @staticmethod
     def _default_search_fn(nolan_config, index_db, project_id) -> Optional[Callable]:

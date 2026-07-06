@@ -184,6 +184,23 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         return "ArtworkStage", {"src": str(p),
                                 **_still_motion_props(scene, ordinal, center=(x, y))}
 
+    # Human PIN (the /scenes "pin" op): honored directly at render so a pin
+    # placed AFTER matching still wins without re-running select_clips.
+    pinned = scene.get("pinned_asset") or {}
+    if isinstance(pinned, dict) and pinned.get("src"):
+        p = Path(pinned["src"])
+        if not p.is_absolute():
+            p = project_path / pinned["src"]
+        if p.exists():
+            if pinned.get("kind") == "clip" or p.suffix.lower() in (".mp4", ".mov", ".webm", ".m4v"):
+                start = float(pinned.get("clip_start") or 0.0)
+                return "Video", {"src": str(p),
+                                 "startFromFrames": int(round(start * fps))}
+            props = {"src": str(p)}
+            props.update(_still_motion_props(scene, ordinal,
+                                             center=_subject_center(p)))
+            return "ArtworkStage", props
+
     # Video (render story v2): a clip PRODUCED for this scene plays as a
     # muted Video step under the narration slice (assemble's top priority).
     rendered = scene.get("rendered_clip")
@@ -207,6 +224,14 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
             # sidecar-cached); None falls back to lane alternation
             props.update(_still_motion_props(scene, ordinal,
                                              center=_subject_center(p)))
+            # on-screen citation (museum-label convention): named artworks
+            # carry their attribution INTO the frame — the credibility habit
+            # every reference channel has and we never rendered
+            lic = scene.get("asset_license") or {}
+            if (scene.get("visual_type") == "archival-art"
+                    and lic.get("title") and "label" not in props):
+                props["label"] = {"title": str(lic["title"])[:80],
+                                  "collection": lic.get("source") or None}
             return "ArtworkStage", props
 
     # Library/stock video match — LAST resort: vector matches carry no vision

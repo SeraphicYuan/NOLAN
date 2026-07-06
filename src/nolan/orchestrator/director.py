@@ -2060,6 +2060,30 @@ class Director:
                                     f"{ms['effect']!r} is not premium-hostable")
         return counts, problems
 
+    def _human_directives(self) -> str:
+        """Per-scene human notes (shortlist notes / pin notes) as a prompt
+        section for the design passes. Human words carry HUMAN provenance:
+        the agent follows them, it does not overrule them."""
+        try:
+            plan = json.loads((self.project_path / "scene_plan.json")
+                              .read_text(encoding="utf-8"))
+        except Exception:
+            return ""
+        lines = []
+        for scenes in (plan.get("sections") or {}).values():
+            if not isinstance(scenes, list):
+                continue
+            for s in scenes:
+                note = (s.get("human_note") or
+                        (s.get("pinned_asset") or {}).get("note") or "").strip()
+                if note:
+                    lines.append(f"- {s.get('id')}: {note}")
+        if not lines:
+            return ""
+        return ("\n# Human directives (from the editor — FOLLOW these; they "
+                "outrank your own judgment for the named scenes)\n"
+                + "\n".join(lines) + "\n")
+
     async def _run_motion_design_step(
         self,
         ctx: ProjectContext,
@@ -2087,6 +2111,7 @@ class Director:
             f"# catalog_json (your whole legal vocabulary)\n"
             f"```json\n{self._hostable_motion_catalog()}\n```\n\n"
             f"# Project metadata\n- slug: {ctx.slug}\n- name: {ctx.name}\n"
+            + self._human_directives()
             + self._taste_guidance("motion", state)
         )
 
@@ -2225,6 +2250,10 @@ class Director:
             _shots_done = AssetEngine.fulfill_shots_wanted(
                 _targets, nolan_config=_nolan_cfg, project_path=self.project_path,
                 log=_shot_lines.append)
+            # Review tray: record the runner-up library candidates per matched
+            # scene so the /scenes drawer can offer one-click swaps — the human
+            # reviews what matching CONSIDERED, not just what it chose.
+            AssetEngine.record_candidates(_targets, project_id=ctx.slug)
             _plan.save(str(scene_plan_path))
             _matched = sum(1 for s in _scenes if getattr(s, "matched_clip", None))
             _art_hits = sum(

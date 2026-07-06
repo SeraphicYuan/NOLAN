@@ -50,6 +50,18 @@ def register(app, ctx):
         updated = _shortlist.remove(_project_dir(project), keys)
         return {"project": project, "items": updated, "count": len(updated)}
 
+    @app.post("/api/shortlist/note")
+    async def shortlist_note(body: dict = Body(...)):
+        """Attach/clear a human note on one shortlist item — the note becomes
+        a pipeline directive (scene.human_note) when tier-0 matching picks it."""
+        project = (body.get("project") or "").strip()
+        key = (body.get("key") or "").strip()
+        if not key:
+            raise HTTPException(status_code=400, detail="key is required")
+        updated = _shortlist.set_note(_project_dir(project), key,
+                                      body.get("note") or "")
+        return {"project": project, "items": updated, "count": len(updated)}
+
     @app.post("/api/shortlist/clear")
     async def shortlist_clear(body: dict = Body(...)):
         project = (body.get("project") or "").strip()
