@@ -73,8 +73,10 @@ def test_resolve_music_config(tmp_path):
     (tmp_path / "project.yaml").write_text(
         "name: x\nmusic: auto\nmusic_gain_db: -12\nsfx: false\nmusic_mood: epic\n")
     cfg = resolve_music_config(tmp_path)
-    assert cfg == {"enabled": True, "music": None, "gain": -12.0,
-                   "sfx": False, "mood": "epic"}
+    # subset assert: the config dict is designed to grow (e.g. sfx_provider)
+    assert {k: cfg[k] for k in ("enabled", "music", "gain", "sfx", "mood")} == {
+        "enabled": True, "music": None, "gain": -12.0,
+        "sfx": False, "mood": "epic"}
 
 
 # --- the ducking proof -----------------------------------------------------------
