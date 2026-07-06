@@ -70,6 +70,12 @@ pipeline for agent-proposed effects). Editing umbrella: `nolan/editing.py`.
 New-capability review question: "which registry did this land in, what field
 authors it, who executes it, where does an agent learn when to use it?"
 
+**The definition of "wired" lives in `docs/WIRING_CHECKLIST.md`** — seven
+incident-derived pitfall classes, each with the honesty test that enforces
+it (PLAN_FIELD_CONSUMERS field audit, UMBRELLA_WIRING author+executor
+manifest, gate step classification, catalog coverage). Docs claim, tests
+enforce: a capability without its honesty test isn't done.
+
 ## One asset engine
 
 `src/nolan/asset_engine.py` — the single per-scene resolution ladder:

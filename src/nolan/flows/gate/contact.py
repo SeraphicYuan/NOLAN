@@ -28,6 +28,23 @@ _MEDIA_BLOCKS = {"ArtworkStage", "PhotoMontage", "PhotoGrid", "Flashback",
                  "Video", "StatOver", "SplitScreen", "AnnotateOverVideo",
                  "PhotoMontagePro", "PhotoGridPro"}
 
+# Text/graphic steps: the overflow heuristic APPLIES (bright pixels at the
+# frame edge really are escaping content). Every Chapter-hostable step name
+# must appear in exactly one of these two sets — enforced by
+# tests/test_step_classification.py, so a new block/comp cannot ship
+# unclassified (the Video-flagged-as-overflow lesson).
+_TEXT_BLOCKS = {
+    "ArchetypeCards", "BarChart", "ChapterCard", "ComparisonVS", "DataTable",
+    "Distribution", "Formula", "Heatmap", "HeroStatement", "KineticHeadline",
+    "LineChart", "ListReveal", "LocationStamp", "LoopDiagram", "LowerThird",
+    "NewsHeadline", "PercentBar", "PieCallout", "ProgressBar", "PullQuote",
+    "QuestionCard", "Ranking", "SourceCitation", "StatCount", "StepFlow",
+    "Timeline", "TweetCard", "UnlockGrid", "ValueLadder", "VerdictCard",
+    "WebVsBoxes",
+    # text-led motion comps (theme-background typography/annotation)
+    "Kinetic", "BarCompare", "KShape", "AnnotateStat", "PremiumCard",
+}
+
 
 def _edge_overflow(png_path, band_frac: float = 0.012, brightness: int = 170,
                    density: float = 0.004) -> str:

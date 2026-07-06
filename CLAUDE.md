@@ -57,6 +57,13 @@ registry so catalogs can't rot). An authored field with no consumer is a
 bug (the `transition` lesson). Gold standard: `nolan/motion/registry.py`;
 editing umbrella: `nolan/editing.py`.
 
+**MANDATORY before wiring any new capability, step type, block, or
+authored field: read `docs/WIRING_CHECKLIST.md`** — the seven pitfall
+classes (each incident-derived) and the definition of "wired". Meta-rule:
+docs claim, tests enforce — a rule without its honesty test doesn't exist
+(PLAN_FIELD_CONSUMERS, UMBRELLA_WIRING, step classification, catalog
+coverage all have one; your new thing does too, or it isn't done).
+
 ## Non-negotiable invariants
 
 - **scene_plan.json is lossless** (schema v2): unknown keys survive every

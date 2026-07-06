@@ -142,6 +142,40 @@ def _skills() -> Dict[str, Any]:
         return {"count": 0, "skills": [], "error": str(exc)}
 
 
+# The umbrella-level consumer manifest (WIRING_CHECKLIST pitfall #2:
+# capable-but-unauthored). Every umbrella names its AUTHORING surface and its
+# EXECUTOR, each as (repo-relative file, token that must appear in it) —
+# grep-verified by tests/test_umbrella_wiring.py. A new umbrella added to
+# _umbrellas() without both wires fails the suite on day one; a refactor
+# that moves either wire fails until the manifest is updated to the truth.
+UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
+    "editing": {
+        "authored_by": [("src/nolan/tempo_plan.py", "transition"),
+                        ("src/nolan/templates/scenes.html", "field-${scene.id}-shots")],
+        "executed_by": [("src/nolan/premium_render.py", "transitionIn"),
+                        ("src/nolan/premium_render.py", "_expand_shots")],
+    },
+    "motion": {
+        "authored_by": [("src/nolan/orchestrator/director.py", "_run_motion_design_step")],
+        "executed_by": [("src/nolan/motion/executor.py", "chapter_step_for_spec"),
+                        ("src/nolan/motion/executor.py", "def render")],
+    },
+    "pairing": {
+        "authored_by": [("src/nolan/asset_engine.py", "_bridge_probes"),
+                        ("src/nolan/webui/routes/scenes.py", "super-search")],
+        "executed_by": [("src/nolan/evoke_broll.py", "OPERATORS")],
+    },
+    "blocks": {
+        "authored_by": [("src/nolan/orchestrator/director.py", "_run_slide_designer_step")],
+        "executed_by": [("src/nolan/layout_blocks.py", "ADAPTERS")],
+    },
+    "themes": {
+        "authored_by": [("src/nolan/project_brief.py", "rank_themes")],
+        "executed_by": [("render-service/remotion-lib/stage.mjs", "_active-theme")],
+    },
+}
+
+
 def _umbrellas() -> Dict[str, Any]:
     """The capability registries, umbrella by umbrella (module contract).
 
