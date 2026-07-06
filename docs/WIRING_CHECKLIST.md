@@ -46,13 +46,18 @@ honesty test doesn't exist.**
    consolidating it IS the task — don't patch one copy.
 
 5. **Catalog-blind agents.** An authoring agent whose prompt carries a
-   private, hand-listed slice of the inventory. *Incident:* no
+   private, hand-listed slice of the inventory. *Incidents:* no
    orchestrator skill referenced the capability catalog; slide_designer's
-   embedded table lagged the block library. *Enforcement:* agent-facing
-   catalogs are generated from or honesty-tested against the registries
-   (`tests/test_umbrella_skills.py`, `tests/test_editing.py`,
-   `tests/test_treatment_pass.py`); dispatch briefs point at
-   `nolan capabilities` / `/api/map`.
+   embedded table lagged the block library; the evoke planner's operator
+   menu was hand-written prose duplicating `when_to_use`; tempo kept a
+   private transition tuple that `nolan.editing` mirrored *by comment*.
+   *Enforcement, two layers:* (a) catalogs are generated from or
+   honesty-tested against the registries (`tests/test_umbrella_skills.py`,
+   `tests/test_editing.py`, `tests/test_treatment_pass.py`); (b) each
+   catalog provably REACHES its decision points — every umbrella declares
+   its consumers in `CATALOG_CONSUMERS` (src/nolan/system_map.py),
+   grep-verified by `tests/test_catalog_consumers.py`. Existence isn't
+   wiring; consumption is.
 
 6. **Unverified output.** Rendering is not verifying; each medium needs a
    measurement. *Incidents:* the whoosh that mixed clean but was inaudible

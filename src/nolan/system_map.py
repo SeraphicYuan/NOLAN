@@ -186,6 +186,47 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
 }
 
 
+# CATALOG CONSUMPTION (WIRING_CHECKLIST pitfall #5, extended from existence
+# to CONSUMPTION): an umbrella's catalog must REACH every decision point that
+# chooses from it — injected into the prompt, imported as the vocabulary, or
+# loaded via an honesty-tested skill. Each entry is (repo-relative file,
+# token that must appear in it, role); grep-verified by
+# tests/test_catalog_consumers.py. History: motion was injected, but the
+# editing/pairing catalogs reached NO spine step — tempo kept a private
+# transition tuple synced by comment, and the evoke planner's operator menu
+# was hand-written prose that duplicated when_to_use.
+CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
+    "motion": [
+        ("src/nolan/orchestrator/director.py", "_hostable_motion_catalog()",
+         "motion_design prompt injects the hostable-effects catalog JSON"),
+        ("skills/orchestrator/motion-designer.md", "catalog",
+         "agent skill (registry-synced by tests/test_umbrella_skills.py)"),
+    ],
+    "editing": [
+        ("src/nolan/tempo_plan.py", "from nolan.editing import TRANSITIONS",
+         "tempo authors transitions from the ONE registry vocabulary"),
+        ("skills/common/editing-craft.md", "j-cut",
+         "craft skill (registry-synced by tests/test_umbrella_skills.py)"),
+    ],
+    "pairing": [
+        ("src/nolan/evoke_broll.py", "operator_menu()",
+         "L3 planner menu GENERATED from OPERATORS (never a hand list)"),
+        ("skills/common/pairing-craft.md", "when-to-use",
+         "craft skill (registry-synced by tests/test_umbrella_skills.py)"),
+    ],
+    "blocks": [
+        ("skills/orchestrator/slide-designer.md", "nolan capabilities -u blocks",
+         "slide designer told to read the machine catalog"),
+        ("skills/orchestrator/script-to-scenes.md", "nolan capabilities",
+         "scene design told the downstream vocabulary is machine-readable"),
+    ],
+    "themes": [
+        ("src/nolan/project_brief.py", "rank_themes",
+         "brief compiler ranks the theme registry (Look-based selector)"),
+    ],
+}
+
+
 def _umbrellas() -> Dict[str, Any]:
     """The capability registries, umbrella by umbrella (module contract).
 

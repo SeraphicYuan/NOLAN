@@ -164,6 +164,14 @@ OPERATORS = {
     },
 }
 
+def operator_menu() -> str:
+    """The pairing catalog as planner-prompt lines, GENERATED from OPERATORS —
+    the planner's menu can never lag the registry (wiring pitfall #5: this was
+    a hand-written list duplicating when_to_use)."""
+    return "\n".join(f"- {name}: {spec['purpose']} Use when: {spec['when_to_use']}"
+                     for name, spec in OPERATORS.items())
+
+
 # Per-operator phrasing so the vision/library/accept prompts read correctly for each pairing style.
 # The score fields stay `mood` (primary fit) + `nonliteral` (secondary axis); only the wording changes.
 _OP = {
@@ -761,15 +769,7 @@ class EvokeBrollSearch:
             f"{ctx.brief(max_chars=1400)}\n\n{bc}\n\n"
             f'THIS BEAT LINE: "{line}"\n\n'
             "Decide the best b-roll PAIRING approach for THIS beat, plus a fallback:\n"
-            "- literal: the beat names a concrete, common subject best shown plainly (a keyword search).\n"
-            "- knowledge: the beat names/implies a SPECIFIC real thing (a titled artwork, an artifact, "
-            "a place, a named person/event) — source the actual thing.\n"
-            "- tonal: mood/atmosphere with no concrete subject — evocative footage that carries the feeling.\n"
-            "- conceptual: an abstract idea whose mechanic maps to a filmable domain (strategy→chess).\n"
-            "- ironic: the image should CONTRADICT the words, for critique/irony.\n"
-            "- trait: a person's quality shown via an embodying activity.\n"
-            "- relational: the beat is built on a CONTRAST/pair of two things (rendered split-screen).\n"
-            "- scale: the beat hinges on a big NUMBER worth dramatizing (count-up).\n"
+            f"{operator_menu()}\n"
             'Reply STRICT JSON: {"primary": "<operator>", "fallback": "<operator>", "why": "<=20 words"}')
         sys = ("You are the lead editor of a video essay deciding HOW to source b-roll for one beat. "
                "You know the whole script. Pick the approach that will land best. Reply STRICT JSON.")

@@ -4,6 +4,21 @@
 **Status:** Complete
 **Last Updated:** 2026-07-06
 
+## Catalog→decision-point routing — consumption is wiring (2026-07-06)
+
+Closed the gap the umbrella audit exposed: catalogs existed and were registry-synced, but
+the editing and pairing catalogs reached NO spine decision point (only motion was injected,
+via `_hostable_motion_catalog`). Two live fixes: (1) `tempo_plan` now imports `TRANSITIONS`
+from `nolan.editing` — it had a private tuple that editing.py mirrored *by comment* (pitfall
+#4, two dialects); (2) the evoke L3 planner's operator menu is now `operator_menu()`,
+GENERATED from `OPERATORS` (purpose + when_to_use) — it was hand-written prose duplicating
+the registry (pitfall #5). New `CATALOG_CONSUMERS` manifest in `system_map.py` declares,
+per umbrella, every file where the catalog reaches a decision (prompt injection, vocabulary
+import, or honesty-tested skill), grep-verified by `tests/test_catalog_consumers.py` —
+which also asserts every UMBRELLA_WIRING umbrella declares at least one consumer, and pins
+both incidents (no regrown private tuple; no regrown hand list). WIRING_CHECKLIST pitfall
+#5 rewritten: "existence isn't wiring; consumption is." Suite: 832 passed.
+
 ## Asset provenance gate — watermark/license/resolution at every acquisition door (2026-07-06)
 
 Born from a shipped incident: the Homer test beat rendered **watermarked Alamy previews**

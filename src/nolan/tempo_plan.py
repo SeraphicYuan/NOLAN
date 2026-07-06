@@ -31,7 +31,10 @@ _PROFILES = {
     "contemplative":  {"base": 0.35, "climax": 0.6, "floor": 0.2, "max_shots": 2},   # art
     "balanced":       {"base": 0.45, "climax": 0.75, "floor": 0.25, "max_shots": 3},
 }
-_TRANSITIONS = ("cut", "dissolve", "fade")
+# ONE registry for the transition vocabulary — this was a local tuple that
+# nolan.editing merely mirrored by comment (wiring pitfall #4).
+from nolan.editing import TRANSITIONS as _TRANSITIONS
+
 _SPEEDS = ("slow", "medium", "fast")
 
 

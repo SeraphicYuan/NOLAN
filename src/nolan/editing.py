@@ -31,7 +31,7 @@ class EditTechnique:
     executor: str = ""              # where the decision becomes pixels/samples
 
 
-TRANSITIONS = ("cut", "dissolve", "fade")   # mirrors nolan.tempo_plan._TRANSITIONS
+TRANSITIONS = ("cut", "dissolve", "fade")   # THE vocabulary — tempo_plan imports it
 
 REGISTRY: List[EditTechnique] = [
     EditTechnique(
