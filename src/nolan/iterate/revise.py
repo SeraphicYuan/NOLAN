@@ -157,6 +157,8 @@ _RERESOLVE_TRIGGERS = {"search_query", "visual_type"}
 def apply_patch(scene: dict, patch: dict) -> None:
     """Apply `patch` to `scene` in place and mark it dirty (force re-render)."""
     scene.update(patch)
+    if "shots" in patch:
+        scene["shots_auto"] = False    # human-authored shots outrank motion
     scene["rendered_clip"] = None   # dirty -> rerender_scenes will rebuild it
     if _RERESOLVE_TRIGGERS & set(patch):
         # Asset selection is now stale: drop the cached match so re-render re-resolves.

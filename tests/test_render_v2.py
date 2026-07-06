@@ -124,3 +124,23 @@ def test_video_scene_is_premium_eligible_now(tmp_path):
              "matched_clip": {"video_path": str(clip), "clip_start": 0}}
     block, _ = _scene_step(scene, tmp_path, 30, 4.0)
     assert block == "Video"
+
+
+def test_auto_shots_yield_to_motion_spec(tmp_path):
+    from nolan.premium_render import _expand_shots
+    for n in ("a.jpg", "b.jpg", "crowd.jpg"):
+        (tmp_path / n).write_bytes(b"x")
+    scene = {"id": "s1", "visual_type": "archival-art",
+             "shots": [{"src": str(tmp_path / "a.jpg")},
+                       {"src": str(tmp_path / "b.jpg")}],
+             "shots_auto": True,
+             "motion_spec": {"effect": "stat-over", "backend": "remotion",
+                             "target": "StatOver",
+                             "content": {"image": str(tmp_path / "crowd.jpg"),
+                                         "value": 7}}}
+    units = _expand_shots(scene, tmp_path, 30, 240, ordinal=0)
+    assert len(units) == 1 and units[0][0] == "StatOver"   # motion won
+    # human shots (auto flag cleared) outrank the motion spec again
+    scene["shots_auto"] = False
+    units = _expand_shots(scene, tmp_path, 30, 240, ordinal=0)
+    assert len(units) == 2 and units[0][0] == "ArtworkStage"

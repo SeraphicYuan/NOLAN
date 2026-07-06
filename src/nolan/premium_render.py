@@ -300,6 +300,14 @@ def _expand_shots(scene: Dict[str, Any], project_path: Path, fps: int,
     alternate lanes. Without a shot list the scene is one unit.
     """
     resolved = _resolve_shots(scene, project_path)
+    # AUTO-fulfilled shot lists yield to an explicit motion_spec — the agent
+    # designed a treatment for this exact window (and may have dodged
+    # defects the auto list can't see, e.g. duplicate stills). HUMAN shots
+    # (shots_auto false/absent after a drawer edit) still outrank motion.
+    if (resolved and scene.get("shots_auto")
+            and isinstance(scene.get("motion_spec"), dict)
+            and scene["motion_spec"].get("effect")):
+        resolved = None
     if not resolved:
         block, props = _scene_step(scene, project_path, fps, frames / fps,
                                    ordinal=ordinal)

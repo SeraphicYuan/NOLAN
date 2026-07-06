@@ -569,6 +569,10 @@ class AssetEngine:
             shots = [{"src": str(s.matched_asset), "weight": 1.5}]
             shots += [{"src": str(p)} for p in extras]
             s.extra["shots"] = shots
+            # provenance: AUTO shot lists yield to an explicit motion_spec at
+            # render (the Homer run: the agent's montage lost to auto shots);
+            # a human editing shots clears this flag (iterate.apply_patch)
+            s.extra["shots_auto"] = True
             done += 1
             if log:
                 log(f"{s.id}: shot list authored ({len(shots)} stills)")
