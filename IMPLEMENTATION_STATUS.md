@@ -119,6 +119,19 @@ kills full-suite pytest runs at ~38% — run suites in groups or fix in Phase 6.
   render step dispatches; ineligible scenes fail the run with ids listed.
 - Acceptance: the-aeneid copy premium-rendered end-to-end — 427.8s vs 427.4s
   narration (0.44s), 8 beat Chapters, 54 block scenes, frames visually verified.
+- **Shot-lists + J-cuts (SOTA #2, 2026-07-05)**: `scene.shots`
+  `[{src, place?, weight?, caption?}]` expands a scene into weighted
+  camera-toured sub-steps sharing its narration window (place = nine-dot
+  camera target; window too small → trailing shots dropped, never squeezed
+  below ~0.8s). Internal cut boundaries into still-led scenes shift
+  `j_cut_frames` (default 12, project.yaml, 0 disables) earlier — the image
+  arrives while the previous sentence finishes; text cards keep straight cuts;
+  section edges stay anchored. `_slice_wav` is now sample-exact PCM (edges
+  round to source samples from absolute offsets → slices tile the wav
+  byte-identically; verified on the-aeneid sec_0000), since J-cut seams land
+  mid-speech where ffmpeg's millisecond rounding would click. 8 new tests
+  (24 total in test_premium_render.py); live probe: section 0 + injected
+  3-shot list rendered 1654/1654 frames, three shots verified frame-by-frame.
 
 ## Architecture Consolidation — Phase 2 (2026-07-05)
 

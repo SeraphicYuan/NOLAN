@@ -77,7 +77,7 @@ def test_section_job_normalizes_windows_to_wav(tmp_path):
     ]
     job = build_section_job("t", scenes, project_path=tmp_path, section_wav=wav,
                             section_start=100.0, out_name="x.mp4",
-                            work_dir=tmp_path / "w", fps=30)
+                            work_dir=tmp_path / "w", fps=30, j_cut_frames=0)
     frames = [s["durationInFrames"] for s in job["props"]["steps"]]
     assert sum(frames) == 240                   # exactly 8s * 30fps
     assert frames == [120, 120]
@@ -193,3 +193,126 @@ def test_layout_spec_outranks_tray(tmp_path):
     scene["layout_spec"] = {"template": "quote", "params": {"quote": "arma"}}
     block, _ = _scene_step(scene, tmp_path, 30, 4.0)
     assert block == "PullQuote"
+
+
+# --- SOTA #2: J-cuts + shot lists ------------------------------------------------
+
+from nolan.premium_render import MIN_STEP_FRAMES, _expand_shots
+
+
+def _quote_scenes(n, each_s):
+    return [{"id": f"s{i}", "visual_type": "text-overlay",
+             "start_seconds": i * each_s, "end_seconds": (i + 1) * each_s,
+             "layout_spec": {"template": "quote", "params": {"quote": f"q{i}"}}}
+            for i in range(n)]
+
+
+def _still_scenes(tmp_path, n, each_s):
+    out = []
+    for i in range(n):
+        p = tmp_path / f"still{i}.png"
+        p.write_bytes(b"png")
+        out.append({"id": f"s{i}", "visual_type": "b-roll",
+                    "start_seconds": i * each_s, "end_seconds": (i + 1) * each_s,
+                    "matched_asset": str(p)})
+    return out
+
+
+def test_j_cut_shifts_internal_boundaries_only(tmp_path):
+    wav = _sine_wav(tmp_path / "sec.wav", 12.0)
+    job = build_section_job("t", _still_scenes(tmp_path, 3, 4.0),
+                            project_path=tmp_path, section_wav=wav,
+                            section_start=0.0, out_name="x.mp4",
+                            work_dir=tmp_path / "w", fps=30, j_cut_frames=12)
+    frames = [s["durationInFrames"] for s in job["props"]["steps"]]
+    assert frames == [108, 120, 132]            # internal cuts pulled 12 earlier
+    assert sum(frames) == 360                   # section edge untouched (anchor)
+
+
+def test_j_cut_zero_reproduces_plain_bounds(tmp_path):
+    wav = _sine_wav(tmp_path / "sec.wav", 12.0)
+    job = build_section_job("t", _still_scenes(tmp_path, 3, 4.0),
+                            project_path=tmp_path, section_wav=wav,
+                            section_start=0.0, out_name="x.mp4",
+                            work_dir=tmp_path / "w", fps=30, j_cut_frames=0)
+    assert [s["durationInFrames"] for s in job["props"]["steps"]] == [120, 120, 120]
+
+
+def test_j_cut_skips_text_cards(tmp_path):
+    # a quote card's reveal waits for its word cue — arriving early would only
+    # extend the empty background, so cuts INTO text cards stay straight
+    wav = _sine_wav(tmp_path / "sec.wav", 12.0)
+    job = build_section_job("t", _quote_scenes(3, 4.0), project_path=tmp_path,
+                            section_wav=wav, section_start=0.0, out_name="x.mp4",
+                            work_dir=tmp_path / "w", fps=30, j_cut_frames=12)
+    assert [s["durationInFrames"] for s in job["props"]["steps"]] == [120, 120, 120]
+
+
+def test_j_cut_respects_minimum_step(tmp_path):
+    wav = _sine_wav(tmp_path / "sec.wav", 2.0)
+    # two 1s scenes: a 12-frame pull would leave step 1 at 18 < MIN
+    job = build_section_job("t", _still_scenes(tmp_path, 2, 1.0),
+                            project_path=tmp_path, section_wav=wav,
+                            section_start=0.0, out_name="x.mp4",
+                            work_dir=tmp_path / "w", fps=30, j_cut_frames=12)
+    frames = [s["durationInFrames"] for s in job["props"]["steps"]]
+    assert frames[0] >= MIN_STEP_FRAMES
+    assert sum(frames) == 60
+
+
+def _shot_scene(tmp_path, shots, window=(0.0, 8.0)):
+    for sh in shots:
+        (tmp_path / sh["src"]).write_bytes(b"png")
+    return {"id": "s1", "visual_type": "b-roll", "energy": 0.5,
+            "start_seconds": window[0], "end_seconds": window[1],
+            "shots": shots}
+
+
+def test_shot_list_expands_into_weighted_substeps(tmp_path):
+    scene = _shot_scene(tmp_path, [{"src": "a.png", "weight": 3},
+                                   {"src": "b.png", "weight": 1}])
+    units = _expand_shots(scene, tmp_path, 30, 240, ordinal=0)
+    assert [b for b, _, _ in units] == ["ArtworkStage", "ArtworkStage"]
+    assert [f for _, _, f in units] == [180, 60]    # 3:1 split, frame-exact
+    assert units[0][1]["src"].endswith("a.png")
+
+
+def test_shot_place_targets_the_camera(tmp_path):
+    scene = _shot_scene(tmp_path, [{"src": "a.png", "place": [0.2, 0.3]},
+                                   {"src": "b.png"}])
+    units = _expand_shots(scene, tmp_path, 30, 240, ordinal=0)
+    f = units[0][1]["focuses"][0]
+    assert abs((f["x"] + f["w"] / 2) - 0.2) < 0.15
+    assert abs((f["y"] + f["h"] / 2) - 0.3) < 0.15
+    # unplaced second shot alternates lanes (ordinal advanced)
+    assert units[1][1]["focuses"][0]["x"] != f["x"]
+
+
+def test_shot_list_truncates_in_a_tiny_window(tmp_path):
+    scene = _shot_scene(tmp_path, [{"src": "a.png"}, {"src": "b.png"},
+                                   {"src": "c.png"}])
+    units = _expand_shots(scene, tmp_path, 30, MIN_STEP_FRAMES * 2, ordinal=0)
+    assert len(units) == 2                       # third shot dropped, not squeezed
+    assert all(f >= MIN_STEP_FRAMES for _, _, f in units)
+    assert sum(f for _, _, f in units) == MIN_STEP_FRAMES * 2
+
+
+def test_shot_floor_steals_from_the_fattest(tmp_path):
+    scene = _shot_scene(tmp_path, [{"src": "a.png", "weight": 10},
+                                   {"src": "b.png", "weight": 0.1}])
+    units = _expand_shots(scene, tmp_path, 30, 120, ordinal=0)
+    assert all(f >= MIN_STEP_FRAMES for _, _, f in units)
+    assert sum(f for _, _, f in units) == 120
+
+
+def test_shot_scene_slices_audio_per_shot(tmp_path):
+    wav = _sine_wav(tmp_path / "sec.wav", 8.0)
+    scene = _shot_scene(tmp_path, [{"src": "a.png"}, {"src": "b.png"}])
+    job = build_section_job("t", [scene], project_path=tmp_path, section_wav=wav,
+                            section_start=0.0, out_name="x.mp4",
+                            work_dir=tmp_path / "w", fps=30, j_cut_frames=0)
+    steps = job["props"]["steps"]
+    assert len(steps) == 2
+    for s, expected in zip(steps, (4.0, 4.0)):
+        with wave.open(s["audioSrc"], "rb") as w:
+            assert abs(w.getnframes() / w.getframerate() - expected) < 0.06

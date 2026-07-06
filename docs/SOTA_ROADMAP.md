@@ -13,18 +13,24 @@ one, in this order.
 
 ## Tier 1 — perceived quality
 
-1. **Music bed + ducking + SFX** *(in progress)* — the invisible half of every
+1. **Music bed + ducking + SFX** *(DONE 2026-07-05 — `nolan.audio_mix`,
+   `soundtrack` Director step: author `soundtrack.json` → render executes
+   `mix_from_spec`)* — the invisible half of every
    good essay. Music library with mood/energy manifest; selection follows the
    per-beat energy arc the tempo system already computes; ducked under VO;
    risers/whooshes on section transitions and motion hits; silence as
    punctuation. ONE integration point: a post-assembly mix pass serving both
    standard and premium modes.
-2. **Shot-lists within scenes + J/L-cuts** — editors cut in shots, not
-   sentences. Scenes gain an optional shot sequence sharing their narration
-   window (the deconstruction shots table proves the target cadence: 2–4s
-   shots under longer spans). Visuals may overlap beat boundaries ~0.5s while
-   audio stays anchored — kills the cut-on-sentence-boundary AI tell without
-   breaking the sync contract.
+2. **Shot-lists within scenes + J/L-cuts** *(DONE 2026-07-05 — premium mode,
+   `nolan/premium_render.py`)* — editors cut in shots, not sentences.
+   `scene.shots` `[{src, place?, weight?, caption?}]` expands a scene into
+   weighted sub-steps sharing its narration window, each a camera-toured
+   still (place = nine-dot camera target); audio slices are sample-exact so
+   mid-speech seams can't click. J-cuts: internal cut boundaries into
+   still-led scenes shift ~12 frames earlier (`j_cut_frames` in project.yaml,
+   0 disables) — image arrives while the last sentence finishes; text cards
+   keep straight cuts (their reveal waits for the word cue); section edges
+   stay anchored, so |video − narration| is untouched by construction.
 3. **Unified color grade** — museum/stock/ComfyUI/screenshot assets are four
    color universes; one grade makes it *directed* instead of *assembled*.
    Premium: the Chapter composition's existing PostFX (grade/bloom/grain/

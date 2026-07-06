@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import json
 import logging
-import subprocess
 import wave
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -40,23 +39,26 @@ def _wav_duration(p: Path) -> float:
         return w.getnframes() / float(w.getframerate())
 
 
-def _ffmpeg() -> str:
-    try:
-        import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        return "ffmpeg"
-
-
 def _slice_wav(src: Path, offset: float, duration: float, dest: Path) -> Path:
+    """Sample-exact PCM slice — both edges round to source samples from the
+    same absolute offsets, so consecutive slices tile the wav with ZERO
+    gap/overlap. This matters since J-cuts: step boundaries now land
+    mid-speech, where even a millisecond seam (ffmpeg -ss/-t rounding)
+    would click; on the old sentence-pause boundaries it was inaudible."""
     dest.parent.mkdir(parents=True, exist_ok=True)
-    r = subprocess.run(
-        [_ffmpeg(), "-y", "-hide_banner", "-loglevel", "error",
-         "-i", str(src), "-ss", f"{max(0.0, offset):.3f}",
-         "-t", f"{max(0.05, duration):.3f}", "-ar", "44100", str(dest)],
-        capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError(f"audio slice failed: {r.stderr[-300:]}")
+    with wave.open(str(src), "rb") as w:
+        rate, ch, sw = w.getframerate(), w.getnchannels(), w.getsampwidth()
+        n = w.getnframes()
+        a = max(0, min(n, int(round(max(0.0, offset) * rate))))
+        b = max(a, min(n, int(round((max(0.0, offset) + duration) * rate))))
+        b = min(n, max(b, a + int(0.05 * rate)))    # never an empty clip
+        w.setpos(a)
+        data = w.readframes(b - a)
+    with wave.open(str(dest), "wb") as out:
+        out.setnchannels(ch)
+        out.setsampwidth(sw)
+        out.setframerate(rate)
+        out.writeframes(data)
     return dest
 
 
@@ -218,12 +220,105 @@ def _still_motion_props(scene: Dict[str, Any], ordinal: int = 0,
             "glide": glide, "introHold": intro}
 
 
+MIN_STEP_FRAMES = 24        # no visual unit shorter than ~0.8s
+
+
+def _resolve_shots(scene: Dict[str, Any], project_path: Path):
+    """A scene's explicit shot list: [(abs_path, shot_dict)], or None.
+
+    ``scene.shots``: [{src, place?, weight?, caption?}] — the temporal analog
+    of the nine-dot tray (place targets the camera per shot). Two resolvable
+    shots minimum; otherwise the scene renders as one unit.
+    """
+    shots = scene.get("shots")
+    if not isinstance(shots, list) or len(shots) < 2:
+        return None
+    resolved = []
+    for sh in shots:
+        if not isinstance(sh, dict) or not sh.get("src"):
+            continue
+        p = Path(sh["src"])
+        if not p.is_absolute():
+            p = Path(project_path) / sh["src"]
+        if p.exists():
+            resolved.append((p, sh))
+    return resolved if len(resolved) >= 2 else None
+
+
+def _expand_shots(scene: Dict[str, Any], project_path: Path, fps: int,
+                  frames: int, ordinal: int):
+    """[(block, props, sub_frames)] — cut a scene's window into its shots.
+
+    Editors cut in shots, not sentences (the deconstruction corpus shows 2-4s
+    shots under longer narration spans). Each shot is a still with the full
+    camera-tour treatment; ordinal advances per shot so consecutive shots
+    alternate lanes. Without a shot list the scene is one unit.
+    """
+    resolved = _resolve_shots(scene, project_path)
+    if not resolved:
+        block, props = _scene_step(scene, project_path, fps, frames / fps,
+                                   ordinal=ordinal)
+        return [(block, props, frames)]
+
+    # A window too small for every shot keeps the FIRST ones (never falls back
+    # to _scene_step — a shots scene stays a shots scene).
+    n = max(1, min(len(resolved), frames // MIN_STEP_FRAMES))
+    resolved = resolved[:n]
+    weights = [max(0.1, float(sh.get("weight", 1) or 1)) for _, sh in resolved]
+    total_w = sum(weights)
+    edges = [int(round(frames * sum(weights[:k + 1]) / total_w))
+             for k in range(n)]
+    edges[-1] = frames                              # frame-exact by construction
+    subs = [e - (edges[k - 1] if k else 0) for k, e in enumerate(edges)]
+    for k in range(n):                              # enforce the floor: steal
+        while subs[k] < MIN_STEP_FRAMES:            # from the fattest shot
+            j = max(range(n), key=lambda m: subs[m])
+            take = min(subs[j] - MIN_STEP_FRAMES, MIN_STEP_FRAMES - subs[k])
+            if take <= 0:
+                break
+            subs[j] -= take
+            subs[k] += take
+
+    units = []
+    for k, ((p, sh), sub) in enumerate(zip(resolved, subs)):
+        center = None
+        place = sh.get("place")
+        if isinstance(place, (list, tuple)) and len(place) == 2:
+            center = (float(place[0]), float(place[1]))
+        props = {"src": str(p)}
+        props.update(_still_motion_props(scene, ordinal + k, center=center))
+        units.append(("ArtworkStage", props, sub))
+    return units
+
+
+def _is_still_led(scene: Dict[str, Any], project_path: Path) -> bool:
+    """Whether the scene OPENS on imagery (vs a text card that word-syncs).
+
+    Editors J-cut onto imagery — the picture arrives while the last sentence
+    finishes. A quote/title card gains nothing from arriving early: its
+    reveal waits for the word cue, so an early cut only extends the empty
+    background. Mirrors _scene_step precedence (layout template outranks
+    stills)."""
+    spec = scene.get("layout_spec") or {}
+    if isinstance(spec, str):
+        try:
+            spec = json.loads(spec)
+        except Exception:
+            spec = {}
+    if spec.get("template") and spec.get("template") != "custom":
+        return False
+    return bool(_resolve_shots(scene, project_path)
+                or _tray_placements(scene, project_path)
+                or scene.get("matched_asset") or scene.get("generated_asset"))
+
+
 def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                       project_path: Path, section_wav: Path,
                       section_start: float, out_name: str,
                       work_dir: Path, theme: str = "bold-signal",
                       fps: int = 30,
-                      section_words: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+                      section_words: List[Dict[str, Any]] = None,
+                      j_cut_frames: int = 12) -> Dict[str, Any]:
     """A FLOW-shaped Chapter job for one beat-anchored section.
 
     The section WAV is the timing authority: scene windows are normalized
@@ -245,24 +340,42 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
         bounds.append(int(round(b * fps)))
     bounds[-1] = int(round(wav_dur * fps))          # last step ends exactly at the wav end
 
+    # J-cut offsets (SOTA #2): narration is CONTINUOUS within a section, so an
+    # internal cut point can shift (audio slice + visual together) without
+    # touching sync — total narration is byte-identical; the cut simply stops
+    # landing exactly on the sentence pause. Pulling a boundary EARLIER means
+    # the next scene's image arrives while the previous sentence finishes —
+    # the editor's J-cut, and the death of the cut-on-sentence tell. Only
+    # boundaries INTO still-led scenes shift (text cards keep straight cuts);
+    # section edges stay untouched (beat anchors are sacred).
+    if j_cut_frames:
+        for i in range(len(bounds) - 1):        # never the section's last edge
+            if not _is_still_led(scenes[i + 1], project_path):
+                continue
+            floor_f = (bounds[i - 1] if i else 0) + MIN_STEP_FRAMES
+            bounds[i] = max(floor_f, bounds[i] - int(j_cut_frames))
+
     steps = []
     f_prev = 0
     for scene, f1 in zip(scenes, bounds):
         frames = max(f1 - f_prev, 2)
-        dur = frames / fps
-        block, props = _scene_step(scene, project_path, fps, dur,
-                                   ordinal=len(steps))
-        clip_wav = _slice_wav(section_wav, f_prev / fps, dur,
-                              work_dir / f"{scene.get('id', 'scene')}.wav")
-        words, reveals = _step_words(section_words or [], f_prev / fps,
-                                     f_prev / fps + dur, fps, frames)
-        steps.append({
-            "block": block, "props": props,
-            "revealFrames": reveals, "words": words,
-            "audioSrc": str(clip_wav),
-            "durationInFrames": frames,
-        })
-        f_prev = f_prev + frames
+        # a scene may carry a SHOT LIST — cut within its window
+        for shot_idx, (block, props, sub_frames) in enumerate(
+                _expand_shots(scene, project_path, fps, frames,
+                              ordinal=len(steps))):
+            dur = sub_frames / fps
+            clip_wav = _slice_wav(
+                section_wav, f_prev / fps, dur,
+                work_dir / f"{scene.get('id', 'scene')}_{shot_idx}.wav")
+            words, reveals = _step_words(section_words or [], f_prev / fps,
+                                         f_prev / fps + dur, fps, sub_frames)
+            steps.append({
+                "block": block, "props": props,
+                "revealFrames": reveals, "words": words,
+                "audioSrc": str(clip_wav),
+                "durationInFrames": sub_frames,
+            })
+            f_prev = f_prev + sub_frames
     return {"out": out_name, "theme": theme, "fps": fps,
             "captions": False, "props": {"steps": steps}}
 
@@ -301,6 +414,10 @@ def render_premium(project_path: Path, *, theme: str = None,
         theme = meta.get("theme") or "bold-signal"
     if gate is None:
         gate = meta.get("premium_gate", True) is not False
+    try:                                   # project.yaml `j_cut_frames: 0` disables
+        j_cut = int(meta.get("j_cut_frames", 12))
+    except (TypeError, ValueError):
+        j_cut = 12
 
     work = project_path / "assets" / "premium" / "_work"
     jobs_dir = project_path / "assets" / "premium" / "jobs"
@@ -315,6 +432,8 @@ def render_premium(project_path: Path, *, theme: str = None,
         d = _wav_duration(wav)
         spans.append((t, d))
         for s in scenes:
+            if _resolve_shots(s, project_path):     # a shot list IS a mapping
+                continue
             try:
                 _scene_step(s, project_path, fps, 1.0)
             except PremiumIneligible as exc:
@@ -334,7 +453,8 @@ def render_premium(project_path: Path, *, theme: str = None,
         job = build_section_job(
             name, scenes, project_path=project_path, section_wav=wav,
             section_start=sec_start, out_name=f"premium_{i:04d}.mp4",
-            work_dir=work, theme=theme, fps=fps, section_words=section_words)
+            work_dir=work, theme=theme, fps=fps, section_words=section_words,
+            j_cut_frames=j_cut)
         job_path = jobs_dir / f"premium_{i:04d}.json"
         job_path.write_text(json.dumps(job, indent=2), encoding="utf-8")
         job_paths.append((i, name, job_path))
