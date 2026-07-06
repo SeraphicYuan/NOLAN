@@ -6,18 +6,29 @@ import fs from "fs";
 import path from "path";
 
 const IMG_RE = /\.(jpe?g|png|webp|gif|avif)$/i;
+const VID_RE = /\.(mp4|mov|webm|m4v)$/i;
 
-// recursively stage ANY image-path string in a props object (src, left.src, …)
+// recursively stage ANY media-path string in a props object (src, left.src, …)
 // into public/ and rewrite it to a basename so staticFile() resolves it.
-function stageImages(obj, publicDir) {
+// Videos join images since render story v2 (Video steps + hosted comps with
+// videoSrc); an already-staged copy is reused, not re-copied.
+function stageImages(obj, publicDir, missing) {
   if (!obj || typeof obj !== "object") return;
   for (const k of Object.keys(obj)) {
     const v = obj[k];
-    if (typeof v === "string" && IMG_RE.test(v) && fs.existsSync(v)) {
-      const base = path.basename(v);
-      fs.copyFileSync(v, path.join(publicDir, base));
-      obj[k] = base;
-    } else if (v && typeof v === "object") stageImages(v, publicDir);
+    if (typeof v === "string" && (IMG_RE.test(v) || VID_RE.test(v))) {
+      if (fs.existsSync(v)) {
+        const base = path.basename(v);
+        const dest = path.join(publicDir, base);
+        if (!fs.existsSync(dest)) fs.copyFileSync(v, dest);
+        obj[k] = base;
+      } else if (path.isAbsolute(v) || v.includes("/") || v.includes("\\")) {
+        // a path that names a file that isn't there would surface as a
+        // cryptic staticFile() crash mid-render — fail HERE, by name.
+        // (bare basenames are assumed already staged and left alone)
+        missing.push(`${k}: ${v}`);
+      }
+    } else if (v && typeof v === "object") stageImages(v, publicDir, missing);
   }
 }
 
@@ -38,13 +49,17 @@ export function stageJob(cfg, here, { stageAudio = true } = {}) {
   fs.writeFileSync(path.join(here, "src", "styles", "_active-theme.css"), tokens);
 
   const steps = (cfg.props && cfg.props.steps) || [];
+  const missing = [];
   for (const s of steps) {
     if (stageAudio && s.audioSrc) {
       const base = path.basename(s.audioSrc);
       if (fs.existsSync(s.audioSrc)) fs.copyFileSync(s.audioSrc, path.join(publicDir, base));
       s.audioSrc = base;
     }
-    if (s.props) stageImages(s.props, publicDir);
+    if (s.props) stageImages(s.props, publicDir, missing);
+  }
+  if (missing.length) {
+    throw new Error(`stage: ${missing.length} media path(s) do not exist:\n  ` + missing.join("\n  "));
   }
 
   const compId = cfg.composition || "Chapter";

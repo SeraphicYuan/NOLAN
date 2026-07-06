@@ -112,3 +112,82 @@ def render(spec: Dict[str, Any], out_path) -> Path:
     if spec.get("backend") == "python":
         return _render_python(spec, out_path)
     return _render_remotion(spec, out_path)
+
+
+# --- Chapter hosting (render story v2) -------------------------------------------
+
+# Registry target -> key in remotion-lib/src/comps.ts. PhotoMontage/PhotoGrid
+# get "...Pro" keys because the blocks library carries same-named rebuilds.
+_CHAPTER_TARGETS = {
+    "Kinetic": "Kinetic", "BarCompare": "BarCompare", "KShape": "KShape",
+    "AnnotateStat": "AnnotateStat", "AnnotateOverVideo": "AnnotateOverVideo",
+    "RouteMap": "RouteMap", "PremiumCard": "PremiumCard",
+    "SplitScreen": "SplitScreen", "StatOver": "StatOver",
+    "PhotoMontage": "PhotoMontagePro", "PhotoGrid": "PhotoGridPro",
+}
+
+_MEDIA_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif",
+               ".mp4", ".mov", ".webm", ".m4v")
+
+
+def _abs_media(obj: Any, project_path: Path) -> Any:
+    """Media-path strings made absolute against the project (stage.mjs
+    existence-checks every path; node's CWD is render-service/)."""
+    if isinstance(obj, dict):
+        return {k: _abs_media(v, project_path) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_abs_media(v, project_path) for v in obj]
+    if isinstance(obj, str) and obj.lower().endswith(_MEDIA_EXTS):
+        p = Path(obj)
+        return str(p if p.is_absolute() else Path(project_path) / p)
+    return obj
+
+
+def chapter_step_for_spec(spec: Dict[str, Any], project_path: Path):
+    """(block, props) hosting this spec inside a Chapter, or None.
+
+    None = the effect is real but not chapter-hostable (python renderers and
+    the preprocessing comps StillMotion/ClipMontage) — the caller falls back
+    to its still treatment. An INVALID spec raises ValueError with the
+    validator's problems: bad authoring is named, never silently downgraded.
+    """
+    from .spec import validate
+    normalized, problems = validate(spec)
+    if problems:
+        raise ValueError(f"motion_spec invalid: {'; '.join(problems)}")
+    spec = normalized
+
+    target = spec.get("target", "")
+    backend = spec.get("backend", "remotion")
+    if backend == "python" or target in ("StillMotion", "ClipMontage"):
+        return None
+
+    if backend == "block":
+        from nolan.layout_blocks import adapt
+        template = str(spec["effect"]).replace("-", "_")
+        adapted = adapt(template, {**spec.get("content", {}), **spec.get("style", {})})
+        return adapted if adapted else None
+
+    if target not in _CHAPTER_TARGETS:
+        return None
+
+    content = dict(spec.get("content", {}))
+    props: Dict[str, Any] = {}
+    if target == "SplitScreen":
+        props = {"background": content.get("left"), "foreground": content.get("right"),
+                 "leftLabel": content.get("left_label", ""),
+                 "rightLabel": content.get("right_label", "")}
+    elif target == "StatOver":
+        media = content.pop("image", None)
+        props = dict(content)
+        key = "video" if str(media).lower().endswith((".mp4", ".mov", ".webm", ".m4v")) else "background"
+        props[key] = media
+    else:
+        props = content
+        props.update(spec.get("style", {}))
+        if "position" in spec:
+            props["position"] = normalize_position(spec["position"])
+    if spec.get("accent"):
+        props["accent"] = spec["accent"]
+
+    return _CHAPTER_TARGETS[target], _abs_media(props, Path(project_path))

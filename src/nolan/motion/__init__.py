@@ -11,7 +11,7 @@ from .registry import REGISTRY, BY_ID, get_effect, normalize_position, MotionEff
 from .manifest import build_manifest, build_guide
 from .spec import validate
 from .compiler import compile_spec, compile_many
-from .executor import render
+from .executor import chapter_step_for_spec, render
 
 
 async def author(scene_design: str, out_path, client=None):
@@ -28,5 +28,5 @@ async def author(scene_design: str, out_path, client=None):
 __all__ = [
     "REGISTRY", "BY_ID", "get_effect", "normalize_position", "MotionEffect", "Param",
     "SHARED", "ANCHORS", "THEMES", "build_manifest", "build_guide", "validate",
-    "compile_spec", "compile_many", "render", "author",
+    "compile_spec", "compile_many", "render", "chapter_step_for_spec", "author",
 ]

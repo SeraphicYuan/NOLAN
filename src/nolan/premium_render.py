@@ -7,13 +7,14 @@ FLOW uses — with per-scene audio slices baked in, block-based visuals, and
 frame-exact step durations from the beat-anchored windows. Sections concat
 (hard cuts) into final.mp4; video ≡ narration by construction.
 
-Eligibility: every scene must map to a Chapter block —
-  - layout_spec scenes -> the Phase 3a template adapters (layout_blocks)
+Eligibility: every scene must map to a Chapter step —
+  - layout_spec scenes -> the template adapters (layout_blocks)
+  - motion_spec scenes -> hosted motion comps (render story v2: the same
+    components the standalone compositions use, keyed via comps.ts)
+  - rendered_clip / matched_clip -> a muted Video step (narration stays the
+    step audio; the clip loops if shorter than its window)
   - image-backed scenes (matched_asset / generated_asset) -> ArtworkStage
     (the ART-flow camera tour: establish, glide, pull back)
-Video-backed scenes (matched_clip) have no Chapter block yet; a plan that
-contains one raises PremiumIneligible with the offending scene ids — the
-standard per-scene path remains the fallback for such projects.
 
 Requires beat-anchored narration: per-section wavs in
 assets/voiceover/_work/sec_NNNN.wav matching the plan's section count.
@@ -133,7 +134,11 @@ def _tray_placements(scene: Dict[str, Any],
 
 def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
                 duration_s: float, ordinal: int = 0) -> Tuple[str, Dict[str, Any]]:
-    """(block, props) for a scene, or raise PremiumIneligible."""
+    """(block, props) for a scene, or raise PremiumIneligible.
+
+    Precedence (explicit authoring first): layout_spec template → motion_spec
+    (hosted comp, render story v2) → nine-dot tray → rendered_clip / video
+    match (Video step) → matched/generated still (ArtworkStage)."""
     from nolan.layout_blocks import adapt
 
     spec = scene.get("layout_spec") or {}
@@ -147,6 +152,19 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         adapted = adapt(template, spec.get("params") or {})
         if adapted:
             return adapted
+
+    # Authored motion (render story v2): the spec's comp is hosted as a
+    # Chapter step. Unhostable backends (python, preprocessing comps) fall
+    # through to the still treatment; an INVALID spec fails loudly.
+    ms = scene.get("motion_spec")
+    if isinstance(ms, dict) and ms.get("effect"):
+        from nolan.motion import chapter_step_for_spec
+        try:
+            hosted = chapter_step_for_spec(ms, project_path)
+        except ValueError as exc:
+            raise PremiumIneligible(f"scene {scene.get('id')}: {exc}")
+        if hosted:
+            return hosted
 
     # Human-placed tray assets outrank the automatic still: the nine-dot
     # placements ARE the composition. 2+ placed images -> a montage with the
@@ -162,6 +180,16 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         return "ArtworkStage", {"src": str(p),
                                 **_still_motion_props(scene, ordinal, center=(x, y))}
 
+    # Video (render story v2): a clip PRODUCED for this scene plays as a
+    # muted Video step under the narration slice (assemble's top priority).
+    rendered = scene.get("rendered_clip")
+    if rendered:
+        p = Path(rendered)
+        if not p.is_absolute():
+            p = project_path / rendered
+        if p.exists():
+            return "Video", {"src": str(p)}
+
     asset = scene.get("matched_asset") or (
         f"assets/generated/{scene['generated_asset']}"
         if scene.get("generated_asset") else None)
@@ -174,9 +202,23 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
             props.update(_still_motion_props(scene, ordinal))
             return "ArtworkStage", props
 
+    # Library/stock video match — LAST resort: vector matches carry no vision
+    # gate (the 2-beat test matched a lecture clip to an aerial query), so a
+    # scored still outranks one.
+    mc = scene.get("matched_clip")
+    if isinstance(mc, dict) and mc.get("video_path"):
+        p = Path(mc["video_path"])
+        if not p.is_absolute():
+            p = project_path / mc["video_path"]
+        if p.exists():
+            start = float(mc.get("clip_start") or 0.0)
+            return "Video", {"src": str(p),
+                             "startFromFrames": int(round(start * fps))}
+
     raise PremiumIneligible(
         f"scene {scene.get('id')} ({scene.get('visual_type')}) has no "
-        "Chapter-block mapping (needs layout_spec or a still asset)")
+        "Chapter-block mapping (needs layout_spec, motion_spec, a video, "
+        "or a still asset)")
 
 
 def _still_motion_props(scene: Dict[str, Any], ordinal: int = 0,

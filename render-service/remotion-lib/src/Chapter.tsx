@@ -1,8 +1,28 @@
 import React from "react";
-import { Series, Audio, staticFile, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+import { Series, Audio, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
 import { BLOCKS } from "./blocks";
+import { COMPS } from "./comps";
 import { Captions } from "./Captions";
 import { PostFX, type PostFXProps } from "./Effects";
+
+// Render story v2: a Chapter step can be a library BLOCK, a hosted motion
+// COMP (same components as the standalone compositions), or raw VIDEO
+// (block "Video": {src, startFromFrames?} — narration stays the step audio,
+// the clip is muted and loops if shorter than its step).
+const STEP_COMPONENTS: Record<string, React.FC<Record<string, unknown>>> = {
+  ...(COMPS as Record<string, React.FC<Record<string, unknown>>>),
+  ...(BLOCKS as Record<string, React.FC<Record<string, unknown>>>),
+};
+
+const VideoStep: React.FC<{ src: string; startFromFrames?: number }> = ({ src, startFromFrames }) => (
+  <OffthreadVideo
+    src={staticFile(src)}
+    startFrom={Math.max(0, Math.round(startFromFrames ?? 0))}
+    muted
+    loop
+    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+  />
+);
 
 export type ChapterFX = Omit<PostFXProps, "children">;
 
@@ -49,7 +69,9 @@ export const Chapter: React.FC<{ steps: ChapterStep[]; captions?: boolean; fx?: 
   const series = (
     <Series>
       {steps.map((s, i) => {
-        const Block = (BLOCKS as Record<string, React.FC<Record<string, unknown>>>)[s.block];
+        const Block = s.block === "Video"
+          ? (VideoStep as unknown as React.FC<Record<string, unknown>>)
+          : STEP_COMPONENTS[s.block];
         return (
           <Series.Sequence key={i} premountFor={premountFor} durationInFrames={Math.max(1, s.durationInFrames)}>
             {s.audioSrc ? <Audio src={staticFile(s.audioSrc)} /> : null}
