@@ -112,3 +112,7 @@ If that fails, fix the issue and re-Write.
 # Output
 
 `scene_plan.json` saved to `target_path`. No chat output.
+
+# Capability awareness
+
+NOLAN's full capability catalog — editing techniques, motion effects, pairing operators, layout templates, each with when-to-use guidance — is machine-readable at `nolan capabilities --json` (or GET `/api/map`, `umbrellas`). Design scenes that downstream passes can actually serve: the treatments you imply in `visual_description` should exist there.

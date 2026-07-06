@@ -384,6 +384,39 @@ def normalize_plan_visual_types(plan: Dict[str, Any]):
     return mapped, unknown
 
 
+# --- the plan-field consumer manifest (module contract enforcement) -------------
+# Every AUTHORED decision field on the plan names the module that READS it.
+# tempo_plan authored `transition` for months while no renderer consumed it,
+# and bt.shots was computed into the void — this manifest plus its honesty
+# test (tests/test_plan_field_audit.py greps each consumer for the field)
+# makes that class of rot structurally loud: a new authored field needs an
+# entry here, and the entry must be TRUE.
+PLAN_FIELD_CONSUMERS: Dict[str, str] = {
+    "narration_excerpt": "src/nolan/aligner.py",
+    "visual_type":       "src/nolan/asset_engine.py",
+    "visual_description": "src/nolan/asset_engine.py",
+    "search_query":      "src/nolan/asset_engine.py",
+    "comfyui_prompt":    "src/nolan/asset_engine.py",
+    "energy":            "src/nolan/still_motion.py",   # camera_tour_props
+    "motion_speed":      "src/nolan/still_motion.py",
+    "transition":        "src/nolan/premium_render.py",
+    "layout_spec":       "src/nolan/premium_render.py",
+    "motion_spec":       "src/nolan/premium_render.py",
+    "matched_asset":     "src/nolan/premium_render.py",
+    "matched_clip":      "src/nolan/premium_render.py",
+    "rendered_clip":     "src/nolan/premium_render.py",
+    "generated_asset":   "src/nolan/premium_render.py",
+    "start_seconds":     "src/nolan/premium_render.py",
+    "end_seconds":       "src/nolan/premium_render.py",
+    # lossless-extra keys (authored via Scene.extra, folded flat on save)
+    "shots":             "src/nolan/premium_render.py",
+    "shots_wanted":      "src/nolan/asset_engine.py",
+    "assets":            "src/nolan/premium_render.py",   # nine-dot tray
+    "place":             "src/nolan/premium_render.py",
+    "sfx":               "src/nolan/audio_mix.py",
+}
+
+
 @dataclass
 class Scene:
     """A single visual scene - progressively enriched across workflow steps.

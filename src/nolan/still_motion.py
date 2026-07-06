@@ -18,6 +18,50 @@ _TREATMENTS = {"ken-burns-in", "ken-burns-out", "ken-burns-pan", "parallax",
 _NEED_CUTOUT = {"parallax", "rack-focus"}
 
 
+def camera_tour_props(scene: dict, ordinal: int = 0,
+                      center: Optional[tuple] = None) -> dict:
+    """THE energy→camera vocabulary for a still (single home — plumbing
+    consolidation; premium's ArtworkStage steps and any future consumer read
+    it from here so the dialects can't drift; `motion_for_tempo` in
+    nolan.tempo_plan maps the same levers to standalone treatment ids).
+
+    ArtworkStage keyframes its camera ONLY from focus regions — this is where
+    the treatment vocabulary lands: energy sets zoom tightness, motion_speed
+    sets glide/hold pacing. Placement precedence: an explicit ``center``
+    (a human's nine-dot tray placement — the camera pushes exactly there) →
+    a stamped still-motion direction → center/left/right lane alternation by
+    ordinal so consecutive stills don't all push the same way.
+    """
+    energy = 0.5
+    try:
+        energy = float(scene.get("energy") or 0.5)
+    except (TypeError, ValueError):
+        pass
+    speed = str(scene.get("motion_speed") or "medium").lower()
+
+    side = max(0.45, min(0.8, 0.78 - 0.35 * energy))
+    ms = scene.get("motion_spec") or {}
+    direction = ((ms.get("content") or {}).get("direction")
+                 or ms.get("direction") or "")
+    if center is not None:
+        x = max(0.0, min(1.0 - side, float(center[0]) - side / 2))
+        y = max(0.0, min(1.0 - side, float(center[1]) - side / 2))
+    elif direction == "left":
+        x, y = 0.06, (1 - side) / 2
+    elif direction == "right":
+        x, y = 1 - side - 0.06, (1 - side) / 2
+    else:
+        lane = ordinal % 3
+        x = {0: (1 - side) / 2, 1: 0.08, 2: 1 - side - 0.08}[lane]
+        y = (1 - side) / 2
+
+    glide = {"slow": 34, "medium": 26, "fast": 18}.get(speed, 26)
+    intro = {"slow": 48, "medium": 40, "fast": 26}.get(speed, 40)
+    return {"focuses": [{"word": "", "x": round(x, 3), "y": round(y, 3),
+                         "w": side, "h": side}],
+            "glide": glide, "introHold": intro}
+
+
 def _salient(image_path, want_cutout: bool, out_dir: Path):
     """Return ({x,y} salient target in 0..1, cutout_png_path|None) from a rembg mask."""
     import numpy as np

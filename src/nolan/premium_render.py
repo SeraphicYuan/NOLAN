@@ -225,45 +225,9 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         "or a still asset)")
 
 
-def _still_motion_props(scene: Dict[str, Any], ordinal: int = 0,
-                        center: Tuple[float, float] = None) -> Dict[str, Any]:
-    """Camera-tour props for a still, from the scene's authored tempo.
-
-    ArtworkStage keyframes its camera ONLY from focus regions — this is where
-    the treatment vocabulary lands: energy sets zoom tightness, motion_speed
-    sets glide/hold pacing. Placement precedence: an explicit ``center``
-    (a human's nine-dot tray placement — the camera pushes exactly there) →
-    a stamped still-motion direction → center/left/right lane alternation by
-    ordinal so consecutive stills don't all push the same way.
-    """
-    energy = 0.5
-    try:
-        energy = float(scene.get("energy") or 0.5)
-    except (TypeError, ValueError):
-        pass
-    speed = str(scene.get("motion_speed") or "medium").lower()
-
-    side = max(0.45, min(0.8, 0.78 - 0.35 * energy))
-    ms = scene.get("motion_spec") or {}
-    direction = ((ms.get("content") or {}).get("direction")
-                 or ms.get("direction") or "")
-    if center is not None:
-        x = max(0.0, min(1.0 - side, float(center[0]) - side / 2))
-        y = max(0.0, min(1.0 - side, float(center[1]) - side / 2))
-    elif direction == "left":
-        x, y = 0.06, (1 - side) / 2
-    elif direction == "right":
-        x, y = 1 - side - 0.06, (1 - side) / 2
-    else:
-        lane = ordinal % 3
-        x = {0: (1 - side) / 2, 1: 0.08, 2: 1 - side - 0.08}[lane]
-        y = (1 - side) / 2
-
-    glide = {"slow": 34, "medium": 26, "fast": 18}.get(speed, 26)
-    intro = {"slow": 48, "medium": 40, "fast": 26}.get(speed, 40)
-    return {"focuses": [{"word": "", "x": round(x, 3), "y": round(y, 3),
-                         "w": side, "h": side}],
-            "glide": glide, "introHold": intro}
+# The energy→camera vocabulary lives in ONE place (nolan.still_motion) since
+# the plumbing consolidation — three modules used to encode it independently.
+from nolan.still_motion import camera_tour_props as _still_motion_props  # noqa: E402
 
 
 MIN_STEP_FRAMES = 24        # no visual unit shorter than ~0.8s
@@ -364,7 +328,8 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                       work_dir: Path, theme: str = "bold-signal",
                       fps: int = 30,
                       section_words: List[Dict[str, Any]] = None,
-                      j_cut_frames: int = 12) -> Dict[str, Any]:
+                      j_cut_frames: int = 12,
+                      captions: bool = False) -> Dict[str, Any]:
     """A FLOW-shaped Chapter job for one beat-anchored section.
 
     The section WAV is the timing authority: scene windows are normalized
@@ -431,7 +396,7 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
             steps.append(step)
             f_prev = f_prev + sub_frames
     return {"out": out_name, "theme": theme, "fps": fps,
-            "captions": False, "props": {"steps": steps}}
+            "captions": bool(captions), "props": {"steps": steps}}
 
 
 def render_premium(project_path: Path, *, theme: str = None,
@@ -475,6 +440,7 @@ def render_premium(project_path: Path, *, theme: str = None,
         j_cut = int(meta.get("j_cut_frames", 12))
     except (TypeError, ValueError):
         j_cut = 12
+    captions = meta.get("captions", False) is True   # project.yaml `captions: true`
 
     work = project_path / "assets" / "premium" / "_work"
     jobs_dir = project_path / "assets" / "premium" / "jobs"
@@ -513,7 +479,7 @@ def render_premium(project_path: Path, *, theme: str = None,
             name, scenes, project_path=project_path, section_wav=wav,
             section_start=sec_start, out_name=f"premium_{i:04d}.mp4",
             work_dir=work, theme=theme, fps=fps, section_words=section_words,
-            j_cut_frames=j_cut)
+            j_cut_frames=j_cut, captions=captions)
         if accent:                       # brief accent override (staged by stage.mjs)
             job["accent"] = accent
         job_path = jobs_dir / f"premium_{i:04d}.json"

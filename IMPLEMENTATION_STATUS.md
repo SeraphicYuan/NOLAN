@@ -133,6 +133,50 @@ kills full-suite pytest runs at ~38% — run suites in groups or fix in Phase 6.
   (24 total in test_premium_render.py); live probe: section 0 + injected
   3-shot list rendered 1654/1654 frames, three shots verified frame-by-frame.
 
+## Inventory↔spine program (2026-07-06) — six moves, all landed
+
+The gap map ("craft inventory and spine barely talk") closed in order:
+
+1. **Brief Compiler** (`nolan/project_brief.py`): style step compiles
+   brief.json — theme via the explainable selector (Look-section-ranked;
+   signals recorded), accent (staged as a token override by stage.mjs),
+   music_mood, voice, pacing — all gated by validate_brief. Consumers:
+   render, soundtrack (brief enables auto music), voiceover ladder.
+   `nolan compile-brief` backfills. Verified: creative-voltage picked with
+   auditable signals; section re-rendered in the new look.
+2. **Render story v2**: Chapter hosts VIDEO steps (muted/looping,
+   narration = step audio) and MOTION COMPS (comps.ts; PhotoMontagePro/
+   PhotoGridPro keys avoid block collisions);
+   `nolan.motion.chapter_step_for_spec` converts validated specs; scene
+   precedence layout > motion_spec > tray > rendered_clip > scored still >
+   vector clip match; stage.mjs stages video + FAILS BY NAME on missing
+   media. Verified: footage + StatOver + SplitScreen + Kinetic in one beat.
+3. **Visual treatment pass**: 8 new block adapters (bar_chart, line_chart,
+   pie_percentage, data_table, image_compare, kinetic_headline,
+   detail_loupe, loop_diagram) + budgets; TEMPLATES when_to_use catalog
+   honesty-tested vs ADAPTERS + the slide-designer skill (variety rule
+   added); new Director step **motion_design** (agent + hostable-catalog
+   prompt + deterministic gate). Live: 1 spec authored with restraint,
+   28 skipped with reasons. tempo stamps shots_wanted (bt.shots consumed).
+4. **Asset ladder completion**: select_clips runs library → picture-lib →
+   external stock (vision gate 4; video downloaded to assets/broll_video/
+   with license kept); no-reuse ledger across tiers;
+   fulfill_shots_wanted authors scene.shots from tempo cadence. Verified:
+   pexels video resolved → played through a premium chapter.
+5. **Soundtrack v2**: risers on energy jumps, data-punch hits (≥0.5 energy,
+   ≥15s apart), whoosh 0.7; measure_sfx_audibility after every mix — the
+   render checkpoint names inaudible events. `nolan music add/list` ingest.
+   Live: riser + 2 hits audible (1.7–5.8 dB), whoosh correctly flagged.
+6. **Plumbing & honesty**: catalog pointer in script-to-scenes;
+   PLAN_FIELD_CONSUMERS manifest + grep-verifying audit test (caught its
+   own first drift: energy/motion_speed moved consumers); Scenes drawer
+   edits transition + shots (whitelist extended; browser-verified);
+   `captions: true` in project.yaml wires premium captions; the
+   energy→camera vocabulary unified in nolan.still_motion.camera_tour_props.
+
+Suite: 759 passed + director sequencing net. Commits 88b62b1, 17ee13d,
+9e3e771, 6ff27e8, 160ba92 + this one.
+
 ## Vertical-slice pipeline test: aidc-2beat-test (2026-07-06)
 
 Two beats of the ai-data-center-debate script through the FULL Director

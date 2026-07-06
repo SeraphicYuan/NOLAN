@@ -1087,11 +1087,25 @@
                     <div class="ibody">
                         <div class="insp-note">energy <b>${scene.energy != null ? scene.energy.toFixed(2) : '—'}</b>
                             · motion <b>${esc(scene.motion_speed || '—')}</b>
-                            · transition <b>${esc(scene.transition || '—')}</b>
                             ${scene.motion_spec ? ` · motion_spec: <b>${esc(scene.motion_spec.effect || '?')}</b>` : ''}
                             ${scene.layout_spec ? ` · layout: <b>${esc((scene.layout_spec.template) || '?')}</b>` : ''}</div>
                         ${fieldInputs(scene, GROUP_FIELDS.move)}
-                        <div class="insp-note">Deeper motion/layout changes: use a Comment (the agent rewrites the spec) — raw spec editing is deliberately not exposed here.</div>
+                        <label class="field-edit">
+                            <span class="field-label">transition</span>
+                            <select id="field-${scene.id}-transition">
+                                ${['cut', 'dissolve', 'fade'].map(t =>
+                                    `<option value="${t}" ${scene.transition === t ? 'selected' : ''}>${t}</option>`).join('')}
+                            </select>
+                        </label>
+                        <label class="field-edit" title='Shot list: [{"src": "path", "place": [x,y], "weight": 1.5}] — cuts this scene into shots (premium)'>
+                            <span class="field-label">shots</span>
+                            <input id="field-${scene.id}-shots"
+                                   value="${scene.shots ? esc(JSON.stringify(scene.shots)) : ''}"
+                                   placeholder='[{"src": "assets/broll/a.jpg", "weight": 1.5}, …] — empty = one shot'>
+                        </label>
+                        <div class="insp-note">transition = how this scene ENTERS (cut/dissolve/fade — premium executes it);
+                            shots = cut the window into a still sequence (validated at the premium gate).
+                            Deeper motion/layout changes: use a Comment (the agent rewrites the spec).</div>
                     </div>
                 </div>
 
@@ -1649,6 +1663,20 @@
                 if (el && el.value !== (scene[f] ?? '').toString()) patch[f] = el.value;
             });
             const st = document.getElementById(`editstatus-${id}`);
+            // editing-umbrella fields (select / JSON — validated at the premium gate)
+            const tr = document.getElementById(`field-${id}-transition`);
+            if (tr && tr.value !== (scene.transition || 'cut')) patch.transition = tr.value;
+            const sh = document.getElementById(`field-${id}-shots`);
+            if (sh) {
+                const cur = scene.shots ? JSON.stringify(scene.shots) : '';
+                if (sh.value.trim() !== cur) {
+                    if (!sh.value.trim()) { patch.shots = null; }
+                    else {
+                        try { patch.shots = JSON.parse(sh.value); }
+                        catch (e) { st.textContent = 'shots is not valid JSON: ' + e.message; return; }
+                    }
+                }
+            }
             if (Object.keys(patch).length === 0) { st.textContent = 'No changes.'; return; }
             st.textContent = 'Saving…';
             try {
