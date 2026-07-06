@@ -318,6 +318,11 @@ def apply_to_plan(plan, tempo: TempoPlan) -> dict:
             sc.transition = bt.transition
             sc.energy = round(bt.energy, 3)
             sc.motion_speed = bt.motion_speed
+            # the beat's shot cadence: >1 asks the asset ladder to fetch that
+            # many stills so premium can cut the scene into a shot list
+            # (scene.shots). Consumed field — never author data with no reader.
+            if int(getattr(bt, "shots", 1) or 1) > 1:
+                sc.extra["shots_wanted"] = int(bt.shots)
             matched += 1
     return {"sections": n_sec, "scenes": n_sc, "matched": matched}
 

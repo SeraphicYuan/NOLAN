@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 25,
+  "count": 26,
   "skills": [
     {
       "id": "art.flow",
@@ -500,6 +500,28 @@
       "documents": null,
       "evals": [],
       "path": "skills/orchestrator/slide-designer.md"
+    },
+    {
+      "id": "orchestrator.motion-designer",
+      "name": "Motion designer",
+      "kind": "prompt",
+      "purpose": "Author motion_spec on scenes where a motion effect beats the default treatment — the pass that spends the motion library.",
+      "status": "active",
+      "version": 1,
+      "path": "skills/orchestrator/motion-designer.md",
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "motion-design"
+        }
+      ],
+      "uses": [],
+      "evals": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null
     },
     {
       "id": "publish.author-article",

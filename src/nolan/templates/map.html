@@ -140,7 +140,7 @@
 
       // umbrellas
       const U = document.getElementById('umbrellas'), um = m.umbrellas || {};
-      const tabular = ['editing', 'motion', 'pairing'];
+      const tabular = ['editing', 'motion', 'pairing', 'blocks'];
       let umbTotal = 0;
       tabular.forEach(name => {
         const entries = um[name];
@@ -154,7 +154,7 @@
           `${name} <span class="muted">(${entries.length})</span></summary>` +
           `<table style="margin-top:6px;"><tr><th>id</th><th>when to use</th></tr>${rows}</table></details>`);
       });
-      ['blocks', 'themes'].forEach(name => {
+      ['themes'].forEach(name => {
         const entries = um[name];
         if (!Array.isArray(entries)) return;
         umbTotal += entries.length;

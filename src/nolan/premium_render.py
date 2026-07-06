@@ -151,7 +151,11 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
     if template and template != "custom":
         adapted = adapt(template, spec.get("params") or {})
         if adapted:
-            return adapted
+            # media-bearing templates (image_compare, detail_loupe): make
+            # paths absolute for stage.mjs (node CWD is render-service/)
+            from nolan.motion.executor import _abs_media
+            block, props = adapted
+            return block, _abs_media(props, project_path)
 
     # Authored motion (render story v2): the spec's comp is hosted as a
     # Chapter step. Unhostable backends (python, preprocessing comps) fall

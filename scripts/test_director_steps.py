@@ -62,6 +62,8 @@ def main():
 
         # -- 1. step ordering: after the planning steps come the media steps --
         st = completed_state(proj, "tempo_enrich", "select_clips")
+        assert d._next_step_name(st) == "motion_design", d._next_step_name(st)
+        st = completed_state(proj, "tempo_enrich", "select_clips", "motion_design")
         assert d._next_step_name(st) == "generate_assets", d._next_step_name(st)
         assert d._generated_scenes_missing_asset() == 1
 

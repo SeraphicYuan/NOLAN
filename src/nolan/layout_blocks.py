@@ -278,6 +278,106 @@ def _document_highlight(p) -> _Adapted:
         "attribution": f"— {attribution}" if attribution else None})
 
 
+def _bar_chart(p) -> _Adapted:
+    bars = p.get("bars")
+    if not isinstance(bars, list) or len(bars) < 2:
+        return None
+    out = []
+    for b in bars:
+        if not isinstance(b, dict) or b.get("label") is None or _num(b.get("value")) is None:
+            return None
+        out.append(_clean({"label": str(b["label"]), "value": _num(b["value"]),
+                           "accent": b.get("accent")}))
+    return "BarChart", _clean({"bars": out, "title": p.get("title"),
+                               "unit": p.get("unit"), "caption": p.get("caption")})
+
+
+def _line_chart(p) -> _Adapted:
+    pts = p.get("points")
+    if not isinstance(pts, list) or len(pts) < 3:
+        return None
+    series_pts = []
+    for it in pts:
+        pair = it if isinstance(it, (list, tuple)) else (
+            (it.get("x"), it.get("y")) if isinstance(it, dict) else None)
+        if not pair or _num(pair[0]) is None or _num(pair[1]) is None:
+            return None                      # LineChart plots numbers only
+        series_pts.append({"x": _num(pair[0]), "y": _num(pair[1])})
+    return "LineChart", _clean({
+        "series": [{"points": series_pts}], "title": p.get("title"),
+        "caption": p.get("caption"), "area": p.get("area", True),
+        "yPrefix": p.get("y_prefix"), "ySuffix": p.get("y_suffix"),
+        "yDecimals": p.get("y_decimals"), "xDecimals": p.get("x_decimals", 0)})
+
+
+def _pie_percentage(p) -> _Adapted:
+    pct = _num(p.get("percentage"))
+    if pct is None or not (0 <= pct <= 100):
+        return None
+    return "PieCallout", _clean({
+        "percentage": pct, "infoTitle": p.get("title"),
+        "infoText": p.get("text"), "sliceLabel": p.get("slice_label")})
+
+
+def _data_table(p) -> _Adapted:
+    cols, rows = p.get("columns"), p.get("rows")
+    if not (isinstance(cols, list) and cols and isinstance(rows, list) and rows):
+        return None
+    hl = p.get("highlight_row")
+    return "DataTable", _clean({
+        "columns": [str(c) for c in cols],
+        "rows": [[str(c) for c in (r if isinstance(r, list) else [r])] for r in rows],
+        "highlightRow": int(hl) if isinstance(hl, (int, float)) else None,
+        "caption": p.get("caption")})
+
+
+def _image_compare(p) -> _Adapted:
+    def side(s):
+        if not isinstance(s, dict) or not s.get("src"):
+            return None
+        return _clean({"src": str(s["src"]), "label": s.get("label"),
+                       "caption": s.get("caption")})
+    left, right = side(p.get("left")), side(p.get("right"))
+    if not left or not right:
+        return None
+    return "ImageCompare", _clean({"left": left, "right": right,
+                                   "kicker": p.get("kicker"),
+                                   "verdict": p.get("verdict")})
+
+
+def _kinetic_headline(p) -> _Adapted:
+    if not p.get("text"):
+        return None
+    aw = p.get("accent_words")
+    return "KineticHeadline", _clean({
+        "text": str(p["text"]),
+        "accentWords": [str(w) for w in aw] if isinstance(aw, list) else None,
+        "align": p.get("align")})
+
+
+def _detail_loupe(p) -> _Adapted:
+    src, region = p.get("src"), p.get("region")
+    if not src:
+        return None
+    if isinstance(region, (list, tuple)) and len(region) == 4:
+        region = dict(zip("xywh", region))
+    if not (isinstance(region, dict)
+            and all(_num(region.get(k)) is not None for k in "xywh")):
+        return None
+    return "DetailLoupe", _clean({
+        "src": str(src), "region": {k: _num(region[k]) for k in "xywh"},
+        "label": p.get("label"), "caption": p.get("caption")})
+
+
+def _loop_diagram(p) -> _Adapted:
+    nodes = p.get("nodes")
+    if not isinstance(nodes, list) or not 3 <= len(nodes) <= 6:
+        return None
+    return "LoopDiagram", _clean({
+        "nodes": [str(n) for n in nodes], "title": p.get("title"),
+        "centerLabel": p.get("center_label")})
+
+
 ADAPTERS: Dict[str, Callable[[dict], _Adapted]] = {
     "quote": _quote,
     "pull_quote": _pull_quote,
@@ -302,6 +402,84 @@ ADAPTERS: Dict[str, Callable[[dict], _Adapted]] = {
     "tweet_card": _tweet_card,
     "news_headline": _news_headline,
     "document_highlight": _document_highlight,
+    "bar_chart": _bar_chart,
+    "line_chart": _line_chart,
+    "pie_percentage": _pie_percentage,
+    "data_table": _data_table,
+    "image_compare": _image_compare,
+    "kinetic_headline": _kinetic_headline,
+    "detail_loupe": _detail_loupe,
+    "loop_diagram": _loop_diagram,
+}
+
+
+# --- the blocks umbrella catalog (module contract) -------------------------------
+# One entry per authoring template: purpose (what) + when_to_use (the craft
+# guidance an agent needs to PICK it). Honesty-tested against ADAPTERS and the
+# slide-designer skill doc, surfaced on /api/map and `nolan capabilities`.
+TEMPLATES: Dict[str, Dict[str, str]] = {
+    "quote": {"purpose": "Verbatim quotation card with attribution.",
+              "when_to_use": "A quote the narration reads or references. Verbatim text is never trimmed — designed type tiers absorb length up to ~480 chars."},
+    "pull_quote": {"purpose": "Quote with one accented phrase.",
+                   "when_to_use": "When ONE phrase inside the quote is the point — the accent carries the argument."},
+    "definition": {"purpose": "Term + definition card.",
+                   "when_to_use": "First introduction of a term of art the rest of the essay leans on."},
+    "counter": {"purpose": "Animated count-up number with caption.",
+                "when_to_use": "A single inline stat. The CHEAPEST data moment — escalate to bar_chart/stat_comparison when comparison matters, or a stat-over motion when scale should be FELT."},
+    "statistic": {"purpose": "One-to-three stat figures with labels.",
+                  "when_to_use": "A cluster of related figures. NOT for every number in a stat run — vary with counter, percentage_bar, annotate treatments."},
+    "timeline": {"purpose": "Chronology as a stepped flow (≤5 events).",
+                 "when_to_use": "A sequence of dated events the narration walks through in order. More than 5 events won't fit — cut to the turning points."},
+    "ranking": {"purpose": "Ordered list with values.",
+                "when_to_use": "Top-N / league-table moments where ORDER is the message."},
+    "comparison": {"purpose": "Two-sided VS card (text points).",
+                   "when_to_use": "A binary argument with a few points per side. For imagery use image_compare; for two numbers use stat_comparison."},
+    "stat_comparison": {"purpose": "Two headline numbers side by side.",
+                        "when_to_use": "Before/after or us/them NUMBERS ('4.4% → 7-12%'). The numbers are the whole card."},
+    "question": {"purpose": "Question card.",
+                 "when_to_use": "A rhetorical pivot the narration poses — sparingly, as punctuation."},
+    "chapter_card": {"purpose": "Chapter/section opener card.",
+                     "when_to_use": "Section openers. At most one per section."},
+    "section_divider": {"purpose": "Minimal divider card.",
+                        "when_to_use": "A breath between arguments when a full chapter card is too heavy."},
+    "title": {"purpose": "Title + subtitle statement.",
+              "when_to_use": "A declarative statement standing alone ('WE ARE NOT UN-BUILDING THIS')."},
+    "list": {"purpose": "Staggered list reveal.",
+             "when_to_use": "3-6 parallel items the narration enumerates."},
+    "lower_third": {"purpose": "Name/role caption band.",
+                    "when_to_use": "Introducing a person or source while their footage/imagery stays on screen."},
+    "source_citation": {"purpose": "Source/citation card.",
+                        "when_to_use": "On-screen sourcing for a load-bearing claim."},
+    "verdict": {"purpose": "Verdict/judgment card.",
+                "when_to_use": "The essay's ruling on a question it set up — a conclusion moment."},
+    "location_stamp": {"purpose": "Place-name stamp with sublocation.",
+                       "when_to_use": "Grounding the narration in a named real place (datelines, site references) when no map asset exists."},
+    "progress_bar": {"purpose": "0..1 progress with milestones.",
+                     "when_to_use": "Progress toward a stated goal or capacity."},
+    "percentage_bar": {"purpose": "One percentage as a labeled bar.",
+                       "when_to_use": "A single share-of-whole figure ('43% of data centers…'). For a donut treatment use pie_percentage."},
+    "tweet_card": {"purpose": "Social-post card.",
+                   "when_to_use": "Quoting an actual post — content is verbatim (≤280)."},
+    "news_headline": {"purpose": "News-style headline chyron.",
+                      "when_to_use": "Reporting a dated event as coverage ('BREAKING' energy) — not for the essay's own claims."},
+    "document_highlight": {"purpose": "Document excerpt with highlighted phrase.",
+                           "when_to_use": "Reading from a real filing/report/permit — the highlight is the receipt."},
+    "bar_chart": {"purpose": "Animated bar chart (2-6 bars, count-up).",
+                  "when_to_use": "Comparing 2-6 quantities the narration names. If the story is one series over TIME, use line_chart."},
+    "line_chart": {"purpose": "Single-series line/area chart (numeric x/y).",
+                   "when_to_use": "A trend over time — rise, crash, 'going vertical'. Needs ≥3 numeric points; hedged projections belong in the caption."},
+    "pie_percentage": {"purpose": "Donut sweep for one percentage + info panel.",
+                       "when_to_use": "One share-of-whole with a sentence of context. For a bare figure percentage_bar is lighter."},
+    "data_table": {"purpose": "Compact table with a highlight row.",
+                   "when_to_use": "When the RECEIPTS are tabular (specs, results, filings) and one row is the point. ≤5 columns, ≤7 rows."},
+    "image_compare": {"purpose": "Two images side by side with labels + verdict.",
+                      "when_to_use": "A visual juxtaposition with an editorial ruling (claim vs reality). Needs both image paths (project-relative or absolute)."},
+    "kinetic_headline": {"purpose": "Word-synced kinetic headline with accent words.",
+                         "when_to_use": "Punch phrases the viewer should read AS they're spoken — hooks, thesis lines, the three-punch closer."},
+    "detail_loupe": {"purpose": "Magnifier over one region of an image.",
+                     "when_to_use": "When the evidence is a DETAIL inside a larger image (a clause, a face, a signature). Needs src + region x/y/w/h in 0..1."},
+    "loop_diagram": {"purpose": "Nodes on a circle with cycle arrows.",
+                     "when_to_use": "Feedback loops and self-reinforcing cycles (A feeds B feeds C feeds A) — 3-6 nodes."},
 }
 
 
@@ -348,6 +526,22 @@ BLOCK_BUDGETS: Dict[str, Dict[str, tuple]] = {
                   "handle": (30, "trim")},
     "NewsHeadline": {"headline": (110, "reject"), "source": (44, "trim"),
                      "label": (24, "trim")},
+    "BarChart": {"bars[]": (6, "reject"), "bars[].label": (18, "trim"),
+                 "title": (70, "trim"), "caption": (90, "trim"),
+                 "unit": (8, "trim")},
+    "LineChart": {"series[]": (2, "reject"), "title": (70, "trim"),
+                  "caption": (90, "trim")},
+    "PieCallout": {"infoTitle": (60, "trim"), "infoText": (160, "trim"),
+                   "sliceLabel": (24, "trim")},
+    "DataTable": {"columns[]": (5, "reject"), "columns[].": (16, "trim"),
+                  "rows[]": (7, "reject"), "caption": (70, "trim")},
+    "ImageCompare": {"kicker": (44, "trim"), "verdict": (110, "trim"),
+                     "left.label": (32, "trim"), "right.label": (32, "trim"),
+                     "left.caption": (80, "trim"), "right.caption": (80, "trim")},
+    "KineticHeadline": {"text": (90, "reject"), "accentWords[]": (4, "reject")},
+    "DetailLoupe": {"label": (40, "trim"), "caption": (90, "trim")},
+    "LoopDiagram": {"nodes[]": (6, "reject"), "nodes[].": (22, "trim"),
+                    "title": (70, "trim")},
 }
 
 

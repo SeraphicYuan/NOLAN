@@ -66,6 +66,15 @@ def test_budget_paths_resolve_for_every_declared_block():
         "percentage_bar": {"percentage": 50, "label": "l"},
         "tweet_card": {"content": "c"},
         "news_headline": {"headline": "h"},
+        "bar_chart": {"bars": [{"label": "a", "value": 1},
+                               {"label": "b", "value": 2}]},
+        "line_chart": {"points": [[1, 1], [2, 2], [3, 3]]},
+        "pie_percentage": {"percentage": 50},
+        "data_table": {"columns": ["c"], "rows": [["v"]]},
+        "image_compare": {"left": {"src": "a.jpg"}, "right": {"src": "b.jpg"}},
+        "kinetic_headline": {"text": "t"},
+        "detail_loupe": {"src": "a.png", "region": [0.1, 0.1, 0.2, 0.2]},
+        "loop_diagram": {"nodes": ["a", "b", "c"]},
     }
     for template, params in samples.items():
         adapted = adapt(template, params)

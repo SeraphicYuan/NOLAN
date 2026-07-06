@@ -57,15 +57,35 @@ Pick the template whose semantics best fit the scene's narration + visual_descri
 
 | Template | Params | When to use |
 |---|---|---|
-| `timeline` | `events: [{year, label}]` | Multi-event chronology (1830→2024 Venezuela timeline) |
+| `timeline` | `events: [{year, label}]` | Multi-event chronology (≤5 events — cut to the turning points) |
 | `comparison` | `left_text`, `right_text`, `left_subtitle`, `right_subtitle`, `center_label` | A/B side-by-side comparison |
-| `stat_comparison` | `left_value`, `left_label`, `right_value`, `right_label`, `title`, `divider_text` | Two-number comparison ("$8B vs $80B") |
+| `stat_comparison` | `left_value`, `left_label`, `right_value`, `right_label`, `title`, `divider_text` | Two-number comparison ("$8B vs $80B", "4.4% → 7–12%") |
 | `percentage_bar` | `percentage`, `label`, `context` | Single percentage callout |
+| `pie_percentage` | `percentage`, `title`, `text`, `slice_label` | One share-of-whole as a donut sweep + a sentence of context |
 | `progress_bar` | `progress`, `label`, `show_percentage`, `milestone_labels[]` | Progress with milestones |
 | `ranking` | `title`, `items: [[label, value]]` | Top-N list with labels |
 | `counter` | `target`, `prefix`, `suffix` | Animated number rollup |
+| `bar_chart` | `bars: [{label, value, accent?}]`, `title`, `unit`, `caption` | Comparing 2–6 named quantities (spend by company, water by county) |
+| `line_chart` | `points: [[x, y], …]` (numeric, ≥3), `title`, `caption`, `y_prefix`, `y_suffix`, `area` | A trend over time — rise, crash, "going vertical". Keep hedges in the caption |
+| `data_table` | `columns[]`, `rows[][]`, `highlight_row`, `caption` | Tabular receipts (filings, specs) where ONE row is the point (≤5 cols, ≤7 rows) |
+| `loop_diagram` | `nodes[]` (3–6), `title`, `center_label` | Feedback loops / self-reinforcing cycles the narration walks around |
+| `kinetic_headline` | `text`, `accent_words[]`, `align` | Punch phrases read AS spoken — hooks, thesis lines, three-punch closers |
+| `image_compare` | `left: {src, label, caption}`, `right: {…}`, `kicker`, `verdict` | Visual juxtaposition with a ruling — needs both image paths (use scene/tray assets) |
+| `detail_loupe` | `src`, `region: {x,y,w,h} (0..1)`, `label`, `caption` | Magnify the DETAIL inside an image (a clause, a face) — needs an image asset |
 
-If a `graphic` scene calls for a chart or map type *not* in the catalog (e.g., a line chart of oil prices), set `template: "custom"` with `params.description` summarizing what's needed and `params.note: "no built-in template — needs custom render or replan as image"`. The renderer can later treat `custom` as a flag for human implementation. Don't invent template names that don't exist in the catalog.
+If a `graphic` scene calls for a treatment *not* in the catalog, set `template: "custom"` with `params.description` summarizing what's needed and `params.note: "no built-in template — needs custom render or replan as image"`. The renderer can later treat `custom` as a flag for human implementation. Don't invent template names that don't exist in the catalog.
+
+# Variety rule (anti-monotony)
+
+The same template twice in a row reads as a template, not a design. Enforce:
+- **Never more than 2 consecutive scenes with the same template** — a stat
+  run alternates `counter` / `statistic` / `percentage_bar` / `bar_chart` /
+  `kinetic_headline` rather than stamping `statistic` seven times.
+- **Pick the most SPECIFIC fit**: a trend → `line_chart`, not `statistic`
+  with an arrow in the label; a share → `percentage_bar`/`pie_percentage`;
+  an order → `ranking`; receipts → `data_table`.
+- The full machine-readable catalog with when-to-use guidance:
+  `nolan capabilities -u blocks` (or GET `/api/map`, `umbrellas.blocks`).
 
 # How to design
 

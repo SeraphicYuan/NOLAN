@@ -44,6 +44,7 @@ PIPELINE_STEPS = [
     "tempo_enrich",
     "select_clips",
     "slide_designer",
+    "motion_design",
     "generate_assets",
     "voiceover",
     "align_narration",
@@ -361,6 +362,8 @@ class Director:
             return await self._run_select_clips_step(ctx, state)
         if next_name == "slide_designer":
             return await self._run_slide_designer_step(ctx, state)
+        if next_name == "motion_design":
+            return await self._run_motion_design_step(ctx, state)
         if next_name == "generate_assets":
             return await self._run_generate_assets_step(ctx, state)
         if next_name == "voiceover":
@@ -394,6 +397,9 @@ class Director:
             return "select_clips"
         if self._info_scenes_missing_layout() > 0:
             return "slide_designer"
+        if ("motion_design" not in completed
+                and (self.project_path / "scene_plan.json").exists()):
+            return "motion_design"
         if ("generate_assets" not in completed
                 and self._generated_scenes_missing_asset() > 0):
             return "generate_assets"
@@ -1888,6 +1894,146 @@ class Director:
             f"Template distribution: {template_counts}",
             f"Report at `.orchestrator/modules/slide_designer/last_report.md`.",
             f"Snapshot in `.orchestrator/history/step_{record.step_num:02d}_slide_designer/`.",
+        ]
+        return _write_checkpoint(self.project_path, record.step_num, summary_lines)
+
+    @staticmethod
+    def _hostable_motion_catalog() -> str:
+        """The motion umbrella as compact JSON — hostable effects only, with
+        when_to_use + params. This is the motion_design agent's whole legal
+        vocabulary (module contract: the authoring pass consumes the catalog)."""
+        from nolan.motion.executor import _CHAPTER_TARGETS
+        from nolan.motion.registry import REGISTRY
+
+        def _params(plist):
+            return {p.name: (p.doc or p.type) +
+                    (f" [{'|'.join(map(str, p.values))}]" if p.values else "")
+                    for p in plist}
+
+        effects = []
+        for e in REGISTRY:
+            if e.backend == "block" or (e.backend == "remotion"
+                                        and e.target in _CHAPTER_TARGETS):
+                effects.append({
+                    "effect": e.id, "purpose": e.purpose,
+                    "when_to_use": e.when_to_use,
+                    "content_params": _params(e.content),
+                    "style_params": _params(e.style)})
+        return json.dumps(effects, ensure_ascii=False, indent=1)
+
+    def _validate_plan_motion_specs(self) -> tuple[dict, list[str]]:
+        """(effect_counts, problems) for every motion_spec in the plan —
+        the deterministic gate behind the motion_design agent."""
+        from nolan.motion import chapter_step_for_spec
+        counts: dict[str, int] = {}
+        problems: list[str] = []
+        try:
+            plan = json.loads((self.project_path / "scene_plan.json")
+                              .read_text(encoding="utf-8"))
+        except Exception as exc:
+            return {}, [f"scene_plan.json unreadable: {exc}"]
+        for scenes in (plan.get("sections") or {}).values():
+            if not isinstance(scenes, list):
+                continue
+            for s in scenes:
+                ms = s.get("motion_spec") if isinstance(s, dict) else None
+                if not (isinstance(ms, dict) and ms.get("effect")):
+                    continue
+                counts[ms["effect"]] = counts.get(ms["effect"], 0) + 1
+                try:
+                    hosted = chapter_step_for_spec(ms, self.project_path)
+                except ValueError as exc:
+                    problems.append(f"{s.get('id')}: {exc}")
+                    continue
+                if hosted is None:
+                    problems.append(f"{s.get('id')}: effect "
+                                    f"{ms['effect']!r} is not premium-hostable")
+        return counts, problems
+
+    async def _run_motion_design_step(
+        self,
+        ctx: ProjectContext,
+        state: state_mod.DirectorState,
+    ) -> Path:
+        """Author motion_specs from the catalog (the pass that SPENDS the motion library)."""
+        record = state_mod.append_step(state, "motion_design")
+        state.status = "running"
+        state_mod.save_state(self.project_path, state)
+
+        scene_plan_path = self.project_path / "scene_plan.json"
+        style_guide_path = self.project_path / "style_guide.md"
+        target_report_path = (
+            _orchestrator_dir(self.project_path)
+            / "modules" / "motion_design" / "last_report.md")
+        target_report_path.parent.mkdir(parents=True, exist_ok=True)
+        if target_report_path.exists():
+            target_report_path.unlink()
+
+        system = handoff("orchestrator.motion-designer")
+        user = (
+            f"# scene_plan_path\n`{path_for_agent(scene_plan_path)}`\n\n"
+            f"# style_guide_path\n`{path_for_agent(style_guide_path)}`\n\n"
+            f"# target_report_path\n`{path_for_agent(target_report_path)}`\n\n"
+            f"# catalog_json (your whole legal vocabulary)\n"
+            f"```json\n{self._hostable_motion_catalog()}\n```\n\n"
+            f"# Project metadata\n- slug: {ctx.slug}\n- name: {ctx.name}\n"
+        )
+
+        try:
+            result = await run_one_shot(
+                system_prompt=system,
+                user_prompt=user,
+                cwd=self.project_path,
+                permission_mode="bypassPermissions",
+                stream_log_path=_stream_log_path(self.project_path, "motion_design"),
+            )
+        except ClaudeRunnerError as exc:
+            state_mod.finish_step(record, status="error", notes=str(exc))
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(f"motion_design failed: {exc}") from exc
+
+        # Deterministic gate: every authored spec must validate AND be
+        # premium-hostable; bad authoring fails the step by scene id.
+        counts, problems = self._validate_plan_motion_specs()
+        if problems:
+            err = (f"motion_design authored {len(problems)} invalid spec(s): "
+                   + "; ".join(problems[:6]))
+            state_mod.finish_step(record, status="error", notes=err)
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(err)
+
+        report_body = (target_report_path.read_text(encoding="utf-8")
+                       if target_report_path.exists() else "(no report written)")
+        _snapshot_history(
+            self.project_path,
+            record.step_num,
+            "motion_design",
+            {
+                "scene_plan.json": scene_plan_path.read_text(encoding="utf-8"),
+                "report.md": report_body,
+                "reasoning.md": (
+                    f"# Step {record.step_num}: motion_design\n\n"
+                    f"- Claude CLI elapsed: {result.elapsed_seconds:.1f}s\n"
+                    f"- Motion specs authored (by effect): {counts}\n"
+                ),
+            },
+        )
+
+        state_mod.finish_step(record, status="completed")
+        state.status = "awaiting_review"
+        state.current_step = "checkpoint_after_motion_design"
+        state_mod.save_state(self.project_path, state)
+
+        summary_lines = [
+            f"motion_design ran in {result.elapsed_seconds:.1f}s.",
+            (f"Motion specs authored: {sum(counts.values())} ({counts}) — "
+             "all validated + premium-hostable."
+             if counts else
+             "No motion specs authored — the agent judged the default "
+             "treatments sufficient (restraint is allowed)."),
+            f"Report at `.orchestrator/modules/motion_design/last_report.md`.",
         ]
         return _write_checkpoint(self.project_path, record.step_num, summary_lines)
 

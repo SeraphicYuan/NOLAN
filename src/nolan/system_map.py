@@ -175,8 +175,10 @@ def _umbrellas() -> Dict[str, Any]:
     except Exception as exc:
         out["pairing"] = {"error": str(exc)}
     try:
-        from nolan.layout_blocks import ADAPTERS
-        out["blocks"] = sorted(ADAPTERS)
+        from nolan.layout_blocks import ADAPTERS, TEMPLATES
+        out["blocks"] = [
+            {"id": t, **TEMPLATES.get(t, {"purpose": "", "when_to_use": ""})}
+            for t in sorted(ADAPTERS)]
     except Exception as exc:
         out["blocks"] = {"error": str(exc)}
     try:
