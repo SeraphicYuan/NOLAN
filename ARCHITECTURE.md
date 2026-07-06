@@ -96,6 +96,16 @@ Every resolution writes an auditable `scene.resolved_source`.
 `AssetEngine.from_config` wires the standard backends lazily; tier fns are
 injectable. Thin callers: segment resolver (`segment/resolver.py` shim),
 Director `select_clips`, iterate reresolve (`resolve_dicts`, lossless).
+
+**Provenance gate (`nolan/asset_gate.py`)**: every path that downloads an
+external asset and stamps it (plan field, shot list, library ingest) is an
+acquisition DOOR and calls the gate — `check_candidate` pre-download
+(stock-preview domain blocklist any tier; archival tier requires open-access
+source/license; metadata resolution floor) and `check_file` post-download
+(pixel floor, watermark-banner heuristic, optional vision check). Doors are
+manifest-listed in `ASSET_GATE_DOORS`, grep-enforced by
+`tests/test_asset_gate.py` (WIRING_CHECKLIST pitfall #8). Rejections are
+loud (logs + `rejected` payloads + CREDITS "WATERMARK SUSPECTS" scan).
 NOTE: clip-search `project_id` scopes the index and must be an id the index
 knows — omit for global search; the project imagelib is discovered from
 `project_path` independently.

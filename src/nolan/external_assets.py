@@ -33,7 +33,8 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
                              project_root: Path, describer=None, ingest_lib=None,
                              max_results: int = 4, score_cap: int = 4,
                              sim_gate: float = 0.30, library_first_gate: float = 0.45,
-                             lead_queries=None, img_sources=None, log=None) -> Optional[str]:
+                             lead_queries=None, img_sources=None, tier: str = "stock",
+                             log=None) -> Optional[str]:
     """Unified description-based b-roll match (Phases 2-3).
 
     1. **Library-first**: hybrid (BGE description + CLIP) search over ``libs`` using
@@ -99,6 +100,18 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
         return None
     variants = build_query_variants(scene, lead_queries=lead_queries)
     cands = _search(client, variants, "image", vid_sources, max_results, img_sources)
+    # Provenance gate before ingest: preview-domain / unlicensed-for-tier /
+    # sub-floor candidates never enter the library.
+    from nolan.asset_gate import check_candidate
+    kept = []
+    for c in cands:
+        verdict = check_candidate(c, tier=tier)
+        if verdict.ok:
+            kept.append(c)
+        elif log:
+            log(f"{sid}: gate rejected {(c.url or '')[:60]} "
+                f"({'; '.join(verdict.reasons)})")
+    cands = kept
     if not cands:
         return None
     for c in cands:
@@ -190,12 +203,25 @@ def external_match_for_scene(scene, *, client, scorer, vid_sources, out_dir: Pat
     """
     import httpx
 
+    from nolan.asset_gate import check_candidate, check_file
+
     variants = build_query_variants(scene, lead_queries=lead_queries)
     cands = []
     if prefer_video and vid_sources:
         cands = _search(client, variants, "video", vid_sources, max_results)
     if not cands:
         cands = _search(client, variants, "image", vid_sources, max_results, img_sources)
+    # Provenance gate BEFORE spending scoring/download budget: stock-preview
+    # domains and sub-floor candidates are dropped loudly here.
+    kept = []
+    for c in cands:
+        verdict = check_candidate(c, tier="stock")
+        if verdict.ok:
+            kept.append(c)
+        elif log:
+            log(f"{getattr(scene, 'id', '?')}: gate rejected "
+                f"{(c.url or '')[:60]} ({'; '.join(verdict.reasons)})")
+    cands = kept
     if not cands:
         return None
 
@@ -245,6 +271,12 @@ def external_match_for_scene(scene, *, client, scorer, vid_sources, out_dir: Pat
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
     except Exception:
+        return None
+    verdict = check_file(dest, tier="stock")
+    if not verdict.ok:
+        dest.unlink(missing_ok=True)
+        if log:
+            log(f"{sid}: gate rejected downloaded file ({'; '.join(verdict.reasons)})")
         return None
     scene.matched_asset = str(dest.relative_to(project_root)).replace("\\", "/")
     # license sidecar (SOTA #5): downloaded stills used to shed their license

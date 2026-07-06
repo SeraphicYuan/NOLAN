@@ -101,17 +101,45 @@ def collect_assets(plan: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 def build_attribution(project_path: Path) -> Dict[str, Any]:
     """Write attribution.json + CREDITS.md; return the manifest."""
+    from nolan.asset_gate import scan_files
+
     project_path = Path(project_path)
     plan = json.loads((project_path / "scene_plan.json").read_text(encoding="utf-8"))
     assets = collect_assets(plan)
     unverified = [a for a in assets if not a.get("license")]
+
+    # Watermark scan (asset_gate banner heuristic) — catches files that
+    # predate the acquisition gate. Generated assets are exempt.
+    def _abs(a):
+        p = Path(str(a["path"]))
+        return p if p.is_absolute() else project_path / p
+    scan_targets = {str(_abs(a)): a for a in assets
+                    if a.get("kind") not in ("generated",)
+                    and _abs(a).suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")}
+    suspects = scan_files(scan_targets.keys())
+    suspect_assets = []
+    for s in suspects:
+        a = scan_targets.get(s["path"])
+        if a is not None:
+            a["watermark_suspect"] = s["reasons"]
+            suspect_assets.append(a)
+
     manifest = {"version": 1, "assets": assets,
                 "counts": {"total": len(assets),
-                           "unverified": len(unverified)}}
+                           "unverified": len(unverified),
+                           "watermark_suspects": len(suspect_assets)}}
     (project_path / "attribution.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
 
     lines = ["# Credits & licenses", ""]
+    if suspect_assets:
+        lines += [f"## 🚫 WATERMARK SUSPECTS — replace before publish "
+                  f"({len(suspect_assets)})", ""]
+        for a in suspect_assets:
+            lines.append(f"- **{a['kind']}** `{a['path']}` — "
+                         f"{'; '.join(a['watermark_suspect'])} "
+                         f"(scenes: {', '.join(a['scenes'])})")
+        lines.append("")
     if unverified:
         lines += [f"## ⚠ VERIFY BEFORE PUBLISH ({len(unverified)})", ""]
         for a in unverified:

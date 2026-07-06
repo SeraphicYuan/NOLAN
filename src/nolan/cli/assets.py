@@ -409,6 +409,20 @@ async def _match_broll(config, scene_plan_path, output_dir, source, max_results,
             # Search for images
             results = client.search(scene.search_query, source, max_results)
 
+            # Provenance gate: stock-preview domains / sub-floor candidates
+            # never even get scored (this exact path once stamped Alamy
+            # previews into a plan).
+            from nolan.asset_gate import check_candidate
+            gated = []
+            for r in results:
+                verdict = check_candidate(r, tier="stock")
+                if verdict.ok:
+                    gated.append(r)
+                else:
+                    click.echo(f"  Gate rejected: {(r.url or '')[:70]} "
+                               f"({'; '.join(verdict.reasons)})")
+            results = gated
+
             if not results:
                 click.echo(f"  No results found")
                 failed_count += 1
@@ -441,6 +455,14 @@ async def _match_broll(config, scene_plan_path, output_dir, source, max_results,
             downloaded_path = client.download_image(best, output_path, prefer_large=True)
 
             if downloaded_path:
+                from nolan.asset_gate import check_file
+                verdict = check_file(downloaded_path, tier="stock")
+                if not verdict.ok:
+                    downloaded_path.unlink(missing_ok=True)
+                    click.echo(f"  Gate rejected downloaded file "
+                               f"({'; '.join(verdict.reasons)})")
+                    failed_count += 1
+                    continue
                 # Update scene with relative path
                 rel_path = downloaded_path.relative_to(scene_plan_path.parent)
                 scene.matched_asset = str(rel_path)

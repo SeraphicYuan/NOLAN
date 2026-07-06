@@ -30,7 +30,7 @@ class FakeEmbedder:
 
 def _png(path, color):
     from PIL import Image
-    Image.new("RGB", (8, 8), color).save(path)
+    Image.new("RGB", (800, 600), color).save(path)  # floor-passing: ingest gate rejects tiny files
     return path
 
 

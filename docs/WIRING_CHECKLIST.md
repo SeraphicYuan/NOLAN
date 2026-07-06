@@ -70,6 +70,17 @@ honesty test doesn't exist.**
    contact gate; `tests/test_step_classification.py` fails on any
    unclassified name, so forgetting is impossible.
 
+8. **Ungated acquisition.** Any code path that downloads an external asset
+   and stamps it into a plan, a shot list, or a library is an acquisition
+   DOOR, and every door calls `nolan.asset_gate` (candidate check before
+   download, file check after). *Incident:* `fulfill_shots_wanted` and
+   `nolan assets match-broll` fetched **watermarked Alamy previews** into a
+   rendered Homer beat — full-frame, banner baked in, `license: null`.
+   *Enforcement:* every door is named in `ASSET_GATE_DOORS`
+   (src/nolan/asset_gate.py) and `tests/test_asset_gate.py` grep-verifies
+   the gate calls exist in each door's body. A new fetch path without a
+   manifest entry + gate call is unshippable.
+
 ## The checklist (run it for every new capability)
 
 - [ ] **Registry entry** with `purpose` + `when_to_use` + constraints

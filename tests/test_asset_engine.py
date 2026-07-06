@@ -254,6 +254,60 @@ def test_fulfill_shots_wanted(tmp_path):
     assert validate_scene_editing({"id": "s1", "shots": shots}) == []
 
 
+def test_fulfill_art_shots_require_title_match(tmp_path):
+    """Extra views of a NAMED work must title-match the query — museum fuzzy
+    search once filled Odyssey scenes with a Renaissance portrait. Unrelated
+    titles → the scene stays single-still (unfulfilled, loud), never wrong art.
+    """
+    from nolan.asset_engine import AssetEngine
+    from nolan.scenes import Scene
+
+    class _R:
+        def __init__(self, url, title):
+            self.url, self.title = url, title
+            self.source = "met"                 # open-access: passes archival tier
+            self.source_url = None
+            self.thumbnail_url = None
+            self.license = None
+            self.width = self.height = None
+
+    class _Client:
+        def __init__(self, results): self._results = results
+        def search_assets(self, q, media_type=None, sources=None, max_results=6):
+            return self._results
+
+    def fake_fetch(url, dest):
+        dest.write_bytes(b"img")
+
+    def _scene(tmp_path):
+        anchor = tmp_path / "anchor.jpg"
+        anchor.write_bytes(b"img")
+        s = Scene(id="s1", visual_type="archival-art",
+                  search_query="Odysseus Sirens E440 stamnos",
+                  matched_asset=str(anchor))
+        s.extra["shots_wanted"] = 3
+        return s
+
+    # matching titles pass the filter
+    s = _scene(tmp_path)
+    ok = AssetEngine.fulfill_shots_wanted(
+        [s], nolan_config=None, project_path=tmp_path,
+        client=_Client([_R("https://x/a.jpg", "Odysseus and the Sirens E440 side view"),
+                        _R("https://x/b.jpg", "Siren vase stamnos Odysseus detail")]),
+        fetch=fake_fetch)
+    assert ok == 1 and len(s.extra["shots"]) == 3
+
+    # unrelated artworks are refused — no shots authored at all
+    s2 = _scene(tmp_path)
+    s2.id = "s2"
+    ok = AssetEngine.fulfill_shots_wanted(
+        [s2], nolan_config=None, project_path=tmp_path,
+        client=_Client([_R("https://x/c.jpg", "Portrait of a Young Woman"),
+                        _R("https://x/d.jpg", "Saint Philip Neri")]),
+        fetch=fake_fetch)
+    assert ok == 0 and "shots" not in s2.extra
+
+
 def test_fulfill_skips_scene_with_existing_shots(tmp_path):
     from nolan.asset_engine import AssetEngine
     from nolan.scenes import Scene

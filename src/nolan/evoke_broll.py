@@ -892,6 +892,7 @@ class EvokeBrollSearch:
 
     # ---- retrieval: stock (real footage) or library (indexed segments) ----
     async def _retrieve_stock(self, metaphors, per_metaphor, sources, media=("video", "image")):
+        from nolan.asset_gate import check_candidate
         pool: dict = {}
         for m in metaphors:
             for mt in media:
@@ -900,6 +901,10 @@ class EvokeBrollSearch:
                 hits = await asyncio.to_thread(self.stock.search_assets, m, mt, srcs, per_metaphor)
                 for h in hits:
                     if h.url in pool:
+                        continue
+                    # provenance gate: the image fan-out includes open-web
+                    # providers whose results can be watermarked previews
+                    if not check_candidate(h, tier="stock").ok:
                         continue
                     if mt == "image":
                         pool[h.url] = {"kind": "image", "url": h.url, "source": h.source,

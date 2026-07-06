@@ -44,6 +44,18 @@ def _download_external_clip(matched_clip: dict, out_dir: Path,
     url = (matched_clip or {}).get("external_url")
     if not url:
         return None
+    from nolan.asset_gate import check_candidate
+    from nolan.image_search import ImageSearchResult
+    verdict = check_candidate(
+        ImageSearchResult(url=url, source=(matched_clip or {}).get("source"),
+                          source_url=(matched_clip or {}).get("source_url"),
+                          license=(matched_clip or {}).get("license"),
+                          media_type="video"),
+        tier="stock")
+    if not verdict.ok:
+        logger.warning("external clip refused (%s): %s",
+                       "; ".join(verdict.reasons), url)
+        return None
     try:
         import httpx
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -546,19 +558,51 @@ class AssetEngine:
         for s in targets:
             want = min(4, int(s.extra["shots_wanted"]))
             variants = build_query_variants(s) or [s.search_query or ""]
+            # archival-art scenes: extra views must come from the open-access
+            # museum providers (tier rules included), not the open web
+            is_art = getattr(s, "visual_type", None) in ART_TYPES
+            tier = "archival" if is_art else "stock"
             extras = []
             for q in variants:
                 if len(extras) >= want - 1:
                     break
                 try:
-                    for r in client.search(q, max_results=3):
+                    from nolan.art_sourcing import ART_SOURCES, _title_match
+                    from nolan.asset_gate import check_candidate, check_file
+                    if is_art:
+                        # extra views of a NAMED work: museum providers'
+                        # fuzzy search returns unrelated artworks, so keep
+                        # only candidates whose TITLE covers the query (a
+                        # wrong-but-clean artwork is still a wrong artwork)
+                        results = [
+                            r for r in client.search_assets(
+                                q, media_type="image", sources=ART_SOURCES,
+                                max_results=6)
+                            if _title_match(s.search_query or q,
+                                            getattr(r, "title", "") or "") >= 0.34]
+                    else:
+                        results = client.search(q, max_results=3)
+                    for r in results:
                         if len(extras) >= want - 1:
                             break
                         if not r.url or r.url in used_urls:
                             continue
                         used_urls.add(r.url)
+                        # provenance gate — THE Alamy-shots door: this exact
+                        # loop once fetched watermarked previews into a montage
+                        verdict = check_candidate(r, tier=tier)
+                        if not verdict.ok:
+                            logger.info("shot gate rejected for %s: %s (%s)",
+                                        s.id, r.url, "; ".join(verdict.reasons))
+                            continue
                         dest = out_dir / f"{s.id}_shot{len(extras) + 1}.jpg"
                         fetch(r.url, dest)
+                        verdict = check_file(dest, tier=tier)
+                        if not verdict.ok:
+                            dest.unlink(missing_ok=True)
+                            logger.info("shot gate rejected file for %s: %s",
+                                        s.id, "; ".join(verdict.reasons))
+                            continue
                         extras.append(dest)
                 except Exception as exc:
                     logger.info("shot fetch failed for %s (%r): %s", s.id, q, exc)

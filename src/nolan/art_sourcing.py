@@ -128,19 +128,34 @@ def _curl_download(url: str, dest: Path, timeout: int = 90) -> bool:
 def exact_title_pass(scene, *, client, ingest_lib, out_dir: Path,
                      project_root: Path, img_sources: List[str],
                      match_gate: float = 0.6, max_results: int = 8,
+                     vision=None, rejected: Optional[List[dict]] = None,
                      log=None) -> Optional[str]:
     """Find THE named work by title text, not pixel similarity.
 
     CLIP cannot tell Bernini's Aeneas group from any other white marble — but
     Commons/museum results carry titles that name the work. When a candidate's
     title covers >= ``match_gate`` of the query's distinctive tokens, take it
-    directly (largest matching image wins), download, stamp, and ingest for
-    reuse. Returns "exact:<source>" or None (→ caller falls back to semantic).
+    (largest matching image wins), download, gate (provenance + resolution +
+    watermark via nolan.asset_gate, tier "archival"), stamp, and ingest for
+    reuse. A gated-out hit falls through to the next-best hit. ``rejected``
+    (if given) collects ``{"id", "url", "reasons"}`` for loud reporting.
+    Returns "exact:<source>" or None (→ caller falls back to semantic).
     """
+    from nolan.asset_gate import check_candidate, check_file
+
     query = getattr(scene, "search_query", None) or ""
     if len(_distinctive(query)) < 2:
         return None
     sid = getattr(scene, "id", "scene")
+
+    def _reject(cand, reasons):
+        if rejected is not None:
+            rejected.append({"id": sid, "url": getattr(cand, "url", ""),
+                             "reasons": list(reasons)})
+        if log:
+            log(f"{sid}: gate rejected {getattr(cand, 'url', '')[:60]} "
+                f"({'; '.join(reasons)})")
+
     for variant in _query_variants_for_title(query):
         try:
             cands = client.search_assets(variant, media_type="image",
@@ -151,38 +166,48 @@ def exact_title_pass(scene, *, client, ingest_lib, out_dir: Path,
         scored = [(c, _title_match(query, getattr(c, "title", "") or ""))
                   for c in cands]
         hits = [(c, m) for c, m in scored if m >= match_gate]
-        if not hits:
-            continue
-        hits.sort(key=lambda cm: (cm[1], (cm[0].width or 0) * (cm[0].height or 0)),
-                  reverse=True)
-        best = hits[0][0]
-        dest = Path(out_dir) / f"{sid}{Path(best.url).suffix or '.jpg'}"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        # Download to a temp name, verify the RETURN VALUE, then move into
-        # place — a stale file at `dest` from an earlier pass must never be
-        # mistaken for a successful download.
-        tmp = dest.with_name(dest.stem + ".tmp" + dest.suffix)
-        try:
-            got = client.download_image(best, tmp, prefer_large=True)
-        except Exception:
-            got = None
-        ok = got is not None and Path(got).exists() and Path(got).stat().st_size >= 1024
-        if not ok and _curl_download(best.url, tmp):
-            got, ok = tmp, True
-        if not ok:
-            tmp.unlink(missing_ok=True)
-            continue
-        Path(got).replace(dest)
-        scene.matched_asset = str(dest.relative_to(project_root)).replace("\\", "/")
-        if ingest_lib is not None:
+        gated = []
+        for c, m in hits:
+            verdict = check_candidate(c, tier="archival")
+            if verdict.ok:
+                gated.append((c, m))
+            else:
+                _reject(c, verdict.reasons)
+        gated.sort(key=lambda cm: (cm[1], (cm[0].width or 0) * (cm[0].height or 0)),
+                   reverse=True)
+        for best, match in gated:
+            dest = Path(out_dir) / f"{sid}{Path(best.url).suffix or '.jpg'}"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            # Download to a temp name, verify the RETURN VALUE, then move into
+            # place — a stale file at `dest` from an earlier pass must never be
+            # mistaken for a successful download.
+            tmp = dest.with_name(dest.stem + ".tmp" + dest.suffix)
             try:
-                ingest_lib.add_result(best, query=query)
+                got = client.download_image(best, tmp, prefer_large=True)
             except Exception:
-                pass
-        if log:
-            log(f"{sid}: exact title match — {getattr(best, 'title', '')[:60]} "
-                f"({best.source}, {hits[0][1]:.0%} tokens)")
-        return f"exact:{best.source or '?'}"
+                got = None
+            ok = got is not None and Path(got).exists() and Path(got).stat().st_size >= 1024
+            if not ok and _curl_download(best.url, tmp):
+                got, ok = tmp, True
+            if not ok:
+                tmp.unlink(missing_ok=True)
+                continue
+            verdict = check_file(Path(got), tier="archival", vision=vision)
+            if not verdict.ok:
+                _reject(best, verdict.reasons)
+                Path(got).unlink(missing_ok=True)
+                continue
+            Path(got).replace(dest)
+            scene.matched_asset = str(dest.relative_to(project_root)).replace("\\", "/")
+            if ingest_lib is not None:
+                try:
+                    ingest_lib.add_result(best, query=query)
+                except Exception:
+                    pass
+            if log:
+                log(f"{sid}: exact title match — {getattr(best, 'title', '')[:60]} "
+                    f"({best.source}, {match:.0%} tokens)")
+            return f"exact:{best.source or '?'}"
     return None
 
 
@@ -204,6 +229,7 @@ def source_art_for_plan(scene_plan_path, project_root, config, *,
     on-subject and CLIP similarity on manuscripts/statues runs lower than on
     photographic footage.
     """
+    from nolan.asset_gate import make_watermark_checker
     from nolan.external_assets import semantic_match_for_scene
     from nolan.scenes import ScenePlan
 
@@ -212,13 +238,14 @@ def source_art_for_plan(scene_plan_path, project_root, config, *,
     scenes = [s for section in plan.sections.values() for s in section]
     todo = [s for s in scenes if _needs_art(s, scene_types)]
     result: Dict[str, Any] = {"considered": len(todo), "matched": 0,
-                              "by_kind": {}, "misses": []}
+                              "by_kind": {}, "misses": [], "rejected": []}
     if not todo:
         return result
 
     client, scorer = _build_client(config)
     libs, ingest_lib = _build_libs(config, project_root.name)
     out_dir = project_root / "assets" / "art"
+    vision = make_watermark_checker(config)
 
     for scene in todo:
         lead = [q for q in (getattr(scene, "search_query", None),) if q]
@@ -227,7 +254,8 @@ def source_art_for_plan(scene_plan_path, project_root, config, *,
         try:
             kind = exact_title_pass(
                 scene, client=client, ingest_lib=ingest_lib, out_dir=out_dir,
-                project_root=project_root,
+                project_root=project_root, vision=vision,
+                rejected=result["rejected"],
                 img_sources=img_sources or ART_SOURCES, log=log)
         except Exception:
             kind = None
@@ -241,7 +269,7 @@ def source_art_for_plan(scene_plan_path, project_root, config, *,
                     ingest_lib=ingest_lib, max_results=max_results,
                     score_cap=score_cap, sim_gate=sim_gate,
                     lead_queries=lead, img_sources=img_sources or ART_SOURCES,
-                    log=log)
+                    tier="archival", log=log)
             except Exception as e:
                 kind = None
                 if log:

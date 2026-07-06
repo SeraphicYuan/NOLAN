@@ -2,7 +2,42 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-05
+**Last Updated:** 2026-07-06
+
+## Asset provenance gate — watermark/license/resolution at every acquisition door (2026-07-06)
+
+Born from a shipped incident: the Homer test beat rendered **watermarked Alamy previews**
+full-frame (banner baked in, `license: null`) — fetched by `fulfill_shots_wanted` and
+`nolan assets match-broll`, both of which searched the open web and stamped downloads with
+zero checks. New `nolan/asset_gate.py` is the ONE place that decides usability:
+`check_candidate` (pre-download: rights-managed stock-preview domain blocklist — Alamy/
+Shutterstock/Getty/... — rejected any tier; archival tier requires open-access source or
+open license; metadata resolution floor) and `check_file` (post-download: PIL resolution
+floor, watermark **banner-strip heuristic** with a discontinuity test against the adjacent
+band — museum photos on black backgrounds don't false-positive; optional vision watermark
+check via `make_watermark_checker`, same provider plumbing as imagelib's describer).
+
+Wired doors (each named in `ASSET_GATE_DOORS`, grep-enforced by `tests/test_asset_gate.py`):
+`image_search.download_image` (chokepoint), `art_sourcing.exact_title_pass` (now iterates
+gated hits instead of best-only; collects `rejected` for loud reporting),
+`external_assets.semantic_match_for_scene` (+ new `tier` param; archival callers stay
+strict) and `external_match_for_scene` (+ post-download file check),
+`asset_engine._download_external_clip`, `asset_engine.fulfill_shots_wanted` (THE incident
+door — also now searches ART_SOURCES for archival-art scenes' extra views instead of the
+open web), `cli/assets.py match-broll`, `imagelib.add_url` (ingest refusal raises
+ValueError — the library is a reuse surface; one poisoned ingest hurts every future
+project), `attribution.build_attribution` (banner-scans legacy files → "WATERMARK
+SUSPECTS — replace before publish" section in CREDITS.md + `watermark_suspects` count).
+WIRING_CHECKLIST gains pitfall class #8 (ungated acquisition).
+
+Verified live on homer-2beat-test: scan caught all 6 real Alamy shot files (0 false
+negatives) + 4 sub-floor stills; Douris-kylix black-background false positive found and
+fixed via the discontinuity test; the 2 identity-mismatched artworks re-sourced from
+Wikimedia Commons by known file (Siren Vase BM E440 PD; Douris Arms of Achilles KHM
+CC BY-SA 4.0) with license stamped in `scene.extra.asset_license`; all 6 named works now
+verify 6/6 via identity check; watermark_suspects 6 → 0; beat re-rendered and frames
+inspected. 24 gate tests; asset/attribution suites green. Lesson: semantic (CLIP) fallback
+can never satisfy IDENTITY for named works — only exact-title or a human can.
 
 ## SFX search + fetch — pluggable provider layer wired into audio_mix (2026-07-05)
 

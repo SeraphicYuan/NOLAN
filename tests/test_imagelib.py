@@ -35,7 +35,7 @@ class FakeEmbedder:
 
 def _solid_png(path: Path, color):
     from PIL import Image
-    Image.new("RGB", (8, 8), color).save(path)
+    Image.new("RGB", (800, 600), color).save(path)  # floor-passing: ingest gate rejects tiny files
     return path
 
 
@@ -84,7 +84,7 @@ def test_add_file_copies_dedups_probes_dims(lib, tmp_path):
     src = _solid_png(tmp_path / "red.png", (255, 0, 0))
     asset, created = lib.add_file(src, source="test", license="CC0")
     assert created and asset.id
-    assert asset.width == 8 and asset.height == 8  # probed via PIL
+    assert asset.width == 800 and asset.height == 600  # probed via PIL
     assert (lib.base / asset.path).exists()        # copied into library
     # re-adding identical bytes dedups
     asset2, created2 = lib.add_file(src, source="test")

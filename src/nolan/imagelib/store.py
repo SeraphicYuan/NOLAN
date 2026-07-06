@@ -156,13 +156,26 @@ class ImageLibrary:
             pass
 
     def add_url(self, url: str, **meta):
-        """Download an image URL into a temp file, then add it."""
+        """Download an image URL into a temp file, gate it, then add it.
+
+        The library is a REUSE surface — a watermarked or preview-domain file
+        ingested once poisons every future project. Gate rejections raise
+        ValueError (loud, caller-visible), never a silent skip.
+        """
         import tempfile
+        from nolan.asset_gate import blocked_host, check_file
         from nolan.http_client import download_file_sync
+        host = blocked_host(url)
+        if host:
+            raise ValueError(f"ingest refused: stock-preview domain ({host}): {url}")
         ext = _ext_for(url, None)
         tmp = Path(tempfile.gettempdir()) / f"nolan_piclib_{abs(hash(url))}{ext}"
         download_file_sync(url, str(tmp), headers={"User-Agent": _UA})
         try:
+            verdict = check_file(tmp, tier="stock")
+            if not verdict.ok:
+                raise ValueError(
+                    f"ingest refused ({'; '.join(verdict.reasons)}): {url}")
             meta.setdefault("url", url)
             return self.add_file(tmp, **meta)
         finally:

@@ -1441,8 +1441,16 @@ class ImageSearchClient:
             timeout: Request timeout in seconds.
 
         Returns:
-            Path to downloaded file, or None if failed.
+            Path to downloaded file, or None if failed (including gate-rejected
+            stock-preview domains — those URLs serve watermarked previews).
         """
+        from nolan.asset_gate import check_candidate
+        gate = check_candidate(result, tier="stock")
+        if not gate.ok:
+            logger.warning("download refused (%s): %s",
+                           "; ".join(gate.reasons), result.url)
+            return None
+
         url = result.url if prefer_large else (result.thumbnail_url or result.url)
 
         # Browser-like headers to avoid blocks
