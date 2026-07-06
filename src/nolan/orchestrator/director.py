@@ -1657,6 +1657,25 @@ class Director:
             state_mod.save_state(self.project_path, state)
             raise DirectorError(err)
 
+        # visual_type is matched by exact string downstream (scheduler,
+        # slide_designer, asset engine, premium) — normalize LLM-invented
+        # synonyms LOUDLY and fail on unmappable values, or every consumer
+        # silently sees 0 eligible scenes (the silent-cascade bug class).
+        from nolan.scenes import normalize_plan_visual_types
+        vt_mapped, vt_unknown = normalize_plan_visual_types(plan_data)
+        if vt_unknown:
+            err = ("script_to_scenes used visual_type values outside the "
+                   "canonical vocabulary and they can't be auto-mapped: "
+                   + ", ".join(vt_unknown[:8]))
+            state_mod.finish_step(record, status="error", notes=err)
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(err)
+        if vt_mapped:
+            target_path.write_text(json.dumps(plan_data, indent=2,
+                                              ensure_ascii=False),
+                                   encoding="utf-8")
+
         sections = plan_data.get("sections", {}) or {}
         section_count = len(sections)
         scene_count = sum(len(v) for v in sections.values() if isinstance(v, list))
@@ -1702,6 +1721,9 @@ class Director:
             f"`scene_plan.json` saved to project root; "
             f"snapshot in `.orchestrator/history/step_{record.step_num:02d}_script_to_scenes/`.",
         ]
+        if vt_mapped:
+            summary_lines.insert(3, "Normalized non-canonical visual_type "
+                                    f"values: {vt_mapped}")
         return _write_checkpoint(self.project_path, record.step_num, summary_lines)
 
     async def _run_slide_designer_step(

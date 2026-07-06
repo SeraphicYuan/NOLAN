@@ -37,14 +37,20 @@ Organize into the standard sections:
 - **Look** — visual language: framing, color grade, typography, references
 - **Pacing** — rhythm, average scene length, where to vary, breathing moments, total runtime
 - **Editorial** — conventions for when to use which visual modes, what to avoid
-- **Visual Type Vocabulary** — open list of `visual_type` values this project will use
+- **Visual Type Vocabulary** — the `visual_type` values this project will use,
+  chosen ONLY from the canonical set the pipeline recognizes: `b-roll`,
+  `graphic`, `text-overlay`, `generated-image`, `infographic`, `layered`,
+  `lottie` (drop the ones this project won't use; NEVER invent new values —
+  downstream steps match these strings exactly). Describe each chosen value's
+  role in THIS project (e.g. "`text-overlay` — stat cards and punch phrases").
 - **Provenance** — record `invented` (no template) and a brief explanation of the inferred style
 
 # Rules
 
 - Ground every claim in evidence from the script or the source library. Don't invent characters, quotes, or topics that aren't there.
 - Be specific. "Cinematic look" is not enough — say what cinematic means for THIS project.
-- Visual Type Vocabulary must match what this project's source material supports.
+- Visual Type Vocabulary must match what this project's source material
+  supports, and must stay inside the canonical set above.
 - Pacing windows tuned to the script's actual section count and duration.
 - Provenance section is mandatory. Mark this as a `fallback` invention so it can be promoted to a template later if it ships well.
 

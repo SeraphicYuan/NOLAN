@@ -28,7 +28,7 @@ const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const _norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-type Cam = { at: number; region: Region | null; caption?: string };
+type Cam = { at: number; region: Region | null; caption?: string; deliberate?: boolean };
 const camParams = (region: Region | null, maxZoom: number) => {
   if (!region) return { s: 1, ox: 50, oy: 50 };
   const s = Math.min(maxZoom, 0.78 / Math.max(region.w, region.h, 0.01));
@@ -56,7 +56,8 @@ export const ArtworkStage: React.FC<ArtworkStageProps> = ({
         at = words[j].startFrame; cur = j + 1; break;
       }
     }
-    cams.push({ at, region: { x: f.x, y: f.y, w: f.w, h: f.h }, caption: f.caption });
+    cams.push({ at, region: { x: f.x, y: f.y, w: f.w, h: f.h }, caption: f.caption,
+      deliberate: Boolean(f.word || f.caption) });
   });
   cams.push({ at: Math.max(r0 + 1, durationInFrames - 36), region: null });
   cams.sort((a, b) => a.at - b.at);
@@ -75,8 +76,12 @@ export const ArtworkStage: React.FC<ArtworkStageProps> = ({
 
   const imgIn = interpolate(frame - r0, [0, 18], [0, 1], clamp);
   const labelOp = interpolate(frame - r0, [introHold * 0.4, introHold * 0.4 + 16], [0, 1], clamp);
-  // spotlight tracks the target focus (off when resting on the whole).
-  const spotAmt = target.region ? t : 0;
+  // spotlight tracks the target focus (off when resting on the whole). Only
+  // DELIBERATE focuses (word-anchored or captioned — an annotation) dim the
+  // rest; the synthesized camera targets premium's still-motion generates
+  // (word "") are pure camera moves, and dimming there reads as a glass
+  // panel over bright footage.
+  const spotAmt = target.region && target.deliberate ? t : 0;
 
   return (
     <AbsoluteFill style={{ background: "var(--surface)" }}>

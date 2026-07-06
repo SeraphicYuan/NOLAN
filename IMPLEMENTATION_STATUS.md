@@ -133,6 +133,36 @@ kills full-suite pytest runs at ~38% — run suites in groups or fix in Phase 6.
   (24 total in test_premium_render.py); live probe: section 0 + injected
   3-shot list rendered 1654/1654 frames, three shots verified frame-by-frame.
 
+## Vertical-slice pipeline test: aidc-2beat-test (2026-07-06)
+
+Two beats of the ai-data-center-debate script through the FULL Director
+(invent-style → script_to_scenes → tempo → clips → slide_designer → VO →
+align → soundtrack → premium render): final.mp4 159.64s vs 159.52s narration
+(0.12s), music bed + section-seam whoosh mixed, frames visually verified.
+Exercised live: shot-list authoring (scene_008's 22.8s window → 3 shots),
+transition-in fades (11 steps in beat 1, hard cuts in beat 2, section-first
+anchored), J-cuts, the editing gate, contact-sheet pre-flight (caught 4
+unrenderable `custom` layouts before the render). Bugs found + fixed:
+
+- **visual_type silent cascade (the big one)**: from-scratch designers
+  invented type slugs (stat_card, kinetic_text…) → scheduler/slide_designer/
+  asset engine all matched 0 scenes and SILENTLY skipped. Fix per the module
+  contract: canonical `VISUAL_TYPES` + `normalize_plan_visual_types` in
+  nolan/scenes.py (loud: mappings reported in the checkpoint, unmappable
+  values fail the step); invent-style/adapt-style skills now declare the
+  vocabulary CLOSED. tests/test_visual_types.py pins the incident slugs.
+- **ArtworkStage spotlight on synthesized focuses**: premium's still-motion
+  camera targets (word "") triggered the annotation spotlight — a glass
+  panel over bright footage (invisible on the aeneid's dark art). Spotlight
+  now fires only for DELIBERATE focuses (word- or caption-anchored).
+- Findings for later: tempo pass authors per-SECTION-flat levers (12
+  consecutive fades in beat 1 — retention-linter territory, SOTA #4);
+  align confidence collapses on number-heavy narration ("$103 billion" vs
+  "103 billion dollars"); premium has no video-clip step (matched_clip is
+  standard-assemble only); slide_designer authors `template: custom` for
+  maps/charts it has no template for (caught loudly at pre-flight; map/chart
+  blocks are a block-library gap).
+
 ## The module contract + umbrella catalogs (2026-07-05)
 
 Blindspot pass outcome: the spine expands fine, but capability growth had no

@@ -317,6 +317,73 @@ IMPORTANT: Return ONLY the JSON array, no other text."""
 SCENE_DESIGN_PROMPT = PASS1_BEAT_PROMPT
 
 
+# --- visual_type: the canonical vocabulary + loud normalization ----------------
+# visual_type is the plan's most load-bearing authored field — the step
+# scheduler, slide_designer, the asset engine and premium eligibility all
+# match it by EXACT string. An LLM-invented synonym ("stat_card") makes every
+# consumer silently see 0 eligible scenes, so unknown values are normalized
+# here (reported, never silent) and unmappable ones fail the authoring step.
+VISUAL_TYPES = {"b-roll", "graphic", "text-overlay", "generated-image",
+                "infographic", "layered", "lottie"}
+
+_VISUAL_TYPE_HINTS = [                       # substring -> canonical (order matters)
+    ("infographic", "infographic"),
+    ("lottie", "lottie"),
+    ("layer", "layered"),
+    ("generated", "generated-image"), ("comfy", "generated-image"),
+    ("ai-image", "generated-image"), ("ai_image", "generated-image"),
+    ("text", "text-overlay"), ("quote", "text-overlay"),
+    ("card", "text-overlay"), ("title", "text-overlay"),
+    ("kinetic", "text-overlay"), ("typography", "text-overlay"),
+    ("chart", "graphic"), ("graph", "graphic"), ("map", "graphic"),
+    ("diagram", "graphic"), ("timeline", "graphic"),
+    ("comparison", "graphic"), ("composite", "graphic"),
+    ("broll", "b-roll"), ("b-roll", "b-roll"), ("b_roll", "b-roll"),
+    ("footage", "b-roll"), ("stock", "b-roll"), ("archival", "b-roll"),
+    ("art", "b-roll"), ("photo", "b-roll"), ("still", "b-roll"),
+]
+
+
+def normalize_visual_type(value: str) -> Optional[str]:
+    """Canonical visual_type for `value`, or None if unmappable."""
+    t = (value or "").strip().lower()
+    if t in VISUAL_TYPES:
+        return t
+    for hint, canon in _VISUAL_TYPE_HINTS:
+        if hint in t:
+            return canon
+    return None
+
+
+def normalize_plan_visual_types(plan: Dict[str, Any]):
+    """Normalize every scene's visual_type in a raw plan dict, in place.
+
+    Returns (mapped, unknown): `mapped` counts each non-canonical value that
+    was rewritten ({"stat_card -> text-overlay": 6, ...}) so the caller can
+    REPORT it; `unknown` lists scene ids whose value couldn't be mapped so
+    the caller can FAIL LOUDLY.
+    """
+    mapped: Dict[str, int] = {}
+    unknown: List[str] = []
+    for scenes in (plan.get("sections") or {}).values():
+        if not isinstance(scenes, list):
+            continue
+        for s in scenes:
+            if not isinstance(s, dict):
+                continue
+            raw = s.get("visual_type") or ""
+            if raw in VISUAL_TYPES:
+                continue
+            canon = normalize_visual_type(raw)
+            if canon is None:
+                unknown.append(f"{s.get('id', '?')} ({raw!r})")
+            else:
+                s["visual_type"] = canon
+                key = f"{raw} -> {canon}"
+                mapped[key] = mapped.get(key, 0) + 1
+    return mapped, unknown
+
+
 @dataclass
 class Scene:
     """A single visual scene - progressively enriched across workflow steps.

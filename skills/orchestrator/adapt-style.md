@@ -38,7 +38,7 @@ Use the template's section structure (Voice / Look / Pacing / Editorial / Visual
 
 - **Adapt, do not copy.** A reader who knows the template should be able to see this project descended from it, but the surface details must reflect THIS project's topic, characters, and material.
 - **Keep the cadence phrase if and only if the script actually uses it.** If the template suggests "here's the key insight" but the script doesn't, drop it or substitute a phrase the script does use.
-- **Visual Type Vocabulary should reflect what this project will actually use.** If the project has no AI-generated imagery, drop `generated-image`. If it adds new visual modes (e.g., `screen-recording` for a tech essay), declare them.
+- **Visual Type Vocabulary should reflect what this project will actually use.** If the project has no AI-generated imagery, drop `generated-image`. Stay INSIDE the canonical set (`b-roll`, `graphic`, `text-overlay`, `generated-image`, `infographic`, `layered`, `lottie`) — downstream steps match these strings exactly; a new visual mode (e.g. screen-recording) is described in Look/Editorial prose, never declared as a new `visual_type` value.
 - **Pacing windows should be tuned to actual script duration**, not blindly copied from template defaults.
 - **Provenance section is mandatory.** Record:
   - The template id and version this descended from.
