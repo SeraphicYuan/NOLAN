@@ -19,8 +19,11 @@ function stageImages(obj, publicDir, missing) {
     if (typeof v === "string" && (IMG_RE.test(v) || VID_RE.test(v))) {
       if (fs.existsSync(v)) {
         const base = path.basename(v);
-        const dest = path.join(publicDir, base);
-        if (!fs.existsSync(dest)) fs.copyFileSync(v, dest);
+        // ALWAYS copy: public/ accumulates staged files across projects and
+        // basenames collide (homer's scene_016.jpg vs aidc's — the Homer
+        // montage rendered a POWER SUBSTATION). Skipping "already staged"
+        // files reused another project's image silently.
+        fs.copyFileSync(v, path.join(publicDir, base));
         obj[k] = base;
       } else if (path.isAbsolute(v) || v.includes("/") || v.includes("\\")) {
         // a path that names a file that isn't there would surface as a
