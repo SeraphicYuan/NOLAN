@@ -203,7 +203,10 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
             p = project_path / asset
         if p.exists():
             props = {"src": str(p)}
-            props.update(_still_motion_props(scene, ordinal))
+            # aim the synthesized push at the SUBJECT (rembg saliency,
+            # sidecar-cached); None falls back to lane alternation
+            props.update(_still_motion_props(scene, ordinal,
+                                             center=_subject_center(p)))
             return "ArtworkStage", props
 
     # Library/stock video match — LAST resort: vector matches carry no vision
@@ -228,6 +231,7 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
 # The energy→camera vocabulary lives in ONE place (nolan.still_motion) since
 # the plumbing consolidation — three modules used to encode it independently.
 from nolan.still_motion import camera_tour_props as _still_motion_props  # noqa: E402
+from nolan.still_motion import subject_center as _subject_center  # noqa: E402
 
 
 MIN_STEP_FRAMES = 24        # no visual unit shorter than ~0.8s
@@ -337,7 +341,9 @@ def _expand_shots(scene: Dict[str, Any], project_path: Path, fps: int,
         center = None
         place = sh.get("place")
         if isinstance(place, (list, tuple)) and len(place) == 2:
-            center = (float(place[0]), float(place[1]))
+            center = (float(place[0]), float(place[1]))   # human placement wins
+        if center is None:
+            center = _subject_center(p)                   # saliency, else lanes
         props = {"src": str(p)}
         props.update(_still_motion_props(scene, ordinal + k, center=center))
         units.append(("ArtworkStage", props, sub))

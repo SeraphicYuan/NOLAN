@@ -62,6 +62,37 @@ def camera_tour_props(scene: dict, ordinal: int = 0,
             "glide": glide, "introHold": intro}
 
 
+def subject_center(image_path, cache: bool = True) -> Optional[tuple]:
+    """Salient subject center (x, y in 0..1) for camera targeting, or None.
+
+    Same rembg signal ``render_still`` pushes into — so premium's synthesized
+    camera moves aim at the SUBJECT instead of rotating through lanes. The
+    result is cached in a ``<image>.subject.json`` sidecar (re-renders never
+    re-run the model). Fail-soft: any failure returns None and the caller
+    falls back to lane alternation — the camera never breaks over saliency.
+    """
+    import json as _json
+    p = Path(image_path)
+    side = p.parent / (p.name + ".subject.json")
+    if cache and side.exists():
+        try:
+            d = _json.loads(side.read_text(encoding="utf-8"))
+            return (d["x"], d["y"]) if d.get("ok") else None
+        except Exception:
+            pass
+    try:
+        target, _ = _salient(p, want_cutout=False, out_dir=p.parent)
+        d = {"ok": True, "x": target["x"], "y": target["y"]}
+    except Exception:
+        d = {"ok": False}
+    if cache:
+        try:
+            side.write_text(_json.dumps(d), encoding="utf-8")
+        except Exception:
+            pass
+    return (d["x"], d["y"]) if d.get("ok") else None
+
+
 def _salient(image_path, want_cutout: bool, out_dir: Path):
     """Return ({x,y} salient target in 0..1, cutout_png_path|None) from a rembg mask."""
     import numpy as np

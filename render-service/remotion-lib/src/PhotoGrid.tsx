@@ -65,10 +65,12 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   fillStart = 0.2, stagger = 0.08, flyDur = 0.6,
   focusIndex, focusAt, focusMove = 0.7, focusHold = 1.6, focusScale = 0.8,
   margin = 0.05, frame = 'polaroid', background = '#241016', vignette = 0.5, theme,
+  durationInFrames,
 }) => {
   const f = useCurrentFrame();
-  const {fps, width, height} = useVideoConfig();
+  const {fps, width, height, durationInFrames: cfgDur} = useVideoConfig();
   const th = resolveTheme(theme);
+  const durSec = Math.max(1, durationInFrames || cfgDur) / fps;
 
   const n = Math.min(cards.length, cols * rows);
   const mx = margin * width;
@@ -79,9 +81,21 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   const focusH = focusScale * height;
 
   const units = order === 'row' ? rows : order === 'col' ? cols : n;
-  const fillEnd = fillStart + (units - 1) * stagger + flyDur;
-  const fStart = focusAt ?? fillEnd + 0.5;
-  const rStart = fStart + focusMove + focusHold;
+  // Adaptive choreography (bench audit): the default schedule assumes a long
+  // beat — on a short step the grid never finished filling and the focus
+  // phase never ran. Compress the fill to <=45% of the step; give the focus
+  // whatever honestly fits, or skip it (fill-only) when it can't.
+  const naturalFill = fillStart + (units - 1) * stagger + flyDur;
+  const k = Math.min(1, (durSec * 0.45) / Math.max(0.001, naturalFill));
+  const stg = stagger * k;
+  const fd = Math.max(0.2, flyDur * k);
+  const fillEnd = fillStart * Math.min(1, k * 2) + (units - 1) * stg + fd;
+  const focusFits = durSec - fillEnd - 0.3 >= 2 * focusMove + 0.4;
+  const fStart = focusFits ? (focusAt ?? fillEnd + 0.3) : durSec + 99;
+  const hold = focusFits
+    ? Math.max(0.4, Math.min(focusHold, durSec - fStart - 2 * focusMove - 0.2))
+    : focusHold;
+  const rStart = fStart + focusMove + hold;
   const fIdx = focusIndex == null ? Math.floor(n / 2) : focusIndex;
 
   const bgIsColor = isColor(background);
@@ -98,8 +112,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
 
         // --- phase 1: fly in ---
         const unit = order === 'row' ? r : order === 'col' ? c : i;
-        const ti = fillStart + unit * stagger;
-        const flyP = interpolate(f, [ti * fps, (ti + flyDur) * fps], [0, 1], {...clamp, easing: easeOut});
+        const ti = fillStart * Math.min(1, k * 2) + unit * stg;
+        const flyP = interpolate(f, [ti * fps, (ti + fd) * fps], [0, 1], {...clamp, easing: easeOut});
         let sx: number;
         let sy: number;
         let fromScale: number;

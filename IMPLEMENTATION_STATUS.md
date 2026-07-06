@@ -4,6 +4,35 @@
 **Status:** Complete
 **Last Updated:** 2026-07-06
 
+## Camera grammar + effect execution audit — same name, same craft (2026-07-06)
+
+The Ken Burns "zip back" fix and everything the bench audit surfaced with it. New
+`render-service/remotion-lib/src/camera.ts` — ONE physics module for every virtual-camera
+comp: distance-proportional glides (`glideFor`, clamped 20–75f, tempo's `glide` is the
+pacing floor), ease both ends, `MIN_HOLD` at a focus, **never reset before a cut** (banned
+pull-back), and `driftScale` ambient push so nothing is ever fully still. `ArtworkStage`
+rewritten onto it: no final return-to-whole keyframe (the user-visible "zooms in then zips
+back"), per-segment glides, keyframe spacing enforcement, drift accumulating only across
+rest windows (pauses during glides, never rewinds). Saliency wiring: `still_motion.
+subject_center` (rembg mass center, `<img>.subject.json` sidecar cache, fail-soft) feeds
+premium's synthesized pushes at both call sites — the camera pushes INTO the subject, with
+human nine-dot placement still outranking.
+
+Effect bench (`scripts/bench_effects.py`): renders every Chapter-hostable effect with
+standard content + an ArtworkStage grammar probe, extracts early/mid/late frame triptychs
+per effect to LOOK at. First run found and fixed: (1) blocks animate in then FREEZE for
+the rest of the beat → Chapter-level `AmbientDrift` pillow motion on every non-self-moving
+step (one place, all 39 blocks); (2) ComparisonVS title-only content floated tiny in empty
+Surface → sparse mode (display-size type, centered row); (3) PhotoGrid's default schedule
+needs 4.4s and never adapted → choreography compresses to the step duration, focus phase
+skipped honestly when it can't fit; (4) AnnotateOverVideo's required focus geometry wasn't
+even IN the registry vocabulary and undefined coords NaN'd the ellipse silently → defaults
++ registry params; (5) StatOver's full-frame scrim washed light themes to blank → radial
+scrim behind the number, referent visible at the edges. Second bench render verified every
+fix frame-by-frame. `tests/test_camera_grammar.py` pins the wiring (grammar exports,
+ArtworkStage imports, no pull-back regrowth, saliency at both premium call sites, sidecar
+cache). Suite: 837 passed.
+
 ## Catalog→decision-point routing — consumption is wiring (2026-07-06)
 
 Closed the gap the umbrella audit exposed: catalogs existed and were registry-synced, but

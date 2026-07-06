@@ -17,7 +17,8 @@ export type AnnotateProps = {
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 
 export const AnnotateOverVideo: React.FC<AnnotateProps> = ({
-  videoSrc, focusX, focusY, rx, ry, label, theme, shapeStyle = 'clean', accent, scrim,
+  videoSrc, focusX = 0.5, focusY = 0.42, rx = 190, ry = 120, label,
+  theme, shapeStyle = 'clean', accent, scrim = 0,
 }) => {
   const frame = useCurrentFrame();
   const {width, height} = useVideoConfig();

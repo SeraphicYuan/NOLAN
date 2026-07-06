@@ -48,8 +48,10 @@ export const StatOver: React.FC<StatOverProps> = ({
     <AbsoluteFill style={{backgroundColor: th.bg, fontFamily: th.fontFamily}}>
       {videoSrc ? <OffthreadVideo src={staticFile(videoSrc)} style={cover} muted />
         : background ? <Img src={staticFile(background)} style={cover} /> : null}
-      {/* legibility scrim keyed to the theme background */}
-      <AbsoluteFill style={{background: `linear-gradient(180deg, ${th.bg}22 0%, ${th.bg}66 55%, ${th.bg}cc 100%)`}} />
+      {/* legibility scrim keyed to the theme background — RADIAL behind the
+          number, so the tangible referent stays visible at the edges (the
+          full-frame gradient washed light themes out to near-blank) */}
+      <AbsoluteFill style={{background: `radial-gradient(ellipse 62% 55% at 50% 55%, ${th.bg}b3 0%, ${th.bg}59 55%, transparent 85%)`}} />
       <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', opacity: appear}}>
         <div style={{
           fontWeight: 900, fontSize: 220, lineHeight: 0.95, letterSpacing: '-0.03em', color: hi,

@@ -65,6 +65,11 @@ export const ComparisonVS: React.FC<ComparisonVSProps> = ({
   // Verdict fades up under the divider.
   const verdictS = spring({ frame: frame - verdictCue, fps, durationInFrames: 18, config: { damping: 200 } });
 
+  // Sparse mode (bench audit): with title-only sides the h2 titles float in
+  // acres of empty Surface. Scale the type to display size when there are no
+  // real bullet lists to carry the layout.
+  const sparse = (left.points?.length ?? 0) + (right.points?.length ?? 0) <= 2;
+
   const renderSide = (side: Side, cue: number, s: number, x: number, favored: boolean) => {
     const appear = interpolate(frame, [cue, cue + 5], [0, 1], clamp);
     const points = side.points ?? [];
@@ -101,9 +106,10 @@ export const ComparisonVS: React.FC<ComparisonVSProps> = ({
           style={{
             fontFamily: "var(--font-display, var(--font-display-cn))",
             fontWeight: 900,
-            fontSize: "var(--t-h2)",
+            fontSize: sparse ? "var(--t-h1)" : "var(--t-h2)",
             lineHeight: 1.05,
             color: favored ? "var(--accent)" : "var(--text-2)",
+            textAlign: sparse ? "center" : undefined,
           }}
         >
           {side.title}
@@ -167,7 +173,10 @@ export const ComparisonVS: React.FC<ComparisonVSProps> = ({
         ) : null}
 
         {/* The two mirrored columns + center divider with the VS badge. */}
-        <div style={{ position: "relative", display: "flex", alignItems: "stretch", gap: "var(--space-9)" }}>
+        <div style={{ position: "relative", display: "flex",
+          alignItems: sparse ? "center" : "stretch",
+          minHeight: sparse ? "40%" : undefined,
+          gap: "var(--space-9)" }}>
           {renderSide(left, leftCue, leftS, leftX, false)}
 
           {/* Vertical rule + circular "VS" badge centered on it. */}

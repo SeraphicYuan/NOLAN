@@ -1,14 +1,16 @@
 import React from "react";
 import { AbsoluteFill, Img, staticFile, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
 import { Spotlight, type Region } from "../../primitives/annotate";
+import { type CamPose, easeInOut, glideFor, driftScale, MIN_HOLD } from "../../camera";
 
 // ArtworkStage — the workhorse of the ART flow. An artwork beat is a PERSISTENT hero
 // image the camera TOURS: establish the whole, then — as the narration names a detail —
-// the camera GLIDES (eased pan+zoom) to it, dims the rest (spotlight), labels it, and at
-// the end pulls back. The image IS the subject; the explanation is the camera. Motion is
-// native + frame-driven (no external lib): a keyframed camera (establish → focuses →
-// step-back) with eased glides between regions. Focus regions are anchored to spoken words
-// via CURSOR matching (so a word that recurs — "Death" — hits the right occurrence).
+// the camera GLIDES (eased pan+zoom) to it, dims the rest (spotlight), and labels it.
+// The image IS the subject; the explanation is the camera. Motion is native +
+// frame-driven (no external lib): a keyframed camera with distance-proportional eased
+// glides between regions (camera grammar in ../../camera.ts — no pull-back before the
+// cut, ambient drift between moves). Focus regions are anchored to spoken words via
+// CURSOR matching (so a word that recurs — "Death" — hits the right occurrence).
 type Word = { text: string; startFrame: number; endFrame: number };
 type Focus = { word: string; x: number; y: number; w: number; h: number; caption?: string };
 type Label = { title: string; artist?: string; date?: string; medium?: string; collection?: string };
@@ -26,10 +28,9 @@ export type ArtworkStageProps = {
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const _norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 type Cam = { at: number; region: Region | null; caption?: string; deliberate?: boolean };
-const camParams = (region: Region | null, maxZoom: number) => {
+const camParams = (region: Region | null, maxZoom: number): CamPose => {
   if (!region) return { s: 1, ox: 50, oy: 50 };
   const s = Math.min(maxZoom, 0.78 / Math.max(region.w, region.h, 0.01));
   return { s, ox: (region.x + region.w / 2) * 100, oy: (region.y + region.h / 2) * 100 };
@@ -44,7 +45,9 @@ export const ArtworkStage: React.FC<ArtworkStageProps> = ({
   const r0 = revealFrames[0] ?? 0;
 
   // Resolve each focus to its spoken word via a CURSOR (first match after the previous),
-  // then build the camera keyframe track: establish → each focus → step back to the whole.
+  // then build the camera keyframe track: establish → each focus. There is NO final
+  // pull-back — the camera grammar bans resetting before a cut (the "zip back" incident);
+  // the shot ends easing into (or slowly drifting past) its last framing.
   let cur = 0;
   const cams: Cam[] = [{ at: r0, region: null }];
   focuses.forEach((f, i) => {
@@ -59,18 +62,37 @@ export const ArtworkStage: React.FC<ArtworkStageProps> = ({
     cams.push({ at, region: { x: f.x, y: f.y, w: f.w, h: f.h }, caption: f.caption,
       deliberate: Boolean(f.word || f.caption) });
   });
-  cams.push({ at: Math.max(r0 + 1, durationInFrames - 36), region: null });
   cams.sort((a, b) => a.at - b.at);
+
+  // Per-segment glides: proportional to travel distance (tempo's `glide` is the pacing
+  // floor), and each move may only start after the previous one has landed + MIN_HOLD.
+  const poses = cams.map((c) => camParams(c.region, maxZoom));
+  const glides: number[] = [0];
+  for (let i = 1; i < cams.length; i++) {
+    glides.push(glideFor(poses[i - 1], poses[i], fps, glide));
+    const earliest = cams[i - 1].at + glides[i - 1] + MIN_HOLD;
+    if (cams[i].at < earliest) cams[i] = { ...cams[i], at: earliest };
+  }
 
   // current camera = glide from the previous keyframe to the one we've reached.
   let ti = 0;
   for (let i = 0; i < cams.length; i++) if (frame >= cams[i].at) ti = i;
   const target = cams[ti];
-  const source = cams[Math.max(0, ti - 1)];
-  const t = easeInOut(interpolate(frame, [target.at, target.at + glide], [0, 1], clamp));
-  const a = camParams(source.region, maxZoom);
-  const b = camParams(target.region, maxZoom);
-  const s = a.s + (b.s - a.s) * t;
+  const seg = ti === 0 ? 0 : glides[ti];
+  const t = ti === 0 ? 1 : easeInOut(interpolate(frame, [target.at, target.at + seg], [0, 1], clamp));
+  const a = poses[Math.max(0, ti - 1)];
+  const b = poses[ti];
+  // Ambient drift: a slow push that accumulates ONLY across rest windows (it pauses,
+  // never rewinds, while a deliberate glide runs) — nothing is ever fully still, and
+  // the cut lands on motion instead of a freeze.
+  let rested = 0;
+  for (let i = 0; i <= ti; i++) {
+    const restStart = cams[i].at + (i === 0 ? 0 : glides[i]);
+    const restEnd = i < ti ? cams[i + 1].at : frame;
+    rested += Math.max(0, Math.min(restEnd, frame) - restStart);
+  }
+  const drift = driftScale(rested, fps, Math.min(1.08, (maxZoom * 1.02) / Math.max(b.s, 1)));
+  const s = (a.s + (b.s - a.s) * t) * drift;
   const ox = a.ox + (b.ox - a.ox) * t;
   const oy = a.oy + (b.oy - a.oy) * t;
 

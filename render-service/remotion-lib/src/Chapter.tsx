@@ -4,6 +4,7 @@ import { BLOCKS } from "./blocks";
 import { COMPS } from "./comps";
 import { Captions } from "./Captions";
 import { PostFX, type PostFXProps } from "./Effects";
+import { driftScale } from "./camera";
 
 // Render story v2: a Chapter step can be a library BLOCK, a hosted motion
 // COMP (same components as the standalone compositions), or raw VIDEO
@@ -59,6 +60,25 @@ const TransitionIn: React.FC<{ kind?: "dissolve" | "fade"; children: React.React
   return <div style={{ opacity, width: "100%", height: "100%" }}>{children}</div>;
 };
 
+// Camera grammar rule 5 at the STEP level: blocks animate in and then sit
+// dead for the rest of their narration (the bench audit: bar-compare,
+// comparison, counter, title all froze by midpoint). A slow canvas push —
+// broadcast "pillow motion" — keeps every frame alive. Blocks that move
+// their own camera are excluded (double drift compounds).
+const SELF_MOVING = new Set(["Video", "ArtworkStage", "StillMotion"]);
+
+const AmbientDrift: React.FC<{ active: boolean; children: React.ReactNode }> = ({ active, children }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  if (!active) return <>{children}</>;
+  const s = driftScale(frame, fps, 1.035);
+  return (
+    <div style={{ width: "100%", height: "100%", transform: `scale(${s})`, transformOrigin: "50% 45%" }}>
+      {children}
+    </div>
+  );
+};
+
 export const Chapter: React.FC<{ steps: ChapterStep[]; captions?: boolean; fx?: ChapterFX }> = ({ steps, captions, fx }) => {
   const { fps } = useVideoConfig();
   // Premount each beat ~0.5s early so its async assets (fonts, Img, KaTeX, Lottie,
@@ -77,12 +97,14 @@ export const Chapter: React.FC<{ steps: ChapterStep[]; captions?: boolean; fx?: 
             {s.audioSrc ? <Audio src={staticFile(s.audioSrc)} /> : null}
             {Block ? (
               <TransitionIn kind={s.transitionIn}>
-                <Block
-                  {...s.props}
-                  revealFrames={s.revealFrames}
-                  words={s.words ?? []}
-                  durationInFrames={s.durationInFrames}
-                />
+                <AmbientDrift active={!SELF_MOVING.has(s.block)}>
+                  <Block
+                    {...s.props}
+                    revealFrames={s.revealFrames}
+                    words={s.words ?? []}
+                    durationInFrames={s.durationInFrames}
+                  />
+                </AmbientDrift>
               </TransitionIn>
             ) : null}
             {captions ? <Captions words={s.captionWords ?? s.words ?? []} /> : null}
