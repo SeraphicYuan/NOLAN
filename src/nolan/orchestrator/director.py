@@ -52,7 +52,10 @@ PIPELINE_STEPS = [
     "render",
 ]
 
-INFO_SCENE_TYPES = {"text-overlay", "graphic"}
+# infographic joined when the block library grew real chart/table/diagram
+# templates (bar_chart, line_chart, data_table, loop_diagram, …) — before
+# that, 7 infographic scenes in a premium plan had no layout path at all.
+INFO_SCENE_TYPES = {"text-overlay", "graphic", "infographic"}
 
 
 @dataclass
@@ -2106,6 +2109,12 @@ class Director:
                                     enable_motion=False,
                                     enable_external=True),
                 project_path=self.project_path,
+                # Scope the clip search to THIS project's associated sources.
+                # The old global search let 0.5-cosine matches from unrelated
+                # library videos beat the vision-gated stock tier (the 2-beat
+                # rerun matched lecture footage to aerial queries — twice).
+                # No associated sources → empty tier → honest escalation.
+                project_id=ctx.slug,
             )
             _plan = _ScenePlan.load(str(scene_plan_path))
             _scenes = _plan.all_scenes
