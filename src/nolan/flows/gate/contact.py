@@ -22,7 +22,11 @@ CHK = RS / "remotion-lib" / "output" / "chk"
 # escaping text — the overflow heuristic skips these.
 _MEDIA_BLOCKS = {"ArtworkStage", "PhotoMontage", "PhotoGrid", "Flashback",
                  "ImageCompare", "PaperFigure", "DetailLoupe", "LottieIcon",
-                 "RouteMap"}
+                 "RouteMap",
+                 # render story v2: full-bleed video/imagery steps — footage
+                 # bright at an edge is the SHOT, not escaping text
+                 "Video", "StatOver", "SplitScreen", "AnnotateOverVideo",
+                 "PhotoMontagePro", "PhotoGridPro"}
 
 
 def _edge_overflow(png_path, band_frac: float = 0.012, brightness: int = 170,
