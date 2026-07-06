@@ -1,5 +1,7 @@
 import React from 'react';
 import {Composition} from 'remotion';
+import ProposalCurrent from './proposals/Current';
+/* PROMOTED-IMPORTS (managed by nolan.effect_promotion — do not edit by hand) */
 import {KineticText} from './KineticText';
 import {BarCompare} from './BarCompare';
 import {KShape} from './KShape';
@@ -144,6 +146,13 @@ export const Root: React.FC = () => {
       />
       <Composition id="FXSpike" component={FXSpike as React.FC<Record<string, unknown>>}
         durationInFrames={60} {...common} />
+      {/* The effect-promotion GATE renders candidates through this fixed slot. */}
+      <Composition
+        id="Proposal" component={ProposalCurrent as React.FC<Record<string, unknown>>}
+        durationInFrames={120} {...common}
+        defaultProps={{durationInFrames: 120}} calculateMetadata={dur}
+      />
+      {/* PROMOTED-COMPS (managed by nolan.effect_promotion — do not edit by hand) */}
     </>
   );
 };

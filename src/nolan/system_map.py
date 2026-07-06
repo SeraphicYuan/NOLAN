@@ -199,6 +199,13 @@ def build_map(app=None, ping: bool = True) -> Dict[str, Any]:
         "surfaces": verify(SURFACES),
         "artifacts": ARTIFACTS,
         "health": _health(ping=ping),
+        "wiring": {
+            "manifest": "docs/UI_WIRING.md",
+            "audited": "2026-07-05",
+            "verdicts": {"broken": 0, "dead": 0,
+                         "advisory": ["video_styles guide (reference-only)",
+                                      "broll lab picks (no persistence control)"]},
+        },
         "policy": {
             "routing": ("deterministic where correctness is computable (timing, "
                         "mixing, gates, matching) · LLM-API for cheap structured "

@@ -150,10 +150,12 @@
         [`<td><a href="${s.path}">${esc(s.label)}</a>${s.ok===false?' <span class="bad">route missing!</span>':''}</td>`,
          `<td class="muted">${esc(s.role)}</td>`]));
 
-      // policy
-      const p = m.policy;
+      // policy + wiring
+      const p = m.policy, w = m.wiring || {};
       document.getElementById('policy').innerHTML =
-        `<b>Capability routing:</b> ${esc(p.routing)}<br><br><b>Agent contract:</b> ${esc(p.agent_contract)}`;
+        `<b>Capability routing:</b> ${esc(p.routing)}<br><br><b>Agent contract:</b> ${esc(p.agent_contract)}` +
+        (w.manifest ? `<br><br><b>UI wiring:</b> audited ${esc(w.audited)} — ${w.verdicts.broken} broken, ${w.verdicts.dead} dead; ` +
+          `advisory: ${w.verdicts.advisory.map(esc).join('; ')} (see <code>${esc(w.manifest)}</code>)` : '');
     });
   </script>
 </body>

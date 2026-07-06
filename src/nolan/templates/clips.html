@@ -362,11 +362,60 @@ async function viewAnalysis(id) {
     const status = document.getElementById('job-' + id);
     const r = await fetch('/api/library/clips/' + id + '/analysis');
     if (!r.ok) {
-        status.innerHTML = '⏳ No findings yet — nolan2 may still be working. Try again shortly.';
+        status.innerHTML = '⏳ No findings yet — the agent may still be working. Try again shortly.';
         return;
     }
     const data = await r.json();
     status.innerHTML = `<pre style="white-space:pre-wrap;max-height:360px;overflow:auto;background:var(--bg-primary);padding:10px;border-radius:6px;">${esc(data.content)}</pre>`;
+    promotionPanel(id, status);
+}
+
+// ---- effect promotion: analyzed → proposed → gated → registered ----
+// (the agent contract: agent-authored effects pass a deterministic gate
+//  before entering the motion library — see nolan.effect_promotion)
+async function promotionPanel(id, statusEl) {
+    const r = await fetch('/api/library/clips/' + id + '/promotion');
+    if (!r.ok) return;
+    const p = await r.json();
+    const stageColor = { none:'#6b7280', analyzed:'#6b7280', proposed:'#7aa2f7',
+                         'gate-failed':'#f7768e', gated:'#e0af68', registered:'#9ece6a' }[p.stage] || '#6b7280';
+    let html = `<div style="margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:8px;">
+        <b>Effect promotion:</b> <span style="color:${stageColor};font-weight:700;">${esc(p.stage)}</span>`;
+    if (p.entry && p.entry.id) {
+        html += ` — <code>${esc(p.entry.id)}</code> → <code>${esc(p.entry.target || '')}</code>`;
+    }
+    if (p.stage === 'proposed' || p.stage === 'gate-failed') {
+        html += ` <button onclick="gateProposal('${id}')">▶ Run gate</button>`;
+    }
+    if (p.stage === 'gated') {
+        html += ` <button onclick="acceptProposal('${id}')">✓ Accept → motion library</button>`;
+    }
+    if (p.gate_report && p.gate_report.problems && p.gate_report.problems.length) {
+        html += `<div style="color:var(--danger);font-size:12px;margin-top:6px;">${p.gate_report.problems.map(esc).join('<br>')}</div>`;
+    }
+    html += `<div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">
+        agent writes projects/_clips/${esc(id)}/proposal/ (effect.tsx + entry.json) →
+        gate test-renders it (blank/overflow checks) → accept installs into the motion registry with provenance.</div></div>`;
+    statusEl.insertAdjacentHTML('beforeend', html);
+}
+async function gateProposal(id) {
+    const status = document.getElementById('job-' + id);
+    const r = await fetch('/api/library/clips/' + id + '/promotion/gate', { method: 'POST' });
+    if (!r.ok) { status.textContent = 'gate failed to start'; return; }
+    const { job_id } = await r.json();
+    (async function tick() {
+        const j = await (await fetch('/api/jobs/' + job_id)).json();
+        if (j.status === 'done' || j.status === 'error') { viewAnalysis(id); return; }
+        status.textContent = `gate: ${j.status} ${j.message || ''}`;
+        setTimeout(tick, 1500);
+    })();
+}
+async function acceptProposal(id) {
+    const status = document.getElementById('job-' + id);
+    const r = await fetch('/api/library/clips/' + id + '/promotion/accept', { method: 'POST' });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); status.textContent = '✗ ' + (e.detail || r.statusText); return; }
+    const d = await r.json();
+    status.innerHTML = `🎉 <b>${esc(d.id)}</b> registered in the motion library (composition <code>${esc(d.target)}</code>) — usable from motion specs immediately.`;
 }
 
 // ---- bulk action-bar verbs (operate on the selected saved clips) ----

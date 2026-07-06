@@ -1319,6 +1319,8 @@ def _effect_task_markdown(clip: dict, frames_posix: list, file_posix: str,
     """Build the task brief handed to the nolan2 agent."""
     frame_lines = "\n".join(f"  - {f}" for f in frames_posix)
     motion_catalog = _motion_catalog_md()
+    base = analysis_posix.rsplit("/", 1)[0]           # projects/_clips/<clip_id>
+    clip_id = base.rsplit("/", 1)[-1]
     return f"""# NOLAN effect-analysis task
 
 A user saved a clip from a source video and wants to know **what visual / motion
@@ -1346,19 +1348,32 @@ effect it uses** and **whether NOLAN can already reproduce it**.
    - Remotion is best for kinetic typography, animated charts/SVG, transitions, glossy
      CSS; Python is best for fast simple cards. State clearly: **already covered**
      (name the registry `effect` id + backend) or **new**.
-3. If **new**, assess **replicability** and pick a backend:
-   - **Remotion** → add a composition in `render-service/remotion-lib/src/` + a
-     `MotionEffect(..., backend="remotion", target="<CompId>")` row in `registry.py`.
-   - **Python** → a scene renderer in `src/nolan/renderer/scenes/` + a
-     `MotionEffect(..., backend="python", target="<ClassName>")` row in `registry.py`.
-   The executor (`nolan.motion.executor.render`) already handles both backends, so a new
-   registry row makes it renderable from a spec immediately. Give a concrete plan.
+3. If **new** and replicable on Remotion, write a **PROPOSAL** — do NOT edit
+   `registry.py` or `Root.tsx` directly (the agent contract: proposals pass a
+   deterministic gate before becoming canonical). Write BOTH files:
+   - `{base}/proposal/effect.tsx` — the composition. `export default` the
+     component; pure function of `useCurrentFrame()` (no Math.random /
+     Date.now); accept `durationInFrames` + your content props; use theme
+     tokens (`var(--accent)` etc.) like the blocks in
+     `render-service/remotion-lib/src/blocks/library/`.
+   - `{base}/proposal/entry.json` — the registry entry AS DATA:
+     `{{"id": "<kebab-case>", "backend": "remotion", "category": "...",
+     "purpose": "<one line>", "target": "<PascalCaseCompId>",
+     "content": [{{"name","type","doc","default","required"}}...],
+     "style": [], "shared": ["theme"], "duration_default": 4.0,
+     "sample_props": {{<props that render a REPRESENTATIVE frame>}},
+     "provenance": {{"clip_id": "{clip_id}", "agent": "<your session>",
+     "date": "<today>"}}}}`
+   The human gates + accepts it from the Clips page: the gate renders your
+   `sample_props` through a harness and checks blank frames / text escaping
+   the frame — make `sample_props` show the effect at its best.
+   Python-backend ideas: describe the plan in the analysis only (python
+   renderers stay hand-reviewed code).
 
 ## Output
-Write your findings to `{analysis_posix}` as markdown with sections:
-**Effect**, **Dedup result** (registry id + backend if covered), **Replicable?**
-(chosen backend), **Plan**. Keep it concise and actionable. (Follow the repo's
-"Promoting Techniques to NOLAN" convention if you implement it.)
+Write findings to `{analysis_posix}` as markdown with sections: **Effect**,
+**Dedup result** (registry id + backend if covered), **Replicable?**
+(chosen backend), **Plan** — and, if new+Remotion, the proposal files above.
 """
 
 

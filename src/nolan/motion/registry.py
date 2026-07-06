@@ -56,6 +56,7 @@ class MotionEffect:
     style: List[Param] = field(default_factory=list)
     shared: List[str] = field(default_factory=list)   # names from SHARED this effect supports
     duration_default: float = 4.0
+    provenance: dict = field(default_factory=dict)   # promoted effects: clip/agent/date
 
 
 def _p(name, type, doc="", values=None, default=None, required=False):
@@ -260,6 +261,39 @@ REGISTRY: List[MotionEffect] = [
 ]
 
 BY_ID = {e.id: e for e in REGISTRY}
+
+
+
+# --- promoted effects (agent-proposed, deterministically gated) ---------------
+# nolan.effect_promotion appends accepted proposals to registry_custom.json —
+# promoted effects are DATA, never hand-edits to this file. A broken custom
+# file is reported loudly and skipped, never silently half-loaded.
+def _load_custom() -> List[MotionEffect]:
+    import json as _json
+    import logging as _logging
+    from pathlib import Path as _Path
+    p = _Path(__file__).parent / "registry_custom.json"
+    if not p.exists():
+        return []
+    out: List[MotionEffect] = []
+    try:
+        for e in _json.loads(p.read_text(encoding="utf-8")):
+            out.append(MotionEffect(
+                e["id"], e.get("backend", "remotion"), e.get("category", "promoted"),
+                e.get("purpose", ""), e["target"],
+                content=[Param(**c) for c in e.get("content", [])],
+                style=[Param(**s) for s in e.get("style", [])],
+                shared=list(e.get("shared", [])),
+                duration_default=float(e.get("duration_default", 4.0)),
+                provenance=dict(e.get("provenance", {}))))
+    except Exception as exc:
+        _logging.getLogger(__name__).error("registry_custom.json unusable: %s", exc)
+        return []
+    return out
+
+
+REGISTRY.extend(_load_custom())
+BY_ID.update({e.id: e for e in REGISTRY})   # BY_ID is defined above this loader
 
 
 def get_effect(effect_id: str) -> Optional[MotionEffect]:

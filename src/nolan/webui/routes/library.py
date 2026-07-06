@@ -370,6 +370,37 @@ def register(app, ctx):
                 raise HTTPException(status_code=404, detail="no analysis yet")
             return {"clip_id": clip_id, "content": analysis.read_text(encoding="utf-8")}
 
+        # ---- Effect promotion: proposal -> gate -> accept (the agent
+        # contract applied to agent-authored CODE — see effect_promotion) ----
+
+        @app.get("/api/library/clips/{clip_id}/promotion")
+        async def clips_promotion(clip_id: str):
+            from nolan.effect_promotion import promotion_status
+            return promotion_status(clip_id)
+
+        @app.post("/api/library/clips/{clip_id}/promotion/gate")
+        async def clips_promotion_gate(clip_id: str):
+            """Gate the proposal (harness render + checks) as a job."""
+            from nolan.effect_promotion import gate_proposal
+
+            async def _gate(job, *, clip_id: str):
+                job.set_progress(0.1, "Validating proposal…")
+                report = await asyncio.to_thread(gate_proposal, clip_id)
+                job.set_progress(1.0, "GATE " + ("GREEN" if report["ok"] else "FAILED"))
+                return report
+
+            job = job_manager.start("gate-effect", _gate,
+                                    meta={"clip_id": clip_id}, clip_id=clip_id)
+            return {"job_id": job.id, "type": "gate-effect"}
+
+        @app.post("/api/library/clips/{clip_id}/promotion/accept")
+        async def clips_promotion_accept(clip_id: str):
+            from nolan.effect_promotion import accept_proposal
+            try:
+                return await asyncio.to_thread(accept_proposal, clip_id)
+            except RuntimeError as exc:
+                raise HTTPException(status_code=422, detail=str(exc))
+
         @app.get("/api/library/clips/search")
         async def clips_search(
             q: str = Query(default="", description="keyword query (optional)"),
