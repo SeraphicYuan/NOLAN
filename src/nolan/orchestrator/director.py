@@ -379,6 +379,51 @@ class Director:
             return await self._run_render_step(ctx, state)
         raise DirectorError(f"unknown pipeline step: {next_name}")
 
+    # Artifact-presence-gated steps: redoing one must also remove the artifact
+    # that marks it "done", or the scheduler skips it. Steps absent here are
+    # gated purely by step_history.
+    _REDO_ARTIFACTS = {
+        "match_and_adapt_style": ["style_guide.md", "brief.json"],
+        "script_to_scenes": ["scene_plan.json"],
+        "voiceover": ["assets/voiceover/voiceover.mp3"],
+        "soundtrack": ["soundtrack.json"],
+        "render": ["output/final.mp4"],
+    }
+
+    def redo_step(self, step: str) -> list:
+        """Reset one step so the scheduler runs it again. Returns notes.
+
+        Removes the step's history records and deletes its presence-gating
+        artifact(s). DESTRUCTIVE for authoring steps: redoing
+        script_to_scenes regenerates the plan from scratch (downstream
+        enrichment on the old plan is gone); redoing the style step discards
+        the current guide + brief. A locked artifact (e.g. final.mp4 open in
+        a player) fails LOUDLY instead of leaving half-reset state."""
+        if step not in PIPELINE_STEPS:
+            raise DirectorError(
+                f"unknown step {step!r} — one of {PIPELINE_STEPS}")
+        notes = []
+        # delete gating artifacts FIRST: if one is locked we abort before
+        # touching history, so the state stays consistent
+        for rel in self._REDO_ARTIFACTS.get(step, []):
+            p = self.project_path / rel
+            if p.exists():
+                try:
+                    p.unlink()
+                except OSError as exc:
+                    raise DirectorError(
+                        f"cannot redo {step}: {rel} is locked ({exc}) — "
+                        "close whatever holds it open and retry")
+                notes.append(f"deleted {rel}")
+        state = state_mod.load_state(self.project_path)
+        before = len(state.step_history)
+        state.step_history = [s for s in state.step_history if s.name != step]
+        removed = before - len(state.step_history)
+        state.status = "awaiting_review"
+        state_mod.save_state(self.project_path, state)
+        notes.append(f"removed {removed} history record(s) for '{step}'")
+        return notes
+
     def _next_step_name(self, state: state_mod.DirectorState) -> str | None:
         """Pick the next step. Mixed strategy:
 
@@ -570,7 +615,7 @@ class Director:
         summary = [
             f"All known pipeline steps already completed: {completed}",
             "To advance further, build/enable the next specialist or use "
-            "`--redo <step>` (not yet implemented).",
+            "`--redo <step>` to reset + re-run one step.",
         ]
         state.status = "awaiting_review"
         state.current_step = "idle"

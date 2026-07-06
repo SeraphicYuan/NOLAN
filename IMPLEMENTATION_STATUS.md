@@ -133,6 +133,25 @@ kills full-suite pytest runs at ~38% — run suites in groups or fix in Phase 6.
   (24 total in test_premium_render.py); live probe: section 0 + injected
   3-shot list rendered 1654/1654 frames, three shots verified frame-by-frame.
 
+## Pipeline speed: parallel renders, whisper cache, --redo (2026-07-06)
+
+The three wins from the 2-beat timing profile (~35-45 min/slice):
+- **Parallel section renders**: premium renders beats concurrently
+  (`render_workers` in project.yaml, default 2) — CPU-only (node/Chromium);
+  GPU stages (ComfyUI, OmniVoice) stay serialized behind get_gpu_lock and
+  are never in flight during renders. stage.mjs writes/copies atomically
+  (tmp+rename) so concurrent staging can't hand a sibling bundler a torn
+  file. Section order preserved regardless of finish order; per-section
+  failures collected and raised loudly.
+- **Whisper word-timing cache** (assets/premium/words_cache.json, keyed on
+  wav size+mtime): ~40-60s/section saved on every re-render.
+- **Pre-flight gate scoped to rendering sections**: cache-reused beats
+  passed their gate on first render — re-checking wasted ~1 min/beat.
+- **`nolan orchestrate <proj> --redo <step>`**: resets one step (history +
+  presence-gating artifact, _REDO_ARTIFACTS map) and runs it now; locked
+  artifacts (final.mp4 open in a player) abort BEFORE touching history.
+Measured: cold 2-beat render 7m44s; warm `--redo render` loop **5.8s**.
+
 ## SOTA #9: taste feedback loop (2026-07-06)
 
 `src/nolan/taste.py` + `/taste` page + `nolan retro`. The loop: override

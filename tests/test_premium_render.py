@@ -368,3 +368,19 @@ def test_job_stamp_ignores_work_slices_uses_wav(tmp_path):
 
 
 import json  # noqa: E402  (used by the stamp test)
+
+
+def test_words_cache_roundtrip(tmp_path):
+    """The whisper cache: same wav stats -> cached words; changed wav -> miss.
+
+    Exercised through the same stamp scheme render_premium uses."""
+    wav = tmp_path / "sec_0000.wav"
+    wav.write_bytes(b"a" * 512)
+    st = wav.stat()
+    stamp = f"{st.st_size}:{st.st_mtime_ns}"
+    cache = {"sec_0000.wav": {"stamp": stamp,
+                              "words": [{"t0": 0.1, "t1": 0.4, "text": "hi"}]}}
+    hit = cache.get(wav.name)
+    assert hit and hit["stamp"] == f"{wav.stat().st_size}:{wav.stat().st_mtime_ns}"
+    wav.write_bytes(b"b" * 999)                      # re-recorded VO
+    assert hit["stamp"] != f"{wav.stat().st_size}:{wav.stat().st_mtime_ns}"

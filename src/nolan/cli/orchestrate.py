@@ -22,8 +22,12 @@ from ._root import main
                    'the latest unconsumed feedback file.')
 @click.option('--target', type=str, default=None,
               help='Step name to refine. Required with --refine.')
+@click.option('--redo', type=str, default=None,
+              help='Reset ONE step (history + gating artifact) and run it '
+                   'now. Destructive for authoring steps — redoing '
+                   'script_to_scenes regenerates the plan from scratch.')
 @click.pass_context
-def orchestrate(ctx, project, auto, refine, target):
+def orchestrate(ctx, project, auto, refine, target, redo):
     """Run the two-layer Director on a project folder.
 
     Default mode: advance the pipeline by one step (run_next_step).
@@ -34,14 +38,21 @@ def orchestrate(ctx, project, auto, refine, target):
         DirectorError, run_auto_sync, run_refine_sync, run_sync,
     )
 
-    if auto and refine:
-        click.echo("Error: --auto and --refine are mutually exclusive.", err=True)
+    if sum(map(bool, (auto, refine, redo))) > 1:
+        click.echo("Error: --auto, --refine and --redo are mutually exclusive.", err=True)
         ctx.exit(2)
 
     project_path = Path(project)
 
     try:
-        if refine:
+        if redo:
+            from nolan.orchestrator.director import Director
+            for note in Director(project_path).redo_step(redo):
+                click.echo(note)
+            checkpoint_path = run_sync(project_path)
+            click.echo(f"Checkpoint written: {checkpoint_path}")
+            click.echo(f"'{redo}' re-ran. Review and re-run to advance.")
+        elif refine:
             if not target:
                 click.echo(
                     "Error: --target STEP is required with --refine.",

@@ -5,6 +5,21 @@
 import fs from "fs";
 import path from "path";
 
+// Atomic write/copy: parallel section renders (premium render_workers) stage
+// into the SAME src/styles + public/ — identical content, but a plain
+// writeFileSync could hand a half-written file to the sibling bundler.
+// tmp + rename is atomic on one volume.
+function writeAtomic(dest, data) {
+  const tmp = `${dest}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, data);
+  fs.renameSync(tmp, dest);
+}
+function copyAtomic(src, dest) {
+  const tmp = `${dest}.tmp-${process.pid}`;
+  fs.copyFileSync(src, tmp);
+  fs.renameSync(tmp, dest);
+}
+
 const IMG_RE = /\.(jpe?g|png|webp|gif|avif)$/i;
 const VID_RE = /\.(mp4|mov|webm|m4v)$/i;
 
@@ -23,7 +38,7 @@ function stageImages(obj, publicDir, missing) {
         // basenames collide (homer's scene_016.jpg vs aidc's — the Homer
         // montage rendered a POWER SUBSTATION). Skipping "already staged"
         // files reused another project's image silently.
-        fs.copyFileSync(v, path.join(publicDir, base));
+        copyAtomic(v, path.join(publicDir, base));
         obj[k] = base;
       } else if (path.isAbsolute(v) || v.includes("/") || v.includes("\\")) {
         // a path that names a file that isn't there would surface as a
@@ -56,7 +71,7 @@ export function stageJob(cfg, here, { stageAudio = true } = {}) {
   // else keeps the CN face (the blocks' historical default).
   const lang = cfg.lang === "en" ? "en" : "cn";
   tokens += `\n:root { --font-display: var(--font-display-${lang}); }\n`;
-  fs.writeFileSync(path.join(here, "src", "styles", "_active-theme.css"), tokens);
+  writeAtomic(path.join(here, "src", "styles", "_active-theme.css"), tokens);
 
   // One theme system (SOTA #3): the hosted motion comps style via theme.ts
   // (inline hex — they concat alpha suffixes, so CSS vars won't do). Resolve
@@ -71,7 +86,7 @@ export function stageJob(cfg, here, { stageAudio = true } = {}) {
     ["font-display-en", "font-display-cn", "font-body", "font-mono"]
       .map((k) => fam(tok[k])).filter(Boolean),
   )];
-  fs.writeFileSync(
+  writeAtomic(
     path.join(here, "src", "styles", "_active-theme.json"),
     JSON.stringify({
       theme,
@@ -88,7 +103,7 @@ export function stageJob(cfg, here, { stageAudio = true } = {}) {
   for (const s of steps) {
     if (stageAudio && s.audioSrc) {
       const base = path.basename(s.audioSrc);
-      if (fs.existsSync(s.audioSrc)) fs.copyFileSync(s.audioSrc, path.join(publicDir, base));
+      if (fs.existsSync(s.audioSrc)) copyAtomic(s.audioSrc, path.join(publicDir, base));
       s.audioSrc = base;
     }
     if (s.props) stageImages(s.props, publicDir, missing);

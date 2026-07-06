@@ -531,6 +531,26 @@ def render_premium(project_path: Path, *, theme: str = None,
     _cjk = sum(1 for ch in _narr if "一" <= ch <= "鿿")
     lang = "cn" if _narr and _cjk / max(1, len(_narr)) > 0.15 else "en"
 
+    # Word-timing cache: whisper costs ~40-60s/section and the wavs rarely
+    # change between renders — key on (size, mtime) like the beat cache.
+    words_cache_path = project_path / "assets" / "premium" / "words_cache.json"
+    words_cache: Dict[str, Any] = {}
+    if words_cache_path.exists():
+        try:
+            words_cache = json.loads(words_cache_path.read_text(encoding="utf-8"))
+        except Exception:
+            words_cache = {}
+
+    def _words_for(wav: Path):
+        st = wav.stat()
+        stamp = f"{st.st_size}:{st.st_mtime_ns}"
+        hit = words_cache.get(wav.name)
+        if hit and hit.get("stamp") == stamp:
+            return hit["words"]
+        words = _section_words(wav)
+        words_cache[wav.name] = {"stamp": stamp, "words": words}
+        return words
+
     clips = []
     job_paths = []
     for i, ((name, scenes), wav, (sec_start, _d)) in enumerate(
@@ -538,7 +558,7 @@ def render_premium(project_path: Path, *, theme: str = None,
         if not draft:
             logger.info("premium: word timings for section %d/%d",
                         i + 1, len(sections))
-        section_words = [] if draft else _section_words(wav)
+        section_words = [] if draft else _words_for(wav)
         job = build_section_job(
             name, scenes, project_path=project_path, section_wav=wav,
             section_start=sec_start, out_name=f"premium_{i:04d}.mp4",
@@ -554,27 +574,9 @@ def render_premium(project_path: Path, *, theme: str = None,
         job_path = jobs_dir / f"premium_{i:04d}.json"
         job_path.write_text(json.dumps(job, indent=2), encoding="utf-8")
         job_paths.append((i, name, job_path))
-
-    # Contact-sheet pre-flight (FLOW's Tier-1 gate, reused verbatim + the
-    # edge-overflow check): one cheap still per step fraction catches
-    # empty/near-black beats and text escaping the frame BEFORE the expensive
-    # render. Explicit opt-out: project.yaml `premium_gate: false`.
-    if gate:
-        from nolan.flows.gate.contact import contact
-        problems = []
-        for i, name, job_path in job_paths:
-            flags, sheet = contact(job_path, overflow=True,
-                                   sheet_name=f"premium_{i:04d}.contact.png")
-            for beat, block, frame, what in flags:
-                problems.append(
-                    f"section {i} ({name[:30]}) step {beat} [{block}] "
-                    f"frame {frame}: {what}")
-            logger.info("premium gate: section %d contact sheet -> %s", i, sheet)
-        if problems:
-            raise PremiumIneligible(
-                f"pre-flight gate flagged {len(problems)} problem(s) — review "
-                "the contact sheets under render-service/remotion-lib/output/: "
-                + "; ".join(problems[:8]))
+    if not draft:
+        words_cache_path.parent.mkdir(parents=True, exist_ok=True)
+        words_cache_path.write_text(json.dumps(words_cache), encoding="utf-8")
 
     # Beat cache (SOTA #7): a section whose job (content + every referenced
     # media/audio file) is unchanged reuses its last render. Reuse is REPORTED
@@ -588,7 +590,9 @@ def render_premium(project_path: Path, *, theme: str = None,
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except Exception:
             manifest = {}
-    reused = rendered = 0
+    reused = 0
+    ordered: Dict[int, Path] = {}
+    to_render = []
     for i, name, job_path in job_paths:
         job = json.loads(job_path.read_text(encoding="utf-8"))
         stamp = _job_stamp(job, extra_files=[wavs[i]])
@@ -597,19 +601,68 @@ def render_premium(project_path: Path, *, theme: str = None,
                 and beat_file.exists()):
             logger.info("premium: section %d/%d unchanged — reusing %s",
                         i + 1, len(sections), beat_file.name)
-            clips.append(beat_file)
+            ordered[i] = beat_file
             reused += 1
             continue
-        logger.info("premium: rendering section %d/%d (%s)%s",
-                    i + 1, len(sections), name[:40], " [DRAFT]" if draft else "")
-        clip = render_chapter(job_path)
-        rendered += 1
-        if use_cache:
-            shutil.copy(str(clip), str(beat_file))
-            manifest[beat_file.name] = stamp
-            clips.append(beat_file)
-        else:
-            clips.append(clip)
+        to_render.append((i, name, job_path, beat_file, stamp))
+
+    # Contact-sheet pre-flight (FLOW's Tier-1 gate + edge-overflow), scoped
+    # to the sections that will actually render — a cache-reused beat already
+    # passed its gate on first render, so re-checking it wastes ~1 min/beat.
+    # Explicit opt-out: project.yaml `premium_gate: false`.
+    if gate and to_render:
+        from nolan.flows.gate.contact import contact
+        problems = []
+        for i, name, job_path, _bf, _st in to_render:
+            flags, sheet = contact(job_path, overflow=True,
+                                   sheet_name=f"premium_{i:04d}.contact.png")
+            for beat, block, frame, what in flags:
+                problems.append(
+                    f"section {i} ({name[:30]}) step {beat} [{block}] "
+                    f"frame {frame}: {what}")
+            logger.info("premium gate: section %d contact sheet -> %s", i, sheet)
+        if problems:
+            raise PremiumIneligible(
+                f"pre-flight gate flagged {len(problems)} problem(s) — review "
+                "the contact sheets under render-service/remotion-lib/output/: "
+                + "; ".join(problems[:8]))
+
+    # Chapter renders are CPU work (node bundling + Chromium frames) with NO
+    # GPU involvement, so they parallelize safely — the GPU stages (ComfyUI
+    # generation, OmniVoice TTS) stay serialized behind get_gpu_lock() in
+    # their own steps and are never in flight here. project.yaml
+    # `render_workers` tunes concurrency (default 2; 1 = serial).
+    try:
+        workers = max(1, int(meta.get("render_workers", 2)))
+    except (TypeError, ValueError):
+        workers = 2
+    rendered = len(to_render)
+    if to_render:
+        logger.info("premium: rendering %d section(s) with %d worker(s)%s",
+                    len(to_render), min(workers, len(to_render)),
+                    " [DRAFT]" if draft else "")
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(workers, len(to_render))) as ex:
+            futures = {ex.submit(render_chapter, jp): (i, bf, st)
+                       for i, _n, jp, bf, st in to_render}
+            errors = []
+            for fut in futures:
+                i, beat_file, stamp = futures[fut]
+                try:
+                    clip = fut.result()
+                except Exception as exc:            # loud, per section
+                    errors.append(f"section {i}: {exc}")
+                    continue
+                if use_cache:
+                    shutil.copy(str(clip), str(beat_file))
+                    manifest[beat_file.name] = stamp
+                    ordered[i] = beat_file
+                else:
+                    ordered[i] = Path(clip)
+        if errors:
+            raise RuntimeError(
+                f"{len(errors)} section render(s) failed: " + "; ".join(errors))
+    clips = [ordered[i] for i, _n, _jp in job_paths]
     if use_cache:
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     (beats_dir / "last_run.json").write_text(
