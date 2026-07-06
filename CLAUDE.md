@@ -45,6 +45,18 @@ essays across topics and styles.
 - Agent-authored artifacts carry provenance: skill@version, agent, model,
   date, input reference.
 
+## The module contract (every new craft capability)
+
+Capabilities group under UMBRELLAS (editing, motion, pairing, themes,
+blocks, sound). A new capability is not "code in the render path" — it
+lands as: (a) a **registry entry** with purpose + when_to_use + constraints
+(e.g. duration_preserving); (b) an **authored artifact field** validated
+against that registry; (c) an **executor** in the render path; (d) auto-
+surfaced in `/map` and the umbrella's skill (honesty-tested against the
+registry so catalogs can't rot). An authored field with no consumer is a
+bug (the `transition` lesson). Gold standard: `nolan/motion/registry.py`;
+editing umbrella: `nolan/editing.py`.
+
 ## Non-negotiable invariants
 
 - **scene_plan.json is lossless** (schema v2): unknown keys survive every

@@ -44,6 +44,32 @@ cannot cross beats.
 - **Failures are loud**: steps record errors in state + raise; no silent
   rc-0-on-failure, no silent caps.
 
+## The module contract (umbrellas)
+
+Craft capabilities group under **umbrellas** — editing (cuts/rhythm), motion
+(camera/effects), pairing (narrative→asset operators), themes, blocks
+(layouts), sound. Growing an umbrella never means "more code in the render
+path"; it means the four-part module contract:
+
+1. **Registry entry** — declarative, with `purpose`, `when_to_use` (the craft
+   guidance an agent needs to pick it), and constraints (e.g.
+   `duration_preserving` — techniques that stretch time are illegal inside
+   narration spans; the sync contract is the legality gate for creativity).
+2. **Authored artifact field** — the decision stored as data on the plan
+   (scene fields, project.yaml keys), validated against the registry. An
+   authored field with no consumer is a bug: `tempo_plan` authored
+   `transition` for months while no renderer read it.
+3. **Executor** — one place in the render path that turns the authored
+   decision into pixels/samples.
+4. **Auto-surfaced catalog** — the umbrella appears in `/api/map` and has a
+   skill doc for agents, honesty-tested against the registry (a catalog that
+   can drift from the code is worse than none).
+
+Gold standard: `nolan/motion/` (registry + spec validation + promotion
+pipeline for agent-proposed effects). Editing umbrella: `nolan/editing.py`.
+New-capability review question: "which registry did this land in, what field
+authors it, who executes it, where does an agent learn when to use it?"
+
 ## One asset engine
 
 `src/nolan/asset_engine.py` — the single per-scene resolution ladder:
