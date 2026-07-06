@@ -187,3 +187,80 @@ def test_bridge_disabled_by_config():
     s = scene()
     assert e.resolve(s) == "none(search-miss)"
     assert calls == []
+
+
+# --- asset ladder completion (no-reuse + shot fulfillment) --------------------------
+
+def test_no_reuse_same_library_asset(tmp_path):
+    from nolan.asset_engine import AssetEngine, EngineConfig
+    from nolan.scenes import Scene
+    asset = str(tmp_path / "one.jpg")
+    engine = AssetEngine(EngineConfig(enable_generation=False),
+                         library_fn=lambda s: asset)
+    s1 = Scene(id="s1", visual_type="b-roll", search_query="q")
+    s2 = Scene(id="s2", visual_type="b-roll", search_query="q")
+    assert engine.resolve(s1).startswith("library")
+    assert s1.matched_asset == asset
+    # same asset again -> treated as a miss, escalation continues to none()
+    assert engine.resolve(s2).startswith("none")
+    assert s2.matched_asset is None
+
+
+def test_no_reuse_same_clip_segment():
+    from nolan.asset_engine import AssetEngine, EngineConfig
+    from nolan.scenes import Scene
+    mc = {"video_path": "lib/v.mp4", "clip_start": 3.0, "similarity_score": 0.9}
+    engine = AssetEngine(EngineConfig(enable_generation=False,
+                                      enable_library=False,
+                                      enable_bridge=False),
+                         search_fn=lambda s: dict(mc))
+    s1 = Scene(id="s1", visual_type="b-roll")
+    s2 = Scene(id="s2", visual_type="b-roll")
+    assert engine.resolve(s1).startswith("search")
+    assert engine.resolve(s2).startswith("none")
+
+
+def test_fulfill_shots_wanted(tmp_path):
+    from nolan.asset_engine import AssetEngine
+    from nolan.scenes import Scene
+
+    class _R:
+        def __init__(self, url): self.url = url
+
+    class _Client:
+        def search(self, q, max_results=3):
+            return [_R(f"https://x/{abs(hash(q)) % 999}_{i}.jpg") for i in range(2)]
+
+    fetched = []
+
+    def fake_fetch(url, dest):
+        dest.write_bytes(b"img")
+        fetched.append(url)
+
+    anchor = tmp_path / "anchor.jpg"
+    anchor.write_bytes(b"img")
+    s = Scene(id="s1", visual_type="b-roll", search_query="suburb aerial",
+              matched_asset=str(anchor))
+    s.extra["shots_wanted"] = 3
+    done = AssetEngine.fulfill_shots_wanted(
+        [s], nolan_config=None, project_path=tmp_path,
+        client=_Client(), fetch=fake_fetch)
+    assert done == 1
+    shots = s.extra["shots"]
+    assert shots[0]["src"] == str(anchor) and shots[0]["weight"] == 1.5
+    assert len(shots) == 3 and len(fetched) == 2
+    # the editing gate accepts what we authored
+    from nolan.editing import validate_scene_editing
+    assert validate_scene_editing({"id": "s1", "shots": shots}) == []
+
+
+def test_fulfill_skips_scene_with_existing_shots(tmp_path):
+    from nolan.asset_engine import AssetEngine
+    from nolan.scenes import Scene
+    s = Scene(id="s1", visual_type="b-roll", matched_asset="a.jpg")
+    s.extra["shots_wanted"] = 3
+    s.extra["shots"] = [{"src": "human.jpg"}]     # human authoring wins
+    done = AssetEngine.fulfill_shots_wanted(
+        [s], nolan_config=None, project_path=tmp_path,
+        client=object(), fetch=lambda u, d: None)
+    assert done == 0 and s.extra["shots"] == [{"src": "human.jpg"}]

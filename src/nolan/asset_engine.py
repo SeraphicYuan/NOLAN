@@ -38,6 +38,28 @@ GENERATED_TYPES = {"generated", "generated-image", "hero"}
 ART_TYPES = {"archival-art"}
 
 
+def _download_external_clip(matched_clip: dict, out_dir: Path,
+                            scene_id: str) -> Optional[Path]:
+    """Download an external video reference to a local mp4, or None."""
+    url = (matched_clip or {}).get("external_url")
+    if not url:
+        return None
+    try:
+        import httpx
+        out_dir.mkdir(parents=True, exist_ok=True)
+        dest = out_dir / f"{scene_id}.mp4"
+        with httpx.stream("GET", url, timeout=120,
+                          follow_redirects=True) as r:
+            r.raise_for_status()
+            with open(dest, "wb") as f:
+                for chunk in r.iter_bytes(1 << 16):
+                    f.write(chunk)
+        return dest if dest.stat().st_size > 10_000 else None
+    except Exception as exc:
+        logger.warning("external clip download failed (%s): %s", scene_id, exc)
+        return None
+
+
 @dataclass
 class EngineConfig:
     search_threshold: float = 0.5
@@ -67,6 +89,20 @@ class AssetEngine:
         self.motion_fn = motion_fn
         self.art_fn = art_fn
         self.bridge_fn = bridge_fn
+        # No-reuse ledger: the same asset matched to two scenes reads as a
+        # rerun, not an edit. A tier hit whose asset is already claimed is
+        # treated as a MISS (logged) and escalation continues.
+        self._used: set = set()
+
+    def _claim(self, key) -> bool:
+        """True if `key` was free (now claimed); False if already used."""
+        if not key:
+            return True
+        key = str(key)
+        if key in self._used:
+            return False
+        self._used.add(key)
+        return True
 
     # --- public -----------------------------------------------------------
     def resolve(self, scene) -> str:
@@ -125,14 +161,16 @@ class AssetEngine:
         if vt in FOOTAGE_TYPES:
             if self.cfg.enable_search and self.search_fn:
                 mc = self.search_fn(scene)
-                if mc and float(mc.get("similarity_score", 1.0)) >= self.cfg.search_threshold:
+                if (mc and float(mc.get("similarity_score", 1.0)) >= self.cfg.search_threshold
+                        and self._claim(f"{mc.get('video_path')}@{mc.get('clip_start')}")):
                     scene.matched_clip = mc
                     return f"search({mc.get('similarity_score', 0):.2f})"
                 # Operator bridge: the literal query missed — retry the search
                 # tier with metaphor queries (tonal/conceptual by default).
                 for probe, query in self._bridge_probes(scene):
                     mc = self.search_fn(probe)
-                    if mc and float(mc.get("similarity_score", 1.0)) >= self.cfg.search_threshold:
+                    if (mc and float(mc.get("similarity_score", 1.0)) >= self.cfg.search_threshold
+                            and self._claim(f"{mc.get('video_path')}@{mc.get('clip_start')}")):
                         scene.matched_clip = mc
                         logger.info("bridge matched %s via %r",
                                     getattr(scene, "id", "?"), query)
@@ -187,12 +225,12 @@ class AssetEngine:
         # Picture library (curated stills) before external providers / generation.
         if self.cfg.enable_library and self.library_fn:
             asset = self.library_fn(scene)
-            if asset:
+            if asset and self._claim(asset):
                 scene.matched_asset = asset
                 return f"library({reason})"
             for probe, query in self._bridge_probes(scene):
                 asset = self.library_fn(probe)
-                if asset:
+                if asset and self._claim(asset):
                     scene.matched_asset = asset
                     logger.info("bridge matched still for %s via %r",
                                 getattr(scene, "id", "?"), query)
@@ -202,7 +240,14 @@ class AssetEngine:
             # video, or scene.matched_asset for an image) and returns a truthy kind.
             got = self.external_fn(scene)
             if got:
-                return f"external({reason})"
+                key = (getattr(scene, "matched_asset", None)
+                       or (getattr(scene, "matched_clip", None) or {}).get("source_url"))
+                if self._claim(key):
+                    return f"external({reason})"
+                logger.info("external hit for %s already used elsewhere — skipping",
+                            getattr(scene, "id", "?"))
+                scene.matched_asset = None
+                scene.matched_clip = None
         if self.cfg.enable_generation:
             return self._generate(scene, reason=reason)
         return f"none({reason})"
@@ -355,14 +400,29 @@ class AssetEngine:
                 return None
             from nolan.external_assets import external_match_for_scene
             try:
-                # Images, not video: downloaded stills (matched_asset → assemble)
-                # are render-ready; external video clips would need materializing.
-                return external_match_for_scene(
+                # Vision-gated (the free quality filter alone matched lecture
+                # footage to aerial queries in the 2-beat test); video first —
+                # premium plays clips natively since render story v2.
+                kind = external_match_for_scene(
                     scene, client=state["client"], scorer=state["scorer"],
                     vid_sources=state["vid"], out_dir=project_path / "assets" / "broll",
-                    project_root=project_path, prefer_video=False, gate=4)
+                    project_root=project_path, prefer_video=True,
+                    use_vision=True, gate=4)
             except Exception:
                 return None
+            if kind and str(kind).startswith("video"):
+                # materialize: premium's Video step needs a LOCAL file. A clip
+                # that won't download is a miss, never a dangling reference.
+                mc = getattr(scene, "matched_clip", None) or {}
+                local = _download_external_clip(
+                    mc, project_path / "assets" / "broll_video",
+                    getattr(scene, "id", "scene"))
+                if not local:
+                    scene.matched_clip = None
+                    return None
+                mc["video_path"] = str(local)
+                mc["clip_start"] = 0.0
+            return kind
         return fn
 
     @staticmethod
@@ -437,6 +497,82 @@ class AssetEngine:
             return _run_async(bridge_queries(
                 state["llm"], line, operators=tuple(cfg.bridge_operators)))
         return fn
+
+    # --- shot-list fulfillment (the reader of tempo's shot cadence) ------------
+
+    @staticmethod
+    def fulfill_shots_wanted(scenes, *, nolan_config, project_path: Path,
+                             log=None, client=None, fetch=None) -> int:
+        """scene.extra['shots_wanted'] (tempo cadence) → scene.extra['shots'].
+
+        A beat whose energy asks for N cuts needs N stills. The scene's
+        resolved still anchors the list (heaviest weight); the extras come
+        from stock search using the scene's broad→specific query variants —
+        no vision scoring (same-query images; the contact gate + review cover
+        quality). Scenes without a resolved still, or already carrying shots,
+        are skipped with a log line. Returns the count of scenes fulfilled.
+        """
+        targets = [s for s in scenes
+                   if int((s.extra or {}).get("shots_wanted") or 1) > 1
+                   and not (s.extra or {}).get("shots")
+                   and getattr(s, "matched_asset", None)]
+        if not targets:
+            return 0
+        if client is None:
+            try:
+                from nolan.image_search import ImageSearchClient
+                img = getattr(nolan_config, "image_sources", None)
+                client = ImageSearchClient(
+                    pexels_api_key=getattr(img, "pexels_api_key", None),
+                    pixabay_api_key=getattr(img, "pixabay_api_key", None),
+                    keys=img.provider_keys() if img and hasattr(img, "provider_keys") else None)
+            except Exception as exc:
+                logger.warning("shots_wanted unfulfilled — no search client: %s", exc)
+                return 0
+        import httpx
+        from nolan.external_assets import build_query_variants
+
+        if fetch is None:
+            def fetch(url, dest):
+                req = httpx.get(url, timeout=60, follow_redirects=True,
+                                headers={"User-Agent": "Mozilla/5.0"})
+                req.raise_for_status()
+                dest.write_bytes(req.content)
+
+        out_dir = Path(project_path) / "assets" / "broll"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        used_urls: set = set()
+        done = 0
+        for s in targets:
+            want = min(4, int(s.extra["shots_wanted"]))
+            variants = build_query_variants(s) or [s.search_query or ""]
+            extras = []
+            for q in variants:
+                if len(extras) >= want - 1:
+                    break
+                try:
+                    for r in client.search(q, max_results=3):
+                        if len(extras) >= want - 1:
+                            break
+                        if not r.url or r.url in used_urls:
+                            continue
+                        used_urls.add(r.url)
+                        dest = out_dir / f"{s.id}_shot{len(extras) + 1}.jpg"
+                        fetch(r.url, dest)
+                        extras.append(dest)
+                except Exception as exc:
+                    logger.info("shot fetch failed for %s (%r): %s", s.id, q, exc)
+            if not extras:
+                if log:
+                    log(f"{s.id}: shots_wanted={want} unfulfilled (no extra stills found)")
+                continue
+            shots = [{"src": str(s.matched_asset), "weight": 1.5}]
+            shots += [{"src": str(p)} for p in extras]
+            s.extra["shots"] = shots
+            done += 1
+            if log:
+                log(f"{s.id}: shot list authored ({len(shots)} stills)")
+        return done
 
     @staticmethod
     def _default_motion_fn(llm_client) -> Optional[Callable]:

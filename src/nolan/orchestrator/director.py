@@ -2083,12 +2083,16 @@ class Director:
             from nolan.config import load_config
             from nolan.scenes import ScenePlan as _ScenePlan
 
+            _nolan_cfg = load_config()
             engine = AssetEngine.from_config(
-                load_config(),
+                _nolan_cfg,
                 # Selection only: no generation tags, no motion authoring —
                 # slide_designer and generate_assets own those stages.
+                # External stock (vision-gated images + materialized video) is
+                # a full pipeline tier since the asset-ladder completion.
                 config=EngineConfig(enable_generation=False,
-                                    enable_motion=False),
+                                    enable_motion=False,
+                                    enable_external=True),
                 project_path=self.project_path,
             )
             _plan = _ScenePlan.load(str(scene_plan_path))
@@ -2099,6 +2103,11 @@ class Director:
                 in (FOOTAGE_TYPES | ART_TYPES)
             ]
             counts = engine.resolve_all(_targets)
+            # tempo's shot cadence: fetch the extra stills shot-listed scenes need
+            _shot_lines: list[str] = []
+            _shots_done = AssetEngine.fulfill_shots_wanted(
+                _targets, nolan_config=_nolan_cfg, project_path=self.project_path,
+                log=_shot_lines.append)
             _plan.save(str(scene_plan_path))
             _matched = sum(1 for s in _scenes if getattr(s, "matched_clip", None))
             _art_hits = sum(
@@ -2107,17 +2116,27 @@ class Director:
             _stills = sum(
                 1 for s in _targets
                 if str(getattr(s, "resolved_source", "")).startswith("library"))
+            _external = sum(
+                1 for s in _targets
+                if str(getattr(s, "resolved_source", "")).startswith("external"))
 
             report_path.write_text(
                 "# Clip Selection Report (asset engine)\n\n"
                 f"Resolved **{len(_targets)}** footage/art scenes via the unified "
-                f"asset engine: {_matched} library video matches, {_art_hits} "
-                f"archival artworks, {_stills} picture-library stills.\n\n"
+                f"asset engine: {_matched} video matches, {_art_hits} "
+                f"archival artworks, {_stills} picture-library stills, "
+                f"{_external} external stock hits; shot lists authored for "
+                f"{_shots_done} scene(s).\n\n"
                 f"By source: "
                 f"{', '.join(f'{k}: {v}' for k, v in sorted(counts.items()))}\n\n"
-                "Ladder: footage → vector clip search (gate 0.5) → picture-library "
-                "stills; archival-art → exact-title museum pass → semantic fallback. "
-                "Unresolved scenes report `none(<reason>)` — no silent gaps.\n",
+                "Ladder: footage → vector clip search (gate 0.5, no-reuse) → "
+                "picture-library stills → external stock (vision gate 4; video "
+                "materialized locally); archival-art → exact-title museum pass → "
+                "semantic fallback. Operator bridge (tonal/conceptual) re-probes "
+                "on literal misses. Unresolved scenes report `none(<reason>)` — "
+                "no silent gaps.\n"
+                + ("\n## Shot lists\n" + "\n".join(f"- {ln}" for ln in _shot_lines) + "\n"
+                   if _shot_lines else ""),
                 encoding="utf-8",
             )
         except Exception as exc:
