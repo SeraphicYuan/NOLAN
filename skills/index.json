@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 22,
+  "count": 23,
   "skills": [
     {
       "id": "art.flow",
@@ -27,7 +27,7 @@
       "id": "common.chapter-craft",
       "name": "Visual craft (chapter craft)",
       "kind": "craft",
-      "purpose": "Per-beat visual craft \u2014 the 10 principles, the content\u2192motion decision tree, the anti-AI-look list, completion checklist.",
+      "purpose": "Per-beat visual craft — the 10 principles, the content→motion decision tree, the anti-AI-look list, completion checklist.",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -48,7 +48,7 @@
       "id": "common.outline-format",
       "name": "Outline / plan format",
       "kind": "craft",
-      "purpose": "Outline format \u2014 rhythm, step counts, info-pool extraction, the dual-source principle.",
+      "purpose": "Outline format — rhythm, step counts, info-pool extraction, the dual-source principle.",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -71,7 +71,7 @@
       "id": "common.script-style",
       "name": "Script style",
       "kind": "craft",
-      "purpose": "Article-to-narration craft \u2014 >=60% info retention, de-AI voice, keep the source language.",
+      "purpose": "Article-to-narration craft — >=60% info retention, de-AI voice, keep the source language.",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -92,7 +92,7 @@
       "id": "common.theme-craft",
       "name": "Theme craft",
       "kind": "craft",
-      "purpose": "Create/enrich themes \u2014 token philosophy, banding, font-loader constraints, the enrich/validate workflow.",
+      "purpose": "Create/enrich themes — token philosophy, banding, font-loader constraints, the enrich/validate workflow.",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -110,10 +110,25 @@
       "path": "skills/common/theme-craft.md"
     },
     {
+      "id": "common.editing-craft",
+      "name": "Editing craft",
+      "kind": "craft",
+      "purpose": "The editing umbrella — cutting-rhythm techniques (j-cut, shot-list, transition-in), when to use each, how to author them on the plan.",
+      "status": "active",
+      "version": 1,
+      "path": "skills/common/editing-craft.md",
+      "handoffs": [],
+      "uses": [],
+      "evals": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null
+    },
+    {
       "id": "explainer.block-catalog",
       "name": "Explainer block catalog",
       "kind": "grammar",
-      "purpose": "The authoring contract for explainer blocks \u2014 every block, its props, and anchor spec.",
+      "purpose": "The authoring contract for explainer blocks — every block, its props, and anchor spec.",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -161,7 +176,7 @@
       "id": "explainer.scene-grammar",
       "name": "Explainer scene grammar",
       "kind": "grammar",
-      "purpose": "Section scene taxonomy (Hook\u2192Problem\u2192Method\u2192Results\u2192Takeaway) + the comprehension eval.",
+      "purpose": "Section scene taxonomy (Hook→Problem→Method→Results→Takeaway) + the comprehension eval.",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -186,7 +201,7 @@
       "id": "explainer.script",
       "name": "Explainer script authoring",
       "kind": "craft",
-      "purpose": "Author the narration from a source paper \u2014 7 stages (extract \u2192 arc \u2192 draft \u2192 tighten \u2192 verify \u2192 gate \u2192 score).",
+      "purpose": "Author the narration from a source paper — 7 stages (extract → arc → draft → tighten → verify → gate → score).",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -212,7 +227,7 @@
       "id": "explainer.spec-authoring",
       "name": "Explainer spec authoring",
       "kind": "craft",
-      "purpose": "The per-beat agent contract \u2014 choose a library block or author a bespoke one, and write the spec.json.",
+      "purpose": "The per-beat agent contract — choose a library block or author a bespoke one, and write the spec.json.",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -235,7 +250,7 @@
       "id": "flow.authoring",
       "name": "Flow authoring & craft",
       "kind": "craft",
-      "purpose": "The plan-checkpoint craft layer \u2014 outline rhythm, dual-source, motion selection/invention \u2014 before planning or editing a flow video.",
+      "purpose": "The plan-checkpoint craft layer — outline rhythm, dual-source, motion selection/invention — before planning or editing a flow video.",
       "status": "active",
       "version": 1,
       "handoffs": [
@@ -418,7 +433,7 @@
       "id": "orchestrator.select-clips",
       "name": "Select clips",
       "kind": "prompt",
-      "purpose": "(deprecated) LLM clip-selection pass \u2014 superseded by the in-code semantic vector matcher.",
+      "purpose": "(deprecated) LLM clip-selection pass — superseded by the in-code semantic vector matcher.",
       "status": "deprecated",
       "version": 1,
       "handoffs": [

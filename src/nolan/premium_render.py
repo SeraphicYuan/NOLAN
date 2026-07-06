@@ -369,12 +369,20 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                 work_dir / f"{scene.get('id', 'scene')}_{shot_idx}.wav")
             words, reveals = _step_words(section_words or [], f_prev / fps,
                                          f_prev / fps + dur, fps, sub_frames)
-            steps.append({
+            step = {
                 "block": block, "props": props,
                 "revealFrames": reveals, "words": words,
                 "audioSrc": str(clip_wav),
                 "durationInFrames": sub_frames,
-            })
+            }
+            # transition-in (editing registry): tempo_plan's authored per-scene
+            # entrance, executed as a short opacity ramp in Chapter. Only the
+            # scene's FIRST sub-step; a section's first scene stays a hard cut
+            # (it lands on the beat anchor).
+            if (shot_idx == 0 and steps
+                    and scene.get("transition") in ("dissolve", "fade")):
+                step["transitionIn"] = scene["transition"]
+            steps.append(step)
             f_prev = f_prev + sub_frames
     return {"out": out_name, "theme": theme, "fps": fps,
             "captions": False, "props": {"steps": steps}}
@@ -424,8 +432,11 @@ def render_premium(project_path: Path, *, theme: str = None,
     jobs_dir.mkdir(parents=True, exist_ok=True)
 
     # Eligibility check FIRST — fail before rendering anything, listing every
-    # blocker (no silent partial output).
-    blockers = []
+    # blocker (no silent partial output). Authored editing decisions go
+    # through their registry gate here too (the executors are lenient by
+    # design; this is where malformed authoring gets NAMED).
+    from nolan.editing import validate_plan_editing
+    blockers = list(validate_plan_editing(plan))
     t = 0.0
     spans = []
     for (name, scenes), wav in zip(sections, wavs):
@@ -441,8 +452,7 @@ def render_premium(project_path: Path, *, theme: str = None,
         t += d
     if blockers:
         raise PremiumIneligible(
-            f"{len(blockers)} scenes are not premium-renderable: "
-            + "; ".join(blockers[:6]))
+            f"{len(blockers)} premium blocker(s): " + "; ".join(blockers[:6]))
 
     clips = []
     job_paths = []

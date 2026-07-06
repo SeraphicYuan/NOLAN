@@ -1,5 +1,5 @@
 import React from "react";
-import { Series, Audio, staticFile, useVideoConfig } from "remotion";
+import { Series, Audio, staticFile, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
 import { BLOCKS } from "./blocks";
 import { Captions } from "./Captions";
 import { PostFX, type PostFXProps } from "./Effects";
@@ -20,6 +20,23 @@ export type ChapterStep = {
   captionWords?: WordFrame[];
   audioSrc?: string;
   durationInFrames: number;
+  transitionIn?: "dissolve" | "fade";
+};
+
+// How a step ENTERS: a short opacity ramp from the theme background.
+// Duration-preserving by design — narration owns duration, so a true overlap
+// dissolve (which shortens the cut) is not offered. Frame counts assume 30fps
+// (dissolve ≈ 0.27s, fade ≈ 0.47s); audio is NOT wrapped — it starts on the cut.
+const RAMP_FRAMES = { dissolve: 8, fade: 14 } as const;
+
+const TransitionIn: React.FC<{ kind?: "dissolve" | "fade"; children: React.ReactNode }> = ({ kind, children }) => {
+  const frame = useCurrentFrame();
+  if (!kind || !RAMP_FRAMES[kind]) return <>{children}</>;
+  const opacity = interpolate(frame, [0, RAMP_FRAMES[kind]], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  return <div style={{ opacity, width: "100%", height: "100%" }}>{children}</div>;
 };
 
 export const Chapter: React.FC<{ steps: ChapterStep[]; captions?: boolean; fx?: ChapterFX }> = ({ steps, captions, fx }) => {
@@ -37,12 +54,14 @@ export const Chapter: React.FC<{ steps: ChapterStep[]; captions?: boolean; fx?: 
           <Series.Sequence key={i} premountFor={premountFor} durationInFrames={Math.max(1, s.durationInFrames)}>
             {s.audioSrc ? <Audio src={staticFile(s.audioSrc)} /> : null}
             {Block ? (
-              <Block
-                {...s.props}
-                revealFrames={s.revealFrames}
-                words={s.words ?? []}
-                durationInFrames={s.durationInFrames}
-              />
+              <TransitionIn kind={s.transitionIn}>
+                <Block
+                  {...s.props}
+                  revealFrames={s.revealFrames}
+                  words={s.words ?? []}
+                  durationInFrames={s.durationInFrames}
+                />
+              </TransitionIn>
             ) : null}
             {captions ? <Captions words={s.captionWords ?? s.words ?? []} /> : null}
           </Series.Sequence>

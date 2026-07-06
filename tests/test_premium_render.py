@@ -316,3 +316,16 @@ def test_shot_scene_slices_audio_per_shot(tmp_path):
     for s, expected in zip(steps, (4.0, 4.0)):
         with wave.open(s["audioSrc"], "rb") as w:
             assert abs(w.getnframes() / w.getframerate() - expected) < 0.06
+
+
+def test_transition_in_lands_on_incoming_step(tmp_path):
+    wav = _sine_wav(tmp_path / "sec.wav", 8.0)
+    scenes = _still_scenes(tmp_path, 2, 4.0)
+    scenes[0]["transition"] = "dissolve"    # section-first: must stay hard cut
+    scenes[1]["transition"] = "fade"
+    job = build_section_job("t", scenes, project_path=tmp_path, section_wav=wav,
+                            section_start=0.0, out_name="x.mp4",
+                            work_dir=tmp_path / "w", fps=30, j_cut_frames=0)
+    steps = job["props"]["steps"]
+    assert "transitionIn" not in steps[0]   # beat anchor lands on a cut
+    assert steps[1]["transitionIn"] == "fade"
