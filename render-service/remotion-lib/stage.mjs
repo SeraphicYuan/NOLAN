@@ -43,10 +43,28 @@ export function stageJob(cfg, here, { stageAudio = true } = {}) {
   let tokens = fs.readFileSync(path.resolve(here, "../../themes", theme, "tokens.css"), "utf8");
   // brief.json accent override (compiled from the style guide) — appended so it
   // wins the cascade; contact sheets share this path so they can't diverge.
-  if (typeof cfg.accent === "string" && /^#[0-9a-fA-F]{6}$/.test(cfg.accent)) {
-    tokens += `\n:root { --accent: ${cfg.accent}; }\n`;
+  const accentOverride =
+    typeof cfg.accent === "string" && /^#[0-9a-fA-F]{6}$/.test(cfg.accent) ? cfg.accent : null;
+  if (accentOverride) {
+    tokens += `\n:root { --accent: ${accentOverride}; }\n`;
   }
   fs.writeFileSync(path.join(here, "src", "styles", "_active-theme.css"), tokens);
+
+  // One theme system (SOTA #3): the hosted motion comps style via theme.ts
+  // (inline hex — they concat alpha suffixes, so CSS vars won't do). Resolve
+  // the ACTIVE theme's token values into a JSON theme.ts imports; without
+  // this the comps rendered dark-editorial no matter what the brief picked.
+  const tok = {};
+  for (const m of tokens.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+);/g)) tok[m[1]] = m[2].trim();
+  fs.writeFileSync(
+    path.join(here, "src", "styles", "_active-theme.json"),
+    JSON.stringify({
+      theme,
+      bg: tok["surface"], fg: tok["text"], muted: tok["text-2"],
+      accent: accentOverride || tok["accent"],
+      fontFamily: tok["font-display-en"] || tok["font-body"] || "",
+    }, null, 1),
+  );
 
   const steps = (cfg.props && cfg.props.steps) || [];
   const missing = [];

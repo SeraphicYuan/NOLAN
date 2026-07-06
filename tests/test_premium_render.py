@@ -329,3 +329,42 @@ def test_transition_in_lands_on_incoming_step(tmp_path):
     steps = job["props"]["steps"]
     assert "transitionIn" not in steps[0]   # beat anchor lands on a cut
     assert steps[1]["transitionIn"] == "fade"
+
+
+# --- SOTA #7: beat cache stamp ------------------------------------------------------
+
+def test_job_stamp_tracks_content_and_files(tmp_path):
+    from nolan.premium_render import _job_stamp
+    media = tmp_path / "a.jpg"
+    media.write_bytes(b"one")
+    job = {"theme": "x", "props": {"steps": [
+        {"block": "ArtworkStage", "props": {"src": str(media)},
+         "durationInFrames": 100}]}}
+    s1 = _job_stamp(job)
+    assert _job_stamp(job) == s1                      # deterministic
+    job2 = json.loads(json.dumps(job))
+    job2["props"]["steps"][0]["durationInFrames"] = 101
+    assert _job_stamp(job2) != s1                     # content change
+    import os, time
+    media.write_bytes(b"two-")                        # size change
+    assert _job_stamp(job) != s1                      # referenced file change
+
+
+def test_job_stamp_ignores_work_slices_uses_wav(tmp_path):
+    from nolan.premium_render import _job_stamp
+    work = tmp_path / "_work"
+    work.mkdir()
+    sl = work / "s1.wav"
+    sl.write_bytes(b"slice-v1")
+    wav = tmp_path / "sec_0000.wav"
+    wav.write_bytes(b"narration")
+    job = {"props": {"steps": [{"block": "PullQuote", "props": {},
+                                "audioSrc": str(sl), "durationInFrames": 60}]}}
+    s1 = _job_stamp(job, extra_files=[wav])
+    sl.write_bytes(b"slice-v2-different")             # regenerated slice
+    assert _job_stamp(job, extra_files=[wav]) == s1   # cache still hits
+    wav.write_bytes(b"narration CHANGED")             # re-recorded VO
+    assert _job_stamp(job, extra_files=[wav]) != s1   # cache invalidates
+
+
+import json  # noqa: E402  (used by the stamp test)

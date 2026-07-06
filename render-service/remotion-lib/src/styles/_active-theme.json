@@ -1,0 +1,8 @@
+{
+ "theme": "creative-voltage",
+ "bg": "#0033b8",
+ "fg": "#ffffff",
+ "muted": "#e8eaff",
+ "accent": "#00FFFF",
+ "fontFamily": "\"Syne\", \"Archivo Black\", \"Inter\", sans-serif"
+}

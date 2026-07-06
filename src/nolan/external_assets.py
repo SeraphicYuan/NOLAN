@@ -247,6 +247,18 @@ def external_match_for_scene(scene, *, client, scorer, vid_sources, out_dir: Pat
     except Exception:
         return None
     scene.matched_asset = str(dest.relative_to(project_root)).replace("\\", "/")
+    # license sidecar (SOTA #5): downloaded stills used to shed their license
+    # metadata at this exact line — the attribution manifest reads this field
+    # (it survives via the lossless Scene.extra contract).
+    try:
+        scene.extra["asset_license"] = {
+            "source": getattr(best, "source", None),
+            "license": getattr(best, "license", None),
+            "source_url": getattr(best, "source_url", None) or getattr(best, "url", None),
+            "title": getattr(best, "title", None),
+        }
+    except Exception:
+        pass
     if log:
         log(f"{sid}: image from {best.source} (score {best.score})")
     return f"image:{best.source}"

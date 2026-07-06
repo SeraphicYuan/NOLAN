@@ -63,6 +63,10 @@ def render(
     """
     job: Dict[str, Any] = {"comp": comp, "out": out_name, "durationInFrames": duration_frames,
                            "codec": codec, "props": props}
+    # a flow-shaped call (props.steps) may carry the NOLAN theme inside props;
+    # stage.mjs reads it from the job top level, so lift it there.
+    if isinstance(props, dict) and props.get("steps") and props.get("theme"):
+        job["theme"] = props.pop("theme")
     if video:
         job["video"] = video
     if image:

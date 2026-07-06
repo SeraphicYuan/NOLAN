@@ -133,6 +133,38 @@ kills full-suite pytest runs at ~38% — run suites in groups or fix in Phase 6.
   (24 total in test_premium_render.py); live probe: section 0 + injected
   3-shot list rendered 1654/1654 frames, three shots verified frame-by-frame.
 
+## SOTA #3–#7 (2026-07-06) — grade, linter, attribution, packaging, draft+cache
+
+- **#3 grade + one theme system**: brief.json gains a gated `grade` block
+  (grade/bloom/grain/vignette, LLM-proposed from the Look, clamped) executed
+  as Chapter PostFX per beat (`job.fx`); stage.mjs resolves the active
+  theme's tokens into `_active-theme.json` so the hosted motion comps
+  finally match the blocks (verified: the kinetic punch went from
+  yellow-on-black dark-editorial to creative-voltage blue + cyan accent).
+  `render_layout_block` accepts a theme; remotion_source lifts props.theme
+  to the job for flow-shaped calls.
+- **#4 retention linter** (`nolan/retention.py`, `nolan lint`, render-step
+  report + checkpoint counts): treatment-monotony (run 1's 7×statistic),
+  visual-mode runs, energy plateaus (caught both flat beats live),
+  pacing-vs-brief (brief.pacing's first consumer), slow-hook, static-hold.
+  Reports, never blocks.
+- **#5 attribution** (`nolan/attribution.py`, `nolan credits`): walks the
+  plan → attribution.json + CREDITS.md with a loud "VERIFY BEFORE PUBLISH"
+  section for unknown-license assets; the image tier now writes an
+  `asset_license` sidecar (it used to shed license metadata on download);
+  `--verify-identity` vision-checks named artworks (Nydia≠Bernini class).
+- **#6 packaging** (`nolan/packaging.py`, `nolan package`): chapters from
+  section anchors, subtitles shipped from the captions pass (honest null
+  when absent), LLM title options/description with deterministic fallback,
+  best-frame + brief-themed kinetic-headline thumbnails, credits bundled.
+  Live on aidc-2beat-test: 3 titles, chapters, 0 unverified assets.
+- **#7 draft + beat cache**: `draft: true` → half-res (render.mjs scale),
+  no whisper, no gate, marked in every checkpoint; beat cache stamps each
+  section job + referenced media + the section wav (regenerated _work
+  slices excluded — the first stamp version cached nothing and the test
+  caught it) and reuses unchanged beats; reuse reported, `beat_cache:
+  false` opts out.
+
 ## Inventory↔spine program (2026-07-06) — six moves, all landed
 
 The gap map ("craft inventory and spine barely talk") closed in order:

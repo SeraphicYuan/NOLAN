@@ -31,30 +31,44 @@ one, in this order.
    0 disables) — image arrives while the last sentence finishes; text cards
    keep straight cuts (their reveal waits for the word cue); section edges
    stay anchored, so |video − narration| is untouched by construction.
-3. **Unified color grade** — museum/stock/ComfyUI/screenshot assets are four
+3. **Unified color grade** *(DONE 2026-07-06 — brief.json `grade` block
+   (gated) -> Chapter PostFX per beat; ONE theme system: stage.mjs resolves
+   active tokens into _active-theme.json so hosted comps match the blocks;
+   accent override reaches everything)* — museum/stock/ComfyUI/screenshot assets are four
    color universes; one grade makes it *directed* instead of *assembled*.
    Premium: the Chapter composition's existing PostFX (grade/bloom/grain/
    vignette) wired from the theme (FLOW already uses it). Standard: an ffmpeg
    LUT/normalization pass over matched footage.
-4. **Retention linter** — a static analyzer over the plan+render: hook length,
+4. **Retention linter** *(DONE 2026-07-06 — nolan/retention.py: treatment
+   monotony, visual-mode runs, energy plateaus, pacing-vs-brief (its first
+   consumer), slow-hook, static-hold; report at render + `nolan lint`;
+   never blocks)* — a static analyzer over the plan+render: hook length,
    visual-mode runs ("6 consecutive art stills at 2:35–3:10"), pattern-
    interrupt cadence (20–40s), energy plateaus. Rules seeded/learned from the
    deconstruction corpus, reported like the render report (no silent judging).
 
 ## Tier 2 — trust & packaging
 
-5. **Asset identity verification + attribution manifest** — vision cross-check
+5. **Asset identity verification + attribution manifest** *(DONE 2026-07-06 —
+   nolan/attribution.py: attribution.json + CREDITS.md with a loud VERIFY
+   BEFORE PUBLISH section; image-tier license sidecar fixed;
+   `nolan credits --verify-identity` vision-checks named artworks)* — vision cross-check
    that a downloaded artwork IS its claimed work (the Nydia≠Bernini class);
    end-to-end per-video credits + license report from every matched asset
    (copyright strikes are the new-creator unknown-unknown).
-6. **YouTube packaging** — 3–5 thumbnail candidates (best frames + ComfyUI +
+6. **YouTube packaging** *(DONE 2026-07-06 — nolan/packaging.py + `nolan
+   package`: chapters from section anchors, subtitles shipped from the
+   captions pass, LLM titles/description with deterministic fallback,
+   best-frame + brief-themed typographic thumbnails, credits)* — 3–5 thumbnail candidates (best frames + ComfyUI +
    block typography), title variants from the hook, chapter markers from
    beats, description with credits. CTR decides more than anything inside
    the video.
-7. **Draft mode + beat render caching** — `--draft` (quarter-res, low fps, no
-   grade) and content-hash caching per section job so only changed beats
-   re-render. Cuts the judge-a-cut loop from ~20 min to ~2; iteration speed
-   IS craft.
+7. **Draft mode + beat render caching** *(DONE 2026-07-06)* — `draft: true`
+   renders half-res / no whisper / no gate, loudly marked everywhere; the
+   beat cache stamps each section job (content + referenced media + the
+   section wav; regenerated _work slices excluded) and reuses unchanged
+   beats — reuse REPORTED in the checkpoint, `beat_cache: false` opts out.
+   Iteration speed IS craft.
 
 ## Tier 3 — compounding bets
 

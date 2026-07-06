@@ -78,11 +78,17 @@ Reply STRICT JSON only:
   "tone": "the VISUAL tone of the Look section: dark|light|warm|playful|formal|neutral",
   "music_mood": "2-4 words for music selection, e.g. 'tense pulsing electronic'",
   "accent_hex": "#rrggbb if the guide names ONE dominant accent color, else null",
+  "grade": {{"grade": "none|warm|cool|noir|vivid — the Look's color cast",
+             "bloom": <0..1 highlight bleed; industrial glow ~0.3, clean 0>,
+             "grain": <0..1 film grain; documentary texture ~0.15, digital 0>,
+             "vignette": <0..1 edge darkening; moody ~0.35, flat 0>}},
   "pacing": {{"avg_scene_s_min": <number>, "avg_scene_s_max": <number>}}}}
 
 STYLE GUIDE:
 {guide}
 """
+
+GRADES = ("none", "warm", "cool", "noir", "vivid")   # mirrors Effects.tsx GRADE
 
 
 def _look_section(guide: str) -> str:
@@ -129,6 +135,14 @@ async def _extract_descriptors(guide: str, llm) -> Dict[str, Any]:
     if not (0.5 <= lo <= hi <= 60):
         lo, hi = 4.0, 8.0
     out["pacing"] = {"avg_scene_s_min": lo, "avg_scene_s_max": hi}
+    g = out.get("grade") if isinstance(out.get("grade"), dict) else {}
+    grade = {"grade": g.get("grade") if g.get("grade") in GRADES else "none"}
+    for k in ("bloom", "grain", "vignette"):
+        try:
+            grade[k] = round(min(1.0, max(0.0, float(g.get(k, 0.0)))), 2)
+        except (TypeError, ValueError):
+            grade[k] = 0.0
+    out["grade"] = grade
     return out
 
 
@@ -164,6 +178,7 @@ async def compile_brief(project_path: Path, *, llm=None,
         "music_mood": desc["music_mood"],
         "voice_id": voice_id,
         "pacing": desc["pacing"],
+        "grade": desc["grade"],
         "provenance": {"compiled_from": "style_guide.md",
                        "selector": "themes/selector.json",
                        "descriptors_via": "llm" if llm is not None else "deterministic"},
@@ -212,6 +227,15 @@ def validate_brief(brief: Dict[str, Any]) -> List[str]:
     accent = brief.get("accent")
     if accent is not None and not re.fullmatch(r"#[0-9a-fA-F]{6}", str(accent)):
         problems.append(f"accent {accent!r} is not #rrggbb")
+    g = brief.get("grade")
+    if g is not None:
+        if not isinstance(g, dict) or g.get("grade") not in GRADES:
+            problems.append(f"grade.grade must be one of {GRADES}")
+        else:
+            for k in ("bloom", "grain", "vignette"):
+                v = g.get(k, 0.0)
+                if not isinstance(v, (int, float)) or not 0.0 <= float(v) <= 1.0:
+                    problems.append(f"grade.{k} must be 0..1")
     if brief.get("tone") not in ("",) + TONES:
         problems.append(f"tone {brief.get('tone')!r} not in {TONES}")
     vid = brief.get("voice_id")

@@ -133,3 +133,25 @@ def test_voice_ladder_brief_between_yaml_and_default(tmp_path, monkeypatch):
     (tmp_path / "project.yaml").write_text("voice_id: yaml-v\n", encoding="utf-8")
     _, _, vid = voiceover.resolve_voice_ref(tmp_path, _Cfg)
     assert vid == "yaml-v"                     # human's yaml beats the brief
+
+
+# --- SOTA #3: the grade block ------------------------------------------------------
+
+def test_compile_brief_includes_gated_grade(tmp_path):
+    (tmp_path / "style_guide.md").write_text(GUIDE, encoding="utf-8")
+    brief = asyncio.run(compile_brief(tmp_path, llm=None))
+    g = brief["grade"]
+    assert g["grade"] in ("none", "warm", "cool", "noir", "vivid")
+    for k in ("bloom", "grain", "vignette"):
+        assert 0.0 <= g[k] <= 1.0
+
+
+def test_validate_catches_bad_grade():
+    base = {"theme": "bold-signal", "tone": "",
+            "pacing": {"avg_scene_s_min": 4, "avg_scene_s_max": 8}}
+    assert any("grade.grade" in p for p in validate_brief(
+        {**base, "grade": {"grade": "teal-orange", "bloom": 0}}))
+    assert any("grade.bloom" in p for p in validate_brief(
+        {**base, "grade": {"grade": "cool", "bloom": 3.0}}))
+    assert validate_brief({**base, "grade": {"grade": "cool", "bloom": 0.3,
+                                             "grain": 0.1, "vignette": 0.35}}) == []

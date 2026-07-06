@@ -1394,6 +1394,25 @@ class Director:
         state.status = "running"
         state_mod.save_state(self.project_path, state)
 
+        # Retention lint (SOTA #4): the plan is final here — measure it for
+        # attention rot (treatment monotony, energy plateaus, pacing vs the
+        # brief) and REPORT. Findings never block the render.
+        lint_note = ""
+        try:
+            from nolan.retention import lint_project, render_report
+            lint = lint_project(self.project_path)
+            rp = (_orchestrator_dir(self.project_path)
+                  / "modules" / "retention" / "last_report.md")
+            rp.parent.mkdir(parents=True, exist_ok=True)
+            rp.write_text(render_report(lint, title=f"Retention lint — {ctx.slug}"),
+                          encoding="utf-8")
+            st = lint["stats"]
+            lint_note = (f" · retention lint: {st.get('warn', 0)} warn / "
+                         f"{st.get('info', 0)} info "
+                         f"(`.orchestrator/modules/retention/last_report.md`)")
+        except Exception as exc:
+            lint_note = f" · retention lint FAILED: {exc}"
+
         scene_plan_path = self.project_path / "scene_plan.json"
         if not scene_plan_path.exists():
             err = "scene_plan.json missing — render needs scenes."
@@ -1448,7 +1467,19 @@ class Director:
             size_mb = final.stat().st_size / (1024 * 1024)
             note = (f"premium render: {len(scene_plan.get('sections') or {})} "
                     f"beat Chapters -> {final.name} ({size_mb:.1f} MB)")
+            try:                       # beat-cache honesty: reuse is REPORTED
+                stats = json.loads((self.project_path / "assets" / "premium"
+                                    / "beats" / "last_run.json")
+                                   .read_text(encoding="utf-8"))
+                if stats.get("draft"):
+                    note += " [DRAFT — half-res, no word-sync, no gate]"
+                elif stats.get("reused"):
+                    note += (f" [beats: {stats['rendered']} rendered, "
+                             f"{stats['reused']} reused from cache]")
+            except Exception:
+                pass
             note += self._mix_soundtrack_if_configured(final, scene_plan)
+            note += lint_note
             state_mod.finish_step(record, status="completed", notes=note)
             state.status = "awaiting_review"
             state_mod.save_state(self.project_path, state)

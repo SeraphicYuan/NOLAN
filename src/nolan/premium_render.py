@@ -233,6 +233,41 @@ from nolan.still_motion import camera_tour_props as _still_motion_props  # noqa:
 MIN_STEP_FRAMES = 24        # no visual unit shorter than ~0.8s
 
 
+def _job_stamp(job: Dict[str, Any], extra_files=()) -> str:
+    """Content stamp for the beat cache: the job JSON + (size, mtime) of every
+    file it references — EXCEPT the _work audio slices, which are rewritten at
+    the same paths on every run (their content derives from the section wav,
+    so the caller passes the wav via `extra_files` instead; without this the
+    cache could never hit)."""
+    import hashlib
+    h = hashlib.sha256(json.dumps(job, sort_keys=True).encode("utf-8"))
+
+    def stat_in(path_str: str):
+        p = Path(path_str)
+        try:
+            if p.is_file():
+                st = p.stat()
+                h.update(f"{path_str}:{st.st_size}:{st.st_mtime_ns}".encode("utf-8"))
+        except OSError:
+            pass
+
+    def walk(o):
+        if isinstance(o, dict):
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+        elif isinstance(o, str) and ("/" in o or "\\" in o):
+            if "_work" in o.replace("\\", "/").split("/"):
+                return                       # regenerated every run — excluded
+            stat_in(o)
+    walk(job.get("props", {}).get("steps", []))
+    for f in extra_files:
+        stat_in(str(f))
+    return h.hexdigest()
+
+
 def _resolve_shots(scene: Dict[str, Any], project_path: Path):
     """A scene's explicit shot list: [(abs_path, shot_dict)], or None.
 
@@ -441,10 +476,19 @@ def render_premium(project_path: Path, *, theme: str = None,
     except (TypeError, ValueError):
         j_cut = 12
     captions = meta.get("captions", False) is True   # project.yaml `captions: true`
+    # Draft mode (SOTA #7): half-res proof render — no whisper, no gate, no
+    # cache writes. Loud everywhere: the checkpoint and logs say DRAFT.
+    draft = meta.get("draft", False) is True
+    use_cache = (meta.get("beat_cache", True) is not False) and not draft
 
     work = project_path / "assets" / "premium" / "_work"
     jobs_dir = project_path / "assets" / "premium" / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)
+    beats_dir = project_path / "assets" / "premium" / "beats"
+    beats_dir.mkdir(parents=True, exist_ok=True)
+    if draft:
+        gate = False
+        logger.warning("premium: DRAFT mode — half-res, no word-sync, no gate")
 
     # Eligibility check FIRST — fail before rendering anything, listing every
     # blocker (no silent partial output). Authored editing decisions go
@@ -473,8 +517,10 @@ def render_premium(project_path: Path, *, theme: str = None,
     job_paths = []
     for i, ((name, scenes), wav, (sec_start, _d)) in enumerate(
             zip(sections, wavs, spans)):
-        logger.info("premium: word timings for section %d/%d", i + 1, len(sections))
-        section_words = _section_words(wav)
+        if not draft:
+            logger.info("premium: word timings for section %d/%d",
+                        i + 1, len(sections))
+        section_words = [] if draft else _section_words(wav)
         job = build_section_job(
             name, scenes, project_path=project_path, section_wav=wav,
             section_start=sec_start, out_name=f"premium_{i:04d}.mp4",
@@ -482,6 +528,10 @@ def render_premium(project_path: Path, *, theme: str = None,
             j_cut_frames=j_cut, captions=captions)
         if accent:                       # brief accent override (staged by stage.mjs)
             job["accent"] = accent
+        if draft:
+            job["scale"] = 0.5
+        if brief and isinstance(brief.get("grade"), dict):
+            job["fx"] = dict(brief["grade"])   # PostFX over the whole Chapter
         job_path = jobs_dir / f"premium_{i:04d}.json"
         job_path.write_text(json.dumps(job, indent=2), encoding="utf-8")
         job_paths.append((i, name, job_path))
@@ -507,10 +557,45 @@ def render_premium(project_path: Path, *, theme: str = None,
                 "the contact sheets under render-service/remotion-lib/output/: "
                 + "; ".join(problems[:8]))
 
+    # Beat cache (SOTA #7): a section whose job (content + every referenced
+    # media/audio file) is unchanged reuses its last render. Reuse is REPORTED
+    # (last_run.json + logs) — never silent. project.yaml `beat_cache: false`
+    # opts out; draft renders never populate the cache.
+    import shutil
+    manifest_path = beats_dir / "cache.json"
+    manifest: Dict[str, Any] = {}
+    if use_cache and manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception:
+            manifest = {}
+    reused = rendered = 0
     for i, name, job_path in job_paths:
-        logger.info("premium: rendering section %d/%d (%s)",
-                    i + 1, len(sections), name[:40])
-        clips.append(render_chapter(job_path))
+        job = json.loads(job_path.read_text(encoding="utf-8"))
+        stamp = _job_stamp(job, extra_files=[wavs[i]])
+        beat_file = beats_dir / f"premium_{i:04d}.mp4"
+        if (use_cache and manifest.get(beat_file.name) == stamp
+                and beat_file.exists()):
+            logger.info("premium: section %d/%d unchanged — reusing %s",
+                        i + 1, len(sections), beat_file.name)
+            clips.append(beat_file)
+            reused += 1
+            continue
+        logger.info("premium: rendering section %d/%d (%s)%s",
+                    i + 1, len(sections), name[:40], " [DRAFT]" if draft else "")
+        clip = render_chapter(job_path)
+        rendered += 1
+        if use_cache:
+            shutil.copy(str(clip), str(beat_file))
+            manifest[beat_file.name] = stamp
+            clips.append(beat_file)
+        else:
+            clips.append(clip)
+    if use_cache:
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (beats_dir / "last_run.json").write_text(
+        json.dumps({"reused": reused, "rendered": rendered,
+                    "draft": draft}), encoding="utf-8")
 
     final = Path(output) if output else project_path / "output" / "final.mp4"
     final.parent.mkdir(parents=True, exist_ok=True)

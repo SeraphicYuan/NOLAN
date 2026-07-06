@@ -72,6 +72,8 @@ await renderMedia({
   serveUrl,
   codec: cfg.codec || 'h264',
   ...(audioCodec ? {audioCodec} : {}),
+  // draft mode: half-res proof renders (cfg.scale from the job)
+  ...(cfg.scale && cfg.scale !== 1 ? {scale: cfg.scale} : {}),
   outputLocation: out,
   inputProps,
 });
