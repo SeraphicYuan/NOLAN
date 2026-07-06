@@ -186,6 +186,30 @@ async def apply_edit(plan_path, scene_id: str, *, patch: Optional[dict] = None,
         wl = editable_fields(pipeline)
         resolved = {k: v for k, v in (patch or {}).items() if k in wl}
 
+    # taste ledger (SOTA #9): a human override is preference data — record
+    # (what the pipeline had, what the human chose) per changed field. Test
+    # projects are excluded inside record_taste_event.
+    _STAGE_BY_FIELD = {"layout_spec": "slides", "motion_spec": "motion",
+                       "transition": "editing", "shots": "editing",
+                       "visual_type": "scenes", "search_query": "scenes",
+                       "comfyui_prompt": "scenes", "duration": "tempo"}
+    try:
+        from nolan.taste import record_taste_event
+        for k, v in resolved.items():
+            if k not in _STAGE_BY_FIELD:
+                continue
+            old_v = scene.get(k)
+            if old_v == v:
+                continue
+            record_taste_event(
+                project=plan_path.parent.name,
+                stage=_STAGE_BY_FIELD[k],
+                context=f"{scene_id}: {k} ({(scene.get('narration_excerpt') or '')[:80]})",
+                proposed=old_v, chose=v,
+                project_path=plan_path.parent)
+    except Exception:  # noqa: BLE001 — the ledger must never block an edit
+        pass
+
     apply_patch(scene, resolved)
     save_plan_raw(plan_path, data)
     return resolved

@@ -51,6 +51,7 @@ from nolan.cli import (  # noqa: E402,F401
     music,
     lint_cmd,
     package_cmd,
+    retro_cmd,
 )
 
 # The main group is the entry point

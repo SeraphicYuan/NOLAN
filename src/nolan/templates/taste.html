@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taste — NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    .wrap { max-width: 1000px; margin: 28px auto; padding: 0 20px; }
+    h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .sub { color: var(--text-secondary); margin-bottom: 18px; font-size: 14px; line-height: 1.55; }
+    .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 22px; flex-wrap: wrap; }
+    .pill { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 999px;
+            padding: 6px 14px; font-size: 13px; }
+    button { background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary);
+             border-radius: 8px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .section h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+                  color: var(--text-secondary); margin: 22px 0 10px; }
+    .rule { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+            padding: 12px 14px; margin-bottom: 10px; }
+    .rule.proposed { border-left: 3px solid var(--warning, #e5a50a); }
+    .rule.locked { border-left: 3px solid var(--accent); }
+    .rule.retired { opacity: 0.45; }
+    .rhead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+    .chip { font-family: ui-monospace, monospace; font-size: 11px; background: var(--bg-primary);
+            border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; color: var(--text-secondary); }
+    .rtext { font-size: 14px; line-height: 1.5; }
+    .rtext[contenteditable="true"] { outline: 1px dashed var(--accent); border-radius: 6px; padding: 2px 4px; }
+    .rwhy { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .actions button { font-size: 12px; padding: 4px 10px; }
+    details.ev { margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+    details.ev li { margin: 3px 0 3px 16px; }
+    .addform { display: grid; grid-template-columns: 130px 130px 1fr auto; gap: 8px; align-items: center;
+               background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .addform select, .addform input { background: var(--bg-primary); color: var(--text-primary);
+               border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-size: 13px; }
+    .empty { color: var(--text-secondary); font-size: 13px; padding: 8px 2px; }
+    .note { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="taste"></script>
+  <div class="wrap">
+    <h1>Taste</h1>
+    <div class="sub">Learned channel preferences — distilled from your own edits, applied as
+      <b>priors, not laws</b>: agents see PREFER rules with permission to deviate for a clearly
+      better treatment (plus one flagged experiment per project); only rules <b>you lock</b> become
+      constraints. Every rule shows its evidence and can be amended or retired —
+      the guard against hardening "merely OK" into doctrine.</div>
+
+    <div class="bar">
+      <span class="pill" id="ledgerStat">ledger: …</span>
+      <button class="primary" onclick="runRetro()">Distill ledger → proposals</button>
+      <span class="note" id="retroStatus"></span>
+    </div>
+
+    <div class="section"><h2>Proposals — awaiting your call</h2><div id="proposed"></div></div>
+    <div class="section"><h2>Active priors &amp; locked constraints</h2><div id="active"></div></div>
+
+    <div class="section"><h2>Add a rule yourself</h2>
+      <div class="addform">
+        <select id="addScope"><option value="channel">channel</option></select>
+        <select id="addStage"></select>
+        <input id="addText" placeholder="Imperative sentence an authoring agent can follow — writes profiles/taste.json, read by every authoring prompt">
+        <button class="primary" onclick="addRule()">Add (active)</button>
+      </div>
+    </div>
+
+    <div class="section"><h2>Retired</h2><div id="retired"></div></div>
+  </div>
+
+  <script>
+    const STAGES = ["style", "scenes", "slides", "motion", "tempo", "soundtrack", "editing", "packaging"];
+    document.getElementById('addStage').innerHTML =
+      STAGES.map(s => `<option>${s}</option>`).join('');
+
+    function esc(t) { const d = document.createElement('div'); d.textContent = t ?? ''; return d.innerHTML; }
+
+    function ruleCard(r) {
+      const ev = (r.evidence || []).map(e =>
+        `<li>${esc(e.project)}: ${esc(e.context)} — <i>${esc(e.proposed)}</i> → <b>${esc(e.chose)}</b></li>`).join('');
+      const acts = [];
+      if (r.status === 'proposed') acts.push(`<button class="primary" onclick="setStatus('${r.id}','active')">Accept as prior</button>`);
+      if (r.status === 'active') acts.push(`<button onclick="setStatus('${r.id}','locked')">Lock (ALWAYS/NEVER)</button>`);
+      if (r.status === 'locked') acts.push(`<button onclick="setStatus('${r.id}','active')">Unlock → prior</button>`);
+      if (r.status !== 'retired') acts.push(`<button onclick="setStatus('${r.id}','retired')">Retire</button>`);
+      else acts.push(`<button onclick="setStatus('${r.id}','active')">Revive</button>`);
+      acts.push(`<button onclick="editRule('${r.id}')">Amend text</button>`);
+      return `<div class="rule ${r.status}" id="rule-${r.id}">
+        <div class="rhead">
+          <span class="chip">${esc(r.scope)}</span><span class="chip">${esc(r.stage)}</span>
+          <span class="chip">${esc(r.status)}</span>
+          <span class="chip">conf ${(r.confidence ?? 0).toFixed(1)}</span>
+          <span class="chip">${esc(r.source)}</span>
+        </div>
+        <div class="rtext" id="rtext-${r.id}">${esc(r.rule)}</div>
+        ${r.why ? `<div class="rwhy">why: ${esc(r.why)}</div>` : ''}
+        ${ev ? `<details class="ev"><summary>evidence (${(r.evidence || []).length})</summary><ul>${ev}</ul></details>` : ''}
+        <div class="actions">${acts.join('')}</div>
+      </div>`;
+    }
+
+    let RULES = [];
+    async function refresh() {
+      const d = await (await fetch('/api/taste')).json();
+      RULES = d.rules || [];
+      document.getElementById('ledgerStat').textContent =
+        `ledger: ${d.ledger.events} override(s) across ${d.ledger.projects.length} project(s)`;
+      const by = s => RULES.filter(r => r.status === s).map(ruleCard).join('');
+      document.getElementById('proposed').innerHTML =
+        by('proposed') || '<div class="empty">No pending proposals — run the distiller after a project (`nolan retro &lt;project&gt;` or the button above).</div>';
+      document.getElementById('active').innerHTML =
+        (RULES.filter(r => r.status === 'active' || r.status === 'locked').map(ruleCard).join('')) ||
+        '<div class="empty">No rules yet. Ship videos, override freely — taste accrues from real edits, not test projects.</div>';
+      document.getElementById('retired').innerHTML =
+        by('retired') || '<div class="empty">Nothing retired.</div>';
+      // scope options include known type scopes
+      const scopes = new Set(['channel', ...RULES.map(r => r.scope)]);
+      document.getElementById('addScope').innerHTML =
+        [...scopes].map(s => `<option>${s}</option>`).join('');
+    }
+
+    async function setStatus(id, status) {
+      await fetch('/api/taste/rule/status', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }) });
+      refresh();
+    }
+
+    async function editRule(id) {
+      const el = document.getElementById(`rtext-${id}`);
+      if (el.contentEditable !== 'true') {
+        el.contentEditable = 'true'; el.focus(); return;
+      }
+      el.contentEditable = 'false';
+      const rule = RULES.find(r => r.id === id);
+      await fetch('/api/taste/rule', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...rule, rule: el.textContent.trim() }) });
+      refresh();
+    }
+
+    async function addRule() {
+      const text = document.getElementById('addText').value.trim();
+      if (!text) return;
+      await fetch('/api/taste/rule', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: document.getElementById('addScope').value,
+                               stage: document.getElementById('addStage').value,
+                               rule: text, why: 'added by owner on /taste',
+                               source: 'owner', evidence: [] }) });
+      document.getElementById('addText').value = '';
+      refresh();
+    }
+
+    async function runRetro() {
+      const st = document.getElementById('retroStatus');
+      st.textContent = 'distilling…';
+      try {
+        const r = await (await fetch('/api/taste/retro', { method: 'POST' })).json();
+        st.textContent = r.note || `${(r.proposed || []).length} proposal(s), ` +
+          `${(r.rejected || []).length} below the evidence gate`;
+      } catch (e) { st.textContent = 'failed: ' + e.message; }
+      refresh();
+    }
+
+    refresh();
+  </script>
+</body>
+</html>

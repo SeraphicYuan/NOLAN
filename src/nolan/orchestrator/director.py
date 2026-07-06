@@ -1702,6 +1702,7 @@ class Director:
             f"- description: {ctx.description}\n"
             f"- duration_seconds: {ctx.duration_seconds}\n"
             f"- genre_hint: {ctx.genre_hint}\n"
+            + self._taste_guidance("scenes", state)
         )
 
         try:
@@ -1858,6 +1859,7 @@ class Director:
             f"- duration_seconds: {ctx.duration_seconds}\n\n"
             f"# Pre-run summary\n"
             f"- info-scenes missing layout_spec: {before_missing}\n"
+            + self._taste_guidance("slides", state)
         )
 
         try:
@@ -1943,6 +1945,23 @@ class Director:
         ]
         return _write_checkpoint(self.project_path, record.step_num, summary_lines)
 
+    def _taste_guidance(self, stage: str, state=None) -> str:
+        """Prompt block of learned channel taste for one authoring stage.
+
+        video_type = the matched style template (the natural video-type key)
+        when one matched, else the genre hint. Empty string when no rules —
+        prompts stay clean until taste exists."""
+        try:
+            from nolan.taste import guidance_for
+            vtype = ""
+            if state is not None:
+                vtype = (getattr(state.template_provenance,
+                                 "style_template_id", None) or "")
+            g = guidance_for(stage, vtype)
+            return f"\n# Taste guidance\n{g}\n" if g else ""
+        except Exception:
+            return ""
+
     @staticmethod
     def _hostable_motion_catalog() -> str:
         """The motion umbrella as compact JSON — hostable effects only, with
@@ -2023,6 +2042,7 @@ class Director:
             f"# catalog_json (your whole legal vocabulary)\n"
             f"```json\n{self._hostable_motion_catalog()}\n```\n\n"
             f"# Project metadata\n- slug: {ctx.slug}\n- name: {ctx.name}\n"
+            + self._taste_guidance("motion", state)
         )
 
         try:

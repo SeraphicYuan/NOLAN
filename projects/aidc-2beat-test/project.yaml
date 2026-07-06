@@ -1,0 +1,7 @@
+name: AIDC 2-Beat Pipeline Test
+slug: aidc-2beat-test
+description: Vertical-slice rerun — 2 beats end to end after the inventory-spine program
+render_mode: premium
+output_dir: output/
+assets_dir: assets/
+test_project: true

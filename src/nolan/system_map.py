@@ -73,6 +73,9 @@ SURFACES = [
      "role": "voice library + TTS studio + project voiceover"},
     {"id": "map", "label": "NOLAN Map", "path": "/map",
      "role": "this page — the introspected system catalog"},
+    {"id": "taste", "label": "Taste", "path": "/taste",
+     "role": "learned channel preferences: review distiller proposals, "
+             "amend/lock/retire rules (priors, not laws)"},
     {"id": "skills-page", "label": "Skills", "path": "/skills",
      "role": "the agent-facing skills registry"},
     {"id": "publish", "label": "Publish", "path": "/publish", "role": "delivery"},
@@ -100,6 +103,13 @@ ARTIFACTS = [
      "contract": "track + alternatives + gain/duck + sfx events — human-editable"},
     {"name": "output/final.mp4", "produced_by": "render step",
      "consumed_by": "you", "contract": "|video − narration| < 1s, honest failures"},
+    {"name": "profiles/taste.json (+ledger.jsonl)",
+     "produced_by": "taste distiller (`nolan retro`) + /taste edits",
+     "consumed_by": "authoring prompts via nolan.taste.guidance_for "
+                    "(scenes/slides/motion stages)",
+     "contract": "rules are TIERED PRIORS — active=prefer-with-deviation, "
+                 "locked=constraint (human act only), evidence attached, "
+                 "retirable; test projects excluded from the ledger"},
 ]
 
 

@@ -133,6 +133,27 @@ kills full-suite pytest runs at ~38% — run suites in groups or fix in Phase 6.
   (24 total in test_premium_render.py); live probe: section 0 + injected
   3-shot list rendered 1654/1654 frames, three shots verified frame-by-frame.
 
+## SOTA #9: taste feedback loop (2026-07-06)
+
+`src/nolan/taste.py` + `/taste` page + `nolan retro`. The loop: override
+LEDGER (profiles/ledger.jsonl — captured in iterate.apply_edit per changed
+field, brief-vs-yaml diffs at retro; `test_project: true` projects excluded
+at write) → DISTILLER (LLM proposes; deterministic evidence gate rejects
+<3 events / <2 projects — no superstition) → RULES (profiles/taste.json:
+scope channel|type:<style-template-id>, stage, evidence, confidence,
+status) → APPLY (`guidance_for(stage, video_type)` injected into the
+scenes/slides/motion authoring prompts).
+
+Anti-lock-in (the owner's explicit design requirement): rules are TIERED
+PRIORS — `proposed` invisible, `active` renders as "PREFER … deviate when
+you see a clearly better treatment, say why", only human-`locked` rules
+render as ALWAYS/NEVER; a standing clause invites one flagged
+[EXPERIMENT vs rule-id] per project; every rule carries evidence + is
+retirable; the distiller proposes retirements on contradicting edits.
+/taste shows proposals with evidence, amend-in-place, accept/lock/retire/
+revive, add-your-own. 7 tests pin the tiers, the gate, and the exclusion;
+browser-verified add→persist→guidance pickup.
+
 ## SOTA #3–#7 (2026-07-06) — grade, linter, attribution, packaging, draft+cache
 
 - **#3 grade + one theme system**: brief.json gains a gated `grade` block

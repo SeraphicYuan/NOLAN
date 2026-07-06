@@ -75,7 +75,13 @@ one, in this order.
 8. **Image-to-video b-roll** — i2v models (Wan/Kling-class, in the existing
    ComfyUI) as one more asset-ladder rung: krea2 stills → real cinematic
    motion clips; generated scenes stop reading as animated slideshow.
-9. **Taste feedback loop** — every scene accept/reject/edit is preference
+9. **Taste feedback loop** *(DONE 2026-07-06 — nolan/taste.py: override
+   ledger (test projects excluded) → `nolan retro` distiller with a
+   deterministic evidence gate (>=3 events, >=2 projects) → rules as
+   TIERED PRIORS (prefer-with-deviation + experiment clause; only
+   human-locked rules constrain) scoped channel/video-type → injected
+   into scenes/slides/motion prompts; /taste UI to review evidence,
+   amend, lock, retire)* — every scene accept/reject/edit is preference
    data; per-channel tuning of slide_designer + tempo prompts so the system
    compounds instead of resetting each project.
 
