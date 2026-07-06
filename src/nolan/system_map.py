@@ -33,6 +33,7 @@ REPO = Path(__file__).resolve().parents[2]
 ORGAN_MODULES = [
     "nolan.asset_engine", "nolan.voice_pipeline", "nolan.audio_mix",
     "nolan.layout_blocks", "nolan.premium_render", "nolan.motion",
+    "nolan.editing",
     "nolan.render_dispatch", "nolan.clip_matcher", "nolan.external_assets",
     "nolan.art_sourcing", "nolan.evoke_broll", "nolan.imagelib",
     "nolan.image_search", "nolan.captions", "nolan.aligner",
@@ -137,6 +138,51 @@ def _skills() -> Dict[str, Any]:
         return {"count": 0, "skills": [], "error": str(exc)}
 
 
+def _umbrellas() -> Dict[str, Any]:
+    """The capability registries, umbrella by umbrella (module contract).
+
+    This is the machine-readable catalog agents consume (also via
+    `nolan capabilities`): every entry carries when_to_use — the craft
+    guidance for PICKING a capability, not just its existence. Only
+    code-backed registries appear here; nothing is hand-listed.
+    """
+    out: Dict[str, Any] = {}
+    try:
+        from nolan.editing import REGISTRY as EDITING
+        out["editing"] = [
+            {"id": t.id, "purpose": t.purpose, "when_to_use": t.when_to_use,
+             "scope": t.scope, "authored_by": t.authored_by,
+             "duration_preserving": t.duration_preserving}
+            for t in EDITING]
+    except Exception as exc:
+        out["editing"] = {"error": str(exc)}
+    try:
+        from nolan.motion.registry import REGISTRY as MOTION
+        out["motion"] = [
+            {"id": e.id, "purpose": e.purpose, "when_to_use": e.when_to_use,
+             "backend": e.backend, "category": e.category,
+             **({"provenance": e.provenance} if e.provenance else {})}
+            for e in MOTION]
+    except Exception as exc:
+        out["motion"] = {"error": str(exc)}
+    try:
+        from nolan.evoke_broll import OPERATORS
+        out["pairing"] = [{"id": k, **v} for k, v in OPERATORS.items()]
+    except Exception as exc:
+        out["pairing"] = {"error": str(exc)}
+    try:
+        from nolan.layout_blocks import ADAPTERS
+        out["blocks"] = sorted(ADAPTERS)
+    except Exception as exc:
+        out["blocks"] = {"error": str(exc)}
+    try:
+        out["themes"] = sorted(p.name for p in (REPO / "themes").iterdir()
+                               if p.is_dir())
+    except Exception as exc:
+        out["themes"] = {"error": str(exc)}
+    return out
+
+
 def _ping(url: str, timeout: float = 1.5) -> bool:
     try:
         import httpx
@@ -198,6 +244,7 @@ def build_map(app=None, ping: bool = True) -> Dict[str, Any]:
         "skills": _skills(),
         "surfaces": verify(SURFACES),
         "artifacts": ARTIFACTS,
+        "umbrellas": _umbrellas(),
         "health": _health(ping=ping),
         "wiring": {
             "manifest": "docs/UI_WIRING.md",

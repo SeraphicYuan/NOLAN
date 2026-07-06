@@ -1361,6 +1361,8 @@ effect it uses** and **whether NOLAN can already reproduce it**.
      "purpose": "<one line>", "target": "<PascalCaseCompId>",
      "content": [{{"name","type","doc","default","required"}}...],
      "style": [], "shared": ["theme"], "duration_default": 4.0,
+     "when_to_use": "<the craft guidance: what narration moment this effect
+     serves, and when a neighbor beats it — module contract>",
      "sample_props": {{<props that render a REPRESENTATIVE frame>}},
      "provenance": {{"clip_id": "{clip_id}", "agent": "<your session>",
      "date": "<today>"}}}}`

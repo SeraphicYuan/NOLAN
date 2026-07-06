@@ -133,6 +133,35 @@ kills full-suite pytest runs at ~38% — run suites in groups or fix in Phase 6.
   (24 total in test_premium_render.py); live probe: section 0 + injected
   3-shot list rendered 1654/1654 frames, three shots verified frame-by-frame.
 
+## The module contract + umbrella catalogs (2026-07-05)
+
+Blindspot pass outcome: the spine expands fine, but capability growth had no
+stated recipe (J-cut landed as inline code; tempo_plan's per-scene
+`transition` was authored-but-consumed-by-nobody). Three moves:
+
+1. **Module contract** stated in CLAUDE.md + ARCHITECTURE.md: every craft
+   capability = registry entry (purpose + when_to_use + constraints) +
+   authored artifact field validated against it + executor + auto-surfaced
+   catalog. The sync contract is the legality gate (`duration_preserving`).
+2. **Editing umbrella** (`src/nolan/editing.py`): declarative EditTechnique
+   registry — j-cut, shot-list, transition-in; `validate_scene/plan_editing`
+   gates authored fields at premium eligibility. WIRED the orphaned
+   `scene.transition`: first sub-step of a non-section-first scene gets
+   Chapter `transitionIn` (dissolve 8f / fade 14f opacity ramp from theme
+   background — duration-preserving; frame-verified live render).
+   `skills/common/editing-craft.md` honesty-tested vs the registry.
+3. **Discoverability**: `when_to_use` on every MotionEffect (19 built-ins;
+   promoted entries carry it via entry.json → registry_custom.json); public
+   `OPERATORS` catalog in evoke_broll (8 pairing operators, mirrors _OP,
+   `automated_bridge` flags match bridge_queries' default — all tested);
+   `_umbrellas()` in system_map → `/api/map` + collapsible /map section
+   (79 capabilities: editing 3, motion 19, pairing 8, blocks 23, themes 26);
+   `nolan capabilities [--json] [-u <umbrella>]` CLI; fleet dispatch briefs
+   + the effect-analysis brief now point agents at the catalog;
+   `skills/common/motion-craft.md` + `pairing-craft.md` generated from the
+   registries, honesty-tested (tests/test_umbrella_skills.py, 7 tests;
+   tests/test_editing.py, 9 tests). Suite: 712 passed.
+
 ## Architecture Consolidation — Phase 2 (2026-07-05)
 
 **One asset engine**: `src/nolan/asset_engine.py` — the single scene→asset

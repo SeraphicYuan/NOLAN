@@ -57,6 +57,9 @@ class MotionEffect:
     shared: List[str] = field(default_factory=list)   # names from SHARED this effect supports
     duration_default: float = 4.0
     provenance: dict = field(default_factory=dict)   # promoted effects: clip/agent/date
+    # The craft guidance an agent needs to PICK this effect (module contract):
+    # when it beats its neighbors, when it doesn't. Purpose = what; this = when.
+    when_to_use: str = ""
 
 
 def _p(name, type, doc="", values=None, default=None, required=False):
@@ -71,7 +74,8 @@ REGISTRY: List[MotionEffect] = [
         "Reveal a short headline word-by-word, accenting key words.", "Kinetic",
         content=[_p("text", "string", "the headline line", required=True),
                  _p("highlights", "string[]", "key words to accent (lowercased)", default=[])],
-        shared=["position", "theme", "accent"], duration_default=4.0),
+        shared=["position", "theme", "accent"], when_to_use="Hook lines and thesis statements — a spoken headline the viewer should read as they hear it. Not for body prose (>8 words reads as a wall of text).",
+        duration_default=4.0),
     MotionEffect(
         "bar-compare", "remotion", "rich-chart",
         "Animated bar comparison with count-up labels.", "BarCompare",
@@ -80,7 +84,8 @@ REGISTRY: List[MotionEffect] = [
                  _p("prefix", "string", 'value prefix, e.g. "$" (or "+" for growth)', default=""),
                  _p("suffix", "string", 'value suffix, e.g. "B" or "%"', default="")],
         style=[_p("barStyle", "enum", "bar look", values=["flat", "gradient", "glass"], default="gradient")],
-        shared=["theme"], duration_default=5.0),
+        shared=["theme"], when_to_use="2-4 quantities the narration explicitly compares ('X vs Y'). If the story is one series over time, use line-chart instead.",
+        duration_default=5.0),
     MotionEffect(
         "k-shape", "remotion", "rich-chart",
         "Two diverging lines (rising vs falling) from a shared origin — the K split.", "KShape",
@@ -89,21 +94,24 @@ REGISTRY: List[MotionEffect] = [
         style=[_p("lineStyle", "enum", values=["straight", "zigzag"], default="straight"),
                _p("jitter", "int", "zigzag amplitude px", default=24),
                _p("segments", "int", "zigzag points", default=18)],
-        shared=["theme"], duration_default=5.0),
+        shared=["theme"], when_to_use="Divergence narratives — winners/losers, rich/poor splitting from a shared origin. The shape IS the argument; don't use for mere difference.",
+        duration_default=5.0),
     MotionEffect(
         "annotate-video", "remotion", "svg-annotation",
         "Draw-on circle + arrow + label pointing at a spot on b-roll.", "AnnotateOverVideo",
         content=[_p("label", "string", "the callout text", required=True),
                  _p("videoSrc", "string", "b-roll basename in public/")],
         style=[_p("shapeStyle", "enum", values=["clean", "scribble"], default="clean")],
-        shared=["position", "theme", "accent"], duration_default=4.0),
+        shared=["position", "theme", "accent"], when_to_use="Direct the eye to ONE spot in busy b-roll the narration points at ('this building here'). Needs a stable shot behind it.",
+        duration_default=4.0),
     MotionEffect(
         "annotate-stat", "remotion", "svg-annotation",
         "Emphasize one number/stat with a drawn circle + caption.", "AnnotateStat",
         content=[_p("value", "string", "the headline number string e.g. $28,000", required=True),
                  _p("label", "string", "short caption", default="")],
         style=[_p("shapeStyle", "enum", values=["clean", "scribble"], default="clean")],
-        shared=["position", "theme", "accent"], duration_default=4.0),
+        shared=["position", "theme", "accent"], when_to_use="One number the narration lands on hard and needs EMPHASIS. For scale-over-imagery (number + tangible referent) use stat-over.",
+        duration_default=4.0),
     MotionEffect(
         "route-map", "remotion", "map",
         "Animated pins + routes over a basemap (money/flow/geo).", "RouteMap",
@@ -111,14 +119,16 @@ REGISTRY: List[MotionEffect] = [
                  _p("pins", "array", "[{x,y(0..1),label}]", required=True),
                  _p("mapSrc", "string", "basemap image basename in public/")],
         style=[_p("routeStyle", "enum", values=["arc", "straight"], default="arc")],
-        shared=["theme"], duration_default=5.0),
+        shared=["theme"], when_to_use="Movement across geography — journeys, trade, money flows. Use when the narration names places in order; pins without narrative order confuse.",
+        duration_default=5.0),
     MotionEffect(
         "premium-card", "remotion", "premium-card",
         "Glass/gradient hero or chapter title card.", "PremiumCard",
         content=[_p("title", "string", required=True), _p("subtitle", "string", default=""),
                  _p("kicker", "string", "small label above title", default="")],
         style=[_p("cardStyle", "enum", values=["glass", "gradient", "spotlight"], default="glass")],
-        shared=["theme"], duration_default=4.0),
+        shared=["theme"], when_to_use="Chapter openers and the cold-open title. At most one per section — cards are punctuation, not content.",
+        duration_default=4.0),
 
     # ---- Curated Remotion blocks (Phase 3: one backend per intent) ----
     # Same effect ids + params as before; the executor's block path adapts
@@ -131,24 +141,28 @@ REGISTRY: List[MotionEffect] = [
                  _p("label", "string", "caption", default=""),
                  _p("prefix", "string", 'leading sign/symbol before the number, e.g. "+", "$", "-". Use "+" for growth/increase.', default=""),
                  _p("suffix", "string", 'units after the number, e.g. "%", "B", "x"', default="")],
-        shared=["position"], duration_default=4.0),
+        shared=["position"], when_to_use="A single inline stat reveal — the cheapest data moment. Escalate to bar-compare (context) or stat-over (scale) when the number needs more.",
+        duration_default=4.0),
     MotionEffect(
         "title", "block", "text",
         "Animated title card (title + subtitle + accent line).", "HeroStatement",
         content=[_p("title", "string", required=True), _p("subtitle", "string", default="")],
-        shared=["position"], duration_default=4.0),
+        shared=["position"], when_to_use="A section title inside the flow when a full premium-card is too heavy.",
+        duration_default=4.0),
     MotionEffect(
         "lower-third", "block", "text",
         "Lower-third name/title caption.", "LowerThird",
         content=[_p("name", "string", "primary line", required=True),
                  _p("title", "string", "secondary line", default="")],
-        shared=["position"], duration_default=4.0),
+        shared=["position"], when_to_use="Introducing a person/source on screen (name + role) without leaving the shot.",
+        duration_default=4.0),
     MotionEffect(
         "comparison", "block", "data",
         "Two-sided VS comparison.", "ComparisonVS",
         content=[_p("left_text", "string", required=True), _p("right_text", "string", required=True),
                  _p("left_subtitle", "string", default=""), _p("right_subtitle", "string", default=""),
                  _p("center_label", "string", default="VS")],
+        when_to_use="A binary either/or the narration frames as a duel. For an IMAGERY collision use split-screen; for numbers use bar-compare.",
         duration_default=4.0),
 
     # ---- Python ----
@@ -158,12 +172,14 @@ REGISTRY: List[MotionEffect] = [
         content=[_p("points", "array", "[[label, value], ...]", required=True),
                  _p("title", "string", default=""),
                  _p("value_prefix", "string", default=""), _p("value_suffix", "string", default="")],
+        when_to_use="One series over time — rise, crash, rally. Best when the narration traces the shape as it draws.",
         duration_default=6.0),
     MotionEffect(
         "loop-diagram", "python", "diagram",
         "Animated feedback-loop: labelled nodes in a cycle with arrows.", "LoopDiagramRenderer",
         content=[_p("nodes", "string[]", "node labels in cycle order", required=True),
                  _p("title", "string", default=""), _p("center_label", "string", default="")],
+        when_to_use="Feedback loops and cycles (A feeds B feeds C feeds A) that the narration walks around once.",
         duration_default=7.0),
     # ("photo-montage" (python) removed in Phase 3 — photo-montage-pro owns the
     #  intent; no stored specs referenced the python variant.)
@@ -188,7 +204,8 @@ REGISTRY: List[MotionEffect] = [
                _p("zoomEnd", "number", "camera zoom at end", default=1.16),
                _p("panX", "number", "camera pan, fraction of width", default=-0.04),
                _p("panY", "number", "camera pan, fraction of height", default=0.0)],
-        shared=["theme"], duration_default=10.0),
+        shared=["theme"], when_to_use="3-6 related stills that belong on one 'table' — an evidence cluster. Use when order/position of cards carries meaning; for a lone still use still-motion.",
+        duration_default=10.0),
     MotionEffect(
         "photo-grid", "remotion", "photo-montage",
         "Procedural photo grid with a 3-step choreography (Remotion): images fly in to "
@@ -215,7 +232,8 @@ REGISTRY: List[MotionEffect] = [
                _p("focusScale", "number", "centered height as fraction of frame", default=0.8),
                _p("margin", "number", "outer grid margin, fraction", default=0.05),
                _p("vignette", "number", "edge darkening 0..1", default=0.5)],
-        shared=["theme"], duration_default=10.0),
+        shared=["theme"], when_to_use="MANY images (8+) as a wall — abundance of examples, then one zooms out as the specimen. Under 8 images the grid reads sparse.",
+        duration_default=10.0),
 
     # ---- Still → motion / assembly (Remotion; executor routes these to nolan.still_motion) ----
     MotionEffect(
@@ -228,7 +246,8 @@ REGISTRY: List[MotionEffect] = [
                     values=["ken-burns-in", "ken-burns-out", "ken-burns-pan", "parallax",
                             "rack-focus", "blur-in", "atmospheric", "hold"], default="ken-burns-in"),
                  _p("direction", "enum", "pan/parallax direction", values=["left", "right"], default="right")],
-        shared=[], duration_default=4.0),
+        shared=[], when_to_use="The default life-giver for any single still held >3s. Treatment by mood: ken-burns for narrative pushes, parallax for depth drama, rack-focus for a revelation, atmospheric for tone holds.",
+        duration_default=4.0),
     MotionEffect(
         "split-screen", "remotion", "composition",
         "The relational/dialectical collision: two stills side by side (left|right) with opposing "
@@ -237,7 +256,8 @@ REGISTRY: List[MotionEffect] = [
                  _p("right", "string", "right image path", required=True),
                  _p("left_label", "string", "caption under the left half", default=""),
                  _p("right_label", "string", "caption under the right half", default="")],
-        shared=[], duration_default=4.0),
+        shared=[], when_to_use="The dialectical operator: two images whose collision makes a third meaning (then/now, cause/effect). Both halves must read at half width.",
+        duration_default=4.0),
     MotionEffect(
         "stat-over", "remotion", "data",
         "SCALE payoff: a big count-up NUMBER over a tangible-referent shot (stadium crowd / city "
@@ -248,7 +268,8 @@ REGISTRY: List[MotionEffect] = [
                  _p("suffix", "string", 'e.g. "B", "%"', default=""),
                  _p("caption", "string", "what the number means", default=""),
                  _p("decimals", "int", "decimal places", default=0)],
-        shared=["theme", "accent"], duration_default=5.0),
+        shared=["theme", "accent"], when_to_use="The SCALE payoff: a number counted up over a tangible referent (crowd, aerial, grains). Use when the audience should FEEL the magnitude, not just read it.",
+        duration_default=5.0),
     MotionEffect(
         "clip-montage", "remotion", "composition",
         "Assemble b-roll clips/stills into one video with shot-to-shot transitions "
@@ -257,7 +278,8 @@ REGISTRY: List[MotionEffect] = [
                  _p("transition", "enum", "transition between every pair",
                     values=["fade", "slide", "wipe", "clockWipe", "cut"], default="fade"),
                  _p("trans_frames", "int", "transition length in frames", default=16)],
-        shared=[], duration_default=8.0),
+        shared=[], when_to_use="Sequencing 3+ short clips/stills into one continuous b-roll bed — time compression, 'meanwhile' energy. Uniform transitions only; for authored per-shot cuts use scene.shots.",
+        duration_default=8.0),
 ]
 
 BY_ID = {e.id: e for e in REGISTRY}
@@ -285,7 +307,8 @@ def _load_custom() -> List[MotionEffect]:
                 style=[Param(**s) for s in e.get("style", [])],
                 shared=list(e.get("shared", [])),
                 duration_default=float(e.get("duration_default", 4.0)),
-                provenance=dict(e.get("provenance", {}))))
+                provenance=dict(e.get("provenance", {})),
+                when_to_use=str(e.get("when_to_use", ""))))
     except Exception as exc:
         _logging.getLogger(__name__).error("registry_custom.json unusable: %s", exc)
         return []

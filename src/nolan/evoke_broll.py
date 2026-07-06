@@ -95,6 +95,75 @@ _CONCEPTUAL_BRIDGE_SYS = (
     "dominoes, fragile balance→Jenga, opposing forces→tug-of-war, systems→clockwork, emergent order→a "
     "murmuration). Reply STRICT JSON.")
 
+# Public operator catalog (module contract): purpose + when_to_use per pairing
+# operator. Keys MUST mirror _OP below (honesty-tested in tests) — _OP holds
+# the internal prompt phrasing; THIS is what agents, /map and the pairing
+# skill consume. `automated_bridge` marks the judgment-safe operators the
+# asset engine may run unattended (see bridge_queries).
+OPERATORS = {
+    "literal": {
+        "purpose": "Plain depiction — the frame literally shows the thing named.",
+        "when_to_use": "Default for concrete subjects (a ship, a map, a "
+                       "battle). No bridge; fails on abstractions.",
+        "automated_bridge": False,   # it IS the baseline, nothing to bridge
+    },
+    "knowledge": {
+        "purpose": "Name the SPECIFIC real asset (a particular artwork/"
+                   "artifact/place) from model knowledge, then verify it.",
+        "when_to_use": "History/art topics where the genuine named work beats "
+                       "generic stock — 'the Prima Porta Augustus', not 'a "
+                       "roman statue'. Pair with identity verification.",
+        "automated_bridge": False,
+    },
+    "tonal": {
+        "purpose": "Mood b-roll — atmosphere (color, light, composition) "
+                   "evokes the line's emotion, never illustrates it.",
+        "when_to_use": "Abstract or emotional lines with no concrete subject; "
+                       "interior states; breathing room between arguments.",
+        "automated_bridge": True,
+    },
+    "conceptual": {
+        "purpose": "Visual metaphor — a subject/action whose mechanic mirrors "
+                   "the concept's.",
+        "when_to_use": "Abstract mechanisms (inflation, feedback, decay). "
+                       "Must read at a glance; reject tired clichés "
+                       "(chess boards, handshakes).",
+        "automated_bridge": True,
+    },
+    "ironic": {
+        "purpose": "Counterpoint — footage that CONTRADICTS the line to "
+                   "expose the gap between what's said and what's real.",
+        "when_to_use": "Editorial beats where undercutting lands the point "
+                       "harder than illustrating. Human-review the picks: "
+                       "irony misfires easily.",
+        "automated_bridge": False,
+    },
+    "trait": {
+        "purpose": "Embodiment — an exemplary activity that reads as the "
+                   "named character trait.",
+        "when_to_use": "Character description (cunning, discipline, hubris) "
+                       "with no literal footage — show a person OF that "
+                       "quality doing the telling thing.",
+        "automated_bridge": False,
+    },
+    "relational": {
+        "purpose": "One side of a dialectical pair — retrieved per side, "
+                   "composed as a split-screen collision.",
+        "when_to_use": "Then/now, rich/poor, promise/cost juxtapositions the "
+                       "narration sets up. Feeds the split-screen motion; "
+                       "both sides must read at half width.",
+        "automated_bridge": False,
+    },
+    "scale": {
+        "purpose": "Tangible referent for a big number — a countable mass or "
+                   "vast space with calm room for a count-up overlay.",
+        "when_to_use": "Big abstract quantities the audience should FEEL. "
+                       "Feeds the stat-over motion; the frame needs quiet "
+                       "negative space for the number.",
+        "automated_bridge": False,
+    },
+}
+
 # Per-operator phrasing so the vision/library/accept prompts read correctly for each pairing style.
 # The score fields stay `mood` (primary fit) + `nonliteral` (secondary axis); only the wording changes.
 _OP = {

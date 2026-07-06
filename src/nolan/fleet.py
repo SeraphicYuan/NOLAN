@@ -98,7 +98,10 @@ def build_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str], note
         f"Human note: \"{note}\". "
         f"Report progress to .nolan/agents/{agent}.json (state working->done|error, "
         f"plus scene_ids, message, and a result list) as you go — start by writing state 'working'. "
-        f"Edit and re-render ONLY the named scene(s); leave all others untouched."
+        f"Edit and re-render ONLY the named scene(s); leave all others untouched. "
+        f"Capability catalog (editing techniques / motion effects / pairing operators, each with "
+        f"when-to-use): run `nolan capabilities` or GET /api/map — pick from what exists, "
+        f"and read skills/common/editing-craft.md, motion-craft.md, pairing-craft.md for the craft."
     )
 
 
@@ -157,6 +160,8 @@ def build_flow_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str],
         f"Use assets already bound/added to the beat; source new only if needed. "
         f"Re-render ONLY the named beat(s) via the chapter-block mechanism: "
         f"rerender_scenes(\"{plan_path}\", {scene_ids}). Leave neighbors untouched. "
+        f"Capability catalog (editing/motion/pairing, each with when-to-use): `nolan capabilities` "
+        f"or GET /api/map; craft docs in skills/common/*-craft.md. "
         f"Report to .nolan/agents/{agent}.json (state working->done|error, scene_ids, message, result); "
         f"start by writing state 'working'."
     )

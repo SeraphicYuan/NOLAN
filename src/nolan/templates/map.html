@@ -72,6 +72,14 @@
     </div>
 
     <div class="section">
+      <h2>Umbrellas — capability registries <span class="muted" id="umbcount"></span></h2>
+      <div class="desc">The machine-readable catalog (module contract): each capability with its
+        <i>when-to-use</i> craft guidance. Agents consume this via <code>/api/map</code> or
+        <code>nolan capabilities</code>; skill docs are honesty-tested against these registries.</div>
+      <div id="umbrellas"></div>
+    </div>
+
+    <div class="section">
       <h2>Skills — agent-facing procedures <span class="muted" id="skillcount"></span></h2>
       <div class="desc">Typed registry (<code>skills/index.json</code>): versioned, with handoff gates. Browse/edit on <a href="/skills">Skills</a>.</div>
       <table id="skills"><tr><th>id</th><th>kind</th><th>purpose</th><th>handoffs</th><th>v</th></tr></table>
@@ -129,6 +137,33 @@
       m.labs.forEach(l=>row('labs',
         [`<td><a href="${l.path}">${esc(l.label)}</a>${l.ok===false?' <span class="bad">route missing!</span>':''}</td>`,
          `<td class="muted">${esc(l.imports)}</td>`, `<td>${esc(l.feeds)}</td>`]));
+
+      // umbrellas
+      const U = document.getElementById('umbrellas'), um = m.umbrellas || {};
+      const tabular = ['editing', 'motion', 'pairing'];
+      let umbTotal = 0;
+      tabular.forEach(name => {
+        const entries = um[name];
+        if (!Array.isArray(entries)) return;
+        umbTotal += entries.length;
+        const rows = entries.map(e =>
+          `<tr><td class="mono">${esc(e.id)}${e.provenance && e.provenance.clip_id ? ' <span class="muted">(promoted)</span>' : ''}</td>` +
+          `<td class="muted" title="${esc(e.purpose)}">${esc(e.when_to_use || e.purpose)}</td></tr>`).join('');
+        U.insertAdjacentHTML('beforeend',
+          `<details style="margin-bottom:8px;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">` +
+          `${name} <span class="muted">(${entries.length})</span></summary>` +
+          `<table style="margin-top:6px;"><tr><th>id</th><th>when to use</th></tr>${rows}</table></details>`);
+      });
+      ['blocks', 'themes'].forEach(name => {
+        const entries = um[name];
+        if (!Array.isArray(entries)) return;
+        umbTotal += entries.length;
+        U.insertAdjacentHTML('beforeend',
+          `<details style="margin-bottom:8px;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">` +
+          `${name} <span class="muted">(${entries.length})</span></summary>` +
+          `<div class="muted mono" style="margin-top:6px;font-size:12px;line-height:1.8;">${entries.map(esc).join(' · ')}</div></details>`);
+      });
+      document.getElementById('umbcount').textContent = `(${umbTotal} capabilities)`;
 
       // skills
       document.getElementById('skillcount').textContent = `(${m.skills.count})`;

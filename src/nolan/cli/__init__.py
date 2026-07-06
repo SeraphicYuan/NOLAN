@@ -23,6 +23,7 @@ Structure:
 - orchestrate.py: Pipeline orchestration (orchestrate, build-from-segment)
 - iterate.py: Scene iteration (revise-scene, rerender)
 - publish.py: Article publishing (publish)
+- capabilities.py: Umbrella capability catalog (capabilities)
 """
 
 from nolan.cli._root import main
@@ -45,6 +46,7 @@ from nolan.cli import (  # noqa: E402,F401
     orchestrate,
     iterate,
     publish,
+    capabilities,
 )
 
 # The main group is the entry point

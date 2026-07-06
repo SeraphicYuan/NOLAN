@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 23,
+  "count": 25,
   "skills": [
     {
       "id": "art.flow",
@@ -117,6 +117,36 @@
       "status": "active",
       "version": 1,
       "path": "skills/common/editing-craft.md",
+      "handoffs": [],
+      "uses": [],
+      "evals": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null
+    },
+    {
+      "id": "common.motion-craft",
+      "name": "Motion craft",
+      "kind": "craft",
+      "purpose": "The motion umbrella — every registered effect with when-to-use guidance; how specs are authored, validated and promoted.",
+      "status": "active",
+      "version": 1,
+      "path": "skills/common/motion-craft.md",
+      "handoffs": [],
+      "uses": [],
+      "evals": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null
+    },
+    {
+      "id": "common.pairing-craft",
+      "name": "Pairing craft",
+      "kind": "craft",
+      "purpose": "The narrative->asset pairing umbrella — every operator with when-to-use guidance.",
+      "status": "active",
+      "version": 1,
+      "path": "skills/common/pairing-craft.md",
       "handoffs": [],
       "uses": [],
       "evals": [],
