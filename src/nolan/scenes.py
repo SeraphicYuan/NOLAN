@@ -323,8 +323,8 @@ SCENE_DESIGN_PROMPT = PASS1_BEAT_PROMPT
 # match it by EXACT string. An LLM-invented synonym ("stat_card") makes every
 # consumer silently see 0 eligible scenes, so unknown values are normalized
 # here (reported, never silent) and unmappable ones fail the authoring step.
-VISUAL_TYPES = {"b-roll", "graphic", "text-overlay", "generated-image",
-                "infographic", "layered", "lottie"}
+VISUAL_TYPES = {"b-roll", "archival-art", "graphic", "text-overlay",
+                "generated-image", "infographic", "layered", "lottie"}
 
 _VISUAL_TYPE_HINTS = [                       # substring -> canonical (order matters)
     ("infographic", "infographic"),
@@ -338,9 +338,14 @@ _VISUAL_TYPE_HINTS = [                       # substring -> canonical (order mat
     ("chart", "graphic"), ("graph", "graphic"), ("map", "graphic"),
     ("diagram", "graphic"), ("timeline", "graphic"),
     ("comparison", "graphic"), ("composite", "graphic"),
+    # named/museum artworks route to the exact-title art tier — the Homer
+    # test proved mapping these to b-roll starves the museum pass (the
+    # engine's footage ladder can't find the Siren Vase on Pexels)
+    ("archival", "archival-art"), ("artwork", "archival-art"),
+    ("painting", "archival-art"), ("museum", "archival-art"),
     ("broll", "b-roll"), ("b-roll", "b-roll"), ("b_roll", "b-roll"),
-    ("footage", "b-roll"), ("stock", "b-roll"), ("archival", "b-roll"),
-    ("art", "b-roll"), ("photo", "b-roll"), ("still", "b-roll"),
+    ("footage", "b-roll"), ("stock", "b-roll"),
+    ("art", "archival-art"), ("photo", "b-roll"), ("still", "b-roll"),
 ]
 
 

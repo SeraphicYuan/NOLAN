@@ -39,8 +39,9 @@ Organize into the standard sections:
 - **Editorial** — conventions for when to use which visual modes, what to avoid
 - **Visual Type Vocabulary** — the `visual_type` values this project will use,
   chosen ONLY from the canonical set the pipeline recognizes: `b-roll`,
-  `graphic`, `text-overlay`, `generated-image`, `infographic`, `layered`,
-  `lottie` (drop the ones this project won't use; NEVER invent new values —
+  `archival-art` (NAMED real artworks — routes to the exact-title museum
+  pass), `graphic`, `text-overlay`, `generated-image`, `infographic`,
+  `layered`, `lottie` (drop the ones this project won't use; NEVER invent new values —
   downstream steps match these strings exactly). Describe each chosen value's
   role in THIS project (e.g. "`text-overlay` — stat cards and punch phrases").
 - **Provenance** — record `invented` (no template) and a brief explanation of the inferred style
