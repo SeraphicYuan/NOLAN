@@ -106,13 +106,25 @@ def select_still_treatment(scene: dict, prev: Optional[str] = None) -> str:
     return pick
 
 
+# The premium still-camera vocabulary (ArtworkStage `mode`). Also the value
+# set for the AUTHORED `still_treatment` field — a human lock from the
+# timeline/Inspector that the pre-pass below honors verbatim.
+STILL_TREATMENTS = ("kenburns-in", "kenburns-out", "kenburns-pan",
+                    "drift", "tour")
+
+
 def assign_still_treatments(plan: dict) -> int:
     """IN-MEMORY pre-pass (premium calls it at plan load, motif-style):
     stamp ``scene['_still_treatment']`` on every still-rendered scene —
     narrative semantics via :func:`select_still_treatment`, no-two-
     consecutive enforced across the whole piece, and the LAST low-energy
     scene of a section gets ``drift`` (the protected quiet close). The plan
-    on disk never carries the underscore key."""
+    on disk never carries the underscore key.
+
+    A scene carrying an AUTHORED ``still_treatment`` (human lock, validated
+    against :data:`STILL_TREATMENTS`) gets exactly that — it wins over the
+    cues, the drift close and the no-repeat rule, and counts as ``prev`` so
+    neighbors still diversify around it."""
     prev = None
     n = 0
     for scenes in (plan.get("sections") or {}).values():
@@ -125,10 +137,14 @@ def assign_still_treatments(plan: dict) -> int:
                 continue
             if s.get("motion_spec") or s.get("layout_spec") or s.get("pinned_asset"):
                 continue                      # other treatments own these
-            pick = select_still_treatment(s, prev)
-            if (i == len(scenes) - 1
-                    and float(s.get("energy") or 0.5) < 0.3):
-                pick = "drift"
+            locked = s.get("still_treatment")
+            if locked in STILL_TREATMENTS:
+                pick = locked
+            else:
+                pick = select_still_treatment(s, prev)
+                if (i == len(scenes) - 1
+                        and float(s.get("energy") or 0.5) < 0.3):
+                    pick = "drift"
             s["_still_treatment"] = pick
             prev = pick
             n += 1

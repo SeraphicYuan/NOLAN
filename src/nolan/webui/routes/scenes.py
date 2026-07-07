@@ -7,6 +7,7 @@ names, then registers the routes unchanged.
 
 import asyncio
 import json
+import uuid
 from pathlib import Path
 from typing import Optional, List, Dict
 
@@ -104,6 +105,227 @@ def register(app, ctx):
             return build_timeline(project_path)
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc))
+
+    # ---- timeline edits (P3) -------------------------------------------------
+    def _plan_for(project: str):
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404,
+                                detail=f"Project '{project}' not found")
+        _, scene_plan_path = result
+        from nolan import iterate
+        return scene_plan_path, iterate.load_plan_raw(scene_plan_path)
+
+    @app.post("/api/timeline/treatment")
+    async def timeline_treatment(payload: dict = Body(...)):
+        """Lock/unlock a scene's camera treatment (authored still_treatment).
+        `treatment` must be in STILL_TREATMENTS; null/empty clears the lock
+        (back to the derived pre-pass)."""
+        project, scene_id = payload.get("project"), payload.get("scene_id")
+        if not (project and scene_id):
+            raise HTTPException(status_code=400,
+                                detail="project and scene_id are required")
+        treatment = payload.get("treatment") or None
+        from nolan.still_motion import STILL_TREATMENTS
+        if treatment is not None and treatment not in STILL_TREATMENTS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"treatment must be one of {list(STILL_TREATMENTS)}")
+        plan_path, data = _plan_for(project)
+        from nolan import iterate
+        scene = iterate.find_scene(data, scene_id)
+        if scene is None:
+            raise HTTPException(status_code=404,
+                                detail=f"scene '{scene_id}' not found")
+        if treatment:
+            scene["still_treatment"] = treatment
+        else:
+            scene.pop("still_treatment", None)
+        iterate.save_plan_raw(plan_path, data)
+        return {"scene_id": scene_id, "still_treatment": treatment}
+
+    _MIN_SCENE_S = 1.0
+
+    @app.post("/api/timeline/scene-window")
+    async def timeline_scene_window(payload: dict = Body(...)):
+        """Roll edit: move a scene's start/end on the timeline. Neighbors
+        within the same section absorb the change (their shared boundary
+        moves with it); section boundaries are LOCKED (narration owns
+        duration). Guards: >= 1s for the scene AND its neighbors."""
+        project, scene_id = payload.get("project"), payload.get("scene_id")
+        if not (project and scene_id):
+            raise HTTPException(status_code=400,
+                                detail="project and scene_id are required")
+        plan_path, data = _plan_for(project)
+        # locate the scene + its section list
+        section_scenes, idx = None, None
+        for scenes in (data.get("sections") or {}).values():
+            if not isinstance(scenes, list):
+                continue
+            for i, s in enumerate(scenes):
+                if isinstance(s, dict) and s.get("id") == scene_id:
+                    section_scenes, idx = scenes, i
+                    break
+            if idx is not None:
+                break
+        if idx is None:
+            raise HTTPException(status_code=404,
+                                detail=f"scene '{scene_id}' not found")
+        s = section_scenes[idx]
+        prev_s = section_scenes[idx - 1] if idx > 0 else None
+        next_s = section_scenes[idx + 1] if idx + 1 < len(section_scenes) else None
+
+        changed = {}
+        if payload.get("start") is not None:
+            start = float(payload["start"])
+            lo = (float(prev_s["start_seconds"]) + _MIN_SCENE_S) if prev_s else \
+                 float(s.get("start_seconds") or 0.0)   # section head: locked
+            hi = float(s.get("end_seconds") or start) - _MIN_SCENE_S
+            if prev_s is None:
+                start = float(s.get("start_seconds") or 0.0)  # locked head
+            start = max(lo, min(hi, start))
+            s["start_seconds"] = round(start, 3)
+            if prev_s is not None:
+                prev_s["end_seconds"] = round(start, 3)
+            changed["start"] = s["start_seconds"]
+        if payload.get("end") is not None:
+            end = float(payload["end"])
+            lo = float(s.get("start_seconds") or 0.0) + _MIN_SCENE_S
+            hi = (float(next_s["end_seconds"]) - _MIN_SCENE_S) if next_s else \
+                 float(s.get("end_seconds") or end)     # section tail: locked
+            if next_s is None:
+                end = float(s.get("end_seconds") or end)      # locked tail
+            end = max(lo, min(hi, end))
+            s["end_seconds"] = round(end, 3)
+            if next_s is not None:
+                next_s["start_seconds"] = round(end, 3)
+            changed["end"] = s["end_seconds"]
+        if not changed:
+            raise HTTPException(status_code=400,
+                                detail="start and/or end required")
+        from nolan import iterate
+        iterate.save_plan_raw(plan_path, data)
+        return {"scene_id": scene_id, "applied": changed,
+                "neighbors": {"prev": prev_s.get("id") if prev_s else None,
+                              "next": next_s.get("id") if next_s else None}}
+
+    @app.post("/api/timeline/note")
+    async def timeline_note_add(payload: dict = Body(...)):
+        """Add a timeline range note (ScenePlan.meta.timeline_notes): the
+        beefed-up comment — {t0, t1, text, scene_id?, asset?, motion?}.
+        Structured halves apply deterministically via /note/apply; free text
+        routes to the existing revise/agent lane."""
+        project = payload.get("project")
+        if not project:
+            raise HTTPException(status_code=400, detail="project is required")
+        try:
+            t0, t1 = float(payload["t0"]), float(payload["t1"])
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="t0 and t1 (seconds) required")
+        note = {
+            "id": uuid.uuid4().hex[:8],
+            "t0": round(min(t0, t1), 3), "t1": round(max(t0, t1), 3),
+            "text": (payload.get("text") or "").strip(),
+            "scene_id": payload.get("scene_id"),
+            "asset": payload.get("asset"),        # path to pin
+            "motion": payload.get("motion"),      # STILL_TREATMENTS value
+            "status": "open",
+        }
+        if not (note["text"] or note["asset"] or note["motion"]):
+            raise HTTPException(status_code=400,
+                                detail="a note needs text, an asset or a motion")
+        plan_path, data = _plan_for(project)
+        data.setdefault("meta", {}).setdefault("timeline_notes", []).append(note)
+        from nolan import iterate
+        iterate.save_plan_raw(plan_path, data)
+        return note
+
+    def _note_scene(data: dict, note: dict):
+        """The scene a note targets: explicit scene_id, else the window
+        containing the note's midpoint."""
+        from nolan import iterate
+        if note.get("scene_id"):
+            return iterate.find_scene(data, note["scene_id"])
+        mid = (float(note["t0"]) + float(note["t1"])) / 2
+        for scenes in (data.get("sections") or {}).values():
+            if not isinstance(scenes, list):
+                continue
+            for s in scenes:
+                if not isinstance(s, dict):
+                    continue
+                a, b = s.get("start_seconds"), s.get("end_seconds")
+                if a is not None and b is not None and a <= mid < b:
+                    return s
+        return None
+
+    @app.post("/api/timeline/note/apply")
+    async def timeline_note_apply(payload: dict = Body(...)):
+        """Deterministic apply of a note's STRUCTURED half: asset -> pin,
+        motion -> still_treatment lock. Free text is NOT interpreted here —
+        if text remains, the response says route='agent' so the UI sends it
+        down the existing revise lane (status becomes 'dispatched' there)."""
+        project, note_id = payload.get("project"), payload.get("note_id")
+        if not (project and note_id):
+            raise HTTPException(status_code=400,
+                                detail="project and note_id are required")
+        plan_path, data = _plan_for(project)
+        notes = (data.get("meta") or {}).get("timeline_notes") or []
+        note = next((n for n in notes if n.get("id") == note_id), None)
+        if note is None:
+            raise HTTPException(status_code=404, detail=f"note '{note_id}' not found")
+        scene = _note_scene(data, note)
+        if scene is None:
+            raise HTTPException(status_code=422,
+                                detail="no scene under the note's window")
+        applied = []
+        if note.get("asset"):
+            src = str(note["asset"])
+            if not Path(src).exists():
+                raise HTTPException(status_code=422,
+                                    detail=f"asset not found: {src}")
+            scene["pinned_asset"] = {"src": src, "kind": "image", "by": "human",
+                                     **({"note": note["text"]} if note.get("text") else {})}
+            applied.append(f"pinned {Path(src).name}")
+        if note.get("motion"):
+            from nolan.still_motion import STILL_TREATMENTS
+            if note["motion"] not in STILL_TREATMENTS:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"motion must be one of {list(STILL_TREATMENTS)}")
+            scene["still_treatment"] = note["motion"]
+            applied.append(f"locked {note['motion']}")
+        route = "agent" if (note.get("text") and not applied) else None
+        note["status"] = "applied" if applied else "open"
+        note["scene_id"] = scene.get("id")
+        from nolan import iterate
+        iterate.save_plan_raw(plan_path, data)
+        return {"note": note, "applied": applied, "route": route,
+                "scene_id": scene.get("id")}
+
+    @app.post("/api/timeline/note/update")
+    async def timeline_note_update(payload: dict = Body(...)):
+        """Update a note's status (e.g. 'dispatched' after the UI routes its
+        free text to the agent lane) or delete it (status='deleted')."""
+        project, note_id = payload.get("project"), payload.get("note_id")
+        if not (project and note_id):
+            raise HTTPException(status_code=400,
+                                detail="project and note_id are required")
+        plan_path, data = _plan_for(project)
+        meta = data.setdefault("meta", {})
+        notes = meta.get("timeline_notes") or []
+        note = next((n for n in notes if n.get("id") == note_id), None)
+        if note is None:
+            raise HTTPException(status_code=404, detail=f"note '{note_id}' not found")
+        status = payload.get("status")
+        if status == "deleted":
+            meta["timeline_notes"] = [n for n in notes if n.get("id") != note_id]
+        elif status in ("open", "applied", "dispatched"):
+            note["status"] = status
+        else:
+            raise HTTPException(status_code=400, detail="bad status")
+        from nolan import iterate
+        iterate.save_plan_raw(plan_path, data)
+        return {"ok": True, "note_id": note_id, "status": status}
 
     @app.get("/api/scenes/audio-info")
     async def scenes_audio_info(project: str = Query(..., description="Project name")):

@@ -79,7 +79,10 @@ def _motion_badge(scene: Dict[str, Any]) -> Optional[Dict[str, str]]:
     if scene.get("matched_clip") or scene.get("rendered_clip"):
         return {"badge": "clip", "source": "authored"}
     if scene.get("_still_treatment"):
-        return {"badge": scene["_still_treatment"], "source": "derived"}
+        # a human lock (authored still_treatment) surfaces as authored; the
+        # pre-pass already honored it, so badge == the locked value
+        src = "authored" if scene.get("still_treatment") else "derived"
+        return {"badge": scene["_still_treatment"], "source": src}
     return None
 
 

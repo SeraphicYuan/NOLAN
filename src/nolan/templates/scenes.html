@@ -770,6 +770,29 @@
         .tl-shots { font-size: 9.5px; color: var(--text-secondary); flex: none; }
         .tl-vo { position: absolute; inset: 12px 0 0 0; }
         .tl-sfx { position: absolute; top: 0; font-size: 11px; cursor: default; z-index: 2; }
+        /* P3 edit affordances */
+        .tl-h { position: absolute; top: 0; bottom: 0; width: 7px; cursor: ew-resize; z-index: 2; }
+        .tl-h.l { left: 0; border-left: 2px solid transparent; }
+        .tl-h.r { right: 0; border-right: 2px solid transparent; }
+        .tl-block.scene:hover .tl-h.l { border-left-color: var(--accent); }
+        .tl-block.scene:hover .tl-h.r { border-right-color: var(--accent); }
+        .tl-badge.lockable { cursor: pointer; }
+        .tl-badge.lockable:hover { background: rgba(37,99,235,.15); }
+        .tl-lane.notes { min-height: 30px; background: repeating-linear-gradient(90deg,
+                   transparent 0 40px, rgba(255,255,255,.02) 40px 80px); cursor: crosshair; }
+        .tl-block.note { background: rgba(217,119,6,.15); border-color: rgba(217,119,6,.55); cursor: pointer; }
+        .tl-block.note.applied { background: rgba(22,163,74,.15); border-color: rgba(22,163,74,.55); }
+        .tl-block.note.dispatched { background: rgba(147,51,234,.15); border-color: rgba(147,51,234,.55); }
+        .tl-note-dlg { background: var(--bg-secondary); color: var(--text-primary);
+                   border: 1px solid var(--border); border-radius: 12px; padding: 16px; max-width: 420px; }
+        .tl-note-dlg::backdrop { background: rgba(0,0,0,.5); }
+        .tl-note-dlg label { display: block; font-size: 11px; color: var(--text-secondary); margin: 8px 0 3px; }
+        .tl-note-dlg input, .tl-note-dlg textarea, .tl-note-dlg select { width: 100%;
+                   background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border);
+                   border-radius: 7px; padding: 6px 8px; font-size: 12.5px; box-sizing: border-box; }
+        .tl-note-dlg .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+        .tl-note-dlg button { background: var(--bg-primary); border: 1px solid var(--border);
+                   color: var(--text-primary); border-radius: 7px; padding: 5px 12px; font-size: 12.5px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -828,6 +851,31 @@
             </div>
             <div class="tl-scroll"><div class="tl-canvas" id="tlCanvas"></div></div>
         </div>
+        <dialog class="tl-note-dlg" id="tlNoteDlg">
+            <div style="font-weight:700;font-size:13.5px">Range note</div>
+            <div style="font-size:11.5px;color:var(--text-secondary);margin-top:3px">
+                Asset and motion apply <b>deterministically</b> (pin + camera lock);
+                free text goes to the agent revise lane for the scene under the range.</div>
+            <div style="display:flex;gap:8px">
+                <span style="flex:1"><label>from (s)</label><input id="tlnT0" type="number" step="0.1"></span>
+                <span style="flex:1"><label>to (s)</label><input id="tlnT1" type="number" step="0.1"></span>
+            </div>
+            <label>what you want here (free text — agent lane)</label>
+            <textarea id="tlnText" rows="2" placeholder="e.g. slow reveal of the manuscript, hold on the final line"></textarea>
+            <label>asset to pin (path, optional — from the pool/tray)</label>
+            <input id="tlnAsset" placeholder="D:\...\assets\art\x.jpg">
+            <label>camera motion (optional — locks still_treatment)</label>
+            <select id="tlnMotion">
+                <option value="">— no lock —</option>
+                <option>kenburns-in</option><option>kenburns-out</option>
+                <option>kenburns-pan</option><option>drift</option><option>tour</option>
+            </select>
+            <div class="row">
+                <button onclick="document.getElementById('tlNoteDlg').close()">Cancel</button>
+                <button onclick="tlSaveNote(false)">Save</button>
+                <button style="border-color:var(--accent)" onclick="tlSaveNote(true)">Save + apply</button>
+            </div>
+        </dialog>
         <div class="scene-list" id="sceneList">
             <div class="loading">Loading scene plan...</div>
         </div>
@@ -1440,7 +1488,12 @@
         function trayDragStart(e, sceneId, aid) {
             _trayDrag = { sceneId, aid };
             e.dataTransfer.effectAllowed = 'move';
-            try { e.dataTransfer.setData('text/plain', aid); } catch (x) {}
+            try {
+                e.dataTransfer.setData('text/plain', aid);
+                // timeline drop target reads this to pin the asset elsewhere
+                e.dataTransfer.setData('application/x-nolan-tray',
+                                       JSON.stringify({ sceneId, assetId: aid }));
+            } catch (x) {}
         }
         function trayDrop(e, sceneId, targetId) {
             e.preventDefault(); e.stopPropagation();
@@ -1650,11 +1703,20 @@
             if (!items.length) { grid.innerHTML = back + '<div class="tray-empty">Nothing here.</div>'; return; }
             grid.innerHTML = back + items.map((it, i) => {
                 const on = pickerSel.has(pickKey(it));
-                return `<div class="pk-card${on?' on':''}" data-key="${pickKey(it)}" onclick="togglePick(${i})">
+                return `<div class="pk-card${on?' on':''}" data-key="${pickKey(it)}" onclick="togglePick(${i})"
+                    draggable="true" ondragstart="pickDragStart(event,${i})">
                     <img src="${it.thumb}" loading="lazy" alt=""><span>${esc((it.label||'').slice(0,42))}</span>
                     <i class="pk-eye" title="preview" onclick="event.stopPropagation();previewItem(${i})">⤢</i>
                     <i class="pk-check">✓</i></div>`;
             }).join('');
+        }
+        function pickDragStart(e, i) {
+            const it = pickerItems[i];
+            if (!it || !it.payload) return;
+            try {   // timeline drop target: add -> pin on the target scene
+                e.dataTransfer.setData('application/x-nolan-pick',
+                                       JSON.stringify({ payload: it.payload }));
+            } catch (x) {}
         }
         function togglePick(i) {
             const it = pickerItems[i]; if (!it) return;
@@ -2225,31 +2287,36 @@
                     `<div class="tl-block sec" style="left:${tlX(s.start)}px;width:${tlX(s.end) - tlX(s.start) - 2}px"
                           title="locked — narration owns duration">🔒 ${esc(s.name)}</div>`).join('') + `</div>`;
 
-            // scenes (click -> Inspector)
+            // scenes (click -> Inspector; edge-drag = roll edit within section)
             html += `<div class="tl-lane" style="width:${W}px"><span class="tl-lanelabel">scenes</span>` +
                 d.scenes.map(s => {
                     if (s.start == null || s.end == null) return '';
                     const num = (s.id || '').replace(/^scene_0*/, '');
                     return `<div class="tl-block scene" data-scene="${esc(s.id)}"
                               style="left:${tlX(s.start)}px;width:${Math.max(14, tlX(s.end) - tlX(s.start) - 2)}px"
-                              title="${esc(s.id)} · ${esc(s.visual_type || '')}\n${esc(s.excerpt || '')}">${num}</div>`;
+                              title="${esc(s.id)} · ${esc(s.visual_type || '')}\n${esc(s.excerpt || '')}\ndrag an edge to retime (neighbors absorb it)">
+                              <span class="tl-h l" data-edge="start"></span>${num}<span class="tl-h r" data-edge="end"></span></div>`;
                 }).join('') + `</div>`;
 
-            // visual units: media + motion badge
+            // visual units: media + motion badge (click a camera badge to lock)
             html += `<div class="tl-lane" style="width:${W}px"><span class="tl-lanelabel">visual</span>` +
                 d.units.map(u => {
                     if (u.start == null || u.end == null) return '';
                     const w = Math.max(14, tlX(u.end) - tlX(u.start) - 2);
+                    const lockable = u.motion && TL_TREATMENTS.includes(u.motion.badge);
                     const badge = u.motion ?
-                        `<span class="tl-badge ${u.motion.source}" title="${u.motion.source === 'derived'
-                            ? 'derived — what the next render will do (same pre-pass premium runs)'
-                            : 'authored on the plan'}">${esc(u.motion.badge)}</span>` : '';
+                        `<span class="tl-badge ${u.motion.source}${lockable ? ' lockable' : ''}"
+                            data-scene="${esc(u.scene_id)}" data-badge="${esc(u.motion.badge)}"
+                            title="${u.motion.source === 'derived'
+                            ? 'derived — what the next render will do. CLICK to lock/cycle the camera; shift-click back to auto'
+                            : lockable ? 'locked by you. CLICK to cycle; shift-click back to auto'
+                                       : 'authored on the plan'}">${u.motion.source === 'authored' && lockable ? '🔒' : ''}${esc(u.motion.badge)}</span>` : '';
                     const shots = u.shots > 1 ? `<span class="tl-shots">×${u.shots}</span>` : '';
                     const pin = u.pinned ? '📌' : '';
                     const label = u.media ? esc(u.media) : '<i style="opacity:.5">no media</i>';
-                    return `<div class="tl-block unit" data-scene="${esc(u.scene_id)}"
+                    return `<div class="tl-block unit" data-scene="${esc(u.scene_id)}" data-drop="1"
                               style="left:${tlX(u.start)}px;width:${w}px"
-                              title="${esc(u.media || 'no media')}${u.citation ? '\n' + esc(u.citation) : ''}">${pin}${w > 90 ? label : ''}${badge}${shots}</div>`;
+                              title="${esc(u.media || 'no media')}${u.citation ? '\n' + esc(u.citation) : ''}\ndrop a tray/picker asset here to PIN it">${pin}${w > 90 ? label : ''}${badge}${shots}</div>`;
                 }).join('') + `</div>`;
 
             // audio: VO envelope + sfx markers
@@ -2268,16 +2335,189 @@
                        title="sfx: ${esc(c.label)} (${esc(c.scene_id)})">♪</span>`).join('');
             html += `<div class="tl-lane audio" style="width:${W}px"><span class="tl-lanelabel">audio</span>${svg}${sfx}</div>`;
 
+            // notes lane: range notes (drag on the empty lane to add one)
+            const notes = (d.notes || []).map((n, i) =>
+                `<div class="tl-block note ${n.status || 'open'}" data-note="${esc(n.id)}"
+                      style="left:${tlX(n.t0)}px;width:${Math.max(16, tlX(n.t1) - tlX(n.t0) - 2)}px"
+                      title="${esc(n.text || '')}\n${n.asset ? 'asset: ' + esc(n.asset) + '\n' : ''}${n.motion ? 'motion: ' + esc(n.motion) + '\n' : ''}status: ${esc(n.status || 'open')} — click to apply/manage">📝 ${esc((n.text || n.motion || 'note').slice(0, 40))}</div>`).join('');
+            html += `<div class="tl-lane notes" id="tlNotesLane" style="width:${W}px"
+                          title="drag here to add a range note">
+                        <span class="tl-lanelabel">notes</span>${notes}</div>`;
+
             const canvas = document.getElementById('tlCanvas');
             canvas.style.width = W + 'px';
             canvas.innerHTML = html;
             document.getElementById('tlStat').textContent =
-                `${Math.round(d.duration)}s · ${d.scenes.length} scenes · ${d.sfx.length} sfx cues`;
+                `${Math.round(d.duration)}s · ${d.scenes.length} scenes · ${d.sfx.length} sfx cues · ${(d.notes || []).length} notes`;
         }
-        document.getElementById('tlCanvas').addEventListener('click', e => {
+
+        // ---------- Timeline edits (P3) ----------
+        const TL_TREATMENTS = ['kenburns-in', 'kenburns-out', 'kenburns-pan', 'drift', 'tour'];
+
+        async function tlPost(url, body) {
+            body.project = currentProject;
+            const res = await fetch(url, { method: 'POST',
+                headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(j.detail || res.statusText);
+            return j;
+        }
+
+        document.getElementById('tlCanvas').addEventListener('click', async e => {
+            const badge = e.target.closest('.tl-badge.lockable');
+            if (badge) {                       // camera lock: cycle / shift = back to auto
+                e.stopPropagation();
+                try {
+                    const next = e.shiftKey ? null
+                        : TL_TREATMENTS[(TL_TREATMENTS.indexOf(badge.dataset.badge) + 1) % TL_TREATMENTS.length];
+                    await tlPost('/api/timeline/treatment',
+                                 { scene_id: badge.dataset.scene, treatment: next });
+                    await loadTimeline();
+                } catch (err) { alert('treatment: ' + err.message); }
+                return;
+            }
+            const noteEl = e.target.closest('.tl-block.note');
+            if (noteEl) { tlManageNote(noteEl.dataset.note); return; }
+            if (e.target.closest('.tl-h')) return;      // edge handle, not a click
             const b = e.target.closest('[data-scene]');
             if (b) openInspector(b.dataset.scene);
         });
+
+        // edge drag = roll edit (neighbors absorb; section bounds locked server-side)
+        let tlDrag = null;
+        document.getElementById('tlCanvas').addEventListener('mousedown', e => {
+            const h = e.target.closest('.tl-h');
+            if (!h) return;
+            const block = h.closest('.tl-block.scene');
+            tlDrag = { scene: block.dataset.scene, edge: h.dataset.edge,
+                       x0: e.clientX, left0: parseFloat(block.style.left),
+                       w0: parseFloat(block.style.width), block };
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', e => {
+            if (!tlDrag) return;
+            const dx = e.clientX - tlDrag.x0;
+            if (tlDrag.edge === 'start') {
+                tlDrag.block.style.left = (tlDrag.left0 + dx) + 'px';
+                tlDrag.block.style.width = Math.max(10, tlDrag.w0 - dx) + 'px';
+            } else {
+                tlDrag.block.style.width = Math.max(10, tlDrag.w0 + dx) + 'px';
+            }
+        });
+        document.addEventListener('mouseup', async e => {
+            if (!tlDrag) return;
+            const d = tlDrag; tlDrag = null;
+            const dx = e.clientX - d.x0;
+            if (Math.abs(dx) < 3) return;                 // a click, not a drag
+            const secs = dx / tlPps;
+            const body = { scene_id: d.scene };
+            const sc = tlData.scenes.find(s => s.id === d.scene);
+            if (!sc) return;
+            if (d.edge === 'start') body.start = sc.start + secs;
+            else body.end = sc.end + secs;
+            try {
+                const r = await tlPost('/api/timeline/scene-window', body);
+                await loadTimeline();
+                await loadSceneData();                     // windows changed -> refresh list
+            } catch (err) { alert('retime: ' + err.message); await loadTimeline(); }
+        });
+
+        // drop a TRAY or PICKER card on a unit block -> pin that asset there
+        document.getElementById('tlCanvas').addEventListener('dragover', e => {
+            if (e.target.closest('[data-drop]')) e.preventDefault();
+        });
+        document.getElementById('tlCanvas').addEventListener('drop', async e => {
+            const unit = e.target.closest('[data-drop]');
+            if (!unit) return;
+            e.preventDefault();
+            const sceneId = unit.dataset.scene;
+            try {
+                const tray = e.dataTransfer.getData('application/x-nolan-tray');
+                const pick = e.dataTransfer.getData('application/x-nolan-pick');
+                if (tray) {                                // {sceneId, assetId} from the tray
+                    const t = JSON.parse(tray);
+                    const src = (allScenes.find(s => s.id === t.sceneId)?.assets || [])
+                                .find(a => a.id === t.assetId)?.src;
+                    if (!src) throw new Error('tray asset has no src');
+                    await assetOp(sceneId, { op: 'pin', src, kind: 'image' });
+                } else if (pick) {                         // picker payload: add -> pin
+                    const p = JSON.parse(pick);
+                    const j = await assetOp(sceneId, { ...p.payload });
+                    const added = (j.assets || [])[j.assets.length - 1];
+                    if (added) await assetOp(sceneId, { op: 'pin', asset_id: added.id });
+                } else { return; }
+                await loadTimeline(); await loadSceneData();
+            } catch (err) { alert('pin: ' + err.message); }
+        });
+
+        // range note: drag on the notes lane -> dialog -> POST /api/timeline/note
+        let tlNoteDrag = null;
+        document.getElementById('tlCanvas').addEventListener('mousedown', e => {
+            const lane = e.target.closest('.tl-lane.notes');
+            if (!lane || e.target.closest('.tl-block')) return;
+            const rect = lane.getBoundingClientRect();
+            tlNoteDrag = { lane, t0: (e.clientX - rect.left) / tlPps, rect };
+            e.preventDefault();
+        });
+        document.addEventListener('mouseup', e => {
+            if (!tlNoteDrag) return;
+            const d = tlNoteDrag; tlNoteDrag = null;
+            const t1 = (e.clientX - d.rect.left) / tlPps;
+            if (Math.abs(t1 - d.t0) * tlPps < 8) return;   // too small: ignore
+            tlOpenNoteDialog(Math.min(d.t0, t1), Math.max(d.t0, t1));
+        });
+
+        function tlOpenNoteDialog(t0, t1) {
+            document.getElementById('tlnT0').value = t0.toFixed(1);
+            document.getElementById('tlnT1').value = t1.toFixed(1);
+            document.getElementById('tlnText').value = '';
+            document.getElementById('tlnAsset').value = '';
+            document.getElementById('tlnMotion').value = '';
+            document.getElementById('tlNoteDlg').showModal();
+        }
+        async function tlSaveNote(applyNow) {
+            const body = {
+                t0: parseFloat(document.getElementById('tlnT0').value),
+                t1: parseFloat(document.getElementById('tlnT1').value),
+                text: document.getElementById('tlnText').value.trim(),
+                asset: document.getElementById('tlnAsset').value.trim() || null,
+                motion: document.getElementById('tlnMotion').value || null,
+            };
+            try {
+                const note = await tlPost('/api/timeline/note', body);
+                document.getElementById('tlNoteDlg').close();
+                if (applyNow) await tlApplyNote(note.id);
+                else await loadTimeline();
+            } catch (err) { alert('note: ' + err.message); }
+        }
+        async function tlApplyNote(noteId) {
+            try {
+                const r = await tlPost('/api/timeline/note/apply', { note_id: noteId });
+                if (r.route === 'agent' && r.note.text) {
+                    // free text -> the EXISTING revise lane against the note's scene
+                    await fetch('/api/scenes/scene/revise', { method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ project: currentProject,
+                            scene_id: r.scene_id, note: r.note.text }) });
+                    await tlPost('/api/timeline/note/update',
+                                 { note_id: noteId, status: 'dispatched' });
+                }
+                await loadTimeline(); await loadSceneData();
+            } catch (err) { alert('apply: ' + err.message); }
+        }
+        async function tlManageNote(noteId) {
+            const n = (tlData.notes || []).find(x => x.id === noteId);
+            if (!n) return;
+            const act = prompt(
+                `note ${n.id} [${n.status}]: "${n.text || ''}"` +
+                (n.asset ? `\nasset: ${n.asset}` : '') + (n.motion ? `\nmotion: ${n.motion}` : '') +
+                `\n\ntype: apply / delete / (cancel)`, 'apply');
+            if (act === 'apply') await tlApplyNote(noteId);
+            else if (act === 'delete') {
+                await tlPost('/api/timeline/note/update', { note_id: noteId, status: 'deleted' });
+                await loadTimeline();
+            }
+        }
 
         loadProjects();
         loadFleet();

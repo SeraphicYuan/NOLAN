@@ -4,6 +4,35 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Timeline edits (P3): camera lock, roll edit, range notes (2026-07-07)
+
+The timeline becomes an editor — every edit lands on scene_plan.json through
+typed endpoints (no new dialect):
+
+- **Authored `still_treatment`** (full module contract): `STILL_TREATMENTS`
+  vocab in still_motion.py; `assign_still_treatments` honors a valid lock
+  verbatim (wins over cues/drift-close/no-repeat, counts as prev);
+  PLAN_FIELD_CONSUMERS entry (honesty-tested); iterate editable whitelist;
+  timeline badge shows it authored+🔒. UI: CLICK a camera badge to cycle the
+  lock, shift-click back to auto (`POST /api/timeline/treatment`, vocab-gated).
+- **Roll edit** — drag a scene block's edge: `POST /api/timeline/scene-window`
+  moves the boundary, the NEIGHBOR absorbs it (shared boundary), >=1s guard,
+  section head/tail LOCKED (narration owns duration). Beat cache invalidates
+  itself (job content changes).
+- **Range notes** — drag on the notes lane -> dialog {t0,t1, free text, asset,
+  motion} stored in ScenePlan.meta.timeline_notes (lossless roundtrip
+  tested). `note/apply` is DETERMINISTIC for the structured half (asset ->
+  pinned_asset, motion -> still_treatment lock, scene = window midpoint);
+  free text routes to the EXISTING revise/agent lane and the note is marked
+  dispatched. Status colors on the lane (open/applied/dispatched).
+- **Drop-to-pin** — drag a tray card or picker card onto a timeline unit ->
+  pins that asset to that scene (picker payloads add-then-pin, so library
+  items resolve server-side).
+- Tests `tests/test_timeline_edits.py` (8). Browser-verified on a throwaway
+  project copy: badge cycled to authored 🔒kenburns-out, edge drag +2s
+  persisted with neighbor absorb, motion note applied to the right scene
+  (screenshot inspected); probe project deleted. Suite 987.
+
 ## Timeline view in the Scenes page (P2, read-only) (2026-07-07)
 
 The scene plan on a time axis — a lite-NLE VIEW, derived server-side
