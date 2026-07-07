@@ -1265,7 +1265,7 @@
                 <div class="edit-status" id="editstatus-${scene.id}"></div>`;
 
             document.getElementById('inspFoot').innerHTML = `
-                <button class="apply-btn" onclick="toggleSelect('${scene.id}', true); renderScenes(); renderInspector();">↻ Queue re-render</button>
+                <button class="apply-btn" onclick="queueSceneChecked('${scene.id}')">↻ Queue re-render</button>
                 <span class="insp-note" style="margin:0;">${selectedScenes.has(scene.id)
                     ? 'queued ✓ — the bar at the bottom runs it: inline (gen model) or send to a Claude agent'
                     : 'edits invalidate the old clip; queue, then run from the bottom bar (inline or agent)'}</span>`;
@@ -1370,6 +1370,7 @@
                 html += `<div class="insp-note">Pick an effect to see and set every parameter it exposes.</div>`;
             }
             body.innerHTML = html;
+            delete _moDirty[id];   // redraw = inputs back to saved/registry values
         }
         function moEffectChange(id, v) { _moEffSel[id] = v; renderMotionFold(id); }
         async function moApply(id) {
@@ -1398,12 +1399,56 @@
                 const r = await postRevise({ project: currentProject, scene_id: id, patch });
                 const warn = (r.motion_warnings || []).length ? ' ⚠ ' + r.motion_warnings.join('; ') : '';
                 selectedScenes.add(id); editedScenes.add(id);
-                delete _moEffSel[id];
+                delete _moEffSel[id]; delete _moDirty[id];
                 await refreshScenes();
                 // refreshScenes re-renders the Inspector — set the message on the FRESH element
                 const st2 = document.getElementById(`editstatus-${id}`);
                 if (st2) st2.textContent = (patch.motion_spec ? 'Motion spec saved' : 'Motion spec removed') + ' — Re-render to see it' + warn;
             } catch (e) { if (st) st.textContent = 'Error: ' + e.message; }
+        }
+
+        // ---------- unapplied-edit detection (typing ≠ saving) ----------
+        // Field inputs only exist in the OPEN Inspector, so this covers exactly
+        // the scene the user is looking at. Queue/run warn instead of silently
+        // rendering stale values.
+        let _moDirty = {};   // motion-fold param inputs touched since last apply/redraw
+        document.addEventListener('input', e => {
+            const mo = e.target.closest && e.target.closest('.mo-body');
+            if (mo) { const m = mo.id.match(/^mobody-(.+)$/); if (m) _moDirty[m[1]] = true; }
+        });
+        function pendingEdits(id) {
+            const scene = allScenes.find(s => s.id === id);
+            if (!scene) return [];
+            const out = [];
+            inlineEditFields(scene).forEach(f => {
+                const el = document.getElementById(`field-${id}-${f}`);
+                if (el && el.value !== (scene[f] ?? '').toString()) out.push(f);
+            });
+            const tr = document.getElementById(`field-${id}-transition`);
+            if (tr && tr.value !== (scene.transition || 'cut')) out.push('transition');
+            const sh = document.getElementById(`field-${id}-shots`);
+            if (sh && sh.value.trim() !== (scene.shots ? JSON.stringify(scene.shots) : '')) out.push('shots');
+            const effSel = document.getElementById(`mo-${id}-effect`);
+            const savedEff = (scene.motion_spec && scene.motion_spec.effect) || '';
+            if ((effSel && effSel.value !== savedEff) || _moDirty[id]) out.push('motion spec');
+            const note = document.getElementById(`note-${id}`);
+            if (note && note.value.trim()) out.push('comment (typed but not sent)');
+            return out;
+        }
+        async function queueSceneChecked(id) {
+            const pend = pendingEdits(id);
+            if (pend.length) {
+                const auto = pend.filter(p => p !== 'comment (typed but not sent)');
+                const msg = `Unapplied edits on ${id}: ${pend.join(', ')}.\n\n` +
+                    (auto.length ? 'OK → apply them now, then queue.' : 'OK → queue anyway.') +
+                    (pend.length !== auto.length ? '\n(Your comment is NOT auto-sent — use ⚡ Quick edit or Send to agent.)' : '') +
+                    '\nCancel → don’t queue (review first).';
+                if (!confirm(msg)) return;
+                if (auto.some(p => p !== 'motion spec')) await applyFields(id);
+                if (auto.includes('motion spec')) await moApply(id);
+            }
+            toggleSelect(id, true);
+            renderScenes(); renderInspector();
         }
 
         // ---------- Iteration: select / edit / comment / re-render ----------
@@ -2164,6 +2209,14 @@
         async function rerenderSelected() {
             const ids = [...selectedScenes];
             if (ids.length === 0) return;
+            // last gate: the open Inspector may hold typed-but-unapplied edits
+            if (inspectorScene) {
+                const pend = pendingEdits(inspectorScene);
+                if (pend.length && !confirm(
+                    `${inspectorScene} has unapplied edits: ${pend.join(', ')}.\n\n` +
+                    'OK → run WITHOUT them (renders the saved values).\n' +
+                    'Cancel → go back and Apply first.')) return;
+            }
             const msg = document.getElementById('rerenderMsg');
             const model = (document.getElementById('rerenderModel') || {}).value || 'flux-dev';
             msg.textContent = 'Submitting…';
