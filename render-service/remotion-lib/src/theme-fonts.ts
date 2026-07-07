@@ -15,6 +15,14 @@ import active from './styles/_active-theme.json';
 const wanted: string[] = ((active as Record<string, unknown>).fonts as string[]) || [];
 const catalog = getAvailableFonts();
 
+// Load ONLY the weights/subsets the themes actually use. An unconstrained
+// loadFont() pulls every unicode-range slice — Noto Serif SC alone made 808
+// network requests, which stalled headless-browser setup past its 30s
+// timeout once Google started throttling (renders died with "Timed out
+// setting up the headless browser"). CJK families get their CJK subset;
+// everything gets latin.
+const CJK = /(SC|TC|JP|KR)$/;
+
 for (const family of wanted) {
   const entry = catalog.find((f) => f.fontFamily === family);
   if (!entry) {
@@ -23,9 +31,36 @@ for (const family of wanted) {
       + `this family will fall back (self-host it in base.css if it matters)`);
     continue;
   }
+  const subsets = CJK.test(family)
+    ? ['latin', 'chinese-simplified']
+    : ['latin', 'latin-ext'];
   entry
     .load()
-    .then((mod) => mod.loadFont())
+    .then((mod) => {
+      type Info = {fonts: Record<string, Record<string, Record<string, unknown>>>};
+      const m = mod as {loadFont: (s?: string, o?: object) => unknown;
+                        getInfo?: () => Info};
+      const info = m.getInfo?.();
+      const styles = info?.fonts ? Object.keys(info.fonts) : [];
+      const style = styles.includes('normal') ? 'normal' : styles[0];
+      if (!info || !style) {
+        return m.loadFont();                    // no manifest — old behavior
+      }
+      const availWeights = Object.keys(info.fonts[style] || {});
+      const weights = ['400', '700'].filter((w) => availWeights.includes(w));
+      const availSubsets = new Set<string>();
+      for (const w of availWeights) {
+        for (const s of Object.keys(info.fonts[style][w] || {})) {
+          availSubsets.add(s);
+        }
+      }
+      const pick = subsets.filter((s) => availSubsets.has(s));
+      return m.loadFont(style, {
+        weights: weights.length ? weights : availWeights.slice(0, 2),
+        subsets: pick.length ? pick : undefined,
+        ignoreTooManyRequestsWarning: true,
+      });
+    })
     // eslint-disable-next-line no-console
     .catch((e) => console.warn(`[theme-fonts] failed to load "${family}":`, e));
 }
