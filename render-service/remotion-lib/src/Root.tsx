@@ -20,6 +20,15 @@ import {Showcase} from './Showcase';
 import {Chapter} from './Chapter';
 import {Montage, montageDuration, type MontageStep, type Transition} from './Montage';
 import {FXSpike} from './Effects';
+// gap effects (2026-07): device mockups, before/after, bar-race, whip, PiP, typewriter, shake
+import {Timeline} from './Timeline';
+import {ScreenFrame} from './ScreenFrame';
+import {CameraShake} from './CameraShake';
+import {BarRace} from './BarRace';
+import {Typewriter} from './Typewriter';
+import {BeforeAfter} from './BeforeAfter';
+import {WhipTransition} from './WhipTransition';
+import {PictureInPicture} from './PictureInPicture';
 
 // Curated Remotion source — one composition per registered scene type.
 // Shared style (`theme`) + per-effect style vars (lineStyle/barStyle/shapeStyle/…).
@@ -131,6 +140,55 @@ export const Root: React.FC = () => {
       <Composition
         id="Showcase" component={Showcase} durationInFrames={900} {...common}
         defaultProps={{segments: [], introTitle: 'NOLAN · Remotion Motion Library', perFrames: 120, introFrames: 60, durationInFrames: 900}}
+        calculateMetadata={dur}
+      />
+      {/* Timeline standalone (was chapter-only via TimelinePro; now also renderable
+          standalone so the registry `timeline` effect has a direct render path). */}
+      <Composition
+        id="Timeline" component={Timeline} durationInFrames={180} {...common}
+        defaultProps={{title: '', start: 0, end: 100, eras: [] as any[], markers: [] as any[],
+          focus: undefined as any, theme: undefined as any, durationInFrames: 180}}
+        calculateMetadata={dur}
+      />
+      {/* ── gap effects (2026-07) ── */}
+      <Composition
+        id="ScreenFrame" component={ScreenFrame} durationInFrames={150} {...common}
+        defaultProps={{background: undefined as any, videoSrc: undefined as any, device: 'browser' as const,
+          url: '', label: '', accent: undefined as any, theme: undefined as any, durationInFrames: 150}}
+        calculateMetadata={dur}
+      />
+      <Composition
+        id="CameraShake" component={CameraShake} durationInFrames={120} {...common}
+        defaultProps={{background: undefined as any, videoSrc: undefined as any, intensity: 0.6, flash: true,
+          label: '', theme: undefined as any, durationInFrames: 120}}
+        calculateMetadata={dur}
+      />
+      <Composition
+        id="BarRace" component={BarRace} durationInFrames={180} {...common}
+        defaultProps={{title: '', bars: [] as any[], prefix: '', suffix: '', theme: undefined as any, durationInFrames: 180}}
+        calculateMetadata={dur}
+      />
+      <Composition
+        id="Typewriter" component={Typewriter} durationInFrames={150} {...common}
+        defaultProps={{text: '', mode: 'type' as const, cursor: true, accent: undefined as any, theme: undefined as any, durationInFrames: 150}}
+        calculateMetadata={dur}
+      />
+      <Composition
+        id="BeforeAfter" component={BeforeAfter} durationInFrames={150} {...common}
+        defaultProps={{background: undefined as any, foreground: undefined as any, before_label: '', after_label: '',
+          accent: undefined as any, theme: undefined as any, durationInFrames: 150}}
+        calculateMetadata={dur}
+      />
+      <Composition
+        id="WhipTransition" component={WhipTransition} durationInFrames={90} {...common}
+        defaultProps={{background: undefined as any, foreground: undefined as any, direction: 'left' as const,
+          theme: undefined as any, durationInFrames: 90}}
+        calculateMetadata={dur}
+      />
+      <Composition
+        id="PictureInPicture" component={PictureInPicture} durationInFrames={150} {...common}
+        defaultProps={{background: undefined as any, videoSrc: undefined as any, foreground: undefined as any,
+          corner: 'br' as const, inset_label: '', accent: undefined as any, theme: undefined as any, durationInFrames: 150}}
         calculateMetadata={dur}
       />
       {/* ── flow bundle: the Chapter Series of step-blocks (+ Montage, FXSpike) ── */}

@@ -2,82 +2,21 @@
 import { Router } from 'express';
 import { jobQueue } from '../jobs/queue.js';
 import { RenderSpec } from '../jobs/types.js';
-import { hasEffect, transformToEngineData } from '../effects/index.js';
 import {
-  resolveLayout,
-  isLayoutTemplate,
   getLayoutTemplates,
   getTemplateRegions,
   TEMPLATES,
-  type LayoutSpec,
 } from '../layout/index.js';
 
 const router = Router();
 
-// POST /render - Submit a new render job
-// Supports two formats:
-// 1. Effect-based: { effect: "image-ken-burns", params: { ... }, layout?: "center" | {...}, region?: "left" }
-// 2. Direct engine: { engine: "remotion", data: { ... } }
+// POST /render - Submit a new render job.
+// Direct engine format: { engine: "remotion" | "infographic", data: { ... } }
+// (The Motion-Canvas preset catalog was removed 2026-07; the pipeline authors
+// motion through the Remotion registry / render.mjs, not this endpoint.)
 router.post('/', (req, res) => {
   const body = req.body;
 
-  // Check if this is an effect-based request
-  if (body.effect) {
-    const effectId = body.effect as string;
-    const params = body.params || {};
-    const layout = body.layout as LayoutSpec | undefined;
-    const region = body.region as string | undefined;
-
-    if (!hasEffect(effectId)) {
-      return res.status(400).json({ error: `Unknown effect: ${effectId}` });
-    }
-
-    // Validate region exists in the layout if specified
-    if (layout && region) {
-      const resolved = resolveLayout(layout);
-      if (!resolved.regions[region]) {
-        const availableRegions = Object.keys(resolved.regions);
-        return res.status(400).json({
-          error: `Region "${region}" not found in layout`,
-          available_regions: availableRegions,
-        });
-      }
-    }
-
-    const transformed = transformToEngineData(effectId, params);
-    if (!transformed) {
-      return res.status(500).json({ error: 'Failed to transform effect params' });
-    }
-
-    // Add layout and region to engine data if specified
-    const engineData = {
-      ...transformed.data,
-      ...(layout ? { layout } : {}),
-      ...(region ? { _targetRegion: region } : {}),
-    };
-
-    const spec: RenderSpec = {
-      engine: transformed.engine as 'remotion' | 'motion-canvas' | 'infographic',
-      data: engineData,
-      width: body.width,
-      height: body.height,
-      duration: body.duration,
-    };
-
-    const job = jobQueue.createJob(spec);
-
-    return res.status(202).json({
-      job_id: job.id,
-      status: job.status,
-      effect: effectId,
-      engine: transformed.engine,
-      layout: layout || 'center',
-      region: region || 'main',
-      poll_url: `/render/status/${job.id}`,
-    });
-  }
-
-  // Direct engine format (original behavior)
   const spec: RenderSpec = body;
 
   if (!spec.engine) {

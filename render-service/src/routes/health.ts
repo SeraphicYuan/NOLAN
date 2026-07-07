@@ -7,7 +7,7 @@ router.get('/', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    engines: ['infographic', 'motion-canvas', 'remotion']
+    engines: ['infographic', 'remotion']
   });
 });
 

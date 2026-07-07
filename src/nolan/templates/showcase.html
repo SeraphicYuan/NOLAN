@@ -569,6 +569,19 @@
             text-decoration: underline;
         }
 
+        .detail-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+        .pill { font-size: 11px; padding: 3px 8px; border-radius: 999px;
+                background: var(--surface-2, #1b1b1f); border: 1px solid var(--border);
+                color: var(--text-dim, #9aa); }
+        .pill-motion { color: #7dd3fc; border-color: #23506b; }
+        .pill-block { color: #c4b5fd; border-color: #453a6b; }
+        .pill-warn { color: #fca5a5; border-color: #6b2b2b; }
+        .when-to-use { font-size: 13px; line-height: 1.5; color: var(--text-dim, #b8b8c0); }
+        .param-list { display: flex; flex-direction: column; gap: 10px; }
+        .param-row code { color: var(--accent); font-size: 12px; }
+        .param-type { font-size: 11px; color: var(--text-dim, #888); margin-left: 8px; }
+        .param-doc { font-size: 12px; color: var(--text-dim, #999); margin-top: 2px; }
+
         @media (max-width: 768px) {
             .header { padding: 14px 16px; }
             .category-tabs { padding: 12px 16px; }
@@ -585,8 +598,8 @@
 <script src="/static/nav.js" data-active="showcase"></script>
     <div class="header">
         <div>
-            <h1>Motion Effects Showcase</h1>
-            <div class="header-subtitle">Browse and generate motion effects for your video essays</div>
+            <h1>Motion &amp; Block Catalog</h1>
+            <div class="header-subtitle">The vocabulary the pipeline can actually author — derived live from the motion registry + block templates</div>
         </div>
     </div>
 
@@ -609,11 +622,6 @@
             </div>
             <div class="detail-content" id="detailContent">
                 <!-- Dynamic content -->
-            </div>
-            <div class="detail-actions">
-                <button class="btn btn-primary" id="generateBtn" onclick="generateEffect()">
-                    Generate Preview
-                </button>
             </div>
         </div>
     </div>
@@ -715,7 +723,7 @@
                         }
                     </div>
                     <div class="effect-info">
-                        <div class="effect-category">${effect.category}</div>
+                        <div class="effect-category">${effect.kind} · ${effect.category}${effect.authorable ? '' : ' · ⚠ not authorable'}</div>
                         <div class="effect-name">${effect.name}</div>
                         <div class="effect-description">${effect.description}</div>
                     </div>
@@ -766,22 +774,40 @@
 
         function renderDetailContent() {
             const content = document.getElementById('detailContent');
+            const e = selectedEffect;
+            const params = (e.params || []).map(p => `
+                <div class="param-row">
+                    <code>${escapeHtml(p.name)}</code>
+                    <span class="param-type">${escapeHtml(p.type)}${p.required ? ' · required' : ''}${p.shared ? ' · shared' : ''}</span>
+                    ${p.doc ? `<div class="param-doc">${escapeHtml(p.doc)}</div>` : ''}
+                    ${p.values ? `<div class="param-doc">one of: ${escapeHtml((p.values||[]).join(', '))}</div>` : ''}
+                </div>`).join('');
 
             content.innerHTML = `
                 <div class="detail-preview">
-                    ${selectedEffect.preview
-                        ? `<video src="/showcase/preview/${selectedEffect.preview.split('/').pop()}" muted loop autoplay></video>`
-                        : `<span style="font-size: 64px">${getEffectIcon(selectedEffect.category)}</span>`
+                    ${e.preview
+                        ? `<video src="/showcase/preview/${e.preview.split('/').pop()}" muted loop autoplay playsinline></video>`
+                        : `<span style="font-size: 64px">${getEffectIcon(e.category)}</span>
+                           <div class="param-doc" style="margin-top:8px">No preview rendered yet — run the preview harness.</div>`
                     }
                 </div>
-                <div class="detail-description">${selectedEffect.description}</div>
-
-                <div class="form-section">
-                    <h3>Parameters</h3>
-                    ${renderParameterForm(selectedEffect.parameters)}
+                <div class="detail-meta">
+                    <span class="pill pill-${e.kind}">${e.kind}</span>
+                    <span class="pill">backend: ${escapeHtml(e.backend)}</span>
+                    <span class="pill">renders: ${escapeHtml(e.target)}</span>
+                    ${e.authorable ? '' : '<span class="pill pill-warn">not authorable</span>'}
                 </div>
+                <div class="detail-description">${escapeHtml(e.description)}</div>
 
-                <div id="resultSection"></div>
+                ${e.when_to_use ? `<div class="form-section">
+                    <h3>When to use</h3>
+                    <div class="when-to-use">${escapeHtml(e.when_to_use)}</div>
+                </div>` : ''}
+
+                ${params ? `<div class="form-section">
+                    <h3>Parameters</h3>
+                    <div class="param-list">${params}</div>
+                </div>` : ''}
             `;
         }
 

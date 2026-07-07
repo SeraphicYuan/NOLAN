@@ -144,3 +144,45 @@ beat; stills held >3s get still-motion by default; cards are punctuation.
 **What:** Assemble b-roll clips/stills into one video with shot-to-shot transitions (dissolve/slide/wipe/clockWipe/cut) via @remotion/transitions.
 
 **When:** Sequencing 3+ short clips/stills into one continuous b-roll bed — time compression, 'meanwhile' energy. Uniform transitions only; for authored per-shot cuts use scene.shots.
+
+## screen-frame
+
+**What:** Wrap a screenshot / screen-recording in a device mockup (browser, laptop, or phone chrome), scaling in gently over a theme background.
+
+**When:** Show software, a website, an app, or a social post AS a device — screenshots gain credibility and context inside real chrome. Match device to the source (phone for apps/social, browser for the web, laptop for desktop apps).
+
+## camera-shake
+
+**What:** Handheld camera shake over a still/clip, spiking at the start and decaying, with an optional white impact flash.
+
+**When:** Punctuate an impact, shock, explosion, or tension beat over a shot. An exclamation mark — use sparingly; overuse reads as amateur.
+
+## bar-race
+
+**What:** The racing bar chart: values grow AND overtake, bars reordering smoothly as the leader changes (soft-rank placement so crossings glide).
+
+**When:** A race or accumulation where the ORDER changes over time — leaders overtake. If the quantities are fixed and you only compare magnitudes, use bar-compare instead.
+
+## typewriter
+
+**What:** Text that builds character-by-character with a blinking cursor; 'decode' mode scrambles then locks each glyph (Matrix / data-feed energy).
+
+**When:** Build text as if typed — a code line, a terminal command, a letter, a telegram, a search query. Keep it short; long strings drag.
+
+## before-after
+
+**What:** A slider wipe revealing an 'after' image over a 'before' image on the same framing, with a divider handle and corner labels.
+
+**When:** Change on the SAME framing — restoration, before/after, prediction vs reality, redaction reveal. Needs two aligned images. For two DIFFERENT images colliding use split-screen.
+
+## whip-transition
+
+**What:** A fast whip-pan with motion blur crossfading from one shot to the next — the frame stays filled through the handoff.
+
+**When:** A punchy speed-cut between two shots for energy/pace. A transition BETWEEN two images; to sequence many clips use clip-montage.
+
+## picture-in-picture
+
+**What:** A floating inset window over a full-frame main shot, sliding in from a corner with a shadow + accent ring.
+
+**When:** Overlay a second frame on a main shot — reaction, commentary, 'meanwhile', or a detail feed. The inset is the smaller, supporting image.

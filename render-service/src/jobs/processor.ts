@@ -3,7 +3,6 @@ import * as path from 'path';
 import { jobQueue } from './queue.js';
 import { RenderJob } from './types.js';
 import { InfographicEngine } from '../engines/infographic.js';
-import { MotionCanvasEngine } from '../engines/motion-canvas.js';
 import { RemotionEngine } from '../engines/remotion.js';
 import { RenderEngine } from '../engines/types.js';
 
@@ -11,7 +10,6 @@ const OUTPUT_DIR = path.join(process.cwd(), 'output');
 
 const engines: Record<string, RenderEngine> = {
   infographic: new InfographicEngine(),
-  'motion-canvas': new MotionCanvasEngine(),
   remotion: new RemotionEngine(),
 };
 

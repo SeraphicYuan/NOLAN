@@ -26,7 +26,10 @@ _MEDIA_BLOCKS = {"ArtworkStage", "PhotoMontage", "PhotoGrid", "Flashback",
                  # render story v2: full-bleed video/imagery steps — footage
                  # bright at an edge is the SHOT, not escaping text
                  "Video", "StatOver", "SplitScreen", "AnnotateOverVideo",
-                 "PhotoMontagePro", "PhotoGridPro"}
+                 "PhotoMontagePro", "PhotoGridPro",
+                 # gap effects (2026-07): full-bleed imagery / device mockups
+                 "ScreenFrame", "CameraShake", "BeforeAfter", "WhipTransition",
+                 "PictureInPicture"}
 
 # Text/graphic steps: the overflow heuristic APPLIES (bright pixels at the
 # frame edge really are escaping content). Every Chapter-hostable step name
@@ -44,6 +47,8 @@ _TEXT_BLOCKS = {
     # text-led motion comps (theme-background typography/annotation)
     "Kinetic", "BarCompare", "KShape", "AnnotateStat", "PremiumCard",
     "TimelinePro",
+    # gap effects (2026-07): theme-background graphic/typography
+    "BarRace", "Typewriter",
 }
 
 

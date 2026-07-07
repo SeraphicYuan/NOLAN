@@ -38,7 +38,7 @@ def _render_remotion(spec: Dict[str, Any], out_path: Path) -> Path:
     if "accent" in spec:
         props["accent"] = spec["accent"]
     # a video/image given as a path is staged into public/; a bare name is left as a prop
-    video = image = background = cards = None
+    video = image = background = foreground = cards = None
     if isinstance(props.get("videoSrc"), str) and ("/" in props["videoSrc"] or props["videoSrc"].endswith(".mp4")):
         video = props.pop("videoSrc")
     if isinstance(props.get("mapSrc"), str) and ("/" in props["mapSrc"] or props["mapSrc"].endswith((".png", ".jpg"))):
@@ -49,11 +49,15 @@ def _render_remotion(spec: Dict[str, Any], out_path: Path) -> Path:
     bg = props.get("background")
     if isinstance(bg, str) and ("/" in bg or bg.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))):
         background = props.pop("background")  # an image path → stage it (a CSS color stays in props)
+    # foreground image (before-after "after", whip "to", PiP inset, split-screen right)
+    fg = props.get("foreground")
+    if isinstance(fg, str) and ("/" in fg or fg.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))):
+        foreground = props.pop("foreground")
 
     frames = max(30, int(round(spec.get("duration", 4.0) * 30)))
     produced = remotion_source.render(spec["target"], props, out_path.name,
                                       duration_frames=frames, video=video, image=image,
-                                      cards=cards, background=background)
+                                      cards=cards, background=background, foreground=foreground)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if Path(produced).resolve() != out_path.resolve():
         shutil.copy(produced, out_path)
@@ -125,6 +129,10 @@ _CHAPTER_TARGETS = {
     "SplitScreen": "SplitScreen", "StatOver": "StatOver",
     "PhotoMontage": "PhotoMontagePro", "PhotoGrid": "PhotoGridPro",
     "Timeline": "TimelinePro",   # blocks library has its own single-purpose Timeline
+    # gap effects (2026-07)
+    "ScreenFrame": "ScreenFrame", "CameraShake": "CameraShake", "BarRace": "BarRace",
+    "Typewriter": "Typewriter", "BeforeAfter": "BeforeAfter",
+    "WhipTransition": "WhipTransition", "PictureInPicture": "PictureInPicture",
 }
 
 _MEDIA_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif",

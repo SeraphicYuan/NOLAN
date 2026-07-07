@@ -23,6 +23,13 @@ import { StatOver } from "./StatOver";
 import { PhotoMontage } from "./PhotoMontage";
 import { PhotoGrid } from "./PhotoGrid";
 import { Timeline } from "./Timeline";
+import { ScreenFrame } from "./ScreenFrame";
+import { CameraShake } from "./CameraShake";
+import { BarRace } from "./BarRace";
+import { Typewriter } from "./Typewriter";
+import { BeforeAfter } from "./BeforeAfter";
+import { WhipTransition } from "./WhipTransition";
+import { PictureInPicture } from "./PictureInPicture";
 
 export const COMPS: Record<string, React.FC<any>> = {
   Kinetic: KineticText,
@@ -42,4 +49,12 @@ export const COMPS: Record<string, React.FC<any>> = {
   // the blocks library also has its own single-purpose Timeline (the
   // "gap is the argument" layout) — same distinct-key rule
   TimelinePro: Timeline,
+  // gap effects (2026-07)
+  ScreenFrame,
+  CameraShake,
+  BarRace,
+  Typewriter,
+  BeforeAfter,
+  WhipTransition,
+  PictureInPicture,
 };

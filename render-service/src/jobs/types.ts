@@ -2,7 +2,7 @@
 export type JobStatus = 'pending' | 'rendering' | 'done' | 'error';
 
 // Supported rendering engines
-export type Engine = 'infographic' | 'motion-canvas' | 'remotion';
+export type Engine = 'infographic' | 'remotion';
 
 // Specification for a render job
 export interface RenderSpec {
