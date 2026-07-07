@@ -106,6 +106,58 @@ def register(app, ctx):
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc))
 
+    # ---- typed @-mentions (one resolver, called at BOTH note doors) ----------
+    def _resolve_note_mentions(note, project, project_path, scene_plan_path,
+                               scene_ids=None):
+        """Expand `@[scope]token` mentions into explicit references before the
+        note reaches the revise LLM or a dispatched agent. Returns
+        (resolved_note, unresolved_tokens)."""
+        if not note or "@[" not in note:
+            return note, []
+        from nolan import iterate, mentions
+        scenes = []
+        try:
+            plan = iterate.load_plan_raw(scene_plan_path)
+            secs = plan.get("sections") or {}
+            groups = secs.values() if isinstance(secs, dict) else secs
+            for grp in groups:
+                for s in (grp if isinstance(grp, list) else []):
+                    if not scene_ids or s.get("id") in scene_ids:
+                        scenes.append(s)
+        except Exception:
+            pass
+        clips = None
+        if "@[vid]" in note and getattr(ctx, "db_path", None):
+            try:
+                from nolan.indexer import VideoIndex
+                clips = VideoIndex(ctx.db_path).list_saved_clips()
+            except Exception:
+                clips = None
+        return mentions.resolve_mentions(note, project_dir=project_path,
+                                         project=project, scenes=scenes,
+                                         clips=clips)
+
+    @app.get("/api/motion/registry")
+    async def motion_registry():
+        """The motion registry, serialized for the UI (Inspector param
+        controls + @[motion] autocomplete). Read-only mirror of
+        nolan.motion.registry — the registry stays the single source of truth."""
+        from dataclasses import asdict
+        from nolan.motion.registry import REGISTRY, SHARED
+        from nolan.still_motion import STILL_TREATMENTS
+        return {
+            "treatments": list(STILL_TREATMENTS),
+            "shared": {k: asdict(p) for k, p in SHARED.items()},
+            "effects": [{
+                "id": e.id, "backend": e.backend, "category": e.category,
+                "purpose": e.purpose, "when_to_use": e.when_to_use,
+                "duration_default": e.duration_default,
+                "content": [asdict(p) for p in e.content],
+                "style": [asdict(p) for p in e.style],
+                "shared": e.shared,
+            } for e in REGISTRY],
+        }
+
     # ---- timeline edits (P3) -------------------------------------------------
     def _plan_for(project: str):
         result = _get_project_dir(project)
@@ -418,21 +470,39 @@ def register(app, ctx):
             patch_beat(project_path, beat_index(scene_id), patch)
             build_scene_plan(project_path)
             return {"applied": patch, "pipeline": "flow"}
+        motion_warnings = []
+        if patch and patch.get("motion_spec"):
+            # normalize against the registry NOW (unknown effect = hard refuse;
+            # soft issues surface as warnings but the normalized spec applies —
+            # same semantics the render gate uses).
+            from nolan.motion import spec as motion_spec_mod
+            normalized, errs = motion_spec_mod.validate(patch["motion_spec"])
+            if any(e.startswith("unknown effect") for e in errs):
+                raise HTTPException(status_code=400, detail="; ".join(errs))
+            patch["motion_spec"] = normalized
+            motion_warnings = errs
         client = None
         words = None
+        unresolved = []
         if note:
             from nolan.config import load_config
             from nolan.llm import create_text_llm
             client = create_text_llm(load_config())
             # VO word-timing for {cue:"..."} in a photo_brief (cached after first call)
             words = await asyncio.to_thread(iterate.scene_words, scene_plan_path)
+            # typed @[scope]token mentions -> explicit references for the LLM
+            note, unresolved = await asyncio.to_thread(
+                _resolve_note_mentions, note, project, project_path,
+                scene_plan_path, [scene_id])
         try:
             applied = await iterate.apply_edit(scene_plan_path, scene_id, patch=patch,
                                                note=note, client=client, pipeline=pipeline,
                                                transcript_words=words)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e))
-        return {"applied": applied, "pipeline": pipeline}
+        return {"applied": applied, "pipeline": pipeline,
+                "unresolved_mentions": unresolved,
+                "motion_warnings": motion_warnings}
 
     @app.post("/api/asset-review")
     async def api_asset_review(body: dict = Body(...)):
@@ -797,9 +867,14 @@ def register(app, ctx):
         result = _get_project_dir(project)
         if not result:
             raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-        _, scene_plan_path = result
+        project_path, scene_plan_path = result
+        # typed @[scope]token mentions -> explicit references for the agent
+        note, unresolved = await asyncio.to_thread(
+            _resolve_note_mentions, note, project, project_path,
+            scene_plan_path, scene_ids)
         try:
             status = fleet.dispatch(agent, str(scene_plan_path), project, scene_ids, note)
         except Exception as e:  # noqa: BLE001 - surface tmux/dispatch failures to the UI
             raise HTTPException(status_code=502, detail=f"dispatch failed: {e}")
-        return {"dispatched": True, "agent": agent, "status": status}
+        return {"dispatched": True, "agent": agent, "status": status,
+                "unresolved_mentions": unresolved}

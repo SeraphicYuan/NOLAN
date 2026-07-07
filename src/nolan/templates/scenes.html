@@ -527,9 +527,10 @@
         .tray-kind.image { background: var(--success); }
         .tray-kind.clip, .tray-kind.video { background: var(--warning); }
         /* ---- Asset picker drawer ---- */
-        .picker-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 40; }
+        /* the picker opens FROM the Inspector — it must stack above it AND the sticky header */
+        .picker-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 120; }
         .picker-backdrop.open { opacity: 1; pointer-events: auto; }
-        .picker-drawer { position: fixed; top: 0; right: 0; height: 100%; width: 420px; max-width: 92vw; background: var(--bg-secondary); border-left: 1px solid var(--border); box-shadow: -8px 0 30px rgba(0,0,0,.5); transform: translateX(100%); transition: transform .2s ease; z-index: 41; display: flex; flex-direction: column; }
+        .picker-drawer { position: fixed; top: 0; right: 0; height: 100%; width: 420px; max-width: 92vw; background: var(--bg-secondary); border-left: 1px solid var(--border); box-shadow: -8px 0 30px rgba(0,0,0,.5); transform: translateX(100%); transition: transform .2s ease; z-index: 121; display: flex; flex-direction: column; }
         .picker-drawer.open { transform: translateX(0); }
         .picker-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-primary); }
         .picker-close { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; }
@@ -587,7 +588,9 @@
         .asset-placeholder.edited { color: var(--warning); }
         .edit-status { margin-top: 6px; font-size: 12px; color: var(--warning); min-height: 14px; }
         .rerender-bar {
-            position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+            /* above the Inspector backdrop: "Queue re-render" from the
+               drawer must leave the bar clickable, not dimmed behind it */
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 115;
             display: flex; align-items: center; gap: 12px;
             background: var(--bg-secondary); border-top: 1px solid var(--border);
             padding: 10px 18px; font-size: 13px; color: var(--text-primary);
@@ -686,6 +689,7 @@
                 background: var(--bg-secondary); border: 1px solid var(--border);
                 border-radius: 10px; margin-bottom: 6px; cursor: pointer; }
         .srow:hover { border-color: var(--text-secondary); }
+        .srow.active { border-color: var(--accent); box-shadow: 0 0 14px rgba(37,99,235,.25); }
         .srow.selected-row { outline: 2px solid var(--accent); outline-offset: 1px; }
         .srow.drop-target { border-color: var(--accent); }
         .srow .sthumb { flex: 0 0 84px; width: 84px; height: 48px; border-radius: 6px;
@@ -711,11 +715,13 @@
         .sdot.ok { background: var(--success); } .sdot.miss { background: var(--danger); }
         .sdot.pend { background: #f2c14e; }
         /* drawer */
+        /* drawer stack sits ABOVE the sticky header (z 100): backdrop 110 <
+           inspector 111 < re-render bar 115 < picker 120/121 < mention-pop 400 */
         .insp-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); opacity: 0;
-                pointer-events: none; transition: opacity .15s; z-index: 60; }
+                pointer-events: none; transition: opacity .15s; z-index: 110; }
         .insp-backdrop.open { opacity: 1; pointer-events: auto; }
         .insp { position: fixed; top: 0; right: -560px; width: 540px; max-width: 96vw; height: 100vh;
-                background: var(--bg-primary); border-left: 1px solid var(--border); z-index: 61;
+                background: var(--bg-primary); border-left: 1px solid var(--border); z-index: 111;
                 transition: right .18s ease; display: flex; flex-direction: column; }
         .insp.open { right: 0; }
         .insp-hd { padding: 14px 18px; border-bottom: 1px solid var(--border);
@@ -738,6 +744,12 @@
         .insp-foot { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 18px;
                 background: var(--bg-secondary); border-top: 1px solid var(--border);
                 display: flex; gap: 10px; align-items: center; }
+        /* motion-spec fold (How it moves) */
+        .mo-fold { border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; }
+        .mo-fold > summary { cursor: pointer; padding: 7px 10px; font-size: 12px;
+                color: var(--text-secondary); user-select: none; }
+        .mo-fold[open] > summary { border-bottom: 1px solid var(--border); }
+        .mo-fold .mo-body { padding: 8px 10px 10px; }
 
         /* ===== Timeline view (P2, read-only) ===== */
         .tl-panel { display: none; background: var(--bg-secondary); border: 1px solid var(--border);
@@ -860,8 +872,8 @@
                 <span style="flex:1"><label>from (s)</label><input id="tlnT0" type="number" step="0.1"></span>
                 <span style="flex:1"><label>to (s)</label><input id="tlnT1" type="number" step="0.1"></span>
             </div>
-            <label>what you want here (free text — agent lane)</label>
-            <textarea id="tlnText" rows="2" placeholder="e.g. slow reveal of the manuscript, hold on the final line"></textarea>
+            <label>what you want here (free text — agent lane · @ references assets/motions)</label>
+            <textarea id="tlnText" class="mention-input" rows="2" placeholder="e.g. slow reveal of @[pic]… , hold on the final line"></textarea>
             <label>asset to pin (path, optional — from the pool/tray)</label>
             <input id="tlnAsset" placeholder="D:\...\assets\art\x.jpg">
             <label>camera motion (optional — locks still_treatment)</label>
@@ -907,6 +919,7 @@
         let currentPipeline = 'segment';      // 'segment' | 'orchestrator'
         let editableFields = [];
         let selectedScenes = new Set();       // scene ids queued for re-render
+        let shortlistKeys = new Set();        // shortlist item keys — drives the ☆/★ toggle
         let inspectorScene = null;            // scene id open in the Inspector drawer
         let editedScenes = new Set();         // scene ids edited this session, pending re-render
 
@@ -1005,6 +1018,7 @@
             return `
                 <div class="srow ${scene.id === inspectorScene ? 'selected-row' : ''}"
                      data-section="${esc(scene._section)}" data-status="${status}"
+                     data-start="${scene.start_seconds || 0}" data-end="${scene.end_seconds || 0}"
                      data-scene-id="${scene.id}" id="scene-${index}"
                      onclick="openInspector('${scene.id}')"
                      ondragover="sceneDragOver(event)" ondragleave="sceneDragLeave(event)"
@@ -1182,8 +1196,15 @@
                     <div class="ibody">
                         <div class="insp-note">energy <b>${scene.energy != null ? scene.energy.toFixed(2) : '—'}</b>
                             · motion <b>${esc(scene.motion_speed || '—')}</b>
-                            ${scene.motion_spec ? ` · motion_spec: <b>${esc(scene.motion_spec.effect || '?')}</b>` : ''}
                             ${scene.layout_spec ? ` · layout: <b>${esc((scene.layout_spec.template) || '?')}</b>` : ''}</div>
+                        <label class="field-edit" title="Camera treatment for a STILL asset. Auto = the render pre-pass picks per tempo/cues; choosing one LOCKS it (authored still_treatment — solid badge on the timeline).">
+                            <span class="field-label">camera (stills)</span>
+                            <select id="camera-${scene.id}" onchange="setCameraLock('${scene.id}', this.value)">
+                                <option value="">auto (derived per render)</option>
+                                ${TL_TREATMENTS.map(t =>
+                                    `<option value="${t}" ${scene.still_treatment === t ? 'selected' : ''}>🔒 ${t}</option>`).join('')}
+                            </select>
+                        </label>
                         ${fieldInputs(scene, GROUP_FIELDS.move)}
                         <label class="field-edit">
                             <span class="field-label">transition</span>
@@ -1198,9 +1219,14 @@
                                    value="${scene.shots ? esc(JSON.stringify(scene.shots)) : ''}"
                                    placeholder='[{"src": "assets/broll/a.jpg", "weight": 1.5}, …] — empty = one shot'>
                         </label>
-                        <div class="insp-note">transition = how this scene ENTERS (cut/dissolve/fade — premium executes it);
-                            shots = cut the window into a still sequence (validated at the premium gate).
-                            Deeper motion/layout changes: use a Comment (the agent rewrites the spec).</div>
+                        <details class="mo-fold" id="mofold-${scene.id}" ${scene.motion_spec ? 'open' : ''}>
+                            <summary>Motion effect ${scene.motion_spec ? `— <b>${esc(scene.motion_spec.effect || '?')}</b>` : '<span style="opacity:.6">(none — unfold to add one)</span>'}</summary>
+                            <div id="mobody-${scene.id}" class="mo-body"><div class="insp-note">loading registry…</div></div>
+                        </details>
+                        <div class="insp-note">camera = still-image movement (locks still_treatment); transition = how this
+                            scene ENTERS; shots = cut the window into a still sequence; motion effect = the full
+                            registry spec — every parameter the effect exposes, validated on Apply.
+                            Deeper layout changes: use a Comment (the agent rewrites the spec).</div>
                     </div>
                 </div>
 
@@ -1216,7 +1242,7 @@
                     <div class="ihd">Tell the agent <span class="fx">comment → revise → re-render</span></div>
                     <div class="ibody">
                         <textarea id="note-${scene.id}" class="edit-note" rows="2"
-                            placeholder="e.g. make it grimmer · type @ to reference a tray asset · rework to kinetic text"></textarea>
+                            placeholder="e.g. make it grimmer · type @ to reference pictures/clips/motions (@[pic] @[vid] @[motion] @[pool] @[asset])"></textarea>
                         <div class="note-actions">
                             <button class="apply-btn" onclick="applyNote('${scene.id}')" title="Fast LLM — instant text/prompt tweaks">⚡ Quick edit</button>
                             <span class="note-or">or</span>
@@ -1239,15 +1265,145 @@
                 <div class="edit-status" id="editstatus-${scene.id}"></div>`;
 
             document.getElementById('inspFoot').innerHTML = `
-                <button class="apply-btn" onclick="toggleSelect('${scene.id}', true); renderScenes();">↻ Queue re-render</button>
-                <span class="insp-note" style="margin:0;">${selectedScenes.has(scene.id) ? 'queued — use the re-render bar' : 'edits invalidate the old clip; queue + run re-render when ready'}</span>`;
+                <button class="apply-btn" onclick="toggleSelect('${scene.id}', true); renderScenes(); renderInspector();">↻ Queue re-render</button>
+                <span class="insp-note" style="margin:0;">${selectedScenes.has(scene.id)
+                    ? 'queued ✓ — the bar at the bottom runs it: inline (gen model) or send to a Claude agent'
+                    : 'edits invalidate the old clip; queue, then run from the bottom bar (inline or agent)'}</span>`;
 
             refreshAgentSelect();
+            renderMotionFold(scene.id);   // async — fills the motion-effect fold from the registry
         }
 
         function ssToggleInsp(id) {
             const el = document.getElementById('ss-' + id);
             if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // ---------- How it moves: camera lock + full motion-spec param editor ----------
+        // The camera select writes the SAME authored still_treatment the timeline
+        // badge locks; the motion fold renders whatever params the registry
+        // declares for the chosen effect (single source of truth: /api/motion/registry).
+        async function setCameraLock(id, treatment) {
+            try {
+                await tlPost('/api/timeline/treatment', { scene_id: id, treatment: treatment || null });
+                const st = document.getElementById(`editstatus-${id}`);
+                if (st) st.textContent = treatment ? `camera locked: ${treatment}` : 'camera back to auto';
+                await refreshScenes();
+                if (tlOn) await loadTimeline();
+            } catch (e) { alert('camera: ' + e.message); }
+        }
+
+        let _moReg = null, _moEffSel = {};
+        async function getMotionRegistry() {
+            if (!_moReg) _moReg = await (await fetch('/api/motion/registry')).json();
+            return _moReg;
+        }
+        function moParamInput(sceneId, group, p, cur) {
+            const idp = `mo-${sceneId}-${group}-${p.name}`;
+            const val = (cur !== undefined && cur !== null) ? cur : (p.default ?? '');
+            const title = esc(p.doc || '');
+            const label = `<span class="field-label">${esc(p.name)}${p.required ? ' *' : ''}</span>`;
+            if (p.values && p.values.length) {
+                const opts = (p.required ? [] : ['']).concat(p.values);
+                return `<label class="field-edit" title="${title}">${label}
+                    <select id="${idp}">${opts.map(v =>
+                        `<option value="${esc(v)}" ${String(v) === String(val) ? 'selected' : ''}>${v === '' ? '— default —' : esc(v)}</option>`).join('')}</select></label>`;
+            }
+            if (p.type === 'int' || p.type === 'number')
+                return `<label class="field-edit" title="${title}">${label}
+                    <input id="${idp}" type="number" step="${p.type === 'int' ? '1' : '0.1'}" value="${esc(val)}"></label>`;
+            const isJson = /\[\]|array|object/.test(p.type || '');
+            const shown = (isJson && typeof val === 'object') ? JSON.stringify(val) : val;
+            return `<label class="field-edit" title="${title}">${label}
+                <input id="${idp}" value="${esc(shown)}" placeholder="${esc(p.type || 'string')}${p.required ? ' — required' : ''}"></label>`;
+        }
+        function moReadVal(id, group, p) {
+            const el = document.getElementById(`mo-${id}-${group}-${p.name}`);
+            if (!el) return undefined;
+            const raw = (el.value || '').trim();
+            if (raw === '') return undefined;
+            if (p.type === 'int') return parseInt(raw, 10);
+            if (p.type === 'number') return parseFloat(raw);
+            if (/\[\]|array|object/.test(p.type || '')) {
+                try { return JSON.parse(raw); }
+                catch (e) {
+                    if (p.type === 'string[]') return raw.split(',').map(s => s.trim()).filter(Boolean);
+                    throw new Error(`${p.name}: not valid JSON`);
+                }
+            }
+            return raw;
+        }
+        async function renderMotionFold(id) {
+            const body = document.getElementById(`mobody-${id}`);
+            const scene = allScenes.find(s => s.id === id);
+            if (!body || !scene) return;
+            let reg;
+            try { reg = await getMotionRegistry(); }
+            catch (e) { body.innerHTML = `<div class="insp-note">registry unavailable: ${esc(e.message)}</div>`; return; }
+            const spec = scene.motion_spec || {};
+            const effId = (_moEffSel[id] !== undefined) ? _moEffSel[id] : (spec.effect || '');
+            const eff = (reg.effects || []).find(e => e.id === effId);
+            let html = `<label class="field-edit"><span class="field-label">effect</span>
+                <select id="mo-${id}-effect" onchange="moEffectChange('${id}', this.value)">
+                    <option value="">(none — remove the motion spec)</option>
+                    ${(reg.effects || []).map(e =>
+                        `<option value="${esc(e.id)}" ${e.id === effId ? 'selected' : ''}>${esc(e.id)} · ${esc(e.category)}</option>`).join('')}
+                </select></label>`;
+            if (eff) {
+                html += `<div class="insp-note"><b>${esc(eff.purpose)}</b> ${esc(eff.when_to_use || '')} · backend: ${esc(eff.backend)}</div>`;
+                const same = spec.effect === eff.id;   // switching effects starts from registry defaults
+                html += (eff.content || []).map(p => moParamInput(id, 'content', p, same ? (spec.content || {})[p.name] : undefined)).join('');
+                html += (eff.style || []).map(p => moParamInput(id, 'style', p, same ? (spec.style || {})[p.name] : undefined)).join('');
+                (eff.shared || []).forEach(n => {
+                    const p = (reg.shared || {})[n];
+                    if (p) html += moParamInput(id, 'shared', p, same ? spec[n] : undefined);
+                });
+                html += moParamInput(id, 'shared',
+                    { name: 'duration', type: 'number', doc: 'effect duration in seconds', default: eff.duration_default },
+                    same ? spec.duration : undefined);
+                html += `<div style="display:flex;gap:8px;margin-top:8px">
+                    <button class="apply-btn" onclick="moApply('${id}')">Apply motion spec</button></div>`;
+            } else if (spec.effect) {
+                html += `<div style="display:flex;gap:8px;margin-top:8px">
+                    <button class="apply-btn" onclick="moApply('${id}')">Remove motion spec</button></div>`;
+            } else {
+                html += `<div class="insp-note">Pick an effect to see and set every parameter it exposes.</div>`;
+            }
+            body.innerHTML = html;
+        }
+        function moEffectChange(id, v) { _moEffSel[id] = v; renderMotionFold(id); }
+        async function moApply(id) {
+            const st = document.getElementById(`editstatus-${id}`);
+            const effId = (document.getElementById(`mo-${id}-effect`) || {}).value || '';
+            let patch;
+            try {
+                if (!effId) { patch = { motion_spec: null }; }
+                else {
+                    const reg = await getMotionRegistry();
+                    const eff = reg.effects.find(e => e.id === effId);
+                    const spec = { effect: effId, content: {}, style: {} };
+                    for (const p of eff.content || []) { const v = moReadVal(id, 'content', p); if (v !== undefined) spec.content[p.name] = v; }
+                    for (const p of eff.style || []) { const v = moReadVal(id, 'style', p); if (v !== undefined) spec.style[p.name] = v; }
+                    for (const n of eff.shared || []) {
+                        const p = (reg.shared || {})[n];
+                        if (!p) continue;
+                        const v = moReadVal(id, 'shared', p);
+                        if (v !== undefined) spec[n] = v;
+                    }
+                    const dur = moReadVal(id, 'shared', { name: 'duration', type: 'number' });
+                    if (dur !== undefined && !isNaN(dur)) spec.duration = dur;
+                    patch = { motion_spec: spec };
+                }
+                st.textContent = 'Saving motion spec…';
+                const r = await postRevise({ project: currentProject, scene_id: id, patch });
+                const warn = (r.motion_warnings || []).length ? ' ⚠ ' + r.motion_warnings.join('; ') : '';
+                selectedScenes.add(id); editedScenes.add(id);
+                delete _moEffSel[id];
+                await refreshScenes();
+                // refreshScenes re-renders the Inspector — set the message on the FRESH element
+                const st2 = document.getElementById(`editstatus-${id}`);
+                if (st2) st2.textContent = (patch.motion_spec ? 'Motion spec saved' : 'Motion spec removed') + ' — Re-render to see it' + warn;
+            } catch (e) { if (st) st.textContent = 'Error: ' + e.message; }
         }
 
         // ---------- Iteration: select / edit / comment / re-render ----------
@@ -1283,7 +1439,7 @@
                    <button class="primary" onclick="rerenderSelected()">Re-render selected</button>
                  </div>
                  <div class="rerender-row">
-                   <input id="agentNote" class="agent-note" placeholder="note for the agent (e.g. rework these to Remotion kinetic text)">
+                   <input id="agentNote" class="agent-note mention-input" placeholder="note for the agent · @ references assets/motions (e.g. @[motion]kinetic-text)">
                    <label class="rerender-model">agent:
                      <select id="agentSelect" class="js-agent-select">${agentOpts}</select>
                    </label>
@@ -1398,7 +1554,7 @@
             const pinBar = pin ? `
                 <div class="tray-pinbar">📌 Pinned for this beat: <b>${esc((pin.src||'').split(/[\\\\/]/).pop())}</b>
                     ${pin.note ? ` — “${esc(pin.note)}”` : ''}
-                    <button class="tray-x" title="unpin" onclick="assetOp('${scene.id}',{op:'unpin'}).then(()=>loadScenes())">✕</button>
+                    <button class="tray-x" title="unpin" onclick="assetOp('${scene.id}',{op:'unpin'}).then(()=>refreshScenes())">✕</button>
                 </div>` : '';
             const candHtml = candidatesHtml(scene);
             if (!assets.length && !pinBar && !candHtml)
@@ -1434,33 +1590,57 @@
                     <div class="tray-meta"><div class="tray-label">${esc((c.src||'').split(/[\\\\/]/).pop())} · ${c.score}</div></div>
                     <button class="tray-pin" title="use this instead (pins it)"
                             onclick="pinCandidate('${scene.id}', ${i})">📌 use</button>
-                    <button class="tray-pin" title="shortlist for this scene — the next match run prefers it (softer than pin)"
-                            onclick="shortlistCandidate('${scene.id}', ${i})">☆</button>
+                    <button class="tray-pin" title="${shortlistKeys.has('path:' + c.src)
+                                ? 'shortlisted — click to remove from the shortlist'
+                                : 'shortlist for this scene — the next match run prefers it (softer than pin)'}"
+                            onclick="shortlistCandidate('${scene.id}', ${i})">${shortlistKeys.has('path:' + c.src) ? '★' : '☆'}</button>
                 </div>`).join('') + `</div>`;
         }
         function pinCandidate(sceneId, idx) {
             const scene = allScenes.find(s => s.id === sceneId);
             const c = scene && (scene.asset_candidates || [])[idx];
             if (!c) return;
-            assetOp(sceneId, {op:'pin', src: c.src, kind:'image'}).then(()=>loadScenes()).catch(e => alert(e.message));
+            assetOp(sceneId, {op:'pin', src: c.src, kind:'image'}).then(()=>refreshScenes()).catch(e => alert(e.message));
         }
         async function shortlistCandidate(sceneId, idx) {
-            // Softer than pin: adds to the project shortlist WITH a scene hint,
+            // Softer than pin: TOGGLES the project shortlist WITH a scene hint,
             // so the matcher's tier-0 prefers it on the next match run.
             const scene = allScenes.find(s => s.id === sceneId);
             const c = scene && (scene.asset_candidates || [])[idx];
             if (!c) return;
-            const note = prompt('Optional note (why this asset for this scene):') || '';
-            const body = { project: currentProject, path: c.src, kind: 'image', scene_hint: sceneId };
-            if (note) body.note = note;
-            const res = await fetch('/api/pool/shortlist', {
-                method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-            if (!res.ok) { alert('shortlist failed: ' + await res.text()); return; }
-            alert(`Shortlisted for ${sceneId} — the next match run will prefer it.`);
+            const key = 'path:' + c.src;
+            const st = document.getElementById(`editstatus-${sceneId}`);
+            try {
+                if (shortlistKeys.has(key)) {
+                    const res = await fetch('/api/shortlist/remove', {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({ project: currentProject, keys: [key] }) });
+                    if (!res.ok) throw new Error(await res.text());
+                    shortlistKeys.delete(key);
+                    if (st) st.textContent = 'Removed from shortlist.';
+                } else {
+                    const note = prompt('Optional note (why this asset for this scene):') || '';
+                    const body = { project: currentProject, path: c.src, kind: 'image', scene_hint: sceneId };
+                    if (note) body.note = note;
+                    const res = await fetch('/api/pool/shortlist', {
+                        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                    if (!res.ok) throw new Error(await res.text());
+                    shortlistKeys.add(key);
+                    if (st) st.textContent = `Shortlisted for ${sceneId} — the next match run prefers it. Click ★ to undo.`;
+                }
+                const tray = document.getElementById(`tray-${sceneId}`);
+                if (tray) tray.innerHTML = assetTrayHtml(scene);
+            } catch (e) { alert('shortlist: ' + e.message); }
+        }
+        async function loadShortlistKeys() {
+            try {
+                const j = await (await fetch('/api/shortlist?project=' + encodeURIComponent(currentProject))).json();
+                shortlistKeys = new Set((j.items || []).map(it => it.key));
+            } catch (e) { shortlistKeys = new Set(); }
         }
         function pinAsset(sceneId, assetId) {
             const note = prompt('Optional note for the design passes (e.g. "slow pan over the letter"):') || '';
-            assetOp(sceneId, {op:'pin', asset_id: assetId, note}).then(()=>loadScenes()).catch(e => alert(e.message));
+            assetOp(sceneId, {op:'pin', asset_id: assetId, note}).then(()=>refreshScenes()).catch(e => alert(e.message));
         }
         function assetUrl(src) {
             // best-effort thumb for path-added assets that live under the project
@@ -1531,48 +1711,155 @@
             }
         }
 
-        // ---------- @-mention: reference a scene's bound assets inside a comment ----------
+        // ---------- typed @-mentions: @[scope]token autocomplete ----------
+        // `@` opens the scope menu; `@[pic]quer` autocompletes within that scope.
+        // The inserted token is canonical (`@[pic]123`, `@[motion]kenburns-pan`) —
+        // the server (nolan.mentions) expands it into an explicit reference at
+        // the revise/dispatch doors, so the LLM/agent gets a real path, not prose.
+        // Works in any .edit-note / .mention-input field. Legacy bare `@a1`
+        // (scene tray assets) still completes too.
         (function () {
-            let pop = null, curTa = null, matchStart = 0;
+            const SCOPES = [
+                ['asset',  'tray assets bound to the scene'],
+                ['pic',    'picture library (global + project)'],
+                ['vid',    'saved clips from the video library'],
+                ['motion', 'camera treatments + motion effects'],
+                ['pool',   'project asset pool (by filename)'],
+            ];
+            let pop = null, curTa = null, matchStart = 0, seq = 0, debTimer = null;
+            let motionCache = null;
             function ensure() {
                 if (!pop) { pop = document.createElement('div'); pop.className = 'mention-pop'; pop.style.display = 'none'; document.body.appendChild(pop); }
                 return pop;
             }
             function hide() { if (pop) pop.style.display = 'none'; curTa = null; }
-            function sceneFor(ta) { const id = (ta.id || '').replace(/^note-/, ''); return allScenes.find(s => s.id === id); }
-            document.addEventListener('input', function (e) {
-                const ta = e.target;
-                if (!ta.classList || !ta.classList.contains('edit-note')) return;
-                const before = ta.value.slice(0, ta.selectionStart);
-                const m = before.match(/@(\w*)$/);
-                if (!m) return hide();
-                const scene = sceneFor(ta); const assets = (scene && scene.assets) || [];
-                if (!assets.length) return hide();
-                const q = m[1].toLowerCase();
-                const hits = assets.filter(a => (a.id + ' ' + (a.label || '')).toLowerCase().includes(q)).slice(0, 8);
-                if (!hits.length) return hide();
-                curTa = ta; matchStart = ta.selectionStart - m[0].length;
+            function isMentionField(el) {
+                return el.classList && (el.classList.contains('edit-note') || el.classList.contains('mention-input'));
+            }
+            function scenesFor(ta) {
+                // note-<sceneId> fields scope the asset search to that scene;
+                // the re-render bar / timeline dialog search every scene.
+                const id = (ta.id || '').replace(/^note-/, '');
+                const one = allScenes.find(s => s.id === id);
+                return one ? [one] : allScenes;
+            }
+            function show(ta, html) {
                 const p = ensure();
-                p.innerHTML = hits.map(a => `<div class="mention-item" data-id="${a.id}">
-                    <img src="${a.thumb || assetUrl(a.src)}" onerror="this.style.visibility='hidden'">
-                    <b>@${a.id}</b><span class="mi-kind">${a.kind || 'image'}</span>
-                    <span class="mi-label">${esc((a.label || '').slice(0, 40))}</span></div>`).join('');
+                p.innerHTML = html;
                 const r = ta.getBoundingClientRect();
                 p.style.left = (r.left + window.scrollX) + 'px';
                 p.style.top = (r.bottom + window.scrollY + 2) + 'px';
-                p.style.width = Math.max(240, r.width) + 'px';
+                p.style.width = Math.max(260, r.width) + 'px';
                 p.style.display = 'block';
+            }
+            function scopeMenu(partial) {
+                const hits = SCOPES.filter(([s]) => s.startsWith(partial || ''));
+                if (!hits.length) return '';
+                return hits.map(([s, doc]) => `<div class="mention-item" data-insert="@[${s}]" data-keep="1">
+                    <b>@[${s}]</b><span class="mi-label">${doc}</span></div>`).join('');
+            }
+            function assetItems(ta, q) {
+                const seen = new Set();
+                const out = [];
+                for (const scene of scenesFor(ta)) {
+                    for (const a of (scene.assets || [])) {
+                        if (seen.has(a.id)) continue;
+                        if (!(a.id + ' ' + (a.label || '')).toLowerCase().includes(q)) continue;
+                        seen.add(a.id);
+                        out.push({ token: '@[asset]' + a.id, thumb: a.thumb || assetUrl(a.src),
+                                   label: `${a.id} · ${a.kind || 'image'} · ${(a.label || '').slice(0, 36)}` });
+                    }
+                }
+                return out.slice(0, 8);
+            }
+            async function fetchScopeItems(ta, scope, q) {
+                if (scope === 'asset') return assetItems(ta, q);
+                if (scope === 'motion') {
+                    if (!motionCache) {
+                        const j = await (await fetch('/api/motion/registry')).json();
+                        motionCache = (j.treatments || []).map(t =>
+                                          ({ token: '@[motion]' + t, label: `${t} · camera treatment` }))
+                            .concat((j.effects || []).map(e =>
+                                          ({ token: '@[motion]' + e.id, label: `${e.id} · ${e.purpose.slice(0, 44)}` })));
+                    }
+                    return motionCache.filter(it => it.token.slice(9).toLowerCase().includes(q)).slice(0, 8);
+                }
+                if (scope === 'pic') {
+                    const url = q
+                        ? `/api/images/search?q=${encodeURIComponent(q)}&scope=both&project=${encodeURIComponent(currentProject)}&k=8`
+                        : `/api/images/list?scope=global&limit=8`;
+                    const j = await (await fetch(url)).json();
+                    return (j.results || []).map(h =>
+                        ({ token: '@[pic]' + h.id, thumb: h.raw, label: `#${h.id} · ${(h.title || '').slice(0, 40)}` }));
+                }
+                if (scope === 'vid') {
+                    const j = await (await fetch(`/api/library/clips?projects=${encodeURIComponent(currentProject)}`)).json();
+                    return (j.clips || [])
+                        .filter(c => ((c.label || '') + ' ' + (c.video_name || '') + ' ' + c.id).toLowerCase().includes(q))
+                        .slice(0, 8).map(c =>
+                        ({ token: '@[vid]' + c.id, thumb: thumbUrl(c.source_video_path, c.clip_start),
+                           label: `${(c.label || c.video_name || c.id).slice(0, 40)} · ${c.clip_start}-${c.clip_end}s` }));
+                }
+                if (scope === 'pool') {
+                    const j = await (await fetch(`/api/pool?project=${encodeURIComponent(currentProject)}`)).json();
+                    return (j.items || [])
+                        .filter(it => it.exists && (it.name || '').toLowerCase().includes(q))
+                        .slice(0, 8).map(it =>
+                        ({ token: '@[pool]' + it.name, label: `${it.name} · ${it.kind} · ${it.status}` }));
+                }
+                return [];
+            }
+            function itemsHtml(items) {
+                return items.map(it => `<div class="mention-item" data-insert="${esc(it.token)}">
+                    ${it.thumb ? `<img src="${it.thumb}" onerror="this.style.visibility='hidden'">` : ''}
+                    <b>${esc(it.token)}</b><span class="mi-label">${esc(it.label)}</span></div>`).join('');
+            }
+            document.addEventListener('input', function (e) {
+                const ta = e.target;
+                if (!isMentionField(ta)) return;
+                const before = ta.value.slice(0, ta.selectionStart);
+                // scoped form first: @[scope]query
+                const ms = before.match(/@\[(\w+)\]([\w.#-]*)$/);
+                const mo = !ms && before.match(/@(?:\[)?(\w*)$/);   // @  @par  @[par
+                if (!ms && !mo) return hide();
+                curTa = ta;
+                if (ms) {
+                    matchStart = ta.selectionStart - ms[0].length;
+                    const scope = ms[1], q = (ms[2] || '').toLowerCase();
+                    if (!SCOPES.some(([s]) => s === scope)) return hide();
+                    const mySeq = ++seq;
+                    clearTimeout(debTimer);
+                    debTimer = setTimeout(async () => {
+                        try {
+                            const items = await fetchScopeItems(ta, scope, q);
+                            if (mySeq !== seq || curTa !== ta) return;   // stale response
+                            if (!items.length) return hide();
+                            show(ta, itemsHtml(items));
+                        } catch (err) { hide(); }
+                    }, scope === 'asset' || scope === 'motion' ? 0 : 220);
+                } else {
+                    matchStart = ta.selectionStart - mo[0].length;
+                    const partial = (mo[1] || '').toLowerCase();
+                    // scope menu + (legacy) direct tray-asset hits on a bare @query
+                    const legacy = mo[0].startsWith('@[') ? [] : assetItems(ta, partial);
+                    const html = scopeMenu(partial) + itemsHtml(legacy);
+                    if (!html) return hide();
+                    show(ta, html);
+                }
             });
             document.addEventListener('click', function (e) {
                 if (!pop || pop.style.display === 'none') return;
                 const item = e.target.closest && e.target.closest('.mention-item');
                 if (item && curTa) {
-                    const id = item.getAttribute('data-id');
+                    const ins = item.getAttribute('data-insert');
+                    const keep = item.getAttribute('data-keep');   // scope chosen -> keep typing the query
                     const ta = curTa, pos = ta.selectionStart;
-                    ta.value = ta.value.slice(0, matchStart) + '@' + id + ' ' + ta.value.slice(pos);
-                    const np = matchStart + id.length + 2;
+                    const suffix = keep ? '' : ' ';
+                    ta.value = ta.value.slice(0, matchStart) + ins + suffix + ta.value.slice(pos);
+                    const np = matchStart + ins.length + suffix.length;
                     ta.focus(); ta.setSelectionRange(np, np);
-                    hide();
+                    if (keep) ta.dispatchEvent(new Event('input', { bubbles: true }));
+                    else hide();
                 } else if (!pop.contains(e.target)) hide();
             });
             document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(); });
@@ -1599,8 +1886,10 @@
             document.getElementById('ptab-pictures').classList.toggle('active', tab === 'pictures');
             document.getElementById('ptab-videos').classList.toggle('active', tab === 'videos');
             document.getElementById('ptab-shortlist').classList.toggle('active', tab === 'shortlist');
+            document.getElementById('ptab-pool').classList.toggle('active', tab === 'pool');
             document.getElementById('pickerQ').placeholder = tab === 'pictures'
-                ? 'search pictures (blank = browse all)…' : 'filter by name…';
+                ? 'search pictures (blank = browse all)…'
+                : tab === 'pool' ? 'filter by name or status (in-video/candidate/…)…' : 'filter by name…';
             renderSub(); loadPicker();
         }
         function renderSub() {
@@ -1624,6 +1913,7 @@
             try {
                 if (pickerTab === 'pictures') return renderItems(await fetchPictures(q), grid);
                 if (pickerTab === 'shortlist') return renderItems(await fetchShortlist(q), grid);
+                if (pickerTab === 'pool') return renderItems(await fetchPool(q), grid);
                 if (vidSource === 'clips') return renderItems(await fetchClips(q), grid);
                 if (!vidVideo) return renderVideoList(await fetchVideos(q), grid);
                 return renderItems(await fetchSegments(vidVideo, q), grid, true);
@@ -1651,6 +1941,22 @@
                 source: (it.payload && it.payload.source) || it.kind, k: it.key,
                 thumb: it.thumb, label: it.label, payload: it.payload,
             }));
+        }
+        // The project asset pool (derived bin): everything the project has,
+        // labeled by usage status. Adding one to a scene goes through the same
+        // op:add path — and pool cards drag onto the timeline like any picker card.
+        async function fetchPool(q) {
+            if (!currentProject) return [];
+            const j = await (await fetch(`/api/pool?project=${encodeURIComponent(currentProject)}`)).json();
+            let items = (j.items || []).filter(it => it.exists);
+            if (q) { const ql = q.toLowerCase(); items = items.filter(it =>
+                (it.name + ' ' + (it.status || '')).toLowerCase().includes(ql)); }
+            return items.map(it => ({
+                source: 'pool', k: it.path,
+                thumb: it.kind === 'video' ? thumbUrl(it.path, 1)
+                                           : `/api/pool/file?path=${encodeURIComponent(it.path)}`,
+                label: `${it.status && it.status !== 'unused' ? '[' + it.status + '] ' : ''}${it.name}`,
+                payload: { op: 'add', source: 'path', path: it.path, kind: it.kind, label: it.name } }));
         }
         async function fetchClips(q) {
             const proj = vidScope === 'project' ? currentProject : '';
@@ -1810,8 +2116,13 @@
             try {
                 const r = await postRevise({ project: currentProject, scene_id: id, note });
                 const keys = Object.keys(r.applied || {});
-                st.textContent = keys.length ? ('Applied: ' + keys.join(', ') + ' — Re-render to see it') : 'No change produced.';
+                const miss = (r.unresolved_mentions || []).length
+                    ? ` ⚠ unresolved: ${r.unresolved_mentions.join(', ')}` : '';
+                const msg = (keys.length ? ('Applied: ' + keys.join(', ') + ' — Re-render to see it') : 'No change produced.') + miss;
                 if (keys.length) { selectedScenes.add(id); editedScenes.add(id); await refreshScenes(); }
+                // refreshScenes re-renders the Inspector — write to the FRESH element
+                const st2 = document.getElementById(`editstatus-${id}`) || st;
+                st2.textContent = msg;
             } catch (e) { st.textContent = 'Error: ' + e.message; }
         }
 
@@ -1841,10 +2152,12 @@
             st.textContent = 'Saving…';
             try {
                 const r = await postRevise({ project: currentProject, scene_id: id, patch });
-                st.textContent = 'Saved: ' + Object.keys(r.applied || {}).join(', ') + ' — Re-render to see it';
                 selectedScenes.add(id);
                 editedScenes.add(id);
                 await refreshScenes();
+                // refreshScenes re-renders the Inspector — write to the FRESH element
+                const st2 = document.getElementById(`editstatus-${id}`) || st;
+                st2.textContent = 'Saved: ' + Object.keys(r.applied || {}).join(', ') + ' — Re-render to see it';
             } catch (e) { st.textContent = 'Error: ' + e.message; }
         }
 
@@ -1962,7 +2275,9 @@
                     body: JSON.stringify({ project: currentProject, scene_ids: ids, note, agent }) });
                 const j = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(j.detail || res.statusText);
-                msg.textContent = `Sent ${ids.length} scene(s) to ${agent} ✓ — watch the Agents panel`;
+                const miss = (j.unresolved_mentions || []).length
+                    ? ` ⚠ unresolved: ${j.unresolved_mentions.join(', ')}` : '';
+                msg.textContent = `Sent ${ids.length} scene(s) to ${agent} ✓ — watch the Agents panel` + miss;
                 loadFleet();
             } catch (e) { msg.textContent = 'Dispatch error: ' + e.message; }
         }
@@ -1980,7 +2295,9 @@
                     body: JSON.stringify({ project: currentProject, scene_ids: [id], note, agent }) });
                 const j = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(j.detail || res.statusText);
-                st.textContent = `Sent to ${agent} ✓ — watch the Agents panel (top-right)`;
+                const miss = (j.unresolved_mentions || []).length
+                    ? ` ⚠ unresolved: ${j.unresolved_mentions.join(', ')}` : '';
+                st.textContent = `Sent to ${agent} ✓ — watch the Agents panel (top-right)` + miss;
                 loadFleet();
             } catch (e) { st.textContent = 'Dispatch error: ' + e.message; }
         }
@@ -2086,7 +2403,7 @@
             }
 
             // Highlight current scene
-            document.querySelectorAll('.scene-row').forEach(row => {
+            document.querySelectorAll('.srow').forEach(row => {
                 const start = parseFloat(row.dataset.start);
                 const end = parseFloat(row.dataset.end);
                 if (currentTime >= start && currentTime < end) {
@@ -2179,6 +2496,7 @@
                 }
                 selectedScenes.clear();
                 editedScenes.clear();
+                await loadShortlistKeys();
 
                 // Reset and populate section filter
                 const sectionFilter = document.getElementById('sectionFilter');
@@ -2193,6 +2511,15 @@
 
                 renderScenes();
 
+                // Deep link (e.g. from /pool scene chips): ?scene=<id> opens the Inspector once.
+                const deepScene = new URLSearchParams(window.location.search).get('scene');
+                if (deepScene && !window._deepSceneDone && allScenes.some(s => s.id === deepScene)) {
+                    window._deepSceneDone = true;
+                    openInspector(deepScene);
+                    const row = document.querySelector(`.srow[data-scene-id="${deepScene}"]`);
+                    if (row) row.scrollIntoView({ block: 'center' });
+                }
+
                 // Load audio
                 const audioRes = await fetch(`/api/scenes/audio-info?project=${encodeURIComponent(currentProject)}`);
                 const audioData = await audioRes.json();
@@ -2202,7 +2529,7 @@
                 if (audioData.exists) {
                     audioPlayer.src = audioData.path;
                     audioContainer.style.display = 'flex';
-                    audioPlayer.addEventListener('timeupdate', updateAudioTime);
+                    audioPlayer.ontimeupdate = updateAudioTime;   // assignment, not addEventListener — loadSceneData runs repeatedly
                 } else {
                     audioContainer.style.display = 'none';
                     audioPlayer.src = '';
@@ -2436,10 +2763,10 @@
                 const pick = e.dataTransfer.getData('application/x-nolan-pick');
                 if (tray) {                                // {sceneId, assetId} from the tray
                     const t = JSON.parse(tray);
-                    const src = (allScenes.find(s => s.id === t.sceneId)?.assets || [])
-                                .find(a => a.id === t.assetId)?.src;
-                    if (!src) throw new Error('tray asset has no src');
-                    await assetOp(sceneId, { op: 'pin', src, kind: 'image' });
+                    const a = (allScenes.find(s => s.id === t.sceneId)?.assets || [])
+                              .find(x => x.id === t.assetId);
+                    if (!a || !a.src) throw new Error('tray asset has no src');
+                    await assetOp(sceneId, { op: 'pin', src: a.src, kind: a.kind || 'image' });
                 } else if (pick) {                         // picker payload: add -> pin
                     const p = JSON.parse(pick);
                     const j = await assetOp(sceneId, { ...p.payload });
@@ -2534,6 +2861,7 @@
         <button class="ptab active" id="ptab-pictures" onclick="setPickerTab('pictures')">Pictures</button>
         <button class="ptab" id="ptab-videos" onclick="setPickerTab('videos')">Videos / Clips</button>
         <button class="ptab" id="ptab-shortlist" onclick="setPickerTab('shortlist')">🎞 Shortlist</button>
+        <button class="ptab" id="ptab-pool" onclick="setPickerTab('pool')">Pool</button>
     </div>
     <div class="picker-subbar" id="pickerSub" style="display:none"></div>
     <div class="picker-search">

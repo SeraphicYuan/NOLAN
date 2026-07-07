@@ -4,6 +4,49 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Scenes UI hardening + typed @-mentions + motion param editor (2026-07-07)
+
+User-reported bugs (pin -> `loadScenes is not defined`; shortlist ☆ had no
+undo) triggered a full interaction audit of scenes.html. Fixed: 3 undefined
+`loadScenes()` calls -> `refreshScenes()`; picker drawer (z41) opened BEHIND
+the Inspector (z61) and both drawers sat under the sticky header (z100) --
+whole overlay ladder restacked (backdrop 110 < inspector 111 < re-render bar
+115 < picker 120/121); re-render bar was dimmed/unclickable under the
+Inspector backdrop; audio playback scene-highlight targeted the removed
+`.scene-row` markup (now `.srow` + data-start/end); status messages were
+wiped instantly by the Inspector re-render (now written to the fresh element
+after refreshScenes); duplicate `timeupdate` listeners; timeline drop-to-pin
+hardcoded kind image.
+
+- **Shortlist undo everywhere**: ☆ toggles to ★ (remove via existing
+  `/api/shortlist/remove`); /pool cards get ★ un-shortlist; scenes page
+  loads shortlist keys per project so the star reflects reality.
+- **Typed @-mentions** (`nolan/mentions.py` + scenes.html popover): `@` opens
+  a scope menu -- `@[asset] @[pic] @[vid] @[motion] @[pool]` -- each scope
+  autocompletes from its real catalog (tray / imagelib / saved clips /
+  STILL_TREATMENTS+motion registry / asset pool). Canonical tokens are
+  expanded server-side into explicit references at BOTH note doors
+  (`/api/scenes/scene/revise`, `/api/scenes/dispatch`); unresolved tokens
+  are returned and surfaced in the UI (never silently dropped). Works in the
+  Inspector comment, the re-render bar agent note, and the timeline note
+  dialog.
+- **How it moves, expanded**: camera(stills) select locks/clears the same
+  authored `still_treatment` the timeline badge cycles; a Motion-effect fold
+  renders EVERY param the registry declares for the chosen effect (content/
+  style/shared/duration, enums as selects) from the new read-only
+  `GET /api/motion/registry` mirror; Apply validates via motion.spec.validate
+  at the revise door (unknown effect = 400; soft issues surface as warnings).
+- **Pool -> scenes wiring**: /pool scene chips deep-link to
+  `/scenes?project=&scene=` (Inspector auto-opens); the asset picker gains a
+  **Pool tab** (browse the project bin by status, add/pin/drag onto the
+  timeline through the same op:add path).
+- Tests: tests/test_mentions.py (12) -- resolver per scope, unresolved
+  honesty, client/server vocabulary greps (popover SCOPES == mentions.SCOPES,
+  TL_TREATMENTS == STILL_TREATMENTS), both-doors grep, registry endpoint,
+  motion_spec door validation. Suite: 999 passed. Puppeteer click-through
+  (24 checks, zero page JS errors) on a throwaway project copy; screenshots
+  inspected.
+
 ## Timeline edits (P3): camera lock, roll edit, range notes (2026-07-07)
 
 The timeline becomes an editor — every edit lands on scene_plan.json through

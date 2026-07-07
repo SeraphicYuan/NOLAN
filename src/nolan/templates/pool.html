@@ -189,7 +189,9 @@
           <div class="scenes">${sceneChips}${hint}</div>
           ${it.note ? `<div class="note">${esc(it.note)}</div>` : ''}
           <div class="actions">
-            ${it.shortlist_key ? '' : `<button data-act="shortlist" data-idx="${i}">→ shortlist</button>`}
+            ${it.shortlist_key
+                ? `<button data-act="unshortlist" data-idx="${i}" title="remove from the shortlist">★ un-shortlist</button>`
+                : `<button data-act="shortlist" data-idx="${i}">→ shortlist</button>`}
             <button data-act="open" data-idx="${i}">open</button>
           </div>
         </div>
@@ -204,8 +206,16 @@
       const it = visible[Number(btn.dataset.idx)];
       if (!it) return;
       if (btn.dataset.act === 'open') window.open(fileUrl(it.path), '_blank');
+      else if (btn.dataset.act === 'unshortlist') unShortlist(it);
       else openShortlist(it);
     });
+
+    async function unShortlist(it) {
+      const res = await fetch('/api/shortlist/remove', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project, keys: [it.shortlist_key] }) });
+      if (res.ok) loadPool(); else alert('un-shortlist failed: ' + (await res.text()));
+    }
 
     function setStatus(s) { statusFilter = s; render(); }
     function openScene(sid) {

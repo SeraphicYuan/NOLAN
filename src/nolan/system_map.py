@@ -70,7 +70,8 @@ SURFACES = [
      "role": "checkpoints, plans, runlogs, feedback/refine for agent-driven steps"},
     {"id": "scenes", "label": "Scenes", "path": "/scenes",
      "role": "the scene-plan editor: edit/comment → invalidate → re-render; "
-             "+ timeline view (scenes/motion-badges/sfx/VO on a time axis)"},
+             "+ timeline view (scenes/motion-badges/sfx/VO on a time axis); "
+             "typed @[scope] mentions + registry-driven motion param editor"},
     {"id": "pool", "label": "Asset Pool", "path": "/pool",
      "role": "the project media bin (derived): every asset tagged in-video/"
              "selected/candidate/shortlisted/unused; shortlist with scene hint"},
