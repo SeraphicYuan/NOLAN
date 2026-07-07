@@ -4,6 +4,33 @@
 **Status:** Complete
 **Last Updated:** 2026-07-06
 
+## Timeline effect + motif layer — infographics that ACCUMULATE (2026-07-06)
+
+Quality program step 5, the "this looks authored" device from the reference study: the
+Samurai-in-Venice essay returns to ONE timeline six times, each return adding a marker.
+New `timeline` motion effect (20th in the registry): era bands + event markers over a year
+axis (BC-aware ticks), focus-window camera ease, comp `TimelinePro` (the blocks library has
+an unrelated single-purpose Timeline — same distinct-key rule as PhotoMontagePro), gate-
+classified _TEXT_BLOCKS. New **motif layer** (`nolan/motion/motifs.py`): plan-level
+`motifs` list ({id, effect, base}; lossless via ScenePlan.meta) + per-scene
+`scene.motif = {id, delta}` INSTEAD of a motion_spec. `resolve_plan_motifs` materializes
+each visit IN MEMORY — base + earlier deltas (settled) + this delta stamped `isNew` (only
+the delta animates); the plan keeps the authoring, never the expansion. Stateful comps'
+contract: render accumulated items statically, animate only isNew — `TimelinePro` built
+for it, `RouteMap` retrofitted (settled pins land at frame 0, new pins + route legs draw).
+
+Wired per the contract: registry entry w/ when_to_use ("chronology the viewer should HOLD;
+3+ events across a span, else a plain spec"), `motif` in PLAN_FIELD_CONSUMERS, motion_design
+gate runs `validate_plan_motifs` (unknown id / non-stateful effect / missing base / bad
+delta — loud, per scene) then materializes through the SAME hostability gate, premium calls
+`resolve_plan_motifs` at plan load, motion-craft.md + motion-designer.md document the
+authoring (umbrella honesty test forced the skill update — the rail works). Verified live:
+`scripts/bench_motifs.py` renders 3 timeline visits + 2 route-map visits through the real
+validate→resolve→host path; frames inspected — visit N shows 1..N-1 settled grey, only its
+delta animating in accent, focus zoom easing onto the era under discussion; fixed two craft
+defects the frames caught (marker chips colliding with era bands; narrow band labels
+clipping mid-word — now hidden honestly). 7 motif tests; suite 857 passed.
+
 ## Shortlist→pipeline: selects, pins, directives, review tray, citations (2026-07-06)
 
 The human-in-the-loop layer (quality program step 4) — real-editorial "selects" discipline.

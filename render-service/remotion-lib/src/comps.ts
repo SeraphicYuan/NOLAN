@@ -22,6 +22,7 @@ import { SplitScreen } from "./SplitScreen";
 import { StatOver } from "./StatOver";
 import { PhotoMontage } from "./PhotoMontage";
 import { PhotoGrid } from "./PhotoGrid";
+import { Timeline } from "./Timeline";
 
 export const COMPS: Record<string, React.FC<any>> = {
   Kinetic: KineticText,
@@ -38,4 +39,7 @@ export const COMPS: Record<string, React.FC<any>> = {
   // the other; nolan.motion.executor maps the registry targets to these.
   PhotoMontagePro: PhotoMontage,
   PhotoGridPro: PhotoGrid,
+  // the blocks library also has its own single-purpose Timeline (the
+  // "gap is the argument" layout) — same distinct-key rule
+  TimelinePro: Timeline,
 };

@@ -2,7 +2,9 @@ import React from 'react';
 import {AbsoluteFill, Img, staticFile, useCurrentFrame, useVideoConfig, interpolate, spring} from 'remotion';
 import {Theme, resolveTheme} from './theme';
 
-type Pin = {x: number; y: number; label: string};  // x,y in 0..1
+type Pin = {x: number; y: number; label: string; isNew?: boolean};  // x,y in 0..1
+// Motif contract: accumulated (old) pins render settled from frame 0;
+// only pins stamped isNew animate in — the map REMEMBERS the journey.
 export type RouteMapProps = {
   title: string;
   mapSrc?: string;                        // optional basemap image in public/
@@ -20,8 +22,11 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   const frame = useCurrentFrame();
   const {width, height, fps} = useVideoConfig();
   const th = resolveTheme(theme);
-  const pts = pins.map((p) => ({px: p.x * width, py: p.y * height, label: p.label}));
-  const tIn = (i: number) => i * 16;
+  const pts = pins.map((p) => ({px: p.x * width, py: p.y * height, label: p.label, isNew: !!p.isNew}));
+  const anyNew = pts.some((p) => p.isNew);
+  // settled pins land instantly; new pins sequence in after a short hold.
+  const newIdx = pts.map((p) => p.isNew).map((n, i, a) => a.slice(0, i + 1).filter(Boolean).length - 1);
+  const tIn = (i: number) => (anyNew ? (pts[i].isNew ? 24 + newIdx[i] * 20 : 0) : i * 16);
 
   const route = (a: {px: number; py: number}, b: {px: number; py: number}) => {
     if (routeStyle === 'straight') return `M ${a.px} ${a.py} L ${b.px} ${b.py}`;

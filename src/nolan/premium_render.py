@@ -489,6 +489,13 @@ def render_premium(project_path: Path, *, theme: str = None,
     # every path string, and node's CWD is render-service/, not the repo root.
     project_path = Path(project_path).resolve()
     plan = json.loads((project_path / "scene_plan.json").read_text(encoding="utf-8"))
+    # Motif layer: materialize scene.motif references (accumulated state +
+    # this scene's delta stamped isNew) into in-memory motion_specs. The plan
+    # on disk keeps the motif AUTHORING; only the render sees the expansion.
+    from nolan.motion.motifs import resolve_plan_motifs
+    _motif_scenes = resolve_plan_motifs(plan)
+    if _motif_scenes:
+        print(f"motifs: materialized {_motif_scenes} scene(s)")
     sections = [(k, v) for k, v in (plan.get("sections") or {}).items()
                 if isinstance(v, list) and v]
     wavs = sorted((project_path / "assets" / "voiceover" / "_work").glob("sec_*.wav"))

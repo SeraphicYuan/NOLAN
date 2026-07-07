@@ -101,6 +101,21 @@ escalation   → picture-library stills (hybrid CLIP+BGE; bridged queries too)
 After matching, `record_candidates` stores the top library runner-ups in
 `scene.asset_candidates` — the /scenes drawer's review tray (one-click pin).
 
+## Motif layer (stateful infographics)
+
+`nolan/motion/motifs.py` — the reference-video "home base" device: ONE
+infographic the video returns to, accumulating state each visit. The plan
+carries a top-level `motifs` list (`{id, effect, base}`; lossless via
+ScenePlan.meta); a scene references it with `scene.motif = {id, delta}`
+INSTEAD of a motion_spec. At render (and in the motion_design gate),
+`resolve_plan_motifs` materializes each visit IN MEMORY as base + all
+earlier deltas (rendered settled) + this delta stamped `isNew` (only the
+delta animates) — the plan on disk keeps the authoring, never the
+expansion. Stateful effects: `timeline` (markers accumulate; comp
+`TimelinePro` — the blocks library has an unrelated single-purpose
+Timeline), `route-map` (pins accumulate). A stateful comp's contract:
+render accumulated items statically from frame 0, animate only `isNew`.
+
 Every resolution writes an auditable `scene.resolved_source`.
 `AssetEngine.from_config` wires the standard backends lazily; tier fns are
 injectable. Thin callers: segment resolver (`segment/resolver.py` shim),

@@ -70,6 +70,12 @@ CONTENT = {
     "stat-over": {"image": IMG4, "value": 2700, "suffix": " yrs",
                   "caption": "the story has survived"},
     "title": {"title": "The Odyssey", "subtitle": "a bench probe"},
+    "timeline": {"title": "Greek memory", "start": -800, "end": 1950,
+                 "eras": [{"label": "Archaic", "from": -800, "to": -480},
+                          {"label": "Classical", "from": -480, "to": -323}],
+                 "markers": [{"year": -750, "label": "Homer composes"},
+                             {"year": -300, "label": "Alexandria edits", "isNew": True}],
+                 "focus": {"from": -800, "to": -200}},
 }
 
 SKIP = {"still-motion", "line-chart", "loop-diagram",

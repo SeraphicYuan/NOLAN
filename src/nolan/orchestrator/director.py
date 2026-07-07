@@ -2032,9 +2032,10 @@ class Director:
         return json.dumps(effects, ensure_ascii=False, indent=1)
 
     def _validate_plan_motion_specs(self) -> tuple[dict, list[str]]:
-        """(effect_counts, problems) for every motion_spec in the plan —
-        the deterministic gate behind the motion_design agent."""
+        """(effect_counts, problems) for every motion_spec AND motif in the
+        plan — the deterministic gate behind the motion_design agent."""
         from nolan.motion import chapter_step_for_spec
+        from nolan.motion.motifs import resolve_plan_motifs, validate_plan_motifs
         counts: dict[str, int] = {}
         problems: list[str] = []
         try:
@@ -2042,6 +2043,13 @@ class Director:
                               .read_text(encoding="utf-8"))
         except Exception as exc:
             return {}, [f"scene_plan.json unreadable: {exc}"]
+        # Motif layer: structural validation, then materialize IN MEMORY so
+        # the accumulated specs go through the same hostability gate below.
+        problems.extend(validate_plan_motifs(plan))
+        if not problems:
+            n = resolve_plan_motifs(plan)
+            if n:
+                counts["motif-scenes"] = n
         for scenes in (plan.get("sections") or {}).values():
             if not isinstance(scenes, list):
                 continue

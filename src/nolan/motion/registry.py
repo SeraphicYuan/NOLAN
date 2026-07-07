@@ -134,6 +134,25 @@ REGISTRY: List[MotionEffect] = [
         shared=["theme"], when_to_use="Chapter openers and the cold-open title. At most one per section — cards are punctuation, not content.",
         duration_default=4.0),
 
+    MotionEffect(
+        "timeline", "remotion", "map",
+        "Era bands + event markers over a year axis — the recurring 'home base' "
+        "infographic that ACCUMULATES across a video via the motif layer.",
+        "Timeline",
+        content=[_p("title", "string", default=""),
+                 _p("start", "int", "axis start year (negative = BC)", required=True),
+                 _p("end", "int", "axis end year", required=True),
+                 _p("eras", "array", "[{label, from, to, color?}] era bands above the axis", default=[]),
+                 _p("markers", "array", "[{year, label, emphasis?}] events on the axis "
+                    "(the motif layer stamps isNew on this scene's delta)", default=[]),
+                 _p("focus", "object", "{from, to} year window the camera eases onto", default=None)],
+        shared=["theme"],
+        when_to_use="Chronology the viewer should HOLD across the video — declare a "
+                    "motif in plan meta and reference it per scene (motif id + delta) so "
+                    "each return adds markers instead of redrawing from scratch. One-off "
+                    "date mentions don't need it; three or more events across a span do.",
+        duration_default=6.0),
+
     # ---- Curated Remotion blocks (Phase 3: one backend per intent) ----
     # Same effect ids + params as before; the executor's block path adapts
     # them to the flow-blocks library. Old specs stamped backend="python"

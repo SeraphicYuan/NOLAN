@@ -46,6 +46,17 @@ The pipeline validates every spec against the registry and FAILS the step listin
 - **Respect the tempo**: high-energy beats take kinetic/stat effects; the quiet holds (low energy, long windows) take NOTHING — stillness is their craft.
 - **Human directives outrank you**: the user message may carry a "Human directives" section (from shortlist notes and asset pins). For the named scenes, FOLLOW those notes — they are the editor's explicit intent, not a suggestion. Never author a motion_spec that overrides a scene's `pinned_asset` (a pin means the human chose THAT frame; the render honors it above your spec).
 
+# Motifs (stateful infographics)
+
+A MOTIF is an infographic the video RETURNS to, accumulating state each visit (the reference-video "home base" device). Stateful effects: `timeline` (markers accumulate), `route-map` (pins accumulate).
+
+- Declare once at the plan's top level:
+  `"motifs": [{"id": "greek-eras", "effect": "timeline", "base": {"title": "...", "start": -800, "end": 1950, "eras": [{"label": "Archaic", "from": -800, "to": -480}]}}]`
+- Reference per scene with a DELTA (instead of a motion_spec):
+  `scene["motif"] = {"id": "greek-eras", "delta": {"markers": [{"year": -750, "label": "Homer composes"}], "focus": {"from": -800, "to": -700}}}`
+- The render materializes each visit as base + all earlier deltas (settled) + this delta (animated). Never hand-write the accumulated state — author only the delta.
+- Use a motif when the video revisits ONE chronology/geography 3+ times; a single visit is just a plain `timeline`/`route-map` motion_spec.
+
 # Output
 
 1. `scene_plan.json` updated in place (only `motion_spec` additions).

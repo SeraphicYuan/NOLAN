@@ -124,6 +124,7 @@ _CHAPTER_TARGETS = {
     "RouteMap": "RouteMap", "PremiumCard": "PremiumCard",
     "SplitScreen": "SplitScreen", "StatOver": "StatOver",
     "PhotoMontage": "PhotoMontagePro", "PhotoGrid": "PhotoGridPro",
+    "Timeline": "TimelinePro",   # blocks library has its own single-purpose Timeline
 }
 
 _MEDIA_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif",

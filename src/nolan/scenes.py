@@ -423,6 +423,7 @@ PLAN_FIELD_CONSUMERS: Dict[str, str] = {
     "human_note":        "src/nolan/orchestrator/director.py",  # directive -> motion_design prompt
     "asset_candidates":  "src/nolan/templates/scenes.html",     # review tray (one-click pin swaps)
     "asset_license":     "src/nolan/premium_render.py",   # on-screen citation label (+ attribution)
+    "motif":             "src/nolan/premium_render.py",   # stateful infographic ref (motion/motifs.py)
 }
 
 

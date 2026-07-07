@@ -43,6 +43,7 @@ _TEXT_BLOCKS = {
     "WebVsBoxes",
     # text-led motion comps (theme-background typography/annotation)
     "Kinetic", "BarCompare", "KShape", "AnnotateStat", "PremiumCard",
+    "TimelinePro",
 }
 
 

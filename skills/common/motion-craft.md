@@ -61,6 +61,12 @@ beat; stills held >3s get still-motion by default; cards are punctuation.
 
 **When:** Movement across geography — journeys, trade, money flows. Use when the narration names places in order; pins without narrative order confuse.
 
+## timeline
+
+**What:** Era bands + event markers over a year axis — the recurring "home base" infographic that ACCUMULATES across a video via the motif layer.
+
+**When:** Chronology the viewer should HOLD across the video — declare a motif in plan meta and reference it per scene (motif id + delta) so each return adds markers instead of redrawing from scratch. One-off date mentions don't need it; three or more events across a span do.
+
 ## premium-card
 
 **What:** Glass/gradient hero or chapter title card.
