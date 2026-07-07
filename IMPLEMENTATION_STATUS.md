@@ -86,6 +86,23 @@ Fighting Centaurs' → exact:artvee (3000×2125), museums never queried;
 'Wanderer above the Sea of Fog' → artvee tried first, fell back to wikimedia
 (5256×6742).
 
+## Diversity round 2b — content-cued montage + SFX auto-cue pass (2026-07-07)
+
+The two audit items the user green-lit (generation-model switching explicitly vetoed —
+krea2 stays; diversify via Fooocus styles/prompts only, never models). **Content-cued shot
+cadence**: `_enumeration_shots` in tempo apply — list-like narration ("the lovers left
+behind, the young men killed, the price a man pays") requests a 3-still montage at ANY
+energy; energy-only cadence had produced zero shot lists across three projects. **SFX
+auto-cue pass**: `author_sfx_cues` (audio_mix) — the decision layer the placement layer
+had been waiting for since SOTA #1. Deterministic keyword→ambience map (fire crackle,
+distant waves, crowd murmur, quill on parchment, …); discipline: visual scenes only,
+human `sfx` always wins AND counts toward density spacing, ≤2 cues/beat, ≥20s apart,
+volume 0.22 (ambience under VO, never an event). Wired into the soundtrack step, cues
+persisted to the plan (reviewable/editable), reported loudly in the checkpoint. Live probe
+on aeneid: fire crackle under the burning scroll, crowd murmur under the Ara Pacis
+procession, birdsong on the Mantua farm; scene_012/013 enumerations request montages.
+Audible impact still gated on real music tracks landing in the library. Suite 962.
+
 ## Craft round 2 — continuous Ken Burns, treatment variety, diversity audit (2026-07-07)
 
 From the user's aeneid viewing ("every image uses kenburns and the speed is abrupt"): the

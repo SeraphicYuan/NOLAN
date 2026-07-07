@@ -97,6 +97,77 @@ def section_energies(plan: Dict[str, Any]) -> List[Tuple[float, float, float]]:
     return out
 
 
+# --- SFX auto-cue pass (the deferred decision layer) -------------------------
+# Keyword clusters -> ambient cue queries. Reference-video craft: the burning
+# scroll gets fire crackle, the voyage gets distant waves — ambience carries
+# period texture that stills alone can't. Deterministic; humans edit/delete
+# cues in the plan (the sfx field is theirs after authoring).
+_SFX_AMBIENCE = [
+    (("fire", "burn", "flame", "torch", "hearth"), "fire crackling ambience"),
+    (("sea", "wave", "ocean", "ship", "sail", "harbor", "voyage"),
+     "ocean waves distant ambience"),
+    (("storm", "rain",), "rain ambience distant"),
+    (("thunder",), "thunder rumble distant"),
+    (("wind", "desert", "plain"), "wind ambience soft"),
+    (("battle", "sword", "army", "war ", "clash", "siege"),
+     "distant battle metal ambience"),
+    (("crowd", "procession", "forum", "market", "assembly"),
+     "crowd murmur ambience"),
+    (("horse", "rider", "hooves", "cavalry"), "horse hooves distant"),
+    (("bell",), "church bell distant"),
+    (("write", "quill", "pen ", "manuscript", "scroll", "letter"),
+     "quill pen writing parchment"),
+    (("footsteps", "walked", "walking"), "footsteps stone reverb"),
+    (("birds", "dawn", "garden", "spring "), "birdsong ambient soft"),
+]
+
+
+def author_sfx_cues(plan: Dict[str, Any], *, max_per_section: int = 2,
+                    min_gap_s: float = 20.0, volume: float = 0.22) -> List[tuple]:
+    """AUTHOR per-scene ambient sfx cues from narration/visual content.
+
+    The placement layer (:func:`_scene_sfx_cues`) existed with no decision
+    layer feeding it — projects shipped with one transition whoosh (the
+    diversity audit). Deterministic keyword mapping; discipline: visual
+    scenes only, explicit human ``sfx`` always wins, <= ``max_per_section``
+    cues per beat, >= ``min_gap_s`` apart, LOW volume (ambience under VO,
+    never an event). Mutates the plan; returns [(scene_id, query), ...] so
+    the step can report loudly.
+    """
+    authored: List[tuple] = []
+    last_t = -1e9
+    for scenes in (plan.get("sections") or {}).values():
+        if not isinstance(scenes, list):
+            continue
+        used = 0
+        for s in scenes:
+            if not isinstance(s, dict):
+                continue
+            t0 = float(s.get("start_seconds") or 0.0)
+            if s.get("sfx"):
+                # a human-authored cue counts toward density spacing too —
+                # ambience discipline is about the EAR, not the author
+                last_t = max(last_t, t0)
+                continue
+            if not (s.get("matched_asset") or s.get("generated_asset")
+                    or s.get("matched_clip") or s.get("rendered_clip")):
+                continue                      # text/graphic scenes stay clean
+            if used >= max_per_section:
+                break
+            if t0 - last_t < min_gap_s:
+                continue
+            text = " " + ((s.get("narration_excerpt") or "") + " "
+                          + (s.get("visual_description") or "")).lower() + " "
+            for keys, query in _SFX_AMBIENCE:
+                if any(k in text for k in keys):
+                    s["sfx"] = {"query": query, "at": 0.0, "volume": volume}
+                    authored.append((s.get("id"), query))
+                    used += 1
+                    last_t = t0
+                    break
+    return authored
+
+
 def _scene_sfx_cues(plan: Dict[str, Any]):
     """Yield ``(t_seconds, query, volume)`` from per-scene ``sfx`` cues in the plan.
 

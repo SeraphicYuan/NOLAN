@@ -519,8 +519,18 @@ class Director:
             return _write_checkpoint(self.project_path, record.step_num, [note])
 
         try:
-            plan = json.loads(
-                (self.project_path / "scene_plan.json").read_text(encoding="utf-8"))
+            from nolan.audio_mix import author_sfx_cues
+            plan_path = self.project_path / "scene_plan.json"
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            # SFX auto-cue pass (the decision layer the placement layer was
+            # waiting for): ambient cues from narration content — fire
+            # crackle under the burning scroll, distant waves under the
+            # voyage. Persisted to the plan (human-editable, reviewable).
+            _cues = author_sfx_cues(plan) if cfg["sfx"] else []
+            if _cues:
+                plan_path.write_text(
+                    json.dumps(plan, indent=2, ensure_ascii=False),
+                    encoding="utf-8")
             spec = author_soundtrack(
                 plan, music=cfg["music"], music_gain_db=cfg["gain"],
                 sfx=cfg["sfx"], mood=cfg["mood"],
@@ -534,10 +544,13 @@ class Director:
             raise DirectorError(err) from exc
 
         alts = ", ".join(a["file"] for a in spec.get("alternatives", [])) or "none"
+        _cue_note = ("; ambient cues authored: "
+                     + ", ".join(f"{sid}→{q}" for sid, q in _cues)
+                     if _cues else "; no ambient cues matched")
         summary = [
             f"Soundtrack authored: **{spec['track']['file']}** "
             f"({spec['track']['source']}), {len(spec.get('sfx_events', []))} "
-            f"transition sfx, gain {spec['music_gain_db']} dB.",
+            f"transition sfx, gain {spec['music_gain_db']} dB{_cue_note}.",
             f"Alternatives: {alts}.",
             f"Review/edit `{spec_path.name}` (swap track, drop sfx events, "
             "adjust gain/duck) — the render step executes it as written.",

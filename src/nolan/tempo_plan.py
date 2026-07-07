@@ -312,6 +312,21 @@ def _scene_energy(beat_energy: float, sc, i: int, n: int) -> float:
                                   min(beat_energy + 0.12, e))))
 
 
+def _enumeration_shots(text: str) -> int:
+    """List-like narration is a MONTAGE moment at any energy — "the lovers
+    left behind, the young men killed, the price a man pays" wants cuts even
+    in a contemplative beat. Energy-only cadence missed every one of these
+    (the diversity audit: zero shot lists across three projects)."""
+    t = text or ""
+    seps = t.count(",") + t.count(";")
+    words = len(t.split())
+    if seps >= 3 and words >= 12:
+        return 3
+    if seps >= 2 and " and " in t and words >= 10:
+        return 3
+    return 0
+
+
 def apply_to_plan(plan, tempo: TempoPlan) -> dict:
     """Write a TempoPlan's per-beat rhythm onto an orchestrator ScenePlan.
 
@@ -355,8 +370,12 @@ def apply_to_plan(plan, tempo: TempoPlan) -> dict:
             # the beat's shot cadence: >1 asks the asset ladder to fetch that
             # many stills so premium can cut the scene into a shot list
             # (scene.shots). Consumed field — never author data with no reader.
-            if int(getattr(bt, "shots", 1) or 1) > 1:
-                sc.extra["shots_wanted"] = int(bt.shots)
+            # Content-cued montage (enumerations) fires at ANY energy.
+            want = max(int(getattr(bt, "shots", 1) or 1),
+                       _enumeration_shots(getattr(sc, "narration_excerpt", "") or ""))
+            if want > 1:
+                sc.extra["shots_wanted"] = max(
+                    int(sc.extra.get("shots_wanted") or 1), want)
             matched += 1
     return {"sections": n_sec, "scenes": n_sc, "matched": matched}
 
