@@ -318,3 +318,15 @@ def test_fulfill_skips_scene_with_existing_shots(tmp_path):
         [s], nolan_config=None, project_path=tmp_path,
         client=object(), fetch=lambda u, d: None)
     assert done == 0 and s.extra["shots"] == [{"src": "human.jpg"}]
+
+
+def test_art_paths_stamp_asset_license():
+    """Both art paths must stamp scene.asset_license (attribution + the
+    on-screen museum citation) — the aeneid run had NO citations because
+    neither path wrote it (homer's were stamped by hand)."""
+    from pathlib import Path
+    src = Path(__file__).resolve().parents[1]
+    art = (src / "src/nolan/art_sourcing.py").read_text(encoding="utf-8")
+    ext = (src / "src/nolan/external_assets.py").read_text(encoding="utf-8")
+    assert art.count('scene.extra["asset_license"]') >= 1
+    assert ext.count('scene.extra["asset_license"]') >= 2   # match + attach_from_lib

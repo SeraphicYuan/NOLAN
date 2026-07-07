@@ -50,3 +50,20 @@ def test_plan_normalization_reports_and_rewrites():
     assert scenes[0]["visual_type"] == "text-overlay"
     assert scenes[2]["visual_type"] == "b-roll"           # untouched
     assert scenes[3]["visual_type"] == "interpretive-dance"  # left for the error
+
+
+def test_archival_art_requires_search_query():
+    """aeneid-2beat-v2: the designer NAMED every work in visual_description
+    but left search_query empty — exact-title never ran and CLIP matched a
+    botanical plate to a manuscript scene. The gate must catch this."""
+    from nolan.scenes import validate_art_queries
+    plan = {"sections": {"a": [
+        {"id": "s1", "visual_type": "archival-art",
+         "visual_description": "The Augustus of Prima Porta"},
+        {"id": "s2", "visual_type": "archival-art",
+         "search_query": "Augustus Prima Porta statue"},
+        {"id": "s3", "visual_type": "b-roll"},
+    ]}}
+    assert validate_art_queries(plan) == ["s1"]
+    plan["sections"]["a"][0]["search_query"] = "Augustus of Prima Porta"
+    assert validate_art_queries(plan) == []

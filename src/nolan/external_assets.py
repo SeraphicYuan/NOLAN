@@ -67,6 +67,15 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
         except Exception:
             return None
         scene.matched_asset = str(dest.relative_to(project_root)).replace("\\", "/")
+        # library records carry provenance — pass it to the scene so the
+        # attribution manifest and the on-screen citation see it
+        try:
+            scene.extra["asset_license"] = {
+                "source": asset.source, "license": asset.license,
+                "source_url": asset.source_url or asset.url,
+                "title": asset.title}
+        except Exception:
+            pass
         if log:
             log(f"{sid}: {asset.source} ({kind_prefix}, sim {h.score:.2f})")
         return f"{kind_prefix}:{asset.source or '?'}"

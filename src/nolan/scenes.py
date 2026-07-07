@@ -360,6 +360,25 @@ def normalize_visual_type(value: str) -> Optional[str]:
     return None
 
 
+def validate_art_queries(plan: Dict[str, Any]) -> List[str]:
+    """archival-art scenes MUST name their work in ``search_query`` — the
+    exact-title museum pass is the ONLY tier that can satisfy identity for a
+    named artwork; without a query it silently degrades to CLIP similarity
+    (the aeneid-2beat-v2 run matched a botanical plate to a manuscript
+    scene). Returns offending scene ids (the step fails loudly on any)."""
+    bad = []
+    for scenes in (plan.get("sections") or {}).values():
+        if not isinstance(scenes, list):
+            continue
+        for s in scenes:
+            if not isinstance(s, dict):
+                continue
+            if (s.get("visual_type") == "archival-art"
+                    and not (s.get("search_query") or "").strip()):
+                bad.append(str(s.get("id")))
+    return bad
+
+
 def normalize_plan_visual_types(plan: Dict[str, Any]):
     """Normalize every scene's visual_type in a raw plan dict, in place.
 

@@ -1795,8 +1795,17 @@ class Director:
         # slide_designer, asset engine, premium) — normalize LLM-invented
         # synonyms LOUDLY and fail on unmappable values, or every consumer
         # silently sees 0 eligible scenes (the silent-cascade bug class).
-        from nolan.scenes import normalize_plan_visual_types
+        from nolan.scenes import normalize_plan_visual_types, validate_art_queries
         vt_mapped, vt_unknown = normalize_plan_visual_types(plan_data)
+        _art_missing = validate_art_queries(plan_data)
+        if _art_missing:
+            err = ("archival-art scenes must NAME their work in search_query "
+                   "(the exact-title pass is the only identity-capable tier); "
+                   "missing on: " + ", ".join(_art_missing[:8]))
+            state_mod.finish_step(record, status="error", notes=err)
+            state.status = "error"
+            state_mod.save_state(self.project_path, state)
+            raise DirectorError(err)
         if vt_unknown:
             err = ("script_to_scenes used visual_type values outside the "
                    "canonical vocabulary and they can't be auto-mapped: "
