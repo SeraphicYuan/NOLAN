@@ -211,7 +211,9 @@ def exact_title_pass(scene, *, client, ingest_lib, out_dir: Path,
                 if not ok:
                     tmp.unlink(missing_ok=True)
                     continue
-                verdict = check_file(Path(got), tier="archival", vision=vision)
+                from nolan.asset_gate import needs_vision_check
+                _vis = vision if needs_vision_check(best.url) else None
+                verdict = check_file(Path(got), tier="archival", vision=_vis)
                 if not verdict.ok:
                     _reject(best, verdict.reasons)
                     Path(got).unlink(missing_ok=True)

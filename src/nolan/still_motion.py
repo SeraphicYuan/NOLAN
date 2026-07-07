@@ -57,9 +57,82 @@ def camera_tour_props(scene: dict, ordinal: int = 0,
 
     glide = {"slow": 34, "medium": 26, "fast": 18}.get(speed, 26)
     intro = {"slow": 48, "medium": 40, "fast": 26}.get(speed, 40)
+    # Synthesized (wordless) focuses render as ONE continuous eased move
+    # across the whole step (mode from assign_still_treatments, default a
+    # plain push) — the hold-then-lunge two-phase pattern is banned. Word-
+    # anchored tours don't come through this function.
+    mode = scene.get("_still_treatment") or "kenburns-in"
     return {"focuses": [{"word": "", "x": round(x, 3), "y": round(y, 3),
                          "w": side, "h": side}],
-            "glide": glide, "introHold": intro}
+            "glide": glide, "introHold": intro, "mode": mode}
+
+
+_PAN_CUES = (" from ", " through ", " across ", " rose ", "journey",
+             " born ", "procession", "march", "flight", "fleeing", "voyage",
+             "travel", "sequence")
+_OUT_CUES = (" but ", "turns out", "the strange", "entire", " whole ", " all of ",
+             "everything", " empire", " world", "reveal", "it ends", "stands over",
+             "surrender", "larger than")
+_IN_CUES = (" this ", " these ", " his ", " her ", "the man", "the poem",
+            "manuscript", "face", "hands", " lines ", "detail", "one last",
+            "named", "nicknamed")
+
+
+def select_still_treatment(scene: dict, prev: Optional[str] = None) -> str:
+    """Narrative-semantic camera direction for a still (aeneid feedback:
+    every image got the same push). Deterministic cues:
+
+    - PAN: the narration MOVES (journeys, sequences, from→to)
+    - OUT: the narration WIDENS (reveals, context, 'the whole/everything')
+    - IN:  the narration NAMES/examines (this, the man, a detail)
+
+    plus a hard no-repeat against ``prev`` (the previous still's treatment) —
+    two identical consecutive moves read as a template, not a camera.
+    """
+    text = " " + ((scene.get("narration_excerpt") or "") + " "
+                  + (scene.get("visual_description") or "")).lower() + " "
+    pick = None
+    if any(c in text for c in _PAN_CUES):
+        pick = "kenburns-pan"
+    elif any(c in text for c in _OUT_CUES):
+        pick = "kenburns-out"
+    elif any(c in text for c in _IN_CUES):
+        pick = "kenburns-in"
+    if pick is None:
+        pick = "kenburns-in"
+    if pick == prev:
+        cycle = ("kenburns-in", "kenburns-pan", "kenburns-out")
+        pick = next(c for c in cycle if c != prev)
+    return pick
+
+
+def assign_still_treatments(plan: dict) -> int:
+    """IN-MEMORY pre-pass (premium calls it at plan load, motif-style):
+    stamp ``scene['_still_treatment']`` on every still-rendered scene —
+    narrative semantics via :func:`select_still_treatment`, no-two-
+    consecutive enforced across the whole piece, and the LAST low-energy
+    scene of a section gets ``drift`` (the protected quiet close). The plan
+    on disk never carries the underscore key."""
+    prev = None
+    n = 0
+    for scenes in (plan.get("sections") or {}).values():
+        if not isinstance(scenes, list):
+            continue
+        for i, s in enumerate(scenes):
+            if not isinstance(s, dict):
+                continue
+            if not (s.get("matched_asset") or s.get("generated_asset")):
+                continue
+            if s.get("motion_spec") or s.get("layout_spec") or s.get("pinned_asset"):
+                continue                      # other treatments own these
+            pick = select_still_treatment(s, prev)
+            if (i == len(scenes) - 1
+                    and float(s.get("energy") or 0.5) < 0.3):
+                pick = "drift"
+            s["_still_treatment"] = pick
+            prev = pick
+            n += 1
+    return n
 
 
 def subject_center(image_path, cache: bool = True) -> Optional[tuple]:

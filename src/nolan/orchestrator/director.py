@@ -2442,7 +2442,11 @@ class Director:
                 llm = create_text_llm(load_config())
             except Exception:
                 llm = None
-            tempo = design_tempo(sctx, profile=profile, llm=llm)
+            # the pack's transition bias rides the tempo prompt (it authored
+            # ZERO cuts for a cut-led format before this was wired)
+            from nolan.style_packs import tempo_hint as _sp_tempo_hint
+            tempo = design_tempo(sctx, profile=profile, llm=llm,
+                                 style_hint=_sp_tempo_hint(self._style_pack()))
             # Tempo cloning: when the project carries an attached/cloned
             # deconstruction (reference_structure.json), blend the reference
             # video's MEASURED energy curve with the script-derived one.

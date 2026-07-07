@@ -21,6 +21,13 @@ export type ArtworkStageProps = {
   introHold?: number;   // frames to hold the whole before the first move
   maxZoom?: number;     // cap zoom — keep lower-res scans legible (default 1.6)
   glide?: number;       // frames a camera move takes (default 26 — slow/cinematic)
+  // Camera mode. "tour" = word-anchored keyframe track (deliberate moves).
+  // The kenburns-* modes are ONE continuous eased move across the WHOLE
+  // step — no hold-then-lunge gear change (the aeneid feedback: every still
+  // sat, then zoomed abruptly). in = push to the focus; out = start at the
+  // focus, ease to the whole (reveal); pan = lateral drift at fixed zoom;
+  // drift = the ambient push only.
+  mode?: "tour" | "kenburns-in" | "kenburns-out" | "kenburns-pan" | "drift";
   revealFrames: number[];
   words: Word[];
   durationInFrames: number;
@@ -38,11 +45,64 @@ const camParams = (region: Region | null, maxZoom: number): CamPose => {
 
 export const ArtworkStage: React.FC<ArtworkStageProps> = ({
   src, label, focuses = [], introHold = 40, maxZoom = 1.6, glide = 26,
-  revealFrames, words, durationInFrames,
+  mode = "tour", revealFrames, words, durationInFrames,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const r0 = revealFrames[0] ?? 0;
+
+  // Continuous Ken Burns modes: ONE eased move spanning the whole step.
+  if (mode !== "tour") {
+    const f0 = focuses[0];
+    const target = camParams(f0 ? { x: f0.x, y: f0.y, w: f0.w, h: f0.h } : null, maxZoom);
+    const whole: CamPose = { s: 1.04, ox: 50, oy: 50 };   // never a dead-flat frame
+    const p = easeInOut(Math.min(1, Math.max(0,
+      (frame - r0) / Math.max(1, durationInFrames - r0 - 1))));
+    let s = 1, ox = 50, oy = 50;
+    if (mode === "kenburns-in") {
+      s = whole.s + (target.s - whole.s) * p;
+      ox = whole.ox + (target.ox - whole.ox) * p;
+      oy = whole.oy + (target.oy - whole.oy) * p;
+    } else if (mode === "kenburns-out") {
+      s = target.s + (whole.s - target.s) * p;
+      ox = target.ox + (whole.ox - target.ox) * p;
+      oy = target.oy + (whole.oy - target.oy) * p;
+    } else if (mode === "kenburns-pan") {
+      s = Math.min(maxZoom, 1.16);
+      const x0 = target.ox <= 50 ? Math.min(72, 100 - target.ox)
+                                 : Math.max(28, 100 - target.ox);
+      ox = x0 + (target.ox - x0) * p;
+      oy = target.oy;
+    } else {                                               // drift
+      s = 1 + 0.06 * p;
+      ox = target.ox; oy = target.oy;
+    }
+    const imgIn0 = interpolate(frame - r0, [0, 18], [0, 1], clamp);
+    const labelOp0 = interpolate(frame - r0, [16, 32], [0, 1], clamp);
+    return (
+      <AbsoluteFill style={{ background: "var(--surface)" }}>
+        <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center", opacity: imgIn0 }}>
+          <div style={{ position: "relative", height: "86%", transform: `scale(${s})`, transformOrigin: `${ox}% ${oy}%` }}>
+            <Img src={staticFile(src)} style={{ display: "block", height: "100%", width: "auto", boxShadow: "0 30px 90px rgba(0,0,0,0.6)" }} />
+          </div>
+        </AbsoluteFill>
+        {label ? (
+          <div style={{ position: "absolute", left: "var(--space-9)", top: "var(--space-7)", opacity: labelOp0,
+            borderLeft: "3px solid var(--accent)", paddingLeft: "var(--space-4)", maxWidth: 460 }}>
+            <div style={{ fontFamily: "var(--font-display, var(--font-display-cn))", fontWeight: 700, fontSize: 30, color: "var(--text)", lineHeight: 1.1 }}>{label.title}</div>
+            {label.artist || label.date ? (
+              <div style={{ fontFamily: "var(--font-body)", fontStyle: "italic", fontSize: 20, color: "var(--text-2)", marginTop: 6 }}>
+                {[label.artist, label.date].filter(Boolean).join(", ")}</div>
+            ) : null}
+            {label.medium || label.collection ? (
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, letterSpacing: "var(--track-caps)", textTransform: "uppercase", color: "var(--text-mute)", marginTop: 8 }}>
+                {[label.medium, label.collection].filter(Boolean).join(" · ")}</div>
+            ) : null}
+          </div>
+        ) : null}
+      </AbsoluteFill>
+    );
+  }
 
   // Resolve each focus to its spoken word via a CURSOR (first match after the previous),
   // then build the camera keyframe track: establish → each focus. There is NO final

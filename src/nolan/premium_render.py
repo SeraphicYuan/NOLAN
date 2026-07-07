@@ -502,6 +502,12 @@ def render_premium(project_path: Path, *, theme: str = None,
     _recipe_scenes = resolve_plan_recipes(plan)
     if _recipe_scenes:
         print(f"recipes: materialized {_recipe_scenes} scene(s)")
+    # Still-treatment variety (aeneid feedback: every image got the same
+    # push): narrative-semantic in/out/pan + no-two-consecutive, in memory.
+    from nolan.still_motion import assign_still_treatments
+    _treated = assign_still_treatments(plan)
+    if _treated:
+        print(f"still treatments assigned: {_treated} scene(s)")
     sections = [(k, v) for k, v in (plan.get("sections") or {}).items()
                 if isinstance(v, list) and v]
     wavs = sorted((project_path / "assets" / "voiceover" / "_work").glob("sec_*.wav"))

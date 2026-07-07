@@ -150,7 +150,7 @@ _TEMPO_SYS = (
     "beat by beat in isolation. Reply STRICT JSON only.")
 
 
-def _tempo_prompt(ctx: ScriptContext, profile: str) -> str:
+def _tempo_prompt(ctx: ScriptContext, profile: str, style_hint: str = "") -> str:
     prof = _PROFILES[profile]
     guide = {
         "punchy": "Explainer pace: keep it moving; drive fact-clusters with fast cuts; still let key reframes land.",
@@ -162,7 +162,8 @@ def _tempo_prompt(ctx: ScriptContext, profile: str) -> str:
         f"PROFILE: {profile} — {guide}\n"
         f"Energy band for this profile: floor≈{prof['floor']}, base≈{prof['base']}, climax≈{prof['climax']}; "
         f"cut density up to {prof['max_shots']} shots on the most driving beats.\n\n"
-        "Design the tempo as ONE energy curve across the beats above (in order). The narration length "
+        + (f"{style_hint}" if style_hint else "")
+        + "Design the tempo as ONE energy curve across the beats above (in order). The narration length "
         "of each beat is FIXED — you are NOT changing durations, only how each beat is FILLED. Respect "
         "the writer's pace intent (pace:accelerate wants more energy/cuts; pace:decelerate wants holds), "
         "but shape a real arc: breathe at the open and the close, build toward the emotional/climactic beat.\n"
@@ -287,6 +288,30 @@ def motion_for_tempo(bt: BeatTempo, kind: str = "image") -> tuple:
     return ("ken-burns-in", 2.6)                           # drive — fast push
 
 
+_HOT_CUES = ("?", " kill", "burn", "murder", "rage", "war ", "blood",
+             "destroy", "never", "!", "most powerful", "secret")
+_COOL_CUES = (" and so ", " in other words", "we could say", "as we always do",
+              " it is here ", "because ")
+
+
+def _scene_energy(beat_energy: float, sc, i: int, n: int) -> float:
+    """Per-scene energy inside the beat band: content emphasis +/- 0.08,
+    positional arc (rises to the beat's midpoint) +/- 0.04. Bounded to
+    +/-0.12 around the beat value so the BEAT still owns the macro shape."""
+    text = ((getattr(sc, "narration_excerpt", "") or "")
+            + " " + (getattr(sc, "visual_description", "") or "")).lower()
+    e = float(beat_energy)
+    if any(c in text for c in _HOT_CUES):
+        e += 0.08
+    elif any(c in text for c in _COOL_CUES):
+        e -= 0.05
+    if n > 1:
+        mid = (n - 1) / 2.0
+        e += 0.04 * (1.0 - abs(i - mid) / max(mid, 1.0)) - 0.02
+    return max(0.05, min(1.0, max(beat_energy - 0.12,
+                                  min(beat_energy + 0.12, e))))
+
+
 def apply_to_plan(plan, tempo: TempoPlan) -> dict:
     """Write a TempoPlan's per-beat rhythm onto an orchestrator ScenePlan.
 
@@ -314,12 +339,18 @@ def apply_to_plan(plan, tempo: TempoPlan) -> dict:
                     best, best_score = by_title[t], score
             if best_score >= 0.3:
                 bt = best
-        for sc in scenes:
+        for i, sc in enumerate(scenes):
             n_sc += 1
             if bt is None:
                 continue
             sc.transition = bt.transition
-            sc.energy = round(bt.energy, 3)
+            # Scene-level contour WITHIN the beat: a flat per-beat constant
+            # gave every camera identical parameters (the energy-plateau
+            # linter rule keeps firing because nothing upstream varied).
+            # Deterministic cues nudge each scene inside the beat's band:
+            # emphasis content leans hotter, connective tissue cooler, and a
+            # tiny positional arc rises toward the beat's middle.
+            sc.energy = round(_scene_energy(bt.energy, sc, i, len(scenes)), 3)
             sc.motion_speed = bt.motion_speed
             # the beat's shot cadence: >1 asks the asset ladder to fetch that
             # many stills so premium can cut the scene into a shot list
@@ -362,7 +393,8 @@ def apply_to_flow_spec(spec: dict, tempo: TempoPlan) -> dict:
     return {"beats": len(beats), "matched": n}
 
 
-def design_tempo(ctx: ScriptContext, *, profile: str = "", llm=None) -> TempoPlan:
+def design_tempo(ctx: ScriptContext, *, profile: str = "", llm=None,
+                 style_hint: str = "") -> TempoPlan:
     """Design a TempoPlan for a script. Uses the LLM for the arc when given one, else rules.
     Always returns a full plan (one BeatTempo per script beat)."""
     profile = profile_for(ctx, profile)
@@ -371,7 +403,7 @@ def design_tempo(ctx: ScriptContext, *, profile: str = "", llm=None) -> TempoPla
     if llm is not None:
         try:
             import asyncio
-            txt = _run(llm.generate(_tempo_prompt(ctx, profile), _TEMPO_SYS))
+            txt = _run(llm.generate(_tempo_prompt(ctx, profile, style_hint), _TEMPO_SYS))
             raw = _extract_json(txt)
             plan = _coerce(raw, ctx, profile)
             if plan:

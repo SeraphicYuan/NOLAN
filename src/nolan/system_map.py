@@ -240,6 +240,8 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
          "slide_designer prompt carries the pack's preferred templates"),
         ("src/nolan/retention.py", "_pack_format",
          "retention linter enforces the pack's format (show bible) rules"),
+        ("src/nolan/orchestrator/director.py", "_sp_tempo_hint",
+         "tempo prompt carries the pack's transition bias"),
     ],
     # recipes: multi-scene figures (quality program step 7)
     "recipes": [

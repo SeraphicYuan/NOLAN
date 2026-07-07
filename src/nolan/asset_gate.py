@@ -54,7 +54,7 @@ STOCK_PREVIEW_HOSTS: Tuple[str, ...] = (
 OPEN_ACCESS_SOURCES = frozenset({
     "wikimedia", "met", "artic", "cleveland", "rijksmuseum", "wellcome",
     "loc", "harvard", "europeana", "dpla", "smithsonian", "nga",
-    "gutenberg", "internet_archive",
+    "gutenberg", "internet_archive", "artvee",
 })
 
 # Providers whose platform license permits our use (attribution handled by
@@ -67,6 +67,25 @@ LICENSED_STOCK_SOURCES = frozenset({
 _OPEN_LICENSE_RE = re.compile(
     r"public\s*domain|\bpd\b|cc0|cc[\s-]?by|creative\s*commons|"
     r"no\s+known\s+copyright|open\s*access", re.I)
+
+# Museum/institutional download hosts that never watermark their open-access
+# derivatives — the VISION watermark check (~7s/asset) is skipped for these;
+# the free banner heuristic still runs on everything. Aggregators (artvee,
+# europeana redirects, unknown CDNs) keep the vision check.
+TRUSTED_MEDIA_HOSTS: Tuple[str, ...] = (
+    "upload.wikimedia.org", "images.metmuseum.org", "artic.edu",
+    "clevelandart.org", "rijksmuseum.nl", "iiif.wellcomecollection.org",
+    "tile.loc.gov", "ids.lib.harvard.edu", "media.nga.gov",
+)
+
+
+def needs_vision_check(url: Optional[str]) -> bool:
+    """False when the file came from a trusted museum host (see above)."""
+    if not url:
+        return True
+    u = str(url).lower()
+    return not any(h in u for h in TRUSTED_MEDIA_HOSTS)
+
 
 # Resolution floors per tier: (min shorter side, min total pixels).
 # Archival art renders full-frame with camera zooms — it needs real pixels.

@@ -100,6 +100,20 @@ def main():
                       "words": [], "durationInFrames": STEP_FRAMES})
         order.append(eff_id)
 
+    # still-treatment probes (the path that carries most minutes of most
+    # videos — the aeneid "abrupt zoom" feedback lived here): one continuous
+    # eased move per mode, whole-step duration
+    for mode in ("kenburns-in", "kenburns-out", "kenburns-pan", "drift"):
+        steps.append({
+            "block": "ArtworkStage",
+            "props": {"src": IMG4, "mode": mode,
+                      "focuses": [{"word": "", "x": 0.30, "y": 0.25,
+                                   "w": 0.55, "h": 0.55}],
+                      "durationInFrames": STEP_FRAMES},
+            "revealFrames": [0], "words": [],
+            "durationInFrames": STEP_FRAMES})
+        order.append(f"STILL-{mode}")
+
     # camera-grammar probe: ArtworkStage with two word-cued focuses (glide
     # proportionality + no pull-back + ambient drift all visible here)
     steps.append({
