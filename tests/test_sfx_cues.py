@@ -23,7 +23,7 @@ def test_cues_map_content_to_ambience():
     ]}}
     cues = author_sfx_cues(plan)
     assert ("s1", "fire crackling ambience") in cues
-    assert ("s2", "ocean waves distant ambience") in cues
+    assert ("s2", "ocean waves ambience") in cues
     sfx = plan["sections"]["a"][0]["sfx"]
     assert sfx["volume"] <= 0.25 and sfx["at"] == 0.0   # ambience, not an event
 

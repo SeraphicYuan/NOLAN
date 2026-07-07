@@ -103,6 +103,16 @@ class FreesoundProvider(SFXProvider):
 
     def __init__(self, api_key: Optional[str] = None, max_duration: float = 15.0):
         self.api_key = api_key or os.getenv("FREESOUND_API_KEY", "")
+        if not self.api_key:
+            # the key lives in .env — don't depend on the caller having run
+            # load_config() first (standalone source_sfx calls silently fell
+            # back to "provider unavailable" without this)
+            try:
+                from dotenv import load_dotenv
+                load_dotenv()
+                self.api_key = os.getenv("FREESOUND_API_KEY", "")
+            except ImportError:
+                pass
         self.max_duration = max_duration
 
     def available(self) -> bool:

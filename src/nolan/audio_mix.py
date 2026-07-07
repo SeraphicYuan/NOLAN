@@ -105,7 +105,7 @@ def section_energies(plan: Dict[str, Any]) -> List[Tuple[float, float, float]]:
 _SFX_AMBIENCE = [
     (("fire", "burn", "flame", "torch", "hearth"), "fire crackling ambience"),
     (("sea", "wave", "ocean", "ship", "sail", "harbor", "voyage"),
-     "ocean waves distant ambience"),
+     "ocean waves ambience"),
     (("storm", "rain",), "rain ambience distant"),
     (("thunder",), "thunder rumble distant"),
     (("wind", "desert", "plain"), "wind ambience soft"),
