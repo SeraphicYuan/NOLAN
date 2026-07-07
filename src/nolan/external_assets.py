@@ -70,10 +70,11 @@ def semantic_match_for_scene(scene, *, libs, client, scorer, vid_sources, out_di
         # library records carry provenance — pass it to the scene so the
         # attribution manifest and the on-screen citation see it
         try:
+            from nolan.asset_gate import clean_title
             scene.extra["asset_license"] = {
                 "source": asset.source, "license": asset.license,
                 "source_url": asset.source_url or asset.url,
-                "title": asset.title}
+                "title": clean_title(asset.title)}
         except Exception:
             pass
         if log:

@@ -142,6 +142,18 @@ class GateVerdict:
         return self.ok
 
 
+def clean_title(title) -> str:
+    """Provider titles are often FILENAMES — 'Vergilius Vaticanus, fol 52r -
+    wm-removed.jpg' rendered verbatim into an on-screen museum label. Strip
+    extensions and technical suffixes; keep the human part."""
+    t = str(title or "").strip()
+    t = re.sub(r"\.(jpe?g|png|webp|tiff?|gif)$", "", t, flags=re.I)
+    t = re.sub(r"\s*[-–—_]\s*(wm[- ]?removed|watermark[- ]?removed|cropped|"
+               r"restored|edited|scan(ned)?|copy)\s*$", "", t, flags=re.I)
+    t = re.sub(r"[_]+", " ", t)
+    return t.strip(" -–—_")
+
+
 # --------------------------------------------------------------------------
 # Candidate-level checks (pre-download, metadata only)
 # --------------------------------------------------------------------------

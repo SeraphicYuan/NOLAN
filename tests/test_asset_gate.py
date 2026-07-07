@@ -187,3 +187,15 @@ def test_door_calls_the_gate(door):
 def test_doors_manifest_paths_exist():
     for door, spec in ASSET_GATE_DOORS.items():
         assert (REPO / spec["file"]).exists(), f"{door}: {spec['file']} missing"
+
+
+def test_clean_title_strips_filename_artifacts():
+    """aeneid citation rendered '…fol 52r - wm removed.jpg' ON SCREEN —
+    provider titles are often filenames; the label must show the human part."""
+    from nolan.asset_gate import clean_title
+    assert clean_title("Vergilius Vaticanus (Vat. lat. 3225), fol 52r - wm removed.jpg") \
+        == "Vergilius Vaticanus (Vat. lat. 3225), fol 52r"
+    assert clean_title("Statue-Augustus.JPG") == "Statue-Augustus"
+    assert clean_title("mosaic_of_virgil_cropped") == "mosaic of virgil"
+    assert clean_title("Dido Building Carthage") == "Dido Building Carthage"
+    assert clean_title(None) == ""

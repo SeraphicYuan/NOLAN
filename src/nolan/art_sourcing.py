@@ -223,10 +223,11 @@ def exact_title_pass(scene, *, client, ingest_lib, out_dir: Path,
                 # license sidecar → attribution manifest + the ON-SCREEN
                 # museum label (premium renders asset_license.title)
                 try:
+                    from nolan.asset_gate import clean_title
                     scene.extra["asset_license"] = {
                         "source": best.source, "license": best.license,
                         "source_url": best.source_url or best.url,
-                        "title": best.title}
+                        "title": clean_title(best.title)}
                 except Exception:
                     pass
                 if ingest_lib is not None:
