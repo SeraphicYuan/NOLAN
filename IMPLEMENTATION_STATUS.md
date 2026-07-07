@@ -4,6 +4,26 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Timeline view in the Scenes page (P2, read-only) (2026-07-07)
+
+The scene plan on a time axis — a lite-NLE VIEW, derived server-side
+(`nolan/timeline_view.py`, `GET /api/timeline`), nothing stored:
+
+- Lanes: **sections** (spans = sec_*.wav durations, shown locked — narration
+  owns duration), **scenes** (plan windows, click opens the Inspector),
+  **visual units** (media + ONE motion badge per scene: authored
+  motion_spec/layout/motif/recipe/clip solid, still-treatments dashed
+  "derived" — the SAME assign_still_treatments pre-pass premium runs, so the
+  badge is what the next render will actually do), **audio** (VO RMS envelope
+  + sfx cue markers at absolute time).
+- UI: "Timeline" toggle inside scenes.html (shares project state, refresh and
+  the Inspector drawer); zoom; derived badges tooltip their provenance.
+- Tests `tests/test_timeline_view.py` (6: spans, authored-vs-derived badges,
+  absolute sfx time, normalized envelope, derived-never-persisted, loud
+  no-plan). Headless-browser verified on aeneid-2beat-v2 (18 blocks, 13
+  derived badges, envelope drawn, click-through opens Inspector; screenshot
+  inspected).
+
 ## Project asset pool + render manifest + scene-hinted shortlist (2026-07-07)
 
 P1 of the pool/timeline program (user feature: per-project media bin with

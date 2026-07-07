@@ -69,7 +69,11 @@ SURFACES = [
     {"id": "agents", "label": "Agents", "path": "/agents",
      "role": "checkpoints, plans, runlogs, feedback/refine for agent-driven steps"},
     {"id": "scenes", "label": "Scenes", "path": "/scenes",
-     "role": "the scene-plan editor: edit/comment → invalidate → re-render"},
+     "role": "the scene-plan editor: edit/comment → invalidate → re-render; "
+             "+ timeline view (scenes/motion-badges/sfx/VO on a time axis)"},
+    {"id": "pool", "label": "Asset Pool", "path": "/pool",
+     "role": "the project media bin (derived): every asset tagged in-video/"
+             "selected/candidate/shortlisted/unused; shortlist with scene hint"},
     {"id": "voices", "label": "Voices", "path": "/voices",
      "role": "voice library + TTS studio + project voiceover"},
     {"id": "map", "label": "NOLAN Map", "path": "/map",

@@ -90,6 +90,21 @@ def register(app, ctx):
         return {"scenes": scenes, "sections": sections, "project": project,
                 "pipeline": pipeline, "editable_fields": sorted(editable_fields(pipeline))}
 
+    @app.get("/api/timeline")
+    async def timeline_get(project: str = Query(...)):
+        """The scene plan derived onto a time axis (nolan.timeline_view):
+        sections/scenes/visual-units-with-motion-badges/sfx/VO envelope."""
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404,
+                                detail=f"Project '{project}' not found")
+        project_path, _ = result
+        from nolan.timeline_view import build_timeline
+        try:
+            return build_timeline(project_path)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+
     @app.get("/api/scenes/audio-info")
     async def scenes_audio_info(project: str = Query(..., description="Project name")):
         """Get voiceover audio info for a specific project."""

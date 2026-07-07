@@ -738,6 +738,38 @@
         .insp-foot { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 18px;
                 background: var(--bg-secondary); border-top: 1px solid var(--border);
                 display: flex; gap: 10px; align-items: center; }
+
+        /* ===== Timeline view (P2, read-only) ===== */
+        .tl-panel { display: none; background: var(--bg-secondary); border: 1px solid var(--border);
+                    border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
+        .tl-head { display: flex; gap: 10px; align-items: center; padding: 8px 12px;
+                   border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); }
+        .tl-head button { background: var(--bg-primary); border: 1px solid var(--border);
+                   color: var(--text-primary); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+        .tl-scroll { overflow-x: auto; padding: 10px 12px 12px; }
+        .tl-canvas { position: relative; }
+        .tl-ruler { position: relative; height: 18px; }
+        .tl-tick { position: absolute; top: 0; font-size: 10px; color: var(--text-secondary);
+                   border-left: 1px solid var(--border); padding-left: 3px; height: 14px; }
+        .tl-lane { position: relative; height: 34px; margin-top: 6px; }
+        .tl-lane.audio { height: 46px; }
+        .tl-lanelabel { position: sticky; left: 0; z-index: 3; font-size: 10px; text-transform: uppercase;
+                   letter-spacing: .07em; color: var(--text-secondary); width: 0; white-space: nowrap; }
+        .tl-block { position: absolute; top: 12px; height: 22px; border-radius: 5px; font-size: 10.5px;
+                   line-height: 20px; padding: 0 6px; white-space: nowrap; overflow: hidden;
+                   text-overflow: ellipsis; border: 1px solid var(--border); box-sizing: border-box; }
+        .tl-block.sec { background: var(--bg-primary); color: var(--text-secondary); cursor: default; }
+        .tl-block.scene { background: rgba(37,99,235,.16); border-color: rgba(37,99,235,.5); cursor: pointer; }
+        .tl-block.scene:hover { border-color: var(--accent); }
+        .tl-block.scene.missing { background: rgba(220,38,38,.14); border-color: rgba(220,38,38,.5); }
+        .tl-block.unit { background: var(--bg-primary); cursor: pointer; display: flex; gap: 5px;
+                   align-items: center; padding-right: 4px; }
+        .tl-badge { font-size: 9.5px; border-radius: 4px; padding: 0 5px; line-height: 15px;
+                   border: 1px solid var(--accent); color: var(--accent); flex: none; }
+        .tl-badge.derived { border-style: dashed; opacity: .8; }
+        .tl-shots { font-size: 9.5px; color: var(--text-secondary); flex: none; }
+        .tl-vo { position: absolute; inset: 12px 0 0 0; }
+        .tl-sfx { position: absolute; top: 0; font-size: 11px; cursor: default; z-index: 2; }
     </style>
 </head>
 <body>
@@ -760,6 +792,7 @@
                 <option value="missing">Missing</option>
             </select>
             <button id="refreshBtn" class="refresh-btn" onclick="refreshView()" title="Reload scenes + re-rendered clips (after an agent finishes)">↻ Refresh</button>
+            <button id="tlToggle" class="refresh-btn" onclick="toggleTimeline()" title="Timeline view: scenes, visual units + motion badges, sfx and VO on a time axis">📊 Timeline</button>
             <span id="flowControls" style="display:none;">
                 <label style="font-size:.72rem;color:var(--text-secondary)">agent:</label>
                 <select id="flowAgent" title="Which NOLAN tmux agent runs the refine" style="font-size:.72rem;padding:2px 5px;background:var(--bg-primary,#111);color:var(--text-primary,#eee);border:1px solid #333;border-radius:5px"></select>
@@ -785,6 +818,16 @@
     </div>
 
     <main class="main">
+        <div class="tl-panel" id="timelinePanel">
+            <div class="tl-head">
+                <b style="color:var(--text-primary)">Timeline</b>
+                <span>sections are locked — narration owns duration</span>
+                <button onclick="tlZoom(1.4)">＋</button>
+                <button onclick="tlZoom(1/1.4)">－</button>
+                <span id="tlStat"></span>
+            </div>
+            <div class="tl-scroll"><div class="tl-canvas" id="tlCanvas"></div></div>
+        </div>
         <div class="scene-list" id="sceneList">
             <div class="loading">Loading scene plan...</div>
         </div>
@@ -1790,6 +1833,7 @@
             try {
                 await loadSceneData();
                 await loadFleet();
+                if (tlOn) await loadTimeline();
             } finally {
                 if (btn) { btn.textContent = label || '↻ Refresh'; btn.disabled = false; }
             }
@@ -2115,6 +2159,7 @@
             updateUrl(currentProject);
             if (currentProject) {
                 loadSceneData();
+                if (tlOn) loadTimeline();
             } else {
                 allScenes = [];
                 sections = [];
@@ -2135,6 +2180,105 @@
         });
 
         // Initialize
+        // ---------- Timeline view (P2, read-only) ----------
+        // The scene plan on a time axis, derived server-side (/api/timeline):
+        // sections (locked), scenes, visual units with MOTION BADGES (authored
+        // solid / derived dashed — the same still-treatment pre-pass premium
+        // runs), sfx markers, VO envelope. Click-through opens the Inspector.
+        let tlOn = false, tlData = null, tlPps = 12;   // px per second
+
+        async function toggleTimeline() {
+            tlOn = !tlOn;
+            document.getElementById('timelinePanel').style.display = tlOn ? 'block' : 'none';
+            document.getElementById('tlToggle').style.borderColor = tlOn ? 'var(--accent)' : '';
+            if (tlOn) await loadTimeline();
+        }
+        async function loadTimeline() {
+            if (!currentProject) return;
+            const res = await fetch(`/api/timeline?project=${encodeURIComponent(currentProject)}`);
+            if (!res.ok) {
+                document.getElementById('tlCanvas').innerHTML =
+                    `<div class="tray-empty">timeline unavailable: ${esc(await res.text())}</div>`;
+                return;
+            }
+            tlData = await res.json();
+            renderTimeline();
+        }
+        function tlZoom(f) { tlPps = Math.min(60, Math.max(3, tlPps * f)); renderTimeline(); }
+        function tlX(t) { return Math.round((t || 0) * tlPps); }
+
+        function renderTimeline() {
+            if (!tlData) return;
+            const d = tlData, W = Math.max(600, tlX(d.duration) + 20);
+            let html = '';
+
+            // ruler
+            const step = d.duration > 240 ? 30 : d.duration > 90 ? 10 : 5;
+            let ticks = '';
+            for (let t = 0; t <= d.duration; t += step)
+                ticks += `<div class="tl-tick" style="left:${tlX(t)}px">${t}s</div>`;
+            html += `<div class="tl-ruler" style="width:${W}px">${ticks}</div>`;
+
+            // sections (locked)
+            html += `<div class="tl-lane" style="width:${W}px"><span class="tl-lanelabel">sections</span>` +
+                d.sections.map(s =>
+                    `<div class="tl-block sec" style="left:${tlX(s.start)}px;width:${tlX(s.end) - tlX(s.start) - 2}px"
+                          title="locked — narration owns duration">🔒 ${esc(s.name)}</div>`).join('') + `</div>`;
+
+            // scenes (click -> Inspector)
+            html += `<div class="tl-lane" style="width:${W}px"><span class="tl-lanelabel">scenes</span>` +
+                d.scenes.map(s => {
+                    if (s.start == null || s.end == null) return '';
+                    const num = (s.id || '').replace(/^scene_0*/, '');
+                    return `<div class="tl-block scene" data-scene="${esc(s.id)}"
+                              style="left:${tlX(s.start)}px;width:${Math.max(14, tlX(s.end) - tlX(s.start) - 2)}px"
+                              title="${esc(s.id)} · ${esc(s.visual_type || '')}\n${esc(s.excerpt || '')}">${num}</div>`;
+                }).join('') + `</div>`;
+
+            // visual units: media + motion badge
+            html += `<div class="tl-lane" style="width:${W}px"><span class="tl-lanelabel">visual</span>` +
+                d.units.map(u => {
+                    if (u.start == null || u.end == null) return '';
+                    const w = Math.max(14, tlX(u.end) - tlX(u.start) - 2);
+                    const badge = u.motion ?
+                        `<span class="tl-badge ${u.motion.source}" title="${u.motion.source === 'derived'
+                            ? 'derived — what the next render will do (same pre-pass premium runs)'
+                            : 'authored on the plan'}">${esc(u.motion.badge)}</span>` : '';
+                    const shots = u.shots > 1 ? `<span class="tl-shots">×${u.shots}</span>` : '';
+                    const pin = u.pinned ? '📌' : '';
+                    const label = u.media ? esc(u.media) : '<i style="opacity:.5">no media</i>';
+                    return `<div class="tl-block unit" data-scene="${esc(u.scene_id)}"
+                              style="left:${tlX(u.start)}px;width:${w}px"
+                              title="${esc(u.media || 'no media')}${u.citation ? '\n' + esc(u.citation) : ''}">${pin}${w > 90 ? label : ''}${badge}${shots}</div>`;
+                }).join('') + `</div>`;
+
+            // audio: VO envelope + sfx markers
+            const peaks = (d.vo && d.vo.peaks) || [];
+            let svg = '';
+            if (peaks.length) {
+                const h = 30, pw = tlPps / d.vo.rate;
+                const pts = peaks.map((p, i) =>
+                    `${(i * pw).toFixed(1)},${(h - p * h).toFixed(1)}`).join(' ');
+                svg = `<svg class="tl-vo" width="${W}" height="${h}" preserveAspectRatio="none">
+                         <polyline points="0,${h} ${pts} ${(peaks.length * pw).toFixed(1)},${h}"
+                           fill="rgba(37,99,235,.25)" stroke="rgba(37,99,235,.7)" stroke-width="1"/></svg>`;
+            }
+            const sfx = (d.sfx || []).map(c =>
+                `<span class="tl-sfx" style="left:${tlX(c.t)}px"
+                       title="sfx: ${esc(c.label)} (${esc(c.scene_id)})">♪</span>`).join('');
+            html += `<div class="tl-lane audio" style="width:${W}px"><span class="tl-lanelabel">audio</span>${svg}${sfx}</div>`;
+
+            const canvas = document.getElementById('tlCanvas');
+            canvas.style.width = W + 'px';
+            canvas.innerHTML = html;
+            document.getElementById('tlStat').textContent =
+                `${Math.round(d.duration)}s · ${d.scenes.length} scenes · ${d.sfx.length} sfx cues`;
+        }
+        document.getElementById('tlCanvas').addEventListener('click', e => {
+            const b = e.target.closest('[data-scene]');
+            if (b) openInspector(b.dataset.scene);
+        });
+
         loadProjects();
         loadFleet();
         setInterval(loadFleet, 5000);   // poll the agent fleet board
