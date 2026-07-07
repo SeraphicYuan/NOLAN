@@ -2,7 +2,33 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-06
+**Last Updated:** 2026-07-07
+
+## Project asset pool + render manifest + scene-hinted shortlist (2026-07-07)
+
+P1 of the pool/timeline program (user feature: per-project media bin with
+usage tags that ONLY rendering can change):
+
+- **Render manifest** — `premium_render` job steps now carry `sceneId`; after a
+  successful concat the render writes `output/render_manifest.json`
+  (scene_id -> media paths actually in the final). Grep-enforced honesty test:
+  no other module may write it (`tests/test_asset_pool.py`).
+- **Asset pool (derived view)** — `nolan/asset_pool.py` `build_pool()` computes
+  the pool at request time from asset dirs + plan references + shortlist +
+  render manifest; status ladder in-video > selected > candidate > shortlisted
+  > unused, per-scene role links (matched/pin/tray/shot/candidate/rendered),
+  license/title from `asset_license`. No new storage.
+- **/pool page** — `routes/pool.py` + `templates/pool.html` + nav entry:
+  status chips, by-scene + kind filters, thumbs (`/api/pool/file`, contained to
+  the projects root so `_library` shortlist items resolve), "-> shortlist"
+  dialog with optional scene attach + note.
+- **Scene-hinted near-pins** — shortlist items gain `scene_hint`; the asset
+  engine's tier-0 accepts a hinted item for THAT scene with no similarity gate
+  (img:/clip:/path payloads; note -> `human_note`). Scenes page review tray
+  gained a "shortlist for this scene" action (softer than pin); pool dialog
+  sets the same hint. ARTIFACTS entries updated in system_map.
+- Tests: `tests/test_asset_pool.py` (7) + 3 near-pin cases in
+  `test_shortlist_tier.py`; full suite 972 passed.
 
 ## Showcase = authorable vocabulary; +7 gap effects; Motion-Canvas deleted (2026-07-07)
 

@@ -103,11 +103,19 @@ ARTIFACTS = [
      "consumed_by": "render step (mix_from_spec)",
      "contract": "track + alternatives + gain/duck + sfx events — human-editable"},
     {"name": "shortlist.json", "produced_by": "human curation (library/select pages, "
-     "/api/shortlist)", "consumed_by": "asset engine TIER 0 (selects pool) + /scenes picker",
+     "/api/shortlist, /api/pool/shortlist)",
+     "consumed_by": "asset engine TIER 0 (selects pool; scene_hint items are "
+     "near-pins for that scene) + /scenes picker + asset pool view",
      "contract": "items carry ready-to-POST payloads; notes become scene.human_note "
                  "directives when the tier-0 matcher picks them"},
     {"name": "output/final.mp4", "produced_by": "render step",
      "consumed_by": "you", "contract": "|video − narration| < 1s, honest failures"},
+    {"name": "output/render_manifest.json", "produced_by": "render step ONLY "
+     "(premium_render, after a successful concat)",
+     "consumed_by": "asset pool (/api/pool + /pool page) — the sole source of "
+     "'in-video' status",
+     "contract": "scene_id → media paths actually rendered; nothing else may "
+                 "write it (grep-enforced in test_asset_pool)"},
     {"name": "profiles/taste.json (+ledger.jsonl)",
      "produced_by": "taste distiller (`nolan retro`) + /taste edits",
      "consumed_by": "authoring prompts via nolan.taste.guidance_for "

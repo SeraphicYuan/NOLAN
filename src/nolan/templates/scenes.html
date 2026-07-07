@@ -1343,6 +1343,8 @@
                     <div class="tray-meta"><div class="tray-label">${esc((c.src||'').split(/[\\\\/]/).pop())} · ${c.score}</div></div>
                     <button class="tray-pin" title="use this instead (pins it)"
                             onclick="pinCandidate('${scene.id}', ${i})">📌 use</button>
+                    <button class="tray-pin" title="shortlist for this scene — the next match run prefers it (softer than pin)"
+                            onclick="shortlistCandidate('${scene.id}', ${i})">☆</button>
                 </div>`).join('') + `</div>`;
         }
         function pinCandidate(sceneId, idx) {
@@ -1350,6 +1352,20 @@
             const c = scene && (scene.asset_candidates || [])[idx];
             if (!c) return;
             assetOp(sceneId, {op:'pin', src: c.src, kind:'image'}).then(()=>loadScenes()).catch(e => alert(e.message));
+        }
+        async function shortlistCandidate(sceneId, idx) {
+            // Softer than pin: adds to the project shortlist WITH a scene hint,
+            // so the matcher's tier-0 prefers it on the next match run.
+            const scene = allScenes.find(s => s.id === sceneId);
+            const c = scene && (scene.asset_candidates || [])[idx];
+            if (!c) return;
+            const note = prompt('Optional note (why this asset for this scene):') || '';
+            const body = { project: currentProject, path: c.src, kind: 'image', scene_hint: sceneId };
+            if (note) body.note = note;
+            const res = await fetch('/api/pool/shortlist', {
+                method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            if (!res.ok) { alert('shortlist failed: ' + await res.text()); return; }
+            alert(`Shortlisted for ${sceneId} — the next match run will prefer it.`);
         }
         function pinAsset(sceneId, assetId) {
             const note = prompt('Optional note for the design passes (e.g. "slow pan over the letter"):') || '';

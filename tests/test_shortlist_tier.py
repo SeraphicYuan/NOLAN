@@ -239,3 +239,56 @@ def test_shortlist_set_note_roundtrip(tmp_path):
     assert items[0]["note"] == "prefer tight crop"
     items = shortlist.set_note(tmp_path, "img:1:global", "")
     assert "note" not in items[0]
+
+
+# --- scene-hinted near-pins (asset pool P1) ------------------------------------
+
+def test_scene_hint_path_near_pin(tmp_path):
+    from nolan import shortlist
+    img = tmp_path / "assets" / "art" / "storm.jpg"
+    img.parent.mkdir(parents=True)
+    img.write_bytes(b"x")
+    shortlist.save(tmp_path, [{
+        "key": f"path:{img}", "kind": "image",
+        "scene_hint": "s7", "note": "use for the storm beat",
+        "payload": {"op": "add", "source": "path", "path": str(img)},
+    }])
+    fn = AssetEngine._default_shortlist_fn(EngineConfig(), tmp_path)
+    # the hinted scene: accepted with NO similarity gate, note rides along
+    hinted = Scene(id="s7", visual_type="b-roll", search_query="anything")
+    assert fn(hinted) == "hint:image"
+    assert hinted.matched_asset == str(img)
+    assert hinted.extra["human_note"] == "use for the storm beat"
+    # any other scene: the hint does NOT fire (falls to normal scoring)
+    other = Scene(id="s8", visual_type="b-roll", search_query="anything")
+    assert fn(other) != "hint:image"
+    assert other.matched_asset is None
+
+
+def test_scene_hint_clip_near_pin(tmp_path):
+    from nolan import shortlist
+    shortlist.save(tmp_path, [{
+        "key": "clip:lib/siren.mp4@12.0", "kind": "clip",
+        "scene_hint": "s3", "label": "totally unrelated label",
+        "payload": {"op": "add", "source": "clip",
+                    "source_video_path": "lib/siren.mp4", "clip_start": 12.0},
+    }])
+    fn = AssetEngine._default_shortlist_fn(EngineConfig(), tmp_path)
+    s = Scene(id="s3", visual_type="b-roll", search_query="no label overlap")
+    assert fn(s) == "hint:clip"
+    assert s.matched_clip["video_path"] == "lib/siren.mp4"
+    assert s.matched_clip["clip_start"] == 12.0
+    assert s.matched_clip["shortlist"] is True
+
+
+def test_scene_hint_missing_file_falls_through(tmp_path):
+    from nolan import shortlist
+    shortlist.save(tmp_path, [{
+        "key": "path:gone", "kind": "image", "scene_hint": "s1",
+        "payload": {"op": "add", "source": "path",
+                    "path": str(tmp_path / "gone.jpg")},
+    }])
+    fn = AssetEngine._default_shortlist_fn(EngineConfig(), tmp_path)
+    s = Scene(id="s1", visual_type="b-roll", search_query="q")
+    assert fn(s) is None          # loud fall-through, no phantom match
+    assert s.matched_asset is None

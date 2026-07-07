@@ -454,6 +454,46 @@ class AssetEngine:
                 return None
             from nolan.art_sourcing import _title_match
             from nolan.external_assets import scene_query_text
+
+            # Scene-hinted items are NEAR-PINS: the human shortlisted this
+            # asset FOR this scene (from the scene viewer) — no similarity
+            # gate, just resolve and attach. No-reuse still applies upstream.
+            sid = getattr(scene, "id", None)
+            for it in items:
+                if not sid or it.get("scene_hint") != sid:
+                    continue
+                key = str(it.get("key") or "")
+                pl = it.get("payload") or {}
+                if key.startswith("img:"):
+                    try:
+                        from nolan.imagelib import ImageLibrary
+                        _, iid, scope = key.split(":", 2)
+                        lib = _libs().get((scope, pl.get("scope_project")))
+                        a = lib.catalog.get(int(iid)) if lib else None
+                        src = lib.abs_path(a) if a else None
+                    except Exception:
+                        src = None
+                    if src and Path(src).exists():
+                        scene.matched_asset = str(src)
+                        if it.get("note") and hasattr(scene, "extra"):
+                            scene.extra["human_note"] = it["note"]
+                        return "hint:image"
+                elif key.startswith("clip:") and pl.get("source_video_path"):
+                    scene.matched_clip = {
+                        "video_path": pl["source_video_path"],
+                        "clip_start": float(pl.get("clip_start") or 0.0),
+                        "similarity_score": 1.0, "shortlist": True}
+                    if it.get("note") and hasattr(scene, "extra"):
+                        scene.extra["human_note"] = it["note"]
+                    return "hint:clip"
+                elif pl.get("source") == "path" and pl.get("path"):
+                    p = Path(pl["path"])
+                    if p.exists():
+                        scene.matched_asset = str(p)
+                        if it.get("note") and hasattr(scene, "extra"):
+                            scene.extra["human_note"] = it["note"]
+                        return "hint:image"
+
             query = scene_query_text(scene) or (getattr(scene, "search_query", "") or "")
             if not query:
                 return None

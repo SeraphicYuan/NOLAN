@@ -460,6 +460,7 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                 "revealFrames": reveals, "words": words,
                 "audioSrc": str(clip_wav),
                 "durationInFrames": sub_frames,
+                "sceneId": scene.get("id"),
             }
             # transition-in (editing registry): tempo_plan's authored per-scene
             # entrance, executed as a short opacity ramp in Chapter. Only the
@@ -723,4 +724,51 @@ def render_premium(project_path: Path, *, theme: str = None,
     final = Path(output) if output else project_path / "output" / "final.mp4"
     final.parent.mkdir(parents=True, exist_ok=True)
     concat_beats(clips, final)
+    # RENDER MANIFEST — the pool's "in-video" truth. Written ONLY by this
+    # step after a successful concat (nothing else may flip usage tags):
+    # scene id -> the media files its rendered steps actually referenced.
+    _write_render_manifest(project_path, job_paths, final)
     return final
+
+
+def _write_render_manifest(project_path: Path, job_paths, final: Path) -> Path:
+    """output/render_manifest.json: per-scene media that made it into the cut."""
+    scenes: Dict[str, list] = {}
+    beats = []
+    for _i, name, job_path in job_paths:
+        try:
+            job = json.loads(Path(job_path).read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        beats.append({"name": name, "job": Path(job_path).name})
+        for step in job.get("props", {}).get("steps", []):
+            sid = step.get("sceneId")
+            if not sid:
+                continue
+            bucket = scenes.setdefault(sid, [])
+
+            def _walk(o):
+                if isinstance(o, dict):
+                    for v in o.values():
+                        _walk(v)
+                elif isinstance(o, list):
+                    for v in o:
+                        _walk(v)
+                elif isinstance(o, str) and ("/" in o or "\\" in o):
+                    try:
+                        pp = Path(o)
+                        if (pp.suffix.lower() in (".jpg", ".jpeg", ".png",
+                                                  ".webp", ".gif", ".mp4",
+                                                  ".mov", ".webm", ".m4v")
+                                and pp.is_file() and str(pp) not in bucket):
+                            bucket.append(str(pp))
+                    except OSError:
+                        pass
+
+            _walk(step.get("props", {}))
+    manifest = {"version": 1, "written_by": "render",
+                "final": str(final), "beats": beats, "scenes": scenes}
+    out = project_path / "output" / "render_manifest.json"
+    out.write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
+                   encoding="utf-8")
+    return out
