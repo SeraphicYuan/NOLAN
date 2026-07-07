@@ -884,6 +884,18 @@ def render_premium(project_path: Path, *, theme: str = None,
     return final
 
 
+def scene_stamp(scene: Dict[str, Any]) -> str:
+    """Content stamp of one scene's AUTHORED state (underscore keys are
+    render-time expansion and excluded). Written into the render manifest at
+    concat time; the timeline compares against it to show edited-since-render
+    honestly (the per-scene analog of the beat cache's job stamp)."""
+    import hashlib
+    canon = json.dumps({k: v for k, v in scene.items()
+                        if not str(k).startswith("_")},
+                       sort_keys=True, default=str)
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
+
+
 def _write_render_manifest(project_path: Path, job_paths, final: Path) -> Path:
     """output/render_manifest.json: per-scene media that made it into the cut."""
     scenes: Dict[str, list] = {}
@@ -919,8 +931,22 @@ def _write_render_manifest(project_path: Path, job_paths, final: Path) -> Path:
                         pass
 
             _walk(step.get("props", {}))
-    manifest = {"version": 1, "written_by": "render",
-                "final": str(final), "beats": beats, "scenes": scenes}
+    # per-scene authored-state stamps, from the plan ON DISK (the in-memory
+    # render plan carries motif/recipe/treatment expansion that must not leak
+    # into the stamp — the timeline stamps the same on-disk view)
+    stamps: Dict[str, str] = {}
+    try:
+        disk_plan = json.loads((project_path / "scene_plan.json")
+                               .read_text(encoding="utf-8"))
+        for grp in (disk_plan.get("sections") or {}).values():
+            for s in (grp if isinstance(grp, list) else []):
+                if isinstance(s, dict) and s.get("id"):
+                    stamps[s["id"]] = scene_stamp(s)
+    except Exception:
+        stamps = {}
+    manifest = {"version": 2, "written_by": "render",
+                "final": str(final), "beats": beats, "scenes": scenes,
+                "scene_stamps": stamps}
     out = project_path / "output" / "render_manifest.json"
     out.write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
                    encoding="utf-8")

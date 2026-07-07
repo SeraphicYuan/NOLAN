@@ -111,6 +111,13 @@ def rerender_scenes(
     ids = set(scene_ids)
     if pipeline == "flow":
         return _rerender_flow(plan_path, ids)
+    # A project whose final.mp4 came from the PREMIUM render (the manifest is
+    # written ONLY by that step) re-renders on the SAME lane — the orchestrator
+    # assemble would silently swap the premium look for title cards and static
+    # stills (2026-07-07 aeneid incident). The beat cache keeps this cheap:
+    # only sections whose job content changed actually re-render.
+    if (plan_path.parent / "output" / "render_manifest.json").exists():
+        return _rerender_premium(plan_path)
     if pipeline == "segment":
         return _rerender_segment(
             plan_path, ids, llm_client=llm_client, nolan_config=nolan_config,
@@ -118,6 +125,19 @@ def rerender_scenes(
             comfyui_timeout=comfyui_timeout,
         )
     return _rerender_orchestrator(plan_path, ids, llm_client=llm_client, nolan_config=nolan_config)
+
+
+def _rerender_premium(plan_path: Path) -> Optional[Path]:
+    """Premium-lane re-render: the full render_premium pass over the project.
+
+    No per-scene invalidation is needed — the beat cache is content-addressed
+    (job JSON + referenced files), so edited scenes change their section's
+    stamp and exactly those sections re-render; untouched sections reuse
+    their beats. Note the scope difference from the other lanes: EVERY
+    content-changed section re-renders, queued or not (the cache cannot
+    distinguish who queued what — the plan dialog says so)."""
+    from nolan.premium_render import render_premium
+    return render_premium(Path(plan_path).parent)
 
 
 def _rerender_flow(plan_path: Path, ids: set) -> Optional[Path]:
@@ -247,9 +267,26 @@ def _rerender_orchestrator(plan_path: Path, ids: set, *, llm_client=None, nolan_
              and (s.get("search_query") or s.get("visual_description"))]
     _reresolve_broll_dicts(stale, llm_client, nolan_config)
 
+    # Image-backed scenes get the SAME tempo/lock-driven still motion the
+    # Director's render gives them (stamp_tempo_motions honors the authored
+    # still_treatment lock) — without it, matched stills re-rendered static
+    # and generated scenes fell to title cards (2026-07-07 aeneid incident).
+    # Stamped on DEEP COPIES: derived motion_specs are render-time expansion
+    # and never land on the plan (the timeline's derived-vs-authored contract).
+    import copy
+    render_view = [copy.deepcopy(s) for s in selected]
+    render_mod.stamp_tempo_motions({"sections": {"_selected": render_view}},
+                                   project_path)
+
     # Render ONLY the selected scenes; annotate leaves untouched scenes' clips alone
     # (it only sets rendered_clip for ids present in `outcomes`).
-    outcomes = [render_mod.render_scene(s, project_path, rendered_dir) for s in selected]
+    outcomes = [render_mod.render_scene(s, project_path, rendered_dir) for s in render_view]
+    # loud degradation provenance (fallback:card…) travels back to the plan
+    by_id = {s.get("id"): s for s in selected}
+    for rv in render_view:
+        src = str(rv.get("resolved_source") or "")
+        if src.startswith("fallback") and rv.get("id") in by_id:
+            by_id[rv["id"]]["resolved_source"] = src
     total_duration, _ = render_mod.annotate_scene_plan(data, outcomes)
     save_plan_raw(plan_path, data)
 

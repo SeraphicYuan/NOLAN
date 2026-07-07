@@ -302,6 +302,7 @@ def stamp_tempo_motions(scene_plan: dict, project_path: Path) -> int:
     at the planned rhythm. Returns the number of scenes stamped.
     """
     from nolan.motion.spec import validate
+    from nolan.still_motion import STILL_TREATMENTS, to_still_motion_treatment
     from nolan.tempo_plan import BeatTempo, motion_for_tempo
 
     stamped = 0
@@ -314,12 +315,18 @@ def stamp_tempo_motions(scene_plan: dict, project_path: Path) -> int:
             img = scene.get("matched_asset") or (
                 f"assets/generated/{scene['generated_asset']}"
                 if scene.get("generated_asset") else None)
-            if not img or scene.get("energy") is None:
+            # the authored camera lock (timeline/Inspector) outranks the tempo
+            # pick — the SAME precedence the premium pre-pass gives it
+            lock = (scene.get("still_treatment")
+                    if scene.get("still_treatment") in STILL_TREATMENTS else None)
+            if not img or (scene.get("energy") is None and not lock):
                 continue
             bt = BeatTempo(idx=0, title=scene.get("id") or "",
-                           energy=float(scene["energy"]),
+                           energy=float(scene.get("energy") or 0.5),
                            motion_speed=scene.get("motion_speed") or "medium")
             treatment, dur = motion_for_tempo(bt, kind="image")
+            if lock:
+                treatment = to_still_motion_treatment(lock) or treatment
             # narration owns DURATION (aligned window); tempo owns TREATMENT
             _ss, _es = scene.get("start_seconds"), scene.get("end_seconds")
             if _ss is not None and _es is not None and float(_es) > float(_ss):

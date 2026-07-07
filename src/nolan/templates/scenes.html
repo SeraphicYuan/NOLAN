@@ -2269,7 +2269,8 @@
                 });
                 const conflictMsgs = (pj.scenes || []).flatMap(p =>
                     (p.conflicts || []).map(c => `  ${p.id}: ${c.message}`));
-                if (!confirm(`Render plan — ${ids.length} scene(s), model ${model}:\n\n`
+                if (!confirm(`Render plan — ${ids.length} scene(s), model ${model}\n`
+                        + `lane: ${pj.lane}${pj.lane_note ? ' — ' + pj.lane_note : ''}\n\n`
                         + lines.join('\n')
                         + (conflictMsgs.length ? '\n\nConflicts:\n' + conflictMsgs.join('\n') : '')
                         + '\n\nRun now?')) { msg.textContent = ''; return; }

@@ -112,6 +112,25 @@ def select_still_treatment(scene: dict, prev: Optional[str] = None) -> str:
 STILL_TREATMENTS = ("kenburns-in", "kenburns-out", "kenburns-pan",
                     "drift", "tour")
 
+# The ONE bridge from the authored camera lock into the still-motion effect's
+# treatment enum (motion registry `still-motion`), so the ORCHESTRATOR render
+# lane honors the same lock the premium lane does. Kept here — the camera
+# vocabulary has exactly one owner (pitfall #4); tests assert every value
+# lands inside the registry enum.
+_TO_STILL_MOTION = {
+    "kenburns-in": "ken-burns-in",
+    "kenburns-out": "ken-burns-out",
+    "kenburns-pan": "ken-burns-pan",
+    "drift": "atmospheric",          # drift = ambient tone hold
+    "tour": "ken-burns-pan",         # nearest single-move analog
+}
+
+
+def to_still_motion_treatment(treatment: str) -> Optional[str]:
+    """Map an authored ``still_treatment`` lock to the still-motion effect's
+    treatment value, or None if the lock isn't in the vocabulary."""
+    return _TO_STILL_MOTION.get(treatment)
+
 
 def assign_still_treatments(plan: dict) -> int:
     """IN-MEMORY pre-pass (premium calls it at plan load, motif-style):

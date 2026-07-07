@@ -117,10 +117,12 @@ ARTIFACTS = [
      "consumed_by": "you", "contract": "|video − narration| < 1s, honest failures"},
     {"name": "output/render_manifest.json", "produced_by": "render step ONLY "
      "(premium_render, after a successful concat)",
-     "consumed_by": "asset pool (/api/pool + /pool page) — the sole source of "
-     "'in-video' status",
-     "contract": "scene_id → media paths actually rendered; nothing else may "
-                 "write it (grep-enforced in test_asset_pool)"},
+     "consumed_by": "asset pool ('in-video' status) + iterate lane routing "
+     "(its presence sends re-renders down the premium lane) + timeline dirty "
+     "tint (v2 scene_stamps = edited-since-render)",
+     "contract": "scene_id → media paths actually rendered + per-scene "
+                 "authored-state stamps; nothing else may write it "
+                 "(grep-enforced in test_asset_pool)"},
     {"name": "profiles/taste.json (+ledger.jsonl)",
      "produced_by": "taste distiller (`nolan retro`) + /taste edits",
      "consumed_by": "authoring prompts via nolan.taste.guidance_for "

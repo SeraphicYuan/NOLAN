@@ -87,10 +87,27 @@ def render_one(scene, out, *, duration: float, width: int = 1920, height: int = 
             try:
                 gen_fn(scene, out)
                 return "generated"
-            except Exception:
+            except Exception as exc:  # noqa: BLE001 - degrade, but NEVER silently
+                _mark_fallback(scene, f"gen failed: {exc}")
                 render_card(scene, out, duration, width, height)
                 return "card"
+        _mark_fallback(scene, "no generator available")
         render_card(scene, out, duration, width, height)
         return "card"
 
     return None
+
+
+def _mark_fallback(scene, reason: str) -> None:
+    """Stamp fallback provenance so downstream fell-back detectors (the
+    rerender endpoint greps resolved_source for 'fallback'/'miss') fire —
+    the 2026-07-07 aeneid incident degraded two scenes to title cards and
+    the job still reported a clean Done."""
+    val = f"fallback:card({str(reason)[:120]})"
+    if isinstance(scene, dict):
+        scene["resolved_source"] = val
+    else:
+        try:
+            scene.resolved_source = val
+        except AttributeError:
+            pass

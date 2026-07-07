@@ -4,6 +4,40 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Pipeline-flag fixes: lane routing, loud fallback, staging race, manifest v2 (2026-07-07)
+
+The phases-1-3 e2e verification degraded aeneid's premium final through the
+edit-page re-render (orchestrator lane: title cards, static stills, silent
+"Done"). All five flags fixed:
+
+- **Premium-lane routing**: `iterate.rerender_scenes` routes any project
+  carrying `output/render_manifest.json` (written ONLY by the premium step)
+  through `render_premium` — the beat cache re-renders exactly the
+  content-changed sections (live: 1 rendered / 1 reused, final stayed
+  94.8 MB premium). The orchestrator assemble can no longer clobber a
+  premium final.
+- **Loud card fallback**: `render_dispatch._mark_fallback` stamps
+  `resolved_source = "fallback:card(reason)"` on every card degradation, so
+  the rerender endpoint's fell-back detector actually fires.
+- **Orchestrator lane honors the camera**: `_rerender_orchestrator` runs
+  `stamp_tempo_motions` over DEEP COPIES of the selected scenes (derived
+  specs never persist); `stamp_tempo_motions` itself now maps an authored
+  `still_treatment` lock through `still_motion.to_still_motion_treatment`
+  (the ONE bridge; honesty test pins it inside the registry enum) — stills
+  animate and locks win on this lane too.
+- **Lane-aware plan**: `/api/scenes/rerender/plan` returns `lane` +
+  `lane_note`; the dialog and the job message name the lane (premium note:
+  "every content-changed section re-renders — queued or not").
+- **Theme-staging race** (render_workers>=2 EPERM): stage.mjs writeAtomic
+  short-circuits identical content, retries transient rename errors with
+  backoff, and copyAtomic accepts a same-size dest as the sibling winning.
+  Stress-verified: 8 concurrent processes x 20 stagings, mixed en/cn.
+- **Manifest v2 scene stamps**: `_write_render_manifest` stamps each scene's
+  authored state (from the plan ON DISK; underscore keys excluded) via
+  `premium_render.scene_stamp`; the timeline's dirty tint compares against
+  them on premium projects (aeneid: 18/18 misleading -> 0/18 after render,
+  flips per scene on edit). tests/test_pipeline_lanes.py (9). Suite: 1033.
+
 ## Edit-page coherence 1-3: intent resolver, timeline parity, pre-render plan (2026-07-07)
 
 The premium ladder (human shots → pin → layout_spec → motion_spec → placed

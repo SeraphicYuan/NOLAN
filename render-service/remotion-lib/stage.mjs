@@ -8,16 +8,46 @@ import path from "path";
 // Atomic write/copy: parallel section renders (premium render_workers) stage
 // into the SAME src/styles + public/ — identical content, but a plain
 // writeFileSync could hand a half-written file to the sibling bundler.
-// tmp + rename is atomic on one volume.
+// tmp + rename is atomic on one volume. On WINDOWS, rename-over-existing
+// throws EPERM while a sibling has the dest open (the render_workers>=2
+// incident, 2026-07-07) — so: skip identical content entirely (the common
+// case: every worker stages the SAME theme), retry transient errors, and
+// accept a same-size dest as the sibling having won the race.
+const RETRYABLE = ["EPERM", "EACCES", "EBUSY"];
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+function renameWithRetry(tmp, dest, attempts = 6) {
+  for (let i = 0; ; i++) {
+    try { fs.renameSync(tmp, dest); return; }
+    catch (e) {
+      if (!RETRYABLE.includes(e.code) || i >= attempts - 1) {
+        try { fs.unlinkSync(tmp); } catch {}
+        throw e;
+      }
+      sleepSync(50 * Math.pow(2, i));
+    }
+  }
+}
 function writeAtomic(dest, data) {
+  try { // identical content already staged (sibling worker) -> nothing to do
+    if (fs.existsSync(dest) && fs.readFileSync(dest, "utf8") === String(data)) return;
+  } catch {}
   const tmp = `${dest}.tmp-${process.pid}`;
   fs.writeFileSync(tmp, data);
-  fs.renameSync(tmp, dest);
+  renameWithRetry(tmp, dest);
 }
 function copyAtomic(src, dest) {
   const tmp = `${dest}.tmp-${process.pid}`;
   fs.copyFileSync(src, tmp);
-  fs.renameSync(tmp, dest);
+  try { renameWithRetry(tmp, dest); }
+  catch (e) {
+    // sibling staged the same source concurrently: same-size dest = success
+    try {
+      if (fs.statSync(src).size === fs.statSync(dest).size) return;
+    } catch {}
+    throw e;
+  }
 }
 
 const IMG_RE = /\.(jpe?g|png|webp|gif|avif)$/i;

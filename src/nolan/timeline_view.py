@@ -113,6 +113,25 @@ def build_timeline(project_path: Path, envelope_rate: float = 4.0) -> Dict[str, 
     sections_map = [(k, v) for k, v in (plan.get("sections") or {}).items()
                     if isinstance(v, list)]
 
+    # Dirty signal, per lane: premium-rendered projects carry per-scene
+    # authored-state stamps in the render manifest (v2) — dirty means "edited
+    # since the last premium render". Projects without a manifest fall back to
+    # the per-scene rendered_clip signal (the orchestrator/segment lanes).
+    manifest_stamps = None
+    try:
+        _m = json.loads((project_path / "output" / "render_manifest.json")
+                        .read_text(encoding="utf-8"))
+        if isinstance(_m.get("scene_stamps"), dict):
+            manifest_stamps = _m["scene_stamps"]
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    def _dirty(s: Dict[str, Any]) -> bool:
+        if manifest_stamps is not None:
+            from nolan.premium_render import scene_stamp
+            return manifest_stamps.get(s.get("id")) != scene_stamp(s)
+        return not s.get("rendered_clip")
+
     # sections lane: narration owns duration -> spans from the section wavs
     wavs = sorted((project_path / "assets" / "voiceover" / "_work")
                   .glob("sec_*.wav"))
@@ -141,9 +160,9 @@ def build_timeline(project_path: Path, envelope_rate: float = 4.0) -> Dict[str, 
                 "visual_type": s.get("visual_type"),
                 "excerpt": (s.get("narration_excerpt") or "")[:120],
                 "energy": s.get("energy"),
-                # edited-but-not-rendered: apply_patch clears rendered_clip,
-                # so "no clip behind this scene" is the honest dirty signal
-                "dirty": not s.get("rendered_clip"),
+                # edited-since-render (manifest stamp mismatch on premium
+                # projects; missing rendered_clip on the other lanes)
+                "dirty": _dirty(s),
             }
             scenes_lane.append(entry)
             media = _media_name(s)

@@ -194,6 +194,11 @@ def register(app, ctx):
         from nolan.still_motion import assign_still_treatments
         data = iterate.load_plan_raw(scene_plan_path)
         assign_still_treatments(data)          # in-memory: derived camera per still
+        # which lane will the run take? (mirrors iterate.rerender_scenes)
+        pipeline = iterate.detect_pipeline(scene_plan_path)
+        premium = (pipeline != "flow" and
+                   (project_path / "output" / "render_manifest.json").exists())
+        lane = "premium" if premium else pipeline
         out = []
         for _, s in iterate.iter_scenes(data):
             if s.get("id") not in scene_ids:
@@ -215,7 +220,12 @@ def register(app, ctx):
         if missing:
             raise HTTPException(status_code=404,
                                 detail=f"scenes not found: {sorted(missing)}")
-        return {"scenes": out}
+        return {"scenes": out, "lane": lane,
+                "lane_note": ("premium lane (beat cache): every section whose "
+                              "content changed re-renders — queued or not"
+                              if premium else
+                              f"{pipeline} lane: selected scenes re-render, "
+                              "then the project reassembles")}
 
     # ---- timeline edits (P3) -------------------------------------------------
     def _plan_for(project: str):
@@ -868,13 +878,19 @@ def register(app, ctx):
         result = _get_project_dir(project)
         if not result:
             raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
-        _, scene_plan_path = result
+        project_path, scene_plan_path = result
         from nolan import iterate
         pipeline = iterate.detect_pipeline(scene_plan_path)
+        # name the LANE honestly (mirrors iterate.rerender_scenes routing)
+        lane = ("premium" if pipeline != "flow" and
+                (project_path / "output" / "render_manifest.json").exists()
+                else pipeline)
         wf, node = _COMFY_WF[model]
 
         async def worker(job, plan_path, ids, pipeline, wf, node, model):
-            job.message = f"Re-rendering {len(ids)} scene(s) [{pipeline}, {model}]…"
+            job.message = (f"Re-rendering {len(ids)} scene(s) [{lane} lane"
+                           + (f", {model}" if lane not in ("premium",) else "")
+                           + "]…")
 
             def _do():
                 # Both pipelines may re-resolve an edited scene's library match, which
