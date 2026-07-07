@@ -1064,13 +1064,18 @@ def anchor_scenes_to_sections(plan: "ScenePlan",
         cursor = s1
         if not scenes:
             continue
-        # keep whisper starts that are usable: inside the span, strictly increasing
+        # keep whisper starts that are usable: inside the span, STRICTLY
+        # increasing. Equal consecutive starts are a degenerate pileup
+        # (unmatched scenes stacked on one timestamp — the aeneid-2beat-v2
+        # incident rendered a 46s title card) and must fall through to the
+        # proportional redistribution below.
         starts = []
-        last = s0
+        last = None
         usable = True
         for sc in scenes:
             st = sc.start_seconds
-            if st is None or st < last or st >= s1:
+            if st is None or st >= s1 or st < s0 \
+                    or (last is not None and st <= last):
                 usable = False
                 break
             starts.append(float(st))

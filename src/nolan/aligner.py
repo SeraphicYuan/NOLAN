@@ -71,7 +71,11 @@ def find_text_in_words(
         if window_text == query_normalized:
             return (i, i + len(query_words), 1.0)
 
-    # Check first few words match (for partial matches)
+    # Check first few words match (for partial matches). A bare 2-word
+    # prefix is NOT evidence — "It is…" matched a scene 46s late in the
+    # aeneid-2beat-v2 run and, because the search cursor only moves forward,
+    # starved every later scene. The expansion must confirm the match
+    # (>= half the query, or it isn't this sentence).
     for i in range(start_index, len(words)):
         # Try matching first 2-3 words
         first_words = min(2, len(query_words))
@@ -98,7 +102,10 @@ def find_text_in_words(
                     break
 
             confidence = matched_count / len(query_words)
-            return (i, best_end, min(1.0, confidence))
+            if confidence >= fuzzy_threshold:
+                return (i, best_end, min(1.0, confidence))
+            # prefix-only hit: keep scanning; the fuzzy pass below may still
+            # find a REAL occurrence later in the stream
 
     # Fuzzy fallback: find best partial match starting with first word
     best_match = None
