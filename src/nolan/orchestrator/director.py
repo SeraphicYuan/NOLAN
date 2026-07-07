@@ -2253,7 +2253,7 @@ class Director:
             # Review tray: record the runner-up library candidates per matched
             # scene so the /scenes drawer can offer one-click swaps — the human
             # reviews what matching CONSIDERED, not just what it chose.
-            AssetEngine.record_candidates(_targets, project_id=ctx.slug)
+            _cands = AssetEngine.record_candidates(_targets, project_id=ctx.slug)
             _plan.save(str(scene_plan_path))
             _matched = sum(1 for s in _scenes if getattr(s, "matched_clip", None))
             _art_hits = sum(
@@ -2265,17 +2265,26 @@ class Director:
             _external = sum(
                 1 for s in _targets
                 if str(getattr(s, "resolved_source", "")).startswith("external"))
+            _pinned = sum(
+                1 for s in _targets
+                if str(getattr(s, "resolved_source", "")).startswith("pinned"))
+            _shortlist = sum(
+                1 for s in _targets
+                if str(getattr(s, "resolved_source", "")).startswith("shortlist"))
 
             report_path.write_text(
                 "# Clip Selection Report (asset engine)\n\n"
                 f"Resolved **{len(_targets)}** footage/art scenes via the unified "
-                f"asset engine: {_matched} video matches, {_art_hits} "
+                f"asset engine: {_pinned} human pins, {_shortlist} shortlist "
+                f"selects, {_matched} video matches, {_art_hits} "
                 f"archival artworks, {_stills} picture-library stills, "
                 f"{_external} external stock hits; shot lists authored for "
-                f"{_shots_done} scene(s).\n\n"
+                f"{_shots_done} scene(s); review-tray candidates recorded for "
+                f"{_cands} scene(s).\n\n"
                 f"By source: "
                 f"{', '.join(f'{k}: {v}' for k, v in sorted(counts.items()))}\n\n"
-                "Ladder: footage → vector clip search (gate 0.5, no-reuse) → "
+                "Ladder: human pin → shortlist selects (tier 0) → footage → "
+                "vector clip search (gate 0.5, no-reuse) → "
                 "picture-library stills → external stock (vision gate 4; video "
                 "materialized locally); archival-art → exact-title museum pass → "
                 "semantic fallback. Operator bridge (tonal/conceptual) re-probes "

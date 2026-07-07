@@ -421,6 +421,8 @@ PLAN_FIELD_CONSUMERS: Dict[str, str] = {
     "sfx":               "src/nolan/audio_mix.py",
     "pinned_asset":      "src/nolan/premium_render.py",   # human pin (also asset_engine tier -1)
     "human_note":        "src/nolan/orchestrator/director.py",  # directive -> motion_design prompt
+    "asset_candidates":  "src/nolan/templates/scenes.html",     # review tray (one-click pin swaps)
+    "asset_license":     "src/nolan/premium_render.py",   # on-screen citation label (+ attribution)
 }
 
 

@@ -101,6 +101,10 @@ ARTIFACTS = [
     {"name": "soundtrack.json", "produced_by": "soundtrack step (authoring)",
      "consumed_by": "render step (mix_from_spec)",
      "contract": "track + alternatives + gain/duck + sfx events — human-editable"},
+    {"name": "shortlist.json", "produced_by": "human curation (library/select pages, "
+     "/api/shortlist)", "consumed_by": "asset engine TIER 0 (selects pool) + /scenes picker",
+     "contract": "items carry ready-to-POST payloads; notes become scene.human_note "
+                 "directives when the tier-0 matcher picks them"},
     {"name": "output/final.mp4", "produced_by": "render step",
      "consumed_by": "you", "contract": "|video − narration| < 1s, honest failures"},
     {"name": "profiles/taste.json (+ledger.jsonl)",

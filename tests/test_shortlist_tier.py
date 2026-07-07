@@ -159,6 +159,24 @@ def test_premium_scene_step_honors_image_pin(tmp_path):
     assert block == "ArtworkStage" and props["src"] == str(img)
 
 
+def test_pin_outranks_agent_motion_spec_at_render(tmp_path):
+    """Human > agent even when the motion_spec pre-dates the pin: the render
+    precedence puts the pin FIRST (the engine never re-runs on a late pin)."""
+    from PIL import Image
+    from nolan.premium_render import _scene_step
+    img = tmp_path / "vase.jpg"
+    Image.new("RGB", (800, 600), (120, 100, 90)).save(img)
+    crowd = tmp_path / "crowd.jpg"
+    crowd.write_bytes(b"x")
+    scene = {"id": "s1", "visual_type": "b-roll",
+             "motion_spec": {"effect": "stat-over", "backend": "remotion",
+                             "target": "StatOver",
+                             "content": {"image": str(crowd), "value": 12}},
+             "pinned_asset": {"src": str(img), "kind": "image", "by": "human"}}
+    block, props = _scene_step(scene, tmp_path, 30, 4.0)
+    assert block == "ArtworkStage" and props["src"] == str(img)
+
+
 def test_premium_scene_step_honors_clip_pin(tmp_path):
     from nolan.premium_render import _scene_step
     clip = tmp_path / "v.mp4"

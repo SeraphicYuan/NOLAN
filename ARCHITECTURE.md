@@ -81,7 +81,13 @@ enforce: a capability without its honesty test isn't done.
 `src/nolan/asset_engine.py` — the single per-scene resolution ladder:
 
 ```
-motion_spec present → done
+pinned_asset present → done ("pinned:human" — the /scenes pin op; outranks
+                       EVERYTHING incl. an agent's motion_spec)
+motion_spec present  → done
+shortlist (tier 0)   → the project's human selects pool (shortlist.json):
+                       images via hybrid search restricted to shortlisted
+                       ids (gate 0.30), clips via curated-label match;
+                       a winning item's note lands as scene.human_note
 archival-art → exact-title museum pass → semantic fallback
 footage      → vector clip search (ClipMatcher, gate 0.5)
              → operator BRIDGE on miss: tonal/conceptual metaphor queries
@@ -91,6 +97,9 @@ graphic/text → lazy motion authoring (LLM)
 escalation   → picture-library stills (hybrid CLIP+BGE; bridged queries too)
              → external providers → generate → none(reason)
 ```
+
+After matching, `record_candidates` stores the top library runner-ups in
+`scene.asset_candidates` — the /scenes drawer's review tray (one-click pin).
 
 Every resolution writes an auditable `scene.resolved_source`.
 `AssetEngine.from_config` wires the standard backends lazily; tier fns are

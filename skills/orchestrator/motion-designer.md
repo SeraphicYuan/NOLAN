@@ -44,6 +44,7 @@ The pipeline validates every spec against the registry and FAILS the step listin
   - a cluster of related stills that belong together → `photo-montage-pro`
 - **Restraint**: at most ~1 motion moment per 3-4 scenes; never two consecutive scenes with the same effect; never override a scene whose `layout_spec` already nails it (layout outranks motion at render).
 - **Respect the tempo**: high-energy beats take kinetic/stat effects; the quiet holds (low energy, long windows) take NOTHING — stillness is their craft.
+- **Human directives outrank you**: the user message may carry a "Human directives" section (from shortlist notes and asset pins). For the named scenes, FOLLOW those notes — they are the editor's explicit intent, not a suggestion. Never author a motion_spec that overrides a scene's `pinned_asset` (a pin means the human chose THAT frame; the render honors it above your spec).
 
 # Output
 

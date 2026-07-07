@@ -136,10 +136,28 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
                 duration_s: float, ordinal: int = 0) -> Tuple[str, Dict[str, Any]]:
     """(block, props) for a scene, or raise PremiumIneligible.
 
-    Precedence (explicit authoring first): layout_spec template → motion_spec
-    (hosted comp, render story v2) → nine-dot tray → rendered_clip / video
-    match (Video step) → matched/generated still (ArtworkStage)."""
+    Precedence: HUMAN PIN first (a pin means the editor chose THAT frame —
+    it beats agent authoring, and a pin placed AFTER matching wins without
+    re-running select_clips), then explicit authoring: layout_spec template →
+    motion_spec (hosted comp, render story v2) → nine-dot tray →
+    rendered_clip / video match (Video step) → matched/generated still
+    (ArtworkStage)."""
     from nolan.layout_blocks import adapt
+
+    pinned = scene.get("pinned_asset") or {}
+    if isinstance(pinned, dict) and pinned.get("src"):
+        p = Path(pinned["src"])
+        if not p.is_absolute():
+            p = project_path / pinned["src"]
+        if p.exists():
+            if pinned.get("kind") == "clip" or p.suffix.lower() in (".mp4", ".mov", ".webm", ".m4v"):
+                start = float(pinned.get("clip_start") or 0.0)
+                return "Video", {"src": str(p),
+                                 "startFromFrames": int(round(start * fps))}
+            props = {"src": str(p)}
+            props.update(_still_motion_props(scene, ordinal,
+                                             center=_subject_center(p)))
+            return "ArtworkStage", props
 
     spec = scene.get("layout_spec") or {}
     if isinstance(spec, str):
@@ -183,23 +201,6 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
         p, (x, y), _cap = placed[0]
         return "ArtworkStage", {"src": str(p),
                                 **_still_motion_props(scene, ordinal, center=(x, y))}
-
-    # Human PIN (the /scenes "pin" op): honored directly at render so a pin
-    # placed AFTER matching still wins without re-running select_clips.
-    pinned = scene.get("pinned_asset") or {}
-    if isinstance(pinned, dict) and pinned.get("src"):
-        p = Path(pinned["src"])
-        if not p.is_absolute():
-            p = project_path / pinned["src"]
-        if p.exists():
-            if pinned.get("kind") == "clip" or p.suffix.lower() in (".mp4", ".mov", ".webm", ".m4v"):
-                start = float(pinned.get("clip_start") or 0.0)
-                return "Video", {"src": str(p),
-                                 "startFromFrames": int(round(start * fps))}
-            props = {"src": str(p)}
-            props.update(_still_motion_props(scene, ordinal,
-                                             center=_subject_center(p)))
-            return "ArtworkStage", props
 
     # Video (render story v2): a clip PRODUCED for this scene plays as a
     # muted Video step under the narration slice (assemble's top priority).
