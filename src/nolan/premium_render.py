@@ -496,6 +496,12 @@ def render_premium(project_path: Path, *, theme: str = None,
     _motif_scenes = resolve_plan_motifs(plan)
     if _motif_scenes:
         print(f"motifs: materialized {_motif_scenes} scene(s)")
+    # Recipe layer (same contract): scene.recipe roles with baked motion
+    # templates become in-memory motion_specs.
+    from nolan.recipes import resolve_plan_recipes
+    _recipe_scenes = resolve_plan_recipes(plan)
+    if _recipe_scenes:
+        print(f"recipes: materialized {_recipe_scenes} scene(s)")
     sections = [(k, v) for k, v in (plan.get("sections") or {}).items()
                 if isinstance(v, list) and v]
     wavs = sorted((project_path / "assets" / "voiceover" / "_work").glob("sec_*.wav"))

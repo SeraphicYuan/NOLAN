@@ -424,6 +424,7 @@ PLAN_FIELD_CONSUMERS: Dict[str, str] = {
     "asset_candidates":  "src/nolan/templates/scenes.html",     # review tray (one-click pin swaps)
     "asset_license":     "src/nolan/premium_render.py",   # on-screen citation label (+ attribution)
     "motif":             "src/nolan/premium_render.py",   # stateful infographic ref (motion/motifs.py)
+    "recipe":            "src/nolan/premium_render.py",   # multi-scene figure role (nolan/recipes.py)
 }
 
 

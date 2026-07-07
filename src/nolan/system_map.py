@@ -41,6 +41,7 @@ ORGAN_MODULES = [
     "nolan.workflow_registry", "nolan.deconstruct", "nolan.visual_facts",
     "nolan.script_style", "nolan.tempo_plan", "nolan.voiceover",
     "nolan.knowledge_query", "nolan.flows",
+    "nolan.style_packs", "nolan.recipes", "nolan.exemplars",
 ]
 
 LABS = [
@@ -239,6 +240,15 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
          "slide_designer prompt carries the pack's preferred templates"),
         ("src/nolan/retention.py", "_pack_format",
          "retention linter enforces the pack's format (show bible) rules"),
+    ],
+    # recipes: multi-scene figures (quality program step 7)
+    "recipes": [
+        ("src/nolan/orchestrator/director.py", "_recipes_catalog",
+         "motion_design prompt carries the recipe catalog (generated)"),
+        ("src/nolan/premium_render.py", "resolve_plan_recipes",
+         "premium materializes recipe roles at plan load"),
+        ("src/nolan/orchestrator/director.py", "validate_plan_recipes",
+         "motion_design gate validates recipe references"),
     ],
 }
 

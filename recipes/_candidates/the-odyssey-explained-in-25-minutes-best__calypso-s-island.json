@@ -1,0 +1,36 @@
+{
+  "id": "CANDIDATE--calypso-s-island",
+  "status": "candidate",
+  "source": {
+    "deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "beat": "Calypso's Island",
+    "t0": 1173.88,
+    "t1": 1292.17,
+    "function": "evidence"
+  },
+  "description": "This segment features a painting of Odysseus sitting on a shore looking toward the sea while the goddess Calypso stands behind him, illustrating the transcript's description of his seven-year captivity and longing for his wife and son. (objects: Painting, Ocean, Tree, Rocks; location: An island shore (Ogygia)) | The video displays a painting of the goddess Athena in armor while the narrator explai",
+  "when_to_use": "(draft) beats functioning as evidence — review the source span and author the roles",
+  "roles": [
+    {
+      "role": "other-1",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "painting-2",
+      "count": 7,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "text-card-3",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    }
+  ]
+}

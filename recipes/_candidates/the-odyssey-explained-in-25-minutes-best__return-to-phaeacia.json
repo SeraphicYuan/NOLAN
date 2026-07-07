@@ -1,0 +1,29 @@
+{
+  "id": "CANDIDATE--return-to-phaeacia",
+  "status": "candidate",
+  "source": {
+    "deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "beat": "Return to Phaeacia",
+    "t0": 1292.17,
+    "t1": 1473.31,
+    "function": "evidence"
+  },
+  "description": "The video displays a classical painting of women washing clothes by a river while the narrator explains that Nausicaa and her maids went to the sea the day after Odysseus's arrival, where they were shocked to find him standing naked on the shore. (objects: clothes, painting; location: the sea) | The video displays a painting of Odysseus encountering Princess Nausicaa on the shore, illustrating the",
+  "when_to_use": "(draft) beats functioning as evidence — review the source span and author the roles",
+  "roles": [
+    {
+      "role": "painting-1",
+      "count": 11,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "other-2",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    }
+  ]
+}

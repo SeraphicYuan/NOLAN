@@ -21,6 +21,7 @@ import yaml
 from nolan.skills import handoff
 from nolan.style_packs import motion_guidance as _sp_motion_guidance
 from nolan.style_packs import slides_guidance as _sp_slides_guidance
+from nolan.recipes import recipes_catalog as _recipes_catalog
 from nolan.orchestrator import state as state_mod
 from nolan.orchestrator.claude_runner import (
     ClaudeRunnerError,
@@ -1751,6 +1752,7 @@ class Director:
             f"- description: {ctx.description}\n"
             f"- duration_seconds: {ctx.duration_seconds}\n"
             f"- genre_hint: {ctx.genre_hint}\n"
+            + self._exemplar_guidance()
             + self._taste_guidance("scenes", state)
         )
 
@@ -2041,6 +2043,7 @@ class Director:
         plan — the deterministic gate behind the motion_design agent."""
         from nolan.motion import chapter_step_for_spec
         from nolan.motion.motifs import resolve_plan_motifs, validate_plan_motifs
+        from nolan.recipes import resolve_plan_recipes, validate_plan_recipes
         counts: dict[str, int] = {}
         problems: list[str] = []
         try:
@@ -2048,13 +2051,17 @@ class Director:
                               .read_text(encoding="utf-8"))
         except Exception as exc:
             return {}, [f"scene_plan.json unreadable: {exc}"]
-        # Motif layer: structural validation, then materialize IN MEMORY so
-        # the accumulated specs go through the same hostability gate below.
+        # Motif + recipe layers: structural validation, then materialize IN
+        # MEMORY so the derived specs go through the same hostability gate.
         problems.extend(validate_plan_motifs(plan))
+        problems.extend(validate_plan_recipes(plan))
         if not problems:
             n = resolve_plan_motifs(plan)
             if n:
                 counts["motif-scenes"] = n
+            n = resolve_plan_recipes(plan)
+            if n:
+                counts["recipe-scenes"] = n
         for scenes in (plan.get("sections") or {}).values():
             if not isinstance(scenes, list):
                 continue
@@ -2092,6 +2099,15 @@ class Director:
         except Exception:
             tid = None
         return pack_for(self.project_path, template_id=tid)
+
+    def _exemplar_guidance(self) -> str:
+        """Measured patterns from the project's declared exemplar videos
+        (nolan.exemplars) — '' when none are declared."""
+        try:
+            from nolan.exemplars import exemplar_guidance
+            return exemplar_guidance(self.project_path)
+        except Exception as exc:
+            return f"\n# Exemplars\n- guidance failed: {exc}\n"
 
     def _human_directives(self) -> str:
         """Per-scene human notes (shortlist notes / pin notes) as a prompt
@@ -2145,6 +2161,8 @@ class Director:
             f"```json\n{self._hostable_motion_catalog()}\n```\n\n"
             f"# Project metadata\n- slug: {ctx.slug}\n- name: {ctx.name}\n"
             + _sp_motion_guidance(self._style_pack())
+            + _recipes_catalog()
+            + self._exemplar_guidance()
             + self._human_directives()
             + self._taste_guidance("motion", state)
         )

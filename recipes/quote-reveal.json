@@ -1,0 +1,14 @@
+{
+  "id": "quote-reveal",
+  "description": "Context imagery first, then the quotation lands as a designed card — the Ulysses-video habit of letting the source speak after you've seen its world.",
+  "when_to_use": "A quotation the narration sets up and then delivers. Scene 1 shows the world (own asset, slow push); scene 2 is the card. Never open cold on the card.",
+  "roles": [
+    {"role": "context", "motion": null,
+     "note": "the scene's own asset; camera grammar provides the push"},
+    {"role": "quote",
+     "motion": {"effect": "premium-card",
+                "content_from": {"kicker": {"slot": "attribution"},
+                                 "title": {"slot": "quote"},
+                                 "subtitle": {"slot": "source"}}}}
+  ]
+}

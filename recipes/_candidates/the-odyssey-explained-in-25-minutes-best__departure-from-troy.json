@@ -1,0 +1,50 @@
+{
+  "id": "CANDIDATE--departure-from-troy",
+  "status": "candidate",
+  "source": {
+    "deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "beat": "Departure from Troy",
+    "t0": 120.245,
+    "t1": 188.563,
+    "function": "context"
+  },
+  "description": "An animated map illustrates the geography of the Aegean Sea and Asia Minor, showing ships near Troy as the narrator describes Odysseus gathering his fleet to sail home after the ruins of the Trojan War. (objects: Map, Ships; location: Troy, Aegean Sea) | While the transcript narrates the return from a ruined Troy and the landing on the shores of Ismara to gather supplies, the visual shows a classi",
+  "when_to_use": "(draft) beats functioning as context — review the source span and author the roles",
+  "roles": [
+    {
+      "role": "painting-1",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "map-2",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "painting-3",
+      "count": 2,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "map-4",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "text-card-5",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    }
+  ]
+}

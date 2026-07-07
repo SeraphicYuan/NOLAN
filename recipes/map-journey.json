@@ -1,0 +1,13 @@
+{
+  "id": "map-journey",
+  "description": "Geography as narrative: the route draws on the map, then we land in the destination's own footage/art (the Samurai-in-Venice voyage device).",
+  "when_to_use": "The narration moves between named places in order — a journey, a trade route, an exile. Two+ consecutive scenes: first the map beat, then the arrival beat with its own asset.",
+  "roles": [
+    {"role": "map",
+     "motion": {"effect": "route-map",
+                "content_from": {"title": {"slot": "title"},
+                                 "pins": {"slot": "pins"}}}},
+    {"role": "arrival", "motion": null,
+     "note": "the destination's own footage/still through the normal ladder — the cut from diagram to REAL place is the payoff"}
+  ]
+}

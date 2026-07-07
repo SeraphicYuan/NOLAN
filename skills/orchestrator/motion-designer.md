@@ -57,6 +57,10 @@ A MOTIF is an infographic the video RETURNS to, accumulating state each visit (t
 - The render materializes each visit as base + all earlier deltas (settled) + this delta (animated). Never hand-write the accumulated state — author only the delta.
 - Use a motif when the video revisits ONE chronology/geography 3+ times; a single visit is just a plain `timeline`/`route-map` motion_spec.
 
+# Recipes (multi-scene figures)
+
+A RECIPE is a codified premium sequence — the craft is baked, you pick WHICH recipe and fill its slots. Catalog (with roles and when-to-use) arrives in the user message; assign CONSECUTIVE scenes `scene["recipe"] = {"id": "map-journey", "key": "<instance>", "role": "map", "slots": {...}}`. Roles with baked motion get their spec materialized at render; motionless roles keep the scene's own asset through the normal ladder. `key` names the instance — reuse it across the sequence's scenes, never across two different sequences. Prefer a recipe over hand-designing the same figure scene by scene; skip recipes when the beat doesn't match any when-to-use.
+
 # Output
 
 1. `scene_plan.json` updated in place (only `motion_spec` additions).

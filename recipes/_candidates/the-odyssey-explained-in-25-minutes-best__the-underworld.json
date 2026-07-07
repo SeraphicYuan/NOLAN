@@ -1,0 +1,29 @@
+{
+  "id": "CANDIDATE--the-underworld",
+  "status": "candidate",
+  "source": {
+    "deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "beat": "The Underworld",
+    "t0": 760.76,
+    "t1": 815.189,
+    "function": "evidence"
+  },
+  "description": "During a black screen transition, the narrator explains that Odysseus performed a ritual sacrifice at an entrance to the underworld to summon the spirits of the dead, specifically the blind prophet Tiresias. (objects: Ritual sacrifice; location: Entrance to the underworld) | A painting of Highland cattle is displayed while the narrator discusses the mythological warning from the blind prophet Tire",
+  "when_to_use": "(draft) beats functioning as evidence — review the source span and author the roles",
+  "roles": [
+    {
+      "role": "painting-1",
+      "count": 4,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "text-card-2",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    }
+  ]
+}

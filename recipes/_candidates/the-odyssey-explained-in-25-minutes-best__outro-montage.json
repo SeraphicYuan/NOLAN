@@ -1,0 +1,113 @@
+{
+  "id": "CANDIDATE--outro-montage",
+  "status": "candidate",
+  "source": {
+    "deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "beat": "Outro Montage",
+    "t0": 1770.02,
+    "t1": 1784.616,
+    "function": "close"
+  },
+  "description": "This segment features a static end-screen graphic of the Vitruvian Man with a call-to-action to subscribe, accompanied by background music as indicated by the transcript. (objects: Vitruvian Man drawing, Subscribe button, Geometric circle and square lines) | This video segment features a static end-screen graphic displaying a 'SUBSCRIBE' call-to-action button overlaid on a cosmic galaxy background",
+  "when_to_use": "(draft) beats functioning as close — review the source span and author the roles",
+  "roles": [
+    {
+      "role": "painting-1",
+      "count": 3,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "animation-2",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "illustration-3",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "photo-4",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "painting-5",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "photo-6",
+      "count": 2,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "painting-7",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "photo-8",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "illustration-9",
+      "count": 2,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "painting-10",
+      "count": 5,
+      "treatment_hint": "as-is",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "photo-11",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "painting-12",
+      "count": 2,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "illustration-13",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "text-card-14",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    }
+  ]
+}

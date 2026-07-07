@@ -29,6 +29,33 @@ archival + stock gates). CLI: `nolan artvee` (advanced search + `--download`) an
 Verified live: 45 paginated results, artist-page resolution, and a filtered+sorted
 CLI run that downloaded 4/4 real JPEGs (e.g. 3000×2125).
 
+## Recipes + exemplar briefs — the codification flywheel (2026-07-06)
+
+Quality program step 7 (last). **Recipes** (`nolan/recipes.py` + `recipes/*.json`):
+multi-scene figures with typed roles — the craft is baked (which effect, how content
+maps), the agent picks WHICH recipe and fills slots. Shipped: map-journey (route draws ->
+cut to the REAL place), quote-reveal (context imagery -> designed card), stat-impact
+(count-up over the referent -> settle). Authored field `scene.recipe = {id, key, role,
+slots}` (key = instance); `resolve_plan_recipes` materializes roles with baked motion
+into IN-MEMORY motion_specs (same contract as motifs — plan keeps the authoring; explicit
+specs win); motionless roles ride the normal ladder. Gate: `validate_plan_recipes` in
+motion_design (unknown recipe/role, missing slots — loud per scene) then the same
+hostability check. `recipes_catalog()` (generated) + exemplar guidance + pack guidance
+all ride the motion_design prompt; recipe field in PLAN_FIELD_CONSUMERS; consumers in
+CATALOG_CONSUMERS["recipes"]; motion-designer skill documents authoring.
+
+**Exemplar briefs** (`nolan/exemplars.py`): project.yaml `exemplars: [<slug-or-title>]`
+-> deconstruction store -> MEASURED guidance (beat count/length, hook span, function
+sequence, texture mix, cuts/min, static share) injected into script_to_scenes AND
+motion_design prompts; an exemplar not yet deconstructed reports itself loudly.
+**Deconstruct -> recipe candidates**: `draft_recipe_candidates(slug)` turns a
+deconstructed video's beats into draft files under `recipes/_candidates/` (roles are
+treatment-sequence skeletons; status: candidate) — promotion is a HUMAN moving the file
+into `recipes/` (proposal -> gate -> accept; no agent side-door). Verified live on the
+Odyssey deconstruction: 12 candidates drafted — including painting->map->painting->map->
+text-card, the map-journey figure discovered in the wild — and exemplar guidance measured
+17 beats / hook-by-7.3s / painting 68% / 5.4 cuts/min. 9 recipe tests; suite 906 passed.
+
 ## Style packs — per-format design system + show bible (2026-07-06)
 
 Quality program step 6: umbrellas catalog what NOLAN CAN do; a pack curates what THIS

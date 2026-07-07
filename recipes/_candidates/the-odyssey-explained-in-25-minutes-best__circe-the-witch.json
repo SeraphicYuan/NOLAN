@@ -1,0 +1,36 @@
+{
+  "id": "CANDIDATE--circe-the-witch",
+  "status": "candidate",
+  "source": {
+    "deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "beat": "Circe the Witch",
+    "t0": 568.735,
+    "t1": 760.76,
+    "function": "evidence"
+  },
+  "description": "This segment illustrates the story of Odysseus and his men escaping the land of the Cyclopes, showing a painting of the crew rowing frantically away from a giant on the cliffs who is preparing to hurl a boulder at their ship. (objects: ship, boulder, rocks; location: shoreline near the land of the Cyclopes) | The video displays a classical painting of an elaborate palace garden filled with people ",
+  "when_to_use": "(draft) beats functioning as evidence — review the source span and author the roles",
+  "roles": [
+    {
+      "role": "painting-1",
+      "count": 2,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "text-card-2",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "painting-3",
+      "count": 12,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    }
+  ]
+}

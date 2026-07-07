@@ -1,0 +1,36 @@
+{
+  "id": "CANDIDATE--the-epic-poems",
+  "status": "candidate",
+  "source": {
+    "deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "beat": "The Epic Poems",
+    "t0": 7.341,
+    "t1": 120.245,
+    "function": "context"
+  },
+  "description": "The video displays a solemn stone angel statue against a blue sky while background music plays, establishing a reflective or somber atmosphere. (objects: Stone angel statue, Sky, Clouds; location: Outdoors, likely a cemetery, graveyard, or memorial park given the style of the statuary.) | While the visuals display a serene nature scene of pink flowers and an insect in bright sunlight, the narratio",
+  "when_to_use": "(draft) beats functioning as context — review the source span and author the roles",
+  "roles": [
+    {
+      "role": "live-footage-1",
+      "count": 1,
+      "treatment_hint": "as-is",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "painting-2",
+      "count": 8,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "other-3",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    }
+  ]
+}

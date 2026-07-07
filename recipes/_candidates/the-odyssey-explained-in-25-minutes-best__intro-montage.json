@@ -1,0 +1,57 @@
+{
+  "id": "CANDIDATE--intro-montage",
+  "status": "candidate",
+  "source": {
+    "deconstruction": "the-odyssey-explained-in-25-minutes-best-greek-mythology-documentary",
+    "beat": "Intro Montage",
+    "t0": 0.0,
+    "t1": 7.341,
+    "function": "hook"
+  },
+  "description": "The video opens with a serene visual of a floating soap bubble amidst nature, accompanied by background music. (objects: soap bubble, trees, foliage) | The video opens with a serene visual of a floating soap bubble amidst nature, accompanied by background music. (objects: soap bubble, trees, foliage) | The video opens with a scenic shot of a vibrant sunset or sunrise over a silhouetted landscape, ",
+  "when_to_use": "(draft) beats functioning as hook — review the source span and author the roles",
+  "roles": [
+    {
+      "role": "live-footage-1",
+      "count": 2,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "photo-2",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "live-footage-3",
+      "count": 2,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "photo-4",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "live-footage-5",
+      "count": 4,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    },
+    {
+      "role": "photo-6",
+      "count": 1,
+      "treatment_hint": "hold",
+      "motion": null,
+      "note": "AUTHOR ME: map to a real effect or leave motionless (normal ladder) on promotion"
+    }
+  ]
+}

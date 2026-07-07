@@ -1,0 +1,15 @@
+{
+  "id": "stat-impact",
+  "description": "A number the audience should FEEL: count it up over the tangible referent, then hold on the referent alone to let it settle.",
+  "when_to_use": "One big quantity with a concrete visual referent already on the scene. Scene 1 counts up over the scene's own still; scene 2 rests on related footage. Don't chain two stat-impacts back to back.",
+  "roles": [
+    {"role": "referent",
+     "motion": {"effect": "stat-over",
+                "content_from": {"image": {"scene": "matched_asset"},
+                                 "value": {"slot": "value"},
+                                 "suffix": {"slot": "suffix"},
+                                 "caption": {"slot": "caption"}}}},
+    {"role": "settle", "motion": null,
+     "note": "related footage/still through the normal ladder; low energy"}
+  ]
+}
