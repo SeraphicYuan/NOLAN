@@ -141,11 +141,18 @@ def build_timeline(project_path: Path, envelope_rate: float = 4.0) -> Dict[str, 
                 "visual_type": s.get("visual_type"),
                 "excerpt": (s.get("narration_excerpt") or "")[:120],
                 "energy": s.get("energy"),
+                # edited-but-not-rendered: apply_patch clears rendered_clip,
+                # so "no clip behind this scene" is the honest dirty signal
+                "dirty": not s.get("rendered_clip"),
             }
             scenes_lane.append(entry)
             media = _media_name(s)
             badge = _motion_badge(s)
             shots = s.get("shots") if isinstance(s.get("shots"), list) else None
+            # the render ladder's dry-run: winner rung + collision flags
+            # (same function the Inspector strip and pre-render plan read)
+            from nolan.premium_render import resolve_scene_intent
+            intent = resolve_scene_intent(s, project_path)
             units.append({
                 "scene_id": s.get("id"), "start": start, "end": end,
                 "media": media,
@@ -157,6 +164,8 @@ def build_timeline(project_path: Path, envelope_rate: float = 4.0) -> Dict[str, 
                 "pinned": bool(s.get("pinned_asset")),
                 "citation": (s.get("asset_license") or {}).get("title")
                             if isinstance(s.get("asset_license"), dict) else None,
+                "intent": {"winner": intent["winner"]["rung"],
+                           "conflicts": intent["conflicts"]},
             })
             cue = s.get("sfx")
             if isinstance(cue, dict) and (cue.get("query") or cue.get("file")):

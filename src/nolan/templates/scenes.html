@@ -788,6 +788,18 @@
         .tl-h.r { right: 0; border-right: 2px solid transparent; }
         .tl-block.scene:hover .tl-h.l { border-left-color: var(--accent); }
         .tl-block.scene:hover .tl-h.r { border-right-color: var(--accent); }
+        .tl-block.scene.dirty { border-style: dashed; }
+        .tl-conflict { flex: none; font-size: 11px; }
+        .tl-conflict.error { filter: none; }
+        /* Inspector "what will render" strip */
+        .intent-strip { margin: -4px 0 10px; }
+        .intent-line { font-size: 12px; color: var(--text-primary); }
+        .intent-detail { color: var(--text-secondary); font-size: 11px; }
+        .intent-over { color: var(--warning); font-size: 11px; }
+        .intent-c { font-size: 11.5px; margin-top: 3px; border-left: 3px solid var(--border); padding-left: 7px; }
+        .intent-c.error { color: var(--danger); border-left-color: var(--danger); }
+        .intent-c.warn { color: var(--warning); border-left-color: var(--warning); }
+        .intent-c.info { color: var(--text-secondary); }
         .tl-badge.lockable { cursor: pointer; }
         .tl-badge.lockable:hover { background: rgba(37,99,235,.15); }
         .tl-lane.notes { min-height: 30px; background: repeating-linear-gradient(90deg,
@@ -1155,6 +1167,7 @@
 
             document.getElementById('inspBody').innerHTML = `
                 <div class="insp-prev">${preview}</div>
+                <div class="intent-strip" id="intent-${scene.id}"></div>
                 ${scene.resolved_source ? `<div class="insp-note" style="margin:-4px 0 10px;">provenance: <b>${esc(scene.resolved_source)}</b> — how the asset engine resolved this scene</div>` : ''}
 
                 <div class="igrp">
@@ -1272,6 +1285,25 @@
 
             refreshAgentSelect();
             renderMotionFold(scene.id);   // async — fills the motion-effect fold from the registry
+            renderIntent(scene.id);       // async — the render ladder's dry-run + collision flags
+        }
+
+        // "What will render": the ladder's dry-run for this scene — which rung
+        // wins, which authored edits lose, every collision (server: one
+        // function shared with the timeline markers and the pre-render plan).
+        async function renderIntent(id) {
+            const el = document.getElementById(`intent-${id}`);
+            if (!el) return;
+            try {
+                const it = await (await fetch(`/api/scenes/intent?project=${encodeURIComponent(currentProject)}&scene_id=${encodeURIComponent(id)}`)).json();
+                const w = it.winner || {};
+                const over = (it.overridden || []).map(o => o.detail || o.rung).filter(Boolean).join(', ');
+                const confl = (it.conflicts || []).map(c =>
+                    `<div class="intent-c ${c.severity}">${c.severity === 'error' ? '⛔' : c.severity === 'warn' ? '⚠' : 'ℹ'} ${esc(c.message)}</div>`).join('');
+                el.innerHTML = `<div class="intent-line">renders via <b>${esc(w.rung || '?')}</b>${w.media ? ` — ${esc(w.media)}` : ''}
+                        <span class="intent-detail">${esc(w.detail || '')}</span>
+                        ${over ? `<span class="intent-over">· loses: ${esc(over)}</span>` : ''}</div>${confl}`;
+            } catch (e) { el.innerHTML = ''; }
         }
 
         function ssToggleInsp(id) {
@@ -2219,6 +2251,29 @@
             }
             const msg = document.getElementById('rerenderMsg');
             const model = (document.getElementById('rerenderModel') || {}).value || 'flux-dev';
+            // pre-render plan (dry run): what this run will actually do, per scene
+            msg.textContent = 'Planning…';
+            try {
+                const pr = await fetch('/api/scenes/rerender/plan', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: currentProject, scene_ids: ids }) });
+                const pj = await pr.json().catch(() => ({}));
+                if (!pr.ok) throw new Error(pj.detail || pr.statusText);
+                const lines = (pj.scenes || []).map(p => {
+                    const flags = (p.conflicts || []);
+                    const worst = flags.some(c => c.severity === 'error') ? ' ⛔'
+                                : flags.some(c => c.severity === 'warn') ? ' ⚠' : '';
+                    return `• ${p.id} (${p.duration}s): ${p.re_match ? 'RE-MATCH asset + render' : 'render'}`
+                         + ` — via ${p.winner.rung}${p.winner.media ? ` (${p.winner.media})` : ''}`
+                         + `${p.camera ? `, camera ${p.camera}` : ''}${worst}`;
+                });
+                const conflictMsgs = (pj.scenes || []).flatMap(p =>
+                    (p.conflicts || []).map(c => `  ${p.id}: ${c.message}`));
+                if (!confirm(`Render plan — ${ids.length} scene(s), model ${model}:\n\n`
+                        + lines.join('\n')
+                        + (conflictMsgs.length ? '\n\nConflicts:\n' + conflictMsgs.join('\n') : '')
+                        + '\n\nRun now?')) { msg.textContent = ''; return; }
+            } catch (e) { msg.textContent = 'Plan error: ' + e.message; return; }
             msg.textContent = 'Submitting…';
             try {
                 const res = await fetch('/api/scenes/rerender', {
@@ -2672,9 +2727,9 @@
                 d.scenes.map(s => {
                     if (s.start == null || s.end == null) return '';
                     const num = (s.id || '').replace(/^scene_0*/, '');
-                    return `<div class="tl-block scene" data-scene="${esc(s.id)}"
+                    return `<div class="tl-block scene${s.dirty ? ' dirty' : ''}" data-scene="${esc(s.id)}"
                               style="left:${tlX(s.start)}px;width:${Math.max(14, tlX(s.end) - tlX(s.start) - 2)}px"
-                              title="${esc(s.id)} · ${esc(s.visual_type || '')}\n${esc(s.excerpt || '')}\ndrag an edge to retime (neighbors absorb it)">
+                              title="${esc(s.id)} · ${esc(s.visual_type || '')}${s.dirty ? ' · NO RENDERED CLIP (renders fresh next run)' : ''}\n${esc(s.excerpt || '')}\ndrag an edge to retime (neighbors absorb it)">
                               <span class="tl-h l" data-edge="start"></span>${num}<span class="tl-h r" data-edge="end"></span></div>`;
                 }).join('') + `</div>`;
 
@@ -2694,9 +2749,15 @@
                     const shots = u.shots > 1 ? `<span class="tl-shots">×${u.shots}</span>` : '';
                     const pin = u.pinned ? '📌' : '';
                     const label = u.media ? esc(u.media) : '<i style="opacity:.5">no media</i>';
+                    const confl = (u.intent && u.intent.conflicts) || [];
+                    const worst = confl.some(c => c.severity === 'error') ? 'error'
+                                : confl.some(c => c.severity === 'warn') ? 'warn'
+                                : confl.length ? 'info' : '';
+                    const mark = worst ? `<span class="tl-conflict ${worst}">${worst === 'error' ? '⛔' : '⚠'}</span>` : '';
+                    const conflTitle = confl.map(c => `${c.severity.toUpperCase()}: ${c.message}`).join('\n');
                     return `<div class="tl-block unit" data-scene="${esc(u.scene_id)}" data-drop="1"
                               style="left:${tlX(u.start)}px;width:${w}px"
-                              title="${esc(u.media || 'no media')}${u.citation ? '\n' + esc(u.citation) : ''}\ndrop a tray/picker asset here to PIN it">${pin}${w > 90 ? label : ''}${badge}${shots}</div>`;
+                              title="${esc(u.media || 'no media')} — renders via ${esc((u.intent && u.intent.winner) || '?')}${u.citation ? '\n' + esc(u.citation) : ''}${conflTitle ? '\n' + esc(conflTitle) : ''}\ndrop a tray/picker asset here to PIN it">${mark}${pin}${w > 90 ? label : ''}${badge}${shots}</div>`;
                 }).join('') + `</div>`;
 
             // audio: VO envelope + sfx markers

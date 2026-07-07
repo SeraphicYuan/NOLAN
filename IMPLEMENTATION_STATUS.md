@@ -4,6 +4,37 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Edit-page coherence 1-3: intent resolver, timeline parity, pre-render plan (2026-07-07)
+
+The premium ladder (human shots → pin → layout_spec → motion_spec → placed
+tray → rendered clip → still+camera → video match) was coherent but
+invisible — a pin silently killed an authored motion_spec, and a pinned
+file that went missing fell through to auto-matching without a word.
+
+- **`premium_render.resolve_scene_intent(scene, project_path)`** — the
+  ladder's dry-run, built on the SAME helpers `_scene_step`/`_expand_shots`
+  use; returns winner rung + overridden authored edits + typed conflicts
+  (severity error/warn/info): pin-missing-file (the silent hole, now an
+  error), pin-overrides-motion/layout/placements, shots-override-motion,
+  auto-shots-yield-to-motion, layout-overrides-motion, camera-lock-inert
+  (only when a non-still rung wins), motion-unhostable, motion-spec-invalid.
+  Agreement with the real render path is enforced by a matrix test that runs
+  BOTH functions per scene shape (tests/test_scene_intent.py, 14 tests).
+- **Inspector strip** ("renders via pin — a.jpg · loses: motion_spec …" +
+  colored conflict lines) via `GET /api/scenes/intent`; refreshes with every
+  edit. **Timeline parity**: units carry `intent` (⚠/⛔ marker + tooltip),
+  scene blocks get a dashed *dirty* tint when no rendered clip backs them.
+- **Pre-render plan**: `POST /api/scenes/rerender/plan` (dry run) — per
+  queued scene: re-match vs render-only (match cleared?), winning rung,
+  camera treatment, conflicts. "Re-render selected" now shows the plan for
+  confirmation BEFORE submitting the GPU job; cancel aborts cleanly.
+- Also: unapplied-edit warning (72f4ecc) — Queue/Run detect typed-but-not-
+  applied inputs (fields, motion params via dirty flag, un-sent comments)
+  and offer apply-now / abort.
+- Suite: 1016 passed. Puppeteer-verified on a throwaway copy (pin+motion
+  collision seeded → strip, timeline marker, plan dialog, cancel-no-submit
+  all confirmed; zero page JS errors); screenshot inspected.
+
 ## Scenes UI hardening + typed @-mentions + motion param editor (2026-07-07)
 
 User-reported bugs (pin -> `loadScenes is not defined`; shortlist ☆ had no

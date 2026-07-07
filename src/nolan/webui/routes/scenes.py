@@ -158,6 +158,65 @@ def register(app, ctx):
             } for e in REGISTRY],
         }
 
+    @app.get("/api/scenes/intent")
+    async def scenes_intent(project: str = Query(...), scene_id: str = Query(...)):
+        """Dry-run of the premium render ladder for ONE scene: which rung wins,
+        which authored edits lose, and every collision — the Inspector strip
+        reads this (same function the timeline markers and pre-render plan use)."""
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        project_path, scene_plan_path = result
+        from nolan import iterate
+        from nolan.premium_render import resolve_scene_intent
+        data = iterate.load_plan_raw(scene_plan_path)
+        scene = iterate.find_scene(data, scene_id)
+        if scene is None:
+            raise HTTPException(status_code=404, detail=f"scene '{scene_id}' not found")
+        return resolve_scene_intent(scene, project_path)
+
+    @app.post("/api/scenes/rerender/plan")
+    async def scenes_rerender_plan(payload: dict = Body(...)):
+        """Pre-render plan (dry run, renders nothing): per queued scene, will
+        matching re-run, which ladder rung wins, which camera treatment, and
+        any collisions — shown for confirmation BEFORE the GPU run."""
+        project = payload.get("project")
+        scene_ids = set(payload.get("scene_ids") or [])
+        if not (project and scene_ids):
+            raise HTTPException(status_code=400,
+                                detail="project and scene_ids are required")
+        result = _get_project_dir(project)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Project '{project}' not found")
+        project_path, scene_plan_path = result
+        from nolan import iterate
+        from nolan.premium_render import resolve_scene_intent
+        from nolan.still_motion import assign_still_treatments
+        data = iterate.load_plan_raw(scene_plan_path)
+        assign_still_treatments(data)          # in-memory: derived camera per still
+        out = []
+        for _, s in iterate.iter_scenes(data):
+            if s.get("id") not in scene_ids:
+                continue
+            intent = resolve_scene_intent(s, project_path)
+            dur = (s.get("end_seconds") or 0) - (s.get("start_seconds") or 0)
+            out.append({
+                "id": s.get("id"),
+                # apply_patch clears the match on search_query/visual_type
+                # edits — that's what makes the run re-select the asset
+                "re_match": (not s.get("resolved_source")
+                             and bool(s.get("search_query"))),
+                "winner": intent["winner"],
+                "camera": s.get("still_treatment") or s.get("_still_treatment"),
+                "conflicts": intent["conflicts"],
+                "duration": round(dur, 2),
+            })
+        missing = scene_ids - {p["id"] for p in out}
+        if missing:
+            raise HTTPException(status_code=404,
+                                detail=f"scenes not found: {sorted(missing)}")
+        return {"scenes": out}
+
     # ---- timeline edits (P3) -------------------------------------------------
     def _plan_for(project: str):
         result = _get_project_dir(project)

@@ -258,6 +258,7 @@ def _scene_step(scene: Dict[str, Any], project_path: Path, fps: int,
 # the plumbing consolidation — three modules used to encode it independently.
 from nolan.still_motion import camera_tour_props as _still_motion_props  # noqa: E402
 from nolan.still_motion import subject_center as _subject_center  # noqa: E402
+from nolan.still_motion import STILL_TREATMENTS  # noqa: E402  (resolve_scene_intent)
 
 
 MIN_STEP_FRAMES = 24        # no visual unit shorter than ~0.8s
@@ -374,6 +375,158 @@ def _expand_shots(scene: Dict[str, Any], project_path: Path, fps: int,
         props.update(_still_motion_props(scene, ordinal + k, center=center))
         units.append(("ArtworkStage", props, sub))
     return units
+
+
+def resolve_scene_intent(scene: Dict[str, Any], project_path) -> Dict[str, Any]:
+    """What will this scene ACTUALLY render, and which authored edits lose?
+
+    The Inspector strip, the timeline conflict markers and the pre-render
+    plan all read this one function. It walks the SAME ladder with the SAME
+    helpers `_expand_shots`/`_scene_step` use — human shots → pin →
+    layout_spec → motion_spec → placed tray → rendered clip → still → video
+    match — without rendering anything. Agreement with the real render path
+    is enforced by tests/test_scene_intent.py (pitfall #4: one decision, one
+    function; this is a dry-run of it, not a second copy).
+
+    Returns {"winner": {rung, media, detail}, "overridden": [...],
+             "conflicts": [{id, severity: error|warn|info, message}]}.
+    """
+    from nolan.layout_blocks import adapt
+    from nolan.motion import chapter_step_for_spec
+
+    project_path = Path(project_path)
+    conflicts: List[Dict[str, Any]] = []
+
+    def _abs(rel):
+        p = Path(rel)
+        return p if p.is_absolute() else project_path / rel
+
+    # -- contenders, evaluated with the render path's own helpers ------------
+    shots_resolved = _resolve_shots(scene, project_path)
+    ms = scene.get("motion_spec")
+    has_motion = isinstance(ms, dict) and bool(ms.get("effect"))
+    human_shots = bool(shots_resolved) and not scene.get("shots_auto")
+    auto_shots = bool(shots_resolved) and bool(scene.get("shots_auto"))
+
+    pinned = scene.get("pinned_asset") or {}
+    pin_declared = isinstance(pinned, dict) and bool(pinned.get("src"))
+    pin_ok = pin_declared and _abs(pinned["src"]).exists()
+    pin_is_clip = pin_ok and (
+        pinned.get("kind") == "clip"
+        or _abs(pinned["src"]).suffix.lower() in (".mp4", ".mov", ".webm", ".m4v"))
+
+    spec = scene.get("layout_spec") or {}
+    if isinstance(spec, str):
+        try:
+            spec = json.loads(spec)
+        except Exception:
+            spec = {}
+    template = spec.get("template")
+    layout_declared = bool(template) and template != "custom"
+    layout_ok = layout_declared and adapt(template, spec.get("params") or {}) is not None
+
+    motion_ok = motion_invalid = False
+    if has_motion:
+        try:
+            motion_ok = chapter_step_for_spec(ms, project_path) is not None
+        except ValueError as exc:
+            motion_invalid = True
+            conflicts.append({"id": "motion-spec-invalid", "severity": "error",
+                              "message": f"motion_spec is invalid — the premium render "
+                                         f"will REFUSE this scene: {exc}"})
+
+    placed = _tray_placements(scene, project_path)
+    rendered = scene.get("rendered_clip")
+    rendered_ok = bool(rendered) and _abs(rendered).exists()
+    asset = scene.get("matched_asset") or (
+        f"assets/generated/{scene['generated_asset']}"
+        if scene.get("generated_asset") else None)
+    still_ok = bool(asset) and _abs(asset).exists()
+    mc = scene.get("matched_clip")
+    vid_ok = isinstance(mc, dict) and mc.get("video_path") and _abs(mc["video_path"]).exists()
+
+    # -- winner: the ladder, verbatim ----------------------------------------
+    # (_expand_shots: a resolvable shot list wraps the whole scene UNLESS it
+    # was auto-generated and an explicit motion_spec exists.)
+    if shots_resolved and not (auto_shots and has_motion):
+        winner = ("shots", f"{len(shots_resolved)} shots",
+                  "human shot list" if human_shots else "auto shot list")
+    elif pin_ok:
+        winner = ("pin", Path(pinned["src"]).name,
+                  "human pin" + (" (clip)" if pin_is_clip else " (still)"))
+    elif layout_ok:
+        winner = ("layout", template, "layout_spec template")
+    elif has_motion and motion_ok and not motion_invalid:
+        winner = ("motion", ms["effect"], "motion_spec hosted comp")
+    elif len(placed) >= 2:
+        winner = ("placements", f"{len(placed)}-card montage", "nine-dot tray placements")
+    elif len(placed) == 1:
+        winner = ("placements", placed[0][0].name, "nine-dot placed image (camera push)")
+    elif rendered_ok:
+        winner = ("rendered-clip", Path(rendered).name, "clip rendered for this scene")
+    elif still_ok:
+        winner = ("still", Path(asset).name, "matched/generated still + camera treatment")
+    elif vid_ok:
+        winner = ("video-match", Path(mc["video_path"]).name, "library/stock video match")
+    else:
+        winner = ("ineligible", None, "nothing renderable — premium will refuse this scene")
+    rung = winner[0]
+
+    # -- conflicts: silent losers made loud ----------------------------------
+    if pin_declared and not pin_ok:
+        conflicts.append({"id": "pin-missing-file", "severity": "error",
+                          "message": f"pinned asset file is MISSING ({pinned['src']}) — "
+                                     "the pin is silently skipped and auto-matching takes over"})
+    if rung == "shots" and human_shots and has_motion:
+        conflicts.append({"id": "shots-override-motion", "severity": "warn",
+                          "message": f"your shot list wins — motion_spec "
+                                     f"'{ms['effect']}' will NOT render"})
+    if auto_shots and has_motion and not motion_invalid:
+        conflicts.append({"id": "auto-shots-yield-to-motion", "severity": "info",
+                          "message": "the auto shot list yields to the authored motion_spec"})
+    if rung == "pin":
+        if layout_declared:
+            conflicts.append({"id": "pin-overrides-layout", "severity": "warn",
+                              "message": f"the pin wins — layout_spec '{template}' will NOT render"})
+        if has_motion and not motion_invalid:
+            conflicts.append({"id": "pin-overrides-motion", "severity": "warn",
+                              "message": f"the pin wins — motion_spec '{ms['effect']}' will NOT render"})
+        if placed:
+            conflicts.append({"id": "pin-overrides-placements", "severity": "info",
+                              "message": f"{len(placed)} placed tray image(s) lose to the pin"})
+    if rung == "layout" and has_motion and not motion_invalid:
+        conflicts.append({"id": "layout-overrides-motion", "severity": "info",
+                          "message": f"layout_spec wins — motion_spec '{ms['effect']}' will NOT render"})
+    if has_motion and not motion_ok and not motion_invalid:
+        conflicts.append({"id": "motion-unhostable", "severity": "info",
+                          "message": f"motion_spec '{ms['effect']}' isn't chapter-hostable — "
+                                     "the scene falls back to its still treatment"})
+    lock = scene.get("still_treatment")
+    if lock in STILL_TREATMENTS:
+        # the camera treatment reaches stills: shot sequences, pinned stills,
+        # single placements and the matched still — nothing else
+        camera_applies = (rung in ("shots", "still")
+                          or (rung == "pin" and not pin_is_clip)
+                          or (rung == "placements" and len(placed) == 1))
+        if not camera_applies:
+            conflicts.append({"id": "camera-lock-inert", "severity": "warn",
+                              "message": f"camera lock '{lock}' has no effect — "
+                                         f"this scene renders via {rung}"})
+
+    # -- authored contenders that lost ---------------------------------------
+    overridden = []
+    for r, declared, detail in (
+            ("pin", pin_ok, "pinned asset"),
+            ("layout", layout_ok, f"layout_spec '{template}'" if template else ""),
+            ("motion", has_motion and motion_ok and not motion_invalid,
+             f"motion_spec '{ms['effect']}'" if has_motion else ""),
+            ("placements", bool(placed), f"{len(placed)} placed tray image(s)"),
+            ("shots", bool(shots_resolved), "shot list")):
+        if declared and r != rung:
+            overridden.append({"rung": r, "detail": detail})
+
+    return {"winner": {"rung": rung, "media": winner[1], "detail": winner[2]},
+            "overridden": overridden, "conflicts": conflicts}
 
 
 def _is_still_led(scene: Dict[str, Any], project_path: Path) -> bool:
