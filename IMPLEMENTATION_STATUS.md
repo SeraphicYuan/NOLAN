@@ -4,6 +4,41 @@
 **Status:** Complete
 **Last Updated:** 2026-07-06
 
+## Showcase = authorable vocabulary; +7 gap effects; Motion-Canvas deleted (2026-07-07)
+
+The /showcase page was showing 54 orphaned Motion-Canvas presets that no
+pipeline path could author. Reconciled the three motion catalogs down to the
+one that ships video:
+
+- **Showcase from the registries** — `nolan/webui/showcase_catalog.py` builds the
+  gallery live from `motion.registry.REGISTRY` (27 effects) + `layout_blocks.
+  TEMPLATES` (31 blocks); read-only cards (purpose + when_to_use + params +
+  preview). `routes/showcase.py` no longer proxies the render-service preset
+  list. Honesty test `tests/test_showcase_catalog.py`.
+- **7 gap effects** (Remotion) filling real device-vocabulary holes: `screen-frame`
+  (browser/laptop/phone mockup), `before-after` (slider wipe), `bar-race`,
+  `whip-transition`, `picture-in-picture`, `typewriter`, `camera-shake`. Each
+  wired end-to-end: registry entry -> `<Composition>` in Root.tsx -> comps.ts ->
+  executor `_CHAPTER_TARGETS` (+ new `foreground` staging for 2-image effects) ->
+  contact-gate classification -> motion-craft.md -> `tests/test_gap_effects.py`.
+  All 7 render-verified (frames inspected); BarRace row-overlap + Whip mid-gap
+  found-and-fixed in the QA loop.
+- **Motion-Canvas removed** — deleted `render-service/src/effects/` (15 presets +
+  registry + types), `engines/motion-canvas.ts`, `routes/effects.ts`; cleaned
+  processor/jobs-types/server/render/health + the dead showcase render-proxy
+  endpoints. tsc build clean; infographic + remotion/lottie paths intact.
+- **Block-selectability audit** — 8 remotion-lib blocks render but have no Director
+  authoring path (ArchetypeCards, Distribution, Formula, Heatmap, LottieIcon,
+  UnlockGrid, ValueLadder, WebVsBoxes); surfaced in the catalog (kind=orphan) and
+  pinned by `tests/test_block_selectability.py` so the set can only shrink.
+- **Preview harness** — `scripts/gen_showcase_previews.py` rewritten to render one
+  small looping webm per catalog entry via the real executor/layout_blocks paths
+  (not the deleted preset endpoint), version-stamped (component+fixture hash) so
+  clips re-render only on change. Coverage floor: `tests/test_preview_fixtures.py`.
+
+Full suite green (952 passed pre-change; new tests +). Preview webms committed
+under render-service/public/previews/.
+
 ## Artvee source — public-domain fine-art search + advanced filtering (2026-07-06)
 
 New `src/nolan/artvee.py` (ORGAN): a standalone retrieval + filter engine over
@@ -28,6 +63,57 @@ archival + stock gates). CLI: `nolan artvee` (advanced search + `--download`) an
 `nolan image-search -s artvee`. Tests: `tests/test_artvee.py` (24, offline).
 Verified live: 45 paginated results, artist-page resolution, and a filtered+sorted
 CLI run that downloaded 4/4 real JPEGs (e.g. 3000×2125).
+
+**High-tier wiring (2026-07-06):** artvee is now the PRIMARY art source —
+queried FIRST for every art scene, museums as the fallback tier.
+`exact_title_pass` (art_sourcing) splits `img_sources` on
+`ART_SOURCES_PRIMARY = ['artvee']` and runs tiers in order, returning on the
+first accepted title match — so an artvee hit for a named work is never
+out-ranked by a museum result on pixel count (the museums aren't even queried).
+`ART_SOURCES = PRIMARY + FALLBACK` (artvee first). Made artvee first-class in
+the gate: added to `asset_gate.OPEN_ACCESS_SOURCES` (trusted by source name, not
+only by an incidental 'Public Domain' license string). `ArtveeProvider.search`
+is now LAZY (one listing fetch, no per-item detail fetch); `ArtveeProvider.resolve`
++ `ImageSearchClient.resolve_asset` upgrade only the CHOSEN winner to the
+presigned SDL just before download. Fixed an intermittent stale-presigned 403
+(CloudFlare-cached detail pages) with no-cache headers + a re-resolve retry in
+`ArtveeClient.download`, and stripped presigned query params before taking the
+download file extension. Honesty tests (tests/test_artvee.py): `ART_SOURCES` ⊆
+providers; every art source passes the archival gate on name alone; artvee is the
+primary tier and in `OPEN_ACCESS_SOURCES`; exact_title_pass queries artvee first
+and only falls back to museums on no accepted match. Verified live: 'Pallas Athena
+Fighting Centaurs' → exact:artvee (3000×2125), museums never queried;
+'Wanderer above the Sea of Fog' → artvee tried first, fell back to wikimedia
+(5256×6742).
+
+## Craft round 2 — continuous Ken Burns, treatment variety, diversity audit (2026-07-07)
+
+From the user's aeneid viewing ("every image uses kenburns and the speed is abrupt"): the
+still path played hold-then-lunge (1.6s drift, then a 1.1s glide doing all the zoom), and
+all 13 stills got IDENTICAL parameters because tempo's per-beat constants flattened every
+scene. Fixes: **ArtworkStage continuous modes** (kenburns-in/out/pan/drift — ONE eased move
+across the whole step); **select_still_treatment** narrative semantics (pan = the narration
+MOVES, out = it WIDENS, in = it NAMES) + hard no-two-consecutive;
+**assign_still_treatments** in-memory pre-pass in premium (drift on quiet closes). Verified
+on aeneid: distribution 5 in / 4 pan / 3 out / 1 drift, zero repeats, triptychs show
+continuous motion.
+
+**Diversity audit** (user asked: is the glue-to-one-thing pattern systemic?): YES —
+per-beat-flat energy (fixed: _scene_energy content-cued contour, ±0.12 inside the beat
+band); pack transition_bias was DEAD CODE, never reaching the tempo prompt (aeneid got
+ZERO cuts on a cut-led format — wired, CATALOG_CONSUMERS entry added); generation uses ONE
+ComfyUI workflow for all images (FLAGGED, unfixed); sfx authoring is single-event
+(FLAGGED). Layouts were the healthy exception (8 distinct templates in aidc) — proof the
+per-scene-choice + variety-pressure shape works.
+
+Also: **clean_title** strips filename artifacts from citations ("…fol 52r - wm
+removed.jpg" rendered ON SCREEN); vision watermark check skipped for TRUSTED_MEDIA_HOSTS
+(museum CDNs never watermark; ~7s/asset saved, banner heuristic still universal); bench
+gains 4 still-treatment probe rows. **Infra:** theme-fonts.ts unconstrained loadFont()
+made 808 requests for Noto Serif SC per render — once Google throttled, headless-browser
+setup timed out and renders died; now weights 400/700 + latin (+chinese-simplified for
+CJK), derived from each font's manifest. Concurrent-agent note: /showcase preview batches
+contend for the headless browser — renders now stand off and retry. Suite 936.
 
 ## Recipes + exemplar briefs — the codification flywheel (2026-07-06)
 
