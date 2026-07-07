@@ -81,7 +81,10 @@ class EngineConfig:
     enable_library: bool = True            # picture-library stills
     library_threshold: float = 0.24        # hybrid-similarity floor for a usable still
     enable_shortlist: bool = True          # tier 0: the project's human selects pool
-    shortlist_threshold: float = 0.20      # softer than library — a human chose these
+    # Calibrated live (homer imagelib): on-subject query scored 0.44, an
+    # unrelated one 0.26 — 0.20 let junk through; 0.30 separates cleanly
+    # while staying softer than library reuse (0.45).
+    shortlist_threshold: float = 0.30
     enable_motion: bool = True             # lazily author a motion_spec for graphic/text scenes
     enable_art: bool = True                # exact-title museum pass for archival-art scenes
     enable_bridge: bool = True             # operator query-expansion after a literal miss

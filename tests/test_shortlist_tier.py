@@ -145,6 +145,73 @@ def test_human_directives_empty_without_notes(tmp_path):
     assert Director._human_directives(SimpleNamespace(project_path=tmp_path)) == ""
 
 
+# --- premium honors a pin directly (post-match, no re-resolve) ---------------
+
+def test_premium_scene_step_honors_image_pin(tmp_path):
+    from PIL import Image
+    from nolan.premium_render import _scene_step
+    img = tmp_path / "vase.jpg"
+    Image.new("RGB", (800, 600), (120, 100, 90)).save(img)
+    scene = {"id": "s1", "visual_type": "b-roll",
+             "matched_asset": "some/other.jpg",          # pin must outrank it
+             "pinned_asset": {"src": str(img), "kind": "image", "by": "human"}}
+    block, props = _scene_step(scene, tmp_path, 30, 4.0)
+    assert block == "ArtworkStage" and props["src"] == str(img)
+
+
+def test_premium_scene_step_honors_clip_pin(tmp_path):
+    from nolan.premium_render import _scene_step
+    clip = tmp_path / "v.mp4"
+    clip.write_bytes(b"x")
+    scene = {"id": "s1", "visual_type": "b-roll",
+             "pinned_asset": {"src": str(clip), "kind": "clip",
+                              "clip_start": 2.0, "by": "human"}}
+    block, props = _scene_step(scene, tmp_path, 30, 4.0)
+    assert block == "Video" and props["src"] == str(clip)
+    assert props["startFromFrames"] == 60
+
+
+# --- pin/unpin API op ---------------------------------------------------------
+
+def test_scene_assets_pin_and_unpin_ops(tmp_path):
+    from fastapi.testclient import TestClient
+    from nolan.hub import create_hub_app
+
+    proj = tmp_path / "pin-test"
+    proj.mkdir()
+    (proj / "scene_plan.json").write_text(json.dumps({
+        "schema_version": 2,
+        "sections": {"a": [{"id": "s1", "visual_type": "b-roll",
+                            "assets": [{"id": "a1", "kind": "image",
+                                        "src": "D:/lib/x.jpg"}]}]},
+    }), encoding="utf-8")
+    client = TestClient(create_hub_app(db_path=None, projects_dir=tmp_path))
+
+    r = client.post("/api/scenes/scene/assets", json={
+        "project": "pin-test", "scene_id": "s1", "op": "pin",
+        "asset_id": "a1", "note": "hold full-frame"})
+    assert r.status_code == 200
+    plan = json.loads((proj / "scene_plan.json").read_text(encoding="utf-8"))
+    s = plan["sections"]["a"][0]
+    assert s["pinned_asset"]["src"] == "D:/lib/x.jpg"
+    assert s["pinned_asset"]["note"] == "hold full-frame"
+    assert s["human_note"] == "hold full-frame"
+
+    r = client.post("/api/scenes/scene/assets", json={
+        "project": "pin-test", "scene_id": "s1", "op": "unpin"})
+    assert r.status_code == 200
+    plan = json.loads((proj / "scene_plan.json").read_text(encoding="utf-8"))
+    assert "pinned_asset" not in plan["sections"]["a"][0]
+
+    # direct-src pin (the review-tray "use this" path)
+    r = client.post("/api/scenes/scene/assets", json={
+        "project": "pin-test", "scene_id": "s1", "op": "pin",
+        "src": "D:/lib/cand.jpg", "kind": "image"})
+    assert r.status_code == 200
+    plan = json.loads((proj / "scene_plan.json").read_text(encoding="utf-8"))
+    assert plan["sections"]["a"][0]["pinned_asset"]["src"] == "D:/lib/cand.jpg"
+
+
 # --- shortlist note store ------------------------------------------------------
 
 def test_shortlist_set_note_roundtrip(tmp_path):
