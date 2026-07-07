@@ -756,9 +756,10 @@ class Director:
                 _llm = create_text_llm(load_config())
             except Exception:
                 _llm = None
-            _brief = await compile_brief(self.project_path, llm=_llm,
-                                         style_guide=style_guide,
-                                         template_id=state.style_template_id)
+            _brief = await compile_brief(
+                self.project_path, llm=_llm, style_guide=style_guide,
+                template_id=getattr(state.template_provenance,
+                                    "style_template_id", None))
             save_brief(self.project_path, _brief)
             summary_lines.append(
                 f"Brief compiled: theme **{_brief['theme']}** "
@@ -2095,7 +2096,7 @@ class Director:
             pass
         try:
             state = state_mod.load_state(self.project_path)
-            tid = getattr(state, "style_template_id", None)
+            tid = getattr(state.template_provenance, "style_template_id", None)
         except Exception:
             tid = None
         return pack_for(self.project_path, template_id=tid)

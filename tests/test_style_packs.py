@@ -109,6 +109,20 @@ async def test_guide_wins_when_it_speaks(tmp_path, monkeypatch):
     assert brief["grade"]["grade"] == "noir"      # guide spoke — pack yields
 
 
+# --- the live-run incident: template id lives on template_provenance ---------
+
+def test_director_reads_template_id_from_provenance():
+    """aeneid-2beat-v2 live run: brief compile failed with 'DirectorState has
+    no attribute style_template_id' — the id lives on state.template_provenance.
+    Pin both the attribute path and the absence of the bad access."""
+    from nolan.orchestrator.state import TemplateProvenance
+    assert hasattr(TemplateProvenance(), "style_template_id")
+    src = (REPO / "src/nolan/orchestrator/director.py").read_text(encoding="utf-8")
+    assert "state.style_template_id" not in src, (
+        "director accesses style_template_id on DirectorState — it lives on "
+        "state.template_provenance")
+
+
 # --- generated guidance ----------------------------------------------------------
 
 def test_guidance_is_generated_from_the_pack():
