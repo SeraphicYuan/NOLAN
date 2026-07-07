@@ -52,6 +52,7 @@ from nolan.cli import (  # noqa: E402,F401
     lint_cmd,
     package_cmd,
     retro_cmd,
+    kb,
 )
 
 # The main group is the entry point

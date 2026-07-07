@@ -484,6 +484,33 @@ audio_mix authoring integration (cues parsed, sourced, placed, correct leads). E
 `examples/sfx_search.py`. Deferred (see `todo.md`): an **auto-cue pass** that decides which
 beats get an effect — the decision layer feeding this placement layer.
 
+## Knowledge Base — ingest + distill + hybrid search (2026-07-06)
+
+A video-craft **knowledge base** (`src/nolan/kb/`, `nolan kb` CLI): ingest
+YouTube/article/PDF/text → LLM-distill into **atomic technique notes** in an
+Obsidian vault (`E:\Nolan_KB`), then search them keyword + semantic. Adapted
+from HERMES (finance→storytelling); markdown is canonical, DB/vectors derived.
+
+- **P1 ingest / P2 distill** (pre-existing): `ingest.py` (url/youtube/pdf/text,
+  hash-dedup, reuses `publish.source`+`youtube`) → `raw/*.md`; `distill.py`+
+  `prompts.py`+`taxonomy.py` (HERMES-ported prompt; closed vocab: 13 craft
+  categories, difficulty, `nolan_hook`) → **hybrid notes**: one `parsed/<stem>.md`
+  source note (TLDR + quality + wikilinked technique list) + N atomic
+  `parsed/insights/*.md`, each wikilinked back to source + raw transcript.
+- **P3 index + hybrid search** (this change): distill now also writes a
+  structured **sidecar** (`_kb_data/insights/<id>.json`, the reliable reindex
+  source) and incrementally updates a derived index — an `insights` table +
+  **FTS5** (BM25 keyword + facets) in `kb.db`, and a **ChromaDB** collection
+  (`BAAI/bge-base-en-v1.5`, NOLAN's standard embedder). `kb/index.py` fuses the
+  two with **Reciprocal Rank Fusion** (quality-weighted; vectors load lazily and
+  fail soft so keyword search always works). New CLI: `nolan kb search
+  [--mode hybrid|keyword|semantic --category --hook --difficulty]` and
+  `nolan kb reindex` (rebuild from sidecars). Beats HERMES's search (which is
+  keyword *or* semantic, never fused). 11 `tests/test_kb_*` pass; verified live
+  on the real vault (17 insights across the 2 seed videos).
+- **Next:** P4 web `/kb` page, P5 MOCs. P6 pipeline bridge (RAG insights into
+  design steps via `nolan_hook`) **deferred** by user.
+
 ## Asset-library curation UX + shortlist→essay bridge (2026-07-05)
 
 Reworked the Picture / Video / Clip library pages from per-card "button soup"
