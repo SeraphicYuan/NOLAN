@@ -1,0 +1,14 @@
+{
+  "id": "default",
+  "description": "Cross-format baseline — no strong curation; umbrellas stay fully open. The pack every project gets when nothing more specific matches.",
+  "matches": [],
+  "visual": {
+    "transition_bias": "cut-led; dissolve only where the narration breathes"
+  },
+  "format": {
+    "hook": "question",
+    "hook_rule": "the first beat should pose or clearly imply the question the video answers",
+    "ending": "thesis",
+    "lint": {"hook_question": true, "section_out_tension": true}
+  }
+}

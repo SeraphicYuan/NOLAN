@@ -1,0 +1,22 @@
+{
+  "id": "historical-narrative",
+  "description": "History/mystery documentary (the Samurai-in-Venice register): archival-led, object-anchored hooks, a chronology motif that returns, contemplative build.",
+  "matches": ["liu-xiu-historical-narrative"],
+  "visual": {
+    "themes_preferred": ["kraft-paper", "vintage-editorial", "paper-press"],
+    "motion_preferred": ["timeline", "route-map", "annotate-video", "stat-over", "photo-montage-pro", "premium-card"],
+    "motion_avoid": ["k-shape", "bar-compare"],
+    "templates_preferred": ["quote", "pull_quote", "source_citation", "document_highlight", "timeline", "location_stamp", "chapter_card", "detail_loupe"],
+    "transition_bias": "cut-led; dissolve only at era/location shifts",
+    "grade": {"grade": "warm", "bloom": 0.1, "grain": 0.35, "vignette": 0.3},
+    "pacing": "contemplative"
+  },
+  "format": {
+    "hook": "mystery-object",
+    "hook_rule": "open on a CONCRETE object/document with an unanswered question attached (\"a secret contained in these two letters\") — never a thesis statement",
+    "acts": ["cold-open mystery", "setup", "investigation", "reveal", "reflection"],
+    "recurring": ["a timeline motif returns each act, accumulating the events established so far"],
+    "ending": "question",
+    "lint": {"hook_question": true, "object_anchor": true, "section_out_tension": true}
+  }
+}

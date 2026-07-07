@@ -149,13 +149,24 @@ async def _extract_descriptors(guide: str, llm) -> Dict[str, Any]:
 # --- compile / validate / io ----------------------------------------------------
 
 async def compile_brief(project_path: Path, *, llm=None,
-                        style_guide: Optional[str] = None) -> Dict[str, Any]:
-    """style_guide.md → validated brief dict (not yet saved)."""
+                        style_guide: Optional[str] = None,
+                        template_id: Optional[str] = None) -> Dict[str, Any]:
+    """style_guide.md → validated brief dict (not yet saved).
+
+    ``template_id`` (the matched style template) resolves the project's
+    STYLE PACK — the per-format design system. Pack rules: the guide wins
+    where it SPEAKS; the pack fills what the guide left at defaults (grade,
+    pacing) and can promote a preferred theme when the ranker put one within
+    the top alternatives anyway (deterministic, logged in theme_why)."""
+    from nolan.style_packs import pack_for
+
     project_path = Path(project_path)
     guide = style_guide
     if guide is None:
         guide = (project_path / "style_guide.md").read_text(encoding="utf-8")
     desc = await _extract_descriptors(guide, llm)
+    pack = pack_for(project_path, template_id=template_id)
+    pv = pack.get("visual") or {}
 
     # theme: deterministic ranking over the LLM keywords + the guide's LOOK
     # section (the visual language). The Voice section is deliberately NOT
@@ -165,6 +176,23 @@ async def compile_brief(project_path: Path, *, llm=None,
     look = _look_section(guide)
     brief_text = " ".join(str(k) for k in desc["keywords"]) + " " + (look or guide)[:4000]
     ranked = rank_themes(brief_text, tone=desc["tone"])
+
+    # pack theme promotion: if the top pick isn't pack-preferred but a
+    # preferred theme already ranked in the alternatives, promote it.
+    preferred = pv.get("themes_preferred") or []
+    if preferred and ranked and ranked[0]["id"] not in preferred:
+        for i, r in enumerate(ranked[1:], 1):
+            if r["id"] in preferred:
+                promoted = ranked.pop(i)
+                promoted["why"] = ([f"pack:{pack.get('id')} prefers it"]
+                                   + list(promoted.get("why") or []))
+                ranked.insert(0, promoted)
+                break
+
+    # pack fills defaults the guide left silent (guide wins when it speaks)
+    grade = desc["grade"]
+    if (grade or {}).get("grade") in (None, "none") and pv.get("grade"):
+        grade = dict(pv["grade"])
 
     voice_id = _default_voice(project_path)
 
@@ -178,9 +206,15 @@ async def compile_brief(project_path: Path, *, llm=None,
         "music_mood": desc["music_mood"],
         "voice_id": voice_id,
         "pacing": desc["pacing"],
-        "grade": desc["grade"],
+        "grade": grade,
+        "pack": pack.get("id", "default"),
+        # tempo PROFILE from the pack (punchy|contemplative|balanced) — the
+        # brief's own "pacing" stays the scene-duration window the linter
+        # checks; this drives tempo_enrich's profile choice.
+        "pacing_profile": (pack.get("visual") or {}).get("pacing"),
         "provenance": {"compiled_from": "style_guide.md",
                        "selector": "themes/selector.json",
+                       "style_pack": pack.get("id", "default"),
                        "descriptors_via": "llm" if llm is not None else "deterministic"},
     }
     problems = validate_brief(brief)

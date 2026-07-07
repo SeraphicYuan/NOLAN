@@ -182,9 +182,84 @@ def lint_plan(plan: Dict[str, Any],
                 f"{s.get('id')}: {_dur(s):.0f}s low-energy single still — "
                 "consider a shot list or a video match")
 
+    # 7-9. script-craft rules (quality program step 6) — driven by the style
+    # pack's format section (the show bible). The reference-video habits:
+    # hooks pose questions and anchor on concrete OBJECTS; sections end on
+    # forward tension, not a closed thought.
+    fmt = _pack_format(brief)
+    lint_cfg = fmt.get("lint") or {}
+    hook_text = " ".join(
+        (s.get("narration_excerpt") or s.get("narration") or "")
+        for s in (sections[0][:3] if sections else []) if isinstance(s, dict))
+    if lint_cfg.get("hook_question") and sections and hook_text:
+        if not _reads_as_question(hook_text):
+            add("hook-question", SEV_WARN, sections[0][0],
+                f"[pack:{fmt.get('pack')}] the hook never poses or implies "
+                "the question the video answers — reference hooks open on "
+                "mystery, ours opens on exposition")
+    if lint_cfg.get("object_anchor") and sections and hook_text:
+        if not _has_object_anchor(hook_text):
+            add("object-anchor", SEV_WARN, sections[0][0],
+                f"[pack:{fmt.get('pack')}] the hook names no concrete "
+                "object/document/place to anchor on ('a secret contained in "
+                "THESE TWO LETTERS') — abstractions don't hold a cold open")
+    if lint_cfg.get("section_out_tension") and len(sections) > 1:
+        for sec in sections[:-1]:
+            last = next((s for s in reversed(sec)
+                         if isinstance(s, dict)
+                         and (s.get("narration_excerpt") or s.get("narration"))), None)
+            if last is None:
+                continue
+            out = (last.get("narration_excerpt") or last.get("narration") or "").strip()
+            if out and not _reads_as_tension(out):
+                add("section-out-tension", SEV_INFO, last,
+                    f"[pack:{fmt.get('pack')}] section ends on a closed "
+                    f"thought ('…{out[-60:]}') — an out should pull forward "
+                    "(question, reversal, 'but/until/yet')")
+
     stats["warn"] = sum(1 for f in findings if f["severity"] == SEV_WARN)
     stats["info"] = sum(1 for f in findings if f["severity"] == SEV_INFO)
     return {"findings": findings, "stats": stats}
+
+
+# --- script-craft heuristics (deterministic, report-only) ---------------------
+
+_QUESTION_WORDS = ("why ", "how ", "what ", "who ", "where ", "when ",
+                   "secret", "mystery", "no one knew", "nobody knew",
+                   "unanswered", "strange", "puzzle", "vanish")
+_OBJECT_CUES = ("this ", "these ", "that ", "those ", "the letter",
+                "a letter", "document", "manuscript", "map ", "vase",
+                "painting", "photograph", "artifact", "diary", "archive",
+                "amphora", "inscription", "ruins")
+_TENSION_CUES = ("but ", "until ", "yet ", "except", "unless", "however",
+                 "what happened next", "that was about to change",
+                 "would change everything", "no one expected", "…", "...")
+
+
+def _pack_format(brief: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    try:
+        from nolan.style_packs import format_rules, get_pack
+        pack = get_pack((brief or {}).get("pack") or "default")
+        if pack:
+            return format_rules(pack)
+    except Exception:
+        pass
+    return {"pack": "default", "lint": {}}
+
+
+def _reads_as_question(text: str) -> bool:
+    t = " " + text.lower()
+    return "?" in text or any(w in t for w in _QUESTION_WORDS)
+
+
+def _has_object_anchor(text: str) -> bool:
+    t = " " + text.lower()
+    return any(w in t for w in _OBJECT_CUES)
+
+
+def _reads_as_tension(text: str) -> bool:
+    t = text.lower()
+    return "?" in text or any(w in t for w in _TENSION_CUES)
 
 
 def render_report(result: Dict[str, Any], title: str = "Retention lint") -> str:

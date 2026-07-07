@@ -19,6 +19,8 @@ from pathlib import Path
 import yaml
 
 from nolan.skills import handoff
+from nolan.style_packs import motion_guidance as _sp_motion_guidance
+from nolan.style_packs import slides_guidance as _sp_slides_guidance
 from nolan.orchestrator import state as state_mod
 from nolan.orchestrator.claude_runner import (
     ClaudeRunnerError,
@@ -754,14 +756,16 @@ class Director:
             except Exception:
                 _llm = None
             _brief = await compile_brief(self.project_path, llm=_llm,
-                                         style_guide=style_guide)
+                                         style_guide=style_guide,
+                                         template_id=state.style_template_id)
             save_brief(self.project_path, _brief)
             summary_lines.append(
                 f"Brief compiled: theme **{_brief['theme']}** "
                 f"({'; '.join(_brief['theme_why'][:4])}) · "
                 f"mood '{_brief['music_mood']}' · voice "
                 f"{_brief['voice_id'] or '(default)'} · accent "
-                f"{_brief['accent'] or '(theme)'} — `brief.json` "
+                f"{_brief['accent'] or '(theme)'} · pack "
+                f"**{_brief.get('pack', 'default')}** — `brief.json` "
                 f"(alternatives: "
                 f"{', '.join(a['id'] for a in _brief['theme_alternatives'])})")
         except Exception as exc:
@@ -1904,6 +1908,7 @@ class Director:
             f"- duration_seconds: {ctx.duration_seconds}\n\n"
             f"# Pre-run summary\n"
             f"- info-scenes missing layout_spec: {before_missing}\n"
+            + _sp_slides_guidance(self._style_pack())
             + self._taste_guidance("slides", state)
         )
 
@@ -2068,6 +2073,26 @@ class Director:
                                     f"{ms['effect']!r} is not premium-hostable")
         return counts, problems
 
+    def _style_pack(self) -> dict:
+        """The project's resolved style pack (brief carries the id after the
+        style step; falls back to fresh resolution for pre-brief calls)."""
+        from nolan.style_packs import get_pack, pack_for
+        try:
+            from nolan.project_brief import load_brief
+            b = load_brief(self.project_path) or {}
+            if b.get("pack"):
+                p = get_pack(b["pack"])
+                if p:
+                    return p
+        except Exception:
+            pass
+        try:
+            state = state_mod.load_state(self.project_path)
+            tid = getattr(state, "style_template_id", None)
+        except Exception:
+            tid = None
+        return pack_for(self.project_path, template_id=tid)
+
     def _human_directives(self) -> str:
         """Per-scene human notes (shortlist notes / pin notes) as a prompt
         section for the design passes. Human words carry HUMAN provenance:
@@ -2119,6 +2144,7 @@ class Director:
             f"# catalog_json (your whole legal vocabulary)\n"
             f"```json\n{self._hostable_motion_catalog()}\n```\n\n"
             f"# Project metadata\n- slug: {ctx.slug}\n- name: {ctx.name}\n"
+            + _sp_motion_guidance(self._style_pack())
             + self._human_directives()
             + self._taste_guidance("motion", state)
         )
@@ -2369,7 +2395,18 @@ class Director:
 
             sctx = ScriptContext.load(self.project_path)
             plan = ScenePlan.load(str(scene_plan_path))
-            profile = profile_for(sctx)
+            # style pack sets the pacing profile via the brief (guide wins
+            # when it speaks; pack fills the silence) — see compile_brief
+            _pack_pacing = ""
+            try:
+                from nolan.project_brief import load_brief
+                from nolan.tempo_plan import _PROFILES
+                _b = load_brief(self.project_path) or {}
+                if _b.get("pacing_profile") in _PROFILES:
+                    _pack_pacing = _b["pacing_profile"]
+            except Exception:
+                pass
+            profile = profile_for(sctx, _pack_pacing)
             if not sctx.beats:
                 return {"beats": 0, "profile": profile, "source": "skipped",
                         "applied": {"sections": 0, "scenes": 0, "matched": 0}, "tempo": None}
@@ -2377,7 +2414,7 @@ class Director:
                 llm = create_text_llm(load_config())
             except Exception:
                 llm = None
-            tempo = design_tempo(sctx, llm=llm)
+            tempo = design_tempo(sctx, profile=profile, llm=llm)
             # Tempo cloning: when the project carries an attached/cloned
             # deconstruction (reference_structure.json), blend the reference
             # video's MEASURED energy curve with the script-derived one.

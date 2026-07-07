@@ -1,0 +1,22 @@
+{
+  "id": "explainer-punchy",
+  "description": "Data-forward explainer (the aidc register): stat-led, kinetic typography, driving cut density, charts earn their place.",
+  "matches": [],
+  "visual": {
+    "themes_preferred": ["creative-voltage", "bold-signal", "swiss-ikb"],
+    "motion_preferred": ["kinetic-text", "stat-over", "bar-compare", "counter", "annotate-stat", "split-screen", "k-shape"],
+    "motion_avoid": ["photo-grid"],
+    "templates_preferred": ["statistic", "stat_comparison", "bar_chart", "kinetic_headline", "comparison", "question", "progress_bar"],
+    "transition_bias": "hard cuts; momentum over smoothness",
+    "grade": {"grade": "vivid", "bloom": 0.15, "grain": 0.0, "vignette": 0.15},
+    "pacing": "punchy"
+  },
+  "format": {
+    "hook": "stat-stakes",
+    "hook_rule": "open with the number or claim that raises the stakes, then the question it forces",
+    "acts": ["hook", "context", "mechanism", "implications", "so-what"],
+    "recurring": [],
+    "ending": "thesis",
+    "lint": {"hook_question": true, "section_out_tension": true}
+  }
+}

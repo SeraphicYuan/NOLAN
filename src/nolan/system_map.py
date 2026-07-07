@@ -228,6 +228,18 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
         ("src/nolan/project_brief.py", "rank_themes",
          "brief compiler ranks the theme registry (Look-based selector)"),
     ],
+    # style packs: cross-umbrella curation (quality program step 6) — every
+    # pack field must reach a decision point or it's curation rot
+    "packs": [
+        ("src/nolan/project_brief.py", "pack_for",
+         "brief compiler resolves the pack (theme promotion, grade/pacing fills)"),
+        ("src/nolan/orchestrator/director.py", "_sp_motion_guidance",
+         "motion_design prompt carries the pack's preferred/avoid effects"),
+        ("src/nolan/orchestrator/director.py", "_sp_slides_guidance",
+         "slide_designer prompt carries the pack's preferred templates"),
+        ("src/nolan/retention.py", "_pack_format",
+         "retention linter enforces the pack's format (show bible) rules"),
+    ],
 }
 
 

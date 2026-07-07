@@ -4,6 +4,56 @@
 **Status:** Complete
 **Last Updated:** 2026-07-06
 
+## Artvee source — public-domain fine-art search + advanced filtering (2026-07-06)
+
+New `src/nolan/artvee.py` (ORGAN): a standalone retrieval + filter engine over
+artvee.com (public-domain / CC0 fine art; no API — a resilient HTML scrape of
+the WooCommerce grid, whose tiles embed full metadata).
+- `ArtveeClient.search(query)` keyword search + `search_artist(slug|name)` (with
+  slug discovery); both walk `.../page/N/` pagination and dedupe on the `sk` key.
+- `ArtveeResult` carries listing-level metadata — title, year, artist+slug,
+  category/genre, SD/HD dimensions + file sizes — parsed from the tile with no
+  per-item fetch.
+- `advanced_search(query|artist, filters=ArtveeFilter, sort_by=...)`: filter on
+  artist / title / category / year-range / orientation / min-resolution /
+  exclude-anonymous; sort by year | title | artist | pixels | filesize.
+- `download(result, path, size='sd')` resolves the presigned low-res (SDL) S3 URL
+  from the detail page (24h expiry, no login) and streams the JPEG.
+
+Wiring: a thin `ArtveeProvider(ImageProvider)` in `image_search.py` maps
+ArtveeResult→ImageSearchResult (url=resolved SDL, thumbnail=CDN `ft`,
+license='Public Domain (Artvee)'), registered as source `artvee`; added to
+`art_sourcing.ART_SOURCES` so archival-art scenes can source from it (passes the
+archival + stock gates). CLI: `nolan artvee` (advanced search + `--download`) and
+`nolan image-search -s artvee`. Tests: `tests/test_artvee.py` (24, offline).
+Verified live: 45 paginated results, artist-page resolution, and a filtered+sorted
+CLI run that downloaded 4/4 real JPEGs (e.g. 3000×2125).
+
+## Style packs — per-format design system + show bible (2026-07-06)
+
+Quality program step 6: umbrellas catalog what NOLAN CAN do; a pack curates what THIS
+format SHOULD reach for — the broadcast design-package idea, with the narrative format
+(show bible) inside the same artifact. New `nolan/style_packs.py` + `style_packs/*.json`
+(default, historical-narrative, explainer-punchy). Pack = visual curation
+(themes_preferred, motion_preferred/avoid, templates_preferred, transition_bias, grade,
+pacing profile) + format section (hook formula/rule, acts, recurring conventions, ending,
+lint toggles). Resolution: project.yaml `style_pack` override -> pack `matches` the style
+template id -> default. Validation is registry-backed and loud (unknown motion/template/
+theme/grade/pacing/lint ids fail; every shipped pack pinned by test).
+
+Wired consumers (each in CATALOG_CONSUMERS["packs"], grep-enforced): brief compiler
+(theme promotion when a preferred theme already ranked; grade fill when the guide is
+silent — guide wins when it speaks; `pack` + `pacing_profile` on brief.json),
+motion_design prompt (`motion_guidance` — PREFER/AVOID + format conventions, generated
+from the pack, never hand-listed), slide_designer prompt (`slides_guidance`),
+tempo_enrich (pacing profile from brief.pacing_profile), retention linter (script-craft
+rules from the reference study, driven by the pack's format.lint: **hook-question**,
+**object-anchor** ("a secret contained in THESE TWO LETTERS" — concrete object in the
+cold open), **section-out-tension** (outs pull forward, not close)). Anti-lock-in intact:
+pack language is PREFER-with-deviation; taste loop stays the learned posterior around the
+pack prior. Verified live on homer: template->pack resolution, generated guidance, and
+section-out-tension correctly flagging a real closed section-out. 9 pack tests; suite 894.
+
 ## Timeline effect + motif layer — infographics that ACCUMULATE (2026-07-06)
 
 Quality program step 5, the "this looks authored" device from the reference study: the
