@@ -129,6 +129,13 @@ def validate_pack(pack: Dict[str, Any]) -> List[str]:
         errors.extend(f"{pack.get('id')}: visual.texture_defaults: {e}"
                       for e in terrs)
 
+    for key in ("gen_prompt_bias", "cutout_prompt_bias"):
+        if v.get(key) is not None and not isinstance(v[key], str):
+            errors.append(f"{pack.get('id')}: visual.{key} must be a string")
+    if v.get("graphical_foley") is not None and not isinstance(
+            v["graphical_foley"], bool):
+        errors.append(f"{pack.get('id')}: visual.graphical_foley must be a bool")
+
     pacing = v.get("pacing")
     if pacing is not None:
         from nolan.tempo_plan import _PROFILES
@@ -186,3 +193,16 @@ def format_rules(pack: Dict[str, Any]) -> Dict[str, Any]:
     lint = dict(fmt.get("lint") or {})
     return {"pack": pack.get("id"), "hook": fmt.get("hook"),
             "ending": fmt.get("ending"), "lint": lint}
+
+
+def pack_drift(project_path, brief: Optional[Dict[str, Any]]) -> Optional[str]:
+    """A warning string when the compiled brief predates the project's current
+    pack choice (the aidc cyan-accent incident: theme/accent flow through the
+    brief, so a stale brief silently keeps the OLD style's look) — or None."""
+    current = pack_for(project_path).get("id")
+    compiled = (brief or {}).get("pack")
+    if compiled and current and compiled != current:
+        return (f"brief was compiled under style pack '{compiled}' but the "
+                f"project now selects '{current}' — theme/accent/grade still "
+                f"reflect the old pack; re-run the brief step to recompile")
+    return None

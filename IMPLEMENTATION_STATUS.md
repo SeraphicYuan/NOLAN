@@ -4,6 +4,25 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Meta-style: the three caveats closed (2026-07-08)
+
+- **Creation-time selection**: /process gains a "Style pack" dropdown
+  (GET /api/style-packs); process_essay validates the id LOUDLY and writes
+  `style_pack:` into project.yaml — the choice lands where it bites (every
+  authoring step reads it).
+- **Assets gen-bias wired**: AssetEngine.from_config reads
+  visual.gen_prompt_bias / cutout_prompt_bias from the project's pack;
+  _generate appends the bias to comfyui_prompt exactly once (idempotent),
+  cutout variant when the scene is authored cutout-collage — regenerated
+  subjects come back object-on-plain-background.
+- **Brief↔pack drift is loud**: style_packs.pack_drift compares the brief's
+  compiled pack id against the current selection; render_premium warns
+  (the aidc cyan-accent lesson).
+- **Graphical foley wired**: soundtrack step stamps FOLEY_CUES when the
+  pack sets visual.graphical_foley (before the narrative sfx pass — cues
+  never overwritten). editorial-print sets all four new fields.
+  validate_pack covers them. +6 tests; suite 1054.
+
 ## Meta-style P2-P5: editorial-print pack in the EXISTING dialect + A/B verified (2026-07-07)
 
 Near-miss caught: a parallel styles/ loader was underway before discovering

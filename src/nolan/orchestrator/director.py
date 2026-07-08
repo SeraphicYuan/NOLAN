@@ -519,15 +519,23 @@ class Director:
             return _write_checkpoint(self.project_path, record.step_num, [note])
 
         try:
-            from nolan.audio_mix import author_sfx_cues
+            from nolan.audio_mix import author_sfx_cues, stamp_graphical_foley
             plan_path = self.project_path / "scene_plan.json"
             plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            # Style-pack graphical foley (editorial register): charts scratch
+            # like pencils, stats land like stamps — deterministic cue
+            # defaults for graphic scenes, BEFORE the narrative pass so an
+            # authored/narrative cue is never overwritten.
+            _foley = 0
+            if cfg["sfx"] and (self._style_pack().get("visual")
+                               or {}).get("graphical_foley"):
+                _foley = stamp_graphical_foley(plan)
             # SFX auto-cue pass (the decision layer the placement layer was
             # waiting for): ambient cues from narration content — fire
             # crackle under the burning scroll, distant waves under the
             # voyage. Persisted to the plan (human-editable, reviewable).
             _cues = author_sfx_cues(plan) if cfg["sfx"] else []
-            if _cues:
+            if _cues or _foley:
                 plan_path.write_text(
                     json.dumps(plan, indent=2, ensure_ascii=False),
                     encoding="utf-8")

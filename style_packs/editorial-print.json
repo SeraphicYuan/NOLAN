@@ -44,7 +44,10 @@
         "amp": 3
       },
       "edge": "boil"
-    }
+    },
+    "gen_prompt_bias": "flat editorial illustration, muted newsprint palette, halftone shading",
+    "cutout_prompt_bias": "single object, studio photograph, plain light background, centered, no scenery",
+    "graphical_foley": true
   },
   "format": {
     "hook": "paradox",

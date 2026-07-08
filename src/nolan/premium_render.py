@@ -712,9 +712,13 @@ def render_premium(project_path: Path, *, theme: str = None,
     # style pack (nolan/style_packs.py, quality program step 6): the pack's
     # themes/grade already flow through the brief compiler — here we take only
     # the pack's TEXTURE defaults for graphic steps (authored scene.texture wins)
-    from nolan.style_packs import pack_for
+    from nolan.style_packs import pack_drift, pack_for
     style_texture = ((pack_for(project_path) or {}).get("visual")
                      or {}).get("texture_defaults") or {}
+    _drift = pack_drift(project_path, brief)
+    if _drift:
+        logger.warning("premium: %s", _drift)
+        print(f"WARNING: {_drift}")
     if theme is None:
         theme, accent = resolve_render_look(meta, brief)
     if gate is None:

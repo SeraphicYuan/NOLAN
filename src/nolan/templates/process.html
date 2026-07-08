@@ -46,6 +46,11 @@
         <select id="styleSelect"><option value="">— default voice —</option></select>
         <div class="hint">Write the narration in a learned style. Build them in <a href="/script-styles" style="color:inherit;">Script Styles</a>.</div>
       </div>
+      <div class="field" style="margin-top:12px;">
+        <label>Style pack (the show's design system)</label>
+        <select id="packSelect"><option value="">— auto (template match / default) —</option></select>
+        <div class="hint">One coherent look + editing grammar across every step: themes, motion, slides, texture, pacing. Chosen here because authoring reads it.</div>
+      </div>
       <div style="margin-top:16px;">
         <button class="btn" id="go" onclick="run()">Generate project</button>
       </div>
@@ -76,6 +81,15 @@
         sel.appendChild(o);
       });
     }).catch(function () {});
+    // Style packs (meta-style): the per-show design system + editing grammar.
+    fetch("/api/style-packs").then(function (r) { return r.json(); }).then(function (data) {
+      var sel = document.getElementById("packSelect");
+      (data.packs || []).forEach(function (p) {
+        var o = document.createElement("option");
+        o.value = p.id; o.textContent = p.id + (p.description ? " — " + p.description.slice(0, 60) : "");
+        sel.appendChild(o);
+      });
+    }).catch(function () {});
 
     function run() {
       var btn = document.getElementById("go");
@@ -85,7 +99,8 @@
         project_name: document.getElementById("project").value,
         essay_text: document.getElementById("essay").value,
         skip_scenes: document.getElementById("skipScenes").checked,
-        style_id: document.getElementById("styleSelect").value || null
+        style_id: document.getElementById("styleSelect").value || null,
+        style_pack: document.getElementById("packSelect").value || null
       }, {
         into: document.getElementById("job"),
         onDone: function (job) {

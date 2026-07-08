@@ -247,3 +247,72 @@ def test_pack_edge_reaches_collage_but_never_text(tmp_path, monkeypatch):
     assert "edge" not in steps[0]                # text: crisp
     assert steps[0]["jitter"]["amp"] == 3.0
     assert steps[1]["edge"] == "boil"            # collage: textured
+
+
+# --- advisory sections wired (gen bias, foley, drift, creation) --------------------
+
+def test_gen_bias_reaches_generation_idempotently(tmp_path):
+    from nolan.asset_engine import AssetEngine, EngineConfig
+
+    class _S:                                       # minimal Scene stand-in
+        comfyui_prompt = "a burning archive"
+        visual_description = ""
+        narration_excerpt = ""
+        motion_spec = None
+
+    eng = AssetEngine(EngineConfig(enable_generation=True))
+    eng.gen_prompt_bias = "halftone shading"
+    eng.cutout_prompt_bias = "single object, plain background"
+    s = _S()
+    assert eng._generate(s).startswith("generated")
+    assert s.comfyui_prompt.endswith(", halftone shading")
+    eng._generate(s)                                # idempotent
+    assert s.comfyui_prompt.count("halftone shading") == 1
+    s2 = _S()
+    s2.motion_spec = {"effect": "cutout-collage", "content": {}}
+    eng._generate(s2)
+    assert "plain background" in s2.comfyui_prompt  # cutout variant wins
+
+
+def test_engine_from_config_reads_pack_bias(tmp_path, monkeypatch):
+    from nolan.asset_engine import AssetEngine
+    proj = tmp_path / "p"
+    proj.mkdir()
+    (proj / "project.yaml").write_text("style_pack: editorial-print\n",
+                                       encoding="utf-8")
+
+    class _Cfg:                                     # bare config double
+        indexing = type("I", (), {"database": ""})()
+
+    eng = AssetEngine.from_config(_Cfg(), project_path=proj)
+    assert "halftone" in eng.gen_prompt_bias
+    assert "plain light background" in eng.cutout_prompt_bias
+
+
+def test_pack_drift_warns_only_on_mismatch(tmp_path):
+    from nolan.style_packs import pack_drift
+    proj = tmp_path / "p"
+    proj.mkdir()
+    (proj / "project.yaml").write_text("style_pack: editorial-print\n",
+                                       encoding="utf-8")
+    warn = pack_drift(proj, {"pack": "explainer-punchy"})
+    assert warn and "editorial-print" in warn and "explainer-punchy" in warn
+    assert pack_drift(proj, {"pack": "editorial-print"}) is None
+    assert pack_drift(proj, {}) is None             # pre-pack brief: silent
+
+
+def test_foley_flag_and_soundtrack_consumer():
+    from nolan.style_packs import get_pack
+    assert get_pack("editorial-print")["visual"]["graphical_foley"] is True
+    src = (REPO / "src/nolan/orchestrator/director.py").read_text(encoding="utf-8")
+    assert "stamp_graphical_foley" in src and "graphical_foley" in src
+
+
+def test_creation_selector_writes_project_yaml():
+    """/api/process accepts style_pack; process_essay validates + writes it."""
+    src = (REPO / "src/nolan/webui/operations.py").read_text(encoding="utf-8")
+    assert "style_pack" in src and "unknown style_pack" in src
+    route = (REPO / "src/nolan/webui/routes/ingest_process.py").read_text(encoding="utf-8")
+    assert "style_pack" in route and "/api/style-packs" in route
+    page = (REPO / "src/nolan/templates/process.html").read_text(encoding="utf-8")
+    assert "packSelect" in page

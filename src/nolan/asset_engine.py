@@ -112,6 +112,12 @@ class AssetEngine:
         # rerun, not an edit. A tier hit whose asset is already claimed is
         # treated as a MISS (logged) and escalation continues.
         self._used: set = set()
+        # Style-pack generation bias (meta-style program): appended to every
+        # scene routed to generation. Set by from_config(project_path); the
+        # cutout variant applies when the scene is authored cutout-collage,
+        # so re-generated subjects come back object-on-plain-background.
+        self.gen_prompt_bias: str = ""
+        self.cutout_prompt_bias: str = ""
 
     def _claim(self, key) -> bool:
         """True if `key` was free (now claimed); False if already used."""
@@ -311,6 +317,15 @@ class AssetEngine:
         if not self.cfg.enable_generation:
             return f"none(gen-disabled{':' + reason if reason else ''})"
         scene.comfyui_prompt = scene.comfyui_prompt or scene.visual_description or scene.narration_excerpt
+        # style-pack prompt bias, appended once (idempotent across re-runs)
+        ms = getattr(scene, "motion_spec", None)
+        if isinstance(scene, dict):                       # orchestrator dicts
+            ms = scene.get("motion_spec")
+        is_cutout = isinstance(ms, dict) and ms.get("effect") == "cutout-collage"
+        bias = (self.cutout_prompt_bias if is_cutout and self.cutout_prompt_bias
+                else self.gen_prompt_bias)
+        if bias and scene.comfyui_prompt and bias not in scene.comfyui_prompt:
+            scene.comfyui_prompt = f"{scene.comfyui_prompt}, {bias}"
         tag = f"generated({reason})" if reason else "generated"
         return tag
 
@@ -346,7 +361,7 @@ class AssetEngine:
                 db = Path(getattr(nolan_config.indexing, "database", "")).expanduser()
             except Exception:
                 db = None
-        return cls(
+        engine = cls(
             cfg,
             search_fn=cls._default_search_fn(nolan_config, db, project_id),
             # The project imagelib lives at projects/<id>/imagelib — an explicit
@@ -360,6 +375,14 @@ class AssetEngine:
             shortlist_fn=(cls._default_shortlist_fn(cfg, project_path)
                           if cfg.enable_shortlist and project_path else None),
         )
+        if project_path is not None:
+            # style-pack generation bias (visual.gen_prompt_bias /
+            # cutout_prompt_bias) — the assets section's deterministic consumer
+            from nolan.style_packs import pack_for
+            v = pack_for(project_path).get("visual") or {}
+            engine.gen_prompt_bias = str(v.get("gen_prompt_bias") or "")
+            engine.cutout_prompt_bias = str(v.get("cutout_prompt_bias") or "")
+        return engine
 
     @staticmethod
     def record_candidates(scenes, *, project_id: Optional[str] = None,

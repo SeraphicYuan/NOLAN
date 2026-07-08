@@ -83,8 +83,17 @@ def register(app, ctx):
             config=load_config(), essay_text=essay_text, project_name=project_name,
             skip_scenes=bool(body.get("skip_scenes", False)),
             style_id=(body.get("style_id") or None),
+            style_pack=(body.get("style_pack") or None),
         )
         return {"job_id": job.id, "type": "process", "project": project_name}
+
+    @app.get("/api/style-packs")
+    async def api_style_packs():
+        """The style-pack registry, for creation-time selection."""
+        from nolan.style_packs import load_packs
+        return {"packs": [{"id": p["id"],
+                           "description": p.get("description", "")}
+                          for p in load_packs().values()]}
 
     # ==================== Publish (source -> beautiful HTML article) ====================
 

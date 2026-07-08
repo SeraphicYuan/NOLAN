@@ -151,7 +151,8 @@ async def ingest(job, *, config, db_path: Path, source_type: str, target: str,
 
 
 async def process_essay(job, *, config, essay_text: str, project_name: str,
-                        skip_scenes: bool = False, style_id: str = None):
+                        skip_scenes: bool = False, style_id: str = None,
+                        style_pack: str = None):
     """Run the authoring pipeline: parse essay -> script -> scene plan.
 
     Writes into projects/<project_name>/ (essay.md, script.md, scene_plan.json).
@@ -173,6 +174,27 @@ async def process_essay(job, *, config, essay_text: str, project_name: str,
     (output_path / "assets" / "matched").mkdir(parents=True, exist_ok=True)
     essay_path = output_path / "essay.md"
     essay_path.write_text(essay_text, encoding="utf-8")
+
+    # Style pack chosen at CREATION (where it bites: every downstream
+    # authoring step — brief, slides, motion, tempo — reads it). Unknown
+    # ids are refused loudly, not silently defaulted.
+    if style_pack:
+        from nolan.style_packs import load_packs
+        if style_pack not in load_packs():
+            raise RuntimeError(f"unknown style_pack '{style_pack}' — "
+                               f"have: {sorted(load_packs())}")
+        import yaml as _yaml
+        pyaml = output_path / "project.yaml"
+        meta = {}
+        if pyaml.exists():
+            try:
+                meta = _yaml.safe_load(pyaml.read_text(encoding="utf-8")) or {}
+            except Exception:
+                meta = {}
+        meta["style_pack"] = style_pack
+        pyaml.write_text(_yaml.safe_dump(meta, sort_keys=False,
+                                         allow_unicode=True), encoding="utf-8")
+        job.log(f"Style pack: {style_pack} (written to project.yaml)")
 
     llm = create_text_llm(config)
 
