@@ -633,9 +633,15 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                 raise PremiumIneligible(str(exc))
             # style-pack texture defaults: GRAPHIC steps only (footage and
             # camera-stills keep their own motion), and never over an
-            # authored scene.texture — locks beat pack priors
+            # authored scene.texture — locks beat pack priors.
+            # LEGIBILITY RULE (aidc A/B feedback): edge displacement warps
+            # glyphs, so TEXT-led steps (the contact gate's classification —
+            # one owner) get jitter only; boil/rough is reserved for
+            # collage/imagery steps. An authored scene.texture still wins
+            # verbatim — a human may force boil onto text deliberately.
             if (texture_defaults and not scene.get("texture")
                     and block not in ("Video", "ArtworkStage", "StillMotion")):
+                from nolan.flows.gate.contact import _TEXT_BLOCKS
                 from nolan.texture import validate_texture
                 tex, terrs = validate_texture(texture_defaults)
                 if terrs:
@@ -643,7 +649,7 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                         f"style texture_defaults invalid: {'; '.join(terrs)}")
                 if tex.get("jitter"):
                     step["jitter"] = tex["jitter"]
-                if tex.get("edge"):
+                if tex.get("edge") and block not in _TEXT_BLOCKS:
                     step["edge"] = tex["edge"]
             steps.append(step)
             f_prev = f_prev + sub_frames

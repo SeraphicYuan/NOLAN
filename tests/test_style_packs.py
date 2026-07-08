@@ -192,7 +192,7 @@ def test_editorial_print_pack_ships_and_validates():
     v = pack["visual"]
     assert "cutout-collage" in v["motion_preferred"]
     assert v["texture_defaults"]["edge"] == "boil"
-    assert v["grade"]["paper"] == 0.7
+    assert 0 < v["grade"]["paper"] <= 0.4   # felt, not seen (legibility retune)
 
 
 def test_texture_defaults_validation_is_loud():
@@ -223,6 +223,27 @@ def test_premium_applies_pack_texture_to_graphic_steps_only(tmp_path, monkeypatc
         section_start=0.0, out_name="o.mp4", work_dir=tmp_path,
         texture_defaults={"jitter": {"fps": 10, "amp": 4}, "edge": "boil"})
     steps = job["props"]["steps"]
-    assert steps[0]["jitter"] == {"fps": 10, "amp": 4.0} and steps[0]["edge"] == "boil"
+    # LEGIBILITY RULE: Kinetic is a TEXT-led step -> jitter yes, edge NO
+    assert steps[0]["jitter"] == {"fps": 10, "amp": 4.0} and "edge" not in steps[0]
     assert "jitter" not in steps[1] and "edge" not in steps[1]
     assert steps[2]["jitter"] == {"fps": 6, "amp": 2.0} and "edge" not in steps[2]
+
+
+def test_pack_edge_reaches_collage_but_never_text(tmp_path, monkeypatch):
+    """Boil lands on collage/imagery steps; glyph steps stay crisp."""
+    from nolan import premium_render as pr
+    monkeypatch.setattr(pr, "_slice_wav", lambda *a, **k: tmp_path / "x.wav")
+    monkeypatch.setattr(pr, "_step_words", lambda *a, **k: ([], []))
+    monkeypatch.setattr(pr, "_wav_duration", lambda w: 4.0)
+    monkeypatch.setattr(pr, "_expand_shots", lambda scene, *a, **k: [
+        ({"t": "Kinetic", "c": "CutoutCollage"}[scene["id"]], {}, 60)])
+    scenes = [{"id": "t", "start_seconds": 0.0, "end_seconds": 2.0},
+              {"id": "c", "start_seconds": 2.0, "end_seconds": 4.0}]
+    job = pr.build_section_job(
+        "sec", scenes, project_path=tmp_path, section_wav=tmp_path / "s.wav",
+        section_start=0.0, out_name="o.mp4", work_dir=tmp_path,
+        texture_defaults={"jitter": {"fps": 10, "amp": 3}, "edge": "boil"})
+    steps = job["props"]["steps"]
+    assert "edge" not in steps[0]                # text: crisp
+    assert steps[0]["jitter"]["amp"] == 3.0
+    assert steps[1]["edge"] == "boil"            # collage: textured
