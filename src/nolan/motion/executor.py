@@ -222,4 +222,40 @@ def chapter_step_for_spec(spec: Dict[str, Any], project_path: Path):
     if spec.get("accent"):
         props["accent"] = spec["accent"]
 
-    return _CHAPTER_TARGETS[target], _abs_media(props, Path(project_path))
+    return _CHAPTER_TARGETS[target], _verify_media(
+        _abs_media(props, Path(project_path)), Path(project_path),
+        spec.get("effect", target))
+
+
+def _verify_media(props: Any, project_path: Path, effect_id: str) -> Any:
+    """MEDIA-PATH GATE (2026-07-07 aidc incident: motion_design authored a
+    bare filename; staging refused mid-render). Every media-extension string
+    must resolve to a real file NOW — a bare/mislocated basename that exists
+    exactly once under assets/ is healed to its real path; anything else
+    raises with the effect and prop named. Runs inside chapter_step_for_spec,
+    so the director's authoring gate, the Inspector's intent dry-run and the
+    render itself all share the one check."""
+    problems: list = []
+
+    def walk(o, key=""):
+        if isinstance(o, dict):
+            return {k: walk(v, k) for k, v in o.items()}
+        if isinstance(o, list):
+            return [walk(v, key) for v in o]
+        if isinstance(o, str) and o.lower().endswith(_MEDIA_EXTS):
+            p = Path(o)
+            if p.is_file():
+                return str(p)
+            hits = sorted({str(h) for h in
+                           Path(project_path).glob(f"assets/**/{p.name}")})
+            if len(hits) == 1:
+                return hits[0]
+            problems.append(f"{key or 'media'}={o} "
+                            + (f"ambiguous ({len(hits)} matches)" if hits
+                               else "not found"))
+        return o
+
+    out = walk(props)
+    if problems:
+        raise ValueError(f"{effect_id}: media unresolved — " + "; ".join(problems))
+    return out

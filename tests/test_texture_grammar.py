@@ -151,3 +151,30 @@ def test_texture_editable_from_the_ui():
     from nolan.iterate.revise import editable_fields
     assert "texture" in editable_fields("segment")
     assert "texture" in editable_fields("orchestrator")
+
+
+# --- media-path gate (aidc bare-filename incident) ----------------------------------
+
+def test_media_gate_heals_bare_basename_and_refuses_missing(tmp_path):
+    from nolan.motion.executor import chapter_step_for_spec
+    gen = tmp_path / "assets" / "generated"
+    gen.mkdir(parents=True)
+    (gen / "img_018.png").write_bytes(b"x")
+    # bare basename -> healed to the real assets path
+    block, props = chapter_step_for_spec(
+        {"effect": "stat-over", "content": {"image": "img_018.png",
+                                            "value": 800, "caption": "c"}}, tmp_path)
+    assert props["background"].endswith("img_018.png")
+    assert "assets" in props["background"]
+    # missing file -> loud, names the prop
+    with pytest.raises(ValueError, match="media unresolved"):
+        chapter_step_for_spec(
+            {"effect": "stat-over", "content": {"image": "ghost.png",
+                                                "value": 1, "caption": "c"}}, tmp_path)
+    # ambiguous basename -> refused, not guessed
+    (tmp_path / "assets" / "art").mkdir()
+    (tmp_path / "assets" / "art" / "img_018.png").write_bytes(b"y")
+    with pytest.raises(ValueError, match="ambiguous"):
+        chapter_step_for_spec(
+            {"effect": "stat-over", "content": {"image": "img_018.png",
+                                                "value": 1, "caption": "c"}}, tmp_path)
