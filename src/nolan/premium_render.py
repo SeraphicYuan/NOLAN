@@ -557,7 +557,8 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                       fps: int = 30,
                       section_words: List[Dict[str, Any]] = None,
                       j_cut_frames: int = 12,
-                      captions: bool = False) -> Dict[str, Any]:
+                      captions: bool = False,
+                      texture_defaults: Dict[str, Any] = None) -> Dict[str, Any]:
     """A FLOW-shaped Chapter job for one beat-anchored section.
 
     The section WAV is the timing authority: scene windows are normalized
@@ -630,6 +631,20 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
                 _stamp_texture(step, scene)
             except ValueError as exc:
                 raise PremiumIneligible(str(exc))
+            # style-pack texture defaults: GRAPHIC steps only (footage and
+            # camera-stills keep their own motion), and never over an
+            # authored scene.texture — locks beat pack priors
+            if (texture_defaults and not scene.get("texture")
+                    and block not in ("Video", "ArtworkStage", "StillMotion")):
+                from nolan.texture import validate_texture
+                tex, terrs = validate_texture(texture_defaults)
+                if terrs:
+                    raise PremiumIneligible(
+                        f"style texture_defaults invalid: {'; '.join(terrs)}")
+                if tex.get("jitter"):
+                    step["jitter"] = tex["jitter"]
+                if tex.get("edge"):
+                    step["edge"] = tex["edge"]
             steps.append(step)
             f_prev = f_prev + sub_frames
     return {"out": out_name, "theme": theme, "fps": fps,
@@ -688,6 +703,12 @@ def render_premium(project_path: Path, *, theme: str = None,
     from nolan.project_brief import load_brief, resolve_render_look
     brief = load_brief(project_path)
     accent = None
+    # style pack (nolan/style_packs.py, quality program step 6): the pack's
+    # themes/grade already flow through the brief compiler — here we take only
+    # the pack's TEXTURE defaults for graphic steps (authored scene.texture wins)
+    from nolan.style_packs import pack_for
+    style_texture = ((pack_for(project_path) or {}).get("visual")
+                     or {}).get("texture_defaults") or {}
     if theme is None:
         theme, accent = resolve_render_look(meta, brief)
     if gate is None:
@@ -776,7 +797,8 @@ def render_premium(project_path: Path, *, theme: str = None,
             name, scenes, project_path=project_path, section_wav=wav,
             section_start=sec_start, out_name=f"premium_{i:04d}.mp4",
             work_dir=work, theme=theme, fps=fps, section_words=section_words,
-            j_cut_frames=j_cut, captions=captions)
+            j_cut_frames=j_cut, captions=captions,
+            texture_defaults=style_texture)
         if accent:                       # brief accent override (staged by stage.mjs)
             job["accent"] = accent
         job["lang"] = lang               # font-display face: en vs cn (stage.mjs)

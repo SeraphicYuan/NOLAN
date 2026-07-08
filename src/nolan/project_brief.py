@@ -137,7 +137,7 @@ async def _extract_descriptors(guide: str, llm) -> Dict[str, Any]:
     out["pacing"] = {"avg_scene_s_min": lo, "avg_scene_s_max": hi}
     g = out.get("grade") if isinstance(out.get("grade"), dict) else {}
     grade = {"grade": g.get("grade") if g.get("grade") in GRADES else "none"}
-    for k in ("bloom", "grain", "vignette"):
+    for k in ("bloom", "grain", "vignette", "paper"):
         try:
             grade[k] = round(min(1.0, max(0.0, float(g.get(k, 0.0)))), 2)
         except (TypeError, ValueError):
@@ -266,7 +266,7 @@ def validate_brief(brief: Dict[str, Any]) -> List[str]:
         if not isinstance(g, dict) or g.get("grade") not in GRADES:
             problems.append(f"grade.grade must be one of {GRADES}")
         else:
-            for k in ("bloom", "grain", "vignette"):
+            for k in ("bloom", "grain", "vignette", "paper"):
                 v = g.get(k, 0.0)
                 if not isinstance(v, (int, float)) or not 0.0 <= float(v) <= 1.0:
                     problems.append(f"grade.{k} must be 0..1")

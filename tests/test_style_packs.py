@@ -180,3 +180,49 @@ def test_format_rules_shape():
     assert fr["pack"] == "historical-narrative"
     assert fr["hook"] == "mystery-object" and fr["ending"] == "question"
     assert fr["lint"]["object_anchor"] is True
+
+
+# --- editorial-print (meta-style P2) + texture defaults wiring ---------------------
+
+def test_editorial_print_pack_ships_and_validates():
+    from nolan.style_packs import get_pack, validate_pack
+    pack = get_pack("editorial-print")
+    assert pack, "style_packs/editorial-print.json missing"
+    assert validate_pack(pack) == []
+    v = pack["visual"]
+    assert "cutout-collage" in v["motion_preferred"]
+    assert v["texture_defaults"]["edge"] == "boil"
+    assert v["grade"]["paper"] == 0.7
+
+
+def test_texture_defaults_validation_is_loud():
+    from nolan.style_packs import validate_pack
+    errs = validate_pack({"id": "x", "visual": {
+        "texture_defaults": {"jitter": {"fps": 99}, "edge": "wobbly"}}})
+    assert any("texture_defaults" in e and "outside" in e for e in errs)
+    assert any("wobbly" in e for e in errs)
+
+
+def test_premium_applies_pack_texture_to_graphic_steps_only(tmp_path, monkeypatch):
+    """Pack texture reaches kinetic-type steps; footage and authored
+    scene.texture are never touched (locks beat pack priors)."""
+    from nolan import premium_render as pr
+    monkeypatch.setattr(pr, "_slice_wav", lambda *a, **k: tmp_path / "x.wav")
+    monkeypatch.setattr(pr, "_step_words", lambda *a, **k: ([], []))
+    monkeypatch.setattr(pr, "_wav_duration", lambda w: 6.0)
+    monkeypatch.setattr(pr, "_expand_shots", lambda scene, *a, **k: [
+        ({"a": "Kinetic", "b": "Video", "c": "Kinetic"}[scene["id"]], {}, 90)])
+    scenes = [
+        {"id": "a", "start_seconds": 0.0, "end_seconds": 2.0},
+        {"id": "b", "start_seconds": 2.0, "end_seconds": 4.0},
+        {"id": "c", "start_seconds": 4.0, "end_seconds": 6.0,
+         "texture": {"jitter": {"fps": 6, "amp": 2}}},
+    ]
+    job = pr.build_section_job(
+        "sec", scenes, project_path=tmp_path, section_wav=tmp_path / "s.wav",
+        section_start=0.0, out_name="o.mp4", work_dir=tmp_path,
+        texture_defaults={"jitter": {"fps": 10, "amp": 4}, "edge": "boil"})
+    steps = job["props"]["steps"]
+    assert steps[0]["jitter"] == {"fps": 10, "amp": 4.0} and steps[0]["edge"] == "boil"
+    assert "jitter" not in steps[1] and "edge" not in steps[1]
+    assert steps[2]["jitter"] == {"fps": 6, "amp": 2.0} and "edge" not in steps[2]

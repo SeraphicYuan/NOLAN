@@ -1,0 +1,23 @@
+{
+  "id": "editorial-print",
+  "description": "Explanatory-journalism print collage (the Vox-inspired register): cream newsprint field, ink serif type, stop-motion jitter on graphics, torn-paper edges, cutout subjects as desk evidence.",
+  "matches": [],
+  "visual": {
+    "themes_preferred": ["newsroom", "monochrome-print", "kraft-paper"],
+    "motion_preferred": ["kinetic-text", "cutout-collage", "annotate-stat", "route-map", "bar-compare", "typewriter", "stat-over", "still-motion"],
+    "motion_avoid": ["camera-shake"],
+    "templates_preferred": ["document_highlight", "statistic", "news_headline", "timeline", "quote", "chapter_card"],
+    "transition_bias": "hard cuts on evidence beats; a dissolve only when the argument breathes",
+    "grade": {"grade": "warm", "bloom": 0.0, "grain": 0.25, "vignette": 0.3, "paper": 0.7},
+    "pacing": "punchy",
+    "texture_defaults": {"jitter": {"fps": 10, "amp": 4}, "edge": "boil"}
+  },
+  "format": {
+    "hook": "paradox",
+    "hook_rule": "open on the concrete paradox or artifact, then the question it forces; plant one detail the ending pays off",
+    "acts": ["hook", "evidence", "mechanism", "complication", "payoff"],
+    "recurring": ["cutout-collage introduces each NAMED object/person as desk evidence", "stats lock with a physical thud (graphical foley)"],
+    "ending": "payoff",
+    "lint": {"hook_question": true, "section_out_tension": true}
+  }
+}

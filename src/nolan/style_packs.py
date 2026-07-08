@@ -122,6 +122,13 @@ def validate_pack(pack: Dict[str, Any]) -> List[str]:
             errors.append(f"{pack.get('id')}: visual.grade.grade must be one "
                           f"of {GRADES}")
 
+    tex = v.get("texture_defaults")
+    if tex is not None:
+        from nolan.texture import validate_texture
+        _, terrs = validate_texture(tex)
+        errors.extend(f"{pack.get('id')}: visual.texture_defaults: {e}"
+                      for e in terrs)
+
     pacing = v.get("pacing")
     if pacing is not None:
         from nolan.tempo_plan import _PROFILES

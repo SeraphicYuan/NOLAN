@@ -4,6 +4,35 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Meta-style P2-P5: editorial-print pack in the EXISTING dialect + A/B verified (2026-07-07)
+
+Near-miss caught: a parallel styles/ loader was underway before discovering
+`nolan/style_packs.py` (quality program step 6) already IS the meta-style
+system (brief theme promotion, motion/slides prompt guidance, tempo bias,
+retention-linter format rules, project.yaml `style_pack` selector). The
+parallel dialect was deleted; new work merged into the one system:
+
+- **style_packs/editorial-print.json** — the Vox-inspired register in the
+  existing schema: newsroom/monochrome-print/kraft-paper themes preferred,
+  motion prefer incl. cutout-collage, document_highlight-led templates,
+  warm grade + paper 0.7/grain 0.25/vignette 0.3, punchy pacing, paradox
+  hook + evidence acts, and NEW `visual.texture_defaults`
+  {jitter 10fps/4px, edge boil}.
+- **Schema extension**: validate_pack gains texture_defaults (via
+  nolan.texture.validate_texture — one vocabulary owner); brief grade
+  vocabulary gains `paper` (normalizer + gate).
+- **Wiring**: render_premium reads pack_for(project).visual.texture_defaults
+  and build_section_job applies them to GRAPHIC steps only (never Video/
+  ArtworkStage/StillMotion, never over authored scene.texture — locks beat
+  pack priors; test-pinned).
+- **P5 A/B on aidc-2beat-test** (user-chosen vehicle): same 2 VO beats
+  rendered under explainer-punchy vs editorial-print — neon-blue stat card
+  became cream-paper serif numerals with boiled edges, deckled border, warm
+  vignette; footage steps correctly untextured. Known residue: the copy's
+  pre-pack brief kept the cyan accent — full coherence needs the brief
+  compiled WITH the pack (existing brief-compiler wiring; not re-run here).
+  Suite: 1047 passed.
+
 ## Meta-style P0+P1: archival-canvas archaeology + texture grammar + cutout collage (2026-07-07)
 
 Meta Style Select program (docs: user pivot; deep-dive digested from the
