@@ -30,6 +30,7 @@ import { Typewriter } from "./Typewriter";
 import { BeforeAfter } from "./BeforeAfter";
 import { WhipTransition } from "./WhipTransition";
 import { PictureInPicture } from "./PictureInPicture";
+import { CutoutCollage } from "./CutoutCollage";
 
 export const COMPS: Record<string, React.FC<any>> = {
   Kinetic: KineticText,
@@ -57,4 +58,5 @@ export const COMPS: Record<string, React.FC<any>> = {
   BeforeAfter,
   WhipTransition,
   PictureInPicture,
+  CutoutCollage,
 };

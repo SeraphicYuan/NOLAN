@@ -20,7 +20,7 @@ from typing import Optional
 # `still_treatment` is the human camera lock (STILL_TREATMENTS vocabulary;
 # assign_still_treatments honors it verbatim).
 _BASE = {"narration_excerpt", "visual_description", "visual_type", "duration",
-         "assets", "transition", "shots", "still_treatment"}
+         "assets", "transition", "shots", "still_treatment", "texture"}
 _SEGMENT = _BASE | {"search_query", "comfyui_prompt", "motion_spec"}
 _ORCH = _BASE | {"layout_spec", "motion_spec", "search_query", "comfyui_prompt"}
 

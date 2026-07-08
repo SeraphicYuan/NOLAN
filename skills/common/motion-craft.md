@@ -127,6 +127,12 @@ beat; stills held >3s get still-motion by default; cards are punctuation.
 
 **When:** The default life-giver for any single still held >3s. Treatment by mood: ken-burns for narrative pushes, parallax for depth drama, rack-focus for a revelation, atmospheric for tone holds.
 
+## cutout-collage
+
+**What:** Stage a background-removed SUBJECT (rembg cutout, auto-derived) over a paper-toned field with a contact shadow and a slow editorial scale-in — the print-collage shot.
+
+**When:** Isolating ONE thing the narration names — a server, a person, an artifact — as physical evidence on the editor's desk. Needs a clear foreground subject; for full-frame art or landscapes use still-motion instead.
+
 ## split-screen
 
 **What:** The relational/dialectical collision: two stills side by side (left|right) with opposing slow pushes, a divider, and optional labels — shot A + shot B make a third meaning.

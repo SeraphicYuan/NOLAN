@@ -57,6 +57,7 @@ FIXTURES: dict[str, dict] = {
     "photo-grid": {"content": {"cards": [{"src": p} for p in [I1, I2, I3, I1, I2, I3, I1, I2, I3]], "cols": 3, "rows": 3}},
     "still-motion": {"content": {"image": I1, "treatment": "ken-burns-in"}},
     "split-screen": {"content": {"left": I1, "right": I2, "left_label": "Then", "right_label": "Now"}},
+    "cutout-collage": {"content": {"image": I1, "label": "the artifact"}, "style": {"bg": "paper"}},
     "stat-over": {"content": {"image": I1, "value": 50000, "caption": "in the stadium"}},
     "clip-montage": {"content": {"clips": [{"path": I1, "kind": "image", "duration": 1.2}, {"path": I2, "kind": "image", "duration": 1.2}, {"path": I3, "kind": "image", "duration": 1.2}]}},
     # ---- the 7 gap effects ----

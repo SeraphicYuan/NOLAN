@@ -29,7 +29,10 @@ _MEDIA_BLOCKS = {"ArtworkStage", "PhotoMontage", "PhotoGrid", "Flashback",
                  "PhotoMontagePro", "PhotoGridPro",
                  # gap effects (2026-07): full-bleed imagery / device mockups
                  "ScreenFrame", "CameraShake", "BeforeAfter", "WhipTransition",
-                 "PictureInPicture"}
+                 "PictureInPicture",
+                 # editorial-print collage: subject imagery + deliberate edge
+                 # displacement (texture grammar) — edge brightness is the shot
+                 "CutoutCollage"}
 
 # Text/graphic steps: the overflow heuristic APPLIES (bright pixels at the
 # frame edge really are escaping content). Every Chapter-hostable step name

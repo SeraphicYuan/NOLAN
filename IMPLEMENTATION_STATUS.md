@@ -4,6 +4,37 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Meta-style P0+P1: archival-canvas archaeology + texture grammar + cutout collage (2026-07-07)
+
+Meta Style Select program (docs: user pivot; deep-dive digested from the
+editorial-video-essay technical guide). P0: styles/archival-canvas/STYLE.md —
+grounded archaeology of the incumbent house style per spine step (control
+specimen; schema comes AFTER the second style exists, per review). P1 gap-fill
+(style-agnostic capabilities, module contract each):
+
+- **texture grammar** (`nolan/texture.py`, ONE authored scene field):
+  `scene.texture = {jitter:{fps 4-15, amp 0-12}, edge: rough|boil}` —
+  build_section_job stamps it per step (invalid = PremiumIneligible, named);
+  Chapter.tsx executes: Freeze-quantized time + seeded nudge (stop-motion
+  "on twos"), feTurbulence+feDisplacementMap torn-paper outlines; audio +
+  captions stay OUTSIDE the wrapper (narration/word-sync exact); AmbientDrift
+  yields to jitter. PLAN_FIELD_CONSUMERS + iterate whitelist wired.
+- **PostFX `paper`**: procedural paper-fiber multiply layer (static seed)
+  beside grade/bloom/grain/vignette — flows from brief.grade verbatim.
+- **cutout-collage** (user ask: Vox object cutouts): registry effect +
+  CutoutCollage comp (subject over paper field, contact shadow, museum tag,
+  2s eased scale-in) + executor pre-pass rembg cutout (sidecar-cached
+  `.fg.png`; no subject = loud ValueError). Spike showed subject selection is
+  content-dependent — the editorial pack should generate object-on-plain-bg
+  stills for this effect.
+- **graphical foley** (`audio_mix.FOLEY_CUES` + `stamp_graphical_foley`):
+  chart→pencil, stat→stamp thud, kinetic→typewriter, collage→paper slide;
+  never overwrites authored cues; keys honesty-tested against both registries.
+- Catalog followers updated (the tests caught each): motion-craft.md,
+  preview fixtures, contact-gate _MEDIA_BLOCKS.
+  tests/test_texture_grammar.py (11). Suite: 1044. Visual spike verified
+  (boiled kinetic type + paper/grain + real rembg cutout; frames inspected).
+
 ## Pipeline-flag fixes: lane routing, loud fallback, staging race, manifest v2 (2026-07-07)
 
 The phases-1-3 e2e verification degraded aeneid's premium final through the

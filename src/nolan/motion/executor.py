@@ -133,6 +133,7 @@ _CHAPTER_TARGETS = {
     "ScreenFrame": "ScreenFrame", "CameraShake": "CameraShake", "BarRace": "BarRace",
     "Typewriter": "Typewriter", "BeforeAfter": "BeforeAfter",
     "WhipTransition": "WhipTransition", "PictureInPicture": "PictureInPicture",
+    "CutoutCollage": "CutoutCollage",   # editorial-print collage (rembg pre-pass)
 }
 
 _MEDIA_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif",
@@ -191,6 +192,28 @@ def chapter_step_for_spec(spec: Dict[str, Any], project_path: Path):
         props = dict(content)
         key = "video" if str(media).lower().endswith((".mp4", ".mov", ".webm", ".m4v")) else "background"
         props[key] = media
+    elif target == "CutoutCollage":
+        # pre-pass: rembg the subject out of content.image (sidecar-cached
+        # next to the source) — the comp receives the CUTOUT, never the raw
+        # still. No subject found = ValueError (named, not a black frame).
+        img = content.pop("image", None)
+        p = Path(img) if img else None
+        if p and not p.is_absolute():
+            p = Path(project_path) / p
+        if not p or not p.is_file():
+            raise ValueError(f"cutout-collage: image not found: {img}")
+        cut = p.with_suffix(".fg.png")
+        if not cut.exists():
+            from nolan.still_motion import _salient
+            _t, fg = _salient(p, want_cutout=True, out_dir=p.parent)
+            if not fg:
+                raise ValueError(
+                    f"cutout-collage: no salient subject in {p.name} — "
+                    "pick a still with a clear foreground subject")
+            cut = Path(fg)
+        props = dict(content)
+        props.update(spec.get("style", {}))
+        props["cutoutSrc"] = str(cut)
     else:
         props = content
         props.update(spec.get("style", {}))

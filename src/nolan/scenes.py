@@ -445,6 +445,7 @@ PLAN_FIELD_CONSUMERS: Dict[str, str] = {
     "motif":             "src/nolan/premium_render.py",   # stateful infographic ref (motion/motifs.py)
     "recipe":            "src/nolan/premium_render.py",   # multi-scene figure role (nolan/recipes.py)
     "still_treatment":   "src/nolan/still_motion.py",     # human camera lock (timeline/Inspector)
+    "texture":           "src/nolan/texture.py",          # stop-motion jitter + rough edges (meta-style)
 }
 
 

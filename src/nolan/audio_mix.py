@@ -598,3 +598,59 @@ def resolve_music_config(project_path: Path) -> Dict[str, Any]:
         (brief or {}).get("music_mood", "") or "")
     cfg["sfx_provider"] = str(meta.get("sfx_provider", "freesound") or "freesound")
     return cfg
+
+
+# --- graphical foley (meta-style program) -----------------------------------------
+# The editorial-print sound signature: graphics get PHYSICAL sounds — a chart
+# draws like a pencil, a stat lands like a stamp, a cutout slides like paper.
+# One data table (kind -> freesound query + level), stamped as ordinary
+# scene.sfx cues so the EXISTING soundtrack/mix path renders them; scenes that
+# already carry an authored cue are never overwritten.
+
+FOLEY_CUES = {
+    # motion_spec effects
+    "bar-compare":   {"query": "pencil writing scratch paper short", "volume": 0.5},
+    "line-chart":    {"query": "pencil writing scratch paper short", "volume": 0.5},
+    "bar-race":      {"query": "pencil writing scratch paper short", "volume": 0.5},
+    "kinetic-text":  {"query": "typewriter single key strike",       "volume": 0.45},
+    "typewriter":    {"query": "typewriter typing short burst",      "volume": 0.45},
+    "stat-over":     {"query": "rubber stamp thud desk",             "volume": 0.55},
+    "annotate-stat": {"query": "rubber stamp thud desk",             "volume": 0.55},
+    "cutout-collage": {"query": "paper slide rustle short",          "volume": 0.45},
+    # layout_spec templates
+    "bar_chart":     {"query": "pencil writing scratch paper short", "volume": 0.5},
+    "line_chart":    {"query": "pencil writing scratch paper short", "volume": 0.5},
+    "statistic":     {"query": "rubber stamp thud desk",             "volume": 0.55},
+    "counter":       {"query": "rubber stamp thud desk",             "volume": 0.55},
+    "document_highlight": {"query": "marker highlighter squeak paper", "volume": 0.45},
+}
+
+
+def stamp_graphical_foley(plan: dict) -> int:
+    """Stamp FOLEY_CUES onto matching scenes lacking an authored sfx cue
+    (in place; returns count). Style packs opt in — this never runs unasked."""
+    stamped = 0
+    for scenes in (plan.get("sections") or {}).values():
+        if not isinstance(scenes, list):
+            continue
+        for s in scenes:
+            if not isinstance(s, dict) or s.get("sfx"):
+                continue
+            kind = None
+            ms = s.get("motion_spec")
+            if isinstance(ms, dict) and ms.get("effect") in FOLEY_CUES:
+                kind = ms["effect"]
+            else:
+                ls = s.get("layout_spec") or {}
+                if isinstance(ls, str):
+                    try:
+                        import json as _json
+                        ls = _json.loads(ls)
+                    except Exception:
+                        ls = {}
+                if isinstance(ls, dict) and ls.get("template") in FOLEY_CUES:
+                    kind = ls["template"]
+            if kind:
+                s["sfx"] = {**FOLEY_CUES[kind], "at": 0.2}
+                stamped += 1
+    return stamped

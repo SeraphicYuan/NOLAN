@@ -622,6 +622,14 @@ def build_section_job(name: str, scenes: List[Dict[str, Any]], *,
             if (shot_idx == 0 and steps
                     and scene.get("transition") in ("dissolve", "fade")):
                 step["transitionIn"] = scene["transition"]
+            # texture grammar (meta-style): scene.texture -> step jitter/edge,
+            # executed by the Chapter wrapper (audio/captions stay outside).
+            # Invalid authoring raises here = the premium gate names it.
+            from nolan.texture import stamp_step as _stamp_texture
+            try:
+                _stamp_texture(step, scene)
+            except ValueError as exc:
+                raise PremiumIneligible(str(exc))
             steps.append(step)
             f_prev = f_prev + sub_frames
     return {"out": out_name, "theme": theme, "fps": fps,

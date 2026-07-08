@@ -1,5 +1,5 @@
 import React from "react";
-import { Series, Audio, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+import { Series, Audio, Freeze, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
 import { BLOCKS } from "./blocks";
 import { COMPS } from "./comps";
 import { Captions } from "./Captions";
@@ -42,6 +42,64 @@ export type ChapterStep = {
   audioSrc?: string;
   durationInFrames: number;
   transitionIn?: "dissolve" | "fade";
+  // texture grammar (nolan/texture.py is the vocabulary owner):
+  jitter?: { fps: number; amp: number };   // stop-motion stutter (posterized time + nudge)
+  edge?: "rough" | "boil";                 // torn-paper outline via SVG displacement
+};
+
+// deterministic pseudo-random in [-1, 1] — renders must be reproducible
+const prand = (seed: number) => {
+  const s = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return (s - Math.floor(s)) * 2 - 1;
+};
+
+// Stop-motion texture: the child subtree sees QUANTIZED time (Freeze), so all
+// its internal animation updates at `jfps` like cel animation on twos/threes,
+// while the wrapper nudges position/rotation once per held frame — the
+// "cut paper under a stop-motion camera" look. Audio + captions are rendered
+// OUTSIDE this wrapper in Chapter, so narration and word-sync stay exact.
+const Jitter: React.FC<{ j?: { fps: number; amp: number }; seed: number; children: React.ReactNode }> = ({ j, seed, children }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  if (!j || !(j.amp > 0) || !(j.fps > 0)) return <>{children}</>;
+  const hold = Math.max(1, Math.round(fps / j.fps));
+  const q = Math.floor(frame / hold) * hold;
+  const step = q / hold;
+  const dx = prand(seed * 7919 + step) * j.amp;
+  const dy = prand(seed * 6197 + step + 0.37) * j.amp;
+  const rot = prand(seed * 3557 + step + 0.71) * j.amp * 0.08;
+  return (
+    <div style={{ width: "100%", height: "100%", transform: `translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px) rotate(${rot.toFixed(3)}deg)` }}>
+      <Freeze frame={q}>{children}</Freeze>
+    </div>
+  );
+};
+
+// Torn-paper outlines: fractal displacement over the step's rendered alpha —
+// the browser-native analog of Turbulent Displace + Roughen Edges. "boil"
+// re-seeds the turbulence on the jitter cadence so the outline undulates.
+const EDGE_SCALE = { rough: 6, boil: 9 } as const;
+
+const Edge: React.FC<{ kind?: "rough" | "boil"; seed: number; jfps?: number; children: React.ReactNode }> = ({ kind, seed, jfps, children }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  if (!kind || !EDGE_SCALE[kind]) return <>{children}</>;
+  const hold = Math.max(1, Math.round(fps / (jfps || 8)));
+  const boilSeed = kind === "boil" ? Math.floor(frame / hold) % 97 : 0;
+  const fid = `edge-${seed}-${kind}`;
+  return (
+    <div style={{ width: "100%", height: "100%", filter: `url(#${fid})` }}>
+      <svg width={0} height={0} style={{ position: "absolute" }}>
+        <defs>
+          <filter id={fid} x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves={2} seed={seed * 13 + boilSeed} result="n" />
+            <feDisplacementMap in="SourceGraphic" in2="n" scale={EDGE_SCALE[kind]} xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+      {children}
+    </div>
+  );
 };
 
 // How a step ENTERS: a short opacity ramp from the theme background.
@@ -97,13 +155,17 @@ export const Chapter: React.FC<{ steps: ChapterStep[]; captions?: boolean; fx?: 
             {s.audioSrc ? <Audio src={staticFile(s.audioSrc)} /> : null}
             {Block ? (
               <TransitionIn kind={s.transitionIn}>
-                <AmbientDrift active={!SELF_MOVING.has(s.block)}>
-                  <Block
-                    {...s.props}
-                    revealFrames={s.revealFrames}
-                    words={s.words ?? []}
-                    durationInFrames={s.durationInFrames}
-                  />
+                <AmbientDrift active={!SELF_MOVING.has(s.block) && !s.jitter}>
+                  <Jitter j={s.jitter} seed={i + 1}>
+                    <Edge kind={s.edge} seed={i + 1} jfps={s.jitter?.fps}>
+                      <Block
+                        {...s.props}
+                        revealFrames={s.revealFrames}
+                        words={s.words ?? []}
+                        durationInFrames={s.durationInFrames}
+                      />
+                    </Edge>
+                  </Jitter>
                 </AmbientDrift>
               </TransitionIn>
             ) : null}

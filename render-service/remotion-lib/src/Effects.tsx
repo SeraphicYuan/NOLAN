@@ -25,11 +25,12 @@ export type PostFXProps = {
   bloom?: number;     // 0..1 — bright-area light bleed
   grain?: number;     // 0..1 — film grain (frame-seeded shimmer)
   vignette?: number;  // 0..1 — darkened edges
+  paper?: number;     // 0..1 — static paper-fiber texture, multiply (editorial-print look)
   children: React.ReactNode;
 };
 
 export const PostFX: React.FC<PostFXProps> = ({
-  id = "pfx", grade = "none", bloom = 0, grain = 0, vignette = 0, children,
+  id = "pfx", grade = "none", bloom = 0, grain = 0, vignette = 0, paper = 0, children,
 }) => {
   const frame = useCurrentFrame();
   const bBlur = bloom * 14;
@@ -66,6 +67,22 @@ export const PostFX: React.FC<PostFXProps> = ({
 
       {/* graded + bloomed scene */}
       <AbsoluteFill style={{ filter: `url(#${id}-main)` }}>{children}</AbsoluteFill>
+
+      {/* paper-fiber texture (STATIC seed — the page doesn't move; multiply
+          embeds the graphics into the sheet like ink into porous paper) */}
+      {paper > 0.001 ? (
+        <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%",
+          mixBlendMode: "multiply", opacity: Math.min(1, paper * 0.5), pointerEvents: "none" }}>
+          <defs>
+            <filter id={`${id}-paper`} x="0" y="0" width="100%" height="100%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.012 0.017" numOctaves={4} seed={7} result="fiber" />
+              <feColorMatrix in="fiber" type="matrix"
+                values="0 0 0 0 0.93  0 0 0 0 0.90  0 0 0 0 0.84  0 0 0 0 1" />
+            </filter>
+          </defs>
+          <rect width="100%" height="100%" filter={`url(#${id}-paper)`} />
+        </svg>
+      ) : null}
 
       {/* film grain overlay (frame-seeded, deterministic) */}
       {grain > 0.001 ? (

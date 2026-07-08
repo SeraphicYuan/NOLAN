@@ -272,6 +272,19 @@ REGISTRY: List[MotionEffect] = [
         shared=[], when_to_use="The default life-giver for any single still held >3s. Treatment by mood: ken-burns for narrative pushes, parallax for depth drama, rack-focus for a revelation, atmospheric for tone holds.",
         duration_default=4.0),
     MotionEffect(
+        "cutout-collage", "remotion", "composition",
+        "Stage a background-removed SUBJECT (rembg cutout, auto-derived) over a "
+        "paper-toned field with a contact shadow and a slow editorial scale-in — "
+        "the print-collage shot.", "CutoutCollage",
+        content=[_p("image", "string", "still whose salient subject becomes the cutout", required=True),
+                 _p("label", "string", "small museum-tag caption under the subject", default="")],
+        style=[_p("bg", "enum", "field behind the subject", values=["paper", "flat"], default="paper"),
+               _p("align", "enum", "where the subject sits", values=["center", "left", "right"], default="center")],
+        shared=[], when_to_use="Isolating ONE thing the narration names — a server, a person, an artifact — "
+        "as physical evidence on the editor's desk. Needs a clear foreground subject; for full-frame art "
+        "or landscapes use still-motion instead.",
+        duration_default=4.0),
+    MotionEffect(
         "split-screen", "remotion", "composition",
         "The relational/dialectical collision: two stills side by side (left|right) with opposing "
         "slow pushes, a divider, and optional labels — shot A + shot B make a third meaning.", "SplitScreen",
