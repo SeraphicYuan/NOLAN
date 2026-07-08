@@ -40,6 +40,7 @@ def test_split_screen_maps_left_right(tmp_path):
 
 
 def test_photo_montage_pro_gets_distinct_key(tmp_path):
+    (tmp_path / "a.jpg").write_bytes(b"x")   # the media gate verifies existence
     block, props = chapter_step_for_spec(
         {"effect": "photo-montage-pro", "backend": "remotion", "target": "PhotoMontage",
          "content": {"cards": [{"src": "a.jpg", "x": 0.3, "y": 0.4}]}},
