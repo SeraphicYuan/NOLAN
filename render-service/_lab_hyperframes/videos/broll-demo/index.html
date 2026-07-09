@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <!--
+      Archetype-B video b-roll proof (Phase 3).
+      Real stock CLIPS (NOLAN pool → assets/videos/) play full-bleed as GROUNDS at the
+      HOST ROOT — the ONLY legal place for <video> (guard ② hard-fails <video> inside a
+      sub-composition). The type overlay + highlighter sweep ride on the MAIN timeline at
+      GLOBAL time. Two beats back-to-back on one video track (no overlap), a Vox statement
+      over each. Framework owns video playback (muted); we drive only transforms/opacity.
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@800;900&family=Inter:wght@600&display=swap');
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0d0d0d; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; container-type: size;
+              font-family: "Libre Franklin", sans-serif; color: #F6F7F6; }
+      .grd { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .scrim { position: absolute; inset: 0; pointer-events: none;
+               background: linear-gradient(90deg, rgba(13,13,13,0.62), rgba(13,13,13,0.08) 55%),
+                           linear-gradient(rgba(13,13,13,0) 55%, rgba(13,13,13,0.66)); }
+      .k { position: absolute; left: 5cqw; font-family: "Inter", sans-serif; font-weight: 600;
+           font-size: 0.9cqw; letter-spacing: 0.16em; text-transform: uppercase; color: #F6F7F6; }
+      .stmt { position: absolute; left: 5cqw; font-weight: 900; font-size: 5cqw; line-height: 1.08;
+              letter-spacing: -0.015em; max-width: 74cqw; }
+      .stmt .w { display: inline-block; will-change: transform, opacity; position: relative; }
+      /* the highlighter block sweeps behind the operative clause */
+      .hl { position: absolute; left: -0.1em; right: -0.1em; top: 0.06em; bottom: 0.06em;
+            background: #FFF200; transform: scaleX(0); transform-origin: left center; z-index: -1; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="18" data-width="1920" data-height="1080">
+      <!-- GROUND clips: two stock videos, back-to-back on the video track (track 0) -->
+      <video id="v1" class="clip grd" muted playsinline src="assets/videos/server.mp4"
+             data-start="0" data-duration="9" data-track-index="0"></video>
+      <video id="v2" class="clip grd" muted playsinline src="assets/videos/grid.mp4"
+             data-start="9" data-duration="9" data-track-index="0"></video>
+
+      <!-- scrims (gate visibility to each beat) -->
+      <div class="scrim clip" data-start="0" data-duration="9" data-track-index="1"></div>
+      <div class="scrim clip" data-start="9" data-duration="9" data-track-index="1"></div>
+
+      <!-- BEAT 1 overlay -->
+      <div class="k clip" id="k1" data-start="0" data-duration="9" data-track-index="2" style="bottom:30cqh;">The demand · data centers</div>
+      <div class="stmt clip" id="s1" data-start="0" data-duration="9" data-track-index="3" style="bottom:16cqh;">
+        <span class="w">The&nbsp;machines&nbsp;never</span> <span class="w" id="s1hl">sleep<span class="hl" id="hl1"></span></span><span class="w">.</span>
+      </div>
+
+      <!-- BEAT 2 overlay -->
+      <div class="k clip" id="k2" data-start="9" data-duration="9" data-track-index="2" style="bottom:30cqh;">The bill · the grid</div>
+      <div class="stmt clip" id="s2" data-start="9" data-duration="9" data-track-index="3" style="bottom:16cqh;">
+        <span class="w">And&nbsp;the&nbsp;power&nbsp;goes</span> <span class="w" id="s2hl">vertical<span class="hl" id="hl2"></span></span><span class="w">.</span>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+      var R = function (id) { return document.getElementById(id); };
+
+      // BEAT 1 (0–9): kicker + statement rise, yellow sweeps "sleep" at ~3s
+      tl.fromTo("#k1", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.4);
+      tl.fromTo("#s1 .w", { opacity: 0, yPercent: 60 }, { opacity: 1, yPercent: 0, duration: 0.6, stagger: 0.12, ease: "power3.out" }, 0.6);
+      tl.fromTo("#s1hl", { color: "#F6F7F6" }, { color: "#0d0d0d", duration: 0.25, ease: "power2.out" }, 3.0);
+      tl.fromTo("#hl1", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power2.out" }, 2.85);
+
+      // BEAT 2 (9–18): same grammar, yellow sweeps "vertical" at ~12s
+      tl.fromTo("#k2", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 9.4);
+      tl.fromTo("#s2 .w", { opacity: 0, yPercent: 60 }, { opacity: 1, yPercent: 0, duration: 0.6, stagger: 0.12, ease: "power3.out" }, 9.6);
+      tl.fromTo("#s2hl", { color: "#F6F7F6" }, { color: "#0d0d0d", duration: 0.25, ease: "power2.out" }, 12.0);
+      tl.fromTo("#hl2", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power2.out" }, 11.85);
+
+      tl.to({}, { duration: 18 }, 0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

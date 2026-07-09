@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="vendor/d3.min.js"></script>
+    <script src="vendor/topojson-client.min.js"></script>
+    <script src="vendor/world.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,700;0,800;0,900;1,600&family=Lora:ital@1&family=Inter:wght@500;600&display=swap');
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #F1F3F2; }
+      #root { position: absolute; inset: 0; width: 1920px; height: 1080px; container-type: size;
+        overflow: hidden; background: #F1F3F2; font-family: "Libre Franklin", sans-serif; }
+      #map { position: absolute; inset: 0; will-change: transform; transform-origin: 52% 40%; }
+      #map svg { width: 100%; height: 100%; display: block; }
+      .country { fill: #DCDFDC; stroke: #F1F3F2; stroke-width: 0.8; }
+      .country-hl { fill: #FFF200; stroke: #2B2D2C; stroke-width: 1.2; opacity: 0;
+        transform-box: fill-box; transform-origin: center; }
+      #leader { position: absolute; inset: 0; pointer-events: none; }
+      #leader path { fill: none; stroke: #2B2D2C; stroke-width: 2; }
+      #pin { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+        background: #2B2D2C; opacity: 0; }
+      #pin::after { content: ""; position: absolute; inset: -9px; border: 2px solid #2B2D2C;
+        border-radius: 50%; opacity: 0.4; }
+      #label { position: absolute; left: 8cqw; top: 22cqh; max-width: 32cqw; }
+      #lab-kick { font-family: "Inter", sans-serif; font-weight: 600; font-size: 0.9cqw;
+        letter-spacing: 0.14em; text-transform: uppercase; color: #4C4E4D; opacity: 0; }
+      #lab-title { font-weight: 900; font-size: 5.2cqw; line-height: 1; letter-spacing: -0.02em;
+        color: #2B2D2C; margin: 0.6cqw 0; opacity: 0; }
+      #lab-title .mark { background: #FFF200; box-decoration-break: clone; padding: 0 0.1em; }
+      #lab-sub { font-family: "Lora", serif; font-style: italic; font-size: 1.3cqw; line-height: 1.4;
+        color: #4C4E4D; max-width: 28cqw; opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="7"
+         data-width="1920" data-height="1080">
+      <div id="map" class="clip" data-start="0" data-duration="7" data-track-index="1"></div>
+      <svg id="leader" class="clip" data-start="0" data-duration="7" data-track-index="2"
+           viewBox="0 0 1920 1080" preserveAspectRatio="none"><path id="leader-path" d=""/></svg>
+      <div id="pin" class="clip" data-start="0" data-duration="7" data-track-index="3"></div>
+      <div id="label" class="clip" data-start="0" data-duration="7" data-track-index="4">
+        <div id="lab-kick">The world · data-center strain</div>
+        <div id="lab-title"><span class="mark">Ireland</span></div>
+        <div id="lab-sub">Data centres already draw <b>~21% of the nation's electricity</b> — more than all of its urban homes combined.</div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+      (function () {
+        var W = 1920, H = 1080;
+        var world = window.__WORLD;
+        var countries = topojson.feature(world, world.objects.countries);
+        var ie = countries.features.filter(function (f) { return String(f.id) === "372"; })[0];
+        // d3 does the hard part again: a Natural-Earth world projection, fitted to the frame.
+        var proj = d3.geoNaturalEarth1().fitExtent([[90, 60], [1830, 1020]], countries);
+        var geo = d3.geoPath(proj);
+
+        var svgNS = "http://www.w3.org/2000/svg";
+        var svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+        countries.features.forEach(function (f) {
+          var d = geo(f); if (!d) return;
+          var p = document.createElementNS(svgNS, "path");
+          p.setAttribute("d", d); p.setAttribute("class", "country");
+          svg.appendChild(p);
+        });
+        var hl = document.createElementNS(svgNS, "path");
+        hl.setAttribute("d", geo(ie)); hl.setAttribute("class", "country-hl"); hl.setAttribute("id", "hl");
+        svg.appendChild(hl);
+        document.getElementById("map").appendChild(svg);
+
+        var c = geo.centroid(ie);
+        var pin = document.getElementById("pin");
+        pin.style.left = c[0] + "px"; pin.style.top = c[1] + "px";
+        var lx = W * 0.30, ly = H * 0.34;   // leader origin near the label block
+        document.getElementById("leader-path").setAttribute("d", "M " + lx + " " + ly + " L " + c[0] + " " + c[1]);
+        var lp = document.getElementById("leader-path");
+        var len = lp.getTotalLength(); lp.style.strokeDasharray = len; lp.style.strokeDashoffset = len;
+
+        tl.from("#map", { opacity: 0, y: 24, duration: 0.7, ease: "power2.out" }, 0);
+        tl.to("#map", { scale: 1.06, duration: 7, ease: "none" }, 0);
+        tl.to("#hl", { opacity: 1, duration: 0.5, ease: "power2.out" }, 1.1);
+        tl.from("#hl", { scale: 0.4, duration: 0.6, ease: "back.out(2)" }, 1.1);
+        tl.to("#pin", { opacity: 1, duration: 0.3 }, 1.5);
+        tl.from("#pin", { scale: 0, duration: 0.5, ease: "back.out(3)" }, 1.5);
+        tl.to(lp, { strokeDashoffset: 0, duration: 0.55, ease: "power2.inOut" }, 1.7);
+        tl.fromTo("#lab-kick", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5 }, 1.9);
+        tl.fromTo("#lab-title", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 2.05);
+        tl.fromTo("#lab-sub", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 2.3);
+        tl.to({}, { duration: 7 }, 0);
+      })();
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      artwork-stage — a NOLAN-flavored HyperFrames registry BLOCK.
+
+      Ports NOLAN's ArtworkStage treatment: an archival still gets a MOTIVATED,
+      saliency-targeted Ken-Burns push (the camera drifts toward a focal point,
+      never a mechanical center zoom) under an on-frame MUSEUM LABEL (title +
+      collection) — the credibility habit reference channels use and typographic
+      HyperFrames presets lack. Seek-safe, deterministic, transform/opacity only.
+
+      Wire as a registry block in a host index.html:
+        <div data-composition-id="artwork-stage"
+             data-composition-src="compositions/artwork-stage.html"
+             data-start="0" data-duration="6" data-track-index="1"
+             data-width="1920" data-height="1080"
+             data-composition-variables='{"src":"assets/x.jpg","title":"…","collection":"…","focalX":0.62,"focalY":0.42}'></div>
+      Variables (read via window.__hyperframes.getVariables(); baked defaults below
+      keep it renderable standalone):
+        src · title · collection · focalX/focalY (0..1 saliency target) · pushFrom/pushTo (scale)
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #0d0d0d; overflow: hidden; }
+      #root-artwork-stage {
+        position: relative; width: 1920px; height: 1080px; overflow: hidden;
+        container-type: size; background: #0d0d0d;
+        font-family: "Georgia", "Times New Roman", serif; color: #f4efe6;
+      }
+      /* the still, its own full-duration ground clip — Ken-Burns rides a wrapper */
+      #as-cam { position: absolute; inset: 0; transform-origin: 50% 50%; will-change: transform; }
+      #as-ground {
+        position: absolute; inset: -4%;            /* bleed so the push never reveals an edge */
+        background-size: cover; will-change: transform;
+      }
+      /* museum-label register: a warm scrim bottom-left + hairline accent */
+      #as-scrim {
+        position: absolute; inset: 0; pointer-events: none;
+        background: linear-gradient(90deg, rgba(13,13,13,0.55), rgba(13,13,13,0.0) 46%),
+                    linear-gradient(rgba(13,13,13,0.0) 62%, rgba(13,13,13,0.62));
+      }
+      #as-vignette {
+        position: absolute; inset: 0; pointer-events: none;
+        box-shadow: inset 0 0 22cqw rgba(0,0,0,0.45);
+      }
+      #as-label { position: absolute; left: 4.5cqw; bottom: 6cqh; max-width: 52cqw; }
+      #as-rule { width: 3cqw; height: 3px; background: #c9a24b; margin-bottom: 1.3cqh; transform-origin: left center; }
+      #as-title { font-size: 2.4cqw; line-height: 1.16; font-style: italic; font-weight: 400; letter-spacing: 0.005em; }
+      #as-collection {
+        margin-top: 1.1cqh; font-family: "Courier New", ui-monospace, monospace;
+        font-size: 0.82cqw; letter-spacing: 0.18em; text-transform: uppercase; color: #b8ae9c;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root-artwork-stage" data-composition-id="artwork-stage"
+         data-start="0" data-duration="6" data-width="1920" data-height="1080"
+         data-composition-variables='{"src":"assets/artwork.jpg","title":"Vergilius Vaticanus (Vat. lat. 3225), fol. 52r","collection":"Biblioteca Apostolica Vaticana","focalX":0.34,"focalY":0.40,"pushFrom":1.02,"pushTo":1.14}'>
+      <div id="as-cam">
+        <div id="as-ground" class="clip" data-start="0" data-duration="6" data-track-index="0"></div>
+      </div>
+      <div id="as-scrim" class="clip" data-start="0" data-duration="6" data-track-index="1"></div>
+      <div id="as-vignette" class="clip" data-start="0" data-duration="6" data-track-index="2"></div>
+      <div id="as-label" class="clip" data-start="0" data-duration="6" data-track-index="3">
+        <div id="as-rule"></div>
+        <div id="as-title"></div>
+        <div id="as-collection"></div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+        var V = { src: "assets/artwork.jpg",
+                  title: "Vergilius Vaticanus (Vat. lat. 3225), fol. 52r",
+                  collection: "Biblioteca Apostolica Vaticana",
+                  focalX: 0.34, focalY: 0.40, pushFrom: 1.02, pushTo: 1.14 };
+        try { if (window.__hyperframes && window.__hyperframes.getVariables)
+                Object.assign(V, window.__hyperframes.getVariables() || {}); } catch (e) {}
+
+        var ground = document.getElementById("as-ground");
+        ground.style.backgroundImage = "url('" + V.src + "')";
+        ground.style.backgroundPosition = (V.focalX * 100).toFixed(1) + "% " + (V.focalY * 100).toFixed(1) + "%";
+        document.getElementById("as-title").textContent = V.title;
+        document.getElementById("as-collection").textContent = V.collection;
+
+        var DUR = 6;
+        var tl = gsap.timeline({ paused: true });
+
+        // Motivated Ken-Burns: push toward the focal point (translate biased by focal
+        // offset from center), scale pushFrom->pushTo. Single eased move, seek-safe.
+        var dx = (0.5 - V.focalX) * 120;   // px drift toward the salient subject
+        var dy = (0.5 - V.focalY) * 80;
+        tl.fromTo("#as-cam",
+          { scale: V.pushFrom, xPercent: 0, yPercent: 0 },
+          { scale: V.pushTo, x: dx, y: dy, duration: DUR, ease: "power1.inOut" }, 0);
+
+        // museum label: hairline draws, then title + collection rise in
+        tl.fromTo("#as-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power2.out" }, 0.25);
+        tl.fromTo("#as-title", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 0.4);
+        tl.fromTo("#as-collection", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.75);
+
+        tl.to({}, { duration: DUR }, 0);   // full-span anchor
+        window.__timelines["artwork-stage"] = tl;
+      })();
+    </script>
+  </body>
+</html>

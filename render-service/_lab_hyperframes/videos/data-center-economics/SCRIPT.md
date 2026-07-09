@@ -1,0 +1,25 @@
+# SCRIPT — data-center-economics
+
+**Voice:** (pre-recorded — finished VO supplied; NOT regenerated)
+**Voice settings:** n/a — the two beat wavs (`assets/voice/01.wav`, `assets/voice/02.wav`) are the timing authority
+**Voice direction:** Conversational explainer, wry, level-headed; leans in on the numbers.
+
+> NOTE: This is a LAB run with finished narration. TTS is intentionally NOT run.
+> Each frame's `voiceover` = one beat wav, played unmodified; word timings were
+> recovered by ASR (whisper) and live in `audio_meta.json`.
+
+---
+
+## Line 1 — The boom is real (Frame 1)
+
+**Time:** 0.0 – 67.76s (sec_0000.wav)
+**Delivery:** Open matter-of-fact, build momentum through the numbers.
+
+    Now, let's start with the part people online really don't want to hear: this boom is real, and it is not stopping. The money is genuinely industrial-revolution money. Big tech is on track to spend more than $800 billion on AI infrastructure in 2026, and north of a trillion dollars in 2027 — that's basically the entire US defense budget, poured into server farms. And the demand underneath it is real too. OpenAI says its chatbot users doubled in a single year, from 400 to 900 million. That's why the power numbers are going vertical: data centers ate about 4.4% of all US electricity in 2023, and that could hit 7 to 12% by 2028. A single AI prompt uses roughly ten times the juice of a plain Google search. And here's the part the critics skip — some towns genuinely cash in. Out in Loudoun County, Virginia, data centers throw off about 38% of the entire county budget, enough that they actually cut property taxes. So no, this isn't all downside. We are not un-building this thing.
+
+## Line 2 — So where does the bill land? (Frame 2)
+
+**Time:** 0.0 – 91.76s (sec_0001.wav, plays after Frame 1)
+**Delivery:** The turn — steady, then human, then the quiet gut-punch on jobs.
+
+    But — and you knew there was a but coming — the benefits here are spread out across all of us, while the costs land on very specific people. So let's follow the bill. Start with your power. In Virginia, Dominion Energy says it has to roughly double how much electricity it generates by 2039, mostly to feed data centers, at a cost of up to $103 billion — and that could push residential bills up by as much as 50%. Then there's water. Up to 43% of the biggest data centers sit in areas of high water stress, and one planned Microsoft campus out in the Arizona desert was set to drink 1.83 billion gallons a year — enough for about 61,000 people, a city the size of Santa Cruz, California. Now picture this. You're in Virginia, and there's a low drone you don't just hear — you feel it in the walls. One guy, Carlos, spent twenty grand on new windows and insulation and still couldn't sleep, and his seven-year-old started having nightmares about a spaceship parked outside. In fairness, Amazon says its centers run well below the required sound levels. And in Georgia and Kentucky, some folks are losing their land outright — eminent domain, for the power lines. And the kicker? These places don't even get the jobs. Even the largest data centers run on fewer than 150 permanent workers once they're built — some as few as 25. OpenAI's giant Stargate site in Texas? About a hundred full-time jobs.

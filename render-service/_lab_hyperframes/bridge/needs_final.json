@@ -1,0 +1,12 @@
+[
+  { "id": "server_hall",   "query": "data center server room aisle glowing racks", "media_type": "image", "n": 3 },
+  { "id": "aerial_sprawl",  "query": "aerial view huge data center campus warehouses", "media_type": "image", "n": 3 },
+  { "id": "desert_campus",  "query": "data center in desert aerial arid landscape",  "media_type": "image", "n": 3 },
+  { "id": "cooling_towers", "query": "power plant cooling towers steam industrial",   "media_type": "image", "n": 3 },
+  { "id": "transmission",   "query": "high voltage transmission towers power lines dusk field", "media_type": "image", "n": 3 },
+  { "id": "grid_archival",  "query": "rural electrification power lines 1930s vintage photograph", "media_type": "image", "sources": ["wikimedia","loc","openverse"], "n": 3 },
+
+  { "id": "server_broll",   "query": "server room data center blinking lights close up", "media_type": "video", "n": 2 },
+  { "id": "grid_broll",     "query": "electricity power lines pylons sky clouds",       "media_type": "video", "n": 2 },
+  { "id": "water_broll",    "query": "industrial cooling tower water vapor steam",      "media_type": "video", "n": 2 }
+]

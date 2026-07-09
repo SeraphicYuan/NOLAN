@@ -1,0 +1,74 @@
+{
+  "gen_spaceship_dream": {
+    "asset": "assets/bg_gen_spaceship_dream.png",
+    "ok": true,
+    "frame": null,
+    "scene": null,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "a child's dark bedroom at night seen from a low viewpoint, a crude glowing spaceship shape hovering ominously outside the window beyond the blinds, unsettling dreamlike, cinematic, deep shadows, cold blue and faint amber, photoreal, film grain"
+    }
+  },
+  "gen_condemn_notice": {
+    "asset": "assets/bg_gen_condemn_notice.png",
+    "ok": true,
+    "frame": null,
+    "scene": null,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "an official condemnation / eminent-domain notice paper stapled to a weathered wooden fence post in a rural field at dusk, shallow depth of field close-up, ominous, cinematic, desaturated amber-grey, photoreal, film grain"
+    }
+  },
+  "gen_electric_bill_hand": {
+    "asset": "assets/bg_gen_electric_bill_hand.png",
+    "ok": true,
+    "frame": null,
+    "scene": null,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "a hand holding a paper electricity bill with a shockingly large printed total, dim kitchen at night, single overhead light, shallow focus, worried mood, cinematic, photoreal, film grain"
+    }
+  },
+  "gen_gpu_wall": {
+    "asset": "assets/bg_gen_gpu_wall.png",
+    "ok": true,
+    "frame": null,
+    "scene": null,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "an endless wall of glowing green and blue GPU cards racked in an AI compute cluster, cold machine light, condensation, cinematic macro, deep shadows, photoreal, film grain"
+    }
+  },
+  "gen_dry_spigot": {
+    "asset": "assets/bg_gen_dry_spigot.png",
+    "ok": true,
+    "frame": null,
+    "scene": null,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "a single rusted water spigot dripping its last drop over cracked dry desert earth, harsh low sun, symbolic drought, cinematic close-up, desaturated warm dust palette, photoreal, film grain"
+    }
+  },
+  "gen_earplugs_night": {
+    "asset": "assets/bg_gen_earplugs_night.png",
+    "ok": true,
+    "frame": null,
+    "scene": null,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "a nightstand with foam earplugs beside an unmade bed, cold industrial glow leaking through window blinds, dark suburban bedroom, shallow focus, unsettling stillness, cinematic, photoreal, film grain"
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "_doc": "Composer catalog — the authoring agent reads THIS first. For each beat, try to express it as a scene_template below; only if nothing fits, author a bespoke scene (type 'raw'). Keys under scene_templates MUST equal compose.py BLOCKS (check_catalog.py enforces).",
+  "scene_templates": {
+    "stat": {
+      "fn": "stat_lockup",
+      "purpose": "1-3 count-up numerals with labels + one yellow underline sweep — a data callout.",
+      "when_to_use": "The beat's argument IS a number or small set of numbers: a total, a rate, a multiple, a share.",
+      "not_for": "A drawn chart/trend line (no template yet — go raw, GSAP+SVG per data-in-motion.md). More than 3 numbers.",
+      "data_schema": {
+        "kicker": "string — small eyebrow label (design intent, not narration)",
+        "register": "enum(paper|footage) — ink-on-mist, or white text for a media ground",
+        "ground": "object — a media_ground spec: {kind: paper|image|transparent, parchment?, src?, kb?}",
+        "items": "array of {from,to | value, prefix?, suffix?, label, cue, underline?}",
+        "props": "array of prop_cutout specs (optional evidence overlays)"
+      },
+      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only", "caption_keep_out_83pct"]
+    },
+    "statement": {
+      "fn": "highlight_statement",
+      "purpose": "A short statement across 1-3 lines with ONE yellow-block sweep on the operative word, optional caption bar.",
+      "when_to_use": "A rhetorical/turn beat carried by words, not a number (a claim, a reveal, a 'but…').",
+      "not_for": "A number beat (use stat). A full paragraph (visible text stays short — the karaoke caption carries the sentence).",
+      "data_schema": {
+        "kicker": "string — eyebrow label",
+        "register": "enum(paper|footage)",
+        "ground": "object — media_ground spec (default {kind: transparent} to reveal a root video)",
+        "lines": "array of strings — the statement, one entry per visual line",
+        "operative": "string — the substring in lines to highlight-sweep (must appear verbatim in a line)",
+        "cue": "number — seconds into scene for the sweep",
+        "captionBar": "string? — optional lower caption chip",
+        "props": "array of prop_cutout specs (optional)"
+      },
+      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only", "caption_keep_out_83pct"]
+    },
+    "geo": {
+      "fn": "geo_map",
+      "purpose": "A d3 choropleth (US states or world countries) with one+ regions highlighted, pin + leader + Vox label.",
+      "when_to_use": "A beat about a place: a state, a country, a 'where' — Virginia, Ireland, a multi-state cluster.",
+      "not_for": "Non-geographic data (use stat/raw). A region with no TopoJSON shipped in vendor/.",
+      "data_schema": {
+        "kind": "enum(us|world) — us takes FIPS ids + geoAlbersUsa; world takes ISO-numeric ids + geoNaturalEarth1",
+        "highlight": "array of id strings — regions to fill (multi-region ok)",
+        "primary": "string? — which highlighted region gets the pin+leader (default highlight[0])",
+        "kicker": "string", "title": "string — the big label", "sub": "string — supporting line (inline <b> ok)"
+      },
+      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only"],
+      "requires": "vendor/ at project root: d3.min.js + topojson-client.min.js + us-states.js (kind us) / world.js (kind world). compose_frame injects the <script>s automatically."
+    },
+    "timeline": {
+      "fn": "timeline",
+      "purpose": "A Vox-style horizontal timeline: a yellow spine draws in, the camera pans node-to-node, each event pops a node + elbow connector to a circular image cutout (stroked ring draw) with a big year + label. Dark ground.",
+      "when_to_use": "A beat that walks a SEQUENCE OF DATED EVENTS in time — a history, a chronology, 'then... then... then', milestones.",
+      "not_for": "A single moment, a non-temporal list, or numeric callouts (use stat/statement). Data with no year/order.",
+      "data_schema": {
+        "events": "array of {year, label?, image?, side?(up|down)} — the dated milestones, in order (side auto-alternates up/down if omitted)",
+        "title": "string? — a persistent frame title (dark register)",
+        "titleHi": "string? — substring of title to highlight yellow",
+        "focus": "number? — screen x the active node pans to (default 640)",
+        "gap": "number? — world spacing between events in px (default 760)"
+      },
+      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only"],
+      "note": "Dark ground (not the mist/paper register). event.image paths must be real assets in the project; omit for a placeholder disc."
+    },
+    "raw": {
+      "fn": "raw_scene",
+      "purpose": "Bespoke passthrough — the 'go bespoke' escape hatch when no template fits.",
+      "when_to_use": "A one-off, art-directed beat with no template match (cold open, a drawn chart, a custom layout).",
+      "not_for": "Anything a template above already covers — prefer the template for speed + consistency.",
+      "data_schema": {
+        "html": "string | array of strings — the scene's clip HTML fragment(s); ids MUST be prefixed with the scene id; every timed element class='clip' with data-start/duration/track-index.",
+        "tl": "array of strings — GSAP lines (frame-absolute times) merged into the frame's one paused timeline."
+      },
+      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only", "caption_keep_out_83pct", "no_exit_on_non_final", "sid_prefixed_ids"]
+    }
+  },
+  "components": {
+    "media_ground": {
+      "purpose": "Full-bleed scene ground: image (dimmed + Ken-Burns + scrim) / paper (flat mist or parchment) / transparent (scrim only, reveals a root video behind).",
+      "attached_via": "scene data.ground = {kind: paper|image|transparent, parchment?, src?, kb?:[from,to]}"
+    },
+    "prop_cutout": {
+      "purpose": "Object-as-evidence photo card (cash, GPU, bill, gavel, glass) stacked over a scene on its own track, small scale+settle reveal.",
+      "attached_via": "scene data.props = [{src, corner: br|bl|tr|tl, width, cue, tilt?, caption?}]"
+    }
+  }
+}

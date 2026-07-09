@@ -1,0 +1,45 @@
+{
+  "frames": [
+    {
+      "id": "02-water",
+      "dur": 9.36,
+      "scenes": [
+        {
+          "id": "02-water-s1",
+          "type": "statement",
+          "start": 0.0,
+          "dur": 3.8,
+          "data": {
+            "kicker": "THE HIDDEN COST",
+            "register": "paper",
+            "ground": { "kind": "paper" },
+            "lines": ["The quieter cost is water."],
+            "operative": "water",
+            "cue": 1.3
+          }
+        },
+        {
+          "id": "02-water-s2",
+          "type": "stat",
+          "start": 3.8,
+          "dur": 5.56,
+          "data": {
+            "kicker": "COOLING",
+            "register": "paper",
+            "ground": { "kind": "paper" },
+            "items": [
+              {
+                "from": 0,
+                "to": 1,
+                "suffix": "M+",
+                "label": "GALLONS / DAY · ONE DATA CENTER",
+                "cue": 0.9,
+                "underline": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

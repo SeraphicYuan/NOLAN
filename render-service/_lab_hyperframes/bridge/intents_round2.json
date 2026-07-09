@@ -1,0 +1,14 @@
+[
+  {"id": "gen_spaceship_dream", "treatment": "footage",
+   "prompt": "a child's dark bedroom at night seen from a low viewpoint, a crude glowing spaceship shape hovering ominously outside the window beyond the blinds, unsettling dreamlike, cinematic, deep shadows, cold blue and faint amber, photoreal, film grain"},
+  {"id": "gen_condemn_notice", "treatment": "footage",
+   "prompt": "an official condemnation / eminent-domain notice paper stapled to a weathered wooden fence post in a rural field at dusk, shallow depth of field close-up, ominous, cinematic, desaturated amber-grey, photoreal, film grain"},
+  {"id": "gen_electric_bill_hand", "treatment": "footage",
+   "prompt": "a hand holding a paper electricity bill with a shockingly large printed total, dim kitchen at night, single overhead light, shallow focus, worried mood, cinematic, photoreal, film grain"},
+  {"id": "gen_gpu_wall", "treatment": "footage",
+   "prompt": "an endless wall of glowing green and blue GPU cards racked in an AI compute cluster, cold machine light, condensation, cinematic macro, deep shadows, photoreal, film grain"},
+  {"id": "gen_dry_spigot", "treatment": "footage",
+   "prompt": "a single rusted water spigot dripping its last drop over cracked dry desert earth, harsh low sun, symbolic drought, cinematic close-up, desaturated warm dust palette, photoreal, film grain"},
+  {"id": "gen_earplugs_night", "treatment": "footage",
+   "prompt": "a nightstand with foam earplugs beside an unmade bed, cold industrial glow leaking through window blinds, dark suburban bedroom, shallow focus, unsettling stillness, cinematic, photoreal, film grain"}
+]

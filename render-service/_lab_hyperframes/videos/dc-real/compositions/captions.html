@@ -1,0 +1,216 @@
+<template id="captions-template" data-composition-id="captions" data-width="1920" data-height="1080">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+
+
+<style data-brand-tokens>
+      @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700;800;900&family=Inter:wght@500;600&display=swap');
+      :root {
+      --mist: #F1F3F2;
+      --parchment: #EFE9DC;
+      --graphene: #4C4E4D;
+      --ink-deep: #2B2D2C;
+      --highlighter: #FFF200;
+      --slate: #6D98A8;
+      --terracotta: #C0603F;
+      --leaf: #8BBD7A;
+      --amber: #F2B13D;
+      --sky: #4FB3E5;
+      --hairline: #D8D5CC;
+      --footage-scrim: rgba(20,21,20,0.55);
+      --footage-text: #F6F7F6;
+      --cap-ink: #2B2D2C;
+      --cap-canvas: #EFE9DC;
+      --cap-accent: #FFF200;
+      --cap-accent-2: #F2B13D;
+      --font-display: "Libre Franklin", system-ui, serif;
+      --font-body: "Inter", system-ui, sans-serif;
+      --cap-band-top: 900px;
+      --cap-band-height: 180px;
+      }
+    </style>
+
+<style>
+  #captions-root {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .caption-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .caption-stage {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--cap-band-top, 900px);
+    height: var(--cap-band-height, 180px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .caption-group {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+  }
+
+  /* THE paper plate — mist ground, sharp corners, a single 1px graphene hairline
+     on the bottom edge (the evidence-bar voice), no shadow */
+  .caption-pill {
+    max-width: 80%;
+    padding: 16px 40px 20px;
+    background: var(--cap-canvas, #f1f3f2);
+    border-bottom: 2px solid var(--cap-ink, #2b2d2c);
+    border-radius: 0;
+  }
+  .caption-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.05em 0.32em;
+    font-family: "Libre Franklin", system-ui, sans-serif;
+    font-weight: 800;
+    font-size: clamp(36px, 4vw, 52px);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+  }
+
+  /* upcoming — recessed ink on paper */
+  .caption-word {
+    display: inline-block;
+    padding: 0 0.08em;
+    color: color-mix(in srgb, var(--cap-ink, #2b2d2c) 45%, var(--cap-canvas, #f1f3f2));
+  }
+  /* current word — THE signature: a solid highlighter-yellow block, deep ink on top
+     (box-shadow spread = sharp block without layout shift; no blur, no radius) */
+  .caption-word.is-active {
+    color: var(--cap-ink, #2b2d2c);
+    background: var(--cap-accent, #fff200);
+    box-shadow: 0 0 0 0.07em var(--cap-accent, #fff200);
+  }
+  /* already spoken — solid ink, the yellow cleared */
+  .caption-word.is-spoken {
+    color: var(--cap-ink, #2b2d2c);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* optional per-word accents (dormant until a word-classer tags them) */
+  .caption-word.cap-brand {
+    text-decoration: underline;
+    text-decoration-thickness: 0.12em;
+    text-decoration-color: var(--cap-accent, #fff200);
+    text-underline-offset: 0.12em;
+  }
+  .caption-word.cap-num {
+    font-variant-numeric: tabular-nums;
+    color: var(--cap-ink, #2b2d2c);
+  }
+  .caption-word.cap-cta {
+    text-decoration: underline;
+    text-decoration-thickness: 0.12em;
+    text-decoration-color: var(--cap-accent-2, #6d98a8);
+    text-underline-offset: 0.12em;
+  }
+
+  @media (max-aspect-ratio: 9/16) {
+    .caption-pill {
+      max-width: 92%;
+    }
+    .caption-line {
+      font-size: clamp(30px, 5vw, 44px);
+    }
+  }
+</style>
+
+<div
+  id="captions-root"
+  data-composition-id="captions"
+  data-timeline-locked
+  data-start="0"
+  data-duration="26.85"
+  data-fps="30"
+  data-width="1920"
+  data-height="1080"
+>
+  <div class="caption-layer" aria-hidden="true">
+    <div id="caption-stage" class="caption-stage"></div>
+  </div>
+</div>
+
+<script>
+  // captions.mjs injects the engine's scene-aware groups + real duration here.
+  var GROUPS = [{"id":"caption-group-0","frame":1,"start":0,"end":1.18,"text":"By 2030,","words":[{"id":"caption-word-0-0","text":"By","start":0,"end":0.38},{"id":"caption-word-0-1","text":"2030,","start":0.38,"end":1.06}]},{"id":"caption-group-1","frame":1,"start":1.48,"end":1.9,"text":"AI data","words":[{"id":"caption-word-1-0","text":"AI","start":1.48,"end":1.64},{"id":"caption-word-1-1","text":"data","start":1.64,"end":1.9}]},{"id":"caption-group-2","frame":1,"start":1.9,"end":2.44,"text":"centers could","words":[{"id":"caption-word-2-0","text":"centers","start":1.9,"end":2.24},{"id":"caption-word-2-1","text":"could","start":2.24,"end":2.44}]},{"id":"caption-group-3","frame":1,"start":2.44,"end":3.52,"text":"draw 12 %","words":[{"id":"caption-word-3-0","text":"draw","start":2.44,"end":2.7},{"id":"caption-word-3-1","text":"12","start":2.7,"end":3.14},{"id":"caption-word-3-2","text":"%","start":3.14,"end":3.52}]},{"id":"caption-group-4","frame":1,"start":3.52,"end":3.9,"text":"of all","words":[{"id":"caption-word-4-0","text":"of","start":3.52,"end":3.7},{"id":"caption-word-4-1","text":"all","start":3.7,"end":3.9}]},{"id":"caption-group-5","frame":1,"start":3.9,"end":4.32,"text":"U .S.","words":[{"id":"caption-word-5-0","text":"U","start":3.9,"end":4.1},{"id":"caption-word-5-1","text":".S.","start":4.1,"end":4.2}]},{"id":"caption-group-6","frame":1,"start":4.68,"end":5.38,"text":"electricity up","words":[{"id":"caption-word-6-0","text":"electricity","start":4.68,"end":4.82},{"id":"caption-word-6-1","text":"up","start":4.82,"end":5.38}]},{"id":"caption-group-7","frame":1,"start":5.38,"end":5.78,"text":"from about","words":[{"id":"caption-word-7-0","text":"from","start":5.38,"end":5.54},{"id":"caption-word-7-1","text":"about","start":5.54,"end":5.78}]},{"id":"caption-group-8","frame":1,"start":5.78,"end":6.9,"text":"4 % today.","words":[{"id":"caption-word-8-0","text":"4","start":5.78,"end":6.12},{"id":"caption-word-8-1","text":"%","start":6.12,"end":6.4},{"id":"caption-word-8-2","text":"today.","start":6.4,"end":6.78}]},{"id":"caption-group-9","frame":1,"start":7.4,"end":8.06,"text":"The epicenter","words":[{"id":"caption-word-9-0","text":"The","start":7.4,"end":7.54},{"id":"caption-word-9-1","text":"epicenter","start":7.54,"end":8.06}]},{"id":"caption-group-10","frame":1,"start":8.06,"end":8.88,"text":"is Virginia,","words":[{"id":"caption-word-10-0","text":"is","start":8.06,"end":8.28},{"id":"caption-word-10-1","text":"Virginia,","start":8.28,"end":8.76}]},{"id":"caption-group-11","frame":1,"start":9.26,"end":9.54,"text":"home to","words":[{"id":"caption-word-11-0","text":"home","start":9.26,"end":9.36},{"id":"caption-word-11-1","text":"to","start":9.36,"end":9.54}]},{"id":"caption-group-12","frame":1,"start":9.54,"end":10.56,"text":"the world's densest","words":[{"id":"caption-word-12-0","text":"the","start":9.54,"end":9.64},{"id":"caption-word-12-1","text":"world's","start":9.64,"end":10.06},{"id":"caption-word-12-2","text":"densest","start":10.06,"end":10.56}]},{"id":"caption-group-13","frame":1,"start":10.56,"end":11.14,"text":"cluster of","words":[{"id":"caption-word-13-0","text":"cluster","start":10.56,"end":10.82},{"id":"caption-word-13-1","text":"of","start":10.82,"end":11.14}]},{"id":"caption-group-14","frame":1,"start":11.14,"end":11.8,"text":"data centers.","words":[{"id":"caption-word-14-0","text":"data","start":11.14,"end":11.3},{"id":"caption-word-14-1","text":"centers.","start":11.3,"end":11.68}]},{"id":"caption-group-15","frame":2,"start":12.01,"end":12.37,"text":"But the","words":[{"id":"caption-word-15-0","text":"But","start":12.01,"end":12.25},{"id":"caption-word-15-1","text":"the","start":12.25,"end":12.37}]},{"id":"caption-group-16","frame":2,"start":12.37,"end":13.13,"text":"quieter cost","words":[{"id":"caption-word-16-0","text":"quieter","start":12.37,"end":12.73},{"id":"caption-word-16-1","text":"cost","start":12.73,"end":13.13}]},{"id":"caption-group-17","frame":2,"start":13.13,"end":13.81,"text":"is water.","words":[{"id":"caption-word-17-0","text":"is","start":13.13,"end":13.35},{"id":"caption-word-17-1","text":"water.","start":13.35,"end":13.69}]},{"id":"caption-group-18","frame":2,"start":14.17,"end":14.59,"text":"A single","words":[{"id":"caption-word-18-0","text":"A","start":14.17,"end":14.25},{"id":"caption-word-18-1","text":"single","start":14.25,"end":14.59}]},{"id":"caption-group-19","frame":2,"start":14.59,"end":15.61,"text":"large data center","words":[{"id":"caption-word-19-0","text":"large","start":14.59,"end":15.01},{"id":"caption-word-19-1","text":"data","start":15.01,"end":15.23},{"id":"caption-word-19-2","text":"center","start":15.23,"end":15.61}]},{"id":"caption-group-20","frame":2,"start":15.61,"end":16.03,"text":"can drink","words":[{"id":"caption-word-20-0","text":"can","start":15.61,"end":15.81},{"id":"caption-word-20-1","text":"drink","start":15.81,"end":16.03}]},{"id":"caption-group-21","frame":2,"start":16.03,"end":16.43,"text":"over a","words":[{"id":"caption-word-21-0","text":"over","start":16.03,"end":16.31},{"id":"caption-word-21-1","text":"a","start":16.31,"end":16.43}]},{"id":"caption-group-22","frame":2,"start":16.43,"end":17.15,"text":"million gallons","words":[{"id":"caption-word-22-0","text":"million","start":16.43,"end":16.73},{"id":"caption-word-22-1","text":"gallons","start":16.73,"end":17.15}]},{"id":"caption-group-23","frame":2,"start":17.15,"end":17.53,"text":"a day","words":[{"id":"caption-word-23-0","text":"a","start":17.15,"end":17.37},{"id":"caption-word-23-1","text":"day","start":17.37,"end":17.53}]},{"id":"caption-group-24","frame":2,"start":17.53,"end":18.39,"text":"to stay cool,","words":[{"id":"caption-word-24-0","text":"to","start":17.53,"end":17.65},{"id":"caption-word-24-1","text":"stay","start":17.65,"end":17.93},{"id":"caption-word-24-2","text":"cool,","start":17.93,"end":18.27}]},{"id":"caption-group-25","frame":2,"start":18.71,"end":19.73,"text":"often in towns","words":[{"id":"caption-word-25-0","text":"often","start":18.71,"end":19.29},{"id":"caption-word-25-1","text":"in","start":19.29,"end":19.47},{"id":"caption-word-25-2","text":"towns","start":19.47,"end":19.73}]},{"id":"caption-group-26","frame":2,"start":19.73,"end":20.11,"text":"that are","words":[{"id":"caption-word-26-0","text":"that","start":19.73,"end":19.99},{"id":"caption-word-26-1","text":"are","start":19.99,"end":20.11}]},{"id":"caption-group-27","frame":2,"start":20.11,"end":20.73,"text":"already short","words":[{"id":"caption-word-27-0","text":"already","start":20.11,"end":20.43},{"id":"caption-word-27-1","text":"short","start":20.43,"end":20.73}]},{"id":"caption-group-28","frame":2,"start":20.73,"end":21.21,"text":"on it.","words":[{"id":"caption-word-28-0","text":"on","start":20.73,"end":20.97},{"id":"caption-word-28-1","text":"it.","start":20.97,"end":21.09}]},{"id":"caption-group-29","frame":3,"start":21.37,"end":22.01,"text":"Three forces","words":[{"id":"caption-word-29-0","text":"Three","start":21.37,"end":21.67},{"id":"caption-word-29-1","text":"forces","start":21.67,"end":22.01}]},{"id":"caption-group-30","frame":3,"start":22.01,"end":22.71,"text":"now collide,","words":[{"id":"caption-word-30-0","text":"now","start":22.01,"end":22.25},{"id":"caption-word-30-1","text":"collide,","start":22.25,"end":22.59}]},{"id":"caption-group-31","frame":3,"start":23.03,"end":23.51,"text":"power,","words":[{"id":"caption-word-31-0","text":"power,","start":23.03,"end":23.39}]},{"id":"caption-group-32","frame":3,"start":23.69,"end":23.99,"text":"water,","words":[{"id":"caption-word-32-0","text":"water,","start":23.69,"end":23.87}]},{"id":"caption-group-33","frame":3,"start":24.05,"end":24.59,"text":"and land.","words":[{"id":"caption-word-33-0","text":"and","start":24.05,"end":24.09},{"id":"caption-word-33-1","text":"land.","start":24.09,"end":24.47}]},{"id":"caption-group-34","frame":3,"start":24.99,"end":25.27,"text":"The real","words":[{"id":"caption-word-34-0","text":"The","start":24.99,"end":25.11},{"id":"caption-word-34-1","text":"real","start":25.11,"end":25.27}]},{"id":"caption-group-35","frame":3,"start":25.27,"end":25.81,"text":"question is","words":[{"id":"caption-word-35-0","text":"question","start":25.27,"end":25.65},{"id":"caption-word-35-1","text":"is","start":25.65,"end":25.81}]},{"id":"caption-group-36","frame":3,"start":25.81,"end":26.17,"text":"who pays","words":[{"id":"caption-word-36-0","text":"who","start":25.81,"end":25.95},{"id":"caption-word-36-1","text":"pays","start":25.95,"end":26.17}]},{"id":"caption-group-37","frame":3,"start":26.17,"end":26.67,"text":"the bill?","words":[{"id":"caption-word-37-0","text":"the","start":26.17,"end":26.35},{"id":"caption-word-37-1","text":"bill?","start":26.35,"end":26.55}]}];
+  var DURATION = 26.85;
+
+  (function () {
+    var stage = document.getElementById("caption-stage");
+
+    GROUPS.forEach(function (group, g) {
+      var groupEl = document.createElement("div");
+      groupEl.className = "caption-group";
+      groupEl.id = "caption-group-" + g;
+      var pill = document.createElement("div");
+      pill.className = "caption-pill";
+      var line = document.createElement("div");
+      line.className = "caption-line";
+      (group.words || []).forEach(function (w, i) {
+        var span = document.createElement("span");
+        span.className = "caption-word";
+        span.id = "caption-word-" + g + "-" + i;
+        span.textContent = String(w.text);
+        line.appendChild(span);
+      });
+      pill.appendChild(line);
+      groupEl.appendChild(pill);
+      stage.appendChild(groupEl);
+    });
+
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+
+    GROUPS.forEach(function (group, g) {
+      var groupEl = document.getElementById("caption-group-" + g);
+      var words = group.words || [];
+      var next = GROUPS[g + 1];
+      var isLast = g === GROUPS.length - 1;
+      var start = Math.max(0, Number(group.start));
+      var end = isLast ? DURATION : Math.min(Number(next.start), Number(group.end) + 0.3);
+      if (end <= start) end = start + 0.01;
+
+      tl.set(groupEl, { opacity: 1 }, start);
+      tl.set(groupEl, { opacity: 0 }, end);
+
+      words.forEach(function (w, i) {
+        var el = document.getElementById("caption-word-" + g + "-" + i);
+        var at = Math.max(start, Number(w.start));
+        tl.set(el, { className: "caption-word" }, start);
+        tl.set(el, { className: "caption-word is-active" }, at);
+        tl.fromTo(el, { scale: 0.94 }, { scale: 1, duration: 0.1, ease: "power3.out" }, at);
+        if (i + 1 < words.length) {
+          var nextAt = Math.max(start, Number(words[i + 1].start));
+          tl.set(el, { className: "caption-word is-spoken" }, nextAt);
+        }
+      });
+      if (words.length) {
+        var lastEl = document.getElementById("caption-word-" + g + "-" + (words.length - 1));
+        var lastSpoken = Math.min(end, Number(words[words.length - 1].end) + 0.1);
+        tl.set(lastEl, { className: "caption-word is-spoken" }, lastSpoken);
+      }
+    });
+
+    tl.to({}, { duration: DURATION }, 0);
+    window.__timelines["captions"] = tl;
+  })();
+</script>
+
+<style>
+  .caption-line { line-height: 1.1 !important; }
+</style>
+</template>

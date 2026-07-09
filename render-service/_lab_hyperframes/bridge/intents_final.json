@@ -1,0 +1,10 @@
+[
+  {"id": "gen_hook_money", "frame": "01-boom", "scene": 1, "treatment": "footage",
+   "prompt": "conceptual cinematic still: a torrent of hundred-dollar bills dissolving into streams of glowing server-rack light pouring into a dark data hall, industrial-revolution scale, deep shadows, warm amber and cold blue, photoreal, volumetric haze, film grain"},
+  {"id": "gen_construction", "frame": "01-boom", "scene": 1, "treatment": "footage",
+   "prompt": "a colossal data center under construction at dusk, exposed steel superstructure, tower cranes, floodlights, muddy site, ominous industrial scale, low warm sun, photoreal cinematic wide shot, desaturated amber-slate palette, film grain"},
+  {"id": "gen_control_room", "frame": "02-bill", "scene": 6, "treatment": "footage",
+   "prompt": "a single lone technician dwarfed in a vast empty data center control aisle, endless rows of dark servers receding, cold machine light, human tininess against inhuman scale, cinematic, deep shadows, teal and amber, photoreal, film grain"},
+  {"id": "gen_server_hero", "frame": "01-boom", "scene": 1, "treatment": "footage",
+   "prompt": "hero shot down the center of a hyperscale data hall at night, symmetrical endless glowing server rows, amber floor glow and cold rack light, volumetric fog, ominous grandeur, cinematic ultrawide, deep shadows, photoreal, film grain"}
+]

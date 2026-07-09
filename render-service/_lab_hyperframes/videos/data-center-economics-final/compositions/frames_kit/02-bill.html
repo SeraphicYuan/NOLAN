@@ -1,0 +1,144 @@
+<template>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@1,500&family=Inter:wght@500;600&display=swap');
+#root{position:absolute;inset:0;width:1920px;height:1080px;container-type:size;overflow:hidden;
+  font-family:"Libre Franklin",sans-serif;background:transparent;}
+.gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
+.paper-gnd{position:absolute;inset:0;}
+.scrim{position:absolute;inset:0;pointer-events:none;}
+.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
+  letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
+.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
+  letter-spacing:-0.012em;}
+.stmt .ln{display:block;opacity:0;}
+.hlwrap{position:relative;display:inline-block;}
+.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:#FFF200;transform:scaleX(0);
+  transform-origin:left center;z-index:-1;}
+.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:#F1F3F2;color:#2B2D2C;padding:0.5cqw 1.1cqw;
+  font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
+.slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
+.slitem{display:flex;flex-direction:column;min-width:18cqw;}
+.slnumwrap{position:relative;display:inline-block;}
+.slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
+  white-space:nowrap;opacity:0;}
+.slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
+.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}
+.sllabel{margin-top:1.1cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
+  text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
+.paper .slnum,.paper .sllead{color:#2B2D2C;}.paper .kick{color:#4C4E4D;}.paper .sllabel{color:#888880;}
+.footage .slnum{color:#F6F7F6;}.footage .kick{color:#F6F7F6;}.footage .sllabel{color:#d6d9d6;}
+.stmt.paper-t{color:#2B2D2C;}.stmt.footage-t{color:#F6F7F6;}
+</style>
+  <div id="root" data-composition-id="02-bill" data-width="1920" data-height="1080">
+        <div id="b2s1-gnd" class="clip gnd" data-start="0" data-duration="12.3" data-track-index="0" data-layout-allow-overflow style="background-image:url('assets/bg_bill_turn.png');"></div>
+    <div class="clip scrim" data-start="0" data-duration="12.3" data-track-index="1" style="background:linear-gradient(90deg,rgba(20,21,20,0.72),rgba(20,21,20,0.30) 55%,rgba(20,21,20,0.45)),linear-gradient(rgba(20,21,20,0) 45%,rgba(20,21,20,0.62));"></div>
+    <section class="scene clip footage" data-start="0" data-duration="12.3" data-track-index="2">
+    <div id="b2s1-k" class="kick">THE BILL</div>
+    <div class="stmt footage-t">
+    <span class="ln" id="b2s1-ln0">The benefits are spread out.</span>
+    <span class="ln" id="b2s1-ln1">The costs land on <span class="hlwrap"><span id="b2s1-op1">specific people</span><span class="hlblock" id="b2s1-hl1"></span></span>.</span>
+    </div>
+    <div id="b2s1-cap" class="capbar">SO — LET&#x27;S FOLLOW THE BILL</div>
+    </section>
+    <div class="clip paper-gnd" data-start="12.3" data-duration="16.3" data-track-index="1" style="background:#F1F3F2;"></div>
+    <section class="scene clip paper" data-start="12.3" data-duration="16.3" data-track-index="2">
+    <div id="b2s2-k" class="kick">YOUR POWER · VIRGINIA · DOMINION</div>
+    <div class="slrow">
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s2-n0"></span></div><div class="sllabel" id="b2s2-l0">GENERATION TO DOUBLE BY 2039</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s2-n1"></span></div><div class="sllabel" id="b2s2-l1">COST, UP TO</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s2-n2"></span><span class="slul" id="b2s2-u2"></span></div><div class="sllabel" id="b2s2-l2">RESIDENTIAL BILLS, UP TO</div></div>
+    </div></section>
+    <div class="clip scrim" data-start="28.6" data-duration="16.6" data-track-index="1" style="background:linear-gradient(90deg,rgba(20,21,20,0.66),rgba(20,21,20,0.18) 55%,rgba(20,21,20,0.42)),linear-gradient(rgba(20,21,20,0) 50%,rgba(20,21,20,0.6));"></div>
+    <section class="scene clip footage" data-start="28.6" data-duration="16.6" data-track-index="2">
+    <div id="b2s3-k" class="kick">WATER</div>
+    <div class="slrow">
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s3-n0"></span></div><div class="sllabel" id="b2s3-l0">OF THE BIGGEST CENTERS IN HIGH WATER STRESS</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s3-n1"></span></div><div class="sllabel" id="b2s3-l1">GALLONS A YEAR — ONE ARIZONA CAMPUS</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s3-n2"></span><span class="slul" id="b2s3-u2"></span></div><div class="sllabel" id="b2s3-l2">A CITY THE SIZE OF SANTA CRUZ, CA</div></div>
+    </div></section>
+    <div id="b2s4-gnd" class="clip gnd" data-start="45.2" data-duration="20.7" data-track-index="0" data-layout-allow-overflow style="background-image:url('assets/bg_noise_house.png');"></div>
+    <div class="clip scrim" data-start="45.2" data-duration="20.7" data-track-index="1" style="background:linear-gradient(90deg,rgba(20,21,20,0.72),rgba(20,21,20,0.30) 55%,rgba(20,21,20,0.45)),linear-gradient(rgba(20,21,20,0) 45%,rgba(20,21,20,0.62));"></div>
+    <section class="scene clip footage" data-start="45.2" data-duration="20.7" data-track-index="2">
+    <div id="b2s4-k" class="kick">THE NOISE</div>
+    <div class="stmt footage-t">
+    <span class="ln" id="b2s4-ln0">&quot;A low drone you don&#x27;t just hear —</span>
+    <span class="ln" id="b2s4-ln1">you <span class="hlwrap"><span id="b2s4-op1">feel it in the walls</span><span class="hlblock" id="b2s4-hl1"></span></span>.&quot;</span>
+    </div>
+    <div id="b2s4-cap" class="capbar">$20,000 ON WINDOWS — STILL COULDN&#x27;T SLEEP</div>
+    </section>
+    <div class="clip scrim" data-start="65.9" data-duration="12.9" data-track-index="1" style="background:linear-gradient(90deg,rgba(20,21,20,0.66),rgba(20,21,20,0.18) 55%,rgba(20,21,20,0.42)),linear-gradient(rgba(20,21,20,0) 50%,rgba(20,21,20,0.6));"></div>
+    <section class="scene clip footage" data-start="65.9" data-duration="12.9" data-track-index="2">
+    <div id="b2s5-k" class="kick">THE LAND · GEORGIA &amp; KENTUCKY</div>
+    <div class="stmt footage-t">
+    <span class="ln" id="b2s5-ln0">Some are losing their land — <span class="hlwrap"><span id="b2s5-op0">outright</span><span class="hlblock" id="b2s5-hl0"></span></span>.</span>
+    </div>
+    <div id="b2s5-cap" class="capbar">EMINENT DOMAIN — FOR THE POWER LINES</div>
+    </section>
+    <div id="b2s6-gnd" class="clip gnd" data-start="78.8" data-duration="12.96" data-track-index="0" data-layout-allow-overflow style="background-image:url('assets/bg_gen_control_room.png');"></div>
+    <div class="clip scrim" data-start="78.8" data-duration="12.96" data-track-index="1" style="background:linear-gradient(90deg,rgba(20,21,20,0.72),rgba(20,21,20,0.30) 55%,rgba(20,21,20,0.45)),linear-gradient(rgba(20,21,20,0) 45%,rgba(20,21,20,0.62));"></div>
+    <section class="scene clip footage" data-start="78.8" data-duration="12.96" data-track-index="2">
+    <div id="b2s6-k" class="kick">AND THE JOBS?</div>
+    <div class="slrow">
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s6-n0"></span></div><div class="sllabel" id="b2s6-l0">PERMANENT WORKERS — EVEN THE LARGEST</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s6-n1"></span></div><div class="sllabel" id="b2s6-l1">SOME AS FEW AS</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b2s6-n2"></span><span class="slul" id="b2s6-u2"></span></div><div class="sllabel" id="b2s6-l2">OPENAI STARGATE, TEXAS — FULL-TIME JOBS</div></div>
+    </div></section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+        tl.fromTo("#b2s1-gnd",{scale:1.03},{scale:1.08,duration:12.3,ease:"none"},0);
+    tl.fromTo("#b2s1-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},0.2);
+    tl.fromTo("#b2s1-ln0",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},0.4);
+    tl.fromTo("#b2s1-hl1",{scaleX:0},{scaleX:1,duration:0.4,ease:"power2.out"},7.0);
+    tl.to("#b2s1-op1",{color:"#2B2D2C",duration:0.25},7.05);
+    tl.fromTo("#b2s1-ln1",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},0.75);
+    tl.fromTo("#b2s1-cap",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},10.5);
+    tl.fromTo("#b2s2-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},12.4);
+    document.getElementById("b2s2-n0").textContent="\u00d72";
+    tl.fromTo("#b2s2-n0",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},13.8);
+    tl.fromTo("#b2s2-l0",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},13.950000000000001);
+    (function(){var el=document.getElementById("b2s2-n1"),st={v:0.0},f=function(n){return "$"+Math.round(n)+"B";};el.textContent=f(0.0);tl.set(el,{opacity:1},20.3);tl.fromTo(st,{v:0.0},{v:103.0,duration:1.4,ease:"power3.out",onUpdate:function(){el.textContent=f(st.v);}},20.3);})();
+    tl.fromTo("#b2s2-l1",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},20.45);
+    document.getElementById("b2s2-n2").textContent="+50%";
+    tl.fromTo("#b2s2-n2",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},25.3);
+    tl.fromTo("#b2s2-l2",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},25.45);
+    tl.fromTo("#b2s2-u2",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},26.5);
+    tl.fromTo("#b2s3-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},28.700000000000003);
+    document.getElementById("b2s3-n0").textContent="43%";
+    tl.fromTo("#b2s3-n0",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},30.1);
+    tl.fromTo("#b2s3-l0",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},30.25);
+    document.getElementById("b2s3-n1").textContent="1.83B";
+    tl.fromTo("#b2s3-n1",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},37.6);
+    tl.fromTo("#b2s3-l1",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},37.75);
+    document.getElementById("b2s3-n2").textContent="\u224861,000";
+    tl.fromTo("#b2s3-n2",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},41.6);
+    tl.fromTo("#b2s3-l2",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},41.75);
+    tl.fromTo("#b2s3-u2",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},42.800000000000004);
+    tl.fromTo("#b2s4-gnd",{scale:1.02},{scale:1.06,duration:20.7,ease:"none"},45.2);
+    tl.fromTo("#b2s4-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},45.400000000000006);
+    tl.fromTo("#b2s4-ln0",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},45.6);
+    tl.fromTo("#b2s4-hl1",{scaleX:0},{scaleX:1,duration:0.4,ease:"power2.out"},51.2);
+    tl.to("#b2s4-op1",{color:"#2B2D2C",duration:0.25},51.25);
+    tl.fromTo("#b2s4-ln1",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},45.95);
+    tl.fromTo("#b2s4-cap",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},56.2);
+    tl.fromTo("#b2s5-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},66.10000000000001);
+    tl.fromTo("#b2s5-hl0",{scaleX:0},{scaleX:1,duration:0.4,ease:"power2.out"},69.0);
+    tl.to("#b2s5-op0",{color:"#2B2D2C",duration:0.25},69.05);
+    tl.fromTo("#b2s5-ln0",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},66.30000000000001);
+    tl.fromTo("#b2s5-cap",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},74.0);
+    tl.fromTo("#b2s6-gnd",{scale:1.03},{scale:1.07,duration:12.96,ease:"none"},78.8);
+    tl.fromTo("#b2s6-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},78.89999999999999);
+    document.getElementById("b2s6-n0").textContent="< 150";
+    tl.fromTo("#b2s6-n0",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},80.8);
+    tl.fromTo("#b2s6-l0",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},80.95);
+    document.getElementById("b2s6-n1").textContent="25";
+    tl.fromTo("#b2s6-n1",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},83.8);
+    tl.fromTo("#b2s6-l1",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},83.95);
+    (function(){var el=document.getElementById("b2s6-n2"),st={v:0.0},f=function(n){return "~"+Math.round(n)+"";};el.textContent=f(0.0);tl.set(el,{opacity:1},87.8);tl.fromTo(st,{v:0.0},{v:100.0,duration:1.4,ease:"power3.out",onUpdate:function(){el.textContent=f(st.v);}},87.8);})();
+    tl.fromTo("#b2s6-l2",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},87.95);
+    tl.fromTo("#b2s6-u2",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},89.0);
+    tl.to({}, { duration: 91.76 }, 0);
+    window.__timelines["02-bill"] = tl;
+  </script>
+</template>

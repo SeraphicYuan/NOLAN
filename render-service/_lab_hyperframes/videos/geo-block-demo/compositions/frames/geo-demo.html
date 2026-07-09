@@ -1,0 +1,132 @@
+<template>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@1,500&family=Inter:wght@500;600&display=swap');
+#root{position:absolute;inset:0;width:1920px;height:1080px;container-type:size;overflow:hidden;
+  font-family:"Libre Franklin",sans-serif;background:transparent;}
+.gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
+.paper-gnd{position:absolute;inset:0;}
+.scrim{position:absolute;inset:0;pointer-events:none;}
+.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
+  letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
+.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
+  letter-spacing:-0.012em;}
+.stmt .ln{display:block;opacity:0;}
+.hlwrap{position:relative;display:inline-block;}
+.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:#FFF200;transform:scaleX(0);
+  transform-origin:left center;z-index:-1;}
+.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:#F1F3F2;color:#2B2D2C;padding:0.5cqw 1.1cqw;
+  font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
+.slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
+.slitem{display:flex;flex-direction:column;min-width:18cqw;}
+.slnumwrap{position:relative;display:inline-block;}
+.slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
+  white-space:nowrap;opacity:0;}
+.slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
+.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}
+.sllabel{margin-top:1.1cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
+  text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
+.paper .slnum,.paper .sllead{color:#2B2D2C;}.paper .kick{color:#4C4E4D;}.paper .sllabel{color:#888880;}
+.footage .slnum{color:#F6F7F6;}.footage .kick{color:#F6F7F6;}.footage .sllabel{color:#d6d9d6;}
+.stmt.paper-t{color:#2B2D2C;}.stmt.footage-t{color:#F6F7F6;}
+/* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
+.prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
+.prop img{display:block;width:100%;height:auto;}
+.prop-cap{margin-top:0.4cqw;font-family:"Lora",serif;font-style:italic;font-size:0.72cqw;color:#2B2D2C;text-align:center;}
+/* geo-map: d3 choropleth (US states / world countries), one region highlighted + annotated */
+.geomap{will-change:transform;}
+.geomap svg{width:100%;height:100%;display:block;}
+.gstate{fill:#DCDFDC;stroke:#F1F3F2;stroke-width:1.0;}
+.ghl{fill:#FFF200;stroke:#2B2D2C;stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
+.geoleader{position:absolute;inset:0;pointer-events:none;}
+.geoleader path{fill:none;stroke:#2B2D2C;stroke-width:2;}
+.geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2B2D2C;opacity:0;}
+.geopin::after{content:"";position:absolute;inset:-9px;border:2px solid #2B2D2C;border-radius:50%;opacity:0.4;}
+.geolabel{position:absolute;left:8cqw;top:20cqh;max-width:32cqw;}
+.glab-k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
+.glab-t{font-weight:900;font-size:5.4cqw;line-height:1;letter-spacing:-0.02em;color:#2B2D2C;margin:0.6cqw 0;opacity:0;}
+.glab-t .gmark{background:#FFF200;box-decoration-break:clone;padding:0 0.1em;}
+.glab-s{font-family:"Lora",serif;font-style:italic;font-size:1.3cqw;line-height:1.4;color:#4C4E4D;max-width:28cqw;opacity:0;}
+</style>
+  <div id="root" data-composition-id="geo-demo" data-width="1920" data-height="1080">
+        <div id="g1-map" class="clip geomap" data-start="0" data-duration="7" data-track-index="1" style="transform-origin:76% 54%;"></div>
+    <svg id="g1-leader" class="clip geoleader" data-start="0" data-duration="7" data-track-index="2" viewBox="0 0 1920 1080" preserveAspectRatio="none"><path id="g1-lead" d=""/></svg>
+    <div id="g1-pin" class="clip geopin" data-start="0" data-duration="7" data-track-index="3"></div>
+    <div id="g1-label" class="clip geolabel" data-start="0" data-duration="7" data-track-index="4"><div id="g1-k" class="glab-k"></div><div id="g1-t" class="glab-t"></div><div id="g1-s" class="glab-s"></div></div>
+    <div id="g2-map" class="clip geomap" data-start="7" data-duration="7" data-track-index="1" style="transform-origin:52% 40%;"></div>
+    <svg id="g2-leader" class="clip geoleader" data-start="7" data-duration="7" data-track-index="2" viewBox="0 0 1920 1080" preserveAspectRatio="none"><path id="g2-lead" d=""/></svg>
+    <div id="g2-pin" class="clip geopin" data-start="7" data-duration="7" data-track-index="3"></div>
+    <div id="g2-label" class="clip geolabel" data-start="7" data-duration="7" data-track-index="4"><div id="g2-k" class="glab-k"></div><div id="g2-t" class="glab-t"></div><div id="g2-s" class="glab-s"></div></div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script src="vendor/d3.min.js"></script>
+  <script src="vendor/topojson-client.min.js"></script>
+  <script src="vendor/us-states.js"></script>
+  <script src="vendor/world.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+        (function(){
+  var W=1920,H=1080,SID="g1",CFG={"hl": ["51"], "primary": "51", "kicker": "The map · U.S. data-center power", "title": "Virginia", "sub": "\"Data Center Alley\" — the largest concentration of data centers on Earth. Its grid demand is set to <b>double by 2030</b>."};
+  var topo=window.__US, fc=topojson.feature(topo,topo.objects.states);
+  var byId={}; fc.features.forEach(function(f){byId[String(f.id)]=f;});
+  var proj=d3.geoAlbersUsa().fitExtent([[120,70],[1800,1000]],fc), geo=d3.geoPath(proj), NS="http://www.w3.org/2000/svg";
+  var svg=document.createElementNS(NS,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  fc.features.forEach(function(f){var dd=geo(f); if(!dd)return; var p=document.createElementNS(NS,"path"); p.setAttribute("d",dd); p.setAttribute("class","gstate"); svg.appendChild(p);});
+  CFG.hl.forEach(function(id){var f=byId[id]; if(!f)return; var dd=geo(f); if(!dd)return; var p=document.createElementNS(NS,"path"); p.setAttribute("d",dd); p.setAttribute("class","ghl"); p.setAttribute("id",SID+"-hl-"+id); svg.appendChild(p);});
+  document.getElementById(SID+"-map").appendChild(svg);
+  var pf=byId[CFG.primary]||byId[CFG.hl[0]], c=geo.centroid(pf);
+  var pin=document.getElementById(SID+"-pin"); pin.style.left=c[0]+"px"; pin.style.top=c[1]+"px";
+  var label=document.getElementById(SID+"-label"), lx;
+  if(c[0]<W*0.5){label.style.left="auto";label.style.right="8cqw";label.style.textAlign="right";lx=W*0.66;}
+  else{label.style.right="auto";label.style.left="8cqw";label.style.textAlign="left";lx=W*0.34;}
+  var lead=document.getElementById(SID+"-lead");
+  lead.setAttribute("d","M "+lx+" "+(H*0.30)+" L "+c[0]+" "+c[1]);
+  var len=lead.getTotalLength(); lead.style.strokeDasharray=len; lead.style.strokeDashoffset=len;
+  document.getElementById(SID+"-k").textContent=CFG.kicker;
+  var t=document.getElementById(SID+"-t"); var m=document.createElement("span"); m.className="gmark"; m.textContent=CFG.title; t.appendChild(m);
+  document.getElementById(SID+"-s").innerHTML=CFG.sub;
+})();
+    tl.from("#g1-map",{opacity:0,y:24,duration:0.7,ease:"power2.out"},0);
+    tl.to("#g1-map",{scale:1.035,duration:7,ease:"none"},0);
+    tl.to("#g1-map svg .ghl",{opacity:1,duration:0.5,ease:"power2.out",stagger:0.12},1.1);
+    tl.from("#g1-map svg .ghl",{scale:0.5,duration:0.6,ease:"back.out(2)",stagger:0.12},1.1);
+    tl.to("#g1-pin",{opacity:1,duration:0.3},1.5);
+    tl.from("#g1-pin",{scale:0,duration:0.5,ease:"back.out(3)"},1.5);
+    tl.to("#g1-lead",{strokeDashoffset:0,duration:0.55,ease:"power2.inOut"},1.7);
+    tl.fromTo("#g1-k",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},1.9);
+    tl.fromTo("#g1-t",{opacity:0,y:20},{opacity:1,y:0,duration:0.6,ease:"power3.out"},2.05);
+    tl.fromTo("#g1-s",{opacity:0,y:16},{opacity:1,y:0,duration:0.6},2.3);
+    (function(){
+  var W=1920,H=1080,SID="g2",CFG={"hl": ["372"], "primary": "372", "kicker": "The world · data-center strain", "title": "Ireland", "sub": "Data centres already draw <b>~21% of the nation's electricity</b> — more than all its urban homes combined."};
+  var topo=window.__WORLD, fc=topojson.feature(topo,topo.objects.countries);
+  var byId={}; fc.features.forEach(function(f){byId[String(f.id)]=f;});
+  var proj=d3.geoNaturalEarth1().fitExtent([[90,60],[1830,1020]],fc), geo=d3.geoPath(proj), NS="http://www.w3.org/2000/svg";
+  var svg=document.createElementNS(NS,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  fc.features.forEach(function(f){var dd=geo(f); if(!dd)return; var p=document.createElementNS(NS,"path"); p.setAttribute("d",dd); p.setAttribute("class","gstate"); svg.appendChild(p);});
+  CFG.hl.forEach(function(id){var f=byId[id]; if(!f)return; var dd=geo(f); if(!dd)return; var p=document.createElementNS(NS,"path"); p.setAttribute("d",dd); p.setAttribute("class","ghl"); p.setAttribute("id",SID+"-hl-"+id); svg.appendChild(p);});
+  document.getElementById(SID+"-map").appendChild(svg);
+  var pf=byId[CFG.primary]||byId[CFG.hl[0]], c=geo.centroid(pf);
+  var pin=document.getElementById(SID+"-pin"); pin.style.left=c[0]+"px"; pin.style.top=c[1]+"px";
+  var label=document.getElementById(SID+"-label"), lx;
+  if(c[0]<W*0.5){label.style.left="auto";label.style.right="8cqw";label.style.textAlign="right";lx=W*0.66;}
+  else{label.style.right="auto";label.style.left="8cqw";label.style.textAlign="left";lx=W*0.34;}
+  var lead=document.getElementById(SID+"-lead");
+  lead.setAttribute("d","M "+lx+" "+(H*0.30)+" L "+c[0]+" "+c[1]);
+  var len=lead.getTotalLength(); lead.style.strokeDasharray=len; lead.style.strokeDashoffset=len;
+  document.getElementById(SID+"-k").textContent=CFG.kicker;
+  var t=document.getElementById(SID+"-t"); var m=document.createElement("span"); m.className="gmark"; m.textContent=CFG.title; t.appendChild(m);
+  document.getElementById(SID+"-s").innerHTML=CFG.sub;
+})();
+    tl.from("#g2-map",{opacity:0,y:24,duration:0.7,ease:"power2.out"},7);
+    tl.to("#g2-map",{scale:1.06,duration:7,ease:"none"},7);
+    tl.to("#g2-map svg .ghl",{opacity:1,duration:0.5,ease:"power2.out",stagger:0.12},8.1);
+    tl.from("#g2-map svg .ghl",{scale:0.5,duration:0.6,ease:"back.out(2)",stagger:0.12},8.1);
+    tl.to("#g2-pin",{opacity:1,duration:0.3},8.5);
+    tl.from("#g2-pin",{scale:0,duration:0.5,ease:"back.out(3)"},8.5);
+    tl.to("#g2-lead",{strokeDashoffset:0,duration:0.55,ease:"power2.inOut"},8.7);
+    tl.fromTo("#g2-k",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},8.9);
+    tl.fromTo("#g2-t",{opacity:0,y:20},{opacity:1,y:0,duration:0.6,ease:"power3.out"},9.05);
+    tl.fromTo("#g2-s",{opacity:0,y:16},{opacity:1,y:0,duration:0.6},9.3);
+    tl.to({}, { duration: 14 }, 0);
+    window.__timelines["geo-demo"] = tl;
+  </script>
+</template>

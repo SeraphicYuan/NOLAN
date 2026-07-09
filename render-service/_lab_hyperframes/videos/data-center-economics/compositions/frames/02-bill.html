@@ -1,0 +1,440 @@
+<template>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+    /* ===== ROOT (styled via #root, never a class) ===== */
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      container-type: size;
+      overflow: hidden;
+      font-family: "Barlow", sans-serif;
+      color: #F0ECE5;
+    }
+
+    /* ===== full-bleed ink-black ground — its own clip on the lowest track ===== */
+    .bill-bg { position: absolute; inset: 0; background: #111111; }
+
+    /* ===== photographic grounds (NOLAN bridge): between ink ground and the drifting cam;
+           dim scrim baked into background layers; GSAP-only transform (Ken-Burns) ===== */
+    .gnd2 {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    /* ===== camera wrapper (drift driven in onUpdate) — NOT a clip ===== */
+    #bill-cam {
+      position: absolute; inset: 0;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    .bill-scene { position: absolute; inset: 0; }
+
+    /* ===== chrome ===== */
+    .k {
+      font-family: "IBM Plex Mono", monospace; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.14em; color: #E85D26;
+      font-size: 0.95cqw;
+    }
+    .mono {
+      font-family: "IBM Plex Mono", monospace; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.14em;
+    }
+    .k-abs { position: absolute; top: 6.4cqw; left: 5.5cqw; }
+    .chrome-top {
+      position: absolute; top: 3.4cqw; left: 5.5cqw; right: 5.5cqw;
+      border-top: 1px solid #282826; padding-top: 0.7cqw;
+      display: flex; justify-content: space-between;
+    }
+    .chrome-bot {
+      position: absolute; bottom: 13cqw; left: 5.5cqw; right: 5.5cqw;
+      border-top: 1px solid #282826; padding-top: 0.7cqw;
+      display: flex; justify-content: space-between;
+    }
+    .chrome-note { font-family: "IBM Plex Mono", monospace; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.85cqw; color: #888880; }
+    .chrome-idx { color: #505048; }
+
+    /* ===== statement (scenes 1 + 5) ===== */
+    .stmt {
+      position: absolute; left: 5.5cqw; right: 5.5cqw; top: 0; bottom: 13cqw;
+      display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+    }
+    .disp {
+      font-family: "Barlow", sans-serif; font-weight: 700;
+      text-transform: lowercase; letter-spacing: -0.02em; line-height: 1.08;
+      font-size: 4.3cqw; color: #F0ECE5; max-width: 78cqw;
+    }
+    .disp .line { display: block; }
+    .disp .word { display: inline-block; will-change: transform, opacity; }
+    .disp .glow { will-change: color, text-shadow; }
+    .bill-s5disp { font-size: 3.7cqw; }
+    .mono-under {
+      font-family: "IBM Plex Mono", monospace; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.14em; font-size: 1.0cqw;
+      color: #888880; margin-top: 2.4cqw;
+    }
+
+    /* ===== stat grid (scenes 2 + 3 + 6) ===== */
+    .grid { position: absolute; left: 5.5cqw; right: 5.5cqw; top: 11cqw; bottom: 16cqw;
+      display: flex; align-items: center; }
+    .cards { display: flex; gap: 2.5cqw; width: 100%; align-items: flex-start; }
+    .card { flex: 1; border-top: 1px solid #282826; padding-top: 1.4cqw; }
+    .numwrap { height: 6cqw; display: flex; align-items: flex-end; overflow: visible; }
+    .num {
+      font-family: "Barlow", sans-serif; font-weight: 900;
+      letter-spacing: -0.04em; line-height: 1; color: #E85D26; font-size: 3.2cqw;
+      white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    .num .pre { font-size: 0.7em; }
+    .num .suf { font-size: 0.6em; }
+    .clabel { font-size: 0.9cqw; color: #888880; margin-top: 1.2cqw; line-height: 1.4; max-width: 94%; }
+    .track { position: relative; width: 68%; height: 0.4cqw; background: #282826;
+      margin-top: 1cqw; overflow: hidden; }
+    .fill { position: absolute; inset: 0; width: 100%; height: 100%;
+      background: #E85D26; transform: scaleX(0); transform-origin: left center; }
+
+    /* ===== pull quote (scene 4) ===== */
+    .qmark {
+      position: absolute; top: 3cqw; left: 5.2cqw;
+      font-family: "Barlow", sans-serif; font-weight: 900; font-size: 10cqw;
+      line-height: 0.6; color: #E85D26;
+    }
+    .qtext {
+      position: absolute; top: 12cqw; left: 5.5cqw; width: 74cqw;
+      font-family: "Barlow", sans-serif; font-weight: 700;
+      text-transform: lowercase; letter-spacing: -0.02em; line-height: 1.15;
+      font-size: 3.6cqw; color: #F0ECE5;
+    }
+    .qtext .qw { display: inline-block; will-change: transform, opacity; }
+    .qattr { position: absolute; top: 25cqw; left: 5.5cqw; font-size: 1.0cqw; color: #888880; }
+    .qsupport { position: absolute; top: 30cqw; left: 5.5cqw; }
+    .qsupport .numwrap { height: 6.4cqw; }
+    .qfine { position: absolute; top: 43cqw; left: 5.5cqw;
+      font-size: 0.85cqw; color: #505048; letter-spacing: 0.12em; }
+  </style>
+
+  <div id="root" data-composition-id="02-bill"
+       data-start="0" data-duration="91.76" data-width="1920" data-height="1080">
+
+    <!-- full-bleed ground -->
+    <div class="clip bill-bg" data-start="0" data-duration="91.76" data-track-index="0"></div>
+
+    <!-- photographic grounds (NOLAN bridge) — concrete beats only; static under the drifting cam -->
+    <div id="gnd2-s1" class="gnd2 clip" data-start="0" data-duration="12.3" data-track-index="8"
+         data-layout-allow-overflow
+         style="background-image: linear-gradient(90deg, rgba(17,17,17,0.78), rgba(17,17,17,0.46) 55%, rgba(17,17,17,0.58)), url('assets/bg_bill_turn.png');"></div>
+    <div id="gnd2-s3" class="gnd2 clip" data-start="28.6" data-duration="16.6" data-track-index="8"
+         data-layout-allow-overflow
+         style="background-image: linear-gradient(rgba(17,17,17,0.64), rgba(17,17,17,0.64)), url('assets/bg_water_desert.png');"></div>
+    <div id="gnd2-s4" class="gnd2 clip" data-start="45.2" data-duration="20.7" data-track-index="8"
+         data-layout-allow-overflow
+         style="background-image: linear-gradient(90deg, rgba(17,17,17,0.72), rgba(17,17,17,0.48) 55%, rgba(17,17,17,0.52)), url('assets/bg_noise_house.png');"></div>
+    <div id="gnd2-s5" class="gnd2 clip" data-start="65.9" data-duration="12.9" data-track-index="8"
+         data-layout-allow-overflow
+         style="background-image: linear-gradient(rgba(17,17,17,0.58), rgba(17,17,17,0.58)), url('assets/bg_land_lines.png');"></div>
+
+    <!-- everything the camera drifts -->
+    <div id="bill-cam">
+
+      <!-- ============ SCENE 1 — STATEMENT / TURN (0.0–12.3) ============ -->
+      <section class="clip bill-scene" data-start="0" data-duration="12.3" data-track-index="1">
+        <div class="k k-abs bill-s1k">THE BILL</div>
+        <div class="stmt">
+          <div class="disp">
+            <span class="line">
+              <span class="word bill-l1w">the</span>
+              <span class="word bill-l1w">benefits</span>
+              <span class="word bill-l1w">are</span>
+              <span class="word bill-l1w">spread</span>
+              <span class="word bill-l1w">out.</span>
+            </span>
+            <span class="line" style="margin-top:0.4cqw;">
+              <span class="word bill-l2w">the</span>
+              <span class="word bill-l2w">costs</span>
+              <span class="word bill-l2w">land</span>
+              <span class="word bill-l2w">on</span>
+              <span class="word glow bill-l2w bill-s1glow" data-g="specific">specific</span>
+              <span class="word glow bill-l2w bill-s1glow" data-g="people">people.</span>
+            </span>
+          </div>
+          <div class="mono-under bill-s1under">SO &mdash; LET'S FOLLOW THE BILL</div>
+        </div>
+      </section>
+
+      <!-- ============ SCENE 2 — STAT GRID · POWER (12.3–28.6) ============ -->
+      <section class="clip bill-scene" data-start="12.3" data-duration="16.3" data-track-index="2">
+        <div class="chrome-top bill-s2chrome">
+          <span class="chrome-note">VIRGINIA &middot; DOMINION ENERGY</span>
+          <span class="chrome-note chrome-idx">02 / 06</span>
+        </div>
+        <div class="k k-abs bill-s2k">YOUR POWER &middot; VIRGINIA &middot; DOMINION ENERGY</div>
+        <div class="grid">
+          <div class="cards">
+            <div class="card bill-s2a">
+              <div class="numwrap"><div class="num bill-s2a-num"><span class="pre">&times;</span><span class="val bill-s2a-val">0</span></div></div>
+              <div class="clabel mono">GENERATION TO DOUBLE BY 2039</div>
+            </div>
+            <div class="card bill-s2b">
+              <div class="numwrap"><div class="num bill-s2b-num"><span class="pre">$</span><span class="val bill-s2b-val">0</span><span class="suf">B</span></div></div>
+              <div class="clabel mono">COST, UP TO</div>
+            </div>
+            <div class="card bill-s2c">
+              <div class="numwrap"><div class="num bill-s2c-num"><span class="pre">+</span><span class="val bill-s2c-val">0</span><span class="suf">%</span></div></div>
+              <div class="track"><div class="fill bill-s2c-fill"></div></div>
+              <div class="clabel mono">RESIDENTIAL BILLS, UP TO</div>
+            </div>
+          </div>
+        </div>
+        <div class="chrome-bot bill-s2chromeb">
+          <span class="chrome-note chrome-idx">FOLLOW THE BILL</span>
+          <span class="chrome-note chrome-idx">POWER</span>
+        </div>
+      </section>
+
+      <!-- ============ SCENE 3 — STAT GRID · WATER (28.6–45.2) ============ -->
+      <section class="clip bill-scene" data-start="28.6" data-duration="16.6" data-track-index="3">
+        <div class="chrome-top bill-s3chrome">
+          <span class="chrome-note">WATER USE</span>
+          <span class="chrome-note chrome-idx">03 / 06</span>
+        </div>
+        <div class="k k-abs bill-s3k">WATER</div>
+        <div class="grid">
+          <div class="cards">
+            <div class="card bill-s3a">
+              <div class="numwrap"><div class="num bill-s3a-num"><span class="val bill-s3a-val">0</span><span class="suf">%</span></div></div>
+              <div class="track"><div class="fill bill-s3a-fill"></div></div>
+              <div class="clabel mono">OF THE BIGGEST CENTERS IN HIGH WATER STRESS</div>
+            </div>
+            <div class="card bill-s3b">
+              <div class="numwrap"><div class="num bill-s3b-num"><span class="val bill-s3b-val">0.00</span><span class="suf">B</span></div></div>
+              <div class="clabel mono">GALLONS / YEAR &mdash; ONE ARIZONA CAMPUS</div>
+            </div>
+            <div class="card bill-s3c">
+              <div class="numwrap"><div class="num bill-s3c-num" style="font-size:4.4cqw;">&asymp; 61,000</div></div>
+              <div class="mono bill-s3c-ppl" style="font-size:0.95cqw;color:#E85D26;margin-top:0.5cqw;">PEOPLE</div>
+              <div class="clabel mono">A CITY THE SIZE OF SANTA CRUZ, CA</div>
+            </div>
+          </div>
+        </div>
+        <div class="chrome-bot bill-s3chromeb">
+          <span class="chrome-note chrome-idx">FOLLOW THE BILL</span>
+          <span class="chrome-note chrome-idx">WATER</span>
+        </div>
+      </section>
+
+      <!-- ============ SCENE 4 — PULL QUOTE · NOISE (45.2–65.9) ============ -->
+      <section class="clip bill-scene" data-start="45.2" data-duration="20.7" data-track-index="4">
+        <div class="qmark bill-qmark">&ldquo;</div>
+        <div class="qtext bill-qtext">
+          <span class="qw">a</span> <span class="qw">low</span> <span class="qw">drone</span>
+          <span class="qw">you</span> <span class="qw">don't</span> <span class="qw">just</span>
+          <span class="qw">hear</span> <span class="qw">&mdash;</span> <span class="qw">you</span>
+          <span class="qw">feel</span> <span class="qw">it</span> <span class="qw">in</span>
+          <span class="qw">the</span> <span class="qw">walls.</span>
+        </div>
+        <div class="qattr mono bill-qattr">&mdash; VIRGINIA RESIDENTS</div>
+        <div class="qsupport bill-qsupport">
+          <div class="numwrap"><div class="num bill-s4-num" style="font-size:3.5cqw;"><span class="pre">$</span><span class="val bill-s4-val">0</span></div></div>
+          <div class="clabel mono" style="margin-top:0.6cqw;">ON WINDOWS + INSULATION &middot; STILL COULDN'T SLEEP</div>
+        </div>
+        <div class="qfine mono bill-qfine">(IN FAIRNESS: AMAZON SAYS ITS CENTERS RUN BELOW REQUIRED SOUND LEVELS.)</div>
+      </section>
+
+      <!-- ============ SCENE 5 — STATEMENT · LAND (65.9–78.8) ============ -->
+      <section class="clip bill-scene" data-start="65.9" data-duration="12.9" data-track-index="5">
+        <div class="k k-abs bill-s5k">THE LAND &middot; GEORGIA &amp; KENTUCKY</div>
+        <div class="stmt">
+          <div class="disp bill-s5disp">
+            <span class="line">
+              <span class="word bill-s5w">some</span>
+              <span class="word bill-s5w">are</span>
+              <span class="word bill-s5w">losing</span>
+              <span class="word bill-s5w">their</span>
+              <span class="word bill-s5w">land</span>
+              <span class="word bill-s5w">&mdash;</span>
+              <span class="word glow bill-s5w bill-s5glow" data-g="outright">outright.</span>
+            </span>
+          </div>
+          <div class="mono-under bill-s5under">EMINENT DOMAIN &mdash; FOR THE POWER LINES</div>
+        </div>
+      </section>
+
+      <!-- ============ SCENE 6 — STAT GRID · THE KICKER (78.8–91.76) ============ -->
+      <section class="clip bill-scene" data-start="78.8" data-duration="12.96" data-track-index="6">
+        <div class="chrome-top bill-s6chrome">
+          <span class="chrome-note">THE JOBS</span>
+          <span class="chrome-note chrome-idx">06 / 06</span>
+        </div>
+        <div class="k k-abs bill-s6k">AND THE JOBS?</div>
+        <div class="grid">
+          <div class="cards">
+            <div class="card bill-s6a">
+              <div class="numwrap"><div class="num bill-s6a-num"><span class="pre">&lt;&nbsp;</span><span class="val bill-s6a-val">0</span></div></div>
+              <div class="clabel mono">PERMANENT WORKERS &mdash; EVEN THE LARGEST</div>
+            </div>
+            <div class="card bill-s6b">
+              <div class="numwrap"><div class="num bill-s6b-num"><span class="val bill-s6b-val">0</span></div></div>
+              <div class="clabel mono">SOME AS FEW AS</div>
+            </div>
+            <div class="card bill-s6c">
+              <div class="numwrap"><div class="num bill-s6c-num"><span class="pre">~</span><span class="val bill-s6c-val">0</span></div></div>
+              <div class="clabel mono">OPENAI STARGATE, TEXAS &mdash; FULL-TIME JOBS</div>
+            </div>
+          </div>
+        </div>
+        <div class="chrome-bot bill-s6chromeb">
+          <span class="chrome-note chrome-idx">WHO PAYS</span>
+          <span class="chrome-note chrome-idx">END</span>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    /* ---------- shared count-up (counting-dynamic-scale): value + font-size in ONE eased tween ---------- */
+    const fmtInt = (v) => String(Math.round(v));
+    const fmtDec2 = (v) => v.toFixed(2);
+    const fmtLoc = (v) => Math.round(v).toLocaleString();
+    function countUp(valSel, numSel, target, fmt, at, dur, s0, s1) {
+      const v = document.querySelector(valSel);
+      const n = document.querySelector(numSel);
+      const st = { v: 0, fs: s0 };
+      tl.to(st, {
+        v: target, fs: s1, duration: dur, ease: "power3.out",
+        onUpdate: () => { v.textContent = fmt(st.v); n.style.fontSize = st.fs.toFixed(3) + "cqw"; }
+      }, at);
+    }
+
+    /* ---------- shared keyword-glow (asr-keyword-glow): attack/sustain/release envelope ----------
+       color ramps cream -> fire-orange (permanent ink) while a text-shadow glow blooms then decays. */
+    const CREAM = [240, 236, 229], ORANGE = [232, 93, 38];
+    const ATTACK = 0.22, RELEASE = 0.45, REST = 0.2;
+    function mix(t) {
+      return "rgb(" + Math.round(CREAM[0] + (ORANGE[0] - CREAM[0]) * t) + "," +
+        Math.round(CREAM[1] + (ORANGE[1] - CREAM[1]) * t) + "," +
+        Math.round(CREAM[2] + (ORANGE[2] - CREAM[2]) * t) + ")";
+    }
+    function ramp(t, s) { return t < s ? 0 : Math.min((t - s) / ATTACK, 1); }          // permanent (ink stays)
+    function genv(t, s, e) {                                                            // glow: decays to REST
+      if (t < s) return 0;
+      if (t < e) return Math.min((t - s) / ATTACK, 1);
+      const re = e + RELEASE;
+      if (t < re) return 1 - ((t - e) / RELEASE) * (1 - REST);
+      return REST;
+    }
+    function glowDriver(sel, timings, start, dur) {
+      const words = gsap.utils.toArray(sel);
+      const d = { t: 0 };
+      tl.to(d, {
+        t: dur, duration: dur, ease: "none",
+        onUpdate: () => {
+          words.forEach((w) => {
+            const tm = timings[w.dataset.g];
+            if (!tm) return;
+            const c = ramp(d.t, tm.s);
+            const g = genv(d.t, tm.s, tm.e);
+            w.style.color = mix(c);
+            w.style.textShadow = "0 0 " + (g * 15).toFixed(1) + "px rgba(232,93,38," + (0.5 * g).toFixed(3) + ")";
+          });
+        }
+      }, start);
+    }
+
+    /* ================= SCENE 1 — statement / turn ================= */
+    tl.fromTo(".bill-s1k", { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.05);
+    // line 1 — per-word slam (rise) — kinetic-beat-slam
+    tl.fromTo(".bill-l1w", { opacity: 0, yPercent: 65 },
+      { opacity: 1, yPercent: 0, duration: 0.4, ease: "power4.out", stagger: 0.28 }, 0.12);
+    // line 2 — DISTINCT entrance (scale + blur snap)
+    tl.fromTo(".bill-l2w", { opacity: 0, scale: 1.35, filter: "blur(10px)" },
+      { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.45, ease: "expo.out", stagger: 0.3 }, 4.0);
+    // "specific people" inks fire-orange ~7s (local == absolute for scene 1)
+    glowDriver(".bill-s1glow", { specific: { s: 6.9, e: 7.5 }, people: { s: 7.5, e: 8.7 } }, 0, 12.3);
+    tl.fromTo(".bill-s1under", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 10.5);
+
+    /* ================= SCENE 2 — power stat grid ================= */
+    tl.fromTo(".bill-s2chrome, .bill-s2chromeb", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power1.out" }, 12.5);
+    tl.fromTo(".bill-s2k", { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 12.6);
+    tl.fromTo(".bill-s2a", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 14.0);
+    countUp(".bill-s2a-val", ".bill-s2a-num", 2, fmtInt, 14.0, 1.1, 3.2, 5.4);
+    tl.fromTo(".bill-s2b", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 21.0);
+    countUp(".bill-s2b-val", ".bill-s2b-num", 103, fmtInt, 21.0, 1.5, 3.2, 5.6);
+    tl.fromTo(".bill-s2c", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 26.0);
+    countUp(".bill-s2c-val", ".bill-s2c-num", 50, fmtInt, 26.0, 1.3, 3.2, 5.4);
+    tl.fromTo(".bill-s2c-fill", { scaleX: 0 }, { scaleX: 0.5, duration: 1.3, ease: "power2.out" }, 26.0); // stat-bars-and-fills
+
+    /* ================= SCENE 3 — water stat grid ================= */
+    tl.fromTo(".bill-s3chrome, .bill-s3chromeb", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power1.out" }, 28.8);
+    tl.fromTo(".bill-s3k", { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 28.9);
+    tl.fromTo(".bill-s3a", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 30.0);
+    countUp(".bill-s3a-val", ".bill-s3a-num", 43, fmtInt, 30.0, 1.3, 3.2, 5.4);
+    tl.fromTo(".bill-s3a-fill", { scaleX: 0 }, { scaleX: 0.43, duration: 1.3, ease: "power2.out" }, 30.0);
+    tl.fromTo(".bill-s3b", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 38.0);
+    countUp(".bill-s3b-val", ".bill-s3b-num", 1.83, fmtDec2, 38.0, 1.5, 3.2, 5.2);
+    tl.fromTo(".bill-s3c", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power1.out" }, 41.9);
+    // C — slam (kinetic-beat-slam): figure + PEOPLE snap in
+    tl.fromTo(".bill-s3c-num, .bill-s3c-ppl", { opacity: 0, scale: 1.3, filter: "blur(10px)" },
+      { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out", stagger: 0.12 }, 42.0);
+
+    /* ================= SCENE 4 — pull quote (held human beat) ================= */
+    tl.fromTo(".bill-qmark", { opacity: 0, scale: 0.7, transformOrigin: "left top" },
+      { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 45.5);
+    tl.fromTo(".bill-qtext .qw", { opacity: 0, yPercent: 40 },
+      { opacity: 1, yPercent: 0, duration: 0.5, ease: "power2.out", stagger: 0.09 }, 46.0);
+    tl.fromTo(".bill-qattr", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 49.8);
+    tl.fromTo(".bill-qsupport", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 54.9);
+    countUp(".bill-s4-val", ".bill-s4-num", 20000, fmtLoc, 55.0, 1.7, 3.5, 6.0);
+    tl.fromTo(".bill-qfine", { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power1.out" }, 63.0);
+
+    /* ================= SCENE 5 — statement / land ================= */
+    tl.fromTo(".bill-s5k", { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 66.0);
+    tl.fromTo(".bill-s5w", { opacity: 0, yPercent: 70 },
+      { opacity: 1, yPercent: 0, duration: 0.42, ease: "power4.out", stagger: 0.26 }, 66.6);
+    // "outright" inks fire-orange (local seconds within the 65.9 driver)
+    glowDriver(".bill-s5glow", { outright: { s: 2.4, e: 3.6 } }, 65.9, 12.9);
+    tl.fromTo(".bill-s5under", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 74.0);
+
+    /* ================= SCENE 6 — the kicker (jobs) ================= */
+    tl.fromTo(".bill-s6chrome, .bill-s6chromeb", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power1.out" }, 79.0);
+    tl.fromTo(".bill-s6k", { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 79.1);
+    tl.fromTo(".bill-s6a", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 81.0);
+    countUp(".bill-s6a-val", ".bill-s6a-num", 150, fmtInt, 81.0, 1.3, 3.2, 5.4);
+    tl.fromTo(".bill-s6b", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 84.0);
+    countUp(".bill-s6b-val", ".bill-s6b-num", 25, fmtInt, 84.0, 1.2, 3.2, 5.4);
+    tl.fromTo(".bill-s6c", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 88.0);
+    countUp(".bill-s6c-val", ".bill-s6c-num", 100, fmtInt, 88.0, 1.3, 3.2, 5.6);
+    // FINAL end-settle (only permitted settle) — a quiet emphasis hold on ~100 to the end
+    tl.to(".bill-s6c-num", { scale: 1.04, duration: 2.0, ease: "power2.out" }, 89.6);
+
+    /* ================= camera — slow bounded drift under everything (multi-phase-camera drift) ================= */
+    const cam = document.querySelector("#bill-cam");
+    const cd = { p: 0 };
+    tl.to(cd, {
+      p: Math.PI * 2 * 2, duration: 91.76, ease: "none",
+      onUpdate: () => {
+        const dx = Math.sin(cd.p) * 6;
+        const dy = Math.sin(cd.p * 1.3) * 3;
+        const sc = 1.008 + Math.sin(cd.p * 0.5) * 0.006; // 1.002–1.014, always >= 1 (no edge void)
+        cam.style.transform = "scale(" + sc.toFixed(4) + ") translate(" + dx.toFixed(2) + "px, " + dy.toFixed(2) + "px)";
+      }
+    }, 0);
+
+    /* ================= Ken-Burns on the photographic grounds (linear drift; fromTo = seek-safe) ================= */
+    tl.fromTo("#gnd2-s1", { scale: 1.04 }, { scale: 1.10, duration: 12.3, ease: "none" }, 0);
+    tl.fromTo("#gnd2-s3", { scale: 1.04 }, { scale: 1.09, duration: 16.6, ease: "none" }, 28.6);
+    tl.fromTo("#gnd2-s4", { scale: 1.03 }, { scale: 1.08, duration: 20.7, ease: "none" }, 45.2);
+    tl.fromTo("#gnd2-s5", { scale: 1.09 }, { scale: 1.04, duration: 12.9, ease: "none" }, 65.9);
+
+    window.__timelines["02-bill"] = tl;
+  </script>
+</template>

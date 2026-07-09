@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- head is metadata for the source file only; the runtime ignores everything outside <template> -->
+  </head>
+  <body>
+    <template>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+        /* Root styled by #root (never a class on the root element). container-type:size => cqw/cqh
+           resolve against this 1920x1080 box: 1cqw = 19.2px, 1cqh = 10.8px. */
+        #root {
+          position: absolute;
+          inset: 0;
+          width: 1920px;
+          height: 1080px;
+          container-type: size;
+          overflow: hidden;
+          background: transparent;
+          font-family: "Barlow", sans-serif;
+          color: #f0ece5;
+        }
+
+        /* --- camera wrapper (a plain div; the slow bounded drift is applied to it in onUpdate) --- */
+        .boom-cam {
+          position: absolute;
+          inset: 0;
+          transform-origin: 50% 50%;
+          will-change: transform;
+        }
+
+        /* --- full-bleed grounds: each is its OWN full-duration clip, never a #root background --- */
+        .bg {
+          position: absolute;
+          inset: 0;
+        }
+        .bg-dark {
+          background: #111111;
+          z-index: 0;
+        }
+        .bg-orange {
+          background: #e85d26;
+          z-index: 1;
+        }
+        /* --- photographic grounds (NOLAN bridge): above ink (z0), below scenes (z2);
+               dim scrim baked into the background layers; GSAP-only transform (Ken-Burns) --- */
+        .gnd {
+          position: absolute;
+          inset: 0;
+          background-size: cover;
+          background-position: center;
+          z-index: 1;
+          transform-origin: 50% 50%;
+          will-change: transform;
+        }
+
+        /* --- scene sections (the timed clips); only one is visible at a time --- */
+        .scene {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+        }
+
+        /* --- chrome: IBM Plex Mono, uppercase, tracked --- */
+        .kicker {
+          position: absolute;
+          top: 6.2cqh;
+          left: 5.5cqw;
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 500;
+          font-size: 0.95cqw;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #e85d26;
+        }
+        .mono {
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 500;
+          font-size: 0.9cqw;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #888880;
+        }
+
+        /* --- the rule stub (the system's only ornament) --- */
+        .rule {
+          height: 2px;
+          background: #e85d26;
+          transform-origin: left center;
+        }
+
+        /* --- Barlow display statements: massive lowercase weight 900, negative-tracked --- */
+        .stmt {
+          position: absolute;
+          left: 5.5cqw;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          max-width: 89cqw;
+          column-gap: 0.28em;
+          row-gap: 0.02em;
+        }
+        .word {
+          display: inline-block;
+          font-family: "Barlow", sans-serif;
+          font-weight: 900;
+          line-height: 0.92;
+          letter-spacing: -0.035em;
+          text-transform: lowercase;
+          color: #f0ece5;
+          will-change: transform, opacity;
+        }
+
+        .lead {
+          position: absolute;
+          left: 5.5cqw;
+          font-family: "Barlow", sans-serif;
+          font-weight: 400;
+          font-size: 1.7cqw;
+          line-height: 1.4;
+          letter-spacing: 0;
+          text-transform: lowercase;
+          color: #888880;
+        }
+
+        /* --- stat-cards: top-border only --- */
+        .card {
+          border-top: 1px solid #282826;
+          padding-top: 1.1cqw;
+        }
+        .stat-num {
+          font-family: "Barlow", sans-serif;
+          font-weight: 900;
+          line-height: 1;
+          letter-spacing: -0.04em;
+          font-variant-numeric: tabular-nums;
+          color: #e85d26;
+          display: inline-block;
+          will-change: font-size;
+        }
+        .stat-word {
+          font-family: "Barlow", sans-serif;
+          font-weight: 900;
+          line-height: 1.02;
+          letter-spacing: -0.03em;
+          font-size: 2.6cqw;
+          text-transform: uppercase;
+          color: #e85d26;
+          display: inline-block;
+        }
+        .stat-label {
+          margin-top: 1.1cqw;
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 500;
+          font-size: 0.82cqw;
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+          color: #888880;
+          max-width: 24cqw;
+          line-height: 1.5;
+        }
+
+        /* --- Scene 2 chrome bars --- */
+        .chrome-bar {
+          position: absolute;
+          left: 5.5cqw;
+          width: 89cqw;
+          height: 1px;
+          background: #282826;
+          transform-origin: left center;
+        }
+        .chrome-txt {
+          position: absolute;
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 500;
+          font-size: 0.82cqw;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #505048;
+        }
+
+        /* --- Scene 3 demand compare --- */
+        .s3-start {
+          font-family: "Barlow", sans-serif;
+          font-weight: 900;
+          font-size: 3cqw;
+          line-height: 1;
+          letter-spacing: -0.03em;
+          color: #888880;
+          font-variant-numeric: tabular-nums;
+        }
+        .s3-arrow {
+          width: 7cqw;
+          height: 3px;
+          background: #e85d26;
+          transform-origin: left center;
+          position: relative;
+        }
+        .s3-arrow::after {
+          content: "";
+          position: absolute;
+          right: -1px;
+          top: -6px;
+          border-left: 14px solid #e85d26;
+          border-top: 7px solid transparent;
+          border-bottom: 7px solid transparent;
+        }
+
+        /* --- Scene 4 bar-track --- */
+        .bar {
+          width: 4.6cqw;
+          transform-origin: bottom center;
+        }
+        .bar-cream {
+          background: #505048;
+        }
+        .bar-accent {
+          background: #e85d26;
+        }
+        .bar-val {
+          font-family: "Barlow", sans-serif;
+          font-weight: 900;
+          font-size: 2.3cqw;
+          letter-spacing: -0.03em;
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+        }
+        .bar-yr {
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 500;
+          font-size: 0.85cqw;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #888880;
+        }
+        .axis {
+          width: 1px;
+          background: #282826;
+          transform-origin: bottom center;
+        }
+
+        /* --- Scene 5 (orange register): ink is the only pop, no cream, no second hue --- */
+        .s5 .kicker {
+          color: rgba(17, 17, 17, 0.55);
+        }
+        .s5-line {
+          position: absolute;
+          left: 5.5cqw;
+          top: 22cqh;
+          font-family: "Barlow", sans-serif;
+          font-weight: 900;
+          font-size: 6.2cqw;
+          line-height: 0.94;
+          letter-spacing: -0.035em;
+          text-transform: lowercase;
+          color: #111111;
+        }
+        .s5-num {
+          position: absolute;
+          left: 5.5cqw;
+          top: 36cqh;
+          font-family: "Barlow", sans-serif;
+          font-weight: 900;
+          line-height: 1;
+          letter-spacing: -0.05em;
+          font-variant-numeric: tabular-nums;
+          color: #111111;
+          display: inline-block;
+          will-change: font-size;
+        }
+        .s5-label {
+          position: absolute;
+          left: 5.6cqw;
+          top: 63cqh;
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 500;
+          font-size: 1.05cqw;
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+          color: rgba(17, 17, 17, 0.75);
+        }
+        .s5-tax {
+          position: absolute;
+          left: 5.6cqw;
+          top: 70cqh;
+          font-family: "IBM Plex Mono", monospace;
+          font-weight: 500;
+          font-size: 1.05cqw;
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+          color: rgba(17, 17, 17, 0.55);
+        }
+      </style>
+
+      <div id="root" data-composition-id="01-boom" data-width="1920" data-height="1080">
+        <div class="boom-cam" id="boom-cam">
+          <!-- lowest-track full-bleed grounds -->
+          <div
+            class="bg bg-dark clip"
+            data-start="0"
+            data-duration="67.76"
+            data-track-index="0"
+          ></div>
+          <div
+            class="bg bg-orange clip"
+            data-start="51.4"
+            data-duration="12.9"
+            data-track-index="1"
+          ></div>
+
+          <!-- photographic grounds (NOLAN bridge) — concrete beats only -->
+          <div id="gnd-s1" class="gnd clip" data-start="0" data-duration="8.6" data-track-index="7"
+               data-layout-allow-overflow
+               style="background-image: linear-gradient(90deg, rgba(17,17,17,0.80), rgba(17,17,17,0.44) 55%, rgba(17,17,17,0.60)), url('assets/bg_boom_hero.png');"></div>
+          <div id="gnd-s6" class="gnd clip" data-start="64.3" data-duration="3.46" data-track-index="7"
+               data-layout-allow-overflow
+               style="background-image: linear-gradient(rgba(17,17,17,0.62), rgba(17,17,17,0.62)), url('assets/bg_boom_close.png');"></div>
+
+          <!-- ===================== SCENE 1 — STATEMENT (0.0–8.6) ===================== -->
+          <section class="scene clip" data-start="0" data-duration="8.6" data-track-index="2">
+            <div class="kicker" id="boom-s1kicker">The build-out</div>
+            <div class="rule" id="boom-s1rule" style="position:absolute; left:5.5cqw; top:29cqh; width:2.2cqw;"></div>
+            <div class="stmt" id="boom-s1stmt" style="top:33cqh; font-size:7.4cqw;">
+              <span class="word" id="boom-w1">the</span>
+              <span class="word" id="boom-w2">boom</span>
+              <span class="word" id="boom-w3">is</span>
+              <span class="word" id="boom-w4">real</span>
+            </div>
+            <div class="lead" id="boom-s1lead" style="top:52cqh;">and it is not stopping</div>
+          </section>
+
+          <!-- ===================== SCENE 2 — STAT GRID (8.6–25.7) ===================== -->
+          <section class="scene s2 clip" data-start="8.6" data-duration="17.1" data-track-index="2">
+            <div class="kicker" id="boom-s2kicker">The money · industrial-revolution money</div>
+
+            <div class="chrome-bar" id="boom-chrometop" style="top:13cqh;"></div>
+            <div class="chrome-txt" id="boom-chrometopL" style="top:10.4cqh; left:5.5cqw;">The money</div>
+            <div class="chrome-txt" id="boom-chrometopR" style="top:10.4cqh; left:88.4cqw;">02 / 06</div>
+
+            <!-- three top-border stat-cards, revealed left -> right -->
+            <div class="card" id="boom-cardA" style="position:absolute; left:5.5cqw; top:32cqh; width:26cqw;">
+              <span class="stat-num" id="boom-cardAnum">$0B</span>
+              <div class="stat-label">AI infrastructure — 2026</div>
+            </div>
+            <div class="card" id="boom-cardB" style="position:absolute; left:37cqw; top:32cqh; width:26cqw;">
+              <span class="stat-num" id="boom-cardBnum">$0B</span>
+              <div class="stat-label">— 2027</div>
+            </div>
+            <div class="card" id="boom-cardC" style="position:absolute; left:68.5cqw; top:32cqh; width:26cqw;">
+              <span class="stat-word" id="boom-cardCword">~ US defense budget</span>
+              <div class="stat-label">poured into server farms</div>
+            </div>
+
+            <div class="chrome-bar" id="boom-chromebot" style="top:74cqh;"></div>
+            <div class="chrome-txt" id="boom-chromebotL" style="top:75cqh; left:5.5cqw;">AI infrastructure spend</div>
+            <div class="chrome-txt" id="boom-chromebotR" style="top:75cqh; left:90.4cqw;">USD</div>
+          </section>
+
+          <!-- ===================== SCENE 3 — DEMAND (25.7–34.6) ===================== -->
+          <section class="scene s3 clip" data-start="25.7" data-duration="8.9" data-track-index="2">
+            <div class="kicker" id="boom-s3kicker">The demand · OpenAI chatbot users</div>
+            <div
+              id="boom-s3row"
+              style="position:absolute; left:7cqw; top:38cqh; display:flex; align-items:center; gap:3cqw;"
+            >
+              <span class="s3-start" id="boom-s3start">400M</span>
+              <span class="s3-arrow" id="boom-s3arrow"></span>
+              <span class="stat-num" id="boom-s3num" style="font-size:11cqw;">400M</span>
+            </div>
+            <div class="mono" id="boom-s3note" style="position:absolute; left:7cqw; top:60cqh;">Doubled in a single year</div>
+          </section>
+
+          <!-- ===================== SCENE 4 — POWER + BAR (34.6–51.4) ===================== -->
+          <section class="scene s4 clip" data-start="34.6" data-duration="16.8" data-track-index="2">
+            <div class="kicker" id="boom-s4kicker">The power · US electricity to data centers</div>
+
+            <!-- bar-track: baseline at 66cqh, bars grow up; left axis hairline -->
+            <div class="axis" id="boom-axis" style="position:absolute; left:7.4cqw; top:33cqh; height:33cqh;"></div>
+
+            <div class="bar bar-cream" id="boom-bar1" style="position:absolute; left:9cqw; top:54cqh; height:12cqh;"></div>
+            <div class="bar-val" id="boom-bar1val" style="position:absolute; left:9cqw; top:50cqh; color:#888880;">4.4%</div>
+            <div class="bar-yr" id="boom-bar1yr" style="position:absolute; left:9cqw; top:67cqh;">2023</div>
+
+            <div class="bar bar-accent" id="boom-bar2" style="position:absolute; left:16cqw; top:39cqh; height:27cqh;"></div>
+            <div class="bar-val" id="boom-bar2val" style="position:absolute; left:16cqw; top:35cqh; color:#e85d26;">7-12%</div>
+            <div class="bar-yr" id="boom-bar2yr" style="position:absolute; left:16cqw; top:67cqh;">2028</div>
+
+            <!-- 10x stat-card to the right -->
+            <div class="card" id="boom-s4card" style="position:absolute; left:52cqw; top:36cqh; width:34cqw;">
+              <span class="stat-num" id="boom-s4num" style="font-size:6.2cqw;">0×</span>
+              <div class="stat-label" style="max-width:34cqw;">one AI prompt vs a Google search</div>
+            </div>
+          </section>
+
+          <!-- ===================== SCENE 5 — PAYOFF (51.4–64.3, ORANGE) ===================== -->
+          <section class="scene s5 clip" data-start="51.4" data-duration="12.9" data-track-index="2">
+            <div class="kicker" id="boom-s5kicker">And the part critics skip</div>
+            <div class="s5-line" id="boom-s5line">some towns cash in</div>
+            <span class="s5-num" id="boom-s5num" style="font-size:12cqw;">0%</span>
+            <div class="s5-label" id="boom-s5label">Loudoun County, VA — of the entire county budget</div>
+            <div class="s5-tax" id="boom-s5tax">Enough that they cut property taxes</div>
+          </section>
+
+          <!-- ===================== SCENE 6 — STATEMENT (64.3–67.76) ===================== -->
+          <section class="scene s6 clip" data-start="64.3" data-duration="3.46" data-track-index="2">
+            <div class="stmt" id="boom-s6stmt" style="top:38cqh; font-size:5.7cqw;">
+              <span class="word" id="boom-v1">we</span>
+              <span class="word" id="boom-v2">are</span>
+              <span class="word" id="boom-v3">not</span>
+              <span class="word" id="boom-v4">un-building</span>
+              <span class="word" id="boom-v5">this</span>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+      <script>
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+        const R = (id) => document.getElementById(id);
+
+        /* ---------- slow bounded camera drift under everything (multi-phase-camera: drift) ----------
+           Scale stays >= 1.006 so the tiny translate never reveals an edge; X and Y ride slightly
+           different frequencies so the motion is an organic Lissajous, not a mechanical diagonal. */
+        const cam = R("boom-cam");
+        const drift = { p: 0 };
+        tl.to(
+          drift,
+          {
+            p: Math.PI * 2 * 2,
+            duration: 67.76,
+            ease: "none",
+            onUpdate: () => {
+              const s = 1.012 + Math.sin(drift.p) * 0.006;
+              const dx = Math.sin(drift.p) * 5;
+              const dy = Math.sin(drift.p * 1.3) * 3;
+              cam.style.transform = `scale(${s}) translate(${dx}px, ${dy}px)`;
+            },
+          },
+          0
+        );
+
+        /* ---------- helpers ---------- */
+        // counting-dynamic-scale: value counts A->B while font-size grows A->B in ONE eased tween.
+        function countUp(el, from, to, at, dur, fmt, sPx, ePx, ease) {
+          const st = { v: from, fs: sPx };
+          el.style.fontSize = sPx + "px";
+          el.textContent = fmt(from);
+          tl.fromTo(
+            st,
+            { v: from, fs: sPx },
+            {
+              v: to,
+              fs: ePx,
+              duration: dur,
+              ease: ease || "power3.out",
+              onUpdate: () => {
+                el.textContent = fmt(st.v);
+                el.style.fontSize = st.fs + "px";
+              },
+            },
+            at
+          );
+        }
+        // quiet reveal (opacity + short rise); transforms/opacity only
+        function reveal(el, at, dur, y) {
+          tl.fromTo(
+            el,
+            { opacity: 0, y: y == null ? 22 : y },
+            { opacity: 1, y: 0, duration: dur || 0.6, ease: "power3.out" },
+            at
+          );
+        }
+        // scaleX line draw (rules, chrome bars, arrow)
+        function draw(el, at, dur, ease) {
+          tl.fromTo(
+            el,
+            { scaleX: 0, opacity: 0 },
+            { scaleX: 1, opacity: 1, duration: dur || 0.6, ease: ease || "power2.out" },
+            at
+          );
+        }
+        const money = (v) => "$" + Math.round(v) + "B";
+        const moneyT = (v) => "$" + (v >= 1000 ? "1T+" : Math.round(v) + "B");
+        const millions = (v) => Math.round(v) + "M";
+        const times = (v) => Math.round(v) + "×";
+        const pct = (v) => Math.round(v) + "%";
+
+        /* ============================ SCENE 1 (0.0–8.6) ============================
+           "the boom is real" slams in word-by-word (kinetic-beat-slam: ONE beat grid,
+           DISTINCT entrance per word, short percussive attacks). "real" inks fire-orange
+           on its spoken cue (asr-keyword-glow: color + scale emphasis + soft glow). */
+        reveal(R("boom-s1kicker"), 0.1, 0.5, 10);
+        draw(R("boom-s1rule"), 0.15, 0.5);
+
+        const S1 = [0.15, 1.2, 2.35, 3.35]; // one beat grid for the four words
+        // w1 "the" — scale slam
+        tl.fromTo(R("boom-w1"), { scale: 1.45, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power4.out" }, S1[0]);
+        // w2 "boom" — side snap
+        tl.fromTo(R("boom-w2"), { x: -190, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: "expo.out" }, S1[1]);
+        // w3 "is" — rise + rotate
+        tl.fromTo(R("boom-w3"), { y: 80, rotation: 6, opacity: 0 }, { y: 0, rotation: 0, opacity: 1, duration: 0.5, ease: "circ.out" }, S1[2]);
+        // w4 "real" — scale slam
+        tl.fromTo(R("boom-w4"), { scale: 1.45, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power4.out" }, S1[3]);
+
+        // "real" inks fire-orange on the VO cue (~4.4s) and holds
+        tl.fromTo(R("boom-w4"), { color: "#f0ece5" }, { color: "#e85d26", duration: 0.35, ease: "power2.out" }, 4.4);
+        tl.fromTo(
+          R("boom-w4"),
+          { textShadow: "0 0 0px rgba(232,93,38,0)" },
+          { textShadow: "0 0 18px rgba(232,93,38,0.38)", duration: 0.4, ease: "power2.out" },
+          4.4
+        );
+
+        // quiet lead beneath, fading up
+        reveal(R("boom-s1lead"), 5.5, 0.7, 14);
+
+        /* ============================ SCENE 2 (8.6–25.7) ============================
+           Stat grid, the dense frame. Chrome bars, three top-border cards revealed
+           left->right, numerals counting up (counting-dynamic-scale). */
+        reveal(R("boom-s2kicker"), 8.75, 0.5, 8);
+        draw(R("boom-chrometop"), 8.8, 0.7);
+        reveal(R("boom-chrometopL"), 9.0, 0.5, 6);
+        reveal(R("boom-chrometopR"), 9.0, 0.5, 6);
+
+        // card A: $800B, counts up
+        reveal(R("boom-cardA"), 12.5, 0.5, 16);
+        countUp(R("boom-cardAnum"), 0, 800, 12.7, 1.5, money, 52, 92, "power3.out");
+        // card B: rockets past $800B and tips over into $1T+ (real count-up, same unit as A)
+        reveal(R("boom-cardB"), 16.7, 0.5, 16);
+        countUp(R("boom-cardBnum"), 0, 1000, 16.95, 1.6, moneyT, 52, 92, "power3.out");
+        // card C: "≈ US defense budget" — no count, a slam
+        reveal(R("boom-cardC"), 21.35, 0.5, 16);
+        tl.fromTo(R("boom-cardCword"), { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power4.out" }, 21.4);
+
+        draw(R("boom-chromebot"), 10.0, 0.7);
+        reveal(R("boom-chromebotL"), 10.2, 0.5, 6);
+        reveal(R("boom-chromebotR"), 10.2, 0.5, 6);
+
+        /* ============================ SCENE 3 (25.7–34.6) ============================
+           OpenAI chatbot users: a single big count-up 400M -> 900M, the figure grows
+           with the value; a thin fire-orange arrow between the two states. */
+        reveal(R("boom-s3kicker"), 26.0, 0.5, 8);
+        reveal(R("boom-s3start"), 26.6, 0.5, 14);
+        draw(R("boom-s3arrow"), 26.9, 0.55);
+        reveal(R("boom-s3num"), 27.2, 0.4, 10);
+        countUp(R("boom-s3num"), 400, 900, 27.7, 2.1, millions, 118, 190, "power3.out");
+        reveal(R("boom-s3note"), 32.0, 0.6, 12);
+
+        /* ============================ SCENE 4 (34.6–51.4) ============================
+           US electricity to data centers: a left-axis vertical bar-track (stat-bars-and-fills,
+           scaleY grow), then a 10x top-border card. */
+        reveal(R("boom-s4kicker"), 34.9, 0.5, 8);
+        tl.fromTo(R("boom-axis"), { scaleY: 0 }, { scaleY: 1, duration: 0.6, ease: "power2.out" }, 35.2);
+        // 4.4% cream-hint bar grows first
+        tl.fromTo(R("boom-bar1"), { scaleY: 0 }, { scaleY: 1, duration: 0.85, ease: "power3.out" }, 37.0);
+        reveal(R("boom-bar1val"), 37.5, 0.5, 10);
+        reveal(R("boom-bar1yr"), 37.5, 0.5, 8);
+        // taller fire-orange accent bar grows second
+        tl.fromTo(R("boom-bar2"), { scaleY: 0 }, { scaleY: 1, duration: 0.9, ease: "power3.out" }, 43.0);
+        reveal(R("boom-bar2val"), 43.6, 0.5, 10);
+        reveal(R("boom-bar2yr"), 43.6, 0.5, 8);
+        // 10x card
+        reveal(R("boom-s4card"), 47.3, 0.5, 16);
+        countUp(R("boom-s4num"), 0, 10, 47.5, 1.3, times, 66, 108, "power3.out");
+
+        /* ============================ SCENE 5 (51.4–64.3, ORANGE) ============================
+           Ground flips to fire-orange (its own bg clip on track 1), ink text only.
+           "some towns cash in" above a big ink numeral counting to 38%. */
+        reveal(R("boom-s5kicker"), 51.7, 0.5, 8);
+        // "some towns cash in" slams in per word feel (single-line slam)
+        tl.fromTo(R("boom-s5line"), { scale: 1.18, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.55, ease: "power4.out" }, 52.4);
+        reveal(R("boom-s5num"), 53.9, 0.4, 12);
+        countUp(R("boom-s5num"), 0, 38, 54.3, 1.9, pct, 132, 224, "power3.out");
+        reveal(R("boom-s5label"), 56.7, 0.6, 12);
+        reveal(R("boom-s5tax"), 62.0, 0.6, 12);
+
+        /* ============================ SCENE 6 (64.3–67.76) ============================
+           Back to ink-black. "we are not un-building this" slams in per word
+           (kinetic-beat-slam); "un-building" inked fire-orange. Hold to the cut — no exit. */
+        const S6 = [64.5, 64.85, 65.2, 65.55, 66.35];
+        tl.fromTo(R("boom-v1"), { scale: 1.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: "power4.out" }, S6[0]);
+        tl.fromTo(R("boom-v2"), { x: -150, opacity: 0 }, { x: 0, opacity: 1, duration: 0.42, ease: "expo.out" }, S6[1]);
+        tl.fromTo(R("boom-v3"), { y: 70, rotation: 5, opacity: 0 }, { y: 0, rotation: 0, opacity: 1, duration: 0.45, ease: "circ.out" }, S6[2]);
+        tl.fromTo(R("boom-v4"), { scale: 1.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.48, ease: "power4.out" }, S6[3]);
+        tl.fromTo(R("boom-v5"), { x: 130, opacity: 0 }, { x: 0, opacity: 1, duration: 0.42, ease: "expo.out" }, S6[4]);
+        // "un-building" inks fire-orange on its cue + soft glow, holds to the end
+        tl.fromTo(R("boom-v4"), { color: "#f0ece5" }, { color: "#e85d26", duration: 0.35, ease: "power2.out" }, 65.9);
+        tl.fromTo(
+          R("boom-v4"),
+          { textShadow: "0 0 0px rgba(232,93,38,0)" },
+          { textShadow: "0 0 18px rgba(232,93,38,0.38)", duration: 0.4, ease: "power2.out" },
+          65.9
+        );
+
+        /* ---------- Ken-Burns on the photographic grounds (linear drift; fromTo = seek-safe) ---------- */
+        tl.fromTo("#gnd-s1", { scale: 1.04 }, { scale: 1.1, duration: 8.6, ease: "none" }, 0);
+        tl.fromTo("#gnd-s6", { scale: 1.1 }, { scale: 1.04, duration: 3.46, ease: "none" }, 64.3);
+
+        window.__timelines["01-boom"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

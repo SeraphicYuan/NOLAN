@@ -1,0 +1,1 @@
+window.__HL = {"kicker": "The map · U.S. data-center power", "title": "Virginia", "states": ["51"], "sub": "\"Data Center Alley\" — the largest concentration of data centers on Earth. Its grid demand is set to <b>double by 2030</b>."};

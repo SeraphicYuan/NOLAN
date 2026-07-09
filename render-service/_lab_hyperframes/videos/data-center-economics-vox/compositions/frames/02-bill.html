@@ -1,0 +1,469 @@
+<template>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@1,500;1,600&family=Inter:wght@400;500;600&display=swap');
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Libre Franklin", "Inter", sans-serif;
+    }
+
+    /* ---- camera (drift wrapper) ---- */
+    .f02-cam {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    /* ---- grounds ---- */
+    .f02-ground { position: absolute; inset: 0; }
+    .f02-mist { background: #F1F3F2; }
+    .f02-foot {
+      background-position: center;
+      background-size: cover;
+      will-change: transform;
+    }
+
+    /* ---- scenes ---- */
+    .f02-scene { position: absolute; inset: 0; }
+
+    /* ---- chrome: kickers / labels ---- */
+    .f02-kicker {
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 0.95cqw;
+      letter-spacing: 0.12em;
+      line-height: 1.2;
+    }
+    .f02-kicker-foot { color: #F6F7F6; }
+    .f02-kicker-ink { color: #4C4E4D; }
+    .f02-topkick { position: absolute; left: 6cqw; top: 8.5cqh; }
+
+    /* ---- statements (FOOTAGE register) ---- */
+    .f02-block-ll {
+      position: absolute;
+      left: 6cqw;
+      bottom: 27cqh;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9cqw;
+    }
+    .f02-block-ll .f02-kicker { margin-bottom: 0.5cqw; }
+    .f02-statement {
+      font-weight: 800;
+      font-size: 4.2cqw;
+      line-height: 1.12;
+      letter-spacing: -0.015em;
+      color: #F6F7F6;
+    }
+
+    /* ---- quote (held human scene) ---- */
+    .f02-quoteblock {
+      position: absolute;
+      left: 6cqw;
+      top: 41cqh;
+      max-width: 76cqw;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6cqw;
+    }
+    .f02-quote {
+      font-weight: 800;
+      font-size: 3.4cqw;
+      line-height: 1.22;
+      letter-spacing: -0.01em;
+      color: #F6F7F6;
+    }
+    .f02-attr {
+      font-family: "Lora", serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: 1.35cqw;
+      line-height: 1.4;
+      color: #F6F7F6;
+      margin-top: 1cqw;
+    }
+
+    /* ---- stat lockups ---- */
+    .f02-lockcol {
+      position: absolute;
+      left: 6cqw;
+      display: flex;
+      flex-direction: column;
+      gap: 2.2cqw;
+    }
+    .f02-col { display: flex; flex-direction: column; gap: 2.2cqw; }
+    .f02-lock { display: flex; align-items: flex-end; gap: 1.8cqw; }
+    .f02-numbox {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      height: 5.6cqw;
+      width: 16cqw;
+    }
+    .f02-numbox-s3 { width: 15cqw; height: 5.2cqw; }
+    .f02-num {
+      font-weight: 900;
+      font-size: 5cqw;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      color: #2B2D2C;
+    }
+    .f02-num-foot { color: #F6F7F6; }
+    .f02-lab {
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 0.95cqw;
+      letter-spacing: 0.12em;
+      line-height: 1.3;
+      color: #4C4E4D;
+      padding-bottom: 0.85cqw;
+    }
+    .f02-lab-foot { color: rgba(246, 247, 246, 0.85); }
+    .f02-row3 { display: flex; align-items: baseline; gap: 1.8cqw; }
+    .f02-row3-txt {
+      font-weight: 800;
+      font-size: 4cqw;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      color: #F6F7F6;
+    }
+
+    /* ---- the yellow signature: underline (numerals) ---- */
+    .f02-ul {
+      position: absolute;
+      left: 0;
+      bottom: -0.45cqw;
+      height: 0.7cqw;
+      background: #FFF200;
+      transform: scaleX(0);
+      transform-origin: left center;
+    }
+
+    /* ---- the yellow signature: highlight block (clauses) ---- */
+    .f02-hl {
+      position: relative;
+      display: inline-block;
+      padding: 0.06em 0.16em;
+      margin: -0.06em -0.16em;
+      white-space: nowrap;
+    }
+    .f02-hl-block {
+      position: absolute;
+      inset: 0;
+      background: #FFF200;
+      transform: scaleX(0);
+      transform-origin: left center;
+    }
+    .f02-hl-stack { position: relative; display: inline-block; }
+    .f02-hl-ink {
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: #2B2D2C;
+      opacity: 0;
+      white-space: nowrap;
+    }
+
+    /* ---- caption-bar (evidence voice over footage) ---- */
+    .f02-cbar {
+      position: absolute;
+      left: 6cqw;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 1cqw;
+      background: #F1F3F2;
+      color: #2B2D2C;
+      padding: 0.8cqw 1.2cqw;
+    }
+    .f02-cbar-t {
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 0.95cqw;
+      letter-spacing: 0.1em;
+      line-height: 1.3;
+    }
+    .f02-cb-num {
+      font-weight: 800;
+      font-size: 1.7cqw;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      display: inline-block;
+      min-width: 7cqw;
+    }
+
+    /* ---- fine print ---- */
+    .f02-fine {
+      position: absolute;
+      left: 6cqw;
+      top: 75cqh;
+      font-family: "Inter", sans-serif;
+      font-weight: 500;
+      font-size: 0.85cqw;
+      letter-spacing: 0.08em;
+      line-height: 1.45;
+      color: #F6F7F6;
+    }
+
+    /* ---- scene 6 end-settle stack ---- */
+    .f02-s6-stack {
+      position: absolute;
+      left: 6cqw;
+      top: 8.5cqh;
+      display: flex;
+      flex-direction: column;
+      gap: 3cqw;
+      transform-origin: 18% 35%;
+    }
+  </style>
+
+  <div id="root" data-composition-id="02-bill" data-width="1920" data-height="1080">
+    <div class="f02-cam" id="f02-cam">
+
+      <!-- base PAPER ground: full duration, track 0 -->
+      <div class="clip f02-ground f02-mist" data-start="0" data-duration="91.76" data-track-index="0"></div>
+
+      <!-- FOOTAGE grounds, one per scene window (scrim baked into background-image) -->
+      <div class="clip f02-ground f02-foot" id="f02-bg1" data-start="0" data-duration="12.3" data-track-index="1"
+           style="background-image: linear-gradient(rgba(20,21,20,0) 38%, rgba(20,21,20,0.55) 78%, rgba(20,21,20,0.72) 100%), url('assets/bg_bill_turn.png');"></div>
+      <div class="clip f02-ground f02-foot" id="f02-bg2" data-start="28.6" data-duration="16.6" data-track-index="2"
+           style="background-image: linear-gradient(rgba(20,21,20,0) 38%, rgba(20,21,20,0.55) 78%, rgba(20,21,20,0.72) 100%), url('assets/bg_water_desert.png');"></div>
+      <div class="clip f02-ground f02-foot" id="f02-bg3" data-start="45.2" data-duration="20.7" data-track-index="3"
+           style="background-image: linear-gradient(rgba(20,21,20,0) 38%, rgba(20,21,20,0.55) 78%, rgba(20,21,20,0.72) 100%), url('assets/bg_noise_house.png');"></div>
+      <div class="clip f02-ground f02-foot" id="f02-bg4" data-start="65.9" data-duration="12.9" data-track-index="4"
+           style="background-image: linear-gradient(rgba(20,21,20,0) 38%, rgba(20,21,20,0.55) 78%, rgba(20,21,20,0.72) 100%), url('assets/bg_land_lines.png');"></div>
+
+      <!-- Scene 1 — COLD OPEN / TURN (FOOTAGE) -->
+      <section class="clip f02-scene" id="f02-s1" data-start="0" data-duration="12.3" data-track-index="5">
+        <div class="f02-block-ll">
+          <div class="f02-kicker f02-kicker-foot" id="f02-s1-kicker">THE BILL</div>
+          <div class="f02-statement" id="f02-s1-l1">The benefits are spread out.</div>
+          <div class="f02-statement" id="f02-s1-l2">The costs land on <span class="f02-hl" id="f02-s1-hl"><span class="f02-hl-block"></span><span class="f02-hl-stack"><span class="f02-hl-w">specific people</span><span class="f02-hl-ink">specific people</span></span></span>.</div>
+        </div>
+        <div class="f02-cbar" id="f02-s1-cbar" style="bottom: 18.5cqh;"><span class="f02-cbar-t">SO &mdash; LET&rsquo;S FOLLOW THE BILL</span></div>
+      </section>
+
+      <!-- Scene 2 — STAT LOCKUP: your power (PAPER) -->
+      <section class="clip f02-scene" id="f02-s2" data-start="12.3" data-duration="16.3" data-track-index="5">
+        <div class="f02-kicker f02-kicker-ink f02-topkick" id="f02-s2-kicker">YOUR POWER &middot; VIRGINIA &middot; DOMINION ENERGY</div>
+        <div class="f02-lockcol" style="top: 15cqh;">
+          <div class="f02-lock" id="f02-s2-rowA">
+            <div class="f02-numbox"><span class="f02-num">&times;2</span></div>
+            <div class="f02-lab">GENERATION TO DOUBLE BY 2039</div>
+          </div>
+          <div class="f02-lock" id="f02-s2-rowB">
+            <div class="f02-numbox"><span class="f02-num" id="f02-n103">$0B</span></div>
+            <div class="f02-lab">COST, UP TO</div>
+          </div>
+          <div class="f02-lock" id="f02-s2-rowC">
+            <div class="f02-numbox">
+              <span class="f02-num" id="f02-n50">+0%</span>
+              <span class="f02-ul" id="f02-ul50" style="width: 11.5cqw;"></span>
+            </div>
+            <div class="f02-lab">RESIDENTIAL BILLS, UP TO</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 3 — WATER OVER THE DESERT (FOOTAGE) -->
+      <section class="clip f02-scene" id="f02-s3" data-start="28.6" data-duration="16.6" data-track-index="5">
+        <div class="f02-lockcol" style="top: 39cqh;">
+          <div class="f02-kicker f02-kicker-foot" id="f02-s3-kicker">WATER</div>
+          <div class="f02-lock" id="f02-s3-rowA">
+            <div class="f02-numbox f02-numbox-s3"><span class="f02-num f02-num-foot" style="font-size: 4.6cqw;">43%</span></div>
+            <div class="f02-lab f02-lab-foot">OF THE BIGGEST CENTERS SIT IN HIGH WATER STRESS</div>
+          </div>
+          <div class="f02-lock" id="f02-s3-rowB">
+            <div class="f02-numbox f02-numbox-s3"><span class="f02-num f02-num-foot" id="f02-n183" style="font-size: 4.6cqw;">0.00B</span></div>
+            <div class="f02-lab f02-lab-foot">GALLONS A YEAR &mdash; ONE ARIZONA CAMPUS</div>
+          </div>
+          <div class="f02-row3" id="f02-s3-rowC">
+            <span class="f02-row3-txt">&asymp; <span class="f02-hl" id="f02-s3-hl"><span class="f02-hl-block"></span><span class="f02-hl-stack"><span class="f02-hl-w">61,000 people</span><span class="f02-hl-ink">61,000 people</span></span></span></span>
+            <span class="f02-lab f02-lab-foot">A CITY THE SIZE OF SANTA CRUZ, CA</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 4 — QUOTE / HUMAN (FOOTAGE, held and quiet) -->
+      <section class="clip f02-scene" id="f02-s4" data-start="45.2" data-duration="20.7" data-track-index="5">
+        <div class="f02-quoteblock">
+          <div class="f02-quote" id="f02-s4-l1">&ldquo;A low drone you don&rsquo;t just hear &mdash;</div>
+          <div class="f02-quote" id="f02-s4-l2">you <span class="f02-hl" id="f02-s4-hl"><span class="f02-hl-block"></span><span class="f02-hl-stack"><span class="f02-hl-w">feel it in the walls</span><span class="f02-hl-ink">feel it in the walls</span></span></span>.&rdquo;</div>
+          <div class="f02-attr" id="f02-s4-attr">&mdash; Virginia residents</div>
+        </div>
+        <div class="f02-cbar" id="f02-s4-cbar" style="top: 66cqh;">
+          <span class="f02-cb-num" id="f02-n20k">$0</span>
+          <span class="f02-cbar-t">ON WINDOWS + INSULATION &mdash; STILL COULDN&rsquo;T SLEEP</span>
+        </div>
+        <div class="f02-fine" id="f02-s4-fine">(IN FAIRNESS: AMAZON SAYS ITS CENTERS RUN BELOW REQUIRED SOUND LEVELS.)</div>
+      </section>
+
+      <!-- Scene 5 — STATEMENT OVER THE LAND (FOOTAGE) -->
+      <section class="clip f02-scene" id="f02-s5" data-start="65.9" data-duration="12.9" data-track-index="5">
+        <div class="f02-block-ll">
+          <div class="f02-kicker f02-kicker-foot" id="f02-s5-kicker">THE LAND &middot; GEORGIA &amp; KENTUCKY</div>
+          <div class="f02-statement" id="f02-s5-l1">Some are losing their land</div>
+          <div class="f02-statement" id="f02-s5-l2">&mdash; <span class="f02-hl" id="f02-s5-hl"><span class="f02-hl-block"></span><span class="f02-hl-stack"><span class="f02-hl-w">outright</span><span class="f02-hl-ink">outright</span></span></span>.</div>
+        </div>
+        <div class="f02-cbar" id="f02-s5-cbar" style="bottom: 18.5cqh;"><span class="f02-cbar-t">EMINENT DOMAIN &mdash; FOR THE POWER LINES</span></div>
+      </section>
+
+      <!-- Scene 6 — THE KICKER: the jobs (PAPER, quiet, final settle) -->
+      <section class="clip f02-scene" id="f02-s6" data-start="78.8" data-duration="12.96" data-track-index="5">
+        <div class="f02-s6-stack" id="f02-s6-stack">
+          <div class="f02-kicker f02-kicker-ink" id="f02-s6-kicker">AND THE JOBS?</div>
+          <div class="f02-col">
+            <div class="f02-lock" id="f02-s6-rowA">
+              <div class="f02-numbox"><span class="f02-num">&lt; 150</span></div>
+              <div class="f02-lab">PERMANENT WORKERS &mdash; EVEN THE LARGEST</div>
+            </div>
+            <div class="f02-lock" id="f02-s6-rowB">
+              <div class="f02-numbox"><span class="f02-num">25</span></div>
+              <div class="f02-lab">SOME AS FEW AS</div>
+            </div>
+            <div class="f02-lock" id="f02-s6-rowC">
+              <div class="f02-numbox">
+                <span class="f02-num" id="f02-n100">~0</span>
+                <span class="f02-ul" id="f02-ul100" style="width: 11cqw;"></span>
+              </div>
+              <div class="f02-lab">OPENAI STARGATE, TEXAS &mdash; FULL-TIME JOBS</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var D = 91.76;
+      var nodes = document.querySelectorAll('[data-composition-id="02-bill"]');
+      var rootEl = nodes[nodes.length - 1];
+      var q = function (s) { return rootEl.querySelector(s); };
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* ---------- helpers (all deterministic, built synchronously) ---------- */
+
+      // calm per-line rise (kinetic-beat-slam, low-amplitude variant)
+      function rise(sel, at, dy, dur, ease) {
+        tl.fromTo(q(sel), { y: dy, opacity: 0 }, { y: 0, opacity: 1, duration: dur, ease: ease }, at);
+      }
+
+      // THE signature: yellow block sweeps from the left; clause ink flips to ink-deep as it lands
+      function sweepHighlight(sel, at, dur) {
+        var hl = q(sel);
+        tl.fromTo(hl.querySelector(".f02-hl-block"), { scaleX: 0 }, { scaleX: 1, duration: dur, ease: "power2.out" }, at);
+        tl.fromTo(hl.querySelector(".f02-hl-w"), { opacity: 1 }, { opacity: 0, duration: 0.22, ease: "none" }, at + dur * 0.35);
+        tl.fromTo(hl.querySelector(".f02-hl-ink"), { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "none" }, at + dur * 0.35);
+      }
+
+      // counting-dynamic-scale: ONE tween co-drives value + font-size (power3.out, tabular-nums)
+      function countUp(sel, at, dur, target, fmt, fsFrom, fsTo) {
+        var el = q(sel);
+        var st = { v: 0, fs: fsFrom == null ? 0 : fsFrom };
+        el.textContent = fmt(0);
+        tl.to(st, {
+          v: target,
+          fs: fsFrom == null ? 0 : fsTo,
+          duration: dur,
+          ease: "power3.out",
+          onUpdate: function () {
+            el.textContent = fmt(st.v);
+            if (fsFrom != null) el.style.fontSize = st.fs + "px";
+          }
+        }, at);
+      }
+
+      // Ken-Burns on a footage ground (linear fromTo, per its scene window)
+      function kenBurns(sel, at, dur, s0, s1) {
+        tl.fromTo(q(sel), { scale: s0 }, { scale: s1, duration: dur, ease: "none" }, at);
+      }
+
+      /* ---------- macro camera: slow bounded drift under everything ---------- */
+      var cam = q("#f02-cam");
+      var drift = { p: 0 };
+      tl.to(drift, {
+        p: Math.PI * 2 * 2, // two slow Lissajous cycles across 91.76s
+        duration: D,
+        ease: "none",
+        onUpdate: function () {
+          var dx = Math.sin(drift.p) * 5;               // <=6px
+          var dy = Math.sin(drift.p * 1.31) * 2.5;       // organic ratio, <=6px
+          var sc = 1.011 + 0.003 * Math.sin(drift.p * 0.7); // 1.008..1.014, keeps edges covered
+          cam.style.transform = "scale(" + sc + ") translate(" + dx + "px, " + dy + "px)";
+        }
+      }, 0);
+
+      /* ---------- Ken-Burns per footage ground ---------- */
+      kenBurns("#f02-bg1", 0, 12.3, 1.03, 1.08);
+      kenBurns("#f02-bg2", 28.6, 16.6, 1.03, 1.08);
+      kenBurns("#f02-bg3", 45.2, 20.7, 1.02, 1.06); // quieter on the held quote
+      kenBurns("#f02-bg4", 65.9, 12.9, 1.03, 1.08);
+
+      /* ---------- Scene 1 — COLD OPEN / TURN (0.0–12.3) ---------- */
+      rise("#f02-s1-kicker", 0.25, 14, 0.6, "power2.out");
+      rise("#f02-s1-l1", 2.5, 42, 0.8, "power3.out");
+      rise("#f02-s1-l2", 5.8, 54, 0.85, "circ.out");
+      sweepHighlight("#f02-s1-hl", 7.0, 0.5);
+      rise("#f02-s1-cbar", 10.5, 24, 0.6, "power2.out");
+
+      /* ---------- Scene 2 — STAT LOCKUP: your power (12.3–28.6) ---------- */
+      rise("#f02-s2-kicker", 12.8, 14, 0.6, "power2.out");
+      tl.fromTo(q("#f02-s2-rowA"),
+        { y: 30, opacity: 0, scale: 1.06 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 14.0);
+      rise("#f02-s2-rowB", 21.0, 30, 0.55, "power2.out");
+      countUp("#f02-n103", 21.0, 1.6, 103, function (v) { return "$" + Math.round(v) + "B"; }, 52, 96);
+      rise("#f02-s2-rowC", 26.0, 30, 0.5, "power2.out");
+      countUp("#f02-n50", 26.0, 1.2, 50, function (v) { return "+" + Math.round(v) + "%"; }, 52, 96);
+      tl.fromTo(q("#f02-ul50"), { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: "power2.out" }, 27.3);
+
+      /* ---------- Scene 3 — WATER OVER THE DESERT (28.6–45.2) ---------- */
+      rise("#f02-s3-kicker", 29.0, 14, 0.6, "power2.out");
+      rise("#f02-s3-rowA", 30.0, 36, 0.7, "power3.out");
+      rise("#f02-s3-rowB", 38.0, 30, 0.55, "power2.out");
+      countUp("#f02-n183", 38.0, 1.5, 1.83, function (v) { return v.toFixed(2) + "B"; }, 46, 88);
+      rise("#f02-s3-rowC", 42.0, 30, 0.6, "circ.out");
+      sweepHighlight("#f02-s3-hl", 42.5, 0.55);
+
+      /* ---------- Scene 4 — QUOTE / HUMAN (45.2–65.9, held, quiet) ---------- */
+      rise("#f02-s4-l1", 46.5, 26, 1.0, "power2.out");
+      rise("#f02-s4-l2", 49.0, 26, 1.0, "power2.out");
+      sweepHighlight("#f02-s4-hl", 51.0, 0.6);
+      rise("#f02-s4-attr", 53.0, 12, 0.8, "power2.out");
+      rise("#f02-s4-cbar", 55.5, 20, 0.6, "power2.out");
+      countUp("#f02-n20k", 55.7, 1.4, 20000, function (v) { return "$" + Math.round(v).toLocaleString("en-US"); }, null, null);
+      tl.fromTo(q("#f02-s4-fine"), { y: 8, opacity: 0 }, { y: 0, opacity: 0.7, duration: 0.8, ease: "power2.out" }, 63.0);
+
+      /* ---------- Scene 5 — STATEMENT OVER THE LAND (65.9–78.8) ---------- */
+      rise("#f02-s5-kicker", 66.3, 14, 0.6, "power2.out");
+      rise("#f02-s5-l1", 67.0, 42, 0.8, "power3.out");
+      rise("#f02-s5-l2", 67.8, 50, 0.8, "circ.out");
+      sweepHighlight("#f02-s5-hl", 69.0, 0.5);
+      rise("#f02-s5-cbar", 74.0, 24, 0.6, "power2.out");
+
+      /* ---------- Scene 6 — THE KICKER: the jobs (78.8–91.76, final) ---------- */
+      rise("#f02-s6-kicker", 79.3, 14, 0.6, "power2.out");
+      rise("#f02-s6-rowA", 81.0, 34, 0.7, "power3.out");
+      tl.fromTo(q("#f02-s6-rowB"),
+        { x: -44, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.6, ease: "expo.out" }, 84.0);
+      rise("#f02-s6-rowC", 88.0, 30, 0.5, "power2.out");
+      countUp("#f02-n100", 88.0, 1.2, 100, function (v) { return "~" + Math.round(v); }, 52, 96);
+      tl.fromTo(q("#f02-ul100"), { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, 89.3);
+      // final frame: the ONLY sanctioned end-settle — a quiet push on the locked stack
+      tl.to(q("#f02-s6-stack"), { scale: 1.012, duration: 1.5, ease: "sine.inOut" }, 90.1);
+
+      window.__timelines["02-bill"] = tl;
+    })();
+  </script>
+</template>

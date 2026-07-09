@@ -1,0 +1,142 @@
+<template>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@1,500&family=Inter:wght@500;600&display=swap');
+#root{position:absolute;inset:0;width:1920px;height:1080px;container-type:size;overflow:hidden;
+  font-family:"Libre Franklin",sans-serif;background:transparent;}
+.gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
+.paper-gnd{position:absolute;inset:0;}
+.scrim{position:absolute;inset:0;pointer-events:none;}
+.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
+  letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
+.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
+  letter-spacing:-0.012em;}
+.stmt .ln{display:block;opacity:0;}
+.hlwrap{position:relative;display:inline-block;}
+.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:#FFF200;transform:scaleX(0);
+  transform-origin:left center;z-index:-1;}
+.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:#F1F3F2;color:#2B2D2C;padding:0.5cqw 1.1cqw;
+  font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
+.slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
+.slitem{display:flex;flex-direction:column;min-width:18cqw;}
+.slnumwrap{position:relative;display:inline-block;}
+.slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
+  white-space:nowrap;opacity:0;}
+.slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
+.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}
+.sllabel{margin-top:1.1cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
+  text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
+.paper .slnum,.paper .sllead{color:#2B2D2C;}.paper .kick{color:#4C4E4D;}.paper .sllabel{color:#888880;}
+.footage .slnum{color:#F6F7F6;}.footage .kick{color:#F6F7F6;}.footage .sllabel{color:#d6d9d6;}
+.stmt.paper-t{color:#2B2D2C;}.stmt.footage-t{color:#F6F7F6;}
+/* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
+.prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
+.prop img{display:block;width:100%;height:auto;}
+.prop-cap{margin-top:0.4cqw;font-family:"Lora",serif;font-style:italic;font-size:0.72cqw;color:#2B2D2C;text-align:center;}
+/* geo-map: d3 choropleth (US states / world countries), one region highlighted + annotated */
+.geomap{will-change:transform;}
+.geomap svg{width:100%;height:100%;display:block;}
+.gstate{fill:#DCDFDC;stroke:#F1F3F2;stroke-width:1.0;}
+.ghl{fill:#FFF200;stroke:#2B2D2C;stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
+.geoleader{position:absolute;inset:0;pointer-events:none;}
+.geoleader path{fill:none;stroke:#2B2D2C;stroke-width:2;}
+.geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2B2D2C;opacity:0;}
+.geopin::after{content:"";position:absolute;inset:-9px;border:2px solid #2B2D2C;border-radius:50%;opacity:0.4;}
+.geolabel{position:absolute;left:8cqw;top:20cqh;max-width:32cqw;}
+.glab-k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
+.glab-t{font-weight:900;font-size:5.4cqw;line-height:1;letter-spacing:-0.02em;color:#2B2D2C;margin:0.6cqw 0;opacity:0;}
+.glab-t .gmark{background:#FFF200;box-decoration-break:clone;padding:0 0.1em;}
+.glab-s{font-family:"Lora",serif;font-style:italic;font-size:1.3cqw;line-height:1.4;color:#4C4E4D;max-width:28cqw;opacity:0;}
+</style>
+  <div id="root" data-composition-id="author-demo" data-width="1920" data-height="1080">
+        <div class="clip paper-gnd" data-start="0" data-duration="6" data-track-index="1" style="background:#F1F3F2;"></div>
+    <section class="scene clip paper" data-start="0" data-duration="6" data-track-index="2">
+    <div id="b1-k" class="kick">SHARE OF U.S. ELECTRICITY</div>
+    <div class="slrow">
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b1-n0"></span><span class="slul" id="b1-u0"></span></div><div class="sllabel" id="b1-l0">BY 2030 — AI DATA CENTERS</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b1-n1"></span></div><div class="sllabel" id="b1-l1">TODAY</div></div>
+    </div></section>
+    <div class="clip" data-start="6" data-duration="7" data-track-index="0" style="position:absolute;inset:0;background:#F1F3F2;"></div>
+    <div id="b2-map" class="clip geomap" data-start="6" data-duration="7" data-track-index="1" style="transform-origin:76% 54%;"></div>
+    <svg id="b2-leader" class="clip geoleader" data-start="6" data-duration="7" data-track-index="2" viewBox="0 0 1920 1080" preserveAspectRatio="none"><path id="b2-lead" d=""/></svg>
+    <div id="b2-pin" class="clip geopin" data-start="6" data-duration="7" data-track-index="3"></div>
+    <div id="b2-label" class="clip geolabel" data-start="6" data-duration="7" data-track-index="4"><div id="b2-k" class="glab-k"></div><div id="b2-t" class="glab-t"></div><div id="b2-s" class="glab-s"></div></div>
+    <div class="clip paper-gnd" data-start="13" data-duration="7" data-track-index="1" style="background:#F1F3F2;"></div>
+    <section class="scene clip paper" data-start="13" data-duration="7" data-track-index="2">
+    <div id="b3-k" class="kick">THE REAL FIGHT</div>
+    <div class="stmt paper-t">
+    <span class="ln" id="b3-ln0">The real fight</span>
+    <span class="ln" id="b3-ln1">is over <span class="hlwrap"><span id="b3-op1">water</span><span class="hlblock" id="b3-hl1"></span></span></span>
+    </div>
+    <div id="b3-cap" class="capbar">MILLIONS OF GALLONS A DAY</div>
+    </section>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@800;900&family=Inter:wght@500;600&family=Lora:ital@1&display=swap');#collide-bg{position:absolute;inset:0;background:#F1F3F2;}.collide-eyebrow{position:absolute;left:0;right:0;top:300px;text-align:center;font-family:'Inter',sans-serif;font-weight:600;font-size:22px;letter-spacing:0.24em;text-transform:uppercase;color:#4C4E4D;opacity:0;}.collide-col{position:absolute;top:430px;width:420px;text-align:center;opacity:0;}.collide-idx{font-family:'Lora',serif;font-style:italic;font-size:30px;color:#4C4E4D;line-height:1;}.collide-word{font-family:'Libre Franklin',sans-serif;font-weight:900;font-size:100px;line-height:1;letter-spacing:-0.01em;color:#2B2D2C;margin:14px 0 0;}.collide-ulwrap{position:relative;display:inline-block;margin-top:10px;height:12px;width:64%;}.collide-ul{position:absolute;inset:0;background:#FFF200;transform:scaleX(0);transform-origin:left center;}.collide-sub{font-family:'Inter',sans-serif;font-weight:500;font-size:20px;letter-spacing:0.18em;text-transform:uppercase;color:#888880;margin-top:22px;}.collide-div{position:absolute;top:440px;height:210px;width:2px;background:#4C4E4D;opacity:0.45;transform:scaleY(0);transform-origin:top center;}</style>
+    <div id='collide-bg' class='clip' data-start='20' data-duration='6' data-track-index='0'></div>
+    <div id='collide-eyebrow' class='clip collide-eyebrow' data-start='20' data-duration='6' data-track-index='1'>THE COLLISION</div>
+    <div id='collide-div1' class='clip collide-div' data-start='20' data-duration='6' data-track-index='2' style='left:719px;'></div>
+    <div id='collide-div2' class='clip collide-div' data-start='20' data-duration='6' data-track-index='3' style='left:1199px;'></div>
+    <div id='collide-col1' class='clip collide-col' data-start='20' data-duration='6' data-track-index='4' style='left:270px;'><div class='collide-idx'>01</div><div class='collide-word'>POWER</div><div class='collide-ulwrap'><div id='collide-ul1' class='collide-ul'></div></div><div class='collide-sub'>the grid</div></div>
+    <div id='collide-col2' class='clip collide-col' data-start='20' data-duration='6' data-track-index='5' style='left:750px;'><div class='collide-idx'>02</div><div class='collide-word'>WATER</div><div class='collide-ulwrap'><div id='collide-ul2' class='collide-ul'></div></div><div class='collide-sub'>cooling</div></div>
+    <div id='collide-col3' class='clip collide-col' data-start='20' data-duration='6' data-track-index='6' style='left:1230px;'><div class='collide-idx'>03</div><div class='collide-word'>LAND</div><div class='collide-ulwrap'><div id='collide-ul3' class='collide-ul'></div></div><div class='collide-sub'>siting</div></div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script src="vendor/d3.min.js"></script>
+  <script src="vendor/topojson-client.min.js"></script>
+  <script src="vendor/us-states.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+        tl.fromTo("#b1-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},0.1);
+    (function(){var el=document.getElementById("b1-n0"),st={v:0.0},f=function(n){return ""+Math.round(n)+"%";};el.textContent=f(0.0);tl.set(el,{opacity:1},0.8);tl.fromTo(st,{v:0.0},{v:12.0,duration:1.4,ease:"power3.out",onUpdate:function(){el.textContent=f(st.v);}},0.8);})();
+    tl.fromTo("#b1-l0",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},0.9500000000000001);
+    tl.fromTo("#b1-u0",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},2.0);
+    (function(){var el=document.getElementById("b1-n1"),st={v:0.0},f=function(n){return ""+Math.round(n)+"%";};el.textContent=f(0.0);tl.set(el,{opacity:1},3.0);tl.fromTo(st,{v:0.0},{v:4.0,duration:1.4,ease:"power3.out",onUpdate:function(){el.textContent=f(st.v);}},3.0);})();
+    tl.fromTo("#b1-l1",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},3.15);
+    (function(){
+  var W=1920,H=1080,SID="b2",CFG={"hl": ["51"], "primary": "51", "kicker": "THE EPICENTER", "title": "Virginia", "sub": "The world's densest cluster of <b>data centers</b>."};
+  var topo=window.__US, fc=topojson.feature(topo,topo.objects.states);
+  var byId={}; fc.features.forEach(function(f){byId[String(f.id)]=f;});
+  var proj=d3.geoAlbersUsa().fitExtent([[120,70],[1800,1000]],fc), geo=d3.geoPath(proj), NS="http://www.w3.org/2000/svg";
+  var svg=document.createElementNS(NS,"svg"); svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  fc.features.forEach(function(f){var dd=geo(f); if(!dd)return; var p=document.createElementNS(NS,"path"); p.setAttribute("d",dd); p.setAttribute("class","gstate"); svg.appendChild(p);});
+  CFG.hl.forEach(function(id){var f=byId[id]; if(!f)return; var dd=geo(f); if(!dd)return; var p=document.createElementNS(NS,"path"); p.setAttribute("d",dd); p.setAttribute("class","ghl"); p.setAttribute("id",SID+"-hl-"+id); svg.appendChild(p);});
+  document.getElementById(SID+"-map").appendChild(svg);
+  var pf=byId[CFG.primary]||byId[CFG.hl[0]], c=geo.centroid(pf);
+  var pin=document.getElementById(SID+"-pin"); pin.style.left=c[0]+"px"; pin.style.top=c[1]+"px";
+  var label=document.getElementById(SID+"-label"), lx;
+  if(c[0]<W*0.5){label.style.left="auto";label.style.right="8cqw";label.style.textAlign="right";lx=W*0.66;}
+  else{label.style.right="auto";label.style.left="8cqw";label.style.textAlign="left";lx=W*0.34;}
+  var lead=document.getElementById(SID+"-lead");
+  lead.setAttribute("d","M "+lx+" "+(H*0.30)+" L "+c[0]+" "+c[1]);
+  var len=lead.getTotalLength(); lead.style.strokeDasharray=len; lead.style.strokeDashoffset=len;
+  document.getElementById(SID+"-k").textContent=CFG.kicker;
+  var t=document.getElementById(SID+"-t"); var m=document.createElement("span"); m.className="gmark"; m.textContent=CFG.title; t.appendChild(m);
+  document.getElementById(SID+"-s").innerHTML=CFG.sub;
+})();
+    tl.from("#b2-map",{opacity:0,y:24,duration:0.7,ease:"power2.out"},6);
+    tl.to("#b2-map",{scale:1.035,duration:7,ease:"none"},6);
+    tl.to("#b2-map svg .ghl",{opacity:1,duration:0.5,ease:"power2.out",stagger:0.12},7.1);
+    tl.from("#b2-map svg .ghl",{scale:0.5,duration:0.6,ease:"back.out(2)",stagger:0.12},7.1);
+    tl.to("#b2-pin",{opacity:1,duration:0.3},7.5);
+    tl.from("#b2-pin",{scale:0,duration:0.5,ease:"back.out(3)"},7.5);
+    tl.to("#b2-lead",{strokeDashoffset:0,duration:0.55,ease:"power2.inOut"},7.7);
+    tl.fromTo("#b2-k",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},7.9);
+    tl.fromTo("#b2-t",{opacity:0,y:20},{opacity:1,y:0,duration:0.6,ease:"power3.out"},8.05);
+    tl.fromTo("#b2-s",{opacity:0,y:16},{opacity:1,y:0,duration:0.6},8.3);
+    tl.fromTo("#b3-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},13.2);
+    tl.fromTo("#b3-ln0",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},13.4);
+    tl.fromTo("#b3-hl1",{scaleX:0},{scaleX:1,duration:0.4,ease:"power2.out"},15.8);
+    tl.to("#b3-op1",{color:"#2B2D2C",duration:0.25},15.850000000000001);
+    tl.fromTo("#b3-ln1",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},13.75);
+    tl.fromTo("#b3-cap",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},18.4);
+    tl.fromTo('#collide-eyebrow',{opacity:0,y:10},{opacity:1,y:0,duration:0.5,ease:'power2.out'},20.2);
+    tl.fromTo('#collide-col1',{opacity:0,y:24},{opacity:1,y:0,duration:0.6,ease:'power3.out'},20.5);
+    tl.fromTo('#collide-ul1',{scaleX:0},{scaleX:1,duration:0.45,ease:'power2.out'},21.0);
+    tl.fromTo('#collide-div1',{scaleY:0},{scaleY:1,duration:0.4,ease:'power2.out'},21.2);
+    tl.fromTo('#collide-col2',{opacity:0,y:24},{opacity:1,y:0,duration:0.6,ease:'power3.out'},21.4);
+    tl.fromTo('#collide-ul2',{scaleX:0},{scaleX:1,duration:0.45,ease:'power2.out'},21.9);
+    tl.fromTo('#collide-div2',{scaleY:0},{scaleY:1,duration:0.4,ease:'power2.out'},22.1);
+    tl.fromTo('#collide-col3',{opacity:0,y:24},{opacity:1,y:0,duration:0.6,ease:'power3.out'},22.3);
+    tl.fromTo('#collide-ul3',{scaleX:0},{scaleX:1,duration:0.45,ease:'power2.out'},22.8);
+    tl.to({}, { duration: 26 }, 0);
+    window.__timelines["author-demo"] = tl;
+  </script>
+</template>

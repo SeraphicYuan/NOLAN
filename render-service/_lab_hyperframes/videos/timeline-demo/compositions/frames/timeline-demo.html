@@ -1,0 +1,157 @@
+<template>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@1,500&family=Inter:wght@500;600&display=swap');
+#root{position:absolute;inset:0;width:1920px;height:1080px;container-type:size;overflow:hidden;
+  font-family:"Libre Franklin",sans-serif;background:transparent;}
+.gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
+.paper-gnd{position:absolute;inset:0;}
+.scrim{position:absolute;inset:0;pointer-events:none;}
+.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
+  letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
+.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
+  letter-spacing:-0.012em;}
+.stmt .ln{display:block;opacity:0;}
+.hlwrap{position:relative;display:inline-block;}
+.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:#FFF200;transform:scaleX(0);
+  transform-origin:left center;z-index:-1;}
+.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:#F1F3F2;color:#2B2D2C;padding:0.5cqw 1.1cqw;
+  font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
+.slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
+.slitem{display:flex;flex-direction:column;min-width:18cqw;}
+.slnumwrap{position:relative;display:inline-block;}
+.slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
+  white-space:nowrap;opacity:0;}
+.slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
+.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}
+.sllabel{margin-top:1.1cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
+  text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
+.paper .slnum,.paper .sllead{color:#2B2D2C;}.paper .kick{color:#4C4E4D;}.paper .sllabel{color:#888880;}
+.footage .slnum{color:#F6F7F6;}.footage .kick{color:#F6F7F6;}.footage .sllabel{color:#d6d9d6;}
+.stmt.paper-t{color:#2B2D2C;}.stmt.footage-t{color:#F6F7F6;}
+/* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
+.prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
+.prop img{display:block;width:100%;height:auto;}
+.prop-cap{margin-top:0.4cqw;font-family:"Lora",serif;font-style:italic;font-size:0.72cqw;color:#2B2D2C;text-align:center;}
+/* geo-map: d3 choropleth (US states / world countries), one region highlighted + annotated */
+.geomap{will-change:transform;}
+.geomap svg{width:100%;height:100%;display:block;}
+.gstate{fill:#DCDFDC;stroke:#F1F3F2;stroke-width:1.0;}
+.ghl{fill:#FFF200;stroke:#2B2D2C;stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
+.geoleader{position:absolute;inset:0;pointer-events:none;}
+.geoleader path{fill:none;stroke:#2B2D2C;stroke-width:2;}
+.geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2B2D2C;opacity:0;}
+.geopin::after{content:"";position:absolute;inset:-9px;border:2px solid #2B2D2C;border-radius:50%;opacity:0.4;}
+.geolabel{position:absolute;left:8cqw;top:20cqh;max-width:32cqw;}
+.glab-k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
+.glab-t{font-weight:900;font-size:5.4cqw;line-height:1;letter-spacing:-0.02em;color:#2B2D2C;margin:0.6cqw 0;opacity:0;}
+.glab-t .gmark{background:#FFF200;box-decoration-break:clone;padding:0 0.1em;}
+.glab-s{font-family:"Lora",serif;font-style:italic;font-size:1.3cqw;line-height:1.4;color:#4C4E4D;max-width:28cqw;opacity:0;}
+/* timeline: Vox stylized horizontal timeline — drawing spine + camera pan + alternating circular callouts */
+.tlbg{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 42%,#101210,#070807);}
+.tlworld{position:absolute;top:0;left:0;height:100%;will-change:transform;}
+.tlspine{position:absolute;height:8px;background:#FFF200;border-radius:4px;transform-origin:left center;transform:scaleX(0);box-shadow:0 0 22px rgba(255,242,0,0.35);}
+.tlnode{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:#0a0b0a;border:5px solid #FFF200;transform:scale(0);z-index:3;}
+.tlnode::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#FFF200;}
+.tlv{position:absolute;width:2px;background:#EDEFEC;transform:scaleY(0);}
+.tlh{position:absolute;height:2px;background:#EDEFEC;transform-origin:left center;transform:scaleX(0);}
+.tlcirc{position:absolute;border-radius:50%;overflow:hidden;background:#181a18;transform:scale(0);will-change:transform;box-shadow:0 12px 40px rgba(0,0,0,0.5);}
+.tlcirc img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.06) brightness(1.08);display:block;}
+.tlph{position:absolute;inset:0;background:linear-gradient(135deg,#2b2d2b,#141513);}
+.tlph::after{content:"";position:absolute;inset:22% 22%;border:3px solid rgba(237,239,236,0.14);border-radius:50%;}
+.tlring{position:absolute;overflow:visible;pointer-events:none;}
+.tlring circle{fill:none;stroke:#EDEFEC;stroke-width:2.5;}
+.tlyear{position:absolute;font-weight:900;font-size:2.4cqw;letter-spacing:-0.01em;color:#EDEFEC;opacity:0;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.tllbl{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;color:#9a9c99;opacity:0;white-space:nowrap;}
+.tltitle{position:absolute;top:7cqh;left:5.5cqw;font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;color:#F6F7F6;opacity:0;}
+.tltitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;}
+</style>
+  <div id="root" data-composition-id="timeline-demo" data-width="1920" data-height="1080">
+        <div id="tl1-bg" class="clip tlbg" data-start="0" data-duration="16" data-track-index="0"></div>
+    <div id="tl1-world" class="clip tlworld" data-start="0" data-duration="16" data-track-index="2" data-layout-allow-overflow style="width:4580px;">
+    <div id="tl1-spine" class="tlspine" style="left:0;top:536px;width:4580px;"></div>
+    <div id="tl1-n0" class="tlnode" style="left:640px;top:540px;"></div>
+    <div id="tl1-v0" class="tlv" style="left:639px;top:390px;height:150px;transform-origin:center bottom;"></div>
+    <div id="tl1-h0" class="tlh" style="left:640px;top:390px;width:70px;"></div>
+    <div id="tl1-c0" class="tlcirc" style="left:580px;top:130px;width:260px;height:260px;"><img src="assets/hist/e1_ground.png" alt=""/></div>
+    <svg id="tl1-r0" class="tlring" style="left:580px;top:130px;width:260px;height:260px;" viewBox="0 0 260 260"><circle cx="130.0" cy="130.0" r="124.0" stroke-dasharray="779.1" stroke-dashoffset="779.1"/></svg>
+    <div id="tl1-y0" class="tlyear" style="left:654px;top:402px;">2019</div>
+    <div id="tl1-l0" class="tllbl" style="left:654px;top:470px;">The first campus breaks ground</div>
+    <div id="tl1-n1" class="tlnode" style="left:1400px;top:540px;"></div>
+    <div id="tl1-v1" class="tlv" style="left:1399px;top:540px;height:150px;transform-origin:center top;"></div>
+    <div id="tl1-h1" class="tlh" style="left:1400px;top:690px;width:70px;"></div>
+    <div id="tl1-c1" class="tlcirc" style="left:1340px;top:690px;width:260px;height:260px;"><img src="assets/hist/e2_servers.png" alt=""/></div>
+    <svg id="tl1-r1" class="tlring" style="left:1340px;top:690px;width:260px;height:260px;" viewBox="0 0 260 260"><circle cx="130.0" cy="130.0" r="124.0" stroke-dasharray="779.1" stroke-dashoffset="779.1"/></svg>
+    <div id="tl1-y1" class="tlyear" style="left:1414px;top:554px;">2022</div>
+    <div id="tl1-l1" class="tllbl" style="left:1414px;top:622px;">The servers move in</div>
+    <div id="tl1-n2" class="tlnode" style="left:2160px;top:540px;"></div>
+    <div id="tl1-v2" class="tlv" style="left:2159px;top:390px;height:150px;transform-origin:center bottom;"></div>
+    <div id="tl1-h2" class="tlh" style="left:2160px;top:390px;width:70px;"></div>
+    <div id="tl1-c2" class="tlcirc" style="left:2100px;top:130px;width:260px;height:260px;"><img src="assets/hist/e3_campus.jpg" alt=""/></div>
+    <svg id="tl1-r2" class="tlring" style="left:2100px;top:130px;width:260px;height:260px;" viewBox="0 0 260 260"><circle cx="130.0" cy="130.0" r="124.0" stroke-dasharray="779.1" stroke-dashoffset="779.1"/></svg>
+    <div id="tl1-y2" class="tlyear" style="left:2174px;top:402px;">2024</div>
+    <div id="tl1-l2" class="tllbl" style="left:2174px;top:470px;">Racks fill the county</div>
+    <div id="tl1-n3" class="tlnode" style="left:2920px;top:540px;"></div>
+    <div id="tl1-v3" class="tlv" style="left:2919px;top:540px;height:150px;transform-origin:center top;"></div>
+    <div id="tl1-h3" class="tlh" style="left:2920px;top:690px;width:70px;"></div>
+    <div id="tl1-c3" class="tlcirc" style="left:2860px;top:690px;width:260px;height:260px;"><img src="assets/hist/e4_homes.jpg" alt=""/></div>
+    <svg id="tl1-r3" class="tlring" style="left:2860px;top:690px;width:260px;height:260px;" viewBox="0 0 260 260"><circle cx="130.0" cy="130.0" r="124.0" stroke-dasharray="779.1" stroke-dashoffset="779.1"/></svg>
+    <div id="tl1-y3" class="tlyear" style="left:2934px;top:554px;">2025</div>
+    <div id="tl1-l3" class="tllbl" style="left:2934px;top:622px;">The neighbors push back</div>
+    <div id="tl1-n4" class="tlnode" style="left:3680px;top:540px;"></div>
+    <div id="tl1-v4" class="tlv" style="left:3679px;top:390px;height:150px;transform-origin:center bottom;"></div>
+    <div id="tl1-h4" class="tlh" style="left:3680px;top:390px;width:70px;"></div>
+    <div id="tl1-c4" class="tlcirc" style="left:3620px;top:130px;width:260px;height:260px;"><img src="assets/hist/e5_grid.png" alt=""/></div>
+    <svg id="tl1-r4" class="tlring" style="left:3620px;top:130px;width:260px;height:260px;" viewBox="0 0 260 260"><circle cx="130.0" cy="130.0" r="124.0" stroke-dasharray="779.1" stroke-dashoffset="779.1"/></svg>
+    <div id="tl1-y4" class="tlyear" style="left:3694px;top:402px;">2026</div>
+    <div id="tl1-l4" class="tllbl" style="left:3694px;top:470px;">The grid strains</div>
+    </div>
+    <div id="tl1-title" class="clip tltitle" data-start="0" data-duration="16" data-track-index="3">How the <span class="hl">boom</span> reshaped one county</div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+        tl.fromTo("#tl1-spine",{scaleX:0},{scaleX:1,duration:1.50,ease:"power2.out"},0);
+    tl.fromTo("#tl1-v0",{scaleY:0},{scaleY:1,duration:0.30,ease:"power2.out"},0.72);
+    tl.fromTo("#tl1-h0",{scaleX:0},{scaleX:1,duration:0.22,ease:"power2.out"},0.90);
+    tl.fromTo("#tl1-n0",{scale:0},{scale:1,duration:0.45,ease:"back.out(2)"},0.60);
+    tl.fromTo("#tl1-c0",{scale:0},{scale:1,duration:0.55,ease:"back.out(1.6)"},0.98);
+    tl.fromTo("#tl1-r0 circle",{strokeDashoffset:779.1},{strokeDashoffset:0,duration:0.70,ease:"power2.inOut"},1.02);
+    tl.fromTo("#tl1-y0",{opacity:0,y:14},{opacity:1,y:0,duration:0.50,ease:"power3.out"},1.10);
+    tl.fromTo("#tl1-l0",{opacity:0,y:10},{opacity:1,y:0,duration:0.50},1.22);
+    tl.to("#tl1-world",{x:-760,duration:0.75,ease:"power2.inOut"},3.65);
+    tl.fromTo("#tl1-v1",{scaleY:0},{scaleY:1,duration:0.30,ease:"power2.out"},4.27);
+    tl.fromTo("#tl1-h1",{scaleX:0},{scaleX:1,duration:0.22,ease:"power2.out"},4.45);
+    tl.fromTo("#tl1-n1",{scale:0},{scale:1,duration:0.45,ease:"back.out(2)"},4.15);
+    tl.fromTo("#tl1-c1",{scale:0},{scale:1,duration:0.55,ease:"back.out(1.6)"},4.53);
+    tl.fromTo("#tl1-r1 circle",{strokeDashoffset:779.1},{strokeDashoffset:0,duration:0.70,ease:"power2.inOut"},4.57);
+    tl.fromTo("#tl1-y1",{opacity:0,y:14},{opacity:1,y:0,duration:0.50,ease:"power3.out"},4.65);
+    tl.fromTo("#tl1-l1",{opacity:0,y:10},{opacity:1,y:0,duration:0.50},4.77);
+    tl.to("#tl1-world",{x:-1520,duration:0.75,ease:"power2.inOut"},7.20);
+    tl.fromTo("#tl1-v2",{scaleY:0},{scaleY:1,duration:0.30,ease:"power2.out"},7.82);
+    tl.fromTo("#tl1-h2",{scaleX:0},{scaleX:1,duration:0.22,ease:"power2.out"},8.00);
+    tl.fromTo("#tl1-n2",{scale:0},{scale:1,duration:0.45,ease:"back.out(2)"},7.70);
+    tl.fromTo("#tl1-c2",{scale:0},{scale:1,duration:0.55,ease:"back.out(1.6)"},8.08);
+    tl.fromTo("#tl1-r2 circle",{strokeDashoffset:779.1},{strokeDashoffset:0,duration:0.70,ease:"power2.inOut"},8.12);
+    tl.fromTo("#tl1-y2",{opacity:0,y:14},{opacity:1,y:0,duration:0.50,ease:"power3.out"},8.20);
+    tl.fromTo("#tl1-l2",{opacity:0,y:10},{opacity:1,y:0,duration:0.50},8.32);
+    tl.to("#tl1-world",{x:-2280,duration:0.75,ease:"power2.inOut"},10.75);
+    tl.fromTo("#tl1-v3",{scaleY:0},{scaleY:1,duration:0.30,ease:"power2.out"},11.37);
+    tl.fromTo("#tl1-h3",{scaleX:0},{scaleX:1,duration:0.22,ease:"power2.out"},11.55);
+    tl.fromTo("#tl1-n3",{scale:0},{scale:1,duration:0.45,ease:"back.out(2)"},11.25);
+    tl.fromTo("#tl1-c3",{scale:0},{scale:1,duration:0.55,ease:"back.out(1.6)"},11.63);
+    tl.fromTo("#tl1-r3 circle",{strokeDashoffset:779.1},{strokeDashoffset:0,duration:0.70,ease:"power2.inOut"},11.67);
+    tl.fromTo("#tl1-y3",{opacity:0,y:14},{opacity:1,y:0,duration:0.50,ease:"power3.out"},11.75);
+    tl.fromTo("#tl1-l3",{opacity:0,y:10},{opacity:1,y:0,duration:0.50},11.87);
+    tl.to("#tl1-world",{x:-3040,duration:0.75,ease:"power2.inOut"},14.30);
+    tl.fromTo("#tl1-v4",{scaleY:0},{scaleY:1,duration:0.30,ease:"power2.out"},14.92);
+    tl.fromTo("#tl1-h4",{scaleX:0},{scaleX:1,duration:0.22,ease:"power2.out"},15.10);
+    tl.fromTo("#tl1-n4",{scale:0},{scale:1,duration:0.45,ease:"back.out(2)"},14.80);
+    tl.fromTo("#tl1-c4",{scale:0},{scale:1,duration:0.55,ease:"back.out(1.6)"},15.18);
+    tl.fromTo("#tl1-r4 circle",{strokeDashoffset:779.1},{strokeDashoffset:0,duration:0.70,ease:"power2.inOut"},15.22);
+    tl.fromTo("#tl1-y4",{opacity:0,y:14},{opacity:1,y:0,duration:0.50,ease:"power3.out"},15.30);
+    tl.fromTo("#tl1-l4",{opacity:0,y:10},{opacity:1,y:0,duration:0.50},15.42);
+    tl.fromTo("#tl1-title",{opacity:0,y:-12},{opacity:1,y:0,duration:0.6,ease:"power3.out"},0.2);
+    tl.to({}, { duration: 16 }, 0);
+    window.__timelines["timeline-demo"] = tl;
+  </script>
+</template>

@@ -1,0 +1,485 @@
+<template>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@1,500;1,600&family=Inter:wght@400;500;600&display=swap');
+
+    #root {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Libre Franklin", sans-serif;
+    }
+
+    /* ---------- layers ---------- */
+    .boom-layer { position: absolute; inset: 0; }
+
+    .boom-ground-mist { background: #F1F3F2; }
+    .boom-ground-parchment { background: #EFE9DC; }
+
+    .boom-bg {
+      background-size: cover;
+      background-position: center;
+      will-change: transform;
+    }
+    .boom-bg-hero {
+      background-image:
+        linear-gradient(180deg, rgba(20,21,20,0) 38%, rgba(20,21,20,0.55) 78%, rgba(20,21,20,0.72) 100%),
+        url('assets/bg_boom_hero.png');
+    }
+    .boom-bg-close {
+      background-image:
+        linear-gradient(180deg, rgba(20,21,20,0) 38%, rgba(20,21,20,0.55) 78%, rgba(20,21,20,0.72) 100%),
+        url('assets/bg_boom_close.png');
+    }
+
+    .boom-camera {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+    .boom-scene { position: absolute; inset: 0; }
+
+    /* ---------- type voices ---------- */
+    .boom-kicker {
+      position: absolute;
+      top: 7cqh;
+      left: 6cqw;
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 0.95cqw;
+      letter-spacing: 0.14em;
+      color: #4C4E4D;
+    }
+    .boom-kicker-footage { color: #F6F7F6; }
+
+    .boom-h3 {
+      position: absolute;
+      top: 7cqh;
+      left: 6cqw;
+      max-width: 70cqw;
+      font-weight: 700;
+      font-size: 2.4cqw;
+      line-height: 1.18;
+      color: #2B2D2C;
+    }
+    .boom-fig {
+      position: absolute;
+      top: 7.4cqh;
+      right: 6cqw;
+      font-family: "Lora", serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: 1cqw;
+      color: #4C4E4D;
+    }
+    .boom-aside {
+      position: absolute;
+      left: 6cqw;
+      top: 60cqh;
+      max-width: 58cqw;
+      font-family: "Lora", serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: 1.5cqw;
+      line-height: 1.4;
+      color: #4C4E4D;
+    }
+
+    /* footage statements */
+    .boom-stmt {
+      position: absolute;
+      left: 6cqw;
+      bottom: 19cqh;
+      color: #F6F7F6;
+      font-weight: 900;
+      font-size: 5cqw;
+      line-height: 1.12;
+      letter-spacing: -0.015em;
+    }
+    .boom-stmt-line { will-change: transform, opacity; }
+
+    /* the yellow signature */
+    .boom-hl-wrap { position: relative; display: inline-block; white-space: nowrap; }
+    .boom-hl-block {
+      position: absolute;
+      top: -0.06em; bottom: -0.06em;
+      left: -0.18em; right: -0.18em;
+      background: #FFF200;
+      z-index: 0;
+      transform-origin: left center;
+    }
+    .boom-hl-text { position: relative; z-index: 1; }
+    .boom-hl-ink {
+      position: absolute;
+      left: 0; top: 0;
+      z-index: 2;
+      color: #2B2D2C;
+      white-space: nowrap;
+    }
+
+    .boom-uwrap { position: relative; display: inline-block; }
+    .boom-underline {
+      position: absolute;
+      left: 0; right: 0;
+      background: #FFF200;
+      transform-origin: left center;
+    }
+    .boom-underline-lg { height: 16px; bottom: -12px; }
+    .boom-underline-md { height: 8px; bottom: -8px; }
+
+    /* stat lockups */
+    .boom-lockup { position: absolute; }
+    .boom-numrow { height: 125px; display: flex; align-items: flex-end; }
+    .boom-counter {
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: #2B2D2C;
+      font-variant-numeric: tabular-nums;
+    }
+    .boom-lockup-label {
+      margin-top: 18px;
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 0.95cqw;
+      letter-spacing: 0.14em;
+      color: #4C4E4D;
+    }
+
+    /* scene 3 chart */
+    .boom-chart {
+      position: absolute;
+      left: 6cqw;
+      top: 22cqh;
+      width: 64cqw;
+      height: 50cqh;
+    }
+    .boom-chart-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .boom-axis {
+      stroke: #4C4E4D;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-dasharray: 1.5 8;
+      fill: none;
+    }
+    .boom-userline {
+      fill: none;
+      stroke: #C0603F;
+      stroke-width: 8.6;
+      stroke-linecap: round;
+    }
+    .boom-userdot { fill: #C0603F; transform-box: fill-box; transform-origin: center; }
+    .boom-chart-val { position: absolute; white-space: nowrap; }
+    .boom-val-start { left: 5.5%; top: 66%; font-weight: 700; font-size: 1.7cqw; color: #4C4E4D; }
+    .boom-val-end { left: 83%; top: 2%; font-weight: 800; font-size: 2.6cqw; color: #2B2D2C; }
+    .boom-chart-year {
+      position: absolute;
+      top: 89%;
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 0.9cqw;
+      letter-spacing: 0.14em;
+      color: #4C4E4D;
+    }
+    .boom-year-l { left: 6.5%; }
+    .boom-year-r { left: 87.5%; }
+    .boom-aside-chart {
+      position: absolute;
+      left: 64%;
+      top: 46%;
+      font-family: "Lora", serif;
+      font-style: italic;
+      font-weight: 600;
+      font-size: 1.6cqw;
+      color: #2B2D2C;
+    }
+
+    /* scene 4 bars */
+    .boom-bars {
+      position: absolute;
+      left: 8cqw;
+      top: 30cqh;
+      width: 36cqw;
+      height: 42cqh;
+      display: flex;
+      align-items: flex-end;
+      gap: 10cqw;
+      padding: 0 4cqw;
+      border-bottom: 2px dotted rgba(76, 78, 77, 0.45);
+    }
+    .boom-barcol {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      width: 7cqw;
+    }
+    .boom-barval {
+      white-space: nowrap;
+      font-weight: 800;
+      color: #2B2D2C;
+      margin-bottom: 14px;
+      will-change: opacity, transform;
+    }
+    .boom-barval-a { font-size: 2.2cqw; }
+    .boom-barval-b { font-size: 2.8cqw; }
+    .boom-bar {
+      width: 7cqw;
+      transform-origin: bottom center;
+      will-change: transform;
+    }
+    .boom-bar-amber { background: #F2B13D; height: 160px; }
+    .boom-bar-sky { background: #4FB3E5; height: 350px; }
+    .boom-baryear {
+      position: absolute;
+      top: calc(100% + 12px);
+      left: 0;
+      width: 100%;
+      text-align: center;
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 0.9cqw;
+      letter-spacing: 0.14em;
+      color: #4C4E4D;
+    }
+
+    /* scene 5 */
+    .boom-h1 {
+      position: absolute;
+      left: 6cqw;
+      top: 14cqh;
+      font-weight: 900;
+      font-size: 5.4cqw;
+      line-height: 1.06;
+      letter-spacing: -0.015em;
+      color: #2B2D2C;
+      will-change: transform, opacity;
+    }
+
+    /* scene 6 */
+    .boom-stmt-close { font-size: 4.8cqw; }
+  </style>
+
+  <div id="root" data-composition-id="01-boom" data-duration="68.26" data-width="1920" data-height="1080">
+    <!-- full-duration mist base ground -->
+    <div class="boom-layer boom-ground-mist clip" data-start="0" data-duration="67.76" data-track-index="0"></div>
+
+    <!-- footage + parchment grounds, gated to their scene windows -->
+    <div id="boom-bg-hero" class="boom-layer boom-bg boom-bg-hero clip" data-start="0" data-duration="8.6" data-track-index="1"></div>
+    <div class="boom-layer boom-ground-parchment clip" data-start="25.7" data-duration="25.7" data-track-index="1"></div>
+    <div id="boom-bg-close" class="boom-layer boom-bg boom-bg-close clip" data-start="64.3" data-duration="3.46" data-track-index="1"></div>
+
+    <!-- camera-drifted content -->
+    <div id="boom-camera" class="boom-camera" style="transform: scale(1.002)">
+
+      <!-- Scene 1 — COLD OPEN (0.0–8.6) -->
+      <div class="boom-scene clip" data-start="0" data-duration="8.6" data-track-index="2">
+        <div class="boom-kicker boom-kicker-footage" id="boom-k1">THE BUILD-OUT</div>
+        <div class="boom-stmt">
+          <div class="boom-stmt-line" id="boom-s1-l1">The boom is <span class="boom-hl-wrap"><span class="boom-hl-block" id="boom-hl1-block"></span><span class="boom-hl-text">real</span><span class="boom-hl-ink" id="boom-hl1-ink">real</span></span> —</div>
+          <div class="boom-stmt-line" id="boom-s1-l2">and it is not stopping.</div>
+        </div>
+      </div>
+
+      <!-- Scene 2 — STAT LOCKUP (8.6–25.7) -->
+      <div class="boom-scene clip" data-start="8.6" data-duration="17.1" data-track-index="2">
+        <div class="boom-kicker" id="boom-k2">THE MONEY</div>
+        <div class="boom-lockup" id="boom-lock-a" style="left: 6cqw; top: 28cqh;">
+          <div class="boom-numrow"><span class="boom-uwrap"><span class="boom-counter" id="boom-count-a" style="font-size: 66px">$0B</span><span class="boom-underline boom-underline-lg" id="boom-u800"></span></span></div>
+          <div class="boom-lockup-label" id="boom-label-a">AI INFRASTRUCTURE — 2026</div>
+        </div>
+        <div class="boom-lockup" id="boom-lock-b" style="left: 40cqw; top: 28cqh;">
+          <div class="boom-numrow"><span class="boom-counter" id="boom-count-b" style="font-size: 64px">$0B</span></div>
+          <div class="boom-lockup-label" id="boom-label-b">— 2027</div>
+        </div>
+        <div class="boom-aside" id="boom-aside2">that&rsquo;s roughly the entire US defense budget &mdash; poured into server farms.</div>
+      </div>
+
+      <!-- Scene 3 — CHART: chatbot users (25.7–34.6) -->
+      <div class="boom-scene clip" data-start="25.7" data-duration="8.9" data-track-index="2">
+        <div class="boom-h3" id="boom-h3a">Chatbot users, in one year</div>
+        <div class="boom-fig" id="boom-fig1">fig. 01</div>
+        <div class="boom-chart">
+          <svg class="boom-chart-svg" viewBox="0 0 1229 540" preserveAspectRatio="none">
+            <g id="boom-axes3">
+              <line class="boom-axis" x1="50" y1="470" x2="1180" y2="470"></line>
+              <line class="boom-axis" x1="50" y1="470" x2="50" y2="40"></line>
+            </g>
+            <path id="boom-userline" class="boom-userline" d="M 110 425 C 430 408, 760 330, 1120 95"></path>
+            <circle id="boom-userdot" class="boom-userdot" cx="1120" cy="95" r="11"></circle>
+          </svg>
+          <div class="boom-chart-val boom-val-start" id="boom-val400">400M</div>
+          <div class="boom-chart-val boom-val-end" id="boom-val900"><span class="boom-uwrap">900M<span class="boom-underline boom-underline-md" id="boom-u900"></span></span></div>
+          <div class="boom-chart-year boom-year-l" id="boom-y2023">2023</div>
+          <div class="boom-chart-year boom-year-r" id="boom-y2024">2024</div>
+          <div class="boom-aside-chart" id="boom-aside3">doubled.</div>
+        </div>
+      </div>
+
+      <!-- Scene 4 — CHART: electricity share (34.6–51.4) -->
+      <div class="boom-scene clip" data-start="34.6" data-duration="16.8" data-track-index="2">
+        <div class="boom-h3" id="boom-h3b">Data centers&rsquo; share of US electricity</div>
+        <div class="boom-fig" id="boom-fig2">fig. 02</div>
+        <div class="boom-bars" id="boom-bars4">
+          <div class="boom-barcol">
+            <div class="boom-barval boom-barval-a" id="boom-val44">4.4%</div>
+            <div class="boom-bar boom-bar-amber" id="boom-bar-amber"></div>
+            <div class="boom-baryear" data-layout-allow-overflow>2023</div>
+          </div>
+          <div class="boom-barcol">
+            <div class="boom-barval boom-barval-b" id="boom-val712"><span class="boom-uwrap">7&ndash;12%<span class="boom-underline boom-underline-md" id="boom-u712"></span></span></div>
+            <div class="boom-bar boom-bar-sky" id="boom-bar-sky"></div>
+            <div class="boom-baryear" data-layout-allow-overflow>2028</div>
+          </div>
+        </div>
+        <div class="boom-lockup" id="boom-lock-x" style="left: 56cqw; top: 38cqh;">
+          <div class="boom-numrow" style="height: 112px;"><span class="boom-counter" id="boom-count-x" style="font-size: 58px">0&times;</span></div>
+          <div class="boom-lockup-label" id="boom-label-x">ONE AI PROMPT vs A GOOGLE SEARCH</div>
+        </div>
+      </div>
+
+      <!-- Scene 5 — HIGHLIGHT STATEMENT (51.4–64.3) -->
+      <div class="boom-scene clip" data-start="51.4" data-duration="12.9" data-track-index="2">
+        <div class="boom-kicker" id="boom-k3">AND THE PART CRITICS SKIP</div>
+        <div class="boom-h1" id="boom-stmt5">Some towns <span class="boom-hl-wrap"><span class="boom-hl-block" id="boom-hl5-block"></span><span class="boom-hl-text">cash in</span></span>.</div>
+        <div class="boom-lockup" id="boom-lock-38" style="left: 6cqw; top: 34cqh;">
+          <div class="boom-numrow"><span class="boom-counter" id="boom-count-38" style="font-size: 66px">0%</span></div>
+          <div class="boom-lockup-label" id="boom-label-38">LOUDOUN COUNTY, VA — OF THE COUNTY BUDGET</div>
+        </div>
+        <div class="boom-aside" id="boom-aside5">enough that they cut property taxes.</div>
+      </div>
+
+      <!-- Scene 6 — COLD CLOSE (64.3–67.76) -->
+      <div class="boom-scene clip" data-start="64.3" data-duration="3.46" data-track-index="2">
+        <div class="boom-stmt boom-stmt-close">
+          <div class="boom-stmt-line" id="boom-s6-l1">We are not <span class="boom-hl-wrap"><span class="boom-hl-block" id="boom-hl6-block"></span><span class="boom-hl-text">un-building</span><span class="boom-hl-ink" id="boom-hl6-ink">un-building</span></span> this.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+
+    /* ---------- helpers ---------- */
+    function riseIn(target, at, y, dur, ease) {
+      tl.fromTo(target, { opacity: 0, y: y }, { opacity: 1, y: 0, duration: dur, ease: ease }, at);
+    }
+    function fadeIn(target, at, dur) {
+      tl.fromTo(target, { opacity: 0 }, { opacity: 1, duration: dur, ease: "power2.out" }, at);
+    }
+    function sweep(target, at, dur) {
+      tl.fromTo(target, { scaleX: 0 }, { scaleX: 1, duration: dur, ease: "power3.out" }, at);
+    }
+    function count(id, at, dur, target, startPx, endPx, ease, fmt) {
+      const el = document.getElementById(id);
+      const st = { v: 0, fs: startPx };
+      tl.to(st, {
+        v: target,
+        fs: endPx,
+        duration: dur,
+        ease: ease,
+        onUpdate: () => {
+          el.textContent = fmt(st.v);
+          el.style.fontSize = st.fs + "px";
+        }
+      }, at);
+    }
+
+    /* ---------- camera: slow bounded drift under everything ---------- */
+    const boomCam = document.getElementById("boom-camera");
+    const boomPhase = { scale: 1.002 };
+    tl.to(boomPhase, { scale: 1.014, duration: 34, ease: "sine.inOut" }, 0);
+    tl.to(boomPhase, { scale: 1.005, duration: 33.76, ease: "sine.inOut" }, 34);
+
+    /* ---------- Ken-Burns on the two footage grounds ---------- */
+    tl.fromTo("#boom-bg-hero", { scale: 1.03 }, { scale: 1.09, duration: 8.6, ease: "none" }, 0);
+    tl.fromTo("#boom-bg-close", { scale: 1.03 }, { scale: 1.09, duration: 3.46, ease: "none" }, 64.3);
+
+    /* ---------- Scene 1 — COLD OPEN (0.0–8.6) ---------- */
+    riseIn("#boom-k1", 0.3, 14, 0.6, "power2.out");
+    riseIn("#boom-s1-l1", 3.4, 46, 0.75, "power3.out");
+    sweep("#boom-hl1-block", 4.4, 0.5);
+    fadeIn("#boom-hl1-ink", 4.52, 0.22);
+    riseIn("#boom-s1-l2", 5.2, 34, 0.65, "circ.out");
+
+    /* ---------- Scene 2 — STAT LOCKUP (8.6–25.7) ---------- */
+    riseIn("#boom-k2", 9.4, 14, 0.55, "power2.out");
+    riseIn("#boom-lock-a", 12.8, 24, 0.55, "power3.out");
+    count("boom-count-a", 12.8, 1.7, 800, 66, 119, "power3.out",
+      (v) => "$" + Math.round(v) + "B");
+    riseIn("#boom-label-a", 13.1, 12, 0.5, "power2.out");
+    sweep("#boom-u800", 14.5, 0.45);
+    riseIn("#boom-lock-b", 17.0, 24, 0.55, "power3.out");
+    count("boom-count-b", 17.0, 1.6, 1000, 64, 119, "expo.out",
+      (v) => { const n = Math.round(v); return n >= 1000 ? "$1T+" : "$" + n + "B"; });
+    riseIn("#boom-label-b", 17.3, 12, 0.5, "power2.out");
+    riseIn("#boom-aside2", 21.4, 16, 0.7, "power2.out");
+
+    /* ---------- Scene 3 — CHART: users (25.7–34.6) ---------- */
+    riseIn("#boom-h3a", 26.1, 18, 0.6, "power3.out");
+    fadeIn("#boom-fig1", 26.3, 0.5);
+    tl.fromTo("#boom-axes3", { opacity: 0 }, { opacity: 0.45, duration: 0.5, ease: "power2.out" }, 26.4);
+    fadeIn(["#boom-y2023", "#boom-y2024"], 26.7, 0.5);
+    riseIn("#boom-val400", 27.5, 10, 0.45, "power2.out");
+    const boomLine = document.getElementById("boom-userline");
+    const boomLen = boomLine.getTotalLength();
+    boomLine.style.strokeDasharray = boomLen;
+    tl.fromTo(boomLine, { strokeDashoffset: boomLen }, { strokeDashoffset: 0, duration: 2.3, ease: "none" }, 27.7);
+    tl.fromTo("#boom-userdot", { scale: 0 }, { scale: 1, duration: 0.35, ease: "power2.out" }, 30.0);
+    riseIn("#boom-val900", 30.1, 12, 0.45, "power2.out");
+    sweep("#boom-u900", 30.25, 0.4);
+    riseIn("#boom-aside3", 32.0, 12, 0.6, "power2.out");
+
+    /* ---------- Scene 4 — CHART: electricity (34.6–51.4) ---------- */
+    riseIn("#boom-h3b", 35.1, 18, 0.6, "power3.out");
+    fadeIn("#boom-fig2", 35.3, 0.5);
+    fadeIn("#boom-bars4", 35.5, 0.5);
+    tl.fromTo("#boom-bar-amber", { scaleY: 0 }, { scaleY: 1, duration: 0.9, ease: "power3.out" }, 37.0);
+    riseIn("#boom-val44", 37.7, 10, 0.45, "power2.out");
+    tl.fromTo("#boom-bar-sky", { scaleY: 0 }, { scaleY: 1, duration: 0.9, ease: "power3.out" }, 43.0);
+    riseIn("#boom-val712", 43.7, 10, 0.45, "power2.out");
+    sweep("#boom-u712", 44.0, 0.45);
+    riseIn("#boom-lock-x", 47.5, 24, 0.55, "power3.out");
+    count("boom-count-x", 47.5, 1.0, 10, 58, 106, "power3.out",
+      (v) => Math.round(v) + "×");
+    riseIn("#boom-label-x", 47.8, 12, 0.5, "power2.out");
+
+    /* ---------- Scene 5 — HIGHLIGHT STATEMENT (51.4–64.3) ---------- */
+    riseIn("#boom-k3", 51.8, 14, 0.55, "power2.out");
+    riseIn("#boom-stmt5", 51.95, 40, 0.7, "power3.out");
+    sweep("#boom-hl5-block", 52.6, 0.5);
+    riseIn("#boom-lock-38", 54.3, 24, 0.55, "power3.out");
+    count("boom-count-38", 54.3, 1.3, 38, 66, 119, "power3.out",
+      (v) => Math.round(v) + "%");
+    riseIn("#boom-label-38", 54.6, 12, 0.5, "power2.out");
+    riseIn("#boom-aside5", 62.0, 16, 0.7, "power2.out");
+
+    /* ---------- Scene 6 — COLD CLOSE (64.3–67.76), hold to the cut ---------- */
+    riseIn("#boom-s6-l1", 64.55, 40, 0.7, "power3.out");
+    sweep("#boom-hl6-block", 65.9, 0.5);
+    fadeIn("#boom-hl6-ink", 66.02, 0.22);
+
+    /* drift driver added LAST so its onUpdate reads the updated phase scale */
+    const boomDrift = { p: 0 };
+    tl.to(boomDrift, {
+      p: Math.PI * 2 * 2,
+      duration: 67.76,
+      ease: "none",
+      onUpdate: () => {
+        const dx = Math.sin(boomDrift.p) * 6;
+        const dy = Math.sin(boomDrift.p * 1.3) * 3;
+        boomCam.style.transform = "scale(" + boomPhase.scale + ") translate(" + dx + "px, " + dy + "px)";
+      }
+    }, 0);
+
+    window.__timelines["01-boom"] = tl;
+  </script>
+</template>

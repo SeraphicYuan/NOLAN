@@ -1,0 +1,26 @@
+# HyperFrames lab — keep authored SOURCE + docs; exclude renders, generated media,
+# vendored libraries, and staged assets (all reproducible from the source + scripts).
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+# vendored geo libs (d3 / topojson / us-atlas / world-atlas) — re-download via curl
+vendor/
+# renders, verification stills, snapshot grids
+out/
+snapshots/
+renders/
+# staged / generated media dirs
+**/assets/
+**/inputs/
+**/public/
+**/capture/assets/
+node_modules/
+_batch.jsonl
+audio_engine_meta.json

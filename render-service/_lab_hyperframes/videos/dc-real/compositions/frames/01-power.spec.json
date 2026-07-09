@@ -1,0 +1,52 @@
+{
+  "frames": [
+    {
+      "id": "01-power",
+      "dur": 12.01,
+      "scenes": [
+        {
+          "id": "01-power-s1",
+          "type": "stat",
+          "start": 0.0,
+          "dur": 7.5,
+          "data": {
+            "kicker": "SHARE OF U.S. ELECTRICITY",
+            "register": "paper",
+            "ground": { "kind": "paper" },
+            "items": [
+              {
+                "from": 0,
+                "to": 12,
+                "suffix": "%",
+                "label": "AI DATA CENTERS · 2030",
+                "cue": 1.8,
+                "underline": true
+              },
+              {
+                "from": 0,
+                "to": 4,
+                "suffix": "%",
+                "label": "TODAY",
+                "cue": 4.3
+              }
+            ]
+          }
+        },
+        {
+          "id": "01-power-s2",
+          "type": "geo",
+          "start": 7.5,
+          "dur": 4.51,
+          "data": {
+            "kind": "us",
+            "highlight": ["51"],
+            "primary": "51",
+            "kicker": "THE EPICENTER",
+            "title": "Virginia",
+            "sub": "'Data Center Alley'"
+          }
+        }
+      ]
+    }
+  ]
+}

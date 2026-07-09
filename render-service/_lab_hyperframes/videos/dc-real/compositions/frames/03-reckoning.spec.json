@@ -1,0 +1,37 @@
+{
+  "frames": [
+    {
+      "id": "03-reckoning",
+      "dur": 5.48,
+      "scenes": [
+        {
+          "id": "s3",
+          "type": "raw",
+          "start": 0,
+          "dur": 5.48,
+          "data": {
+            "html": [
+              "<style>@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@600;700;800;900&family=Inter:wght@500;600&display=swap');.r3-gnd{position:absolute;inset:0;background:#F1F3F2;}.r3-scene{position:absolute;inset:0;font-family:\"Libre Franklin\",sans-serif;}.r3-kick{position:absolute;top:9cqh;left:5.5cqw;font-family:\"Inter\",sans-serif;font-weight:600;font-size:0.95cqw;letter-spacing:0.16em;text-transform:uppercase;color:#4C4E4D;opacity:0;}.r3-row{position:absolute;left:5.5cqw;right:5.5cqw;top:32cqh;display:flex;justify-content:space-between;gap:3cqw;}.r3-col{display:flex;flex-direction:column;align-items:flex-start;flex:1;}.r3-idx{font-family:\"Inter\",sans-serif;font-weight:600;font-size:1.3cqw;letter-spacing:0.12em;color:#4C4E4D;margin-bottom:0.8cqw;opacity:0;}.r3-wordwrap{position:relative;display:inline-block;opacity:0;}.r3-word{font-family:\"Libre Franklin\",sans-serif;font-weight:900;font-size:5cqw;line-height:1;letter-spacing:-0.02em;color:#2B2D2C;}.r3-ul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}.r3-close{position:absolute;left:5.5cqw;top:60cqh;max-width:80cqw;font-family:\"Libre Franklin\",sans-serif;font-weight:800;font-size:3.4cqw;line-height:1.15;letter-spacing:-0.012em;color:#2B2D2C;opacity:0;}.r3-hlwrap{position:relative;display:inline-block;}.r3-hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.08em;bottom:0.1em;background:#FFF200;transform:scaleX(0);transform-origin:left center;z-index:-1;}</style>",
+              "<div id=\"s3-gnd\" class=\"clip r3-gnd\" data-start=\"0\" data-duration=\"5.48\" data-track-index=\"0\"></div>",
+              "<section id=\"s3-scene\" class=\"clip r3-scene\" data-start=\"0\" data-duration=\"5.48\" data-track-index=\"1\"><div id=\"s3-kick\" class=\"r3-kick\">The collision</div><div class=\"r3-row\"><div class=\"r3-col\"><div id=\"s3-idx0\" class=\"r3-idx\">01</div><div id=\"s3-ww0\" class=\"r3-wordwrap\"><span class=\"r3-word\">Power</span><span id=\"s3-ul0\" class=\"r3-ul\"></span></div></div><div class=\"r3-col\"><div id=\"s3-idx1\" class=\"r3-idx\">02</div><div id=\"s3-ww1\" class=\"r3-wordwrap\"><span class=\"r3-word\">Water</span><span id=\"s3-ul1\" class=\"r3-ul\"></span></div></div><div class=\"r3-col\"><div id=\"s3-idx2\" class=\"r3-idx\">03</div><div id=\"s3-ww2\" class=\"r3-wordwrap\"><span class=\"r3-word\">Land</span><span id=\"s3-ul2\" class=\"r3-ul\"></span></div></div></div><div id=\"s3-close\" class=\"r3-close\">Who <span class=\"r3-hlwrap\"><span>pays</span><span id=\"s3-hl\" class=\"r3-hlblock\"></span></span> the bill?</div></section>"
+            ],
+            "tl": [
+              "tl.fromTo(\"#s3-kick\",{opacity:0,y:10},{opacity:1,y:0,duration:0.5,ease:\"power3.out\"},0.35);",
+              "tl.fromTo(\"#s3-idx0\",{opacity:0,y:12},{opacity:1,y:0,duration:0.45,ease:\"power3.out\"},1.66);",
+              "tl.fromTo(\"#s3-ww0\",{opacity:0,y:20},{opacity:1,y:0,duration:0.55,ease:\"power3.out\"},1.72);",
+              "tl.fromTo(\"#s3-ul0\",{scaleX:0},{scaleX:1,duration:0.4,ease:\"power2.out\"},2.05);",
+              "tl.fromTo(\"#s3-idx1\",{opacity:0,y:12},{opacity:1,y:0,duration:0.45,ease:\"power3.out\"},2.32);",
+              "tl.fromTo(\"#s3-ww1\",{opacity:0,y:20},{opacity:1,y:0,duration:0.55,ease:\"power3.out\"},2.38);",
+              "tl.fromTo(\"#s3-ul1\",{scaleX:0},{scaleX:1,duration:0.4,ease:\"power2.out\"},2.7);",
+              "tl.fromTo(\"#s3-idx2\",{opacity:0,y:12},{opacity:1,y:0,duration:0.45,ease:\"power3.out\"},2.72);",
+              "tl.fromTo(\"#s3-ww2\",{opacity:0,y:20},{opacity:1,y:0,duration:0.55,ease:\"power3.out\"},2.78);",
+              "tl.fromTo(\"#s3-ul2\",{scaleX:0},{scaleX:1,duration:0.4,ease:\"power2.out\"},3.12);",
+              "tl.fromTo(\"#s3-close\",{opacity:0,y:24},{opacity:1,y:0,duration:0.6,ease:\"power3.out\"},4.4);",
+              "tl.fromTo(\"#s3-hl\",{scaleX:0},{scaleX:1,duration:0.4,ease:\"power2.out\"},4.75);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

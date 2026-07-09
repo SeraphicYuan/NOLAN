@@ -1,0 +1,74 @@
+{
+  "noise_house": {
+    "asset": "assets/bg_noise_house.png",
+    "ok": true,
+    "frame": "02-bill",
+    "scene": 4,
+    "treatment": "background-dim-40",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "interior of a dark suburban bedroom at night, faint ominous cold glow through the window blinds from an industrial facility outside, empty unmade bed, unsettling stillness, a low hum implied, cinematic, deep shadows, thin amber and blue window light, photoreal, film grain"
+    }
+  },
+  "boom_hero": {
+    "asset": "assets/bg_boom_hero.png",
+    "ok": true,
+    "frame": "01-boom",
+    "scene": 1,
+    "treatment": "background-dim-45",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "vast hyperscale data center server hall at night, endless rows of glowing server racks receding into darkness, cold machine light with warm amber glow pooling on the floor, volumetric haze, cinematic ultrawide shot, deep shadows, photoreal, moody, film grain"
+    }
+  },
+  "boom_close": {
+    "asset": "assets/bg_boom_close.png",
+    "ok": true,
+    "frame": "01-boom",
+    "scene": 6,
+    "treatment": "background-dim-50",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "colossal data center complex sprawling across a landscape at dusk, aerial wide view, hundreds of identical windowless warehouse buildings, industrial, ominous inhuman scale, low warm sunset light, long shadows, photoreal, cinematic, desaturated amber and slate palette"
+    }
+  },
+  "bill_turn": {
+    "asset": "assets/bg_bill_turn.png",
+    "ok": true,
+    "frame": "02-bill",
+    "scene": 1,
+    "treatment": "background-dim-45",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "a modest single suburban house dwarfed at the edge of a massive windowless data center, chain-link fence, transmission towers looming behind, overcast heavy sky, quiet unease, photoreal, cinematic, muted cold tones with a hint of amber"
+    }
+  },
+  "water_desert": {
+    "asset": "assets/bg_water_desert.png",
+    "ok": true,
+    "frame": "02-bill",
+    "scene": 3,
+    "treatment": "background-dim-50",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "enormous data center campus isolated in the Arizona desert, cracked dry cracked earth foreground, shimmering heat haze, rows of cooling units, vast empty parking lots, harsh low sun, aerial cinematic wide shot, photoreal, desaturated warm dust palette"
+    }
+  },
+  "land_lines": {
+    "asset": "assets/bg_land_lines.png",
+    "ok": true,
+    "frame": "02-bill",
+    "scene": 5,
+    "treatment": "background-dim-50",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "high-voltage electricity transmission towers marching across rural farmland at dusk, power lines cutting straight through open fields, long shadows, brooding moody sky, photoreal, cinematic wide shot, amber-grey palette, film grain"
+    }
+  }
+}

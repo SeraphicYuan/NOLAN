@@ -1,0 +1,24 @@
+{
+  "provider": "auto",
+  "speed": 1,
+  "lines": [
+    {
+      "id": "01",
+      "text": "By twenty thirty, AI data centers could draw twelve percent of all US electricity, up from about four percent today. The epicenter is Virginia, home to the world's densest cluster of data centers."
+    },
+    {
+      "id": "02",
+      "text": "But the quieter cost is water. A single large data center can drink over a million gallons a day to stay cool, often in towns that are already short on it."
+    },
+    {
+      "id": "03",
+      "text": "Three forces now collide: power, water, and land. The real question is who pays the bill."
+    }
+  ],
+  "bgm": {
+    "mode": "retrieve",
+    "query": "tense-editorial",
+    "blob": "AI's data-center boom has a hidden bill: power, water, and land",
+    "arc": "Scale → Hidden cost → The reckoning"
+  }
+}

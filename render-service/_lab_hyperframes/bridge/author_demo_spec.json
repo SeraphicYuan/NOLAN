@@ -1,0 +1,100 @@
+{
+  "frames": [
+    {
+      "id": "author-demo",
+      "dur": 26,
+      "scenes": [
+        {
+          "id": "b1",
+          "type": "stat",
+          "start": 0,
+          "dur": 6,
+          "data": {
+            "kicker": "SHARE OF U.S. ELECTRICITY",
+            "register": "paper",
+            "ground": { "kind": "paper" },
+            "items": [
+              {
+                "from": 0,
+                "to": 12,
+                "suffix": "%",
+                "label": "BY 2030 — AI DATA CENTERS",
+                "cue": 0.8,
+                "underline": true
+              },
+              {
+                "from": 0,
+                "to": 4,
+                "suffix": "%",
+                "label": "TODAY",
+                "cue": 3.0
+              }
+            ]
+          }
+        },
+        {
+          "id": "b2",
+          "type": "geo",
+          "start": 6,
+          "dur": 7,
+          "data": {
+            "kind": "us",
+            "highlight": ["51"],
+            "primary": "51",
+            "kicker": "THE EPICENTER",
+            "title": "Virginia",
+            "sub": "The world's densest cluster of <b>data centers</b>."
+          }
+        },
+        {
+          "id": "b3",
+          "type": "statement",
+          "start": 13,
+          "dur": 7,
+          "data": {
+            "kicker": "THE REAL FIGHT",
+            "register": "paper",
+            "ground": { "kind": "paper" },
+            "lines": [
+              "The real fight",
+              "is over water"
+            ],
+            "operative": "water",
+            "cue": 2.8,
+            "captionBar": "MILLIONS OF GALLONS A DAY",
+            "capCue": 5.4
+          }
+        },
+        {
+          "id": "collide",
+          "type": "raw",
+          "start": 20,
+          "dur": 6,
+          "data": {
+            "html": [
+              "<style>@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@800;900&family=Inter:wght@500;600&family=Lora:ital@1&display=swap');#collide-bg{position:absolute;inset:0;background:#F1F3F2;}.collide-eyebrow{position:absolute;left:0;right:0;top:300px;text-align:center;font-family:'Inter',sans-serif;font-weight:600;font-size:22px;letter-spacing:0.24em;text-transform:uppercase;color:#4C4E4D;opacity:0;}.collide-col{position:absolute;top:430px;width:420px;text-align:center;opacity:0;}.collide-idx{font-family:'Lora',serif;font-style:italic;font-size:30px;color:#4C4E4D;line-height:1;}.collide-word{font-family:'Libre Franklin',sans-serif;font-weight:900;font-size:100px;line-height:1;letter-spacing:-0.01em;color:#2B2D2C;margin:14px 0 0;}.collide-ulwrap{position:relative;display:inline-block;margin-top:10px;height:12px;width:64%;}.collide-ul{position:absolute;inset:0;background:#FFF200;transform:scaleX(0);transform-origin:left center;}.collide-sub{font-family:'Inter',sans-serif;font-weight:500;font-size:20px;letter-spacing:0.18em;text-transform:uppercase;color:#888880;margin-top:22px;}.collide-div{position:absolute;top:440px;height:210px;width:2px;background:#4C4E4D;opacity:0.45;transform:scaleY(0);transform-origin:top center;}</style>",
+              "<div id='collide-bg' class='clip' data-start='20' data-duration='6' data-track-index='0'></div>",
+              "<div id='collide-eyebrow' class='clip collide-eyebrow' data-start='20' data-duration='6' data-track-index='1'>THE COLLISION</div>",
+              "<div id='collide-div1' class='clip collide-div' data-start='20' data-duration='6' data-track-index='2' style='left:719px;'></div>",
+              "<div id='collide-div2' class='clip collide-div' data-start='20' data-duration='6' data-track-index='3' style='left:1199px;'></div>",
+              "<div id='collide-col1' class='clip collide-col' data-start='20' data-duration='6' data-track-index='4' style='left:270px;'><div class='collide-idx'>01</div><div class='collide-word'>POWER</div><div class='collide-ulwrap'><div id='collide-ul1' class='collide-ul'></div></div><div class='collide-sub'>the grid</div></div>",
+              "<div id='collide-col2' class='clip collide-col' data-start='20' data-duration='6' data-track-index='5' style='left:750px;'><div class='collide-idx'>02</div><div class='collide-word'>WATER</div><div class='collide-ulwrap'><div id='collide-ul2' class='collide-ul'></div></div><div class='collide-sub'>cooling</div></div>",
+              "<div id='collide-col3' class='clip collide-col' data-start='20' data-duration='6' data-track-index='6' style='left:1230px;'><div class='collide-idx'>03</div><div class='collide-word'>LAND</div><div class='collide-ulwrap'><div id='collide-ul3' class='collide-ul'></div></div><div class='collide-sub'>siting</div></div>"
+            ],
+            "tl": [
+              "tl.fromTo('#collide-eyebrow',{opacity:0,y:10},{opacity:1,y:0,duration:0.5,ease:'power2.out'},20.2);",
+              "tl.fromTo('#collide-col1',{opacity:0,y:24},{opacity:1,y:0,duration:0.6,ease:'power3.out'},20.5);",
+              "tl.fromTo('#collide-ul1',{scaleX:0},{scaleX:1,duration:0.45,ease:'power2.out'},21.0);",
+              "tl.fromTo('#collide-div1',{scaleY:0},{scaleY:1,duration:0.4,ease:'power2.out'},21.2);",
+              "tl.fromTo('#collide-col2',{opacity:0,y:24},{opacity:1,y:0,duration:0.6,ease:'power3.out'},21.4);",
+              "tl.fromTo('#collide-ul2',{scaleX:0},{scaleX:1,duration:0.45,ease:'power2.out'},21.9);",
+              "tl.fromTo('#collide-div2',{scaleY:0},{scaleY:1,duration:0.4,ease:'power2.out'},22.1);",
+              "tl.fromTo('#collide-col3',{opacity:0,y:24},{opacity:1,y:0,duration:0.6,ease:'power3.out'},22.3);",
+              "tl.fromTo('#collide-ul3',{scaleX:0},{scaleX:1,duration:0.45,ease:'power2.out'},22.8);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

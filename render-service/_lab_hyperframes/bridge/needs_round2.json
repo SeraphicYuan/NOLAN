@@ -1,0 +1,23 @@
+[
+  { "id": "arch_rea",        "query": "rural electrification administration power line construction 1930s", "media_type": "image", "sources": ["wikimedia","loc","openverse","archive"], "n": 3 },
+  { "id": "arch_grid_build", "query": "transmission tower line construction workers vintage black and white", "media_type": "image", "sources": ["wikimedia","loc","openverse"], "n": 2 },
+
+  { "id": "house_near_dc",   "query": "house home next to large data center building", "media_type": "image", "n": 3 },
+  { "id": "suburban_aerial", "query": "american suburban neighborhood houses aerial view", "media_type": "image", "n": 2 },
+  { "id": "dc_exterior",     "query": "large windowless data center building exterior fence security", "media_type": "image", "n": 3 },
+
+  { "id": "electric_bill",   "query": "electricity utility bill paper statement close up", "media_type": "image", "n": 3 },
+  { "id": "smart_meter",     "query": "electric smart meter on house wall", "media_type": "image", "n": 2 },
+  { "id": "water_meter",     "query": "water meter gauge isolated white background", "media_type": "image", "n": 2 },
+  { "id": "water_glass",     "query": "glass of clean water isolated white background", "media_type": "image", "n": 2 },
+  { "id": "gavel",           "query": "wooden judge gavel isolated white background", "media_type": "image", "n": 2 },
+  { "id": "for_sale_sign",   "query": "for sale real estate sign house yard", "media_type": "image", "n": 2 },
+  { "id": "hard_hat",        "query": "yellow construction hard hat isolated white background", "media_type": "image", "n": 2 },
+  { "id": "gpu_card",        "query": "computer graphics card GPU isolated white background", "media_type": "image", "n": 2 },
+  { "id": "cash_stack",      "query": "stack of hundred dollar bills isolated white background", "media_type": "image", "n": 2 },
+  { "id": "earplugs",        "query": "foam ear plugs isolated white background", "media_type": "image", "n": 2 },
+  { "id": "us_map",          "query": "blank united states map outline states", "media_type": "image", "sources": ["wikimedia","openverse"], "n": 2 },
+
+  { "id": "construction_broll", "query": "construction site tower crane building steel", "media_type": "video", "n": 2 },
+  { "id": "suburban_broll",     "query": "quiet suburban residential street houses", "media_type": "video", "n": 2 }
+]

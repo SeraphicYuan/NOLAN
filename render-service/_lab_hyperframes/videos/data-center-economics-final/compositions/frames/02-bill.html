@@ -1,0 +1,561 @@
+<template>
+  <div
+    id="root"
+    data-composition-id="02-bill"
+    data-start="0"
+    data-duration="91.76"
+    data-width="1920"
+    data-height="1080"
+  >
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@1,500;1,600&family=Inter:wght@400;500;600&display=swap');
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: transparent;
+        font-family: "Inter", sans-serif;
+        color: #F6F7F6;
+      }
+
+      /* ---- grounds (opaque scenes only) ---- */
+      #root .ground {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+        transform-origin: 50% 50%;
+        will-change: transform, filter;
+        --dof: 0px;
+        --br: 0.72;
+        filter: brightness(var(--br)) blur(var(--dof));
+      }
+
+      /* ---- scrim (footage register: left + bottom darkening) ---- */
+      #root .scrim {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(to right, rgba(18,19,18,0.60), rgba(18,19,18,0) 56%),
+          linear-gradient(to bottom, rgba(18,19,18,0) 30%, rgba(18,19,18,0.50) 68%, rgba(18,19,18,0.78));
+      }
+
+      /* ---- paper ground (mist) ---- */
+      #root .paper {
+        position: absolute;
+        inset: 0;
+        background: #F1F3F2;
+      }
+
+      /* ---- type layer (transparent full-frame container) ---- */
+      #root .type { position: absolute; inset: 0; }
+
+      /* ---- kickers / labels ---- */
+      #root .kicker {
+        position: absolute;
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-size: 20px;
+      }
+      #root .k-white { color: #F6F7F6; }
+      #root .k-ink { color: #4C4E4D; }
+
+      /* ---- statements (Libre Franklin, sentence case) ---- */
+      #root .stmt {
+        position: absolute;
+        font-family: "Libre Franklin", sans-serif;
+        font-weight: 800;
+        font-size: 74px;
+        line-height: 1.14;
+        letter-spacing: -0.01em;
+        max-width: 1150px;
+      }
+      #root .f-white { color: #F6F7F6; }
+      #root .f-ink { color: #2B2D2C; }
+
+      /* ---- quote (footage) ---- */
+      #root .quote {
+        position: absolute;
+        font-family: "Libre Franklin", sans-serif;
+        font-weight: 800;
+        font-size: 60px;
+        line-height: 1.2;
+        color: #F6F7F6;
+        max-width: 1160px;
+      }
+      #root .attrib {
+        position: absolute;
+        font-family: "Lora", serif;
+        font-style: italic;
+        font-weight: 600;
+        font-size: 28px;
+        color: #F6F7F6;
+      }
+      #root .dream {
+        position: absolute;
+        font-family: "Lora", serif;
+        font-style: italic;
+        font-weight: 500;
+        font-size: 32px;
+        color: #F6F7F6;
+        max-width: 1000px;
+      }
+
+      /* ---- asides (Lora italic) ---- */
+      #root .aside {
+        position: absolute;
+        font-family: "Lora", serif;
+        font-style: italic;
+        font-weight: 500;
+        font-size: 30px;
+      }
+      #root .aside-ink { color: #4C4E4D; }
+
+      /* ---- stat lockups ---- */
+      #root .lockup { position: absolute; }
+      #root .statval {
+        font-family: "Libre Franklin", sans-serif;
+        font-weight: 900;
+        font-size: 112px;
+        line-height: 1.0;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      #root .statval .pre,
+      #root .statval .suf {
+        font-size: 0.54em;
+        font-weight: 800;
+      }
+      #root .statval .num { font-variant-numeric: tabular-nums; }
+      #root .statlabel {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 20px;
+        line-height: 1.35;
+        margin-top: 14px;
+        max-width: 640px;
+      }
+      #root .lbl-white { color: #F6F7F6; }
+      #root .lbl-ink { color: #6D98A8; }
+      #root .lbl-graph { color: #4C4E4D; }
+
+      /* ---- highlight (the sweep) ---- */
+      #root .hlwrap { position: relative; display: inline-block; }
+      #root .hlblock {
+        position: absolute;
+        left: -0.08em;
+        right: -0.08em;
+        top: 0.10em;
+        bottom: 0.14em;
+        background: #FFF200;
+        transform: scaleX(0);
+        transform-origin: left center;
+        z-index: 0;
+      }
+      #root .hltext { position: relative; z-index: 1; }
+
+      /* ---- underline (quieter yellow sibling) ---- */
+      #root .ulwrap { position: relative; display: inline-block; }
+      #root .ulbar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -0.02em;
+        height: 0.14em;
+        background: #FFF200;
+        transform: scaleX(0);
+        transform-origin: left center;
+      }
+
+      /* ---- caption-bar (mist evidence strip) ---- */
+      #root .capbar {
+        position: absolute;
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+        background: #F1F3F2;
+        padding: 12px 22px;
+        color: #2B2D2C;
+      }
+      #root .capbar .cap-k {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 16px;
+        color: #2B2D2C;
+      }
+      #root .capbar .cap-val {
+        font-family: "Libre Franklin", sans-serif;
+        font-weight: 900;
+        font-size: 34px;
+        letter-spacing: -0.01em;
+        color: #2B2D2C;
+      }
+      #root .capbar .cap-sub {
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.10em;
+        text-transform: uppercase;
+        font-size: 15px;
+        color: #4C4E4D;
+        max-width: 520px;
+        line-height: 1.35;
+      }
+
+      /* ---- photo-card evidence props ---- */
+      #root .card {
+        position: absolute;
+        border: 8px solid #F1F3F2;
+        outline: 1px solid #D8D5CC;
+        background: #F1F3F2;
+        overflow: hidden;
+        will-change: transform;
+      }
+      #root .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+      /* ---- map cutout + Virginia marker ---- */
+      #root .mapwrap { position: absolute; will-change: transform; }
+      #root .mapwrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+      #root .vadot {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        background: #FFF200;
+        outline: 2px solid #2B2D2C;
+      }
+      #root .valabel {
+        position: absolute;
+        font-family: "Inter", sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        font-size: 13px;
+        color: #F6F7F6;
+      }
+
+      /* ---- final settle closer ---- */
+      #root .closer {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(10,11,10,0) 45%, rgba(10,11,10,0.55));
+        opacity: 0;
+      }
+    </style>
+
+    <!-- ============================================================== -->
+    <!-- SCENE 1 — TURN over STILL (0.0–12.3)                            -->
+    <!-- ============================================================== -->
+    <img class="clip ground" id="bl2_s1_ground" src="assets/bg_bill_turn.png"
+         style="--br:0.60" data-start="0" data-duration="12.3" data-track-index="0" alt="" />
+    <div class="clip scrim" data-start="0" data-duration="12.3" data-track-index="2"></div>
+
+    <div class="mapwrap clip" id="bl2_s1_map" style="left:1500px; top:150px; width:340px; height:250px;"
+         data-start="9" data-duration="3.3" data-track-index="3">
+      <img src="assets/props/us_map_blank_00.png" alt="" />
+      <div class="vadot" id="bl2_s1_dot" style="left:271px; top:104px;"></div>
+      <div class="valabel" style="left:263px; top:126px;">VA</div>
+    </div>
+
+    <div class="clip type" data-start="0" data-duration="12.3" data-track-index="4">
+      <div class="kicker k-white" id="bl2_s1_kicker" style="left:120px; top:110px;">The bill</div>
+      <div class="stmt f-white" id="bl2_s1_l1" style="left:120px; top:512px;">The benefits are spread out.</div>
+      <div class="stmt f-white" id="bl2_s1_l2" style="left:120px; top:604px;">The costs land on <span class="hlwrap"><span class="hlblock" id="bl2_s1_hl"></span><span class="hltext" id="bl2_s1_hltext">specific people</span></span>.</div>
+      <div class="capbar" id="bl2_s1_cap" style="left:120px; top:812px;">
+        <span class="cap-k">So — let's follow the bill</span>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SCENE 2 — POWER, PAPER + the bill (12.3–28.6)                   -->
+    <!-- ============================================================== -->
+    <div class="clip paper" id="bl2_s2_ground" data-start="12.3" data-duration="16.3" data-track-index="0"></div>
+
+    <div class="card clip" id="bl2_s2_bill" style="left:1360px; top:230px; width:380px; height:470px;"
+         data-start="16" data-duration="12.6" data-track-index="3">
+      <img src="assets/props/electric_bill_00.jpg" alt="" />
+    </div>
+
+    <div class="clip type" data-start="12.3" data-duration="16.3" data-track-index="4">
+      <div class="kicker k-ink" id="bl2_s2_kicker" style="left:120px; top:104px;">Your power · Virginia · Dominion Energy</div>
+
+      <div class="lockup" id="bl2_s2_lk1" style="left:120px; top:240px;">
+        <div class="statval f-ink" id="bl2_s2_v1"><span class="pre">×</span>2</div>
+        <div class="statlabel lbl-graph">Generation to double by 2039</div>
+      </div>
+
+      <div class="lockup" id="bl2_s2_lk2" style="left:120px; top:470px;">
+        <div class="statval f-ink"><span class="pre">$</span><span class="num" id="bl2_s2_v2" style="font-size:70px;">0</span><span class="suf">B</span></div>
+        <div class="statlabel lbl-graph">Cost, up to</div>
+      </div>
+
+      <div class="lockup" id="bl2_s2_lk3" style="left:120px; top:700px;">
+        <div class="statval f-ink"><span class="ulwrap"><span class="pre">+</span><span class="num" id="bl2_s2_v3" style="font-size:68px;">0</span><span class="suf">%</span><span class="ulbar" id="bl2_s2_ul"></span></span></div>
+        <div class="statlabel lbl-graph">Residential bills, up to</div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SCENE 3 — WATER over VIDEO (28.6–45.2, TRANSPARENT)             -->
+    <!-- ============================================================== -->
+    <div class="clip scrim" data-start="28.6" data-duration="16.6" data-track-index="2"></div>
+
+    <div class="card clip" id="bl2_s3_glass" style="left:1500px; top:470px; width:300px; height:360px;"
+         data-start="34" data-duration="11.2" data-track-index="3">
+      <img src="assets/props/water_glass_00.jpg" alt="" />
+    </div>
+
+    <div class="clip type" data-start="28.6" data-duration="16.6" data-track-index="4">
+      <div class="kicker k-white" id="bl2_s3_kicker" style="left:120px; top:104px;">Water</div>
+
+      <div class="lockup" id="bl2_s3_lk1" style="left:120px; top:250px;">
+        <div class="statval f-white"><span class="num" id="bl2_s3_v1" style="font-size:68px;">0</span><span class="suf">%</span></div>
+        <div class="statlabel lbl-white">Of the biggest centers in high water stress</div>
+      </div>
+
+      <div class="lockup" id="bl2_s3_lk2" style="left:120px; top:470px;">
+        <div class="statval f-white"><span class="num" id="bl2_s3_v2" style="font-size:66px;">0.00</span><span class="suf">B</span></div>
+        <div class="statlabel lbl-white">Gallons a year — one Arizona campus</div>
+      </div>
+
+      <div class="lockup" id="bl2_s3_lk3" style="left:120px; top:702px;">
+        <div class="statval f-white" style="font-size:82px;">≈ <span class="hlwrap"><span class="hlblock" id="bl2_s3_hl"></span><span class="hltext" id="bl2_s3_hltext"><span class="num" id="bl2_s3_v3">0</span> people</span></span></div>
+        <div class="statlabel lbl-white">A city the size of Santa Cruz, CA</div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SCENE 4 — QUOTE over STILL, HELD (45.2–65.9) + spaceship        -->
+    <!-- ============================================================== -->
+    <img class="clip ground" id="bl2_s4_bed" src="assets/bg_noise_house.png"
+         style="--br:0.80" data-start="45.2" data-duration="20.7" data-track-index="0" alt="" />
+    <img class="clip ground" id="bl2_s4_ship" src="assets/bg_gen_spaceship_dream.png"
+         style="--br:0.74; --dof:4px; opacity:0;" data-start="60" data-duration="5.9" data-track-index="1" alt="" />
+    <div class="clip scrim" data-start="45.2" data-duration="20.7" data-track-index="2"></div>
+
+    <div class="card clip" id="bl2_s4_ear" style="left:1500px; top:560px; width:270px; height:210px;"
+         data-start="55.5" data-duration="10.4" data-track-index="3">
+      <img src="assets/props/earplugs_00.jpg" alt="" />
+    </div>
+
+    <div class="clip type" id="bl2_s4_cluster" data-start="45.2" data-duration="20.7" data-track-index="4"
+         style="--dof:0px; filter:blur(var(--dof));">
+      <div class="quote" style="left:120px; top:424px;"><span id="bl2_s4_p1">&ldquo;A low drone you don't just hear —</span><span id="bl2_s4_p2"> you <span class="hlwrap"><span class="hlblock" id="bl2_s4_hl"></span><span class="hltext" id="bl2_s4_hltext">feel it in the walls</span></span>.&rdquo;</span></div>
+      <div class="attrib" id="bl2_s4_attr" style="left:120px; top:596px;">— Virginia residents</div>
+      <div class="capbar" id="bl2_s4_cap" style="left:120px; top:658px;">
+        <span class="cap-val"><span class="pre" style="font-family:'Libre Franklin';font-weight:900;">$</span><span id="bl2_s4_v">0</span></span>
+        <span class="cap-sub">On windows + insulation — still couldn't sleep</span>
+      </div>
+    </div>
+
+    <div class="clip type" data-start="60" data-duration="5.9" data-track-index="5">
+      <div class="dream" id="bl2_s4_dream" style="left:120px; top:800px;">…nightmares about a spaceship parked outside.</div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SCENE 5 — LAND over VIDEO (65.9–78.8, TRANSPARENT)              -->
+    <!-- ============================================================== -->
+    <div class="clip scrim" data-start="65.9" data-duration="12.9" data-track-index="2"></div>
+
+    <div class="card clip" id="bl2_s5_gavel" style="left:1480px; top:470px; width:330px; height:300px;"
+         data-start="71" data-duration="7.8" data-track-index="3">
+      <img src="assets/props/gavel_01.jpg" alt="" />
+    </div>
+
+    <div class="clip type" data-start="65.9" data-duration="12.9" data-track-index="4">
+      <div class="kicker k-white" id="bl2_s5_kicker" style="left:120px; top:104px;">The land · Georgia &amp; Kentucky</div>
+      <div class="stmt f-white" id="bl2_s5_stmt" style="left:120px; top:556px;">Some are losing their land — <span class="hlwrap"><span class="hlblock" id="bl2_s5_hl"></span><span class="hltext" id="bl2_s5_hltext">outright</span></span>.</div>
+      <div class="capbar" id="bl2_s5_cap" style="left:120px; top:772px;">
+        <span class="cap-k">Eminent domain — for the power lines</span>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- SCENE 6 — JOBS KICKER over STILL (78.8–91.76, FINAL)            -->
+    <!-- ============================================================== -->
+    <img class="clip ground" id="bl2_s6_ground" src="assets/bg_gen_control_room.png"
+         style="--br:0.66" data-start="78.8" data-duration="12.96" data-track-index="0" alt="" />
+    <div class="clip scrim" data-start="78.8" data-duration="12.96" data-track-index="2"></div>
+
+    <div class="clip type" data-start="78.8" data-duration="12.96" data-track-index="4">
+      <div class="kicker k-white" id="bl2_s6_kicker" style="left:120px; top:104px;">And the jobs?</div>
+
+      <div class="lockup" id="bl2_s6_lk1" style="left:120px; top:250px;">
+        <div class="statval f-white"><span class="pre">&lt; </span><span class="num" id="bl2_s6_v1" style="font-size:72px;">0</span></div>
+        <div class="statlabel lbl-white">Permanent workers — even the largest</div>
+      </div>
+
+      <div class="lockup" id="bl2_s6_lk2" style="left:120px; top:480px;">
+        <div class="statval f-white"><span class="num" id="bl2_s6_v2" style="font-size:72px;">0</span></div>
+        <div class="statlabel lbl-white">Some as few as</div>
+      </div>
+
+      <div class="lockup" id="bl2_s6_lk3" style="left:120px; top:700px;">
+        <div class="statval f-white"><span class="ulwrap"><span class="pre">~</span><span class="num" id="bl2_s6_v3" style="font-size:74px;">0</span><span class="ulbar" id="bl2_s6_ul"></span></span></div>
+        <div class="statlabel lbl-white">OpenAI Stargate, Texas — full-time jobs</div>
+      </div>
+    </div>
+
+    <div class="clip closer" id="bl2_s6_close" data-start="89.6" data-duration="2.16" data-track-index="5"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+        var tl = gsap.timeline({ paused: true });
+
+        var root = document.querySelector('[data-composition-id="02-bill"]');
+        var $ = function (id) { return document.getElementById(id); };
+
+        // ---- helpers -------------------------------------------------
+        // gentle rise entrance (calm kinetic-beat-slam)
+        function rise(el, at, opts) {
+          opts = opts || {};
+          tl.fromTo(el,
+            { opacity: 0, y: opts.y != null ? opts.y : 26 },
+            { opacity: 1, y: 0, duration: opts.dur || 0.72, ease: opts.ease || "power3.out" },
+            at);
+        }
+        // plain fade (for inline spans / asides)
+        function fade(el, at, dur) {
+          tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: dur || 0.6, ease: "power2.out" }, at);
+        }
+        // the yellow sweep: block scaleX 0->1 from the left, text flips to ink-deep
+        function sweep(block, text, at) {
+          tl.fromTo(block,
+            { scaleX: 0, transformOrigin: "left center" },
+            { scaleX: 1, transformOrigin: "left center", duration: 0.44, ease: "power3.out" }, at);
+          if (text) tl.to(text, { color: "#2B2D2C", duration: 0.26, ease: "power1.out" }, at + 0.16);
+        }
+        // yellow underline sweep (the quieter fill sibling)
+        function underline(bar, at) {
+          tl.fromTo(bar,
+            { scaleX: 0, transformOrigin: "left center" },
+            { scaleX: 1, transformOrigin: "left center", duration: 0.5, ease: "power2.out" }, at);
+        }
+        // count-up (+ optional font-size growth) — counting-dynamic-scale
+        function count(el, target, fmt, at, dur, fs) {
+          var st = { v: 0, fs: fs ? fs[0] : 0 };
+          var cfg = {
+            v: target, duration: dur, ease: "power3.out",
+            onUpdate: function () {
+              el.textContent = fmt(st.v);
+              if (fs) el.style.fontSize = st.fs + "px";
+            }
+          };
+          if (fs) cfg.fs = fs[1];
+          tl.to(st, cfg, at);
+        }
+        // ken-burns on a ground <img> (multi-phase-camera, single slow push)
+        function kenburns(el, s0, s1, at, dur, ease) {
+          tl.fromTo(el, { scale: s0 }, { scale: s1, duration: dur, ease: ease || "none" }, at);
+        }
+        var rInt = function (v) { return Math.round(v).toString(); };
+        var rLoc = function (v) { return Math.round(v).toLocaleString(); };
+        var r2 = function (v) { return v.toFixed(2); };
+
+        // ================= SCENE 1 (0.0–12.3) =========================
+        kenburns($("bl2_s1_ground"), 1.03, 1.08, 0, 12.3);
+        rise($("bl2_s1_kicker"), 0.35, { y: 16, dur: 0.6 });
+        rise($("bl2_s1_l1"), 2.5, { y: 34, dur: 0.85 });
+        tl.fromTo($("bl2_s1_l2"), { opacity: 0, y: 34, scale: 0.985 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "power3.out" }, 5.0);
+        sweep($("bl2_s1_hl"), $("bl2_s1_hltext"), 7.0);
+        tl.fromTo($("bl2_s1_map"), { opacity: 0, scale: 0.9, y: -14 },
+          { opacity: 1, scale: 1, y: 0, duration: 0.8, ease: "power3.out" }, 9.0);
+        tl.fromTo($("bl2_s1_dot"), { opacity: 0, scale: 0 },
+          { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.2)" }, 9.6);
+        rise($("bl2_s1_cap"), 10.5, { y: 18, dur: 0.6 });
+
+        // ================= SCENE 2 (12.3–28.6, PAPER) =================
+        tl.fromTo($("bl2_s2_ground"), { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power1.out" }, 12.3);
+        rise($("bl2_s2_kicker"), 12.7, { y: 16, dur: 0.6 });
+        // ×2 — scale pop (dynamic scale)
+        rise($("bl2_s2_lk1"), 14.0, { y: 24 });
+        tl.fromTo($("bl2_s2_v1"), { scale: 0.68 }, { scale: 1, duration: 0.6, ease: "back.out(1.7)" }, 14.0);
+        // bill evidence rises with slight tilt/settle
+        tl.fromTo($("bl2_s2_bill"), { opacity: 0, y: 60, scale: 0.9, rotation: 3 },
+          { opacity: 1, y: 0, scale: 1, rotation: -2.5, duration: 0.9, ease: "power3.out" }, 16.0);
+        // $103B
+        rise($("bl2_s2_lk2"), 21.0, { y: 24 });
+        count($("bl2_s2_v2"), 103, rInt, 21.0, 1.3, [70, 112]);
+        // +50% + underline
+        rise($("bl2_s2_lk3"), 26.0, { y: 24 });
+        count($("bl2_s2_v3"), 50, rInt, 26.0, 1.0, [68, 110]);
+        underline($("bl2_s2_ul"), 27.1);
+
+        // ================= SCENE 3 (28.6–45.2, over VIDEO) ============
+        rise($("bl2_s3_kicker"), 28.9, { y: 16, dur: 0.6 });
+        // 43%
+        rise($("bl2_s3_lk1"), 30.0, { y: 24 });
+        count($("bl2_s3_v1"), 43, rInt, 30.0, 1.1, [68, 110]);
+        // water glass evidence
+        tl.fromTo($("bl2_s3_glass"), { opacity: 0, scale: 0.88, y: 30 },
+          { opacity: 1, scale: 1, y: 0, duration: 0.85, ease: "power3.out" }, 34.0);
+        // 1.83B
+        rise($("bl2_s3_lk2"), 38.0, { y: 24 });
+        count($("bl2_s3_v2"), 1.83, r2, 38.0, 1.4, [66, 108]);
+        // ≈ 61,000 people + sweep
+        rise($("bl2_s3_lk3"), 42.0, { y: 24 });
+        count($("bl2_s3_v3"), 61000, rLoc, 42.0, 1.3);
+        sweep($("bl2_s3_hl"), $("bl2_s3_hltext"), 43.5);
+
+        // ================= SCENE 4 (45.2–65.9, HELD + spaceship) ======
+        tl.fromTo($("bl2_s4_bed"), { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power1.out" }, 45.2);
+        kenburns($("bl2_s4_bed"), 1.04, 1.10, 45.2, 20.7);
+        // rack focus: room defocuses, the quote stays sharp (depth-of-field-blur)
+        tl.to($("bl2_s4_bed"), { "--dof": "11px", duration: 1.6, ease: "power2.inOut" }, 47.6);
+        // quote in two gentle phases
+        fade($("bl2_s4_p1"), 46.6, 0.9);
+        fade($("bl2_s4_p2"), 50.0, 0.9);
+        sweep($("bl2_s4_hl"), $("bl2_s4_hltext"), 51.2);
+        rise($("bl2_s4_attr"), 53.2, { y: 14, dur: 0.7 });
+        rise($("bl2_s4_cap"), 55.5, { y: 18, dur: 0.7 });
+        count($("bl2_s4_v"), 20000, rLoc, 55.7, 1.2);
+        tl.fromTo($("bl2_s4_ear"), { opacity: 0, scale: 0.9, y: 24 },
+          { opacity: 1, scale: 1, y: 0, duration: 0.8, ease: "power3.out" }, 55.8);
+        // cross-dissolve to the spaceship dream (two grounds, distinct lanes)
+        tl.fromTo($("bl2_s4_ship"), { opacity: 0 }, { opacity: 1, duration: 3.3, ease: "power1.inOut" }, 60.5);
+        tl.to($("bl2_s4_ship"), { "--dof": "0px", duration: 2.4, ease: "power2.out" }, 60.8);
+        // the evidence cluster recedes (dim + blur) as the dream takes focus — mid-shot rack, not an exit
+        tl.to($("bl2_s4_cluster"), { opacity: 0.28, "--dof": "7px", duration: 2.6, ease: "power2.inOut" }, 60.5);
+        fade($("bl2_s4_dream"), 61.0, 1.2);
+
+        // ================= SCENE 5 (65.9–78.8, over VIDEO) ============
+        rise($("bl2_s5_kicker"), 66.2, { y: 16, dur: 0.6 });
+        tl.fromTo($("bl2_s5_stmt"), { opacity: 0, y: 34 },
+          { opacity: 1, y: 0, duration: 0.9, ease: "power3.out" }, 67.4);
+        sweep($("bl2_s5_hl"), $("bl2_s5_hltext"), 69.0);
+        tl.fromTo($("bl2_s5_gavel"), { opacity: 0, scale: 0.88, y: 28, rotation: 2 },
+          { opacity: 1, scale: 1, y: 0, rotation: -1.5, duration: 0.85, ease: "power3.out" }, 71.0);
+        rise($("bl2_s5_cap"), 74.0, { y: 18, dur: 0.6 });
+
+        // ================= SCENE 6 (78.8–91.76, FINAL) ================
+        tl.fromTo($("bl2_s6_ground"), { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power1.out" }, 78.8);
+        kenburns($("bl2_s6_ground"), 1.03, 1.075, 78.8, 10.7, "power2.out");
+        rise($("bl2_s6_kicker"), 79.1, { y: 16, dur: 0.6 });
+        // < 150
+        rise($("bl2_s6_lk1"), 81.0, { y: 26 });
+        count($("bl2_s6_v1"), 150, rInt, 81.0, 1.2, [72, 116]);
+        // 25
+        rise($("bl2_s6_lk2"), 84.0, { y: 26 });
+        count($("bl2_s6_v2"), 25, rInt, 84.0, 1.0, [72, 116]);
+        // ~100 + underline
+        rise($("bl2_s6_lk3"), 88.0, { y: 26 });
+        count($("bl2_s6_v3"), 100, rInt, 88.0, 1.2, [74, 118]);
+        underline($("bl2_s6_ul"), 89.35);
+        // the only permitted end-settle — a quiet close
+        tl.fromTo($("bl2_s6_close"), { opacity: 0 }, { opacity: 1, duration: 2.0, ease: "power1.inOut" }, 89.6);
+
+        window.__timelines["02-bill"] = tl;
+      })();
+    </script>
+  </div>
+</template>

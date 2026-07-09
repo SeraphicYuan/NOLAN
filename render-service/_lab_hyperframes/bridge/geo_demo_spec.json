@@ -1,0 +1,26 @@
+{
+  "frames": [
+    {
+      "id": "geo-demo",
+      "dur": 14,
+      "scenes": [
+        {
+          "id": "g1", "type": "geo", "start": 0, "dur": 7,
+          "data": {
+            "kind": "us", "highlight": ["51"],
+            "kicker": "The map · U.S. data-center power", "title": "Virginia",
+            "sub": "\"Data Center Alley\" — the largest concentration of data centers on Earth. Its grid demand is set to <b>double by 2030</b>."
+          }
+        },
+        {
+          "id": "g2", "type": "geo", "start": 7, "dur": 7,
+          "data": {
+            "kind": "world", "highlight": ["372"],
+            "kicker": "The world · data-center strain", "title": "Ireland",
+            "sub": "Data centres already draw <b>~21% of the nation's electricity</b> — more than all its urban homes combined."
+          }
+        }
+      ]
+    }
+  ]
+}

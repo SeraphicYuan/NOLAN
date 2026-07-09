@@ -1,0 +1,360 @@
+{
+  "frames": [
+    {
+      "id": "01-boom",
+      "dur": 67.76,
+      "scenes": [
+        {
+          "id": "b1s1",
+          "type": "statement",
+          "start": 0,
+          "dur": 8.6,
+          "data": {
+            "kicker": "THE BUILD-OUT",
+            "register": "footage",
+            "ground": {
+              "kind": "transparent"
+            },
+            "lines": [
+              "The boom is real —",
+              "and it is not stopping."
+            ],
+            "operative": "real",
+            "cue": 4.4
+          }
+        },
+        {
+          "id": "b1s2",
+          "type": "stat",
+          "start": 8.6,
+          "dur": 17.1,
+          "data": {
+            "kicker": "THE MONEY",
+            "register": "paper",
+            "items": [
+              {
+                "from": 0,
+                "to": 800,
+                "prefix": "$",
+                "suffix": "B",
+                "label": "AI INFRASTRUCTURE — 2026",
+                "cue": 4.2,
+                "underline": true
+              },
+              {
+                "value": "$1T+",
+                "label": "— 2027",
+                "cue": 8.4
+              }
+            ],
+            "props": [
+              {
+                "src": "assets/props/cash_stack_00.jpg",
+                "corner": "br",
+                "cue": 6.0,
+                "tilt": -3,
+                "width": "18cqw"
+              },
+              {
+                "src": "assets/props/gpu_card_00.jpg",
+                "corner": "tr",
+                "cue": 10.0,
+                "tilt": 4,
+                "width": "16cqw"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b1s3",
+          "type": "stat",
+          "start": 25.7,
+          "dur": 8.9,
+          "data": {
+            "kicker": "THE DEMAND · OPENAI USERS",
+            "register": "paper",
+            "items": [
+              {
+                "from": 400,
+                "to": 900,
+                "suffix": "M",
+                "label": "DOUBLED IN A SINGLE YEAR",
+                "cue": 2.0,
+                "underline": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "b1s4",
+          "type": "stat",
+          "start": 34.6,
+          "dur": 16.8,
+          "data": {
+            "kicker": "THE POWER · US ELECTRICITY",
+            "register": "paper",
+            "items": [
+              {
+                "value": "4.4%",
+                "label": "2023",
+                "cue": 2.4
+              },
+              {
+                "value": "7–12%",
+                "label": "BY 2028",
+                "cue": 8.4,
+                "underline": true
+              },
+              {
+                "value": "10×",
+                "label": "ONE PROMPT vs A SEARCH",
+                "cue": 12.9
+              }
+            ],
+            "props": [
+              {
+                "src": "assets/props/smart_meter_00.jpg",
+                "corner": "br",
+                "cue": 8.0,
+                "tilt": -2,
+                "width": "18cqw"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b1s5",
+          "type": "statement",
+          "start": 51.4,
+          "dur": 12.9,
+          "data": {
+            "kicker": "AND THE PART CRITICS SKIP",
+            "register": "paper",
+            "ground": {
+              "kind": "paper"
+            },
+            "lines": [
+              "Some towns cash in."
+            ],
+            "operative": "cash in",
+            "cue": 1.2,
+            "captionBar": "LOUDOUN COUNTY, VA — 38% OF THE COUNTY BUDGET",
+            "capCue": 10.6
+          }
+        },
+        {
+          "id": "b1s6",
+          "type": "statement",
+          "start": 64.3,
+          "dur": 3.46,
+          "data": {
+            "kicker": "",
+            "register": "footage",
+            "ground": {
+              "kind": "image",
+              "src": "assets/bg_gen_construction.png",
+              "kb": [
+                1.03,
+                1.08
+              ]
+            },
+            "lines": [
+              "We are not un-building this."
+            ],
+            "operative": "un-building",
+            "cue": 1.6
+          }
+        }
+      ]
+    },
+    {
+      "id": "02-bill",
+      "dur": 91.76,
+      "scenes": [
+        {
+          "id": "b2s1",
+          "type": "statement",
+          "start": 0,
+          "dur": 12.3,
+          "data": {
+            "kicker": "THE BILL",
+            "register": "footage",
+            "ground": {
+              "kind": "image",
+              "src": "assets/bg_bill_turn.png",
+              "kb": [
+                1.03,
+                1.08
+              ]
+            },
+            "lines": [
+              "The benefits are spread out.",
+              "The costs land on specific people."
+            ],
+            "operative": "specific people",
+            "cue": 7.0,
+            "captionBar": "SO — LET'S FOLLOW THE BILL",
+            "capCue": 10.5
+          }
+        },
+        {
+          "id": "b2s2",
+          "type": "geo",
+          "start": 12.3,
+          "dur": 16.3,
+          "data": {
+            "kind": "us",
+            "highlight": [
+              "51"
+            ],
+            "kicker": "Your power · Virginia · Dominion",
+            "title": "Virginia",
+            "sub": "Home to \"Data Center Alley\" — where Dominion expects power demand to <b>double by 2030</b>."
+          }
+        },
+        {
+          "id": "b2s3",
+          "type": "stat",
+          "start": 28.6,
+          "dur": 16.6,
+          "data": {
+            "kicker": "WATER",
+            "register": "footage",
+            "ground": {
+              "kind": "transparent"
+            },
+            "items": [
+              {
+                "value": "43%",
+                "label": "OF THE BIGGEST CENTERS IN HIGH WATER STRESS",
+                "cue": 1.5
+              },
+              {
+                "value": "1.83B",
+                "label": "GALLONS A YEAR — ONE ARIZONA CAMPUS",
+                "cue": 9.0
+              },
+              {
+                "value": "≈61,000",
+                "label": "A CITY THE SIZE OF SANTA CRUZ, CA",
+                "cue": 13.0,
+                "underline": true
+              }
+            ],
+            "props": [
+              {
+                "src": "assets/props/water_glass_00.jpg",
+                "corner": "tr",
+                "cue": 7.0,
+                "tilt": 3,
+                "width": "15cqw"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b2s4",
+          "type": "statement",
+          "start": 45.2,
+          "dur": 20.7,
+          "data": {
+            "kicker": "THE NOISE",
+            "register": "footage",
+            "ground": {
+              "kind": "image",
+              "src": "assets/bg_noise_house.png",
+              "kb": [
+                1.02,
+                1.06
+              ]
+            },
+            "lines": [
+              "\"A low drone you don't just hear —",
+              "you feel it in the walls.\""
+            ],
+            "operative": "feel it in the walls",
+            "cue": 6.0,
+            "captionBar": "$20,000 ON WINDOWS — STILL COULDN'T SLEEP",
+            "capCue": 11.0,
+            "props": [
+              {
+                "src": "assets/props/earplugs_00.jpg",
+                "corner": "tr",
+                "cue": 7.0,
+                "tilt": -3,
+                "width": "16cqw"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b2s5",
+          "type": "statement",
+          "start": 65.9,
+          "dur": 12.9,
+          "data": {
+            "kicker": "THE LAND · GEORGIA & KENTUCKY",
+            "register": "footage",
+            "ground": {
+              "kind": "transparent"
+            },
+            "lines": [
+              "Some are losing their land — outright."
+            ],
+            "operative": "outright",
+            "cue": 3.1,
+            "captionBar": "EMINENT DOMAIN — FOR THE POWER LINES",
+            "capCue": 8.1,
+            "props": [
+              {
+                "src": "assets/props/gavel_01.jpg",
+                "corner": "tr",
+                "cue": 5.0,
+                "tilt": 2,
+                "width": "16cqw"
+              }
+            ]
+          }
+        },
+        {
+          "id": "b2s6",
+          "type": "stat",
+          "start": 78.8,
+          "dur": 12.96,
+          "data": {
+            "kicker": "AND THE JOBS?",
+            "register": "footage",
+            "ground": {
+              "kind": "image",
+              "src": "assets/bg_gen_control_room.png",
+              "kb": [
+                1.03,
+                1.07
+              ]
+            },
+            "items": [
+              {
+                "value": "< 150",
+                "label": "PERMANENT WORKERS — EVEN THE LARGEST",
+                "cue": 2.0
+              },
+              {
+                "value": "25",
+                "label": "SOME AS FEW AS",
+                "cue": 5.0
+              },
+              {
+                "from": 0,
+                "to": 100,
+                "prefix": "~",
+                "label": "OPENAI STARGATE, TEXAS — FULL-TIME JOBS",
+                "cue": 9.0,
+                "underline": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

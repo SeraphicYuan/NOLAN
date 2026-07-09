@@ -1,0 +1,7 @@
+AI's Data-Center Boom: The Hidden Bill
+
+The build-out of AI data centers is enormous. By 2030, analysts project that data centers could consume around 12% of all US electricity, up from roughly 4% today. The densest concentration on Earth is in Northern Virginia — "Data Center Alley" — where the local utility expects power demand to double by 2030.
+
+Electricity is only the visible cost. Cooling those server halls takes water: a single large data center can consume over a million gallons a day, frequently in regions already facing water stress. And the physical footprint keeps growing — operators are buying farmland outright in Georgia, Kentucky, and beyond.
+
+Three forces now collide: power, water, and land. As the boom accelerates, the open question is who ends up paying the bill — the companies, or the communities next door.

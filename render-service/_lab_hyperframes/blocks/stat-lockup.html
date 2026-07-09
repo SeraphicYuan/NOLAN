@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"
+  data-composition-variables='[
+    {"id":"data","type":"string","label":"Scene data (JSON)","default":"{\"kicker\":\"THE MONEY\",\"register\":\"paper\",\"items\":[{\"from\":0,\"to\":800,\"prefix\":\"$\",\"suffix\":\"B\",\"label\":\"AI INFRASTRUCTURE — 2026\",\"cue\":0.6,\"underline\":true}]}"}
+  ]'>
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <!--
+      stat-lockup — NOLAN/Vox registry BLOCK. A data callout: 1–3 count-up numerals +
+      Inter labels + one yellow underline sweep on the takeaway. Register: paper (ink on
+      mist) or footage (white, transparent ground for a media ground behind).
+      Variable `data` (JSON string): { kicker, register, items:[{from,to,value?,prefix,
+      suffix,label,cue,underline}] }.  Mount N times with different data-variable-values.
+    -->
+    <template>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@800;900&family=Inter:wght@500;600&display=swap');
+        #root { position:absolute; inset:0; width:1920px; height:1080px; container-type:size; overflow:hidden; font-family:"Libre Franklin",sans-serif; }
+        #root.paper { background:#F1F3F2; color:#2B2D2C; }
+        #root.footage { background:transparent; color:#F6F7F6; }
+        #sl-kicker { position:absolute; top:6.4cqw; left:5.5cqw; font-family:"Inter",sans-serif; font-weight:600; font-size:0.9cqw; letter-spacing:0.14em; text-transform:uppercase; opacity:0; }
+        #root.paper #sl-kicker { color:#4C4E4D; }
+        .sl-row { position:absolute; left:5.5cqw; display:flex; gap:4cqw; align-items:flex-start; }
+        .sl-item { display:flex; flex-direction:column; }
+        .sl-numwrap { position:relative; display:inline-block; }
+        .sl-num { font-weight:900; letter-spacing:-0.03em; line-height:1; font-variant-numeric:tabular-nums; font-size:6cqw; white-space:nowrap; opacity:0; }
+        .sl-pre { font-size:0.7em; } .sl-suf { font-size:0.62em; }
+        .sl-ul { position:absolute; left:0; right:0; bottom:-0.16em; height:0.14em; background:#FFF200; transform:scaleX(0); transform-origin:left center; }
+        .sl-label { margin-top:1.2cqw; font-family:"Inter",sans-serif; font-weight:500; font-size:0.85cqw; letter-spacing:0.12em; text-transform:uppercase; max-width:22cqw; line-height:1.45; opacity:0; }
+        #root.paper .sl-label { color:#888880; } #root.footage .sl-label { color:#cfd2cf; }
+      </style>
+      <div id="root" data-composition-id="stat-lockup" data-width="1920" data-height="1080">
+        <div id="sl-kicker"></div>
+        <div class="sl-row" id="sl-row" style="top:34cqh;"></div>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+      <script>
+        (function () {
+          window.__timelines = window.__timelines || {};
+          var D = {kicker:"THE MONEY",register:"paper",items:[{from:0,to:800,prefix:"$",suffix:"B",label:"AI INFRASTRUCTURE — 2026",cue:0.6,underline:true}]};
+          try { var v = (window.__hyperframes && window.__hyperframes.getVariables) ? window.__hyperframes.getVariables() : {}; if (v && v.data) D = JSON.parse(v.data); } catch (e) {}
+          var root = document.getElementById("root");
+          root.className = D.register === "footage" ? "footage" : "paper";
+          document.getElementById("sl-kicker").textContent = D.kicker || "";
+          var row = document.getElementById("sl-row");
+          var tl = gsap.timeline({ paused: true });
+          tl.fromTo("#sl-kicker", { opacity:0, y:10 }, { opacity:1, y:0, duration:0.5, ease:"power3.out" }, 0.1);
+          (D.items || []).forEach(function (it, i) {
+            var item = document.createElement("div"); item.className = "sl-item"; item.style.minWidth = "18cqw";
+            var nw = document.createElement("div"); nw.className = "sl-numwrap";
+            var num = document.createElement("span"); num.className = "sl-num"; num.id = "sl-num-" + i;
+            var ul = document.createElement("span"); ul.className = "sl-ul"; ul.id = "sl-ul-" + i;
+            var lab = document.createElement("div"); lab.className = "sl-label"; lab.id = "sl-lab-" + i; lab.textContent = it.label || "";
+            nw.appendChild(num); if (it.underline) nw.appendChild(ul);
+            item.appendChild(nw); item.appendChild(lab); row.appendChild(item);
+            var cue = Number(it.cue) || (0.6 + i * 0.4);
+            var fmt = function (n) { return (it.prefix || "") + Math.round(n) + (it.suffix || ""); };
+            if (it.value != null && it.from == null) {   // static value (no count)
+              num.textContent = it.value;
+              tl.fromTo(num, { opacity:0, scale:0.8 }, { opacity:1, scale:1, duration:0.5, ease:"power4.out" }, cue);
+            } else {
+              var st = { v: Number(it.from) || 0 }; num.textContent = fmt(st.v);
+              tl.set(num, { opacity:1 }, cue);
+              tl.fromTo(st, { v: Number(it.from)||0 }, { v: Number(it.to)||0, duration:1.4, ease:"power3.out",
+                onUpdate:function(){ num.textContent = fmt(st.v); } }, cue);
+            }
+            tl.fromTo(lab, { opacity:0, y:12 }, { opacity:1, y:0, duration:0.5, ease:"power3.out" }, cue + 0.15);
+            if (it.underline) tl.fromTo(ul, { scaleX:0 }, { scaleX:1, duration:0.45, ease:"power2.out" }, cue + 1.2);
+          });
+          tl.to({}, { duration: 4 }, 0);
+          window.__timelines["stat-lockup"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

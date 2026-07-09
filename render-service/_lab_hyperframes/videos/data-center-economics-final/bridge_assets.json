@@ -1,0 +1,50 @@
+{
+  "gen_hook_money": {
+    "asset": "assets/bg_gen_hook_money.png",
+    "ok": true,
+    "frame": "01-boom",
+    "scene": 1,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "conceptual cinematic still: a torrent of hundred-dollar bills dissolving into streams of glowing server-rack light pouring into a dark data hall, industrial-revolution scale, deep shadows, warm amber and cold blue, photoreal, volumetric haze, film grain"
+    }
+  },
+  "gen_construction": {
+    "asset": "assets/bg_gen_construction.png",
+    "ok": true,
+    "frame": "01-boom",
+    "scene": 1,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "a colossal data center under construction at dusk, exposed steel superstructure, tower cranes, floodlights, muddy site, ominous industrial scale, low warm sun, photoreal cinematic wide shot, desaturated amber-slate palette, film grain"
+    }
+  },
+  "gen_control_room": {
+    "asset": "assets/bg_gen_control_room.png",
+    "ok": true,
+    "frame": "02-bill",
+    "scene": 6,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "a single lone technician dwarfed in a vast empty data center control aisle, endless rows of dark servers receding, cold machine light, human tininess against inhuman scale, cinematic, deep shadows, teal and amber, photoreal, film grain"
+    }
+  },
+  "gen_server_hero": {
+    "asset": "assets/bg_gen_server_hero.png",
+    "ok": true,
+    "frame": "01-boom",
+    "scene": 1,
+    "treatment": "footage",
+    "provenance": {
+      "source": "nolan:comfyui:krea2-style-select",
+      "style": ",Dark Moody Atmosphere",
+      "prompt": "hero shot down the center of a hyperscale data hall at night, symmetrical endless glowing server rows, amber floor glow and cold rack light, volumetric fog, ominous grandeur, cinematic ultrawide, deep shadows, photoreal, film grain"
+    }
+  }
+}

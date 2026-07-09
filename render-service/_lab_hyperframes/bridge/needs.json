@@ -1,0 +1,8 @@
+[
+  { "id": "server_hall",   "query": "data center server room aisle glowing racks", "media_type": "image" },
+  { "id": "desert_campus", "query": "aerial data center campus desert landscape",   "media_type": "image" },
+  { "id": "power_lines",   "query": "high voltage transmission towers power lines dusk field", "media_type": "image" },
+  { "id": "cooling",       "query": "industrial cooling towers water vapor plant",   "media_type": "image" },
+  { "id": "server_broll",  "query": "server room data center blinking lights",       "media_type": "video", "n": 2 },
+  { "id": "grid_broll",    "query": "electricity power lines pylons sky",            "media_type": "video", "n": 2 }
+]

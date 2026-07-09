@@ -1,0 +1,30 @@
+{
+  "frames": [
+    {
+      "id": "timeline-vertical",
+      "dur": 16,
+      "scenes": [
+        {
+          "id": "tlv1",
+          "type": "timeline",
+          "start": 0,
+          "dur": 16,
+          "data": {
+            "axis": "vertical",
+            "dir": "down",
+            "solo": true,
+            "title": "How the boom reshaped one county",
+            "titleHi": "boom",
+            "events": [
+              { "year": "2019", "label": "The first campus breaks ground", "image": "assets/hist/e1_ground.png" },
+              { "year": "2022", "label": "The servers move in", "image": "assets/hist/e2_servers.png" },
+              { "year": "2024", "label": "Racks fill the county", "image": "assets/hist/e3_campus.jpg" },
+              { "year": "2025", "label": "The neighbors push back", "image": "assets/hist/e4_homes.jpg" },
+              { "year": "2026", "label": "The grid strains", "image": "assets/hist/e5_grid.png" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
