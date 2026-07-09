@@ -1,0 +1,6 @@
+{
+  "framesDir": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\reveals-blocks\\compositions\\frames",
+  "out": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\reveals-blocks\\out\\reveals-blocks-reel.mp4",
+  "fps": 30,
+  "ids": ["nh-scramble", "nh-char", "cmp-word", "cmp-decode", "stat-char"]
+}

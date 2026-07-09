@@ -30,10 +30,20 @@ for name in cat["components"]:
     if not hasattr(compose, name):
         errs.append(f"catalog component {name!r} has no compose.{name} function")
 
+# reveal styles: the catalog's `reveals` keys must exactly match compose.REVEALS (minus _doc)
+cat_reveals = set(cat.get("reveals", {})) - {"_doc"}
+code_reveals = set(getattr(compose, "REVEALS", {}))
+r_missing = code_reveals - cat_reveals
+r_extra = cat_reveals - code_reveals
+if r_missing:
+    errs.append(f"compose.REVEALS has styles the catalog does not document: {sorted(r_missing)}")
+if r_extra:
+    errs.append(f"catalog['reveals'] documents styles not in compose.REVEALS: {sorted(r_extra)}")
+
 if errs:
     print("CATALOG DRIFT:")
     for e in errs:
         print("  ✗", e)
     sys.exit(1)
 print(f"OK — catalog matches compose.py: scene templates {sorted(catalog_types)}, "
-      f"components {sorted(cat['components'])}")
+      f"components {sorted(cat['components'])}, reveals {sorted(code_reveals)}")

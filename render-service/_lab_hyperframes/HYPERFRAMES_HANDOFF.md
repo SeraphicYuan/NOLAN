@@ -272,6 +272,25 @@ Everything lives in `render-service/_lab_hyperframes/` (see `REPORT.md` for the 
   `check_catalog.py` honesty test fails). Gated for agent-routing by `bridge/author.py` (draft→validate→accept)
   + `bridge/AUTHOR_PROMPT.md`. `raw` is the bespoke escape hatch (agent hands `{html,tl}`). Open gap: a
   `chart` template — must be **GSAP+SVG/CSS, not d3/Chart.js** (framework bans chart libs for seek-safety).
+  - **Text-reveal vocabulary** (`reveal:` on `statement`, built 2026-07-09, ref gsapify.com "Text &
+    Typography" saved to `bridge/_ref_reveals/gsapify_animations.js`): `char`/`word`/`flip` (transform
+    staggers, seek-safe verbatim) + `typewriter`/`scramble`/`decode`/`glitch` (progress-driven — gsapify's
+    `Math.random`/`setTimeout` versions rewritten as pure fns of timeline progress so they don't flicker/
+    desync under frame-seek) + `gradient`, plus the unchanged `rise` default. Registry `compose.REVEALS`
+    mirrored in `catalog.json`'s `reveals` section, honesty-tested by `check_catalog.py` (keys must match).
+    Units split at BUILD into `.rv-u` spans; the operative yellow sweep still fires after the text lands for
+    every style (`.hlwrap` got `isolation:isolate` so its negative-z highlight block stays in the split
+    line's stacking context). Verified with `render-service/reveals_verify.mjs` (Puppeteer: `seek(t,false)`
+    fires the onUpdate reveals, then proves each frame byte-identical on re-seek) → `videos/reveals-demo/
+    snapshots/rv-*-at-*.png`. THE altitude for future text-effect additions: an option on a text block, not a new block.
+    - **Robustly reusable** (2026-07-09 pass 2): the whole reveal is behind ONE entry point `reveal_text(el,text,style,
+      start,cue,dur,operative?,base?) -> (inner_html, css_class, style_attr, tl_lines)` that EVERY text block calls;
+      blocks never branch on the concrete style. Wired into `statement` (lines), `newshead` (headline — overrides the
+      word-cascade), `comparison` (per-panel `text` titles), `stat` (labels; numerals keep count-up). Simple transform
+      staggers live in the `_RV_STAGGER` data table, so adding a new stagger reveal = ONE table row; a new JS-driven one =
+      one `_rv_entrance` branch + REVEALS/catalog entry — zero block edits either way. Wired-block demo:
+      `videos/reveals-blocks/` (out/reveals-blocks-reel.mp4). Statement refactor is byte-identical to the inline version
+      (determinism hashes unchanged). Reels via `render-service/render_reel.mjs` (frame-seq → ffmpeg, manifest-driven).
   - **`timeline` block** (built 2026-07-08, ref YouTube XoC62NDH4aw "Vox stylized timeline"): drawing
     yellow spine + camera pan event-to-event + circular image cutouts (stroked ring draws) + big
     year/kicker. Two axes via `data.axis`: **`horizontal`** (default — spine L→R, camera pans X,
@@ -281,6 +300,78 @@ Everything lives in `render-service/_lab_hyperframes/` (see `REPORT.md` for the 
     for companion content — `solo_side` sets which side, default right). Seek-safe (transforms/opacity/strokeDashoffset).
     Demos: `videos/timeline-demo/` (horizontal, `out/timeline_demo_images.mp4`) + `videos/timeline-vertical/`
     (vertical, `out/timeline_vertical.mp4`); specs in `bridge/timeline_*_spec.json`; ref clip `_ref_timeline/ref.mp4`.
+  - **`newshead` block** (built 2026-07-09, ref YouTube _HU37rX4G1U "Vox newspaper animation"): a
+    newspaper headline card — dot-grid paper, red date tag, bold serif headline whose words cascade
+    in with a yellow highlighter sweep, serif subhead (optional highlight), blackletter source
+    masthead + drawn rule, optional framed grayscale photo sliding in + optional red hand-drawn
+    arrow. `data:{date?,headline:[lines]|str,highlight?,subhead?,subhighlight?,source?,image?,caption?,arrow?,tilt?,image_tilt?}`
+    (`tilt`=small card rotation°; `image_tilt`=extra photo rotation° relative to the card — "pinned askew").
+    Two image modes: default framed grayscale photo, or **`cutout:true`** = a transparent-PNG subject
+    (grayscale + red outline via 8-way drop-shadow) bleeding off the card's right edge (a card sibling, so
+    the card's clip can't crop it). Make the PNG with `nolan cutout <img> -m birefnet -o <out>` then trim
+    the alpha bbox / drop the product-shot reflection (PIL). Cutout demo: `videos/newshead-cutout/`
+    (`out/newshead_cutout.mp4`, spec `bridge/newshead_cutout_spec.json`).
+  - **`collage` block** (built 2026-07-09, ref clip `clip_985f7653` = a cut from "Samurai in Venice",
+    fetched from the live hub `GET /api/library/clips`, DB `~/.nolan/library.db`): a kinetic COLLAGE —
+    cut-out subjects (people/objects, transparent PNGs) scale/slide in **staggered** and assemble into a
+    layered tableau on a backdrop, then hold (optional `camera:"push"` Ken-Burns). **Collage ≠ montage**:
+    borderless cutouts composited into one scene, not framed photos on a table. Placement is explicit
+    `x/y/scale` per subject OR a `layout` preset (`row`/`heroes`/`heroes-tight`/`cluster`/`scatter`);
+    explicit overrides the preset (`heroes-tight` = close/big flanking subjects + an overlapping cast row →
+    `videos/collage-heroes/`). `backdrop` is an input (color, default `#fff`; texture path; or `transparent`)
+    + optional `vignette`. Subjects are `nolan cutout` PNGs (trim the alpha bbox — quality lives on cutout
+    quality; isnet fragmented some objects, birefnet cleaner). Demo: `videos/collage-demo/`
+    (`out/collage_demo.mp4`, spec `bridge/collage_demo_spec.json`); ref frames `_ref_collage/`.
+    **Deferred options** (add in-place when a beat asks — don't fork a template; see the code comment in
+    `collage()`): `parallax` (depth-driven idle drift tied to the camera push, still seek-safe) and
+    `edge:"torn"` (ragged mask + paper lip). A FULL paper-craft look (tape/halftone/kraft/handwriting) is a
+    different identity → its own `scrapbook` template, not a `collage` option.
+    Demo: `videos/newshead-demo/` (`out/newshead_demo.mp4`); spec `bridge/newshead_demo_spec.json`;
+    ref clip `_ref_newsheadline/ref.mp4`. Added Lora weights + UnifrakturMaguntia to the shared FONTS.
+  - **`gallery` block** (built 2026-07-09, refs gsapify "Image & Gallery" `masonry-cascade` (035) +
+    `staggered-grid-reveal`): a grid/masonry of FRAMED rectangular images (white-matte cards) that
+    reveal in a deterministic staggered cascade (`from:center|start|edges|end`), then can **spotlight
+    one** image — the hero scales up + lifts (raised z), the others dim + `filter:blur` = the
+    "highlight a picture, background blurred" beat. Distinct identity from `collage` (borderless
+    cut-outs) + `newshead` (single clipping). The gsapify recipes were re-expressed seek-safe: dropped
+    `gsap.utils.random`/`from:'random'` (→ deterministic per-index tilt + center-out order) and the
+    Ken-Burns `repeat:-1`; reveal is transform/opacity-only, the spotlight's blur is a deterministic
+    seek-safe hold. `layout:masonry` column-packs varied heights + fit-scales into the grid box.
+    `data:{images:[{src,caption?}|str], cols?, layout?, gap?, frame?, backdrop?, vignette?, from?,
+    title?, titleHi?, captions?, highlight?, highlight_at?, highlight_caption?}`. Demo:
+    `videos/gallery-demo/` (spec `bridge/gallery_demo_spec.json`; verified via `hyperframes snapshot`
+    at 5 beats — `snapshots/contact-sheet.jpg`). **Deferred** (build in-place, don't fork): `highlight_zoom`
+    (Ken-Burns push toward the hero), polaroid per-card resting tilt, multi-spotlight swap, a
+    one-at-a-time `slideshow` mode (gsapify 037, un-looped).
+    ⚠ Lint note: the shared `comparison` CSS comment contains a literal `<video>`, which the naive
+    `hyperframes lint` HTML parser mis-tokenizes inside `<style>` → false `media_in_subcomposition` +
+    `root_missing_*` on EVERY compose.py frame. Real Chrome parses `<style>` as raw text, so
+    snapshot/render are unaffected; fix = de-literal the `<video>` token in that CSS comment.
+  - **`carousel` block** (built 2026-07-09, refs gsapify "Carousels & Sliders" `parallax-slider` +
+    `coverflow-3d`): the TEMPORAL cousin of `gallery` — steps through an ordered image set, one in
+    focus (gallery = all-at-once grid; carousel = advance-through). Two `style`s: **`slider`**
+    (full-bleed one-at-a-time; `transition:kenburns`(default, crossfade + slow alternating zoom drift)
+    `|crossfade`) and **`coverflow`** (a 3D coverflow in a `perspective`+`preserve-3d` stage — centre
+    card forward+scaled, neighbours angled back in Z; depth occlusion is by `translateZ`, NOT z-index).
+    This retires the "deferred slideshow mode" that was parked under `gallery` — sequential lives here.
+    Seek-safe re-expression of the gsapify recipes: dropped `repeat:-1` (the `infinite-loop` marquee)
+    and click/Draggable advance (→ time-driven focus steps). `data:{images:[{src,caption?}|str], style?,
+    transition?, hold?, backdrop?, vignette?, title?, titleHi?, captions?}`. Demos: `videos/carousel-slider/`
+    + `videos/carousel-coverflow/` (specs `bridge/carousel_{slider,coverflow}_spec.json`; both
+    snapshot-verified — `snapshots/contact-sheet.jpg`). Gotcha fixed in build: slider slides carry
+    positive `z-index` for the crossfade, so `.carcap` needs `z-index:7` (above slides, below the
+    `z-index:8` title) or captions render behind the slides.
+    Iter-2 (feedback, 2026-07-09): `slider` gained **`layout:"cards"`** — a horizontal CARD SCROLL (a
+    `.cartrack` of framed `.carcarditem`s translating X so the active card centres, neighbours peek,
+    active scales up / rest dim); **coverflow** got a smooth distance **`fade`** (opacity `1-|off|*fade`,
+    no hard cut) + **inputs for card size/position** (`card_w`/`card_h`/`spacing`/`depth`/`y`); and
+    `.cartitle` got a `text-shadow` (legible over bright images; the yellow `.hl` opts out via
+    `text-shadow:none`). Demos: `videos/carousel-cards/` (`out/carousel_cards.mp4`) + re-rendered
+    `carousel-{slider,coverflow}` mp4s, all frame-verified from the ENCODED files. A static Linux
+    ffmpeg/ffprobe (johnvansickle 7.0.2) is staged at `~/.local/hfbin` so `hyperframes render` now
+    encodes mp4 IN WSL (~13s per 10s clip) — export it onto PATH.
+    **Deferred** (build in-place, don't fork): `transition:"push"`/parallax-bg, `style:"strip"` (marquee
+    — ONE linear x tween over a cloned track, NOT `repeat:-1`), `style:"deck"` (card toss), `focus`/dwell.
 - **`bridge/resolve_inject.py`** — NOLAN krea2/ComfyUI or stock → project `assets/` + ledger.
 - **`bridge/pool.py`** — NOLAN acquisition fan-out → qwen-VL-captioned inventory HyperFrames selects from.
 - **`bridge/inject_root_video.py`** — mounts stock b-roll `<video>` at the index HOST ROOT (archetype B) — the only legal path for motion footage (see §5).
@@ -306,6 +397,19 @@ per-workflow plan dialects differ; a thin per-workflow "plan-writer" adapter bri
 8. **Byte-reproducibility needs `--docker`** (Linux/headless-shell/deterministic-mode). Otherwise visually-identical, not SHA-identical — expected, not a bug.
 9. **`captions.mjs` ships without the skin's font `@import`** (recurring NOLAN nit) — add a Google-Fonts `@import` to generated `captions.html`.
 10. **Version skew**: `npx hyperframes` (published) can lag the `main` you're reading. If behavior contradicts the source, check the installed CLI version first.
+11. **⚠ FFmpeg version → SILENT audio.** Rendering audio needs a MODERN ffmpeg on PATH. The bundled `render-service/node_modules/@ffmpeg-installer/win32-x64/ffmpeg.exe` is **from 2018** — the video encodes fine but the audio mix (`apad=whole_dur=…`) fails with `Audio mix failed — output will be video-only`, so you get a silent MP4 with **no error exit**. Stage a recent ffmpeg instead (e.g. `imageio_ffmpeg`'s v7.1: `D:\env\nolan\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe`) + the 2023 `@ffprobe-installer` ffprobe, both on PATH. Always `ffprobe` the output for an audio stream after a narrated render.
+
+## 15. Proven end-to-end: a narrated essay beat (`videos/beat1-narrated/`)
+
+Beyond isolated card demos, one **real script beat + real VO** runs the whole path: `inputs/script.md`
+beat 1 ("The boom is real", 67.76s, `inputs/sec_0000.wav`) → 6 scenes authored to the narration
+(`bridge/beat1_spec.json`: 3 `stat` + 2 `statement` + 1 `newshead` for the "Loudoun County cashes in"
+citation) → validated by the `author.py` gate (6 templated, 0 bespoke) → composed → `index.html` mounts
+the frame (track 1) with the **VO as a root `<audio>`** (track 10; media must live at the host root) →
+rendered WITH audio → `out/beat1.mp4` (67.8s, h264 + aac 48k, verified: audio stream present, mean −23.6 dB).
+Scene-level timing follows the narration (from the eval's whisper-tuned start/durs); within-scene cues
+(count-ups, highlight sweeps) are hand-set — tight word-sync would want whisper word timings. This is the
+"cards → actual narrated video" proof; the next step is the same via the compose-first faceless Step-5 worker.
 
 ---
 

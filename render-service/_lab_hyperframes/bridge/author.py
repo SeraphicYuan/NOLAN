@@ -19,8 +19,9 @@ CATALOG = json.load(open(HERE / "catalog.json", encoding="utf-8"))
 
 # minimum non-empty fields per scene type — the accept gate (schema lives in catalog.json)
 REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highlight"],
-            "timeline": ["events"], "raw": ["html", "tl"],
-            "diagram": ["root"], "comparison": ["left", "right"]}
+            "timeline": ["events"], "raw": ["html", "tl"], "newshead": ["headline"], "collage": ["subjects"],
+            "diagram": ["root"], "comparison": ["left", "right"], "gallery": ["images"],
+            "carousel": ["images"]}
 
 
 def validate_spec(spec):

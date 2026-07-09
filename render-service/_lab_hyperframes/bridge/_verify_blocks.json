@@ -1,0 +1,7 @@
+{
+  "framesDir": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\reveals-blocks\\compositions\\frames",
+  "snapsDir": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\reveals-blocks\\snapshots",
+  "ids": ["nh-scramble", "nh-char", "cmp-word", "cmp-decode", "stat-char"],
+  "look": [1.8, 3.6],
+  "det": 1.8
+}

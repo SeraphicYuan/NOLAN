@@ -1,0 +1,23 @@
+{
+  "_doc": "Reveal vocabulary wired into newshead / comparison / stat via the shared reveal_text(). One frame per showcase.",
+  "frames": [
+    { "id": "nh-scramble", "dur": 4.5, "scenes": [ { "id": "s-nh1", "type": "newshead", "start": 0, "dur": 4.5, "data": {
+      "date": "MAR 14, 2026", "headline": ["Markets in", "freefall"], "highlight": "freefall",
+      "source": "The Ledger", "reveal": "scramble" } } ] },
+    { "id": "nh-char", "dur": 4.5, "scenes": [ { "id": "s-nh2", "type": "newshead", "start": 0, "dur": 4.5, "data": {
+      "date": "MAR 14, 2026", "headline": ["A quiet", "revolution"], "highlight": "revolution",
+      "source": "The Ledger", "reveal": "char" } } ] },
+    { "id": "cmp-word", "dur": 4.0, "scenes": [ { "id": "s-cmp1", "type": "comparison", "start": 0, "dur": 4.0, "data": {
+      "kicker": "THEN VS NOW", "title": "The shift", "vs": true,
+      "left":  { "type": "text", "label": "2015", "register": "paper",   "title": ["Ten engineers", "one release"],  "reveal": "word" },
+      "right": { "type": "text", "label": "2026", "register": "footage", "bg": "#111417", "title": ["One engineer", "ten releases"], "reveal": "word" } } } ] },
+    { "id": "cmp-decode", "dur": 4.0, "scenes": [ { "id": "s-cmp2", "type": "comparison", "start": 0, "dur": 4.0, "data": {
+      "vs": "VS",
+      "left":  { "type": "text", "label": "CLAIM",   "register": "paper",   "title": ["Fully", "autonomous"], "highlight": "autonomous", "reveal": "decode" },
+      "right": { "type": "text", "label": "REALITY", "register": "footage", "bg": "#111417", "title": ["Still needs", "a human"], "reveal": "decode" } } } ] },
+    { "id": "stat-char", "dur": 4.0, "scenes": [ { "id": "s-st1", "type": "stat", "start": 0, "dur": 4.0, "data": {
+      "kicker": "BY THE NUMBERS", "register": "paper", "reveal": "char",
+      "items": [ { "from": 0, "to": 9, "suffix": "M", "label": "active users", "underline": true },
+                 { "from": 0, "to": 48, "suffix": "%", "label": "year over year" } ] } } ] }
+  ]
+}

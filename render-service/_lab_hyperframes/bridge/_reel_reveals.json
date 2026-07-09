@@ -1,0 +1,6 @@
+{
+  "framesDir": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\reveals-demo\\compositions\\frames",
+  "out": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\reveals-demo\\out\\reveals-reel.mp4",
+  "fps": 30,
+  "ids": ["rv-rise", "rv-char", "rv-word", "rv-flip", "rv-typewriter", "rv-scramble", "rv-decode", "rv-gradient", "rv-glitch"]
+}

@@ -10,6 +10,106 @@ Three reusable block-templates:  media_ground · stat_lockup · highlight_statem
 Driver: compose_frame(frame_id, scenes) -> a <template>-wrapped frame sub-composition.
 
   python compose.py --spec scenes.json --out-dir <project>/compositions/frames
+"""
+import argparse, json, html, re
+from pathlib import Path
+
+FONTS = ("@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,600;0,700;0,800;0,900;1,600&"
+         "family=Lora:ital,wght@0,400;0,600;0,700;1,500&family=UnifrakturMaguntia&family=Inter:wght@500;600&display=swap');")
+CSS = """
+#root{position:absolute;inset:0;width:1920px;height:1080px;container-type:size;overflow:hidden;
+  font-family:"Libre Franklin",sans-serif;background:transparent;}
+.gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
+.paper-gnd{position:absolute;inset:0;}
+.scrim{position:absolute;inset:0;pointer-events:none;}
+.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
+  letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
+.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
+  letter-spacing:-0.012em;}
+.stmt .ln{display:block;opacity:0;}
+.hlwrap{position:relative;display:inline-block;isolation:isolate;}
+.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:#FFF200;transform:scaleX(0);
+  transform-origin:left center;z-index:-1;}
+.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:#F1F3F2;color:#2B2D2C;padding:0.5cqw 1.1cqw;
+  font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
+.slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
+.slitem{display:flex;flex-direction:column;min-width:18cqw;}
+.slnumwrap{position:relative;display:inline-block;}
+.slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
+  white-space:nowrap;opacity:0;}
+.slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
+.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}
+.sllabel{margin-top:1.1cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
+  text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
+.paper .slnum,.paper .sllead{color:#2B2D2C;}.paper .kick{color:#4C4E4D;}.paper .sllabel{color:#888880;}
+.footage .slnum{color:#F6F7F6;}.footage .kick{color:#F6F7F6;}.footage .sllabel{color:#d6d9d6;}
+.stmt.paper-t{color:#2B2D2C;}.stmt.footage-t{color:#F6F7F6;}
+/* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
+.prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
+.prop img{display:block;width:100%;height:auto;}
+.prop-cap{margin-top:0.4cqw;font-family:"Lora",serif;font-style:italic;font-size:0.72cqw;color:#2B2D2C;text-align:center;}
+/* geo-map: d3 choropleth (US states / world countries), one region highlighted + annotated */
+.geomap{will-change:transform;}
+.geomap svg{width:100%;height:100%;display:block;}
+.gstate{fill:#DCDFDC;stroke:#F1F3F2;stroke-width:1.0;}
+.ghl{fill:#FFF200;stroke:#2B2D2C;stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
+.geoleader{position:absolute;inset:0;pointer-events:none;}
+.geoleader path{fill:none;stroke:#2B2D2C;stroke-width:2;}
+.geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2B2D2C;opacity:0;}
+.geopin::after{content:"";position:absolute;inset:-9px;border:2px solid #2B2D2C;border-radius:50%;opacity:0.4;}
+.geolabel{position:absolute;left:8cqw;top:20cqh;max-width:32cqw;}
+.glab-k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
+.glab-t{font-weight:900;font-size:5.4cqw;line-height:1;letter-spacing:-0.02em;color:#2B2D2C;margin:0.6cqw 0;opacity:0;}
+.glab-t .gmark{background:#FFF200;box-decoration-break:clone;padding:0 0.1em;}
+.glab-s{font-family:"Lora",serif;font-style:italic;font-size:1.3cqw;line-height:1.4;color:#4C4E4D;max-width:28cqw;opacity:0;}
+/* timeline: Vox stylized horizontal timeline — drawing spine + camera pan + alternating circular callouts */
+.tlbg{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 42%,#101210,#070807);}
+.tlworld{position:absolute;top:0;left:0;height:100%;will-change:transform;}
+.tlspine{position:absolute;height:8px;background:#FFF200;border-radius:4px;transform-origin:left center;transform:scaleX(0);box-shadow:0 0 22px rgba(255,242,0,0.35);}
+.tlnode{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:#0a0b0a;border:5px solid #FFF200;transform:scale(0);z-index:3;}
+.tlnode::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#FFF200;}
+.tlv{position:absolute;width:2px;background:#EDEFEC;transform:scaleY(0);}
+.tlh{position:absolute;height:2px;background:#EDEFEC;transform-origin:left center;transform:scaleX(0);}
+.tlcirc{position:absolute;border-radius:50%;overflow:hidden;background:#181a18;transform:scale(0);will-change:transform;box-shadow:0 12px 40px rgba(0,0,0,0.5);}
+.tlcirc img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.06) brightness(1.08);display:block;}
+.tlph{position:absolute;inset:0;background:linear-gradient(135deg,#2b2d2b,#141513);}
+.tlph::after{content:"";position:absolute;inset:22% 22%;border:3px solid rgba(237,239,236,0.14);border-radius:50%;}
+.tlring{position:absolute;overflow:visible;pointer-events:none;}
+.tlring circle{fill:none;stroke:#EDEFEC;stroke-width:2.5;}
+.tlyear{position:absolute;font-weight:900;font-size:2.4cqw;letter-spacing:-0.01em;color:#EDEFEC;opacity:0;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.tllbl{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;color:#9a9c99;opacity:0;white-space:nowrap;}
+.tltitle{position:absolute;top:7cqh;left:5.5cqw;font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;color:#F6F7F6;opacity:0;}
+.tltitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;}
+/* newshead: a newspaper headline card (Vox "newspaper animation" look) */
+.nhbg{position:absolute;inset:0;background:radial-gradient(130% 130% at 50% 38%,#2b2d2c,#161716);}
+.nhcard{position:absolute;background:#ECE9E1;overflow:hidden;box-shadow:0 22px 64px rgba(0,0,0,0.55);transform-origin:center;}
+.nhcard .tex{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(20,22,18,0.09) 1.1px,transparent 1.4px);background-size:20px 20px;opacity:0.7;}
+.nhcard .vig{position:absolute;inset:0;box-shadow:inset 0 0 150px rgba(110,100,80,0.20);}
+.nhdate{position:absolute;display:inline-block;background:#C8232C;color:#F7F3EA;font-family:"Lora",serif;font-weight:700;font-size:18px;letter-spacing:0.02em;padding:6px 12px;opacity:0;}
+.nhhead{position:absolute;font-family:"Lora",serif;font-weight:700;color:#191712;font-size:60px;line-height:1.14;letter-spacing:-0.005em;}
+.nhline{display:block;}
+.nhhead .w{display:inline-block;}
+.nhhl-wrap{position:relative;display:inline-block;}
+.nhhl{position:absolute;left:-0.05em;right:-0.05em;top:0.12em;bottom:0.16em;background:#FFF23B;transform:scaleX(0);transform-origin:left center;z-index:-1;}
+.nhsub{position:absolute;font-family:"Lora",serif;font-weight:400;color:#38362d;font-size:23px;line-height:1.5;opacity:0;}
+.nhsub .subhl{background:#FFF23B;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 2px;}
+.nhsrc{position:absolute;display:flex;align-items:center;gap:16px;opacity:0;}
+.nhsrc .mast{font-family:"UnifrakturMaguntia",serif;color:#191712;font-size:42px;line-height:1;}
+.nhsrc .rule{height:2px;background:#191712;transform:scaleX(0);transform-origin:left center;}
+.nhphoto{position:absolute;overflow:hidden;filter:grayscale(1) contrast(1.06);opacity:0;box-shadow:0 8px 22px rgba(0,0,0,0.32);}
+.nhphoto img{width:100%;height:100%;object-fit:cover;display:block;}
+.nhcap{position:absolute;font-family:"Lora",serif;font-style:italic;font-size:15px;color:#4a4840;opacity:0;}
+.nharrow{position:absolute;overflow:visible;pointer-events:none;}
+.nharrow path{fill:none;stroke:#C8232C;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;}
+.nhcut{position:absolute;overflow:visible;opacity:0;will-change:transform;}
+.nhcut img{width:100%;height:100%;object-fit:contain;object-position:left center;display:block;filter:grayscale(1) contrast(1.08) drop-shadow(4px 0 0 #C8232C) drop-shadow(-4px 0 0 #C8232C) drop-shadow(0 4px 0 #C8232C) drop-shadow(0 -4px 0 #C8232C) drop-shadow(3px 3px 0 #C8232C) drop-shadow(-3px 3px 0 #C8232C) drop-shadow(3px -3px 0 #C8232C) drop-shadow(-3px -3px 0 #C8232C);}
+/* collage: cut-out subjects (people/objects) assembling into a tableau on a backdrop */
+.clgbg{position:absolute;inset:0;}
+.clgvig{position:absolute;inset:0;pointer-events:none;}
+.clgworld{position:absolute;inset:0;will-change:transform;transform-origin:center;}
+.collage-sub{position:absolute;width:0;height:0;will-change:transform,opacity;}
+.collage-sub img{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:block;}
+.collage-sub.shadow img{filter:drop-shadow(0 16px 26px rgba(0,0,0,0.42));}
 /* diagram: d3-computed node-link graph (tree/flow/radial). d3 lays out ONCE at load; GSAP reveals (seek-safe). */
 .dgbg{position:absolute;inset:0;background:#F1F3F2;}
 .dgbg.dark{background:radial-gradient(120% 120% at 50% 40%,#14171a,#090b0d);}
@@ -79,79 +179,52 @@ Driver: compose_frame(frame_id, scenes) -> a <template>-wrapped frame sub-compos
 .cmp-htitle .t .hl{background:#FFF200;color:#2B2D2C;padding:0 0.1em;box-decoration-break:clone;}
 .cmp-panel.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
 .cmp-vhole{background:transparent;}
-/* a root-mounted comparison <video> (archetype B): direct child of #root, positioned to a panel rect */
+/* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
-"""
-import argparse, json, html, re
-from pathlib import Path
-
-FONTS = ("@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,600;0,700;0,800;0,900;1,600&"
-         "family=Lora:ital,wght@0,400;0,600;0,700;1,500&family=UnifrakturMaguntia&family=Inter:wght@500;600&display=swap');")
-CSS = """
-#root{position:absolute;inset:0;width:1920px;height:1080px;container-type:size;overflow:hidden;
-  font-family:"Libre Franklin",sans-serif;background:transparent;}
-.gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
-.paper-gnd{position:absolute;inset:0;}
-.scrim{position:absolute;inset:0;pointer-events:none;}
-.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
-  letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
-.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
-  letter-spacing:-0.012em;}
-.stmt .ln{display:block;opacity:0;}
-.hlwrap{position:relative;display:inline-block;}
-.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:#FFF200;transform:scaleX(0);
-  transform-origin:left center;z-index:-1;}
-.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:#F1F3F2;color:#2B2D2C;padding:0.5cqw 1.1cqw;
-  font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
-.slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
-.slitem{display:flex;flex-direction:column;min-width:18cqw;}
-.slnumwrap{position:relative;display:inline-block;}
-.slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
-  white-space:nowrap;opacity:0;}
-.slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
-.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}
-.sllabel{margin-top:1.1cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
-  text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
-.paper .slnum,.paper .sllead{color:#2B2D2C;}.paper .kick{color:#4C4E4D;}.paper .sllabel{color:#888880;}
-.footage .slnum{color:#F6F7F6;}.footage .kick{color:#F6F7F6;}.footage .sllabel{color:#d6d9d6;}
-.stmt.paper-t{color:#2B2D2C;}.stmt.footage-t{color:#F6F7F6;}
-/* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
-.prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
-.prop img{display:block;width:100%;height:auto;}
-.prop-cap{margin-top:0.4cqw;font-family:"Lora",serif;font-style:italic;font-size:0.72cqw;color:#2B2D2C;text-align:center;}
-/* geo-map: d3 choropleth (US states / world countries), one region highlighted + annotated */
-.geomap{will-change:transform;}
-.geomap svg{width:100%;height:100%;display:block;}
-.gstate{fill:#DCDFDC;stroke:#F1F3F2;stroke-width:1.0;}
-.ghl{fill:#FFF200;stroke:#2B2D2C;stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
-.geoleader{position:absolute;inset:0;pointer-events:none;}
-.geoleader path{fill:none;stroke:#2B2D2C;stroke-width:2;}
-.geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2B2D2C;opacity:0;}
-.geopin::after{content:"";position:absolute;inset:-9px;border:2px solid #2B2D2C;border-radius:50%;opacity:0.4;}
-.geolabel{position:absolute;left:8cqw;top:20cqh;max-width:32cqw;}
-.glab-k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
-.glab-t{font-weight:900;font-size:5.4cqw;line-height:1;letter-spacing:-0.02em;color:#2B2D2C;margin:0.6cqw 0;opacity:0;}
-.glab-t .gmark{background:#FFF200;box-decoration-break:clone;padding:0 0.1em;}
-.glab-s{font-family:"Lora",serif;font-style:italic;font-size:1.3cqw;line-height:1.4;color:#4C4E4D;max-width:28cqw;opacity:0;}
-/* timeline: Vox stylized horizontal timeline — drawing spine + camera pan + alternating circular callouts */
-.tlbg{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 42%,#101210,#070807);}
-.tlworld{position:absolute;top:0;left:0;height:100%;will-change:transform;}
-.tlspine{position:absolute;height:8px;background:#FFF200;border-radius:4px;transform-origin:left center;transform:scaleX(0);box-shadow:0 0 22px rgba(255,242,0,0.35);}
-.tlnode{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:#0a0b0a;border:5px solid #FFF200;transform:scale(0);z-index:3;}
-.tlnode::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#FFF200;}
-.tlv{position:absolute;width:2px;background:#EDEFEC;transform:scaleY(0);}
-.tlh{position:absolute;height:2px;background:#EDEFEC;transform-origin:left center;transform:scaleX(0);}
-.tlcirc{position:absolute;border-radius:50%;overflow:hidden;background:#181a18;transform:scale(0);will-change:transform;box-shadow:0 12px 40px rgba(0,0,0,0.5);}
-.tlcirc img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.06) brightness(1.08);display:block;}
-.tlph{position:absolute;inset:0;background:linear-gradient(135deg,#2b2d2b,#141513);}
-.tlph::after{content:"";position:absolute;inset:22% 22%;border:3px solid rgba(237,239,236,0.14);border-radius:50%;}
-.tlring{position:absolute;overflow:visible;pointer-events:none;}
-.tlring circle{fill:none;stroke:#EDEFEC;stroke-width:2.5;}
-.tlyear{position:absolute;font-weight:900;font-size:2.4cqw;letter-spacing:-0.01em;color:#EDEFEC;opacity:0;white-space:nowrap;font-variant-numeric:tabular-nums;}
-.tllbl{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;color:#9a9c99;opacity:0;white-space:nowrap;}
-.tltitle{position:absolute;top:7cqh;left:5.5cqw;font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;color:#F6F7F6;opacity:0;}
-.tltitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;}
+/* text-reveal vocabulary (gsapify "Text & Typography", rewritten seek-safe). Units (chars/words)
+   are split at BUILD time into .rv-u spans so each reveal is a pure fn of timeline progress. */
+.rv-u{display:inline-block;will-change:transform,opacity;backface-visibility:hidden;}
+.rv-w{margin-right:0.28em;}
+.rv-caret{opacity:0;font-weight:400;}
+/* gradient reveal = base ink/white text + ONE bright accent band swept through (clean, not a muddy
+   full ink->yellow blend); background-image (not the shorthand) so background-clip:text isn't reset. */
+.stmt .ln.rv-grad{background-image:linear-gradient(90deg in oklab,var(--rv-c1) 0%,var(--rv-c1) 43%,var(--rv-c2) 50%,var(--rv-c1) 57%,var(--rv-c1) 100%);
+  background-size:300% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+/* gallery: a grid/masonry of framed images revealing staggered; optional spotlight-one (others blur+dim) */
+.galbg{position:absolute;inset:0;}
+.galvig{position:absolute;inset:0;pointer-events:none;}
+.galworld{position:absolute;inset:0;will-change:transform;transform-origin:center;}
+.galcard{position:absolute;box-sizing:border-box;overflow:hidden;background:#fff;padding:0.42cqw;
+  box-shadow:0 0.8cqw 2.2cqw rgba(0,0,0,0.44);transform-origin:center;will-change:transform,opacity,filter;filter:blur(0px);}
+.galcard.noframe{padding:0;background:transparent;box-shadow:0 0.6cqw 1.7cqw rgba(0,0,0,0.4);}
+.galcard img{width:100%;height:100%;object-fit:cover;display:block;}
+.galcap{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.72cqw;letter-spacing:0.08em;
+  text-transform:uppercase;color:#EDEFEC;opacity:0;text-align:center;}
+.galhcap{position:absolute;font-family:"Lora",serif;font-style:italic;font-size:1.15cqw;color:#F6F7F6;opacity:0;
+  text-align:center;text-shadow:0 2px 12px rgba(0,0,0,0.65);}
+.galtitle{position:absolute;top:5.5cqh;left:0;width:100%;text-align:center;font-weight:900;font-size:2.4cqw;
+  letter-spacing:-0.01em;color:#F6F7F6;opacity:0;}
+.galtitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;}
+/* carousel: a temporal image sequence — full-bleed slider (crossfade/kenburns) OR 3D coverflow */
+.carworld{position:absolute;inset:0;}
+.carslide{position:absolute;inset:0;opacity:0;overflow:hidden;will-change:opacity;}
+.carslide img{width:100%;height:100%;object-fit:cover;display:block;will-change:transform;}
+.carstage{position:absolute;inset:0;perspective:1600px;}
+.car3d{position:absolute;inset:0;transform-style:preserve-3d;}
+.carcard{position:absolute;left:50%;top:50%;overflow:hidden;border-radius:10px;background:#000;
+  box-shadow:0 30px 90px rgba(0,0,0,0.62);backface-visibility:hidden;will-change:transform,opacity;}
+.carcard img{width:100%;height:100%;object-fit:cover;display:block;}
+.carcap{position:absolute;left:0;width:100%;bottom:19cqh;text-align:center;font-family:"Lora",serif;z-index:7;
+  font-style:italic;font-size:1.35cqw;color:#F8F8F6;opacity:0;text-shadow:0 2px 14px rgba(0,0,0,0.7);}
+.cartitle{position:absolute;top:5.5cqh;left:0;width:100%;text-align:center;font-weight:900;font-size:2.4cqw;
+  letter-spacing:-0.01em;color:#F6F7F6;opacity:0;z-index:8;text-shadow:0 2px 16px rgba(0,0,0,0.6),0 1px 3px rgba(0,0,0,0.5);}
+.cartitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;text-shadow:none;}
+/* carousel cards layout: a horizontal track of framed cards that scrolls (style:slider, layout:cards) */
+.cartrack{position:absolute;left:0;will-change:transform;}
+.carcarditem{position:absolute;overflow:hidden;border-radius:14px;background:#000;transform-origin:center;
+  box-shadow:0 24px 70px rgba(0,0,0,0.55);will-change:transform,opacity;}
+.carcarditem img{width:100%;height:100%;object-fit:cover;display:block;}
 """
 
 # d3 setup — runs once at frame load (before the timeline lines that animate what it builds).
@@ -257,12 +330,20 @@ def stat_lockup(sid, sc):
     frag.append(f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>')
     frag.append(f'<div class="slrow">')
     tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.1});')
+    reveal = d.get("reveal")
+    lbase = "#2B2D2C" if reg == "paper" else "#F6F7F6"
     for i, it in enumerate(d["items"]):
         nid, uid, lid = f"{sid}-n{i}", f"{sid}-u{i}", f"{sid}-l{i}"
         ul = f'<span class="slul" id="{uid}"></span>' if it.get("underline") else ""
-        frag.append(f'<div class="slitem"><div class="slnumwrap"><span class="slnum" id="{nid}"></span>{ul}</div>'
-                    f'<div class="sllabel" id="{lid}">{esc(it.get("label",""))}</div></div>')
         cue = start + float(it.get("cue", 0.6 + i*0.4))
+        # numerals keep their count-up; a reveal style (if set) applies to the LABEL text
+        if reveal in REVEALS and reveal != "rise":
+            linner, lcls, lattr, ltl = reveal_text(lid, it.get("label", ""), reveal, start, cue + 0.15, dur, base=lbase)
+            label_div = f'<div class="{("sllabel " + lcls).strip()}" id="{lid}"{lattr}>{linner}</div>'
+        else:
+            label_div = f'<div class="sllabel" id="{lid}">{esc(it.get("label",""))}</div>'
+            ltl = [f'tl.fromTo("#{lid}",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.5}},{cue+0.15});']
+        frag.append(f'<div class="slitem"><div class="slnumwrap"><span class="slnum" id="{nid}"></span>{ul}</div>{label_div}</div>')
         if it.get("value") is not None and it.get("from") is None:
             tl.append(f'document.getElementById("{nid}").textContent={json.dumps(str(it["value"]))};')
             tl.append(f'tl.fromTo("#{nid}",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:0.5,ease:"power4.out"}},{cue});')
@@ -272,15 +353,188 @@ def stat_lockup(sid, sc):
             tl.append(f'(function(){{var el=document.getElementById("{nid}"),st={{v:{frm}}},f=function(n){{return {pre}+Math.round(n)+{suf};}};'
                       f'el.textContent=f({frm});tl.set(el,{{opacity:1}},{cue});'
                       f'tl.fromTo(st,{{v:{frm}}},{{v:{to},duration:1.4,ease:"power3.out",onUpdate:function(){{el.textContent=f(st.v);}}}},{cue});}})();')
-        tl.append(f'tl.fromTo("#{lid}",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.5}},{cue+0.15});')
+        tl += ltl
         if it.get("underline"):
             tl.append(f'tl.fromTo("#{uid}",{{scaleX:0}},{{scaleX:1,duration:0.45,ease:"power2.out"}},{cue+1.2});')
     frag.append('</div></section>')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
 
+# ── Text-reveal vocabulary ────────────────────────────────────────────────────
+# gsapify.com "Text & Typography" effects, re-expressed SEEK-SAFE: every style is a
+# pure function of the paused timeline's progress (no Math.random, no setTimeout), so
+# each frame renders deterministically under HyperFrames' seek/render model. gsapify's
+# transform-based styles (char/word/flip) are seek-safe verbatim; scramble/decode/glitch/
+# typewriter use Math.random()/setTimeout live and are rewritten as progress-driven here.
+# Ref (verbatim source): bridge/_ref_reveals/gsapify_animations.js.  "split" = how a line
+# is broken into animatable .rv-u units (char | word) or left whole (line).
+REVEALS = {
+    "rise":       {"split": "line", "desc": "the whole line rises + fades up (the Vox default)"},
+    "char":       {"split": "char", "desc": "letters fade + rise, staggered (gsapify stagger-letter-reveal)"},
+    "word":       {"split": "word", "desc": "words slide up with a slight tilt, staggered (word-by-word-slide)"},
+    "flip":       {"split": "char", "desc": "letters flip in on the X axis with depth (letter-3d-flip)"},
+    "typewriter": {"split": "char", "desc": "letters appear left->right behind a caret (typewriter)"},
+    "scramble":   {"split": "char", "desc": "letters cycle glyphs then resolve L->R, deterministic (text-scramble)"},
+    "decode":     {"split": "char", "desc": "katakana/hex glyphs decode into the text L->R (matrix-decode)"},
+    "gradient":   {"split": "line", "desc": "an accent gradient wipes the text in L->R (gradient-text-reveal)"},
+    "glitch":     {"split": "line", "desc": "RGB-split + jitter that settles to clean (glitch-text)"},
+}
+
+def _rv_seg(el, seg, split, idx, reals):
+    """Unit-split ONE text segment into sid-prefixed <span class="rv-u"> spans (chars or words);
+    spaces stay literal (char split) or become right-margins (word split). Appends each unit's
+    real text to `reals` and advances the shared counter `idx` so ids stay unique across the
+    before/operative/after segments of a line."""
+    out = []
+    if split == "word":
+        for w in seg.split(" "):
+            if w == "":
+                continue
+            i = idx[0]; idx[0] += 1; reals.append(w)
+            out.append(f'<span class="rv-u rv-w" id="{el}-u{i}">{esc(w)}</span>')
+    else:
+        for ch in seg:
+            if ch == " ":
+                out.append(" "); continue
+            i = idx[0]; idx[0] += 1; reals.append(ch)
+            out.append(f'<span class="rv-u rv-c" id="{el}-u{i}">{esc(ch)}</span>')
+    return "".join(out)
+
+def _rv_inner(el, text, split, operative):
+    """Build a line's inner HTML for a reveal style. Returns (inner_html, reals, op_wrap_id).
+    If an operative substring is present it is wrapped in .hlwrap (+ a .hlblock sweep bar); for
+    split styles the operative's own units live inside the wrap so they animate with the rest."""
+    idx = [0]; reals = []
+    if split == "line":
+        if operative and operative in text:
+            b, a = text.split(operative, 1)
+            inner = (f'{esc(b)}<span class="hlwrap" id="{el}-opw"><span class="rv-op">{esc(operative)}</span>'
+                     f'<span class="hlblock" id="{el}-hb"></span></span>{esc(a)}')
+            return inner, [text], f"{el}-opw"
+        return esc(text), [text], None
+    if operative and operative in text:
+        b, a = text.split(operative, 1)
+        inner = (_rv_seg(el, b, split, idx, reals)
+                 + f'<span class="hlwrap" id="{el}-opw">' + _rv_seg(el, operative, split, idx, reals)
+                 + f'<span class="hlblock" id="{el}-hb"></span></span>'
+                 + _rv_seg(el, a, split, idx, reals))
+        return inner, reals, f"{el}-opw"
+    return _rv_seg(el, text, split, idx, reals), reals, None
+
+def _rv_dur(style, n, dur):
+    """Approx entrance length (s) so the operative sweep can fire just after the text lands."""
+    if style == "char":  return 0.5 + 0.03 * n
+    if style == "word":  return 0.6 + 0.08 * n
+    if style == "flip":  return 0.6 + 0.05 * n
+    if style == "typewriter": return min(dur * 0.55, 0.06 * n + 0.3)
+    if style in ("scramble", "decode"): return min(dur * 0.7, 2.2)
+    if style == "gradient": return min(dur * 0.6, 1.6)
+    if style == "glitch":   return min(dur * 0.5, 0.9)
+    return 0.6
+
+def _rv_js_scramble(el, reals, start, cue, d, matrix):
+    """SEEK-SAFE scramble/decode: a proxy tween is a clock; each .rv-u's glyph is a pure fn of
+    (progress, index) — no Math.random. Left->right resolve; charset differs for matrix decode."""
+    charset = "アカサタナハマヤラワ0123456789ABCDEF" if matrix \
+              else "ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*@"
+    js = ('(function(){var el=document.getElementById("@EL@");if(!el)return;'
+          'var us=el.querySelectorAll(".rv-u"),R=@ARR@,CH=@CH@,n=R.length;'
+          'tl.set(el,{opacity:0},@START@);tl.set(el,{opacity:1},@CUE@);'
+          'tl.to({v:0},{v:1,duration:@DUR@,ease:"none",onUpdate:function(){var p=this.progress(),rev=Math.floor(p*n*1.08);'
+          'for(var i=0;i<n;i++){us[i].textContent=(i<rev)?R[i]:CH.charAt((Math.floor(p*n*3)+i*7)%CH.length);}},'
+          'onComplete:function(){for(var i=0;i<n;i++)us[i].textContent=R[i];}},@CUE@);})();')
+    return [js.replace("@EL@", el).replace("@ARR@", json.dumps(reals, ensure_ascii=False))
+              .replace("@CH@", json.dumps(charset, ensure_ascii=False))
+              .replace("@START@", f"{start}").replace("@CUE@", f"{cue}").replace("@DUR@", f"{d:.2f}")]
+
+def _rv_js_typewriter(el, start, cue, d):
+    """SEEK-SAFE typewriter: shown-count = round(progress*n). Untyped chars are display:none
+    (take no space), so the trailing caret rides the typing front instead of parking at line end."""
+    js = ('(function(){var el=document.getElementById("@EL@");if(!el)return;'
+          'var us=el.querySelectorAll(".rv-u"),n=us.length,cr=document.getElementById("@EL@-cr");'
+          'tl.set(el,{opacity:1},@START@);tl.set(us,{display:"none"},@START@);if(cr)tl.set(cr,{opacity:0},@START@);'
+          'tl.to({v:0},{v:1,duration:@DUR@,ease:"none",onUpdate:function(){var sh=Math.round(this.progress()*n);'
+          'for(var i=0;i<n;i++)us[i].style.display=(i<sh)?"inline-block":"none";if(cr)cr.style.opacity=1;},'
+          'onComplete:function(){for(var i=0;i<n;i++)us[i].style.display="inline-block";if(cr)cr.style.opacity=0;}},@CUE@);})();')
+    return [js.replace("@EL@", el).replace("@START@", f"{start}").replace("@CUE@", f"{cue}").replace("@DUR@", f"{d:.2f}")]
+
+def _rv_js_glitch(el, start, cue, d):
+    """SEEK-SAFE glitch: RGB-split text-shadow + x/skew jitter, amplitude decays with progress
+    (deterministic sines), settling to clean at p=1 (onComplete clears the inline styles)."""
+    js = ('(function(){var el=document.getElementById("@EL@");if(!el)return;'
+          'tl.set(el,{opacity:0},@START@);tl.set(el,{opacity:1},@CUE@);'
+          'tl.to({v:0},{v:1,duration:@DUR@,ease:"power2.out",onUpdate:function(){var p=this.progress(),a=1-p;'
+          'var jx=Math.sin(p*44)*5*a,sk=Math.sin(p*61)*4*a;'
+          'el.style.transform="translateX("+jx.toFixed(2)+"px) skewX("+sk.toFixed(2)+"deg)";'
+          'el.style.textShadow=(2.5*a).toFixed(2)+"px 0 rgba(255,30,90,"+(0.85*a).toFixed(2)+"),"'
+          '+(-2.5*a).toFixed(2)+"px 0 rgba(0,200,255,"+(0.85*a).toFixed(2)+")";},'
+          'onComplete:function(){el.style.transform="";el.style.textShadow="";}},@CUE@);})();')
+    return [js.replace("@EL@", el).replace("@START@", f"{start}").replace("@CUE@", f"{cue}").replace("@DUR@", f"{d:.2f}")]
+
+# Simple transform-stagger styles are pure DATA: (from-vars, to-vars) GSAP object literals. Add a
+# new stagger reveal by adding ONE row here — no change to _rv_entrance, reveal_text, or any block.
+_RV_STAGGER = {
+    "char": ('{opacity:0,yPercent:80}',
+             '{opacity:1,yPercent:0,duration:0.5,stagger:0.03,ease:"back.out(1.7)"}'),
+    "word": ('{opacity:0,yPercent:120,rotation:6}',
+             '{opacity:1,yPercent:0,rotation:0,duration:0.6,stagger:0.08,ease:"power3.out"}'),
+    "flip": ('{opacity:0,rotationX:-90,transformOrigin:"50% 50% -20px"}',
+             '{opacity:1,rotationX:0,duration:0.6,stagger:0.05,ease:"back.out(1.4)"}'),
+}
+_RV_PERSPECTIVE = {"flip"}   # styles whose line needs a CSS perspective for 3D children
+
+def _rv_entrance(el, style, reals, start, cue, dur):
+    """The GSAP lines that reveal one text element `#el` in `style` at `cue` (frame-absolute s).
+    Every branch is seek-safe (transforms/opacity, or a progress-driven proxy that mutates the DOM).
+    Simple stagger styles come straight from _RV_STAGGER (data); the JS-driven ones have a builder."""
+    L = f'"#{el}"'; S = f'"#{el} .rv-u"'
+    if style in _RV_STAGGER:
+        frm, to = _RV_STAGGER[style]
+        return [f'tl.set({L},{{opacity:1}},{start});', f'tl.set({S},{{opacity:0}},{start});',
+                f'tl.fromTo({S},{frm},{to},{cue});']
+    if style == "typewriter":
+        return _rv_js_typewriter(el, start, cue, min(dur * 0.55, 0.06 * len(reals) + 0.3))
+    if style in ("scramble", "decode"):
+        return _rv_js_scramble(el, reals, start, cue, min(dur * 0.7, 2.2), style == "decode")
+    if style == "gradient":
+        d = min(dur * 0.6, 1.6)
+        # accent band sweeps L->R with the clip wipe; both ends land on a band-free window -> solid base at rest
+        return [f'tl.set({L},{{opacity:1,clipPath:"inset(0 100% 0 0)",backgroundPosition:"100% 0"}},{start});',
+                f'tl.fromTo({L},{{clipPath:"inset(0 100% 0 0)",backgroundPosition:"100% 0"}},'
+                f'{{clipPath:"inset(0 0% 0 0)",backgroundPosition:"0% 0",duration:{d:.2f},ease:"power2.inOut"}},{cue});']
+    if style == "glitch":
+        return _rv_js_glitch(el, start, cue, min(dur * 0.5, 0.9))
+    return [f'tl.fromTo({L},{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"}},{cue});']
+
+def reveal_text(el, text, style, start, cue, dur, operative=None, base="#2B2D2C"):
+    """THE single entry point every text-bearing block calls to reveal one text element. Returns
+    (inner_html, css_class, style_attr, tl_lines): the caller stamps inner_html inside its OWN
+    element (adding css_class + style_attr to it) and merges tl_lines into the frame timeline.
+    Blocks NEVER branch on the concrete style, so a new reveal is added via REVEALS + _rv_entrance
+    (+ an _RV_STAGGER row for a simple one) ONLY — zero block changes.
+      text: the plain string to reveal · operative: optional substring to yellow-sweep after landing."""
+    style = style if style in REVEALS else "rise"
+    split = REVEALS[style]["split"]
+    inner, reals, opw = _rv_inner(el, text, split, operative)
+    cls, attr = "", ""
+    if style == "gradient":
+        cls, attr = "rv-grad", f' style="--rv-c1:{base};--rv-c2:#FFF200;"'
+    elif style in _RV_PERSPECTIVE:
+        attr = ' style="perspective:600px;"'
+    if style == "typewriter":
+        inner += f'<span class="rv-caret" id="{el}-cr">▌</span>'
+    tl = list(_rv_entrance(el, style, reals, start, cue, dur))
+    if opw:
+        sweep = cue + _rv_dur(style, len(reals) or 1, dur) + 0.05
+        tl.append(f'tl.fromTo("#{el}-hb",{{scaleX:0}},{{scaleX:1,duration:0.4,ease:"power2.out"}},{sweep:.2f});')
+        tgt = f"#{el}-opw .rv-op" if split == "line" else f"#{el}-opw .rv-u"
+        tl.append(f'tl.to("{tgt}",{{color:"#2B2D2C",duration:0.25}},{sweep+0.05:.2f});')
+    return inner, cls, attr, tl
+
 def highlight_statement(sid, sc):
-    """Reusable BLOCK: a statement with ONE yellow-block sweep + optional caption-bar."""
+    """Reusable BLOCK: a statement with ONE yellow-block sweep + optional caption-bar.
+    data.reveal (default "rise") selects a text-entrance style from REVEALS (char/word/flip/
+    typewriter/scramble/decode/gradient/glitch); the operative sweep still fires after the text lands."""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     reg = d.get("register", "footage")
     tcls = "paper-t" if reg == "paper" else "footage-t"
@@ -288,22 +542,35 @@ def highlight_statement(sid, sc):
     frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     frag.append(f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>')
     tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.2});')
-    op = d.get("operative","")
+    op = d.get("operative", "")
+    reveal = d.get("reveal", "rise")
+    if reveal not in REVEALS:
+        reveal = "rise"
     frag.append(f'<div class="stmt {tcls}">')
-    for li, line in enumerate(d["lines"]):
-        lid = f"{sid}-ln{li}"
-        if op and op in line:
-            before, after = line.split(op, 1)
-            hid = f"{sid}-hl{li}"
-            inner = (f'{esc(before)}<span class="hlwrap"><span id="{sid}-op{li}">{esc(op)}</span>'
-                     f'<span class="hlblock" id="{hid}"></span></span>{esc(after)}')
-            frag.append(f'<span class="ln" id="{lid}">{inner}</span>')
-            cue = start + float(d.get("cue", 3.0))
-            tl.append(f'tl.fromTo("#{hid}",{{scaleX:0}},{{scaleX:1,duration:0.4,ease:"power2.out"}},{cue});')
-            tl.append(f'tl.to("#{sid}-op{li}",{{color:"#2B2D2C",duration:0.25}},{cue+0.05});')
-        else:
-            frag.append(f'<span class="ln" id="{lid}">{esc(line)}</span>')
-        tl.append(f'tl.fromTo("#{lid}",{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"}},{start+0.4+li*0.35});')
+    if reveal == "rise":
+        # ── default path (unchanged): the whole line rises, the operative gets a yellow sweep ──
+        for li, line in enumerate(d["lines"]):
+            lid = f"{sid}-ln{li}"
+            if op and op in line:
+                before, after = line.split(op, 1)
+                hid = f"{sid}-hl{li}"
+                inner = (f'{esc(before)}<span class="hlwrap"><span id="{sid}-op{li}">{esc(op)}</span>'
+                         f'<span class="hlblock" id="{hid}"></span></span>{esc(after)}')
+                frag.append(f'<span class="ln" id="{lid}">{inner}</span>')
+                cue = start + float(d.get("cue", 3.0))
+                tl.append(f'tl.fromTo("#{hid}",{{scaleX:0}},{{scaleX:1,duration:0.4,ease:"power2.out"}},{cue});')
+                tl.append(f'tl.to("#{sid}-op{li}",{{color:"#2B2D2C",duration:0.25}},{cue+0.05});')
+            else:
+                frag.append(f'<span class="ln" id="{lid}">{esc(line)}</span>')
+            tl.append(f'tl.fromTo("#{lid}",{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"}},{start+0.4+li*0.35});')
+    else:
+        # ── reveal-vocabulary path: delegate each line to reveal_text (the shared entry point) ──
+        base = "#2B2D2C" if reg == "paper" else "#F6F7F6"
+        for li, line in enumerate(d["lines"]):
+            lid = f"{sid}-ln{li}"
+            inner, cls, attr, tll = reveal_text(lid, line, reveal, start, start + 0.4 + li * 0.55, dur, operative=op, base=base)
+            frag.append(f'<span class="{("ln " + cls).strip()}" id="{lid}"{attr}>{inner}</span>')
+            tl += tll
     frag.append('</div>')
     if d.get("captionBar"):
         cid = f"{sid}-cap"
@@ -525,6 +792,212 @@ def timeline(sid, sc):
         tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.2});')
     return frag, tl
 
+def newshead(sid, sc):
+    """Reusable BLOCK: a newspaper headline card (Vox 'newspaper animation'). Paper card (dot-grid
+    newsprint) with a red date tag, a bold serif headline whose words CASCADE in with a yellow
+    highlighter sweep on a phrase, a serif subhead (optional yellow highlight), a blackletter source
+    masthead + drawn rule, an optional framed grayscale photo sliding in from the right, and an
+    optional red hand-drawn arrow annotation. Pure GSAP+CSS/SVG, seek-safe, one merged timeline.
+    data: {date?, headline:[lines]|str, highlight?, subhead?, subhighlight?, source?, image?, caption?, arrow?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    cx0, cy0, cw, ch = 110, 128, 1700, 824      # card rect on the 1920x1080 canvas
+    pad = 74
+    headline = d.get("headline", [])
+    if isinstance(headline, str):
+        headline = [headline]
+    tilt = float(d.get("tilt", 0))               # small rotation of the whole card (deg)
+    ptilt = float(d.get("image_tilt", 0))        # extra rotation of the photo, relative to card (deg)
+    headY = pad + (58 if d.get("date") else 6)
+    has_img = bool(d.get("image"))
+    if has_img:
+        pw, ph = int(cw * 0.34), int(ch * 0.55)
+        px_l, py_l = cw - pad - pw, headY        # photo top-right, aligned with the headline top
+        textW = px_l - 46 - pad
+    else:
+        pw = ph = px_l = py_l = 0
+        textW = cw - 2 * pad
+
+    def words(s):  # wrap each word in a .w span (cascade target); trailing space preserves flow
+        return "".join(f'<span class="w">{esc(w)}</span> ' for w in s.split(" ") if w)
+
+    frag = [f'<div id="{sid}-bg" class="clip nhbg" data-start="{start}" data-duration="{dur}" data-track-index="0"></div>',
+            f'<section id="{sid}-scene" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">',
+            f'<div id="{sid}-card" class="nhcard" style="left:{cx0}px;top:{cy0}px;width:{cw}px;height:{ch}px;">',
+            '<div class="tex"></div><div class="vig"></div>']
+    tl = [f'tl.fromTo("#{sid}-card",{{opacity:0,scale:0.965,y:22,rotation:{tilt}}},{{opacity:1,scale:1,y:0,rotation:{tilt},duration:0.6,ease:"power3.out"}},{start});']
+
+    if d.get("date"):
+        frag.append(f'<div id="{sid}-date" class="nhdate" style="left:{pad}px;top:{pad}px;">{esc(d["date"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-date",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.4,ease:"power2.out"}},{start+0.35});')
+
+    frag.append(f'<div id="{sid}-head" class="nhhead" style="left:{pad}px;top:{headY}px;width:{textW}px;">')
+    reveal = d.get("reveal")
+    use_rv = reveal in REVEALS   # any reveal style overrides the native word-cascade
+    hl_phrase, hl_done, line_cue = d.get("highlight", ""), False, start + 0.6
+    for li, line in enumerate(headline):
+        lid = f"{sid}-hl{li}"
+        cue = line_cue + li * 0.42
+        if use_rv:
+            op = hl_phrase if (hl_phrase and not hl_done and hl_phrase in line) else None
+            if op:
+                hl_done = True
+            inner, cls, attr, tll = reveal_text(lid, line, reveal, start, cue, dur, operative=op, base="#191712")
+            frag.append(f'<span class="{("nhline " + cls).strip()}" id="{lid}"{attr}>{inner}</span>')
+            tl += tll
+        elif hl_phrase and not hl_done and hl_phrase in line:
+            hl_done = True
+            before, after = line.split(hl_phrase, 1)
+            hbid = f"{lid}-y"
+            inner = words(before) + f'<span class="nhhl-wrap">{words(hl_phrase)}<span class="nhhl" id="{hbid}"></span></span> ' + words(after)
+            frag.append(f'<span class="nhline" id="{lid}">{inner}</span>')
+            tl.append(f'tl.fromTo("#{hbid}",{{scaleX:0}},{{scaleX:1,duration:0.45,ease:"power2.out"}},{cue+0.6:.2f});')
+            tl.append(f'tl.from("#{lid} .w",{{opacity:0,yPercent:70,duration:0.4,ease:"power3.out",stagger:0.045}},{cue:.2f});')
+        else:
+            frag.append(f'<span class="nhline" id="{lid}">{words(line)}</span>')
+            tl.append(f'tl.from("#{lid} .w",{{opacity:0,yPercent:70,duration:0.4,ease:"power3.out",stagger:0.045}},{cue:.2f});')
+    frag.append('</div>')
+    head_end = line_cue + max(0, len(headline) - 1) * 0.42 + 0.6
+
+    if d.get("subhead"):
+        sub, subhl = d["subhead"], d.get("subhighlight", "")
+        if subhl and subhl in sub:
+            b, a = sub.split(subhl, 1)
+            sub_html = f'{esc(b)}<span class="subhl">{esc(subhl)}</span>{esc(a)}'
+        else:
+            sub_html = esc(sub)
+        subY = headY + len(headline) * 70 + 30
+        frag.append(f'<div id="{sid}-sub" class="nhsub" style="left:{pad}px;top:{subY}px;width:{textW}px;">{sub_html}</div>')
+        tl.append(f'tl.fromTo("#{sid}-sub",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{head_end+0.05:.2f});')
+
+    if d.get("source"):
+        frag.append(f'<div id="{sid}-src" class="nhsrc" style="left:{pad}px;top:{ch-pad-44}px;">'
+                    f'<span class="mast">{esc(d["source"])}</span><span id="{sid}-rule" class="rule" style="width:340px;"></span></div>')
+        tl.append(f'tl.fromTo("#{sid}-src",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.45}},{head_end+0.25:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-rule",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{head_end+0.4:.2f});')
+
+    def arrow_svg(vw, vh, tx, ty):  # hand-drawn swoosh + separate two-barb head, pointing at (tx,ty)
+        sx, sy = tx - 280, ty - 118
+        curve = f"M {sx} {sy} C {sx+168} {sy-26}, {tx-78} {ty-140}, {tx} {ty}"
+        head = f"M {tx} {ty} L {tx-46} {ty-4} M {tx} {ty} L {tx-8} {ty-48}"
+        tl.append(f'tl.fromTo("#{sid}-arrow .curve",{{strokeDashoffset:1700}},{{strokeDashoffset:0,duration:0.6,ease:"power2.inOut"}},{start+1.15});')
+        tl.append(f'tl.fromTo("#{sid}-arrow .head",{{strokeDashoffset:190}},{{strokeDashoffset:0,duration:0.22,ease:"power2.out"}},{start+1.65});')
+        return (f'<svg id="{sid}-arrow" class="nharrow" style="left:0;top:0;width:{vw}px;height:{vh}px;" viewBox="0 0 {vw} {vh}">'
+                f'<path class="curve" d="{curve}" style="stroke-dasharray:1700;stroke-dashoffset:1700;"/>'
+                f'<path class="head" d="{head}" style="stroke-dasharray:190;stroke-dashoffset:190;"/></svg>')
+
+    siblings = []  # layers that bleed BEYOND the card (drawn after it, over the paper + off its edge)
+    if has_img and d.get("cutout"):
+        # cutout variant: a transparent-PNG subject (grayscale + red outline) that bleeds off the
+        # card's right/bottom into the dark. Lives at the section root so the card's clip can't crop it.
+        cW, cH = 1080, 720
+        cL, cT = cx0 + cw - 700, cy0 + 130       # big on the card's right; bleeds off the right edge
+        siblings.append(f'<div id="{sid}-photo" class="nhcut" style="left:{cL}px;top:{cT}px;width:{cW}px;height:{cH}px;">'
+                        f'<img src="{esc(d["image"])}" alt=""/></div>')
+        tl.append(f'tl.fromTo("#{sid}-photo",{{opacity:0,x:74,scale:1.06,rotation:{ptilt-2}}},{{opacity:1,x:0,scale:1,rotation:{ptilt},duration:0.7,ease:"power3.out"}},{start+0.7});')
+        if d.get("arrow"):
+            siblings.append(arrow_svg(1920, 1080, cL + 40, cT + 96))
+    elif has_img:
+        frag.append(f'<div id="{sid}-photo" class="nhphoto" style="left:{px_l}px;top:{py_l}px;width:{pw}px;height:{ph}px;">'
+                    f'<img src="{esc(d["image"])}" alt=""/></div>')
+        tl.append(f'tl.fromTo("#{sid}-photo",{{opacity:0,x:44,scale:1.05,rotation:{ptilt-2}}},{{opacity:1,x:0,scale:1,rotation:{ptilt},duration:0.6,ease:"power3.out"}},{start+0.7});')
+        if d.get("caption"):
+            frag.append(f'<div id="{sid}-cap" class="nhcap" style="left:{px_l}px;top:{py_l+ph+10}px;width:{pw}px;">{esc(d["caption"])}</div>')
+            tl.append(f'tl.fromTo("#{sid}-cap",{{opacity:0}},{{opacity:1,duration:0.4}},{start+1.25});')
+        if d.get("arrow"):
+            frag.append(arrow_svg(cw, ch, px_l + 16, py_l + 16))
+
+    frag.append('</div>')       # close card (its overflow:hidden clips paper content)
+    frag += siblings           # cutout/arrow bleed beyond the card
+    frag.append('</section>')
+    return frag, tl
+
+def _collage_layout(layout, n):
+    """Preset positions for N subjects (0..1 canvas coords) when a subject omits explicit x/y.
+    Explicit per-subject x/y/scale always override these. Kept deterministic (no randomness)."""
+    out = []
+    if layout in ("heroes", "heroes-tight"):     # 1-2 big flanking figures + a small row in front
+        tight = layout == "heroes-tight"         # tight = closer/bigger heroes + an overlapping cast row
+        heroes = min(2, n); rest = n - heroes
+        hx = ([0.39, 0.61] if tight else [0.30, 0.70])[:heroes]
+        hs = 1.28 if tight else 1.15
+        for k in range(heroes):
+            out.append({"x": hx[k], "y": 0.44, "scale": hs, "rotation": -2 if k == 0 else 2,
+                        "from": "left" if k == 0 else "right"})
+        ry, rs, sp = (0.72, 0.46, 0.115) if tight else (0.78, 0.5, 0.16)
+        for k in range(rest):
+            x = 0.5 + (k - (rest - 1) / 2) * sp if rest > 1 else 0.5
+            out.append({"x": x, "y": ry, "scale": rs,
+                        "rotation": ((-3 if k % 2 else 3) if tight else 0), "from": "bottom"})
+        return out
+    if layout == "cluster":                      # loose overlapping ring around center
+        for i in range(n):
+            ang = (i / max(1, n)) * 2 * math.pi
+            out.append({"x": 0.5 + 0.17 * math.cos(ang), "y": 0.5 + 0.12 * math.sin(ang),
+                        "scale": 0.72, "rotation": (-3 if i % 2 else 3), "from": "center"})
+        return out
+    if layout == "scatter":                      # deterministic staggered scatter, varied sizes
+        xs = [0.24, 0.52, 0.78, 0.36, 0.66, 0.5]; ys = [0.40, 0.33, 0.43, 0.68, 0.64, 0.52]
+        scs = [0.85, 1.0, 0.85, 0.6, 0.6, 0.72]
+        for i in range(n):
+            out.append({"x": xs[i % len(xs)], "y": ys[i % len(ys)], "scale": scs[i % len(scs)],
+                        "rotation": (4 if i % 2 else -4), "from": "bottom"})
+        return out
+    for i in range(n):                           # "row" (default): evenly spaced, same size
+        x = 0.5 + (i - (n - 1) / 2) * 0.19 if n > 1 else 0.5
+        out.append({"x": x, "y": 0.60, "scale": 0.72, "rotation": 0, "from": "bottom"})
+    return out
+
+def collage(sid, sc):
+    """Reusable BLOCK: a kinetic COLLAGE — cut-out subjects (people/objects, transparent PNGs) that
+    scale/slide IN staggered and assemble into a layered tableau on a backdrop, then hold. (Distinct
+    from a photo montage: no frames/table — borderless cutouts composited into one scene.) Positions
+    are explicit per subject OR from a `layout` preset. Seek-safe (transforms/opacity), one timeline.
+    data: {subjects:[{src, x?, y? (0..1 center), scale?, rotation?, from?, at?, shadow?}], backdrop?, vignette?, layout?, camera?}."""
+    # Deferred options (build in-place when a real beat asks — same block, don't fork a template):
+    #   • parallax: opt-in idle drift tied to the camera push, each subject offset by its scale/depth
+    #     (deterministic fn of tl progress → still seek-safe; no loops/yoyo).
+    #   • edge:"torn": ragged cutout mask + a thin paper lip + shadow (per-subject/global), like the
+    #     newshead framed/cutout split. A FULL paper-craft look (tape/halftone/kraft/handwriting) is a
+    #     different identity → its own `scrapbook` template, not an option here.  (HYPERFRAMES_HANDOFF §12)
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    subjects = d.get("subjects", [])
+    n = max(1, len(subjects))
+    B, W, H = 560, 1920, 1080                     # base subject width @ scale 1.0; canvas
+    frag, tl = [], []
+    bg = d.get("backdrop", "#ffffff")             # color | image path | "transparent"
+    if bg and bg != "transparent":
+        if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
+            frag.append(f'<div class="clip clgbg" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+                        f'style="background:#111;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
+        else:
+            frag.append(f'<div class="clip clgbg" data-start="{start}" data-duration="{dur}" data-track-index="0" style="background:{esc(bg)};"></div>')
+    vig = float(d.get("vignette", 0))
+    if vig > 0:
+        frag.append(f'<div class="clip clgvig" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+                    f'style="background:radial-gradient(125% 125% at 50% 45%,transparent 42%,rgba(0,0,0,{min(0.85,vig):.2f}));"></div>')
+    frag.append(f'<div id="{sid}-world" class="clip clgworld" data-start="{start}" data-duration="{dur}" '
+                f'data-track-index="2" data-layout-allow-overflow>')
+    pos = _collage_layout(d.get("layout", "row"), n)
+    _OFF = {"left": (-260, 0), "right": (260, 0), "top": (0, -220), "bottom": (0, 210), "center": (0, 0)}
+    lead = 0.4
+    for i, s in enumerate(subjects):
+        p = pos[i]
+        x, y, scl = float(s.get("x", p["x"])), float(s.get("y", p["y"])), float(s.get("scale", p["scale"]))
+        rot = float(s.get("rotation", p.get("rotation", 0)))
+        frm = s.get("from", p.get("from", "bottom"))
+        cls = "collage-sub" + ("" if s.get("shadow", True) is False else " shadow")
+        sidk = f"{sid}-s{i}"
+        frag.append(f'<div id="{sidk}" class="{cls}" style="left:{x*W:.0f}px;top:{y*H:.0f}px;">'
+                    f'<img src="{esc(s["src"])}" style="width:{int(B*scl)}px;"/></div>')
+        ox, oy = _OFF.get(frm, _OFF["bottom"])
+        cue = start + (float(s["at"]) if "at" in s else lead + i * 0.38)
+        tl.append(f'tl.fromTo("#{sidk}",{{opacity:0,x:{ox},y:{oy},scale:0.72,rotation:{rot-5}}},'
+                  f'{{opacity:1,x:0,y:0,scale:1,rotation:{rot},duration:0.7,ease:"back.out(1.4)"}},{cue:.2f});')
+    frag.append('</div>')  # close world
+    if d.get("camera") == "push":
+        tl.append(f'tl.fromTo("#{sid}-world",{{scale:1}},{{scale:1.05,duration:{dur},ease:"none"}},{start});')
+    return frag, tl
+
 # d3 lays out the graph ONCE at frame load (before the timeline lines that reveal it) — the geo
 # pattern: d3 for STATIC geometry (deterministic, no d3.transition/rAF), GSAP for motion (seek-safe).
 # Deterministic layouts only — d3.tree/cluster (NOT forceSimulation: its jiggle() calls Math.random).
@@ -707,16 +1180,24 @@ def _cmp_text(pid, spec, start, dur, reg, bottom):
     if title is not None:
         lines = title if isinstance(title, list) else [title]
         op = spec.get("highlight", "")
+        reveal = spec.get("reveal")
+        rbase = "#2B2D2C" if reg == "paper" else "#F6F7F6"
         frag.append('<div class="t">')
         for li, ln in enumerate(lines):
-            if op and op in ln:
-                b, a = ln.split(op, 1)
-                inner = f'{esc(b)}<span class="mark">{esc(op)}</span>{esc(a)}'
+            tid = f"{pid}-t{li}"
+            if reveal in REVEALS and reveal != "rise":
+                inner, cls, attr, tll = reveal_text(tid, ln, reveal, start, start + 0.6 + li * 0.28, dur, operative=(op or None), base=rbase)
+                frag.append(f'<span class="{("ln " + cls).strip()}" id="{tid}"{attr}>{inner}</span>')
+                tl += tll
             else:
-                inner = esc(ln)
-            frag.append(f'<span class="ln" id="{pid}-t{li}">{inner}</span>')
-            tl.append(f'tl.fromTo("#{pid}-t{li}",{{opacity:0,yPercent:55}},{{opacity:1,yPercent:0,duration:0.55,'
-                      f'ease:"power3.out"}},{start+0.6+li*0.28:.2f});')
+                if op and op in ln:
+                    b, a = ln.split(op, 1)
+                    inner = f'{esc(b)}<span class="mark">{esc(op)}</span>{esc(a)}'
+                else:
+                    inner = esc(ln)
+                frag.append(f'<span class="ln" id="{tid}">{inner}</span>')
+                tl.append(f'tl.fromTo("#{tid}",{{opacity:0,yPercent:55}},{{opacity:1,yPercent:0,duration:0.55,'
+                          f'ease:"power3.out"}},{start+0.6+li*0.28:.2f});')
         frag.append('</div>')
     frag.append('</div>')
     return frag, tl
@@ -862,9 +1343,280 @@ def comparison(sid, sc):
     frag.append('</div>')
     return frag, tl
 
+def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
+    """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
+    round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
+    rows = max(1, math.ceil(n / cols))
+    cw = (gw - (cols - 1) * gap) / cols
+    if not masonry:
+        ch = (gh - (rows - 1) * gap) / rows
+        out = []
+        for i in range(n):
+            r, c = divmod(i, cols)
+            cnt = min(cols, n - r * cols)
+            row_w = cnt * cw + (cnt - 1) * gap
+            sx = gx + (gw - row_w) / 2
+            out.append((sx + c * (cw + gap), gy + r * (ch + gap), cw, ch))
+        return out
+    base = (gh - (rows - 1) * gap) / rows          # masonry: varied heights, column-packed
+    pat = [1.0, 1.32, 0.8, 1.14, 0.92, 1.22]
+    colY = [gy] * cols
+    tmp = []
+    for i in range(n):
+        c = i % cols
+        h = base * pat[i % len(pat)]
+        tmp.append((gx + c * (cw + gap), c, h))
+        colY[c] += h + gap
+    used = max(colY) - gy - gap
+    sf = min(1.0, gh / used) if used > 0 else 1.0   # fit tallest column into the grid box
+    colY = [gy] * cols
+    out = []
+    for x, c, h in tmp:
+        h2 = h * sf
+        out.append((x, colY[c], cw, h2))
+        colY[c] += h2 + gap * sf
+    return out
+
+
+def gallery(sid, sc):
+    """Reusable BLOCK: a grid/masonry of framed images that reveal in a staggered cascade
+    (center-out by default), then OPTIONALLY spotlight one image — it scales up + lifts while
+    the others dim + blur (background-blur emphasis). Pure GSAP+CSS, seek-safe: reveal is
+    transform/opacity only; the spotlight adds a deterministic filter:blur hold on the non-hero
+    cards. Refs: gsapify masonry-cascade (035, de-randomized — NO Math.random / from:'random') +
+    staggered-grid-reveal (center-out stagger).
+    data: {images:[{src,caption?}|str], cols?, layout?:grid|masonry, gap?, frame?(bool),
+           backdrop?, vignette?, from?:center|start|edges|end, title?, titleHi?, captions?(bool),
+           highlight?:int(0-based), highlight_at?(s), highlight_caption?}."""
+    # Deferred (build in-place when a beat asks, don't fork): highlight_zoom (Ken-Burns push
+    # toward the hero via a world scale), polaroid per-card resting tilt, multi-spotlight swap.
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    imgs = [({"src": x} if isinstance(x, str) else x) for x in d.get("images", [])]
+    n = max(1, len(imgs))
+    W = 1920
+    frame = d.get("frame", True)
+    gap = float(d.get("gap", 24))
+    cols = int(d.get("cols") or (n if n <= 3 else 3 if n <= 6 else 4))
+    cols = max(1, min(cols, n))
+    has_title = bool(d.get("title"))
+    gx, gw = 168, W - 2 * 168
+    gy = 196 if has_title else 132
+    gy_bot = 884                                   # keep clear of the ~83% caption keep-out
+    gh = gy_bot - gy
+    cells = _gallery_cells(n, cols, gx, gy, gw, gh, gap, d.get("layout") == "masonry")
+
+    frag, tl = [], []
+    bg = d.get("backdrop", "#17181A")
+    if bg and bg != "transparent":
+        if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
+            frag.append(f'<div class="clip galbg" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+                        f'style="background:#111;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
+        else:
+            frag.append(f'<div class="clip galbg" data-start="{start}" data-duration="{dur}" data-track-index="0" style="background:{esc(bg)};"></div>')
+    vig = float(d.get("vignette", 0))
+    if vig > 0:
+        frag.append(f'<div class="clip galvig" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+                    f'style="background:radial-gradient(125% 125% at 50% 45%,transparent 40%,rgba(0,0,0,{min(0.85,vig):.2f}));"></div>')
+
+    hero = d.get("highlight")
+    hero = int(hero) if isinstance(hero, (int, float)) and 0 <= int(hero) < n else None
+
+    world = [f'<div id="{sid}-world" class="clip galworld" data-start="{start}" data-duration="{dur}" '
+             f'data-track-index="2" data-layout-allow-overflow>']
+
+    # reveal order — deterministic (NO random): center-out / start / edges / end
+    cx, cy = gx + gw / 2, gy + gh / 2
+    ctr = [(x + w / 2, y + h / 2) for (x, y, w, h) in cells]
+    frm = d.get("from", "center")
+    if frm == "center":
+        order = sorted(range(n), key=lambda i: (ctr[i][0] - cx) ** 2 + (ctr[i][1] - cy) ** 2)
+    elif frm == "edges":
+        order = sorted(range(n), key=lambda i: -((ctr[i][0] - cx) ** 2 + (ctr[i][1] - cy) ** 2))
+    elif frm == "end":
+        order = list(reversed(range(n)))
+    else:
+        order = list(range(n))
+    kpos = {idx: k for k, idx in enumerate(order)}
+
+    lead = 0.4
+    span = min(1.3, dur * 0.34)
+    step = span / max(1, n - 1)
+    reveal_end = lead + (n - 1) * step + 0.6
+    show_caps = bool(d.get("captions"))
+    for i, im in enumerate(imgs):
+        x, y, w, h = cells[i]
+        iid = f"{sid}-i{i}"
+        z = 6 if i == hero else 1
+        fcls = "galcard" + ("" if frame else " noframe")
+        world.append(f'<div id="{iid}" class="{fcls}" style="left:{x:.0f}px;top:{y:.0f}px;width:{w:.0f}px;height:{h:.0f}px;z-index:{z};">'
+                     f'<img src="{esc(im["src"])}" alt=""/></div>')
+        rot = -8 if i % 2 == 0 else 8
+        cue = start + lead + kpos[i] * step
+        tl.append(f'tl.fromTo("#{iid}",{{opacity:0,scale:0.78,y:64,rotation:{rot}}},'
+                  f'{{opacity:1,scale:1,y:0,rotation:0,duration:0.6,ease:"back.out(1.5)"}},{cue:.2f});')
+        if show_caps and im.get("caption"):
+            cid = f"{sid}-ic{i}"
+            world.append(f'<div id="{cid}" class="galcap" style="left:{x:.0f}px;top:{y + h + 8:.0f}px;width:{w:.0f}px;z-index:{z};"></div>')
+            tl.append(f'document.getElementById("{cid}").textContent={json.dumps(str(im["caption"]))};')
+            tl.append(f'tl.fromTo("#{cid}",{{opacity:0}},{{opacity:0.85,duration:0.4}},{cue + 0.3:.2f});')
+
+    if d.get("title"):
+        t, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op, 1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op, 1)[1])}'
+                  if op and op in t else esc(t))
+        world.append(f'<div id="{sid}-title" class="galtitle" style="z-index:8;">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+
+    # spotlight one: hero scales up + lifts (raised z); others dim + blur = "background blurred"
+    if hero is not None:
+        hl_cue = start + float(d.get("highlight_at", reveal_end + 0.4))
+        for i in range(n):
+            if i == hero:
+                continue
+            tl.append(f'tl.to("#{sid}-i{i}",{{opacity:0.32,scale:0.93,filter:"blur(7px)",duration:0.6,ease:"power2.inOut"}},{hl_cue:.2f});')
+        tl.append(f'tl.to("#{sid}-i{hero}",{{scale:1.16,duration:0.6,ease:"power3.out"}},{hl_cue:.2f});')
+        if d.get("highlight_caption"):
+            hx, hy, hw, hh = cells[hero]
+            hcid = f"{sid}-hcap"
+            cap_top = min(hy + hh / 2 + hh * 1.16 / 2 + 18, 900)
+            world.append(f'<div id="{hcid}" class="galhcap" style="left:{hx + hw / 2 - 320:.0f}px;top:{cap_top:.0f}px;width:640px;z-index:9;">{esc(d["highlight_caption"])}</div>')
+            tl.append(f'tl.fromTo("#{hcid}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5,ease:"power3.out"}},{hl_cue + 0.35:.2f});')
+
+    world.append('</div>')  # close world
+    return frag + world, tl
+
+
+def carousel(sid, sc):
+    """Reusable BLOCK: a TEMPORAL sequence of images, auto-advancing, one in focus — the moving
+    cousin of `gallery` (which lays a grid out at once). Styles:
+      style:"slider", layout:"full" (default) — full-bleed one-at-a-time; transition kenburns |
+        crossfade (kenburns = crossfade + a slow per-slide scale drift, alternating zoom in/out).
+      style:"slider", layout:"cards" — a horizontal CARD SCROLL: a row of framed cards, the track
+        slides so the active card centres (neighbours peek at the edges); active scales up, rest dim.
+      style:"coverflow" — a 3D coverflow: the centre card faces forward + scales up, neighbours angle
+        back in Z and FADE out by distance. Card size / spacing / depth / vertical position are inputs.
+    Pure GSAP+CSS, seek-safe: opacity + transforms only (coverflow uses rotateY/translateZ/scale in a
+    perspective + preserve-3d stage; NO Math.random, NO repeat:-1). Refs: gsapify parallax-slider (037
+    ken-burns, un-looped) + coverflow-3d + draggable-carousel (click/drag -> time-driven).
+    data: {images:[{src,caption?}|str], style?:slider|coverflow, layout?:full|cards (slider),
+           transition?:kenburns|crossfade (slider/full), hold?, backdrop?, vignette?, title?, titleHi?,
+           captions?, card_w?, card_h?, gap?(cards), spacing?/depth?/fade?/y?(coverflow)}."""
+    # Deferred (build in-place when a beat asks, don't fork): transition:"push"/parallax-bg, style:"strip"
+    # (marquee — ONE linear x tween over a cloned track, NOT repeat:-1), style:"deck" (card toss),
+    # focus/dwell (end on a chosen slide).  (HYPERFRAMES_HANDOFF §12)
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    imgs = [({"src": x} if isinstance(x, str) else x) for x in d.get("images", [])]
+    n = max(1, len(imgs))
+    style = d.get("style", "slider")
+    frag, tl = [], []
+    bg = d.get("backdrop", "#101014")
+    if bg and bg != "transparent":
+        if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
+            frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+                        f'style="position:absolute;inset:0;background:#000;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
+        else:
+            frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" style="position:absolute;inset:0;background:{esc(bg)};"></div>')
+    vig = float(d.get("vignette", 0))
+    if vig > 0:
+        frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+                    f'style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(125% 125% at 50% 45%,transparent 40%,rgba(0,0,0,{min(0.85,vig):.2f}));"></div>')
+
+    world = [f'<div id="{sid}-world" class="clip carworld" data-start="{start}" data-duration="{dur}" '
+             f'data-track-index="2" data-layout-allow-overflow>']
+    intro = 0.5
+    hold = float(d.get("hold") or max(0.9, (dur - intro) / n))
+    cap_in = lambda i: start + intro + i * hold
+    show_caps = bool(d.get("captions"))
+
+    W = 1920
+    if style == "coverflow":
+        # card size / spacing / depth / vertical position + fade are all inputs
+        CW, CH = int(d.get("card_w", 700)), int(d.get("card_h", 480))
+        spacing, depth = float(d.get("spacing", 330)), float(d.get("depth", 175))
+        fade = float(d.get("fade", 0.32))         # opacity lost per step of distance (smooth edge fade)
+        cyf = float(d.get("y", 0.5))              # vertical centre as a fraction of height
+        world.append(f'<div class="carstage"><div id="{sid}-3d" class="car3d">')
+        for i, im in enumerate(imgs):
+            world.append(f'<div id="{sid}-c{i}" class="carcard" style="width:{CW}px;height:{CH}px;margin-left:{-CW // 2}px;margin-top:{-CH // 2}px;top:{cyf * 100:.1f}%;">'
+                         f'<img src="{esc(im["src"])}" alt=""/></div>')
+        world.append('</div></div>')
+
+        def cf(off):                              # transform for a card `off` steps from focus
+            x = off * spacing
+            ry = max(-60, min(60, off * -34))
+            z = depth * 0.4 if off == 0 else -abs(off) * depth
+            scl = 1.14 if off == 0 else 0.82
+            op = max(0.0, 1 - abs(off) * fade)    # smooth distance fade (no hard cut)
+            return x, ry, z, scl, op
+        for i in range(n):                        # initial arrangement (focus 0) + a scale-in reveal
+            x, ry, z, scl, op = cf(i - 0)
+            tl.append(f'tl.set("#{sid}-c{i}",{{xPercent:-50,yPercent:-50,x:{x},z:{z},rotationY:{ry},scale:{scl},opacity:0}},{start});')
+            tl.append(f'tl.to("#{sid}-c{i}",{{opacity:{op:.3f},duration:0.6,ease:"power2.out"}},{start + 0.15 + abs(i) * 0.06:.2f});')
+        for s in range(1, n):                     # advance focus one card at a time
+            cue = cap_in(s)
+            for i in range(n):
+                x, ry, z, scl, op = cf(i - s)
+                tl.append(f'tl.to("#{sid}-c{i}",{{x:{x},z:{z},rotationY:{ry},scale:{scl},opacity:{op:.3f},duration:0.6,ease:"power2.inOut"}},{cue:.2f});')
+    elif style == "slider" and d.get("layout") == "cards":
+        # CARD SCROLL: a row of framed cards; the track slides so the active card centres
+        # (neighbours peek at the edges); active scales up, the rest dim.
+        CW, CH = int(d.get("card_w", 820)), int(d.get("card_h", 500))
+        cgap, cyf = float(d.get("gap", 60)), float(d.get("y", 0.5))
+        world.append(f'<div id="{sid}-track" class="cartrack" style="top:{cyf * 100:.1f}%;height:{CH}px;">')
+        for i, im in enumerate(imgs):
+            world.append(f'<div id="{sid}-k{i}" class="carcarditem" style="left:{i * (CW + cgap)}px;top:{-CH // 2}px;width:{CW}px;height:{CH}px;">'
+                         f'<img src="{esc(im["src"])}" alt=""/></div>')
+        world.append('</div>')
+        trackx = lambda a: W / 2 - (a * (CW + cgap) + CW / 2)
+        tl.append(f'tl.set("#{sid}-track",{{x:{trackx(0):.0f}}},{start});')
+        for i in range(n):                        # staggered reveal at resting emphasis (card 0 active)
+            act = (i == 0)
+            rest = 1.0 if act else 0.86
+            tl.append(f'tl.fromTo("#{sid}-k{i}",{{opacity:0,y:44,scale:{rest}}},'
+                      f'{{opacity:{1 if act else 0.5},y:0,scale:{rest},duration:0.55,ease:"power3.out"}},{start + 0.15 + i * 0.08:.2f});')
+        for a in range(1, n):                     # scroll the track + swap emphasis
+            cue = cap_in(a)
+            tl.append(f'tl.to("#{sid}-track",{{x:{trackx(a):.0f},duration:0.75,ease:"power3.inOut"}},{cue:.2f});')
+            tl.append(f'tl.to("#{sid}-k{a}",{{scale:1.0,opacity:1,duration:0.6,ease:"power2.out"}},{cue:.2f});')
+            tl.append(f'tl.to("#{sid}-k{a - 1}",{{scale:0.86,opacity:0.5,duration:0.6,ease:"power2.inOut"}},{cue:.2f});')
+    else:                                         # slider — full-bleed, one at a time
+        transition = d.get("transition", "kenburns")
+        for i, im in enumerate(imgs):
+            sidk = f"{sid}-s{i}"
+            world.append(f'<div id="{sidk}" class="carslide" style="z-index:{i + 1};"><img src="{esc(im["src"])}" alt=""/></div>')
+            cin = cap_in(i)
+            tl.append(f'tl.fromTo("#{sidk}",{{opacity:0}},{{opacity:1,duration:0.7,ease:"power2.out"}},{cin:.2f});')
+            if transition == "kenburns":
+                z0, z1 = (1.05, 1.14) if i % 2 == 0 else (1.13, 1.04)   # alternate slow zoom in / out
+                tl.append(f'tl.fromTo("#{sidk} img",{{scale:{z0}}},{{scale:{z1},duration:{hold + 0.9:.2f},ease:"none"}},{cin:.2f});')
+            if i < n - 1:                          # crossfade out as the next fades in
+                tl.append(f'tl.to("#{sidk}",{{opacity:0,duration:0.7,ease:"power2.in"}},{cap_in(i + 1):.2f});')
+
+    if show_caps:                                 # per-slide caption, tied to when its slide is focused
+        for i, im in enumerate(imgs):
+            if not im.get("caption"):
+                continue
+            cid = f"{sid}-cap{i}"
+            world.append(f'<div id="{cid}" class="carcap"></div>')
+            tl.append(f'document.getElementById("{cid}").textContent={json.dumps(str(im["caption"]))};')
+            tl.append(f'tl.fromTo("#{cid}",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5,ease:"power3.out"}},{cap_in(i) + 0.15:.2f});')
+            if i < n - 1:
+                tl.append(f'tl.to("#{cid}",{{opacity:0,duration:0.4,ease:"power2.in"}},{cap_in(i + 1):.2f});')
+
+    if d.get("title"):
+        t, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op, 1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op, 1)[1])}'
+                  if op and op in t else esc(t))
+        world.append(f'<div id="{sid}-title" class="cartitle">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+
+    world.append('</div>')
+    return frag + world, tl
+
+
 BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map, "raw": raw_scene,
-          "timeline": timeline,
-          "diagram": diagram, "comparison": comparison}
+          "timeline": timeline, "newshead": newshead, "collage": collage,
+          "diagram": diagram, "comparison": comparison, "gallery": gallery, "carousel": carousel}
 
 def compose_frame(frame_id, dur, scenes):
     body, tl = [], []

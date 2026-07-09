@@ -4,6 +4,34 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## Text-reveal vocabulary for the statement composer (2026-07-09)
+
+- HyperFrames composer (`_lab_hyperframes/bridge/compose.py`) gains a `reveal:`
+  field on the `statement` block: gsapify.com "Text & Typography" effects rewritten
+  SEEK-SAFE. `char`/`word`/`flip` are transform staggers (seek-safe verbatim);
+  `typewriter`/`scramble`/`decode`/`glitch` are re-expressed progress-driven (no
+  Math.random/setTimeout, which would flicker/desync under frame-seek); plus
+  `gradient`, alongside the unchanged `rise` default. Each reveal is a pure function
+  of the paused timeline's progress -> deterministic per frame.
+- Registry `compose.REVEALS` + a `catalog.json` "reveals" section, honesty-tested by
+  `check_catalog.py` (keys must match compose.REVEALS). The operative yellow sweep
+  still fires after the text lands for every style (`.hlwrap` got `isolation:isolate`
+  so the negative-z highlight block stays in the split-reveal line's stacking context).
+- Verified: `videos/reveals-demo/` (9 isolated frames) + a Puppeteer verifier
+  (`render-service/reveals_verify.mjs`) proved all 9 byte-identical on re-seek AND
+  looked at each state (`snapshots/rv-*-at-*.png`). gsapify source saved to
+  `bridge/_ref_reveals/` for provenance.
+
+- Pass 2 (same day): the reveal is now behind ONE entry point `reveal_text()` that every
+  text block calls, and is wired into `newshead` (headline, overriding its word-cascade),
+  `comparison` (per-panel `text` titles), and `stat` (labels; numerals keep count-up) — not
+  just `statement`. Blocks never branch on the concrete style: simple transform staggers are a
+  `_RV_STAGGER` data table (new stagger = one row), JS-driven styles are one `_rv_entrance`
+  branch — zero block edits to add a style. Statement refactor is byte-identical to the inline
+  version (determinism hashes unchanged). Motion demos: `videos/reveals-demo/out/reveals-reel.mp4`
+  (9 statement styles) + `videos/reveals-blocks/out/reveals-blocks-reel.mp4` (newshead/comparison/
+  stat), rendered by `render-service/render_reel.mjs` (frame-seq -> ffmpeg, manifest-driven).
+
 ## Meta-style: the three caveats closed (2026-07-08)
 
 - **Creation-time selection**: /process gains a "Style pack" dropdown

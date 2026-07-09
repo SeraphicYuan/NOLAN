@@ -11,9 +11,15 @@
         "register": "enum(paper|footage) — ink-on-mist, or white text for a media ground",
         "ground": "object — a media_ground spec: {kind: paper|image|transparent, parchment?, src?, kb?}",
         "items": "array of {from,to | value, prefix?, suffix?, label, cue, underline?}",
-        "props": "array of prop_cutout specs (optional evidence overlays)"
+        "props": "array of prop_cutout specs (optional evidence overlays)",
+        "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch)? — text-entrance style applied to the LABELS (numerals keep their count-up); see the 'reveals' catalog. Seek-safe."
       },
-      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only", "caption_keep_out_83pct"]
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only",
+        "caption_keep_out_83pct"
+      ]
     },
     "statement": {
       "fn": "highlight_statement",
@@ -27,10 +33,16 @@
         "lines": "array of strings — the statement, one entry per visual line",
         "operative": "string — the substring in lines to highlight-sweep (must appear verbatim in a line)",
         "cue": "number — seconds into scene for the sweep",
+        "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch) — how the text enters (default rise); see the 'reveals' catalog below. All seek-safe; operative sweep still fires after the text lands.",
         "captionBar": "string? — optional lower caption chip",
         "props": "array of prop_cutout specs (optional)"
       },
-      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only", "caption_keep_out_83pct"]
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only",
+        "caption_keep_out_83pct"
+      ]
     },
     "geo": {
       "fn": "geo_map",
@@ -41,9 +53,15 @@
         "kind": "enum(us|world) — us takes FIPS ids + geoAlbersUsa; world takes ISO-numeric ids + geoNaturalEarth1",
         "highlight": "array of id strings — regions to fill (multi-region ok)",
         "primary": "string? — which highlighted region gets the pin+leader (default highlight[0])",
-        "kicker": "string", "title": "string — the big label", "sub": "string — supporting line (inline <b> ok)"
+        "kicker": "string",
+        "title": "string — the big label",
+        "sub": "string — supporting line (inline <b> ok)"
       },
-      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only"],
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
       "requires": "vendor/ at project root: d3.min.js + topojson-client.min.js + us-states.js (kind us) / world.js (kind world). compose_frame injects the <script>s automatically."
     },
     "timeline": {
@@ -58,7 +76,11 @@
         "focus": "number? — screen x the active node pans to (default 640)",
         "gap": "number? — world spacing between events in px (default 760)"
       },
-      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only"],
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
       "note": "Dark ground (not the mist/paper register). event.image paths must be real assets in the project; omit for a placeholder disc."
     },
     "raw": {
@@ -70,7 +92,60 @@
         "html": "string | array of strings — the scene's clip HTML fragment(s); ids MUST be prefixed with the scene id; every timed element class='clip' with data-start/duration/track-index.",
         "tl": "array of strings — GSAP lines (frame-absolute times) merged into the frame's one paused timeline."
       },
-      "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only", "caption_keep_out_83pct", "no_exit_on_non_final", "sid_prefixed_ids"]
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only",
+        "caption_keep_out_83pct",
+        "no_exit_on_non_final",
+        "sid_prefixed_ids"
+      ]
+    },
+    "newshead": {
+      "fn": "newshead",
+      "purpose": "A newspaper headline card (Vox 'newspaper animation'): dot-grid paper, red date tag, bold serif headline whose words cascade in with a yellow highlighter sweep, a serif subhead (optional highlight), a blackletter source masthead + drawn rule, an optional framed grayscale photo sliding in, and an optional red hand-drawn arrow annotation.",
+      "when_to_use": "A beat that shows a REAL (or styled) NEWS HEADLINE / press clipping — 'the story broke', citing an article/report, a scandal, a quote-in-the-news.",
+      "not_for": "A plain on-screen statement (use statement), a stat/number (stat), or a photo with no headline framing.",
+      "data_schema": {
+        "date": "string? — red date tag, e.g. 'Nov 12, 2025'",
+        "headline": "array of strings (one per visual line) OR a string — words cascade in",
+        "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch)? — override the native word-cascade with a reveal style on the HEADLINE (the highlight phrase becomes the operative sweep); see the 'reveals' catalog. Seek-safe.",
+        "highlight": "string? — a phrase within the headline to sweep-highlight yellow",
+        "subhead": "string? — the standfirst/dek paragraph below the headline",
+        "subhighlight": "string? — a phrase within the subhead to highlight yellow (static)",
+        "source": "string? — masthead, e.g. 'The New York Times' (blackletter) + a drawn rule",
+        "image": "string? — a real asset path; framed grayscale photo on the right",
+        "caption": "string? — italic caption under the photo",
+        "arrow": "bool? — draw a red hand-drawn annotation arrow toward the photo",
+        "tilt": "number? — small rotation of the whole card in degrees (e.g. -2), to make it less flat",
+        "image_tilt": "number? — extra rotation of the photo (relative to the card), e.g. 5 for a pinned-askew look",
+        "cutout": "bool? — treat image as a transparent-PNG SUBJECT (grayscale + red outline) that bleeds off the card's right edge, instead of a framed photo. Needs a cutout PNG: `nolan cutout <img> -m birefnet -o <out.png>` (trim the alpha bbox / drop reflections)."
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Dark ground; the card is the paper. image must be a real asset in the project. headline is required."
+    },
+    "collage": {
+      "fn": "collage",
+      "purpose": "A kinetic COLLAGE: cut-out subjects (people/objects, transparent PNGs) scale/slide in staggered and assemble into a layered tableau on a backdrop, then hold. Borderless cutouts composited into one scene — NOT framed photos on a table (that's a montage).",
+      "when_to_use": "Assembling a CAST or an evidence set of people/objects into one composed scene — 'here are the players', a lineup, a still-life of the things the narration names.",
+      "not_for": "A single subject (use newshead cutout / still), framed photos in sequence (montage), or text/data beats.",
+      "data_schema": {
+        "subjects": "array of {src (transparent PNG cutout), x?,y? (0..1 rest center), scale?, rotation?, from?:left|right|top|bottom|center, at? (enter cue s), shadow?} — explicit position, or omit x/y to use `layout`",
+        "backdrop": "string? — CSS color (default #ffffff), a texture image path, or 'transparent'",
+        "vignette": "number? — edge darkening 0..1 (default 0; use on dark backdrops)",
+        "layout": "string? — preset arrangement when subjects omit x/y: row(default)|heroes|heroes-tight|cluster|scatter (heroes-tight = closer/bigger flanking subjects + an overlapping cast row, for a tight ensemble)",
+        "camera": "string? — 'push' for a slow Ken-Burns over the whole collage; else static"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Subjects must be real transparent-PNG cutouts in the project: `nolan cutout <img> -m birefnet -o <out>` then trim the alpha bbox. Quality lives on cutout quality."
     },
     "diagram": {
       "fn": "diagram",
@@ -113,7 +188,7 @@
         "kicker": "string? — eyebrow over a centered top title",
         "title": "string? — a centered frame title spanning both panels",
         "titleHi": "string? — substring of title to highlight yellow",
-        "_side_spec": "each side: {type, label?, …type fields}. label = a corner chip (e.g. 'BEFORE'/'2019'). type ∈ image|video|text|stat: image/video {src, kenburns?:[from,to]|bool (default on), scrim?, vignette?:0..1, grayscale?, tint?:color, media_start? (video), kicker?, title?, highlight? (overlaid)}; text {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?:color}; stat {from,to | value, prefix?, suffix?, label, register?:paper|footage}"
+        "_side_spec": "each side: {type, label?, …type fields}. label = a corner chip (e.g. 'BEFORE'/'2019'). type ∈ image|video|text|stat: image/video {src, kenburns?:[from,to]|bool (default on), scrim?, vignette?:0..1, grayscale?, tint?:color, media_start? (video), kicker?, title?, highlight? (overlaid)}; text {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?:color, reveal?:rise|char|word|flip|typewriter|scramble|decode|gradient|glitch (per-panel; reveals the title, see the 'reveals' catalog)}; stat {from,to | value, prefix?, suffix?, label, register?:paper|footage}"
       },
       "constraints": [
         "duration_preserving",
@@ -121,6 +196,63 @@
         "transform_opacity_only"
       ],
       "note": "A `video` side renders as a TRANSPARENT HOLE (the framework can't drive <video> inside a sub-comp); after composing, run `python bridge/inject_comparison_videos.py <project>` to mount each clip as a real <video> at the index root, positioned to the panel rect (archetype B). So a video-vs-video is two stacked root videos with the frame's chrome on top. image/text/stat are fully self-contained (no inject step). All src/image paths must be real assets; on-screen text stays short (caption track carries narration)."
+    },
+    "gallery": {
+      "fn": "gallery",
+      "purpose": "A grid or masonry of framed images that reveal in a staggered cascade (center-out), then can SPOTLIGHT one image — it scales up + lifts while the rest dim + blur (background-blur emphasis).",
+      "when_to_use": "A beat that shows a SET of images at once — a wall of examples / faces / screenshots / evidence, a photo grid, 'here are the images' — then optionally zooming attention onto one of them.",
+      "not_for": "A single image (use media_ground / newshead / a still). Borderless cut-out subjects assembling into one scene (use collage). Images shown strictly one-at-a-time in sequence (a montage — not yet a template).",
+      "data_schema": {
+        "images": "array of {src, caption?} OR bare src strings — the framed photos (real asset paths); 2-9 works best",
+        "cols": "number? — grid columns (default auto by image count)",
+        "layout": "enum(grid|masonry) — grid = uniform cells (default); masonry = varied heights, column-packed",
+        "gap": "number? — px gap between cells (default 24)",
+        "frame": "bool? — white matte card around each image (default true); false = borderless bleed",
+        "backdrop": "string? — CSS color (default '#17181A'), a texture image path, or 'transparent'",
+        "vignette": "number? — edge darkening 0..1 (default 0)",
+        "from": "enum(center|start|edges|end) — reveal-cascade origin (default center)",
+        "title": "string? — a persistent frame title above the grid",
+        "titleHi": "string? — substring of title to highlight yellow",
+        "captions": "bool? — show per-image captions under each card (default false)",
+        "highlight": "number? — 0-based index of ONE image to spotlight after the reveal",
+        "highlight_at": "number? — seconds into scene for the spotlight (default just after the reveal ends)",
+        "highlight_caption": "string? — an italic caption revealed under the spotlighted image"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe"
+      ],
+      "note": "images must be real assets in the project. The staggered reveal is transform/opacity only; the OPTIONAL spotlight adds a deterministic filter:blur hold on the non-hero cards (still seek-safe — no Math.random, no from:'random', no repeat:-1). Keeps content above the ~83% caption keep-out. layout:masonry column-packs varied heights and fit-scales them into the grid box."
+    },
+    "carousel": {
+      "fn": "carousel",
+      "purpose": "A TEMPORAL sequence of images, auto-advancing with one in focus — the moving cousin of gallery. style:slider = full-bleed one-at-a-time (kenburns/crossfade); style:coverflow = a 3D coverflow that steps focus card to card.",
+      "when_to_use": "A beat that WALKS THROUGH a set of images in sequence — a slideshow while the narration lists things, a 'flip through' of covers/screens/photos, a montage that lands on each in turn.",
+      "not_for": "All images at once in a grid (use gallery). A single image (media_ground / newshead / a still). Non-image sequences.",
+      "data_schema": {
+        "images": "array of {src, caption?} OR bare src strings — the ordered slides (real asset paths); 3-7 works best",
+        "style": "enum(slider|coverflow) — slider = full-bleed or a card scroll (see layout); coverflow = 3D coverflow, centre card forward",
+        "layout": "enum(full|cards) — SLIDER only: full (default) = full-bleed one-at-a-time; cards = a horizontal card scroll (row of framed cards, track slides so the active card centres, neighbours peek)",
+        "transition": "enum(kenburns|crossfade) — slider layout:full only; kenburns (default) = crossfade + a slow per-slide zoom drift",
+        "hold": "number? — seconds each slide holds (default: scene dur spread evenly across the images)",
+        "card_w": "number? — card width in px (slider layout:cards default 820; coverflow default 700)",
+        "card_h": "number? — card height in px (slider layout:cards default 500; coverflow default 480)",
+        "gap": "number? — px gap between cards (slider layout:cards, default 60)",
+        "spacing": "number? — coverflow: horizontal px step between cards (default 330)",
+        "depth": "number? — coverflow: translateZ px the side cards recede per step (default 175)",
+        "fade": "number? — coverflow: opacity lost per step of distance from focus — a smooth edge fade (default 0.32)",
+        "y": "number? — vertical centre as a fraction 0..1 (coverflow + slider layout:cards, default 0.5)",
+        "backdrop": "string? — CSS color (default '#101014'; shows behind coverflow cards / letterbox), image path, or 'transparent'",
+        "vignette": "number? — edge darkening 0..1 (default 0)",
+        "title": "string? — a persistent frame title",
+        "titleHi": "string? — substring of title to highlight yellow",
+        "captions": "bool? — show each slide's caption (bottom, tied to its focus window)"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe"
+      ],
+      "note": "images must be real assets. Opacity + transforms only (coverflow uses rotateY/translateZ/scale in a perspective+preserve-3d stage; depth occlusion is by translateZ, not z-index). Seek-safe: NO Math.random, NO repeat:-1 (the gsapify infinite-loop was dropped). Deferred: transition:push, style:strip (marquee) / deck, focus/dwell. Captions sit above the ~81% caption keep-out."
     }
   },
   "components": {
@@ -132,5 +264,17 @@
       "purpose": "Object-as-evidence photo card (cash, GPU, bill, gavel, glass) stacked over a scene on its own track, small scale+settle reveal.",
       "attached_via": "scene data.props = [{src, corner: br|bl|tr|tl, width, cue, tilt?, caption?}]"
     }
+  },
+  "reveals": {
+    "_doc": "Text-entrance vocabulary for the `statement` block (data.reveal). gsapify.com 'Text & Typography' effects rewritten SEEK-SAFE (pure fn of timeline progress — no Math.random/setTimeout), so every frame renders deterministically. Keys MUST equal compose.REVEALS (check_catalog.py enforces). Operative highlight-sweep is supported for all styles and fires after the text lands.",
+    "rise": "the whole line rises + fades up (the Vox default; unchanged legacy path)",
+    "char": "letters fade + rise, staggered (gsapify stagger-letter-reveal)",
+    "word": "words slide up with a slight tilt, staggered (word-by-word-slide)",
+    "flip": "letters flip in on the X axis with depth (letter-3d-flip)",
+    "typewriter": "letters appear left->right behind a caret (typewriter)",
+    "scramble": "letters cycle glyphs then resolve L->R, deterministic (text-scramble)",
+    "decode": "katakana/hex glyphs decode into the text L->R (matrix-decode)",
+    "gradient": "an accent gradient wipes the text in L->R (gradient-text-reveal)",
+    "glitch": "RGB-split + jitter that settles to clean (glitch-text)"
   }
 }
