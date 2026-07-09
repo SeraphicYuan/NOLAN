@@ -71,6 +71,56 @@
         "tl": "array of strings — GSAP lines (frame-absolute times) merged into the frame's one paused timeline."
       },
       "constraints": ["duration_preserving", "seek_safe", "transform_opacity_only", "caption_keep_out_83pct", "no_exit_on_non_final", "sid_prefixed_ids"]
+    },
+    "diagram": {
+      "fn": "diagram",
+      "purpose": "A node-link DIAGRAM laid out by d3 (tree / flow / radial) and revealed by GSAP: nodes pop in parent→child order, each connector draws in. Ink cards on mist, or a dark register.",
+      "when_to_use": "A beat that shows STRUCTURE or a PROCESS: how a system is organised, a pipeline/flow (A→B→C), a hierarchy/taxonomy, a decision tree, 'how X works', what-splits-into-what.",
+      "not_for": "A drawn data chart / trend line (no template yet — go raw). A single labelled image. A dated chronology (use timeline). Non-hierarchical prose.",
+      "data_schema": {
+        "root": "object {label, sub?, hl?, shape?:pill, children?:[ …same shape… ]} — the graph as a nested hierarchy; the root node is auto-styled as a dark chip",
+        "layout": "enum(tree|flow|radial) — tree = vertical (default), flow = horizontal process, radial = hub-and-spoke",
+        "dir": "string? — orientation within the layout: tree → down(default)|up; flow → right(default)|left",
+        "camera": "string? — 'tour' = a zoom-into-a-canvas-blanket walk: the camera frames a node, its children branch out, then it dives into a child and repeats (DFS pre-order) — a big tree reveals as an endless focus→branch→dive. Default: fit the whole graph statically.",
+        "register": "enum(paper|dark) — ink-on-mist (default) or light-on-dark",
+        "kicker": "string? — eyebrow label",
+        "title": "string? — big frame title",
+        "titleHi": "string? — substring of title to highlight yellow",
+        "shape": "enum(pill)? — rounded-pill nodes instead of cards (per-node override via root.*.shape)",
+        "dx": "number? — sibling spacing px (advanced)", "dy": "number? — depth spacing px (advanced)",
+        "rstep": "number? — radial ring spacing px (advanced)", "box": "[[x0,y0],[x1,y1]]? — fit box (advanced)"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "requires": "vendor/d3.min.js at project root (compose_frame injects the <script> automatically). d3 lays out ONCE at load; no d3.transition/forceSimulation (Math.random) — GSAP owns all motion.",
+      "note": "Deterministic layouts only. Node labels are short (a phrase), never a narration sentence. Keep the tree shallow enough to read (≈≤10 nodes)."
+    },
+    "comparison": {
+      "fn": "comparison",
+      "purpose": "A split A-vs-B / before-after CONTRAST: two panels (side-by-side or stacked), a divider that draws + an optional center VS badge, each panel sliding in. Each side is ANY content — an image (Ken-Burns + effects), a text block, a stat, or a framework video.",
+      "when_to_use": "A beat that directly CONTRASTS two things: X vs Y, before vs after, us vs them, promise vs reality, then vs now — where each side needs its own visual (a photo, a claim, a number, footage).",
+      "not_for": "A single subject or ground (use statement/stat/media_ground). More than two things (use stat items or a diagram). A side-by-side that isn't a contrast.",
+      "data_schema": {
+        "left": "object — the first side's content spec (see side spec below)",
+        "right": "object — the second side's content spec",
+        "axis": "enum(vertical|horizontal) — vertical = side-by-side (default), horizontal = stacked top/bottom",
+        "style": "enum(seamless|framed) — seamless = panels tile with a thin divider (default); framed = bordered cards with a gap on a backdrop",
+        "backdrop": "color? — canvas/gap fill behind framed cards (default #0a0b0c); also the body colour a video side shows against",
+        "vs": "bool | string? — center badge; true → 'VS', or a custom short string",
+        "kicker": "string? — eyebrow over a centered top title",
+        "title": "string? — a centered frame title spanning both panels",
+        "titleHi": "string? — substring of title to highlight yellow",
+        "_side_spec": "each side: {type, label?, …type fields}. label = a corner chip (e.g. 'BEFORE'/'2019'). type ∈ image|video|text|stat: image/video {src, kenburns?:[from,to]|bool (default on), scrim?, vignette?:0..1, grayscale?, tint?:color, media_start? (video), kicker?, title?, highlight? (overlaid)}; text {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?:color}; stat {from,to | value, prefix?, suffix?, label, register?:paper|footage}"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "A `video` side renders as a TRANSPARENT HOLE (the framework can't drive <video> inside a sub-comp); after composing, run `python bridge/inject_comparison_videos.py <project>` to mount each clip as a real <video> at the index root, positioned to the panel rect (archetype B). So a video-vs-video is two stacked root videos with the frame's chrome on top. image/text/stat are fully self-contained (no inject step). All src/image paths must be real assets; on-screen text stays short (caption track carries narration)."
     }
   },
   "components": {

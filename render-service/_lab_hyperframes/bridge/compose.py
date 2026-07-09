@@ -10,6 +10,78 @@ Three reusable block-templates:  media_ground · stat_lockup · highlight_statem
 Driver: compose_frame(frame_id, scenes) -> a <template>-wrapped frame sub-composition.
 
   python compose.py --spec scenes.json --out-dir <project>/compositions/frames
+/* diagram: d3-computed node-link graph (tree/flow/radial). d3 lays out ONCE at load; GSAP reveals (seek-safe). */
+.dgbg{position:absolute;inset:0;background:#F1F3F2;}
+.dgbg.dark{background:radial-gradient(120% 120% at 50% 40%,#14171a,#090b0d);}
+.dglinks{position:absolute;inset:0;pointer-events:none;overflow:visible;}
+.dglinks path.dglink{fill:none;stroke:#B7BCB9;stroke-width:3;stroke-linecap:round;}
+.dglinks.dark path.dglink{stroke:#3b4247;}
+.dgstage{position:absolute;inset:0;overflow:hidden;}
+.dgworld{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;}
+.dgnode-w{position:absolute;transform:translate(-50%,-50%);}
+.dgnode{opacity:0;transform-origin:center;min-width:110px;max-width:290px;background:#fff;
+  border:2px solid #2B2D2C;border-radius:12px;padding:0.85cqw 1.2cqw;text-align:center;
+  box-shadow:0 0.4cqw 1.1cqw rgba(0,0,0,0.13);}
+.dgnode.pill{border-radius:999px;}
+.dgnode .lab{font-weight:800;font-size:1.15cqw;line-height:1.14;letter-spacing:-0.01em;color:#2B2D2C;}
+.dgnode .sub{font-family:"Inter",sans-serif;font-weight:500;font-size:0.78cqw;line-height:1.3;color:#6b6d6a;margin-top:0.28cqw;}
+.dgnode.hl{background:#FFF200;border-color:#2B2D2C;}
+.dgnode.hl .sub{color:#4C4E4D;}
+.dgnode.root{background:#2B2D2C;border-color:#2B2D2C;}
+.dgnode.root .lab{color:#F6F7F6;}.dgnode.root .sub{color:#c9ccc9;}
+/* dark register: the node-container clip carries .dg-dark; nodes are its descendants */
+.dg-dark .dgnode{background:#191c1f;border-color:#EDEFEC;box-shadow:0 0.5cqw 1.5cqw rgba(0,0,0,0.5);}
+.dg-dark .dgnode .lab{color:#F6F7F6;}.dg-dark .dgnode .sub{color:#9a9c99;}
+.dg-dark .dgnode.hl{background:#FFF200;border-color:#FFF200;}
+.dg-dark .dgnode.hl .lab{color:#0a0b0a;}.dg-dark .dgnode.hl .sub{color:#3a3a2a;}
+.dg-dark .dgnode.root{background:#0a0b0a;border-color:#EDEFEC;}
+.dgkick{position:absolute;top:6.2cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
+  letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
+.dgkick.on-dark{color:#9a9c99;}
+.dgtitle{position:absolute;top:8.0cqw;left:5.5cqw;max-width:82cqw;font-weight:900;font-size:2.6cqw;line-height:1.06;
+  letter-spacing:-0.015em;color:#2B2D2C;opacity:0;}
+.dgtitle.on-dark{color:#F6F7F6;}
+.dgtitle .hl{background:#FFF200;color:#2B2D2C;padding:0 0.1em;box-decoration-break:clone;}
+/* comparison: split A-vs-B; each panel hosts a typed content (image/text/stat/video) + per-side effects */
+.cmp-panel{position:absolute;overflow:hidden;background:#0d0f11;will-change:transform;}
+.cmp-media{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
+.cmp-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+.cmp-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(10,11,12,0) 42%,rgba(10,11,12,0.72));}
+.cmp-vig{position:absolute;inset:0;pointer-events:none;}
+.cmp-tint{position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;}
+.cmp-paper{position:absolute;inset:0;}
+.cmp-label{position:absolute;left:1.6cqw;top:1.4cqw;background:#FFF200;color:#2B2D2C;font-family:"Inter",sans-serif;
+  font-weight:700;font-size:0.8cqw;letter-spacing:0.1em;text-transform:uppercase;padding:0.4cqw 0.9cqw;border-radius:6px;opacity:0;z-index:4;}
+.cmp-txt{position:absolute;left:2.4cqw;right:2.4cqw;bottom:6.5cqh;z-index:3;}
+.cmp-txt.mid{top:50%;bottom:auto;transform:translateY(-50%);}
+/* bottom title over media = a localized lower-third scrim (bound to the panel) so the overlay reads on ANY footage */
+.cmp-txt:not(.mid)::before{content:"";position:absolute;left:-2.4cqw;right:-2.4cqw;top:-1.8cqh;bottom:-6.5cqh;
+  background:linear-gradient(transparent,rgba(8,9,10,0.88));z-index:-1;pointer-events:none;}
+.cmp-txt .k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.13em;text-transform:uppercase;opacity:0;margin-bottom:0.5cqw;}
+.cmp-txt .t{font-weight:800;font-size:2.1cqw;line-height:1.1;letter-spacing:-0.012em;}
+.cmp-txt .t .ln{display:block;opacity:0;}
+.cmp-txt .t .mark{background:#FFF200;color:#2B2D2C;padding:0 0.08em;box-decoration-break:clone;}
+.cmp-txt.paper .k{color:#4C4E4D;}.cmp-txt.paper .t{color:#2B2D2C;}
+.cmp-txt.footage .k{color:#EDEFEC;text-shadow:0 1px 6px rgba(0,0,0,0.6);}.cmp-txt.footage .t{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.6);}
+.cmp-num{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;z-index:3;padding:0 2cqw;}
+.cmp-num .v{font-weight:900;font-size:5.6cqw;line-height:1;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;opacity:0;}
+.cmp-num .l{font-family:"Inter",sans-serif;font-weight:500;font-size:0.9cqw;letter-spacing:0.12em;text-transform:uppercase;margin-top:0.8cqw;opacity:0;}
+.cmp-num.paper .v{color:#2B2D2C;}.cmp-num.paper .l{color:#6b6d6a;}
+.cmp-num.footage .v{color:#F6F7F6;}.cmp-num.footage .l{color:#d6d9d6;}
+.cmp-div{position:absolute;background:#0a0b0c;z-index:5;}
+.cmp-vs-w{position:absolute;transform:translate(-50%,-50%);z-index:6;}
+.cmp-vs{width:5.2cqw;height:5.2cqw;border-radius:50%;background:#2B2D2C;color:#FFF200;display:flex;align-items:center;
+  justify-content:center;font-weight:900;font-size:1.5cqw;letter-spacing:-0.02em;transform-origin:center;transform:scale(0);box-shadow:0 0.4cqw 1.4cqw rgba(0,0,0,0.42);}
+.cmp-htitle{position:absolute;left:0;right:0;top:0;height:150px;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;text-align:center;z-index:7;background:linear-gradient(#0a0b0c,rgba(10,11,12,0));}
+.cmp-htitle .k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.14em;text-transform:uppercase;color:#c9ccc9;opacity:0;margin-bottom:0.4cqw;}
+.cmp-htitle .t{font-weight:900;font-size:1.9cqw;letter-spacing:-0.015em;color:#F6F7F6;opacity:0;}
+.cmp-htitle .t .hl{background:#FFF200;color:#2B2D2C;padding:0 0.1em;box-decoration-break:clone;}
+.cmp-panel.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
+.cmp-vhole{background:transparent;}
+/* a root-mounted comparison <video> (archetype B): direct child of #root, positioned to a panel rect */
+.cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
+.cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
 """
 import argparse, json, html, re
 from pathlib import Path
@@ -453,8 +525,346 @@ def timeline(sid, sc):
         tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.2});')
     return frag, tl
 
+# d3 lays out the graph ONCE at frame load (before the timeline lines that reveal it) — the geo
+# pattern: d3 for STATIC geometry (deterministic, no d3.transition/rAF), GSAP for motion (seek-safe).
+# Deterministic layouts only — d3.tree/cluster (NOT forceSimulation: its jiggle() calls Math.random).
+# Placeholders are string-replaced (avoids f-string brace-escaping of the JS body).
+_DIAG_SETUP = r'''(function(){
+  var SID="@SID@",CFG=@CFG@,NS="http://www.w3.org/2000/svg",layout=CFG.layout||"tree",dir=CFG.dir||"",tour=!!CFG.tour;
+  var root=d3.hierarchy(CFG.root);
+  var dx=CFG.dx||(layout==="flow"?170:210), dy=CFG.dy||(layout==="flow"?320:210);
+  d3.tree().nodeSize([dx,dy])(root);
+  var nodes=root.descendants();
+  if(layout==="radial"){ var rstep=CFG.rstep||230; nodes.forEach(function(n){ n.__r=n.depth*rstep; }); }
+  function raw(n){
+    if(layout==="flow")   return [(dir==="left"?-1:1)*n.y, n.x];        // horizontal: depth->x
+    if(layout==="radial") return [Math.sin(n.x)*n.__r, -Math.cos(n.x)*n.__r];
+    return [n.x, (dir==="up"?-1:1)*n.y];                                 // vertical: depth->y
+  }
+  var P=nodes.map(raw), xs=P.map(function(p){return p[0];}), ys=P.map(function(p){return p[1];});
+  var minx=Math.min.apply(null,xs),maxx=Math.max.apply(null,xs),miny=Math.min.apply(null,ys),maxy=Math.max.apply(null,ys);
+  var world=document.getElementById(SID+"-world"), svg=document.getElementById(SID+"-links"), s, ox, oy;
+  if(tour){                                                             // natural size, no fit — camera navigates
+    s=1; var pad=260; ox=pad-minx; oy=pad-miny;
+    world.style.width=(maxx-minx+2*pad)+"px"; world.style.height=(maxy-miny+2*pad)+"px";
+  } else {                                                              // fit the whole graph into the safe box
+    var box=CFG.box||[[220,220],[1700,820]], bw=box[1][0]-box[0][0], bh=box[1][1]-box[0][1];
+    var spanx=Math.max(1,maxx-minx), spany=Math.max(1,maxy-miny);
+    s=Math.min(bw/spanx, bh/spany, 1); ox=box[0][0]+(bw-spanx*s)/2-minx*s; oy=box[0][1]+(bh-spany*s)/2-miny*s;
+  }
+  nodes.forEach(function(n){ var p=raw(n); n.__x=ox+p[0]*s; n.__y=oy+p[1]*s;
+    var el=document.getElementById(SID+"-ndw"+n.data._i); if(el){el.style.left=n.__x+"px"; el.style.top=n.__y+"px";}});
+  nodes.forEach(function(n){ if(!n.parent) return; var a=n.parent, b=n, d;
+    if(layout==="flow") d="M"+a.__x+","+a.__y+"C"+((a.__x+b.__x)/2)+","+a.__y+" "+((a.__x+b.__x)/2)+","+b.__y+" "+b.__x+","+b.__y;
+    else                d="M"+a.__x+","+a.__y+"C"+a.__x+","+((a.__y+b.__y)/2)+" "+b.__x+","+((a.__y+b.__y)/2)+" "+b.__x+","+b.__y;
+    var p=document.createElementNS(NS,"path"); p.setAttribute("d",d); p.setAttribute("class","dglink");
+    p.setAttribute("id",SID+"-lk"+b.data._i); svg.appendChild(p);
+    var L=p.getTotalLength(); p.style.strokeDasharray=L; p.style.strokeDashoffset=L; });
+  if(tour){   // camera target per INTERNAL node in DFS pre-order — frame {node + its children} centered
+    var HW=170,HH=70, cam=[];
+    root.eachBefore(function(f){
+      if(!f.children||!f.children.length) return;
+      var g=[f].concat(f.children), x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+      g.forEach(function(m){ x0=Math.min(x0,m.__x-HW); y0=Math.min(y0,m.__y-HH); x1=Math.max(x1,m.__x+HW); y1=Math.max(y1,m.__y+HH); });
+      var gw=Math.max(1,x1-x0), gh=Math.max(1,y1-y0), z=Math.max(0.35,Math.min(1560/gw,720/gh,1.45));
+      cam.push({x:960-((x0+x1)/2)*z, y:560-((y0+y1)/2)*z, s:z});
+    });
+    window.__DG=window.__DG||{}; window.__DG[SID]={cam:cam};
+  }
+})();'''
+
+def diagram(sid, sc):
+    """Reusable BLOCK: a d3-computed node-link DIAGRAM (a process / hierarchy / system). d3.hierarchy
+    lays the nodes out ONCE at frame load; GSAP reveals them seek-safely — parent→child pops, each
+    connector DRAWS via strokeDashoffset. Themed highlighter-editorial (ink cards on mist, or dark).
+    Pure GSAP+d3-static+SVG/CSS.
+      layout:"tree"(default) vertical · "flow" horizontal process · "radial" hub-and-spoke.
+      dir: tree → "down"(default)|"up"; flow → "right"(default)|"left".
+      camera:"tour" → a "zoom into a canvas blanket" walk: the camera frames a node, its children
+        branch out, then it dives into a child and repeats (DFS pre-order), so a big tree reveals as an
+        endless focus→branch→dive. (default: fit the whole graph statically.)
+    data: {root:{label, sub?, hl?, shape?, children?:[...]}, layout?, dir?, camera?, kicker?, title?,
+           titleHi?, register?:paper|dark, shape?:pill, dx?, dy?, rstep?, box?}."""
+    import copy
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    dark = d.get("register", "paper") == "dark"
+    tour = d.get("camera") == "tour"
+    root = copy.deepcopy(d["root"])
+    flat, kids = [], {}  # flat: (index, node, depth) in DFS pre-order; kids[i] = child indices
+    def walk(nd, depth, par):
+        i = len(flat); nd["_i"] = i; flat.append((i, nd, depth)); kids[i] = []
+        if par >= 0:
+            kids[par].append(i)
+        for ch in (nd.get("children") or []):
+            walk(ch, depth + 1, i)
+    walk(root, 0, -1)
+    n = len(flat)
+    cfg = {"root": root, "layout": d.get("layout", "tree"), "dir": d.get("dir", ""), "tour": tour}
+    for k in ("dx", "dy", "rstep", "box"):
+        if k in d:
+            cfg[k] = d[k]
+    if not tour and "box" not in cfg:  # push the graph down to clear a kicker/title, above the 83% keep-out
+        top = 320 if d.get("title") else (250 if d.get("kicker") else 210)
+        cfg["box"] = [[220, top], [1700, 820]]
+    dgd = " dg-dark" if dark else ""
+    world_style = "position:absolute;left:0;top:0;" if tour else "position:absolute;inset:0;"
+    frag = [f'<div class="clip dgbg{" dark" if dark else ""}" data-start="{start}" data-duration="{dur}" data-track-index="0"></div>',
+            f'<div class="clip dgstage{dgd}" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+            f'data-layout-allow-overflow>'
+            f'<div id="{sid}-world" class="dgworld" style="{world_style}">'
+            f'<svg id="{sid}-links" class="dglinks{" dark" if dark else ""}" style="position:absolute;left:0;top:0;'
+            f'width:100%;height:100%;overflow:visible;pointer-events:none;"></svg>']
+    for i, nd, depth in flat:
+        cls = "dgnode" + (" root" if i == 0 else "")
+        cls += " hl" if nd.get("hl") else ""
+        cls += " pill" if (nd.get("shape") or d.get("shape")) == "pill" else ""
+        sub = f'<div class="sub">{esc(nd["sub"])}</div>' if nd.get("sub") else ""
+        frag.append(f'<div class="dgnode-w" id="{sid}-ndw{i}"><div class="{cls}" id="{sid}-nd{i}">'
+                    f'<div class="lab">{esc(nd.get("label",""))}</div>{sub}</div></div>')
+    frag.append('</div></div>')  # close world + stage
+    tl = [_DIAG_SETUP.replace("@SID@", sid).replace("@CFG@", json.dumps(cfg, ensure_ascii=False))]
+
+    def pop(j, cue, dr=0.5):
+        return f'tl.fromTo("#{sid}-nd{j}",{{opacity:0,scale:0.55}},{{opacity:1,scale:1,duration:{dr},ease:"back.out(1.7)"}},{cue:.2f});'
+    def draw(j, cue, dr=0.5):
+        return f'tl.to("#{sid}-lk{j}",{{strokeDashoffset:0,duration:{dr},ease:"power2.inOut"}},{cue:.2f});'
+
+    if tour:
+        focus = [i for i, nd, depth in flat if kids[i]]   # internal nodes, DFS pre-order = the dive path
+        lead = 0.6
+        stepdur = max(1.1, (dur - lead - 0.6) / max(1, len(focus)))
+        tl.append(f'tl.set("#{sid}-world",{{transformOrigin:"0px 0px"}},{start});')
+        tl.append(pop(0, start + 0.15, 0.55))            # root appears first
+        for s, fi in enumerate(focus):
+            cs = start + lead + s * stepdur
+            cam = f'window.__DG["{sid}"].cam[{s}]'
+            if s == 0:
+                tl.append(f'tl.set("#{sid}-world",{{x:{cam}.x,y:{cam}.y,scale:{cam}.s}},{start});')
+            else:      # glide the camera to this node, arriving just before its children branch out
+                tl.append(f'tl.to("#{sid}-world",{{x:{cam}.x,y:{cam}.y,scale:{cam}.s,duration:0.9,ease:"power2.inOut"}},{cs-0.9:.2f});')
+            for ci, j in enumerate(kids[fi]):            # this focus node's children branch out
+                rc = cs + 0.2 + ci * 0.16
+                tl.append(draw(j, rc, 0.45))
+                tl.append(pop(j, rc + 0.12, 0.45))
+    else:
+        lead = 0.5
+        step = max(0.28, (dur - lead - 1.0) / max(1, n))
+        for i, nd, depth in flat:
+            cue = start + lead + i * step
+            if i > 0:
+                tl.append(draw(i, cue))
+            tl.append(pop(i, cue + (0.15 if i > 0 else 0)))
+
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="clip dgkick{" on-dark" if dark else ""}" data-start="{start}" '
+                    f'data-duration="{dur}" data-track-index="3">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.2});')
+    if d.get("title"):
+        t, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}'
+                  if op and op in t else esc(t))
+        frag.append(f'<div id="{sid}-title" class="clip dgtitle{" on-dark" if dark else ""}" data-start="{start}" '
+                    f'data-duration="{dur}" data-track-index="4">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.35});')
+    return frag, tl
+
+
+def _cmp_media(pid, spec, mtrack, start, dur):
+    """A comparison panel's media fill (image bg OR framework-owned <video>) + its effects stack:
+    kenburns (scale the wrapper so the injected video frame scales too), scrim, vignette, grayscale, tint."""
+    frag, tl = [], []
+    mid = f"{pid}-media"
+    if spec.get("type") == "video":
+        ms = f' data-media-start="{spec["media_start"]}"' if spec.get("media_start") is not None else ""
+        gf = "filter:grayscale(1) contrast(1.03);" if spec.get("grayscale") else ""
+        frag.append(f'<div class="cmp-media" id="{mid}" style="{gf}">'
+                    f'<video class="clip" data-start="{start}" data-duration="{dur}" data-track-index="{mtrack}" '
+                    f'src="{esc(spec["src"])}" muted playsinline{ms}></video></div>')
+    else:
+        gf = "filter:grayscale(1) contrast(1.03);" if spec.get("grayscale") else ""
+        frag.append(f'<div class="cmp-media" id="{mid}" style="background-image:url(\'{esc(spec["src"])}\');{gf}"></div>')
+    kb = spec.get("kenburns", True)
+    if kb:
+        f0, f1 = kb if isinstance(kb, list) else [1.05, 1.16]
+        tl.append(f'tl.fromTo("#{mid}",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
+    if spec.get("scrim", True):
+        frag.append('<div class="cmp-scrim"></div>')
+    vig = float(spec.get("vignette", 0) or 0)
+    if vig > 0:
+        frag.append(f'<div class="cmp-vig" style="box-shadow:inset 0 0 22cqw rgba(0,0,0,{min(0.92,vig):.2f});"></div>')
+    if spec.get("tint"):
+        frag.append(f'<div class="cmp-tint" style="background:{esc(spec["tint"])};"></div>')
+    return frag, tl
+
+def _cmp_text(pid, spec, start, dur, reg, bottom):
+    """A comparison panel's text content: optional kicker + a 1-3 line title (optional highlight sweep)."""
+    frag, tl = [], []
+    frag.append(f'<div class="cmp-txt {reg}{"" if bottom else " mid"}">')
+    if spec.get("kicker"):
+        frag.append(f'<div class="k" id="{pid}-k">{esc(spec["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{pid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.45});')
+    title = spec.get("title")
+    if title is not None:
+        lines = title if isinstance(title, list) else [title]
+        op = spec.get("highlight", "")
+        frag.append('<div class="t">')
+        for li, ln in enumerate(lines):
+            if op and op in ln:
+                b, a = ln.split(op, 1)
+                inner = f'{esc(b)}<span class="mark">{esc(op)}</span>{esc(a)}'
+            else:
+                inner = esc(ln)
+            frag.append(f'<span class="ln" id="{pid}-t{li}">{inner}</span>')
+            tl.append(f'tl.fromTo("#{pid}-t{li}",{{opacity:0,yPercent:55}},{{opacity:1,yPercent:0,duration:0.55,'
+                      f'ease:"power3.out"}},{start+0.6+li*0.28:.2f});')
+        frag.append('</div>')
+    frag.append('</div>')
+    return frag, tl
+
+def _cmp_stat(pid, spec, start, dur, reg):
+    """A comparison panel's single big stat: a count-up (from/to) or a fixed value + label."""
+    frag = [f'<div class="cmp-num {reg}"><div class="v" id="{pid}-v"></div>'
+            + (f'<div class="l" id="{pid}-l">{esc(spec["label"])}</div>' if spec.get("label") else "") + '</div>']
+    cue = start + 0.6
+    pre, suf = json.dumps(spec.get("prefix", "")), json.dumps(spec.get("suffix", ""))
+    tl = []
+    if spec.get("value") is not None and spec.get("from") is None:
+        tl.append(f'document.getElementById("{pid}-v").textContent={json.dumps(str(spec["value"]))};')
+        tl.append(f'tl.fromTo("#{pid}-v",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:0.55,ease:"power4.out"}},{cue});')
+    else:
+        frm, to = float(spec.get("from", 0)), float(spec.get("to", 0))
+        tl.append(f'(function(){{var el=document.getElementById("{pid}-v"),st={{v:{frm}}},f=function(n){{return {pre}+Math.round(n)+{suf};}};'
+                  f'el.textContent=f({frm});tl.set(el,{{opacity:1}},{cue});'
+                  f'tl.fromTo(st,{{v:{frm}}},{{v:{to},duration:1.4,ease:"power3.out",onUpdate:function(){{el.textContent=f(st.v);}}}},{cue});}})();')
+    if spec.get("label"):
+        tl.append(f'tl.fromTo("#{pid}-l",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.5}},{cue+0.2});')
+    return frag, tl
+
+def _panel_content(pid, spec, mtrack, start, dur):
+    """Dispatch one comparison side to its content type. image/video → media(+effects)+optional overlaid
+    title; text → paper/dark fill + centered statement; stat → fill + big number."""
+    t = spec.get("type", "text")
+    if t in ("image", "video"):
+        frag, tl = _cmp_media(pid, spec, mtrack, start, dur)
+        if spec.get("title") or spec.get("kicker"):
+            tf, tt = _cmp_text(pid, spec, start, dur, reg="footage", bottom=True)
+            frag += tf; tl += tt
+        return frag, tl
+    reg = spec.get("register", "paper")
+    bg = spec.get("bg", "#F1F3F2" if reg == "paper" else "#111417")
+    frag = [f'<div class="cmp-paper" style="background:{esc(bg)};"></div>']
+    if t == "stat":
+        f2, t2 = _cmp_stat(pid, spec, start, dur, reg)
+    else:  # text
+        f2, t2 = _cmp_text(pid, spec, start, dur, reg=("paper" if reg == "paper" else "footage"), bottom=False)
+    return frag + f2, t2
+
+def comparison(sid, sc):
+    """Reusable BLOCK: a split A-vs-B / before-after CONTRAST. The canvas splits into two panels
+    (vertical=side-by-side default, horizontal=stacked); each panel slides in; a divider draws + an
+    optional center VS badge. Each side (`left`/`right`) is ANY content type — an `image` (Ken-Burns +
+    scrim/vignette/grayscale/tint), a `text` block, a `stat`, or a real `video`. Two `style`s: `seamless`
+    (panels tile, thin divider) or `framed` (bordered cards with a gap + backdrop). Seek-safe, one timeline.
+      VIDEO uses archetype B: the panel is a transparent HOLE; the actual <video> is mounted at the INDEX
+      root by `inject_comparison_videos.py` (positioned to the panel rect) — the framework's only legal
+      motion-video path. So a video-vs-video is literally two stacked root videos with the frame's chrome on top.
+    data: {left:{type, ...}, right:{type, ...}, axis?:vertical|horizontal, style?:seamless|framed,
+           backdrop?:color, vs?:bool|str, kicker?, title?, titleHi?}.
+      side spec: {type:image|video|text|stat, label?, + type fields:
+        image: {src, kenburns?:[f,t]|bool, scrim?, vignette?, grayscale?, tint?, kicker?, title?, highlight?}
+        video: {src, media_start?, scrim?, grayscale?, kicker?, title?, highlight?}  (mounted at index root)
+        text:  {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?}
+        stat:  {from,to | value, prefix?, suffix?, label, register?}}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    axis = d.get("axis", "vertical")
+    framed = d.get("style", "seamless") == "framed"
+    backdrop = d.get("backdrop", "#0a0b0c")
+    W, H = 1920, 1080
+    M = 46 if framed else 0                      # outer margin
+    G = 34 if framed else 6                       # gap between the two panels
+    topPad = 150 if (d.get("title") or d.get("kicker")) else 0
+    sides = [d["left"], d["right"]]
+    any_video = any(s.get("type") == "video" for s in sides)
+    frag, tl = [], []
+    # opaque backdrop base — skipped when a side is video (that region must stay transparent so the
+    # root-mounted video shows through; the index body supplies the backdrop instead).
+    if not any_video:
+        frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+                    f'style="position:absolute;inset:0;background:{esc(backdrop)};"></div>')
+    top = topPad + M
+    if axis == "horizontal":
+        ph = (H - top - M - G) // 2
+        geoms = [("top", M, top, W - 2 * M, ph), ("bottom", M, top + ph + G, W - 2 * M, ph)]
+        div_style = f"left:0;top:{topPad+(H-topPad)//2-3}px;width:{W}px;height:6px;transform-origin:left center;"
+        div_prop = "scaleX"
+    else:
+        pw = (W - 2 * M - G) // 2
+        geoms = [("left", M, top, pw, H - top - M), ("right", M + pw + G, top, pw, H - top - M)]
+        div_style = f"left:{W//2-3}px;top:{topPad}px;width:6px;height:{H-topPad}px;transform-origin:center;"
+        div_prop = "scaleY"
+    for k, (spec, geom) in enumerate([(sides[0], geoms[0]), (sides[1], geoms[1])]):
+        side, gx, gy, gw, gh = geom
+        pid = f"{sid}-{'l' if k == 0 else 'r'}"
+        is_video = spec.get("type") == "video"
+        fcls = " framed" if framed else ""
+        vattrs = ""
+        if is_video:   # transparent hole + data the injector reads to mount the root <video> at this rect
+            fcls += " cmp-vhole"
+            vattrs = (f' data-cmp-video="{esc(spec["src"])}" data-cmp-rect="{gx},{gy},{gw},{gh}" '
+                      f'data-cmp-id="{pid}-vid" data-cmp-mstart="{spec.get("media_start",0)}" '
+                      f'data-cmp-framed="{1 if framed else 0}" data-cmp-gray="{1 if spec.get("grayscale") else 0}"')
+        frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="{1+k}" '
+                    f'style="position:absolute;inset:0;">'
+                    f'<div id="{pid}" class="cmp-panel{fcls}"{vattrs} style="left:{gx}px;top:{gy}px;width:{gw}px;height:{gh}px;">')
+        if is_video:
+            inner_f, inner_t = [], []
+            if spec.get("scrim", True):
+                inner_f.append('<div class="cmp-scrim"></div>')
+            if spec.get("title") or spec.get("kicker"):
+                tf, tt = _cmp_text(pid, spec, start, dur, reg="footage", bottom=True)
+                inner_f += tf; inner_t += tt
+        else:
+            inner_f, inner_t = _panel_content(pid, spec, 5 + k, start, dur)
+        frag += inner_f
+        if spec.get("label"):
+            frag.append(f'<div class="cmp-label" id="{pid}-lbl">{esc(spec["label"])}</div>')
+        frag.append('</div></div>')
+        tl += inner_t
+        pcue = start + (0.1 if k == 0 else 0.3)
+        if is_video:   # fade the overlays in (the root video hard-cuts in at its data-start); don't slide the hole
+            tl.append(f'tl.fromTo("#{pid}",{{opacity:0}},{{opacity:1,duration:0.6}},{pcue});')
+        else:
+            ax, off = {"left": ("xPercent", -12), "right": ("xPercent", 12),
+                       "top": ("yPercent", -12), "bottom": ("yPercent", 12)}.get(side, ("xPercent", 0))
+            tl.append(f'tl.fromTo("#{pid}",{{opacity:0,{ax}:{off}}},{{opacity:1,{ax}:0,duration:0.7,ease:"power3.out"}},{pcue});')
+        if spec.get("label"):
+            tl.append(f'tl.fromTo("#{pid}-lbl",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.4}},{pcue+0.5});')
+    # divider (seamless only — framed uses the gap) + VS badge + optional title, on one overlay clip
+    frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" style="position:absolute;inset:0;pointer-events:none;">')
+    if not framed:
+        frag.append(f'<div id="{sid}-div" class="cmp-div" style="{div_style}"></div>')
+        tl.append(f'tl.fromTo("#{sid}-div",{{{div_prop}:0}},{{{div_prop}:1,duration:0.5,ease:"power2.inOut"}},{start+0.2});')
+    if d.get("vs"):
+        cx, cy = W // 2, topPad + (H - topPad) // 2
+        frag.append(f'<div class="cmp-vs-w" style="left:{cx}px;top:{cy}px;"><div id="{sid}-vs" class="cmp-vs">'
+                    f'{esc(d["vs"] if isinstance(d["vs"], str) else "VS")}</div></div>')
+        tl.append(f'tl.fromTo("#{sid}-vs",{{scale:0}},{{scale:1,duration:0.5,ease:"back.out(2.2)"}},{start+0.7});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}'
+                  if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        frag.append(f'<div class="cmp-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    frag.append('</div>')
+    return frag, tl
+
 BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map, "raw": raw_scene,
-          "timeline": timeline}
+          "timeline": timeline,
+          "diagram": diagram, "comparison": comparison}
 
 def compose_frame(frame_id, dur, scenes):
     body, tl = [], []
@@ -462,14 +872,17 @@ def compose_frame(frame_id, dur, scenes):
         sc = {**sc, "id": _safe_sid(sc["id"])}   # digit-first ids break #selectors
         f, t = BLOCKS[sc["type"]](sc["id"], sc)
         body += f; tl += t
-    # geo scenes need d3 + topojson + geometry loaded before the timeline script (which
-    # contains their setup IIFE). Loaded next to GSAP — the assembler guarantees script order.
+    # geo + diagram scenes need d3 loaded before the timeline script (which contains their setup
+    # IIFE). Loaded next to GSAP — the assembler guarantees script order. geo also needs topojson +
+    # the atlas; diagram needs d3 only (d3.hierarchy/tree is in the same bundle).
     geo = [sc for sc in scenes if sc["type"] == "geo"]
+    diag = [sc for sc in scenes if sc["type"] == "diagram"]
     libs = ""
+    if geo or diag:
+        libs = '  <script src="vendor/d3.min.js"></script>\n'
     if geo:
         kinds = set(sc["data"].get("kind", "us") for sc in geo)
-        libs = ('  <script src="vendor/d3.min.js"></script>\n'
-                '  <script src="vendor/topojson-client.min.js"></script>\n')
+        libs += '  <script src="vendor/topojson-client.min.js"></script>\n'
         if "us" in kinds:    libs += '  <script src="vendor/us-states.js"></script>\n'
         if "world" in kinds: libs += '  <script src="vendor/world.js"></script>\n'
     return f"""<template>
