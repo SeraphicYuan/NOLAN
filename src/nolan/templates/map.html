@@ -40,15 +40,38 @@
     .policy b { color: var(--accent); }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+    .tabs { display: flex; gap: 2px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+    .tab { background: none; border: none; padding: 9px 16px; font-size: 14px; font-weight: 600;
+           color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab:hover { color: var(--text-primary); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tabpanel[hidden] { display: none; }
+    .bridge { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+              padding: 14px 16px; margin-bottom: 12px; }
+    .bridge-h { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+    .bridge-flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; margin-top: 4px; }
+    .bridge-flow .side { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; }
+    .stage { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; border-radius: 999px;
+             padding: 2px 8px; font-weight: 700; }
+    .stage.live { color: var(--success); border: 1px solid var(--success); }
+    .stage.lab { color: var(--text-secondary); border: 1px solid var(--border); }
   </style>
 </head>
 <body>
   <script src="/static/nav.js" data-active="map"></script>
   <div class="wrap">
     <h1>NOLAN Map</h1>
-    <div class="sub">The live system catalog — introspected from the code's own registries on every load
-      (never hand-drawn, so it can't rot). Spine drives, organs serve, labs feed, skills guide agents.
-      The <i>why</i> lives in <code>ARCHITECTURE.md</code>; this page is the <i>what + current state</i>.</div>
+    <div class="sub">The live system catalog — introspected on every load, so it can't rot.</div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="nolan">NOLAN</button>
+      <button class="tab" data-tab="hyperframes">HyperFrames</button>
+      <button class="tab" data-tab="bridge">Bridge</button>
+    </div>
+
+    <div id="tab-nolan" class="tabpanel">
+    <div class="desc" style="margin-bottom:16px;">Spine drives, organs serve, labs feed, skills guide agents.
+      The <i>why</i> lives in <code>ARCHITECTURE.md</code>; this is the <i>what + current state</i>.</div>
 
     <div class="health-strip" id="health"></div>
 
@@ -100,11 +123,47 @@
         </div>
       </div>
     </div>
+    </div><!-- /tab-nolan -->
+
+    <div id="tab-hyperframes" class="tabpanel" hidden>
+      <div class="desc" style="margin-bottom:14px;" id="hf-intro"></div>
+      <div class="policy" id="hf-substrate" style="margin-bottom:22px;"></div>
+      <div class="section">
+        <h2>Pipeline — faceless-explainer</h2>
+        <div class="desc">Steps 0–6; NOLAN's compose-first worker plugs into <b>Step 5</b> (see the Bridge tab).</div>
+        <div class="spine-flow" id="hf-pipeline"></div>
+      </div>
+      <div class="grid2">
+        <div class="section">
+          <h2>Workflows <span class="muted" id="hf-wfcount"></span></h2>
+          <div class="desc">Intent → workflow, routed by <code>/hyperframes</code>.</div>
+          <table id="hf-workflows"><tr><th>workflow</th><th>turns … into a video</th></tr></table>
+        </div>
+        <div class="section">
+          <h2>Domain skills <span class="muted" id="hf-dscount"></span></h2>
+          <div class="desc">Framework-level craft every workflow draws on.</div>
+          <table id="hf-domain"><tr><th>skill</th><th>purpose</th></tr></table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-bridge" class="tabpanel" hidden>
+      <div class="desc" style="margin-bottom:16px;">Where NOLAN meets HyperFrames — each bridge is <b>verified live</b> (its wire must exist on disk).
+        <span class="stage live">live</span> = committed integration surface; <span class="stage lab">lab</span> = prototype / runtime dep.
+        More bridges land here as the integration grows.</div>
+      <div id="bridges"></div>
+    </div>
   </div>
 
   <script>
     function esc(t){ const d=document.createElement('div'); d.textContent=t==null?'':t; return d.innerHTML; }
     function row(tid, cells){ const tr=document.createElement('tr'); tr.innerHTML=cells.join(''); document.getElementById(tid).appendChild(tr); }
+
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelectorAll('.tabpanel').forEach(p => p.hidden = (p.id !== 'tab-' + t.dataset.tab));
+    }));
 
     fetch('/api/map').then(r=>r.json()).then(m=>{
       // health strip
@@ -191,6 +250,39 @@
         `<b>Capability routing:</b> ${esc(p.routing)}<br><br><b>Agent contract:</b> ${esc(p.agent_contract)}` +
         (w.manifest ? `<br><br><b>UI wiring:</b> audited ${esc(w.audited)} — ${w.verdicts.broken} broken, ${w.verdicts.dead} dead; ` +
           `advisory: ${w.verdicts.advisory.map(esc).join('; ')} (see <code>${esc(w.manifest)}</code>)` : '');
+
+      // ── HyperFrames tab ──
+      const hf = m.hyperframes || {};
+      if (!hf.ok) {
+        document.getElementById('hf-intro').innerHTML = `<span class="bad">${esc(hf.error || 'HyperFrames not installed')}</span>`;
+      } else {
+        document.getElementById('hf-intro').innerHTML = `<b>${esc(hf.router)}</b>`;
+        document.getElementById('hf-substrate').innerHTML =
+          `<b>Substrate:</b> ${esc(hf.substrate)}<br><br><b>Determinism:</b> ${esc(hf.determinism)}<br><br><b>Authoring:</b> ${esc(hf.authoring)}`;
+        document.getElementById('hf-pipeline').innerHTML = (hf.pipeline||[]).map((s,i)=>
+          `${i?'<span class="arrow">→</span>':''}<div class="step"><div class="n">${esc(s.name)}</div><div class="p">${esc(s.purpose)}</div></div>`).join('');
+        (hf.workflows||[]).forEach(x=>row('hf-workflows',
+          [`<td class="mono">${esc(x.id)}${x.ok===false?' <span class="bad">missing!</span>':''}</td>`, `<td class="muted">${esc(x.purpose)}</td>`]));
+        document.getElementById('hf-wfcount').textContent = `(${(hf.workflows||[]).length})`;
+        (hf.domain_skills||[]).forEach(x=>row('hf-domain',
+          [`<td class="mono">${esc(x.id)}${x.ok===false?' <span class="bad">missing!</span>':''}</td>`, `<td class="muted">${esc(x.purpose)}</td>`]));
+        document.getElementById('hf-dscount').textContent = `(${(hf.domain_skills||[]).length})`;
+      }
+
+      // ── Bridge tab ──
+      const B = document.getElementById('bridges');
+      (m.bridges||[]).forEach(b=>{
+        const dot = `<span class="dot ${b.ok?'up':'down'}"></span>`;
+        const tpl = b.templates ? `<div class="muted mono" style="margin-top:8px;font-size:12px;">templates (${b.templates.length}): ${b.templates.map(esc).join(' · ')}</div>` : '';
+        B.insertAdjacentHTML('beforeend',
+          `<div class="bridge"><div class="bridge-h">${dot}<b>${esc(b.label)}</b>` +
+          `<span class="stage ${esc(b.stage)}">${esc(b.stage)}</span>` +
+          `${b.ok?'':'<span class="bad">wire missing</span>'}</div>` +
+          `<div class="muted" style="font-size:13px;margin:5px 0 8px;">${esc(b.purpose)}</div>` +
+          `<div class="bridge-flow"><span class="side">NOLAN · ${esc(b.nolan)}</span><span class="arrow">→</span><span class="side">HF · ${esc(b.hf)}</span></div>` +
+          tpl +
+          `<div class="muted mono" style="font-size:11px;margin-top:8px;">${esc(b.wire)}</div></div>`);
+      });
     });
   </script>
 </body>

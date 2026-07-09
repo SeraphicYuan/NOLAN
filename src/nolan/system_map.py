@@ -20,6 +20,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -317,6 +318,146 @@ def _umbrellas() -> Dict[str, Any]:
     return out
 
 
+# ── HyperFrames map ─────────────────────────────────────────────────────────
+# The integration target, introspected the same way NOLAN is: skills are read
+# from disk (the real .agents/skills/ that .claude/skills/* symlink to), so a
+# skill that stops existing is flagged MISSING instead of silently listed.
+_SKILLS_ROOT = REPO / ".agents" / "skills"
+_HF_DOMAIN = ["hyperframes-core", "hyperframes-animation", "hyperframes-keyframes",
+              "hyperframes-creative", "hyperframes-cli", "hyperframes-registry",
+              "media-use", "figma"]
+_HF_WORKFLOWS = ["faceless-explainer", "product-launch-video", "website-to-video",
+                 "embedded-captions", "talking-head-recut", "pr-to-video",
+                 "motion-graphics", "music-to-video", "slideshow", "general-video",
+                 "remotion-to-hyperframes"]
+_HF_PIPELINE = [
+    {"name": "0 · setup", "purpose": "init project + brief + sign-in status"},
+    {"name": "1 · brief", "purpose": "the source text (no capture)"},
+    {"name": "2 · design", "purpose": "pick a frame preset → frame.md + caption skin"},
+    {"name": "3 · storyboard", "purpose": "STORYBOARD.md + SCRIPT.md teaching plan"},
+    {"name": "3.1 · audio", "purpose": "TTS + word timings → audio_meta.json"},
+    {"name": "4 · visual", "purpose": "time-coded shot sequences paced to VO"},
+    {"name": "5 · frames", "purpose": "one worker per frame → frames/*.html + assemble"},
+    {"name": "6 · render", "purpose": "headless-Chrome seek render → mp4"},
+]
+
+
+def _skill_meta(name: str) -> Optional[str]:
+    """Description from a skill's SKILL.md frontmatter (inline or a YAML `>`/`|` folded
+    block), truncated for the map; or None if the skill is absent."""
+    p = _SKILLS_ROOT / name / "SKILL.md"
+    if not p.exists():
+        return None
+    try:
+        lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return None
+    d = name
+    for i, ln in enumerate(lines):
+        m = re.match(r"^description:\s*(.*)$", ln)
+        if not m:
+            continue
+        val = m.group(1).strip().strip('"').strip("'")
+        if val in ("", ">", "|", ">-", "|-", ">+", "|+"):  # YAML block scalar → gather indented lines
+            buf = []
+            for nxt in lines[i + 1:]:
+                if re.match(r"^\S", nxt):   # dedent / next key / '---' ends the block
+                    break
+                if nxt.strip():
+                    buf.append(nxt.strip())
+            val = " ".join(buf)
+        d = val.strip() or name
+        break
+    return (d[:157] + "…") if len(d) > 158 else d
+
+
+def _hyperframes() -> Dict[str, Any]:
+    if not (_SKILLS_ROOT / "hyperframes").exists():
+        return {"ok": False,
+                "error": "HyperFrames skills not installed (.agents/skills/hyperframes missing)"}
+
+    def entry(n):
+        d = _skill_meta(n)
+        return {"id": n, "purpose": d or "MISSING", "ok": d is not None}
+
+    return {
+        "ok": True,
+        "router": "/hyperframes — routes a 'make me a…' intent to the right workflow",
+        "substrate": "HTML + CSS + GSAP + SVG/d3, rendered frame-by-frame in headless "
+                     "Chrome; --docker byte-reproducible",
+        "determinism": "one paused GSAP timeline per composition; transform/opacity only; "
+                       "no Date.now / Math.random / CSS transitions (seek-safe)",
+        "authoring": "LLM frame-workers author <template> sub-comps per storyboard frame; "
+                     "blocks/components installable via `hyperframes add`",
+        "pipeline": _HF_PIPELINE,
+        "domain_skills": [entry(n) for n in _HF_DOMAIN],
+        "workflows": [entry(n) for n in _HF_WORKFLOWS],
+    }
+
+
+# ── Bridges — where NOLAN meets HyperFrames ─────────────────────────────────
+# Each bridge is VERIFIED live (its wire file, optionally containing a token,
+# must exist) so the tab can't lie. `stage`: "live" = committed integration
+# surface (honesty-tested); "lab" = prototype/working-tree or a runtime dep
+# (e.g. vendored, gitignored) that may be absent on a fresh checkout. More
+# bridges land here as the NOLAN↔HyperFrames integration grows.
+BRIDGES = [
+    {"id": "composer", "label": "Scene composer", "stage": "live",
+     "purpose": "NOLAN-style reusable templates stamped to HyperFrames frame HTML "
+                "(build-time, one merged timeline)",
+     "nolan": "module contract — catalog + accept gate + honesty test",
+     "hf": "compositions/frames/<id>.html (a <template> sub-comp)",
+     "wire": ("render-service/_lab_hyperframes/bridge/catalog.json", "scene_templates")},
+    {"id": "gate", "label": "Compose gate", "stage": "live",
+     "purpose": "validate an agent's scene spec against the catalog before build "
+                "(draft → validate → accept)",
+     "nolan": "deterministic accept gate",
+     "hf": "the frame is emitted only if the spec validates",
+     "wire": ("render-service/_lab_hyperframes/bridge/author.py", "validate_spec")},
+    {"id": "compose-first-step5", "label": "Compose-first frame worker", "stage": "live",
+     "purpose": "faceless Step-5: map each storyboard Scene → a template, author bespoke "
+                "only where none fits",
+     "nolan": "agent proposes; catalog + gate decide",
+     "hf": "the same frame artifact as the stock frame-worker",
+     "wire": (".agents/skills/faceless-explainer/sub-agents/compose-first-frame-worker.md",
+              "compose-first")},
+    {"id": "ia-images", "label": "Internet Archive images", "stage": "lab",
+     "purpose": "NOLAN asset acquisition extended with archive.org stills → the pool → "
+                "HyperFrames grounds / props",
+     "nolan": "ImageSearchClient provider",
+     "hf": "feeds the composer's media_ground / prop_cutout",
+     "wire": ("src/nolan/image_search.py", "InternetArchiveImageProvider")},
+    {"id": "geo-data", "label": "Geo data vendor", "stage": "lab",
+     "purpose": "d3 + topojson + us-atlas / world-atlas backing the geo-map template",
+     "nolan": "vendored (gitignored; re-fetch via curl)",
+     "hf": "geo_map injects the <script>s at compose time",
+     "wire": ("render-service/_lab_hyperframes/bridge/vendor", None)},
+]
+
+
+def _bridges() -> List[Dict[str, Any]]:
+    out = []
+    for b in BRIDGES:
+        wire_path, token = b["wire"]
+        p = REPO / wire_path
+        ok = p.exists()
+        if ok and token and p.is_file():
+            try:
+                ok = token in p.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                ok = False
+        row = {k: v for k, v in b.items() if k != "wire"}
+        row.update({"wire": wire_path, "ok": ok})
+        if b["id"] == "composer" and ok:
+            try:
+                cat = json.loads((REPO / wire_path).read_text(encoding="utf-8"))
+                row["templates"] = sorted(cat.get("scene_templates", {}).keys())
+            except Exception:
+                pass
+        out.append(row)
+    return out
+
+
 def _ping(url: str, timeout: float = 1.5) -> bool:
     try:
         import httpx
@@ -379,6 +520,8 @@ def build_map(app=None, ping: bool = True) -> Dict[str, Any]:
         "surfaces": verify(SURFACES),
         "artifacts": ARTIFACTS,
         "umbrellas": _umbrellas(),
+        "hyperframes": _hyperframes(),
+        "bridges": _bridges(),
         "health": _health(ping=ping),
         "wiring": {
             "manifest": "docs/UI_WIRING.md",

@@ -29,6 +29,24 @@ def test_skills_registry_readable():
     assert m["skills"]["count"] > 0 and m["skills"]["skills"]
 
 
+def test_bridges_live_wires():
+    """Every 'live' NOLAN<->HyperFrames bridge must have its wire on disk — the Bridge
+    tab can't lie. 'lab' bridges (working-tree / vendored, may be absent) are exempt."""
+    m = build_map(ping=False)
+    assert m["bridges"], "no bridges listed"
+    broken = [b["id"] for b in m["bridges"] if b.get("stage") == "live" and not b["ok"]]
+    assert not broken, f"live bridges with a missing wire: {broken}"
+
+
+def test_hyperframes_introspected():
+    """When HyperFrames is installed, the map lists its skills/workflows/pipeline."""
+    hf = build_map(ping=False)["hyperframes"]
+    if hf.get("ok"):  # optional integration — only assert when the skills are present
+        assert any(s["ok"] for s in hf["domain_skills"]), "no HyperFrames domain skills"
+        assert any(w["ok"] for w in hf["workflows"]), "no HyperFrames workflows"
+        assert hf["pipeline"], "HyperFrames pipeline missing"
+
+
 def test_surfaces_verified_against_app(tmp_path):
     from pathlib import Path
     from nolan.hub import create_hub_app
