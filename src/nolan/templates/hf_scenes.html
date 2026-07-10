@@ -74,6 +74,20 @@
                  border-radius: 8px; cursor: pointer; font-size: 12px; text-align: center; word-break: break-all; }
     .pick-item:hover { border-color: var(--accent,#4f7cff); }
     .pick-item img { width: 100%; height: 70px; object-fit: cover; border-radius: 5px; }
+    /* @mention autocomplete (learn from /scenes) */
+    .mention-pop { position: absolute; z-index: 400; max-height: 300px; overflow-y: auto; background: var(--bg-secondary);
+                   border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.45); padding: 4px; }
+    .mention-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: 12px; }
+    .mention-item:hover, .mention-item.active { background: var(--bg-primary); }
+    .mention-item img { width: 34px; height: 26px; object-fit: cover; border-radius: 4px; }
+    .mention-item b { font-weight: 600; color: var(--accent, #4f7cff); white-space: nowrap; }
+    .mi-label { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* slim frame cards — frame-level actions live ONCE, in the right rail */
+    .frame-head.clickable { cursor: pointer; }
+    .card.frame.active { border-color: var(--accent, #4f7cff); }
+    .frame-head .go { color: var(--text-secondary); font-size: 11px; }
+    #framePanel .fp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    #framePanel .empty { padding: 18px 10px; }
   </style>
 </head>
 <body>
@@ -88,9 +102,8 @@
     <div class="cols">
       <div id="frames"></div>
       <div>
-        <div class="card" id="inspector">
-          <div class="empty">Select a scene to edit.</div>
-        </div>
+        <div class="card" id="framePanel"><div class="empty">Select a frame.</div></div>
+        <div class="card" id="inspector"><div class="empty">Select a scene to edit.</div></div>
       </div>
     </div>
   </div>
@@ -107,7 +120,7 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let CATALOG = null, FRAMES = [], COMP = null, SEL = null;  // SEL = {frame_id, scene_id}
+let CATALOG = null, FRAMES = [], COMP = null, SEL = null, ACTIVE_FID = null, ASSETS = [];  // SEL = {frame_id, scene_id}
 
 function toast(msg, kind) {
   const t = $("#toast"); t.textContent = msg; t.className = "toast " + (kind || "");
@@ -129,10 +142,13 @@ async function boot() {
 
 async function loadFrames(comp) {
   COMP = comp; SEL = null;
+  try { ASSETS = (await jget("/api/hf/assets?comp=" + encodeURIComponent(comp))).assets || []; } catch { ASSETS = []; }
   const d = await jget("/api/hf/frames?comp=" + encodeURIComponent(comp));
   FRAMES = d.frames;
   $("#status").textContent = `${FRAMES.length} frame(s) · ${FRAMES.reduce((n,f)=>n+f.scenes.length,0)} scene(s)`;
+  ACTIVE_FID = FRAMES[0] ? FRAMES[0].id : null;
   renderFrames();
+  renderFramePanel(ACTIVE_FID);
   $("#inspector").innerHTML = '<div class="empty">Select a scene to edit.</div>';
 }
 
@@ -155,29 +171,43 @@ function renderFrames() {
         <span class="time">${(s.start||0).toFixed(1)}–${end}s</span>
         <span class="summ">${esc(s.summary||'')}</span>${rv}${tr}</div>`;
     }).join("");
-    const types = Object.keys(CATALOG.scene_templates).sort();
-    return `<div class="card">
-      <div class="frame-head"><span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span>
-        <span class="spacer"></span>
-        <button class="btn ghost mini" onclick="fillTransitions('${fr.id}')">Fill transitions</button>
-        <button class="btn mini" onclick="renderFrame('${fr.id}')">Render frame</button></div>
+    const act = fr.id === ACTIVE_FID ? " active" : "";
+    return `<div class="card frame${act}">
+      <div class="frame-head clickable" onclick="activateFrame('${fr.id}')">
+        <span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span>
+        <span class="spacer"></span><span class="go">${fr.id===ACTIVE_FID?'▸ actions in panel':'select →'}</span></div>
       <div class="tl">${segs}</div>
       ${rows}
-      <details class="add"><summary>+ add scene</summary>
-        <div class="row2" style="margin-top:8px">
-          <select id="add-type-${fr.id}">${types.map(t=>`<option>${t}</option>`).join("")}</select>
-          <input id="add-id-${fr.id}" placeholder="id (e.g. s${fr.scenes.length+1})" value="s${fr.scenes.length+1}">
-          <input id="add-start-${fr.id}" type="number" step="0.1" placeholder="start" value="${dur}">
-          <input id="add-dur-${fr.id}" type="number" step="0.1" placeholder="dur" value="3">
-        </div>
-        <textarea id="add-data-${fr.id}" placeholder='data JSON, e.g. {"lines":["..."],"operative":"..."}'>{}</textarea>
-        <button class="btn mini" style="margin-top:6px" onclick="addScene('${fr.id}')">Add (gated)</button>
-      </details>
-      <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask a frame edit (note → agent → gate)</label>
-        <textarea id="fnote-${fr.id}" placeholder="e.g. weave @asset0 and @asset1 in as a gallery from 3–7s, dip to black between shots"></textarea>
-        <button class="btn ghost mini" style="margin-top:6px" onclick="reviseFrameNote('${fr.id}')">Apply (agent)</button></div>
     </div>`;
   }).join("");
+}
+
+function activateFrame(fid) { ACTIVE_FID = fid; renderFrames(); renderFramePanel(fid); }
+
+// Frame-level actions live ONCE here (right rail), targeting the active frame — not repeated per card.
+function renderFramePanel(fid) {
+  const fr = FRAMES.find(f => f.id === fid), p = $("#framePanel");
+  if (!fr) { p.innerHTML = '<div class="empty">Select a frame.</div>'; return; }
+  const types = Object.keys(CATALOG.scene_templates).sort();
+  const dur = fr.dur || Math.max(...fr.scenes.map(s => (s.start||0)+(s.dur||0)), 1);
+  p.innerHTML = `
+    <div class="frame-head"><span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span></div>
+    <div class="fp-actions">
+      <button class="btn ghost mini" onclick="fillTransitions('${fr.id}')">Fill transitions</button>
+      <button class="btn mini" onclick="renderFrame('${fr.id}')">Render frame</button></div>
+    <details class="add"><summary>+ add scene</summary>
+      <div class="row2" style="margin-top:8px">
+        <select id="add-type">${types.map(t=>`<option>${t}</option>`).join("")}</select>
+        <input id="add-id" placeholder="id" value="s${fr.scenes.length+1}">
+        <input id="add-start" type="number" step="0.1" placeholder="start" value="${dur}">
+        <input id="add-dur" type="number" step="0.1" placeholder="dur" value="3">
+      </div>
+      <textarea id="add-data" placeholder='data JSON, e.g. {"lines":["…"],"operative":"…"}'>{}</textarea>
+      <button class="btn mini" style="margin-top:6px" onclick="addScene('${fr.id}')">Add (gated)</button>
+    </details>
+    <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask a frame edit (note → agent → gate)</label>
+      <textarea id="fnote" class="mention-input" placeholder="e.g. weave @asset0 into @s2 as a gallery from 3–7s; @transition:crossfade between shots"></textarea>
+      <button class="btn ghost mini" style="margin-top:6px" onclick="reviseFrameNote('${fr.id}')">Apply (agent)</button></div>`;
 }
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -185,7 +215,9 @@ function findScene(fid, sid){ const f = FRAMES.find(x=>x.id===fid); return f && 
 
 async function selectScene(fid, sid) {
   SEL = {frame_id: fid, scene_id: sid};
+  ACTIVE_FID = fid;
   renderFrames();
+  renderFramePanel(fid);
   // fetch the full scene (list only carries a summary) via the frame spec
   const d = await jget(`/api/hf/frame-spec?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fid)}`);
   const scene = (d.frame.scenes||[]).find(s=>s.id===sid);
@@ -237,7 +269,7 @@ function renderInspector(scene, fid) {
       <button class="btn ghost" onclick="removeScene('${fid}','${scene.id}')">Remove</button>
     </div>
     <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask an edit (note → agent → gate)</label>
-      <textarea id="insp-note" placeholder="e.g. apply @reveal:scramble to the title, then dip to black after"></textarea>
+      <textarea id="insp-note" class="mention-input" placeholder="e.g. apply @reveal:scramble to the title, then dip to black after"></textarea>
       <button class="btn mini" style="margin-top:6px" onclick="reviseNote('${fid}','${scene.id}')">Apply note</button></div>
     <img id="preview">`;
 }
@@ -276,10 +308,10 @@ async function removeScene(fid, sid) {
 }
 
 async function addScene(fid) {
-  let data; try { data = JSON.parse($(`#add-data-${fid}`).value || "{}"); }
+  let data; try { data = JSON.parse($(`#add-data`).value || "{}"); }
   catch { return toast("data must be valid JSON", "err"); }
-  const scene = {id: $(`#add-id-${fid}`).value.trim(), type: $(`#add-type-${fid}`).value,
-    start: parseFloat($(`#add-start-${fid}`).value)||0, dur: parseFloat($(`#add-dur-${fid}`).value)||3, data};
+  const scene = {id: $(`#add-id`).value.trim(), type: $(`#add-type`).value,
+    start: parseFloat($(`#add-start`).value)||0, dur: parseFloat($(`#add-dur`).value)||3, data};
   try { const r = await jpost("/api/hf/scene/add", {comp: COMP, frame_id: fid, scene});
     if (!r.applied) return toast("Rejected by gate: " + (r.errors||"").split("\n").slice(0,3).join(" "), "err");
     toast("Added ✓", "ok"); loadFrames(COMP);
@@ -319,9 +351,8 @@ async function reviseNote(fid, sid) {
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 async function reviseFrameNote(fid) {
-  const note = $(`#fnote-${fid}`).value.trim(); if (!note) return;
-  let assets = [];
-  try { assets = (await jget("/api/hf/assets?comp=" + encodeURIComponent(COMP))).assets.map(a => a.path); } catch {}
+  const note = $(`#fnote`).value.trim(); if (!note) return;
+  const assets = ASSETS.map(a => a.path);
   toast("Thinking…");
   try {
     const r = await jpost("/api/hf/frame/revise-note", {comp: COMP, frame_id: fid, note, assets});
@@ -362,6 +393,41 @@ async function uploadAsset(inp) {
     toast("Uploaded " + j.path, "ok"); renderPicker();
   } catch (e) { toast("Upload failed: " + e.message, "err"); }
 }
+
+// ---- @mention autocomplete (catalog + scenes + assets) — learn from /scenes ----
+// Suggests the tokens _resolve_hf_mentions understands: @sN (scene), @reveal:X, @transition:X, @assetN.
+(function () {
+  let pop = null, curTa = null, matchStart = 0, active = 0, items = [];
+  const ensure = () => (pop || (pop = Object.assign(document.createElement('div'), {className:'mention-pop'}), pop.style.display='none', document.body.appendChild(pop), pop));
+  const hide = () => { if (pop) pop.style.display = 'none'; curTa = null; items = []; };
+  const isField = el => el.classList && el.classList.contains('mention-input');
+  function candidates() {
+    const out = [], fr = FRAMES.find(f => f.id === ACTIVE_FID);
+    (fr ? fr.scenes : []).forEach(s => out.push({ token: '@' + s.id, label: `scene · ${s.type} · ${(s.summary||'').slice(0,30)}` }));
+    Object.keys((CATALOG&&CATALOG.reveals) || {}).filter(x => x !== '_doc').forEach(r => out.push({ token: '@reveal:' + r, label: 'reveal · text motion' }));
+    Object.keys((CATALOG&&CATALOG.transitions) || {}).filter(x => x !== '_doc').forEach(t => out.push({ token: '@transition:' + t, label: 'scene transition' }));
+    ASSETS.forEach((a, i) => out.push({ token: '@asset' + i, label: `asset · ${a.name || a.path}`, thumb: a.kind === 'image' ? `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(a.path)}` : null }));
+    return out;
+  }
+  function render() { ensure().innerHTML = items.map((it, i) => `<div class="mention-item${i===active?' active':''}" data-i="${i}">${it.thumb ? `<img src="${it.thumb}" onerror="this.style.visibility='hidden'">` : ''}<b>${esc(it.token)}</b><span class="mi-label">${esc(it.label)}</span></div>`).join(''); }
+  function show(ta) { const p = ensure(); render(); const r = ta.getBoundingClientRect(); p.style.left = (r.left+window.scrollX)+'px'; p.style.top = (r.bottom+window.scrollY+2)+'px'; p.style.width = Math.max(260, r.width)+'px'; p.style.display = 'block'; }
+  function insert(it) { if (!curTa || !it) return; const ta = curTa, pos = ta.selectionStart; ta.value = ta.value.slice(0, matchStart) + it.token + ' ' + ta.value.slice(pos); const np = matchStart + it.token.length + 1; ta.focus(); ta.setSelectionRange(np, np); hide(); }
+  document.addEventListener('input', e => {
+    const ta = e.target; if (!isField(ta)) return;
+    const m = ta.value.slice(0, ta.selectionStart).match(/@([\w:]*)$/); if (!m) return hide();
+    curTa = ta; matchStart = ta.selectionStart - m[0].length; const q = (m[1]||'').toLowerCase();
+    items = candidates().filter(it => it.token.slice(1).toLowerCase().includes(q)).slice(0, 10); active = 0;
+    items.length ? show(ta) : hide();
+  });
+  document.addEventListener('click', e => { if (!pop || pop.style.display === 'none') return; const el = e.target.closest && e.target.closest('.mention-item'); if (el) insert(items[+el.getAttribute('data-i')]); else if (!pop.contains(e.target)) hide(); });
+  document.addEventListener('keydown', e => {
+    if (!pop || pop.style.display === 'none' || curTa !== document.activeElement) return;
+    if (e.key === 'Escape') return hide();
+    if (e.key === 'ArrowDown') { active = Math.min(active+1, items.length-1); render(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { active = Math.max(active-1, 0); render(); e.preventDefault(); }
+    else if (e.key === 'Enter' || e.key === 'Tab') { insert(items[active]); e.preventDefault(); }
+  });
+})();
 
 boot().catch(e => toast("Load failed: " + e.message, "err"));
 </script>
