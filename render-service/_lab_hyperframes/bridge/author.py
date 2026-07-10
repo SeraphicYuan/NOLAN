@@ -21,7 +21,7 @@ CATALOG = json.load(open(HERE / "catalog.json", encoding="utf-8"))
 REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highlight"],
             "timeline": ["events"], "raw": ["html", "tl"], "newshead": ["headline"], "collage": ["subjects"],
             "diagram": ["root"], "comparison": ["left", "right"], "gallery": ["images"],
-            "carousel": ["images"]}
+            "carousel": ["images"], "document": ["source"]}
 
 
 def validate_spec(spec):

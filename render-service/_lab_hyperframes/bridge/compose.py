@@ -209,7 +209,9 @@ CSS = """
 /* carousel: a temporal image sequence — full-bleed slider (crossfade/kenburns) OR 3D coverflow */
 .carworld{position:absolute;inset:0;}
 .carslide{position:absolute;inset:0;opacity:0;overflow:hidden;will-change:opacity;}
+.carslide.sized{inset:auto;transform-origin:center;border-radius:16px;background:#000;box-shadow:0 30px 90px rgba(0,0,0,0.6);}
 .carslide img{width:100%;height:100%;object-fit:cover;display:block;will-change:transform;}
+.caredge{position:absolute;inset:0;pointer-events:none;z-index:5;}
 .carstage{position:absolute;inset:0;perspective:1600px;}
 .car3d{position:absolute;inset:0;transform-style:preserve-3d;}
 .carcard{position:absolute;left:50%;top:50%;overflow:hidden;border-radius:10px;background:#000;
@@ -225,6 +227,41 @@ CSS = """
 .carcarditem{position:absolute;overflow:hidden;border-radius:14px;background:#000;transform-origin:center;
   box-shadow:0 24px 70px rgba(0,0,0,0.55);will-change:transform,opacity;}
 .carcarditem img{width:100%;height:100%;object-fit:cover;display:block;}
+/* linedraw: a self-drawing line-art SVG. draw mode forces a uniform stroke + no fill and animates
+   each stroke's dashoffset length->0 (seek-safe); keep mode respects the SVG's own styling. */
+.ld-bg{position:absolute;inset:0;}
+.ld-wrap{position:absolute;inset:0;padding:7cqh 7cqw;box-sizing:border-box;}
+.ld-wrap svg{width:100%;height:100%;display:block;overflow:visible;}
+.ld-draw path,.ld-draw line,.ld-draw polyline,.ld-draw polygon,.ld-draw circle,.ld-draw ellipse,.ld-draw rect{
+  fill:none !important;stroke:var(--ld-stroke,#2B2D2C) !important;
+  stroke-linecap:round;stroke-linejoin:round;}
+/* document: a page/sheet (doc / article / letter) as subject — reveal/stack/artifact + highlighter/underline/callout/label/caption annotations */
+.doc-bg{position:absolute;inset:0;}
+.doc-vig{position:absolute;inset:0;pointer-events:none;}
+.doc-world{position:absolute;inset:0;transform-origin:50% 46%;will-change:transform;}
+.doc-sheet{position:absolute;background:#fff;background-size:cover;background-position:top center;overflow:hidden;opacity:0;
+  box-shadow:0 1.4cqw 3.4cqw rgba(0,0,0,0.42);will-change:transform,opacity;}
+.doc-sheet.contain{background-size:contain;background-repeat:no-repeat;background-position:center;}
+.doc-sheet.aged{filter:sepia(0.34) contrast(1.02) brightness(1.02);}
+.doc-grain{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(20,18,12,0.05) 1px,transparent 1.4px);background-size:16px 16px;}
+.doc-hl{position:absolute;background:#FFF23B;mix-blend-mode:multiply;transform:scaleX(0);transform-origin:left center;border-radius:2px;pointer-events:none;}
+.doc-underline{position:absolute;height:0.42cqh;background:#C8232C;transform:scaleX(0);transform-origin:left center;border-radius:2px;pointer-events:none;}
+.doc-label{position:absolute;transform:translate(-50%,-50%) scale(0);background:#C8232C;color:#F7F3EA;font-family:"Inter",sans-serif;
+  font-weight:700;font-size:1.0cqw;letter-spacing:0.02em;padding:0.3cqw 0.72cqw;border-radius:6px;white-space:nowrap;
+  box-shadow:0 0.3cqw 0.9cqw rgba(0,0,0,0.35);transform-origin:center;}
+.doc-callout{position:absolute;background:#fff;box-shadow:0 1cqw 2.6cqw rgba(0,0,0,0.3);border-radius:12px;padding:1.1cqw 1.4cqw;
+  opacity:0;max-width:27cqw;border-left:0.4cqw solid #FFF200;}
+.doc-callout .ck{font-family:"Inter",sans-serif;font-weight:600;font-size:0.78cqw;letter-spacing:0.1em;text-transform:uppercase;color:#8a8a80;margin-bottom:0.4cqw;}
+.doc-callout .ct{font-weight:800;font-size:1.35cqw;line-height:1.22;letter-spacing:-0.01em;color:#1c1c19;}
+.doc-callout .ct .ln{display:block;}
+.doc-caption{position:absolute;left:6cqw;right:6cqw;bottom:6cqh;text-align:center;font-family:"Lora",serif;font-style:italic;
+  font-size:1.7cqw;line-height:1.3;color:#F3ECDD;opacity:0;text-shadow:0 2px 14px rgba(0,0,0,0.55);}
+.doc-caption .uw{position:relative;white-space:nowrap;}
+.doc-caption .ul{position:absolute;left:0;right:0;bottom:-0.05em;height:2px;background:#C8232C;transform:scaleX(0);transform-origin:left center;}
+.doc-caption::before{content:"";position:absolute;left:-6cqw;right:-6cqw;top:-1.4cqh;bottom:-2.4cqh;z-index:-1;pointer-events:none;background:radial-gradient(62% 150% at 50% 55%,rgba(8,7,5,0.62),transparent 72%);}
+.doc-kick{position:absolute;top:5.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#F1EFE9;opacity:0;text-shadow:0 2px 10px rgba(0,0,0,0.5);}
+.doc-title{position:absolute;top:6.9cqw;left:5.5cqw;max-width:72cqw;font-weight:900;font-size:2.4cqw;line-height:1.05;letter-spacing:-0.015em;color:#fff;opacity:0;text-shadow:0 2px 16px rgba(0,0,0,0.5);}
+.doc-title .hl{background:#FFF200;color:#1c1c19;padding:0 0.1em;box-decoration-break:clone;text-shadow:none;}
 """
 
 # d3 setup — runs once at frame load (before the timeline lines that animate what it builds).
@@ -1489,8 +1526,8 @@ def gallery(sid, sc):
 def carousel(sid, sc):
     """Reusable BLOCK: a TEMPORAL sequence of images, auto-advancing, one in focus — the moving
     cousin of `gallery` (which lays a grid out at once). Styles:
-      style:"slider", layout:"full" (default) — full-bleed one-at-a-time; transition kenburns |
-        crossfade (kenburns = crossfade + a slow per-slide scale drift, alternating zoom in/out).
+      style:"slider", layout:"full" (default) — one at a time; full-bleed, OR set card_w/card_h to
+        crossfade a CENTERED SIZED CARD (not full-screen). transition kenburns | crossfade.
       style:"slider", layout:"cards" — a horizontal CARD SCROLL: a row of framed cards, the track
         slides so the active card centres (neighbours peek at the edges); active scales up, rest dim.
       style:"coverflow" — a 3D coverflow: the centre card faces forward + scales up, neighbours angle
@@ -1527,6 +1564,7 @@ def carousel(sid, sc):
     hold = float(d.get("hold") or max(0.9, (dur - intro) / n))
     cap_in = lambda i: start + intro + i * hold
     show_caps = bool(d.get("captions"))
+    cap_override = ""                             # caption placement; sized slider drops it below the card
 
     W = 1920
     if style == "coverflow":
@@ -1535,11 +1573,19 @@ def carousel(sid, sc):
         spacing, depth = float(d.get("spacing", 330)), float(d.get("depth", 175))
         fade = float(d.get("fade", 0.32))         # opacity lost per step of distance (smooth edge fade)
         cyf = float(d.get("y", 0.5))              # vertical centre as a fraction of height
+        cap_override = f'top:{min(int(cyf * 1080 + CH * 0.58) + 16, 1032)}px;bottom:auto;'   # under the scaled centre card
         world.append(f'<div class="carstage"><div id="{sid}-3d" class="car3d">')
         for i, im in enumerate(imgs):
-            world.append(f'<div id="{sid}-c{i}" class="carcard" style="width:{CW}px;height:{CH}px;margin-left:{-CW // 2}px;margin-top:{-CH // 2}px;top:{cyf * 100:.1f}%;">'
+            # centre with GSAP xPercent/yPercent:-50 ONLY (no margins) — margins + yPercent double-shifted
+            # the card up by a full card-height, pushing its top off-screen.
+            world.append(f'<div id="{sid}-c{i}" class="carcard" style="width:{CW}px;height:{CH}px;left:50%;top:{cyf * 100:.1f}%;">'
                          f'<img src="{esc(im["src"])}" alt=""/></div>')
         world.append('</div></div>')
+        # edge fade: dissolve the fanned side cards into the backdrop at the screen edges (so they
+        # never hard-clip at the canvas border) — a gradient of the backdrop colour over left/right.
+        edge_col = bg if isinstance(bg, str) and bg.startswith(("#", "rgb")) else "#0b0c0f"
+        world.append(f'<div class="caredge" style="background:linear-gradient(90deg,{edge_col} 0%,'
+                     f'transparent 16%,transparent 84%,{edge_col} 100%);"></div>')
 
         def cf(off):                              # transform for a card `off` steps from focus
             x = off * spacing
@@ -1579,11 +1625,20 @@ def carousel(sid, sc):
             tl.append(f'tl.to("#{sid}-track",{{x:{trackx(a):.0f},duration:0.75,ease:"power3.inOut"}},{cue:.2f});')
             tl.append(f'tl.to("#{sid}-k{a}",{{scale:1.0,opacity:1,duration:0.6,ease:"power2.out"}},{cue:.2f});')
             tl.append(f'tl.to("#{sid}-k{a - 1}",{{scale:0.86,opacity:0.5,duration:0.6,ease:"power2.inOut"}},{cue:.2f});')
-    else:                                         # slider — full-bleed, one at a time
+    else:                                         # slider — one at a time (full-bleed OR a sized card)
         transition = d.get("transition", "kenburns")
+        sized = ("card_w" in d) or ("card_h" in d)   # give a size → a centred card, not full-screen
+        if sized:
+            CW, CH = int(d.get("card_w", 1200)), int(d.get("card_h", 675))
+            cyf = float(d.get("y", 0.5))
+            box = f'left:50%;top:{cyf * 100:.1f}%;margin-left:{-CW // 2}px;margin-top:{-CH // 2}px;width:{CW}px;height:{CH}px;'
+            scls = "carslide sized"
+            cap_override = f'top:{min(int(cyf * 1080 + CH / 2) + 20, 1028)}px;bottom:auto;'   # just under the card
+        else:
+            box, scls = "", "carslide"            # full-bleed (default)
         for i, im in enumerate(imgs):
             sidk = f"{sid}-s{i}"
-            world.append(f'<div id="{sidk}" class="carslide" style="z-index:{i + 1};"><img src="{esc(im["src"])}" alt=""/></div>')
+            world.append(f'<div id="{sidk}" class="{scls}" style="{box}z-index:{i + 1};"><img src="{esc(im["src"])}" alt=""/></div>')
             cin = cap_in(i)
             tl.append(f'tl.fromTo("#{sidk}",{{opacity:0}},{{opacity:1,duration:0.7,ease:"power2.out"}},{cin:.2f});')
             if transition == "kenburns":
@@ -1597,7 +1652,7 @@ def carousel(sid, sc):
             if not im.get("caption"):
                 continue
             cid = f"{sid}-cap{i}"
-            world.append(f'<div id="{cid}" class="carcap"></div>')
+            world.append(f'<div id="{cid}" class="carcap" style="{cap_override}"></div>')
             tl.append(f'document.getElementById("{cid}").textContent={json.dumps(str(im["caption"]))};')
             tl.append(f'tl.fromTo("#{cid}",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5,ease:"power3.out"}},{cap_in(i) + 0.15:.2f});')
             if i < n - 1:
@@ -1614,9 +1669,187 @@ def carousel(sid, sc):
     return frag + world, tl
 
 
+# linedraw measures each stroke ONCE at load (getTotalLength) and adds the seek-safe draw tweens
+# (strokeDashoffset length->0, constant pen speed: per-path time proportional to its length). No lib.
+_LINEDRAW_SETUP = r'''(function(){
+  var CFG=@CFG@, root=document.getElementById("@SID@-svg"); if(!root) return;
+  var svg=root.querySelector("svg"); if(!svg) return;
+  var els=[].slice.call(svg.querySelectorAll("path,line,polyline,polygon,circle,ellipse,rect"));
+  els=els.filter(function(e){ try{ return e.getTotalLength && e.getTotalLength()>0.5; }catch(x){ return false; } });
+  if(CFG.order==="length-desc") els.sort(function(a,b){ return b.getTotalLength()-a.getTotalLength(); });
+  else if(CFG.order==="length-asc") els.sort(function(a,b){ return a.getTotalLength()-b.getTotalLength(); });
+  var lens=els.map(function(e){ return e.getTotalLength(); });
+  var total=lens.reduce(function(a,b){ return a+b; },0)||1;
+  var vb=svg.viewBox&&svg.viewBox.baseVal, r=svg.getBoundingClientRect();
+  var scale=(vb&&vb.width&&r.width)?Math.min(r.width/vb.width, r.height/vb.height):1;
+  var swU=CFG.strokePx/(scale||1);   // desired screen px -> user units (so dasharray stays in user units)
+  els.forEach(function(e,i){ var L=lens[i]; e.style.strokeDasharray=L; e.style.strokeDashoffset=L;
+    if(CFG.setWidth) e.style.strokeWidth=swU; e.style.willChange="stroke-dashoffset"; if(CFG.ink) e.style.fillOpacity=0; });
+  var t=CFG.start+CFG.lead;
+  els.forEach(function(e,i){ var L=lens[i], d=Math.max(0.16,(L/total)*CFG.drawDur);
+    tl.to(e,{strokeDashoffset:0,duration:d,ease:"none"},t);
+    if(CFG.ink) tl.to(e,{fillOpacity:1,duration:0.35,ease:"power1.out"},t+d);
+    t+=d+CFG.gap; });
+})();'''
+
+def linedraw(sid, sc):
+    """Reusable BLOCK: a self-drawing LINE-ART SVG. Each drawable element's stroke-dashoffset animates
+    length->0 in order at a constant pen speed (per-path time proportional to its length), so the whole
+    picture draws itself. A setup IIFE measures each path once at load (getTotalLength) and adds the
+    seek-safe draw tweens; CSS themes the stroke. Vector line-art in; for a RASTER, centerline-trace it
+    to SVG first, then feed it here.
+    data: {svg | paths[+viewBox] | src, stroke?, strokeWidth?, order?:dom|length-asc|length-desc,
+           register?:paper|footage, background?, keepStyle?, ink?, lead?, gap?, kicker?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    if d.get("src"):
+        svg_markup = Path(d["src"]).read_text(encoding="utf-8")
+    elif d.get("paths"):
+        vb = d.get("viewBox", "0 0 100 100")
+        svg_markup = (f'<svg viewBox="{esc(vb)}" preserveAspectRatio="xMidYMid meet">'
+                      + "".join(f'<path d="{esc(p)}"/>' for p in d["paths"]) + '</svg>')
+    else:
+        svg_markup = d.get("svg", "")
+    reg = d.get("register", "paper")
+    stroke = str(d.get("stroke", "#2B2D2C" if reg == "paper" else "#F6F7F6"))
+    keep = bool(d.get("keepStyle"))
+    cls = "ld-keep" if keep else "ld-draw"
+    bg = str(d.get("background", "#F1F3F2" if reg == "paper" else "#0d0f11"))
+    frag = [f'<div class="clip ld-bg" data-start="{start}" data-duration="{dur}" data-track-index="0" style="background:{esc(bg)};"></div>',
+            f'<div id="{sid}-svg" class="clip ld-wrap {cls}" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+            f'data-layout-allow-overflow style="--ld-stroke:{esc(stroke)};">{svg_markup}</div>']
+    lead = float(d.get("lead", 0.4))
+    cfg = {"order": d.get("order", "dom"), "start": start, "lead": lead,
+           "drawDur": max(1.0, dur - lead - 0.5), "gap": float(d.get("gap", 0.04)), "ink": bool(d.get("ink", False)),
+           "strokePx": float(d.get("strokeWidth", 4)), "setWidth": not keep}
+    tl = [_LINEDRAW_SETUP.replace("@SID@", sid).replace("@CFG@", json.dumps(cfg, ensure_ascii=False))]
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="clip kick" data-start="{start}" data-duration="{dur}" data-track-index="2" '
+                    f'style="color:{esc(stroke)};">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.2});')
+    return frag, tl
+
+def document(sid, sc):
+    """Reusable BLOCK: a PAGE / SHEET (document · article · letter) as the subject, with reveal/stack/
+    artifact motion + an annotations layer (highlighter sweep · underline · summary callout card · pinned
+    label · handwritten caption). Distilled from Vox-style document beats. Pure GSAP+CSS, seek-safe.
+      mode:"page"(default) full-bleed sheet · "stack" several pages cascade/fan · "artifact" sheet(s) on a
+        backdrop (e.g. velvet) with a cinematic push. camera:"push"(Ken-Burns)|"scroll"|"static".
+      Annotations are GLUED to the page (highlight/underline/label ride the camera); callouts + caption are
+        screen-fixed. highlight/underline rect = [fx,fy,fw,fh|fw] and label at = [fx,fy] are FRACTIONS of the page.
+    data: {source:str|[str], mode?, fit?:cover|contain, backdrop?, vignette?, aged?, tilt?, camera?,
+           kicker?, title?, titleHi?, annotations?:[{type:highlight|underline|label|callout|caption, ...}]}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    mode = d.get("mode", "page")
+    fit = d.get("fit", "contain" if mode == "artifact" else "cover")
+    src = d.get("source"); pages = list(src) if isinstance(src, list) else [src]
+    W, H = 1920, 1080
+    backdrop = d.get("backdrop", "#2a1013" if mode == "artifact" else "#17181b")
+    agedc = " aged" if d.get("aged") else ""
+    tilt = float(d.get("tilt", 0))
+    # page_size [w,h] (set by resolve_doc_annotations.py) sizes the sheet to the page's aspect so the
+    # image fills it exactly (no crop) → annotation fractions map 1:1 to the page. Absent → full-bleed cover.
+    psize = d.get("page_size"); aspect = (psize[0] / psize[1]) if psize else None
+    frag = [f'<div class="clip doc-bg" data-start="{start}" data-duration="{dur}" data-track-index="0" style="background:{esc(backdrop)};"></div>']
+    tl = []
+    vig = float(d.get("vignette", 0.42 if mode == "artifact" else 0) or 0)
+    if vig > 0:
+        frag.append(f'<div class="clip doc-vig" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+                    f'style="box-shadow:inset 0 0 26cqw rgba(0,0,0,{min(0.9,vig):.2f});"></div>')
+    if mode == "artifact":
+        pw, ph = (int(930 * aspect), 930) if aspect else (700, 930)
+        rects = ([(W//2 - pw + 60, (H-ph)//2 + 14, pw, ph, tilt - 4), (W//2 - 60, (H-ph)//2 - 22, pw, ph, tilt + 3)]
+                 if len(pages) >= 2 else [((W-pw)//2, (H-ph)//2 - 6, pw, ph, tilt or -2)])
+    elif mode == "stack":
+        pw, ph = (int(1000 * aspect), 1000) if aspect else (880, 1000); n = len(pages)
+        rects = [(int(W/2 - pw/2 + (i-(n-1)/2)*76), int(H/2 - ph/2 + (i-(n-1)/2)*24), pw, ph, tilt + (i-(n-1)/2)*3) for i in range(n)]
+    else:  # page — fit the page below the title band; aspect-fit when known so annotation coords map 1:1
+        m = 44; top = 156 if (d.get("title") or d.get("kicker")) else m
+        bw, bh = W - 2*m, H - top - m
+        if aspect:
+            w = int(bh * aspect) if (bw / bh) > aspect else bw
+            h = bh if (bw / bh) > aspect else int(bw / aspect)
+            rects = [(int(m + (bw - w) / 2), int(top + (bh - h) / 2), w, h, tilt)]
+        else:
+            rects = [(m, top, bw, bh, tilt)]
+        pages = pages[:1]
+    npg = min(len(pages), len(rects))
+    frag.append(f'<div id="{sid}-world" class="clip doc-world" data-start="{start}" data-duration="{dur}" data-track-index="2" data-layout-allow-overflow>')
+    for i in range(npg):
+        rx, ry, rw, rh, rot = rects[i]; pid = f"{sid}-pg{i}"
+        frag.append(f'<div id="{pid}" class="doc-sheet{" contain" if fit=="contain" else ""}{agedc}" '
+                    f'style="left:{rx}px;top:{ry}px;width:{rw}px;height:{rh}px;background-image:url(\'{esc(pages[i])}\');'
+                    f'transform:rotate({rot:.2f}deg);"><div class="doc-grain"></div></div>')
+        if mode == "stack":
+            cue = start + 0.2 + i * 0.3
+            tl.append(f'tl.fromTo("#{pid}",{{opacity:0,y:70,rotation:{rot-7:.2f}}},{{opacity:1,y:0,rotation:{rot:.2f},duration:0.6,ease:"power3.out"}},{cue:.2f});')
+        else:
+            cue = start + 0.15 + i * 0.22
+            tl.append(f'tl.fromTo("#{pid}",{{opacity:0,scale:1.03,y:26,rotation:{rot:.2f}}},{{opacity:1,scale:1,y:0,rotation:{rot:.2f},duration:0.7,ease:"power3.out"}},{cue:.2f});')
+    prx, pry, prw, prh, _ = rects[0]
+    def fx(v): return prx + v * prw
+    def fy(v): return pry + v * prh
+    overlay, ai = [], 0
+    for an in d.get("annotations", []):
+        t = an.get("type"); ai += 1
+        cue = start + float(an.get("cue", 1.0 + ai * 0.5))
+        if t == "highlight":
+            x, y, w, h = an["rect"]; hid = f"{sid}-hl{ai}"
+            frag.append(f'<div id="{hid}" class="doc-hl" style="left:{fx(x):.0f}px;top:{fy(y):.0f}px;width:{w*prw:.0f}px;'
+                        f'height:{h*prh:.0f}px;background:{esc(an.get("color","#FFF23B"))};"></div>')
+            tl.append(f'tl.fromTo("#{hid}",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{cue:.2f});')
+        elif t == "underline":
+            r = list(an["rect"]) + [0, 0, 0]; x, y, w = r[0], r[1], r[2]; uid = f"{sid}-ul{ai}"
+            frag.append(f'<div id="{uid}" class="doc-underline" style="left:{fx(x):.0f}px;top:{fy(y):.0f}px;width:{w*prw:.0f}px;'
+                        f'background:{esc(an.get("color","#C8232C"))};"></div>')
+            tl.append(f'tl.fromTo("#{uid}",{{scaleX:0}},{{scaleX:1,duration:0.4,ease:"power2.out"}},{cue:.2f});')
+        elif t == "label":
+            x, y = an["at"]; lid = f"{sid}-lb{ai}"
+            frag.append(f'<div id="{lid}" class="doc-label" style="left:{fx(x):.0f}px;top:{fy(y):.0f}px;background:{esc(an.get("color","#C8232C"))};">{esc(an["text"])}</div>')
+            tl.append(f'tl.fromTo("#{lid}",{{scale:0}},{{scale:1,duration:0.45,ease:"back.out(2.2)"}},{cue:.2f});')
+        elif t in ("callout", "caption"):
+            overlay.append((t, an, cue, ai))
+    frag.append('</div>')  # close world
+    cam = d.get("camera", "static")
+    if cam == "push":
+        tl.append(f'tl.fromTo("#{sid}-world",{{scale:1}},{{scale:1.07,duration:{dur},ease:"none"}},{start});')
+    elif cam == "scroll":
+        tl.append(f'tl.fromTo("#{sid}-world",{{yPercent:0}},{{yPercent:-9,duration:{dur},ease:"none"}},{start});')
+    frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" style="position:absolute;inset:0;pointer-events:none;">')
+    for (t, an, cue, ai) in overlay:
+        if t == "callout":
+            side = an.get("side", "right"); yy = float(an.get("y", 0.5)); cid = f"{sid}-co{ai}"
+            lines = an.get("text"); lines = lines if isinstance(lines, list) else [lines]
+            kick = f'<div class="ck">{esc(an["title"])}</div>' if an.get("title") else ""
+            body = "".join(f'<span class="ln">{esc(x)}</span>' for x in lines)
+            pos = "right:4.5cqw;" if side == "right" else "left:4.5cqw;"
+            frag.append(f'<div id="{cid}" class="doc-callout" style="{pos}top:{yy*100:.0f}%;transform:translateY(-50%);">{kick}<div class="ct">{body}</div></div>')
+            tl.append(f'tl.fromTo("#{cid}",{{opacity:0,x:{60 if side=="right" else -60}}},{{opacity:1,x:0,duration:0.55,ease:"power3.out"}},{cue:.2f});')
+        else:  # caption
+            txt = an["text"]; u = an.get("underline", ""); cid = f"{sid}-cap{ai}"
+            if u and u in txt:
+                b, a = txt.split(u, 1)
+                inner = f'{esc(b)}<span class="uw">{esc(u)}<span class="ul" id="{cid}-u"></span></span>{esc(a)}'
+            else:
+                inner = esc(txt)
+            frag.append(f'<div id="{cid}" class="doc-caption">{inner}</div>')
+            tl.append(f'tl.fromTo("#{cid}",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{cue:.2f});')
+            if u and u in txt:
+                tl.append(f'tl.fromTo("#{cid}-u",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{cue+0.5:.2f});')
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="doc-kick">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{start+0.2});')
+    if d.get("title"):
+        t2, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t2.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t2.split(op,1)[1])}' if op and op in t2 else esc(t2))
+        frag.append(f'<div id="{sid}-title" class="doc-title">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.35});')
+    frag.append('</div>')  # close overlay
+    return frag, tl
+
 BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map, "raw": raw_scene,
           "timeline": timeline, "newshead": newshead, "collage": collage,
-          "diagram": diagram, "comparison": comparison, "gallery": gallery, "carousel": carousel}
+          "diagram": diagram, "comparison": comparison, "gallery": gallery, "carousel": carousel,
+          "linedraw": linedraw, "document": document}
 
 def compose_frame(frame_id, dur, scenes):
     body, tl = [], []

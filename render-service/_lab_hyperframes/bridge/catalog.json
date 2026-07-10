@@ -232,11 +232,11 @@
       "data_schema": {
         "images": "array of {src, caption?} OR bare src strings — the ordered slides (real asset paths); 3-7 works best",
         "style": "enum(slider|coverflow) — slider = full-bleed or a card scroll (see layout); coverflow = 3D coverflow, centre card forward",
-        "layout": "enum(full|cards) — SLIDER only: full (default) = full-bleed one-at-a-time; cards = a horizontal card scroll (row of framed cards, track slides so the active card centres, neighbours peek)",
+        "layout": "enum(full|cards) — SLIDER only: full (default) = one at a time (full-bleed, OR a centered SIZED card if you set card_w/card_h); cards = a horizontal card scroll (row of framed cards, track slides so the active card centres, neighbours peek)",
         "transition": "enum(kenburns|crossfade) — slider layout:full only; kenburns (default) = crossfade + a slow per-slide zoom drift",
         "hold": "number? — seconds each slide holds (default: scene dur spread evenly across the images)",
-        "card_w": "number? — card width in px (slider layout:cards default 820; coverflow default 700)",
-        "card_h": "number? — card height in px (slider layout:cards default 500; coverflow default 480)",
+        "card_w": "number? — card width in px. On slider layout:full it shrinks the slide from full-bleed to a centered card; slider layout:cards default 820; coverflow default 700",
+        "card_h": "number? — card height in px (pairs with card_w). slider layout:cards default 500; coverflow default 480",
         "gap": "number? — px gap between cards (slider layout:cards, default 60)",
         "spacing": "number? — coverflow: horizontal px step between cards (default 330)",
         "depth": "number? — coverflow: translateZ px the side cards recede per step (default 175)",
@@ -253,6 +253,59 @@
         "seek_safe"
       ],
       "note": "images must be real assets. Opacity + transforms only (coverflow uses rotateY/translateZ/scale in a perspective+preserve-3d stage; depth occlusion is by translateZ, not z-index). Seek-safe: NO Math.random, NO repeat:-1 (the gsapify infinite-loop was dropped). Deferred: transition:push, style:strip (marquee) / deck, focus/dwell. Captions sit above the ~81% caption keep-out."
+    },
+    "linedraw": {
+      "fn": "linedraw",
+      "purpose": "A self-drawing LINE-ART SVG: every stroke draws itself (stroke-dashoffset length->0) in order at a constant pen speed, so a line drawing renders as if hand-drawn. Logo reveals, blueprints, maps/routes, signatures, hand-drawn explainer icons, schematics.",
+      "when_to_use": "A beat carried by a DRAWING made of lines/strokes — a logo/icon that draws on, a route/map traced, a signature, a schematic/blueprint, a hand-illustrated concept.",
+      "not_for": "A filled/photographic image (no strokes to draw — centerline-trace it to SVG first, or use a still/collage). A data chart (no template yet). Text (use statement reveals).",
+      "data_schema": {
+        "svg": "string — a raw <svg>...</svg> whose stroke elements (path/line/polyline/polygon/circle/ellipse/rect) get drawn. OR use `paths`/`src`.",
+        "paths": "array of path `d` strings (with `viewBox`, default '0 0 100 100') — shorthand when you only have path data",
+        "src": "string? — path to an .svg file to embed (read at build)",
+        "viewBox": "string? — used with `paths`",
+        "stroke": "string? — stroke color in draw mode (default ink on paper / white on footage)",
+        "strokeWidth": "number? — stroke width in user units (default 3)",
+        "order": "enum(dom|length-asc|length-desc)? — draw order (default dom = document order)",
+        "register": "enum(paper|footage)? — default stroke + background",
+        "background": "string? — CSS background (default mist / near-black)",
+        "keepStyle": "bool? — respect the SVG's own stroke/fill instead of forcing a uniform stroke",
+        "ink": "bool? — after each stroke draws, fade its fill in (needs keepStyle fills) — for filled illustrations",
+        "kicker": "string? — small eyebrow label",
+        "lead": "number? — delay before drawing starts (s, default 0.4)",
+        "gap": "number? — pause between consecutive strokes (s, default 0.04)"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "No external lib — a setup IIFE measures each stroke's getTotalLength() ONCE at load (deterministic) and adds the draw tweens; strokeDashoffset is the framework's blessed seek-safe draw (same as geo/diagram/timeline). SVG should be id-free (inner ids aren't scoped). RASTER line art: centerline-trace to SVG first (potrace traces outlines, not pen strokes)."
+    },
+    "document": {
+      "fn": "document",
+      "purpose": "A page / sheet (document, article, or letter) as the subject, revealed and annotated: a single full-bleed page, a cascading multi-page stack, or sheet(s) on a backdrop with a cinematic push. Annotations = highlighter sweep, underline, summary callout card, pinned label, handwritten caption.",
+      "when_to_use": "A beat built around a REAL PAGE: quoting/annotating a filing/report/contract, 'the story is in this document', an old letter/manuscript, a screenshotted article/headline, or 'then it's hundreds of pages' (stack).",
+      "not_for": "A styled newspaper front (use newshead). A plain on-screen quote with no page (use statement). A data chart (use stat/diagram).",
+      "data_schema": {
+        "source": "string (a page image) | array of strings (pages for a stack) — a real scan/screenshot/render in the project's assets",
+        "mode": "enum(page|stack|artifact) — page = one full-bleed sheet (default); stack = several pages cascade/fan ('hundreds of pages'); artifact = sheet(s) on a backdrop (e.g. velvet) with a push",
+        "fit": "enum(cover|contain) — cover fills the sheet (default for page), contain shows the whole page (default for artifact)",
+        "backdrop": "color? — behind the sheet (default light for page, dark for artifact)",
+        "vignette": "number? — edge darkening 0..1 (default 0.42 for artifact)",
+        "aged": "bool? — sepia/parchment tint for old paper",
+        "tilt": "number? — sheet rotation in degrees",
+        "camera": "enum(push|scroll|static) — push = slow Ken-Burns; scroll = gentle vertical drift; static (default)",
+        "kicker": "string?", "title": "string?", "titleHi": "string? — substring of title to highlight",
+        "annotations": "array of {type, ...}. Position EITHER by text — {find:\"phrase on the page\"} — resolved to a rect by bridge/resolve_doc_annotations.py (PREFERRED; OCR for images, PyMuPDF text-layer for PDFs), OR by explicit fraction (the escape hatch). highlight {find|rect:[fx,fy,fw,fh], color?, cue?}; underline {find|rect:[fx,fy,fw], color?, cue?}; label {find|at:[fx,fy], text, color?, cue?} (pinned, rides the camera); callout {text:str|[lines], title?, side?:right|left, y?:0..1, cue?} (screen-fixed card); caption {text, underline?:substr, cue?} (bottom italic, red underline draw)",
+        "page_size": "[w,h]? — set by resolve_doc_annotations.py; sizes the sheet to the page aspect so annotation fractions map 1:1 (no crop). Omit for full-bleed cover."
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "PREFER authoring highlight/underline/label by {find:\"phrase\"} and running `resolve_doc_annotations.py` (locates the phrase on the page and fills the rect + stamps page_size) — no eyeballing coordinates. Explicit fractions stay supported for regions with no matchable text (a chart area, a photo). callouts + caption are screen-fixed. source is a real screenshot/scan/render (or a .pdf, which the resolver rasterises); on-screen text stays short."
     }
   },
   "components": {
