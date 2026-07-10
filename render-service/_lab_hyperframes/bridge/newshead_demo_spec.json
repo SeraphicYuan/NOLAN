@@ -1,0 +1,32 @@
+{
+  "frames": [
+    {
+      "id": "newshead-demo",
+      "dur": 8,
+      "scenes": [
+        {
+          "id": "nh1",
+          "type": "newshead",
+          "start": 0,
+          "dur": 8,
+          "data": {
+            "tilt": -2,
+            "image_tilt": 5,
+            "date": "Nov 12, 2025",
+            "headline": [
+              "Data centers are quietly",
+              "draining the county dry"
+            ],
+            "highlight": "draining the county dry",
+            "subhead": "A single hyperscale campus can use as much water as a small city, and residents say their wells are running low as three more projects break ground this year.",
+            "subhighlight": "as much water as a small city",
+            "source": "The New York Times",
+            "image": "assets/img/campus.jpg",
+            "caption": "The new campus outside town.",
+            "arrow": true
+          }
+        }
+      ]
+    }
+  ]
+}

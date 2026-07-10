@@ -66,6 +66,8 @@ _COLS = [
 ]
 
 FACET_FIELDS = ("category", "nolan_hook", "difficulty", "freshness", "source_type")
+# fields usable as search/browse filters (facets + browse-by-source)
+FILTER_FIELDS = FACET_FIELDS + ("source_id",)
 
 
 @dataclass
@@ -183,12 +185,17 @@ class InsightsStore:
 
     def _where(self, filters: Optional[dict]):
         clauses, args = [], []
-        for fld in FACET_FIELDS:
+        for fld in FILTER_FIELDS:
             val = (filters or {}).get(fld)
             if val:
                 clauses.append(f"{fld}=?")
                 args.append(val)
         return (" AND ".join(clauses), args)
+
+    def source_counts(self) -> Dict[str, int]:
+        rows = self._conn.execute(
+            "SELECT source_id, COUNT(*) AS n FROM insights GROUP BY source_id").fetchall()
+        return {r["source_id"]: r["n"] for r in rows}
 
     def get(self, insight_id: str) -> Optional[InsightRow]:
         r = self._conn.execute("SELECT * FROM insights WHERE id=?", (insight_id,)).fetchone()

@@ -1,0 +1,27 @@
+{
+  "frames": [
+    {
+      "id": "gallery-demo",
+      "dur": 9.0,
+      "scenes": [
+        {
+          "id": "gal1", "type": "gallery", "start": 0, "dur": 9.0,
+          "data": {
+            "title": "The evidence", "titleHi": "evidence",
+            "backdrop": "#141317", "vignette": 0.5, "from": "center",
+            "images": [
+              {"src": "assets/img/g1.png"},
+              {"src": "assets/img/g2.png"},
+              {"src": "assets/img/g3.png"},
+              {"src": "assets/img/g4.png"},
+              {"src": "assets/img/g5.png"},
+              {"src": "assets/img/g6.png"}
+            ],
+            "highlight": 2, "highlight_at": 5.0,
+            "highlight_caption": "Exhibit 3 — the one that mattered."
+          }
+        }
+      ]
+    }
+  ]
+}

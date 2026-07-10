@@ -1,0 +1,8 @@
+{ "frames":[{ "id":"net3d","dur":10,"scenes":[{ "id":"n1","type":"diagram","start":0,"dur":10,
+  "data":{ "space":"3d","kicker":"Follow the money","title":"One empire, one balance sheet","titleHi":"balance sheet",
+    "root":{ "label":"Musk Inc.","sub":"the holding co.",
+      "children":[
+        { "label":"Twitter","sub":"$44B, 2022","children":[{"label":"Renamed X"}] },
+        { "label":"xAI","sub":"merged 2025","hl":true,"children":[{"label":"+$12B debt"}] },
+        { "label":"SpaceX","sub":"the collateral","children":[{"label":"Bridge loan"}] }
+      ]}}}]}]}

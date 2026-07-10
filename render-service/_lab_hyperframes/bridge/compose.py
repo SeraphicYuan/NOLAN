@@ -18,32 +18,32 @@ FONTS = ("@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:i
          "family=Lora:ital,wght@0,400;0,600;0,700;1,500&family=UnifrakturMaguntia&family=Inter:wght@500;600&display=swap');")
 CSS = """
 #root{position:absolute;inset:0;width:1920px;height:1080px;container-type:size;overflow:hidden;
-  font-family:"Libre Franklin",sans-serif;background:transparent;}
+  font-family:var(--font-display-en);background:transparent;}
 .gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
 .paper-gnd{position:absolute;inset:0;}
 .scrim{position:absolute;inset:0;pointer-events:none;}
-.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
+.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:var(--font-body);font-weight:600;font-size:0.9cqw;
   letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
 .stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}
 .hlwrap{position:relative;display:inline-block;isolation:isolate;}
-.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:#FFF200;transform:scaleX(0);
+.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:var(--accent);transform:scaleX(0);
   transform-origin:left center;z-index:-1;}
-.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:#F1F3F2;color:#2B2D2C;padding:0.5cqw 1.1cqw;
-  font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
+.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:var(--surface);color:var(--text);padding:0.5cqw 1.1cqw;
+  font-family:var(--font-body);font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
 .slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
 .slitem{display:flex;flex-direction:column;min-width:18cqw;}
 .slnumwrap{position:relative;display:inline-block;}
 .slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
   white-space:nowrap;opacity:0;}
 .slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
-.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}
-.sllabel{margin-top:1.1cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
+.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:var(--accent);transform:scaleX(0);transform-origin:left center;}
+.sllabel{margin-top:1.1cqw;font-family:var(--font-body);font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
   text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
-.paper .slnum,.paper .sllead{color:#2B2D2C;}.paper .kick{color:#4C4E4D;}.paper .sllabel{color:#888880;}
-.footage .slnum{color:#F6F7F6;}.footage .kick{color:#F6F7F6;}.footage .sllabel{color:#d6d9d6;}
-.stmt.paper-t{color:#2B2D2C;}.stmt.footage-t{color:#F6F7F6;}
+.paper .slnum,.paper .sllead{color:var(--text);}.paper .kick{color:var(--text-2);}.paper .sllabel{color:var(--text-mute);}
+.footage .slnum{color:var(--text);}.footage .kick{color:var(--text);}.footage .sllabel{color:var(--text-2);}
+.stmt.paper-t{color:var(--text);}.stmt.footage-t{color:var(--text);}
 /* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
 .prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
 .prop img{display:block;width:100%;height:auto;}
@@ -51,23 +51,23 @@ CSS = """
 /* geo-map: d3 choropleth (US states / world countries), one region highlighted + annotated */
 .geomap{will-change:transform;}
 .geomap svg{width:100%;height:100%;display:block;}
-.gstate{fill:#DCDFDC;stroke:#F1F3F2;stroke-width:1.0;}
-.ghl{fill:#FFF200;stroke:#2B2D2C;stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
+.gstate{fill:var(--surface-3);stroke:var(--surface);stroke-width:1.0;}
+.ghl{fill:var(--accent);stroke:var(--text);stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
 .geoleader{position:absolute;inset:0;pointer-events:none;}
-.geoleader path{fill:none;stroke:#2B2D2C;stroke-width:2;}
-.geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2B2D2C;opacity:0;}
-.geopin::after{content:"";position:absolute;inset:-9px;border:2px solid #2B2D2C;border-radius:50%;opacity:0.4;}
+.geoleader path{fill:none;stroke:var(--text);stroke-width:2;}
+.geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--text);opacity:0;}
+.geopin::after{content:"";position:absolute;inset:-9px;border:2px solid var(--text);border-radius:50%;opacity:0.4;}
 .geolabel{position:absolute;left:8cqw;top:20cqh;max-width:32cqw;}
-.glab-k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
-.glab-t{font-weight:900;font-size:5.4cqw;line-height:1;letter-spacing:-0.02em;color:#2B2D2C;margin:0.6cqw 0;opacity:0;}
-.glab-t .gmark{background:#FFF200;box-decoration-break:clone;padding:0 0.1em;}
-.glab-s{font-family:"Lora",serif;font-style:italic;font-size:1.3cqw;line-height:1.4;color:#4C4E4D;max-width:28cqw;opacity:0;}
+.glab-k{font-family:var(--font-body);font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-2);opacity:0;}
+.glab-t{font-weight:900;font-size:5.4cqw;line-height:1;letter-spacing:-0.02em;color:var(--text);margin:0.6cqw 0;opacity:0;}
+.glab-t .gmark{background:var(--accent);box-decoration-break:clone;padding:0 0.1em;}
+.glab-s{font-family:"Lora",serif;font-style:italic;font-size:1.3cqw;line-height:1.4;color:var(--text-2);max-width:28cqw;opacity:0;}
 /* timeline: Vox stylized horizontal timeline — drawing spine + camera pan + alternating circular callouts */
 .tlbg{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 42%,#101210,#070807);}
 .tlworld{position:absolute;top:0;left:0;height:100%;will-change:transform;}
-.tlspine{position:absolute;height:8px;background:#FFF200;border-radius:4px;transform-origin:left center;transform:scaleX(0);box-shadow:0 0 22px rgba(255,242,0,0.35);}
-.tlnode{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:#0a0b0a;border:5px solid #FFF200;transform:scale(0);z-index:3;}
-.tlnode::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#FFF200;}
+.tlspine{position:absolute;height:8px;background:var(--accent);border-radius:4px;transform-origin:left center;transform:scaleX(0);box-shadow:0 0 22px var(--accent-glow);}
+.tlnode{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:#0a0b0a;border:5px solid var(--accent);transform:scale(0);z-index:3;}
+.tlnode::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--accent);}
 .tlv{position:absolute;width:2px;background:#EDEFEC;transform:scaleY(0);}
 .tlh{position:absolute;height:2px;background:#EDEFEC;transform-origin:left center;transform:scaleX(0);}
 .tlcirc{position:absolute;border-radius:50%;overflow:hidden;background:#181a18;transform:scale(0);will-change:transform;box-shadow:0 12px 40px rgba(0,0,0,0.5);}
@@ -77,9 +77,9 @@ CSS = """
 .tlring{position:absolute;overflow:visible;pointer-events:none;}
 .tlring circle{fill:none;stroke:#EDEFEC;stroke-width:2.5;}
 .tlyear{position:absolute;font-weight:900;font-size:2.4cqw;letter-spacing:-0.01em;color:#EDEFEC;opacity:0;white-space:nowrap;font-variant-numeric:tabular-nums;}
-.tllbl{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;color:#9a9c99;opacity:0;white-space:nowrap;}
+.tllbl{position:absolute;font-family:var(--font-body);font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;color:#9a9c99;opacity:0;white-space:nowrap;}
 .tltitle{position:absolute;top:7cqh;left:5.5cqw;font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;color:#F6F7F6;opacity:0;}
-.tltitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;}
+.tltitle .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.12em;box-decoration-break:clone;}
 /* newshead: a newspaper headline card (Vox "newspaper animation" look) */
 .nhbg{position:absolute;inset:0;background:radial-gradient(130% 130% at 50% 38%,#2b2d2c,#161716);}
 .nhcard{position:absolute;background:#ECE9E1;overflow:hidden;box-shadow:0 22px 64px rgba(0,0,0,0.55);transform-origin:center;}
@@ -90,9 +90,9 @@ CSS = """
 .nhline{display:block;}
 .nhhead .w{display:inline-block;}
 .nhhl-wrap{position:relative;display:inline-block;}
-.nhhl{position:absolute;left:-0.05em;right:-0.05em;top:0.12em;bottom:0.16em;background:#FFF23B;transform:scaleX(0);transform-origin:left center;z-index:-1;}
+.nhhl{position:absolute;left:-0.05em;right:-0.05em;top:0.12em;bottom:0.16em;background:var(--accent);transform:scaleX(0);transform-origin:left center;z-index:-1;}
 .nhsub{position:absolute;font-family:"Lora",serif;font-weight:400;color:#38362d;font-size:23px;line-height:1.5;opacity:0;}
-.nhsub .subhl{background:#FFF23B;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 2px;}
+.nhsub .subhl{background:var(--accent);-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 2px;}
 .nhsrc{position:absolute;display:flex;align-items:center;gap:16px;opacity:0;}
 .nhsrc .mast{font-family:"UnifrakturMaguntia",serif;color:#191712;font-size:42px;line-height:1;}
 .nhsrc .rule{height:2px;background:#191712;transform:scaleX(0);transform-origin:left center;}
@@ -195,33 +195,33 @@ CSS = """
 .galbg{position:absolute;inset:0;}
 .galvig{position:absolute;inset:0;pointer-events:none;}
 .galworld{position:absolute;inset:0;will-change:transform;transform-origin:center;}
-.galcard{position:absolute;box-sizing:border-box;overflow:hidden;background:#fff;padding:0.42cqw;
+.galcard{position:absolute;box-sizing:border-box;overflow:hidden;background:var(--surface);padding:0.42cqw;
   box-shadow:0 0.8cqw 2.2cqw rgba(0,0,0,0.44);transform-origin:center;will-change:transform,opacity,filter;filter:blur(0px);}
 .galcard.noframe{padding:0;background:transparent;box-shadow:0 0.6cqw 1.7cqw rgba(0,0,0,0.4);}
 .galcard img{width:100%;height:100%;object-fit:cover;display:block;}
-.galcap{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.72cqw;letter-spacing:0.08em;
-  text-transform:uppercase;color:#EDEFEC;opacity:0;text-align:center;}
-.galhcap{position:absolute;font-family:"Lora",serif;font-style:italic;font-size:1.15cqw;color:#F6F7F6;opacity:0;
+.galcap{position:absolute;font-family:var(--font-body);font-weight:600;font-size:0.72cqw;letter-spacing:0.08em;
+  text-transform:uppercase;color:var(--text-2);opacity:0;text-align:center;}
+.galhcap{position:absolute;font-family:"Lora",serif;font-style:italic;font-size:1.15cqw;color:var(--text);opacity:0;
   text-align:center;text-shadow:0 2px 12px rgba(0,0,0,0.65);}
 .galtitle{position:absolute;top:5.5cqh;left:0;width:100%;text-align:center;font-weight:900;font-size:2.4cqw;
-  letter-spacing:-0.01em;color:#F6F7F6;opacity:0;}
-.galtitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;}
+  letter-spacing:-0.01em;color:var(--text);opacity:0;}
+.galtitle .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.12em;box-decoration-break:clone;}
 /* carousel: a temporal image sequence — full-bleed slider (crossfade/kenburns) OR 3D coverflow */
 .carworld{position:absolute;inset:0;}
 .carslide{position:absolute;inset:0;opacity:0;overflow:hidden;will-change:opacity;}
-.carslide.sized{inset:auto;transform-origin:center;border-radius:16px;background:#000;box-shadow:0 30px 90px rgba(0,0,0,0.6);}
+.carslide.sized{inset:auto;transform-origin:center;border-radius:16px;background:var(--shell);box-shadow:0 30px 90px rgba(0,0,0,0.6);}
 .carslide img{width:100%;height:100%;object-fit:cover;display:block;will-change:transform;}
 .caredge{position:absolute;inset:0;pointer-events:none;z-index:5;}
 .carstage{position:absolute;inset:0;perspective:1600px;}
 .car3d{position:absolute;inset:0;transform-style:preserve-3d;}
-.carcard{position:absolute;left:50%;top:50%;overflow:hidden;border-radius:10px;background:#000;
+.carcard{position:absolute;left:50%;top:50%;overflow:hidden;border-radius:10px;background:var(--shell);
   box-shadow:0 30px 90px rgba(0,0,0,0.62);backface-visibility:hidden;will-change:transform,opacity;}
 .carcard img{width:100%;height:100%;object-fit:cover;display:block;}
 .carcap{position:absolute;left:0;width:100%;bottom:19cqh;text-align:center;font-family:"Lora",serif;z-index:7;
-  font-style:italic;font-size:1.35cqw;color:#F8F8F6;opacity:0;text-shadow:0 2px 14px rgba(0,0,0,0.7);}
+  font-style:italic;font-size:1.35cqw;color:var(--text);opacity:0;text-shadow:0 2px 14px rgba(0,0,0,0.7);}
 .cartitle{position:absolute;top:5.5cqh;left:0;width:100%;text-align:center;font-weight:900;font-size:2.4cqw;
-  letter-spacing:-0.01em;color:#F6F7F6;opacity:0;z-index:8;text-shadow:0 2px 16px rgba(0,0,0,0.6),0 1px 3px rgba(0,0,0,0.5);}
-.cartitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;text-shadow:none;}
+  letter-spacing:-0.01em;color:var(--text);opacity:0;z-index:8;text-shadow:0 2px 16px rgba(0,0,0,0.6),0 1px 3px rgba(0,0,0,0.5);}
+.cartitle .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.12em;box-decoration-break:clone;text-shadow:none;}
 /* carousel cards layout: a horizontal track of framed cards that scrolls (style:slider, layout:cards) */
 .cartrack{position:absolute;left:0;will-change:transform;}
 .carcarditem{position:absolute;overflow:hidden;border-radius:14px;background:#000;transform-origin:center;
@@ -262,6 +262,101 @@ CSS = """
 .doc-kick{position:absolute;top:5.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#F1EFE9;opacity:0;text-shadow:0 2px 10px rgba(0,0,0,0.5);}
 .doc-title{position:absolute;top:6.9cqw;left:5.5cqw;max-width:72cqw;font-weight:900;font-size:2.4cqw;line-height:1.05;letter-spacing:-0.015em;color:#fff;opacity:0;text-shadow:0 2px 16px rgba(0,0,0,0.5);}
 .doc-title .hl{background:#FFF200;color:#1c1c19;padding:0 0.1em;box-decoration-break:clone;text-shadow:none;}
+/* diagram space:"3d" — the 2D network laid on a tilted, receding grid plane; cards stand up (billboard); camera glides. CSS-3D + GSAP, seek-safe. */
+.dg3-bg{position:absolute;inset:0;background:radial-gradient(130% 120% at 50% 30%,#141922,#05070c);}
+.dg3-view{position:absolute;inset:0;overflow:hidden;perspective:1700px;perspective-origin:50% 46%;}
+.dg3-stage{position:absolute;inset:0;transform-style:preserve-3d;transform-origin:50% 58%;transform:rotateX(56deg);}
+.dg3-plane{position:absolute;transform-style:preserve-3d;transform-origin:50% 50%;will-change:transform;
+  background-image:linear-gradient(rgba(122,196,255,0.12) 2px,transparent 2px),linear-gradient(90deg,rgba(122,196,255,0.12) 2px,transparent 2px);background-size:120px 120px;}
+.dg3-links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;}
+.dg3-link{fill:none;stroke:#FFC63A;stroke-width:4;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;opacity:0;filter:drop-shadow(0 0 7px rgba(255,190,40,0.55));}
+.dg3-card{position:absolute;transform-origin:50% 100%;transform-style:preserve-3d;will-change:transform;}
+.dg3-card .cd{position:absolute;left:0;top:0;transform:translate(-50%,-100%);min-width:150px;max-width:280px;background:#141a22;border:2px solid #33404f;border-radius:13px;padding:13px 18px;
+  box-shadow:0 22px 50px rgba(0,0,0,0.7);text-align:center;opacity:0;white-space:nowrap;}
+.dg3-card.root .cd{background:#0a0d12;border-color:#5b6b7e;}
+.dg3-card.hl .cd{background:#FFF200;border-color:#FFF200;box-shadow:0 20px 46px rgba(0,0,0,0.6),0 0 40px rgba(255,242,0,0.25);}
+.dg3-card .cd .lab{font-weight:800;font-size:20px;line-height:1.1;letter-spacing:-0.01em;color:#EAF0F6;}
+.dg3-card.hl .cd .lab{color:#0a0b0a;}
+.dg3-card .cd .sub{font-family:"Inter",sans-serif;font-weight:600;font-size:12px;letter-spacing:0.02em;color:#8fa2b6;margin-top:4px;}
+.dg3-card.hl .cd .sub{color:#4a4a2a;}
+.dg3-kick{position:absolute;top:5.0cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#8fa2b6;opacity:0;}
+.dg3-title{position:absolute;top:6.4cqw;left:5.5cqw;max-width:72cqw;font-weight:900;font-size:2.5cqw;line-height:1.05;letter-spacing:-0.015em;color:#F3F7FB;opacity:0;text-shadow:0 2px 18px rgba(0,0,0,0.6);}
+.dg3-title .hl{background:#FFF200;color:#0a0b0a;padding:0 0.1em;box-decoration-break:clone;text-shadow:none;}
+/* lower_third: name + role identifier for footage — theme-driven, one block × a `style` param */
+.ltwrap{position:absolute;}
+.lt-name{font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;line-height:1.02;color:var(--text);}
+.lt-role{font-family:var(--font-body);font-weight:600;font-size:0.95cqw;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-2);margin-top:0.55cqw;opacity:0;}
+.lt-kicker{font-family:var(--font-body);font-weight:700;font-size:0.78cqw;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:0.45cqw;}
+.lt-bar{display:inline-flex;align-items:stretch;gap:1cqw;background:var(--surface);border-radius:10px;padding:1cqw 1.5cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.32);}
+.lt-tab{width:0.45cqw;background:var(--accent);border-radius:3px;}
+.lt-txt{display:flex;flex-direction:column;justify-content:center;}
+.lt-card{display:inline-block;background:var(--surface);border-radius:12px;padding:1.2cqw 1.8cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.34);}
+.lt-cardless{display:inline-block;}
+.lt-cardless .lt-name{text-shadow:0 2px 14px rgba(0,0,0,0.6);}
+.lt-cardless .lt-role{text-shadow:0 2px 10px rgba(0,0,0,0.6);}
+.lt-underline-rule{display:block;width:100%;height:0.3cqw;background:var(--accent);transform-origin:left center;transform:scaleX(0);margin-top:0.7cqw;border-radius:2px;}
+.lt-block{display:inline-block;background:var(--accent);padding:1cqw 1.6cqw;transform-origin:left center;}
+.lt-block .lt-name{color:var(--accent-ink);text-transform:uppercase;}
+.lt-block .lt-role{color:var(--accent-ink);opacity:0.85;}
+.lt-block .lt-kicker{color:var(--accent-ink);opacity:0.9;}
+/* chart: animated bar/line — GSAP+SVG/CSS, theme-driven (accent bars/line, text/rule tokens) */
+.ch-kicker{position:absolute;top:6cqh;left:11cqw;font-family:var(--font-body);font-weight:700;font-size:0.85cqw;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);opacity:0;}
+.ch-title{position:absolute;top:9cqh;left:11cqw;max-width:78cqw;font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;color:var(--text);opacity:0;}
+.ch-title .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
+.ch-base{position:absolute;height:2px;background:var(--rule);}
+.ch-grid{position:absolute;height:1px;background:var(--rule);opacity:0.45;}
+.ch-bar{position:absolute;transform-origin:bottom center;border-radius:5px 5px 0 0;will-change:transform;}
+.ch-val{position:absolute;text-align:center;font-weight:800;font-size:1.15cqw;color:var(--text);opacity:0;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.ch-xlab{position:absolute;text-align:center;font-family:var(--font-body);font-weight:600;font-size:0.82cqw;letter-spacing:0.04em;color:var(--text-2);white-space:nowrap;}
+.ch-svg{position:absolute;inset:0;width:100%;height:100%;}
+.ch-svg path{stroke:var(--accent);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;}
+.ch-dot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--accent);border:3px solid var(--shell);}
+/* code: syntax-highlighted editor window. Syntax colours = a fixed code `theme` (inline); backdrop/title = NOLAN tokens */
+.cd-kicker{position:absolute;top:6cqh;left:16cqw;font-family:var(--font-body);font-weight:700;font-size:0.85cqw;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);opacity:0;}
+.cd-title{position:absolute;top:9.5cqh;left:16cqw;max-width:68cqw;font-weight:900;font-size:2.3cqw;letter-spacing:-0.01em;color:var(--text);opacity:0;}
+.cd-title .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
+.cd-win{position:absolute;left:16cqw;width:68cqw;border-radius:14px;overflow:hidden;box-shadow:0 2cqw 6cqw rgba(0,0,0,0.5);will-change:transform,opacity;}
+.cd-bar{display:flex;align-items:center;gap:0.55cqw;padding:0.85cqw 1.2cqw;border-bottom:1px solid;}
+.cd-dot{width:0.7cqw;height:0.7cqw;border-radius:50%;display:inline-block;flex:0 0 auto;}
+.cd-fname{margin-left:0.7cqw;font-family:var(--font-mono),monospace;font-size:0.82cqw;}
+.cd-code{padding:1.3cqw 1.7cqw;font-family:var(--font-mono),"JetBrains Mono",monospace;font-size:1.05cqw;line-height:1.7;}
+.cd-line{display:flex;gap:1cqw;border-radius:4px;padding:0 0.4cqw;margin:0 -0.4cqw;will-change:transform,opacity;}
+.cd-gut{opacity:0.65;user-select:none;min-width:1.5cqw;text-align:right;flex:0 0 auto;}
+.cd-lt{white-space:pre;}
+.cd-hl{background:rgba(255,255,255,0.08);}
+/* social_card — BRAND-FIXED palettes (identity, not NOLAN tokens). Only the scene backdrop is themed. */
+.soc-wrap{position:absolute;}
+.soc-card{border-radius:16px;overflow:hidden;box-shadow:0 2cqw 6cqw rgba(0,0,0,0.42);will-change:transform,opacity;font-family:-apple-system,"Segoe UI",Roboto,var(--font-body),sans-serif;}
+.soc-x{background:#fff;color:#0f1419;width:36cqw;padding:1.9cqw 2.1cqw;}
+.soc-head{display:flex;align-items:center;gap:0.9cqw;}
+.soc-av{width:3.1cqw;height:3.1cqw;border-radius:50%;background:linear-gradient(135deg,#1d9bf0,#8ecdf5);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.15cqw;flex:0 0 auto;overflow:hidden;}
+.soc-av img{width:100%;height:100%;object-fit:cover;}
+.soc-name{font-weight:800;font-size:1.25cqw;display:flex;align-items:center;gap:0.4cqw;}
+.soc-vf{width:1.25cqw;height:1.25cqw;border-radius:50%;background:#1d9bf0;color:#fff;font-size:0.8cqw;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.soc-handle{color:#536471;font-size:1.05cqw;margin-top:0.1cqw;}
+.soc-logo{margin-left:auto;font-weight:900;font-size:1.7cqw;color:#0f1419;}
+.soc-text{margin-top:1.1cqw;font-size:1.5cqw;line-height:1.42;color:#0f1419;}
+.soc-metrics{margin-top:1.3cqw;display:flex;gap:2.2cqw;color:#536471;font-size:1.05cqw;}
+.soc-metrics b{color:#0f1419;font-weight:800;}
+.soc-heart b{color:#f91880;}
+.soc-reddit{background:#fff;color:#1a1a1b;width:36cqw;display:flex;}
+.soc-votes{background:#f8f9fa;padding:1.5cqw 1.1cqw;display:flex;flex-direction:column;align-items:center;gap:0.55cqw;flex:0 0 auto;}
+.soc-up{width:0;height:0;border-left:0.75cqw solid transparent;border-right:0.75cqw solid transparent;border-bottom:0.95cqw solid #ff4500;}
+.soc-dn{width:0;height:0;border-left:0.75cqw solid transparent;border-right:0.75cqw solid transparent;border-top:0.95cqw solid #b8bbbf;}
+.soc-votes .n{font-weight:800;font-size:1.05cqw;color:#ff4500;}
+.soc-rbody{padding:1.5cqw 1.7cqw;}
+.soc-sub{color:#ff4500;font-weight:800;font-size:1cqw;}
+.soc-rtitle{margin-top:0.55cqw;font-weight:700;font-size:1.55cqw;line-height:1.32;color:#1a1a1b;}
+.soc-rmeta{margin-top:1.1cqw;color:#787c7e;font-size:0.95cqw;font-weight:600;}
+.soc-spotify{background:#121212;color:#fff;width:34cqw;padding:1.7cqw;display:flex;align-items:center;gap:1.5cqw;}
+.soc-art{width:6.4cqw;height:6.4cqw;border-radius:8px;background:linear-gradient(135deg,#1db954,#0a5c2a);color:#0a2e17;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:2cqw;flex:0 0 auto;overflow:hidden;}
+.soc-art img{width:100%;height:100%;object-fit:cover;}
+.soc-sbody{flex:1 1 auto;min-width:0;}
+.soc-track{font-weight:800;font-size:1.45cqw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.soc-artist{color:#b3b3b3;font-size:1.1cqw;margin-top:0.3cqw;}
+.soc-prog{margin-top:1cqw;height:0.4cqw;background:#4d4d4d;border-radius:3px;position:relative;overflow:hidden;}
+.soc-prog-fill{position:absolute;left:0;top:0;bottom:0;background:#1db954;border-radius:3px;transform-origin:left center;will-change:transform;}
+.soc-splay{margin-left:1cqw;color:#1db954;font-size:2.2cqw;line-height:1;flex:0 0 auto;}
 """
 
 # d3 setup — runs once at frame load (before the timeline lines that animate what it builds).
@@ -351,7 +446,7 @@ def media_ground(sid, ground, start, dur):
         frag.append(f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{scr};"></div>')
     else:  # paper / parchment
-        col = "#EFE9DC" if ground.get("parchment") else "#F1F3F2"
+        col = "var(--surface-2)" if ground.get("parchment") else "var(--surface)"
         frag.append(f'<div class="clip paper-gnd" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{col};"></div>')
     return frag, tl
@@ -365,7 +460,7 @@ def stat_lockup(sid, sc):
     g, tl = media_ground(sid, d.get("ground", {"kind": "paper", "parchment": d.get("parchment")}), start, dur)
     frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     frag.append(f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>')
-    frag.append(f'<div class="slrow">')
+    frag.append(f'<div class="slrow" data-fit data-fit-w="89cqw" data-fit-origin="left top">')
     tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.1});')
     reveal = d.get("reveal")
     lbase = "#2B2D2C" if reg == "paper" else "#F6F7F6"
@@ -565,7 +660,7 @@ def reveal_text(el, text, style, start, cue, dur, operative=None, base="#2B2D2C"
         sweep = cue + _rv_dur(style, len(reals) or 1, dur) + 0.05
         tl.append(f'tl.fromTo("#{el}-hb",{{scaleX:0}},{{scaleX:1,duration:0.4,ease:"power2.out"}},{sweep:.2f});')
         tgt = f"#{el}-opw .rv-op" if split == "line" else f"#{el}-opw .rv-u"
-        tl.append(f'tl.to("{tgt}",{{color:"#2B2D2C",duration:0.25}},{sweep+0.05:.2f});')
+        tl.append(f'tl.set("{tgt}",{{color:"var(--accent-ink)"}},{sweep+0.05:.2f});')
     return inner, cls, attr, tl
 
 def highlight_statement(sid, sc):
@@ -596,7 +691,7 @@ def highlight_statement(sid, sc):
                 frag.append(f'<span class="ln" id="{lid}">{inner}</span>')
                 cue = start + float(d.get("cue", 3.0))
                 tl.append(f'tl.fromTo("#{hid}",{{scaleX:0}},{{scaleX:1,duration:0.4,ease:"power2.out"}},{cue});')
-                tl.append(f'tl.to("#{sid}-op{li}",{{color:"#2B2D2C",duration:0.25}},{cue+0.05});')
+                tl.append(f'tl.set("#{sid}-op{li}",{{color:"var(--accent-ink)"}},{cue+0.05});')
             else:
                 frag.append(f'<span class="ln" id="{lid}">{esc(line)}</span>')
             tl.append(f'tl.fromTo("#{lid}",{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"}},{start+0.4+li*0.35});')
@@ -631,7 +726,7 @@ def geo_map(sid, sc):
     frag = [
         # own mist ground on a track-0 clip (frame-worker rule: never a bg on #root)
         f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-        f'style="position:absolute;inset:0;background:#F1F3F2;"></div>',
+        f'style="position:absolute;inset:0;background:var(--surface);"></div>',
         f'<div id="{sid}-map" class="clip geomap" data-start="{start}" data-duration="{dur}" '
         f'data-track-index="1" style="transform-origin:{g["origin"]};"></div>',
         f'<svg id="{sid}-leader" class="clip geoleader" data-start="{start}" data-duration="{dur}" '
@@ -1001,7 +1096,7 @@ def collage(sid, sc):
     n = max(1, len(subjects))
     B, W, H = 560, 1920, 1080                     # base subject width @ scale 1.0; canvas
     frag, tl = [], []
-    bg = d.get("backdrop", "#ffffff")             # color | image path | "transparent"
+    bg = d.get("backdrop", "var(--surface)")      # color | image path | "transparent" (theme default)
     if bg and bg != "transparent":
         if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
             frag.append(f'<div class="clip clgbg" data-start="{start}" data-duration="{dur}" data-track-index="0" '
@@ -1083,6 +1178,110 @@ _DIAG_SETUP = r'''(function(){
   }
 })();'''
 
+def _diagram_3d(sid, sc):
+    """diagram space:"3d" — the network on a receding perspective grid floor with a gliding camera
+    (clip_08ba2177 look). Simple tidy layout in Python -> billboarded cards on the floor (X across,
+    Z into depth), glowing connectors on the floor, camera dolly-in + gentle orbit. Pure CSS-3D +
+    GSAP transforms (translateZ/rotateY/scaleX/opacity) -> seek-safe. data: same tree as diagram +
+    space:"3d", kicker?, title?, titleHi?; node.hl highlights, node.sub subtitle."""
+    import math
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    root = d["root"]
+    nodes, kids = [], {}
+    def walk(nd, depth, par):
+        i = len(nodes); nodes.append((i, nd, depth, par)); kids[i] = []
+        if par >= 0:
+            kids[par].append(i)
+        for ch in (nd.get("children") or []):
+            walk(ch, depth + 1, i)
+    walk(root, 0, -1)
+    depth_of = {i: dep for i, nd, dep, par in nodes}
+    maxd = max(depth_of.values()) if depth_of else 0
+    px, cnt = {}, [0]            # tidy X: leaves sequential, parents centered over their children
+    def assign(i):
+        if not kids[i]:
+            px[i] = cnt[0]; cnt[0] += 1
+        else:
+            for k in kids[i]:
+                assign(k)
+            px[i] = sum(px[k] for k in kids[i]) / len(kids[i])
+    assign(0)
+    xs = list(px.values()); lo, hi = (min(xs), max(xs)) if xs else (0, 0); midx = (lo + hi) / 2
+    XS, ROWH, MARG, tilt = 360, 300, 260, 56
+    PW = int((hi - lo) * XS) + 2 * MARG
+    PH = maxd * ROWH + 2 * MARG
+    POS = {i: ((px[i] - midx) * XS + PW / 2, depth_of[i] * ROWH + MARG) for i in px}
+    left0, top0 = (1920 - PW) // 2, (1080 - PH) // 2
+    frag = [f'<div class="clip dg3-bg" data-start="{start}" data-duration="{dur}" data-track-index="0"></div>',
+            f'<div class="clip dg3-view" data-start="{start}" data-duration="{dur}" data-track-index="1" data-layout-allow-overflow>',
+            f'<div class="dg3-stage"><div id="{sid}-plane" class="dg3-plane" '
+            f'style="left:{left0}px;top:{top0}px;width:{PW}px;height:{PH}px;">']
+    tl = []
+    # connectors — reliable 2D SVG on the tilted plane; pathLength=1 normalises the draw (no getTotalLength)
+    paths = []
+    for i, nd, depth, par in nodes:
+        if par < 0:
+            continue
+        ax, ay = POS[par]; bx, by = POS[i]; my = (ay + by) / 2
+        paths.append(f'<path id="{sid}-c{i}" class="dg3-link" pathLength="1" '
+                     f'd="M{ax:.0f},{ay:.0f} C{ax:.0f},{my:.0f} {bx:.0f},{my:.0f} {bx:.0f},{by:.0f}"/>')
+    frag.append(f'<svg class="dg3-links" viewBox="0 0 {PW} {PH}" style="width:{PW}px;height:{PH}px;">{"".join(paths)}</svg>')
+    for i, nd, depth, par in nodes:   # cards counter-rotated to STAND UP off the tilted plane (billboards)
+        X, Y = POS[i]
+        cls = "dg3-card" + (" root" if i == 0 else "") + (" hl" if nd.get("hl") else "")
+        sub = f'<div class="sub">{esc(nd["sub"])}</div>' if nd.get("sub") else ""
+        frag.append(f'<div class="{cls}" style="left:{X:.0f}px;top:{Y:.0f}px;transform:rotateX(-{tilt}deg);">'
+                    f'<div class="cd" id="{sid}-cd{i}"><div class="lab">{esc(nd.get("label",""))}</div>{sub}</div></div>')
+    frag.append('</div></div>')       # close plane + stage
+    frag.append('</div>')             # close view
+    if d.get("camera") == "tour":
+        # FUSION: fly the 3D camera node-to-node (DFS pre-order) — frame a node, its children branch
+        # out, then dive into a child. The plane's translate/scale is the camera; centering the family
+        # on the plane centre lands it near screen centre through the tilt.
+        focus = [i for i, nd, depth, par in nodes if kids[i]]     # internal nodes, DFS pre-order
+        lead = 0.6
+        stepdur = max(1.1, (dur - lead - 0.6) / max(1, len(focus)))
+        FZ = 1.5
+        def frame_of(i):
+            fam = [i] + kids[i]
+            cx = sum(POS[k][0] for k in fam) / len(fam)
+            cy = sum(POS[k][1] for k in fam) / len(fam)
+            return (PW / 2 - cx) * FZ, (PH / 2 - cy) * FZ + 110
+        tl.append(f'tl.to("#{sid}-cd0",{{opacity:1,duration:0.5,ease:"power2.out"}},{start+0.15});')  # to (not fromTo): CSS holds the hidden state, so nothing leaks before its cue
+        for s, fi in enumerate(focus):
+            cs = start + lead + s * stepdur
+            tx, ty = frame_of(fi)
+            if s == 0:
+                tl.append(f'tl.set("#{sid}-plane",{{x:{tx:.0f},y:{ty:.0f},scale:{FZ}}},{start});')
+            else:
+                tl.append(f'tl.to("#{sid}-plane",{{x:{tx:.0f},y:{ty:.0f},scale:{FZ},duration:0.95,ease:"power2.inOut"}},{cs-0.95:.2f});')
+            for ci, j in enumerate(kids[fi]):   # this focus node's children branch out (only when its parent is focused)
+                rc = cs + 0.2 + ci * 0.16
+                tl.append(f'tl.to("#{sid}-c{j}",{{strokeDashoffset:0,opacity:1,duration:0.5,ease:"power2.inOut"}},{rc:.2f});')
+                tl.append(f'tl.to("#{sid}-cd{j}",{{opacity:1,duration:0.45,ease:"power2.out"}},{rc+0.12:.2f});')
+    else:
+        # steady fly-over glide + front-to-back reveal
+        tl.append(f'tl.fromTo("#{sid}-plane",{{scale:0.9,y:70}},{{scale:1.06,y:-40,duration:{dur},ease:"sine.inOut"}},{start});')
+        lead = 0.4
+        span = max(0.2, dur - lead - 1.0)
+        def cue_of(i):
+            return start + lead + (depth_of[i] / max(1, maxd)) * span * 0.78 + px[i] * 0.02
+        for i, nd, depth, par in nodes:
+            c = cue_of(i)
+            tl.append(f'tl.to("#{sid}-cd{i}",{{opacity:1,duration:0.5,ease:"power2.out"}},{c:.2f});')
+            if par >= 0:
+                tl.append(f'tl.to("#{sid}-c{i}",{{strokeDashoffset:0,opacity:1,duration:0.55,ease:"power2.inOut"}},{max(cue_of(par), c - 0.2):.2f});')
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="clip dg3-kick" data-start="{start}" data-duration="{dur}" data-track-index="2">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{start+0.2});')
+    if d.get("title"):
+        t2, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t2.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t2.split(op,1)[1])}' if op and op in t2 else esc(t2))
+        frag.append(f'<div id="{sid}-title" class="clip dg3-title" data-start="{start}" data-duration="{dur}" data-track-index="3">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-title",{{opacity:0,y:-10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.35});')
+    return frag, tl
+
+
 def diagram(sid, sc):
     """Reusable BLOCK: a d3-computed node-link DIAGRAM (a process / hierarchy / system). d3.hierarchy
     lays the nodes out ONCE at frame load; GSAP reveals them seek-safely — parent→child pops, each
@@ -1094,7 +1293,10 @@ def diagram(sid, sc):
         branch out, then it dives into a child and repeats (DFS pre-order), so a big tree reveals as an
         endless focus→branch→dive. (default: fit the whole graph statically.)
     data: {root:{label, sub?, hl?, shape?, children?:[...]}, layout?, dir?, camera?, kicker?, title?,
-           titleHi?, register?:paper|dark, shape?:pill, dx?, dy?, rstep?, box?}."""
+           titleHi?, register?:paper|dark, shape?:pill, dx?, dy?, rstep?, box?}.
+      space:"3d" → the network on a receding perspective grid floor with a gliding camera (see _diagram_3d)."""
+    if sc["data"].get("space") == "3d":
+        return _diagram_3d(sid, sc)
     import copy
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     dark = d.get("register", "paper") == "dark"
@@ -1443,7 +1645,7 @@ def gallery(sid, sc):
     cells = _gallery_cells(n, cols, gx, gy, gw, gh, gap, d.get("layout") == "masonry")
 
     frag, tl = [], []
-    bg = d.get("backdrop", "#17181A")
+    bg = d.get("backdrop", "var(--shell)")
     if bg and bg != "transparent":
         if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
             frag.append(f'<div class="clip galbg" data-start="{start}" data-duration="{dur}" data-track-index="0" '
@@ -1546,7 +1748,7 @@ def carousel(sid, sc):
     n = max(1, len(imgs))
     style = d.get("style", "slider")
     frag, tl = [], []
-    bg = d.get("backdrop", "#101014")
+    bg = d.get("backdrop", "var(--shell)")
     if bg and bg != "transparent":
         if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
             frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
@@ -1583,7 +1785,7 @@ def carousel(sid, sc):
         world.append('</div></div>')
         # edge fade: dissolve the fanned side cards into the backdrop at the screen edges (so they
         # never hard-clip at the canvas border) — a gradient of the backdrop colour over left/right.
-        edge_col = bg if isinstance(bg, str) and bg.startswith(("#", "rgb")) else "#0b0c0f"
+        edge_col = bg if isinstance(bg, str) and bg.startswith(("#", "rgb", "var(")) else "var(--shell)"
         world.append(f'<div class="caredge" style="background:linear-gradient(90deg,{edge_col} 0%,'
                      f'transparent 16%,transparent 84%,{edge_col} 100%);"></div>')
 
@@ -1846,17 +2048,424 @@ def document(sid, sc):
     frag.append('</div>')  # close overlay
     return frag, tl
 
+def lower_third(sid, sc):
+    """Reusable BLOCK: a lower-third identifier (name + role, optional kicker) — the on-screen caption
+    for talking-head / interview / podcast footage. Collapses the registry's ~12 lt-* variants into ONE
+    theme-driven block + a `style` param. Seek-safe (transform/opacity), theme-driven (accent/text/
+    surface/accent-ink tokens), font-body typography.
+    styles: bar (surface card + accent tab, slides in) · card (surface card + a drawn accent underline,
+            rises) · underline (cardless: name rises, accent rule draws L->R; text-shadowed for footage) ·
+            block (a bold accent-colour block wipes in, ink name slams up).
+    data: {name, role?, kicker?, style?, position?(bl|bc|br), backdrop?(demo/standalone only — normally
+           transparent over footage)}."""
+    # Deferred styles (add in-place when a beat asks): side-rule · soft-pill · mask-reveal · stack-bars ·
+    # news-ticker (scrolling crawl). All the same block + a style branch.
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    name, role, kicker = d.get("name", ""), d.get("role", ""), d.get("kicker", "")
+    style, posn = d.get("style", "bar"), d.get("position", "bl")
+    frag, tl = [], []
+    bg = d.get("backdrop")                         # normally transparent (over footage); demo can set it
+    if bg:
+        if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
+            frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+                        f'style="position:absolute;inset:0;background:#111;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
+        else:
+            frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" style="position:absolute;inset:0;background:{esc(bg)};"></div>')
+    anchor = {"bl": "left:5.5cqw;", "bc": "left:50%;transform:translateX(-50%);text-align:center;",
+              "br": "right:5.5cqw;text-align:right;"}.get(posn, "left:5.5cqw;")
+    w = f"{sid}-lt"
+    kick = f'<div class="lt-kicker">{esc(kicker)}</div>' if kicker else ""
+    role_h = f'<div id="{w}-r" class="lt-role">{esc(role)}</div>' if role else ""
+
+    if style == "block":
+        inner = (f'<div id="{w}-box" class="lt-block">{kick}'
+                 f'<div id="{w}-n" class="lt-name">{esc(name)}</div>{role_h}</div>')
+        tl += [f'tl.fromTo("#{w}-box",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power3.out"}},{start + 0.2});',
+               f'tl.fromTo("#{w}-n",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.5,ease:"power3.out"}},{start + 0.45});']
+        if role: tl.append(f'tl.fromTo("#{w}-r",{{opacity:0}},{{opacity:1,duration:0.4}},{start + 0.7});')
+    elif style == "underline":
+        inner = (f'<div class="lt-cardless">{kick}<div id="{w}-n" class="lt-name">{esc(name)}</div>'
+                 f'<div id="{w}-u" class="lt-underline-rule"></div>{role_h}</div>')
+        tl += [f'tl.fromTo("#{w}-n",{{opacity:0,y:18}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start + 0.25});',
+               f'tl.fromTo("#{w}-u",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{start + 0.55});']
+        if role: tl.append(f'tl.fromTo("#{w}-r",{{opacity:0}},{{opacity:1,duration:0.4}},{start + 0.8});')
+    elif style == "card":
+        inner = (f'<div id="{w}-box" class="lt-card">{kick}<div id="{w}-n" class="lt-name">{esc(name)}</div>'
+                 f'<div id="{w}-u" class="lt-underline-rule"></div>{role_h}</div>')
+        tl += [f'tl.fromTo("#{w}-box",{{opacity:0,y:24}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start + 0.2});',
+               f'tl.fromTo("#{w}-u",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{start + 0.55});']
+        if role: tl.append(f'tl.fromTo("#{w}-r",{{opacity:0}},{{opacity:1,duration:0.4}},{start + 0.75});')
+    else:  # bar (default)
+        inner = (f'<div id="{w}-box" class="lt-bar"><div class="lt-tab"></div>'
+                 f'<div class="lt-txt">{kick}<div id="{w}-n" class="lt-name">{esc(name)}</div>{role_h}</div></div>')
+        tl += [f'tl.fromTo("#{w}-box",{{opacity:0,x:-40}},{{opacity:1,x:0,duration:0.5,ease:"power3.out"}},{start + 0.2});',
+               f'tl.fromTo("#{w}-n",{{opacity:0}},{{opacity:1,duration:0.4}},{start + 0.4});']
+        if role: tl.append(f'tl.fromTo("#{w}-r",{{opacity:0}},{{opacity:1,duration:0.4}},{start + 0.55});')
+
+    return frag + [f'<section class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
+                   f'style="position:absolute;inset:0;pointer-events:none;">'
+                   f'<div class="ltwrap" style="{anchor}bottom:13cqh;">{inner}</div></section>'], tl
+
+
+def _num(v):
+    v = float(v)
+    return str(int(v)) if v == int(v) else f"{v:g}"
+
+
+def chart(sid, sc):
+    """Reusable BLOCK: an animated bar OR line chart — GSAP + SVG/CSS, NOT d3/Chart.js (the framework
+    bans chart libs for seek-safety). Bars grow from the baseline staggered, or a line draws in; value
+    labels + axis labels + gridlines reveal. Theme-driven (accent bars/line, text/rule/surface tokens).
+    data: {type?(bar|line), series:[{label,value}], title?, titleHi?, kicker?, prefix?, suffix?, ymax?,
+           highlight?(int index to emphasise; the rest mute)}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    series = d.get("series", [])
+    n = max(1, len(series))
+    typ = d.get("type", "bar")
+    vals = [float(s.get("value", 0)) for s in series] or [0.0]
+    ymax = float(d.get("ymax") or (max(vals) * 1.18 or 1))
+    pre, suf = d.get("prefix", ""), d.get("suffix", "")
+    hl = d.get("highlight")
+    hl = int(hl) if isinstance(hl, (int, float)) and 0 <= int(hl) < n else None
+    PX, PW, BASE, PH = 210, 1500, 190, 600         # plot left, width, baseline (from bottom), max height
+    frag = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:var(--shell);"></div>']
+    world = [f'<section class="clip chart" data-start="{start}" data-duration="{dur}" data-track-index="2" '
+             f'style="position:absolute;inset:0;">']
+    tl = []
+    if d.get("kicker"):
+        world.append(f'<div id="{sid}-k" class="ch-kicker">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start + 0.1});')
+    if d.get("title"):
+        t, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op, 1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op, 1)[1])}'
+                  if op and op in t else esc(t))
+        world.append(f'<div id="{sid}-t" class="ch-title">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+    world.append(f'<div class="ch-base" style="left:{PX - 20}px;bottom:{BASE}px;width:{PW + 40}px;"></div>')
+    for g in range(1, 4):
+        world.append(f'<div class="ch-grid" style="left:{PX - 20}px;bottom:{BASE + PH * g / 3:.0f}px;width:{PW + 40}px;"></div>')
+    slot = PW / n
+
+    if typ == "line":
+        step = PW / max(1, n - 1)
+        pts = [(PX + i * step, (1080 - BASE) - vals[i] / ymax * PH) for i in range(n)]
+        dpath = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in pts)
+        world.append(f'<svg id="{sid}-svg" class="ch-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none">'
+                     f'<path id="{sid}-line" d="{dpath}" fill="none"/></svg>')
+        tl.append(f'(function(){{var p=document.getElementById("{sid}-line"),L=p.getTotalLength();'
+                  f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
+                  f'tl.fromTo(p,{{strokeDashoffset:L}},{{strokeDashoffset:0,duration:1.5,ease:"power2.inOut"}},{start + 0.5});}})();')
+        for i, (x, y) in enumerate(pts):
+            world.append(f'<div id="{sid}-dot{i}" class="ch-dot" style="left:{x:.0f}px;top:{y:.0f}px;"></div>')
+            world.append(f'<div id="{sid}-v{i}" class="ch-val" style="left:{x - slot / 2:.0f}px;top:{y - 60:.0f}px;width:{slot:.0f}px;">{esc(pre)}{_num(vals[i])}{esc(suf)}</div>')
+            world.append(f'<div class="ch-xlab" style="left:{x - slot / 2:.0f}px;bottom:{BASE - 58:.0f}px;width:{slot:.0f}px;">{esc(series[i].get("label", ""))}</div>')
+            cue = start + 0.6 + i * (1.3 / max(1, n - 1))
+            tl.append(f'tl.fromTo("#{sid}-dot{i}",{{scale:0}},{{scale:1,duration:0.4,ease:"back.out(2)"}},{cue:.2f});')
+            tl.append(f'tl.fromTo("#{sid}-v{i}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.4}},{cue + 0.1:.2f});')
+    else:  # bar
+        bw = slot * 0.6
+        for i, s in enumerate(series):
+            h = vals[i] / ymax * PH
+            x = PX + i * slot + (slot - bw) / 2
+            fill = "var(--accent)" if (hl is None or i == hl) else "var(--text-faint)"
+            world.append(f'<div id="{sid}-b{i}" class="ch-bar" style="left:{x:.0f}px;bottom:{BASE}px;width:{bw:.0f}px;height:{h:.0f}px;background:{fill};"></div>')
+            world.append(f'<div id="{sid}-v{i}" class="ch-val" style="left:{x:.0f}px;bottom:{BASE + h + 14:.0f}px;width:{bw:.0f}px;">{esc(pre)}{_num(vals[i])}{esc(suf)}</div>')
+            world.append(f'<div class="ch-xlab" style="left:{x:.0f}px;bottom:{BASE - 58:.0f}px;width:{bw:.0f}px;">{esc(s.get("label", ""))}</div>')
+            cue = start + 0.5 + i * (1.3 / n)
+            tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:0.6,ease:"power3.out"}},{cue:.2f});')
+            tl.append(f'tl.fromTo("#{sid}-v{i}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.4}},{cue + 0.35:.2f});')
+    world.append('</section>')
+    return frag + world, tl
+
+
+_CODE_KW = set(("const let var function return if else for while do class extends super import from export "
+    "default new await async def print lambda pass raise try except finally with as in is not and or True "
+    "False None this typeof void yield break continue switch case throw public private protected static final "
+    "int float double string bool boolean char long func fn use pub mut struct enum interface type namespace").split())
+
+_CODE_THEMES = {
+    "monokai":     {"bg": "#272822", "fg": "#f8f8f2", "kw": "#f92672", "str": "#e6db74", "com": "#75715e", "num": "#ae81ff", "fn": "#a6e22e", "punct": "#f8f8f2", "gut": "#90908a"},
+    "vs-dark":     {"bg": "#1e1e1e", "fg": "#d4d4d4", "kw": "#569cd6", "str": "#ce9178", "com": "#6a9955", "num": "#b5cea8", "fn": "#dcdcaa", "punct": "#d4d4d4", "gut": "#858585"},
+    "vs-light":    {"bg": "#ffffff", "fg": "#1e1e1e", "kw": "#0000ff", "str": "#a31515", "com": "#008000", "num": "#098658", "fn": "#795e26", "punct": "#1e1e1e", "gut": "#237893"},
+    "github-dark": {"bg": "#0d1117", "fg": "#c9d1d9", "kw": "#ff7b72", "str": "#a5d6ff", "com": "#8b949e", "num": "#79c0ff", "fn": "#d2a8ff", "punct": "#c9d1d9", "gut": "#6e7681"},
+    "dracula":     {"bg": "#282a36", "fg": "#f8f8f2", "kw": "#ff79c6", "str": "#f1fa8c", "com": "#6272a4", "num": "#bd93f9", "fn": "#50fa7b", "punct": "#f8f8f2", "gut": "#6272a4"},
+}
+
+
+def _tok_line(line):
+    out = []
+    for m in re.finditer(r'(//[^\n]*|\#[^\n]*)|("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|`[^`]*`)|(\b\d[\d._x]*\b)|([A-Za-z_$][\w$]*)|(\s+)|([^\w\s])', line):
+        com, st, num, idt, ws, pu = m.groups()
+        if com is not None:   out.append(("com", com))
+        elif st is not None:  out.append(("str", st))
+        elif num is not None: out.append(("num", num))
+        elif idt is not None: out.append(("kw" if idt in _CODE_KW else ("fn" if line[m.end():m.end() + 1] == "(" else "var"), idt))
+        elif ws is not None:  out.append(("ws", ws))
+        else:                 out.append(("punct", pu))
+    return out
+
+
+def code(sid, sc):
+    """Reusable BLOCK: a syntax-highlighted code window that types in / spotlights a line. Tokenised at
+    BUILD time in Python (no browser highlighter) -> pre-coloured spans; reveal is transform/opacity
+    (seek-safe). The SYNTAX palette is a fixed code `theme` (monokai/vs-dark/vs-light/github-dark/dracula)
+    — its own identity, NOT the NOLAN video theme; the scene backdrop + title DO use NOLAN tokens (hybrid).
+    modes: typing (lines reveal staggered) · highlight (spotlight one line, dim the rest).
+    data: {code, theme?, mode?, highlight?(1-based line), highlight_at?, filename?, linenums?, title?,
+           titleHi?, kicker?}."""
+    # Deferred modes: diff (removed red / added green), scroll (camera to a line), char-level caret typing.
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    ct = _CODE_THEMES.get(d.get("theme", "monokai"), _CODE_THEMES["monokai"])
+    mode = d.get("mode", "typing")
+    lines = str(d.get("code", "")).replace("\t", "    ").split("\n")
+    while lines and not lines[-1].strip():
+        lines.pop()
+    n = max(1, len(lines))
+    linenums = bool(d.get("linenums"))
+    hl = d.get("highlight")
+    hl = int(hl) if isinstance(hl, (int, float)) and 1 <= int(hl) <= n else None
+    frag = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:var(--shell);"></div>']
+    world = [f'<section class="clip codeblk" data-start="{start}" data-duration="{dur}" data-track-index="2" '
+             f'style="position:absolute;inset:0;">']
+    tl = []
+    top = 9
+    if d.get("kicker"):
+        world.append(f'<div id="{sid}-k" class="cd-kicker">{esc(d["kicker"])}</div>')
+        top = 13
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{start + 0.1});')
+    if d.get("title"):
+        t, op = d["title"], d.get("titleHi", "")
+        ht = (f'{esc(t.split(op, 1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op, 1)[1])}'
+              if op and op in t else esc(t))
+        world.append(f'<div id="{sid}-t" class="cd-title">{ht}</div>')
+        top = 18
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+    world.append(f'<div id="{sid}-win" class="cd-win" style="top:{top}cqh;background:{ct["bg"]};">')
+    dots = ('<span class="cd-dot" style="background:#ff5f56"></span><span class="cd-dot" style="background:#ffbd2e">'
+            '</span><span class="cd-dot" style="background:#27c93f"></span>')
+    world.append(f'<div class="cd-bar" style="border-color:{ct["gut"]}44;">{dots}'
+                 f'<span class="cd-fname" style="color:{ct["gut"]}">{esc(d.get("filename", ""))}</span></div>')
+    world.append(f'<div class="cd-code" style="color:{ct["fg"]};">')
+    for i, line in enumerate(lines):
+        gut = f'<span class="cd-gut" style="color:{ct["gut"]}">{i + 1}</span>' if linenums else ""
+        spans = ""
+        for cls, txt in _tok_line(line):
+            spans += esc(txt) if cls == "ws" else f'<span style="color:{ct.get(cls, ct["fg"])}">{esc(txt)}</span>'
+        band = " cd-hl" if hl == i + 1 else ""
+        world.append(f'<div id="{sid}-l{i}" class="cd-line{band}">{gut}<span class="cd-lt">{spans or "&nbsp;"}</span></div>')
+    world.append('</div></div>')
+    tl.append(f'tl.fromTo("#{sid}-win",{{opacity:0,y:26,scale:0.98}},{{opacity:1,y:0,scale:1,duration:0.6,ease:"power3.out"}},{start + 0.3});')
+    if mode == "highlight":
+        for i in range(n):
+            tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0}},{{opacity:1,duration:0.3}},{start + 0.5 + i * 0.045:.2f});')
+        hc = start + float(d.get("highlight_at", dur * 0.5))
+        for i in range(n):
+            if hl and i + 1 == hl:
+                continue
+            tl.append(f'tl.to("#{sid}-l{i}",{{opacity:0.3,duration:0.5,ease:"power2.inOut"}},{hc:.2f});')
+    else:  # typing — lines reveal staggered
+        span = min(dur * 0.62, 0.28 * n)
+        step = span / max(1, n - 1) if n > 1 else 0
+        for i in range(n):
+            tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0,x:-12}},{{opacity:1,x:0,duration:0.35,ease:"power2.out"}},{start + 0.7 + i * step:.2f});')
+    world.append('</section>')
+    return frag + world, tl
+
+
+def _initials(name):
+    parts = [p for p in re.split(r"\s+", str(name).strip()) if p]
+    return ((parts[0][:1] + (parts[-1][:1] if len(parts) > 1 else "")).upper() or "?") if parts else "?"
+
+
+def social_card(sid, sc):
+    """Reusable BLOCK: a social post / now-playing card overlay — X (Twitter), Reddit, or Spotify.
+    Brand-FIXED palettes (each platform's own colours inline — a Reddit card is always Reddit orange,
+    NOT the NOLAN video theme); only the scene backdrop uses a NOLAN token. Card slides + scales in;
+    the Spotify progress bar fills. Seek-safe.
+    data: {platform(x|reddit|spotify), name?, handle?, text?, avatar?, verified?, likes?, reposts?,
+           replies?, upvotes?, comments?, subreddit?, track?, artist?, art?, progress?(0..1),
+           position?(center|bl|br), backdrop?}."""
+    # Deferred platforms (same block + branch): instagram/tiktok follow overlays, youtube subscribe.
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    plat = d.get("platform", "x")
+    frag, tl = [], []
+    bg = d.get("backdrop", "var(--shell)")
+    if bg and bg != "transparent":
+        if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
+            frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+                        f'style="position:absolute;inset:0;background:#111;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
+        else:
+            frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" style="position:absolute;inset:0;background:{esc(bg)};"></div>')
+    anchor = {"center": "left:50%;top:50%;transform:translate(-50%,-50%);", "bl": "left:6cqw;bottom:10cqh;",
+              "br": "right:6cqw;bottom:10cqh;"}.get(d.get("position", "center"), "left:50%;top:50%;transform:translate(-50%,-50%);")
+    w = f"{sid}-sc"
+
+    def av(seed, img):
+        return f'<img src="{esc(img)}" alt=""/>' if img else esc(_initials(seed))
+
+    if plat == "reddit":
+        inner = (f'<div class="soc-votes"><div class="soc-up"></div>'
+                 f'<div class="n">{esc(str(d.get("upvotes", d.get("likes", ""))))}</div><div class="soc-dn"></div></div>'
+                 f'<div class="soc-rbody"><div class="soc-sub">r/{esc(d.get("subreddit", d.get("handle", "")))}</div>'
+                 f'<div class="soc-rtitle">{esc(d.get("text", d.get("name", "")))}</div>'
+                 f'<div class="soc-rmeta">{esc(str(d.get("comments", d.get("replies", 0))))} comments · Share · Save</div></div>')
+        cls = "soc-reddit"
+    elif plat == "spotify":
+        prog = max(0.0, min(1.0, float(d.get("progress", 0.4))))
+        inner = (f'<div class="soc-art">{av(d.get("track", ""), d.get("art"))}</div>'
+                 f'<div class="soc-sbody"><div class="soc-track">{esc(d.get("track", d.get("name", "")))}</div>'
+                 f'<div class="soc-artist">{esc(d.get("artist", d.get("handle", "")))}</div>'
+                 f'<div class="soc-prog"><div id="{w}-pf" class="soc-prog-fill" style="width:{prog * 100:.0f}%;"></div></div></div>'
+                 f'<div class="soc-splay">&#9654;</div>')
+        cls = "soc-spotify"
+        tl.append(f'tl.fromTo("#{w}-pf",{{scaleX:0}},{{scaleX:1,duration:1.3,ease:"power2.out"}},{start + 0.6});')
+    else:  # x
+        vf = '<span class="soc-vf">&#10003;</span>' if d.get("verified") else ""
+        inner = (f'<div class="soc-head"><div class="soc-av">{av(d.get("name", ""), d.get("avatar"))}</div>'
+                 f'<div class="soc-id"><div class="soc-name">{esc(d.get("name", ""))}{vf}</div>'
+                 f'<div class="soc-handle">@{esc(d.get("handle", ""))}</div></div><div class="soc-logo">X</div></div>'
+                 f'<div class="soc-text">{esc(d.get("text", ""))}</div>'
+                 f'<div class="soc-metrics"><span><b>{esc(str(d.get("replies", 0)))}</b> Replies</span>'
+                 f'<span><b>{esc(str(d.get("reposts", 0)))}</b> Reposts</span>'
+                 f'<span class="soc-heart"><b>{esc(str(d.get("likes", 0)))}</b> Likes</span></div>')
+        cls = "soc-x"
+    tl.insert(0, f'tl.fromTo("#{w}",{{opacity:0,y:30,scale:0.96}},{{opacity:1,y:0,scale:1,duration:0.6,ease:"power3.out"}},{start + 0.2});')
+    return frag + [f'<section class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
+                   f'style="position:absolute;inset:0;"><div class="soc-wrap" style="{anchor}">'
+                   f'<div id="{w}" class="soc-card {cls}">{inner}</div></div></section>'], tl
+
+
 BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map, "raw": raw_scene,
           "timeline": timeline, "newshead": newshead, "collage": collage,
           "diagram": diagram, "comparison": comparison, "gallery": gallery, "carousel": carousel,
-          "linedraw": linedraw, "document": document}
+          "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
+          "code": code, "social_card": social_card}
 
-def compose_frame(frame_id, dur, scenes):
+_FIT_SCRIPT = ("(function(){var W=1920;function fit(){"
+  "Array.prototype.forEach.call(document.querySelectorAll('#root [data-fit]'),function(el){"
+  "var raw=el.getAttribute('data-fit-w')||'',t;"
+  "if(raw.slice(-3)==='cqw'){t=parseFloat(raw)/100*W;}else if(raw){t=parseFloat(raw);}"
+  "else{t=el.parentElement?el.parentElement.clientWidth:W;}"
+  "var sw=el.scrollWidth;"
+  "if(t>0&&sw>t+0.5){el.style.transformOrigin=el.getAttribute('data-fit-origin')||'left top';"
+  "el.style.transform='scale('+(t/sw)+')';}"
+  "});}"
+  "try{fit();}catch(e){}"
+  "if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fit);}"
+  "})();")
+# ^ THEME-FIT: font-robust layout. Any [data-fit] element is scaled (transform, seek-safe: set once
+# on fonts.ready, not per-frame) so its content fits `data-fit-w` (a length, default parent width) —
+# neutralises the one real theme risk: a wider theme font overflowing a fixed box. See the
+# `themed-composer` bridge + kb/theme-style-pipelines.md.
+
+
+def _theme_vars(theme):
+    """Inject a NOLAN theme's tokens.css as scoped CSS custom properties on #root so the block CSS
+    (which references var(--accent) etc.) resolves. Falls back to the Vox 'highlighter-editorial'
+    house theme. This is the seam that makes the composer theme-driven instead of Vox-hardcoded."""
+    root = Path(__file__).resolve().parents[3] / "themes"
+    p = root / str(theme) / "tokens.css"
+    if not p.exists():
+        p = root / "highlighter-editorial" / "tokens.css"
+    try:
+        css = p.read_text(encoding="utf-8")
+    except Exception:
+        return ""
+    decls = re.findall(r"--[\w-]+\s*:\s*[^;{}]+", css)
+    return ("#root{" + ";".join(d.strip() for d in decls) + ";}") if decls else ""
+
+
+# ---------------------------------------------------------------------------------------------
+# SCENE-TRANSITION PRIMITIVE (the "CSS transitions" deferred track — HF cover/push/scale/dissolve
+# family). NOT a block: a SEAM operator between two consecutive scenes in a frame. Authored as an
+# optional `transition_out` on the DEPARTING scene: {kind, dur?, color?}. It is an OUTGOING effect
+# over an overlap window [b, b+T] after the scene boundary b — the departing scene animates away
+# (fade / slide / scale) on TOP while the next scene does its own normal block entrance UNDERNEATH.
+# This composes without touching any block's internal choreography, and is SEEK-SAFE (transform/
+# opacity only — literal CSS `transition:`/@keyframes are banned by the runtime, so it's GSAP).
+# Registry-driven like REVEALS: keys MUST equal catalog['transitions'] (check_catalog.py enforces).
+
+def _tr_crossfade(w, b, T, o):
+    return [f'tl.to("#{w}",{{opacity:0,duration:{T},ease:"power1.inOut"}},{b});'], []
+
+
+def _tr_slide_left(w, b, T, o):
+    return [f'tl.to("#{w}",{{xPercent:-100,duration:{T},ease:"power2.inOut"}},{b});'], []
+
+
+def _tr_slide_right(w, b, T, o):
+    return [f'tl.to("#{w}",{{xPercent:100,duration:{T},ease:"power2.inOut"}},{b});'], []
+
+
+def _tr_slide_up(w, b, T, o):
+    return [f'tl.to("#{w}",{{yPercent:-100,duration:{T},ease:"power2.inOut"}},{b});'], []
+
+
+def _tr_scale_out(w, b, T, o):
+    return [f'tl.to("#{w}",{{scale:1.18,opacity:0,duration:{T},ease:"power2.in"}},{b});'], []
+
+
+def _tr_fade_through(w, b, T, o):
+    """Dip-to-colour (default black): departing scene fades to the colour, the colour clears to
+    reveal the next scene. A separate full-frame overlay clip above everything does the dip."""
+    color = o.get("color", "#000")
+    pid, half = f"{w}-ft", T / 2.0
+    overlay = [f'<div id="{pid}" class="clip" data-start="{b:g}" data-duration="{T:g}" data-track-index="9" '
+               f'style="position:absolute;inset:0;background:{esc(color)};opacity:0;z-index:400;"></div>']
+    return ([f'tl.to("#{w}",{{opacity:0,duration:{half:g},ease:"power1.in"}},{b:g});',
+             f'tl.to("#{pid}",{{opacity:1,duration:{half:g},ease:"power1.in"}},{b:g});',
+             f'tl.to("#{pid}",{{opacity:0,duration:{half:g},ease:"power1.out"}},{b + half:g});'], overlay)
+
+
+TRANSITIONS = {
+    "crossfade":    {"fn": _tr_crossfade,    "desc": "departing scene dissolves to reveal the next (HF dissolve)"},
+    "slide_left":   {"fn": _tr_slide_left,   "desc": "departing scene slides off to the left, uncovering the next (cover/push)"},
+    "slide_right":  {"fn": _tr_slide_right,  "desc": "departing scene slides off to the right, uncovering the next"},
+    "slide_up":     {"fn": _tr_slide_up,     "desc": "departing scene slides up out of frame, uncovering the next"},
+    "scale_out":    {"fn": _tr_scale_out,    "desc": "departing scene zooms up + fades (scale dissolve)"},
+    "fade_through": {"fn": _tr_fade_through, "desc": "dip through a colour (default black) between scenes; data.color overrides"},
+}
+
+
+def _extend_clip_dur(frag, scene_end, extra, eps=0.05):
+    """Bump the data-duration of any .clip in `frag` that ENDS at the scene boundary, so the
+    departing scene stays mounted through the [b, b+T] transition overlap instead of hard-cutting."""
+    def repl(m):
+        s, d = float(m.group(1)), float(m.group(2))
+        if abs(s + d - scene_end) <= eps:
+            return f'data-start="{m.group(1)}" data-duration="{d + extra:g}"'
+        return m.group(0)
+    return re.sub(r'data-start="([\d.]+)"\s+data-duration="([\d.]+)"', repl, frag)
+
+
+def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
     body, tl = [], []
-    for sc in scenes:
+    # Scene transitions (optional): if ANY scene carries a `transition_out`, wrap every scene in a
+    # z-ordered wrapper (earlier scene ON TOP, so a departing scene's exit uncovers the next
+    # underneath) and apply the seam operator on the departing wrapper. No transitions -> emit
+    # byte-identical to before (no wrappers), so existing frames are unaffected.
+    has_trans = any((sc.get("transition_out") or {}).get("kind") in TRANSITIONS for sc in scenes)
+    for i, sc in enumerate(scenes):
         sc = {**sc, "id": _safe_sid(sc["id"])}   # digit-first ids break #selectors
         f, t = BLOCKS[sc["type"]](sc["id"], sc)
-        body += f; tl += t
+        if has_trans:
+            sid = sc["id"]
+            trans = sc.get("transition_out") or {}
+            if trans.get("kind") in TRANSITIONS:
+                T = float(trans.get("dur", 0.5))
+                b = float(sc["start"]) + float(sc["dur"])
+                f = [_extend_clip_dur(frag, b, T) for frag in f]   # keep departing scene mounted through overlap
+                lines, overlay = TRANSITIONS[trans["kind"]]["fn"](f"{sid}-tw", b, T, trans)
+                t = t + lines
+                body += overlay
+            body.append(f'<div id="{sid}-tw" class="scenewrap" style="position:absolute;inset:0;z-index:{100 - i};">')
+            body += f
+            body.append('</div>')
+        else:
+            body += f
+        tl += t
     # geo + diagram scenes need d3 loaded before the timeline script (which contains their setup
     # IIFE). Loaded next to GSAP — the assembler guarantees script order. geo also needs topojson +
     # the atlas; diagram needs d3 only (d3.hierarchy/tree is in the same bundle).
@@ -1871,12 +2480,13 @@ def compose_frame(frame_id, dur, scenes):
         if "us" in kinds:    libs += '  <script src="vendor/us-states.js"></script>\n'
         if "world" in kinds: libs += '  <script src="vendor/world.js"></script>\n'
     return f"""<template>
-  <style>{FONTS}{CSS}</style>
+  <style>{FONTS}{_theme_vars(theme)}{CSS}</style>
   <div id="root" data-composition-id="{frame_id}" data-width="1920" data-height="1080">
     {chr(10).join('    '+b for b in body)}
   </div>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
-{libs}  <script>
+{libs}  <script>{_FIT_SCRIPT}</script>
+  <script>
     window.__timelines = window.__timelines || {{}};
     var tl = gsap.timeline({{ paused: true }});
     {chr(10).join('    '+x for x in tl)}

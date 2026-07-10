@@ -4,6 +4,130 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## HyperFrames scene edit mode — Phase 2 (agent edits) + asset picker (2026-07-10)
+
+- **Comment → agent → gate** (`edit.py:revise_frame_note`, async): a human note
+  is turned by the text LLM into an **ordered ops plan** (`patch`/`add`/`remove`/
+  `retime`/`transition`) over the Phase-1 primitives, then **gated by author.py**
+  with one **self-correct retry** (the gate error is fed back to the model);
+  reverts on failure. This is the compose-first authoring path re-run on ONE
+  frame with an edit note — draft→validate→accept; the LLM only proposes. The
+  client is injectable so tests use a deterministic stub (no network).
+- **`@`-grammar** (`_resolve_hf_mentions`): `@s2` (scene), `@reveal:X`,
+  `@transition:X`, `@assetN` expand into an explicit MENTIONS appendix the model
+  can trust. Registry (`_catalog_brief`) + frame spec + resolved note → prompt.
+- **Asset picker** (`list_assets`/`resolve_asset`/`save_upload` + `/api/hf/assets`,
+  `/asset/{resolve,upload}`, `/asset-file`): land an image/video in
+  `<comp>/assets/` and reference it by path in scene data; the preview scaffold
+  now copies `assets/` so image-bearing frames render. `asset-file` is confined to
+  `<comp>/assets/` (path-traversal 404-guarded).
+- **UI**: scene-level + frame-level note boxes (`ASK AN EDIT` / `ASK A FRAME EDIT`),
+  and a **Browse assets…** modal on asset-typed fields (thumbnails + upload; picking
+  writes the path into the field — array-append for `images`, `.src` for object
+  grounds). Routes: `/api/hf/frame/revise-note`, `/api/hf/assets`, `/api/hf/asset/*`.
+- Verified: `tests/test_hyperframes_edit.py` now 14 — note edit valid / add+retime /
+  **self-correct-on-reject** (`stub.calls==2`) / rejected+reverted / no-ops /
+  prompt+mentions / asset resolve+list; TestClient over the note + asset routes
+  (incl. traversal guard); page re-rendered headless + **looked at** (note boxes +
+  Browse buttons present). Full `tests/` suite green. Phase 2 completes the edit
+  vocabulary; parked: frame-to-frame transitions + cross-frame asset windows.
+
+## HyperFrames scene edit mode — Phase 1 (direct edits) (2026-07-10)
+
+- New `/hyperframes` page: a composer-native scene-edit surface (the "editing
+  bridge"). Edits a composed frame **per scene** (data, timing, motion,
+  transitions) and re-renders **per frame** — mirrors the `iterate` pattern
+  (load → find scene → patch → gate → re-render only what's affected) over the
+  composer artifact (`compositions/frames/<id>.spec.json`) instead of
+  scene_plan.json. See `render-service/_lab_hyperframes/kb/edit-mode-plan.md`.
+- **Engine** `src/nolan/hyperframes/edit.py`: `discover_compositions` (scans the
+  lab `_lab_hyperframes/videos/*` AND `projects/*`), `list_frames`,
+  `apply_scene_edit` (dotted-path patch/deletes → **author.py gate** via
+  `sys.executable -X utf8` subprocess → recompose; **atomic revert** on gate
+  reject), `add_scene`/`remove_scene`/`retime_scene`, `beat_boundary_planner`
+  (within-frame seam defaults: same-type→crossfade, type-change→scale_out),
+  `snapshot_frame`/`render_frame` (throwaway single-frame `npx hyperframes`
+  scaffold — cross-platform). Lossless spec round-trip (unknown keys survive).
+- **Routes** `webui/routes/hf_scenes.py` (registered in `hub.py`):
+  `/hyperframes` + `/api/hf/{compositions, frames, catalog, frame-spec,
+  snapshot, scene/{revise,add,remove,retime}, transitions/plan,
+  frame/rerender}`.
+- **UI** `templates/hf_scenes.html`: frame→scene tree, per-frame **mini-timeline**
+  (scenes as time-coded bars, transitions marked at seams), **registry-driven
+  inspector** (form built from `catalog.json` `data_schema` per block type;
+  asset-typed fields tagged; reveal + transition dropdowns; start/dur), snapshot
+  preview, `nav.js` entry. Asset fields are tagged + directly editable (path/JSON)
+  — the visual shortlist/pool browse-picker is the next increment.
+- **Bridge surface**: `system_map.py` `BRIDGES` entry `editing`
+  (wire `src/nolan/hyperframes/edit.py:apply_scene_edit`, stage live) — auto-
+  covered by `test_bridges_live_wires`. KB docs surfaced: `frame-vs-scene`,
+  `asset-editing-in-the-composer`, `edit-mode-plan`.
+- Verified: `tests/test_hyperframes_edit.py` (7 — edit/gate/**reject-and-revert**/
+  add/retime/planner/lossless, through the real gate); FastAPI TestClient over
+  the full route surface; the page rendered headless with real data + **looked at**
+  (mini-timeline + registry inspector correct); a live snapshot of an edit
+  (`kicker`/count-up change) confirmed the edit→gate→recompose→snapshot loop.
+  `test_system_map.py` 8/8. Phase 2 (comment→agent→gate + `@`-grammar) + the
+  visual asset-picker + frame-to-frame transitions remain (parked).
+
+## HyperFrames composer — scene-transition primitive (2026-07-10)
+
+- Closes the deferred "CSS transitions" track (the last item parked after the
+  registry converts). A scene-to-scene transition is NOT a block — it is a SEAM
+  operator: an optional `transition_out: {kind, dur?, color?}` on the DEPARTING
+  scene. `compose.TRANSITIONS` registry: `crossfade`, `slide_left`/`slide_right`/
+  `slide_up`, `scale_out`, `fade_through` (dip-to-colour, `color` overrides).
+- Executor in `compose_frame`: if any scene in the frame carries a
+  `transition_out`, every scene is wrapped in a z-ordered `.scenewrap` (earlier
+  scene ON TOP so a departing scene's exit uncovers the next underneath); the
+  departing scene's boundary clips are extended by `T` (`_extend_clip_dur`) so it
+  stays mounted through the `[b, b+T]` overlap, and the wrapper animates away
+  (transform/opacity — **seek-safe**; literal CSS `transition:`/@keyframes remain
+  runtime-banned) while the next scene runs its own normal block entrance beneath.
+- **Registry-driven like REVEALS** (full module contract): keys must equal
+  `catalog['transitions']` — `check_catalog.py` honesty-tested; `author.py` gate
+  validates `transition_out.kind` (an unknown kind like `wormhole` is rejected with
+  the valid list). **Backward-compatible**: a frame with NO `transition_out`
+  composes byte-identical (no wrappers) — existing frames unaffected.
+- Verified as an editor (`hyperframes snapshot --at` across the seams, LOOKED at):
+  `videos/trans_demo/` — mid-crossfade shows scene 1's stats dissolving to ~40%;
+  mid-slide shows scene 2 sliding off-left while scene 3's newshead panel is
+  uncovered underneath — and `videos/ft/` — the fade-through dip goes to black
+  then clears. Seek-safe lint clean (0 Math.random/Date.now/rAF/repeat/transition:).
+  Wrapping `.clip` in a `<div>` does NOT break the runtime mount/z (z is
+  DOM-order/z-index per pitfall #5) — confirmed by render, not assumed.
+- With this, the HyperFrames→NOLAN registry-conversion map is complete: Tier-1
+  converters + the scene-transition track are done; only Tier-2 "extend what
+  exists" polish (`geo` modes, `flowchart`) remains, lower value.
+
+## HyperFrames composer — Phase-1 Tier-1 registry converters (2026-07-10)
+
+- The HyperFrames composer (`_lab_hyperframes/bridge/compose.py`) gains the four
+  Tier-1 blocks from `kb/registry-conversion-map.md` (HF catalog families → NOLAN
+  reusable blocks, full module contract each: `BLOCKS` fn + `catalog.json`
+  data_schema + `author.py` REQUIRED + `check_catalog.py` honesty test + `/map`):
+  - **`lower_third`** (12 HF profiles → 1 + `style`); **`chart`** (drawn GSAP+SVG
+    bar/line the `stat` block never covered); **`code`** (**29 native → 1** — 5 code
+    effects + 24 syntax-theme profiles; Python tokenises at BUILD time into
+    pre-coloured spans, reveal is transform/opacity, seek-safe); **`social_card`**
+    (X · Reddit · Spotify post/now-playing overlay + `platform` param).
+- **Theme convention nailed**: *adaptive* blocks read NOLAN tokens (`var(--accent/
+  --text/--shell/--accent-ink)`); *identity* blocks keep their signature palette and
+  theme only the surrounding scene — `code`'s syntax palette is a fixed code-theme
+  (monokai/dracula/…), `social_card`'s chrome is brand-fixed (Reddit `#ff4500`, X
+  `#1d9bf0`, Spotify `#1db954`). Per the constraint that "the 24 code snippets +
+  social overlays have very specific themes" — they are NOT driven by NOLAN theme
+  tokens; only each block's scene backdrop (`--shell`) is.
+- Verified as an editor: `videos/{soc_x,soc_reddit,soc_spotify,code-*,chart-*,lt-*}/`
+  snapshotted (`hyperframes snapshot --at`) and LOOKED at — X reads as an authentic
+  tweet (blue verified, pink likes), Reddit authentic (orange upvote/`r/`), Spotify
+  authentic (green tile + progress bar filled to `progress`). Seek-safe lint clean (0
+  Math.random/Date.now/rAF/repeat:-1). `check_catalog.py` green; `test_system_map.py`
+  8/8. Docs: HANDOFF §12 Tier-1 note, `kb/registry-conversion-map.md` Tier-1 ✅.
+- Remaining on the map: Tier-2 (`geo` bubble/flow/hex modes, `flowchart` coordinating
+  with `diagram`), then the deferred **CSS-transitions** track (a scene-transition
+  primitive) — the last item the user parked until "after we done all converts".
+
 ## Text-reveal vocabulary for the statement composer (2026-07-09)
 
 - HyperFrames composer (`_lab_hyperframes/bridge/compose.py`) gains a `reveal:`
@@ -649,8 +773,16 @@ from HERMES (finance→storytelling); markdown is canonical, DB/vectors derived.
   `nolan kb reindex` (rebuild from sidecars). Beats HERMES's search (which is
   keyword *or* semantic, never fused). 11 `tests/test_kb_*` pass; verified live
   on the real vault (17 insights across the 2 seed videos).
-- **Next:** P4 web `/kb` page, P5 MOCs. P6 pipeline bridge (RAG insights into
-  design steps via `nolan_hook`) **deferred** by user.
+- **P4 web `/kb` page** (`webui/routes/kb.py` + `templates/kb.html`, nav entry):
+  add-a-source bar (ingest+distill as a background job), an **Insights** tab with
+  search (Hybrid/Keyword/Semantic segmented toggle) + facet chips
+  (category/hook/difficulty) + badge-driven technique cards, and a **Sources**
+  tab (status pills, per-source distill, drill-down to a source's insights).
+  Search runs in a worker thread against a process-shared vector store so the
+  embedding model loads once. Verified live (page 200, real 17-insight index,
+  hybrid/semantic/keyword + filters all correct).
+- **Next:** P5 MOCs (auto per-category/per-hook maps of content). P6 pipeline
+  bridge (RAG insights into design steps via `nolan_hook`) **deferred** by user.
 
 ## Asset-library curation UX + shortlist→essay bridge (2026-07-05)
 

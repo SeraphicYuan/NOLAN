@@ -1,0 +1,27 @@
+{
+  "frames": [
+    {
+      "id": "carousel-slider",
+      "dur": 10.0,
+      "scenes": [
+        {
+          "id": "cs1", "type": "carousel", "start": 0, "dur": 10.0,
+          "data": {
+            "style": "slider", "transition": "kenburns",
+            "card_w": 1240, "card_h": 720, "y": 0.52,
+            "title": "A year in pictures", "titleHi": "pictures",
+            "backdrop": "#101014", "vignette": 0.45, "captions": true,
+            "images": [
+              {"src": "assets/img/g1.png", "caption": "One"},
+              {"src": "assets/img/g2.png", "caption": "Two"},
+              {"src": "assets/img/g3.png", "caption": "Three"},
+              {"src": "assets/img/g4.png", "caption": "Four"},
+              {"src": "assets/img/g5.png", "caption": "Five"},
+              {"src": "assets/img/g6.png", "caption": "Six"}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

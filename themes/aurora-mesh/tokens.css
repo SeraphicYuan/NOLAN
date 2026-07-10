@@ -32,6 +32,7 @@
   --accent:       #9d7bff;            /* electric violet — pops, survives h.264 */
   --accent-soft:  rgba(157, 123, 255, 0.12);
   --accent-glow:  rgba(157, 123, 255, 0.50);
+  --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts (all loaded in index.tsx) ─── */
   --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;

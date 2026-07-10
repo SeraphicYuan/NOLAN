@@ -1,0 +1,8 @@
+{ "frames":[{ "id":"n3t","dur":15,"scenes":[{ "id":"t1","type":"diagram","start":0,"dur":15,
+  "data":{ "space":"3d","camera":"tour","kicker":"Follow the money","title":"One empire, one balance sheet","titleHi":"balance sheet",
+    "root":{ "label":"The $44B bet","sub":"Oct 2022",
+      "children":[
+        { "label":"Twitter","sub":"acquired","children":[{"label":"Renamed X","children":[{"label":"Advertisers flee"}]}] },
+        { "label":"xAI","sub":"the AI arm","hl":true,"children":[{"label":"Merged 2025","children":[{"label":"+$12B debt"}]}] },
+        { "label":"SpaceX","sub":"the collateral","children":[{"label":"Bridge loan"}]}
+      ]}}}]}]}

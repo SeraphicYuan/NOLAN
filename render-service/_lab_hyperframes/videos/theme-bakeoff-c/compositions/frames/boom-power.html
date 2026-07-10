@@ -1,0 +1,193 @@
+<template>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap');#root{--shell:        #0c0c0c;--surface:      #1a1a1a;--surface-2:    #2d2d2d;--surface-3:    #3a3a3a;--text:         #f5f5f5;--text-2:       #d8d8d8;--text-mute:    #8a8a8a;--text-faint:   #5a5a5a;--rule:         #3d3d3d;--accent:       #ff5722;--accent-soft:  rgba(255, 87, 34, 0.14);--accent-glow:  rgba(255, 87, 34, 0.50);--font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;--font-display-en: "Archivo Black", "Inter", "Helvetica Neue", sans-serif;--font-body:       "Space Grotesk", "Inter", "Noto Sans SC", -apple-system, sans-serif;--font-mono:       "JetBrains Mono", "SF Mono", ui-monospace, monospace;--font-features:   "tnum", "ss01", "ss02";--dur-quick:     180ms;--dur-base:      420ms;--dur-slow:      680ms;--dur-cinematic: 1050ms;--r-card:        var(--r-md);--r-stage:       0;--rule-w:        2px;--rule-style:    solid;--hero-num-font:    var(--font-display-en);--hero-num-style:   normal;--hero-num-weight:  900;--hero-num-track:   -0.04em;--stage-pad-x:   100px;--stage-pad-y:   80px;--card-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04);--shadow-stage:
+    0 60px 160px rgba(0, 0, 0, 0.60),
+    0 0 0 1px rgba(255, 255, 255, 0.05);--surface-pattern:
+    linear-gradient(135deg, rgba(255, 87, 34, 0.0) 0%, rgba(255, 87, 34, 0.04) 40%, transparent 70%),
+    linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);--surface-pattern-size: 100% 100%, 100% 100%;--surface-pattern-blend: normal, normal;--surface-pattern-opacity: 1;}
+    #root, #root * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ---------- header ---------- */
+    #tick {
+      background: var(--accent);
+      border-radius: 1px;
+    }
+    #kick {
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 26px;
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+      color: var(--text-mute);
+      white-space: nowrap;
+    }
+    .rule {
+      background: var(--rule);
+      transform-origin: left center;
+    }
+
+    /* ---------- hero (emphasized stat) ---------- */
+    #glowHero {
+      background: var(--accent-glow);
+      border-radius: 50%;
+      filter: blur(130px);
+      opacity: 0.55;
+    }
+    #heroPanel {
+      background: var(--accent-soft);
+      border: 1px solid var(--rule);
+      border-radius: 12px;
+    }
+    #heroTrend {
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 24px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    #heroLabel {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 30px;
+      letter-spacing: 0.30em;
+      text-transform: uppercase;
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+    #heroNum {
+      font-family: var(--font-display-en);
+      font-weight: 700;
+      font-size: 300px;
+      line-height: 0.9;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      text-shadow: 0 0 70px var(--accent-glow);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    #accentBar {
+      background: var(--accent);
+      border-radius: 3px;
+      transform-origin: left center;
+      box-shadow: 0 0 34px var(--accent-glow);
+    }
+
+    /* ---------- supporting stats ---------- */
+    .statNum {
+      font-family: var(--font-display-en);
+      font-weight: 700;
+      font-size: 152px;
+      line-height: 0.9;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .statLabel {
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 24px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-mute);
+      white-space: nowrap;
+    }
+
+    /* ---------- footer ---------- */
+    .foot {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 20px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      white-space: nowrap;
+    }
+  </style>
+
+  <div id="root" data-composition-id="boom-power" data-width="1920" data-height="1080">
+    <section class="clip" data-start="0" data-duration="12" data-track-index="0" style="position:absolute;inset:0;background:var(--shell);overflow:hidden;">
+
+      <!-- ambient hero glow -->
+      <div id="glowHero" style="position:absolute;left:150px;top:360px;width:700px;height:420px;"></div>
+
+      <!-- header -->
+      <div id="tick" style="position:absolute;left:140px;top:104px;width:11px;height:28px;"></div>
+      <div id="kick" style="position:absolute;left:170px;top:107px;">THE POWER &middot; US ELECTRICITY</div>
+      <div id="ruleTop" class="rule" style="position:absolute;left:140px;top:172px;width:1640px;height:2px;"></div>
+
+      <!-- emphasized stat -->
+      <div id="heroPanel" style="position:absolute;left:120px;top:470px;width:860px;height:320px;"></div>
+      <div id="heroTrend" style="position:absolute;left:152px;top:356px;">&#9650; PROJECTED</div>
+      <div id="heroLabel" style="position:absolute;left:154px;top:400px;">BY 2028</div>
+      <div id="heroNum" style="position:absolute;left:145px;top:452px;">7&#8211;12%</div>
+      <div id="accentBar" style="position:absolute;left:152px;top:742px;width:760px;height:14px;"></div>
+
+      <!-- divider -->
+      <div id="ruleV" class="rule" style="position:absolute;left:1110px;top:300px;width:2px;height:500px;transform-origin:top center;"></div>
+
+      <!-- supporting stat A -->
+      <div id="numA" class="statNum" style="position:absolute;left:1190px;top:316px;">0.0%</div>
+      <div id="labA" class="statLabel" style="position:absolute;left:1192px;top:500px;">OF US ELECTRICITY &middot; 2023</div>
+      <div id="ruleMid" class="rule" style="position:absolute;left:1190px;top:560px;width:560px;height:2px;"></div>
+
+      <!-- supporting stat B -->
+      <div id="numB" class="statNum" style="position:absolute;left:1190px;top:600px;">10&#215;</div>
+      <div id="labB" class="statLabel" style="position:absolute;left:1192px;top:784px;">ONE PROMPT vs A SEARCH</div>
+
+      <!-- footer -->
+      <div id="ruleBot" class="rule" style="position:absolute;left:140px;top:944px;width:1640px;height:2px;"></div>
+      <div id="footL" class="foot" style="position:absolute;left:140px;top:966px;">US ELECTRICITY DEMAND</div>
+      <div id="footR" class="foot" style="position:absolute;right:140px;top:966px;">2023 &#8594; 2028</div>
+
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+    var cntA = { v: 0 };
+    var elA = document.getElementById("numA");
+
+    // header
+    tl.from("#tick", { scaleX: 0, transformOrigin: "left center", duration: 0.4 }, 0.2);
+    tl.from("#kick", { opacity: 0, y: 14, duration: 0.6 }, 0.3);
+    tl.from("#ruleTop", { scaleX: 0, duration: 0.9, ease: "power2.inOut" }, 0.5);
+
+    // ambient glow + divider
+    tl.from("#glowHero", { opacity: 0, scale: 0.55, transformOrigin: "center center", duration: 1.5 }, 0.8);
+    tl.from("#ruleV", { scaleY: 0, duration: 0.8, ease: "power2.inOut" }, 1.1);
+
+    // emphasized stat reveal
+    tl.from("#heroTrend", { opacity: 0, x: -18, duration: 0.5 }, 1.2);
+    tl.from("#heroLabel", { opacity: 0, y: 16, duration: 0.6 }, 1.35);
+    tl.from("#heroPanel", { opacity: 0, scaleY: 0.72, transformOrigin: "left bottom", duration: 0.7, ease: "power2.out" }, 1.5);
+    tl.from("#heroNum", { opacity: 0, y: 64, scale: 0.82, transformOrigin: "left bottom", duration: 0.95, ease: "power3.out" }, 1.7);
+    tl.from("#accentBar", { scaleX: 0, duration: 0.85, ease: "power2.inOut" }, 2.55);
+
+    // supporting stat A (deterministic count-up)
+    tl.from("#numA", { opacity: 0, y: 44, scale: 0.85, transformOrigin: "left bottom", duration: 0.75 }, 3.5);
+    tl.to(cntA, { v: 4.4, duration: 1.2, ease: "power1.out",
+      onUpdate: function () { elA.textContent = cntA.v.toFixed(1) + "%"; } }, 3.5);
+    tl.from("#labA", { opacity: 0, y: 12, duration: 0.5 }, 4.1);
+    tl.from("#ruleMid", { scaleX: 0, duration: 0.7, ease: "power2.inOut" }, 4.3);
+
+    // supporting stat B
+    tl.from("#numB", { opacity: 0, y: 44, scale: 0.85, transformOrigin: "left bottom", duration: 0.75 }, 5.0);
+    tl.from("#labB", { opacity: 0, y: 12, duration: 0.5 }, 5.6);
+
+    // footer
+    tl.from("#ruleBot", { scaleX: 0, duration: 0.8, ease: "power2.inOut" }, 5.8);
+    tl.from("#footL", { opacity: 0, y: 10, duration: 0.5 }, 6.1);
+    tl.from("#footR", { opacity: 0, y: 10, duration: 0.5 }, 6.25);
+
+    // lock render length
+    tl.to({}, { duration: 12 }, 0);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines["boom-power"] = tl;
+  </script>
+</template>

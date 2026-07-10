@@ -27,6 +27,7 @@
   --accent:       #d4ff00;             /* neon yellow */
   --accent-soft:  rgba(212, 255, 0, 0.14);
   --accent-glow:  rgba(212, 255, 0, 0.50);
+  --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */
   --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;

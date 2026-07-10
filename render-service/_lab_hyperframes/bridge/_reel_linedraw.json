@@ -1,0 +1,11 @@
+{
+  "framesDir": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\linedraw-demo\\compositions\\frames",
+  "out": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\linedraw-demo\\out\\linedraw-reel.mp4",
+  "fps": 30,
+  "ids": [
+    "ld-signature",
+    "ld-bulb",
+    "ld-bulb-dark",
+    "ld-traced"
+  ]
+}

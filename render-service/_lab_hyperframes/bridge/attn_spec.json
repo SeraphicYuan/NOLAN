@@ -1,0 +1,9 @@
+{ "frames": [{ "id":"attn","dur":9,"scenes":[{ "id":"at1","type":"document","start":0,"dur":9,
+  "data":{ "source":"assets/attention.pdf","pdf_page":0,"mode":"page","backdrop":"#141821","camera":"push",
+    "kicker":"Vaswani et al.  ·  2017","title":"The paper that ate ML","titleHi":"ate ML",
+    "annotations":[
+      {"type":"highlight","find":"Attention Is All You Need","cue":1.0},
+      {"type":"highlight","find":"recurrent or convolutional neural networks","color":"#8CE6C0","cue":2.4},
+      {"type":"highlight","find":"attention mechanism","cue":3.6},
+      {"type":"callout","title":"The whole idea","text":["Drop recurrence.","Just attention."],"side":"right","y":0.56,"cue":4.6}
+    ]}}]}]}

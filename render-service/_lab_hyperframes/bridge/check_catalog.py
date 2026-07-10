@@ -40,10 +40,21 @@ if r_missing:
 if r_extra:
     errs.append(f"catalog['reveals'] documents styles not in compose.REVEALS: {sorted(r_extra)}")
 
+# scene transitions: the catalog's `transitions` keys must exactly match compose.TRANSITIONS (minus _doc)
+cat_trans = set(cat.get("transitions", {})) - {"_doc"}
+code_trans = set(getattr(compose, "TRANSITIONS", {}))
+t_missing = code_trans - cat_trans
+t_extra = cat_trans - code_trans
+if t_missing:
+    errs.append(f"compose.TRANSITIONS has kinds the catalog does not document: {sorted(t_missing)}")
+if t_extra:
+    errs.append(f"catalog['transitions'] documents kinds not in compose.TRANSITIONS: {sorted(t_extra)}")
+
 if errs:
     print("CATALOG DRIFT:")
     for e in errs:
         print("  ✗", e)
     sys.exit(1)
 print(f"OK — catalog matches compose.py: scene templates {sorted(catalog_types)}, "
-      f"components {sorted(cat['components'])}, reveals {sorted(code_reveals)}")
+      f"components {sorted(cat['components'])}, reveals {sorted(code_reveals)}, "
+      f"transitions {sorted(code_trans)}")

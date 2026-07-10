@@ -1,0 +1,191 @@
+<template>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Lora:ital,wght@0,400;0,600;0,700;1,500&family=UnifrakturMaguntia&family=Inter:wght@500;600&display=swap');
+#root{position:absolute;inset:0;width:1920px;height:1080px;container-type:size;overflow:hidden;
+  font-family:"Libre Franklin",sans-serif;background:transparent;}
+.gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
+.paper-gnd{position:absolute;inset:0;}
+.scrim{position:absolute;inset:0;pointer-events:none;}
+.kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
+  letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
+.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
+  letter-spacing:-0.012em;}
+.stmt .ln{display:block;opacity:0;}
+.hlwrap{position:relative;display:inline-block;}
+.hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:#FFF200;transform:scaleX(0);
+  transform-origin:left center;z-index:-1;}
+.capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:#F1F3F2;color:#2B2D2C;padding:0.5cqw 1.1cqw;
+  font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
+.slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
+.slitem{display:flex;flex-direction:column;min-width:18cqw;}
+.slnumwrap{position:relative;display:inline-block;}
+.slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
+  white-space:nowrap;opacity:0;}
+.slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
+.slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:#FFF200;transform:scaleX(0);transform-origin:left center;}
+.sllabel{margin-top:1.1cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
+  text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
+.paper .slnum,.paper .sllead{color:#2B2D2C;}.paper .kick{color:#4C4E4D;}.paper .sllabel{color:#888880;}
+.footage .slnum{color:#F6F7F6;}.footage .kick{color:#F6F7F6;}.footage .sllabel{color:#d6d9d6;}
+.stmt.paper-t{color:#2B2D2C;}.stmt.footage-t{color:#F6F7F6;}
+/* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
+.prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
+.prop img{display:block;width:100%;height:auto;}
+.prop-cap{margin-top:0.4cqw;font-family:"Lora",serif;font-style:italic;font-size:0.72cqw;color:#2B2D2C;text-align:center;}
+/* geo-map: d3 choropleth (US states / world countries), one region highlighted + annotated */
+.geomap{will-change:transform;}
+.geomap svg{width:100%;height:100%;display:block;}
+.gstate{fill:#DCDFDC;stroke:#F1F3F2;stroke-width:1.0;}
+.ghl{fill:#FFF200;stroke:#2B2D2C;stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
+.geoleader{position:absolute;inset:0;pointer-events:none;}
+.geoleader path{fill:none;stroke:#2B2D2C;stroke-width:2;}
+.geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#2B2D2C;opacity:0;}
+.geopin::after{content:"";position:absolute;inset:-9px;border:2px solid #2B2D2C;border-radius:50%;opacity:0.4;}
+.geolabel{position:absolute;left:8cqw;top:20cqh;max-width:32cqw;}
+.glab-k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
+.glab-t{font-weight:900;font-size:5.4cqw;line-height:1;letter-spacing:-0.02em;color:#2B2D2C;margin:0.6cqw 0;opacity:0;}
+.glab-t .gmark{background:#FFF200;box-decoration-break:clone;padding:0 0.1em;}
+.glab-s{font-family:"Lora",serif;font-style:italic;font-size:1.3cqw;line-height:1.4;color:#4C4E4D;max-width:28cqw;opacity:0;}
+/* timeline: Vox stylized horizontal timeline — drawing spine + camera pan + alternating circular callouts */
+.tlbg{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 42%,#101210,#070807);}
+.tlworld{position:absolute;top:0;left:0;height:100%;will-change:transform;}
+.tlspine{position:absolute;height:8px;background:#FFF200;border-radius:4px;transform-origin:left center;transform:scaleX(0);box-shadow:0 0 22px rgba(255,242,0,0.35);}
+.tlnode{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:#0a0b0a;border:5px solid #FFF200;transform:scale(0);z-index:3;}
+.tlnode::after{content:"";position:absolute;inset:5px;border-radius:50%;background:#FFF200;}
+.tlv{position:absolute;width:2px;background:#EDEFEC;transform:scaleY(0);}
+.tlh{position:absolute;height:2px;background:#EDEFEC;transform-origin:left center;transform:scaleX(0);}
+.tlcirc{position:absolute;border-radius:50%;overflow:hidden;background:#181a18;transform:scale(0);will-change:transform;box-shadow:0 12px 40px rgba(0,0,0,0.5);}
+.tlcirc img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.06) brightness(1.08);display:block;}
+.tlph{position:absolute;inset:0;background:linear-gradient(135deg,#2b2d2b,#141513);}
+.tlph::after{content:"";position:absolute;inset:22% 22%;border:3px solid rgba(237,239,236,0.14);border-radius:50%;}
+.tlring{position:absolute;overflow:visible;pointer-events:none;}
+.tlring circle{fill:none;stroke:#EDEFEC;stroke-width:2.5;}
+.tlyear{position:absolute;font-weight:900;font-size:2.4cqw;letter-spacing:-0.01em;color:#EDEFEC;opacity:0;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.tllbl{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;color:#9a9c99;opacity:0;white-space:nowrap;}
+.tltitle{position:absolute;top:7cqh;left:5.5cqw;font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;color:#F6F7F6;opacity:0;}
+.tltitle .hl{background:#FFF200;color:#0a0b0a;padding:0 0.12em;box-decoration-break:clone;}
+/* newshead: a newspaper headline card (Vox "newspaper animation" look) */
+.nhbg{position:absolute;inset:0;background:radial-gradient(130% 130% at 50% 38%,#2b2d2c,#161716);}
+.nhcard{position:absolute;background:#ECE9E1;overflow:hidden;box-shadow:0 22px 64px rgba(0,0,0,0.55);transform-origin:center;}
+.nhcard .tex{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(20,22,18,0.09) 1.1px,transparent 1.4px);background-size:20px 20px;opacity:0.7;}
+.nhcard .vig{position:absolute;inset:0;box-shadow:inset 0 0 150px rgba(110,100,80,0.20);}
+.nhdate{position:absolute;display:inline-block;background:#C8232C;color:#F7F3EA;font-family:"Lora",serif;font-weight:700;font-size:18px;letter-spacing:0.02em;padding:6px 12px;opacity:0;}
+.nhhead{position:absolute;font-family:"Lora",serif;font-weight:700;color:#191712;font-size:60px;line-height:1.14;letter-spacing:-0.005em;}
+.nhline{display:block;}
+.nhhead .w{display:inline-block;}
+.nhhl-wrap{position:relative;display:inline-block;}
+.nhhl{position:absolute;left:-0.05em;right:-0.05em;top:0.12em;bottom:0.16em;background:#FFF23B;transform:scaleX(0);transform-origin:left center;z-index:-1;}
+.nhsub{position:absolute;font-family:"Lora",serif;font-weight:400;color:#38362d;font-size:23px;line-height:1.5;opacity:0;}
+.nhsub .subhl{background:#FFF23B;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 2px;}
+.nhsrc{position:absolute;display:flex;align-items:center;gap:16px;opacity:0;}
+.nhsrc .mast{font-family:"UnifrakturMaguntia",serif;color:#191712;font-size:42px;line-height:1;}
+.nhsrc .rule{height:2px;background:#191712;transform:scaleX(0);transform-origin:left center;}
+.nhphoto{position:absolute;overflow:hidden;filter:grayscale(1) contrast(1.06);opacity:0;box-shadow:0 8px 22px rgba(0,0,0,0.32);}
+.nhphoto img{width:100%;height:100%;object-fit:cover;display:block;}
+.nhcap{position:absolute;font-family:"Lora",serif;font-style:italic;font-size:15px;color:#4a4840;opacity:0;}
+.nharrow{position:absolute;overflow:visible;pointer-events:none;}
+.nharrow path{fill:none;stroke:#C8232C;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;}
+.nhcut{position:absolute;overflow:visible;opacity:0;will-change:transform;}
+.nhcut img{width:100%;height:100%;object-fit:contain;object-position:left center;display:block;filter:grayscale(1) contrast(1.08) drop-shadow(4px 0 0 #C8232C) drop-shadow(-4px 0 0 #C8232C) drop-shadow(0 4px 0 #C8232C) drop-shadow(0 -4px 0 #C8232C) drop-shadow(3px 3px 0 #C8232C) drop-shadow(-3px 3px 0 #C8232C) drop-shadow(3px -3px 0 #C8232C) drop-shadow(-3px -3px 0 #C8232C);}
+</style>
+  <div id="root" data-composition-id="beat1" data-width="1920" data-height="1080">
+        <div class="clip paper-gnd" data-start="0" data-duration="8.6" data-track-index="1" style="background:#F1F3F2;"></div>
+    <section class="scene clip paper" data-start="0" data-duration="8.6" data-track-index="2">
+    <div id="b1s1-k" class="kick">THE BUILD-OUT</div>
+    <div class="stmt paper-t">
+    <span class="ln" id="b1s1-ln0">The boom is <span class="hlwrap"><span id="b1s1-op0">real</span><span class="hlblock" id="b1s1-hl0"></span></span> —</span>
+    <span class="ln" id="b1s1-ln1">and it is not stopping.</span>
+    </div>
+    </section>
+    <div class="clip paper-gnd" data-start="8.6" data-duration="17.1" data-track-index="1" style="background:#F1F3F2;"></div>
+    <section class="scene clip paper" data-start="8.6" data-duration="17.1" data-track-index="2">
+    <div id="b1s2-k" class="kick">THE MONEY</div>
+    <div class="slrow">
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b1s2-n0"></span><span class="slul" id="b1s2-u0"></span></div><div class="sllabel" id="b1s2-l0">AI INFRASTRUCTURE — 2026</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b1s2-n1"></span></div><div class="sllabel" id="b1s2-l1">— 2027</div></div>
+    </div></section>
+    <div class="clip paper-gnd" data-start="25.7" data-duration="8.9" data-track-index="1" style="background:#F1F3F2;"></div>
+    <section class="scene clip paper" data-start="25.7" data-duration="8.9" data-track-index="2">
+    <div id="b1s3-k" class="kick">THE DEMAND · OPENAI USERS</div>
+    <div class="slrow">
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b1s3-n0"></span><span class="slul" id="b1s3-u0"></span></div><div class="sllabel" id="b1s3-l0">DOUBLED IN A SINGLE YEAR</div></div>
+    </div></section>
+    <div class="clip paper-gnd" data-start="34.6" data-duration="16.8" data-track-index="1" style="background:#F1F3F2;"></div>
+    <section class="scene clip paper" data-start="34.6" data-duration="16.8" data-track-index="2">
+    <div id="b1s4-k" class="kick">THE POWER · US ELECTRICITY</div>
+    <div class="slrow">
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b1s4-n0"></span></div><div class="sllabel" id="b1s4-l0">OF US ELECTRICITY, 2023</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b1s4-n1"></span><span class="slul" id="b1s4-u1"></span></div><div class="sllabel" id="b1s4-l1">BY 2028</div></div>
+    <div class="slitem"><div class="slnumwrap"><span class="slnum" id="b1s4-n2"></span></div><div class="sllabel" id="b1s4-l2">ONE PROMPT vs A SEARCH</div></div>
+    </div></section>
+    <div id="b1s5-bg" class="clip nhbg" data-start="51.4" data-duration="12.9" data-track-index="0"></div>
+    <section id="b1s5-scene" class="clip" data-start="51.4" data-duration="12.9" data-track-index="2" style="position:absolute;inset:0;">
+    <div id="b1s5-card" class="nhcard" style="left:110px;top:128px;width:1700px;height:824px;">
+    <div class="tex"></div><div class="vig"></div>
+    <div id="b1s5-date" class="nhdate" style="left:74px;top:74px;">Loudoun County, VA</div>
+    <div id="b1s5-head" class="nhhead" style="left:74px;top:132px;width:928px;">
+    <span class="nhline" id="b1s5-hl0"><span class="w">Data</span> <span class="w">centers</span> <span class="w">now</span> <span class="w">fund</span> </span>
+    <span class="nhline" id="b1s5-hl1"><span class="nhhl-wrap"><span class="w">a</span> <span class="w">third</span> <span class="w">of</span> <span class="w">the</span> <span class="w">county</span> <span class="w">budget</span> <span class="nhhl" id="b1s5-hl1-y"></span></span> </span>
+    </div>
+    <div id="b1s5-sub" class="nhsub" style="left:74px;top:302px;width:928px;">The servers throw off so much tax revenue that the county actually <span class="subhl">cut residents&#x27; property taxes</span>.</div>
+    <div id="b1s5-src" class="nhsrc" style="left:74px;top:706px;"><span class="mast">Loudoun Times-Mirror</span><span id="b1s5-rule" class="rule" style="width:340px;"></span></div>
+    <div id="b1s5-photo" class="nhphoto" style="left:1048px;top:132px;width:578px;height:453px;"><img src="assets/img/loudoun.jpg" alt=""/></div>
+    <div id="b1s5-cap" class="nhcap" style="left:1048px;top:595px;width:578px;">Data Center Alley, Virginia.</div>
+    </div>
+    </section>
+    <div class="clip paper-gnd" data-start="64.3" data-duration="3.46" data-track-index="1" style="background:#F1F3F2;"></div>
+    <section class="scene clip paper" data-start="64.3" data-duration="3.46" data-track-index="2">
+    <div id="b1s6-k" class="kick"></div>
+    <div class="stmt paper-t">
+    <span class="ln" id="b1s6-ln0">We are not <span class="hlwrap"><span id="b1s6-op0">un-building</span><span class="hlblock" id="b1s6-hl0"></span></span> this.</span>
+    </div>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+        tl.fromTo("#b1s1-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},0.2);
+    tl.fromTo("#b1s1-hl0",{scaleX:0},{scaleX:1,duration:0.4,ease:"power2.out"},4.4);
+    tl.to("#b1s1-op0",{color:"#2B2D2C",duration:0.25},4.45);
+    tl.fromTo("#b1s1-ln0",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},0.4);
+    tl.fromTo("#b1s1-ln1",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},0.75);
+    tl.fromTo("#b1s2-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},8.7);
+    (function(){var el=document.getElementById("b1s2-n0"),st={v:0.0},f=function(n){return "$"+Math.round(n)+"B";};el.textContent=f(0.0);tl.set(el,{opacity:1},12.8);tl.fromTo(st,{v:0.0},{v:800.0,duration:1.4,ease:"power3.out",onUpdate:function(){el.textContent=f(st.v);}},12.8);})();
+    tl.fromTo("#b1s2-l0",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},12.950000000000001);
+    tl.fromTo("#b1s2-u0",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},14.0);
+    document.getElementById("b1s2-n1").textContent="$1T+";
+    tl.fromTo("#b1s2-n1",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},17.6);
+    tl.fromTo("#b1s2-l1",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},17.75);
+    tl.fromTo("#b1s3-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},25.8);
+    (function(){var el=document.getElementById("b1s3-n0"),st={v:400.0},f=function(n){return ""+Math.round(n)+"M";};el.textContent=f(400.0);tl.set(el,{opacity:1},28.099999999999998);tl.fromTo(st,{v:400.0},{v:900.0,duration:1.4,ease:"power3.out",onUpdate:function(){el.textContent=f(st.v);}},28.099999999999998);})();
+    tl.fromTo("#b1s3-l0",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},28.249999999999996);
+    tl.fromTo("#b1s3-u0",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},29.299999999999997);
+    tl.fromTo("#b1s4-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},34.7);
+    document.getElementById("b1s4-n0").textContent="4.4%";
+    tl.fromTo("#b1s4-n0",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},37.0);
+    tl.fromTo("#b1s4-l0",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},37.15);
+    document.getElementById("b1s4-n1").textContent="7\u201312%";
+    tl.fromTo("#b1s4-n1",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},43.0);
+    tl.fromTo("#b1s4-l1",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},43.15);
+    tl.fromTo("#b1s4-u1",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},44.2);
+    document.getElementById("b1s4-n2").textContent="10\u00d7";
+    tl.fromTo("#b1s4-n2",{opacity:0,scale:0.8},{opacity:1,scale:1,duration:0.5,ease:"power4.out"},47.6);
+    tl.fromTo("#b1s4-l2",{opacity:0,y:12},{opacity:1,y:0,duration:0.5},47.75);
+    tl.fromTo("#b1s5-card",{opacity:0,scale:0.965,y:22,rotation:-1.5},{opacity:1,scale:1,y:0,rotation:-1.5,duration:0.6,ease:"power3.out"},51.4);
+    tl.fromTo("#b1s5-date",{opacity:0,y:-8},{opacity:1,y:0,duration:0.4,ease:"power2.out"},51.75);
+    tl.from("#b1s5-hl0 .w",{opacity:0,yPercent:70,duration:0.4,ease:"power3.out",stagger:0.045},52.00);
+    tl.fromTo("#b1s5-hl1-y",{scaleX:0},{scaleX:1,duration:0.45,ease:"power2.out"},53.02);
+    tl.from("#b1s5-hl1 .w",{opacity:0,yPercent:70,duration:0.4,ease:"power3.out",stagger:0.045},52.42);
+    tl.fromTo("#b1s5-sub",{opacity:0,y:12},{opacity:1,y:0,duration:0.55,ease:"power3.out"},53.07);
+    tl.fromTo("#b1s5-src",{opacity:0,y:8},{opacity:1,y:0,duration:0.45},53.27);
+    tl.fromTo("#b1s5-rule",{scaleX:0},{scaleX:1,duration:0.5,ease:"power2.out"},53.42);
+    tl.fromTo("#b1s5-photo",{opacity:0,x:44,scale:1.05,rotation:1.0},{opacity:1,x:0,scale:1,rotation:3.0,duration:0.6,ease:"power3.out"},52.1);
+    tl.fromTo("#b1s5-cap",{opacity:0},{opacity:1,duration:0.4},52.65);
+    tl.fromTo("#b1s6-k",{opacity:0,y:10},{opacity:1,y:0,duration:0.5},64.5);
+    tl.fromTo("#b1s6-hl0",{scaleX:0},{scaleX:1,duration:0.4,ease:"power2.out"},65.7);
+    tl.to("#b1s6-op0",{color:"#2B2D2C",duration:0.25},65.75);
+    tl.fromTo("#b1s6-ln0",{opacity:0,yPercent:60},{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"},64.7);
+    tl.to({}, { duration: 67.76 }, 0);
+    window.__timelines["beat1"] = tl;
+  </script>
+</template>

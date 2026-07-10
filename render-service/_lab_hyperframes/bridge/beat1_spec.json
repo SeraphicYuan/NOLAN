@@ -1,0 +1,70 @@
+{
+  "frames": [
+    {
+      "id": "beat1",
+      "dur": 67.76,
+      "scenes": [
+        {
+          "id": "b1s1", "type": "statement", "start": 0, "dur": 8.6,
+          "data": {
+            "kicker": "THE BUILD-OUT", "register": "paper", "ground": {"kind": "paper"},
+            "lines": ["The boom is real —", "and it is not stopping."],
+            "operative": "real", "cue": 4.4
+          }
+        },
+        {
+          "id": "b1s2", "type": "stat", "start": 8.6, "dur": 17.1,
+          "data": {
+            "kicker": "THE MONEY", "register": "paper",
+            "items": [
+              {"from": 0, "to": 800, "prefix": "$", "suffix": "B", "label": "AI INFRASTRUCTURE — 2026", "cue": 4.2, "underline": true},
+              {"value": "$1T+", "label": "— 2027", "cue": 9.0}
+            ]
+          }
+        },
+        {
+          "id": "b1s3", "type": "stat", "start": 25.7, "dur": 8.9,
+          "data": {
+            "kicker": "THE DEMAND · OPENAI USERS", "register": "paper",
+            "items": [
+              {"from": 400, "to": 900, "suffix": "M", "label": "DOUBLED IN A SINGLE YEAR", "cue": 2.4, "underline": true}
+            ]
+          }
+        },
+        {
+          "id": "b1s4", "type": "stat", "start": 34.6, "dur": 16.8,
+          "data": {
+            "kicker": "THE POWER · US ELECTRICITY", "register": "paper",
+            "items": [
+              {"value": "4.4%", "label": "OF US ELECTRICITY, 2023", "cue": 2.4},
+              {"value": "7–12%", "label": "BY 2028", "cue": 8.4, "underline": true},
+              {"value": "10×", "label": "ONE PROMPT vs A SEARCH", "cue": 13.0}
+            ]
+          }
+        },
+        {
+          "id": "b1s5", "type": "newshead", "start": 51.4, "dur": 12.9,
+          "data": {
+            "tilt": -1.5, "image_tilt": 3,
+            "date": "Loudoun County, VA",
+            "headline": ["Data centers now fund", "a third of the county budget"],
+            "highlight": "a third of the county budget",
+            "subhead": "The servers throw off so much tax revenue that the county actually cut residents' property taxes.",
+            "subhighlight": "cut residents' property taxes",
+            "source": "Loudoun Times-Mirror",
+            "image": "assets/img/loudoun.jpg",
+            "caption": "Data Center Alley, Virginia."
+          }
+        },
+        {
+          "id": "b1s6", "type": "statement", "start": 64.3, "dur": 3.46,
+          "data": {
+            "kicker": "", "register": "paper", "ground": {"kind": "paper"},
+            "lines": ["We are not un-building this."],
+            "operative": "un-building", "cue": 1.4
+          }
+        }
+      ]
+    }
+  ]
+}

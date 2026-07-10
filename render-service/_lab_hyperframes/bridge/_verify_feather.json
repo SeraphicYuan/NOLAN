@@ -1,0 +1,7 @@
+{
+  "framesDir": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\linedraw-demo\\compositions\\frames",
+  "snapsDir": "D:\\ClaudeProjects\\NOLAN\\render-service\\_lab_hyperframes\\videos\\linedraw-demo\\snapshots",
+  "ids": ["ld-feather", "ld-compass", "ld-map"],
+  "look": [1.6, 3.7],
+  "det": 1.6
+}

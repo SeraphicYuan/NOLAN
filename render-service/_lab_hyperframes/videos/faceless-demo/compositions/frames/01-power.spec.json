@@ -7,16 +7,34 @@
         {
           "id": "s1",
           "type": "stat",
-          "start": 0.0,
-          "dur": 5.0,
+          "start": 0,
+          "dur": 5,
           "data": {
             "kicker": "SHARE OF U.S. ELECTRICITY",
             "register": "paper",
-            "ground": { "kind": "paper" },
+            "ground": {
+              "kind": "paper"
+            },
             "items": [
-              { "from": 0, "to": 12, "suffix": "%", "label": "AI data centers by 2030", "cue": 0.6, "underline": true },
-              { "value": 4, "suffix": "%", "label": "today", "cue": 2.8 }
+              {
+                "from": 0,
+                "to": 12,
+                "suffix": "%",
+                "label": "AI data centers by 2030",
+                "cue": 0.6,
+                "underline": true
+              },
+              {
+                "value": 4,
+                "suffix": "%",
+                "label": "today",
+                "cue": 2.8
+              }
             ]
+          },
+          "transition_out": {
+            "kind": "scale_out",
+            "dur": 0.6
           }
         },
         {
@@ -26,11 +44,17 @@
           "dur": 5.0,
           "data": {
             "kind": "us",
-            "highlight": ["51"],
+            "highlight": [
+              "51"
+            ],
             "primary": "51",
             "kicker": "THE EPICENTER",
             "title": "Virginia",
             "sub": "'Data Center Alley'"
+          },
+          "transition_out": {
+            "kind": "scale_out",
+            "dur": 0.6
           }
         },
         {
@@ -40,8 +64,13 @@
           "dur": 4.0,
           "data": {
             "register": "paper",
-            "ground": { "kind": "paper" },
-            "lines": ["The grid was", "never built for this."],
+            "ground": {
+              "kind": "paper"
+            },
+            "lines": [
+              "The grid was",
+              "never built for this."
+            ],
             "operative": "never built",
             "cue": 1.8
           }

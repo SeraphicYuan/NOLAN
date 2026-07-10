@@ -1,0 +1,22 @@
+{
+  "frames": [
+    {
+      "id": "collage-demo",
+      "dur": 7.5,
+      "scenes": [
+        {
+          "id": "clg1", "type": "collage", "start": 0, "dur": 7.5,
+          "data": {
+            "backdrop": "#12171b", "vignette": 0.55, "camera": "push",
+            "subjects": [
+              { "src": "assets/img/gpu.png",   "x": 0.50, "y": 0.40, "scale": 1.35, "from": "center", "rotation": -2, "at": 0.3 },
+              { "src": "assets/img/cash.png",  "x": 0.24, "y": 0.63, "scale": 0.85, "from": "left",   "rotation": -7, "at": 0.7 },
+              { "src": "assets/img/gavel.png", "x": 0.78, "y": 0.56, "scale": 1.05, "from": "right",  "rotation":  9, "at": 1.1 },
+              { "src": "assets/img/glass.png", "x": 0.52, "y": 0.82, "scale": 0.5,  "from": "bottom", "rotation":  0, "at": 1.5 }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

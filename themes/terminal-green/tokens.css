@@ -25,6 +25,7 @@
   --accent:       #41ff97;
   --accent-soft:  rgba(65, 255, 151, 0.10);
   --accent-glow:  rgba(65, 255, 151, 0.7);
+  --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts (mono everywhere) ─── */
   --font-display-cn: "JetBrains Mono", "Noto Sans Mono CJK SC", monospace;

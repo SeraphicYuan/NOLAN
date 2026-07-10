@@ -35,10 +35,12 @@ class SearchHit:
 
 
 class KBIndex:
-    def __init__(self, store: Optional[InsightsStore] = None):
+    def __init__(self, store: Optional[InsightsStore] = None, vectors=None):
         self.store = store or InsightsStore()
-        self._vectors = None
-        self._vectors_tried = False
+        # A caller may inject a shared KBVectors (web path) to avoid reloading the
+        # embedding model per request; otherwise vectors load lazily on demand.
+        self._vectors = vectors
+        self._vectors_tried = vectors is not None
 
     # -- lazy, fail-soft vector store --
     @property

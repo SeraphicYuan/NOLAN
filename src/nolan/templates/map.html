@@ -152,6 +152,9 @@
         <span class="stage live">live</span> = committed integration surface; <span class="stage lab">lab</span> = prototype / runtime dep.
         More bridges land here as the integration grows.</div>
       <div id="bridges"></div>
+      <div style="margin:30px 0 12px;font-weight:600;font-size:15px;">Knowledge base
+        <span class="muted" style="font-weight:400;font-size:13px;">— integration notes (each doc verified on disk)</span></div>
+      <div id="bridge-kb"></div>
     </div>
   </div>
 
@@ -282,6 +285,17 @@
           `<div class="bridge-flow"><span class="side">NOLAN · ${esc(b.nolan)}</span><span class="arrow">→</span><span class="side">HF · ${esc(b.hf)}</span></div>` +
           tpl +
           `<div class="muted mono" style="font-size:11px;margin-top:8px;">${esc(b.wire)}</div></div>`);
+      });
+
+      // ── Bridge knowledge base ──
+      const KB = document.getElementById('bridge-kb');
+      (m.bridge_kb||[]).forEach(k=>{
+        const dot = `<span class="dot ${k.ok?'up':'down'}"></span>`;
+        KB.insertAdjacentHTML('beforeend',
+          `<div class="bridge"><div class="bridge-h">${dot}<b>${esc(k.title)}</b>` +
+          `${k.ok?'':'<span class="bad">doc missing</span>'}</div>` +
+          `<div class="muted" style="font-size:13px;margin:5px 0 8px;">${esc(k.purpose)}</div>` +
+          `<div class="muted mono" style="font-size:11px;">${esc(k.doc)}</div></div>`);
       });
     });
   </script>

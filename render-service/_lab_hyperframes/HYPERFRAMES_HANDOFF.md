@@ -291,6 +291,22 @@ Everything lives in `render-service/_lab_hyperframes/` (see `REPORT.md` for the 
       one `_rv_entrance` branch + REVEALS/catalog entry — zero block edits either way. Wired-block demo:
       `videos/reveals-blocks/` (out/reveals-blocks-reel.mp4). Statement refactor is byte-identical to the inline version
       (determinism hashes unchanged). Reels via `render-service/render_reel.mjs` (frame-seq → ffmpeg, manifest-driven).
+  - **`linedraw` block** (built 2026-07-09, gsapify "Line Drawing" cluster): a self-drawing LINE-ART SVG — each
+    stroke's `stroke-dashoffset` animates length→0 in order at a **constant pen speed** (per-path time ∝ its
+    `getTotalLength()`), so a line drawing renders as if hand-drawn (logos, blueprints, maps/routes, signatures,
+    hand-drawn icons/schematics). No external lib: a setup IIFE measures each path ONCE at load and adds the draw
+    tweens; `strokeDashoffset` is the framework's blessed seek-safe draw (same as geo/diagram/timeline). Input:
+    `data.svg` (raw) | `paths[+viewBox]` | `src`; draw mode forces a uniform stroke (register-themed) + no fill,
+    `keepStyle` respects the SVG's own styling, `ink` fades fills in after each stroke. `order` = dom | length-asc |
+    length-desc. Demo `videos/linedraw-demo/` (signature + lightbulb, out/linedraw-reel.mp4); all seek-safe (verified
+    byte-identical on re-seek). **Vector line-art is the slam-dunk.**
+  - **Raster→line-art SPIKE** (`bridge/trace_spike.py`, 2026-07-09): raster PNG → `skimage.skeletonize` centerline →
+    walk the 1px skeleton into polylines between endpoints/junctions → RDP-simplify → SVG paths → `linedraw`. Proven
+    end-to-end + seek-safe (`videos/linedraw-demo/ld-traced`). **Verdict: feasible but rough** — closed loops (a sun
+    circle) can break into an arc, thin strokes wobble, junctions fragment a continuous line into segments. Good enough
+    for simple/forgiving art; NOT crisp enough for clean icon/logo work. To productionize: closed-loop handling,
+    junction-aware path merging, spur pruning, bezier smoothing (or a real centerline tracer — `autotrace --centerline`;
+    potrace traces OUTLINES not pen strokes). Kept as an OPTIONAL human-run preprocessor, not wired into the block.
   - **`timeline` block** (built 2026-07-08, ref YouTube XoC62NDH4aw "Vox stylized timeline"): drawing
     yellow spine + camera pan event-to-event + circular image cutouts (stroked ring draws) + big
     year/kicker. Two axes via `data.axis`: **`horizontal`** (default — spine L→R, camera pans X,
@@ -372,6 +388,37 @@ Everything lives in `render-service/_lab_hyperframes/` (see `REPORT.md` for the 
     encodes mp4 IN WSL (~13s per 10s clip) — export it onto PATH.
     **Deferred** (build in-place, don't fork): `transition:"push"`/parallax-bg, `style:"strip"` (marquee
     — ONE linear x tween over a cloned track, NOT `repeat:-1`), `style:"deck"` (card toss), `focus`/dwell.
+  - **Phase-1 Tier-1 converters** (built 2026-07-10, from `kb/registry-conversion-map.md` — HF catalog
+    families → NOLAN blocks) — all four DONE + frame-verified:
+    - **`lower_third`** — collapses HF's 12 lower-third profiles → 1 block + `style` (bar/box/underline…).
+      BESPOKE-sized (not tokenised: fixed % geometry is the identity); tokenises only accent/text.
+    - **`chart`** — the drawn GSAP+SVG bar/line chart `stat` never covered (`data-chart` family). Tokenised
+      (bars = `--accent`, grid/labels = `--text`/`--rule`). Bar + line `kind`.
+    - **`code`** — **29 native → 1** (5 code effects + 24 syntax-theme profiles). Python tokenises at BUILD
+      time → pre-coloured spans (no browser highlighter); reveal is transform/opacity. **HYBRID theming**:
+      syntax palette is a FIXED code-`theme` (monokai/vs-dark/vs-light/github-dark/dracula — identity), scene
+      backdrop `--shell` + kicker/title NOLAN-themed. modes typing · highlight. Demos `videos/code-*`.
+    - **`social_card`** (X · Reddit · Spotify; instagram/tiktok/yt/macos = deferred branches) — a post /
+      now-playing overlay + `platform` param. **BRAND-FIXED palette** (Reddit `#ff4500` · X `#1d9bf0` ·
+      Spotify `#1db954`, inline — identity, NOT NOLAN tokens: a Reddit card is always Reddit); only the
+      scene backdrop is `--shell`-themed. Card slides+scales in; Spotify progress bar fills (`scaleX`).
+      Demos `videos/soc_{x,reddit,spotify}/` — all frame-verified, seek-safe (0 Math.random/rAF/repeat).
+    Theme-convention: **adaptive** blocks (stat/statement/chart…) read NOLAN tokens; **identity** blocks
+    (code syntax, social brand) keep their signature palette and only theme the surrounding scene. The
+    `theme_layout_audit` fit-warning is advisory for identity blocks (brand-fixed fonts can't overflow).
+  - **Scene-transition primitive** (built 2026-07-10, the deferred "CSS transitions" track — HF
+    cover/push/scale/dissolve family). NOT a block: an optional `transition_out: {kind, dur?, color?}`
+    on the DEPARTING scene. `compose.TRANSITIONS` registry — `crossfade` · `slide_left`/`slide_right`/
+    `slide_up` · `scale_out` · `fade_through` (dip-to-colour). An OUTGOING effect over the overlap window
+    `[b, b+T]` after the scene boundary: `compose_frame` wraps each scene in a z-ordered `.scenewrap`
+    (earlier scene ON TOP), extends the departing scene's boundary clips by `T` (`_extend_clip_dur`) so it
+    stays mounted through the overlap, and animates the wrapper away (transform/opacity — **seek-safe**,
+    literal CSS `transition:`/@keyframes stay banned) while the next scene does its own entrance underneath.
+    Registry-driven like REVEALS: keys = `catalog['transitions']` (check_catalog enforces) + `author.py`
+    gate validates `transition_out.kind`. **Backward-compatible**: a frame with no `transition_out`
+    composes byte-identical (no wrappers). Verified `videos/trans_demo/` (crossfade + slide seams looked
+    at mid-transition) + `videos/ft/` (fade-through dip). Wrapping `.clip` in a `<div>` does NOT break the
+    runtime's mount/z (pitfall #5: z is DOM-order/z-index, not track-index) — confirmed by render.
 - **`bridge/resolve_inject.py`** — NOLAN krea2/ComfyUI or stock → project `assets/` + ledger.
 - **`bridge/pool.py`** — NOLAN acquisition fan-out → qwen-VL-captioned inventory HyperFrames selects from.
 - **`bridge/inject_root_video.py`** — mounts stock b-roll `<video>` at the index HOST ROOT (archetype B) — the only legal path for motion footage (see §5).

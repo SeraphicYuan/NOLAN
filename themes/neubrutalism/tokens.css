@@ -36,6 +36,7 @@
   --accent:       #f5197a;            /* hot magenta */
   --accent-soft:  rgba(245, 25, 122, 0.12);
   --accent-glow:  transparent;         /* neubrutalism is FLAT — no glow */
+  --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts (all loaded in index.tsx) ─── */
   --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;

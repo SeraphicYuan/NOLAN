@@ -157,6 +157,7 @@
         "layout": "enum(tree|flow|radial) — tree = vertical (default), flow = horizontal process, radial = hub-and-spoke",
         "dir": "string? — orientation within the layout: tree → down(default)|up; flow → right(default)|left",
         "camera": "string? — 'tour' = a zoom-into-a-canvas-blanket walk: the camera frames a node, its children branch out, then it dives into a child and repeats (DFS pre-order) — a big tree reveals as an endless focus→branch→dive. Default: fit the whole graph statically.",
+        "space": "string? — '3d' lays the network on a TILTED, receding grid plane (cards stand up as billboards, glowing connectors on the plane) — the cinematic perspective look. Composes with camera:'tour' -> the 3D camera FLIES node-to-node (focus -> branch out -> dive), else a steady fly-over glide. Default: flat 2D (where layout/dir also apply).",
         "register": "enum(paper|dark) — ink-on-mist (default) or light-on-dark",
         "kicker": "string? — eyebrow label",
         "title": "string? — big frame title",
@@ -306,6 +307,101 @@
         "transform_opacity_only"
       ],
       "note": "PREFER authoring highlight/underline/label by {find:\"phrase\"} and running `resolve_doc_annotations.py` (locates the phrase on the page and fills the rect + stamps page_size) — no eyeballing coordinates. Explicit fractions stay supported for regions with no matchable text (a chart area, a photo). callouts + caption are screen-fixed. source is a real screenshot/scan/render (or a .pdf, which the resolver rasterises); on-screen text stays short."
+    },
+    "lower_third": {
+      "fn": "lower_third",
+      "purpose": "A lower-third identifier — name + role (+ optional kicker) — the on-screen caption for talking-head / interview / podcast footage. One theme-driven block collapsing the registry's ~12 lt-* variants via a `style` param.",
+      "when_to_use": "Naming a speaker / source on screen over footage or a talking head: an interview subject, a quoted expert, a podcast guest.",
+      "not_for": "A full statement/quote (use statement), a data callout (stat), or a news headline card (newshead).",
+      "data_schema": {
+        "name": "string — the person/source name (the main line)",
+        "role": "string? — title / role / affiliation (the sub-line)",
+        "kicker": "string? — a small accent eyebrow tag above the name",
+        "style": "enum(bar|card|underline|block) — bar (surface card + accent tab, slides in) | card (surface card + drawn accent underline, rises) | underline (cardless: name rises, accent rule draws L->R, text-shadowed for footage) | block (bold accent-colour block wipes in, ink name slams up)",
+        "position": "enum(bl|bc|br) — bottom-left (default) | bottom-centre | bottom-right",
+        "backdrop": "string? — STANDALONE/demo only: a color or image behind it. Normally omitted (transparent over the footage/root video)."
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe"
+      ],
+      "note": "Theme-driven: accent/text/surface/accent-ink from the active theme (a lower-third should match the video's brand). Sits in the lower band; normally transparent over footage. Deferred styles (side-rule/soft-pill/mask-reveal/stack-bars/news-ticker) add as new `style` branches."
+    },
+    "chart": {
+      "fn": "chart",
+      "purpose": "An animated bar or line chart — GSAP+SVG/CSS (NOT d3/Chart.js, seek-safe): bars grow from the baseline staggered / a line draws in, with value + axis labels and gridlines. Theme-driven.",
+      "when_to_use": "A beat whose argument is a TREND or a COMPARISON across a few categories/times — growth over years, a ranking, a before/after set. More than ~3 numbers that want a drawn shape (stat is for 1-3 callout numbers).",
+      "not_for": "1-3 hero numbers (use stat). A choropleth/geographic distribution (geo). A pie/scatter/complex viz (go raw).",
+      "data_schema": {
+        "type": "enum(bar|line) — bar (default) = categorical columns; line = a trend over ordered points",
+        "series": "array of {label, value} — the data points in order (bars or line vertices); 3-8 works best",
+        "prefix": "string? — unit before the value (e.g. '$')",
+        "suffix": "string? — unit after the value (e.g. '%')",
+        "ymax": "number? — y-axis max (default: auto from the data + headroom)",
+        "highlight": "number? — index of ONE bar to emphasise in the accent; the rest mute",
+        "kicker": "string? — small accent eyebrow",
+        "title": "string? — a title above the plot",
+        "titleHi": "string? — substring of title to highlight in the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe"
+      ],
+      "note": "Theme-driven: bars/line + highlight use --accent; labels --text/--text-2; gridlines/baseline --rule; ground --shell. Pure GSAP+SVG (scaleY bar grow / strokeDashoffset line draw) — no chart library. For a non-bar/line viz, go raw."
+    },
+    "code": {
+      "fn": "code",
+      "purpose": "A syntax-highlighted code window that types in or spotlights a line — tokenised in Python (no browser highlighter), reveal is seek-safe. Collapses the registry's code effects + 24 code-snippet theme profiles into ONE block + a `theme` param.",
+      "when_to_use": "Showing SOURCE CODE / a terminal / a snippet in a tech or dev explainer: a function, a config, a diff, a command.",
+      "not_for": "A drawn chart (chart), a plain statement (statement). Non-code text.",
+      "data_schema": {
+        "code": "string — the code (multi-line; \\n newlines, tabs OK). Tokenised into syntax colours at build time.",
+        "theme": "enum(monokai|vs-dark|vs-light|github-dark|dracula) — the SYNTAX palette (its own identity, NOT the NOLAN video theme). Default monokai.",
+        "mode": "enum(typing|highlight) — typing (default) = lines reveal staggered; highlight = spotlight one line + dim the rest",
+        "highlight": "number? — 1-based line to spotlight (mode highlight)",
+        "highlight_at": "number? — seconds into scene for the spotlight (default mid)",
+        "filename": "string? — the title-bar filename",
+        "linenums": "bool? — show a line-number gutter",
+        "kicker": "string? — small accent eyebrow (NOLAN-themed)",
+        "title": "string? — a title above the window (NOLAN-themed)",
+        "titleHi": "string? — substring of title to highlight in the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe"
+      ],
+      "note": "HYBRID theming: the editor window's syntax colours are the fixed code `theme` (inline hex); the scene backdrop (--shell), kicker/title (--accent/--text) use the NOLAN theme. Reveal is transform/opacity only (Python does the highlighting). Deferred modes: diff · scroll · char-level caret typing."
+    },
+    "social_card": {
+      "fn": "social_card",
+      "purpose": "A social post / now-playing card overlay — X (Twitter) post, Reddit post, or Spotify now-playing. Collapses the registry's 7 social-overlay profiles toward ONE block + a `platform` param. The card slides + scales in; the Spotify progress bar fills.",
+      "when_to_use": "Citing / quoting a real post in an explainer: a tweet, a Reddit thread, a track. The recognisable platform chrome IS the point — it reads as an authentic screenshot.",
+      "not_for": "A generic quote (statement), a headline (newshead), a lower-third name tag (lower_third).",
+      "data_schema": {
+        "platform": "enum(x|reddit|spotify) — which platform's chrome + brand palette. Default x.",
+        "name": "string? — x: display name · reddit: (unused, uses subreddit) · spotify: (use track)",
+        "handle": "string? — x: @handle · spotify: falls back to artist",
+        "text": "string? — x: the tweet · reddit: the post title",
+        "avatar": "string? — x: avatar image path (else initials circle)",
+        "verified": "bool? — x: blue verified badge",
+        "likes": "number? — x: likes · reddit: falls back for upvotes",
+        "reposts": "number? — x: reposts",
+        "replies": "number? — x: replies",
+        "upvotes": "number? — reddit: vote count",
+        "comments": "number? — reddit: comment count",
+        "subreddit": "string? — reddit: the r/ name",
+        "track": "string? — spotify: track title",
+        "artist": "string? — spotify: artist",
+        "art": "string? — spotify: album-art image path (else initials tile)",
+        "progress": "number? — spotify: play position 0..1 (bar fills to it). Default 0.4.",
+        "position": "enum(center|bl|br) — where the card sits. Default center.",
+        "backdrop": "string? — scene ground: a NOLAN token (default var(--shell)), a colour, or an image path."
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe"
+      ],
+      "note": "BRAND-FIXED palette: each platform uses its OWN colours inline (Reddit orange #ff4500, X blue #1d9bf0, Spotify green #1db954) — NOT the NOLAN video theme (a Reddit card is always Reddit). Only the scene backdrop is NOLAN-themed. Reveal is transform/opacity only. Deferred platforms (same block): instagram/tiktok follow, youtube subscribe, macos notification."
     }
   },
   "components": {
@@ -329,5 +425,14 @@
     "decode": "katakana/hex glyphs decode into the text L->R (matrix-decode)",
     "gradient": "an accent gradient wipes the text in L->R (gradient-text-reveal)",
     "glitch": "RGB-split + jitter that settles to clean (glitch-text)"
+  },
+  "transitions": {
+    "_doc": "Scene-to-scene transitions (the HF cover/push/scale/dissolve family, rewritten SEEK-SAFE). NOT a block: an optional `transition_out` on the DEPARTING scene ({kind, dur?, color?}) — an outgoing effect over an overlap window after the scene boundary, while the next scene does its own normal entrance underneath. Transforms/opacity only (literal CSS transition:/@keyframes are runtime-banned). Keys MUST equal compose.TRANSITIONS (check_catalog.py enforces).",
+    "crossfade": "departing scene dissolves to reveal the next (HF dissolve)",
+    "slide_left": "departing scene slides off to the left, uncovering the next (cover/push)",
+    "slide_right": "departing scene slides off to the right, uncovering the next",
+    "slide_up": "departing scene slides up out of frame, uncovering the next",
+    "scale_out": "departing scene zooms up + fades (scale dissolve)",
+    "fade_through": "dip through a colour (default black) between scenes; data.color overrides"
   }
 }

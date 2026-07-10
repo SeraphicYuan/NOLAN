@@ -1,0 +1,98 @@
+{
+  "frames": [
+    {
+      "id": "findart",
+      "dur": 7,
+      "scenes": [
+        {
+          "id": "fa1",
+          "type": "document",
+          "start": 0,
+          "dur": 7,
+          "data": {
+            "source": "assets/article.png",
+            "mode": "page",
+            "backdrop": "#0d0f12",
+            "camera": "push",
+            "kicker": "By the numbers",
+            "title": "Barely a rounding error",
+            "titleHi": "rounding error",
+            "annotations": [
+              {
+                "type": "highlight",
+                "cue": 1.4,
+                "rect": [
+                  0.0589,
+                  0.1671,
+                  0.2716,
+                  0.0538
+                ]
+              },
+              {
+                "type": "callout",
+                "title": "So",
+                "text": [
+                  "1 in 100",
+                  "Americans"
+                ],
+                "side": "right",
+                "y": 0.42,
+                "cue": 2.8
+              }
+            ],
+            "page_size": [
+              1400,
+              1500
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "findfiling",
+      "dur": 7,
+      "scenes": [
+        {
+          "id": "ff1",
+          "type": "document",
+          "start": 0,
+          "dur": 7,
+          "data": {
+            "source": "assets/docpage.png",
+            "mode": "page",
+            "backdrop": "#17181b",
+            "kicker": "The filing",
+            "title": "Read the fine print",
+            "annotations": [
+              {
+                "type": "highlight",
+                "cue": 1.2,
+                "rect": [
+                  0.3819,
+                  0.0521,
+                  0.4355,
+                  0.0415
+                ]
+              },
+              {
+                "type": "highlight",
+                "color": "#8CE6C0",
+                "cue": 2.2,
+                "rect": [
+                  0.4227,
+                  0.1182,
+                  0.1722,
+                  0.0305
+                ]
+              }
+            ],
+            "page_size": [
+              1600,
+              1180
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

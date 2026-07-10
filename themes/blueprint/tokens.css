@@ -26,6 +26,7 @@
   --accent:       #4dd2ff;
   --accent-soft:  rgba(77, 210, 255, 0.10);
   --accent-glow:  rgba(77, 210, 255, 0.55);
+  --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts (mono pairing) ─── */
   --font-display-cn: "IBM Plex Sans", "Noto Sans SC", sans-serif;

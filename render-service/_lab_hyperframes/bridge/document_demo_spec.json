@@ -1,0 +1,60 @@
+{
+  "frames": [
+    {
+      "id": "docpage", "dur": 8,
+      "scenes": [{
+        "id": "dp1", "type": "document", "start": 0, "dur": 8,
+        "data": {
+          "source": "assets/docpage.png", "mode": "page", "backdrop": "#1a1c1f",
+          "kicker": "The filing", "title": "Buried in the S-1", "titleHi": "S-1",
+          "annotations": [
+            { "type": "highlight", "rect": [0.075, 0.44, 0.56, 0.032], "cue": 1.2 },
+            { "type": "highlight", "rect": [0.075, 0.70, 0.42, 0.032], "color": "#8CE6C0", "cue": 2.2 },
+            { "type": "callout", "title": "In plain English", "text": ["Pay unlocks only if", "SpaceX hits $6.5T"], "side": "right", "y": 0.52, "cue": 3.2 }
+          ]
+        }
+      }]
+    },
+    {
+      "id": "docart", "dur": 6,
+      "scenes": [{
+        "id": "da1", "type": "document", "start": 0, "dur": 6,
+        "data": {
+          "source": "assets/article.png", "mode": "page", "backdrop": "#0d0f12", "camera": "push",
+          "annotations": [
+            { "type": "highlight", "rect": [0.065, 0.35, 0.225, 0.06], "cue": 1.4 }
+          ]
+        }
+      }]
+    },
+    {
+      "id": "docstack", "dur": 6,
+      "scenes": [{
+        "id": "ds1", "type": "document", "start": 0, "dur": 6,
+        "data": {
+          "source": ["assets/stack1.png", "assets/stack2.png", "assets/stack3.png"],
+          "mode": "stack", "backdrop": "#141210",
+          "kicker": "The fine print",
+          "annotations": [
+            { "type": "caption", "text": "then it's hundreds of pages", "underline": "hundreds of pages", "cue": 2.2 }
+          ]
+        }
+      }]
+    },
+    {
+      "id": "docletters", "dur": 8,
+      "scenes": [{
+        "id": "dl1", "type": "document", "start": 0, "dur": 8,
+        "data": {
+          "source": ["assets/letter1.png", "assets/letter2.png"],
+          "mode": "artifact", "fit": "contain", "aged": true, "backdrop": "#2a1013", "camera": "push", "vignette": 0.5,
+          "annotations": [
+            { "type": "label", "at": [0.16, 0.12], "text": "1615", "cue": 2.0 },
+            { "type": "label", "at": [0.82, 0.1], "text": "1616", "cue": 2.5 },
+            { "type": "caption", "text": "What is so important about these letters?", "underline": "important", "cue": 3.2 }
+          ]
+        }
+      }]
+    }
+  ]
+}

@@ -28,6 +28,7 @@
   --accent:       #8c6a48;             /* muted clay (low saturation) */
   --accent-soft:  rgba(140, 106, 72, 0.10);
   --accent-glow:  rgba(140, 106, 72, 0.25);
+  --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */
   --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;

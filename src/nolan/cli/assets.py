@@ -35,7 +35,7 @@ def _scoring_vision_config(config, vision: str) -> dict:
 
 @main.command('image-search')
 @click.argument('query')
-@click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'wellcome', 'europeana', 'dpla', 'all']),
+@click.option('--source', '-s', type=click.Choice(['ddgs', 'pexels', 'pixabay', 'wikimedia', 'smithsonian', 'loc', 'wellcome', 'europeana', 'dpla', 'artvee', 'all']),
               default='ddgs', help='Image source to search.')
 @click.option('--output', '-o', type=click.Path(), default='.scratch/image_search_results.json',
               help='Output JSON file for results (default: .scratch/image_search_results.json).')
@@ -194,6 +194,92 @@ def image_search(ctx, query, source, output, max_results, score, vision, context
 
     except Exception as e:
         click.echo(f"Error: {e}")
+
+
+@main.command('artvee')
+@click.argument('query', required=False, default=None)
+@click.option('--artist', '-a', default=None,
+              help='Artist name or slug — searches their canonical /artist/ page.')
+@click.option('--sort', type=click.Choice(['relevance', 'year', 'title', 'artist', 'pixels', 'filesize']),
+              default='relevance', help='Sort order for filtered results.')
+@click.option('--desc/--asc', default=False, help='Sort descending (default ascending).')
+@click.option('--category', '-c', multiple=True,
+              help='Keep only these categories/genres (repeatable), e.g. -c Mythology.')
+@click.option('--year-min', type=int, default=None, help='Minimum year.')
+@click.option('--year-max', type=int, default=None, help='Maximum year.')
+@click.option('--orientation', type=click.Choice(['portrait', 'landscape', 'square']), default=None)
+@click.option('--min-width', type=int, default=None, help='Minimum standard-download width (px).')
+@click.option('--min-megapixels', type=float, default=None, help='Minimum SD megapixels.')
+@click.option('--exclude-anonymous/--include-anonymous', default=False,
+              help='Drop unattributed / "Anonymous" works.')
+@click.option('--max-results', '-n', type=int, default=20, help='Max results after filtering.')
+@click.option('--scan-limit', type=int, default=120,
+              help='Raw results to pull before filtering (give picky filters room).')
+@click.option('--download', '-d', 'download_dir', type=click.Path(), default=None,
+              help='Download the low-res (SDL) image of each result into this directory.')
+@click.option('--output', '-o', type=click.Path(), default='.scratch/artvee_results.json',
+              help='JSON output file for the metadata (default: .scratch/artvee_results.json).')
+def artvee(query, artist, sort, desc, category, year_min, year_max, orientation,
+           min_width, min_megapixels, exclude_anonymous, max_results, scan_limit,
+           download_dir, output):
+    """Search Artvee (public-domain fine art) with advanced metadata filters.
+
+    Provide a QUERY (keyword) and/or --artist. Results carry full metadata
+    (artist, year, genre, dimensions, file sizes) parsed from the listing — no
+    per-item page fetch is needed until --download resolves the presigned link.
+
+    Examples:
+
+      nolan artvee athena --orientation landscape --year-max 1900 --sort year --desc
+
+      nolan artvee --artist "William Etty" -n 40
+
+      nolan artvee "sea storm" -c Marine --min-width 1500 -d .scratch/art
+    """
+    import json
+    from pathlib import Path
+    from nolan.artvee import ArtveeClient, ArtveeFilter
+
+    if not query and not artist:
+        raise click.UsageError("Provide a QUERY and/or --artist.")
+
+    flt = ArtveeFilter(
+        categories=list(category) or None,
+        year_min=year_min, year_max=year_max,
+        orientation=orientation, min_width=min_width,
+        min_megapixels=min_megapixels, exclude_anonymous=exclude_anonymous,
+    )
+    with ArtveeClient() as cli:
+        click.echo(f"Searching Artvee: query={query!r} artist={artist!r} ...")
+        results = cli.advanced_search(
+            query, artist=artist, filters=flt, sort_by=sort, descending=desc,
+            max_results=max_results, scan_limit=scan_limit)
+        click.echo(f"Found {len(results)} matching artworks.\n")
+        for i, r in enumerate(results, 1):
+            yr = r.year if r.year is not None else "----"
+            dims = f"{r.sd_width}x{r.sd_height}" if r.sd_width else "?"
+            click.echo(f"  {i:>2}. [{yr}] {r.title[:52]}")
+            click.echo(f"       {r.artist or 'Unknown'} · {r.category or '-'} · "
+                       f"{dims} {r.orientation or ''} · {r.detail_url}")
+
+        out_path = Path(output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps([r.to_dict() for r in results], indent=2,
+                                       ensure_ascii=False), encoding="utf-8")
+        click.echo(f"\nSaved metadata -> {out_path}")
+
+        if download_dir:
+            ddir = Path(download_dir)
+            ddir.mkdir(parents=True, exist_ok=True)
+            click.echo(f"Downloading low-res images -> {ddir} ...")
+            ok = 0
+            for r in results:
+                dest = ddir / f"{r.sk}.jpg"
+                if cli.download(r, dest, size="sd"):
+                    ok += 1
+                else:
+                    click.echo(f"  [skip] could not download {r.sk} ({r.title[:40]})")
+            click.echo(f"Downloaded {ok}/{len(results)} images.")
 
 
 @main.command('extract-assets')

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HyperFrames Edit · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1400px; margin: 24px auto; padding: 0 20px; }
+    h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 2px; }
+    .sub { color: var(--text-secondary); margin-bottom: 16px; font-size: 13px; }
+    .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    select, input, textarea { background: var(--bg-secondary); border: 1px solid var(--border);
+           color: var(--text-primary); border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: inherit; }
+    textarea { width: 100%; resize: vertical; min-height: 46px; font-family: ui-monospace, monospace; font-size: 12px; }
+    .btn { background: var(--accent, #4f7cff); color: #fff; border: none; border-radius: 8px; padding: 7px 13px;
+           font-size: 13px; font-weight: 550; cursor: pointer; }
+    .btn.ghost { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn.mini { padding: 4px 9px; font-size: 12px; }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .cols { display: grid; grid-template-columns: 1fr 400px; gap: 18px; align-items: start; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    .frame-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .frame-head .id { font-weight: 650; font-size: 15px; }
+    .frame-head .meta { color: var(--text-secondary); font-size: 12px; }
+    .frame-head .spacer { flex: 1; }
+    /* mini-timeline */
+    .tl { position: relative; height: 40px; background: var(--bg-primary); border: 1px solid var(--border);
+          border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+    .tl-seg { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; background: rgba(79,124,255,0.22);
+              border: 1px solid rgba(79,124,255,0.6); cursor: pointer; overflow: hidden; padding: 3px 6px; box-sizing: border-box;
+              font-size: 11px; white-space: nowrap; }
+    .tl-seg.sel { background: rgba(79,124,255,0.42); border-color: var(--accent, #4f7cff); }
+    .tl-seg .t { color: var(--text-secondary); font-size: 10px; }
+    .tl-tr { position: absolute; top: 0; bottom: 0; width: 0; border-right: 2px dashed #e0a000; }
+    .tl-tr::after { content: attr(data-k); position: absolute; top: 1px; right: 2px; font-size: 9px; color: #e0a000; }
+    /* scene rows */
+    .scene-row { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 7px; cursor: pointer;
+                 border: 1px solid transparent; }
+    .scene-row:hover { background: var(--bg-primary); }
+    .scene-row.sel { background: var(--bg-primary); border-color: var(--accent, #4f7cff); }
+    .badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 5px; background: rgba(79,124,255,0.15);
+             color: var(--accent, #4f7cff); white-space: nowrap; }
+    .badge.rv { background: rgba(120,80,220,0.15); color: #9a7cf0; }
+    .badge.tr { background: rgba(224,160,0,0.15); color: #e0a000; }
+    .scene-row .sid { font-weight: 600; min-width: 26px; }
+    .scene-row .time { color: var(--text-secondary); font-size: 12px; min-width: 78px; }
+    .scene-row .summ { flex: 1; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* inspector */
+    .field { margin-bottom: 10px; }
+    .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary);
+                   text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px; }
+    .field .desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .field input, .field select, .field textarea { width: 100%; box-sizing: border-box; }
+    .field .asset-tag { font-size: 10px; color: #e0a000; font-weight: 600; margin-left: 6px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .insp-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    #preview { width: 100%; border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; background: #111; display: none; }
+    .empty { color: var(--text-secondary); font-size: 13px; padding: 30px 10px; text-align: center; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: var(--bg-secondary); border: 1px solid var(--border);
+             border-radius: 10px; padding: 11px 15px; font-size: 13px; max-width: 380px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); display: none; }
+    .toast.err { border-color: #d0433b; }
+    .toast.ok { border-color: #2ea043; }
+    details.add summary { cursor: pointer; font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .note-box { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal-box { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; width: 640px; max-width: 92vw; max-height: 82vh; overflow: auto; padding: 16px; }
+    .modal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .modal-head .spacer { flex: 1; }
+    .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 10px; }
+    .pick-item { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--border);
+                 border-radius: 8px; cursor: pointer; font-size: 12px; text-align: center; word-break: break-all; }
+    .pick-item:hover { border-color: var(--accent,#4f7cff); }
+    .pick-item img { width: 100%; height: 70px; object-fit: cover; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <script src="/static/nav.js" data-active="hyperframes"></script>
+  <div class="wrap">
+    <h1>HyperFrames Edit</h1>
+    <div class="sub">Edit a composed frame <b>per scene</b> — data, assets, timing, motion, transitions — and re-render <b>per frame</b>. Every edit passes the composer gate.</div>
+    <div class="topbar">
+      <select id="comp"></select>
+      <span id="status" class="meta" style="color:var(--text-secondary);font-size:12px;"></span>
+    </div>
+    <div class="cols">
+      <div id="frames"></div>
+      <div>
+        <div class="card" id="inspector">
+          <div class="empty">Select a scene to edit.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <div id="picker" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><b>Pick an asset</b><span class="meta" style="color:var(--text-secondary);font-size:12px;">lands in the composition's assets/</span>
+        <span class="spacer"></span>
+        <label class="btn ghost mini">Upload<input type="file" style="display:none" onchange="uploadAsset(this)"></label>
+        <button class="btn ghost mini" onclick="closePicker()">Close</button></div>
+      <div id="pick-list" class="pick-grid"></div>
+    </div>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s);
+let CATALOG = null, FRAMES = [], COMP = null, SEL = null;  // SEL = {frame_id, scene_id}
+
+function toast(msg, kind) {
+  const t = $("#toast"); t.textContent = msg; t.className = "toast " + (kind || "");
+  t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", kind === "err" ? 7000 : 3500);
+}
+async function jget(u) { const r = await fetch(u); if (!r.ok) throw new Error((await r.json()).detail || r.status); return r.json(); }
+async function jpost(u, b) { const r = await fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(b)});
+  const j = await r.json().catch(()=>({})); if (!r.ok) throw new Error(j.detail || r.status); return j; }
+
+async function boot() {
+  CATALOG = await jget("/api/hf/catalog");
+  const c = await jget("/api/hf/compositions");
+  const sel = $("#comp");
+  if (!c.compositions.length) { sel.innerHTML = '<option>— no composed frames found —</option>'; return; }
+  sel.innerHTML = c.compositions.map(x => `<option value="${x.name}">${x.name} · ${x.source} · ${x.frames} frame(s)</option>`).join("");
+  sel.onchange = () => loadFrames(sel.value);
+  loadFrames(c.compositions[0].name);
+}
+
+async function loadFrames(comp) {
+  COMP = comp; SEL = null;
+  const d = await jget("/api/hf/frames?comp=" + encodeURIComponent(comp));
+  FRAMES = d.frames;
+  $("#status").textContent = `${FRAMES.length} frame(s) · ${FRAMES.reduce((n,f)=>n+f.scenes.length,0)} scene(s)`;
+  renderFrames();
+  $("#inspector").innerHTML = '<div class="empty">Select a scene to edit.</div>';
+}
+
+function renderFrames() {
+  $("#frames").innerHTML = FRAMES.map(fr => {
+    const dur = fr.dur || Math.max(...fr.scenes.map(s => (s.start||0)+(s.dur||0)), 1);
+    const segs = fr.scenes.map(s => {
+      const L = (s.start||0)/dur*100, W = Math.max(2,(s.dur||0)/dur*100);
+      const selc = (SEL && SEL.frame_id===fr.id && SEL.scene_id===s.id) ? " sel" : "";
+      const tr = s.transition_out ? `<span class="tl-tr" style="left:${L+W}%" data-k="${s.transition_out}"></span>` : "";
+      return `<div class="tl-seg${selc}" style="left:${L}%;width:${W}%" onclick="selectScene('${fr.id}','${s.id}')">${s.id} <span class="t">${s.type}</span></div>${tr}`;
+    }).join("");
+    const rows = fr.scenes.map(s => {
+      const selc = (SEL && SEL.frame_id===fr.id && SEL.scene_id===s.id) ? " sel" : "";
+      const end = ((s.start||0)+(s.dur||0)).toFixed(1);
+      const rv = s.reveal ? `<span class="badge rv">${s.reveal}</span>` : "";
+      const tr = s.transition_out ? `<span class="badge tr">→ ${s.transition_out}</span>` : "";
+      return `<div class="scene-row${selc}" onclick="selectScene('${fr.id}','${s.id}')">
+        <span class="badge">${s.type}</span><span class="sid">${s.id}</span>
+        <span class="time">${(s.start||0).toFixed(1)}–${end}s</span>
+        <span class="summ">${esc(s.summary||'')}</span>${rv}${tr}</div>`;
+    }).join("");
+    const types = Object.keys(CATALOG.scene_templates).sort();
+    return `<div class="card">
+      <div class="frame-head"><span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span>
+        <span class="spacer"></span>
+        <button class="btn ghost mini" onclick="fillTransitions('${fr.id}')">Fill transitions</button>
+        <button class="btn mini" onclick="renderFrame('${fr.id}')">Render frame</button></div>
+      <div class="tl">${segs}</div>
+      ${rows}
+      <details class="add"><summary>+ add scene</summary>
+        <div class="row2" style="margin-top:8px">
+          <select id="add-type-${fr.id}">${types.map(t=>`<option>${t}</option>`).join("")}</select>
+          <input id="add-id-${fr.id}" placeholder="id (e.g. s${fr.scenes.length+1})" value="s${fr.scenes.length+1}">
+          <input id="add-start-${fr.id}" type="number" step="0.1" placeholder="start" value="${dur}">
+          <input id="add-dur-${fr.id}" type="number" step="0.1" placeholder="dur" value="3">
+        </div>
+        <textarea id="add-data-${fr.id}" placeholder='data JSON, e.g. {"lines":["..."],"operative":"..."}'>{}</textarea>
+        <button class="btn mini" style="margin-top:6px" onclick="addScene('${fr.id}')">Add (gated)</button>
+      </details>
+      <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask a frame edit (note → agent → gate)</label>
+        <textarea id="fnote-${fr.id}" placeholder="e.g. weave @asset0 and @asset1 in as a gallery from 3–7s, dip to black between shots"></textarea>
+        <button class="btn ghost mini" style="margin-top:6px" onclick="reviseFrameNote('${fr.id}')">Apply (agent)</button></div>
+    </div>`;
+  }).join("");
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function findScene(fid, sid){ const f = FRAMES.find(x=>x.id===fid); return f && f.scenes.find(s=>s.id===sid); }
+
+async function selectScene(fid, sid) {
+  SEL = {frame_id: fid, scene_id: sid};
+  renderFrames();
+  // fetch the full scene (list only carries a summary) via the frame spec
+  const d = await jget(`/api/hf/frame-spec?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fid)}`);
+  const scene = (d.frame.scenes||[]).find(s=>s.id===sid);
+  renderInspector(scene, fid);
+}
+
+const ASSET_RE = /image|asset|avatar|art|src|backdrop|photo|logo|thumb/i;
+const TEXT_BLOCKS = new Set(["statement","newshead","stat","comparison"]);
+
+function renderInspector(scene, fid) {
+  const tmpl = CATALOG.scene_templates[scene.type] || {};
+  const schema = tmpl.data_schema || {};
+  const data = scene.data || {};
+  let fields = "";
+  for (const [k, desc] of Object.entries(schema)) {
+    if (k === "reveal") continue; // handled by its own control
+    const cur = data[k];
+    const val = cur === undefined ? "" : (typeof cur === "object" ? JSON.stringify(cur) : String(cur));
+    const isAsset = ASSET_RE.test(k + " " + desc);
+    const big = typeof cur === "object";
+    const inp = big
+      ? `<textarea data-f="${k}">${esc(val)}</textarea>`
+      : `<input data-f="${k}" value="${esc(val)}">`;
+    const browse = isAsset ? `<button class="btn ghost mini" style="margin-top:4px" onclick="openPicker(this)">Browse assets…</button>` : '';
+    fields += `<div class="field"><label>${k}${isAsset?'<span class="asset-tag">asset</span>':''}</label>${inp}${browse}<div class="desc">${esc(desc)}</div></div>`;
+  }
+  const revealOpts = ["", ...Object.keys(CATALOG.reveals||{}).filter(x=>x!=="_doc")];
+  const trOpts = ["", ...Object.keys(CATALOG.transitions||{}).filter(x=>x!=="_doc")];
+  const curReveal = data.reveal || "";
+  const curTr = (scene.transition_out||{}).kind || "";
+  const curTrDur = (scene.transition_out||{}).dur || 0.6;
+  $("#inspector").innerHTML = `
+    <div class="frame-head"><span class="id">${scene.id}</span><span class="badge">${scene.type}</span><span class="spacer"></span></div>
+    <div class="row2">
+      <div class="field"><label>start (s)</label><input id="insp-start" type="number" step="0.1" value="${scene.start||0}"></div>
+      <div class="field"><label>dur (s)</label><input id="insp-dur" type="number" step="0.1" value="${scene.dur||0}"></div>
+    </div>
+    ${TEXT_BLOCKS.has(scene.type) ? `<div class="field"><label>reveal (text motion)</label>
+      <select id="insp-reveal">${revealOpts.map(o=>`<option ${o===curReveal?'selected':''}>${o||'— none —'}</option>`).join("")}</select></div>` : ''}
+    <div class="row2">
+      <div class="field"><label>transition out</label><select id="insp-tr">${trOpts.map(o=>`<option value="${o}" ${o===curTr?'selected':''}>${o||'— none —'}</option>`).join("")}</select></div>
+      <div class="field"><label>transition dur</label><input id="insp-trdur" type="number" step="0.1" value="${curTrDur}"></div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+    <div id="insp-fields">${fields}</div>
+    <div class="insp-actions">
+      <button class="btn" onclick="applyEdit('${fid}','${scene.id}')">Apply + recompose</button>
+      <button class="btn ghost" onclick="previewScene('${fid}','${scene.id}')">Preview</button>
+      <button class="btn ghost" onclick="removeScene('${fid}','${scene.id}')">Remove</button>
+    </div>
+    <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask an edit (note → agent → gate)</label>
+      <textarea id="insp-note" placeholder="e.g. apply @reveal:scramble to the title, then dip to black after"></textarea>
+      <button class="btn mini" style="margin-top:6px" onclick="reviseNote('${fid}','${scene.id}')">Apply note</button></div>
+    <img id="preview">`;
+}
+
+function parseVal(v) { v = v.trim(); if (v === "") return undefined; try { return JSON.parse(v); } catch { return v; } }
+
+async function applyEdit(fid, sid) {
+  const scene = findScene(fid, sid);
+  const patch = {}, deletes = [];
+  document.querySelectorAll('#insp-fields [data-f]').forEach(el => {
+    const k = el.getAttribute("data-f"), v = parseVal(el.value);
+    if (v === undefined) deletes.push("data." + k); else patch["data." + k] = v;
+  });
+  const st = parseFloat($("#insp-start").value), du = parseFloat($("#insp-dur").value);
+  if (!isNaN(st)) patch["start"] = st;
+  if (!isNaN(du)) patch["dur"] = du;
+  const rv = $("#insp-reveal");
+  if (rv) { if (rv.value && rv.value !== "— none —") patch["data.reveal"] = rv.value; else deletes.push("data.reveal"); }
+  const tr = $("#insp-tr").value;
+  if (tr) patch["transition_out"] = {kind: tr, dur: parseFloat($("#insp-trdur").value) || 0.6};
+  else deletes.push("transition_out");
+  try {
+    const r = await jpost("/api/hf/scene/revise", {comp: COMP, frame_id: fid, scene_id: sid, patch, deletes});
+    if (!r.applied) { toast("Rejected by gate: " + (r.errors||"").split("\n").slice(0,3).join(" "), "err"); return; }
+    toast("Applied + recomposed ✓", "ok");
+    await loadFrames(COMP); await selectScene(fid, sid); previewScene(fid, sid);
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
+async function removeScene(fid, sid) {
+  if (!confirm(`Remove scene ${sid} from ${fid}?`)) return;
+  try { const r = await jpost("/api/hf/scene/remove", {comp: COMP, frame_id: fid, scene_id: sid});
+    if (!r.applied) return toast("Rejected: " + (r.errors||""), "err");
+    toast("Removed ✓", "ok"); loadFrames(COMP);
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
+async function addScene(fid) {
+  let data; try { data = JSON.parse($(`#add-data-${fid}`).value || "{}"); }
+  catch { return toast("data must be valid JSON", "err"); }
+  const scene = {id: $(`#add-id-${fid}`).value.trim(), type: $(`#add-type-${fid}`).value,
+    start: parseFloat($(`#add-start-${fid}`).value)||0, dur: parseFloat($(`#add-dur-${fid}`).value)||3, data};
+  try { const r = await jpost("/api/hf/scene/add", {comp: COMP, frame_id: fid, scene});
+    if (!r.applied) return toast("Rejected by gate: " + (r.errors||"").split("\n").slice(0,3).join(" "), "err");
+    toast("Added ✓", "ok"); loadFrames(COMP);
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
+async function fillTransitions(fid) {
+  try { const r = await jpost("/api/hf/transitions/plan", {comp: COMP, frame_id: fid, apply: true});
+    toast(`Transitions filled: ${(r.proposals||[]).map(p=>p.scene_id+'→'+p.kind).join(', ')||'none'} ✓`, "ok");
+    loadFrames(COMP);
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
+async function previewScene(fid, sid) {
+  const scene = findScene(fid, sid);
+  const at = (scene.start||0) + (scene.dur||2)*0.5;
+  const img = $("#preview"); img.style.display = "block";
+  img.src = `/api/hf/snapshot?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fid)}&at=${at.toFixed(2)}&_=${Date.now()}`;
+  img.onerror = () => toast("Snapshot failed (see server log)", "err");
+}
+
+async function renderFrame(fid) {
+  try { const r = await jpost("/api/hf/frame/rerender", {comp: COMP, frame_ids: [fid]});
+    toast(`Render started (job ${r.job_id}). Check when done.`, "ok");
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
+// ---- Phase 2: note edits (comment -> agent -> gate) ----
+async function reviseNote(fid, sid) {
+  const note = $("#insp-note").value.trim(); if (!note) return;
+  toast("Thinking…");
+  try {
+    const r = await jpost("/api/hf/frame/revise-note", {comp: COMP, frame_id: fid, scene_id: sid, note});
+    if (!r.applied) return toast("Not applied: " + (r.errors||"").split("\n").slice(0,2).join(" "), "err");
+    toast(`Applied ${(r.ops||[]).length} op(s) ✓`, "ok");
+    await loadFrames(COMP); await selectScene(fid, sid); previewScene(fid, sid);
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+async function reviseFrameNote(fid) {
+  const note = $(`#fnote-${fid}`).value.trim(); if (!note) return;
+  let assets = [];
+  try { assets = (await jget("/api/hf/assets?comp=" + encodeURIComponent(COMP))).assets.map(a => a.path); } catch {}
+  toast("Thinking…");
+  try {
+    const r = await jpost("/api/hf/frame/revise-note", {comp: COMP, frame_id: fid, note, assets});
+    if (!r.applied) return toast("Not applied: " + (r.errors||"").split("\n").slice(0,2).join(" "), "err");
+    toast(`Applied ${(r.ops||[]).length} op(s) ✓`, "ok"); loadFrames(COMP);
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
+// ---- asset picker ----
+let PICK_EL = null;
+function openPicker(btn) { PICK_EL = btn.closest(".field").querySelector("[data-f]"); $("#picker").style.display = "flex"; renderPicker(); }
+function closePicker() { $("#picker").style.display = "none"; }
+async function renderPicker() {
+  const d = await jget("/api/hf/assets?comp=" + encodeURIComponent(COMP));
+  $("#pick-list").innerHTML = d.assets.map(a => {
+    const th = a.kind === "image"
+      ? `<img src="/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(a.path)}">`
+      : `<span class="badge">${a.kind}</span>`;
+    return `<div class="pick-item" onclick='pickAsset(${JSON.stringify(a.path)})'>${th}<span>${esc(a.name)}</span></div>`;
+  }).join("") || '<div class="empty">No assets yet — upload one.</div>';
+}
+function pickAsset(path) { setAsset(PICK_EL, path); closePicker(); toast("Set → " + path, "ok"); }
+function setAsset(el, path) {
+  if (!el) return;
+  if (el.tagName === "TEXTAREA") {
+    let v; try { v = JSON.parse(el.value); } catch { v = null; }
+    if (Array.isArray(v)) { v.push(path); el.value = JSON.stringify(v); }
+    else if (v && typeof v === "object") { v.src = path; el.value = JSON.stringify(v); }
+    else el.value = JSON.stringify(path);
+  } else { el.value = path; }
+}
+async function uploadAsset(inp) {
+  if (!inp.files.length) return;
+  const fd = new FormData(); fd.append("comp", COMP); fd.append("file", inp.files[0]);
+  try {
+    const r = await fetch("/api/hf/asset/upload", {method: "POST", body: fd});
+    const j = await r.json(); if (!r.ok) throw new Error(j.detail || r.status);
+    toast("Uploaded " + j.path, "ok"); renderPicker();
+  } catch (e) { toast("Upload failed: " + e.message, "err"); }
+}
+
+boot().catch(e => toast("Load failed: " + e.message, "err"));
+</script>
+</body>
+</html>

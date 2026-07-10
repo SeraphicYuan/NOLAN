@@ -26,6 +26,7 @@
   --accent:       #2541ee;
   --accent-soft:  rgba(37, 65, 238, 0.12);
   --accent-glow:  rgba(37, 65, 238, 0.40);
+  --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */
   --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;

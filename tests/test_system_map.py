@@ -57,3 +57,13 @@ def test_surfaces_verified_against_app(tmp_path):
     bad = [s["label"] for s in m["surfaces"] if s["ok"] is False]
     badlabs = [l["label"] for l in m["labs"] if l["ok"] is False]
     assert not bad and not badlabs, f"map points at missing routes: {bad + badlabs}"
+
+
+def test_bridge_kb_docs_exist():
+    """Every knowledge-base doc listed on the Bridge tab must exist on disk — the KB section
+    can't cite a note that isn't there (same honesty rule as the live bridges)."""
+    m = build_map(ping=False)
+    kb = m.get("bridge_kb", [])
+    assert kb, "no Bridge knowledge-base docs listed"
+    missing = [k["id"] for k in kb if not k["ok"]]
+    assert not missing, f"Bridge KB lists docs that don't exist: {missing}"

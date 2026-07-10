@@ -27,6 +27,7 @@
   --accent:       #00ffcc;             /* electric cyan */
   --accent-soft:  rgba(0, 255, 204, 0.10);
   --accent-glow:  rgba(255, 0, 170, 0.55);   /* SIGNATURE — magenta glow */
+  --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */
   --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;

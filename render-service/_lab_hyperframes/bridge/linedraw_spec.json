@@ -1,0 +1,49 @@
+{
+  "_doc": "linedraw block demo: a signature (single flowing stroke) + a lightbulb line-art icon (many strokes, sequential draw). Vector-first. All via `paths` (each element a path `d`).",
+  "frames": [
+    {
+      "id": "ld-signature", "dur": 4.5,
+      "scenes": [ { "id": "s-sig", "type": "linedraw", "start": 0, "dur": 4.5, "data": {
+        "register": "paper", "kicker": "SIGNATURE", "strokeWidth": 3.4,
+        "viewBox": "0 0 300 160",
+        "paths": [
+          "M 20 110 C 35 60 55 55 62 95 C 68 128 82 130 88 100 C 95 62 116 58 122 100 C 128 140 142 132 150 100 C 158 68 178 70 186 104 C 193 132 208 128 214 100 C 222 66 244 70 252 106 C 258 132 272 130 284 96",
+          "M 30 132 C 100 148 200 148 278 126"
+        ] } } ]
+    },
+    {
+      "id": "ld-bulb", "dur": 5.5,
+      "scenes": [ { "id": "s-bulb", "type": "linedraw", "start": 0, "dur": 5.5, "data": {
+        "register": "paper", "kicker": "THE IDEA", "strokeWidth": 3,
+        "viewBox": "0 0 200 240",
+        "paths": [
+          "M100 32 C62 32 42 64 42 94 C42 120 60 134 68 152 L132 152 C140 134 158 120 158 94 C158 64 138 32 100 32 Z",
+          "M78 96 L90 112 L100 92 L110 112 L122 96",
+          "M70 152 L130 152",
+          "M74 164 L126 164",
+          "M78 176 L122 176",
+          "M88 188 L112 188 L106 204 L94 204 Z",
+          "M100 6 L100 22",
+          "M22 94 L6 94",
+          "M178 94 L194 94",
+          "M36 40 L26 30",
+          "M164 40 L174 30"
+        ] } } ]
+    },
+    {
+      "id": "ld-bulb-dark", "dur": 5.5,
+      "scenes": [ { "id": "s-bulbd", "type": "linedraw", "start": 0, "dur": 5.5, "data": {
+        "register": "footage", "kicker": "SCHEMATIC / longest-first", "strokeWidth": 2.4, "order": "length-desc",
+        "viewBox": "0 0 200 240",
+        "paths": [
+          "M100 32 C62 32 42 64 42 94 C42 120 60 134 68 152 L132 152 C140 134 158 120 158 94 C158 64 138 32 100 32 Z",
+          "M78 96 L90 112 L100 92 L110 112 L122 96",
+          "M70 152 L130 152",
+          "M74 164 L126 164",
+          "M78 176 L122 176",
+          "M88 188 L112 188 L106 204 L94 204 Z",
+          "M100 6 L100 22", "M22 94 L6 94", "M178 94 L194 94", "M36 40 L26 30", "M164 40 L174 30"
+        ] } } ]
+    }
+  ]
+}

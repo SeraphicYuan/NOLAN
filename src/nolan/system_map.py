@@ -432,6 +432,20 @@ BRIDGES = [
      "nolan": "vendored (gitignored; re-fetch via curl)",
      "hf": "geo_map injects the <script>s at compose time",
      "wire": ("render-service/_lab_hyperframes/bridge/vendor", None)},
+    {"id": "themed-composer", "label": "Themed composer (font-robust)", "stage": "live",
+     "purpose": "NOLAN's tokens.css theme system drives the composer blocks (CSS-var injection), made "
+                "font-robust by a deterministic fit-to-box primitive + a cross-theme layout audit — so "
+                "ONE block survives any of the 26 themes' font metrics. A NOLAN-side seam; touches no HF files.",
+     "nolan": "themes/<id>/tokens.css → _theme_vars injection + data-fit fit primitive + accept-gate audit",
+     "hf": "same seek render (fit runs once on fonts.ready) + `hyperframes inspect` layout audit",
+     "wire": ("render-service/_lab_hyperframes/bridge/compose.py", "_theme_vars")},
+    {"id": "editing", "label": "Scene edit mode", "stage": "live",
+     "purpose": "the /hyperframes page — human-in-the-loop editing OF the composer: patch/add/remove/"
+                "retime a scene through the author.py gate, plan within-frame transitions, snapshot-"
+                "preview + re-render a frame. Edit per scene, re-render per frame. A NOLAN-side seam.",
+     "nolan": "nolan.hyperframes edit engine (mirrors iterate's load→patch→gate→re-render) + /api/hf/* routes",
+     "hf": "re-gates the frame's spec → recomposes compositions/frames/<id>.html → snapshot/render",
+     "wire": ("src/nolan/hyperframes/edit.py", "apply_scene_edit")},
 ]
 
 
@@ -456,6 +470,56 @@ def _bridges() -> List[Dict[str, Any]]:
                 pass
         out.append(row)
     return out
+
+
+# Bridge knowledge base — integration notes surfaced on the Bridge tab. Each doc is verified
+# to exist on disk (the tab can't list a doc that isn't there — same honesty rule as bridges).
+BRIDGE_KB = [
+    {"id": "native-blocks-vs-composer",
+     "title": "Native blocks vs the NOLAN composer",
+     "purpose": "What a HyperFrames registry block is, what `hyperframes add` installs, and how "
+                "native blocks differ from our compose.py block-functions (cinematic-zoom worked example).",
+     "doc": "render-service/_lab_hyperframes/kb/native-blocks-vs-composer.md"},
+    {"id": "theme-style-pipelines",
+     "title": "Theme / style pipelines — NOLAN vs HyperFrames",
+     "purpose": "How each system decides + applies a look: NOLAN binds style LATE via tokens "
+                "(swap one file, blocks restyle); HyperFrames binds EARLY at authoring time (LLM writes "
+                "on-theme CSS per scene). Why the composer is theme-locked today + the tokenization fix.",
+     "doc": "render-service/_lab_hyperframes/kb/theme-style-pipelines.md"},
+    {"id": "registry-conversion-map",
+     "title": "Registry → composer conversion map (Phase 1)",
+     "purpose": "Every catalog block/component (13 categories, 133 items) classified CONVERT / KEEP-native / "
+                "SKIP. Phase 1 = ~6 theme-driven composer blocks that collapse ~60 native ones (lower_third, "
+                "code, social_card, chart, geo-ext, flowchart); shaders/3D/canvas stay native.",
+     "doc": "render-service/_lab_hyperframes/kb/registry-conversion-map.md"},
+    {"id": "frame-vs-scene",
+     "title": "Frame vs scene — the altitude the two systems split at",
+     "purpose": "NOLAN edits/renders by SCENE (a shot = its own clip); the HF composer authors/renders by "
+                "FRAME (a VO-anchored beat = one merged timeline = one clip) with its own `scenes` (shots) "
+                "nested inside. HF `frame` ≈ NOLAN `section`, not a renamed scene. Why the edit mode is "
+                "'edit per scene, re-render per frame'.",
+     "doc": "render-service/_lab_hyperframes/kb/frame-vs-scene.md"},
+    {"id": "asset-editing-in-the-composer",
+     "title": "Editing assets & timing in the composer (not just the HTML)",
+     "purpose": "The composer edit mode isn't graphics-only: a scene's `data` carries asset paths and its "
+                "`start`/`dur` IS the time window, so change/add/plant-asset all map to data+timing patches "
+                "(picker → resolve_inject → data field). The genuine gaps (graphic blocks have no asset, "
+                "footage via root-video, cross-frame windows = assemble layer) + the two edit classes "
+                "(direct UI vs comment→agent→gate).",
+     "doc": "render-service/_lab_hyperframes/kb/asset-editing-in-the-composer.md"},
+    {"id": "edit-mode-plan",
+     "title": "Scene edit mode — design & build plan",
+     "purpose": "The design record for the /hyperframes per-scene edit mode (the editing bridge): a "
+                "parallel composer-native engine mirroring iterate's load→patch→gate→re-render pattern. "
+                "5 build components, edit vocabulary, two edit classes, phasing (P1 direct edits, P2 "
+                "comment→agent→gate), and parked assemble-layer items.",
+     "doc": "render-service/_lab_hyperframes/kb/edit-mode-plan.md"},
+]
+
+
+def _bridge_kb() -> List[Dict[str, Any]]:
+    return [{"id": k["id"], "title": k["title"], "purpose": k["purpose"],
+             "doc": k["doc"], "ok": (REPO / k["doc"]).exists()} for k in BRIDGE_KB]
 
 
 def _ping(url: str, timeout: float = 1.5) -> bool:
@@ -522,6 +586,7 @@ def build_map(app=None, ping: bool = True) -> Dict[str, Any]:
         "umbrellas": _umbrellas(),
         "hyperframes": _hyperframes(),
         "bridges": _bridges(),
+        "bridge_kb": _bridge_kb(),
         "health": _health(ping=ping),
         "wiring": {
             "manifest": "docs/UI_WIRING.md",

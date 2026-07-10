@@ -1,0 +1,59 @@
+{
+ "_doc": "linedraw on REAL Feather Icons (fetched from github) via src",
+ "frames": [
+  {
+   "id": "ld-feather",
+   "dur": 4.0,
+   "scenes": [
+    {
+     "id": "s-feather",
+     "type": "linedraw",
+     "start": 0,
+     "dur": 4.0,
+     "data": {
+      "register": "paper",
+      "kicker": "FEATHER ICONS / feather",
+      "strokeWidth": 5,
+      "src": "_svg/feather.svg"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ld-compass",
+   "dur": 4.0,
+   "scenes": [
+    {
+     "id": "s-compass",
+     "type": "linedraw",
+     "start": 0,
+     "dur": 4.0,
+     "data": {
+      "register": "paper",
+      "kicker": "FEATHER ICONS / compass",
+      "strokeWidth": 5,
+      "src": "_svg/compass.svg"
+     }
+    }
+   ]
+  },
+  {
+   "id": "ld-map",
+   "dur": 4.0,
+   "scenes": [
+    {
+     "id": "s-map",
+     "type": "linedraw",
+     "start": 0,
+     "dur": 4.0,
+     "data": {
+      "register": "paper",
+      "kicker": "FEATHER ICONS / map",
+      "strokeWidth": 5,
+      "src": "_svg/map.svg"
+     }
+    }
+   ]
+  }
+ ]
+}

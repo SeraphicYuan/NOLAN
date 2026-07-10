@@ -1,0 +1,48 @@
+{
+  "frames": [
+    {
+      "id": "dgflow",
+      "dur": 9,
+      "scenes": [
+        {
+          "id": "df1", "type": "diagram", "start": 0, "dur": 9,
+          "data": {
+            "layout": "flow", "dir": "right", "register": "paper",
+            "kicker": "The pipeline", "title": "Power in, money out", "titleHi": "money",
+            "root": {
+              "label": "Grid power", "sub": "1 GW",
+              "children": [
+                { "label": "Servers", "hl": true, "children": [
+                  { "label": "Training" }, { "label": "Inference" } ] },
+                { "label": "Cooling" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "dgtour",
+      "dur": 17,
+      "scenes": [
+        {
+          "id": "dt1", "type": "diagram", "start": 0, "dur": 17,
+          "data": {
+            "layout": "tree", "camera": "tour", "register": "dark",
+            "kicker": "Follow the build", "title": "How a model ships",
+            "root": {
+              "label": "The pipeline",
+              "children": [
+                { "label": "Ingest", "children": [ { "label": "Scrape" }, { "label": "Clean" } ] },
+                { "label": "Model", "hl": true, "children": [
+                  { "label": "Pretrain", "children": [ { "label": "Data" }, { "label": "Compute" } ] },
+                  { "label": "Finetune" } ] },
+                { "label": "Serve", "children": [ { "label": "API" }, { "label": "Cache" } ] }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

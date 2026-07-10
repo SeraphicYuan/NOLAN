@@ -109,3 +109,19 @@ class KBVectors:
             return self.col.count()
         except Exception:
             return 0
+
+
+_SHARED = None
+
+
+def shared():
+    """Process-wide KBVectors singleton — loads the embedding model once so web
+    search doesn't reload ~400MB per request. Returns None if unavailable."""
+    global _SHARED
+    if _SHARED is None:
+        try:
+            _SHARED = KBVectors()
+        except Exception as e:  # pragma: no cover - env-dependent
+            print(f"[kb] shared vectors unavailable: {e}")
+            _SHARED = False
+    return _SHARED or None

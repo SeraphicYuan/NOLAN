@@ -1,0 +1,32 @@
+{
+  "frames": [
+    {
+      "id": "findart", "dur": 7,
+      "scenes": [{
+        "id": "fa1", "type": "document", "start": 0, "dur": 7,
+        "data": {
+          "source": "assets/article.png", "mode": "page", "backdrop": "#0d0f12", "camera": "push",
+          "kicker": "By the numbers", "title": "Barely a rounding error", "titleHi": "rounding error",
+          "annotations": [
+            { "type": "highlight", "find": "1% as Vegan", "cue": 1.4 },
+            { "type": "callout", "title": "So", "text": ["1 in 100", "Americans"], "side": "right", "y": 0.42, "cue": 2.8 }
+          ]
+        }
+      }]
+    },
+    {
+      "id": "findfiling", "dur": 7,
+      "scenes": [{
+        "id": "ff1", "type": "document", "start": 0, "dur": 7,
+        "data": {
+          "source": "assets/docpage.png", "mode": "page", "backdrop": "#17181b",
+          "kicker": "The filing", "title": "Read the fine print",
+          "annotations": [
+            { "type": "highlight", "find": "REGISTRATION STATEMENT", "cue": 1.2 },
+            { "type": "highlight", "find": "performance milestones", "color": "#8CE6C0", "cue": 2.2 }
+          ]
+        }
+      }]
+    }
+  ]
+}

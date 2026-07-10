@@ -1,0 +1,27 @@
+{
+  "frames": [
+    {
+      "id": "carousel-cards",
+      "dur": 10.0,
+      "scenes": [
+        {
+          "id": "ck1", "type": "carousel", "start": 0, "dur": 10.0,
+          "data": {
+            "style": "slider", "layout": "cards",
+            "card_w": 880, "card_h": 560, "gap": 70,
+            "title": "The card scroll", "titleHi": "card scroll",
+            "backdrop": "#101014", "vignette": 0.5, "captions": true,
+            "images": [
+              {"src": "assets/img/g1.png", "caption": "First"},
+              {"src": "assets/img/g2.png", "caption": "Second"},
+              {"src": "assets/img/g3.png", "caption": "Third"},
+              {"src": "assets/img/g4.png", "caption": "Fourth"},
+              {"src": "assets/img/g5.png", "caption": "Fifth"},
+              {"src": "assets/img/g6.png", "caption": "Sixth"}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

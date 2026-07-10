@@ -25,6 +25,7 @@
   --accent:       #facc15;
   --accent-soft:  rgba(250, 204, 21, 0.14);
   --accent-glow:  rgba(250, 204, 21, 0.55);
+  --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */
   --font-display-cn: "Patrick Hand", "Noto Serif SC", cursive, serif;

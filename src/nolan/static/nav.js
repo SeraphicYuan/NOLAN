@@ -18,6 +18,7 @@
       { id: "script-projects", label: "Script Projects", href: "/script-projects" },
       { id: "video-styles", label: "Video Styles", href: "/video-styles" },
       { id: "deconstruct", label: "Deconstruct", href: "/deconstruct" },
+      { id: "kb", label: "Knowledge Base", href: "/kb" },
     ]},
     { title: "Assets", items: [
       { id: "library", label: "Library", href: "/library" },
@@ -31,6 +32,7 @@
     ]},
     { title: "Produce", items: [
       { id: "scenes", label: "Scenes", href: "/scenes" },
+      { id: "hyperframes", label: "HyperFrames Edit", href: "/hyperframes" },
       { id: "pool", label: "Asset Pool", href: "/pool" },
       { id: "lottie", label: "Lottie", href: "/lottie" },
       { id: "comfyui", label: "ComfyUI", href: "/comfyui" },

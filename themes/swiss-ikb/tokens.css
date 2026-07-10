@@ -37,6 +37,7 @@
   --accent:       #002fa7;             /* IKB — International Klein Blue */
   --accent-soft:  rgba(0, 47, 167, 0.08);
   --accent-glow:  rgba(0, 47, 167, 0.35);
+  --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts (sans everywhere — Swiss is anti-serif) ─── */
   --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;

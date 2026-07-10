@@ -1,0 +1,14 @@
+{
+  "frames": [{ "id": "collage-heroes", "dur": 6.5, "scenes": [
+    { "id": "clgh1", "type": "collage", "start": 0, "dur": 6.5,
+      "data": {
+        "backdrop": "#12171b", "vignette": 0.55, "layout": "heroes-tight", "camera": "push",
+        "subjects": [
+          { "src": "assets/img/gpu.png" },
+          { "src": "assets/img/cash.png" },
+          { "src": "assets/img/gavel.png" },
+          { "src": "assets/img/glass.png" }
+        ]
+      } }
+  ] }]
+}

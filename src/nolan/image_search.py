@@ -751,6 +751,116 @@ class InternetArchiveProvider(ImageProvider):
         return result
 
 
+class InternetArchiveImageProvider(ImageProvider):
+    """Internet Archive (archive.org) — keyless archival IMAGE / photo search.
+
+    Parallel to :class:`InternetArchiveProvider` (which serves the movies collection):
+    searches `mediatype:(image)` and resolves a downloadable full-size JPG/PNG per item
+    via the metadata API (lazy — the manifest fetch happens only for the chosen
+    candidate, mirroring the video provider). Best fit for historical / archival STILLS
+    (e.g. rural-electrification photographs) the movies collection can't provide.
+    """
+
+    name = "archive_image"
+    SEARCH_URL = "https://archive.org/advancedsearch.php"
+    META_URL = "https://archive.org/metadata"
+    media_type = "image"
+    _IMG_EXTS = (".jpg", ".jpeg", ".png")
+    _MAX_BYTES = 15_000_000  # prefer a derivative over a 100MB scan master when both exist
+
+    def is_available(self) -> bool:
+        return True  # no key required
+
+    def _pick_image(self, identifier: str, client: "httpx.Client") -> Optional[Dict[str, Any]]:
+        """Best full-size JPG/PNG file (name + dims) for an item, skipping thumbnails."""
+        try:
+            meta = client.get(f"{self.META_URL}/{identifier}", timeout=20.0).json()
+        except Exception:
+            return None
+        files = meta.get("files", []) or []
+
+        def _size(f):
+            try:
+                return int(f.get("size", 0))
+            except (TypeError, ValueError):
+                return 0
+
+        imgs = []
+        for f in files:
+            low = str(f.get("name", "")).lower()
+            if not low.endswith(self._IMG_EXTS):
+                continue
+            if "_thumb" in low or "__ia_thumb" in low:   # IA-generated thumbnails
+                continue
+            imgs.append(f)
+        if not imgs:
+            return None
+        capped = [f for f in imgs if 0 < _size(f) <= self._MAX_BYTES]
+        chosen = max(capped or imgs, key=_size)   # best quality within the size cap
+
+        def _int(v):
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return None
+        return {"name": chosen["name"], "width": _int(chosen.get("width")),
+                "height": _int(chosen.get("height"))}
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        """Lazy search: candidates with posters (enough to vision-score); the per-item
+        file manifest is fetched only for the chosen winner via resolve()."""
+        params = {
+            "q": f'({query}) AND mediatype:(image)',
+            "fl[]": ["identifier", "title", "year", "licenseurl"],
+            "rows": min(max_results, 20),
+            "page": 1,
+            "output": "json",
+            "sort[]": "downloads desc",
+        }
+        headers = {"User-Agent": "NOLAN-VideoEssayTool/1.0"}
+        results: List[ImageSearchResult] = []
+        try:
+            with httpx.Client() as client:
+                resp = client.get(self.SEARCH_URL, params=params, headers=headers, timeout=30.0)
+                resp.raise_for_status()
+                docs = resp.json().get("response", {}).get("docs", [])
+        except Exception:
+            return results
+        for doc in docs[:max_results]:
+            ident = doc.get("identifier")
+            if not ident:
+                continue
+            results.append(ImageSearchResult(
+                url="",  # deferred — resolved for the winner via resolve()
+                ref=ident,
+                thumbnail_url=f"https://archive.org/services/img/{ident}",
+                preview_image_url=f"https://archive.org/services/img/{ident}",
+                title=doc.get("title", ident),
+                source=self.name,
+                source_url=f"https://archive.org/details/{ident}",
+                media_type="image",
+                license=doc.get("licenseurl") or "Internet Archive (see item page)",
+            ))
+        return results
+
+    def resolve(self, result):
+        if result.url or not result.ref:
+            return result
+        try:
+            with httpx.Client(headers={"User-Agent": "NOLAN-VideoEssayTool/1.0"}) as client:
+                picked = self._pick_image(result.ref, client)
+        except Exception:
+            return None
+        if not picked:
+            return None
+        result.url = f"https://archive.org/download/{result.ref}/{picked['name']}"
+        if picked.get("width"):
+            result.width = picked["width"]
+        if picked.get("height"):
+            result.height = picked["height"]
+        return result
+
+
 class NASAImageProvider(ImageProvider):
     """NASA Image Library — keyless, public domain images."""
     name = "nasa"
@@ -1207,6 +1317,86 @@ class CoverrVideoProvider(ImageProvider):
         return results
 
 
+class ArtveeProvider(ImageProvider):
+    """Artvee — public-domain fine art, scraped via ``nolan.artvee``.
+
+    Thin adapter over ``ArtveeClient``: it maps the rich ``ArtveeResult`` down to
+    ``ImageSearchResult`` so artvee joins the generic provider fan-out, the vision
+    scorer, the asset gate and ``art_sourcing.ART_SOURCES``. Each result's ``url``
+    is resolved to the presigned low-res (SDL) download so ``download_image`` can
+    fetch it directly (the image path never calls ``resolve()``); ``thumbnail_url``
+    stays the cheap CDN thumbnail for scoring. For metadata-rich advanced search
+    (year/genre/orientation/resolution filters) call
+    ``nolan.artvee.ArtveeClient.advanced_search`` directly.
+    """
+    name = "artvee"
+
+    def __init__(self):
+        self._cli = None
+
+    def _client(self):
+        if self._cli is None:
+            from nolan.artvee import ArtveeClient
+            self._cli = ArtveeClient()
+        return self._cli
+
+    def is_available(self) -> bool:
+        return True
+
+    def search(self, query: str, max_results: int = 10) -> List[ImageSearchResult]:
+        results: List[ImageSearchResult] = []
+        try:
+            hits = self._client().search(query, max_results=max_results)
+        except Exception as e:
+            print(f"Warning: artvee search failed: {e}")
+            return results
+        for r in hits:
+            # Cheap: one listing fetch, NO per-item detail fetch here. `url` is
+            # the mid-size preview; `resolve()` upgrades the CHOSEN result to the
+            # presigned low-res (SDL) download just before it's fetched (see
+            # ImageSearchClient.resolve_asset). `width`/`height` carry the real
+            # SDL dimensions so the resolution gate and title/pixel sort judge
+            # the actual asset, not the preview.
+            results.append(ImageSearchResult(
+                url=r.preview_url,
+                thumbnail_url=r.thumbnail_url,
+                title=r.title,
+                source=self.name,
+                source_url=r.detail_url,
+                width=r.sd_width, height=r.sd_height,
+                photographer=r.artist,
+                license="Public Domain (Artvee)",
+                ref=r.detail_url,
+            ))
+        return results
+
+    def resolve(self, result: "ImageSearchResult") -> "ImageSearchResult":
+        """Upgrade a result's ``url`` to the presigned low-res (SDL) download.
+
+        Fetches ONE detail page for the chosen result (not per search hit) and
+        reuses ``ArtveeClient.resolve_download``. On any miss the existing preview
+        url is kept (it will likely fall the archival file-gate and the caller
+        moves to the next candidate — a loud, correct fallback).
+        """
+        if result.url and "/sdl/" in result.url:
+            return result
+        detail = result.source_url or result.ref
+        if not detail:
+            return result
+        from nolan.artvee import ArtveeResult
+        sk = ""
+        if result.thumbnail_url and "/ft/" in result.thumbnail_url:
+            sk = result.thumbnail_url.rsplit("/ft/", 1)[1].rsplit(".", 1)[0]
+        try:
+            sdl = self._client().resolve_download(
+                ArtveeResult(sk=sk, detail_url=detail, title=result.title or ""))
+        except Exception:
+            sdl = None
+        if sdl:
+            result.url = sdl
+        return result
+
+
 class ImageSearchClient:
     """Client for searching images across multiple providers."""
 
@@ -1239,6 +1429,8 @@ class ImageSearchClient:
             "artic": ArtInstituteProvider(),
             "cleveland": ClevelandArtProvider(),
             "wellcome": WellcomeProvider(),
+            "artvee": ArtveeProvider(),                            # PD fine art (scraped)
+            "archive_image": InternetArchiveImageProvider(),       # keyless archival stills
             # Key-needed (image) — available once the key is set
             "europeana": EuropeanaProvider(api_key=k.get("europeana")),
             "dpla": DPLAProvider(api_key=k.get("dpla")),
@@ -1390,6 +1582,22 @@ class ImageSearchClient:
         provider = self.providers.get(result.source)
         if provider and hasattr(provider, "resolve"):
             return provider.resolve(result)
+        return result
+
+    def resolve_asset(self, result: ImageSearchResult) -> ImageSearchResult:
+        """Resolve a lazily-returned image result into a fully-downloadable one.
+
+        Calls the source provider's ``resolve()`` (default: identity) — e.g.
+        artvee upgrades its preview url to the presigned low-res download. Call
+        this on the CHOSEN candidate right before download so lazy providers
+        fetch one detail page per USED asset, not per search hit. Never raises.
+        """
+        provider = self.providers.get(getattr(result, "source", None))
+        if provider is not None:
+            try:
+                return provider.resolve(result) or result
+            except Exception:
+                return result
         return result
 
     def search_to_json(

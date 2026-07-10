@@ -29,6 +29,7 @@
   --accent:       #ff5722;             /* hot signal orange */
   --accent-soft:  rgba(255, 87, 34, 0.14);
   --accent-glow:  rgba(255, 87, 34, 0.50);
+  --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */
   --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;

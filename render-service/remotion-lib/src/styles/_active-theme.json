@@ -1,13 +1,14 @@
 {
- "theme": "creative-voltage",
- "bg": "#0033b8",
- "fg": "#ffffff",
- "muted": "#e8eaff",
- "accent": "#d4ff00",
- "fontFamily": "\"Syne\", \"Archivo Black\", \"Inter\", sans-serif",
+ "theme": "bauhaus-bold",
+ "bg": "#f4f1ea",
+ "fg": "#0a0a0a",
+ "muted": "#1f1f1f",
+ "accent": "#2541ee",
+ "fontFamily": "\"Archivo Black\", \"Inter\", \"Helvetica Neue\", sans-serif",
  "fonts": [
-  "Syne",
+  "Archivo Black",
   "Noto Sans SC",
-  "Space Mono"
+  "Inter",
+  "JetBrains Mono"
  ]
 }

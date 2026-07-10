@@ -1,0 +1,75 @@
+{
+  "frames": [
+    {
+      "id": "dg",
+      "dur": 9,
+      "scenes": [
+        {
+          "id": "d1", "type": "diagram", "start": 0, "dur": 9,
+          "data": {
+            "layout": "tree",
+            "register": "paper",
+            "kicker": "Energy budget",
+            "title": "Where the power goes",
+            "titleHi": "power",
+            "root": {
+              "label": "Hyperscale campus", "sub": "1 GW",
+              "children": [
+                { "label": "Compute", "sub": "~60%", "hl": true,
+                  "children": [ { "label": "AI training" }, { "label": "Inference" } ] },
+                { "label": "Cooling", "sub": "~30%",
+                  "children": [ { "label": "Chillers" }, { "label": "Water loop" } ] },
+                { "label": "Overhead", "sub": "~10%" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cmp1",
+      "dur": 8,
+      "scenes": [
+        {
+          "id": "c1", "type": "comparison", "start": 0, "dur": 8,
+          "data": {
+            "axis": "vertical", "vs": true,
+            "kicker": "The pitch vs the bill",
+            "title": "Boom now, drought later",
+            "titleHi": "drought",
+            "left": {
+              "type": "image", "src": "assets/boom.png", "label": "The promise",
+              "kenburns": [1.04, 1.15], "vignette": 0.35,
+              "title": "Jobs and tax dollars", "kicker": "2019"
+            },
+            "right": {
+              "type": "image", "src": "assets/water.png", "label": "The cost",
+              "kenburns": [1.16, 1.05], "vignette": 0.45, "tint": "rgba(120,60,20,0.18)",
+              "title": "Aquifers run low", "highlight": "run low", "kicker": "2026"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cmp2",
+      "dur": 8,
+      "scenes": [
+        {
+          "id": "c2", "type": "comparison", "start": 0, "dur": 8,
+          "data": {
+            "axis": "vertical", "vs": "then/now",
+            "left": {
+              "type": "text", "register": "footage", "bg": "#14304a", "label": "The reel",
+              "kicker": "What they showed", "title": ["Endless jobs,", "cheap power"], "highlight": "cheap power"
+            },
+            "right": {
+              "type": "stat", "register": "paper", "label": "Homes' water, per day",
+              "from": 0, "to": 500000, "suffix": " gal"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

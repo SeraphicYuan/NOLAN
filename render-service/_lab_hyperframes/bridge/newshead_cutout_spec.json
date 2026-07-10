@@ -1,0 +1,32 @@
+{
+  "frames": [
+    {
+      "id": "newshead-cutout",
+      "dur": 8,
+      "scenes": [
+        {
+          "id": "nhc1",
+          "type": "newshead",
+          "start": 0,
+          "dur": 8,
+          "data": {
+            "tilt": -1.5,
+            "image_tilt": -4,
+            "date": "Dec 3, 2025",
+            "headline": [
+              "The chips behind the boom",
+              "are rewiring the grid"
+            ],
+            "highlight": "rewiring the grid",
+            "subhead": "Each new AI accelerator can draw as much power as a home, and utilities are racing to add capacity as orders pile up.",
+            "subhighlight": "as much power as a home",
+            "source": "The New York Times",
+            "image": "assets/img/gpu_cut.png",
+            "cutout": true,
+            "arrow": true
+          }
+        }
+      ]
+    }
+  ]
+}

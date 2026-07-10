@@ -1,0 +1,549 @@
+"""Composer-native scene-edit engine (Phase 1: direct/mechanical edits).
+
+The unit of EDIT is a scene (a shot inside a frame); the unit of RE-RENDER is the frame (its scenes
+share one merged GSAP timeline). So an edit patches ONE scene in a per-frame spec, re-gates the whole
+frame through author.py (validate + compose -> frame HTML), and previews/renders that one frame.
+
+Cross-platform notes: the gate (author.py) runs under this process's own python (sys.executable), so it
+works Windows-side (the hub) and in WSL (tests). Previews/renders shell out to `npx hyperframes` on a
+throwaway single-frame scaffold (self-contained headless Chrome), which also works in both.
+"""
+from __future__ import annotations
+
+import copy
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+REPO = Path(__file__).resolve().parents[3]
+BRIDGE = REPO / "render-service" / "_lab_hyperframes" / "bridge"
+AUTHOR = BRIDGE / "author.py"
+CATALOG_PATH = BRIDGE / "catalog.json"
+LAB_VIDEOS = REPO / "render-service" / "_lab_hyperframes" / "videos"
+PROJECTS = REPO / "projects"
+
+_ROOTS = [("lab", LAB_VIDEOS), ("project", PROJECTS)]
+
+
+# ------------------------------------------------------------------ discovery / read
+
+def discover_compositions() -> List[Dict[str, Any]]:
+    """Every project/lab dir that holds a composed HyperFrames frame (compositions/frames/*.spec.json)."""
+    out = []
+    for source, root in _ROOTS:
+        if not root.exists():
+            continue
+        for d in sorted(p for p in root.iterdir() if p.is_dir()):
+            fdir = d / "compositions" / "frames"
+            if fdir.is_dir() and any(fdir.glob("*.spec.json")):
+                out.append({"name": d.name, "source": source,
+                            "dir": str(d), "frames": len(list(fdir.glob("*.spec.json")))})
+    return out
+
+
+def _comp_dir(comp: str) -> Path:
+    for _source, root in _ROOTS:
+        d = root / comp
+        if (d / "compositions" / "frames").is_dir():
+            return d
+    raise FileNotFoundError(f"composition {comp!r} not found under lab videos or projects")
+
+
+def _frames_dir(comp: str) -> Path:
+    return _comp_dir(comp) / "compositions" / "frames"
+
+
+def comp_dir(comp: str) -> Path:
+    """Public: the composition's root directory (raises FileNotFoundError if unknown)."""
+    return _comp_dir(comp)
+
+
+def _frame_index(comp: str) -> Dict[str, Dict[str, Any]]:
+    """frame_id -> {spec_file, i} across every spec file in the composition (usually one frame per file)."""
+    idx: Dict[str, Dict[str, Any]] = {}
+    for sf in sorted(_frames_dir(comp).glob("*.spec.json")):
+        try:
+            spec = json.loads(sf.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        for i, fr in enumerate(spec.get("frames", [])):
+            if "id" in fr:
+                idx[fr["id"]] = {"spec_file": sf, "i": i}
+    return idx
+
+
+def _scene_summary(s: Dict[str, Any]) -> str:
+    d = s.get("data", {}) or {}
+    for k in ("title", "headline", "kicker", "name", "track", "code", "text"):
+        v = d.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()[:60]
+    if isinstance(d.get("lines"), list) and d["lines"]:
+        return " ".join(str(x) for x in d["lines"])[:60]
+    if isinstance(d.get("items"), list) and d["items"]:
+        return f'{len(d["items"])} item(s)'
+    return s.get("type", "?")
+
+
+def list_frames(comp: str) -> List[Dict[str, Any]]:
+    """The frame -> scene tree for a composition (the /hyperframes page payload)."""
+    fdir = _frames_dir(comp)
+    frames = []
+    for sf in sorted(fdir.glob("*.spec.json")):
+        spec = json.loads(sf.read_text(encoding="utf-8"))
+        for fr in spec.get("frames", []):
+            frames.append({
+                "id": fr["id"], "dur": fr.get("dur"), "spec_file": sf.name,
+                "html_exists": (fdir / f'{fr["id"]}.html').exists(),
+                "scenes": [{
+                    "id": s.get("id"), "type": s.get("type"),
+                    "start": s.get("start"), "dur": s.get("dur"),
+                    "reveal": (s.get("data") or {}).get("reveal"),
+                    "transition_out": (s.get("transition_out") or {}).get("kind"),
+                    "summary": _scene_summary(s),
+                } for s in fr.get("scenes", [])],
+            })
+    return frames
+
+
+def load_frame_spec(comp: str, frame_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    info = _frame_index(comp).get(frame_id)
+    if not info:
+        raise KeyError(f"frame {frame_id!r} not found in composition {comp!r}")
+    spec = json.loads(Path(info["spec_file"]).read_text(encoding="utf-8"))
+    return spec, {"spec_file": str(info["spec_file"]), "i": info["i"]}
+
+
+def save_frame_spec(spec_file: Path, spec: Dict[str, Any]) -> None:
+    """Write the spec back, preserving all keys (lossless — unknown keys survive)."""
+    Path(spec_file).write_text(json.dumps(spec, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def catalog() -> Dict[str, Any]:
+    """The composer registry (scene_templates + data_schema + transitions + reveals) — the inspector's
+    schema source, so the edit form is built from the same registry the gate validates against."""
+    return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+
+
+# ------------------------------------------------------------------ patch helpers
+
+def _set_path(obj: Any, path: str, value: Any) -> None:
+    """Set a dotted path (list indices allowed) into an existing structure — e.g. 'data.items.0.to'."""
+    keys = path.split(".")
+    cur = obj
+    for k in keys[:-1]:
+        cur = cur[int(k)] if isinstance(cur, list) else cur.setdefault(k, {})
+    last = keys[-1]
+    if isinstance(cur, list):
+        cur[int(last)] = value
+    else:
+        cur[last] = value
+
+
+def _del_path(obj: Any, path: str) -> None:
+    keys = path.split(".")
+    cur = obj
+    try:
+        for k in keys[:-1]:
+            cur = cur[int(k)] if isinstance(cur, list) else cur[k]
+        last = keys[-1]
+        if isinstance(cur, list):
+            del cur[int(last)]
+        elif last in cur:
+            del cur[last]
+    except (KeyError, IndexError, ValueError, TypeError):
+        pass  # deleting an absent path is a no-op
+
+
+def _apply_patch(scene: Dict[str, Any], patch: Dict[str, Any], deletes: Optional[List[str]]) -> None:
+    for path, value in (patch or {}).items():
+        _set_path(scene, path, value)
+    for path in (deletes or []):
+        _del_path(scene, path)
+
+
+# ------------------------------------------------------------------ gate + build
+
+def _gate_and_build(comp: str, spec_file: Path) -> Tuple[bool, str]:
+    """Run the author.py gate on a spec file: validate + (re)build the frame HTML(s). Loud on drift."""
+    r = subprocess.run(
+        [sys.executable, "-X", "utf8", str(AUTHOR), "--spec", str(spec_file),
+         "--out-dir", str(_frames_dir(comp))],
+        cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    return r.returncode == 0, (r.stdout + r.stderr).strip()
+
+
+def recompose_frame(comp: str, frame_id: str) -> Dict[str, Any]:
+    """Re-gate + rebuild a frame's HTML from its current spec (no edit)."""
+    info = _frame_index(comp).get(frame_id)
+    if not info:
+        raise KeyError(f"frame {frame_id!r} not found")
+    ok, out = _gate_and_build(comp, info["spec_file"])
+    return {"ok": ok, "output": out, "html": str(_frames_dir(comp) / f"{frame_id}.html")}
+
+
+def _edit(comp: str, frame_id: str, mutate) -> Dict[str, Any]:
+    """Shared transaction: load spec file, mutate the frame in place, save, gate+build; revert on reject."""
+    info = _frame_index(comp).get(frame_id)
+    if not info:
+        raise KeyError(f"frame {frame_id!r} not found in composition {comp!r}")
+    sf = info["spec_file"]
+    original = sf.read_text(encoding="utf-8")
+    spec = json.loads(original)
+    fr = spec["frames"][info["i"]]
+    mutate(fr)
+    save_frame_spec(sf, spec)
+    ok, out = _gate_and_build(comp, sf)
+    if not ok:
+        sf.write_text(original, encoding="utf-8")  # atomic revert — a rejected edit leaves nothing behind
+        return {"applied": False, "errors": out}
+    return {"applied": True, "gate": out, "html": str(_frames_dir(comp) / f"{frame_id}.html")}
+
+
+def _find_scene(fr: Dict[str, Any], scene_id: str) -> Dict[str, Any]:
+    sc = next((s for s in fr.get("scenes", []) if s.get("id") == scene_id), None)
+    if sc is None:
+        raise KeyError(f"scene {scene_id!r} not in frame {fr.get('id')!r}")
+    return sc
+
+
+def apply_scene_edit(comp: str, frame_id: str, scene_id: str,
+                     patch: Optional[Dict[str, Any]] = None,
+                     deletes: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Patch fields on one scene (dotted paths + deletes), then gate+recompose the frame. Reverts on
+    gate failure so a bad edit never lands. Returns {applied, gate|errors, html}."""
+    def mutate(fr):
+        _apply_patch(_find_scene(fr, scene_id), patch, deletes)
+    return _edit(comp, frame_id, mutate)
+
+
+def add_scene(comp: str, frame_id: str, scene: Dict[str, Any], index: Optional[int] = None) -> Dict[str, Any]:
+    """Insert a new scene into a frame (unlocks 'add media into a motion-only window'). `scene` must carry
+    at least {id, type, start, dur, data}; the gate enforces the per-type required fields."""
+    def mutate(fr):
+        scenes = fr.setdefault("scenes", [])
+        if any(s.get("id") == scene.get("id") for s in scenes):
+            raise ValueError(f"scene id {scene.get('id')!r} already exists in frame {frame_id!r}")
+        scenes.insert(len(scenes) if index is None else index, copy.deepcopy(scene))
+    return _edit(comp, frame_id, mutate)
+
+
+def remove_scene(comp: str, frame_id: str, scene_id: str) -> Dict[str, Any]:
+    def mutate(fr):
+        before = len(fr.get("scenes", []))
+        fr["scenes"] = [s for s in fr.get("scenes", []) if s.get("id") != scene_id]
+        if len(fr["scenes"]) == before:
+            raise KeyError(f"scene {scene_id!r} not in frame {frame_id!r}")
+    return _edit(comp, frame_id, mutate)
+
+
+def retime_scene(comp: str, frame_id: str, scene_id: str,
+                 start: Optional[float] = None, dur: Optional[float] = None) -> Dict[str, Any]:
+    """Move/resize a scene on the frame timeline (plant-to-window). Leaves other scenes untouched."""
+    def mutate(fr):
+        sc = _find_scene(fr, scene_id)
+        if start is not None:
+            sc["start"] = float(start)
+        if dur is not None:
+            sc["dur"] = float(dur)
+    return _edit(comp, frame_id, mutate)
+
+
+# ------------------------------------------------------------------ within-frame transition planner
+
+_SHIFT_TYPES = {"stat", "geo", "chart", "newshead", "timeline", "comparison", "diagram", "code",
+                "social_card", "document", "gallery", "carousel", "collage"}
+
+
+def beat_boundary_planner(comp: str, frame_id: str, apply: bool = False) -> Dict[str, Any]:
+    """Deterministic WITHIN-FRAME seam planner: assign transition_out defaults between consecutive scenes
+    by class — same block type in a row => crossfade (soft, related); a type change => a stronger seam
+    (scale_out). The last scene in a frame gets none (frame-to-frame is the parked assemble-layer track).
+    Returns the proposed transitions; only writes when apply=True."""
+    spec, info = load_frame_spec(comp, frame_id)
+    fr = spec["frames"][info["i"]]
+    scenes = fr.get("scenes", [])
+    proposals = []
+    for i, s in enumerate(scenes[:-1]):
+        nxt = scenes[i + 1]
+        kind = "crossfade" if s.get("type") == nxt.get("type") else "scale_out"
+        proposals.append({"scene_id": s.get("id"), "kind": kind, "dur": 0.6,
+                          "current": (s.get("transition_out") or {}).get("kind")})
+    if not apply:
+        return {"applied": False, "proposals": proposals}
+
+    def mutate(frame):
+        by_id = {s.get("id"): s for s in frame.get("scenes", [])}
+        for p in proposals:
+            by_id[p["scene_id"]]["transition_out"] = {"kind": p["kind"], "dur": p["dur"]}
+    res = _edit(comp, frame_id, mutate)
+    res["proposals"] = proposals
+    return res
+
+
+# ------------------------------------------------------------------ note edit (Phase 2: comment → agent → gate)
+# The open-ended half: a human note ("weave these photos in", "apply @reveal:scramble to @s2, dip to
+# black after") is turned by an LLM into an ORDERED LIST OF OPS over the same engine primitives, then
+# gated by author.py. This is the compose-first authoring path re-run on ONE frame with an edit note —
+# draft → validate → accept. The LLM only PROPOSES; the gate decides. Injectable client for tests.
+
+def _extract_json(text: str) -> Dict[str, Any]:
+    m = re.search(r"\{.*\}", text or "", re.DOTALL)
+    if not m:
+        return {}
+    try:
+        return json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return {}
+
+
+_HF_MENTION_RE = re.compile(r"@(\w+(?::[\w-]+)?)")
+
+
+def _resolve_hf_mentions(note: Optional[str], fr: Dict[str, Any], assets: Optional[List[str]]) -> str:
+    """Expand @-grammar in a note into an explicit MENTIONS appendix the LLM can trust:
+    @sN -> a scene id, @reveal:X / @transition:X -> a vocabulary entry, @assetN -> an asset path."""
+    if not note:
+        return ""
+    ids = {s.get("id"): s for s in fr.get("scenes", [])}
+    res = []
+    for tok in dict.fromkeys(_HF_MENTION_RE.findall(note)):
+        if tok in ids:
+            res.append(f"  @{tok} = scene {tok} (type {ids[tok].get('type')})")
+        elif tok.startswith("reveal:"):
+            res.append(f"  @{tok} = reveal '{tok.split(':', 1)[1]}'")
+        elif tok.startswith("transition:"):
+            res.append(f"  @{tok} = transition '{tok.split(':', 1)[1]}'")
+        elif assets and tok.startswith("asset"):
+            try:
+                res.append(f"  @{tok} = asset path {assets[int(tok[5:])]}")
+            except (ValueError, IndexError):
+                pass
+    return ("MENTIONS:\n" + "\n".join(res) + "\n") if res else ""
+
+
+_NOTE_GUIDE = (
+    "You edit ONE frame of a HyperFrames video composition from a human note. A frame is a beat; its "
+    "`scenes` are shots on ONE shared timeline (edit the shots, they re-render together). Output ONLY a "
+    "JSON object {\"ops\":[...]} — an ORDERED list of edit operations. Op kinds:\n"
+    "  {op:'patch', scene_id, patch:{<dotted path>:value,...}, deletes:[<dotted path>,...]}  "
+    "# edit fields; paths like data.kicker, data.items.0.to, start, dur\n"
+    "  {op:'add', scene:{id,type,start,dur,data:{...}}, index?}   "
+    "# add a shot; type MUST be a known block and data MUST include its required fields\n"
+    "  {op:'remove', scene_id}\n"
+    "  {op:'retime', scene_id, start?, dur?}\n"
+    "  {op:'transition', scene_id, kind, dur?}   # departing scene's within-frame transition_out\n"
+    "Rules: keep edits minimal + faithful to the note; use ONLY block types, transition kinds, and reveal "
+    "names from the registry below; a text block's motion is data.reveal. Timing is in seconds. Return "
+    "{\"ops\":[]} if nothing should change."
+)
+
+
+def _catalog_brief(cat: Dict[str, Any]) -> str:
+    lines = []
+    for t, e in sorted(cat.get("scene_templates", {}).items()):
+        keys = ", ".join((e.get("data_schema") or {}).keys())
+        lines.append(f"  {t}: {(e.get('purpose', '') or '')[:70]}  data: {keys}")
+    trans = ", ".join(k for k in cat.get("transitions", {}) if k != "_doc")
+    revs = ", ".join(k for k in cat.get("reveals", {}) if k != "_doc")
+    return "BLOCK TYPES (data fields):\n" + "\n".join(lines) + f"\nTRANSITIONS: {trans}\nREVEALS: {revs}"
+
+
+def _apply_ops(fr: Dict[str, Any], ops: List[Dict[str, Any]]) -> None:
+    """Apply an ordered edit plan to a frame in place, reusing the Phase-1 primitives."""
+    scenes = fr.setdefault("scenes", [])
+
+    def find(sid):
+        s = next((x for x in scenes if x.get("id") == sid), None)
+        if s is None:
+            raise KeyError(f"scene {sid!r} not in frame")
+        return s
+
+    for op in ops:
+        kind = op.get("op")
+        if kind == "patch":
+            _apply_patch(find(op["scene_id"]), op.get("patch"), op.get("deletes"))
+        elif kind == "add":
+            sc = op["scene"]
+            if any(x.get("id") == sc.get("id") for x in scenes):
+                raise ValueError(f"scene id {sc.get('id')!r} already exists")
+            scenes.insert(len(scenes) if op.get("index") is None else int(op["index"]), copy.deepcopy(sc))
+        elif kind == "remove":
+            before = len(scenes)
+            scenes[:] = [x for x in scenes if x.get("id") != op["scene_id"]]
+            if len(scenes) == before:
+                raise KeyError(f"scene {op['scene_id']!r} not found")
+        elif kind == "retime":
+            s = find(op["scene_id"])
+            if op.get("start") is not None:
+                s["start"] = float(op["start"])
+            if op.get("dur") is not None:
+                s["dur"] = float(op["dur"])
+        elif kind == "transition":
+            find(op["scene_id"])["transition_out"] = {"kind": op["kind"], "dur": float(op.get("dur", 0.6))}
+        else:
+            raise ValueError(f"unknown op {kind!r}")
+
+
+def build_note_prompt(fr: Dict[str, Any], note: str, scene_id: Optional[str],
+                      assets: Optional[List[str]], cat: Dict[str, Any]) -> Tuple[str, str]:
+    """The (system, user) prompt for a note edit — spec + registry + resolved @mentions + note."""
+    system = _NOTE_GUIDE + "\n\n" + _catalog_brief(cat)
+    target = f"TARGET SCENE: {scene_id}\n" if scene_id else "TARGET: the whole frame\n"
+    assets_block = ("AVAILABLE ASSETS (reference a path in scene data):\n"
+                    + "\n".join(f"  [{i}] {a}" for i, a in enumerate(assets)) + "\n") if assets else ""
+    prompt = (f"{target}FRAME SPEC:\n{json.dumps(fr, default=str)[:3500]}\n"
+              f"{assets_block}{_resolve_hf_mentions(note, fr, assets)}HUMAN NOTE:\n{note}\n\nReturn the JSON ops now.")
+    return system, prompt
+
+
+async def revise_frame_note(comp: str, frame_id: str, note: str, scene_id: Optional[str] = None,
+                            assets: Optional[List[str]] = None, client=None, retry: int = 1) -> Dict[str, Any]:
+    """Turn a human note into gated edits on a frame. The LLM proposes an ops plan; author.py accepts or
+    rejects (with one self-correct retry on rejection). Reverts on failure. Returns {applied, ops, errors}."""
+    if client is None:  # lazy real client; tests inject a stub
+        from nolan.config import load_config
+        from nolan.llm import create_text_llm
+        client = create_text_llm(load_config())
+    spec, info = load_frame_spec(comp, frame_id)
+    fr = spec["frames"][info["i"]]
+    system, prompt = build_note_prompt(fr, note, scene_id, assets, catalog())
+    last: Dict[str, Any] = {"applied": False, "ops": [], "errors": "no proposal"}
+    for _attempt in range(max(0, int(retry)) + 1):
+        raw = await client.generate(prompt, system_prompt=system)
+        ops = _extract_json(raw).get("ops")
+        if not ops:
+            return {"applied": False, "ops": [], "errors": "the model proposed no ops", "raw": (raw or "")[:400]}
+        try:
+            res = _edit(comp, frame_id, lambda f: _apply_ops(f, ops))
+        except (KeyError, ValueError, TypeError) as e:
+            res = {"applied": False, "errors": f"op error: {e}"}
+        res["ops"] = ops
+        if res.get("applied"):
+            return res
+        last = res
+        prompt += f"\n\nYour previous ops were REJECTED by the gate:\n{res.get('errors', '')}\nReturn corrected ops."
+    return last
+
+
+# ------------------------------------------------------------------ assets (picker target)
+_IMG_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".avif")
+_VID_EXT = (".mp4", ".webm", ".mov", ".m4v")
+
+
+def list_assets(comp: str) -> List[Dict[str, Any]]:
+    """Assets already landed in <comp>/assets/ — the pick-from set for asset-typed fields."""
+    root = _comp_dir(comp)
+    adir = root / "assets"
+    if not adir.is_dir():
+        return []
+    out = []
+    for f in sorted(adir.rglob("*")):
+        if f.is_file():
+            ext = f.suffix.lower()
+            out.append({"name": f.name, "path": f.relative_to(root).as_posix(),
+                        "kind": "image" if ext in _IMG_EXT else "video" if ext in _VID_EXT else "file"})
+    return out
+
+
+def resolve_asset(comp: str, src: str) -> Dict[str, Any]:
+    """Land an external/library asset into <comp>/assets/<basename> and return the comp-relative path to
+    write into scene data (the 'get it into the project' step; use()/write avoids the /mnt/d chmod issue)."""
+    s = Path(src)
+    if not s.is_file():
+        raise FileNotFoundError(f"asset source not found: {src}")
+    adir = _comp_dir(comp) / "assets"
+    adir.mkdir(parents=True, exist_ok=True)
+    (adir / s.name).write_bytes(s.read_bytes())
+    return {"path": f"assets/{s.name}", "name": s.name}
+
+
+def save_upload(comp: str, filename: str, data: bytes) -> Dict[str, Any]:
+    adir = _comp_dir(comp) / "assets"
+    adir.mkdir(parents=True, exist_ok=True)
+    safe = Path(filename).name
+    (adir / safe).write_bytes(data)
+    return {"path": f"assets/{safe}", "name": safe}
+
+
+# ------------------------------------------------------------------ preview / render (npx scaffold)
+
+def _scaffold_preview(comp: str, frame_id: str) -> Path:
+    """Build a throwaway single-frame hyperframes project so `npx hyperframes snapshot|render` can target
+    ONE frame in isolation (cross-platform: self-contained headless Chrome). Copies the frame HTML (+ any
+    vendor dir a geo/diagram scene needs) so relative paths resolve."""
+    fdir = _frames_dir(comp)
+    html = fdir / f"{frame_id}.html"
+    if not html.exists():
+        recompose_frame(comp, frame_id)
+    spec, info = load_frame_spec(comp, frame_id)
+    dur = float(spec["frames"][info["i"]].get("dur", 5))
+    pdir = _comp_dir(comp) / "compositions" / "_preview" / frame_id
+    (pdir / "compositions" / "frames").mkdir(parents=True, exist_ok=True)
+    (pdir / "compositions" / "frames" / f"{frame_id}.html").write_text(
+        html.read_text(encoding="utf-8"), encoding="utf-8")
+    vend = _comp_dir(comp) / "vendor"
+    if not vend.is_dir():
+        vend = BRIDGE / "vendor"
+    if vend.is_dir():
+        (pdir / "vendor").mkdir(exist_ok=True)
+        for f in vend.glob("*"):
+            if f.is_file():
+                (pdir / "vendor" / f.name).write_bytes(f.read_bytes())
+    assets = _comp_dir(comp) / "assets"          # so a frame referencing assets/<f> previews correctly
+    if assets.is_dir():
+        for f in assets.rglob("*"):
+            if f.is_file():
+                dest = pdir / f.relative_to(_comp_dir(comp))
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(f.read_bytes())
+    (pdir / "hyperframes.json").write_text('{"paths":{"blocks":"compositions"}}', encoding="utf-8")
+    (pdir / "index.html").write_text(
+        '<!doctype html><html><head><meta charset="UTF-8"/>'
+        '<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>'
+        '<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:1920px;height:1080px;'
+        'overflow:hidden;background:#000}#root{position:relative;width:1920px;height:1080px;'
+        'overflow:hidden}.scene{position:absolute;inset:0}</style></head><body>'
+        f'<div id="root" data-composition-id="main" data-start="0" data-duration="{dur}" '
+        'data-width="1920" data-height="1080">'
+        f'<div class="scene" data-composition-id="{frame_id}" '
+        f'data-composition-src="compositions/frames/{frame_id}.html" '
+        f'data-start="0" data-duration="{dur}" data-track-index="1"></div></div>'
+        '<script>window.__timelines=window.__timelines||{};var tl=gsap.timeline({paused:true});'
+        f'tl.to({{}},{{duration:{dur}}},0);window.__timelines["main"]=tl;</script></body></html>',
+        encoding="utf-8")
+    return pdir
+
+
+def snapshot_frame(comp: str, frame_id: str, at: Optional[float] = None) -> Dict[str, Any]:
+    """Fast preview: a still of the frame at timecode `at` (default mid). Snapshot-first iteration."""
+    spec, info = load_frame_spec(comp, frame_id)
+    dur = float(spec["frames"][info["i"]].get("dur", 5))
+    at = dur * 0.5 if at is None else float(at)
+    pdir = _scaffold_preview(comp, frame_id)
+    r = subprocess.run(["npx", "--yes", "hyperframes@latest", "snapshot", str(pdir),
+                        "--at", f"{at:g}", "--no-end", "--describe", "false"],
+                       cwd=str(pdir), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       shell=(os.name == "nt"))  # Windows: `npx` is npx.cmd -> needs a shell, else WinError 2
+    snaps = sorted((pdir / "snapshots").glob("frame-*.png")) if (pdir / "snapshots").is_dir() else []
+    return {"ok": r.returncode == 0 and bool(snaps),
+            "png": str(snaps[0]) if snaps else None,
+            "at": at, "output": (r.stdout + r.stderr).strip()[-800:]}
+
+
+def render_frame(comp: str, frame_id: str, out: Optional[str] = None) -> Dict[str, Any]:
+    """Full-frame render (the whole beat clip) — the on-demand step after snapshot iteration."""
+    pdir = _scaffold_preview(comp, frame_id)
+    outp = out or str(_frames_dir(comp) / f"{frame_id}.preview.mp4")
+    r = subprocess.run(["npx", "--yes", "hyperframes@latest", "render", str(pdir),
+                        "--output", outp],
+                       cwd=str(pdir), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       shell=(os.name == "nt"))  # Windows: `npx` is npx.cmd -> needs a shell, else WinError 2
+    return {"ok": r.returncode == 0 and Path(outp).exists(),
+            "mp4": outp if Path(outp).exists() else None,
+            "output": (r.stdout + r.stderr).strip()[-800:]}

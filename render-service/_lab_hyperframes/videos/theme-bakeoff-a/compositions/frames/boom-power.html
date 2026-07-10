@@ -1,0 +1,190 @@
+<template>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    #root, #root * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .clip { color: #f5f5f5; }
+
+    .disp { font-family: "Archivo Black", sans-serif; font-weight: 400; }
+    .body { font-family: "Space Grotesk", sans-serif; }
+
+    /* ---- eyebrow ---- */
+    #kickdot {
+      position: absolute; left: 140px; top: 150px;
+      width: 16px; height: 16px; background: #ff5722;
+      box-shadow: 0 0 22px rgba(255,87,34,0.50);
+    }
+    #kick {
+      position: absolute; left: 172px; top: 146px;
+      font-size: 24px; font-weight: 600; letter-spacing: 6px;
+      text-transform: uppercase; color: #d8d8d8;
+    }
+
+    /* ---- structural rules ---- */
+    #toprule {
+      position: absolute; left: 140px; top: 250px;
+      width: 1630px; height: 1px; background: #2d2d2d;
+    }
+    #vdiv {
+      position: absolute; left: 1180px; top: 300px;
+      width: 1px; height: 600px; background: #2d2d2d;
+    }
+
+    /* ---- HERO / emphasized stat ---- */
+    #wash {
+      position: absolute; left: 140px; top: 468px;
+      width: 852px; height: 214px; border-radius: 10px;
+      background: rgba(255,87,34,0.14);
+      z-index: 1;
+    }
+    #hlabel {
+      position: absolute; left: 178px; top: 378px;
+      font-size: 27px; font-weight: 700; letter-spacing: 8px;
+      text-transform: uppercase; color: #ff5722;
+      z-index: 3;
+    }
+    #hero {
+      position: absolute; left: 172px; top: 430px;
+      font-size: 270px; line-height: 0.9; color: #f5f5f5;
+      letter-spacing: -6px;
+      text-shadow: 0 0 60px rgba(255,87,34,0.50);
+      z-index: 2;
+    }
+    #ubar {
+      position: absolute; left: 178px; top: 704px;
+      width: 700px; height: 18px; background: #ff5722;
+      box-shadow: 0 0 32px rgba(255,87,34,0.50);
+      z-index: 3;
+    }
+    #herofoot {
+      position: absolute; left: 180px; top: 742px;
+      font-size: 22px; font-weight: 500; letter-spacing: 5px;
+      text-transform: uppercase; color: #8a8a8a;
+    }
+
+    /* ---- supporting stat 1 ---- */
+    #s1 {
+      position: absolute; left: 1250px; top: 306px;
+      font-size: 134px; line-height: 0.9; color: #d8d8d8;
+      letter-spacing: -3px;
+    }
+    #l1 {
+      position: absolute; left: 1254px; top: 456px;
+      width: 500px;
+      font-size: 22px; font-weight: 500; letter-spacing: 4px;
+      text-transform: uppercase; color: #8a8a8a;
+    }
+    #rule1 {
+      position: absolute; left: 1250px; top: 560px;
+      width: 520px; height: 1px; background: #2d2d2d;
+    }
+
+    /* ---- supporting stat 3 ---- */
+    #s3 {
+      position: absolute; left: 1250px; top: 612px;
+      font-size: 134px; line-height: 0.9; color: #d8d8d8;
+      letter-spacing: -3px;
+    }
+    #l3 {
+      position: absolute; left: 1254px; top: 762px;
+      width: 500px;
+      font-size: 22px; font-weight: 500; letter-spacing: 4px;
+      text-transform: uppercase; color: #8a8a8a;
+    }
+    #s1idx, #s3idx {
+      position: absolute; font-size: 20px; font-weight: 600;
+      letter-spacing: 3px; color: #5a5a5a;
+    }
+    #s1idx { left: 1685px; top: 322px; }
+    #s3idx { left: 1685px; top: 628px; }
+  </style>
+
+  <div id="root" data-composition-id="boom-power" data-width="1920" data-height="1080">
+    <section class="clip" data-start="0" data-duration="12" data-track-index="0" style="position:absolute;inset:0;background:#0c0c0c;overflow:hidden;">
+
+      <!-- eyebrow -->
+      <div id="kickdot"></div>
+      <div id="kick" class="body">The Power &middot; US Electricity</div>
+
+      <!-- structure -->
+      <div id="toprule"></div>
+      <div id="vdiv"></div>
+
+      <!-- hero / emphasized -->
+      <div id="wash"></div>
+      <div id="hlabel" class="body">By 2028</div>
+      <div id="hero" class="disp">7&ndash;12%</div>
+      <div id="ubar"></div>
+      <div id="herofoot" class="body">Projected data-center share</div>
+
+      <!-- supporting 1 -->
+      <div id="s1idx" class="body">01</div>
+      <div id="s1" class="disp">4.4%</div>
+      <div id="l1" class="body">Of US electricity &middot; 2023</div>
+      <div id="rule1"></div>
+
+      <!-- supporting 3 -->
+      <div id="s3idx" class="body">02</div>
+      <div id="s3" class="disp">10&times;</div>
+      <div id="l3" class="body">One prompt vs a search</div>
+
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+
+    // eyebrow
+    tl.fromTo("#kickdot", { scaleX: 0, opacity: 0 },
+      { scaleX: 1, opacity: 1, duration: 0.45, transformOrigin: "left center", ease: "power2.out" }, 0.2);
+    tl.fromTo("#kick", { opacity: 0, x: -16 },
+      { opacity: 1, x: 0, duration: 0.55 }, 0.3);
+    tl.fromTo("#toprule", { scaleX: 0 },
+      { scaleX: 1, duration: 0.9, transformOrigin: "left center", ease: "power2.out" }, 0.4);
+    tl.fromTo("#vdiv", { scaleY: 0 },
+      { scaleY: 1, duration: 0.7, transformOrigin: "center top", ease: "power2.out" }, 0.7);
+
+    // hero / emphasized stat
+    tl.fromTo("#wash", { scaleX: 0, opacity: 0 },
+      { scaleX: 1, opacity: 1, duration: 0.6, transformOrigin: "left center", ease: "power2.out" }, 0.8);
+    tl.fromTo("#hlabel", { opacity: 0, y: 16 },
+      { opacity: 1, y: 0, duration: 0.5 }, 0.95);
+    tl.fromTo("#hero", { opacity: 0, y: 72, scale: 0.86 },
+      { opacity: 1, y: 0, scale: 1, duration: 1.05, ease: "power3.out" }, 0.9);
+    tl.fromTo("#ubar", { scaleX: 0 },
+      { scaleX: 1, duration: 0.75, transformOrigin: "left center", ease: "power2.out" }, 1.55);
+    tl.fromTo("#herofoot", { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.5 }, 1.85);
+
+    // supporting stat 1  (4.4%)
+    tl.fromTo("#s1idx", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, 2.15);
+    tl.fromTo("#s1", { opacity: 0, y: 36, scale: 0.92 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.85, ease: "power3.out" }, 2.2);
+    tl.fromTo("#l1", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5 }, 2.55);
+    tl.fromTo("#rule1", { scaleX: 0 },
+      { scaleX: 1, duration: 0.65, transformOrigin: "left center", ease: "power2.out" }, 2.7);
+
+    // supporting stat 3  (10x)
+    tl.fromTo("#s3idx", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, 3.05);
+    tl.fromTo("#s3", { opacity: 0, y: 36, scale: 0.92 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.85, ease: "power3.out" }, 3.1);
+    tl.fromTo("#l3", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5 }, 3.45);
+
+    // deterministic count-ups (proxy objects -> textContent)
+    var p1 = { v: 0 };
+    tl.to(p1, { v: 4.4, duration: 0.85, ease: "power1.out",
+      onUpdate: function () { document.getElementById("s1").textContent = p1.v.toFixed(1) + "%"; } }, 2.2);
+
+    var p3 = { v: 0 };
+    tl.to(p3, { v: 10, duration: 0.85, ease: "power1.out",
+      onUpdate: function () { document.getElementById("s3").textContent = Math.round(p3.v) + "×"; } }, 3.1);
+
+    // lock render length + hold
+    tl.to({}, { duration: 12 }, 0);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines["boom-power"] = tl;
+  </script>
+</template>

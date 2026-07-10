@@ -1,0 +1,27 @@
+{
+  "frames": [
+    {
+      "id": "carousel-coverflow",
+      "dur": 10.0,
+      "scenes": [
+        {
+          "id": "cc1", "type": "carousel", "start": 0, "dur": 10.0,
+          "data": {
+            "style": "coverflow",
+            "card_w": 620, "card_h": 620, "spacing": 300, "depth": 200, "fade": 0.3, "y": 0.48,
+            "title": "The lineup", "titleHi": "lineup",
+            "backdrop": "#0e0f13", "vignette": 0.55, "captions": true,
+            "images": [
+              {"src": "assets/img/g1.png", "caption": "Exhibit One"},
+              {"src": "assets/img/g2.png", "caption": "Exhibit Two"},
+              {"src": "assets/img/g3.png", "caption": "Exhibit Three"},
+              {"src": "assets/img/g4.png", "caption": "Exhibit Four"},
+              {"src": "assets/img/g5.png", "caption": "Exhibit Five"},
+              {"src": "assets/img/g6.png", "caption": "Exhibit Six"}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
