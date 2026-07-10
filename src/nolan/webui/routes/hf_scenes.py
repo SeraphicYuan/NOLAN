@@ -171,3 +171,31 @@ def register(app, ctx):
     async def hf_asset_upload(comp: str = Form(...), file: UploadFile = File(...)):
         data = await file.read()
         return await asyncio.to_thread(_guard, hfedit.save_upload, comp, file.filename, data)
+
+    # ---- new essay (scaffold script/assets -> dispatch the faceless-explainer agent)
+
+    @app.get("/api/hf/agents")
+    async def hf_agents():
+        """Available tmux Claude-agent sessions (nolan1-6) to dispatch authoring to."""
+        from nolan.webui import operations
+        try:
+            return {"sessions": operations.list_tmux_sessions()}
+        except Exception:
+            return {"sessions": []}
+
+    @app.post("/api/hf/new")
+    async def hf_new(payload: dict = Body(...)):
+        script = (payload.get("script") or "").strip()
+        name = (payload.get("name") or "").strip()
+        session = (payload.get("session") or "").strip()
+        if not (script and name):
+            raise HTTPException(status_code=400, detail="name and script are required")
+        res = _guard(hfedit.new_essay, name, script, payload.get("style"))
+        if session:                       # dispatch to a live agent; else caller runs the prompt manually
+            from nolan.webui import operations
+            try:
+                await asyncio.to_thread(operations._dispatch_to_tmux, session, res["prompt"])
+                res["dispatched"] = session
+            except Exception as e:
+                res["dispatch_error"] = str(e)
+        return res

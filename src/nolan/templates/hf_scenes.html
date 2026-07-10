@@ -98,6 +98,9 @@
     <div class="topbar">
       <select id="comp"></select>
       <span id="status" class="meta" style="color:var(--text-secondary);font-size:12px;"></span>
+      <span style="flex:1"></span>
+      <button class="btn ghost mini" onclick="refreshComps()" title="Reload compositions (after an agent finishes authoring)">↻</button>
+      <button class="btn mini" onclick="openNew()">＋ New essay</button>
     </div>
     <div class="cols">
       <div id="frames"></div>
@@ -117,6 +120,21 @@
       <div id="pick-list" class="pick-grid"></div>
     </div>
   </div>
+  <div id="newModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><b>New HyperFrames essay</b>
+        <span class="meta" style="color:var(--text-secondary);font-size:12px;">script → assets → dispatch the faceless-explainer agent</span>
+        <span class="spacer"></span><button class="btn ghost mini" onclick="closeNew()">Close</button></div>
+      <div class="field"><label>name</label><input id="new-name" placeholder="e.g. compound-interest-explained"></div>
+      <div class="field"><label>script / topic</label><textarea id="new-script" style="min-height:180px" placeholder="Paste the essay text, or a topic to explain…"></textarea></div>
+      <div class="row2">
+        <div class="field"><label>dispatch to agent</label><select id="new-session"></select></div>
+        <div class="field"><label>style (optional)</label><input id="new-style" placeholder="e.g. Vox highlighter-editorial, dark"></div>
+      </div>
+      <div class="insp-actions"><button class="btn" onclick="submitNew()">Create + dispatch</button></div>
+      <div class="desc" style="margin-top:8px">Faceless — the agent invents visuals per scene and authors the composition in the background. It appears in the selector above (auto-refresh) once frames are composed; then edit it per-scene here.</div>
+    </div>
+  </div>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -132,12 +150,49 @@ async function jpost(u, b) { const r = await fetch(u, {method:"POST", headers:{"
 
 async function boot() {
   CATALOG = await jget("/api/hf/catalog");
+  await loadComps(true);
+}
+async function loadComps(initial) {
   const c = await jget("/api/hf/compositions");
-  const sel = $("#comp");
-  if (!c.compositions.length) { sel.innerHTML = '<option>— no composed frames found —</option>'; return; }
+  const sel = $("#comp"), prev = sel.value;
+  if (!c.compositions.length) { sel.innerHTML = '<option value="">— none yet · create one →</option>'; $("#frames").innerHTML=''; return []; }
   sel.innerHTML = c.compositions.map(x => `<option value="${x.name}">${x.name} · ${x.source} · ${x.frames} frame(s)</option>`).join("");
   sel.onchange = () => loadFrames(sel.value);
-  loadFrames(c.compositions[0].name);
+  if (initial) loadFrames(c.compositions[0].name);
+  else if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+  return c.compositions.map(x => x.name);
+}
+function refreshComps() { loadComps(false).then(() => toast("compositions refreshed")); }
+
+// ---- new essay: scaffold script + dispatch the faceless-explainer agent ----
+function openNew() { $("#newModal").style.display = "flex"; loadAgents(); }
+function closeNew() { $("#newModal").style.display = "none"; }
+async function loadAgents() {
+  let opts = '<option value="">— dispatch manually (copy the prompt) —</option>';
+  try { const d = await jget("/api/hf/agents"); opts += (d.sessions || []).map(s => `<option value="${s}">${s}</option>`).join(""); } catch {}
+  $("#new-session").innerHTML = opts;
+}
+async function submitNew() {
+  const name = $("#new-name").value.trim(), script = $("#new-script").value.trim(),
+        session = $("#new-session").value, style = $("#new-style").value.trim();
+  if (!name || !script) return toast("name + script are required", "err");
+  try {
+    const r = await jpost("/api/hf/new", { name, script, session, style });
+    closeNew();
+    if (r.dispatched) toast(`Essay '${r.comp}' dispatched to ${r.dispatched} — composing… (auto-refreshing)`, "ok");
+    else { try { await navigator.clipboard.writeText(r.prompt); } catch {}
+      toast(`Scaffolded '${r.comp}'.${r.dispatch_error ? ' Dispatch failed: ' + r.dispatch_error + '.' : ''} Prompt copied — paste it to an agent.`, r.dispatch_error ? "err" : "ok"); }
+    pollForComp(r.comp);
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+let _pollT = null;
+function pollForComp(comp) {
+  clearInterval(_pollT); let n = 0;
+  _pollT = setInterval(async () => {
+    n++; let names = []; try { names = await loadComps(false); } catch {}
+    if (names.includes(comp)) { clearInterval(_pollT); $("#comp").value = comp; loadFrames(comp); toast(`'${comp}' is ready ✓`, "ok"); }
+    else if (n > 40) clearInterval(_pollT);  // give up after ~10 min
+  }, 15000);
 }
 
 async function loadFrames(comp) {

@@ -45,6 +45,53 @@ def discover_compositions() -> List[Dict[str, Any]]:
     return out
 
 
+def _kickoff_brief(slug: str, style: Optional[str] = None) -> str:
+    """The task brief the faceless-explainer agent reads to author a new essay (written to .hf_kickoff.md)."""
+    rel = f"videos/{slug}"
+    style_line = f"\n- **Style:** {style}" if style else ""
+    return f"""# New HyperFrames essay — kickoff (`{slug}`)
+
+Author a **faceless explainer video** from the source text, using the `/faceless-explainer` skill in
+**NOLAN compose-first mode — the hybrid pipeline (the required default here)**. You are the orchestrator;
+run its steps in order and pass each gate.
+
+- **Project dir:** `{rel}/` (already scaffolded; the script is in `SOURCE.md`).
+- **Input:** `{rel}/SOURCE.md` — the topic/script to explain.
+- **Output:** composed frames at `{rel}/compositions/frames/NN-*.html` (+ `.spec.json`) and `{rel}/index.html`
+  — that is what makes this composition appear on the hub's `/hyperframes` edit page.
+- **Assets:** faceless — invent per scene. Resolve BGM/SFX/images/logos via `/media-use`; land them in `{rel}/assets/`.
+- **Pipeline — HYBRID / compose-first (required):** at Step 5, dispatch `sub-agents/compose-first-frame-worker.md`
+  (NOT the stock `frame-worker.md`) with `BRIDGE_DIR=render-service/_lab_hyperframes/bridge/`. Express each Scene
+  with a `bridge/catalog.json` composer template (stat · statement · geo · timeline · newshead · collage · diagram ·
+  comparison · gallery · carousel · chart · linedraw · … + the `reveal`/`transition` vocabularies) and build it
+  deterministically through the `author.py` gate; hand-author a bespoke `raw` / native-HF scene ONLY where no
+  template fits.{style_line}
+
+When the frames are composed, tell the user the composition id is **`{slug}`** — they'll refine it per-scene on `/hyperframes`.
+"""
+
+
+def new_essay(name: str, script: str, style: Optional[str] = None) -> Dict[str, Any]:
+    """Scaffold a new HyperFrames essay project under the lab videos root + write a kickoff brief for the
+    faceless-explainer agent. Returns {comp, dir, prompt}; the caller dispatches `prompt` to a tmux agent.
+    The composition shows up in /hyperframes once the agent composes frames."""
+    if not (script or "").strip():
+        raise ValueError("script is required")
+    slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", (name or "").strip()).strip("-").lower() or "essay"
+    pdir = LAB_VIDEOS / slug
+    fdir = pdir / "compositions" / "frames"
+    if fdir.is_dir() and any(fdir.glob("*.spec.json")):
+        raise ValueError(f"a composition named '{slug}' already exists — pick another name")
+    pdir.mkdir(parents=True, exist_ok=True)
+    (pdir / "assets").mkdir(exist_ok=True)
+    (pdir / "SOURCE.md").write_text(script, encoding="utf-8")
+    (pdir / ".hf_kickoff.md").write_text(_kickoff_brief(slug, style), encoding="utf-8")
+    prompt = (f"New HyperFrames essay: read render-service/_lab_hyperframes/videos/{slug}/.hf_kickoff.md and execute "
+              f"it — author a faceless explainer from that project's SOURCE.md into its compositions/frames/ using the "
+              f"/faceless-explainer skill in NOLAN compose-first (hybrid) mode. Report the composition id '{slug}' when done.")
+    return {"comp": slug, "dir": str(pdir), "prompt": prompt}
+
+
 def _comp_dir(comp: str) -> Path:
     for _source, root in _ROOTS:
         d = root / comp
