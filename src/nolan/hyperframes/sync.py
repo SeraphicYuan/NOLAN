@@ -79,6 +79,30 @@ def _proportional(n: int, frame_dur: float) -> List[float]:
     return [round(frame_dur * j / n, 3) for j in range(n)]
 
 
+def _norm(s: str) -> List[str]:
+    try:
+        from nolan.aligner import normalize_text
+        return normalize_text(s).split()
+    except Exception:
+        import re
+        return re.sub(r"[^a-z0-9 ]", " ", s.lower()).split()
+
+
+def _phrase_time(phrase: str, words, after: float = 0.0) -> Optional[float]:
+    """First spoken time of `phrase` (a token subsequence) at/after `after` seconds; None if unsaid."""
+    toks = _norm(phrase)
+    if not toks:
+        return None
+    wt = [((_norm(w.word) or [""])[0], w.start) for w in words]
+    n = len(toks)
+    for i in range(len(wt) - n + 1):
+        if wt[i][1] < after:
+            continue
+        if all(wt[i + j][0] == toks[j] for j in range(n)):
+            return wt[i][1]
+    return None
+
+
 def place_scenes(comp_dir) -> Dict:
     """Set scene start/dur from where each scene's anchor/text is spoken. Writes back to the specs."""
     from nolan import aligner
@@ -119,8 +143,17 @@ def place_scenes(comp_dir) -> Dict:
                 nxt = starts[j + 1] if j + 1 < len(starts) else frame_dur
                 sc["dur"] = round(max(0.1, nxt - starts[j]), 3)
                 drift = max(drift, abs(sc["start"] - old))
+            cues = 0
+            for sc in scenes:                        # item 4 (v1): fire the operative highlight AS SPOKEN
+                d = sc.get("data", {}) or {}
+                op = d.get("operative")
+                if op and words:
+                    t = _phrase_time(op, words, after=float(sc.get("start", 0)))
+                    if t is not None and sc["start"] <= t < sc["start"] + sc["dur"]:
+                        d["cue"] = round(t - sc["start"], 2)
+                        cues += 1
             report["frames"].append({"frame": fr.get("id"), "scenes": len(scenes),
-                                     "max_shift_s": round(drift, 2), "fallback": fb})
+                                     "max_shift_s": round(drift, 2), "cues_synced": cues, "fallback": fb})
         sf.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     return report
 
@@ -138,3 +171,27 @@ def _validate_monotonic(raw: List[Optional[float]], frame_dur: float) -> Optiona
         out.append(round(v, 3))
         prev = v
     return out
+
+
+def main():
+    """python -X utf8 -m nolan.hyperframes.sync <comp> [--align-only]
+    Force-align the section wavs, then place each scene on its spoken anchor (recompose + re-render after)."""
+    import argparse
+    import json as _json
+    ap = argparse.ArgumentParser(prog="nolan.hyperframes.sync")
+    ap.add_argument("comp", help="composition dir (…/videos/<slug>)")
+    ap.add_argument("--force", action="store_true", help="re-align even if words already present")
+    ap.add_argument("--align-only", action="store_true", help="align the wavs but don't move scenes")
+    a = ap.parse_args()
+    print("ALIGN:", _json.dumps(align_voices(a.comp, force=a.force)))
+    if not a.align_only:
+        rep = place_scenes(a.comp)
+        for f in rep["frames"]:
+            print(f"  {f['frame']:14} scenes={f['scenes']} max_shift={f['max_shift_s']}s "
+                  f"cues={f['cues_synced']} fallback={f['fallback']}")
+        print(f"fallbacks: {rep['fallbacks']} frame(s) — add `anchor` to those scenes for word-accurate placement")
+
+
+if __name__ == "__main__":
+    main()
+

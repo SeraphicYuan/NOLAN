@@ -60,13 +60,18 @@ def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
     contract_section = ("\n\n---\n## STYLE CONTRACT — author to these targets, then lint & revise\n\n"
                         + contract_txt) if contract_txt else ""
     finish_line = (
-        f"\n- **Finish (narration-timed + video + linted):** `node audio.mjs sync-durations` (frame dur = section "
-        f"dur). For any `ground:{{\"kind\":\"video\"}}` or comparison `video` side, copy the pool clip into "
-        f"`{rel}/assets/` and — AFTER `assemble-index`, BEFORE render — run "
-        f"`python -X utf8 {bridge_rel}/assemble_media.py {comp_rel}` to mount the root / comparison videos "
-        f"(archetype B); then `hyperframes render`."
-        f"\n- **Lint & revise (draft → lint → revise):** score the composed essay and FIX the failing GATES until it "
-        f"passes — `python -X utf8 -m nolan.style_contract {comp_rel} --dial asset_density={asset_density}`.")
+        f"\n- **Anchor every scene:** give each scene an `anchor` — the distinctive SPOKEN phrase it illustrates "
+        f"(the narrator's words, e.g. \"sixty-one thousand\", NOT on-screen typography like \"61,000\") — so the "
+        f"aligner can land it on the word. Without anchors the sync step falls back to proportional spacing."
+        f"\n- **Finish (narration-SYNCED + video + QA):** `node audio.mjs sync-durations` (frame dur = section dur) "
+        f"→ `python -X utf8 -m nolan.hyperframes.sync {comp_rel}` (force-aligns the VO, places each scene + fires its "
+        f"operative highlight on the SPOKEN word; add anchors to any frame it flags as fallback) → **recompose** the "
+        f"changed frames (re-run `author.py` per updated spec). For any `ground:{{\"kind\":\"video\"}}` / comparison "
+        f"`video` side, copy the clip into `{rel}/assets/` and — AFTER `assemble-index`, BEFORE render — run "
+        f"`python -X utf8 {bridge_rel}/assemble_media.py {comp_rel}`; then `hyperframes render`."
+        f"\n- **QA + lint (draft → verify → revise):** `python -X utf8 -m nolan.hf_qa {comp_rel}` (freeze/audio) AND "
+        f"`python -X utf8 -m nolan.style_contract {comp_rel} --dial asset_density={asset_density}` — fix every failing "
+        f"GATE and QA fail, then re-render.")
     vo_line = (
         f"\n- **Voice — NOLAN-PROVIDED (do NOT synthesize a new voice):** the cloned voiceover is already "
         f"bridged into `{rel}/audio_meta.json` + `{rel}/assets/voice/0N.wav` (one wav per script section). "
