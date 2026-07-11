@@ -8,7 +8,9 @@ from typing import Tuple
 class AcquireConfig:
     # depth
     per_need: int = 8                 # keep this many assets per need
-    over_fetch: int = 3               # fetch per_need × over_fetch candidates, then cull to the best
+    over_fetch: int = 3               # images: fetch per_need × over_fetch candidates, then cull to the best
+    over_fetch_video: int = 1         # video: DON'T over-fetch — clips are large + slow, and video is ranked
+                                      # by search order (not by a per-file score), so download only what we keep
     # sources (order tried; "generate" is conditional, handled by the engine)
     sources: Tuple[str, ...] = ("library", "stock")
     # relevance + fitness gating

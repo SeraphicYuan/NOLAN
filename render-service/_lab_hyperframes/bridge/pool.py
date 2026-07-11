@@ -324,8 +324,7 @@ def _candidates_to_pool(kept, assets_dir: Path):
         dest = assets_dir / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
-            if Path(c.path).resolve() != dest.resolve():
-                shutil.move(str(c.path), str(dest))
+            shutil.copyfile(str(c.path), str(dest))   # copy (library files stay in the library; temp gets cleaned)
         except Exception:
             continue
         pool.append({"id": need, "file": rel, "media_type": c.modality, "query": c.meta.get("query", ""),
@@ -376,9 +375,13 @@ def main():
         ctx = build_context(cfg)
         print(f"ACQUIRE — stock={bool(ctx.search_stock)} library={bool(ctx.search_library)} "
               f"clip-relevance={bool(ctx.relevance)} generate={bool(ctx.generate)} | "
-              f"{len(needs)} needs × up to {acfg.per_need} kept (over-fetch ×{acfg.over_fetch})")
-        kept = acquire_pool(needs, ctx, acfg, cand_dir=assets_dir, log=print)
-        pool = _candidates_to_pool(kept, assets_dir)
+              f"{len(needs)} needs × up to {acfg.per_need} kept (images over-fetch ×{acfg.over_fetch}, "
+              f"video ×{acfg.over_fetch_video})")
+        import shutil
+        cand_dir = assets_dir / "_cand"                # temp: over-fetched candidates land here…
+        kept = acquire_pool(needs, ctx, acfg, cand_dir=cand_dir, log=print)
+        pool = _candidates_to_pool(kept, assets_dir)   # …only the KEPT are copied into assets…
+        shutil.rmtree(cand_dir, ignore_errors=True)    # …and the rejects are dropped
 
     if pool and not args.no_caption:
         print("CAPTION (OpenRouter qwen-VL)")

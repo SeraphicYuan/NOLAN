@@ -87,7 +87,8 @@ def _usable(c: Candidate, cfg: AcquireConfig) -> bool:
 # --- per-need acquisition -------------------------------------------------------------------------
 def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
                  taken_hashes: List[int]) -> List[Candidate]:
-    n_fetch = max(cfg.per_need * cfg.over_fetch, cfg.per_need)
+    of = cfg.over_fetch_video if need.get("media_type") == "video" else cfg.over_fetch
+    n_fetch = max(cfg.per_need * of, cfg.per_need)
     cands: List[Candidate] = []
     if "library" in cfg.sources and ctx.search_library:
         for q in _need_queries(need):
