@@ -64,6 +64,15 @@ def register(app, ctx):
             raise HTTPException(status_code=500, detail=f"snapshot failed: {res.get('output', '')[-300:]}")
         return FileResponse(res["png"], media_type="image/png")
 
+    @app.get("/api/hf/frame-video")
+    async def hf_frame_video(comp: str = Query(...), frame_id: str = Query(...)):
+        """Serve a frame's rendered preview clip (from render_frame) — playable in the edit page."""
+        fdir = (_guard(hfedit.comp_dir, comp) / "compositions" / "frames").resolve()
+        mp4 = (fdir / f"{frame_id}.preview.mp4").resolve()
+        if fdir not in mp4.parents or not mp4.is_file():
+            raise HTTPException(status_code=404, detail="no rendered preview for this frame")
+        return FileResponse(str(mp4), media_type="video/mp4")
+
     # ---- edit (each goes through the author.py gate; a rejected edit reverts, no partial state)
 
     @app.post("/api/hf/scene/revise")
@@ -183,6 +192,37 @@ def register(app, ctx):
         except Exception:
             return {"sessions": []}
 
+    async def _pool_job(job, comp, needs, script, per):
+        """COLLECT->CAPTION->INVENTORY via the NOLAN asset bridge (pool.py). needs given, else derived from script/SOURCE.md."""
+        nds = needs
+        if not nds:
+            from nolan.hyperframes.edit import _project_script, _project_dir
+            src = script or _project_script(_project_dir(comp))
+            if not src:
+                job.message = "No needs and no script to derive from."
+                return {"ok": False, "detail": "provide `needs`, or a script/SOURCE.md to derive them"}
+            job.message = "Planning asset needs from the script…"
+            from nolan.config import load_config
+            from nolan.llm import create_text_llm
+            nds = await hfedit.derive_asset_needs(src, create_text_llm(load_config()))
+        if not nds:
+            job.message = "No asset needs derived."
+            return {"ok": False, "detail": "no asset needs"}
+        job.message = f"Acquiring {len(nds)} asset need(s) — stock + captions (a few minutes)…"
+        res = await asyncio.to_thread(hfedit.run_pool, comp, nds, per)
+        job.message = f"Asset pool: {res.get('count', 0)} asset(s) -> {comp}/capture/"
+        return res
+
+    @app.post("/api/hf/pool")
+    async def hf_pool(payload: dict = Body(...)):
+        """Build an asset pool for a comp (existing or just-scaffolded) via the NOLAN bridge — background job."""
+        comp = (payload.get("comp") or "").strip()
+        if not comp:
+            raise HTTPException(status_code=400, detail="comp required")
+        job = job_manager.start("hf_pool", _pool_job, meta={"comp": comp}, comp=comp,
+                                needs=payload.get("needs"), script=payload.get("script"), per=int(payload.get("per", 3)))
+        return {"job_id": job.id, "comp": comp}
+
     @app.post("/api/hf/new")
     async def hf_new(payload: dict = Body(...)):
         script = (payload.get("script") or "").strip()
@@ -190,8 +230,12 @@ def register(app, ctx):
         session = (payload.get("session") or "").strip()
         if not (script and name):
             raise HTTPException(status_code=400, detail="name and script are required")
-        res = _guard(hfedit.new_essay, name, script, payload.get("style"))
-        if session:                       # dispatch to a live agent; else caller runs the prompt manually
+        res = _guard(hfedit.new_essay, name, script, payload.get("style"), bool(payload.get("acquire_pool")))
+        if res.get("acquire_pool"):        # acquire the asset pool first (from the script), before authoring
+            pjob = job_manager.start("hf_pool", _pool_job, meta={"comp": res["comp"]},
+                                     comp=res["comp"], needs=None, script=script, per=3)
+            res["pool_job"] = pjob.id
+        if session:                        # dispatch to a live agent; else caller runs the prompt manually
             from nolan.webui import operations
             try:
                 await asyncio.to_thread(operations._dispatch_to_tmux, session, res["prompt"])

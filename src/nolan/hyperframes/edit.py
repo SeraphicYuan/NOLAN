@@ -45,10 +45,18 @@ def discover_compositions() -> List[Dict[str, Any]]:
     return out
 
 
-def _kickoff_brief(slug: str, style: Optional[str] = None) -> str:
+def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = False) -> str:
     """The task brief the faceless-explainer agent reads to author a new essay (written to .hf_kickoff.md)."""
     rel = f"videos/{slug}"
     style_line = f"\n- **Style:** {style}" if style else ""
+    assets_line = (
+        f"- **Assets — ASSET-BACKED (not faceless):** a NOLAN asset POOL is being acquired into `{rel}/capture/` "
+        f"(stock images/video + qwen-VL captions, via the `pool.py` bridge). SELECT `asset_candidates` from "
+        f"`{rel}/capture/extracted/asset-descriptions.md` for image beats (collage / gallery / newshead / timeline / "
+        f"comparison); still invent typography / diagram / data-viz where no real asset fits. Resolve BGM/SFX/logos via `/media-use`."
+        if pool else
+        f"- **Assets:** faceless — invent per scene. Resolve BGM/SFX/images/logos via `/media-use`; land them in `{rel}/assets/`."
+    )
     return f"""# New HyperFrames essay — kickoff (`{slug}`)
 
 Author a **faceless explainer video** from the source text, using the `/faceless-explainer` skill in
@@ -59,7 +67,7 @@ run its steps in order and pass each gate.
 - **Input:** `{rel}/SOURCE.md` — the topic/script to explain.
 - **Output:** composed frames at `{rel}/compositions/frames/NN-*.html` (+ `.spec.json`) and `{rel}/index.html`
   — that is what makes this composition appear on the hub's `/hyperframes` edit page.
-- **Assets:** faceless — invent per scene. Resolve BGM/SFX/images/logos via `/media-use`; land them in `{rel}/assets/`.
+{assets_line}
 - **Pipeline — HYBRID / compose-first (required):** at Step 5, dispatch `sub-agents/compose-first-frame-worker.md`
   (NOT the stock `frame-worker.md`) with `BRIDGE_DIR=render-service/_lab_hyperframes/bridge/`. Express each Scene
   with a `bridge/catalog.json` composer template (stat · statement · geo · timeline · newshead · collage · diagram ·
@@ -71,10 +79,10 @@ When the frames are composed, tell the user the composition id is **`{slug}`** �
 """
 
 
-def new_essay(name: str, script: str, style: Optional[str] = None) -> Dict[str, Any]:
+def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = False) -> Dict[str, Any]:
     """Scaffold a new HyperFrames essay project under the lab videos root + write a kickoff brief for the
-    faceless-explainer agent. Returns {comp, dir, prompt}; the caller dispatches `prompt` to a tmux agent.
-    The composition shows up in /hyperframes once the agent composes frames."""
+    faceless-explainer agent. Returns {comp, dir, prompt, acquire_pool}; the caller dispatches `prompt` to a
+    tmux agent (and, if acquire_pool, first runs the asset pool). Shows up in /hyperframes once frames exist."""
     if not (script or "").strip():
         raise ValueError("script is required")
     slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", (name or "").strip()).strip("-").lower() or "essay"
@@ -85,11 +93,71 @@ def new_essay(name: str, script: str, style: Optional[str] = None) -> Dict[str, 
     pdir.mkdir(parents=True, exist_ok=True)
     (pdir / "assets").mkdir(exist_ok=True)
     (pdir / "SOURCE.md").write_text(script, encoding="utf-8")
-    (pdir / ".hf_kickoff.md").write_text(_kickoff_brief(slug, style), encoding="utf-8")
+    (pdir / ".hf_kickoff.md").write_text(_kickoff_brief(slug, style, acquire_pool), encoding="utf-8")
     prompt = (f"New HyperFrames essay: read render-service/_lab_hyperframes/videos/{slug}/.hf_kickoff.md and execute "
               f"it — author a faceless explainer from that project's SOURCE.md into its compositions/frames/ using the "
               f"/faceless-explainer skill in NOLAN compose-first (hybrid) mode. Report the composition id '{slug}' when done.")
-    return {"comp": slug, "dir": str(pdir), "prompt": prompt}
+    return {"comp": slug, "dir": str(pdir), "prompt": prompt, "acquire_pool": bool(acquire_pool)}
+
+
+def _project_dir(comp: str) -> Path:
+    """Composition dir whether it's fully composed (has frames) or just scaffolded (new essay, no frames yet)."""
+    try:
+        return comp_dir(comp)
+    except FileNotFoundError:
+        d = LAB_VIDEOS / comp
+        if d.is_dir():
+            return d
+        raise
+
+
+def _project_script(pdir: Path) -> str:
+    """The project's script text, for deriving asset needs (SOURCE.md from new-essay, else the skill's SCRIPT.md)."""
+    for cand in ("SOURCE.md", "SCRIPT.md", "STORYBOARD.md"):
+        f = pdir / cand
+        if f.is_file():
+            return f.read_text(encoding="utf-8")
+    return ""
+
+
+async def derive_asset_needs(script: str, client, k: int = 8) -> List[Dict[str, Any]]:
+    """LLM: an essay script -> a small `needs` list for the pool bridge (stock/gen queries)."""
+    system = ("You plan STOCK ASSET needs for a video essay. From the script, list the concrete visual subjects "
+              "worth gathering — real people, places, objects, events, archival footage. Return ONLY a JSON array "
+              f"of up to {k} items, each {{\"id\":\"a1\",\"query\":\"3-6 word stock search\",\"media_type\":\"image\" "
+              "or \"video\",\"n\":3}}. Prefer image; use video only for motion-critical subjects. No prose, no code fences.")
+    raw = (await client.generate((script or "")[:6000], system_prompt=system)).strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
+    i, j = raw.find("["), raw.rfind("]")
+    items = json.loads(raw[i:j + 1]) if 0 <= i < j else []
+    out = []
+    for n, it in enumerate(items[:k]):
+        q = str(it.get("query", "")).strip()
+        if q:
+            out.append({"id": it.get("id") or f"a{n + 1}", "query": q,
+                        "media_type": "video" if it.get("media_type") == "video" else "image",
+                        "n": int(it.get("n", 3) or 3)})
+    return out
+
+
+def run_pool(comp: str, needs: List[Dict[str, Any]], per: int = 3) -> Dict[str, Any]:
+    """Run the NOLAN->HF asset bridge (bridge/pool.py): COLLECT -> CAPTION -> INVENTORY into <project>/capture/.
+    Blocking (fan-out + captioning takes minutes) — call from a background job / thread."""
+    if not needs:
+        raise ValueError("no asset needs to acquire")
+    pdir = _project_dir(comp)
+    needs_file = pdir / "capture" / "needs.json"
+    needs_file.parent.mkdir(parents=True, exist_ok=True)
+    needs_file.write_text(json.dumps(needs, ensure_ascii=False, indent=2), encoding="utf-8")
+    r = subprocess.run([sys.executable, "-X", "utf8", str(BRIDGE / "pool.py"),
+                        "--needs", str(needs_file), "--project", str(pdir), "--per", str(per)],
+                       cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    pool_json = pdir / "pool.json"
+    pool = json.loads(pool_json.read_text(encoding="utf-8")) if pool_json.exists() else []
+    return {"ok": r.returncode == 0, "count": len(pool), "needs": needs,
+            "inventory": str(pdir / "capture" / "extracted" / "asset-descriptions.md"),
+            "output": (r.stdout + r.stderr)[-1200:]}
 
 
 def _comp_dir(comp: str) -> Path:
@@ -146,6 +214,7 @@ def list_frames(comp: str) -> List[Dict[str, Any]]:
             frames.append({
                 "id": fr["id"], "dur": fr.get("dur"), "spec_file": sf.name,
                 "html_exists": (fdir / f'{fr["id"]}.html').exists(),
+                "preview_mp4": (fdir / f'{fr["id"]}.preview.mp4').exists(),
                 "scenes": [{
                     "id": s.get("id"), "type": s.get("type"),
                     "start": s.get("start"), "dur": s.get("dur"),

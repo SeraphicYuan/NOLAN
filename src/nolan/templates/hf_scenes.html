@@ -86,6 +86,8 @@
     .frame-head.clickable { cursor: pointer; }
     .card.frame.active { border-color: var(--accent, #4f7cff); }
     .frame-head .go { color: var(--text-secondary); font-size: 11px; }
+    .badge.mp4 { background: rgba(46,160,67,0.16); color: #2ea043; }
+    .frame-vid { width: 100%; border-radius: 8px; margin-top: 10px; background: #000; max-height: 360px; display: block; }
     #framePanel .fp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
     #framePanel .empty { padding: 18px 10px; }
   </style>
@@ -131,14 +133,17 @@
         <div class="field"><label>dispatch to agent</label><select id="new-session"></select></div>
         <div class="field"><label>style (optional)</label><input id="new-style" placeholder="e.g. Vox highlighter-editorial, dark"></div>
       </div>
+      <label class="field" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-top:4px">
+        <input type="checkbox" id="new-pool" style="width:auto;margin-top:2px">
+        <span style="font-size:12px">Acquire an <b>asset pool</b> from the script first — stock images/video + captions via <code>pool.py</code>. Makes the run <b>asset-backed</b> instead of faceless.</span></label>
       <div class="insp-actions"><button class="btn" onclick="submitNew()">Create + dispatch</button></div>
-      <div class="desc" style="margin-top:8px">Faceless — the agent invents visuals per scene and authors the composition in the background. It appears in the selector above (auto-refresh) once frames are composed; then edit it per-scene here.</div>
+      <div class="desc" style="margin-top:8px">The agent invents visuals per scene (or selects from the pool, if enabled) and authors in the background. It appears in the selector above (auto-refresh) once frames are composed; then edit it per-scene here.</div>
     </div>
   </div>
 
 <script>
 const $ = s => document.querySelector(s);
-let CATALOG = null, FRAMES = [], COMP = null, SEL = null, ACTIVE_FID = null, ASSETS = [];  // SEL = {frame_id, scene_id}
+let CATALOG = null, FRAMES = [], COMP = null, SEL = null, ACTIVE_FID = null, ASSETS = [], VIDV = 0;  // SEL = {frame_id, scene_id}
 
 function toast(msg, kind) {
   const t = $("#toast"); t.textContent = msg; t.className = "toast " + (kind || "");
@@ -174,11 +179,12 @@ async function loadAgents() {
 }
 async function submitNew() {
   const name = $("#new-name").value.trim(), script = $("#new-script").value.trim(),
-        session = $("#new-session").value, style = $("#new-style").value.trim();
+        session = $("#new-session").value, style = $("#new-style").value.trim(), acquire_pool = $("#new-pool").checked;
   if (!name || !script) return toast("name + script are required", "err");
   try {
-    const r = await jpost("/api/hf/new", { name, script, session, style });
+    const r = await jpost("/api/hf/new", { name, script, session, style, acquire_pool });
     closeNew();
+    if (r.pool_job) toast(`Acquiring asset pool for '${r.comp}' (job ${r.pool_job})…`, "ok");
     if (r.dispatched) toast(`Essay '${r.comp}' dispatched to ${r.dispatched} — composing… (auto-refreshing)`, "ok");
     else { try { await navigator.clipboard.writeText(r.prompt); } catch {}
       toast(`Scaffolded '${r.comp}'.${r.dispatch_error ? ' Dispatch failed: ' + r.dispatch_error + '.' : ''} Prompt copied — paste it to an agent.`, r.dispatch_error ? "err" : "ok"); }
@@ -227,12 +233,15 @@ function renderFrames() {
         <span class="summ">${esc(s.summary||'')}</span>${rv}${tr}</div>`;
     }).join("");
     const act = fr.id === ACTIVE_FID ? " active" : "";
+    const vid = fr.preview_mp4 ? `<video class="frame-vid" controls preload="metadata" src="/api/hf/frame-video?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fr.id)}&_=${VIDV}"></video>` : "";
     return `<div class="card frame${act}">
       <div class="frame-head clickable" onclick="activateFrame('${fr.id}')">
         <span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span>
+        ${fr.preview_mp4?'<span class="badge mp4">▶ rendered</span>':''}
         <span class="spacer"></span><span class="go">${fr.id===ACTIVE_FID?'▸ actions in panel':'select →'}</span></div>
       <div class="tl">${segs}</div>
       ${rows}
+      ${vid}
     </div>`;
   }).join("");
 }
@@ -249,6 +258,7 @@ function renderFramePanel(fid) {
     <div class="frame-head"><span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span></div>
     <div class="fp-actions">
       <button class="btn ghost mini" onclick="fillTransitions('${fr.id}')">Fill transitions</button>
+      <button class="btn ghost mini" onclick="buildPool()" title="Acquire a stock/gen asset pool from the project's script (NOLAN bridge)">Build asset pool</button>
       <button class="btn mini" onclick="renderFrame('${fr.id}')">Render frame</button></div>
     <details class="add"><summary>+ add scene</summary>
       <div class="row2" style="margin-top:8px">
@@ -373,6 +383,14 @@ async function addScene(fid) {
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 
+async function buildPool() {
+  if (!COMP) return toast("select a composition first", "err");
+  toast("Building asset pool — planning needs from the script…");
+  try { const r = await jpost("/api/hf/pool", { comp: COMP });
+    toast(`Asset pool started (job ${r.job_id}) — stock + captions into ${COMP}/capture/ (a few minutes).`, "ok");
+  } catch (e) { toast("Error: " + e.message, "err"); }
+}
+
 async function fillTransitions(fid) {
   try { const r = await jpost("/api/hf/transitions/plan", {comp: COMP, frame_id: fid, apply: true});
     toast(`Transitions filled: ${(r.proposals||[]).map(p=>p.scene_id+'→'+p.kind).join(', ')||'none'} ✓`, "ok");
@@ -390,8 +408,23 @@ async function previewScene(fid, sid) {
 
 async function renderFrame(fid) {
   try { const r = await jpost("/api/hf/frame/rerender", {comp: COMP, frame_ids: [fid]});
-    toast(`Render started (job ${r.job_id}). Check when done.`, "ok");
+    toast(`Render started (job ${r.job_id}). Watching for the clip…`, "ok");
+    pollForRender(fid);
   } catch (e) { toast("Error: " + e.message, "err"); }
+}
+let _renderPoll = null;
+function pollForRender(fid) {
+  clearInterval(_renderPoll); let n = 0;
+  _renderPoll = setInterval(async () => {
+    n++;
+    try {
+      const d = await jget("/api/hf/frames?comp=" + encodeURIComponent(COMP));
+      FRAMES = d.frames;
+      const fr = FRAMES.find(f => f.id === fid);
+      if (fr && fr.preview_mp4) { clearInterval(_renderPoll); VIDV = n + 1; renderFrames(); if (ACTIVE_FID) renderFramePanel(ACTIVE_FID); toast(`'${fid}' clip ready ✓`, "ok"); }
+      else { renderFrames(); if (n > 24) clearInterval(_renderPoll); }  // give up after ~6 min
+    } catch {}
+  }, 15000);
 }
 
 // ---- Phase 2: note edits (comment -> agent -> gate) ----
