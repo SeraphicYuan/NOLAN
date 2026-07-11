@@ -43,7 +43,9 @@ CSS = """
   text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
 .paper .slnum,.paper .sllead{color:var(--text);}.paper .kick{color:var(--text-2);}.paper .sllabel{color:var(--text-mute);}
 .footage .slnum{color:var(--text);}.footage .kick{color:var(--text);}.footage .sllabel{color:var(--text-2);}
-.stmt.paper-t{color:var(--text);}.stmt.footage-t{color:var(--text);}
+.stmt.paper-t{color:var(--text);}
+.stmt.footage-t{color:#F6F7F6;text-shadow:0 2px 14px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}
+.stmt.footage-t .hlwrap{color:#141414;text-shadow:none;}/* operative sits on the accent bar -> dark text */
 /* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
 .prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
 .prop img{display:block;width:100%;height:auto;}
@@ -440,7 +442,11 @@ def media_ground(sid, ground, start, dur):
                     f'style="background:{scr};"></div>')
         f0, f1 = ground.get("kb", [1.03, 1.08])
         tl.append(f'tl.fromTo("#{sid}-gnd",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
-    elif kind == "transparent":  # root video behind; scrim only
+    elif kind in ("transparent", "video"):  # root video behind; scrim only.
+        # kind=="video" ALSO carries a `src`: the composer leaves a transparent hole here and the
+        # assemble step (collect_video_grounds -> inject_root_video.py) mounts the pool clip at the
+        # index ROOT on a track BELOW the frame (archetype B) so it shows through. Same scrim either
+        # way (darkens the footage so footage-t text stays legible).
         scr = "linear-gradient(90deg,rgba(20,21,20,0.66),rgba(20,21,20,0.18) 55%,rgba(20,21,20,0.42))," \
               "linear-gradient(rgba(20,21,20,0) 50%,rgba(20,21,20,0.6))"
         frag.append(f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '

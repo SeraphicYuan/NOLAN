@@ -446,6 +446,24 @@ BRIDGES = [
      "nolan": "nolan.hyperframes edit engine (mirrors iterate's load→patch→gate→re-render) + /api/hf/* routes",
      "hf": "re-gates the frame's spec → recomposes compositions/frames/<id>.html → snapshot/render",
      "wire": ("src/nolan/hyperframes/edit.py", "apply_scene_edit")},
+    {"id": "voiceover", "label": "Voiceover bridge", "stage": "live",
+     "purpose": "NOLAN's cloned voiceover (voice_pipeline) → the faceless `audio_meta.json` shape, so "
+                "`audio.mjs sync-durations` (frame dur = section dur; narration owns duration) + "
+                "`assemble-index` (root voice track 10) run on the NOLAN voice — no second TTS pass. "
+                "Replaces `audio.mjs generate`; wired into new_essay(voiceover=…).",
+     "nolan": "voice_pipeline.synthesize_voiceover → bridge/vo_bridge.py translate (+ edit.attach_voiceover)",
+     "hf": "<comp>/audio_meta.json + assets/voice/0N.wav → sync-durations + assemble-index + render",
+     "wire": ("render-service/_lab_hyperframes/bridge/vo_bridge.py", "def translate")},
+    {"id": "style-contract", "label": "Style contract + linter", "stage": "live",
+     "purpose": "the editorial-instruction layer: a declarative contract (one preset + a few dials) "
+                "dual-compiles to the author's brief AND a deterministic linter that scores the composed "
+                "essay on measurable craft dimensions — 5 hard GATES (evidence coverage, motion footage, "
+                "pacing variance, block concentration, adjacent repeats) + advisory rest. Draft → lint → "
+                "revise. Tweak everything from one registry (dimensions.py); reference-derivable.",
+     "nolan": "src/nolan/style_contract — StyleContract.compile_brief() + lint() over a normalized SceneView "
+              "(python -m nolan.style_contract <comp> [--brief])",
+     "hf": "scenes_from_hf(comp) reads compositions/frames/*.spec.json; gate failures steer re-authoring",
+     "wire": ("src/nolan/style_contract/linter.py", "def lint")},
 ]
 
 

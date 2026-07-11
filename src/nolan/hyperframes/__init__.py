@@ -10,7 +10,7 @@ from .edit import (
     apply_scene_edit, add_scene, remove_scene, retime_scene,
     recompose_frame, snapshot_frame, render_frame, beat_boundary_planner, catalog,
     revise_frame_note, build_note_prompt, list_assets, resolve_asset, save_upload, comp_dir,
-    new_essay, derive_asset_needs, run_pool,
+    new_essay, derive_asset_needs, run_pool, attach_voiceover,
 )
 
 __all__ = [
@@ -18,5 +18,5 @@ __all__ = [
     "apply_scene_edit", "add_scene", "remove_scene", "retime_scene",
     "recompose_frame", "snapshot_frame", "render_frame", "beat_boundary_planner", "catalog",
     "revise_frame_note", "build_note_prompt", "list_assets", "resolve_asset", "save_upload", "comp_dir",
-    "new_essay", "derive_asset_needs", "run_pool",
+    "new_essay", "derive_asset_needs", "run_pool", "attach_voiceover",
 ]

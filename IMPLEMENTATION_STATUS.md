@@ -4,6 +4,23 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## HyperFrames voiceover bridge — NOLAN VO → the essay (2026-07-11)
+
+- **`bridge/vo_bridge.py`**: translates a NOLAN `voice_pipeline` voiceover (assets/voiceover/: voiceover.mp3
+  + _work/sec_*.wav, or segments/segments.json) into the faceless `audio_meta.json` shape —
+  `voices[{frame,path,duration_s,words}]`, 1:1 section→frame, wavs copied to `assets/voice/0N.wav`. So the
+  EXISTING chain (`audio.mjs sync-durations` → frame dur = section dur; `assemble-index` → root voice track 10;
+  `hyperframes render` → mux) runs on the cloned voice with NO second TTS pass. The only faceless step replaced
+  is `audio.mjs generate`. Two audio worlds were unconnected before this.
+- **`new_essay(voiceover=…)`**: None = faceless self-voice (default); a `projects/<name>`/path = bridge an
+  existing NOLAN VO in now; `'auto'` = caller synthesizes first. Kickoff brief gains a "voice is NOLAN-provided;
+  one frame per section; skip `audio.mjs generate`" section. `edit.attach_voiceover` + `POST /api/hf/voiceover`.
+- **Narrated frame preview**: `_scaffold_preview` mounts the frame's section wav as a root `<audio track 10>`,
+  so the /hyperframes per-frame preview.mp4 plays WITH narration.
+- **/map Bridge tab**: a `voiceover` bridge is registered (honesty-verified: wire file + `def translate` token).
+- **Tests**: `tests/test_vo_bridge.py` (4) — both VO layouts, 1:1 mapping, durations matched, words passthrough,
+  missing-VO raises. Proven live: AI-datacenter cloned VO (7 sections, 7:48) → audio_meta.json, durations matched.
+
 ## HyperFrames asset pool — deep + default + full-registry (2026-07-10)
 
 - **Asset-backed by default.** The `/hyperframes` New-essay flow now acquires an

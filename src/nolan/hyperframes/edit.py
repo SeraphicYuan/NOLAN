@@ -45,10 +45,36 @@ def discover_compositions() -> List[Dict[str, Any]]:
     return out
 
 
-def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True) -> str:
+def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
+                   voiceover: bool = False, asset_density: str = "balanced") -> str:
     """The task brief the faceless-explainer agent reads to author a new essay (written to .hf_kickoff.md)."""
     rel = f"videos/{slug}"
+    comp_rel = f"render-service/_lab_hyperframes/{rel}"
+    bridge_rel = "render-service/_lab_hyperframes/bridge"
     style_line = f"\n- **Style:** {style}" if style else ""
+    try:                                                # the style contract: craft targets + the full block palette
+        from nolan.style_contract import StyleContract, authoring_brief
+        contract_txt = authoring_brief(StyleContract.resolve("essay", asset_density=asset_density))
+    except Exception:
+        contract_txt = ""
+    contract_section = ("\n\n---\n## STYLE CONTRACT — author to these targets, then lint & revise\n\n"
+                        + contract_txt) if contract_txt else ""
+    finish_line = (
+        f"\n- **Finish (narration-timed + video + linted):** `node audio.mjs sync-durations` (frame dur = section "
+        f"dur). For any `ground:{{\"kind\":\"video\"}}` or comparison `video` side, copy the pool clip into "
+        f"`{rel}/assets/` and — AFTER `assemble-index`, BEFORE render — run "
+        f"`python -X utf8 {bridge_rel}/assemble_media.py {comp_rel}` to mount the root / comparison videos "
+        f"(archetype B); then `hyperframes render`."
+        f"\n- **Lint & revise (draft → lint → revise):** score the composed essay and FIX the failing GATES until it "
+        f"passes — `python -X utf8 -m nolan.style_contract {comp_rel} --dial asset_density={asset_density}`.")
+    vo_line = (
+        f"\n- **Voice — NOLAN-PROVIDED (do NOT synthesize a new voice):** the cloned voiceover is already "
+        f"bridged into `{rel}/audio_meta.json` + `{rel}/assets/voice/0N.wav` (one wav per script section). "
+        f"Author **exactly one frame per section** (frame N ↔ section N, in order). SKIP `audio.mjs generate` — "
+        f"instead run `node audio.mjs sync-durations` to set each frame's duration FROM the VO (narration owns "
+        f"duration), then `assemble-index` + `hyperframes render`; the narration mounts automatically as the "
+        f"root voice track (data-track-index 10). Time within-frame reveals to the narration by ear."
+        if voiceover else "")
     assets_line = (
         f"- **Assets — ASSET-BACKED (not faceless):** a NOLAN asset POOL is being acquired into `{rel}/capture/` "
         f"(stock images/video + qwen-VL captions, via the `pool.py` bridge). SELECT `asset_candidates` from "
@@ -67,22 +93,51 @@ run its steps in order and pass each gate.
 - **Input:** `{rel}/SOURCE.md` — the topic/script to explain.
 - **Output:** composed frames at `{rel}/compositions/frames/NN-*.html` (+ `.spec.json`) and `{rel}/index.html`
   — that is what makes this composition appear on the hub's `/hyperframes` edit page.
-{assets_line}
+{assets_line}{vo_line}
 - **Pipeline — HYBRID / compose-first (required):** at Step 5, dispatch `sub-agents/compose-first-frame-worker.md`
   (NOT the stock `frame-worker.md`) with `BRIDGE_DIR=render-service/_lab_hyperframes/bridge/`. Express each Scene
   with a `bridge/catalog.json` composer template (stat · statement · geo · timeline · newshead · collage · diagram ·
   comparison · gallery · carousel · chart · linedraw · … + the `reveal`/`transition` vocabularies) and build it
   deterministically through the `author.py` gate; hand-author a bespoke `raw` / native-HF scene ONLY where no
-  template fits.{style_line}
+  template fits.{style_line}{finish_line}
 
-When the frames are composed, tell the user the composition id is **`{slug}`** — they'll refine it per-scene on `/hyperframes`.
+When the frames are composed, tell the user the composition id is **`{slug}`** — they'll refine it per-scene on `/hyperframes`.{contract_section}
 """
 
 
-def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = True) -> Dict[str, Any]:
+def _resolve_vo_source(vo_source: str) -> Path:
+    """A voiceover source is a NOLAN project name (under projects/) or an explicit path with assets/voiceover/."""
+    p = Path(vo_source)
+    if p.exists():
+        return p
+    cand = PROJECTS / vo_source
+    if cand.exists():
+        return cand
+    raise FileNotFoundError(f"voiceover source not found: {vo_source!r} (a projects/<name> or a path)")
+
+
+def attach_voiceover(comp: str, vo_source: str) -> Dict[str, Any]:
+    """Bridge a NOLAN voiceover into a HyperFrames comp: writes <comp>/audio_meta.json + assets/voice/0N.wav
+    via bridge/vo_bridge.py, so the faceless sync-durations + assemble-index chain runs on the cloned voice
+    (no second TTS pass). vo_source = a projects/<name> (its assets/voiceover/) or an explicit path."""
+    import importlib.util
+    pdir = _project_dir(comp)
+    vo = _resolve_vo_source(vo_source)
+    spec = importlib.util.spec_from_file_location("vo_bridge", str(BRIDGE / "vo_bridge.py"))
+    vb = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vb)
+    return vb.translate(pdir, vo)
+
+
+def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = True,
+              voiceover: Optional[str] = None, asset_density: str = "balanced") -> Dict[str, Any]:
     """Scaffold a new HyperFrames essay project under the lab videos root + write a kickoff brief for the
     faceless-explainer agent. Returns {comp, dir, prompt, acquire_pool}; the caller dispatches `prompt` to a
-    tmux agent (and, if acquire_pool, first runs the asset pool). Shows up in /hyperframes once frames exist."""
+    tmux agent (and, if acquire_pool, first runs the asset pool). Shows up in /hyperframes once frames exist.
+
+    voiceover: None -> faceless self-generated voice (default). A NOLAN project name / path with
+    assets/voiceover/ -> its cloned VO is bridged in NOW (audio_meta.json written; frame durations come from
+    the sections). 'auto' -> the caller synthesizes a VO from SOURCE.md first, then calls attach_voiceover."""
     if not (script or "").strip():
         raise ValueError("script is required")
     slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", (name or "").strip()).strip("-").lower() or "essay"
@@ -93,11 +148,21 @@ def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool:
     pdir.mkdir(parents=True, exist_ok=True)
     (pdir / "assets").mkdir(exist_ok=True)
     (pdir / "SOURCE.md").write_text(script, encoding="utf-8")
-    (pdir / ".hf_kickoff.md").write_text(_kickoff_brief(slug, style, acquire_pool), encoding="utf-8")
+    (pdir / ".hf_kickoff.md").write_text(
+        _kickoff_brief(slug, style, acquire_pool, voiceover=bool(voiceover), asset_density=asset_density),
+        encoding="utf-8")
     prompt = (f"New HyperFrames essay: read render-service/_lab_hyperframes/videos/{slug}/.hf_kickoff.md and execute "
               f"it — author a faceless explainer from that project's SOURCE.md into its compositions/frames/ using the "
               f"/faceless-explainer skill in NOLAN compose-first (hybrid) mode. Report the composition id '{slug}' when done.")
-    return {"comp": slug, "dir": str(pdir), "prompt": prompt, "acquire_pool": bool(acquire_pool)}
+    res = {"comp": slug, "dir": str(pdir), "prompt": prompt, "acquire_pool": bool(acquire_pool)}
+    if voiceover and voiceover != "auto":          # bridge an existing NOLAN VO in now
+        try:
+            res["voiceover"] = attach_voiceover(slug, voiceover)
+        except Exception as e:
+            res["voiceover_error"] = f"{type(e).__name__}: {e}"
+    elif voiceover == "auto":                      # caller runs synth from SOURCE.md, then attach_voiceover
+        res["voiceover_auto"] = True
+    return res
 
 
 def _project_dir(comp: str) -> Path:
@@ -648,6 +713,21 @@ def _scaffold_preview(comp: str, frame_id: str) -> Path:
                 dest = pdir / f.relative_to(_comp_dir(comp))
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(f.read_bytes())
+    # narrated preview: mount this frame's NOLAN voice as a root <audio> track (if a VO was bridged in).
+    # frame_id starts with its 1-based section number (NN-*), matching audio_meta.json voices[].frame.
+    audio_tag = ""
+    meta_f = _comp_dir(comp) / "audio_meta.json"
+    if meta_f.exists():
+        try:
+            meta = json.loads(meta_f.read_text(encoding="utf-8"))
+            m = re.match(r"(\d+)", frame_id)
+            fn = int(m.group(1)) if m else None
+            voice = next((v for v in meta.get("voices", []) if v.get("frame") == fn), None)
+            if voice and (pdir / voice["path"]).is_file():
+                audio_tag = (f'<audio class="clip" src="{voice["path"]}" data-start="0" '
+                             f'data-duration="{dur}" data-track-index="10" data-volume="1"></audio>')
+        except (json.JSONDecodeError, OSError, ValueError):
+            pass
     (pdir / "hyperframes.json").write_text('{"paths":{"blocks":"compositions"}}', encoding="utf-8")
     (pdir / "index.html").write_text(
         '<!doctype html><html><head><meta charset="UTF-8"/>'
@@ -659,7 +739,8 @@ def _scaffold_preview(comp: str, frame_id: str) -> Path:
         'data-width="1920" data-height="1080">'
         f'<div class="scene" data-composition-id="{frame_id}" '
         f'data-composition-src="compositions/frames/{frame_id}.html" '
-        f'data-start="0" data-duration="{dur}" data-track-index="1"></div></div>'
+        f'data-start="0" data-duration="{dur}" data-track-index="1"></div>'
+        f'{audio_tag}</div>'
         '<script>window.__timelines=window.__timelines||{};var tl=gsap.timeline({paused:true});'
         f'tl.to({{}},{{duration:{dur}}},0);window.__timelines["main"]=tl;</script></body></html>',
         encoding="utf-8")

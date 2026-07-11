@@ -223,6 +223,16 @@ def register(app, ctx):
                                 needs=payload.get("needs"), script=payload.get("script"), per=int(payload.get("per", 3)))
         return {"job_id": job.id, "comp": comp}
 
+    @app.post("/api/hf/voiceover")
+    async def hf_voiceover(payload: dict = Body(...)):
+        """Bridge a NOLAN voiceover into a comp → audio_meta.json + assets/voice/*.wav (the cloned voice
+        drives frame durations + mounts as the root voice track). vo_source = projects/<name> or a path."""
+        comp = (payload.get("comp") or "").strip()
+        vo = (payload.get("vo_source") or payload.get("source") or "").strip()
+        if not (comp and vo):
+            raise HTTPException(status_code=400, detail="comp and vo_source required")
+        return await asyncio.to_thread(_guard, hfedit.attach_voiceover, comp, vo)
+
     @app.post("/api/hf/new")
     async def hf_new(payload: dict = Body(...)):
         script = (payload.get("script") or "").strip()
@@ -230,7 +240,8 @@ def register(app, ctx):
         session = (payload.get("session") or "").strip()
         if not (script and name):
             raise HTTPException(status_code=400, detail="name and script are required")
-        res = _guard(hfedit.new_essay, name, script, payload.get("style"), bool(payload.get("acquire_pool", True)))
+        res = _guard(hfedit.new_essay, name, script, payload.get("style"),
+                     bool(payload.get("acquire_pool", True)), payload.get("voiceover"))
         if res.get("acquire_pool"):        # acquire the asset pool first (from the script), before authoring
             pjob = job_manager.start("hf_pool", _pool_job, meta={"comp": res["comp"]},
                                      comp=res["comp"], needs=None, script=script, per=3)
