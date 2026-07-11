@@ -372,7 +372,7 @@ def main():
     else:
         from nolan.acquire import build_context, acquire_pool, AcquireConfig
         acfg = AcquireConfig(per_need=args.per, generate_evocative=not args.no_gen)
-        ctx = build_context(cfg)
+        ctx = build_context(cfg, clip_seconds=acfg.clip_seconds)
         print(f"ACQUIRE — stock={bool(ctx.search_stock)} library={bool(ctx.search_library)} "
               f"clip-relevance={bool(ctx.relevance)} generate={bool(ctx.generate)} | "
               f"{len(needs)} needs × up to {acfg.per_need} kept (images over-fetch ×{acfg.over_fetch}, "

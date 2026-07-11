@@ -11,6 +11,8 @@ class AcquireConfig:
     over_fetch: int = 3               # images: fetch per_need × over_fetch candidates, then cull to the best
     over_fetch_video: int = 1         # video: DON'T over-fetch — clips are large + slow, and video is ranked
                                       # by search order (not by a per-file score), so download only what we keep
+    clip_seconds: int = 20            # fetch only a SHORT segment of each video (via ffmpeg range-seek) — b-roll
+                                      # needs 5-30s, not a full 21-minute archive.org film
     # sources (order tried; "generate" is conditional, handled by the engine)
     sources: Tuple[str, ...] = ("library", "stock")
     # relevance + fitness gating

@@ -30,7 +30,38 @@ def _valid_image(path: Path) -> bool:
         return False
 
 
-def build_context(cfg, *, want_stock=True, want_library=True, want_clip=True, want_gen=True) -> Context:
+def _ffmpeg():
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return "ffmpeg"
+
+
+def _fetch_video_segment(url: str, out: Path, clip_seconds: int, duration=None) -> bool:
+    """Fetch ONLY a short segment from the video URL. ffmpeg range-seeks, so grabbing 20s of a
+    21-minute archive.org film costs ~20s of bytes, not 800 MB. `-c copy` first (fast); re-encode
+    fallback for odd codecs / mid-GOP starts."""
+    import subprocess
+    ff = _ffmpeg()
+    offset = 0.0
+    if duration and duration > clip_seconds * 2:          # skip title cards / intros on long sources
+        offset = round(min(12.0, duration * 0.08), 2)
+    headers = "User-Agent: Mozilla/5.0\r\nReferer: https://www.google.com/\r\n"
+    base = [ff, "-y", "-headers", headers, "-ss", str(offset), "-i", url, "-t", str(clip_seconds)]
+    for tail in (["-c", "copy", "-movflags", "+faststart"],
+                 ["-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-an"]):
+        try:
+            subprocess.run(base + tail + [str(out)], capture_output=True, timeout=180)
+        except Exception:
+            continue
+        if out.exists() and out.stat().st_size > 20000:
+            return True
+        out.unlink(missing_ok=True)
+    return False
+
+
+def build_context(cfg, *, clip_seconds=20, want_stock=True, want_library=True, want_clip=True, want_gen=True) -> Context:
     ctx = Context()
 
     # --- stock: multi-provider search + gated download -------------------------------------------
@@ -75,16 +106,10 @@ def build_context(cfg, *, want_stock=True, want_library=True, want_clip=True, wa
                     from nolan.asset_gate import check_candidate
                     if not check_candidate(res2, tier="stock").ok:
                         return False
-                    req = urllib.request.Request(res2.url, headers={"User-Agent": "Mozilla/5.0", "Referer": "https://www.google.com/"})
-                    try:
-                        with urllib.request.urlopen(req, timeout=60) as r, open(out, "wb") as f:
-                            f.write(r.read())
-                    except Exception:
-                        return False
-                    if out.stat().st_size < 10000:
-                        return False
-                    c.path = out
-                    return True
+                    if _fetch_video_segment(res2.url, out, clip_seconds, getattr(res2, "duration", None)):
+                        c.path = out
+                        return True
+                    return False
                 out = dest / f"{base}.jpg"
                 res2 = client.resolve_asset(res)
                 if client.download_image(res2, out) is None or not _valid_image(out):
