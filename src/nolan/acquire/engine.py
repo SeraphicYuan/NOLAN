@@ -87,6 +87,12 @@ TIERS = {
 }
 
 
+# Curated institutional/art providers — exempt from the generic-stock relevance floor, because for
+# evocative beats their VALUE is precisely the non-literal match a low CLIP score would otherwise cull.
+_CURATED = {"artvee", "artic", "met", "wellcome", "rijksmuseum", "harvard", "cleveland",
+            "europeana", "dpla", "smithsonian", "loc", "nasa", "wikimedia"}
+
+
 def _provider_of(source: str) -> str:
     return (source or "").split(":")[-1]
 
@@ -134,8 +140,9 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
             live.append(c)
 
     # score each candidate. CONCRETE needs → literal CLIP relevance (a real photo of the thing wins).
-    # EVOCATIVE needs → the curated source TIER + fitness (library/artvee/museums win; literal relevance
-    # would wrongly demote the non-literal art). Both nudged by fitness + search order.
+    # EVOCATIVE needs → a TIER-dominant blend: curated sources (library/artvee/museums) lead, but
+    # relevance still counts so no single source floods the beat with off-topic hits. Both nudged by
+    # fitness + search order.
     from nolan import pool_curation
     text = need.get("query", "")
     evocative = bool(need.get("evocative"))
@@ -152,9 +159,34 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
                 except Exception:
                     c.relevance = 0.0
         if evocative:
-            c.score = -source_rank(category, c.source) + cfg.w_fitness * fitness_score(c.fitness) - 0.02 * c.rank
+            # evocative beats want CURATED/artistic sources (library, artvee, museums) — literal CLIP
+            # relevance would wrongly DEMOTE the non-literal art. But tier ALONE lets one source flood a
+            # beat: the library always returns k cosine hits however weak, so pure-tier fills all slots
+            # with off-topic library images and shuts out museums + generated. So tier is the dominant
+            # term (normalised 0..1) while relevance breaks ties across+within tiers and fitness nudges —
+            # a much-more-relevant lower-tier item can overtake a barely-relevant top-tier one.
+            order = TIERS.get(category) or TIERS["general"]
+            tier_bonus = 1.0 - source_rank(category, c.source) / max(len(order), 1)   # 0..1 (library≈1)
+            c.score = tier_bonus + 0.7 * c.relevance + cfg.w_fitness * fitness_score(c.fitness) - 0.02 * c.rank
         else:
             c.score = (cfg.w_relevance * c.relevance) + (cfg.w_fitness * fitness_score(c.fitness)) - 0.01 * c.rank
+
+    # relevance gates (only when CLIP is available). Two kinds of source lie about relevance:
+    #   • the LIBRARY returns k-nearest for ANY query — an off-domain global store floods a beat at tier-0;
+    #   • GENERIC stock (pexels/pixabay/ddgs/unsplash) matches keywords literally — abstract queries drag
+    #     in junk ("fast track"→race car). Both must clear a floor. CURATED museum/art sources are EXEMPT:
+    #     evocative art is deliberately non-literal, so a low CLIP score there is a feature, not junk.
+    if ctx.relevance:
+        def _keep(c: Candidate) -> bool:
+            if c.modality != "image":
+                return True                                   # video is unscored — keep
+            prov = _provider_of(c.source)
+            if c.source == "library":
+                return c.relevance >= cfg.library_min_relevance
+            if prov in _CURATED and category in ("art", "archival"):
+                return True                                   # museum art IS the point of an art/archival beat
+            return c.relevance >= cfg.stock_relevance_floor   # else (incl. museums on a GENERAL beat) be on-topic
+        live = [c for c in live if _keep(c)]
 
     live.sort(key=lambda c: c.score, reverse=True)
 

@@ -95,6 +95,38 @@ def test_evocative_ranks_by_tier_concrete_by_relevance(tmp_path):
     assert co[0].source == "stock:ddgs"          # concrete → literal relevance wins
 
 
+def test_library_gate_drops_offdomain(tmp_path):
+    paths = _write(tmp_path, _patterns())
+    # library returns a hit, but CLIP says it's off-domain (below library_min_relevance) — must be culled,
+    # else a global cross-project store (e.g. medieval woodcuts) floods every beat at tier-0.
+    ctx = Context(search_library=lambda q, n: [Candidate(ref="lib", source="library", path=paths["left"])],
+                  relevance=lambda t, p: 0.10)
+    cfg = AcquireConfig(per_need=3, over_fetch=1, library_min_relevance=0.24, generate_evocative=False)
+    got = acquire_need({"id": "n", "query": "x", "queries": ["x"], "evocative": True, "category": "general"},
+                       ctx, cfg, tmp_path, [])
+    assert all(c.source != "library" for c in got)
+
+
+def test_stock_floor_but_curated_exempt(tmp_path):
+    paths = _write(tmp_path, _patterns())
+
+    def search_stock(need, n):
+        return [Candidate(ref="junk", source="stock:pexels", path=paths["left"]),   # generic web stock
+                Candidate(ref="art", source="stock:artvee", path=paths["top"])]      # curated art
+    ctx = Context(search_stock=search_stock, relevance=lambda t, p: 0.10)            # BOTH low relevance
+    cfg = AcquireConfig(per_need=3, over_fetch=1, stock_relevance_floor=0.20, generate_evocative=False)
+    got = acquire_need({"id": "n", "query": "x", "queries": ["x"], "evocative": True, "category": "art"},
+                       ctx, cfg, tmp_path, [])
+    srcs = {c.source for c in got}
+    assert "stock:pexels" not in srcs        # generic stock below floor → dropped (literal-keyword junk)
+    assert "stock:artvee" in srcs            # curated art exempt → kept despite low literal relevance (ART beat)
+
+    # …but on a GENERAL beat, a museum piece is as off-topic as anything — the exemption must NOT apply
+    gen = acquire_need({"id": "n2", "query": "x", "queries": ["x"], "evocative": True, "category": "general"},
+                       ctx, cfg, tmp_path, [])
+    assert "stock:artvee" not in {c.source for c in gen}   # museum art floored on a general-category beat
+
+
 def test_acquire_pool_dedups_across_needs(tmp_path):
     paths = _write(tmp_path, _patterns())
     # both needs return the SAME 'left' image → the second must dedup it (shared taken_hashes)

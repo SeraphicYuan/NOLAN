@@ -23,7 +23,17 @@ class AcquireConfig:
     w_fitness: float = 0.5
     # generation (first-class, floor-gated — only where stock/library is thin or off-topic)
     generate_evocative: bool = True   # generate for evocative beats below the relevance floor
-    generate_n: int = 2
+    generate_n: int = 3               # abstract beats lean on bespoke originals — stock/library are thin there
+    # library quality gate — the library is a k-NEAREST store: it returns `k` hits for ANY query even when
+    # the nearest is off-domain (a global cross-project library full of, e.g., medieval woodcuts will match
+    # "power grid" at ~0.18). Tier-0 alone would let that flood a beat, so library must clear an ABSOLUTE
+    # relevance bar to be trusted; below it, the beat leans on relevant stock + generation instead.
+    library_min_relevance: float = 0.24
+    # generic-stock quality floor — web/stock providers (pexels/pixabay/ddgs/unsplash) match keywords
+    # LITERALLY, so an abstract query drags in junk ("fast track"→race car, "shell company"→seashell).
+    # Generic stock must clear this to be kept; CURATED museum/art sources are EXEMPT (their low literal
+    # relevance is intentional — evocative art is not supposed to be a literal photo of the subject).
+    stock_relevance_floor: float = 0.20
     # diversity
     max_reuse: int = 3                # don't keep the same image for more than this many needs
     dedup_hamming: int = 6            # average-hash distance under which two images are near-duplicates
