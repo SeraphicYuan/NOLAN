@@ -13,7 +13,7 @@ from typing import Dict, List
 
 from .contract import StyleContract, fmt_target
 from .dimensions import DIMENSIONS, GATES
-from .metrics import SceneView, measure, scene_media, scene_num_count, scene_words
+from .metrics import SceneView, measure, scene_media, scene_num_count, scene_words, scene_asset_srcs
 
 
 def _check(value, lo, hi):
@@ -88,9 +88,9 @@ def scenes_from_hf(comp_dir) -> List[SceneView]:
                 out.append(SceneView(
                     frame_id=fr.get("id", sf.stem), scene_id=sc.get("id", f"s{i}"),
                     block=block, dur=float(sc.get("dur", 0) or 0),
-                    media=scene_media(data), register=str(data.get("register", "paper")),
+                    media=scene_media(block, data), register=str(data.get("register", "paper")),
                     num_count=scene_num_count(block, data), words=scene_words(data),
-                    first_in_frame=(i == 0),
+                    first_in_frame=(i == 0), srcs=scene_asset_srcs(block, data),
                 ))
     return out
 

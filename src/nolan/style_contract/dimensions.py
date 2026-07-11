@@ -51,6 +51,10 @@ DIMENSIONS = [
               rubric="stat scenes carrying >3 numbers should escalate to a chart"),
     Dimension("distinct_blocks", "Palette coverage", "distinct_blocks", "advisory",
               rubric="how many DISTINCT blocks used — reach past statement/stat/comparison into the tail"),
+    Dimension("media_diversity", "Media diversity", "media_diversity", "advisory", pct=True,
+              rubric="distinct assets ÷ grounded scenes — low means the same image is reused across beats"),
+    Dimension("max_asset_reuse", "Max asset reuse", "max_asset_reuse", "advisory",
+              rubric="most scenes any single asset appears in — >3 is the 'one photo everywhere' smell"),
 ]
 
 GATES = [d for d in DIMENSIONS if d.mode == "gate"]

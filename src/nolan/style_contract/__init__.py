@@ -10,7 +10,7 @@ To tweak what's judged, edit ONE file: `dimensions.py` (the registry). The engin
 from .dimensions import (Dimension, DIMENSIONS, GATES, ADVISORY, BY_KEY,
                          DIAL_ALIASES, LEVELS, PRESETS, DEFAULT_PRESET, PRINCIPLES)
 from .metrics import (SceneView, measure, block_family, BLOCK_FAMILY, MEDIA_CAPABLE,
-                      scene_media, scene_words, scene_num_count)
+                      scene_media, scene_words, scene_num_count, scene_asset_srcs)
 from .contract import StyleContract, fmt_target
 from .palette import (palette_brief, authoring_brief, load_catalog, catalog_blocks, BEAT_ROUTING)
 from .linter import (lint, scenes_from_hf, fingerprint, contract_from_fingerprint, format_report)
@@ -19,7 +19,7 @@ __all__ = [
     "Dimension", "DIMENSIONS", "GATES", "ADVISORY", "BY_KEY",
     "DIAL_ALIASES", "LEVELS", "PRESETS", "DEFAULT_PRESET", "PRINCIPLES",
     "SceneView", "measure", "block_family", "BLOCK_FAMILY", "MEDIA_CAPABLE",
-    "scene_media", "scene_words", "scene_num_count",
+    "scene_media", "scene_words", "scene_num_count", "scene_asset_srcs",
     "StyleContract", "fmt_target",
     "palette_brief", "authoring_brief", "load_catalog", "catalog_blocks", "BEAT_ROUTING",
     "lint", "scenes_from_hf", "fingerprint", "contract_from_fingerprint", "format_report",

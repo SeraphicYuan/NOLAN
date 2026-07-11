@@ -52,6 +52,38 @@ def test_measure_core_metrics():
     assert "layout_entropy" not in m
 
 
+def test_scene_media_by_block_rules():
+    from nolan.style_contract import scene_media
+    # comparison = union of the two sides
+    assert scene_media("comparison", {"left": {"type": "video", "src": "a.mp4"}, "right": {"type": "text"}}) == "video"
+    assert scene_media("comparison", {"left": {"type": "image", "src": "a.jpg"}, "right": {"type": "stat"}}) == "image"
+    assert scene_media("comparison", {"left": {"type": "text"}, "right": {"type": "stat"}}) == "none"
+    # ground-honoring blocks
+    assert scene_media("statement", {"ground": {"kind": "image", "src": "a.jpg"}}) == "image"
+    assert scene_media("statement", {"ground": {"kind": "video", "src": "a.mp4"}}) == "video"
+    assert scene_media("statement", {"lines": ["hi"]}) == "none"
+    # newshead ignores a video ground (renders blank) -> none; honors an explicit image
+    assert scene_media("newshead", {"ground": {"kind": "video", "src": "a.mp4"}}) == "none"
+    assert scene_media("newshead", {"image": "a.jpg"}) == "image"
+    # always-image + pure-data blocks (the false-positive fix: a stat's number is NOT an asset)
+    assert scene_media("gallery", {"images": ["a.jpg"]}) == "image"
+    assert scene_media("chart", {"series": [1, 2]}) == "none"
+    assert scene_media("stat", {"items": [{"value": 5}]}) == "none"
+
+
+def test_media_diversity_and_reuse_metrics():
+    from nolan.style_contract import scene_asset_srcs
+    assert scene_asset_srcs("statement", {"ground": {"kind": "image", "src": "a.jpg"}}) == ["a.jpg"]
+    assert scene_asset_srcs("comparison", {"left": {"type": "video", "src": "v.mp4"}, "right": {"type": "text"}}) == ["v.mp4"]
+    assert scene_asset_srcs("chart", {"series": [1]}) == []
+    # one asset reused across 3 of 4 grounded scenes
+    scenes = [SceneView("f", f"s{i}", "statement", 5.0, media="image", srcs=["same.jpg"]) for i in range(3)]
+    scenes.append(SceneView("f", "s3", "statement", 5.0, media="image", srcs=["other.jpg"]))
+    m = measure(scenes)
+    assert m["max_asset_reuse"] == 3 and m["distinct_assets"] == 2
+    assert abs(m["media_diversity"] - 0.5) < 0.01                 # 2 distinct / 4 grounded
+
+
 def test_contract_resolve_dials_and_aliases():
     c = StyleContract.resolve("essay", asset_density="dense")
     assert c.targets["coverage"] == (0.6, 0.95)                   # dial alias -> coverage dense level
