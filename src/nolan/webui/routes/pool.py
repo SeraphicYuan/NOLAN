@@ -67,6 +67,115 @@ def register(app, ctx):
         return FileResponse(str(fp), media_type=_MEDIA_TYPES.get(
             fp.suffix.lower(), "application/octet-stream"))
 
+    # ---- HyperFrames comp pools (the compose-first acquisition pool) ----------------------------
+    # A DIFFERENT bin from the pipeline pool: HF assets are pre-selection CANDIDATES grouped by NEED
+    # (a1..aN), each carrying its acquisition provenance (source, CLIP relevance) + the VLM curation
+    # verdict (usable/flags). Doubles as the per-need contact sheet.
+    _THIN = 3                                     # a need with fewer usable candidates than this is "thin"
+
+    def _hf_dir(comp: str) -> Path:
+        from nolan.hyperframes import edit as hfedit
+        try:
+            d = hfedit.comp_dir(comp)
+        except Exception:
+            raise HTTPException(status_code=404, detail=f"comp {comp!r} not found")
+        return d
+
+    def _hf_comps():
+        from nolan.hyperframes import edit as hfedit
+        import json
+        out = []
+        for source, root in (("lab", hfedit.LAB_VIDEOS), ("project", hfedit.PROJECTS)):
+            if not Path(root).exists():
+                continue
+            for d in sorted(p for p in Path(root).iterdir() if p.is_dir()):
+                pj = d / "pool.json"
+                if not pj.is_file():
+                    continue
+                try:
+                    pool = json.loads(pj.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                needs = {it.get("id") for it in pool}
+                gen = sum(1 for it in pool if "generat" in str(it.get("source", "")).lower())
+                out.append({"name": d.name, "source": source, "assets": len(pool),
+                            "needs": len(needs), "generated": gen})
+        return out
+
+    @app.get("/api/pool/hf/comps")
+    async def hf_comps():
+        return {"comps": _hf_comps()}
+
+    @app.get("/api/pool/hf")
+    async def hf_pool(comp: str = Query(...)):
+        import json
+        d = _hf_dir(comp)
+        pj = d / "pool.json"
+        if not pj.is_file():
+            raise HTTPException(status_code=404, detail="no pool.json for this comp")
+        pool = json.loads(pj.read_text(encoding="utf-8"))
+        needs = {}
+        nf = d / "capture" / "needs.json"
+        if nf.is_file():
+            try:
+                needs = {n["id"]: n for n in json.loads(nf.read_text(encoding="utf-8"))}
+            except Exception:
+                needs = {}
+        assets = d / "capture" / "assets"
+
+        def _provider(src: str) -> str:
+            s = str(src or "?")
+            if "generat" in s.lower():
+                return "generated"
+            return s.split(":")[-1]
+
+        bins, providers = {}, set()
+        for it in pool:
+            nid = it.get("id", "?")
+            src = it.get("source", "?")
+            prov = _provider(src)
+            providers.add(prov)
+            kind = it.get("media_type") or "image"
+            item = {"file": it.get("file"), "kind": kind, "source": src, "provider": prov,
+                    "relevance": it.get("relevance"), "usable": it.get("usable"),
+                    "flags": it.get("flags") or "", "caption": it.get("caption") or "",
+                    "license": it.get("license") or "", "source_url": it.get("source_url") or "",
+                    "photographer": it.get("photographer") or "",
+                    "exists": (assets / it["file"]).is_file() if it.get("file") else False,
+                    "url": f"/api/pool/hf/file?comp={comp}&file={it.get('file')}"}
+            b = bins.setdefault(nid, {"need": nid, "query": (needs.get(nid) or {}).get("query", it.get("query", "")),
+                                      "evocative": bool((needs.get(nid) or {}).get("evocative")),
+                                      "media_type": (needs.get(nid) or {}).get("media_type", kind), "items": []})
+            b["items"].append(item)
+
+        def _nkey(nid):
+            return (0, int(nid[1:])) if nid[:1] == "a" and nid[1:].isdigit() else (1, nid)
+        binlist = []
+        thin = []
+        for nid in sorted(bins, key=_nkey):
+            b = bins[nid]
+            b["count"] = len(b["items"])
+            b["generated"] = sum(1 for i in b["items"] if i["provider"] == "generated")
+            b["real"] = b["count"] - b["generated"]
+            b["thin"] = b["count"] < _THIN
+            if b["thin"]:
+                thin.append(nid)
+            binlist.append(b)
+        return {"comp": comp, "total": len(pool), "providers": sorted(providers),
+                "thin_needs": thin, "bins": binlist}
+
+    @app.get("/api/pool/hf/file")
+    async def hf_file(comp: str = Query(...), file: str = Query(...)):
+        assets = (_hf_dir(comp) / "capture" / "assets").resolve()
+        try:
+            fp = (assets / file).resolve()
+        except OSError:
+            raise HTTPException(status_code=400, detail="bad path")
+        if assets not in fp.parents or not fp.is_file():
+            raise HTTPException(status_code=404, detail="not found")
+        return FileResponse(str(fp), media_type=_MEDIA_TYPES.get(
+            fp.suffix.lower(), "application/octet-stream"))
+
     @app.post("/api/pool/shortlist")
     async def pool_shortlist(body: dict = Body(...)):
         project = (body.get("project") or "").strip()

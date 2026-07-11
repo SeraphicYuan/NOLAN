@@ -61,6 +61,31 @@
     dialog button { background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary);
              border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
     dialog button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    /* --- HyperFrames comp-pool mode --- */
+    .thin-banner { background: color-mix(in srgb, var(--warning, #e5a50a) 14%, var(--bg-secondary));
+             border: 1px solid var(--warning, #e5a50a); border-radius: 10px; padding: 10px 14px;
+             font-size: 12.5px; margin-bottom: 16px; line-height: 1.5; }
+    .hf-bin { margin-bottom: 22px; }
+    .hf-bin h3 { font-size: 14px; font-weight: 650; margin: 0 0 10px; display: flex; gap: 9px;
+             align-items: baseline; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 7px; }
+    .hf-bin h3 .nid { font-family: ui-monospace, monospace; color: var(--accent); }
+    .hf-bin h3 .tag { font-size: 11px; font-weight: 500; color: var(--text-secondary);
+             background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+    .hf-bin h3 .tag.evoc { color: #c084fc; border-color: #7e22ce; }
+    .hf-bin h3 .thinbadge { font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: #fff;
+             background: var(--warning, #e5a50a); border-radius: 6px; padding: 1px 7px; }
+    .hf-bin h3 .cnt { margin-left: auto; font-size: 11.5px; color: var(--text-secondary); font-weight: 500; }
+    .badge.prov { background: #475569; text-transform: none; letter-spacing: 0; font-weight: 600; }
+    .badge.prov.generated { background: #7c3aed; }
+    .badge.prov.library { background: #0e7490; }
+    .usable { position: absolute; top: 7px; right: 7px; font-size: 11px; font-weight: 800; border-radius: 6px;
+             padding: 2px 7px; color: #fff; font-variant-numeric: tabular-nums; }
+    .usable.u-good { background: #16a34a; } .usable.u-mid { background: #d97706; }
+    .usable.u-bad { background: #dc2626; } .usable.u-na { background: #52525b; }
+    .card .th video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card a.th { display: block; text-decoration: none; }
+    .flagline { font-size: 11px; color: #f87171; line-height: 1.35; }
+    .rel { font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body>
@@ -73,6 +98,10 @@
       Derived live from the plan, shortlist and render manifest — nothing here is separate storage.</div>
 
     <div class="bar">
+      <select id="sourceSel" title="which pool">
+        <option value="projects">Pipeline projects</option>
+        <option value="hf">HyperFrames comps</option>
+      </select>
       <select id="projectSel"><option value="">Select project…</option></select>
       <select id="sceneSel"><option value="">All scenes</option></select>
       <select id="kindSel">
@@ -80,10 +109,14 @@
         <option value="image">Images</option>
         <option value="video">Video</option>
       </select>
+      <select id="compSel" style="display:none"><option value="">Select comp…</option></select>
+      <select id="providerSel" style="display:none"><option value="">All sources</option></select>
       <span class="warn" id="manifestWarn" style="display:none">no render manifest yet — “in-video” unknown until the next render</span>
     </div>
     <div class="chips" id="chips"></div>
+    <div class="thin-banner" id="thinBanner" style="display:none"></div>
     <div class="grid" id="grid"></div>
+    <div id="hfContainer" style="display:none"></div>
     <div class="empty" id="empty" style="display:none">No assets match this filter.</div>
   </div>
 
@@ -102,6 +135,7 @@
   <script>
     let pool = null, project = '', statusFilter = '', slPath = '', slKind = 'image';
     let visible = [];   // the currently rendered (filtered) items, index-addressed
+    let projLoaded = false, hfPool = null, hfComp = '', hfLoaded = false;   // HyperFrames-mode state
     const STATUSES = ['in-video', 'selected', 'candidate', 'shortlisted', 'unused'];
 
     function qs(id) { return document.getElementById(id); }
@@ -117,6 +151,7 @@
         o.value = p.name; o.textContent = p.name;
         sel.appendChild(o);
       });
+      projLoaded = true;
       const urlP = new URLSearchParams(location.search).get('project');
       if (urlP) { sel.value = urlP; }
       if (sel.value) { project = sel.value; loadPool(); }
@@ -247,7 +282,112 @@
     });
     qs('sceneSel').addEventListener('change', render);
     qs('kindSel').addEventListener('change', render);
-    loadProjects();
+
+    // ---- HyperFrames comp-pool mode: pre-selection CANDIDATES grouped by NEED, with acquisition
+    //      provenance (source + CLIP relevance) and the VLM curation verdict (usable/flags). ----
+    const PROJ_CTRLS = ['projectSel', 'sceneSel', 'kindSel'];
+
+    function setSource(src) {
+      const hf = src === 'hf';
+      PROJ_CTRLS.forEach(id => qs(id).style.display = hf ? 'none' : '');
+      qs('chips').style.display = hf ? 'none' : '';
+      qs('grid').style.display = hf ? 'none' : '';
+      qs('manifestWarn').style.display = 'none';
+      qs('empty').style.display = 'none';
+      qs('thinBanner').style.display = 'none';
+      qs('compSel').style.display = hf ? '' : 'none';
+      qs('providerSel').style.display = hf ? '' : 'none';
+      qs('hfContainer').style.display = hf ? '' : 'none';
+      const u = new URL(location); u.searchParams.set('src', src); history.replaceState(null, '', u);
+      if (hf) { hfLoaded ? renderHf() : loadHfComps(); }
+      else { projLoaded ? (project && loadPool()) : loadProjects(); }
+    }
+
+    async function loadHfComps() {
+      const res = await fetch('/api/pool/hf/comps');
+      const data = await res.json();
+      const sel = qs('compSel');
+      sel.innerHTML = '<option value="">Select comp…</option>';
+      (data.comps || []).forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.name; o.textContent = `${c.name} · ${c.assets} assets`;
+        sel.appendChild(o);
+      });
+      hfLoaded = true;
+      const urlC = new URLSearchParams(location.search).get('comp');
+      if (urlC) sel.value = urlC;
+      if (sel.value) { hfComp = sel.value; loadHfPool(); }
+    }
+
+    async function loadHfPool() {
+      if (!hfComp) { qs('hfContainer').innerHTML = ''; return; }
+      const res = await fetch(`/api/pool/hf?comp=${encodeURIComponent(hfComp)}`);
+      if (!res.ok) { qs('hfContainer').innerHTML = ''; qs('empty').style.display = ''; return; }
+      hfPool = await res.json();
+      const ps = qs('providerSel');
+      ps.innerHTML = '<option value="">All sources</option>';
+      (hfPool.providers || []).forEach(p => {
+        const o = document.createElement('option'); o.value = p; o.textContent = p; ps.appendChild(o);
+      });
+      renderHf();
+    }
+
+    function usableCls(u) { return u == null ? 'u-na' : (u >= 7 ? 'u-good' : (u >= 4 ? 'u-mid' : 'u-bad')); }
+
+    function hfCard(it) {
+      const media = !it.exists ? `<div class="missing">missing</div>`
+        : it.kind === 'video' ? `<video src="${it.url}" preload="metadata" muted></video>`
+        : `<img src="${it.url}" loading="lazy" alt="">`;
+      const provCls = it.provider === 'generated' ? 'generated' : (it.provider === 'library' ? 'library' : '');
+      const rel = it.relevance != null ? `<span class="rel">rel ${esc(it.relevance)}</span>` : '';
+      const lic = [it.provider, it.license].filter(Boolean).join(' · ');
+      return `<div class="card">
+        <a class="th" href="${it.url}" target="_blank" rel="noopener">
+          ${media}
+          <span class="badge prov ${provCls}">${esc(it.provider)}</span>
+          <span class="usable ${usableCls(it.usable)}" title="editor usability (VLM 0-10)">${it.usable == null ? '—' : esc(it.usable)}</span>
+        </a>
+        <div class="meta">
+          <div class="name" title="${esc(it.file)}">${esc(it.caption || it.file)}</div>
+          <div class="lic">${esc(lic)}${rel ? ' · ' : ''}${rel}</div>
+          ${it.flags ? `<div class="flagline">⚑ ${esc(it.flags)}</div>` : ''}
+        </div>
+      </div>`;
+    }
+
+    function renderHf() {
+      if (!hfPool) return;
+      const thin = hfPool.thin_needs || [];
+      const tb = qs('thinBanner');
+      if (thin.length) {
+        tb.style.display = '';
+        tb.innerHTML = `⚠ <b>Thin beats</b> (under 3 candidates): ${thin.map(esc).join(', ')} — re-run acquisition with a higher <code>--per</code>, or they lean on generation.`;
+      } else tb.style.display = 'none';
+      const prov = qs('providerSel').value;
+      const html = (hfPool.bins || []).map(b => {
+        const items = b.items.filter(it => !prov || it.provider === prov);
+        if (!items.length) return '';
+        const head = `<h3><span class="nid">${esc(b.need)}</span> ${esc(b.query)}
+          <span class="tag ${b.evocative ? 'evoc' : ''}">${b.evocative ? 'evocative' : 'concrete'} · ${esc(b.media_type)}</span>
+          ${b.thin ? '<span class="thinbadge">thin</span>' : ''}
+          <span class="cnt">${b.count} · ${b.real} stock/lib · ${b.generated} gen</span></h3>`;
+        return `<div class="hf-bin">${head}<div class="grid">${items.map(hfCard).join('')}</div></div>`;
+      }).join('');
+      qs('hfContainer').innerHTML = html || '<div class="empty">No assets for this filter.</div>';
+    }
+
+    qs('compSel').addEventListener('change', e => {
+      hfComp = e.target.value;
+      const u = new URL(location); u.searchParams.set('comp', hfComp); history.replaceState(null, '', u);
+      loadHfPool();
+    });
+    qs('providerSel').addEventListener('change', renderHf);
+    qs('sourceSel').addEventListener('change', e => setSource(e.target.value));
+
+    // init — respect ?src / ?comp / ?project so links are shareable
+    const _src0 = new URLSearchParams(location.search).get('src') || 'projects';
+    qs('sourceSel').value = _src0;
+    setSource(_src0);
   </script>
 </body>
 </html>
