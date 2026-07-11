@@ -420,7 +420,7 @@ Everything lives in `render-service/_lab_hyperframes/` (see `REPORT.md` for the 
     at mid-transition) + `videos/ft/` (fade-through dip). Wrapping `.clip` in a `<div>` does NOT break the
     runtime's mount/z (pitfall #5: z is DOM-order/z-index, not track-index) — confirmed by render.
 - **`bridge/resolve_inject.py`** — NOLAN krea2/ComfyUI or stock → project `assets/` + ledger.
-- **`bridge/pool.py`** — NOLAN acquisition fan-out → qwen-VL-captioned inventory HyperFrames selects from.
+- **`bridge/pool.py`** — NOLAN acquisition fan-out → qwen-VL-captioned inventory HyperFrames selects from. EXPAND→COLLECT→GAP-FILL: query-variant expansion + evoke_broll metaphor super-search for `evocative` needs → multi-query, source-diversified retrieval across the FULL 25-provider registry (via `provider_keys()`; stock, museums, artvee, archive.org stills+movies…), biased by a per-need `category` quality tier (art→artvee/wikicommons/museums, archival→archive.org, general→pexels/pixabay) → krea2 gap-fill for empty needs. Roster + source distribution printed each run. Wiring + tiers locked by `tests/test_hf_pool_expand.py`.
 - **`bridge/inject_root_video.py`** — mounts stock b-roll `<video>` at the index HOST ROOT (archetype B) — the only legal path for motion footage (see §5).
 - **`bridge/motion-palette.md`** — maps video-essay beat archetypes → HyperFrames' full vocabulary (36 rules · 15 blueprints · 24 text effects · 7 adapters).
 - **`presets/highlighter-editorial/`** — a custom Vox-lineage frame preset; **`--preset-dir` is the confirmed custom-style seam.**

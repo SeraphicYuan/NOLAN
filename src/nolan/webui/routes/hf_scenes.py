@@ -230,7 +230,7 @@ def register(app, ctx):
         session = (payload.get("session") or "").strip()
         if not (script and name):
             raise HTTPException(status_code=400, detail="name and script are required")
-        res = _guard(hfedit.new_essay, name, script, payload.get("style"), bool(payload.get("acquire_pool")))
+        res = _guard(hfedit.new_essay, name, script, payload.get("style"), bool(payload.get("acquire_pool", True)))
         if res.get("acquire_pool"):        # acquire the asset pool first (from the script), before authoring
             pjob = job_manager.start("hf_pool", _pool_job, meta={"comp": res["comp"]},
                                      comp=res["comp"], needs=None, script=script, per=3)

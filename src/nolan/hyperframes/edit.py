@@ -45,7 +45,7 @@ def discover_compositions() -> List[Dict[str, Any]]:
     return out
 
 
-def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = False) -> str:
+def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True) -> str:
     """The task brief the faceless-explainer agent reads to author a new essay (written to .hf_kickoff.md)."""
     rel = f"videos/{slug}"
     style_line = f"\n- **Style:** {style}" if style else ""
@@ -79,7 +79,7 @@ When the frames are composed, tell the user the composition id is **`{slug}`** �
 """
 
 
-def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = False) -> Dict[str, Any]:
+def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = True) -> Dict[str, Any]:
     """Scaffold a new HyperFrames essay project under the lab videos root + write a kickoff brief for the
     faceless-explainer agent. Returns {comp, dir, prompt, acquire_pool}; the caller dispatches `prompt` to a
     tmux agent (and, if acquire_pool, first runs the asset pool). Shows up in /hyperframes once frames exist."""
@@ -121,11 +121,26 @@ def _project_script(pdir: Path) -> str:
 
 
 async def derive_asset_needs(script: str, client, k: int = 8) -> List[Dict[str, Any]]:
-    """LLM: an essay script -> a small `needs` list for the pool bridge (stock/gen queries)."""
-    system = ("You plan STOCK ASSET needs for a video essay. From the script, list the concrete visual subjects "
-              "worth gathering — real people, places, objects, events, archival footage. Return ONLY a JSON array "
-              f"of up to {k} items, each {{\"id\":\"a1\",\"query\":\"3-6 word stock search\",\"media_type\":\"image\" "
-              "or \"video\",\"n\":3}}. Prefer image; use video only for motion-critical subjects. No prose, no code fences.")
+    """LLM: an essay script -> a `needs` list for the pool bridge, with QUERY-VARIANT EXPANSION.
+
+    Each need carries several distinct stock-search phrasings (`queries`) so the bridge casts a wide
+    net (multi-query retrieval — recall is the bottleneck in stock search), an `evocative` flag that
+    routes abstract subjects through the evoke_broll metaphor super-search, and a `gen_prompt` used
+    for krea2 gap-fill when stock finds nothing. `query` (the plain phrasing) stays for back-compat."""
+    system = ("You plan VISUAL ASSET needs for a video essay. From the script, list the visual subjects worth "
+              "gathering — people, places, objects, events, archival footage, and abstract themes. For EACH, give "
+              "several DISTINCT stock-search phrasings so we cast a wide net, mark whether it is abstract, and give "
+              f"a fallback generation prompt. Return ONLY a JSON array of up to {k} items, each: "
+              "{\"id\":\"a1\", \"query\":\"plain 3-6 word stock search\", "
+              "\"queries\":[\"3-5 distinct phrasings incl. the plain one — synonyms, a concrete instance, "
+              "a shot/era/mood descriptor\"], \"media_type\":\"image\" or \"video\", \"n\":3, "
+              "\"evocative\": true if the subject is an ABSTRACT idea/emotion/theme (not a concrete photographable "
+              "thing) else false, \"category\":\"art\" or \"archival\" or \"general\" "
+              "(art = painting/fine-art/illustration; archival = historical photos or footage; "
+              "general = modern photos/video — people, places, nature, objects), "
+              "\"gen_prompt\":\"one cinematic image-generation prompt for this subject\"}. "
+              "Prefer image; choose video for motion-critical subjects AND archival/historical FOOTAGE "
+              "(newsreel, documentary, period film) so archival-video sources are used. No prose, no code fences.")
     raw = (await client.generate((script or "")[:6000], system_prompt=system)).strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
@@ -134,10 +149,25 @@ async def derive_asset_needs(script: str, client, k: int = 8) -> List[Dict[str, 
     out = []
     for n, it in enumerate(items[:k]):
         q = str(it.get("query", "")).strip()
-        if q:
-            out.append({"id": it.get("id") or f"a{n + 1}", "query": q,
-                        "media_type": "video" if it.get("media_type") == "video" else "image",
-                        "n": int(it.get("n", 3) or 3)})
+        if not q:
+            continue
+        variants = [str(x).strip() for x in (it.get("queries") or []) if str(x).strip()]
+        if q not in variants:
+            variants = [q] + variants
+        seen, queries = set(), []                       # de-dup the phrasings, cap the fan-out
+        for x in variants:
+            key = x.lower()
+            if key not in seen:
+                seen.add(key)
+                queries.append(x)
+        cat = str(it.get("category", "general")).strip().lower()
+        if cat not in ("art", "archival", "general"):
+            cat = "general"
+        out.append({"id": it.get("id") or f"a{n + 1}", "query": q, "queries": queries[:5],
+                    "media_type": "video" if it.get("media_type") == "video" else "image",
+                    "n": int(it.get("n", 3) or 3),
+                    "evocative": bool(it.get("evocative")), "category": cat,
+                    "gen_prompt": (str(it.get("gen_prompt") or q).strip())})
     return out
 
 

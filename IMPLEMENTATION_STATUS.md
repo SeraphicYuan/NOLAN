@@ -4,6 +4,35 @@
 **Status:** Complete
 **Last Updated:** 2026-07-07
 
+## HyperFrames asset pool — deep + default + full-registry (2026-07-10)
+
+- **Asset-backed by default.** The `/hyperframes` New-essay flow now acquires an
+  asset pool from the script by default; the checkbox is an **"Asset-pool-free
+  (faceless)"** opt-out (`new_essay(acquire_pool=True)`; route + kickoff brief default on).
+- **Playable rendered-frame clips.** A frame with a rendered `.preview.mp4` shows a
+  ▶ badge + inline `<video>` on load (like /scenes) — `list_frames.preview_mp4` +
+  `GET /api/hf/frame-video`. Verified end-to-end on a real render.
+- **Deeper pool (`bridge/pool.py`): EXPAND → COLLECT → GAP-FILL.** `derive_asset_needs`
+  emits, per need, several **query variants** (multi-query retrieval) + an `evocative`
+  flag + a `gen_prompt`. Evocative needs are bridged into visual **metaphors** via
+  evoke_broll's operator bridge (`expand_needs`); empty needs are **krea2 gap-filled**.
+  Recall up; precision held by the existing gate + qwen-VL caption + compose-first select.
+- **Full provider registry, robustly.** `pool._client` builds via
+  `image_sources.provider_keys()` — inherits all 25 providers (stock, museums, **artvee**,
+  **archive.org stills + movies**, nasa, coverr…) with no hand-list to rot; new keyed
+  providers auto-join. Candidates are **round-robin diversified** by source so archival/art
+  sources aren't buried under ddgs; the available-provider roster + per-run source
+  distribution are printed (honesty). Archival-footage needs are nudged to `video`.
+- **Curated quality-tier bias.** Each need carries a `category` (art | archival | general) from
+  the LLM; source-diversity visits provider buckets in a curated order per category — **art →
+  artvee / wikicommons / museum APIs**, **archival → archive.org (movies + stills)**, **general →
+  pexels / pixabay / stock** — so the best source for that KIND of asset gets first pick (verified
+  live: an art need drew artvee+met+artic, archival drew archive.org, general drew pexels+pixabay).
+  Also fixed a latent `image_search.download_image` NameError (undefined `logger`) that made every
+  gate-refused download throw instead of cleanly skipping.
+- **Tests:** `tests/test_hf_pool_expand.py` (9) — variant expansion, multi-query dedupe,
+  category-tier ordering, source diversity, and a **full-registry wiring lock** (a stale pool fails).
+
 ## HyperFrames scene edit mode — Phase 2 (agent edits) + asset picker (2026-07-10)
 
 - **Comment → agent → gate** (`edit.py:revise_frame_note`, async): a human note

@@ -134,8 +134,8 @@
         <div class="field"><label>style (optional)</label><input id="new-style" placeholder="e.g. Vox highlighter-editorial, dark"></div>
       </div>
       <label class="field" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-top:4px">
-        <input type="checkbox" id="new-pool" style="width:auto;margin-top:2px">
-        <span style="font-size:12px">Acquire an <b>asset pool</b> from the script first — stock images/video + captions via <code>pool.py</code>. Makes the run <b>asset-backed</b> instead of faceless.</span></label>
+        <input type="checkbox" id="new-faceless" style="width:auto;margin-top:2px">
+        <span style="font-size:12px"><b>Asset-pool-free (faceless)</b> — skip stock/gen acquisition and invent every visual. Default is <b>asset-backed</b>: acquire a pool from the script via <code>pool.py</code>, then compose.</span></label>
       <div class="insp-actions"><button class="btn" onclick="submitNew()">Create + dispatch</button></div>
       <div class="desc" style="margin-top:8px">The agent invents visuals per scene (or selects from the pool, if enabled) and authors in the background. It appears in the selector above (auto-refresh) once frames are composed; then edit it per-scene here.</div>
     </div>
@@ -179,7 +179,7 @@ async function loadAgents() {
 }
 async function submitNew() {
   const name = $("#new-name").value.trim(), script = $("#new-script").value.trim(),
-        session = $("#new-session").value, style = $("#new-style").value.trim(), acquire_pool = $("#new-pool").checked;
+        session = $("#new-session").value, style = $("#new-style").value.trim(), acquire_pool = !$("#new-faceless").checked;
   if (!name || !script) return toast("name + script are required", "err");
   try {
     const r = await jpost("/api/hf/new", { name, script, session, style, acquire_pool });

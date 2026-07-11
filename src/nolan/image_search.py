@@ -1,6 +1,7 @@
 """Image search providers for NOLAN."""
 
 import json
+import logging
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 # --- Free-tier rate limits for keyed stock providers -------------------------

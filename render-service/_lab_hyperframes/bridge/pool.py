@@ -1,36 +1,42 @@
-"""NOLAN -> HyperFrames asset bridge, Phase 1.5: COLLECT -> CAPTION -> INVENTORY.
+"""NOLAN -> HyperFrames asset bridge, Phase 1.5: EXPAND -> COLLECT -> GAP-FILL -> CAPTION -> INVENTORY.
 
-"NOLAN is the camera." Fans out NOLAN's whole acquisition stack (stock image x N
-providers + stock VIDEO + — optionally — krea2 gen), freezes a candidate POOL into a
-HyperFrames project's capture/assets/, vision-captions each with OpenRouter qwen-VL, and
+"NOLAN is the camera." Fans out NOLAN's whole acquisition stack and freezes a candidate POOL into
+a HyperFrames project's capture/assets/, then vision-captions each with OpenRouter qwen-VL and
 writes capture/extracted/asset-descriptions.md — the SAME inventory shape the capture-based
-workflows (product-launch / website) already select `asset_candidates` from. So HyperFrames
-keeps its own selection judgment; NOLAN just fills the pool.
+workflows (product-launch / website) already select `asset_candidates` from. So HyperFrames keeps
+its own selection judgment; NOLAN just fills (a deep) pool. Three recall/precision layers:
 
-  python pool.py --needs needs.json --project <hyperframes_project_dir> [--per 3] [--no-caption]
+  1. EXPAND  — for `evocative` (abstract) needs, evoke_broll's operator bridge (tonal+conceptual)
+               turns the subject into visual METAPHORS and merges them into the need's queries.
+  2. COLLECT — multi-query retrieval across N stock providers (image + VIDEO): every phrasing is
+               searched, candidates de-duped by source_url, gated (asset_gate, tier=stock) and
+               validity-checked, then downloaded up to n per need.
+  3. GAP-FILL— any need that stock leaves empty is GENERATED (krea2 / ComfyUI) from its gen_prompt.
 
-needs.json: [ { "id","query","media_type":"image|video","sources":[...]?,"n":int? }, ... ]
+  python pool.py --needs needs.json --project <dir> [--per 3] [--no-caption] [--no-expand] [--no-gen]
+
+needs.json: [ { "id","query","queries":[...]?,"media_type":"image|video","sources":[...]?,
+                "n":int?, "evocative":bool?, "gen_prompt":str? }, ... ]  (queries/evocative/gen_prompt
+optional — a plain {"query"} still works; the bridge falls back to a single literal search.)
 """
 import argparse, asyncio, json, os
 from pathlib import Path
 
 
 def _client(cfg):
+    """Build the search client the CANONICAL way — the same construction evoke_broll and the main
+    pipeline use — so pool.py inherits the WHOLE provider registry (all 25: ddgs, stock, museums,
+    artvee, archive.org stills+movies, nasa, coverr…) and never goes stale. Keyed providers come
+    from `provider_keys()` (single source of truth: add a key there + register it in
+    ImageSearchClient and the pool picks it up with zero edits here); keyless providers are always
+    registered by the client itself."""
     from nolan.image_search import ImageSearchClient
     s = cfg.image_sources
     return ImageSearchClient(
         pexels_api_key=s.pexels_api_key or None,
         pixabay_api_key=s.pixabay_api_key or None,
         smithsonian_api_key=getattr(s, "smithsonian_api_key", "") or None,
-        keys={
-            "europeana": getattr(s, "europeana_api_key", ""),
-            "dpla": getattr(s, "dpla_api_key", ""),
-            "flickr": getattr(s, "flickr_api_key", ""),
-            "unsplash": getattr(s, "unsplash_access_key", ""),
-            "rijksmuseum": getattr(s, "rijksmuseum_api_key", ""),
-            "harvard": getattr(s, "harvard_api_key", ""),
-            "coverr": getattr(s, "coverr_api_key", ""),
-        },
+        keys=s.provider_keys(),          # canonical — no hand-maintained subset to rot
     )
 
 
@@ -66,20 +72,110 @@ def _download_video(result, out_path: Path) -> bool:
         return False
 
 
+def _need_queries(need) -> list:
+    """The distinct search phrasings for a need — variants from derive_asset_needs (+ any
+    evoke_broll metaphors merged in by expand_needs), falling back to the plain query."""
+    seen, out = set(), []
+    for q in (need.get("queries") or [need.get("query", "")]):
+        q = str(q).strip()
+        k = q.lower()
+        if q and k not in seen:
+            seen.add(k)
+            out.append(q)
+    return out[:6]
+
+
+# Curated QUALITY/PRIORITY tiers per content category. A need's `category` (from
+# derive_asset_needs) picks the ordering; within source-diversity the provider buckets are
+# visited in this order, so the BEST source for that KIND of asset gets first pick. Every
+# provider is still queried (full fan-out) — this only ranks the PICK order. Providers not
+# listed for a category fall to a default low rank (still included, just later). Names are
+# validated against the live registry by tests/test_hf_pool_expand.py (can't go stale silently).
+_PROVIDER_TIERS = {
+    # fine art / paintings / illustration — artvee + wikicommons best, then museum APIs
+    "art": ["artvee", "wikimedia", "met", "artic", "rijksmuseum", "harvard", "cleveland",
+            "wellcome", "europeana", "dpla", "smithsonian", "loc", "openverse", "ddgs"],
+    # historical stills & FOOTAGE — archive.org first (movies + stills), then heritage archives
+    "archival": ["archive", "archive_image", "loc", "smithsonian", "europeana", "dpla", "nasa",
+                 "nasa_video", "wikimedia", "flickr", "pexels_video", "pixabay_video",
+                 "coverr_video", "ddgs"],
+    # modern photos & video, people/places/nature/objects — the usual stock, movie-style clips
+    "general": ["pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
+                "pixabay_video", "coverr_video", "flickr", "wikimedia", "nasa", "nasa_video"],
+}
+_DEFAULT_CATEGORY = "general"
+
+
+def _source_rank(category, source):
+    """Priority rank of a provider for a content category (lower = preferred). Unlisted providers
+    sort after the curated ones but are still kept — the fan-out is never narrowed, only ordered."""
+    order = _PROVIDER_TIERS.get(category) or _PROVIDER_TIERS[_DEFAULT_CATEGORY]
+    try:
+        return order.index(source)
+    except ValueError:
+        return len(order) + 50
+
+
+def _diversify_by_source(cands, category=_DEFAULT_CATEGORY):
+    """Round-robin candidates across their provider, visiting buckets in CURATED quality order for
+    the need's category — so the pool spans sources AND the best source for that KIND of asset
+    (artvee/wikicommons for art, archive.org for archival, pexels/pixabay for general stock) gets
+    the first pick, instead of whichever provider merged first. Each provider's own relevance order
+    is preserved. The gate + qwen-VL caption + compose-first selection stay the quality filter."""
+    from collections import OrderedDict
+    buckets = OrderedDict()
+    for c in cands:
+        buckets.setdefault(getattr(c, "source", "?"), []).append(c)
+    ordered = OrderedDict(sorted(buckets.items(), key=lambda kv: _source_rank(category, kv[0])))
+    out = []
+    while any(ordered.values()):
+        for lst in ordered.values():
+            if lst:
+                out.append(lst.pop(0))
+    return out
+
+
+def _gather_candidates(client, mt, queries, sources, want, category=_DEFAULT_CATEGORY):
+    """Multi-query retrieval: search every phrasing, DEDUPE by source_url/url, stop once we have
+    plenty to pick from, then DIVERSIFY across providers in curated quality order. This is the
+    recall win — one phrasing sees one narrow slice of an inconsistently-tagged index; several
+    phrasings across every provider surface assets a single query on a single source misses."""
+    cands, seen = [], set()
+    for q in queries:
+        try:
+            results = client.search_assets(q, media_type=mt, sources=sources, max_results=want * 3)
+        except Exception as e:
+            print(f"    search error ({q!r}): {type(e).__name__}: {e}"); continue
+        for res in results:
+            key = getattr(res, "source_url", None) or getattr(res, "url", None) or id(res)
+            if key in seen:
+                continue
+            seen.add(key); cands.append(res)
+        if len(cands) >= want * 4:       # enough of a bench; stop hitting providers (rate limits)
+            break
+    return _diversify_by_source(cands, category)
+
+
 def collect(cfg, needs, assets_dir: Path, per: int):
     client = _client(cfg)
+    avail = client.get_available_providers()          # honest roster — staleness shows as a missing name
+    img = [n for n in avail if getattr(client.providers[n], "media_type", "image") != "video"]
+    vid = [n for n in avail if getattr(client.providers[n], "media_type", "image") == "video"]
+    print(f"  providers available — image ({len(img)}): {img}")
+    print(f"  providers available — video ({len(vid)}): {vid}")
     pool = []
     for need in needs:
         mt = need.get("media_type", "image")
         n = int(need.get("n", per))
-        print(f"  [{need['id']}] {mt} search: {need['query']!r}")
-        try:
-            results = client.search_assets(need["query"], media_type=mt,
-                                           sources=need.get("sources"), max_results=n * 3)
-        except Exception as e:
-            print(f"    search error: {type(e).__name__}: {e}"); continue
+        queries = _need_queries(need)
+        category = (need.get("category") or _DEFAULT_CATEGORY).lower()
+        if category not in _PROVIDER_TIERS:
+            category = _DEFAULT_CATEGORY
+        tag = (" [evocative]" if need.get("evocative") else "") + f" [{category}]"
+        print(f"  [{need['id']}] {mt} search ×{len(queries)}{tag}: {queries!r}")
+        cands = _gather_candidates(client, mt, queries, need.get("sources"), n, category)
         got = 0
-        for i, res in enumerate(results):
+        for res in cands:
             if got >= n:
                 break
             ext = ".mp4" if mt == "video" else ".jpg"
@@ -109,9 +205,69 @@ def collect(cfg, needs, assets_dir: Path, per: int):
                              "width": res.width, "height": res.height,
                              "duration": res.duration, "caption": ""})
                 print(f"    + {out.name}  ({res.source})")
-        if got == 0:
-            print(f"    (nothing downloaded for {need['id']})")
+        print(f"    → {got}/{n} for {need['id']} from {len(cands)} deduped candidate(s)"
+              + ("" if got else "  (empty — will gap-fill if enabled)"))
+    if pool:                                          # which providers actually contributed (coverage)
+        from collections import Counter
+        dist = Counter(p.get("source") or "?" for p in pool)
+        print(f"  pool source distribution: {dict(dist.most_common())}")
     return pool
+
+
+async def expand_needs(cfg, needs, max_metaphor: int = 4):
+    """SUPER-SEARCH: for `evocative` needs, turn the subject into visual METAPHORS via the same
+    operator bridge evoke_broll uses (tonal + conceptual), and merge those phrasings into the
+    need's query set. This is what makes abstract narration lines findable — a literal search for
+    "freedom" or "decline" returns stock noise; a metaphor ("open road at dawn") returns b-roll.
+    Contained: a dead LLM just yields no extra queries."""
+    evocative = [nd for nd in needs if nd.get("evocative")]
+    if not evocative:
+        return
+    from nolan.llm import create_text_llm
+    from nolan.evoke_broll import bridge_queries
+    llm = create_text_llm(cfg)
+    for nd in evocative:
+        try:
+            mets = await bridge_queries(llm, nd["query"], operators=("tonal", "conceptual"),
+                                        max_queries=max_metaphor)
+        except Exception as e:
+            print(f"    metaphor expand failed {nd['id']}: {type(e).__name__}: {e}"); continue
+        seen, merged = set(), []
+        for q in list(nd.get("queries") or [nd["query"]]) + list(mets):
+            q = str(q).strip()
+            if q and q.lower() not in seen:
+                seen.add(q.lower()); merged.append(q)
+        nd["queries"] = merged
+        if mets:
+            print(f"    [{nd['id']}] +{len(mets)} metaphor quer{'y' if len(mets) == 1 else 'ies'}: {mets!r}")
+
+
+async def gen_fill(cfg, empties, assets_dir: Path, pool):
+    """GAP-FILL: when stock returns nothing for a need, GENERATE a still (krea2 / ComfyUI) from the
+    need's gen_prompt so the pool is never empty. Contained: no ComfyUI -> logged, need stays empty."""
+    if not empties:
+        return
+    try:
+        from nolan.workflow_registry import get_registry
+        client, _ = get_registry().build_client("krea2-style-select", cfg, style=",Cinematic")
+    except Exception as e:
+        print(f"  gap-fill gen unavailable: {type(e).__name__}: {e}"); return
+    gdir = assets_dir / "generated"; gdir.mkdir(parents=True, exist_ok=True)
+    for nd in empties:
+        prompt = f"{nd.get('gen_prompt') or nd['query']}, cinematic, highly detailed"
+        base = f"{nd['id']}_gen.png"
+        out = gdir / base
+        try:
+            if not out.exists():
+                await client.generate(prompt, out, timeout=200)
+        except Exception as e:
+            print(f"    gen failed {nd['id']}: {type(e).__name__}: {e}"); continue
+        if out.exists() and _valid_image(out):
+            pool.append({"id": nd["id"], "file": f"generated/{base}", "media_type": "image",
+                         "query": nd["query"], "source": "krea2 (generated)", "source_url": "",
+                         "photographer": "", "license": "generated", "width": 0, "height": 0,
+                         "duration": None, "caption": "", "generated": True})
+            print(f"    + {base}  (krea2 generated)")
 
 
 async def caption(cfg, pool, assets_dir: Path):
@@ -161,6 +317,8 @@ def main():
     ap.add_argument("--project", required=True)
     ap.add_argument("--per", type=int, default=3)
     ap.add_argument("--no-caption", action="store_true")
+    ap.add_argument("--no-expand", action="store_true", help="skip evoke_broll metaphor expansion of evocative needs")
+    ap.add_argument("--no-gen", action="store_true", help="skip krea2 gap-fill generation for empty needs")
     args = ap.parse_args()
     from nolan.config import load_config
     cfg = load_config()
@@ -168,8 +326,23 @@ def main():
     project = Path(args.project)
     assets_dir = project / "capture" / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
+    if not args.no_expand and any(nd.get("evocative") for nd in needs):
+        print("EXPAND (evoke_broll metaphors for evocative needs)")
+        try:
+            asyncio.run(expand_needs(cfg, needs))
+        except Exception as e:
+            print(f"  expand skipped: {type(e).__name__}: {e}")
     print("COLLECT")
     pool = collect(cfg, needs, assets_dir, args.per)
+    if not args.no_gen:
+        got_ids = {p["id"] for p in pool}
+        empties = [nd for nd in needs if nd["id"] not in got_ids]
+        if empties:
+            print(f"GAP-FILL GEN ({len(empties)} empty need(s): {[nd['id'] for nd in empties]})")
+            try:
+                asyncio.run(gen_fill(cfg, empties, assets_dir, pool))
+            except Exception as e:
+                print(f"  gen skipped: {type(e).__name__}: {e}")
     if pool and not args.no_caption:
         print("CAPTION (OpenRouter qwen-VL)")
         asyncio.run(caption(cfg, pool, assets_dir))
