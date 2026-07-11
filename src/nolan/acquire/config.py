@@ -34,6 +34,11 @@ class AcquireConfig:
     # Generic stock must clear this to be kept; CURATED museum/art sources are EXEMPT (their low literal
     # relevance is intentional — evocative art is not supposed to be a literal photo of the subject).
     stock_relevance_floor: float = 0.20
+    # VLM usability FLOOR (fused with the caption pass) — the semantic cull CLIP can't do: it kills the
+    # 0.20–0.25 borderline junk (a sports car for "permit") + watermark/overlaid-text/stock-graphic stills.
+    # A FLOOR, not a re-ranker. Contained: VLM down → neutral verdict → asset kept (cheap gates still apply).
+    vlm_cull: bool = True             # run the score+caption judge and drop junk (set False to skip the VLM)
+    vlm_floor: float = 4.0            # 0-10; drop non-generated images the editor scores below this as b-roll
     # diversity
     max_reuse: int = 3                # don't keep the same image for more than this many needs
     dedup_hamming: int = 6            # average-hash distance under which two images are near-duplicates

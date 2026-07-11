@@ -270,29 +270,55 @@ async def gen_fill(cfg, empties, assets_dir: Path, pool):
             print(f"    + {base}  (krea2 generated)")
 
 
-async def caption(cfg, pool, assets_dir: Path):
+async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
+    """Fused VLM SCORE + CAPTION pass. One vision call per kept image returns a usability verdict
+    (usable / flags / caption); junk is dropped — the semantic FLOOR that CLIP can't do (a sports car
+    for "permit", or a watermark/overlaid-text/stock-graphic still). Video + generated stills are
+    exempt from the cull. Contained: a dead VLM yields a NEUTRAL verdict → the asset is KEPT (the cheap
+    CLIP/fitness gates already ran), so the pool is never emptied by an outage. Returns the KEPT pool."""
     from nolan.vision import create_vision_provider
     from nolan.evoke_broll import _vision_config
+    from nolan.acquire import AcquireConfig, judge_prompt, extract_json, parse_verdict, is_junk
+    acfg = acfg or AcquireConfig()
     prov = create_vision_provider(_vision_config(cfg))
-    prompt = ("Describe this image for a video editor's asset inventory in ONE line "
-              "(<=24 words): concrete subject, setting, mood, dominant palette, and whether "
-              "it is photoreal or illustration. No preamble.")
+    need_by_id = {n["id"]: n for n in needs}
     sem = asyncio.Semaphore(4)
 
-    async def cap(item):
+    async def judge(item):
         if item["media_type"] == "video":
-            # caption the poster if we have one on disk; else describe from query
             item["caption"] = f"[video] {item['query']} (stock clip, {item.get('duration') or '?'}s)"
             return
+        need = need_by_id.get(item["id"], {"query": item.get("query", "")})
         p = assets_dir / item["file"]
         async with sem:
             try:
-                item["caption"] = (await prov.describe_image(p, prompt)).strip().replace("\n", " ")
+                raw = await prov.describe_image(p, judge_prompt(need))
+                v = parse_verdict(extract_json(raw))
             except Exception as e:
-                item["caption"] = f"({item['query']})"
-                print(f"    caption failed {item['file']}: {type(e).__name__}")
-    await asyncio.gather(*(cap(it) for it in pool))
-    return pool
+                v = parse_verdict(None)
+                print(f"    judge failed {item['file']}: {type(e).__name__}")
+        item["caption"] = v["caption"] or f"({item['query']})"
+        item["usable"], item["flags"] = v["usable"], v["flags"]      # → /pool curation badges
+        item["_verdict"] = v
+    await asyncio.gather(*(judge(it) for it in pool))
+
+    # FLOOR: drop non-generated images the editor scored as junk. Generated stills are bespoke (exempt);
+    # video is unscored (exempt). Report exactly what was dropped — no silent cap.
+    kept, culled = [], []
+    for it in pool:
+        v = it.pop("_verdict", None)
+        generated = "generat" in str(it.get("source", "")).lower()
+        if acfg.vlm_cull and v is not None and it["media_type"] != "video" and not generated and is_junk(v, acfg.vlm_floor):
+            culled.append(it)
+        else:
+            kept.append(it)
+    for it in culled:
+        (assets_dir / it["file"]).unlink(missing_ok=True)
+        reason = (it.get("flags") or f"usable {it.get('usable')}")
+        print(f"    ✂ culled {it['file']} [{it['id']}] — {reason}")
+    if culled:
+        print(f"  VLM floor: dropped {len(culled)} junk asset(s), {len(kept)} survive")
+    return kept
 
 
 def write_inventory(pool, project: Path):
@@ -344,6 +370,7 @@ def main():
     ap.add_argument("--no-expand", action="store_true", help="skip evoke_broll metaphor expansion of evocative needs")
     ap.add_argument("--no-gen", action="store_true", help="skip generation of originals for thin/off-topic beats")
     ap.add_argument("--legacy", action="store_true", help="old stock-only collect + gap-fill (pre multi-source engine)")
+    ap.add_argument("--no-vlm-cull", action="store_true", help="skip the VLM usability floor (caption only, cull nothing)")
     args = ap.parse_args()
     from nolan.config import load_config
     cfg = load_config()
@@ -351,6 +378,8 @@ def main():
     project = Path(args.project)
     assets_dir = project / "capture" / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
+    from nolan.acquire import AcquireConfig
+    acfg = AcquireConfig(per_need=args.per, generate_evocative=not args.no_gen, vlm_cull=not args.no_vlm_cull)
     if not args.no_expand and any(nd.get("evocative") for nd in needs):
         print("EXPAND (evoke_broll metaphors for evocative needs)")
         try:
@@ -370,8 +399,7 @@ def main():
                 except Exception as e:
                     print(f"  gen skipped: {type(e).__name__}: {e}")
     else:
-        from nolan.acquire import build_context, acquire_pool, AcquireConfig
-        acfg = AcquireConfig(per_need=args.per, generate_evocative=not args.no_gen)
+        from nolan.acquire import build_context, acquire_pool
         ctx = build_context(cfg, clip_seconds=acfg.clip_seconds)
         print(f"ACQUIRE — stock={bool(ctx.search_stock)} library={bool(ctx.search_library)} "
               f"clip-relevance={bool(ctx.relevance)} generate={bool(ctx.generate)} | "
@@ -384,8 +412,8 @@ def main():
         shutil.rmtree(cand_dir, ignore_errors=True)    # …and the rejects are dropped
 
     if pool and not args.no_caption:
-        print("CAPTION (OpenRouter qwen-VL)")
-        asyncio.run(caption(cfg, pool, assets_dir))
+        print("SCORE + CAPTION (VLM usability floor + inventory)" if acfg.vlm_cull else "CAPTION (VLM, no cull)")
+        pool = asyncio.run(score_and_caption(cfg, pool, assets_dir, needs, acfg))
     write_inventory(pool, project)
 
 
