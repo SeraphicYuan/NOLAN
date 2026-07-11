@@ -1,0 +1,177 @@
+"""The acquisition engine — beat-driven, over-provisioned, multi-source, relevance-ranked,
+fitness-gated. For each need it fans out to every source, over-fetches, scores each candidate for
+RELEVANCE (CLIP) and FITNESS (overlay-safety/orientation/burned-text), de-duplicates semantically,
+keeps the best per need, and GENERATES originals where stock/library is thin or off-topic.
+
+All I/O (search / download / relevance / generate) is injected via `Context`, so the engine is
+pure orchestration — testable with fakes, and degrades cleanly when an organ (CLIP, ComfyUI) is
+absent. `context.build_context` wires the real organs; `pool.py` orchestrates.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, Dict, List, Optional
+
+from .config import AcquireConfig
+
+
+@dataclass
+class Candidate:
+    ref: str                                    # url / library id / gen prompt
+    source: str                                 # "stock:pexels" | "library" | "generate"
+    modality: str = "image"                     # "image" | "video"
+    path: Optional[Path] = None                 # local file (library = already local; others once fetched)
+    meta: Dict = field(default_factory=dict)    # provider metadata (license, photographer, dims, duration…)
+    rank: int = 0                               # fetch order (a cheap search-relevance proxy)
+    relevance: float = 0.0
+    fitness: Dict = field(default_factory=dict)
+    score: float = 0.0
+
+
+@dataclass
+class Context:
+    """Injectable organs. Any may be None (that source/scorer is skipped)."""
+    search_stock: Optional[Callable] = None     # (need, n) -> [Candidate] (refs)
+    search_library: Optional[Callable] = None   # (query, n) -> [Candidate] (local)
+    download: Optional[Callable] = None          # (Candidate, dest_dir) -> bool  (fills .path)
+    relevance: Optional[Callable] = None         # (text, path) -> float in [0,1]
+    generate: Optional[Callable] = None          # (prompt, out_path) -> bool
+
+
+# --- semantic dedup (average hash; no extra deps) -------------------------------------------------
+def avg_hash(path: Path, size: int = 8) -> Optional[int]:
+    try:
+        from PIL import Image
+        im = Image.open(path).convert("L").resize((size, size))
+        px = list(im.getdata())
+        avg = sum(px) / len(px)
+        bits = 0
+        for i, p in enumerate(px):
+            if p >= avg:
+                bits |= (1 << i)
+        return bits
+    except Exception:
+        return None
+
+
+def hamming(a: int, b: int) -> int:
+    return bin(a ^ b).count("1")
+
+
+def _near_dup(h: Optional[int], seen: List[int], threshold: int) -> bool:
+    return h is not None and any(hamming(h, s) <= threshold for s in seen)
+
+
+# --- scoring --------------------------------------------------------------------------------------
+def fitness_score(fit: Dict) -> float:
+    """0..1 usability for a full-bleed ground, from pool_curation tags."""
+    if not fit:
+        return 0.6                                # unknown (e.g. video) — neutral
+    s = 1.0 if fit.get("overlay_safe") else 0.35
+    s *= 0.0 if fit.get("has_burned_text") else 1.0
+    s *= 1.0 if fit.get("orientation") == "landscape" else 0.75
+    return round(s, 3)
+
+
+def _need_queries(need: Dict) -> List[str]:
+    qs = need.get("queries") or [need.get("query", "")]
+    return [q for q in qs if q][:6]
+
+
+def _usable(c: Candidate, cfg: AcquireConfig) -> bool:
+    return c.relevance >= cfg.relevance_floor and fitness_score(c.fitness) >= 0.5 if c.modality == "image" \
+        else True
+
+
+# --- per-need acquisition -------------------------------------------------------------------------
+def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
+                 taken_hashes: List[int]) -> List[Candidate]:
+    n_fetch = max(cfg.per_need * cfg.over_fetch, cfg.per_need)
+    cands: List[Candidate] = []
+    if "library" in cfg.sources and ctx.search_library:
+        for q in _need_queries(need):
+            cands += ctx.search_library(q, n_fetch) or []
+    if "stock" in cfg.sources and ctx.search_stock:
+        cands += ctx.search_stock(need, n_fetch) or []
+    for i, c in enumerate(cands):
+        c.rank = i
+
+    # download whatever isn't already local, gate + keep decodable
+    live: List[Candidate] = []
+    for c in cands:
+        if c.path is None and ctx.download:
+            try:
+                if not ctx.download(c, cand_dir):
+                    continue
+            except Exception:
+                continue
+        if c.path and Path(c.path).exists():
+            live.append(c)
+
+    # score relevance (CLIP) + fitness (curation)
+    from nolan import pool_curation
+    text = need.get("query", "")
+    for c in live:
+        if ctx.relevance and c.modality == "image":
+            try:
+                c.relevance = float(ctx.relevance(text, c.path))
+            except Exception:
+                c.relevance = 0.0
+        if c.modality == "image":
+            try:
+                c.fitness = pool_curation.score_asset(c.path)
+            except Exception:
+                c.fitness = {}
+        c.score = (cfg.w_relevance * c.relevance) + (cfg.w_fitness * fitness_score(c.fitness)) - 0.01 * c.rank
+
+    live.sort(key=lambda c: c.score, reverse=True)
+
+    # semantic dedup (within need + across the whole pool via taken_hashes)
+    kept: List[Candidate] = []
+    seen = list(taken_hashes)
+    for c in live:
+        if len(kept) >= cfg.per_need:
+            break
+        h = avg_hash(c.path) if c.modality == "image" else None
+        if _near_dup(h, seen, cfg.dedup_hamming):
+            continue
+        if h is not None:
+            seen.append(h)
+        kept.append(c)
+    taken_hashes[:] = seen
+
+    # generate originals where a beat is thin or off-topic (evocative, floor-gated)
+    best_rel = max((c.relevance for c in kept), default=0.0)
+    usable = [c for c in kept if _usable(c, cfg)]
+    if (need.get("evocative") and cfg.generate_evocative and ctx.generate
+            and (len(usable) < cfg.min_usable or best_rel < cfg.relevance_floor)):
+        for k in range(cfg.generate_n):
+            out = cand_dir / f"{need['id']}_gen{k}.png"
+            try:
+                if ctx.generate(need.get("gen_prompt") or text, out) and out.exists():
+                    kept.append(Candidate(ref=str(out), source="generate", modality="image",
+                                          path=out, meta={"license": "generated", "source": "krea2 (generated)"}))
+            except Exception:
+                pass
+    return kept
+
+
+def acquire_pool(needs: List[Dict], ctx: Context, cfg: Optional[AcquireConfig] = None,
+                 cand_dir: Optional[Path] = None, log: Callable = print) -> List[Candidate]:
+    """Acquire the whole pool. Returns the kept Candidates (with .path); the caller places + captions them."""
+    cfg = cfg or AcquireConfig()
+    cand_dir = Path(cand_dir or ".")
+    cand_dir.mkdir(parents=True, exist_ok=True)
+    taken: List[int] = []
+    out: List[Candidate] = []
+    for need in needs:
+        got = acquire_need(need, ctx, cfg, cand_dir, taken)
+        for c in got:
+            c.meta.setdefault("need", need["id"])
+        n_gen = sum(1 for c in got if c.source == "generate")
+        log(f"  [{need['id']}] {len(got)} kept "
+            f"(rel≈{max((c.relevance for c in got), default=0):.2f}"
+            + (f", +{n_gen} generated" if n_gen else "") + ")")
+        out += got
+    return out

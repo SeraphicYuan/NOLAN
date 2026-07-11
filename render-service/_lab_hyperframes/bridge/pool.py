@@ -311,14 +311,40 @@ def write_inventory(pool, project: Path):
     print(f"  inventory: {len(pool)} assets → capture/extracted/asset-descriptions.md + pool.json")
 
 
+def _candidates_to_pool(kept, assets_dir: Path):
+    """Place engine Candidates into capture/assets with clean per-need names + the inventory dict shape."""
+    import shutil
+    from collections import defaultdict
+    idx, pool = defaultdict(int), []
+    for c in kept:
+        need = c.meta.get("need", "x")
+        i = idx[need]; idx[need] += 1
+        ext = ".mp4" if c.modality == "video" else (Path(c.path).suffix or ".jpg")
+        rel = ("videos/" if c.modality == "video" else "") + f"{need}_{i:02d}{ext}"
+        dest = assets_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if Path(c.path).resolve() != dest.resolve():
+                shutil.move(str(c.path), str(dest))
+        except Exception:
+            continue
+        pool.append({"id": need, "file": rel, "media_type": c.modality, "query": c.meta.get("query", ""),
+                     "source": c.meta.get("source", c.source), "source_url": c.meta.get("source_url", ""),
+                     "photographer": c.meta.get("photographer", ""), "license": c.meta.get("license", ""),
+                     "width": c.meta.get("width", 0), "height": c.meta.get("height", 0),
+                     "duration": c.meta.get("duration"), "relevance": round(c.relevance, 3), "caption": ""})
+    return pool
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--needs", required=True)
     ap.add_argument("--project", required=True)
-    ap.add_argument("--per", type=int, default=3)
+    ap.add_argument("--per", type=int, default=8, help="assets kept per need (depth)")
     ap.add_argument("--no-caption", action="store_true")
     ap.add_argument("--no-expand", action="store_true", help="skip evoke_broll metaphor expansion of evocative needs")
-    ap.add_argument("--no-gen", action="store_true", help="skip krea2 gap-fill generation for empty needs")
+    ap.add_argument("--no-gen", action="store_true", help="skip generation of originals for thin/off-topic beats")
+    ap.add_argument("--legacy", action="store_true", help="old stock-only collect + gap-fill (pre multi-source engine)")
     args = ap.parse_args()
     from nolan.config import load_config
     cfg = load_config()
@@ -332,17 +358,28 @@ def main():
             asyncio.run(expand_needs(cfg, needs))
         except Exception as e:
             print(f"  expand skipped: {type(e).__name__}: {e}")
-    print("COLLECT")
-    pool = collect(cfg, needs, assets_dir, args.per)
-    if not args.no_gen:
-        got_ids = {p["id"] for p in pool}
-        empties = [nd for nd in needs if nd["id"] not in got_ids]
-        if empties:
-            print(f"GAP-FILL GEN ({len(empties)} empty need(s): {[nd['id'] for nd in empties]})")
-            try:
-                asyncio.run(gen_fill(cfg, empties, assets_dir, pool))
-            except Exception as e:
-                print(f"  gen skipped: {type(e).__name__}: {e}")
+
+    if args.legacy:
+        print("COLLECT (legacy stock-only)")
+        pool = collect(cfg, needs, assets_dir, args.per)
+        if not args.no_gen:
+            empties = [nd for nd in needs if nd["id"] not in {p["id"] for p in pool}]
+            if empties:
+                print(f"GAP-FILL GEN ({len(empties)} empty need(s))")
+                try:
+                    asyncio.run(gen_fill(cfg, empties, assets_dir, pool))
+                except Exception as e:
+                    print(f"  gen skipped: {type(e).__name__}: {e}")
+    else:
+        from nolan.acquire import build_context, acquire_pool, AcquireConfig
+        acfg = AcquireConfig(per_need=args.per, generate_evocative=not args.no_gen)
+        ctx = build_context(cfg)
+        print(f"ACQUIRE — stock={bool(ctx.search_stock)} library={bool(ctx.search_library)} "
+              f"clip-relevance={bool(ctx.relevance)} generate={bool(ctx.generate)} | "
+              f"{len(needs)} needs × up to {acfg.per_need} kept (over-fetch ×{acfg.over_fetch})")
+        kept = acquire_pool(needs, ctx, acfg, cand_dir=assets_dir, log=print)
+        pool = _candidates_to_pool(kept, assets_dir)
+
     if pool and not args.no_caption:
         print("CAPTION (OpenRouter qwen-VL)")
         asyncio.run(caption(cfg, pool, assets_dir))

@@ -464,6 +464,14 @@ BRIDGES = [
               "(python -m nolan.style_contract <comp> [--brief])",
      "hf": "scenes_from_hf(comp) reads compositions/frames/*.spec.json; gate failures steer re-authoring",
      "wire": ("src/nolan/style_contract/linter.py", "def lint")},
+    {"id": "acquisition", "label": "Asset acquisition engine", "stage": "live",
+     "purpose": "beat-driven, over-provisioned, MULTI-SOURCE pool — for each need it fans out to the saved "
+                "image library (CLIP) + the 25 stock/archival/museum providers, over-fetches, scores each for "
+                "CLIP relevance + overlay fitness, semantic-dedupes, keeps the best, and GENERATES originals "
+                "where stock/library is thin or off-topic. Tunable from acquire/config.py; pluggable sources.",
+     "nolan": "src/nolan/acquire (engine + build_context, injectable organs) driven by bridge/pool.py",
+     "hf": "capture/pool.json + capture/extracted/asset-descriptions.md → the storyboard SELECTS asset_candidates",
+     "wire": ("src/nolan/acquire/engine.py", "def acquire_pool")},
 ]
 
 

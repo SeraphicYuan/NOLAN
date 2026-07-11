@@ -190,7 +190,7 @@ def _project_script(pdir: Path) -> str:
     return ""
 
 
-async def derive_asset_needs(script: str, client, k: int = 8) -> List[Dict[str, Any]]:
+async def derive_asset_needs(script: str, client, k: int = 24) -> List[Dict[str, Any]]:
     """LLM: an essay script -> a `needs` list for the pool bridge, with QUERY-VARIANT EXPANSION.
 
     Each need carries several distinct stock-search phrasings (`queries`) so the bridge casts a wide
@@ -198,9 +198,11 @@ async def derive_asset_needs(script: str, client, k: int = 8) -> List[Dict[str, 
     routes abstract subjects through the evoke_broll metaphor super-search, and a `gen_prompt` used
     for krea2 gap-fill when stock finds nothing. `query` (the plain phrasing) stays for back-compat."""
     system = ("You plan VISUAL ASSET needs for a video essay. From the script, list the visual subjects worth "
-              "gathering — people, places, objects, events, archival footage, and abstract themes. For EACH, give "
-              "several DISTINCT stock-search phrasings so we cast a wide net, mark whether it is abstract, and give "
-              f"a fallback generation prompt. Return ONLY a JSON array of up to {k} items, each: "
+              "gathering — people, places, objects, events, archival footage, and abstract themes. Aim for ONE need "
+              "per BEAT/claim so EVERY beat can be visually grounded — a multi-minute essay wants many needs "
+              "(roughly one per 15-25 spoken words), NOT a handful. For EACH, give several DISTINCT stock-search "
+              "phrasings so we cast a wide net, mark whether it is abstract, and give a fallback generation prompt. "
+              f"Return ONLY a JSON array of up to {k} items, each: "
               "{\"id\":\"a1\", \"query\":\"plain 3-6 word stock search\", "
               "\"queries\":[\"3-5 distinct phrasings incl. the plain one — synonyms, a concrete instance, "
               "a shot/era/mood descriptor\"], \"media_type\":\"image\" or \"video\", \"n\":3, "
@@ -241,7 +243,7 @@ async def derive_asset_needs(script: str, client, k: int = 8) -> List[Dict[str, 
     return out
 
 
-def run_pool(comp: str, needs: List[Dict[str, Any]], per: int = 3) -> Dict[str, Any]:
+def run_pool(comp: str, needs: List[Dict[str, Any]], per: int = 8) -> Dict[str, Any]:
     """Run the NOLAN->HF asset bridge (bridge/pool.py): COLLECT -> CAPTION -> INVENTORY into <project>/capture/.
     Blocking (fan-out + captioning takes minutes) — call from a background job / thread."""
     if not needs:
