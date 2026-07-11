@@ -69,6 +69,32 @@ def test_generate_skipped_for_non_evocative(tmp_path):
     assert all(c.source != "generate" for c in got)              # not evocative → never generate
 
 
+def test_source_rank_tiers():
+    from nolan.acquire.engine import source_rank
+    assert source_rank("art", "stock:artvee") < source_rank("art", "stock:ddgs")        # art: artvee beats web
+    assert source_rank("general", "library") == 0                                        # library ranks first
+    assert source_rank("archival", "stock:archive") < source_rank("archival", "stock:pexels_video")
+
+
+def test_evocative_ranks_by_tier_concrete_by_relevance(tmp_path):
+    paths = _write(tmp_path, _patterns())
+
+    def search_stock(need, n):
+        return [Candidate(ref="lit", source="stock:ddgs", modality="image", path=paths["left"]),
+                Candidate(ref="art", source="stock:artvee", modality="image", path=paths["top"])]
+    # ddgs image scores HIGH on literal relevance, artvee LOW
+    ctx = Context(search_stock=search_stock, relevance=lambda t, p: 0.5 if "left" in str(p) else 0.1)
+    cfg = AcquireConfig(per_need=1, over_fetch=1, generate_evocative=False)
+
+    ev = acquire_need({"id": "n", "query": "consent", "queries": ["consent"], "evocative": True,
+                       "category": "art"}, ctx, cfg, tmp_path, [])
+    assert ev[0].source == "stock:artvee"        # evocative → curated tier wins DESPITE lower CLIP
+
+    co = acquire_need({"id": "n2", "query": "server", "queries": ["server"], "evocative": False,
+                       "category": "general"}, ctx, cfg, tmp_path, [])
+    assert co[0].source == "stock:ddgs"          # concrete → literal relevance wins
+
+
 def test_acquire_pool_dedups_across_needs(tmp_path):
     paths = _write(tmp_path, _patterns())
     # both needs return the SAME 'left' image → the second must dedup it (shared taken_hashes)

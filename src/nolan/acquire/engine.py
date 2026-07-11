@@ -74,6 +74,29 @@ def fitness_score(fit: Dict) -> float:
     return round(s, 3)
 
 
+# Curated source tiers per category — used to rank EVOCATIVE needs (where literal CLIP relevance is the
+# WRONG signal: it demotes the non-literal art/library that makes abstract beats good). The saved
+# library ranks first (on-brand + curated); then the category's best sources.
+TIERS = {
+    "art": ["library", "artvee", "wikimedia", "met", "artic", "rijksmuseum", "harvard", "cleveland",
+            "wellcome", "europeana", "dpla", "smithsonian", "loc", "openverse", "ddgs"],
+    "archival": ["library", "archive", "archive_image", "loc", "smithsonian", "europeana", "dpla",
+                 "nasa", "nasa_video", "wikimedia", "flickr", "pexels_video", "pixabay_video", "coverr_video", "ddgs"],
+    "general": ["library", "pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
+                "pixabay_video", "coverr_video", "flickr", "wikimedia", "nasa"],
+}
+
+
+def _provider_of(source: str) -> str:
+    return (source or "").split(":")[-1]
+
+
+def source_rank(category: str, source: str) -> int:
+    order = TIERS.get(category) or TIERS["general"]
+    p = _provider_of(source)
+    return order.index(p) if p in order else len(order) + 50
+
+
 def _need_queries(need: Dict) -> List[str]:
     qs = need.get("queries") or [need.get("query", "")]
     return [q for q in qs if q][:6]
@@ -110,21 +133,28 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
         if c.path and Path(c.path).exists():
             live.append(c)
 
-    # score relevance (CLIP) + fitness (curation)
+    # score each candidate. CONCRETE needs → literal CLIP relevance (a real photo of the thing wins).
+    # EVOCATIVE needs → the curated source TIER + fitness (library/artvee/museums win; literal relevance
+    # would wrongly demote the non-literal art). Both nudged by fitness + search order.
     from nolan import pool_curation
     text = need.get("query", "")
+    evocative = bool(need.get("evocative"))
+    category = need.get("category", "general")
     for c in live:
-        if ctx.relevance and c.modality == "image":
-            try:
-                c.relevance = float(ctx.relevance(text, c.path))
-            except Exception:
-                c.relevance = 0.0
         if c.modality == "image":
             try:
                 c.fitness = pool_curation.score_asset(c.path)
             except Exception:
                 c.fitness = {}
-        c.score = (cfg.w_relevance * c.relevance) + (cfg.w_fitness * fitness_score(c.fitness)) - 0.01 * c.rank
+            if ctx.relevance:
+                try:
+                    c.relevance = float(ctx.relevance(text, c.path))
+                except Exception:
+                    c.relevance = 0.0
+        if evocative:
+            c.score = -source_rank(category, c.source) + cfg.w_fitness * fitness_score(c.fitness) - 0.02 * c.rank
+        else:
+            c.score = (cfg.w_relevance * c.relevance) + (cfg.w_fitness * fitness_score(c.fitness)) - 0.01 * c.rank
 
     live.sort(key=lambda c: c.score, reverse=True)
 

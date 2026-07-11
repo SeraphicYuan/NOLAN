@@ -16,7 +16,8 @@ class AcquireConfig:
     # sources (order tried; "generate" is conditional, handled by the engine)
     sources: Tuple[str, ...] = ("library", "stock")
     # relevance + fitness gating
-    relevance_floor: float = 0.20     # CLIP sim below which stock is "not good enough" for a beat
+    relevance_floor: float = 0.5      # (evocative beats only) generate originals unless stock relevance clears
+                                      # this — set high on purpose so abstract beats get bespoke art, not thin stock
     min_usable: int = 4               # escalate/generate if fewer than this survive fitness+relevance
     w_relevance: float = 1.0          # combined score weights
     w_fitness: float = 0.5
