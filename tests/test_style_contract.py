@@ -36,8 +36,8 @@ def _v1_like():
 
 
 def test_registry_is_lean():
-    assert len(GATES) == 5                                        # deliberately few hard gates
-    assert {g.key for g in GATES} == {"coverage", "video_share", "pacing_cv",
+    assert len(GATES) == 4                                        # few hard gates (pacing is now advisory)
+    assert {g.key for g in GATES} == {"coverage", "video_share",
                                       "layout_max_share", "layout_max_run"}
     assert "layout_entropy" not in {d.metric for d in DIMENSIONS}  # the misleading metric was cut
     assert all(d.mode == "advisory" for d in ADVISORY)
@@ -55,8 +55,8 @@ def test_measure_core_metrics():
 def test_contract_resolve_dials_and_aliases():
     c = StyleContract.resolve("essay", asset_density="dense")
     assert c.targets["coverage"] == (0.6, 0.95)                   # dial alias -> coverage dense level
-    c2 = StyleContract.resolve("essay", pacing_cv=(0.5, 1.0))     # raw (lo,hi) override
-    assert c2.targets["pacing_cv"] == (0.5, 1.0)
+    c2 = StyleContract.resolve("essay", video_share=(0.1, 0.6))   # raw (lo,hi) override
+    assert c2.targets["video_share"] == (0.1, 0.6)
     with pytest.raises(ValueError):
         StyleContract.resolve("essay", chart_density="high")     # dataviz is advisory -> not a dial
     with pytest.raises(ValueError):
@@ -75,7 +75,7 @@ def test_linter_flags_the_v1_problems():
     rep = lint(_v1_like(), StyleContract.resolve("essay", asset_density="dense"))
     fails = {f["key"] for f in rep["failures"]}
     assert not rep["overall_pass"]
-    assert fails == {"coverage", "video_share", "pacing_cv", "layout_max_share", "layout_max_run"}
+    assert fails == {"coverage", "video_share", "layout_max_share", "layout_max_run"}
     # advisory dimensions are reported but never counted as failures
     assert all(d["mode"] == "advisory" and d["ok"] for d in rep["dimensions"] if d["mode"] == "advisory")
 

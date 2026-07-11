@@ -1,0 +1,140 @@
+"""P0.1 — word-level narration → scene sync.
+
+`audio.mjs sync-durations` pins only the 7 FRAME boundaries; inside a frame the scene cuts were
+author-typed open-loop (audio_meta.words was empty), so visuals drift ahead of narration (measured
+5–25s on v2). This closes that seam:
+
+  1. align_voices  — run the existing whisper aligner over each assets/voice/0N.wav, write per-word
+                     times into audio_meta.voices[].words (SECTION-relative). Cached by wav mtime.
+  2. place_scenes  — set each scene.start/dur to the moment its ANCHOR (the distinctive SPOKEN phrase
+                     it illustrates) is said. Absent an anchor, fall back to the scene's visible text.
+                     Monotonic-clamped; if a frame's anchors don't resolve in order, warn + fall back
+                     to proportional spacing FOR THAT FRAME ONLY (never silently).
+
+Reveal/cue re-derivation (count-ups/chart-draws firing as spoken) is the follow-up step — placing the
+scene windows is necessary but not sufficient (see COMPOSE_FIRST_UPGRADE_PLAN P0.1 item 4).
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Dict, List, Optional
+
+_ANCHOR_TEXT_KEYS = ("anchor", "operative")            # prefer the spoken anchor; then the operative word
+_VISIBLE_TEXT_KEYS = ("lines", "title", "titleHi", "kicker", "sub", "label", "quote", "headline")
+
+
+def _voice_wavs(comp_dir: Path) -> List[Path]:
+    return sorted((comp_dir / "assets" / "voice").glob("[0-9]*.wav"))
+
+
+def align_voices(comp_dir, force: bool = False) -> Dict:
+    """Force-align each section wav → audio_meta.voices[].words (section-relative). Idempotent:
+    skips a voice whose words are already present (unless force). Returns a per-voice summary."""
+    from nolan.flows import source
+    comp_dir = Path(comp_dir)
+    meta_path = comp_dir / "audio_meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    voices = meta.get("voices", [])
+    by_frame = {v.get("frame"): v for v in voices}
+    wavs = _voice_wavs(comp_dir)
+    todo = []
+    for i, wav in enumerate(wavs, start=1):
+        v = by_frame.get(i)
+        if v is not None and not force and (v.get("words")):
+            continue
+        todo.append((i, wav))
+    summary = {"aligned": [], "skipped": len(wavs) - len(todo)}
+    if todo:
+        words_by_stem = source.word_timestamps([w for _, w in todo])   # {stem: [{word,start,end}]}
+        for i, wav in todo:
+            words = words_by_stem.get(wav.stem, [])
+            v = by_frame.get(i)
+            if v is not None:
+                v["words"] = words
+                summary["aligned"].append({"frame": i, "words": len(words)})
+    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    return summary
+
+
+def _scene_query(sc: dict) -> str:
+    """The phrase to locate in the narration — the spoken anchor if the author gave one, else the
+    scene's visible text (best-effort; typography like '61,000' won't match spoken 'sixty-one thousand')."""
+    d = sc.get("data", {}) or {}
+    for k in _ANCHOR_TEXT_KEYS:
+        val = d.get(k) or sc.get(k)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    parts: List[str] = []
+    for k in _VISIBLE_TEXT_KEYS:
+        val = d.get(k)
+        if isinstance(val, str):
+            parts.append(val)
+        elif isinstance(val, list):
+            parts.extend(str(x) for x in val)
+    return " ".join(parts).strip()
+
+
+def _proportional(n: int, frame_dur: float) -> List[float]:
+    return [round(frame_dur * j / n, 3) for j in range(n)]
+
+
+def place_scenes(comp_dir) -> Dict:
+    """Set scene start/dur from where each scene's anchor/text is spoken. Writes back to the specs."""
+    from nolan import aligner
+    from nolan.whisper import WordTimestamp
+    comp_dir = Path(comp_dir)
+    meta = json.loads((comp_dir / "audio_meta.json").read_text(encoding="utf-8"))
+    by_frame = {v.get("frame"): v for v in meta.get("voices", [])}
+    spec_files = sorted((comp_dir / "compositions" / "frames").glob("*.spec.json"))
+    report = {"frames": [], "fallbacks": 0}
+
+    for i, sf in enumerate(spec_files, start=1):
+        spec = json.loads(sf.read_text(encoding="utf-8"))
+        for fr in spec.get("frames", []):
+            scenes = fr.get("scenes", []) or []
+            frame_dur = float(fr.get("dur", 0) or 0)
+            words_raw = (by_frame.get(i) or {}).get("words") or []
+            words = [WordTimestamp(word=w["word"], start=w["start"], end=w["end"]) for w in words_raw]
+            fb = None
+            if not scenes or not words:
+                fb = "no words/scenes"
+                starts = _proportional(len(scenes), frame_dur) if scenes else []
+            else:
+                q = [{"id": sc.get("id", f"s{j}"), "narration_excerpt": _scene_query(sc)}
+                     for j, sc in enumerate(scenes)]
+                results, _unmatched = aligner.align_scenes_to_audio(q, words)
+                by_id = {r.scene_id: r for r in results}
+                raw = [getattr(by_id.get(sc.get("id", f"s{j}")), "start_seconds", None)
+                       for j, sc in enumerate(scenes)]
+                starts = _validate_monotonic(raw, frame_dur)
+                if starts is None:                       # anchors missing / out of order → this frame only
+                    starts = _proportional(len(scenes), frame_dur)
+                    fb = "proportional (anchors unmatched/out-of-order)"
+                    report["fallbacks"] += 1
+            drift = 0.0
+            for j, sc in enumerate(scenes):
+                old = float(sc.get("start", 0) or 0)
+                sc["start"] = round(starts[j], 3)
+                nxt = starts[j + 1] if j + 1 < len(starts) else frame_dur
+                sc["dur"] = round(max(0.1, nxt - starts[j]), 3)
+                drift = max(drift, abs(sc["start"] - old))
+            report["frames"].append({"frame": fr.get("id"), "scenes": len(scenes),
+                                     "max_shift_s": round(drift, 2), "fallback": fb})
+        sf.write_text(json.dumps(spec, indent=2), encoding="utf-8")
+    return report
+
+
+def _validate_monotonic(raw: List[Optional[float]], frame_dur: float) -> Optional[List[float]]:
+    """Scene 1 opens the frame (start 0); the rest must resolve to strictly-increasing times inside
+    the frame. Any gap or inversion => None (caller falls back to proportional for the frame)."""
+    if not raw:
+        return None
+    out = [0.0]
+    prev = 0.0
+    for v in raw[1:]:
+        if v is None or v <= prev + 0.15 or v >= frame_dur:
+            return None
+        out.append(round(v, 3))
+        prev = v
+    return out
