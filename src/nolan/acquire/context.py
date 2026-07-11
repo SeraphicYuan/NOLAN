@@ -71,26 +71,37 @@ def build_context(cfg, *, clip_seconds=20, want_stock=True, want_library=True, w
 
             def search_stock(need, n):
                 mt = need.get("media_type", "image")
-                seen, out = set(), []
+                seen, cands = set(), []
                 for q in (need.get("queries") or [need.get("query", "")]):
                     if not q:
                         continue
                     try:
                         for res in client.search_assets(q, media_type=mt, sources=need.get("sources"),
-                                                        max_results=max(3, n)):
+                                                        max_results=max(6, n)):
                             key = getattr(res, "source_url", None) or getattr(res, "url", None)
                             if key in seen:
                                 continue
                             seen.add(key)
-                            out.append(Candidate(ref=str(key), source=f"stock:{res.source}", modality=mt,
-                                                 meta={"_res": res, "source": res.source, "source_url": res.source_url,
-                                                       "photographer": res.photographer, "license": res.license,
-                                                       "width": res.width, "height": res.height, "duration": res.duration}))
+                            cands.append(Candidate(ref=str(key), source=f"stock:{res.source}", modality=mt,
+                                                   meta={"_res": res, "source": res.source, "source_url": res.source_url,
+                                                         "photographer": res.photographer, "license": res.license,
+                                                         "width": res.width, "height": res.height, "duration": res.duration}))
                     except Exception:
                         continue
-                    if len(out) >= n:
+                    if len(cands) >= n * 4:                # collect a WIDE pool across providers…
                         break
-                return out[:n]
+                # …then round-robin by source so the returned set SPANS providers (search_assets merges
+                # ddgs-first, so a naive top-n is all ddgs and the curated tiers never enter the ranking).
+                from collections import OrderedDict
+                buckets = OrderedDict()
+                for c in cands:
+                    buckets.setdefault(c.source, []).append(c)
+                out = []
+                while any(buckets.values()) and len(out) < n:
+                    for b in buckets.values():
+                        if b and len(out) < n:
+                            out.append(b.pop(0))
+                return out
 
             def download(c: Candidate, dest: Path):
                 res = c.meta.get("_res")
@@ -125,16 +136,20 @@ def build_context(cfg, *, clip_seconds=20, want_stock=True, want_library=True, w
     # --- library: CLIP search over the saved image store -----------------------------------------
     if want_library:
         try:
-            from nolan.imagelib.store import search_all
+            from nolan.imagelib.store import ImageLibrary
+            _lib = ImageLibrary("global")
 
             def search_library(query, n):
                 out = []
-                for r in (search_all(query, k=n) or []):
-                    p = getattr(r, "path", None) or (r.get("path") if isinstance(r, dict) else None)
-                    if p and Path(p).exists():
-                        sc = getattr(r, "score", None) or (r.get("score") if isinstance(r, dict) else 0.0)
-                        out.append(Candidate(ref=str(p), source="library", modality="image", path=Path(p),
-                                             meta={"license": "library", "source": "library"}, relevance=float(sc or 0)))
+                for h in (_lib.search(query, k=n) or []):
+                    try:
+                        p = _lib.abs_path(h.asset)          # LibraryHit.asset.path is store-relative
+                    except Exception:
+                        continue
+                    if p.exists():
+                        out.append(Candidate(ref=str(p), source="library", modality="image", path=p,
+                                             meta={"license": getattr(h.asset, "license", "library"), "source": "library"},
+                                             relevance=float(getattr(h, "score", 0) or 0)))
                 return out
             ctx.search_library = search_library
         except Exception:
