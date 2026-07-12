@@ -95,9 +95,10 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     # 8 · render the whole composition → renders/video.mp4
     _run("render", ["npx", "hyperframes", "render", "--skill=faceless-explainer", "--quality", "high",
                     "--output", "renders/video.mp4"], cwd=pdir, dry=dry_run)
-    # 9 · QA (soft: report freeze/audio + style-contract, don't crash the driver on a gate fail)
-    _run("hf-qa", py + ["-m", "nolan.hf_qa", str(pdir)], dry=dry_run, soft=True)
-    _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)], dry=dry_run, soft=True)
+    # 9 · QA (soft: report — don't crash the driver on a gate fail)
+    _run("hf-qa", py + ["-m", "nolan.hf_qa", str(pdir)], dry=dry_run, soft=True)          # freeze + audio (ffmpeg)
+    _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)], dry=dry_run, soft=True)  # spec dimensions
+    _run("perceptual", py + ["-m", "nolan.hyperframes.render_gate", str(pdir)], dry=dry_run, soft=True)  # VLM: legibility + relevance
     print("hf-finish: done → renders/video.mp4")
     return {"comp": comp, "rendered": True}
 
