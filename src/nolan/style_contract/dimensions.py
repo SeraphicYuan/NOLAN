@@ -26,7 +26,10 @@ class Dimension:
 
 # ─────────────────────────── the registry — edit here ───────────────────────────
 DIMENSIONS = [
-    # ---- 4 GATES ----
+    # ---- 5 GATES ----
+    Dimension("short_holds", "Short holds (unreadable)", "short_holds", "gate", (None, 0),
+              "scenes shorter than their block's minimum readable window (newshead/comparison/document ~5s, "
+              "statement/stat ~2.5s) — a 0.94s scene can't be read; split the beat or merge it"),
     Dimension("coverage", "Evidence coverage", "coverage", "gate", (0.45, 0.95),
               "share of scenes visually grounded — open every section on an asset; earn text-only beats", True),
     Dimension("video_share", "Motion footage", "video_share", "gate", (0.08, 0.7),

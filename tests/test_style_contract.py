@@ -36,8 +36,8 @@ def _v1_like():
 
 
 def test_registry_is_lean():
-    assert len(GATES) == 4                                        # few hard gates (pacing is now advisory)
-    assert {g.key for g in GATES} == {"coverage", "video_share",
+    assert len(GATES) == 5                                        # + short_holds (unreadable windows) is a gate
+    assert {g.key for g in GATES} == {"short_holds", "coverage", "video_share",
                                       "layout_max_share", "layout_max_run"}
     assert "layout_entropy" not in {d.metric for d in DIMENSIONS}  # the misleading metric was cut
     assert all(d.mode == "advisory" for d in ADVISORY)
@@ -115,7 +115,7 @@ def test_linter_flags_the_v1_problems():
 def test_linter_passes_a_balanced_varied_essay():
     blocks = ["comparison", "statement", "stat", "collage", "geo", "newshead", "gallery", "chart",
               "comparison", "statement", "diagram", "collage"]
-    durs = [4, 13, 6, 16, 3, 10, 5, 14, 7, 12, 4, 11]            # cv ~0.49
+    durs = [6, 13, 6, 16, 5, 10, 5, 14, 7, 12, 4, 11]            # all ≥ their block's min-readable window
     scenes = []
     for i, (b, d) in enumerate(zip(blocks, durs)):
         media = "video" if b in ("gallery", "collage") and i % 3 == 0 else \

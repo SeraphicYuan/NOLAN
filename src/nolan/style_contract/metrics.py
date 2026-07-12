@@ -27,6 +27,16 @@ BLOCK_FAMILY: Dict[str, str] = {
 MEDIA_CAPABLE = {"statement", "comparison", "newshead", "collage", "gallery", "carousel",
                  "social_card", "linedraw", "raw", "document"}
 
+# minimum READABLE window per block — a scene shorter than this can't be read on screen (a 0.94s
+# comparison is a worse defect than a 12s hold, and was invisible to every gate). Text-dense blocks
+# need more dwell; a bare statement/stat less. Gate: NO scene below its block's minimum.
+MIN_READABLE: Dict[str, float] = {
+    "newshead": 5.0, "comparison": 5.0, "document": 5.0, "timeline": 5.0, "collage": 4.5,
+    "gallery": 4.0, "carousel": 4.0, "diagram": 4.0, "chart": 4.0, "geo": 4.0, "code": 4.0,
+    "social_card": 3.0, "statement": 2.5, "stat": 2.5, "linedraw": 3.0, "lower_third": 2.0, "raw": 2.5,
+}
+DEFAULT_MIN_READABLE = 3.0
+
 _TEXT_KEYS = {"lines", "title", "sub", "label", "kicker", "operative", "text", "name", "role",
               "quote", "headline", "titleHi", "body", "caption"}
 
@@ -207,6 +217,8 @@ def measure(scenes: List[SceneView]) -> Dict:
         "mean_dur": round(total / n, 2),
         "long_holds": sum(1 for dz in static_holds if dz > LONG_HOLD_S),  # ungrounded NON-dataviz scenes held > 8s
         "max_hold": round(max(static_holds, default=0.0), 2),
+        "short_holds": sum(1 for s in scenes if s.dur < MIN_READABLE.get(s.block, DEFAULT_MIN_READABLE)),  # GATE
+        "min_dur": round(min((s.dur for s in scenes), default=0.0), 2),
         # layout variety
         "layout_max_share": round(max(blocks.values()) / n, 3),
         "layout_max_run": _max_run([s.block for s in scenes]),
