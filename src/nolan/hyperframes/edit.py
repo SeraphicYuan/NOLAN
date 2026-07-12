@@ -25,8 +25,45 @@ AUTHOR = BRIDGE / "author.py"
 CATALOG_PATH = BRIDGE / "catalog.json"
 LAB_VIDEOS = REPO / "render-service" / "_lab_hyperframes" / "videos"
 PROJECTS = REPO / "projects"
+THEMES = REPO / "themes"
 
 _ROOTS = [("lab", LAB_VIDEOS), ("project", PROJECTS)]
+
+
+def theme_exists(theme: Optional[str]) -> bool:
+    return bool(theme) and (THEMES / str(theme) / "tokens.css").exists()
+
+
+def list_themes() -> List[Dict[str, Any]]:
+    """The selectable NOLAN themes (dirs under themes/ with a tokens.css), with mood/bestFor if present."""
+    out = []
+    for d in sorted(p for p in THEMES.iterdir() if p.is_dir()) if THEMES.is_dir() else []:
+        if not (d / "tokens.css").exists():
+            continue
+        meta = {}
+        tj = d / "theme.json"
+        if tj.exists():
+            try:
+                meta = json.loads(tj.read_text(encoding="utf-8"))
+            except Exception:
+                meta = {}
+        out.append({"id": d.name, "name": meta.get("name", d.name),
+                    "mood": meta.get("mood", ""), "bestFor": meta.get("bestFor", "")})
+    return out
+
+
+def suggest_theme(text: str, top: int = 3) -> List[Dict[str, Any]]:
+    """Deterministic, explainable theme ranking for a script (themes/scripts/select_theme.py --json).
+    Returns [{id, score, why?}, …]; [] if the selector is unavailable (caller falls back to a default)."""
+    script = THEMES / "scripts" / "select_theme.py"
+    if not (script.exists() and (text or "").strip()):
+        return []
+    try:
+        r = subprocess.run([sys.executable, "-X", "utf8", str(script), text[:4000], "--json", "--top", str(top)],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
+        return (json.loads(r.stdout) or {}).get("ranked", []) if r.returncode == 0 else []
+    except Exception:
+        return []
 
 
 # ------------------------------------------------------------------ discovery / read
@@ -46,15 +83,23 @@ def discover_compositions() -> List[Dict[str, Any]]:
 
 
 def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
-                   voiceover: bool = False, asset_density: str = "balanced") -> str:
+                   voiceover: bool = False, asset_density: str = "balanced",
+                   theme: Optional[str] = None, motion: Optional[str] = None) -> str:
     """The task brief the faceless-explainer agent reads to author a new essay (written to .hf_kickoff.md)."""
     rel = f"videos/{slug}"
     comp_rel = f"render-service/_lab_hyperframes/{rel}"
     bridge_rel = "render-service/_lab_hyperframes/bridge"
     style_line = f"\n- **Style:** {style}" if style else ""
+    theme_line = (f"\n- **Theme — FIXED (`{theme}`):** this essay renders in the `{theme}` theme — it is set in "
+                  f"`{rel}/hyperframes.json` and `author.py` applies it automatically on every compose/recompose. "
+                  f"Do NOT override it or hand-pick colours; author to the composer templates and the theme tokens "
+                  f"do the rest." if theme else "")
     try:                                                # the style contract: craft targets + the full block palette
         from nolan.style_contract import StyleContract, authoring_brief
-        contract_txt = authoring_brief(StyleContract.resolve("essay", asset_density=asset_density))
+        dials = {"asset_density": asset_density}
+        if motion:
+            dials["video_share"] = motion
+        contract_txt = authoring_brief(StyleContract.resolve("essay", **dials))
     except Exception:
         contract_txt = ""
     contract_section = ("\n\n---\n## STYLE CONTRACT — author to these targets, then lint & revise\n\n"
@@ -70,7 +115,8 @@ def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
         f"`video` side, copy the clip into `{rel}/assets/` and — AFTER `assemble-index`, BEFORE render — run "
         f"`python -X utf8 {bridge_rel}/assemble_media.py {comp_rel}`; then `hyperframes render`."
         f"\n- **QA + lint (draft → verify → revise):** `python -X utf8 -m nolan.hf_qa {comp_rel}` (freeze/audio) AND "
-        f"`python -X utf8 -m nolan.style_contract {comp_rel} --dial asset_density={asset_density}` — fix every failing "
+        f"`python -X utf8 -m nolan.style_contract {comp_rel} --dial asset_density={asset_density}"
+        + (f" video_share={motion}" if motion else "") + "` — fix every failing "
         f"GATE and QA fail, then re-render.")
     vo_line = (
         f"\n- **Voice — NOLAN-PROVIDED (do NOT synthesize a new voice):** the cloned voiceover is already "
@@ -104,7 +150,7 @@ run its steps in order and pass each gate.
   with a `bridge/catalog.json` composer template (stat · statement · geo · timeline · newshead · collage · diagram ·
   comparison · gallery · carousel · chart · linedraw · … + the `reveal`/`transition` vocabularies) and build it
   deterministically through the `author.py` gate; hand-author a bespoke `raw` / native-HF scene ONLY where no
-  template fits.{style_line}{finish_line}
+  template fits.{style_line}{theme_line}{finish_line}
 
 When the frames are composed, tell the user the composition id is **`{slug}`** — they'll refine it per-scene on `/hyperframes`.{contract_section}
 """
@@ -135,7 +181,8 @@ def attach_voiceover(comp: str, vo_source: str) -> Dict[str, Any]:
 
 
 def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = True,
-              voiceover: Optional[str] = None, asset_density: str = "balanced") -> Dict[str, Any]:
+              voiceover: Optional[str] = None, asset_density: str = "balanced",
+              theme: Optional[str] = None, motion: Optional[str] = None) -> Dict[str, Any]:
     """Scaffold a new HyperFrames essay project under the lab videos root + write a kickoff brief for the
     faceless-explainer agent. Returns {comp, dir, prompt, acquire_pool}; the caller dispatches `prompt` to a
     tmux agent (and, if acquire_pool, first runs the asset pool). Shows up in /hyperframes once frames exist.
@@ -153,8 +200,12 @@ def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool:
     pdir.mkdir(parents=True, exist_ok=True)
     (pdir / "assets").mkdir(exist_ok=True)
     (pdir / "SOURCE.md").write_text(script, encoding="utf-8")
+    if theme and theme_exists(theme):                  # record the chosen theme so author.py applies it (else Vox)
+        (pdir / "hyperframes.json").write_text(
+            json.dumps({"theme": theme, "paths": {"blocks": "compositions"}}), encoding="utf-8")
     (pdir / ".hf_kickoff.md").write_text(
-        _kickoff_brief(slug, style, acquire_pool, voiceover=bool(voiceover), asset_density=asset_density),
+        _kickoff_brief(slug, style, acquire_pool, voiceover=bool(voiceover), asset_density=asset_density,
+                       theme=(theme if theme and theme_exists(theme) else None), motion=motion),
         encoding="utf-8")
     prompt = (f"New HyperFrames essay: read render-service/_lab_hyperframes/videos/{slug}/.hf_kickoff.md and execute "
               f"it — author a faceless explainer from that project's SOURCE.md into its compositions/frames/ using the "
@@ -243,18 +294,24 @@ async def derive_asset_needs(script: str, client, k: int = 24) -> List[Dict[str,
     return out
 
 
-def run_pool(comp: str, needs: List[Dict[str, Any]], per: int = 8) -> Dict[str, Any]:
-    """Run the NOLAN->HF asset bridge (bridge/pool.py): COLLECT -> CAPTION -> INVENTORY into <project>/capture/.
-    Blocking (fan-out + captioning takes minutes) — call from a background job / thread."""
+def run_pool(comp: str, needs: List[Dict[str, Any]], per: int = 8,
+             gen: bool = True, cull: bool = True) -> Dict[str, Any]:
+    """Run the NOLAN->HF asset bridge (bridge/pool.py): ACQUIRE -> SCORE+CAPTION -> INVENTORY into <project>/capture/.
+    Blocking (fan-out + captioning takes minutes) — call from a background job / thread. `gen` runs krea2/ComfyUI
+    gap-fill for thin/evocative beats; `cull` runs the VLM usability floor (drop junk)."""
     if not needs:
         raise ValueError("no asset needs to acquire")
     pdir = _project_dir(comp)
     needs_file = pdir / "capture" / "needs.json"
     needs_file.parent.mkdir(parents=True, exist_ok=True)
     needs_file.write_text(json.dumps(needs, ensure_ascii=False, indent=2), encoding="utf-8")
-    r = subprocess.run([sys.executable, "-X", "utf8", str(BRIDGE / "pool.py"),
-                        "--needs", str(needs_file), "--project", str(pdir), "--per", str(per)],
-                       cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    cmd = [sys.executable, "-X", "utf8", str(BRIDGE / "pool.py"),
+           "--needs", str(needs_file), "--project", str(pdir), "--per", str(per)]
+    if not gen:
+        cmd.append("--no-gen")
+    if not cull:
+        cmd.append("--no-vlm-cull")
+    r = subprocess.run(cmd, cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8", errors="replace")
     pool_json = pdir / "pool.json"
     pool = json.loads(pool_json.read_text(encoding="utf-8")) if pool_json.exists() else []
     return {"ok": r.returncode == 0, "count": len(pool), "needs": needs,
@@ -735,7 +792,13 @@ def _scaffold_preview(comp: str, frame_id: str) -> Path:
                              f'data-duration="{dur}" data-track-index="10" data-volume="1"></audio>')
         except (json.JSONDecodeError, OSError, ValueError):
             pass
-    (pdir / "hyperframes.json").write_text('{"paths":{"blocks":"compositions"}}', encoding="utf-8")
+    _hj = {}
+    try:                                               # preserve a theme new_essay wrote (author.py reads it)
+        _hj = json.loads((pdir / "hyperframes.json").read_text(encoding="utf-8"))
+    except Exception:
+        _hj = {}
+    _hj["paths"] = {"blocks": "compositions"}
+    (pdir / "hyperframes.json").write_text(json.dumps(_hj), encoding="utf-8")
     (pdir / "index.html").write_text(
         '<!doctype html><html><head><meta charset="UTF-8"/>'
         '<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>'

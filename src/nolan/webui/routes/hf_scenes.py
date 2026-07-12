@@ -192,8 +192,8 @@ def register(app, ctx):
         except Exception:
             return {"sessions": []}
 
-    async def _pool_job(job, comp, needs, script, per):
-        """COLLECT->CAPTION->INVENTORY via the NOLAN asset bridge (pool.py). needs given, else derived from script/SOURCE.md."""
+    async def _pool_job(job, comp, needs, script, per, gen=True, cull=True):
+        """ACQUIRE->SCORE+CAPTION->INVENTORY via the NOLAN asset bridge (pool.py). needs given, else derived from script/SOURCE.md."""
         nds = needs
         if not nds:
             from nolan.hyperframes.edit import _project_script, _project_dir
@@ -208,8 +208,8 @@ def register(app, ctx):
         if not nds:
             job.message = "No asset needs derived."
             return {"ok": False, "detail": "no asset needs"}
-        job.message = f"Acquiring {len(nds)} asset need(s) — stock + captions (a few minutes)…"
-        res = await asyncio.to_thread(hfedit.run_pool, comp, nds, per)
+        job.message = f"Acquiring {len(nds)} asset need(s) — multi-source + VLM cull + captions (a few minutes)…"
+        res = await asyncio.to_thread(hfedit.run_pool, comp, nds, per, gen, cull)
         job.message = f"Asset pool: {res.get('count', 0)} asset(s) -> {comp}/capture/"
         return res
 
@@ -220,7 +220,9 @@ def register(app, ctx):
         if not comp:
             raise HTTPException(status_code=400, detail="comp required")
         job = job_manager.start("hf_pool", _pool_job, meta={"comp": comp}, comp=comp,
-                                needs=payload.get("needs"), script=payload.get("script"), per=int(payload.get("per", 3)))
+                                needs=payload.get("needs"), script=payload.get("script"),
+                                per=int(payload.get("per", 8)), gen=bool(payload.get("gen", True)),
+                                cull=bool(payload.get("cull", True)))
         return {"job_id": job.id, "comp": comp}
 
     @app.post("/api/hf/voiceover")
@@ -233,6 +235,16 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail="comp and vo_source required")
         return await asyncio.to_thread(_guard, hfedit.attach_voiceover, comp, vo)
 
+    @app.get("/api/hf/themes")
+    async def hf_themes():
+        """The selectable NOLAN themes (themes/ registry) for the new-essay picker."""
+        return {"themes": hfedit.list_themes()}
+
+    @app.post("/api/hf/theme-suggest")
+    async def hf_theme_suggest(payload: dict = Body(...)):
+        """Deterministic, explainable theme ranking for a script (select_theme.py) — seeds the picker."""
+        return {"ranked": hfedit.suggest_theme(payload.get("script") or "", int(payload.get("top", 3)))}
+
     @app.post("/api/hf/new")
     async def hf_new(payload: dict = Body(...)):
         script = (payload.get("script") or "").strip()
@@ -241,10 +253,14 @@ def register(app, ctx):
         if not (script and name):
             raise HTTPException(status_code=400, detail="name and script are required")
         res = _guard(hfedit.new_essay, name, script, payload.get("style"),
-                     bool(payload.get("acquire_pool", True)), payload.get("voiceover"))
+                     bool(payload.get("acquire_pool", True)), payload.get("voiceover") or None,
+                     payload.get("asset_density") or "balanced", payload.get("theme") or None,
+                     payload.get("motion") or None)
         if res.get("acquire_pool"):        # acquire the asset pool first (from the script), before authoring
             pjob = job_manager.start("hf_pool", _pool_job, meta={"comp": res["comp"]},
-                                     comp=res["comp"], needs=None, script=script, per=3)
+                                     comp=res["comp"], needs=None, script=script,
+                                     per=int(payload.get("per", 8)), gen=bool(payload.get("gen", True)),
+                                     cull=bool(payload.get("cull", True)))
             res["pool_job"] = pjob.id
         if session:                        # dispatch to a live agent; else caller runs the prompt manually
             from nolan.webui import operations

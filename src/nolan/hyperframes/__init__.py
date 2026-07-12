@@ -11,6 +11,7 @@ from .edit import (
     recompose_frame, snapshot_frame, render_frame, beat_boundary_planner, catalog,
     revise_frame_note, build_note_prompt, list_assets, resolve_asset, save_upload, comp_dir,
     new_essay, derive_asset_needs, run_pool, attach_voiceover,
+    list_themes, suggest_theme, theme_exists,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "recompose_frame", "snapshot_frame", "render_frame", "beat_boundary_planner", "catalog",
     "revise_frame_note", "build_note_prompt", "list_assets", "resolve_asset", "save_upload", "comp_dir",
     "new_essay", "derive_asset_needs", "run_pool", "attach_voiceover",
+    "list_themes", "suggest_theme", "theme_exists",
 ]

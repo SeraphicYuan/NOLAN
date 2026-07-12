@@ -16,6 +16,33 @@ import compose
 
 HERE = Path(__file__).parent
 CATALOG = json.load(open(HERE / "catalog.json", encoding="utf-8"))
+THEMES_DIR = Path(__file__).resolve().parents[3] / "themes"       # repo_root/themes (matches compose._theme_vars)
+
+
+def theme_exists(theme) -> bool:
+    return bool(theme) and (THEMES_DIR / str(theme) / "tokens.css").exists()
+
+
+def resolve_theme(spec, cli_theme=None, out_dir=None):
+    """Which NOLAN theme this comp renders in. Priority: --theme > spec['theme'] > the comp's
+    hyperframes.json['theme'] > the Vox house default. Returns (theme, source, ok). This is the seam
+    that lets a compose-first essay use ANY of the themes/ registry instead of hardcoded Vox."""
+    theme, source = None, ""
+    if cli_theme:
+        theme, source = cli_theme, "--theme"
+    elif spec.get("theme"):
+        theme, source = spec["theme"], "spec.theme"
+    elif out_dir:
+        try:
+            comp = Path(out_dir).resolve().parents[1]              # <comp>/compositions/frames -> <comp>
+            hj = json.load(open(comp / "hyperframes.json", encoding="utf-8"))
+            if hj.get("theme"):
+                theme, source = hj["theme"], "hyperframes.json"
+        except Exception:
+            pass
+    if not theme:
+        return "highlighter-editorial", "default", True
+    return theme, source, theme_exists(theme)
 
 # minimum non-empty fields per scene type — the accept gate (schema lives in catalog.json)
 REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highlight"],
@@ -92,6 +119,7 @@ def main():
     ap.add_argument("--spec", required=True)
     ap.add_argument("--out-dir")
     ap.add_argument("--validate-only", action="store_true")
+    ap.add_argument("--theme", help="theme slug under themes/ (else spec.theme / the comp's hyperframes.json / Vox default)")
     args = ap.parse_args()
     spec = json.load(open(args.spec, encoding="utf-8"))
 
@@ -110,7 +138,13 @@ def main():
     print(f"OK — spec validates: {len(spec['frames'])} frame(s), {total} scenes "
           f"({total - bespoke} templated, {bespoke} bespoke) — {dict(counts)}")
 
-    warns = theme_layout_audit(spec)
+    theme, tsrc, tok = resolve_theme(spec, args.theme, args.out_dir)
+    if not tok:
+        print(f"  ⚠ theme {theme!r} (via {tsrc}) not found under themes/ — using highlighter-editorial")
+        theme, tsrc = "highlighter-editorial", "fallback"
+    print(f"  theme: {theme} (via {tsrc})")
+
+    warns = theme_layout_audit(spec, themes=list(dict.fromkeys(FONT_EXTREME_THEMES + [theme])))
     if warns:
         print("THEME-FIT audit (advisory) — cross-theme layout robustness:")
         for w in warns:
@@ -122,7 +156,7 @@ def main():
         sys.exit("--out-dir required to build")
     out = Path(args.out_dir); out.mkdir(parents=True, exist_ok=True)
     for fr in spec["frames"]:
-        html = compose.compose_frame(fr["id"], fr["dur"], fr["scenes"])
+        html = compose.compose_frame(fr["id"], fr["dur"], fr["scenes"], theme=theme)
         (out / f'{fr["id"]}.html').write_text(html, encoding="utf-8")
         print(f'  built {fr["id"]}.html — {len(fr["scenes"])} scenes')
 

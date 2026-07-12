@@ -128,16 +128,53 @@
         <span class="meta" style="color:var(--text-secondary);font-size:12px;">script → assets → dispatch the faceless-explainer agent</span>
         <span class="spacer"></span><button class="btn ghost mini" onclick="closeNew()">Close</button></div>
       <div class="field"><label>name</label><input id="new-name" placeholder="e.g. compound-interest-explained"></div>
-      <div class="field"><label>script / topic</label><textarea id="new-script" style="min-height:180px" placeholder="Paste the essay text, or a topic to explain…"></textarea></div>
+      <div class="field"><label>script / topic</label><textarea id="new-script" style="min-height:150px" placeholder="Paste the essay text, or a topic to explain…"></textarea></div>
+
       <div class="row2">
-        <div class="field"><label>dispatch to agent</label><select id="new-session"></select></div>
-        <div class="field"><label>style (optional)</label><input id="new-style" placeholder="e.g. Vox highlighter-editorial, dark"></div>
+        <div class="field"><label>theme
+            <span onclick="suggestTheme()" style="color:var(--accent);cursor:pointer;font-weight:400;font-size:11px;margin-left:6px">✨ suggest from script</span></label>
+          <select id="new-theme"></select>
+          <div id="theme-why" style="display:none;font-size:11px;color:var(--text-secondary);margin-top:5px"></div></div>
+        <div class="field"><label>asset density</label>
+          <select id="new-density">
+            <option value="sparse">sparse — lean, more typography</option>
+            <option value="balanced" selected>balanced (default)</option>
+            <option value="dense">dense — asset-forward</option>
+          </select></div>
       </div>
-      <label class="field" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-top:4px">
-        <input type="checkbox" id="new-faceless" style="width:auto;margin-top:2px">
-        <span style="font-size:12px"><b>Asset-pool-free (faceless)</b> — skip stock/gen acquisition and invent every visual. Default is <b>asset-backed</b>: acquire a pool from the script via <code>pool.py</code>, then compose.</span></label>
+      <div class="row2">
+        <div class="field"><label>voiceover</label>
+          <select id="new-vo" onchange="document.querySelector('#new-vo-src').style.display=this.value==='__attach'?'':'none'">
+            <option value="">Faceless self-voice (default)</option>
+            <option value="auto">Auto-synth from the script</option>
+            <option value="__attach">Attach a project's cloned VO…</option>
+          </select>
+          <input id="new-vo-src" placeholder="projects/&lt;name&gt; or a path to assets/voiceover/" style="display:none;margin-top:6px"></div>
+        <div class="field"><label>dispatch to agent</label><select id="new-session"></select></div>
+      </div>
+
+      <details style="margin-top:6px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--text-secondary);margin:6px 0">Advanced — acquisition &amp; motion (smart defaults)</summary>
+        <div class="row2" style="margin-top:8px">
+          <div class="field"><label>motion (real footage)</label>
+            <select id="new-motion">
+              <option value="">balanced (default)</option>
+              <option value="none">none — stills / typography only</option>
+              <option value="light">light</option>
+              <option value="heavy">heavy — video-forward</option>
+            </select></div>
+          <div class="field"><label>acquisition depth (assets / beat)</label>
+            <input id="new-per" type="number" min="2" max="16" value="8"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:8px;cursor:pointer"><input type="checkbox" id="new-gen" checked style="width:auto"> Generate originals (krea2/ComfyUI) for thin / evocative beats</label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:7px;cursor:pointer"><input type="checkbox" id="new-cull" checked style="width:auto"> VLM usability cull — drop junk (watermark / off-topic / stock-graphic)</label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:7px;cursor:pointer"><input type="checkbox" id="new-faceless" style="width:auto"> Faceless — skip the asset pool, invent every visual</label>
+        <div class="field" style="margin-top:8px"><label>style notes (optional — extra guidance for the agent, not the theme)</label>
+          <input id="new-style" placeholder="e.g. punchy, big numbers, restrained motion"></div>
+      </details>
+
       <div class="insp-actions"><button class="btn" onclick="submitNew()">Create + dispatch</button></div>
-      <div class="desc" style="margin-top:8px">The agent invents visuals per scene (or selects from the pool, if enabled) and authors in the background. It appears in the selector above (auto-refresh) once frames are composed; then edit it per-scene here.</div>
+      <div class="desc" style="margin-top:8px">The <b>theme</b> is applied deterministically by the composer (author.py); the agent selects pool assets + authors frames in the background. It appears in the selector above (auto-refresh) once frames are composed; then edit it per-scene here.</div>
     </div>
   </div>
 
@@ -170,19 +207,49 @@ async function loadComps(initial) {
 function refreshComps() { loadComps(false).then(() => toast("compositions refreshed")); }
 
 // ---- new essay: scaffold script + dispatch the faceless-explainer agent ----
-function openNew() { $("#newModal").style.display = "flex"; loadAgents(); }
+let THEMES = [];
+function openNew() { $("#newModal").style.display = "flex"; loadAgents(); loadThemes(); }
 function closeNew() { $("#newModal").style.display = "none"; }
 async function loadAgents() {
   let opts = '<option value="">— dispatch manually (copy the prompt) —</option>';
   try { const d = await jget("/api/hf/agents"); opts += (d.sessions || []).map(s => `<option value="${s}">${s}</option>`).join(""); } catch {}
   $("#new-session").innerHTML = opts;
 }
-async function submitNew() {
-  const name = $("#new-name").value.trim(), script = $("#new-script").value.trim(),
-        session = $("#new-session").value, style = $("#new-style").value.trim(), acquire_pool = !$("#new-faceless").checked;
-  if (!name || !script) return toast("name + script are required", "err");
+async function loadThemes() {
+  if (!THEMES.length) { try { THEMES = (await jget("/api/hf/themes")).themes || []; } catch { THEMES = []; } }
+  renderThemeOptions([]);
+}
+function renderThemeOptions(ranked) {
+  const rank = new Map((ranked || []).map((r, i) => [r.id, i + 1]));
+  const sel = $("#new-theme");
+  sel.innerHTML = THEMES.map(t => `<option value="${t.id}">${rank.has(t.id) ? "★" + rank.get(t.id) + " " : ""}${t.id} — ${t.name}</option>`).join("");
+  if (ranked && ranked.length) sel.value = ranked[0].id;
+  else if ([...sel.options].some(o => o.value === "highlighter-editorial")) sel.value = "highlighter-editorial";
+}
+async function suggestTheme() {
+  const script = $("#new-script").value.trim();
+  if (!script) return toast("enter a script first to suggest a theme", "err");
   try {
-    const r = await jpost("/api/hf/new", { name, script, session, style, acquire_pool });
+    const ranked = (await jpost("/api/hf/theme-suggest", { script, top: 5 })).ranked || [];
+    if (!ranked.length) return toast("theme selector unavailable", "err");
+    renderThemeOptions(ranked);
+    const top = ranked[0], why = Array.isArray(top.why) ? top.why.join(", ") : (top.why || "");
+    const el = $("#theme-why"); el.style.display = "";
+    el.textContent = `suggested: ${top.id} (score ${top.score})${why ? " — " + why : ""}`;
+  } catch (e) { toast("suggest failed: " + e.message, "err"); }
+}
+async function submitNew() {
+  const name = $("#new-name").value.trim(), script = $("#new-script").value.trim();
+  if (!name || !script) return toast("name + script are required", "err");
+  const vo = $("#new-vo").value, voSrc = $("#new-vo-src").value.trim();
+  const payload = {
+    name, script, session: $("#new-session").value, style: $("#new-style").value.trim(),
+    theme: $("#new-theme").value, asset_density: $("#new-density").value, motion: $("#new-motion").value,
+    per: parseInt($("#new-per").value) || 8, gen: $("#new-gen").checked, cull: $("#new-cull").checked,
+    acquire_pool: !$("#new-faceless").checked, voiceover: vo === "__attach" ? voSrc : vo,
+  };
+  try {
+    const r = await jpost("/api/hf/new", payload);
     closeNew();
     if (r.pool_job) toast(`Acquiring asset pool for '${r.comp}' (job ${r.pool_job})…`, "ok");
     if (r.dispatched) toast(`Essay '${r.comp}' dispatched to ${r.dispatched} — composing… (auto-refreshing)`, "ok");
