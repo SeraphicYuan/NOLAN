@@ -103,8 +103,20 @@ def _beat_label(sc: Dict) -> str:
     return sc.get("type", "scene")
 
 
+def _stable_t(t: float, groups: List[Dict], lo: float, hi: float) -> float:
+    """A caption CROSSFADE reads as 'doubled/garbled' text in a paused still, so nudge the sample to the
+    MIDDLE of the caption group active at t (clamped to the scene window) — a settled caption moment."""
+    for g in groups:
+        try:
+            if float(g.get("start", 0)) <= t <= float(g.get("end", 0)):
+                return round(min(hi, max(lo, (float(g["start"]) + float(g["end"])) / 2)), 2)
+        except Exception:
+            continue
+    return round(t, 2)
+
+
 def scene_samples(comp_dir: Path) -> List[Dict]:
-    """Every scene's GLOBAL midpoint time + a beat label (from the specs + audio_meta frame offsets)."""
+    """Every scene's GLOBAL sample time + a beat label (from the specs + audio_meta frame offsets)."""
     comp_dir = Path(comp_dir)
     meta = {}
     mp = comp_dir / "audio_meta.json"
@@ -113,6 +125,14 @@ def scene_samples(comp_dir: Path) -> List[Dict]:
             meta = json.loads(mp.read_text(encoding="utf-8"))
         except Exception:
             meta = {}
+    cap_groups = []                                       # sample mid-caption, not mid-crossfade
+    cg = comp_dir / "caption_groups.json"
+    if cg.exists():
+        try:
+            g = json.loads(cg.read_text(encoding="utf-8"))
+            cap_groups = g if isinstance(g, list) else g.get("groups", [])
+        except Exception:
+            cap_groups = []
     frame_dur = {v.get("frame"): float(v.get("duration_s", 0) or 0) for v in meta.get("voices", [])}
     spec_files = sorted((comp_dir / "compositions" / "frames").glob("*.spec.json"))
     out, offset = [], 0.0
@@ -126,9 +146,9 @@ def scene_samples(comp_dir: Path) -> List[Dict]:
                 du = float(sc.get("dur", 0) or 0)
                 data = sc.get("data", {}) or {}
                 atmospheric = bool((data.get("ground") or {}).get("kind"))   # b-roll backdrop → not literal
+                t = _stable_t(offset + st + du / 2, cap_groups, offset + st + 0.3, offset + st + du - 0.3)
                 out.append({"frame": fr.get("id"), "scene": sc.get("id"), "type": sc.get("type"),
-                            "t": round(offset + st + du / 2, 2), "beat": _beat_label(sc),
-                            "atmospheric": atmospheric})
+                            "t": t, "beat": _beat_label(sc), "atmospheric": atmospheric})
         offset += fdur
     return out
 
