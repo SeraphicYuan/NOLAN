@@ -103,6 +103,37 @@ def _phrase_time(phrase: str, words, after: float = 0.0) -> Optional[float]:
     return None
 
 
+def _retime_reveals(sc: Dict, d: Dict, words) -> int:
+    """Spread a scene's FIXED-OFFSET reveals across its (possibly stretched) window so they don't all
+    fire in the first ~2s and then hold static — the 'reads like a slide' anti-pattern that bites long
+    ungrounded holds. compose.py already reads a per-item `cue`, so this rewrites those WITHOUT touching
+    the composer: word-anchor an item to its spoken phrase when it carries an `anchor`, else spread the
+    items proportionally over [lead, dur-tail]. Returns how many reveals it retimed. (stat count-ups
+    today; chart bars need an addressable per-bar cue in compose.py — the follow-up.)"""
+    if sc.get("type") != "stat":
+        return 0
+    items = d.get("items")
+    if not isinstance(items, list) or not items:
+        return 0
+    start, dur = float(sc.get("start", 0) or 0), float(sc.get("dur", 0) or 0)
+    lead, tail = 0.6, 0.8
+    span = max(0.1, dur - lead - tail)
+    n = len(items)
+    done = 0
+    for k, it in enumerate(items):
+        if not isinstance(it, dict):
+            continue
+        cue = lead + (span * k / (n - 1) if n > 1 else 0.0)      # proportional across the window
+        anchor = it.get("anchor")
+        if anchor and words:                                    # …or land on the spoken number
+            t = _phrase_time(anchor, words, after=start)
+            if t is not None and start <= t < start + dur:
+                cue = t - start
+        it["cue"] = round(cue, 2)
+        done += 1
+    return done
+
+
 def place_scenes(comp_dir) -> Dict:
     """Set scene start/dur from where each scene's anchor/text is spoken. Writes back to the specs."""
     from nolan import aligner
@@ -149,21 +180,23 @@ def place_scenes(comp_dir) -> Dict:
                 nxt = starts[j + 1] if j + 1 < len(starts) else frame_dur
                 sc["dur"] = round(max(0.1, nxt - starts[j]), 3)
                 drift = max(drift, abs(sc["start"] - old))
-            cues = 0
-            for sc in scenes:                        # item 4 (v1): fire the operative highlight AS SPOKEN
+            cues = revs = 0
+            for sc in scenes:                        # fire reveals ON the spoken word (or spread — never clustered)
                 d = sc.get("data", {}) or {}
                 op = d.get("operative")
-                if op and words:
+                if op and words:                     # the operative highlight sweep
                     t = _phrase_time(op, words, after=float(sc.get("start", 0)))
                     if t is not None and sc["start"] <= t < sc["start"] + sc["dur"]:
                         d["cue"] = round(t - sc["start"], 2)
                         cues += 1
+                revs += _retime_reveals(sc, d, words)  # spread fixed-offset reveals over the (retimed) window
             if weak:
                 report["weak_total"] += len(weak)
                 print(f"  ⚠ {fr.get('id')}: {len(weak)} weak anchor(s) (Whisper may have mis-heard) — "
                       + ", ".join(f"{w['scene']}@conf {w['conf']} “{w['excerpt']}”" for w in weak))
             report["frames"].append({"frame": fr.get("id"), "scenes": len(scenes),
                                      "max_shift_s": round(drift, 2), "cues_synced": cues,
+                                     "reveals_retimed": revs,
                                      "fallback": fb, "weak_anchors": weak})
         sf.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     return report

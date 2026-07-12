@@ -49,6 +49,8 @@ DIMENSIONS = [
               rubric="longest run of the same light/dark register — alternate tone for cadence"),
     Dimension("overstuffed_stats", "Over-stuffed stats", "overstuffed_stats", "advisory",
               rubric="stat scenes carrying >3 numbers should escalate to a chart"),
+    Dimension("long_holds", "Long ungrounded holds", "long_holds", "advisory",
+              rubric="ungrounded scenes held >8s read like a static slide — split the beat or give it a moving ground"),
     Dimension("distinct_blocks", "Palette coverage", "distinct_blocks", "advisory",
               rubric="how many DISTINCT blocks used — reach past statement/stat/comparison into the tail"),
     Dimension("media_diversity", "Media diversity", "media_diversity", "advisory", pct=True,

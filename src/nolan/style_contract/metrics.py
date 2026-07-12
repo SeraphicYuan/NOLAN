@@ -185,6 +185,11 @@ def measure(scenes: List[SceneView]) -> Dict:
     scene_srcs = [set(s.srcs) for s in scenes]                    # asset reuse / diversity
     reuse = Counter(x for ss in scene_srcs for x in ss)
     grounded_n = sum(1 for ss in scene_srcs if ss)
+    # long UNGROUNDED holds: an ungrounded scene held past this has no continuous ground motion, so its
+    # one-shot reveals fire early and it reads like a static slide (the 'PowerPoint' anti-pattern). sync
+    # now spreads stat count-ups, but the real fix for a long hold is to SPLIT or GROUND it.
+    LONG_HOLD_S = 8.0
+    ungrounded = [s.dur for s in scenes if s.media == "none"]
     return {
         "n_scenes": n,
         "n_frames": len(frames),
@@ -198,6 +203,8 @@ def measure(scenes: List[SceneView]) -> Dict:
         "pacing_cv": round(_cv(durs), 3),
         "cuts_per_min": round(n / (total / 60), 2) if total else 0.0,
         "mean_dur": round(total / n, 2),
+        "long_holds": sum(1 for dz in ungrounded if dz > LONG_HOLD_S),   # ungrounded scenes held > 8s (advisory)
+        "max_hold": round(max(ungrounded, default=0.0), 2),
         # layout variety
         "layout_max_share": round(max(blocks.values()) / n, 3),
         "layout_max_run": _max_run([s.block for s in scenes]),
