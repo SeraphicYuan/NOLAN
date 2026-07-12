@@ -104,11 +104,14 @@ def check_freeze(comp_dir: Path, probe_fn: Callable[[Path], MediaInfo] = probe, 
     rows = []
     for u in video_uses(comp_dir):
         clip = (comp_dir / u.src)
+        healed = clip.with_name(clip.stem + ".filled.mp4")   # assemble_media's pre-render freeze-heal writes this
+        if healed.exists():                                   # probe what actually RENDERS, not the pre-heal short clip
+            clip = healed
         dur = probe_fn(clip).duration if clip.exists() else 0.0
         ok = clip.exists() and dur + tol >= u.window
         rows.append({"frame": u.frame, "scene": u.scene, "src": u.src, "kind": u.kind,
                      "clip_dur": round(dur, 2), "window": round(u.window, 2), "exists": clip.exists(),
-                     "ok": ok})
+                     "healed": clip == healed, "ok": ok})
     return rows
 
 

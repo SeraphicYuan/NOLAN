@@ -189,7 +189,9 @@ def measure(scenes: List[SceneView]) -> Dict:
     # one-shot reveals fire early and it reads like a static slide (the 'PowerPoint' anti-pattern). sync
     # now spreads stat count-ups, but the real fix for a long hold is to SPLIT or GROUND it.
     LONG_HOLD_S = 8.0
-    ungrounded = [s.dur for s in scenes if s.media == "none"]
+    # exempt DATAVIZ (chart drawing, diagram/geo revealing, spread stat count-ups) — those animate
+    # continuously, so a long one is NOT a static slide. Only ungrounded NON-dataviz holds risk it.
+    static_holds = [s.dur for s in scenes if s.media == "none" and s.family != "dataviz"]
     return {
         "n_scenes": n,
         "n_frames": len(frames),
@@ -203,8 +205,8 @@ def measure(scenes: List[SceneView]) -> Dict:
         "pacing_cv": round(_cv(durs), 3),
         "cuts_per_min": round(n / (total / 60), 2) if total else 0.0,
         "mean_dur": round(total / n, 2),
-        "long_holds": sum(1 for dz in ungrounded if dz > LONG_HOLD_S),   # ungrounded scenes held > 8s (advisory)
-        "max_hold": round(max(ungrounded, default=0.0), 2),
+        "long_holds": sum(1 for dz in static_holds if dz > LONG_HOLD_S),  # ungrounded NON-dataviz scenes held > 8s
+        "max_hold": round(max(static_holds, default=0.0), 2),
         # layout variety
         "layout_max_share": round(max(blocks.values()) / n, 3),
         "layout_max_run": _max_run([s.block for s in scenes]),

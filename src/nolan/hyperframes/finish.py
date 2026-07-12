@@ -14,6 +14,7 @@ subprocesses. `--dry-run` prints the plan without executing; `--no-render` stops
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -31,9 +32,12 @@ def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, sof
         print(f"  [{label}] {shown}" + (f"   (cwd={cwd})" if cwd else ""))
         return True
     print(f"▶ {label}")
+    # `npx`/`node` are .cmd shims on Windows — a WSL-launched Windows python can't spawn them without a
+    # shell (node resolves, npx does NOT), so the render step died every run. Mirror render_frame's fix.
+    shell = os.name == "nt" and bool(cmd) and cmd[0] in ("npx", "node")
     try:
         r = subprocess.run(cmd, cwd=str(cwd) if cwd else None, capture_output=True,
-                           text=True, encoding="utf-8", errors="replace")
+                           text=True, encoding="utf-8", errors="replace", shell=shell)
     except FileNotFoundError as e:
         if soft:
             print(f"  ⚠ {label} skipped ({e})")
@@ -74,12 +78,21 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
             if not res.get("ok"):
                 raise RuntimeError(f"hf-finish: recompose of frame {fid} failed:\n{res.get('output', '')[-1200:]}")
         print(f"  recomposed {len(list_frames(comp))} frame(s)")
-    # 4 · SOUND (soft): a music bed + SFX cues, merged into audio_meta BEFORE assemble-index mounts them
+    # 4 · SOUND (soft): a music bed + SFX cues, merged into audio_meta BEFORE assemble-index mounts them.
+    # GUARD: the sound step must never wipe the bridged narration (a silent render is a loud failure).
     if sound:
+        import json as _json
+        am = pdir / "audio_meta.json"
+        before = len(_json.loads(am.read_text(encoding="utf-8")).get("voices", [])) if (am.exists() and not dry_run) else 0
         _run("bgm", ["node", audio, "fetch-bgm", "--storyboard", "./STORYBOARD.md", "--hyperframes", "."],
              cwd=pdir, dry=dry_run, soft=True)
         _run("sfx", ["node", audio, "fetch-sfx", "--storyboard", "./STORYBOARD.md", "--hyperframes", "."],
              cwd=pdir, dry=dry_run, soft=True)
+        if before and not dry_run:
+            after = len(_json.loads(am.read_text(encoding="utf-8")).get("voices", [])) if am.exists() else 0
+            if after < before:
+                raise RuntimeError(f"hf-finish: the sound step wiped narration ({before}→{after} voices) — "
+                                   "aborting before a silent render")
     # 5 · captions sub-comp from the word timings
     _run("captions", ["node", str(SKILL_SCRIPTS / "captions.mjs"), "build", "--storyboard", "./STORYBOARD.md",
                       "--audio-meta", "./audio_meta.json", "--hyperframes", ".", "--out", "./caption_groups.json"],

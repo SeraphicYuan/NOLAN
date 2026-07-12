@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -63,11 +64,47 @@ def frame_sig(comp: str, frame_id: str) -> str:
     return h.hexdigest()[:16]
 
 
+def frame_offset(comp: str, frame_id: str) -> float:
+    """Global start time of a frame = sum of PRIOR frame (VO section) durations."""
+    cdir = _comp_dir(comp)
+    meta = {}
+    mp = cdir / "audio_meta.json"
+    if mp.exists():
+        try:
+            meta = json.loads(mp.read_text(encoding="utf-8"))
+        except Exception:
+            meta = {}
+    durs = {v.get("frame"): float(v.get("duration_s", 0) or 0) for v in meta.get("voices", [])}
+    m = re.match(r"(\d+)", frame_id)
+    n = int(m.group(1)) if m else 1
+    return round(sum(durs.get(i, 0.0) for i in range(1, n)), 3)
+
+
+def caption_tag(comp: str, frame_id: str, dur: float):
+    """Mount the built caption comp OFFSET so this frame's (globally-timed) captions land in-window — so the
+    preview shows the exact thing that fails (caption legibility). Returns (tag, caption_html_path or None)."""
+    cap = _comp_dir(comp) / "compositions" / "captions.html"
+    if not cap.exists():
+        return "", None
+    off = frame_offset(comp, frame_id)
+    tag = (f'<div class="scene" data-composition-id="captions" data-composition-src="compositions/captions.html" '
+           f'data-start="{-off}" data-duration="{round(off + dur, 3)}" data-track-index="20"></div>')
+    return tag, cap
+
+
 def render_one(comp: str, frame_id: str) -> Optional[Path]:
-    """Render ONE frame to a ground+voice-accurate clip (compositions/frames/<id>.clip.mp4)."""
-    pdir = _scaffold_preview(comp, frame_id)               # frame HTML + voice + assets (no grounds yet)
+    """Render ONE frame to a ground+voice+CAPTION-accurate clip (compositions/frames/<id>.clip.mp4)."""
+    pdir = _scaffold_preview(comp, frame_id)               # frame HTML + voice + assets (no grounds/captions yet)
     idx = pdir / "index.html"
-    idx.write_text(inject_grounds(idx.read_text(encoding="utf-8"), frame_grounds(comp, frame_id)), encoding="utf-8")
+    html = inject_grounds(idx.read_text(encoding="utf-8"), frame_grounds(comp, frame_id))
+    spec, info = load_frame_spec(comp, frame_id)
+    dur = float(spec["frames"][info["i"]].get("dur", 5))
+    ctag, cap = caption_tag(comp, frame_id, dur)           # mount captions so the preview shows legibility
+    if cap:
+        (pdir / "compositions").mkdir(parents=True, exist_ok=True)
+        (pdir / "compositions" / "captions.html").write_text(cap.read_text(encoding="utf-8"), encoding="utf-8")
+        html = html.replace("</div><script", ctag + "</div><script", 1)
+    idx.write_text(html, encoding="utf-8")
     clip = _frames_dir(comp) / f"{frame_id}.clip.mp4"
     subprocess.run(["npx", "--yes", "hyperframes@latest", "render", str(pdir), "--output", str(clip)],
                    cwd=str(pdir), capture_output=True, text=True, encoding="utf-8", errors="replace",
