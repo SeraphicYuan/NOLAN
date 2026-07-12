@@ -56,6 +56,59 @@ def collect_video_grounds(comp_dir: Path):
     return clips
 
 
+def heal_video_freezes(comp_dir: Path, clips, tol: float = 0.15):
+    """PRE-RENDER freeze guard. A video ground shorter than its scene window FREEZES on its last frame
+    for the remainder — hf_qa catches this, but only AFTER a full render. The mismatch is knowable here
+    from metadata alone (clip container duration vs the scene window), so auto-heal it now: gentle
+    slow-mo for a small shortfall, loop-to-fill when the clip is far too short. Mutates clips[].src to
+    point at the healed file; reports every heal (and loudly flags anything it can't fix). No-op if the
+    probe is unavailable."""
+    try:
+        from nolan.hf_qa import probe, _ffmpeg
+    except Exception:
+        print("  (freeze-heal skipped — nolan.hf_qa unavailable)")
+        return clips
+    ff = _ffmpeg()
+    healed = failed = 0
+    for c in clips:
+        src = Path(c["src"])
+        p = src if src.is_absolute() else (comp_dir / src)
+        if not p.exists():
+            continue
+        actual = probe(p, ff).duration
+        window = float(c["duration"])
+        if actual <= 0 or actual + tol >= window:
+            continue                                     # long enough (or unprobeable) → leave it
+        out = p.with_name(p.stem + ".filled.mp4")
+        factor = window / actual
+        if factor <= 2.0:                                # small shortfall → natural b-roll slow-mo
+            cmd = [ff, "-y", "-i", str(p), "-vf", f"setpts={round(factor, 4)}*PTS", "-an",
+                   "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", str(out)]
+            how = f"×{factor:.2f} slow-mo"
+        else:                                            # far too short → loop to fill the window
+            cmd = [ff, "-y", "-stream_loop", "-1", "-i", str(p), "-t", f"{window:.3f}", "-an",
+                   "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", str(out)]
+            how = f"loop→{window:.1f}s"
+        try:
+            subprocess.run(cmd, capture_output=True, timeout=240)
+        except Exception:
+            pass
+        if out.exists() and out.stat().st_size > 20000:
+            try:
+                c["src"] = str(out.relative_to(comp_dir))
+            except ValueError:
+                c["src"] = str(out)
+            print(f"  ⛑ freeze-heal {p.name}: {actual:.1f}s clip < {window:.1f}s window → {how}")
+            healed += 1
+        else:
+            out.unlink(missing_ok=True)
+            failed += 1
+            print(f"  ⚠ freeze-heal FAILED {p.name} ({actual:.1f}s < {window:.1f}s) — WILL FREEZE; swap a longer clip")
+    if healed or failed:
+        print(f"freeze guard (pre-render): healed {healed}, unresolved {failed}")
+    return clips
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit("usage: python -X utf8 assemble_media.py <project_dir>")
@@ -65,7 +118,7 @@ def main():
     if not index.exists():
         sys.exit(f"no index.html at {index} — run assemble-index first")
 
-    clips = collect_video_grounds(comp)
+    clips = heal_video_freezes(comp, collect_video_grounds(comp))
     if clips:
         print(f"root video grounds: {len(clips)} → inject_root_video")
         subprocess.run([sys.executable, "-X", "utf8", str(bridge / "inject_root_video.py"),

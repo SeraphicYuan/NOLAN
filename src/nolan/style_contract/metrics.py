@@ -99,9 +99,11 @@ def scene_media(block: str, data: dict) -> str:
         return "image"
     if block == "social_card":
         return "image" if (data.get("avatar") or data.get("image")) else "none"
+    if block == "document":                       # a document shows a real PAGE image (data.source) → grounded
+        return "image" if data.get("source") else "none"
     if block == "raw":                            # bespoke HTML — best-effort substring scan
         return _substring_media(data)
-    return "none"                                 # geo / diagram / chart / timeline / document / code / lower_third
+    return "none"                                 # geo / diagram / chart / timeline / code / lower_third
 
 
 def scene_asset_srcs(block: str, data: dict) -> List[str]:
@@ -119,6 +121,11 @@ def scene_asset_srcs(block: str, data: dict) -> List[str]:
             out.append(g["src"])
     elif block == "newshead" and data.get("image"):
         out.append(data["image"])
+    elif block == "document":                     # the page image(s) the document grounds on
+        src = data.get("source")
+        for s in (src if isinstance(src, list) else [src]):
+            if isinstance(s, str) and s:
+                out.append(s)
     elif block in _IMAGE_BLOCKS:
         for im in (data.get("images") or data.get("items") or []):
             src = im.get("src") if isinstance(im, dict) else im

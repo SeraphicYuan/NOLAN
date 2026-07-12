@@ -177,7 +177,9 @@ def word_timestamps(wavs, out_path=None, *, model_size: str = "base", device: st
     for w in paths:
         wp = Path(_localize(w))
         words = tr.transcribe_words(wp)
-        res[wp.stem] = [{"word": x.word, "start": round(x.start, 3), "end": round(x.end, 3)} for x in words]
+        # emit BOTH `word` (NOLAN convention) and `text` (what captions.mjs reads) so the audio_meta
+        # word contract is uniform across the NOLAN-VO and media-use producers (was a silent caption skip)
+        res[wp.stem] = [{"word": x.word, "text": x.word, "start": round(x.start, 3), "end": round(x.end, 3)} for x in words]
         if not quiet:
             print(f"  {wp.stem}: {len(res[wp.stem])} words")
     if out_path:

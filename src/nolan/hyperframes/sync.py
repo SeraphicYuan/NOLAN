@@ -111,7 +111,7 @@ def place_scenes(comp_dir) -> Dict:
     meta = json.loads((comp_dir / "audio_meta.json").read_text(encoding="utf-8"))
     by_frame = {v.get("frame"): v for v in meta.get("voices", [])}
     spec_files = sorted((comp_dir / "compositions" / "frames").glob("*.spec.json"))
-    report = {"frames": [], "fallbacks": 0}
+    report = {"frames": [], "fallbacks": 0, "weak_total": 0}
 
     for i, sf in enumerate(spec_files, start=1):
         spec = json.loads(sf.read_text(encoding="utf-8"))
@@ -121,13 +121,14 @@ def place_scenes(comp_dir) -> Dict:
             words_raw = (by_frame.get(i) or {}).get("words") or []
             words = [WordTimestamp(word=w["word"], start=w["start"], end=w["end"]) for w in words_raw]
             fb = None
+            weak = []
             if not scenes or not words:
                 fb = "no words/scenes"
                 starts = _proportional(len(scenes), frame_dur) if scenes else []
             else:
                 q = [{"id": sc.get("id", f"s{j}"), "narration_excerpt": _scene_query(sc)}
                      for j, sc in enumerate(scenes)]
-                results, _unmatched = aligner.align_scenes_to_audio(q, words)
+                results, unmatched = aligner.align_scenes_to_audio(q, words)
                 by_id = {r.scene_id: r for r in results}
                 raw = [getattr(by_id.get(sc.get("id", f"s{j}")), "start_seconds", None)
                        for j, sc in enumerate(scenes)]
@@ -136,6 +137,11 @@ def place_scenes(comp_dir) -> Dict:
                     starts = _proportional(len(scenes), frame_dur)
                     fb = "proportional (anchors unmatched/out-of-order)"
                     report["fallbacks"] += 1
+                # LOUD: the aligner KNOWS which anchors matched weakly (confidence < 0.8), but a
+                # low-confidence-yet-monotonic placement lands silently otherwise — Whisper mis-
+                # transcription ('Jevons'→'Jevin's') mis-places a scene with nothing reported.
+                weak = [{"scene": u.scene_id, "conf": round(float(u.confidence), 2),
+                         "excerpt": (u.narration_excerpt or "")[:48]} for u in (unmatched or [])]
             drift = 0.0
             for j, sc in enumerate(scenes):
                 old = float(sc.get("start", 0) or 0)
@@ -152,8 +158,13 @@ def place_scenes(comp_dir) -> Dict:
                     if t is not None and sc["start"] <= t < sc["start"] + sc["dur"]:
                         d["cue"] = round(t - sc["start"], 2)
                         cues += 1
+            if weak:
+                report["weak_total"] += len(weak)
+                print(f"  ⚠ {fr.get('id')}: {len(weak)} weak anchor(s) (Whisper may have mis-heard) — "
+                      + ", ".join(f"{w['scene']}@conf {w['conf']} “{w['excerpt']}”" for w in weak))
             report["frames"].append({"frame": fr.get("id"), "scenes": len(scenes),
-                                     "max_shift_s": round(drift, 2), "cues_synced": cues, "fallback": fb})
+                                     "max_shift_s": round(drift, 2), "cues_synced": cues,
+                                     "fallback": fb, "weak_anchors": weak})
         sf.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     return report
 
@@ -190,6 +201,9 @@ def main():
             print(f"  {f['frame']:14} scenes={f['scenes']} max_shift={f['max_shift_s']}s "
                   f"cues={f['cues_synced']} fallback={f['fallback']}")
         print(f"fallbacks: {rep['fallbacks']} frame(s) — add `anchor` to those scenes for word-accurate placement")
+        if rep.get("weak_total"):
+            print(f"⚠ weak anchors: {rep['weak_total']} scene(s) matched at low confidence — verify their "
+                  f"placement (Whisper may have mis-transcribed the anchor phrase); see weak_anchors per frame")
 
 
 if __name__ == "__main__":
