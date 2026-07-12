@@ -25,16 +25,22 @@ SYS = ("You are a documentary photo editor triaging one stock/library image as b
        "beat of a video essay. Reply STRICT JSON only.")
 
 
-def judge_prompt(need: Dict) -> str:
+def judge_prompt(need: Dict, video: bool = False) -> str:
     """The fused score+caption prompt for one beat — focused on the CULL job (usable? junk?), and it
-    returns a caption so it REPLACES the caption call rather than adding a second VLM round-trip."""
+    returns a caption so it REPLACES the caption call rather than adding a second VLM round-trip.
+    `video`: the image is a 3-frame filmstrip of a clip → judge the whole clip."""
     q = need.get("query", "")
     aim = ("This beat is EVOCATIVE (an abstract idea/mood, not a literal thing): judge whether the image "
            "works as a MOOD or METAPHOR for it — not whether it literally depicts it."
            if need.get("evocative") else
            "This beat is CONCRETE: judge whether the image clearly, literally depicts the subject.")
-    return (f'BEAT: "{q}"\n{aim}\n'
-            "Judge this single image. Reply STRICT JSON: {"
+    subject = ("This image is a 3-frame FILMSTRIP (start · middle · end) of a VIDEO clip — judge the CLIP as a "
+               "whole: is it consistently on-topic + usable as b-roll? (an early black frame or an end logo alone "
+               "is fine; a wrong subject across the strip is not)."
+               if video else "Judge this single image.")
+    return (f'BEAT: "{q}"\n{aim}\n{subject} Reply STRICT JSON: {{'
+            '"usable": <0-10, how well a professional editor could actually cut this image under the beat; '
+            "an off-topic subject scores low>, "
             '"usable": <0-10, how well a professional editor could actually cut this image under the beat; '
             "an off-topic subject scores low>, "
             '"flags": "<any of: watermark / overlaid text / stock-photo graphic / logo; '

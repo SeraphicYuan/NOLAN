@@ -271,20 +271,40 @@ async def gen_fill(cfg, empties, assets_dir: Path, pool):
 
 
 def _video_still(clip: Path):
-    """A representative mid-frame still from a video clip → temp jpg, so the VLM can judge a VIDEO the
-    same way it judges an image (relevance + usability). None if extraction fails."""
+    """A 3-frame FILMSTRIP (start / mid / end, hstacked) of a video clip → one temp jpg, so the VLM
+    judges the clip's whole ARC in a single call — a clip that opens black, ends on a logo, or changes
+    subject isn't misjudged from one mid-frame. Mirrors how the video-indexer samples several timestamps
+    per clip (indexer.analyze_frame). Falls back to a single still, then None."""
     import os as _os
     import subprocess
     import tempfile
     from nolan.hf_qa import _ffmpeg, probe
     ff = _ffmpeg()
     dur = probe(Path(clip)).duration or 4.0
-    fd, tmp = tempfile.mkstemp(suffix=".jpg")
+    stills = []
+    for frac in (0.15, 0.5, 0.85):
+        fd, t = tempfile.mkstemp(suffix=".jpg")
+        _os.close(fd)
+        t = Path(t)
+        subprocess.run([ff, "-y", "-ss", f"{max(0.1, dur * frac):.2f}", "-i", str(clip), "-frames:v", "1",
+                        "-vf", "scale=480:-1", "-q:v", "3", str(t)], capture_output=True)
+        if t.exists() and t.stat().st_size > 1000:
+            stills.append(t)
+        else:
+            t.unlink(missing_ok=True)
+    if not stills:
+        return None
+    if len(stills) == 1:
+        return stills[0]
+    fd, out = tempfile.mkstemp(suffix=".jpg")
     _os.close(fd)
-    tmp = Path(tmp)
-    subprocess.run([ff, "-y", "-ss", f"{max(0.1, dur / 2):.2f}", "-i", str(clip), "-frames:v", "1",
-                    "-q:v", "3", str(tmp)], capture_output=True)
-    return tmp if (tmp.exists() and tmp.stat().st_size > 1000) else None
+    out = Path(out)
+    inputs = [x for s in stills for x in ("-i", str(s))]
+    subprocess.run([ff, "-y", *inputs, "-filter_complex", f"hstack=inputs={len(stills)}", "-q:v", "3", str(out)],
+                   capture_output=True)
+    for s in stills:
+        s.unlink(missing_ok=True)
+    return out if (out.exists() and out.stat().st_size > 1000) else None
 
 
 async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
@@ -312,7 +332,7 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
                 return
         async with sem:
             try:
-                raw = await prov.describe_image(img, judge_prompt(need))
+                raw = await prov.describe_image(img, judge_prompt(need, video=is_video))
                 v = parse_verdict(extract_json(raw))
             except Exception as e:
                 v = parse_verdict(None)
