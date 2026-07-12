@@ -23,6 +23,15 @@ from typing import Dict, List, Optional
 _ANCHOR_TEXT_KEYS = ("anchor", "operative")            # prefer the spoken anchor; then the operative word
 _VISIBLE_TEXT_KEYS = ("lines", "title", "titleHi", "kicker", "sub", "label", "quote", "headline")
 
+try:                                                   # per-block readable minimums (single source of truth)
+    from nolan.style_contract.metrics import (MIN_READABLE as _MIN_READABLE, BLOCK_FAMILY as _BF,
+                                              scene_media as _scene_media)
+    _MOTION_BLOCKS = {b for b, f in _BF.items() if f == "dataviz"}   # animate continuously → not a static hold
+except Exception:
+    _MIN_READABLE = {"newshead": 5.0, "comparison": 5.0, "document": 5.0, "timeline": 5.0}
+    _MOTION_BLOCKS = {"stat", "chart", "geo", "diagram", "timeline"}
+    _scene_media = lambda block, data: (data.get("ground", {}) or {}).get("kind") or "none"
+
 
 def _voice_wavs(comp_dir: Path) -> List[Path]:
     return sorted((comp_dir / "assets" / "voice").glob("[0-9]*.wav"))
@@ -142,7 +151,7 @@ def place_scenes(comp_dir) -> Dict:
     meta = json.loads((comp_dir / "audio_meta.json").read_text(encoding="utf-8"))
     by_frame = {v.get("frame"): v for v in meta.get("voices", [])}
     spec_files = sorted((comp_dir / "compositions" / "frames").glob("*.spec.json"))
-    report = {"frames": [], "fallbacks": 0, "weak_total": 0}
+    report = {"frames": [], "fallbacks": 0, "weak_total": 0, "problems": []}
 
     for i, sf in enumerate(spec_files, start=1):
         spec = json.loads(sf.read_text(encoding="utf-8"))
@@ -190,6 +199,21 @@ def place_scenes(comp_dir) -> Dict:
                         d["cue"] = round(t - sc["start"], 2)
                         cues += 1
                 revs += _retime_reveals(sc, d, words)  # spread fixed-offset reveals over the (retimed) window
+            # anchor-lint: per-scene WINDOW + verdict, so degenerate windows are visible BEFORE a render
+            # (a mis-heard anchor silently produces a 0.94s or 27s window — this was ~80% of the rework).
+            for sc in scenes:
+                block, dur = sc.get("type", "?"), float(sc.get("dur", 0) or 0)
+                minr = _MIN_READABLE.get(block, 3.0)
+                grounded = _scene_media(block, sc.get("data", {}) or {}) != "none"   # document/newshead count
+                if dur + 1e-6 < minr:
+                    v = f"SHORT {dur:.1f}s < {minr:.0f}s (unreadable)"
+                elif dur > 8 and not grounded and block not in _MOTION_BLOCKS:
+                    v = f"LONG-HOLD {dur:.1f}s ungrounded"
+                else:
+                    v = None
+                if v:
+                    report["problems"].append({"frame": fr.get("id"), "scene": sc.get("id"),
+                                               "block": block, "dur": round(dur, 2), "issue": v})
             if weak:
                 report["weak_total"] += len(weak)
                 print(f"  ⚠ {fr.get('id')}: {len(weak)} weak anchor(s) (Whisper may have mis-heard) — "
@@ -237,6 +261,14 @@ def main():
         if rep.get("weak_total"):
             print(f"⚠ weak anchors: {rep['weak_total']} scene(s) matched at low confidence — verify their "
                   f"placement (Whisper may have mis-transcribed the anchor phrase); see weak_anchors per frame")
+        probs = rep.get("problems") or []
+        if probs:
+            print(f"\n✗ ANCHOR-LINT: {len(probs)} window problem(s) — FIX BEFORE RENDER "
+                  f"(a mis-heard anchor silently made these):")
+            for p in probs:
+                print(f"    {p['frame']}/{p['scene']} ({p['block']}) — {p['issue']}")
+        else:
+            print("anchor-lint: all scene windows readable ✓")
 
 
 if __name__ == "__main__":
