@@ -84,6 +84,19 @@
         </div>
     </div>
 
+    <!-- ===== ALL VOICEOVERS (browse existing) ===== -->
+    <div class="panel">
+        <h2>All voiceovers <span class="sub" id="voIdxCount" style="display:inline;"></span></h2>
+        <div class="sub">Every voiceover already on disk — pipeline <b>projects</b> and hybrid HyperFrames <b>comps</b>. Play them here; nothing is re-generated.</div>
+        <div class="row" style="margin-top:8px;">
+            <input id="voIdxFilter" placeholder="filter by name…" oninput="renderVOIndex()" style="flex:1;min-width:160px;">
+            <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="voIdxProj" checked onchange="renderVOIndex()"> projects</label>
+            <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="voIdxHF" checked onchange="renderVOIndex()"> HF comps</label>
+            <button onclick="loadVOIndex()">↻ Refresh</button>
+        </div>
+        <div id="voIndex" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+
     <!-- ===== TTS STUDIO ===== -->
     <div class="cols">
         <div class="panel">
@@ -540,7 +553,44 @@ async function genCaptions(){
     pollVO(job_id, st, slug);  // reuse poller -> refreshes loadVOInfo on done
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{ loadVoices().then(updateVoHint); loadScriptProjects(); loadRenderProjects(); loadLibVideos(); });
+// ===== All voiceovers (browse existing project + HF-comp VO) =====
+let VO_INDEX = [];
+async function loadVOIndex(){
+  const el = document.getElementById('voIndex');
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try { VO_INDEX = ((await (await fetch('/api/voiceover-index')).json()).items) || []; }
+  catch { el.innerHTML = '<div class="empty">failed to load</div>'; return; }
+  renderVOIndex();
+}
+function renderVOIndex(){
+  const f = (document.getElementById('voIdxFilter').value||'').toLowerCase();
+  const showP = document.getElementById('voIdxProj').checked, showH = document.getElementById('voIdxHF').checked;
+  const items = VO_INDEX.filter(it => (it.kind==='project'?showP:showH) && it.name.toLowerCase().includes(f));
+  document.getElementById('voIdxCount').textContent = `${items.length} / ${VO_INDEX.length}`;
+  const el = document.getElementById('voIndex');
+  el.innerHTML = items.length ? items.map(voIdxCard).join('') : '<div class="empty">No voiceovers match.</div>';
+}
+function voIdxCard(it){
+  const badge = it.kind==='hf'
+    ? '<span class="pill" style="background:#7c3aed;color:#fff">HF</span>'
+    : '<span class="pill" style="background:#0e7490;color:#fff">project</span>';
+  const dur = it.total_s ? ` · ${Math.round(it.total_s)}s` : '';
+  let player = '';
+  if (it.kind==='project' && it.mp3_url)
+    player = `<audio controls preload="none" src="${it.mp3_url}" style="width:100%;margin-top:6px"></audio>`;
+  else if (it.kind==='project')
+    player = `<div class="sub" style="margin-top:6px">${it.sections} per-section wav(s) — no concatenated mp3 yet</div>`;
+  else if (it.kind==='hf' && (it.voices||[]).length)
+    player = `<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--text-secondary)">▸ ${it.voices.length} sections</summary>`
+      + it.voices.map((v,i)=>`<div style="margin-top:6px"><div class="sub" style="font-size:11px">${i+1}. ${esc(v.title||('section '+(i+1)))}${v.duration_s?` · ${Math.round(v.duration_s)}s`:''}</div><audio controls preload="none" src="${v.url}" style="width:100%"></audio></div>`).join('')
+      + `</details>`;
+  const meta = `${it.sections||0} section(s)${dur}${it.captions?' · captions':''}`;
+  return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:8px"><b>${esc(it.name)}</b> ${badge}<span class="sub" style="margin-left:auto">${meta}</span></div>
+    ${player}</div>`;
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{ loadVoices().then(updateVoHint); loadScriptProjects(); loadRenderProjects(); loadLibVideos(); loadVOIndex(); });
 </script>
 </body>
 </html>

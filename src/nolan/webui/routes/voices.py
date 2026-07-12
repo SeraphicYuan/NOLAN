@@ -193,6 +193,73 @@ def register(app, ctx):
                   p.suffix.lower(), "application/octet-stream")
         return FileResponse(p, media_type=mt)
 
+    @app.get("/api/voiceover-index")
+    async def api_voiceover_index():
+        """Every existing voiceover on disk — pipeline PROJECTS and hybrid HF COMPS — so the page can
+        browse/play VO it didn't itself create. Read-only scan; nothing here synthesizes."""
+        items = []
+        proot = Path("projects")
+        if proot.is_dir():
+            for pdir in sorted(p for p in proot.iterdir() if p.is_dir()):
+                vo = pdir / "assets" / "voiceover"
+                if not vo.is_dir():
+                    continue
+                full = (vo / "voiceover.mp3").exists()
+                nsec = len(list((vo / "_work").glob("sec_*.wav"))) if (vo / "_work").is_dir() else 0
+                segj = vo / "segments" / "segments.json"
+                if not nsec and segj.exists():
+                    try:
+                        nsec = len((json.loads(segj.read_text(encoding="utf-8")) or {}).get("segments", []))
+                    except Exception:
+                        nsec = 0
+                if not (full or nsec):
+                    continue
+                items.append({"kind": "project", "name": pdir.name, "sections": nsec,
+                              "has_mp3": full, "captions": (vo / "voiceover.srt").exists(),
+                              "mp3_url": f"/api/voiceover/{quote(pdir.name)}/voiceover.mp3" if full else None})
+        from nolan.hyperframes import edit as hfedit
+        seen = set()
+        for root in (hfedit.LAB_VIDEOS, hfedit.PROJECTS):
+            if not Path(root).is_dir():
+                continue
+            for comp in sorted(p for p in Path(root).iterdir() if p.is_dir()):
+                am = comp / "audio_meta.json"
+                if not am.is_file() or comp.name in seen:
+                    continue
+                try:
+                    meta = json.loads(am.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                voices = meta.get("voices", []) or []
+                if not voices:
+                    continue
+                seen.add(comp.name)
+                items.append({"kind": "hf", "name": comp.name, "sections": len(voices),
+                              "total_s": meta.get("total_s"), "has_mp3": False,
+                              "voices": [{"title": v.get("title", ""), "duration_s": v.get("duration_s"),
+                                          "url": f"/api/hf-voice/{quote(comp.name)}/{quote(v.get('path', ''))}"}
+                                         for v in voices]})
+        return {"items": items}
+
+    @app.get("/api/hf-voice/{comp}/{path:path}")
+    async def api_hf_voice_file(comp: str, path: str):
+        """Serve a hybrid-HF comp's voiceover wav (assets/voice/*.wav) — the sibling of /api/voiceover
+        that reaches render-service/_lab_hyperframes/videos/<comp>/, which the projects-scoped one can't."""
+        from urllib.parse import unquote
+        from nolan.hyperframes import edit as hfedit
+        safe = unquote(path).replace("\\", "/")
+        if ".." in safe:
+            raise HTTPException(status_code=400, detail="bad path")
+        base = next((Path(root) / comp for root in (hfedit.LAB_VIDEOS, hfedit.PROJECTS)
+                     if (Path(root) / comp).is_dir()), None)
+        if base is None:
+            raise HTTPException(status_code=404, detail="comp not found")
+        p = (base / safe).resolve()
+        if base.resolve() not in p.parents or not p.is_file():
+            raise HTTPException(status_code=404, detail="not found")
+        mt = {".wav": "audio/wav", ".mp3": "audio/mpeg"}.get(p.suffix.lower(), "application/octet-stream")
+        return FileResponse(p, media_type=mt)
+
     # (TTS Studio merged into this page; the /tts transition alias was
     #  removed once nothing referenced it — deferred item #9.)
 
