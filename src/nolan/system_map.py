@@ -74,10 +74,13 @@ SURFACES = [
              "+ timeline view (scenes/motion-badges/sfx/VO on a time axis); "
              "typed @[scope] mentions + registry-driven motion param editor"},
     {"id": "pool", "label": "Asset Pool", "path": "/pool",
-     "role": "the project media bin (derived): every asset tagged in-video/"
-             "selected/candidate/shortlisted/unused; shortlist with scene hint"},
+     "role": "project media bin (derived): assets tagged in-video/selected/candidate/"
+             "shortlisted/unused + shortlist. Source dropdown → HyperFrames comps: the "
+             "acquisition pool as pre-selection candidates grouped by NEED, with provider + "
+             "CLIP-relevance + VLM usable/flags curation badges (P4.2 contact sheet)"},
     {"id": "voices", "label": "Voices", "path": "/voices",
-     "role": "voice library + TTS studio + project voiceover"},
+     "role": "voice library + TTS studio + project voiceover; 'All voiceovers' browses every "
+             "existing VO (pipeline projects AND hybrid HyperFrames comps) with players"},
     {"id": "map", "label": "NOLAN Map", "path": "/map",
      "role": "this page — the introspected system catalog"},
     {"id": "taste", "label": "Taste", "path": "/taste",
@@ -330,15 +333,17 @@ _HF_WORKFLOWS = ["faceless-explainer", "product-launch-video", "website-to-video
                  "embedded-captions", "talking-head-recut", "pr-to-video",
                  "motion-graphics", "music-to-video", "slideshow", "general-video",
                  "remotion-to-hyperframes"]
+# The NOLAN default: the HYBRID compose-first pipeline (not the stock faceless steps). The launch form
+# (/hyperframes → New essay) sets the theme + acquisition knobs; then:
 _HF_PIPELINE = [
-    {"name": "0 · setup", "purpose": "init project + brief + sign-in status"},
-    {"name": "1 · brief", "purpose": "the source text (no capture)"},
-    {"name": "2 · design", "purpose": "pick a frame preset → frame.md + caption skin"},
-    {"name": "3 · storyboard", "purpose": "STORYBOARD.md + SCRIPT.md teaching plan"},
-    {"name": "3.1 · audio", "purpose": "TTS + word timings → audio_meta.json"},
-    {"name": "4 · visual", "purpose": "time-coded shot sequences paced to VO"},
-    {"name": "5 · frames", "purpose": "one worker per frame → frames/*.html + assemble"},
-    {"name": "6 · render", "purpose": "headless-Chrome seek render → mp4"},
+    {"name": "0 · brief", "purpose": "SOURCE.md — the script/topic; new-essay picks THEME (any of themes/) + acquisition knobs at launch"},
+    {"name": "1 · needs", "purpose": "derive per-beat asset needs from the script (evocative vs concrete, image vs video)"},
+    {"name": "2 · acquire", "purpose": "multi-source pool (src/nolan/acquire): fan out to library-CLIP + stock/archival/museum → over-fetch → score (CLIP relevance + fitness, per-need-type tier) → relevance floors → semantic dedup → GENERATE originals for thin/evocative beats"},
+    {"name": "2.1 · cull + caption", "purpose": "VLM usability floor (judge.py) fused with captioning — drop watermark/off-topic/stock-graphic junk → capture/pool.json (+ /pool HyperFrames tab)"},
+    {"name": "3 · storyboard + VO", "purpose": "STORYBOARD.md + the cloned voiceover bridged in (audio_meta.json, per-section word timings)"},
+    {"name": "4 · compose-first", "purpose": "per beat: pick a bridge/catalog.json template → author.py GATE (validate→build) → compose.py themed frame; bespoke raw only where no template fits"},
+    {"name": "5 · sync", "purpose": "force-align the VO, place each scene + fire its highlight on the SPOKEN word; recompose changed frames"},
+    {"name": "6 · render + QA", "purpose": "seek render → mp4; hf_qa (freeze/audio) + style-contract lint gates → fix + re-render"},
 ]
 
 
@@ -387,8 +392,10 @@ def _hyperframes() -> Dict[str, Any]:
                      "Chrome; --docker byte-reproducible",
         "determinism": "one paused GSAP timeline per composition; transform/opacity only; "
                        "no Date.now / Math.random / CSS transitions (seek-safe)",
-        "authoring": "LLM frame-workers author <template> sub-comps per storyboard frame; "
-                     "blocks/components installable via `hyperframes add`",
+        "authoring": "NOLAN default = COMPOSE-FIRST (hybrid): each beat is a bridge/catalog.json composer "
+                     "template, gated by author.py and built by compose.py in the chosen theme (themes/ "
+                     "registry); bespoke raw / native-HF only where no template fits. Visuals come from the "
+                     "multi-source acquisition pool. (Stock skill-routing still available via the workflows below.)",
         "pipeline": _HF_PIPELINE,
         "domain_skills": [entry(n) for n in _HF_DOMAIN],
         "workflows": [entry(n) for n in _HF_WORKFLOWS],
@@ -465,12 +472,14 @@ BRIDGES = [
      "hf": "scenes_from_hf(comp) reads compositions/frames/*.spec.json; gate failures steer re-authoring",
      "wire": ("src/nolan/style_contract/linter.py", "def lint")},
     {"id": "acquisition", "label": "Asset acquisition engine", "stage": "live",
-     "purpose": "beat-driven, over-provisioned, MULTI-SOURCE pool — for each need it fans out to the saved "
-                "image library (CLIP) + the 25 stock/archival/museum providers, over-fetches, scores each for "
-                "CLIP relevance + overlay fitness, semantic-dedupes, keeps the best, and GENERATES originals "
-                "where stock/library is thin or off-topic. Tunable from acquire/config.py; pluggable sources.",
-     "nolan": "src/nolan/acquire (engine + build_context, injectable organs) driven by bridge/pool.py",
-     "hf": "capture/pool.json + capture/extracted/asset-descriptions.md → the storyboard SELECTS asset_candidates",
+     "purpose": "beat-driven, over-provisioned, MULTI-SOURCE pool. Per need: fan out to the saved image "
+                "library (CLIP) + 25 stock/archival/museum providers → over-fetch → score (CLIP relevance + "
+                "overlay fitness, per-need-type tier: concrete→literal, evocative→curated) → relevance floors "
+                "(library + generic-stock) → avg-hash dedup → GENERATE originals for thin/evocative beats → "
+                "VLM usability FLOOR (judge.py, fused with captioning: drop watermark/off-topic/stock-graphic). "
+                "Tunable from acquire/config.py; pluggable sources.",
+     "nolan": "src/nolan/acquire (engine + build_context + judge, injectable organs) driven by bridge/pool.py",
+     "hf": "capture/pool.json + asset-descriptions.md → storyboard SELECTS asset_candidates; browse per-need on /pool (HyperFrames tab)",
      "wire": ("src/nolan/acquire/engine.py", "def acquire_pool")},
 ]
 
