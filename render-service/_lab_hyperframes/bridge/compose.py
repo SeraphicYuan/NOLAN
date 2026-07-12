@@ -42,7 +42,7 @@ CSS = """
 .sllabel{margin-top:1.1cqw;font-family:var(--font-body);font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
   text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
 .paper .slnum,.paper .sllead{color:var(--text);}.paper .kick{color:var(--text-2);}.paper .sllabel{color:var(--text-mute);}
-.footage .slnum{color:var(--text);}.footage .kick{color:var(--text);}.footage .sllabel{color:var(--text-2);}
+.footage .slnum{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}.footage .kick{color:#F6F7F6;text-shadow:0 1px 8px rgba(0,0,0,0.5);}.footage .sllabel{color:#E9EAE9;text-shadow:0 1px 6px rgba(0,0,0,0.5);}
 .stmt.paper-t{color:var(--text);}
 .stmt.footage-t{color:#F6F7F6;text-shadow:0 2px 14px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}
 .stmt.footage-t .hlwrap{color:#141414;text-shadow:none;}/* operative sits on the accent bar -> dark text */
@@ -2379,8 +2379,37 @@ def _theme_vars(theme):
         css = p.read_text(encoding="utf-8")
     except Exception:
         return ""
-    decls = re.findall(r"--[\w-]+\s*:\s*[^;{}]+", css)
-    return ("#root{" + ";".join(d.strip() for d in decls) + ";}") if decls else ""
+    # Extract each `--name: value` custom property. A value can legally contain `;` inside a quoted
+    # string or url() (e.g. a `data:image/svg+xml;utf8,<svg…>` pattern), so terminate on a `;`/`{`/`}`
+    # only at paren-depth 0 and OUTSIDE any quote — a naive `[^;{}]+` truncates the data-URI mid-string
+    # and leaves an unclosed `url("` that swallows the rest of the CSS.
+    decls, last = [], 0
+    for m in re.finditer(r"(--[\w-]+)\s*:", css):
+        if m.start() < last:
+            continue                                   # inside a value we already consumed
+        name, j, depth, quote, buf = m.group(1), m.end(), 0, "", []
+        while j < len(css):
+            c = css[j]
+            if quote:
+                buf.append(c)
+                if c == quote:
+                    quote = ""
+            elif c in "\"'":
+                quote = c; buf.append(c)
+            elif c == "(":
+                depth += 1; buf.append(c)
+            elif c == ")":
+                depth = max(0, depth - 1); buf.append(c)
+            elif depth == 0 and c in ";{}":
+                break
+            else:
+                buf.append(c)
+            j += 1
+        last = j
+        val = "".join(buf).strip()
+        if val:
+            decls.append(f"{name}: {val}")
+    return ("#root{" + ";".join(decls) + ";}") if decls else ""
 
 
 # ---------------------------------------------------------------------------------------------
