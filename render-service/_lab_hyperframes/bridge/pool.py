@@ -362,6 +362,23 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
         print(f"    ✂ culled {it['file']} [{it['id']}] — {reason}")
     if culled:
         print(f"  VLM floor: dropped {len(culled)} junk asset(s), {len(kept)} survive")
+
+    # COVERAGE REPORT — failures are loud at the pool boundary. An empty/thin need after culling used to
+    # vanish silently (nolan4 found 3 empties only by diffing filenames) → the author unknowingly authors
+    # a beat with no asset. Report every need's got/culled so substitution is a DELIBERATE step.
+    from collections import Counter
+    got, cull_by = Counter(it["id"] for it in kept), Counter(it["id"] for it in culled)
+    q_of = {n["id"]: n.get("query", "") for n in needs}
+    empty = [n["id"] for n in needs if got.get(n["id"], 0) == 0]
+    thin = [n["id"] for n in needs if 0 < got.get(n["id"], 0) < 3]
+    if empty or thin:
+        print("  ⚠ POOL COVERAGE — some needs came back short:")
+        for nid in empty:
+            print(f"    ✗ {nid} EMPTY (0 kept, {cull_by.get(nid, 0)} culled) — {q_of.get(nid, '')!r} — SUBSTITUTE or re-run this need")
+        for nid in thin:
+            print(f"    ⚠ {nid} THIN ({got[nid]} kept) — {q_of.get(nid, '')!r}")
+    else:
+        print(f"  pool coverage: all {len(needs)} needs have ≥3 assets ✓")
     return kept
 
 
