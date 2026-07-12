@@ -7,6 +7,13 @@ def test_prompt_carries_the_beat():
     assert "water pouring into a reservoir" in p and "legible" in p and "relevant" in p
 
 
+def test_prompt_role_awareness():
+    lit = rg.judge_prompt("gavel hitting a sound block", atmospheric=False)
+    atm = rg.judge_prompt("Lake Tahoe", atmospheric=True)
+    assert "IS the subject" in lit                      # literal-subject block → depict the thing
+    assert "ESTABLISHING GROUND" in atm and "NOT off-topic" in atm   # atmospheric ground → establishing OK
+
+
 def test_extract_json_handles_fences_and_prose():
     assert rg.extract_json('{"legible": 7}')["legible"] == 7
     assert rg.extract_json('here: {"legible": 5, "relevant": 6} ok')["relevant"] == 6

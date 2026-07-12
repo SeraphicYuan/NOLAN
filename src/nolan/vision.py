@@ -443,6 +443,8 @@ class OpenRouterVision(VisionProvider):
         image_b64 = self._encode_image(image_path)
         payload = {
             "model": self.model,
+            "temperature": 0,   # vision here is JUDGING/describing (verdicts, captions, relevance) — determinism
+                                # beats variety: the render gate gave different scores on unchanged scenes.
             "messages": [
                 {
                     "role": "user",

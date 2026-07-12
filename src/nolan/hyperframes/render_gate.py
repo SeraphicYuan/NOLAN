@@ -24,13 +24,23 @@ def _ffmpeg() -> str:
 
 
 # --- pure prompt / parse / decision (testable without a VLM) --------------------------------------
-def judge_prompt(beat: str) -> str:
+def judge_prompt(beat: str, atmospheric: bool = False) -> str:
+    # ROLE awareness: an atmospheric GROUND (b-roll under narration) is establishing/mood, so a shot of the
+    # place or an evocative metaphor is CORRECT — only a clearly wrong subject is a miss. A literal-subject
+    # block (document / newshead / gallery) should depict the thing. Without this the gate cried wolf on the
+    # literal Tahoe lake (the story's location) and the residents' suburb.
+    role = ("The imagery is an atmospheric ESTABLISHING GROUND playing under the narration: a shot of the "
+            "PLACE, a mood/texture, or an evocative metaphor is CORRECT. Score it off-topic ONLY if it is a "
+            "clearly wrong subject (e.g. a record player under \"electricity meter\"); an establishing location "
+            "shot or an indirect/ironic metaphor is NOT off-topic."
+            if atmospheric else
+            "The imagery IS the subject of the beat — score whether it clearly depicts what the beat is about.")
     return (f'A still frame from a rendered explainer video, at the moment the narration means: "{beat}".\n'
-            "Judge it as a professional editor would. Reply STRICT JSON only: {"
+            f"{role}\nJudge it as a professional editor. Reply STRICT JSON only, DETERMINISTICALLY (same "
+            "frame → same scores): {"
             '"legible": <0-10 — is ALL on-screen text clearly readable over its background? white/light text '
             "on a bright or busy image, or clipped text, scores LOW>, "
-            '"relevant": <0-10 — does the imagery match the beat above? an off-topic stock shot '
-            "(e.g. a bokeh clip under \"water pouring\") scores LOW>, "
+            '"relevant": <0-10 — per the ROLE above>, '
             '"flags": "<any of: blank / low-contrast text / text clipped / off-topic / watermark; empty if clean>", '
             '"why": "<=12 words"}')
 
@@ -114,8 +124,11 @@ def scene_samples(comp_dir: Path) -> List[Dict]:
             for sc in fr.get("scenes", []):
                 st = float(sc.get("start", 0) or 0)
                 du = float(sc.get("dur", 0) or 0)
+                data = sc.get("data", {}) or {}
+                atmospheric = bool((data.get("ground") or {}).get("kind"))   # b-roll backdrop → not literal
                 out.append({"frame": fr.get("id"), "scene": sc.get("id"), "type": sc.get("type"),
-                            "t": round(offset + st + du / 2, 2), "beat": _beat_label(sc)})
+                            "t": round(offset + st + du / 2, 2), "beat": _beat_label(sc),
+                            "atmospheric": atmospheric})
         offset += fdur
     return out
 
@@ -164,7 +177,7 @@ def perceptual_qa(comp_dir, vision=None, floor: float = 4.0, out_dir=None) -> Di
                 return
             async with sem:
                 try:
-                    raw = await vision.describe_image(png, judge_prompt(s["beat"]))
+                    raw = await vision.describe_image(png, judge_prompt(s["beat"], s.get("atmospheric", False)))
                     v = parse_verdict(extract_json(raw))
                 except Exception:
                     v = parse_verdict(None)
