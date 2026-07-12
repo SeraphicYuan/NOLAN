@@ -270,12 +270,29 @@ async def gen_fill(cfg, empties, assets_dir: Path, pool):
             print(f"    + {base}  (krea2 generated)")
 
 
+def _video_still(clip: Path):
+    """A representative mid-frame still from a video clip → temp jpg, so the VLM can judge a VIDEO the
+    same way it judges an image (relevance + usability). None if extraction fails."""
+    import os as _os
+    import subprocess
+    import tempfile
+    from nolan.hf_qa import _ffmpeg, probe
+    ff = _ffmpeg()
+    dur = probe(Path(clip)).duration or 4.0
+    fd, tmp = tempfile.mkstemp(suffix=".jpg")
+    _os.close(fd)
+    tmp = Path(tmp)
+    subprocess.run([ff, "-y", "-ss", f"{max(0.1, dur / 2):.2f}", "-i", str(clip), "-frames:v", "1",
+                    "-q:v", "3", str(tmp)], capture_output=True)
+    return tmp if (tmp.exists() and tmp.stat().st_size > 1000) else None
+
+
 async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
-    """Fused VLM SCORE + CAPTION pass. One vision call per kept image returns a usability verdict
-    (usable / flags / caption); junk is dropped — the semantic FLOOR that CLIP can't do (a sports car
-    for "permit", or a watermark/overlaid-text/stock-graphic still). Video + generated stills are
-    exempt from the cull. Contained: a dead VLM yields a NEUTRAL verdict → the asset is KEPT (the cheap
-    CLIP/fitness gates already ran), so the pool is never emptied by an outage. Returns the KEPT pool."""
+    """Fused VLM SCORE + CAPTION pass. One vision call per kept asset returns a usability + RELEVANCE
+    verdict (usable / flags / caption); junk is dropped — the semantic FLOOR that CLIP can't do (a sports
+    car for "permit", a record player for "electricity meter"). VIDEO is judged too now, by sampling a
+    mid-frame (was blind-selected by duration only → off-topic clips shipped). Generated stills are exempt.
+    Contained: a dead VLM yields a NEUTRAL verdict → the asset is KEPT, so an outage never empties the pool."""
     from nolan.vision import create_vision_provider
     from nolan.evoke_broll import _vision_config
     from nolan.acquire import AcquireConfig, judge_prompt, extract_json, parse_verdict, is_junk
@@ -285,19 +302,26 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
     sem = asyncio.Semaphore(4)
 
     async def judge(item):
-        if item["media_type"] == "video":
-            item["caption"] = f"[video] {item['query']} (stock clip, {item.get('duration') or '?'}s)"
-            return
         need = need_by_id.get(item["id"], {"query": item.get("query", "")})
-        p = assets_dir / item["file"]
+        img = assets_dir / item["file"]
+        is_video = item["media_type"] == "video"
+        if is_video:
+            img = _video_still(img)                          # judge the CLIP by a sampled mid-frame
+            if img is None:
+                item["caption"] = f"[video] {item['query']} (stock clip, {item.get('duration') or '?'}s)"
+                return
         async with sem:
             try:
-                raw = await prov.describe_image(p, judge_prompt(need))
+                raw = await prov.describe_image(img, judge_prompt(need))
                 v = parse_verdict(extract_json(raw))
             except Exception as e:
                 v = parse_verdict(None)
                 print(f"    judge failed {item['file']}: {type(e).__name__}")
-        item["caption"] = v["caption"] or f"({item['query']})"
+        if is_video:
+            img.unlink(missing_ok=True)
+            item["caption"] = ("[video] " + (v["caption"] or item.get("query", ""))).strip()
+        else:
+            item["caption"] = v["caption"] or f"({item['query']})"
         item["usable"], item["flags"] = v["usable"], v["flags"]      # → /pool curation badges
         item["_verdict"] = v
     await asyncio.gather(*(judge(it) for it in pool))
@@ -308,7 +332,7 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
     for it in pool:
         v = it.pop("_verdict", None)
         generated = "generat" in str(it.get("source", "")).lower()
-        if acfg.vlm_cull and v is not None and it["media_type"] != "video" and not generated and is_junk(v, acfg.vlm_floor):
+        if acfg.vlm_cull and v is not None and not generated and is_junk(v, acfg.vlm_floor):   # video now judged too
             culled.append(it)
         else:
             kept.append(it)
