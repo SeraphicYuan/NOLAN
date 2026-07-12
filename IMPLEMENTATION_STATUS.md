@@ -29,11 +29,20 @@ nolan4 ran an end-to-end essay on a fresh script+VO (the Aeneid) and filed findi
   untracked `faceless-explainer/scripts/captions.mjs`, active at runtime.)*  The perceptual gate
   (`render_gate.py`) now samples MID-caption, not mid-crossfade, so a benign 0.12s dissolve no longer reads as
   "garbled" text. (commit c5b0dab)
-- **Deferred (scoped):** theme-polarity refactor (compose.py has two live uncommitted WIP hunks — land when
-  clean; render_gate intent-check already catches the symptom); `theme_layout_audit` (a render-integration
-  capability — per-frame headless-Chrome overflow/contrast inspect — not a patch); scene-count-from-beat-
-  density (belongs in the beat-extraction prompt; its symptom is already gated by the short-hold gate +
-  anchor-lint LONG-HOLD).
+- **Theme-polarity system (B6, DONE 2026-07-12):** blocks no longer hardcode a dark stage that clashes with a
+  light theme (`compose.py`). A text block's register now follows its GROUND — dark `footage` register (light
+  ink + scrim) only over real footage, else the PAPER register (`var(--text)` on `var(--surface)`, correct on
+  BOTH polarities); `highlight_statement` had defaulted to `footage` → near-white ink on cream = invisible.
+  A `_theme_polarity` signal (from `--surface` luminance) keeps a dramatic dark stage on dark themes yet falls
+  back to the theme surface on light: comparison/carousel backdrops, the comparison header-title scrim (dark
+  over media panels, theme-surface over text panels), and the diagram's `.dg-dark` variant. Paper ink/fill
+  hardcodes (`#2B2D2C`/`#191712`/`#F1F3F2`/`#FFF200`) → theme tokens. Verified by rendering statement/
+  comparison/diagram stills on a light + dark theme (puppeteer) and looking; `tests/test_theme_polarity.py`
+  enforces it. First landed the two prior compose.py WIP fixes (nolan1 `.footage` ink + nolan4 `_theme_vars`
+  parser) as commit 3a3cb40 so the tree was clean.
+- **Deferred (scoped):** `theme_layout_audit` (a render-integration capability — per-frame headless-Chrome
+  overflow/contrast inspect — not a patch); scene-count-from-beat-density (belongs in the beat-extraction
+  prompt; its symptom is already gated by the short-hold gate + anchor-lint LONG-HOLD).
 
 ## HyperFrames voiceover bridge — NOLAN VO → the essay (2026-07-11)
 
