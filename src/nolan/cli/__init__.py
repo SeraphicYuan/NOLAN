@@ -45,6 +45,7 @@ from nolan.cli import (  # noqa: E402,F401
     video_gen,
     orchestrate,
     iterate,
+    hyperframes,
     publish,
     capabilities,
     brief_cmd,
