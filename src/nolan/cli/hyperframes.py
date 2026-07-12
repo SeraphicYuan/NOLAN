@@ -20,3 +20,19 @@ def hf_finish_cmd(comp, no_render, no_sound, dry_run):
         finish(comp, render=not no_render, sound=not no_sound, dry_run=dry_run)
     except RuntimeError as e:
         raise SystemExit(f"✗ {e}")
+
+
+@main.command("hf-render")
+@click.argument("comp")
+@click.option("--only", help="comma-separated frame ids to force-re-render (edit just these)")
+@click.option("--no-bgm", is_flag=True, help="skip re-laying the BGM bed")
+def hf_render_cmd(comp, only, no_bgm):
+    """INCREMENTAL final render: re-render only changed frames (content-hash cache) + stitch.
+
+    A one-frame edit costs one frame render + a fast concat, not the whole 10-min monolith.
+    """
+    from nolan.hyperframes.incremental import render_incremental
+    try:
+        render_incremental(comp, only=(only.split(",") if only else None), bgm=not no_bgm)
+    except RuntimeError as e:
+        raise SystemExit(f"✗ {e}")
