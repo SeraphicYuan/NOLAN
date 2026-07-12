@@ -2,7 +2,38 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-07
+**Last Updated:** 2026-07-12
+
+## Aeneid post-mortem tier — anchoring, legibility, video judge (2026-07-12)
+
+nolan4 ran an end-to-end essay on a fresh script+VO (the Aeneid) and filed findings. Fixes, by tier:
+
+- **Short-hold GATE** (`style_contract/metrics.py`, `dimensions.py`): a scene shorter than its block's
+  minimum readable window (`MIN_READABLE`: newshead/comparison/document ~5s, statement/stat ~2.5s) now FAILS
+  the linter — a 5th gate. A 0.94s scene can't be read; split or merge the beat. (commit 51902d5)
+- **Anchor-lint** (`hyperframes/sync.py`): `place_scenes` now computes a per-scene window verdict (SHORT vs
+  block min; LONG-HOLD = >8s ungrounded, non-motion, grounding via `scene_media`) and `main()` prints
+  "✗ ANCHOR-LINT: N window problem(s) — FIX BEFORE RENDER" — the ~80% rework caught before render, not after.
+  (commit 06faa05)
+- **Loud pool coverage** (`bridge/pool.py`): after the cull, `score_and_caption` reports EMPTY (0 assets) and
+  THIN (<3) needs instead of letting them vanish silently. (commit 82d256b)
+- **Video judge** (`acquire/judge.py`, `bridge/pool.py`): pool-time clips are judged + captioned from a
+  3-frame filmstrip (start/mid/end), matching the video indexer's multi-frame vision — kills the wrong-subject
+  class; cull no longer exempts video. (commits 77cf8ce/dc38462)
+- **Theme accent** (`bridge/compose.py`): diagram/comparison/document honored a hardcoded yellow; now
+  `var(--accent)`. (commit f42dc3e)  •  **Theme legibility honesty test** (`tests/test_theme_legibility.py`):
+  every theme must inject balanced-quote/paren CSS (catches the `;`-in-url truncation → blank frames) + a
+  readable palette (luminance contrast ≥2.8). (commit 7696a86)
+- **Captions**: grouping is now duration-target (a pill grows to ~1.5s by TIME, `MAX_PILL_S`, not a 2-word
+  density cap) — the Aeneid went 563 pills @0.66s (452 under 1s) → 246 @1.51s (65 under 1s). *(on-disk in the
+  untracked `faceless-explainer/scripts/captions.mjs`, active at runtime.)*  The perceptual gate
+  (`render_gate.py`) now samples MID-caption, not mid-crossfade, so a benign 0.12s dissolve no longer reads as
+  "garbled" text. (commit c5b0dab)
+- **Deferred (scoped):** theme-polarity refactor (compose.py has two live uncommitted WIP hunks — land when
+  clean; render_gate intent-check already catches the symptom); `theme_layout_audit` (a render-integration
+  capability — per-frame headless-Chrome overflow/contrast inspect — not a patch); scene-count-from-beat-
+  density (belongs in the beat-extraction prompt; its symptom is already gated by the short-hold gate +
+  anchor-lint LONG-HOLD).
 
 ## HyperFrames voiceover bridge — NOLAN VO → the essay (2026-07-11)
 
