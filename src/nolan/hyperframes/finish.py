@@ -14,6 +14,7 @@ subprocesses. `--dry-run` prints the plan without executing; `--no-render` stops
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -25,7 +26,7 @@ from .edit import BRIDGE, REPO, _project_dir, list_frames, recompose_frame
 SKILL_SCRIPTS = REPO / ".agents" / "skills" / "faceless-explainer" / "scripts"
 
 
-def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, soft: bool = False) -> bool:
+def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, soft: bool = False, env=None) -> bool:
     """Run one DAG step. Fail LOUD (raise) on non-zero unless `soft` (then warn + continue)."""
     shown = " ".join(str(c) for c in cmd)
     if dry:
@@ -37,7 +38,7 @@ def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, sof
     shell = os.name == "nt" and bool(cmd) and cmd[0] in ("npx", "node")
     try:
         r = subprocess.run(cmd, cwd=str(cwd) if cwd else None, capture_output=True,
-                           text=True, encoding="utf-8", errors="replace", shell=shell)
+                           text=True, encoding="utf-8", errors="replace", shell=shell, env=env)
     except FileNotFoundError as e:
         if soft:
             print(f"  ⚠ {label} skipped ({e})")
@@ -60,6 +61,10 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     pdir = _project_dir(comp)
     py = [sys.executable, "-X", "utf8"]
     audio = str(SKILL_SCRIPTS / "audio.mjs")
+    # fail LOUD up front if a skill script path is wrong (a silent bad node path left a stale index + cost a render)
+    for _s in ("audio.mjs", "captions.mjs", "assemble-index.mjs"):
+        if not (SKILL_SCRIPTS / _s).exists():
+            raise RuntimeError(f"hf-finish: skill script missing — {SKILL_SCRIPTS / _s}. Is the faceless-explainer skill installed?")
     print(f"hf-finish: {comp}  (render={render}, sound={sound}{', DRY-RUN' if dry_run else ''})")
 
     # 1 · frame durations FROM the VO (narration owns duration)
@@ -105,9 +110,21 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     if not render:
         print("hf-finish: stopped before render (--no-render). Preview then re-run to render.")
         return {"comp": comp, "rendered": False}
-    # 8 · render the whole composition → renders/video.mp4
+    # 8 · render the whole composition → renders/video.mp4. For the target 7-8 min format the single
+    # long ffmpeg encode times out; chunked encode is safer (nolan4 hit the timeout on the 468s render).
+    total = 0.0
+    _am = pdir / "audio_meta.json"
+    if _am.exists():
+        try:
+            total = sum(float(v.get("duration_s", 0) or 0) for v in json.loads(_am.read_text(encoding="utf-8")).get("voices", []))
+        except Exception:
+            total = 0.0
+    render_env = None
+    if total > 300:                                   # 5+ min → chunk it
+        render_env = {**os.environ, "PRODUCER_ENABLE_CHUNKED_ENCODE": "1"}
+        print(f"  (chunked encode — {total:.0f}s render)")
     _run("render", ["npx", "hyperframes", "render", "--skill=faceless-explainer", "--quality", "high",
-                    "--output", "renders/video.mp4"], cwd=pdir, dry=dry_run)
+                    "--output", "renders/video.mp4"], cwd=pdir, dry=dry_run, env=render_env)
     # 9 · QA (soft: report — don't crash the driver on a gate fail)
     _run("hf-qa", py + ["-m", "nolan.hf_qa", str(pdir)], dry=dry_run, soft=True)          # freeze + audio (ffmpeg)
     _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)], dry=dry_run, soft=True)  # spec dimensions
