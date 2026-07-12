@@ -128,7 +128,10 @@
         <span class="meta" style="color:var(--text-secondary);font-size:12px;">script → assets → dispatch the faceless-explainer agent</span>
         <span class="spacer"></span><button class="btn ghost mini" onclick="closeNew()">Close</button></div>
       <div class="field"><label>name</label><input id="new-name" placeholder="e.g. compound-interest-explained"></div>
-      <div class="field"><label>script / topic</label><textarea id="new-script" style="min-height:150px" placeholder="Paste the essay text, or a topic to explain…"></textarea></div>
+      <div class="field"><label>script / topic
+          <select id="new-script-proj" onchange="loadScriptInto()" style="float:right;font-weight:400;font-size:11px;padding:2px 4px;max-width:60%">
+            <option value="">— or load from a Script Project —</option></select></label>
+        <textarea id="new-script" style="min-height:150px" placeholder="Paste the essay text, or a topic to explain… (or load a Script Project ↗)"></textarea></div>
 
       <div class="row2">
         <div class="field"><label>theme
@@ -149,7 +152,7 @@
             <option value="auto">Auto-synth from the script</option>
             <option value="__attach">Attach a project's cloned VO…</option>
           </select>
-          <input id="new-vo-src" placeholder="projects/&lt;name&gt; or a path to assets/voiceover/" style="display:none;margin-top:6px"></div>
+          <select id="new-vo-src" style="display:none;margin-top:6px"><option value="">— pick a project with a voiceover —</option></select></div>
         <div class="field"><label>dispatch to agent</label><select id="new-session"></select></div>
       </div>
 
@@ -208,12 +211,37 @@ function refreshComps() { loadComps(false).then(() => toast("compositions refres
 
 // ---- new essay: scaffold script + dispatch the faceless-explainer agent ----
 let THEMES = [];
-function openNew() { $("#newModal").style.display = "flex"; loadAgents(); loadThemes(); }
+function openNew() { $("#newModal").style.display = "flex"; loadAgents(); loadThemes(); loadScriptProjectsInto(); loadVoSources(); }
 function closeNew() { $("#newModal").style.display = "none"; }
 async function loadAgents() {
   let opts = '<option value="">— dispatch manually (copy the prompt) —</option>';
   try { const d = await jget("/api/hf/agents"); opts += (d.sessions || []).map(s => `<option value="${s}">${s}</option>`).join(""); } catch {}
   $("#new-session").innerHTML = opts;
+}
+async function loadScriptProjectsInto() {
+  try {
+    const projs = (await jget("/api/script-projects")).projects || [];
+    $("#new-script-proj").innerHTML = '<option value="">— or load from a Script Project —</option>' +
+      projs.map(p => `<option value="${p.slug}">${(p.name || p.slug)}</option>`).join("");
+  } catch {}
+}
+async function loadScriptInto() {
+  const slug = $("#new-script-proj").value;
+  if (!slug) return;
+  try {
+    const d = await jget(`/api/script-projects/${encodeURIComponent(slug)}/script`);
+    const text = (d.content || "").trim();
+    if (!text) return toast("that project has no script yet", "err");
+    $("#new-script").value = text;
+    if (!$("#new-name").value.trim()) $("#new-name").value = slug;   // seed the name from the project
+  } catch (e) { toast("couldn't load script: " + e.message, "err"); }
+}
+async function loadVoSources() {
+  try {
+    const items = ((await jget("/api/voiceover-index")).items || []).filter(i => i.kind === "project");
+    $("#new-vo-src").innerHTML = '<option value="">— pick a project with a voiceover —</option>' +
+      items.map(i => `<option value="${i.name}">${i.name} · ${i.sections} section(s)${i.has_mp3 ? " · mp3" : ""}</option>`).join("");
+  } catch {}
 }
 async function loadThemes() {
   if (!THEMES.length) { try { THEMES = (await jget("/api/hf/themes")).themes || []; } catch { THEMES = []; } }
