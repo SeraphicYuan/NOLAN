@@ -49,7 +49,7 @@ CSS = """
 /* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
 .prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
 .prop img{display:block;width:100%;height:auto;}
-.prop-cap{margin-top:0.4cqw;font-family:"Lora",serif;font-style:italic;font-size:0.72cqw;color:#2B2D2C;text-align:center;}
+.prop-cap{margin-top:0.4cqw;font-family:"Lora",serif;font-style:italic;font-size:0.72cqw;color:var(--text);text-align:center;}
 /* geo-map: d3 choropleth (US states / world countries), one region highlighted + annotated */
 .geomap{will-change:transform;}
 .geomap svg{width:100%;height:100%;display:block;}
@@ -163,12 +163,12 @@ CSS = """
 .cmp-txt .t{font-weight:800;font-size:2.1cqw;line-height:1.1;letter-spacing:-0.012em;}
 .cmp-txt .t .ln{display:block;opacity:0;}
 .cmp-txt .t .mark{background:var(--accent);color:var(--accent-ink);padding:0 0.08em;box-decoration-break:clone;}
-.cmp-txt.paper .k{color:#4C4E4D;}.cmp-txt.paper .t{color:#2B2D2C;}
+.cmp-txt.paper .k{color:var(--text-mute);}.cmp-txt.paper .t{color:var(--text);}
 .cmp-txt.footage .k{color:#EDEFEC;text-shadow:0 1px 6px rgba(0,0,0,0.6);}.cmp-txt.footage .t{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.6);}
 .cmp-num{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;z-index:3;padding:0 2cqw;}
 .cmp-num .v{font-weight:900;font-size:5.6cqw;line-height:1;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;opacity:0;}
 .cmp-num .l{font-family:"Inter",sans-serif;font-weight:500;font-size:0.9cqw;letter-spacing:0.12em;text-transform:uppercase;margin-top:0.8cqw;opacity:0;}
-.cmp-num.paper .v{color:#2B2D2C;}.cmp-num.paper .l{color:#6b6d6a;}
+.cmp-num.paper .v{color:var(--text);}.cmp-num.paper .l{color:var(--text-mute);}
 .cmp-num.footage .v{color:#F6F7F6;}.cmp-num.footage .l{color:#d6d9d6;}
 .cmp-div{position:absolute;background:#0a0b0c;z-index:5;}
 .cmp-vs-w{position:absolute;transform:translate(-50%,-50%);z-index:6;}
@@ -179,6 +179,8 @@ CSS = """
 .cmp-htitle .k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.14em;text-transform:uppercase;color:#c9ccc9;opacity:0;margin-bottom:0.4cqw;}
 .cmp-htitle .t{font-weight:900;font-size:1.9cqw;letter-spacing:-0.015em;color:#F6F7F6;opacity:0;}
 .cmp-htitle .t .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
+.cmp-htitle.light{background:linear-gradient(var(--surface),rgba(0,0,0,0));}
+.cmp-htitle.light .k{color:var(--text-mute);}.cmp-htitle.light .t{color:var(--text);}
 .cmp-panel.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
 .cmp-vhole{background:transparent;}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
@@ -459,17 +461,25 @@ def media_ground(sid, ground, start, dur):
 
 def _register(sid): return "paper" if False else ""
 
+def _grounded(d):
+    """True iff a scene has REAL footage (image/video) behind it — the only case the dark 'footage'
+    register (light ink + scrim) is legible. Over a paper/transparent ground, text must use the PAPER
+    register (var(--text) on var(--surface)), which is correct on BOTH light and dark themes. This is the
+    rule nolan4 hand-applied per scene on the aeneid (light theme); deriving it stops a bare statement
+    from rendering near-white ink on a cream surface."""
+    return (d.get("ground") or {}).get("kind") in ("image", "video")
+
 def stat_lockup(sid, sc):
     """Reusable BLOCK: 1-3 count-up numerals + labels + one underline sweep."""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
-    reg = d.get("register", "paper")
+    reg = d.get("register") or ("footage" if _grounded(d) else "paper")   # dark ink only over real footage
     g, tl = media_ground(sid, d.get("ground", {"kind": "paper", "parchment": d.get("parchment")}), start, dur)
     frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     frag.append(f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>')
     frag.append(f'<div class="slrow" data-fit data-fit-w="89cqw" data-fit-origin="left top">')
     tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.1});')
     reveal = d.get("reveal")
-    lbase = "#2B2D2C" if reg == "paper" else "#F6F7F6"
+    lbase = "var(--text)" if reg == "paper" else "#F6F7F6"   # paper ink follows the theme (was cold #2B2D2C)
     for i, it in enumerate(d["items"]):
         nid, uid, lid = f"{sid}-n{i}", f"{sid}-u{i}", f"{sid}-l{i}"
         ul = f'<span class="slul" id="{uid}"></span>' if it.get("underline") else ""
@@ -644,7 +654,7 @@ def _rv_entrance(el, style, reals, start, cue, dur):
         return _rv_js_glitch(el, start, cue, min(dur * 0.5, 0.9))
     return [f'tl.fromTo({L},{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"}},{cue});']
 
-def reveal_text(el, text, style, start, cue, dur, operative=None, base="#2B2D2C"):
+def reveal_text(el, text, style, start, cue, dur, operative=None, base="var(--text)"):
     """THE single entry point every text-bearing block calls to reveal one text element. Returns
     (inner_html, css_class, style_attr, tl_lines): the caller stamps inner_html inside its OWN
     element (adding css_class + style_attr to it) and merges tl_lines into the frame timeline.
@@ -656,7 +666,7 @@ def reveal_text(el, text, style, start, cue, dur, operative=None, base="#2B2D2C"
     inner, reals, opw = _rv_inner(el, text, split, operative)
     cls, attr = "", ""
     if style == "gradient":
-        cls, attr = "rv-grad", f' style="--rv-c1:{base};--rv-c2:#FFF200;"'
+        cls, attr = "rv-grad", f' style="--rv-c1:{base};--rv-c2:var(--accent);"'
     elif style in _RV_PERSPECTIVE:
         attr = ' style="perspective:600px;"'
     if style == "typewriter":
@@ -674,7 +684,7 @@ def highlight_statement(sid, sc):
     data.reveal (default "rise") selects a text-entrance style from REVEALS (char/word/flip/
     typewriter/scramble/decode/gradient/glitch); the operative sweep still fires after the text lands."""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
-    reg = d.get("register", "footage")
+    reg = d.get("register") or ("footage" if _grounded(d) else "paper")   # was hardcoded "footage" -> light ink on a light theme = invisible
     tcls = "paper-t" if reg == "paper" else "footage-t"
     g, tl = media_ground(sid, d.get("ground", {"kind": "transparent"}), start, dur)
     frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
@@ -703,7 +713,7 @@ def highlight_statement(sid, sc):
             tl.append(f'tl.fromTo("#{lid}",{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"}},{start+0.4+li*0.35});')
     else:
         # ── reveal-vocabulary path: delegate each line to reveal_text (the shared entry point) ──
-        base = "#2B2D2C" if reg == "paper" else "#F6F7F6"
+        base = "var(--text)" if reg == "paper" else "#F6F7F6"
         for li, line in enumerate(d["lines"]):
             lid = f"{sid}-ln{li}"
             inner, cls, attr, tll = reveal_text(lid, line, reveal, start, start + 0.4 + li * 0.55, dur, operative=op, base=base)
@@ -979,7 +989,7 @@ def newshead(sid, sc):
             op = hl_phrase if (hl_phrase and not hl_done and hl_phrase in line) else None
             if op:
                 hl_done = True
-            inner, cls, attr, tll = reveal_text(lid, line, reveal, start, cue, dur, operative=op, base="#191712")
+            inner, cls, attr, tll = reveal_text(lid, line, reveal, start, cue, dur, operative=op, base="var(--text)")
             frag.append(f'<span class="{("nhline " + cls).strip()}" id="{lid}"{attr}>{inner}</span>')
             tl += tll
         elif hl_phrase and not hl_done and hl_phrase in line:
@@ -1305,7 +1315,7 @@ def diagram(sid, sc):
         return _diagram_3d(sid, sc)
     import copy
     d, start, dur = sc["data"], sc["start"], sc["dur"]
-    dark = d.get("register", "paper") == "dark"
+    dark = (d.get("register") or ("dark" if _POLARITY == "dark" else "paper")) == "dark"   # diagram has a full dark variant; use it on dark themes
     tour = d.get("camera") == "tour"
     root = copy.deepcopy(d["root"])
     flat, kids = [], {}  # flat: (index, node, depth) in DFS pre-order; kids[i] = child indices
@@ -1426,7 +1436,7 @@ def _cmp_text(pid, spec, start, dur, reg, bottom):
         lines = title if isinstance(title, list) else [title]
         op = spec.get("highlight", "")
         reveal = spec.get("reveal")
-        rbase = "#2B2D2C" if reg == "paper" else "#F6F7F6"
+        rbase = "var(--text)" if reg == "paper" else "#F6F7F6"
         frag.append('<div class="t">')
         for li, ln in enumerate(lines):
             tid = f"{pid}-t{li}"
@@ -1477,7 +1487,7 @@ def _panel_content(pid, spec, mtrack, start, dur):
             frag += tf; tl += tt
         return frag, tl
     reg = spec.get("register", "paper")
-    bg = spec.get("bg", "#F1F3F2" if reg == "paper" else "#111417")
+    bg = spec.get("bg", "var(--surface-2)" if reg == "paper" else "#111417")   # paper side follows the theme; explicit dark side stays dark (self-lit, light ink)
     frag = [f'<div class="cmp-paper" style="background:{esc(bg)};"></div>']
     if t == "stat":
         f2, t2 = _cmp_stat(pid, spec, start, dur, reg)
@@ -1504,7 +1514,7 @@ def comparison(sid, sc):
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     axis = d.get("axis", "vertical")
     framed = d.get("style", "seamless") == "framed"
-    backdrop = d.get("backdrop", "#0a0b0c")
+    backdrop = d.get("backdrop") or ("#0a0b0c" if _POLARITY == "dark" else "var(--shell)")   # dark gaps only on dark themes
     W, H = 1920, 1080
     M = 46 if framed else 0                      # outer margin
     G = 34 if framed else 6                       # gap between the two panels
@@ -1580,7 +1590,10 @@ def comparison(sid, sc):
         html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}'
                   if op and op in t else esc(t))
         kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
-        frag.append(f'<div class="cmp-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        # the title scrim is DARK (light text) so it reads over media panels; over text/stat panels on a
+        # light theme that dark band clashes → flip to a theme-surface scrim + theme ink.
+        light_title = _POLARITY == "light" and not any(s.get("type") in ("image", "video") for s in sides)
+        frag.append(f'<div class="cmp-htitle{" light" if light_title else ""}">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
         if d.get("title"):
@@ -1918,10 +1931,10 @@ def linedraw(sid, sc):
     else:
         svg_markup = d.get("svg", "")
     reg = d.get("register", "paper")
-    stroke = str(d.get("stroke", "#2B2D2C" if reg == "paper" else "#F6F7F6"))
+    stroke = str(d.get("stroke", "var(--text)" if reg == "paper" else "#F6F7F6"))   # paper stroke/bg follow the theme
     keep = bool(d.get("keepStyle"))
     cls = "ld-keep" if keep else "ld-draw"
-    bg = str(d.get("background", "#F1F3F2" if reg == "paper" else "#0d0f11"))
+    bg = str(d.get("background", "var(--surface-2)" if reg == "paper" else "#0d0f11"))
     frag = [f'<div class="clip ld-bg" data-start="{start}" data-duration="{dur}" data-track-index="0" style="background:{esc(bg)};"></div>',
             f'<div id="{sid}-svg" class="clip ld-wrap {cls}" data-start="{start}" data-duration="{dur}" data-track-index="1" '
             f'data-layout-allow-overflow style="--ld-stroke:{esc(stroke)};">{svg_markup}</div>']
@@ -1951,7 +1964,7 @@ def document(sid, sc):
     fit = d.get("fit", "contain" if mode == "artifact" else "cover")
     src = d.get("source"); pages = list(src) if isinstance(src, list) else [src]
     W, H = 1920, 1080
-    backdrop = d.get("backdrop", "#2a1013" if mode == "artifact" else "#17181b")
+    backdrop = d.get("backdrop") or (("#2a1013" if mode == "artifact" else "#17181b") if _POLARITY == "dark" else "var(--surface)")
     agedc = " aged" if d.get("aged") else ""
     tilt = float(d.get("tilt", 0))
     # page_size [w,h] (set by resolve_doc_annotations.py) sizes the sheet to the page's aspect so the
@@ -2367,6 +2380,38 @@ _FIT_SCRIPT = ("(function(){var W=1920;function fit(){"
 # `themed-composer` bridge + kb/theme-style-pipelines.md.
 
 
+_POLARITY = "light"                      # per-frame theme polarity; set by compose_frame (single-process, sequential)
+_POLARITY_CACHE = {}
+
+def _theme_polarity(theme):
+    """'light' | 'dark' from the theme's --surface luminance — the composer's one polarity signal, so a
+    block can keep a DRAMATIC dark stage on dark themes yet fall back to the theme surface on light ones.
+    A hardcoded dark backdrop on a light theme (carousel, comparison) was the aeneid's polarity clash."""
+    theme = str(theme)
+    if theme in _POLARITY_CACHE:
+        return _POLARITY_CACHE[theme]
+    pol = "light"
+    try:
+        root = Path(__file__).resolve().parents[3] / "themes"
+        p = root / theme / "tokens.css"
+        if not p.exists():
+            p = root / "highlighter-editorial" / "tokens.css"
+        m = re.search(r"--surface\s*:\s*#([0-9a-fA-F]{3,6})", p.read_text(encoding="utf-8"))
+        if m:
+            h = m.group(1)
+            if len(h) == 3:
+                h = "".join(c * 2 for c in h)
+            if len(h) == 6:
+                r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+                def _ch(c): return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+                lum = 0.2126 * _ch(r) + 0.7152 * _ch(g) + 0.0722 * _ch(b)
+                pol = "dark" if lum < 0.4 else "light"
+    except Exception:
+        pol = "light"
+    _POLARITY_CACHE[theme] = pol
+    return pol
+
+
 def _theme_vars(theme):
     """Inject a NOLAN theme's tokens.css as scoped CSS custom properties on #root so the block CSS
     (which references var(--accent) etc.) resolves. Falls back to the Vox 'highlighter-editorial'
@@ -2476,6 +2521,8 @@ def _extend_clip_dur(frag, scene_end, extra, eps=0.05):
 
 
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
+    global _POLARITY
+    _POLARITY = _theme_polarity(theme)        # so blocks can pick theme-aware (not hardcoded-dark) defaults
     body, tl = [], []
     # Scene transitions (optional): if ANY scene carries a `transition_out`, wrap every scene in a
     # z-ordered wrapper (earlier scene ON TOP, so a departing scene's exit uncovers the next
