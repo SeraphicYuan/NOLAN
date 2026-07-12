@@ -146,6 +146,11 @@ run its steps in order and pass each gate.
 - **Output:** composed frames at `{rel}/compositions/frames/NN-*.html` (+ `.spec.json`) and `{rel}/index.html`
   — that is what makes this composition appear on the hub's `/hyperframes` edit page.
 {assets_line}{vo_line}
+- **Plan blocks GLOBALLY first (don't make workers own the whole-video contract):** block distribution,
+  grounding %, and adjacency are GLOBAL — a per-frame worker can't satisfy them alone. So propose per-beat
+  candidate blocks (which templates fit each beat's content, best-first), then run
+  `python -X utf8 -m nolan.hyperframes.block_plan <beats.json>` to get a contract-satisfying skeleton (block
+  + grounded per scene). Dispatch workers WITH that assignment so they author only copy/reveals within it.
 - **Pipeline — HYBRID / compose-first (required):** at Step 5, dispatch `sub-agents/compose-first-frame-worker.md`
   (NOT the stock `frame-worker.md`) with `BRIDGE_DIR=render-service/_lab_hyperframes/bridge/`. Express each Scene
   with a `bridge/catalog.json` composer template (stat · statement · geo · timeline · newshead · collage · diagram ·
