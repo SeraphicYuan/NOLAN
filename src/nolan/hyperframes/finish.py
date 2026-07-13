@@ -128,6 +128,7 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     # 9 · QA (soft: report — don't crash the driver on a gate fail)
     _run("hf-qa", py + ["-m", "nolan.hf_qa", str(pdir)], dry=dry_run, soft=True)          # freeze + audio (ffmpeg)
     _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)], dry=dry_run, soft=True)  # spec dimensions
+    _run("temporal", py + ["-m", "nolan.hyperframes.temporal_gate", str(pdir)], dry=dry_run, soft=True)  # motion: frozen/static/dead-air
     _run("perceptual", py + ["-m", "nolan.hyperframes.render_gate", str(pdir)], dry=dry_run, soft=True)  # VLM: legibility + relevance
     print("hf-finish: done → renders/video.mp4")
     return {"comp": comp, "rendered": True}
