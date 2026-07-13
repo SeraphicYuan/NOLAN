@@ -11,6 +11,7 @@ Two scopes (both live inside the project tree per workspace rules):
 from __future__ import annotations
 
 import hashlib
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -22,15 +23,22 @@ from nolan.imagelib.embeddings import ClipEmbedder
 _COLLECTION = "images"
 _DESC_COLLECTION = "descriptions"
 _UA = "NOLAN-PictureLibrary/1.0"
+_LOG = logging.getLogger("nolan.imagelib")
+_REPO = Path(__file__).resolve().parents[3]   # src/nolan/imagelib/store.py -> repo root
 
 
 def library_paths(scope: str = "global", project: Optional[str] = None) -> Path:
-    """Resolve the base directory for a library scope."""
+    """Resolve the ABSOLUTE base directory for a library scope, anchored to the repo root.
+
+    NOT os.getcwd()-relative: a relative base silently resolved against whatever CWD the process
+    ran under, so running acquisition from render-service/_lab_hyperframes/bridge/ (as the hub's
+    run_pool does) opened an EMPTY library — every library-first need returned 0 with no error, and
+    the headline feature was dead on the default path (holbein POST_MORTEM #1)."""
     if scope == "project":
         if not project:
             raise ValueError("project scope requires a project name")
-        return Path("projects") / project / "imagelib"
-    return Path("_library") / "images"
+        return _REPO / "projects" / project / "imagelib"
+    return _REPO / "_library" / "images"
 
 
 def _ext_for(url: Optional[str], path: Optional[str]) -> str:
@@ -199,7 +207,8 @@ class ImageLibrary:
         qvec = self.embedder.embed_text(query)
         try:
             res = self._coll().query(query_embeddings=[qvec], n_results=k * 3)
-        except Exception:
+        except Exception as e:
+            _LOG.warning("library CLIP search failed for %r @ %s: %s", query, self.base, e)
             return []
         ids = [int(i) for i in (res.get("ids") or [[]])[0]]
         dists = (res.get("distances") or [[]])[0]

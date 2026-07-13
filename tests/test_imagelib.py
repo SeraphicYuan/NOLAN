@@ -73,8 +73,12 @@ def test_catalog_set_status_hides_from_active(tmp_path):
 
 # ----------------------------------------------------------------- scope paths
 def test_library_paths():
-    assert library_paths("global") == Path("_library/images")
-    assert library_paths("project", "venezuela") == Path("projects/venezuela/imagelib")
+    # ABSOLUTE + repo-anchored (POST_MORTEM #1) — a relative base resolved against the process CWD and
+    # silently opened an empty library when acquisition ran from anywhere but the repo root.
+    repo = Path(__file__).resolve().parents[1]
+    assert library_paths("global") == repo / "_library" / "images"
+    assert library_paths("project", "venezuela") == repo / "projects" / "venezuela" / "imagelib"
+    assert library_paths("global").is_absolute()
     with pytest.raises(ValueError):
         library_paths("project")
 

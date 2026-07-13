@@ -138,6 +138,16 @@ def build_context(cfg, *, clip_seconds=20, want_stock=True, want_library=True, w
         try:
             from nolan.imagelib.store import ImageLibrary
             _lib = ImageLibrary("global")
+            # Loud at the boundary: the library base is now CWD-independent, so 0 active here means the
+            # library is genuinely empty (ingest never ran) — NOT a working-directory mixup. A silent
+            # empty library was how the headline feature died on the default path (POST_MORTEM #1).
+            _st = _lib.stats()
+            _active = int(_st.get("active", 0) or 0)
+            print(f"[acquire] library: {_active} active / {_st.get('total', 0)} total @ {_st.get('base')}", flush=True)
+            if _active == 0:
+                print(f"⚠ [acquire] global library is EMPTY (0 active assets) @ {_st.get('base')} — "
+                      "library-first needs will find NOTHING (run ingest?).", flush=True)
+            _warned = {"empty_hit": False}
 
             def search_library(query, n):
                 out = []
@@ -150,10 +160,16 @@ def build_context(cfg, *, clip_seconds=20, want_stock=True, want_library=True, w
                         out.append(Candidate(ref=str(p), source="library", modality="image", path=p,
                                              meta={"license": getattr(h.asset, "license", "library"), "source": "library"},
                                              relevance=float(getattr(h, "score", 0) or 0)))
+                # A library-first need returning 0 while the store is non-empty is a real signal (the
+                # CLIP collection is unembedded/misconfigured), not a normal miss — say so once, loud.
+                if not out and _active > 0 and not _warned["empty_hit"]:
+                    _warned["empty_hit"] = True
+                    print(f"⚠ [acquire] library returned 0 hits for {query!r} despite {_active} active assets "
+                          "— the CLIP collection may be unembedded/misconfigured (warned once).", flush=True)
                 return out
             ctx.search_library = search_library
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"⚠ [acquire] library source unavailable — skipped ({type(e).__name__}: {e})", flush=True)
 
     # --- relevance: CLIP cosine (need text ↔ candidate image) ------------------------------------
     if want_clip:
