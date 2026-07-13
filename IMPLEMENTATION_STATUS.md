@@ -4,6 +4,12 @@
 **Status:** Complete
 **Last Updated:** 2026-07-12
 
+## HyperFrames edit page — test honesty + agent-label fix (2026-07-13)
+
+- Remediation of a docs-vs-tests gap. The Phase-1/2 entries below CLAIMED "FastAPI TestClient over the full route surface" and "TestClient over the note + asset routes (incl. traversal guard)" — but `tests/test_hyperframes_edit.py` was (a) never committed and (b) engine-level only, with NO TestClient and NO `/api/hf/*` route coverage. Those clauses are annotated as corrections below.
+- **Now real:** committed `tests/test_hyperframes_edit.py` and added a FastAPI TestClient section — `/hyperframes` page smoke; `/api/hf/{compositions,frames,frame-spec,catalog,themes,theme-suggest}`; the gated `/api/hf/scene/revise` (valid applies, invalid reverts byte-identically through the real author.py gate); missing-comp 404; and the two **path-traversal guards** (`/api/hf/asset-file` confined to `<comp>/assets/`, `/api/hf/frame-video` confined to the frames dir). 23 tests, all green.
+- **Agent-label fix** (`templates/hf_scenes.html`): the note-edit controls read "note -> agent -> gate" / "Apply (agent)", implying a tmux fleet agent — but `/api/hf/frame/revise-note` calls an in-process single LLM (`create_text_llm`), not the fleet. Relabeled to "note -> AI -> gate" / "Apply (AI edit)". Real fleet dispatch for *editing* is a later item (batch-agent mode); today only new-essay *authoring* dispatches an agent.
+
 ## Aeneid post-mortem tier — anchoring, legibility, video judge (2026-07-12)
 
 nolan4 ran an end-to-end essay on a fresh script+VO (the Aeneid) and filed findings. Fixes, by tier:
@@ -113,7 +119,7 @@ nolan4 ran an end-to-end essay on a fresh script+VO (the Aeneid) and filed findi
   grounds). Routes: `/api/hf/frame/revise-note`, `/api/hf/assets`, `/api/hf/asset/*`.
 - Verified: `tests/test_hyperframes_edit.py` now 14 — note edit valid / add+retime /
   **self-correct-on-reject** (`stub.calls==2`) / rejected+reverted / no-ops /
-  prompt+mentions / asset resolve+list; TestClient over the note + asset routes
+  prompt+mentions / asset resolve+list; TestClient over the note + asset routes [CORRECTION 2026-07-13: this route/TestClient coverage was added 2026-07-13, not at this entry's date]
   (incl. traversal guard); page re-rendered headless + **looked at** (note boxes +
   Browse buttons present). Full `tests/` suite green. Phase 2 completes the edit
   vocabulary; parked: frame-to-frame transitions + cross-frame asset windows.
@@ -150,7 +156,7 @@ nolan4 ran an end-to-end essay on a fresh script+VO (the Aeneid) and filed findi
   `asset-editing-in-the-composer`, `edit-mode-plan`.
 - Verified: `tests/test_hyperframes_edit.py` (7 — edit/gate/**reject-and-revert**/
   add/retime/planner/lossless, through the real gate); FastAPI TestClient over
-  the full route surface; the page rendered headless with real data + **looked at**
+  the full route surface [CORRECTION 2026-07-13: overstated — no route-level TestClient existed until 2026-07-13, when it was added]; the page rendered headless with real data + **looked at**
   (mini-timeline + registry inspector correct); a live snapshot of an edit
   (`kicker`/count-up change) confirmed the edit→gate→recompose→snapshot loop.
   `test_system_map.py` 8/8. Phase 2 (comment→agent→gate + `@`-grammar) + the

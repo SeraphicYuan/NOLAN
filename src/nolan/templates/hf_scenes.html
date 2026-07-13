@@ -365,9 +365,9 @@ function renderFramePanel(fid) {
       <textarea id="add-data" placeholder='data JSON, e.g. {"lines":["…"],"operative":"…"}'>{}</textarea>
       <button class="btn mini" style="margin-top:6px" onclick="addScene('${fr.id}')">Add (gated)</button>
     </details>
-    <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask a frame edit (note → agent → gate)</label>
+    <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask a frame edit (note → AI → gate)</label>
       <textarea id="fnote" class="mention-input" placeholder="e.g. weave @asset0 into @s2 as a gallery from 3–7s; @transition:crossfade between shots"></textarea>
-      <button class="btn ghost mini" style="margin-top:6px" onclick="reviseFrameNote('${fr.id}')">Apply (agent)</button></div>`;
+      <button class="btn ghost mini" style="margin-top:6px" onclick="reviseFrameNote('${fr.id}')">Apply (AI edit)</button></div>`;
 }
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -428,7 +428,7 @@ function renderInspector(scene, fid) {
       <button class="btn ghost" onclick="previewScene('${fid}','${scene.id}')">Preview</button>
       <button class="btn ghost" onclick="removeScene('${fid}','${scene.id}')">Remove</button>
     </div>
-    <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask an edit (note → agent → gate)</label>
+    <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask an edit (note → AI → gate)</label>
       <textarea id="insp-note" class="mention-input" placeholder="e.g. apply @reveal:scramble to the title, then dip to black after"></textarea>
       <button class="btn mini" style="margin-top:6px" onclick="reviseNote('${fid}','${scene.id}')">Apply note</button></div>
     <img id="preview">`;
@@ -522,7 +522,7 @@ function pollForRender(fid) {
   }, 15000);
 }
 
-// ---- Phase 2: note edits (comment -> agent -> gate) ----
+// ---- Phase 2: note edits (comment -> AI/LLM -> gate; NOT the tmux fleet — that's #5 batch mode) ----
 async function reviseNote(fid, sid) {
   const note = $("#insp-note").value.trim(); if (!note) return;
   toast("Thinking…");
