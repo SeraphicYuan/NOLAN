@@ -4,6 +4,14 @@
 **Status:** Complete
 **Last Updated:** 2026-07-12
 
+## clips_library acquisition source — local video library as a beat-driven source (2026-07-13)
+
+The local video library (VideoIndex + Chroma vector store: 21 essay/documentary videos, 3588 richly-described segments) is now a first-class VIDEO source in the acquire engine, beside `library` (images) and `stock`. Commits 65fcd2c (source), 80b12f6 (CWD fix). 8 tests; acquire suite (83) green. First exercised on the compose-first 'homer-hf' essay ("Homer Did Not Exist").
+- **Leverages the rich per-clip metadata**: `search_clips` (acquire/context.py) semantic-searches the vector store (each segment embeds description + transcript + people + location), so a beat's MEANING finds the footage that means the same -- not a filename / CLIP-image match. Matched clips are trimmed to a b-roll window on disk (copy-first, re-encode fallback) in the engine's download() step, so the KEEP loop treats them like any local candidate.
+- **Wiring**: `clips_library` added to `AcquireConfig.sources` (default-on) + to the ranking `TIERS` (just below the saved image library, above generic stock); new `Context.search_clips` + a fan-out branch in `acquire_need`; similarity is carried on the Candidate and (since the engine leaves video relevance untouched) feeds the video score. Knobs: `clip_lib_max` (<=N clips/need, bounds the ffmpeg trims), `clip_lib_min_sim`.
+- **Honest limitation**: the segment text-embedding compresses cosine into a narrow high band (on-topic ~0.76 vs off-topic ~0.72), so `clip_lib_min_sim` is a tail-trim, NOT a topic gate. Cross-topic discrimination is the DOWNSTREAM VLM video cull's job (it judges real frames) + the compose-first author selecting per beat. Documented in config.py; follow-up if cross-project trims prove wasteful: gate on a CLIP frame-relevance score, or make the source opt-in.
+- **CWD-proof (holbein POST_MORTEM #1 class)**: `run_pool` shells pool.py with cwd=BRIDGE, where load_config() misses the repo-root nolan.yaml and defaults indexing.database to the stale ~/.nolan db (0 Homer clips). `_resolve_clips_db` anchors to the repo-root nolan.yaml's DB (the one whose vector store also exists), so the source finds the same rich library from any CWD.
+
 ## HyperFrames edit feedback surface + generic ground.grade (2026-07-13)
 
 Two capabilities driven by the batch-agent feedback loop (nolan4's honest "no gated landing spot" report on a "cool it down" note). Commits 59dd5a3 (feedback), 1535e50 (grade); full tests/ suite green.
