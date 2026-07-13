@@ -1,0 +1,39 @@
+{
+  "id": "highlighter-editorial",
+  "name": "Highlighter Editorial",
+  "nameZh": "荧光笔编辑",
+  "description": "Vox-lineage explainer look — ink on light mist, a highlighter-yellow accent, Libre Franklin display + Inter body. Best for journalistic video essays, data stories, and current-affairs explainers.",
+  "descriptionZh": "Vox 风格解释器 — 浅雾底黑墨字 + 荧光黄强调色 + Libre Franklin/Inter. 适合新闻类视频论文、数据故事与时事解读.",
+  "mood": [
+    "light",
+    "editorial",
+    "highlighter",
+    "explainer",
+    "journalistic",
+    "vox"
+  ],
+  "bestFor": [
+    "视频论文",
+    "解释类",
+    "数据故事",
+    "时事评论",
+    "深度解读"
+  ],
+  "preview": {
+    "shell": "#E7E9E6",
+    "surface": "#F1F3F2",
+    "text": "#2B2D2C",
+    "accent": "#FFF200"
+  },
+  "fonts": {
+    "displayEn": "Libre Franklin",
+    "body": "Inter",
+    "cjk": "Noto Sans SC",
+    "mono": "IBM Plex Mono"
+  },
+  "avoidFor": [
+    "children",
+    "gaming",
+    "beauty"
+  ]
+}

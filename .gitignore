@@ -129,3 +129,14 @@ projects/*/scene_plan.json
 render-service/remotion-lib/public/
 render-service/remotion-lib/jobs/_auto_*.json
 .nolan/skills/
+
+# --- untracked-clutter cleanup (2026-07-13): generated/acquired media, never source ---
+# Project-library generated / model-sample media (regenerable)
+projects/_library/_broll_generated/
+projects/_library/_krea2_samples/
+projects/_library/_tonal_broll/
+# Perceptual / temporal render-gate scratch stills under lab comps
+render-service/_lab_hyperframes/videos/*/capture/_perceptual/
+render-service/_lab_hyperframes/videos/*/capture/_temporal/
+# Stale editor temp files (e.g. *.css.tmp-19692)
+*.tmp-*
