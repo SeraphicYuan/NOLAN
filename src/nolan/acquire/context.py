@@ -61,8 +61,11 @@ def _fetch_video_segment(url: str, out: Path, clip_seconds: int, duration=None) 
     return False
 
 
-def build_context(cfg, *, clip_seconds=20, want_stock=True, want_library=True, want_clip=True, want_gen=True) -> Context:
+def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True) -> Context:
     ctx = Context()
+    # default the video-segment length from the config (was hardcoded 20, ignoring cfg.clip_seconds)
+    if clip_seconds is None:
+        clip_seconds = int(getattr(cfg, "clip_seconds", 30) or 30)
 
     # --- stock: multi-provider search + gated download -------------------------------------------
     if want_stock:

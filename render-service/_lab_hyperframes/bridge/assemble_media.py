@@ -80,19 +80,30 @@ def heal_video_freezes(comp_dir: Path, clips, tol: float = 0.15):
         if actual <= 0 or actual + tol >= window:
             continue                                     # long enough (or unprobeable) → leave it
         out = p.with_name(p.stem + ".filled.mp4")
-        factor = window / actual
-        if factor <= 2.0:                                # small shortfall → natural b-roll slow-mo
-            cmd = [ff, "-y", "-i", str(p), "-vf", f"setpts={round(factor, 4)}*PTS", "-an",
+        # SEAMLESS boomerang loop: forward + reversed (the end meets the start with no jump-cut), then
+        # loop that to fill the window. Better than slow-mo for a contemplative atmospheric hold
+        # (clouds/water/embers) — motion stays natural-speed and the loop is invisible (POST_MORTEM #7).
+        # Falls back to a plain loop if the reverse/concat fails.
+        bm = p.with_name(p.stem + ".bm.mp4")
+        boomerang = [ff, "-y", "-i", str(p), "-filter_complex",
+                     "[0:v]split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[v]", "-map", "[v]", "-an",
+                     "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", str(bm)]
+        loop_bm = [ff, "-y", "-stream_loop", "-1", "-i", str(bm), "-t", f"{window:.3f}", "-an",
                    "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", str(out)]
-            how = f"×{factor:.2f} slow-mo"
-        else:                                            # far too short → loop to fill the window
-            cmd = [ff, "-y", "-stream_loop", "-1", "-i", str(p), "-t", f"{window:.3f}", "-an",
-                   "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", str(out)]
-            how = f"loop→{window:.1f}s"
+        hard_loop = [ff, "-y", "-stream_loop", "-1", "-i", str(p), "-t", f"{window:.3f}", "-an",
+                     "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", str(out)]
+        how = f"seamless loop→{window:.1f}s"
         try:
-            subprocess.run(cmd, capture_output=True, timeout=240)
+            subprocess.run(boomerang, capture_output=True, timeout=240)
+            if bm.exists() and bm.stat().st_size > 20000:
+                subprocess.run(loop_bm, capture_output=True, timeout=240)
+            if not (out.exists() and out.stat().st_size > 20000):    # boomerang failed → plain loop
+                subprocess.run(hard_loop, capture_output=True, timeout=240)
+                how = f"loop→{window:.1f}s"
         except Exception:
             pass
+        finally:
+            bm.unlink(missing_ok=True)
         if out.exists() and out.stat().st_size > 20000:
             try:
                 c["src"] = str(out.relative_to(comp_dir))
