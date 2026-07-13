@@ -297,6 +297,47 @@ def _scaffold_from_index(comp: str, frame_id: str) -> Optional[Path]:
     return pdir
 
 
+def _frame_window(comp: str, frame_id: str, fps: int = 30):
+    """(global_start, dur) for a frame from audio_meta voices (narration owns duration)."""
+    meta = {}
+    mp = _comp_dir(comp) / "audio_meta.json"
+    if mp.exists():
+        try:
+            meta = json.loads(mp.read_text(encoding="utf-8"))
+        except Exception:
+            meta = {}
+    durs = {v.get("frame"): float(v.get("duration_s", 0) or 0) for v in meta.get("voices", [])}
+    m = re.match(r"(\d+)", frame_id)
+    n = int(m.group(1)) if m else 1
+    return round(sum(durs.get(i, 0.0) for i in range(1, n)), 3), durs.get(n, 0.0)
+
+
+def _grid_frames(start: float, dur: float, fps: int = 30) -> int:
+    """Frames this window occupies on the monolith's CUMULATIVE frame grid. Using round(end*fps)-round(start*fps)
+    (not round(dur*fps)) is what makes it drift-free: per-frame rounding accumulates, cumulative rounding cancels."""
+    return round((start + dur) * fps) - round(start * fps)
+
+
+def _trim_to_grid(comp: str, frame_id: str, clip: Path, fps: int = 30) -> None:
+    """Trim a clip to the frame count its window occupies in the monolith (_grid_frames). The renderer rounds
+    each clip's duration UP ~1 frame; matching the monolith's cumulative grid stops that from accumulating into
+    timeline drift (+0.27s over 8 frames → seams misalign). Stream-copy: HyperFrames renders -bf 0, so a -t cut
+    on a frame boundary is frame-exact. No-op if audio_meta is missing."""
+    start, dur = _frame_window(comp, frame_id, fps)
+    if dur <= 0:
+        return
+    n = _grid_frames(start, dur, fps)
+    if n <= 0:
+        return
+    trimmed = clip.with_name(clip.stem + ".trim.mp4")
+    # cut at the MIDPOINT past frame n-1 ((n-0.5)/fps): -t keeps whole frames straddling the cut, so aiming
+    # at n/fps leaves the extra frame; (n-0.5)/fps drops it → exactly n frames survive.
+    subprocess.run([_ffmpeg(), "-y", "-i", str(clip), "-t", f"{(n - 0.5) / fps:.4f}", "-c", "copy", str(trimmed)],
+                   capture_output=True)
+    if trimmed.exists() and trimmed.stat().st_size > 1000:
+        trimmed.replace(clip)
+
+
 def render_one(comp: str, frame_id: str, quality: str = "high") -> Optional[Path]:
     """Render ONE frame to a clip (compositions/frames/<id>.clip.mp4) by WINDOWING the assembled index.html
     (inherits grounds/freeze-heal/comparison/bgm/sfx from hf-finish). Falls back to spec-reconstruction if
@@ -315,7 +356,10 @@ def render_one(comp: str, frame_id: str, quality: str = "high") -> Optional[Path
                     "--quality", quality, "--output", str(clip)],
                    cwd=str(pdir), capture_output=True, text=True, encoding="utf-8", errors="replace",
                    shell=(os.name == "nt"))
-    return clip if clip.exists() else None
+    if not clip.exists():
+        return None
+    _trim_to_grid(comp, frame_id, clip)                  # frame-grid-exact → no cumulative timeline drift
+    return clip
 
 
 def concat_clips(clips: List[Path], out: Path, comp_dir: Path, bgm: bool = True) -> bool:

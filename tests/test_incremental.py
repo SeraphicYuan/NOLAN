@@ -73,3 +73,17 @@ def test_window_children_frame_window_and_shift():
 def test_window_children_unknown_frame_is_empty():
     dur, elems = inc._window_children(_kids(), "99-nope")
     assert dur is None and elems == []
+
+
+def test_grid_frames_cumulative_is_drift_free():
+    # per-frame round(dur*fps) would drift; cumulative round(end)-round(start) sums to the exact end frame
+    durs = [55.12, 36.56, 47.58, 43.62]
+    starts, acc = [], 0.0
+    for d in durs:
+        starts.append(acc)
+        acc += d
+    ns = [inc._grid_frames(s, d) for s, d in zip(starts, durs)]
+    assert sum(ns) == round((starts[-1] + durs[-1]) * 30)      # == round(182.88*30), no accumulated error
+    assert all(n > 0 for n in ns)
+    # a frame whose window rounds tighter than its own duration still gets an exact grid count
+    assert inc._grid_frames(55.12, 36.56, 30) == round(91.68 * 30) - round(55.12 * 30)
