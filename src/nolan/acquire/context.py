@@ -61,7 +61,8 @@ def _fetch_video_segment(url: str, out: Path, clip_seconds: int, duration=None) 
     return False
 
 
-def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True) -> Context:
+def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True,
+                  want_clips_library=True, clip_lib_max=4, clip_lib_min_sim=0.55) -> Context:
     ctx = Context()
     # default the video-segment length from the config (was hardcoded 20, ignoring cfg.clip_seconds)
     if clip_seconds is None:
@@ -186,6 +187,108 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
             ctx.search_library = search_library
         except Exception as e:
             print(f"⚠ [acquire] library source unavailable — skipped ({type(e).__name__}: {e})", flush=True)
+
+    # --- clips_library: LOCAL video library — semantic retrieval over rich per-clip metadata ------
+    # The vector store embeds each segment's description + transcript + people + location, so a beat's
+    # text finds the FOOTAGE THAT MEANS THE SAME THING (not a filename or CLIP-image match). Only clips
+    # clearing the similarity floor become candidates (so off-topic projects pay ~nothing), and each is
+    # trimmed to a b-roll window on disk in download(). This is the local half of the video pool.
+    if want_clips_library:
+        _db = Path(getattr(getattr(cfg, "indexing", None), "database", "") or "").expanduser()
+        if not str(_db) or not _db.exists():
+            print(f"⚠ [acquire] clips_library db not found @ {_db} — source skipped "
+                  "(check indexing.database / run `nolan index`).", flush=True)
+        else:
+            try:
+                from nolan.indexer import VideoIndex
+                from nolan.vector_search import VectorSearch
+                _vindex = VideoIndex(_db)
+                _vsearch = VectorSearch(db_path=_db.parent / "vectors", index=_vindex)
+                _vstats = _vsearch.get_stats()
+                _nseg = int(_vstats.get("segments", 0) or 0)
+                print(f"[acquire] clips_library: {_nseg} segments / {_vstats.get('clusters', 0)} clusters "
+                      f"@ {_db} (≤{clip_lib_max}/need, sim≥{clip_lib_min_sim})", flush=True)
+                if _nseg == 0:
+                    print(f"⚠ [acquire] clips_library vector store EMPTY @ {_db.parent / 'vectors'} — "
+                          "run `nolan sync-vectors` (clips source will find nothing).", flush=True)
+                _ff = _ffmpeg()
+                _repo = Path(__file__).resolve().parents[3]
+
+                def _resolve_src(vp: str):
+                    vp = (vp or "").replace("\\", "/")
+                    if not vp:
+                        return None
+                    p = Path(vp)
+                    if p.is_absolute() and p.exists():
+                        return p
+                    cand = _repo / vp                        # DB paths are often repo-relative (Windows sep)
+                    return cand if cand.exists() else None
+
+                def search_clips(need, n):
+                    queries = [q for q in (need.get("queries") or [need.get("query", "")]) if q][:6]
+                    if not queries:
+                        return []
+                    best = {}                                # (src, ~start) -> best-scoring SemanticSearchResult
+                    for q in queries:
+                        try:
+                            hits = _vsearch.search(query=q, limit=max(6, n), search_level="segments",
+                                                   project_id=None) or []
+                        except Exception:
+                            continue
+                        for r in hits:
+                            if float(getattr(r, "score", 0) or 0) < clip_lib_min_sim:
+                                continue
+                            if not _resolve_src(getattr(r, "video_path", "")):
+                                continue
+                            key = (r.video_path, round(float(r.timestamp_start), 1))
+                            if key not in best or r.score > best[key].score:
+                                best[key] = r
+                    ranked = sorted(best.values(), key=lambda r: r.score, reverse=True)[:clip_lib_max]
+                    out = []
+                    for r in ranked:
+                        src = _resolve_src(r.video_path)
+                        start = max(0.0, float(r.timestamp_start) - 0.4)
+                        out.append(Candidate(
+                            ref=f"{src}#{start:.1f}", source="clips_library", modality="video",
+                            path=None,                       # materialised (trimmed) in download()
+                            relevance=float(r.score),        # similarity feeds the engine score for video
+                            meta={"source": "clips_library (local)", "license": "library",
+                                  "description": r.description, "transcript": r.transcript,
+                                  "people": r.people, "location": r.location,
+                                  "source_video": str(src), "clip_start": round(start, 2),
+                                  "clip_dur": float(clip_seconds), "similarity": round(float(r.score), 3)}))
+                    return out
+                ctx.search_clips = search_clips
+
+                # materialise a clips_library candidate by trimming its source video locally (copy-first,
+                # re-encode fallback) — the local twin of _fetch_video_segment, no network.
+                _prev_download = ctx.download
+
+                def _download(c: Candidate, dest: Path):
+                    if c.source != "clips_library":
+                        return _prev_download(c, dest) if _prev_download else False
+                    src = c.meta.get("source_video")
+                    if not src or not Path(src).exists():
+                        return False
+                    import subprocess
+                    (dest / "videos").mkdir(parents=True, exist_ok=True)
+                    out = dest / "videos" / (hashlib.md5(c.ref.encode()).hexdigest()[:12] + ".mp4")
+                    base = [_ff, "-y", "-ss", f"{float(c.meta.get('clip_start', 0)):.3f}", "-i", str(src),
+                            "-t", f"{float(c.meta.get('clip_dur', clip_seconds)):.3f}"]
+                    for tail in (["-c", "copy", "-movflags", "+faststart", "-an"],
+                                 ["-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-an"]):
+                        try:
+                            subprocess.run(base + tail + [str(out)], capture_output=True, timeout=120)
+                        except Exception:
+                            continue
+                        if out.exists() and out.stat().st_size > 20000:
+                            c.path = out
+                            return True
+                        out.unlink(missing_ok=True)
+                    return False
+                ctx.download = _download
+            except Exception as e:
+                print(f"⚠ [acquire] clips_library source unavailable — skipped ({type(e).__name__}: {e})", flush=True)
 
     # --- relevance: CLIP cosine (need text ↔ candidate image) ------------------------------------
     if want_clip:

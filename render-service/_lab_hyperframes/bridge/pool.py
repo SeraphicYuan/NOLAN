@@ -461,8 +461,10 @@ def main():
                     print(f"  gen skipped: {type(e).__name__}: {e}")
     else:
         from nolan.acquire import build_context, acquire_pool
-        ctx = build_context(cfg, clip_seconds=acfg.clip_seconds)
+        ctx = build_context(cfg, clip_seconds=acfg.clip_seconds,
+                            clip_lib_max=acfg.clip_lib_max, clip_lib_min_sim=acfg.clip_lib_min_sim)
         print(f"ACQUIRE — stock={bool(ctx.search_stock)} library={bool(ctx.search_library)} "
+              f"clips_library={bool(ctx.search_clips)} "
               f"clip-relevance={bool(ctx.relevance)} generate={bool(ctx.generate)} | "
               f"{len(needs)} needs × up to {acfg.per_need} kept (images over-fetch ×{acfg.over_fetch}, "
               f"video ×{acfg.over_fetch_video})")

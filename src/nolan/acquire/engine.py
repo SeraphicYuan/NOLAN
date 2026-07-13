@@ -34,6 +34,7 @@ class Context:
     """Injectable organs. Any may be None (that source/scorer is skipped)."""
     search_stock: Optional[Callable] = None     # (need, n) -> [Candidate] (refs)
     search_library: Optional[Callable] = None   # (query, n) -> [Candidate] (local)
+    search_clips: Optional[Callable] = None     # (need, n) -> [Candidate] (local video, materialised in download)
     download: Optional[Callable] = None          # (Candidate, dest_dir) -> bool  (fills .path)
     relevance: Optional[Callable] = None         # (text, path) -> float in [0,1]
     generate: Optional[Callable] = None          # (prompt, out_path) -> bool
@@ -77,12 +78,16 @@ def fitness_score(fit: Dict) -> float:
 # Curated source tiers per category — used to rank EVOCATIVE needs (where literal CLIP relevance is the
 # WRONG signal: it demotes the non-literal art/library that makes abstract beats good). The saved
 # library ranks first (on-brand + curated); then the category's best sources.
+# "clips_library" = the LOCAL video library — curated, on-machine footage semantically matched by rich
+# per-clip metadata; it ranks just below the saved image library (both are curated + local) and above
+# remote stock, so real library footage leads a beat when it genuinely matches (the min-similarity floor
+# in the source keeps weak clips out of the running entirely).
 TIERS = {
-    "art": ["library", "artvee", "wikimedia", "met", "artic", "rijksmuseum", "harvard", "cleveland",
-            "wellcome", "europeana", "dpla", "smithsonian", "loc", "openverse", "ddgs"],
-    "archival": ["library", "archive", "archive_image", "loc", "smithsonian", "europeana", "dpla",
-                 "nasa", "nasa_video", "wikimedia", "flickr", "pexels_video", "pixabay_video", "coverr_video", "ddgs"],
-    "general": ["library", "pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
+    "art": ["library", "clips_library", "artvee", "wikimedia", "met", "artic", "rijksmuseum", "harvard",
+            "cleveland", "wellcome", "europeana", "dpla", "smithsonian", "loc", "openverse", "ddgs"],
+    "archival": ["library", "clips_library", "archive", "archive_image", "loc", "smithsonian", "europeana",
+                 "dpla", "nasa", "nasa_video", "wikimedia", "flickr", "pexels_video", "pixabay_video", "coverr_video", "ddgs"],
+    "general": ["library", "clips_library", "pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
                 "pixabay_video", "coverr_video", "flickr", "wikimedia", "nasa"],
 }
 
@@ -122,6 +127,8 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
     if "library" in cfg.sources and ctx.search_library:
         for q in _need_queries(need):
             cands += ctx.search_library(q, n_fetch) or []
+    if "clips_library" in cfg.sources and ctx.search_clips:
+        cands += ctx.search_clips(need, n_fetch) or []      # local video, materialised in download
     if "stock" in cfg.sources and ctx.search_stock:
         cands += ctx.search_stock(need, n_fetch) or []
     for i, c in enumerate(cands):

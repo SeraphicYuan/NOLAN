@@ -16,7 +16,18 @@ class AcquireConfig:
                                       # contemplative atmospheric hold headroom so it fits the window without a
                                       # freeze-heal; longer windows still fall back to the seamless loop (#7)
     # sources (order tried; "generate" is conditional, handled by the engine)
-    sources: Tuple[str, ...] = ("library", "stock")
+    # clips_library = the LOCAL video library (VideoIndex + vector store). Rich per-clip
+    # description/transcript/people/location drive SEMANTIC retrieval (the beat's meaning → the
+    # footage that means the same), and matched clips rank just below the saved image library.
+    # NOTE: the segment text-embedding compresses cosine into a narrow high band (~0.65-0.77 for
+    # anything), so `clip_lib_min_sim` is only a cheap tail-trim, NOT a topic gate — cross-topic
+    # discrimination is the job of the downstream VLM video cull (it judges real frames) + the
+    # compose-first author selecting per beat. Set it opt-out via `sources` for a project where the
+    # library is irrelevant and you don't want the trims/cull cost.
+    sources: Tuple[str, ...] = ("clips_library", "library", "stock")
+    # local clips-library depth (bounds the ffmpeg trims — video is expensive)
+    clip_lib_max: int = 4             # keep at most this many local library clips per need
+    clip_lib_min_sim: float = 0.55    # drop the weak tail below this similarity (a floor, not a topic gate)
     # relevance + fitness gating
     relevance_floor: float = 0.5      # (evocative beats only) generate originals unless stock relevance clears
                                       # this — set high on purpose so abstract beats get bespoke art, not thin stock
