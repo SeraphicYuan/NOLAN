@@ -61,6 +61,36 @@ def _fetch_video_segment(url: str, out: Path, clip_seconds: int, duration=None) 
     return False
 
 
+def _resolve_clips_db(cfg) -> Optional[Path]:
+    """Resolve the video-library DB path robustly against CWD. `run_pool` runs `bridge/pool.py` with
+    cwd=BRIDGE, where load_config() cannot see the repo-root nolan.yaml and so defaults indexing.database
+    to the stale ~/.nolan db (the holbein POST_MORTEM #1 class of bug: a config/CWD mixup silently opens
+    the WRONG library). Prefer the repo-root nolan.yaml's configured DB (the one whose vector store also
+    exists), and fall back to whatever cfg carries — so the clips source finds the SAME rich library
+    whether acquisition runs from the repo root or from the bridge dir."""
+    cands = []
+    try:
+        import yaml
+        repo_yaml = Path(__file__).resolve().parents[3] / "nolan.yaml"
+        if repo_yaml.exists():
+            y = yaml.safe_load(repo_yaml.read_text(encoding="utf-8")) or {}
+            d = (y.get("indexing") or {}).get("database")
+            if d:
+                cands.append(Path(d).expanduser())
+    except Exception:
+        pass
+    try:
+        d = getattr(getattr(cfg, "indexing", None), "database", "") or ""
+        if d:
+            cands.append(Path(d).expanduser())
+    except Exception:
+        pass
+    for db in cands:                                    # prefer a DB whose paired vector store exists
+        if db and db.exists() and (db.parent / "vectors").exists():
+            return db
+    return cands[0] if cands else None
+
+
 def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True,
                   want_clips_library=True, clip_lib_max=4, clip_lib_min_sim=0.55) -> Context:
     ctx = Context()
@@ -194,8 +224,8 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
     # clearing the similarity floor become candidates (so off-topic projects pay ~nothing), and each is
     # trimmed to a b-roll window on disk in download(). This is the local half of the video pool.
     if want_clips_library:
-        _db = Path(getattr(getattr(cfg, "indexing", None), "database", "") or "").expanduser()
-        if not str(_db) or not _db.exists():
+        _db = _resolve_clips_db(cfg)
+        if not _db or not _db.exists():
             print(f"⚠ [acquire] clips_library db not found @ {_db} — source skipped "
                   "(check indexing.database / run `nolan index`).", flush=True)
         else:

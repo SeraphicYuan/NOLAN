@@ -81,6 +81,16 @@ _needs_db = pytest.mark.skipif(_DB is None, reason="video library DB / vector st
 
 
 @_needs_db
+def test_db_resolves_to_vectors_paired_library_regardless_of_cwd():
+    """The resolver must anchor to the repo-root config's library (whose vector store exists), NOT the
+    stale ~/.nolan default that load_config() falls back to when run from the bridge dir."""
+    from nolan.config import load_config
+    from nolan.acquire.context import _resolve_clips_db
+    db = _resolve_clips_db(load_config())
+    assert db is not None and db.exists() and (db.parent / "vectors").exists()
+
+
+@_needs_db
 def test_retrieval_leverages_rich_metadata():
     """A beat's meaning must retrieve the footage that MEANS the same thing, carrying the rich
     per-clip description/similarity — not a filename match."""
