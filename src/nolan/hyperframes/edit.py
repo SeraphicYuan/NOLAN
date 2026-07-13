@@ -795,6 +795,49 @@ def _register_pool_asset(comp: str, name: str) -> None:
         pass                                               # pool bookkeeping must never break the asset add
 
 
+# ------------------------------------------------------------------ per-frame comments (batch changeset)
+
+def stage_comment(comp: str, frame_id: str, text: str, scene_id: Optional[str] = None) -> Dict[str, Any]:
+    """Stage a free-text edit comment on a frame WITHOUT applying it — the batch-edit changeset (#4/#5).
+    Persisted losslessly in the frame spec's meta.comments (survives every round-trip)."""
+    text = (text or "").strip()
+    if not text:
+        raise ValueError("comment text required")
+    spec, info = load_frame_spec(comp, frame_id)
+    fr = spec["frames"][info["i"]]
+    comments = fr.setdefault("meta", {}).setdefault("comments", [])
+    c = {"id": f"c{len(comments) + 1}", "text": text, "scene_id": scene_id, "status": "open"}
+    comments.append(c)
+    save_frame_spec(Path(info["spec_file"]), spec)
+    return {**c, "frame_id": frame_id}
+
+
+def list_changeset(comp: str) -> List[Dict[str, Any]]:
+    """All OPEN per-frame comments across the comp — the pending batch-edit changeset (for #5 dispatch)."""
+    out = []
+    for fr in list_frames(comp):
+        fid = fr.get("id") if isinstance(fr, dict) else fr
+        spec, info = load_frame_spec(comp, fid)
+        for c in spec["frames"][info["i"]].get("meta", {}).get("comments", []):
+            if c.get("status", "open") == "open":
+                out.append({**c, "frame_id": fid})
+    return out
+
+
+def resolve_comment(comp: str, frame_id: str, comment_id: Optional[str] = None,
+                    status: str = "applied") -> Dict[str, Any]:
+    """Mark staged comment(s) resolved (default 'applied'); comment_id=None resolves every open one in the frame."""
+    spec, info = load_frame_spec(comp, frame_id)
+    fr = spec["frames"][info["i"]]
+    n = 0
+    for c in fr.get("meta", {}).get("comments", []):
+        if (comment_id is None or c.get("id") == comment_id) and c.get("status", "open") == "open":
+            c["status"] = status
+            n += 1
+    save_frame_spec(Path(info["spec_file"]), spec)
+    return {"ok": True, "resolved": n}
+
+
 # ------------------------------------------------------------------ preview / render (npx scaffold)
 
 def _scaffold_preview(comp: str, frame_id: str) -> Path:

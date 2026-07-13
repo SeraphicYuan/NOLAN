@@ -183,6 +183,28 @@ def register(app, ctx):
         except (FileNotFoundError, KeyError) as e:
             raise HTTPException(status_code=404, detail=str(e))
 
+    # ---- per-frame comments / batch changeset (#4 — STAGED, not applied; feeds the #5 batch dispatch)
+
+    @app.post("/api/hf/frame/comment")
+    async def hf_stage_comment(payload: dict = Body(...)):
+        comp, fid = payload.get("comp"), payload.get("frame_id")
+        text = payload.get("text") or payload.get("note")
+        if not (comp and fid and text):
+            raise HTTPException(status_code=400, detail="comp, frame_id, text required")
+        return await asyncio.to_thread(_guard, hfedit.stage_comment, comp, fid, text, payload.get("scene_id"))
+
+    @app.get("/api/hf/changeset")
+    async def hf_changeset(comp: str = Query(...)):
+        """All OPEN per-frame comments across the comp — the pending batch-edit changeset."""
+        return {"comp": comp, "comments": _guard(hfedit.list_changeset, comp)}
+
+    @app.post("/api/hf/comment/resolve")
+    async def hf_resolve_comment(payload: dict = Body(...)):
+        comp, fid = payload.get("comp"), payload.get("frame_id")
+        if not (comp and fid):
+            raise HTTPException(status_code=400, detail="comp, frame_id required")
+        return await asyncio.to_thread(_guard, hfedit.resolve_comment, comp, fid, payload.get("comment_id"))
+
     # ---- asset picker target (land an asset in <comp>/assets/, referenced by scene data)
 
     @app.get("/api/hf/assets")

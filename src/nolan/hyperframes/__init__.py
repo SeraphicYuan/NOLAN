@@ -12,6 +12,7 @@ from .edit import (
     revise_frame_note, build_note_prompt, list_assets, resolve_asset, save_upload, comp_dir,
     new_essay, derive_asset_needs, run_pool, attach_voiceover,
     list_themes, suggest_theme, theme_exists,
+    stage_comment, list_changeset, resolve_comment,
 )
 
 __all__ = [
@@ -21,4 +22,5 @@ __all__ = [
     "revise_frame_note", "build_note_prompt", "list_assets", "resolve_asset", "save_upload", "comp_dir",
     "new_essay", "derive_asset_needs", "run_pool", "attach_voiceover",
     "list_themes", "suggest_theme", "theme_exists",
+    "stage_comment", "list_changeset", "resolve_comment",
 ]

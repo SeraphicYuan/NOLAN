@@ -226,6 +226,23 @@ def test_asset_add_registers_in_pool(comp, tmp_path):
     assert sum(1 for x in pool2 if x.get("file") == "myshot.png") == 1
 
 
+def test_frame_comment_changeset(comp):
+    """#4: comments stage losslessly in the frame spec meta, list as a changeset, resolve out."""
+    import pytest as _pt
+    c1 = hf.stage_comment(comp, FRAME, "make this ominous", scene_id="s2")
+    hf.stage_comment(comp, FRAME, "swap the b-roll")
+    assert c1["status"] == "open" and c1["frame_id"] == FRAME
+    cs = hf.list_changeset(comp)
+    assert len(cs) == 2 and {x["text"] for x in cs} == {"make this ominous", "swap the b-roll"}
+    spec = json.loads(_spec_path(comp).read_text(encoding="utf-8"))        # persisted in the spec meta
+    assert len(spec["frames"][0]["meta"]["comments"]) == 2
+    hf.resolve_comment(comp, FRAME, c1["id"])                             # resolving drops it from the changeset
+    cs2 = hf.list_changeset(comp)
+    assert len(cs2) == 1 and cs2[0]["text"] == "swap the b-roll"
+    with _pt.raises(ValueError):
+        hf.stage_comment(comp, FRAME, "   ")                              # empty comment rejected
+
+
 # ---- route layer: FastAPI TestClient over /hyperframes + /api/hf/* (added 2026-07-13) ----
 # The Phase-1/2 status entries CLAIMED "TestClient over the full route surface" but no such
 # tests existed. These are that coverage, for real: read routes, the gated edit route, the two
@@ -303,6 +320,14 @@ def test_route_asset_file_confined_to_assets(client, comp, tmp_path):
 
 def test_route_assemble_requires_comp(client):
     assert client.post("/api/hf/assemble", json={}).status_code == 400
+
+
+def test_route_changeset(client, comp):
+    r = client.post("/api/hf/frame/comment", json={"comp": comp, "frame_id": FRAME, "text": "route note"})
+    assert r.status_code == 200 and r.json()["status"] == "open"
+    cs = client.get("/api/hf/changeset", params={"comp": comp}).json()["comments"]
+    assert any(c["text"] == "route note" for c in cs)
+    assert client.post("/api/hf/frame/comment", json={"comp": comp, "frame_id": FRAME}).status_code == 400
 
 
 def test_route_assembled_video_404_when_absent(client, comp):
