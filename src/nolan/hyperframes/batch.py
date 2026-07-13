@@ -95,7 +95,12 @@ def dispatch_batch(comp: str, session: Optional[str] = None, agent: Optional[str
     if session:
         try:
             from nolan.webui import operations
-            operations._dispatch_to_tmux(session, f"Read {kick} and execute the batch edit it describes.")
+            msg = (f"You are fleet agent '{session}'. Read {kick} and execute the batch HyperFrames edit it "
+                   f"describes: edit each listed frame ONLY through the gated composer engine "
+                   f"(nolan.hyperframes.edit — a rejected edit reverts), then incrementally re-render each with "
+                   f"`python -X utf8 -m nolan.hyperframes.incremental {comp} --only <frame_id>`. Report progress "
+                   f"to .nolan/agents/{session}.json via nolan.fleet.write_status(state=working|done|error).")
+            operations._dispatch_to_tmux(session, msg)
             dispatched = session
             for c in changeset:                                  # mark them dispatched so they leave the changeset
                 resolve_comment(comp, c["frame_id"], c["id"], status="dispatched")
