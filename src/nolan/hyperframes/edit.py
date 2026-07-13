@@ -747,6 +747,7 @@ def resolve_asset(comp: str, src: str) -> Dict[str, Any]:
     adir = _comp_dir(comp) / "assets"
     adir.mkdir(parents=True, exist_ok=True)
     (adir / s.name).write_bytes(s.read_bytes())
+    _register_pool_asset(comp, s.name)                     # Q5: adding to a frame also registers in the pool
     return {"path": f"assets/{s.name}", "name": s.name}
 
 
@@ -755,7 +756,43 @@ def save_upload(comp: str, filename: str, data: bytes) -> Dict[str, Any]:
     adir.mkdir(parents=True, exist_ok=True)
     safe = Path(filename).name
     (adir / safe).write_bytes(data)
+    _register_pool_asset(comp, safe)                       # Q5: adding to a frame also registers in the pool
     return {"path": f"assets/{safe}", "name": safe}
+
+
+def _register_pool_asset(comp: str, name: str) -> None:
+    """Q5: a frame-added asset also becomes a first-class POOL candidate — not just a one-off frame reference.
+    Copies it into capture/assets/ (the pool's media dir) and appends a `manual`-source entry to pool.json
+    (matching the acquire-engine schema). Idempotent by file name; best-effort (never fail the asset add)."""
+    try:
+        cdir = _comp_dir(comp)
+        src = cdir / "assets" / name
+        if not src.is_file():
+            return
+        ext = src.suffix.lower()
+        media_type = "video" if ext in _VID_EXT else "image" if ext in _IMG_EXT else "file"
+        cap = cdir / "capture" / "assets"
+        cap.mkdir(parents=True, exist_ok=True)
+        (cap / name).write_bytes(src.read_bytes())         # pool media lives under capture/assets/
+        pool_f = cdir / "pool.json"
+        pool = []
+        if pool_f.exists():
+            try:
+                pool = json.loads(pool_f.read_text(encoding="utf-8"))
+            except Exception:
+                pool = []
+        if not isinstance(pool, list):
+            pool = []
+        if any(isinstance(e, dict) and e.get("file") == name for e in pool):
+            return                                         # already registered
+        pool.append({"id": f"manual_{sum(1 for e in pool if isinstance(e, dict)) + 1}",
+                     "file": name, "media_type": media_type, "query": "", "source": "manual",
+                     "source_url": "", "photographer": "", "license": "user-provided",
+                     "width": None, "height": None, "duration": None, "relevance": 1.0,
+                     "caption": f"{name} (added to a frame)", "flags": ""})
+        pool_f.write_text(json.dumps(pool, indent=1), encoding="utf-8")
+    except Exception:
+        pass                                               # pool bookkeeping must never break the asset add
 
 
 # ------------------------------------------------------------------ preview / render (npx scaffold)

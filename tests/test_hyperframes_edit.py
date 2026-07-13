@@ -211,6 +211,21 @@ def test_assets_resolve_and_list(comp, tmp_path):
     assert pic["path"] == "assets/pic.png" and pic["kind"] == "image"
 
 
+def test_asset_add_registers_in_pool(comp, tmp_path):
+    """Q5: adding an asset to a frame also registers it in the project pool."""
+    src = tmp_path / "myshot.png"
+    src.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 40)
+    hf.resolve_asset(comp, str(src))
+    cdir = VIDEOS / comp
+    assert (cdir / "capture" / "assets" / "myshot.png").is_file()          # copied into the pool media dir
+    pool = json.loads((cdir / "pool.json").read_text(encoding="utf-8"))
+    e = next(x for x in pool if x.get("file") == "myshot.png")             # registered as a manual entry
+    assert e["source"] == "manual" and e["media_type"] == "image" and e["license"] == "user-provided"
+    hf.resolve_asset(comp, str(src))                                       # idempotent — no duplicate
+    pool2 = json.loads((cdir / "pool.json").read_text(encoding="utf-8"))
+    assert sum(1 for x in pool2 if x.get("file") == "myshot.png") == 1
+
+
 # ---- route layer: FastAPI TestClient over /hyperframes + /api/hf/* (added 2026-07-13) ----
 # The Phase-1/2 status entries CLAIMED "TestClient over the full route surface" but no such
 # tests existed. These are that coverage, for real: read routes, the gated edit route, the two
