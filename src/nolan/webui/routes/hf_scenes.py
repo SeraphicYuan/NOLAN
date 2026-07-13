@@ -205,6 +205,14 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail="comp, frame_id required")
         return await asyncio.to_thread(_guard, hfedit.resolve_comment, comp, fid, payload.get("comment_id"))
 
+    # ---- activity / feedback feed (every single + batch/agent edit's process, outcome, error)
+
+    @app.get("/api/hf/activity")
+    async def hf_activity(comp: str = Query(...)):
+        """The per-comp activity feed + the open changeset — the /hyperframes 'Activity & feedback' panel."""
+        return {"comp": comp, "activity": _guard(hfedit.list_activity, comp, 80),
+                "changeset": _guard(hfedit.list_changeset, comp)}
+
     # ---- batch-agent mode (#5): compile the changeset into ONE brief, dispatch to a fleet agent
 
     @app.get("/api/hf/batch/brief")

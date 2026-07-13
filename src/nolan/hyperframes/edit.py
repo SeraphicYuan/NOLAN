@@ -474,8 +474,10 @@ def recompose_frame(comp: str, frame_id: str) -> Dict[str, Any]:
     return {"ok": ok, "output": out, "html": str(_frames_dir(comp) / f"{frame_id}.html")}
 
 
-def _edit(comp: str, frame_id: str, mutate) -> Dict[str, Any]:
-    """Shared transaction: load spec file, mutate the frame in place, save, gate+build; revert on reject."""
+def _edit(comp: str, frame_id: str, mutate, *, kind: str = "edit", scene_id: Optional[str] = None,
+          summary: Optional[str] = None, actor: str = "human") -> Dict[str, Any]:
+    """Shared transaction: load spec file, mutate the frame in place, save, gate+build; revert on reject.
+    Records the outcome (applied|rejected + reason) to the activity feed."""
     info = _frame_index(comp).get(frame_id)
     if not info:
         raise KeyError(f"frame {frame_id!r} not found in composition {comp!r}")
@@ -486,9 +488,13 @@ def _edit(comp: str, frame_id: str, mutate) -> Dict[str, Any]:
     mutate(fr)
     save_frame_spec(sf, spec)
     ok, out = _gate_and_build(comp, sf)
+    label = summary or (f"{kind} {frame_id}" + (f"/{scene_id}" if scene_id else ""))
     if not ok:
         sf.write_text(original, encoding="utf-8")  # atomic revert — a rejected edit leaves nothing behind
+        log_activity(comp, kind, label, actor=actor, frame_id=frame_id, scene_id=scene_id,
+                     outcome="rejected", detail=out[-300:])
         return {"applied": False, "errors": out}
+    log_activity(comp, kind, label, actor=actor, frame_id=frame_id, scene_id=scene_id, outcome="applied")
     return {"applied": True, "gate": out, "html": str(_frames_dir(comp) / f"{frame_id}.html")}
 
 
@@ -506,7 +512,8 @@ def apply_scene_edit(comp: str, frame_id: str, scene_id: str,
     gate failure so a bad edit never lands. Returns {applied, gate|errors, html}."""
     def mutate(fr):
         _apply_patch(_find_scene(fr, scene_id), patch, deletes)
-    return _edit(comp, frame_id, mutate)
+    return _edit(comp, frame_id, mutate, kind="edit", scene_id=scene_id,
+                 summary=f"edit {scene_id}: {', '.join((patch or {}).keys()) or 'delete'}")
 
 
 def add_scene(comp: str, frame_id: str, scene: Dict[str, Any], index: Optional[int] = None) -> Dict[str, Any]:
@@ -517,7 +524,8 @@ def add_scene(comp: str, frame_id: str, scene: Dict[str, Any], index: Optional[i
         if any(s.get("id") == scene.get("id") for s in scenes):
             raise ValueError(f"scene id {scene.get('id')!r} already exists in frame {frame_id!r}")
         scenes.insert(len(scenes) if index is None else index, copy.deepcopy(scene))
-    return _edit(comp, frame_id, mutate)
+    return _edit(comp, frame_id, mutate, kind="add", scene_id=scene.get("id"),
+                 summary=f"add {scene.get('type')} {scene.get('id')}")
 
 
 def remove_scene(comp: str, frame_id: str, scene_id: str) -> Dict[str, Any]:
@@ -526,7 +534,7 @@ def remove_scene(comp: str, frame_id: str, scene_id: str) -> Dict[str, Any]:
         fr["scenes"] = [s for s in fr.get("scenes", []) if s.get("id") != scene_id]
         if len(fr["scenes"]) == before:
             raise KeyError(f"scene {scene_id!r} not in frame {frame_id!r}")
-    return _edit(comp, frame_id, mutate)
+    return _edit(comp, frame_id, mutate, kind="remove", scene_id=scene_id, summary=f"remove {scene_id}")
 
 
 def retime_scene(comp: str, frame_id: str, scene_id: str,
@@ -538,7 +546,7 @@ def retime_scene(comp: str, frame_id: str, scene_id: str,
             sc["start"] = float(start)
         if dur is not None:
             sc["dur"] = float(dur)
-    return _edit(comp, frame_id, mutate)
+    return _edit(comp, frame_id, mutate, kind="retime", scene_id=scene_id, summary=f"retime {scene_id}")
 
 
 # ------------------------------------------------------------------ within-frame transition planner
@@ -809,6 +817,7 @@ def stage_comment(comp: str, frame_id: str, text: str, scene_id: Optional[str] =
     c = {"id": f"c{len(comments) + 1}", "text": text, "scene_id": scene_id, "status": "open"}
     comments.append(c)
     save_frame_spec(Path(info["spec_file"]), spec)
+    log_activity(comp, "comment", f"staged: {text[:80]}", frame_id=frame_id, scene_id=scene_id, outcome="staged")
     return {**c, "frame_id": frame_id}
 
 
@@ -825,17 +834,58 @@ def list_changeset(comp: str) -> List[Dict[str, Any]]:
 
 
 def resolve_comment(comp: str, frame_id: str, comment_id: Optional[str] = None,
-                    status: str = "applied") -> Dict[str, Any]:
-    """Mark staged comment(s) resolved (default 'applied'); comment_id=None resolves every open one in the frame."""
+                    status: str = "applied", reason: Optional[str] = None) -> Dict[str, Any]:
+    """Resolve staged comment(s): 'applied' | 'blocked' (no gated landing spot — give a `reason`) | 'error'.
+    comment_id=None resolves every open one in the frame. Records the outcome to the activity feed."""
     spec, info = load_frame_spec(comp, frame_id)
     fr = spec["frames"][info["i"]]
     n = 0
     for c in fr.get("meta", {}).get("comments", []):
         if (comment_id is None or c.get("id") == comment_id) and c.get("status", "open") == "open":
             c["status"] = status
+            if reason:
+                c["reason"] = reason
             n += 1
+            log_activity(comp, "comment", f"{status}: {c.get('text', '')[:80]}", actor="agent",
+                         frame_id=frame_id, scene_id=c.get("scene_id"), outcome=status, detail=reason)
     save_frame_spec(Path(info["spec_file"]), spec)
     return {"ok": True, "resolved": n}
+
+
+# ------------------------------------------------------------------ activity feed (edit / agent process log)
+
+def log_activity(comp: str, kind: str, summary: str, *, actor: str = "human",
+                 frame_id: Optional[str] = None, scene_id: Optional[str] = None,
+                 outcome: Optional[str] = None, detail: Optional[str] = None) -> None:
+    """Append ONE event to the per-comp activity log (<comp>/.hf_activity.jsonl) — the process/update/error
+    feed the /hyperframes page surfaces for every single AND batch/agent edit. Best-effort; never raises
+    (bookkeeping must not break an edit). `outcome` ∈ applied|rejected|blocked|staged|dispatched|error."""
+    try:
+        import time
+        ev = {"ts": round(time.time(), 3), "actor": actor, "kind": kind, "summary": summary,
+              "frame_id": frame_id, "scene_id": scene_id, "outcome": outcome}
+        if detail:
+            ev["detail"] = detail[:500]
+        with open(_comp_dir(comp) / ".hf_activity.jsonl", "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(ev, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def list_activity(comp: str, limit: int = 100) -> List[Dict[str, Any]]:
+    """Recent activity events, NEWEST first (the /hyperframes activity feed)."""
+    f = _comp_dir(comp) / ".hf_activity.jsonl"
+    if not f.exists():
+        return []
+    out = []
+    for line in f.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            try:
+                out.append(json.loads(line))
+            except Exception:
+                pass
+    return list(reversed(out))[:limit]
 
 
 # ------------------------------------------------------------------ preview / render (npx scaffold)

@@ -69,6 +69,14 @@
     .modal-box { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; width: 640px; max-width: 92vw; max-height: 82vh; overflow: auto; padding: 16px; }
     .modal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
     .modal-head .spacer { flex: 1; }
+    .act-needs { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+    .act-need { font-size: 12px; margin: 4px 0; }
+    .act-row { display: flex; gap: 8px; align-items: baseline; font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .act-t { color: var(--text-secondary); min-width: 66px; } .act-who { color: #7aa2f7; min-width: 54px; } .act-sum { flex: 1; } .act-fr { color: var(--text-secondary); }
+    .act-badge { font-size: 10px; padding: 1px 6px; border-radius: 6px; text-transform: uppercase; white-space: nowrap; }
+    .act-badge.applied { background: rgba(60,160,90,0.25); color: #6bd08a; }
+    .act-badge.rejected, .act-badge.blocked, .act-badge.error { background: rgba(200,80,80,0.25); color: #f08a8a; }
+    .act-badge.staged, .act-badge.dispatched { background: rgba(180,140,60,0.25); color: #e0b45a; }
     .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 10px; }
     .pick-item { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--border);
                  border-radius: 8px; cursor: pointer; font-size: 12px; text-align: center; word-break: break-all; }
@@ -106,6 +114,7 @@
       <button class="btn mini" onclick="assembleVideo()" title="Fast full-video render — only changed frames re-render (incremental); run hf-finish once first">⚙ Assemble</button>
       <button class="btn ghost mini" onclick="viewAssembled()" title="Open the assembled video in a new tab">▶ View</button>
       <button class="btn ghost mini" onclick="batchDispatch()" title="Compile all staged frame comments into ONE agent brief + dispatch to a fleet agent">🤖 Batch</button>
+      <button class="btn ghost mini" onclick="showActivity()" title="Process, updates, errors & agent feedback for every single and batch edit">📋 Activity</button>
     </div>
     <div class="cols">
       <div id="frames"></div>
@@ -116,6 +125,17 @@
     </div>
   </div>
   <div id="toast" class="toast"></div>
+  <div id="activityModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><b>Activity &amp; feedback</b>
+        <span class="meta" style="color:var(--text-secondary);font-size:12px;">every edit's process, outcome &amp; agent feedback</span>
+        <span class="spacer"></span>
+        <button class="btn ghost mini" onclick="$('#activityModal').style.display='none'">✕</button></div>
+      <div id="activity-needs"></div>
+      <div id="activity-feed" style="margin-top:6px"></div>
+    </div>
+  </div>
+
   <div id="picker" class="modal">
     <div class="modal-box">
       <div class="modal-head"><b>Pick an asset</b><span class="meta" style="color:var(--text-secondary);font-size:12px;">lands in the composition's assets/</span>
@@ -244,6 +264,29 @@ async function batchDispatch() {
     toast(r.dispatched ? ("Dispatched " + r.comments + " edit(s) to " + r.dispatched)
                        : ("Brief compiled → " + r.brief_path), "ok");
   } catch (e) { toast("batch failed: " + e, "err"); }
+}
+async function showActivity() {
+  const comp = $("#comp").value;
+  if (!comp) { toast("pick a composition first", "err"); return; }
+  let d;
+  try { d = await jget("/api/hf/activity?comp=" + encodeURIComponent(comp) + "&_=" + Date.now()); }
+  catch (e) { toast("activity failed: " + e, "err"); return; }
+  const acts = d.activity || [], open = d.changeset || [];
+  const flagged = acts.filter(a => ["blocked", "rejected", "error"].includes(a.outcome));
+  const fmt = ts => { try { return new Date(ts * 1000).toLocaleTimeString(); } catch { return ""; } };
+  const loc = a => a.frame_id ? ` <span class="act-fr">${a.frame_id}${a.scene_id ? "/" + a.scene_id : ""}</span>` : "";
+  let needs = "";
+  if (open.length || flagged.length) {
+    needs = '<div class="act-needs"><b>Needs attention</b>';
+    open.forEach(c => needs += `<div class="act-need">🟡 <b>staged</b> ${c.frame_id || ""}${c.scene_id ? "/" + c.scene_id : ""} — ${esc(c.text)}</div>`);
+    flagged.forEach(a => needs += `<div class="act-need">${a.outcome === "blocked" ? "⛔" : "⚠️"} <b>${a.outcome}</b> ${a.frame_id || ""}${a.scene_id ? "/" + a.scene_id : ""} — ${esc(a.summary)}${a.detail ? ' <i>' + esc(a.detail) + "</i>" : ""}</div>`);
+    needs += "</div>";
+  } else needs = '<div class="meta" style="color:var(--text-secondary)">Nothing needs attention.</div>';
+  $("#activity-needs").innerHTML = needs;
+  $("#activity-feed").innerHTML = "<b>Recent activity</b>" + (acts.length
+    ? acts.map(a => `<div class="act-row"><span class="act-t">${fmt(a.ts)}</span><span class="act-who">${a.actor || ""}</span><span class="act-badge ${a.outcome || ""}">${a.outcome || ""}</span><span class="act-sum">${esc(a.summary)}</span>${loc(a)}</div>`).join("")
+    : '<div class="meta" style="color:var(--text-secondary)">No activity yet.</div>');
+  $("#activityModal").style.display = "flex";
 }
 
 // ---- new essay: scaffold script + dispatch the faceless-explainer agent ----

@@ -19,7 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .edit import _comp_dir, list_changeset, load_frame_spec, resolve_comment
+from .edit import _comp_dir, list_changeset, load_frame_spec, log_activity, resolve_comment
 
 _SKILL = "hyperframes-batch@1"
 
@@ -102,6 +102,8 @@ def dispatch_batch(comp: str, session: Optional[str] = None, agent: Optional[str
                    f"to .nolan/agents/{session}.json via nolan.fleet.write_status(state=working|done|error).")
             operations._dispatch_to_tmux(session, msg)
             dispatched = session
+            log_activity(comp, "batch", f"dispatched {len(changeset)} comment(s) to {session}",
+                         outcome="dispatched")
             for c in changeset:                                  # mark them dispatched so they leave the changeset
                 resolve_comment(comp, c["frame_id"], c["id"], status="dispatched")
         except Exception as e:

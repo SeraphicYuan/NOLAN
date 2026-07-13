@@ -262,6 +262,26 @@ def test_batch_brief_and_dispatch(comp):
     assert batch.dispatch_batch(comp)["ok"] is False                                  # nothing to dispatch
 
 
+def test_activity_feed(comp):
+    """Part B: single edits + comment outcomes record to the per-comp activity feed."""
+    hf.apply_scene_edit(comp, FRAME, "s1", patch={"data.kicker": "ACT"})              # applied
+    hf.apply_scene_edit(comp, FRAME, "s2", patch={"data.kind": "moon"})              # rejected (geo kind)
+    hf.stage_comment(comp, FRAME, "cool it down", scene_id="s2")                      # staged
+    acts = hf.list_activity(comp)
+    outcomes = {(a["kind"], a["outcome"]) for a in acts}
+    assert ("edit", "applied") in outcomes and ("edit", "rejected") in outcomes and ("comment", "staged") in outcomes
+    assert acts[0]["outcome"] == "staged"                                             # newest first
+    rej = next(a for a in acts if a["outcome"] == "rejected")
+    assert rej["scene_id"] == "s2" and rej.get("detail")                             # rejection carries the reason
+    # blocked outcome with a reason (the "no gated landing spot" case) is first-class + surfaced
+    cid = hf.list_changeset(comp)[0]["id"]
+    hf.resolve_comment(comp, FRAME, cid, status="blocked", reason="no gated field for b-roll warmth")
+    c = json.loads(_spec_path(comp).read_text(encoding="utf-8"))["frames"][0]["meta"]["comments"][0]
+    assert c["status"] == "blocked" and "warmth" in c["reason"]
+    blocked = [a for a in hf.list_activity(comp) if a["outcome"] == "blocked"]
+    assert blocked and "warmth" in (blocked[0].get("detail") or "")
+
+
 # ---- route layer: FastAPI TestClient over /hyperframes + /api/hf/* (added 2026-07-13) ----
 # The Phase-1/2 status entries CLAIMED "TestClient over the full route surface" but no such
 # tests existed. These are that coverage, for real: read routes, the gated edit route, the two
@@ -356,6 +376,14 @@ def test_route_batch(client, comp):
     r = client.post("/api/hf/batch/dispatch", json={"comp": comp})               # no session → compiled, not sent
     assert r.status_code == 200 and r.json()["ok"] and r.json()["dispatched"] is None
     assert client.post("/api/hf/batch/dispatch", json={}).status_code == 400
+
+
+def test_route_activity(client, comp):
+    hf.apply_scene_edit(comp, FRAME, "s1", patch={"data.kicker": "X"})           # -> an 'applied' event
+    hf.stage_comment(comp, FRAME, "cool it down")                               # -> a 'staged' event + changeset
+    d = client.get("/api/hf/activity", params={"comp": comp}).json()
+    outs = {a["outcome"] for a in d["activity"]}
+    assert "applied" in outs and "staged" in outs and len(d["changeset"]) == 1
 
 
 def test_route_assembled_video_404_when_absent(client, comp):
