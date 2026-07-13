@@ -4,6 +4,13 @@
 **Status:** Complete
 **Last Updated:** 2026-07-12
 
+## HyperFrames edit feedback surface + generic ground.grade (2026-07-13)
+
+Two capabilities driven by the batch-agent feedback loop (nolan4's honest "no gated landing spot" report on a "cool it down" note). Commits 59dd5a3 (feedback), 1535e50 (grade); full tests/ suite green.
+- **Activity / feedback surface** (edit.py + routes/hf_scenes.py + templates/hf_scenes.html): every single AND batch/agent edit records to a per-comp append-only feed (`<comp>/.hf_activity.jsonl`) via `log_activity`. Instrumented paths: `_edit` (apply/add/remove/retime -> applied/rejected + gate reason), `stage_comment` (staged), `resolve_comment` (applied/**blocked**/error + reason), `dispatch_batch` (dispatched). `blocked` (no gated landing spot) is a FIRST-CLASS outcome. Route `GET /api/hf/activity` -> feed + open changeset. UI "Activity" panel = a "Needs attention" inbox (staged + blocked/rejected with the reason) + a chronological feed with actor + outcome badges. Closes the loop: an agent's "I couldn't land this" surfaces as a capability-gap signal instead of dying in a tmux pane.
+- **Generic `ground.grade`** (bridge/compose.py + assemble_media.py + inject_root_video.py): the GENERIC answer to "cool it down / warm / darken / desaturate"-class notes -- a gated CSS-filter field (`GRADES` registry) on any image OR video ground, block-agnostic (NOT a per-block tint field). The author gate accepts `data.ground.grade`; the composer applies the filter (image ground in-frame; video ground at root injection). Follow-up: catalog registration (inspector dropdown + reject unknowns); per-block photos (newshead/comparison) that bypass media_ground.
+- Verified LIVE: restarted the hub, puppeteer-screenshotted the Activity panel showing real aeneid feedback (an APPLIED `data.ground.grade` edit = the "cool it down" gap now CLOSED, plus rejected / staged / blocked-with-reason).
+
 ## HyperFrames two-mode render + batch-agent edit — #1-#5 complete (2026-07-13)
 
 Five-part program off the edit-page audit. Commits c697317, 93859e9, f5701fc, 92d431d, 046f415, ef4e5bf, 652bb03, 7c11b73, 5f1f120. Full tests/ suite green (1190 passed, 3 skipped).
