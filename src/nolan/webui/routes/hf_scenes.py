@@ -137,6 +137,36 @@ def register(app, ctx):
                                 comp=comp, frame_ids=frame_ids)
         return {"job_id": job.id, "frames": frame_ids}
 
+    # ---- assemble the full video (INCREMENTAL: window the assembled index per-frame + concat, cached)
+
+    @app.post("/api/hf/assemble")
+    async def hf_assemble(payload: dict = Body(...)):
+        """Fast full-video assemble: re-render only changed frames (content-hash cache) + concat →
+        renders/<comp>.mp4. Requires a prior assemble-index (index.html); run hf-finish once first."""
+        comp = (payload.get("comp") or "").strip()
+        if not comp:
+            raise HTTPException(status_code=400, detail="comp required")
+
+        async def worker(job, comp):
+            job.message = "Assembling (incremental — only changed frames re-render)…"
+            from nolan.hyperframes.incremental import render_incremental
+            r = await asyncio.to_thread(render_incremental, comp, captions=False)
+            job.message = (f"Assembled: {r.get('rendered', 0)} rendered, {r.get('reused', 0)} reused → "
+                           f"{r.get('mp4')}") if r.get("ok") else "Assemble failed (is index.html built? run hf-finish once)."
+            return r
+
+        job = job_manager.start("hf_assemble", worker, meta={"comp": comp}, comp=comp)
+        return {"job_id": job.id, "comp": comp}
+
+    @app.get("/api/hf/assembled-video")
+    async def hf_assembled_video(comp: str = Query(...)):
+        """Serve the incrementally-assembled full video (renders/<comp>.mp4)."""
+        cdir = _guard(hfedit.comp_dir, comp).resolve()
+        mp4 = (cdir / "renders" / f"{comp}.mp4").resolve()
+        if cdir not in mp4.parents or not mp4.is_file():
+            raise HTTPException(status_code=404, detail="no assembled video yet — click Assemble")
+        return FileResponse(str(mp4), media_type="video/mp4")
+
     # ---- Phase 2: note edit (comment → LLM ops → gate)
 
     @app.post("/api/hf/frame/revise-note")

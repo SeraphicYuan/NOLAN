@@ -286,6 +286,18 @@ def test_route_asset_file_confined_to_assets(client, comp, tmp_path):
         assert client.get("/api/hf/asset-file", params={"comp": comp, "path": bad}).status_code == 404, bad
 
 
+def test_route_assemble_requires_comp(client):
+    assert client.post("/api/hf/assemble", json={}).status_code == 400
+
+
+def test_route_assembled_video_404_when_absent(client, comp):
+    # no renders/<comp>.mp4 built yet for the fixture comp
+    assert client.get("/api/hf/assembled-video", params={"comp": comp}).status_code == 404
+    # traversal comp id must not escape the videos dir
+    assert client.get("/api/hf/assembled-video",
+                      params={"comp": "../../../../etc"}).status_code in (400, 404)
+
+
 def test_route_frame_video_guard(client, comp):
     # the fixture frame ships a preview clip -> served; a missing frame + a traversal id -> 404 (not 500)
     assert client.get("/api/hf/frame-video", params={"comp": comp, "frame_id": FRAME}).status_code == 200

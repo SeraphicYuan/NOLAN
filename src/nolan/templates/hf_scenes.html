@@ -103,6 +103,8 @@
       <span style="flex:1"></span>
       <button class="btn ghost mini" onclick="refreshComps()" title="Reload compositions (after an agent finishes authoring)">↻</button>
       <button class="btn mini" onclick="openNew()">＋ New essay</button>
+      <button class="btn mini" onclick="assembleVideo()" title="Fast full-video render — only changed frames re-render (incremental); run hf-finish once first">⚙ Assemble</button>
+      <button class="btn ghost mini" onclick="viewAssembled()" title="Open the assembled video in a new tab">▶ View</button>
     </div>
     <div class="cols">
       <div id="frames"></div>
@@ -208,6 +210,18 @@ async function loadComps(initial) {
   return c.compositions.map(x => x.name);
 }
 function refreshComps() { loadComps(false).then(() => toast("compositions refreshed")); }
+async function assembleVideo() {
+  const comp = $("#comp").value;
+  if (!comp) { toast("pick a composition first", "err"); return; }
+  try { await jpost("/api/hf/assemble", { comp });
+    toast("Assembling (incremental — only changed frames re-render). Click ▶ View when it's done.", "ok");
+  } catch (e) { toast("assemble failed: " + e, "err"); }
+}
+function viewAssembled() {
+  const comp = $("#comp").value;
+  if (!comp) { toast("pick a composition first", "err"); return; }
+  window.open("/api/hf/assembled-video?comp=" + encodeURIComponent(comp) + "&_=" + Date.now(), "_blank");
+}
 
 // ---- new essay: scaffold script + dispatch the faceless-explainer agent ----
 let THEMES = [];
