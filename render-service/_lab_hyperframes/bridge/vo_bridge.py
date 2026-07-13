@@ -45,6 +45,8 @@ def _resolve_vo_dir(vo: Path) -> Path:
 def _sections_from_segments(seg_dir: Path):
     """mode='segments' — segments.json carries title/file/duration; words.json is optional."""
     data = json.loads((seg_dir / "segments.json").read_text(encoding="utf-8"))
+    if isinstance(data, dict):                     # voice_pipeline emits {project, voice_id, segments:[...]}
+        data = data.get("segments") or []
     out = []
     for s in data:
         wav = seg_dir / s["file"]

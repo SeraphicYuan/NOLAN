@@ -76,6 +76,33 @@ def test_translate_from_segments_layout_with_words(tmp_path):
     assert meta["voices"][0]["words"] == []          # no words.json for the hook -> empty
 
 
+def test_translate_from_segments_dict_shape(tmp_path):
+    """voice_pipeline emits segments.json as a DICT {project, voice_id, segments:[...]}, not a bare
+    list. Before the unwrap fix this raised `TypeError: string indices must be integers` on the first
+    `s["file"]` (iterating a dict yields its string keys) — which blocked bridging EVERY real NOLAN VO.
+    """
+    vo = tmp_path / "proj" / "assets" / "voiceover"
+    seg = vo / "segments"
+    _wav(seg / "00_hook.wav", 1.5)
+    _wav(seg / "01_close.wav", 2.5)
+    seg.joinpath("segments.json").write_text(json.dumps({
+        "project": "demo", "voice_id": "abc123",
+        "segments": [
+            {"index": 0, "title": "Hook", "file": "00_hook.wav", "duration": 1.5},
+            {"index": 1, "title": "Close", "file": "01_close.wav", "duration": 2.5},
+        ],
+    }), encoding="utf-8")
+    comp = tmp_path / "comp"
+
+    vb = _load()
+    res = vb.translate(comp, tmp_path / "proj")          # must not raise on the real dict shape
+    assert res["sections"] == 2 and res["frames_expected"] == 2
+    meta = json.loads((comp / "audio_meta.json").read_text(encoding="utf-8"))
+    assert [v["frame"] for v in meta["voices"]] == [1, 2]
+    assert [v["title"] for v in meta["voices"]] == ["Hook", "Close"]
+    assert abs(meta["total_s"] - 4.0) < 0.05
+
+
 def test_resolve_vo_dir_accepts_project_or_voiceover_dir(tmp_path):
     vb = _load()
     (tmp_path / "assets" / "voiceover" / "_work").mkdir(parents=True)
