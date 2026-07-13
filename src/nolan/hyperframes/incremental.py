@@ -57,13 +57,25 @@ def inject_grounds(index_html: str, grounds: List[Dict]) -> str:
     return index_html.replace('<div class="scene"', tags + '<div class="scene"', 1) if tags else index_html
 
 
+# Bump when the render LOGIC changes (not just content) so clips cached by an OLD code path aren't reused
+# (the spec→windowed change produced an identical content hash but different pixels — a stale-clip hazard).
+_CACHE_VERSION = "2-windowed"
+
+
 def frame_sig(comp: str, frame_id: str) -> str:
-    """Content hash of the frame HTML + its ground srcs — the cache key for 'unchanged → reuse the clip'."""
+    """Content hash of WHAT ACTUALLY RENDERS for a frame — the frame HTML + the windowed index elements the
+    render mounts (grounds / comparison / audio), or the spec grounds when there's no assembled index
+    (fallback). The per-frame cache key for 'unchanged → reuse the clip'."""
     h = hashlib.sha1()
     html = _frames_dir(comp) / f"{frame_id}.html"
     h.update(html.read_bytes() if html.exists() else b"")
-    for g in frame_grounds(comp, frame_id):
-        h.update(f"{g['src']}|{g['start']}|{g['dur']}".encode())
+    _, kids = _index_children(comp)
+    if kids:
+        _, elems = _window_children(kids, frame_id)        # windowed path: hash exactly what gets mounted
+        h.update("".join(elems).encode())
+    else:
+        for g in frame_grounds(comp, frame_id):            # spec-reconstruction fallback
+            h.update(f"{g['src']}|{g['start']}|{g['dur']}".encode())
     return h.hexdigest()[:16]
 
 
@@ -403,7 +415,7 @@ def concat_clips(clips: List[Path], out: Path, comp_dir: Path, bgm: bool = True)
 
 
 def render_incremental(comp: str, only: Optional[List[str]] = None, bgm: bool = True,
-                       quality: str = "high", captions: bool = True) -> Dict:
+                       quality: str = "high", captions: bool = True, out: Optional[Path] = None) -> Dict:
     """Render each frame to a clip (skipping unchanged via a sig cache), concat → renders/<comp>.mp4, re-lay
     BGM, and (if `captions`) composite the full-length caption overlay. `only` forces a re-render of those
     frame ids even if their sig is unchanged. `quality` is passed to each per-frame render ("high" for a
@@ -416,8 +428,8 @@ def render_incremental(comp: str, only: Optional[List[str]] = None, bgm: bool = 
     only = set(only or [])
     clips, rendered, reused = [], 0, 0
     for fid in frames:
-        key = f"{quality}:{frame_sig(comp, fid)}"          # quality is part of the cache key: a draft clip
-        clip = _frames_dir(comp) / f"{fid}.clip.mp4"        # must not be reused when a high stitch is asked for
+        key = f"{_CACHE_VERSION}:{quality}:{frame_sig(comp, fid)}"   # version + quality + content: a draft clip
+        clip = _frames_dir(comp) / f"{fid}.clip.mp4"                 # or an old-logic clip must not be reused
         if clip.exists() and cache.get(fid) == key and fid not in only:
             reused += 1
         else:
@@ -428,7 +440,7 @@ def render_incremental(comp: str, only: Optional[List[str]] = None, bgm: bool = 
         clips.append(clip)
     cache_f.parent.mkdir(parents=True, exist_ok=True)
     cache_f.write_text(json.dumps(cache, indent=1), encoding="utf-8")
-    out = cdir / "renders" / f"{comp}.mp4"
+    out = Path(out) if out else (cdir / "renders" / f"{comp}.mp4")
     ok = concat_clips(clips, out, cdir, bgm)
     cap_used = False
     if ok and captions:                                    # captions = ONE full-length transparent overlay

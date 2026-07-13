@@ -56,7 +56,8 @@ def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, sof
     return True
 
 
-def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool = False) -> dict:
+def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool = False,
+           render_mode: str = "whole") -> dict:
     """Run the compose-first finish DAG for a comp. Returns a summary dict."""
     pdir = _project_dir(comp)
     py = [sys.executable, "-X", "utf8"]
@@ -65,7 +66,7 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     for _s in ("audio.mjs", "captions.mjs", "assemble-index.mjs"):
         if not (SKILL_SCRIPTS / _s).exists():
             raise RuntimeError(f"hf-finish: skill script missing — {SKILL_SCRIPTS / _s}. Is the faceless-explainer skill installed?")
-    print(f"hf-finish: {comp}  (render={render}, sound={sound}{', DRY-RUN' if dry_run else ''})")
+    print(f"hf-finish: {comp}  (render={render}/{render_mode}, sound={sound}{', DRY-RUN' if dry_run else ''})")
 
     # 1 · frame durations FROM the VO (narration owns duration)
     _run("sync-durations", ["node", audio, "sync-durations", "--audio-meta", "./audio_meta.json",
@@ -110,21 +111,34 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     if not render:
         print("hf-finish: stopped before render (--no-render). Preview then re-run to render.")
         return {"comp": comp, "rendered": False}
-    # 8 · render the whole composition → renders/video.mp4. For the target 7-8 min format the single
-    # long ffmpeg encode times out; chunked encode is safer (nolan4 hit the timeout on the 468s render).
-    total = 0.0
-    _am = pdir / "audio_meta.json"
-    if _am.exists():
-        try:
-            total = sum(float(v.get("duration_s", 0) or 0) for v in json.loads(_am.read_text(encoding="utf-8")).get("voices", []))
-        except Exception:
-            total = 0.0
-    render_env = None
-    if total > 300:                                   # 5+ min → chunk it
-        render_env = {**os.environ, "PRODUCER_ENABLE_CHUNKED_ENCODE": "1"}
-        print(f"  (chunked encode — {total:.0f}s render)")
-    _run("render", ["npx", "hyperframes", "render", "--skill=faceless-explainer", "--quality", "high",
-                    "--output", "renders/video.mp4"], cwd=pdir, dry=dry_run, env=render_env)
+    # 8 · RENDER — MODE SWITCH (steps 1–7 above + step-9 QA below are SHARED). `whole`: one npx render of
+    #     the assembled index.html. `incremental`: window that SAME index per-frame + concat (cached — a
+    #     one-frame edit re-renders one frame, not the monolith). Both write renders/video.mp4.
+    if render_mode == "incremental":
+        if dry_run:
+            print("  [render] incremental — window index.html per-frame + concat → renders/video.mp4")
+        else:
+            print("▶ render (incremental — per-frame windows of the assembled index)")
+            from .incremental import render_incremental
+            r = render_incremental(comp, out=pdir / "renders" / "video.mp4")
+            if not r.get("ok"):
+                raise RuntimeError("hf-finish: incremental render failed — see output above")
+            print(f"  incremental: {r.get('rendered', 0)} rendered, {r.get('reused', 0)} reused")
+    else:
+        # For the target 7-8 min format the single long ffmpeg encode times out; chunked encode is safer.
+        total = 0.0
+        _am = pdir / "audio_meta.json"
+        if _am.exists():
+            try:
+                total = sum(float(v.get("duration_s", 0) or 0) for v in json.loads(_am.read_text(encoding="utf-8")).get("voices", []))
+            except Exception:
+                total = 0.0
+        render_env = None
+        if total > 300:                                   # 5+ min → chunk it
+            render_env = {**os.environ, "PRODUCER_ENABLE_CHUNKED_ENCODE": "1"}
+            print(f"  (chunked encode — {total:.0f}s render)")
+        _run("render", ["npx", "hyperframes", "render", "--skill=faceless-explainer", "--quality", "high",
+                        "--output", "renders/video.mp4"], cwd=pdir, dry=dry_run, env=render_env)
     # 9 · QA (soft: report — don't crash the driver on a gate fail)
     _run("hf-qa", py + ["-m", "nolan.hf_qa", str(pdir)], dry=dry_run, soft=True)          # freeze + audio (ffmpeg)
     _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)], dry=dry_run, soft=True)  # spec dimensions
@@ -141,9 +155,13 @@ def main():
     ap.add_argument("--no-render", action="store_true", help="stop before the render (assemble + preview)")
     ap.add_argument("--no-sound", action="store_true", help="skip the bgm/sfx bed")
     ap.add_argument("--dry-run", action="store_true", help="print the DAG without running it")
+    ap.add_argument("--render", dest="render_mode", default="whole", choices=["whole", "incremental"],
+                    help="whole = one npx render of index.html (master/verify); incremental = per-frame "
+                         "windows of the SAME index + concat (fast iteration, cached)")
     a = ap.parse_args()
     try:
-        finish(a.comp, render=not a.no_render, sound=not a.no_sound, dry_run=a.dry_run)
+        finish(a.comp, render=not a.no_render, sound=not a.no_sound, dry_run=a.dry_run,
+               render_mode=a.render_mode)
     except RuntimeError as e:
         print(f"\n✗ {e}", file=sys.stderr)
         sys.exit(1)
