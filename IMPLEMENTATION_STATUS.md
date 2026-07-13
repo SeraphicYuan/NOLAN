@@ -4,6 +4,16 @@
 **Status:** Complete
 **Last Updated:** 2026-07-12
 
+## HyperFrames two-mode render + batch-agent edit — #1-#5 complete (2026-07-13)
+
+Five-part program off the edit-page audit. Commits c697317, 93859e9, f5701fc, 92d431d, 046f415, ef4e5bf, 652bb03, 7c11b73, 5f1f120. Full tests/ suite green (1190 passed, 3 skipped).
+- **#1 honesty+tests:** relabeled the mislabeled "Apply (agent)"->"Apply (AI edit)" (revise-note is an in-process LLM, not the tmux fleet); committed the previously-untracked test_hyperframes_edit.py + added real FastAPI TestClient route/traversal-guard/page-smoke tests; corrected the false "TestClient over the full route surface" claims in this doc.
+- **#2 two-mode render** (`src/nolan/hyperframes/incremental.py` + `finish.py`): ONE finish DAG, `--render {whole,incremental}`. Steps 1-7 (sync-durations...assemble-media) + step-9 QA are SHARED; only step 8 branches -- `whole` = npx render index.html (master/verify); `incremental` = WINDOW that same assembled index per-frame (`_window_children`, inherits grounds/freeze-heal/comparison/audio) + stream-copy concat, content-hash cached. VERIFIED pixel-faithful vs the monolith (mid-frame PSNR 38-66 dB across all 8 frames). Fixes: ground `object-fit:cover`; `--quality high`; frame-grid trim killed the drift (+0.27s -> -0.02s, `_grid_frames`); cache key versioned + hashes the windowed elements. Because incremental runs steps 1-7, word-sync runs before the render (closes the VO<->motion resync gap). Captions = separate VP9-alpha overlay, GUARDED off (HyperFrames renders the caption comp opaque on this host -- known follow-up; captions optional per user). UI: "Assemble" (fast) + "View".
+- **#3 asset->pool** (`edit.py`): adding an asset to a frame (resolve_asset/save_upload) now also registers it in pool.json + copies into capture/assets/ (a `manual`-source entry) -- Q5.
+- **#4 changeset** (`edit.py`): stage_comment / list_changeset / resolve_comment -- per-frame comments persisted losslessly in the frame spec meta (mirrors /scenes meta.timeline_notes). Routes `/api/hf/frame/comment`, `/api/hf/changeset`, `/api/hf/comment/resolve`.
+- **#5 batch mode** (`src/nolan/hyperframes/batch.py`): compile_batch_brief (the changeset + project theme + each frame's scenes -> ONE self-contained agent brief with the proposal->gate->accept contract) + dispatch_batch (write a kickoff file with provenance -> tmux fleet dispatch -> mark dispatched). Routes `/api/hf/batch/{brief,dispatch}`; UI "Stage for batch" (stage vs apply-now) + "Batch" (preview brief + pick a session + dispatch).
+- **Deferred:** 2.4 caption-alpha (optional); per-frame-preview unification (edit.py<->incremental.py circular import); full batch status-board UI (prompt()-based dispatch for now).
+
 ## HyperFrames sliced render (hf-render) — hardened toward canonical (2026-07-13)
 
 - Program to make the incremental per-frame render (`nolan hf-render` / `src/nolan/hyperframes/incremental.py`) a faithful replacement for the `hf-finish` monolith. Context: local HyperFrames has NO range-render (verified), so true monolith slicing (Option A) isn't possible; this is the isolated-per-frame path hardened to parity, and the composition is genuinely frame-partitioned (separate sub-comps/timelines) so per-frame + concat == monolith by construction.
