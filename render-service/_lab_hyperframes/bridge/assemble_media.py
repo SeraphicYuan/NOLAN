@@ -37,6 +37,17 @@ def _frame_durations(comp_dir: Path, spec_files):
     return out
 
 
+def _grade_filter(name):
+    """Resolve a ground.grade name (cool/warm/darken/…) to its CSS filter via the composer's GRADES registry."""
+    if not name:
+        return None
+    try:
+        from compose import GRADES
+        return GRADES.get(name)
+    except Exception:
+        return None
+
+
 def collect_video_grounds(comp_dir: Path):
     """Root <video> clips for every scene whose ground is a pool clip, on the global timeline."""
     fdir = comp_dir / "compositions" / "frames"
@@ -51,7 +62,8 @@ def collect_video_grounds(comp_dir: Path):
                 if g.get("kind") == "video" and g.get("src"):
                     clips.append({"src": g["src"],
                                   "start": round(offset + float(sc.get("start", 0) or 0), 3),
-                                  "duration": round(float(sc.get("dur", 0) or 0), 3)})
+                                  "duration": round(float(sc.get("dur", 0) or 0), 3),
+                                  "filter": _grade_filter(g.get("grade"))})
         offset += durs[i] if i < len(durs) else 0.0
     return clips
 

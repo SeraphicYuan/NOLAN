@@ -24,11 +24,12 @@ def main():
     tags = []
     for i, c in enumerate(clips):
         track = c.get("track", 0)   # 0 = behind the frame track (1); transparent scene reveals it
+        filt = f"filter:{c['filter']};" if c.get("filter") else ""   # ground.grade (cool/warm/darken/…)
         tags.append(
             f'      <video id="rootvid-{i}" class="clip" muted playsinline '
             f'src="{c["src"]}" data-start="{c["start"]}" data-duration="{c["duration"]}" '
             f'data-track-index="{track}" '
-            f'style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video>'
+            f'style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;{filt}"></video>'
         )
     block = "\n".join(tags)
 

@@ -430,16 +430,35 @@ def _safe_sid(sid):
         s = "s" + s
     return s or "s"
 
+# ground.grade — the GENERIC answer to visual-treatment notes ("cool it down / warm / darken / desaturate …"):
+# a gated CSS `filter` applied to any image ground, block-agnostic. This dict IS the registry of valid values
+# (the author gate should reject an unknown grade — see _lint / catalog). Give a note like "cool it down" a
+# landing spot instead of a "no gated field" dead end.
+GRADES = {
+    "warm": "sepia(0.32) saturate(1.18) brightness(1.02)",
+    "cool": "sepia(0.25) hue-rotate(155deg) saturate(1.15)",
+    "darken": "brightness(0.68)",
+    "brighten": "brightness(1.2)",
+    "contrast": "contrast(1.28)",
+    "desaturate": "saturate(0.42)",
+    "mute": "saturate(0.72) brightness(0.95)",
+    "noir": "grayscale(1) contrast(1.2)",
+}
+
+
 def media_ground(sid, ground, start, dur):
     """Reusable BLOCK: full-bleed ground. image -> dimmed image + scrim + Ken-Burns;
-    paper -> flat mist/parchment; transparent -> scrim only (root video shows through)."""
+    paper -> flat mist/parchment; transparent -> scrim only (root video shows through).
+    An optional `ground.grade` (see GRADES) applies a CSS filter — the gated visual-treatment lever."""
     frag, tl = [], []
     kind = ground.get("kind", "paper")
+    _gf = GRADES.get(ground.get("grade"))
+    _gsty = f"filter:{_gf};" if _gf else ""
     if kind == "image":
         scr = "linear-gradient(90deg,rgba(20,21,20,0.72),rgba(20,21,20,0.30) 55%,rgba(20,21,20,0.45))," \
               "linear-gradient(rgba(20,21,20,0) 45%,rgba(20,21,20,0.62))"
         frag.append(f'<div id="{sid}-gnd" class="clip gnd" data-start="{start}" data-duration="{dur}" '
-                    f'data-track-index="0" data-layout-allow-overflow style="background-image:url(\'{esc(ground["src"])}\');"></div>')
+                    f'data-track-index="0" data-layout-allow-overflow style="background-image:url(\'{esc(ground["src"])}\');{_gsty}"></div>')
         frag.append(f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{scr};"></div>')
         f0, f1 = ground.get("kb", [1.03, 1.08])
