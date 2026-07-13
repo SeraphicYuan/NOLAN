@@ -2013,6 +2013,15 @@ def document(sid, sc):
     for an in d.get("annotations", []):
         t = an.get("type"); ai += 1
         cue = start + float(an.get("cue", 1.0 + ai * 0.5))
+        # Skip an annotation missing the geometry its type needs — e.g. a `find`-annotation that
+        # resolve_doc_annotations.py never resolved to a `rect` (no text layer / no match). Warn and
+        # continue instead of KeyError'ing the whole compose (holbein POST_MORTEM #6).
+        _need = {"highlight": ("rect",), "underline": ("rect",), "label": ("at", "text")}.get(t, ())
+        _missing = [k for k in _need if k not in an]
+        if _missing:
+            print(f"  ⚠ document {sid}: {t} annotation missing {_missing} "
+                  f"(unresolved find={an.get('find')!r}?) — skipped")
+            continue
         if t == "highlight":
             x, y, w, h = an["rect"]; hid = f"{sid}-hl{ai}"
             frag.append(f'<div id="{hid}" class="doc-hl" style="left:{fx(x):.0f}px;top:{fy(y):.0f}px;width:{w*prw:.0f}px;'
