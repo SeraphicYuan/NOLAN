@@ -55,6 +55,23 @@ def test_bad_prefix_does_not_starve_later_scenes():
     assert 38 <= by["s4"].start_seconds <= 42
 
 
+def test_hyphenated_and_possessive_anchor_resolves():
+    """holbein POST_MORTEM #5: a whisper word like 'forty-one' collapsed to 'forty' (only the first
+    sub-token kept), so an anchor containing it silently missed and the whole frame fell back to
+    proportional spacing. The flattened token stream expands both sides so they align."""
+    words = _w("the printer cut forty-one woodcuts for a bishop's shelf", 5.0)
+    m = find_text_in_words("forty-one woodcuts", words, 0)
+    assert m is not None and m[2] >= 0.5
+    m2 = find_text_in_words("a bishop's shelf", words, 0)
+    assert m2 is not None and m2[2] >= 0.5
+
+    # end-to-end: the scene lands at its real spoken time, not a proportional guess
+    scenes = [{"id": "s1", "narration_excerpt": "the printer cut forty-one woodcuts"}]
+    results, unmatched = align_scenes_to_audio(scenes, words)
+    assert results[0].confidence >= 0.5 and not unmatched
+    assert 5.0 <= results[0].start_seconds <= 7.0
+
+
 def test_anchor_rejects_equal_start_pileup():
     """Degenerate equal starts must trigger proportional redistribution."""
     plan = ScenePlan(sections={

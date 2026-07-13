@@ -4,11 +4,32 @@ import pytest
 from nolan.aligner import (
     normalize_text,
     words_to_text,
+    flatten_words,
     find_text_in_words,
     align_scenes_to_audio,
     AlignmentResult,
 )
 from nolan.whisper import WordTimestamp
+
+
+class TestFlattenWords:
+    """flatten_words expands sub-tokens with interpolated timing (POST_MORTEM #5)."""
+
+    def test_single_token_is_identity(self):
+        # a plain word yields one token at its own start/end — preserves all prior behavior
+        w = [WordTimestamp(word="fox", start=1.0, end=1.4)]
+        assert flatten_words(w) == [("fox", 1.0, 1.4)]
+
+    def test_hyphenated_word_splits_with_interpolated_time(self):
+        w = [WordTimestamp(word="forty-one", start=1.0, end=1.8)]
+        toks = flatten_words(w)
+        assert [t[0] for t in toks] == ["forty", "one"]
+        assert toks[0][1] == 1.0 and toks[-1][2] == 1.8      # spans the whole word
+        assert toks[0][2] == pytest.approx(toks[1][1])        # contiguous, no gap
+
+    def test_possessive_splits(self):
+        w = [WordTimestamp(word="bishop's", start=2.0, end=2.6)]
+        assert [t[0] for t in flatten_words(w)] == ["bishop", "s"]
 
 
 class TestNormalizeText:

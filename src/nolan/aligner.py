@@ -36,6 +36,33 @@ def words_to_text(words: List[WordTimestamp]) -> str:
     return normalize_text(' '.join(w.word for w in words))
 
 
+def flatten_words(words: List[WordTimestamp]) -> List[Tuple[str, float, float]]:
+    """Flatten whisper words into a token-level stream ``[(token, start, end)]``.
+
+    A hyphenated / possessive / punctuated whisper word contributes ALL its sub-tokens
+    ('forty-one' -> forty, one; "bishop's" -> bishop, s), with timing interpolated across the
+    sub-tokens by character length. ``normalize_text`` already splits on punctuation, so one word
+    yields 0, 1, or N tokens. Both sides of a match MUST tokenize this way (or via
+    ``normalize_text().split()``) — otherwise a multi-token word silently drops its tail and the
+    anchor misses (holbein POST_MORTEM #5). For a single-token word this is an identity: one token
+    at the word's own start/end, so all existing single-token behavior is preserved."""
+    out: List[Tuple[str, float, float]] = []
+    for w in words:
+        toks = normalize_text(w.word).split()
+        if not toks:
+            continue
+        start, end = float(w.start), float(w.end)
+        span = max(0.0, end - start)
+        total = sum(len(t) for t in toks) or 1
+        acc = 0
+        for t in toks:
+            ts = start + span * (acc / total)
+            acc += len(t)
+            te = start + span * (acc / total)
+            out.append((t, round(ts, 4), round(te, 4)))
+    return out
+
+
 def find_text_in_words(
     query: str,
     words: List[WordTimestamp],
@@ -52,6 +79,12 @@ def find_text_in_words(
 
     Returns:
         Tuple of (start_word_index, end_word_index, confidence) or None.
+
+    Internally matches on a FLATTENED token stream (see :func:`flatten_words`) so a
+    hyphenated/possessive whisper word contributes all its sub-tokens instead of collapsing to one
+    slot (else 'forty-one'->'forty' silently dropped 'one' and the anchor missed — POST_MORTEM #5).
+    Token indices are mapped back to source WORD indices, so the return contract is unchanged and
+    callers can still slice ``words`` / read ``words[idx].start``.
     """
     query_normalized = normalize_text(query)
     query_words = query_normalized.split()
@@ -59,51 +92,59 @@ def find_text_in_words(
     if not query_words:
         return None
 
-    # Normalize all word timestamps once
-    word_texts = [normalize_text(w.word) for w in words]
+    # Flatten to a single-token-per-slot stream, keeping a map back to the source word index.
+    tokens: list = []
+    tok2word: list = []
+    for wi, w in enumerate(words):
+        for t in normalize_text(w.word).split():
+            tokens.append(t)
+            tok2word.append(wi)
+    if not tokens:
+        return None
+
+    # start_index is a WORD index -> first token at/after it.
+    start_tok = next((ti for ti, wi in enumerate(tok2word) if wi >= start_index), len(tokens))
+    n = len(query_words)
+
+    def _to_words(ts: int, te: int, conf: float):
+        sw = tok2word[ts]
+        ew = tok2word[min(te, len(tokens)) - 1] + 1 if te > ts else sw + 1
+        return (sw, ew, conf)
 
     # Sliding window search for exact match
-    for i in range(start_index, len(words) - min(len(query_words), len(words) - start_index) + 1):
-        window_size = min(len(query_words), len(words) - i)
-        window_text = ' '.join(word_texts[i:i + window_size])
-
-        # Exact match
-        if window_text == query_normalized:
-            return (i, i + len(query_words), 1.0)
+    for i in range(start_tok, len(tokens) - min(n, len(tokens) - start_tok) + 1):
+        window_size = min(n, len(tokens) - i)
+        if ' '.join(tokens[i:i + window_size]) == query_normalized:
+            return _to_words(i, i + n, 1.0)
 
     # Check first few words match (for partial matches). A bare 2-word
     # prefix is NOT evidence — "It is…" matched a scene 46s late in the
     # aeneid-2beat-v2 run and, because the search cursor only moves forward,
     # starved every later scene. The expansion must confirm the match
     # (>= half the query, or it isn't this sentence).
-    for i in range(start_index, len(words)):
-        # Try matching first 2-3 words
-        first_words = min(2, len(query_words))
+    for i in range(start_tok, len(tokens)):
+        first_words = min(2, n)
         first_query = ' '.join(query_words[:first_words])
 
-        if i + first_words > len(words):
+        if i + first_words > len(tokens):
             continue
 
-        first_window = ' '.join(word_texts[i:i + first_words])
-
-        if first_query == first_window:
-            # Found start, now find where query ends
-            # Try expanding to match more words
+        if first_query == ' '.join(tokens[i:i + first_words]):
             best_end = i + first_words
             matched_count = first_words
 
-            for j in range(first_words, min(len(query_words) * 2, len(words) - i)):
-                if i + j >= len(words):
+            for j in range(first_words, min(n * 2, len(tokens) - i)):
+                if i + j >= len(tokens):
                     break
-                if j < len(query_words) and word_texts[i + j] == query_words[j]:
+                if j < n and tokens[i + j] == query_words[j]:
                     matched_count += 1
                     best_end = i + j + 1
-                elif j >= len(query_words):
+                elif j >= n:
                     break
 
-            confidence = matched_count / len(query_words)
+            confidence = matched_count / n
             if confidence >= fuzzy_threshold:
-                return (i, best_end, min(1.0, confidence))
+                return _to_words(i, best_end, min(1.0, confidence))
             # prefix-only hit: keep scanning; the fuzzy pass below may still
             # find a REAL occurrence later in the stream
 
@@ -111,25 +152,23 @@ def find_text_in_words(
     best_match = None
     best_score = 0
 
-    for i in range(start_index, len(words)):
-        # Try matching first word (allow slight differences)
+    for i in range(start_tok, len(tokens)):
         first_word_match = (
-            word_texts[i] == query_words[0] or
-            query_words[0].startswith(word_texts[i]) or
-            word_texts[i].startswith(query_words[0])
+            tokens[i] == query_words[0] or
+            query_words[0].startswith(tokens[i]) or
+            tokens[i].startswith(query_words[0])
         )
 
         if first_word_match:
-            # Count consecutive matches (with some flexibility)
             matches = 1
             end_idx = i + 1
             query_idx = 1
 
-            while query_idx < len(query_words) and end_idx < len(words):
-                if word_texts[end_idx] == query_words[query_idx]:
+            while query_idx < n and end_idx < len(tokens):
+                if tokens[end_idx] == query_words[query_idx]:
                     matches += 1
                     query_idx += 1
-                elif query_idx + 1 < len(query_words) and word_texts[end_idx] == query_words[query_idx + 1]:
+                elif query_idx + 1 < n and tokens[end_idx] == query_words[query_idx + 1]:
                     # Skip a word in query (might be filler)
                     query_idx += 2
                     matches += 1
@@ -138,14 +177,13 @@ def find_text_in_words(
                     pass
                 end_idx += 1
 
-                # Stop if we've gone too far
-                if end_idx - i > len(query_words) * 1.5:
+                if end_idx - i > n * 1.5:
                     break
 
-            score = matches / len(query_words)
+            score = matches / n
             if score > best_score and score >= fuzzy_threshold:
                 best_score = score
-                best_match = (i, end_idx, score)
+                best_match = _to_words(i, end_idx, score)
 
     return best_match
 

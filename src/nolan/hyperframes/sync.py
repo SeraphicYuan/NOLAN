@@ -98,17 +98,23 @@ def _norm(s: str) -> List[str]:
 
 
 def _phrase_time(phrase: str, words, after: float = 0.0) -> Optional[float]:
-    """First spoken time of `phrase` (a token subsequence) at/after `after` seconds; None if unsaid."""
+    """First spoken time of `phrase` (a token subsequence) at/after `after` seconds; None if unsaid.
+
+    Uses the FLATTENED token stream (aligner.flatten_words) so a hyphenated/possessive spoken word
+    contributes all its sub-tokens — the old form kept only the FIRST sub-token of each word
+    (`_norm(w.word)[0]`), so 'forty-one'->'forty' and any anchor/operative containing such a word
+    silently missed (holbein POST_MORTEM #5)."""
+    from nolan.aligner import flatten_words
     toks = _norm(phrase)
     if not toks:
         return None
-    wt = [((_norm(w.word) or [""])[0], w.start) for w in words]
+    stream = flatten_words(words)                       # [(token, start, end)] — sub-tokens expanded
     n = len(toks)
-    for i in range(len(wt) - n + 1):
-        if wt[i][1] < after:
+    for i in range(len(stream) - n + 1):
+        if stream[i][1] < after:
             continue
-        if all(wt[i + j][0] == toks[j] for j in range(n)):
-            return wt[i][1]
+        if all(stream[i + j][0] == toks[j] for j in range(n)):
+            return stream[i][1]
     return None
 
 
@@ -143,15 +149,18 @@ def _retime_reveals(sc: Dict, d: Dict, words) -> int:
     return done
 
 
-def place_scenes(comp_dir) -> Dict:
-    """Set scene start/dur from where each scene's anchor/text is spoken. Writes back to the specs."""
+def place_scenes(comp_dir, write: bool = True) -> Dict:
+    """Set scene start/dur from where each scene's anchor/text is spoken. Writes back to the specs
+    unless ``write=False`` — the `--report` dry-run computes and returns every scene's implied window
+    WITHOUT mutating the specs (no recompose, no render), so an author can re-space anchors in
+    seconds instead of a full sync→recompose→render iteration (holbein POST_MORTEM #4)."""
     from nolan import aligner
     from nolan.whisper import WordTimestamp
     comp_dir = Path(comp_dir)
     meta = json.loads((comp_dir / "audio_meta.json").read_text(encoding="utf-8"))
     by_frame = {v.get("frame"): v for v in meta.get("voices", [])}
     spec_files = sorted((comp_dir / "compositions" / "frames").glob("*.spec.json"))
-    report = {"frames": [], "fallbacks": 0, "weak_total": 0, "problems": []}
+    report = {"frames": [], "fallbacks": 0, "weak_total": 0, "problems": [], "windows": []}
 
     for i, sf in enumerate(spec_files, start=1):
         spec = json.loads(sf.read_text(encoding="utf-8"))
@@ -162,9 +171,11 @@ def place_scenes(comp_dir) -> Dict:
             words = [WordTimestamp(word=w["word"], start=w["start"], end=w["end"]) for w in words_raw]
             fb = None
             weak = []
+            unresolved = set()                           # scene ids whose anchor did not match at all
             if not scenes or not words:
                 fb = "no words/scenes"
                 starts = _proportional(len(scenes), frame_dur) if scenes else []
+                unresolved = {sc.get("id") for sc in scenes}
             else:
                 q = [{"id": sc.get("id", f"s{j}"), "narration_excerpt": _scene_query(sc)}
                      for j, sc in enumerate(scenes)]
@@ -177,6 +188,7 @@ def place_scenes(comp_dir) -> Dict:
                     starts = _proportional(len(scenes), frame_dur)
                     fb = "proportional (anchors unmatched/out-of-order)"
                     report["fallbacks"] += 1
+                unresolved = {u.scene_id for u in (unmatched or []) if float(u.confidence) <= 0.0}
                 # LOUD: the aligner KNOWS which anchors matched weakly (confidence < 0.8), but a
                 # low-confidence-yet-monotonic placement lands silently otherwise — Whisper mis-
                 # transcription ('Jevons'→'Jevin's') mis-places a scene with nothing reported.
@@ -205,14 +217,22 @@ def place_scenes(comp_dir) -> Dict:
                 block, dur = sc.get("type", "?"), float(sc.get("dur", 0) or 0)
                 minr = _MIN_READABLE.get(block, 3.0)
                 grounded = _scene_media(block, sc.get("data", {}) or {}) != "none"   # document/newshead count
+                sid = sc.get("id")
+                resolved = sid not in unresolved
                 if dur + 1e-6 < minr:
                     v = f"SHORT {dur:.1f}s < {minr:.0f}s (unreadable)"
                 elif dur > 8 and not grounded and block not in _MOTION_BLOCKS:
                     v = f"LONG-HOLD {dur:.1f}s ungrounded"
+                elif not resolved:
+                    v = "UNRESOLVED (anchor not found — placed by fallback)"
                 else:
                     v = None
+                report["windows"].append({"frame": fr.get("id"), "scene": sid, "block": block,
+                                          "start": round(float(sc.get("start", 0) or 0), 2),
+                                          "dur": round(dur, 2), "resolved": resolved,
+                                          "anchor": (_scene_query(sc) or "")[:60], "verdict": v or "ok"})
                 if v:
-                    report["problems"].append({"frame": fr.get("id"), "scene": sc.get("id"),
+                    report["problems"].append({"frame": fr.get("id"), "scene": sid,
                                                "block": block, "dur": round(dur, 2), "issue": v})
             if weak:
                 report["weak_total"] += len(weak)
@@ -222,8 +242,16 @@ def place_scenes(comp_dir) -> Dict:
                                      "max_shift_s": round(drift, 2), "cues_synced": cues,
                                      "reveals_retimed": revs,
                                      "fallback": fb, "weak_anchors": weak})
-        sf.write_text(json.dumps(spec, indent=2), encoding="utf-8")
+        if write:
+            sf.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     return report
+
+
+def report_windows(comp_dir) -> Dict:
+    """Dry-run preview: align (idempotent, cached) then resolve every scene's implied window WITHOUT
+    moving scenes or writing specs — the fast loop for re-spacing anchors (POST_MORTEM #4)."""
+    align_voices(comp_dir)                               # cached by wav mtime; needed for spoken times
+    return place_scenes(comp_dir, write=False)
 
 
 def _validate_monotonic(raw: List[Optional[float]], frame_dur: float) -> Optional[List[float]]:
@@ -250,7 +278,30 @@ def main():
     ap.add_argument("comp", help="composition dir (…/videos/<slug>)")
     ap.add_argument("--force", action="store_true", help="re-align even if words already present")
     ap.add_argument("--align-only", action="store_true", help="align the wavs but don't move scenes")
+    ap.add_argument("--report", action="store_true",
+                    help="DRY-RUN: print per-scene windows + SHORT/LONG/UNRESOLVED flags without "
+                         "moving scenes / recompose / render (fast anchor-tuning loop)")
     a = ap.parse_args()
+
+    if a.report:
+        rep = report_windows(a.comp)
+        cur = None
+        for w in rep["windows"]:
+            if w["frame"] != cur:
+                cur = w["frame"]
+                print(f"\n{cur}")
+            mark = "✓" if w["verdict"] == "ok" else "✗"
+            end = round(w["start"] + w["dur"], 2)
+            print(f"  {mark} {w['scene']:>4} [{w['block']:<10}] {w['start']:6.2f}–{end:<6.2f} "
+                  f"({w['dur']:>4.1f}s)  {w['verdict']}")
+            if w["verdict"] != "ok":
+                print(f"           anchor: “{w['anchor']}”")
+        probs = rep.get("problems") or []
+        print(f"\n— {len(rep['windows'])} scene(s); {len(probs)} degenerate window(s); "
+              f"{rep['fallbacks']} frame(s) on proportional fallback; {rep['weak_total']} weak anchor(s)")
+        print("  (dry-run — specs unchanged. Fix anchors, re-run --report, then `sync` to commit + recompose.)")
+        return
+
     print("ALIGN:", _json.dumps(align_voices(a.comp, force=a.force)))
     if not a.align_only:
         rep = place_scenes(a.comp)
