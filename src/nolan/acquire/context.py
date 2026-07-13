@@ -150,15 +150,28 @@ def build_context(cfg, *, clip_seconds=20, want_stock=True, want_library=True, w
             _warned = {"empty_hit": False}
 
             def search_library(query, n):
-                out = []
+                # Merge two retrievers: a lexical TITLE match (leads for NAMED works — CLIP clusters all
+                # of a named series at ~0.3 and can't pick 'THE PLOUGHMAN') + CLIP visual similarity
+                # (fills / covers un-named queries). Title-matched assets CLIP would never surface get
+                # ADDED to the pool; title_cover rides in meta so the engine can let it stand in for
+                # relevance (see engine.acquire_need) instead of leaning on the VLM cull.
+                merged = {}                                 # asset_id -> (LibraryHit, title_cover)
+                for h in (_lib.search_by_title(query, k=n) or []):
+                    merged[h.asset.id] = (h, float(h.score))
                 for h in (_lib.search(query, k=n) or []):
+                    if h.asset.id not in merged:
+                        merged[h.asset.id] = (h, 0.0)
+                out = []
+                for h, tcover in merged.values():
                     try:
                         p = _lib.abs_path(h.asset)          # LibraryHit.asset.path is store-relative
                     except Exception:
                         continue
                     if p.exists():
                         out.append(Candidate(ref=str(p), source="library", modality="image", path=p,
-                                             meta={"license": getattr(h.asset, "license", "library"), "source": "library"},
+                                             meta={"license": getattr(h.asset, "license", "library"), "source": "library",
+                                                   "title": getattr(h.asset, "title", None),
+                                                   "title_cover": round(tcover, 3)},
                                              relevance=float(getattr(h, "score", 0) or 0)))
                 # A library-first need returning 0 while the store is non-empty is a real signal (the
                 # CLIP collection is unembedded/misconfigured), not a normal miss — say so once, loud.

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -25,6 +26,16 @@ _DESC_COLLECTION = "descriptions"
 _UA = "NOLAN-PictureLibrary/1.0"
 _LOG = logging.getLogger("nolan.imagelib")
 _REPO = Path(__file__).resolve().parents[3]   # src/nolan/imagelib/store.py -> repo root
+
+# Stop-words dropped before a lexical title match, so a title's DISTINCTIVE tokens carry the signal.
+_STOP = {"the", "a", "an", "of", "and", "or", "in", "on", "to", "for", "with", "by", "at", "from",
+         "is", "are", "was", "its", "it", "this", "that", "as", "into", "s"}
+
+
+def _distinctive_tokens(text: str) -> List[str]:
+    """Lowercased content tokens (punctuation stripped, stop-words + single chars dropped)."""
+    return [t for t in re.sub(r"[^\w\s]", " ", (text or "").lower()).split()
+            if len(t) > 1 and t not in _STOP]
 
 
 def library_paths(scope: str = "global", project: Optional[str] = None) -> Path:
@@ -224,6 +235,34 @@ class ImageLibrary:
             if len(hits) >= k:
                 break
         return hits
+
+    def search_by_title(self, query: str, *, k: int = 12, min_cover: float = 0.5,
+                        license_contains: Optional[str] = None) -> List[LibraryHit]:
+        """Lexical TITLE match — the retrieval CLIP can't do for NAMED works.
+
+        All 46 Holbein woodcuts cluster at CLIP 0.29-0.36 for any query, so text->image similarity
+        returns 'a Holbein woodcut' (and often the WRONG one — 'the knight' ranked THE WAGGONER above
+        THE KNIGHT, 'the abbot' missed THE ABBOT entirely), but the asset TITLE is an exact string.
+
+        Scores by how much of the asset's (short, distinctive) TITLE is NAMED IN THE QUERY —
+        ``|title_tokens ∩ query_tokens| / |title_tokens|`` — so a verbose beat query ('a merchant
+        robbed by death') still fully matches the titled asset ('THE MERCHANT'). An un-named query
+        ('candle flame flickering') matches no title and returns [] (→ pure CLIP handles it)."""
+        qset = set(_distinctive_tokens(query))
+        if not qset:
+            return []
+        hits: List[LibraryHit] = []
+        for a in self.catalog.list(status="active"):
+            if license_contains and (license_contains.lower() not in (a.license or "").lower()):
+                continue
+            htok = _distinctive_tokens(a.title or "")
+            if not htok:
+                continue
+            cover = sum(1 for t in htok if t in qset) / len(htok)
+            if cover >= min_cover:
+                hits.append(LibraryHit(asset=a, score=round(cover, 4)))
+        hits.sort(key=lambda h: h.score, reverse=True)
+        return hits[:k]
 
     def search_by_description(self, query: str, *, k: int = 12,
                               license_contains: Optional[str] = None) -> List[LibraryHit]:

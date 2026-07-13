@@ -158,6 +158,14 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
                     c.relevance = float(ctx.relevance(text, c.path))
                 except Exception:
                     c.relevance = 0.0
+            # NAMED-WORK retrieval: a strong TITLE/metadata match is high-precision evidence CLIP can't
+            # provide — all 46 Holbein woodcuts cluster at CLIP 0.29-0.36 for any query, but the asset
+            # titled 'THE PLOUGHMAN' is an exact match. Let it stand in for relevance (max, not replace,
+            # so a title match never DEMOTES a strong CLIP hit) so the right named artifact leads AND
+            # clears the library floor below, instead of relying on the VLM cull to rescue it.
+            tcover = float(c.meta.get("title_cover", 0) or 0)
+            if c.source == "library" and tcover > 0:
+                c.relevance = max(c.relevance, tcover)
         if evocative:
             # evocative beats want CURATED/artistic sources (library, artvee, museums) — literal CLIP
             # relevance would wrongly DEMOTE the non-literal art. But tier ALONE lets one source flood a
