@@ -4,6 +4,14 @@
 **Status:** Complete
 **Last Updated:** 2026-07-12
 
+## HyperFrames sliced render (hf-render) — hardened toward canonical (2026-07-13)
+
+- Program to make the incremental per-frame render (`nolan hf-render` / `src/nolan/hyperframes/incremental.py`) a faithful replacement for the `hf-finish` monolith. Context: local HyperFrames has NO range-render (verified), so true monolith slicing (Option A) isn't possible; this is the isolated-per-frame path hardened to parity, and the composition is genuinely frame-partitioned (separate sub-comps/timelines) so per-frame + concat == monolith by construction.
+- **CONTENT VERIFIED pixel-faithful** vs the monolith on aeneid-essay: per-timestamp PSNR (caption band excluded) — every mid-frame sample 38–66 dB across all 8 frames; seams are coherent frames (visually confirmed) offset only by timing drift, not glitches. Block content + b-roll grounds are faithful.
+- **Fixes landed:** ground `<video>` now carries `object-fit:cover` (was missing → b-roll not full-bleed; PSNR 14→32); per-frame render at `--quality high` (matches finish); **stream-copy concat** (`-c copy`, zero generational loss, re-encode fallback); quality-aware clip-cache key.
+- **Captions → separate full-length VP9-alpha overlay** (`render_caption_overlay`/`composite_captions`/`_scaffold_captions`): captions.html is a sub-comp fragment (not standalone-renderable → 'zero duration') so it's wrapped in a transparent full-duration root. Per-frame clips stay caption-free → concat stays stream-copy. GUARDED: a non-alpha overlay is never composited (captions skip, video never occluded).
+- **KNOWN follow-ups (block only captions / exact-timeline parity, NOT the content render):** (1) HyperFrames webm renders the caption comp OPAQUE (yuv420p, no alpha) on this host → captions skip; needs an alpha-capture path (`--docker`?). (2) Each clip renders ~+0.03s (~1 frame) too long → +0.27s cumulative drift over 8 frames; trim clips to exact nominal duration (also required so the caption overlay stays in sync). Not yet exercised: freeze-heal parity + comparison-block video sides (aeneid uses neither). Canonical wiring (pipeline + 'Assemble changed frames' UI) pending.
+
 ## HyperFrames edit page — test honesty + agent-label fix (2026-07-13)
 
 - Remediation of a docs-vs-tests gap. The Phase-1/2 entries below CLAIMED "FastAPI TestClient over the full route surface" and "TestClient over the note + asset routes (incl. traversal guard)" — but `tests/test_hyperframes_edit.py` was (a) never committed and (b) engine-level only, with NO TestClient and NO `/api/hf/*` route coverage. Those clauses are annotated as corrections below.
