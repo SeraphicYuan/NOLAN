@@ -181,17 +181,135 @@ def composite_captions(video: Path, overlay: Path, out: Path) -> bool:
     return out.exists() and out.stat().st_size > 1000
 
 
+def _f(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _index_children(comp: str):
+    """Parse the ASSEMBLED index.html → (root data-duration, [[tag, attrs_list], ...] direct children of
+    #root). Returns (None, None) if there's no assembled index (caller falls back to spec-reconstruction).
+    Uses stdlib html.parser so multi-line elements (the <audio>/<div> mounts) are handled correctly."""
+    from html.parser import HTMLParser
+    idx = _comp_dir(comp) / "index.html"
+    if not idx.exists():
+        return None, None
+
+    class _P(HTMLParser):
+        def __init__(s):
+            super().__init__()
+            s.din = 0
+            s.inr = False
+            s.kids = []
+            s.rootdur = None
+
+        def handle_starttag(s, tag, attrs):
+            d = dict(attrs)
+            if tag == "div" and d.get("id") == "root":
+                s.inr = True
+                s.rootdur = d.get("data-duration")
+                return
+            if s.inr:
+                if s.din == 0:
+                    s.kids.append([tag, attrs])          # a DIRECT child of #root
+                s.din += 1
+
+        def handle_endtag(s, tag):
+            if s.inr:
+                if s.din == 0:
+                    s.inr = False                        # </div> closing #root
+                else:
+                    s.din -= 1
+
+    p = _P()
+    p.feed(idx.read_text(encoding="utf-8"))
+    return p.rootdur, p.kids
+
+
+def _shift_elem(tag, attrs, delta: float) -> str:
+    """Re-serialize a root child with its data-start shifted by `delta` (into frame-local time)."""
+    parts = []
+    for k, v in attrs:
+        if k == "data-start" and v is not None:
+            fv = _f(v)
+            if fv is not None:
+                v = f"{round(fv + delta, 3)}"
+        parts.append(k if v is None else f'{k}="{v}"')
+    return f'<{tag} {" ".join(parts)}></{tag}>'
+
+
+def _window_children(kids, frame_id: str):
+    """PURE: given the assembled index's root children, return (frame_dur, [element_html]) for ONE frame's
+    window — the frame's own sub-comp (shifted to local 0) + every root clip (grounds / comparison videos /
+    voice / bgm / sfx) that OVERLAPS [frame_start, frame_end], all shifted to local time. OTHER frames'
+    sub-comps and the caption sub-comp are excluded (captions = the separate full-length overlay)."""
+    S = dur = None
+    for tag, attrs in kids:
+        d = dict(attrs)
+        if tag == "div" and d.get("data-composition-id") == frame_id:
+            S, dur = _f(d.get("data-start")) or 0.0, _f(d.get("data-duration"))
+    if S is None or dur is None or dur <= 0:
+        return None, []
+    E = S + dur
+    out = []
+    for tag, attrs in kids:
+        d = dict(attrs)
+        cid = d.get("data-composition-id")
+        if cid == "captions":
+            continue                                     # captions → separate overlay
+        if tag == "div" and cid and cid != frame_id:
+            continue                                     # a different frame's sub-comp
+        st, du = _f(d.get("data-start")), _f(d.get("data-duration"))
+        if cid == frame_id:                              # this frame's sub-comp
+            out.append(_shift_elem(tag, attrs, -S))
+        elif st is not None and du is not None and st < E and st + du > S:   # a root clip overlapping the window
+            out.append(_shift_elem(tag, attrs, -S))
+    return dur, out
+
+
+def _index_html(dur: float, body: str) -> str:
+    """A renderable per-frame root (same shape as _scaffold_preview) hosting the windowed index elements."""
+    return ('<!doctype html><html><head><meta charset="UTF-8"/>'
+            '<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>'
+            '<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:1920px;height:1080px;'
+            'overflow:hidden;background:#000}#root{position:relative;width:1920px;height:1080px;overflow:hidden}'
+            '.scene{position:absolute;inset:0}.clip{position:absolute;inset:0}</style></head><body>'
+            f'<div id="root" data-composition-id="main" data-start="0" data-duration="{dur}" '
+            f'data-width="1920" data-height="1080">{body}</div>'
+            '<script>window.__timelines=window.__timelines||{};var tl=gsap.timeline({paused:true});'
+            f'tl.to({{}},{{duration:{dur}}},0);window.__timelines["main"]=tl;</script></body></html>')
+
+
+def _scaffold_from_index(comp: str, frame_id: str) -> Optional[Path]:
+    """Build a per-frame render dir by WINDOWING the assembled index.html — so grounds, freeze-heal,
+    comparison videos, bgm + sfx and theme are INHERITED from hf-finish's assembly (steps 6–7), not
+    reconstructed. Returns None if there's no assembled index (caller falls back to spec-reconstruction)."""
+    _, kids = _index_children(comp)
+    if not kids:
+        return None
+    dur, elems = _window_children(kids, frame_id)
+    if dur is None:
+        return None
+    pdir = _scaffold_preview(comp, frame_id)             # reuse for file setup (frame HTML, vendor, assets, voice)
+    (pdir / "index.html").write_text(_index_html(dur, "".join(elems)), encoding="utf-8")
+    return pdir
+
+
 def render_one(comp: str, frame_id: str, quality: str = "high") -> Optional[Path]:
-    """Render ONE frame to a ground+voice clip (compositions/frames/<id>.clip.mp4). CAPTION-FREE — captions
-    are a separate full-length overlay composited at assembly (render_caption_overlay/composite_captions);
-    keeping the clip caption-free lets the concat stay a stream-copy.
+    """Render ONE frame to a clip (compositions/frames/<id>.clip.mp4) by WINDOWING the assembled index.html
+    (inherits grounds/freeze-heal/comparison/bgm/sfx from hf-finish). Falls back to spec-reconstruction if
+    there's no assembled index. CAPTION-FREE — captions are the separate overlay; the clip stays stream-copy-able.
 
     `quality` matches `hf-finish` ("high" = x264 slow/CRF15) so a per-frame clip is per-pixel identical
     to that frame's window in the monolith — the precondition for the sliced render being canonical."""
-    pdir = _scaffold_preview(comp, frame_id)               # frame HTML + voice + assets
-    idx = pdir / "index.html"
-    idx.write_text(inject_grounds(idx.read_text(encoding="utf-8"), frame_grounds(comp, frame_id)),
-                   encoding="utf-8")
+    pdir = _scaffold_from_index(comp, frame_id)
+    if pdir is None:                                     # no assembled index → spec-reconstruction fallback
+        pdir = _scaffold_preview(comp, frame_id)
+        idx = pdir / "index.html"
+        idx.write_text(inject_grounds(idx.read_text(encoding="utf-8"), frame_grounds(comp, frame_id)),
+                       encoding="utf-8")
     clip = _frames_dir(comp) / f"{frame_id}.clip.mp4"
     subprocess.run(["npx", "--yes", "hyperframes@latest", "render", str(pdir),
                     "--quality", quality, "--output", str(clip)],
