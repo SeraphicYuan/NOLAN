@@ -205,6 +205,24 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail="comp, frame_id required")
         return await asyncio.to_thread(_guard, hfedit.resolve_comment, comp, fid, payload.get("comment_id"))
 
+    # ---- batch-agent mode (#5): compile the changeset into ONE brief, dispatch to a fleet agent
+
+    @app.get("/api/hf/batch/brief")
+    async def hf_batch_brief(comp: str = Query(...)):
+        """Preview the compiled batch-edit brief (project + per-frame context + the staged comments)."""
+        from nolan.hyperframes.batch import compile_batch_brief
+        brief, changeset = _guard(compile_batch_brief, comp)
+        return {"comp": comp, "brief": brief, "comments": len(changeset)}
+
+    @app.post("/api/hf/batch/dispatch")
+    async def hf_batch_dispatch(payload: dict = Body(...)):
+        """Compile the changeset into a kickoff brief (with provenance) and dispatch it to a tmux fleet agent."""
+        comp = (payload.get("comp") or "").strip()
+        if not comp:
+            raise HTTPException(status_code=400, detail="comp required")
+        from nolan.hyperframes.batch import dispatch_batch
+        return await asyncio.to_thread(_guard, dispatch_batch, comp, payload.get("session"))
+
     # ---- asset picker target (land an asset in <comp>/assets/, referenced by scene data)
 
     @app.get("/api/hf/assets")

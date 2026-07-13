@@ -105,6 +105,7 @@
       <button class="btn mini" onclick="openNew()">＋ New essay</button>
       <button class="btn mini" onclick="assembleVideo()" title="Fast full-video render — only changed frames re-render (incremental); run hf-finish once first">⚙ Assemble</button>
       <button class="btn ghost mini" onclick="viewAssembled()" title="Open the assembled video in a new tab">▶ View</button>
+      <button class="btn ghost mini" onclick="batchDispatch()" title="Compile all staged frame comments into ONE agent brief + dispatch to a fleet agent">🤖 Batch</button>
     </div>
     <div class="cols">
       <div id="frames"></div>
@@ -221,6 +222,28 @@ function viewAssembled() {
   const comp = $("#comp").value;
   if (!comp) { toast("pick a composition first", "err"); return; }
   window.open("/api/hf/assembled-video?comp=" + encodeURIComponent(comp) + "&_=" + Date.now(), "_blank");
+}
+async function stageComment(fid) {
+  const t = ($("#fnote").value || "").trim();
+  if (!t) { toast("write a comment first", "err"); return; }
+  try { await jpost("/api/hf/frame/comment", { comp: $("#comp").value, frame_id: fid, text: t });
+    $("#fnote").value = ""; toast("staged for batch — dispatch from 🤖 Batch", "ok");
+  } catch (e) { toast("stage failed: " + e, "err"); }
+}
+async function batchDispatch() {
+  const comp = $("#comp").value;
+  if (!comp) { toast("pick a composition first", "err"); return; }
+  try {
+    const b = await (await fetch("/api/hf/batch/brief?comp=" + encodeURIComponent(comp))).json();
+    if (!b.comments) { toast("no staged comments — Stage some frame edits first", "err"); return; }
+    const session = prompt("Dispatch " + b.comments + " staged edit(s) to which agent session?\n" +
+      "(blank = just compile the brief file)\n\n--- brief preview ---\n" + (b.brief || "").slice(0, 700));
+    if (session === null) return;
+    const r = await jpost("/api/hf/batch/dispatch", { comp, session: session || null });
+    if (!r.ok) { toast(r.detail || "batch failed", "err"); return; }
+    toast(r.dispatched ? ("Dispatched " + r.comments + " edit(s) to " + r.dispatched)
+                       : ("Brief compiled → " + r.brief_path), "ok");
+  } catch (e) { toast("batch failed: " + e, "err"); }
 }
 
 // ---- new essay: scaffold script + dispatch the faceless-explainer agent ----
@@ -381,7 +404,7 @@ function renderFramePanel(fid) {
     </details>
     <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask a frame edit (note → AI → gate)</label>
       <textarea id="fnote" class="mention-input" placeholder="e.g. weave @asset0 into @s2 as a gallery from 3–7s; @transition:crossfade between shots"></textarea>
-      <button class="btn ghost mini" style="margin-top:6px" onclick="reviseFrameNote('${fr.id}')">Apply (AI edit)</button></div>`;
+      <button class="btn ghost mini" style="margin-top:6px" onclick="reviseFrameNote('${fr.id}')">Apply (AI edit)</button><button class="btn ghost mini" style="margin-top:6px" onclick="stageComment('${fr.id}')" title="Stage this note for a batch agent edit instead of applying now">＋ Stage for batch</button></div>`;
 }
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }

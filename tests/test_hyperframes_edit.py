@@ -243,6 +243,25 @@ def test_frame_comment_changeset(comp):
         hf.stage_comment(comp, FRAME, "   ")                              # empty comment rejected
 
 
+def test_batch_brief_and_dispatch(comp):
+    """#5: the changeset compiles into a self-contained agent brief; dispatch writes a kickoff + provenance."""
+    from nolan.hyperframes import batch
+    hf.stage_comment(comp, FRAME, "make the opening ominous", scene_id="s1")
+    hf.stage_comment(comp, FRAME, "swap the b-roll for something colder")
+    brief, changeset = batch.compile_batch_brief(comp)
+    assert len(changeset) == 2
+    assert f"`{FRAME}`" in brief and "make the opening ominous" in brief
+    assert "swap the b-roll for something colder" in brief
+    assert "author.py gate" in brief and "nolan.hyperframes.incremental" in brief   # contract + how-to
+    r = batch.dispatch_batch(comp, session=None, now="2026-07-13 00:00")             # no session
+    assert r["ok"] and r["comments"] == 2 and r["frames"] == 1 and r["dispatched"] is None
+    kick = VIDEOS / comp / ".hf_batch_kickoff.md"
+    assert kick.is_file() and "provenance: skill=hyperframes-batch" in kick.read_text(encoding="utf-8")
+    assert len(hf.list_changeset(comp)) == 2                                          # still open (not dispatched)
+    hf.resolve_comment(comp, FRAME)                                                   # clear the changeset
+    assert batch.dispatch_batch(comp)["ok"] is False                                  # nothing to dispatch
+
+
 # ---- route layer: FastAPI TestClient over /hyperframes + /api/hf/* (added 2026-07-13) ----
 # The Phase-1/2 status entries CLAIMED "TestClient over the full route surface" but no such
 # tests existed. These are that coverage, for real: read routes, the gated edit route, the two
@@ -328,6 +347,15 @@ def test_route_changeset(client, comp):
     cs = client.get("/api/hf/changeset", params={"comp": comp}).json()["comments"]
     assert any(c["text"] == "route note" for c in cs)
     assert client.post("/api/hf/frame/comment", json={"comp": comp, "frame_id": FRAME}).status_code == 400
+
+
+def test_route_batch(client, comp):
+    hf.stage_comment(comp, FRAME, "brighten the ending")
+    b = client.get("/api/hf/batch/brief", params={"comp": comp}).json()
+    assert b["comments"] == 1 and "brighten the ending" in b["brief"]
+    r = client.post("/api/hf/batch/dispatch", json={"comp": comp})               # no session → compiled, not sent
+    assert r.status_code == 200 and r.json()["ok"] and r.json()["dispatched"] is None
+    assert client.post("/api/hf/batch/dispatch", json={}).status_code == 400
 
 
 def test_route_assembled_video_404_when_absent(client, comp):
