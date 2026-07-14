@@ -4,6 +4,17 @@
 **Status:** Complete
 **Last Updated:** 2026-07-12
 
+## Generated-b-roll ART DIRECTION — visual brief + per-shot composition (2026-07-14)
+
+The gen-prompt enhancer upgraded from a flat per-image rewriter to an ART-DIRECTED pipeline so a generated set feels AUTHORED (one film), not eight independent images. New module src/nolan/acquire/art_direction.py. Commits 84e76af (#1-3), b4d5b37 (#4), 878874d (test fixup). Verified LIVE on ComfyUI (4090). All tested.
+- **The division-of-labour insight** (from a user challenge): the Fooocus/krea2 STYLE tag is a mood/lighting/palette/quality overlay; the PROMPT TEXT carries subject/medium/composition. So the brief does NOT respecify mood — it OWNS the style choice + locks the MEDIUM/REFERENCE/ERA the style can't express and that otherwise vary per shot.
+- **visual_brief** (look book): derived ONCE per essay, a human-EDITABLE artifact (`<project>/visual_brief.json`). Absorbs gen_style_for (one style decision, one place). All values DERIVED from theme+subject — modular, nothing essay-hardcoded (a fintech/swiss-ikb essay gets a totally different brief from the same code).
+- **compose_prompt**: the LLM writes ONLY the subject — disambiguated for concrete beats, a visual METAPHOR for evocative ones (#3) — wrapped DETERMINISTICALLY in the brief + composition, so medium/reference stay identical across shots (the coherence lock the style tag can't give).
+- **compose-for-the-plate** (#2): every prompt gets 16:9 + negative space lower-left for the overlaid title + Ken-Burns push-in headroom (was dead-centre, fighting the text).
+- **negatives** (#4): `ComfyUIClient.generate(negative=)` appends onto the workflow's baseline negative node (find_prompt_nodes located it); threaded from `need['gen_negative']`. Killed the burned-in garbled text.
+- Live verification (homer / dark-botanical): the brief chose a Gustave-Doré charcoal-on-parchment look; every prompt shares it; renders are a coherent illustrated Homer offset for text (vs the old dead-centre photoreal). Bugs found+fixed: subject-DRIFT (was swapping Milman Parry -> Homer), artist-name-> SIGNATURE (reference now phrased as a technique/movement, not a bare name; the hand-editable brief is the escape hatch).
+- Follow-ups: #5 emotional-register + a post-gen fidelity re-check; ERA-AWARE medium (a 1930s subject in an 1860s medium is anachronistic — needs a medium-by-era rule); DEFERRED (user, important) — recurring-SUBJECT character consistency across beats; optional new-essay UI field for the brief (today: silent-derive + hand-edit override).
+
 ## Acquisition gen-quality + VLM-cull cascade (homer follow-ups) (2026-07-13)
 
 From the homer post-mortem discussion — generation quality + the VLM-cull efficiency nolan4 flagged. Commits ef942d4, 138cfe5, 8750d48; all tested.
