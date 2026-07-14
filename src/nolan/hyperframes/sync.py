@@ -97,6 +97,53 @@ def _norm(s: str) -> List[str]:
         return re.sub(r"[^a-z0-9 ]", " ", s.lower()).split()
 
 
+# --- ④ VO↔script fidelity + ⑤ anchor↔transcript suggestion (homer cold-start POST_MORTEM) ---------
+_STOP = {"the", "a", "an", "of", "and", "or", "to", "in", "is", "it", "that", "this", "for", "with",
+         "was", "were", "by", "as", "on", "at", "be", "are", "not", "but", "its", "his", "her", "their",
+         "they", "we", "you", "have", "had", "from", "then", "so", "no", "one"}
+
+
+def _content(text: str) -> List[str]:
+    return [t for t in _norm(text) if t not in _STOP and len(t) > 1]
+
+
+def _dropped_sentences(source_text: str, spoken_tokens, min_cover: float = 0.3) -> List[Dict]:
+    """SOURCE sentences whose CONTENT words are almost entirely ABSENT from the spoken transcript — i.e.
+    the cloned VO DROPPED that line (vs merely garbling a word or two, which the weak-anchor check
+    handles). The low floor keeps this to real drops, not hyphen/possessive mis-transcriptions. Protects
+    "narration owns duration": if the VO ≠ the script, authoring against the script is wrong (homer ④)."""
+    import re
+    spoken = set(spoken_tokens)
+    out = []
+    for s in re.split(r"(?<=[.!?])\s+", (source_text or "").strip()):
+        toks = _content(s)
+        if len(toks) < 3:                                # too short to judge (kicker/fragment)
+            continue
+        cover = sum(1 for t in toks if t in spoken) / len(toks)
+        if cover < min_cover:
+            out.append({"sentence": s.strip()[:90], "coverage": round(cover, 2)})
+    return out
+
+
+def _suggest_anchor_span(anchor: str, stream_tokens: List[str]) -> Optional[str]:
+    """The transcript n-gram that best matches `anchor` — the VERBATIM tokens an author should anchor to
+    instead of the script phrase Whisper garbled ('Milman Parry'→'Perry', 'rosy-fingered'→'rosy fingered').
+    None when the anchor already appears exactly (no help needed) or nothing is close (homer POST_MORTEM ⑤)."""
+    at = _norm(anchor)
+    n = len(at)
+    if not n or n > len(stream_tokens):
+        return None
+    best = (0, None)
+    for i in range(len(stream_tokens) - n + 1):
+        window = stream_tokens[i:i + n]
+        overlap = sum(1 for a, b in zip(at, window) if a == b)
+        if overlap == n:
+            return None                                  # exact match — anchor is fine
+        if overlap > best[0]:
+            best = (overlap, " ".join(window))
+    return best[1] if best[0] >= max(1, n // 2) else None
+
+
 def _phrase_time(phrase: str, words, after: float = 0.0) -> Optional[float]:
     """First spoken time of `phrase` (a token subsequence) at/after `after` seconds; None if unsaid.
 
@@ -169,6 +216,7 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
             frame_dur = float(fr.get("dur", 0) or 0)
             words_raw = (by_frame.get(i) or {}).get("words") or []
             words = [WordTimestamp(word=w["word"], start=w["start"], end=w["end"]) for w in words_raw]
+            stream_tokens = [t for (t, _a, _b) in aligner.flatten_words(words)] if words else []
             fb = None
             weak = []
             unresolved = set()                           # scene ids whose anchor did not match at all
@@ -227,10 +275,15 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                     v = "UNRESOLVED (anchor not found — placed by fallback)"
                 else:
                     v = None
-                report["windows"].append({"frame": fr.get("id"), "scene": sid, "block": block,
-                                          "start": round(float(sc.get("start", 0) or 0), 2),
-                                          "dur": round(dur, 2), "resolved": resolved,
-                                          "anchor": (_scene_query(sc) or "")[:60], "verdict": v or "ok"})
+                entry = {"frame": fr.get("id"), "scene": sid, "block": block,
+                         "start": round(float(sc.get("start", 0) or 0), 2),
+                         "dur": round(dur, 2), "resolved": resolved,
+                         "anchor": (_scene_query(sc) or "")[:60], "verdict": v or "ok"}
+                if not resolved:                         # ⑤ suggest the verbatim transcript span to anchor to
+                    sg = _suggest_anchor_span(_scene_query(sc), stream_tokens)
+                    if sg:
+                        entry["suggest"] = sg
+                report["windows"].append(entry)
                 if v:
                     report["problems"].append({"frame": fr.get("id"), "scene": sid,
                                                "block": block, "dur": round(dur, 2), "issue": v})
@@ -247,11 +300,45 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
     return report
 
 
+def check_vo_fidelity(comp_dir) -> List[Dict]:
+    """④ Flag SOURCE.md sentences the cloned VO DROPPED/garbled — content words absent from the spoken
+    transcript. Frame i ↔ SOURCE.md section i (the "narration owns duration" invariant). A silent VO
+    omission (homer: a whole sentence gone) makes authoring against the script wrong; surface it early."""
+    from nolan.aligner import flatten_words
+    from nolan.whisper import WordTimestamp
+    from nolan.script import parse_script_sections
+    comp_dir = Path(comp_dir)
+    src = ""
+    for cand in ("SOURCE.md", "SCRIPT.md"):
+        p = comp_dir / cand
+        if p.exists():
+            src = p.read_text(encoding="utf-8")
+            break
+    sections = parse_script_sections(src) if src else []
+    if not sections:
+        return []
+    meta = json.loads((comp_dir / "audio_meta.json").read_text(encoding="utf-8"))
+    by_frame = {v.get("frame"): v for v in meta.get("voices", [])}
+    out = []
+    for i in range(1, len(sections) + 1):
+        words_raw = (by_frame.get(i) or {}).get("words") or []
+        words = [WordTimestamp(word=w["word"], start=w["start"], end=w["end"]) for w in words_raw]
+        spoken = [t for (t, _a, _b) in flatten_words(words)]
+        if not spoken:
+            continue
+        for d in _dropped_sentences(sections[i - 1].get("body", ""), spoken):
+            out.append({"frame": i, **d})
+    return out
+
+
 def report_windows(comp_dir) -> Dict:
     """Dry-run preview: align (idempotent, cached) then resolve every scene's implied window WITHOUT
-    moving scenes or writing specs — the fast loop for re-spacing anchors (POST_MORTEM #4)."""
+    moving scenes or writing specs — the fast loop for re-spacing anchors (POST_MORTEM #4). Also runs
+    the ④ VO↔script fidelity check so a dropped narration line surfaces in the same pass."""
     align_voices(comp_dir)                               # cached by wav mtime; needed for spoken times
-    return place_scenes(comp_dir, write=False)
+    rep = place_scenes(comp_dir, write=False)
+    rep["vo_drops"] = check_vo_fidelity(comp_dir)
+    return rep
 
 
 def _validate_monotonic(raw: List[Optional[float]], frame_dur: float) -> Optional[List[float]]:
@@ -296,9 +383,17 @@ def main():
                   f"({w['dur']:>4.1f}s)  {w['verdict']}")
             if w["verdict"] != "ok":
                 print(f"           anchor: “{w['anchor']}”")
+                if w.get("suggest"):                     # ⑤ the verbatim transcript span to anchor to instead
+                    print(f"           ↳ try anchoring to the spoken words: “{w['suggest']}”")
+        drops = rep.get("vo_drops") or []
+        if drops:                                        # ④ narration the cloned VO dropped/garbled
+            print("\n⚠ VO↔script drops (SOURCE lines the voiceover did NOT say — re-synth or re-author):")
+            for d in drops:
+                print(f"    frame {d['frame']} (cover {d['coverage']:.0%}): “{d['sentence']}”")
         probs = rep.get("problems") or []
         print(f"\n— {len(rep['windows'])} scene(s); {len(probs)} degenerate window(s); "
-              f"{rep['fallbacks']} frame(s) on proportional fallback; {rep['weak_total']} weak anchor(s)")
+              f"{rep['fallbacks']} frame(s) on proportional fallback; {rep['weak_total']} weak anchor(s); "
+              f"{len(drops)} VO drop(s)")
         print("  (dry-run — specs unchanged. Fix anchors, re-run --report, then `sync` to commit + recompose.)")
         return
 
