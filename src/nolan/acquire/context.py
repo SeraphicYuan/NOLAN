@@ -396,11 +396,11 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
             from nolan.workflow_registry import get_registry
             gclient, _ = get_registry().build_client("krea2-style-select", cfg, style=f",{gen_style}")
 
-            def generate(prompt, out: Path):
+            def generate(prompt, out: Path, negative=None):
                 out = Path(out)
                 out.parent.mkdir(parents=True, exist_ok=True)
-                try:
-                    asyncio.run(gclient.generate(f"{prompt}, cinematic, highly detailed", out, timeout=200))
+                try:                                    # prompt is art-directed (self-sufficient) → no generic suffix
+                    asyncio.run(gclient.generate(prompt, out, timeout=200, negative=negative))
                 except Exception:
                     return False
                 return out.exists() and _valid_image(out)

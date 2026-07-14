@@ -317,12 +317,12 @@ async def gen_fill(cfg, empties, assets_dir: Path, pool, gen_style: str = "Cinem
         print(f"  gap-fill gen unavailable: {type(e).__name__}: {e}"); return
     gdir = assets_dir / "generated"; gdir.mkdir(parents=True, exist_ok=True)
     for nd in empties:
-        prompt = f"{nd.get('gen_prompt') or nd['query']}, cinematic, highly detailed"
+        prompt = nd.get('gen_prompt') or nd['query']            # art-directed → no generic suffix
         base = f"{nd['id']}_gen.png"
         out = gdir / base
         try:
             if not out.exists():
-                await client.generate(prompt, out, timeout=200)
+                await client.generate(prompt, out, timeout=200, negative=nd.get("gen_negative"))
         except Exception as e:
             print(f"    gen failed {nd['id']}: {type(e).__name__}: {e}"); continue
         if out.exists() and _valid_image(out):

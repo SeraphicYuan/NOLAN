@@ -83,8 +83,10 @@ async def derive_brief(cfg, *, subject: str, theme: str, style_default: str, llm
               "style preset already handles mood, lighting, palette and quality — do NOT specify those. Define only "
               "what the preset can't and what must stay CONSISTENT across shots: MEDIUM (one medium that fits the "
               "subject + theme and won't fight the preset — e.g. 'neoclassical oil painting', '35mm archival "
-              "photograph', 'weathered marble sculpture'), a rendering REFERENCE (a painter / film-stock / period "
-              "anchor for consistency), the ERA, the realism level, and 3-6 NEGATIVE terms specific to this subject/"
+              "photograph', 'weathered marble sculpture'), a rendering REFERENCE phrased as a TECHNIQUE or MOVEMENT "
+              "for consistency — NOT a bare artist name a model would render as a SIGNATURE (write 'in the engraving "
+              "manner of 19th-century illustrated epics', not just 'Gustave Doré'), the ERA, the realism level, and "
+              "3-6 NEGATIVE terms specific to this subject/"
               "era (anachronisms + wrong-entity collisions to avoid). Return ONLY JSON: {\"medium\":\"\",\"reference\""
               ":\"\",\"era\":\"\",\"realism\":\"\",\"texture\":\"\",\"negatives\":[]}.")
     user = f"Subject / essay: {subject}\nVisual theme: {theme}\nStyle preset (mood, fixed): {style_default}"

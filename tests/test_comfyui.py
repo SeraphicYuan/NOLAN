@@ -64,3 +64,18 @@ async def test_check_connection(comfyui_config):
         is_connected = await client.check_connection()
 
         assert is_connected is True
+
+
+def test_build_workflow_appends_negative():
+    """The client injects extra negative-prompt terms (from the visual brief) onto the workflow's baseline
+    negative node — suppresses burned-in text / watermarks / anachronisms. Offline (pure dict) test."""
+    from nolan.comfyui import ComfyUIClient
+    from nolan.config import load_config
+    c = ComfyUIClient(load_config().comfyui)
+    wf = c._build_workflow("a marble bust of Homer", negative="text, watermark, cartoon")
+    neg_text = wf["7"]["inputs"]["text"]
+    assert "watermark" in neg_text and "cartoon" in neg_text          # brief negatives applied
+    assert "low quality" in neg_text                                   # baseline negatives preserved
+    # no negative -> baseline unchanged
+    wf2 = c._build_workflow("a marble bust", negative=None)
+    assert "watermark" not in wf2["7"]["inputs"]["text"]

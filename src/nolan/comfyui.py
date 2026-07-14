@@ -389,16 +389,26 @@ class ComfyUIClient:
         except Exception:
             return False
 
-    def _build_workflow(self, prompt: str) -> Dict[str, Any]:
+    def _build_workflow(self, prompt: str, negative: Optional[str] = None) -> Dict[str, Any]:
         """Build workflow with prompt inserted.
 
         Args:
             prompt: The text prompt for image generation.
+            negative: extra negative terms, APPENDED to the workflow's baseline negatives.
 
         Returns:
             Complete workflow dict.
         """
         workflow = json.loads(json.dumps(self.workflow))  # Deep copy
+
+        def _append_negative(node_id):
+            if not (negative and node_id and node_id in workflow):
+                return
+            inp = workflow[node_id].get("inputs", {})
+            k = "text" if "text" in inp else "value" if "value" in inp else None
+            if k:
+                base = inp[k] if isinstance(inp[k], str) else ""
+                inp[k] = f"{base}, {negative}".strip(", ") if base.strip() else negative
 
         if self._using_custom_workflow:
             # Inject prompt into the positive prompt node
@@ -420,6 +430,8 @@ class ComfyUIClient:
                         # No system prefix, just set the prompt directly
                         inputs[prompt_key] = prompt
 
+            _append_negative(self._prompt_nodes.get("negative"))   # brief negatives → the negative node
+
             # Apply width/height/steps + randomize seed on the matching nodes so
             # custom workflows honor the configured resolution (not just the default).
             for node_id, node_data in workflow.items():
@@ -438,6 +450,7 @@ class ComfyUIClient:
         else:
             # Default workflow handling
             workflow["6"]["inputs"]["text"] = prompt
+            _append_negative("7")                                  # node 7 = the default negative encoder
             workflow["5"]["inputs"]["width"] = self.width
             workflow["5"]["inputs"]["height"] = self.height
             workflow["3"]["inputs"]["steps"] = self.steps
@@ -557,7 +570,8 @@ class ComfyUIClient:
         self,
         prompt: str,
         output_path: Path,
-        timeout: float = 300.0
+        timeout: float = 300.0,
+        negative: Optional[str] = None,
     ) -> Path:
         """Generate an image from a text prompt.
 
@@ -565,11 +579,13 @@ class ComfyUIClient:
             prompt: The text prompt.
             output_path: Where to save the image.
             timeout: Maximum generation time.
+            negative: extra negative-prompt terms appended to the workflow's baseline negatives
+                (suppresses burned-in text/watermarks, anachronisms, wrong-entity — from the visual brief).
 
         Returns:
             Path to the generated image.
         """
-        workflow = self._build_workflow(prompt)
+        workflow = self._build_workflow(prompt, negative)
         # Serialize GPU work across the process so ComfyUI and local TTS don't
         # contend for VRAM. The lock is held for the whole inference span.
         from nolan.webui.jobs import get_gpu_lock

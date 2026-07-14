@@ -237,7 +237,8 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
         for k in range(cfg.generate_n):
             out = cand_dir / f"{need['id']}_gen{k}.png"
             try:
-                if ctx.generate(need.get("gen_prompt") or text, out) and out.exists():
+                if ctx.generate(need.get("gen_prompt") or text, out,
+                                negative=need.get("gen_negative")) and out.exists():
                     kept.append(Candidate(ref=str(out), source="generate", modality="image",
                                           path=out, meta={"license": "generated", "source": "krea2 (generated)"}))
             except Exception:
