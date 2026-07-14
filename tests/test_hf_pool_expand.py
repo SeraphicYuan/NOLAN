@@ -38,23 +38,6 @@ def test_empty_needs_none_when_all_covered():
     assert pool._empty_needs([{"id": "a1"}], [{"id": "a1", "file": "x.jpg"}]) == []
 
 
-def test_enhance_gen_prompts_disambiguates_via_domain():
-    """A terse 'Homer' prompt gets rewritten to the domain-correct entity (fixes Homer Simpson)."""
-    import asyncio
-    pool = _load_pool()
-
-    class FakeLLM:
-        async def generate(self, user, system_prompt=""):
-            assert "Homer" in user and "ancient Greek" in user   # subject + domain reach the LLM
-            return '"Homer, the blind ancient Greek epic poet, neoclassical oil painting, chiaroscuro"'
-
-    needs = [{"id": "a1", "query": "Homer", "gen_prompt": "headshot of Homer"}]
-    asyncio.run(pool.enhance_gen_prompts(None, needs, essay_context="Homer Did Not Exist — ancient Greek epic",
-                                         theme="dark-botanical", llm=FakeLLM()))
-    assert "blind ancient Greek" in needs[0]["gen_prompt"]           # enriched + disambiguated
-    assert '"' not in needs[0]["gen_prompt"]                          # surrounding quotes stripped
-
-
 def test_clips_library_pool_item_carries_stored_caption(tmp_path):
     """CULL CASCADE Lever A: a library clip lands in the pool PRE-captioned from its stored vision
     description, so score_and_caption can skip the redundant VLM filmstrip for it."""
@@ -68,19 +51,6 @@ def test_clips_library_pool_item_carries_stored_caption(tmp_path):
     assets.mkdir()
     out = pool._candidates_to_pool([c], assets)
     assert out and out[0]["caption"] == "[video] a bard sings to a crowd"
-
-
-def test_enhance_gen_prompts_contained_on_dead_llm():
-    import asyncio
-    pool = _load_pool()
-
-    class DeadLLM:
-        async def generate(self, user, system_prompt=""):
-            raise RuntimeError("llm down")
-
-    needs = [{"id": "a1", "query": "x", "gen_prompt": "raw prompt"}]
-    asyncio.run(pool.enhance_gen_prompts(None, needs, llm=DeadLLM()))
-    assert needs[0]["gen_prompt"] == "raw prompt"                     # unchanged — contained
 
 
 class _FakeLLM:

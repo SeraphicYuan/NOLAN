@@ -9,10 +9,12 @@ from .config import AcquireConfig
 from .engine import (Candidate, Context, acquire_need, acquire_pool,
                      avg_hash, hamming, fitness_score)
 from .context import build_context, gen_style_for
+from .art_direction import VisualBrief, derive_brief, compose_prompt
 from .judge import judge_prompt, extract_json, parse_verdict, is_junk, UNUSABLE_FLAGS
 
 __all__ = [
     "AcquireConfig", "Candidate", "Context", "acquire_need", "acquire_pool",
     "avg_hash", "hamming", "fitness_score", "build_context", "gen_style_for",
+    "VisualBrief", "derive_brief", "compose_prompt",
     "judge_prompt", "extract_json", "parse_verdict", "is_junk", "UNUSABLE_FLAGS",
 ]

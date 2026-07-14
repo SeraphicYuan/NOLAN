@@ -260,43 +260,41 @@ def _essay_context(project: Path) -> tuple:
     return ctx, theme
 
 
-async def enhance_gen_prompts(cfg, needs, *, essay_context: str = "", theme: str = "", llm=None):
-    """PROMPT ENHANCEMENT: rewrite each terse `gen_prompt` into a vivid, entity-DISAMBIGUATED T2I prompt
-    grounded in the essay's context — a 3-6 word prompt like "headshot of Homer" made ComfyUI paint Homer
-    SIMPSON; naming the subject precisely for the domain (the blind ancient-Greek poet, neoclassical) fixes
-    it, and a shared visual language keeps the generated art coherent. Per-need rewrites run concurrently;
-    a dead LLM leaves gen_prompt unchanged (contained)."""
+async def art_direct(cfg, needs, *, essay_context: str = "", theme: str = "", style_default: str = "Cinematic",
+                     project=None, llm=None):
+    """ART DIRECTION: derive the essay's shared visual BRIEF once (the look book — it OWNS the style and
+    locks the MEDIUM / REFERENCE / ERA the style tag can't express, so the generated set feels authored),
+    then compose each need's gen prompt against it (a disambiguated subject for concrete beats, a visual
+    METAPHOR for evocative ones, wrapped in the brief + composition rules). Persists the brief as a human-
+    editable artifact (visual_brief.json); reuses a hand-edited one. Returns the brief — its `.style` IS the
+    generation style (one decision, one place). A dead LLM degrades to a minimal brief + raw prompts (contained)."""
     import asyncio as _a
-    gennable = [nd for nd in needs if (nd.get("gen_prompt") or nd.get("query"))]
-    if not gennable:
-        return
+    from nolan.acquire.art_direction import derive_brief, compose_prompt, load_or_none, save
     if llm is None:
         from nolan.llm import create_text_llm
         llm = create_text_llm(cfg)
-    system = ("You write ONE vivid image-generation prompt for a video-essay b-roll still. Given a terse "
-              "subject, the essay's context, and a mood, produce an UNAMBIGUOUS prompt: name the subject "
-              "PRECISELY so the model can't pick the wrong entity (e.g. 'Homer' in an essay about ancient "
-              "Greek epic = the blind poet Homer, a classical/neoclassical figure — NOT the cartoon Homer "
-              "Simpson); add medium, composition, era and lighting that fit the essay. Let the mood/theme "
-              "guide PALETTE, LIGHTING and ATMOSPHERE only — do NOT paste literal theme objects (vines, "
-              "ivy, etc.) into scenes where they'd be incongruous (an archival photo, a diagram, a real "
-              "historical portrait). One line, no preamble, no surrounding quotes.")
+    proj = Path(project) if project else None
+    brief = load_or_none(proj) if proj else None            # reuse a hand-edited / prior brief (idempotent)
+    if brief is None:
+        brief = await derive_brief(cfg, subject=(essay_context or theme), theme=theme,
+                                   style_default=style_default, llm=llm)
+        if proj:
+            save(proj, brief)
+    print(f"    visual brief: style={brief.style} · medium={brief.medium or '—'} · ref={brief.reference or '—'}", flush=True)
+    gennable = [nd for nd in needs if (nd.get("gen_prompt") or nd.get("query"))]
 
     async def _one(nd):
-        raw = (nd.get("gen_prompt") or nd["query"]).strip()
-        user = f"Subject: {raw}\nEssay: {essay_context or 'a general video essay'}\nMood/theme: {theme or 'cinematic'}"
         try:
-            out = (await llm.generate(user, system_prompt=system)).strip().strip('"').strip()
-            if out and len(out) >= len(raw):
-                nd["gen_prompt"] = out[:500]
-                return nd["id"]
+            pos, neg = await compose_prompt(cfg, nd, brief, essay_context=essay_context, llm=llm)
+            if pos:
+                nd["gen_prompt"], nd["gen_negative"] = pos, neg
         except Exception as e:
-            print(f"    prompt-enhance failed {nd['id']}: {type(e).__name__}: {e}")
-        return None
+            print(f"    compose failed {nd['id']}: {type(e).__name__}: {e}")
 
-    done = [x for x in await _a.gather(*[_one(nd) for nd in gennable]) if x]
-    if done:
-        print(f"    enhanced {len(done)} gen prompt(s) (entity-disambiguated + domain-grounded)")
+    await _a.gather(*[_one(nd) for nd in gennable])
+    if gennable:
+        print(f"    composed {len(gennable)} gen prompt(s) against the brief")
+    return brief
 
 
 def _empty_needs(needs, pool):
@@ -530,12 +528,14 @@ def main():
         except Exception as e:
             print(f"  expand skipped: {type(e).__name__}: {e}")
 
-    if not args.no_gen:                                 # disambiguate + domain-ground gen prompts BEFORE any gen fires
-        print(f"ENHANCE (entity-disambiguate + domain-ground gen prompts) · gen-style: {gen_style}")
+    if not args.no_gen:                                 # art-direct: derive the visual brief + compose gen prompts
+        print(f"ART-DIRECT (visual brief) + compose gen prompts · style default: {gen_style}")
         try:
-            asyncio.run(enhance_gen_prompts(cfg, needs, essay_context=_ectx, theme=_theme))
+            brief = asyncio.run(art_direct(cfg, needs, essay_context=_ectx, theme=_theme,
+                                           style_default=gen_style, project=project))
+            gen_style = brief.style                      # the brief OWNS the style (one place, not a parallel lever)
         except Exception as e:
-            print(f"  prompt-enhance skipped: {type(e).__name__}: {e}")
+            print(f"  art-direction skipped: {type(e).__name__}: {e}")
 
     if args.legacy:
         print("COLLECT (legacy stock-only)")
