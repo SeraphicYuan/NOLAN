@@ -45,7 +45,8 @@ def test_compose_locks_medium_and_reference_across_shots():
     for p in (p1, p2):
         assert p.startswith("neoclassical oil painting")            # same medium leads every prompt
         assert "in the manner of Caravaggio" in p                    # same reference anchor
-        assert "negative space in the lower-left" in p               # composed for the overlaid title
+        assert "empty space at the lower left" in p                  # composed for the (later) overlaid title
+        assert "title" not in p                                       # but NEVER the word 'title' (it renders as text)
     assert "the blind poet Homer" in p1 and "wine-dark sea" in p2    # only the subject varies
     assert "watermark" in n1 and "cartoon" in n1                     # generic failure-mode negatives
 

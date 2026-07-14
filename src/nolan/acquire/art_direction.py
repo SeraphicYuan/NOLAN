@@ -26,13 +26,17 @@ from typing import List, Optional, Tuple
 # Composed for the PLATE: these generated stills become full-bleed grounds under big overlaid text (kicker
 # top-left, title/operative lower-left) and get a slow Ken-Burns push. So compose with room for both. This is
 # the compose-first HF layout's default; a per-block layout override can replace it (layout_hint) later.
-DEFAULT_COMPOSITION = ("wide 16:9 cinematic composition, the subject placed off-centre with generous empty "
-                       "negative space in the lower-left for an overlaid title, unhurried framing with headroom "
-                       "so a slow camera push-in has somewhere to go")
+# TERSE image-descriptors only — NOT prose, and NEVER mention "title/text/caption/overlay": describing a
+# place for text in a T2I prompt makes the model PAINT text there (the homer 'somewhere to go' leak). This
+# still yields the plate the layout needs — subject off to one side, a calm empty area where the title will
+# later sit, plus headroom for the Ken-Burns push.
+DEFAULT_COMPOSITION = ("wide 16:9 framing, subject positioned off-centre toward the right, a large calm area "
+                       "of empty space at the lower left, generous headroom above, cinematic depth of field")
 
-# Model failure-modes every generated essay-still should avoid (used as the negative prompt once the client
-# accepts one; also nudges the positive away from them). Entity/era negatives come from the brief.
-GENERIC_NEGATIVES = ["text", "words", "watermark", "signature", "caption", "logo",
+# Model failure-modes every generated essay-still should avoid (negative prompt). Text-rendering is the big
+# one for these grounds (they carry overlaid type), so name every flavour of it.
+GENERIC_NEGATIVES = ["text", "words", "letters", "title", "caption", "heading", "label", "subtitle",
+                     "typography", "lettering", "poster text", "watermark", "signature", "logo",
                      "cartoon", "anime", "low quality", "blurry", "deformed", "extra limbs"]
 
 
@@ -86,8 +90,12 @@ async def derive_brief(cfg, *, subject: str, theme: str, style_default: str, llm
               "photograph', 'weathered marble sculpture'), a rendering REFERENCE phrased as a TECHNIQUE or MOVEMENT "
               "for consistency — NOT a bare artist name a model would render as a SIGNATURE (write 'in the engraving "
               "manner of 19th-century illustrated epics', not just 'Gustave Doré'), the ERA, the realism level, and "
-              "3-6 NEGATIVE terms specific to this subject/"
-              "era (anachronisms + wrong-entity collisions to avoid). Return ONLY JSON: {\"medium\":\"\",\"reference\""
+              "3-6 NEGATIVE terms specific to this subject/era. TWO HARD RULES: (1) the medium must SUIT THE "
+              "SUBJECT'S OWN ERA — a CONTEMPORARY subject (technology, modern events, present-day people) needs a "
+              "contemporary medium (documentary / editorial photography, or modern illustration), NEVER an "
+              "anachronistic period style (do not render modern AI data-centres as a 1930s woodcut). (2) the NEGATIVE "
+              "terms must NOT exclude the essay's OWN subject matter — never negate the very things the essay is "
+              "about. Return ONLY JSON: {\"medium\":\"\",\"reference\""
               ":\"\",\"era\":\"\",\"realism\":\"\",\"texture\":\"\",\"negatives\":[]}.")
     user = f"Subject / essay: {subject}\nVisual theme: {theme}\nStyle preset (mood, fixed): {style_default}"
     try:
@@ -130,7 +138,9 @@ async def compose_prompt(cfg, need: dict, brief: VisualBrief, *, essay_context: 
             subject = out
     except Exception:
         pass
-    parts = [brief.medium, subject, layout_hint or DEFAULT_COMPOSITION, brief.reference, brief.era, brief.texture]
+    import re as _re
+    era = _re.sub(r"\([^)]*\)", "", brief.era).strip()      # drop parenthetical years — they render as text labels
+    parts = [brief.medium, subject, layout_hint or DEFAULT_COMPOSITION, brief.reference, era, brief.texture]
     positive = ", ".join(p.strip() for p in parts if p and p.strip())[:600]
     negatives = list(dict.fromkeys([*GENERIC_NEGATIVES, *brief.negatives]))
     return positive, ", ".join(negatives)
