@@ -118,6 +118,7 @@ CSS = """
 .nh-dark .nhhead{color:#EDEBE4;}.nh-dark .nhsub{color:#b9b6ab;}.nh-dark .nhcap{color:#8f8c83;}
 .nh-dark .nhhl-wrap{background:var(--accent);border-radius:0.05em;}
 .nh-dark .nhhl-wrap .w{color:var(--accent-ink);}
+.nh-dark .nhsub .subhl{color:var(--accent-ink);}      /* subhead highlight: dark ink on the accent too */
 /* collage: cut-out subjects (people/objects) assembling into a tableau on a backdrop */
 .clgbg{position:absolute;inset:0;}
 .clgvig{position:absolute;inset:0;pointer-events:none;}
