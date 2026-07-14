@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from .edit import BRIDGE, REPO, _project_dir, list_frames, recompose_frame
+from .edit import BRIDGE, REPO, _project_dir, ensure_storyboard, list_frames, recompose_frame
 
 SKILL_SCRIPTS = REPO / ".agents" / "skills" / "faceless-explainer" / "scripts"
 
@@ -67,6 +67,12 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
         if not (SKILL_SCRIPTS / _s).exists():
             raise RuntimeError(f"hf-finish: skill script missing — {SKILL_SCRIPTS / _s}. Is the faceless-explainer skill installed?")
     print(f"hf-finish: {comp}  (render={render}/{render_mode}, sound={sound}{', DRY-RUN' if dry_run else ''})")
+
+    # 0 · guarantee STORYBOARD.md (audio/captions/assemble-index HARD-require it; new_essay doesn't scaffold it)
+    if not dry_run:
+        _sb = ensure_storyboard(comp)
+        if not (pdir / "STORYBOARD.md").exists():
+            raise RuntimeError(f"hf-finish: STORYBOARD.md missing and could not be synthesized at {_sb}")
 
     # 1 · frame durations FROM the VO (narration owns duration)
     _run("sync-durations", ["node", audio, "sync-durations", "--audio-meta", "./audio_meta.json",

@@ -253,6 +253,62 @@ def _project_script(pdir: Path) -> str:
     return ""
 
 
+def ensure_storyboard(comp: str) -> Path:
+    """Guarantee STORYBOARD.md exists before finish. audio.mjs (sync-durations/bgm/sfx), captions.mjs,
+    and assemble-index.mjs all HARD-require it — its `format` frontmatter drives the canvas and the
+    per-frame sections drive music/duration. new_essay scaffolds SOURCE.md but NOT this, so a cold
+    first finish used to hard-fail here (homer POST_MORTEM ③). If missing, synthesize it from the
+    composed frames + audio_meta + the SOURCE.md sections. IDEMPOTENT — never overwrites a hand-authored one."""
+    from nolan.script import parse_script_sections
+    pdir = _project_dir(comp)
+    sb = pdir / "STORYBOARD.md"
+    if sb.exists():
+        return sb
+    frames = list_frames(comp)
+    fmt = "1920x1080"
+    for fid in frames:                                   # canvas format from a frame spec, else landscape
+        try:
+            spec = json.loads((_frames_dir(comp) / f"{fid}.spec.json").read_text(encoding="utf-8"))
+            f = spec.get("format") or (spec.get("frames") or [{}])[0].get("format")
+            if f:
+                fmt = str(f)
+                break
+        except Exception:
+            continue
+    voices = []                                          # durations + voice files (narration owns duration)
+    am = pdir / "audio_meta.json"
+    if am.exists():
+        try:
+            voices = sorted(json.loads(am.read_text(encoding="utf-8")).get("voices", []),
+                            key=lambda v: v.get("frame", 0))
+        except Exception:
+            voices = []
+    src = _project_script(pdir)
+    sections = parse_script_sections(src) if src else []
+    title = (sections[0]["title"] if sections else comp) or comp
+    arc = " → ".join(s.get("title", "") for s in sections[1:]) or title
+    message = next((ln.strip() for ln in (src or "").splitlines()
+                    if ln.strip() and not ln.lstrip().startswith("#")), title)
+    theme = ""
+    try:
+        theme = json.loads((pdir / "hyperframes.json").read_text(encoding="utf-8")).get("theme", "")
+    except Exception:
+        pass
+    music = ("dark, cinematic, restrained strings — a low, elegiac underscore" if "dark" in (theme or "")
+             else "cinematic, understated score that follows the narration")
+    out = ["---", f"format: {fmt}", f"message: {message}", f"arc: {arc}", f"music: {music}", "---", ""]
+    for i, fid in enumerate(frames):
+        dur = voices[i].get("duration_s") if i < len(voices) else None
+        vfile = (voices[i].get("file") if i < len(voices) else None) or f"assets/voice/{i + 1:02d}.wav"
+        sec = sections[i] if i < len(sections) else {}
+        out += [f"## Frame {i + 1} — {sec.get('title') or fid}",
+                f"- src: compositions/frames/{fid}.html",
+                f"- duration: {dur if dur is not None else ''}s",
+                f"- voiceover: {vfile}", "", (sec.get("body") or "").strip(), ""]
+    sb.write_text("\n".join(out), encoding="utf-8")
+    return sb
+
+
 async def derive_asset_needs(script: str, client, k: int = 24) -> List[Dict[str, Any]]:
     """LLM: an essay script -> a `needs` list for the pool bridge, with QUERY-VARIANT EXPANSION.
 
