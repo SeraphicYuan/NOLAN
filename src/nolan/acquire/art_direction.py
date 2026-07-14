@@ -146,6 +146,33 @@ async def compose_prompt(cfg, need: dict, brief: VisualBrief, *, essay_context: 
     return positive, ", ".join(negatives)
 
 
+async def verify_generation(cfg, image_path, need: dict, *, provider=None) -> dict:
+    """FIDELITY re-check (#5b): does the generated image actually DEPICT the need's intended subject? The
+    art-directed prompt disambiguates, but a T2I model still occasionally paints the wrong thing — this
+    catches a handsome-but-WRONG image (a bust of the wrong man, a chip that's really a city) that the
+    usability cull would happily pass. Judges the SUBJECT, not the style. GRACEFUL: no vision / any error
+    -> {matches: True} so it can never block or empty a beat."""
+    subject = (need.get("query") or need.get("gen_prompt") or "").strip()
+    if not subject or not Path(image_path).exists():
+        return {"matches": True, "reason": "no subject/image to check"}
+    if provider is None:
+        try:
+            from nolan.vision import create_vision_provider
+            from nolan.evoke_broll import _vision_config
+            provider = create_vision_provider(_vision_config(cfg))
+        except Exception:
+            return {"matches": True, "reason": "vision unavailable"}
+    metaphor = " (this is an evocative METAPHOR — judge whether it plausibly evokes the idea, not literally)" \
+        if need.get("evocative") else ""
+    prompt = (f'Does this image clearly depict: "{subject}"?{metaphor} Judge the SUBJECT / entity, ignore the '
+              'art style. Reply ONLY JSON: {"matches": true or false, "reason": "<short>"}.')
+    try:
+        d = _parse_json(await provider.describe_image(image_path, prompt))
+        return {"matches": bool(d.get("matches", True)), "reason": str(d.get("reason", ""))[:140]}
+    except Exception as e:
+        return {"matches": True, "reason": f"check failed: {type(e).__name__}"}
+
+
 def load_or_none(project: Path) -> Optional[VisualBrief]:
     """Reuse a persisted/hand-edited brief if present (idempotent + human-override)."""
     p = Path(project) / "visual_brief.json"

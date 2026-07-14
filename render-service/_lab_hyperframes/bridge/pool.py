@@ -315,14 +315,23 @@ async def gen_fill(cfg, empties, assets_dir: Path, pool, gen_style: str = "Cinem
         client, _ = get_registry().build_client("krea2-style-select", cfg, style=f",{gen_style}")
     except Exception as e:
         print(f"  gap-fill gen unavailable: {type(e).__name__}: {e}"); return
+    from nolan.acquire.art_direction import verify_generation
     gdir = assets_dir / "generated"; gdir.mkdir(parents=True, exist_ok=True)
     for nd in empties:
         prompt = nd.get('gen_prompt') or nd['query']            # art-directed → no generic suffix
         base = f"{nd['id']}_gen.png"
         out = gdir / base
         try:
-            if not out.exists():
-                await client.generate(prompt, out, timeout=200, negative=nd.get("gen_negative"))
+            for attempt in range(2):                            # FIDELITY re-check (#5b): gen -> verify -> ONE retry
+                if not out.exists() or attempt == 1:
+                    await client.generate(prompt, out, timeout=200, negative=nd.get("gen_negative"))
+                if not (out.exists() and _valid_image(out)):
+                    break
+                v = await verify_generation(cfg, out, nd)
+                if v["matches"]:
+                    break
+                print(f"    ⚠ fidelity miss {nd['id']} (try {attempt + 1}): {v['reason']}"
+                      + (" — regenerating" if attempt == 0 else " — keeping (flagged, don't empty the beat)"))
         except Exception as e:
             print(f"    gen failed {nd['id']}: {type(e).__name__}: {e}"); continue
         if out.exists() and _valid_image(out):

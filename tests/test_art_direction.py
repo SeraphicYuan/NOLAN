@@ -58,6 +58,39 @@ def test_compose_evocative_uses_metaphor_branch():
     assert "ABSTRACT" in llm.last[1]                                 # the evocative system prompt was used
 
 
+def test_verify_generation_matches_and_flags_mismatch(tmp_path):
+    from nolan.acquire.art_direction import verify_generation
+    img = tmp_path / "x.png"
+    img.write_bytes(b"\0" * 100)
+
+    class FV:
+        def __init__(self, r):
+            self.r = r
+
+        async def describe_image(self, p, prompt):
+            return self.r
+
+    need = {"query": "a marble bust of Homer", "evocative": False}
+    ok = asyncio.run(verify_generation(None, img, need, provider=FV('{"matches": true, "reason": "a classical bust"}')))
+    bad = asyncio.run(verify_generation(None, img, need, provider=FV('{"matches": false, "reason": "a modern man in a suit"}')))
+    assert ok["matches"] is True
+    assert bad["matches"] is False and "modern" in bad["reason"]
+
+
+def test_verify_generation_graceful_never_blocks(tmp_path):
+    """Vision down / error / no image -> matches:True, so a fidelity check can never empty a beat."""
+    from nolan.acquire.art_direction import verify_generation
+    img = tmp_path / "x.png"
+    img.write_bytes(b"\0")
+
+    class Boom:
+        async def describe_image(self, p, prompt):
+            raise RuntimeError("vision down")
+
+    assert asyncio.run(verify_generation(None, "/nope.png", {"query": "x"}))["matches"] is True
+    assert asyncio.run(verify_generation(None, img, {"query": "x"}, provider=Boom()))["matches"] is True
+
+
 def test_compose_contained_on_dead_llm():
     class Dead:
         async def generate(self, u, system_prompt=""):
