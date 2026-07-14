@@ -242,6 +242,14 @@ async def expand_needs(cfg, needs, max_metaphor: int = 4):
             print(f"    [{nd['id']}] +{len(mets)} metaphor quer{'y' if len(mets) == 1 else 'ies'}: {mets!r}")
 
 
+def _empty_needs(needs, pool):
+    """Needs with NO surviving asset in the pool — the gap the VLM cull leaves behind. A need can have
+    candidates at retrieval time (so the engine's floor-gated gen never fires) yet be emptied by the
+    later score_and_caption cull; those are what post-cull gap-fill must regenerate."""
+    have = {p.get("id") for p in pool}
+    return [nd for nd in needs if nd.get("id") not in have]
+
+
 async def gen_fill(cfg, empties, assets_dir: Path, pool):
     """GAP-FILL: when stock returns nothing for a need, GENERATE a still (krea2 / ComfyUI) from the
     need's gen_prompt so the pool is never empty. Contained: no ComfyUI -> logged, need stays empty."""
@@ -465,7 +473,8 @@ def main():
                             clip_lib_max=acfg.clip_lib_max, clip_lib_min_sim=acfg.clip_lib_min_sim)
         print(f"ACQUIRE — stock={bool(ctx.search_stock)} library={bool(ctx.search_library)} "
               f"clips_library={bool(ctx.search_clips)} "
-              f"clip-relevance={bool(ctx.relevance)} generate={bool(ctx.generate)} | "
+              f"clip-relevance={bool(ctx.relevance)} "
+              f"generate={bool(ctx.generate) and acfg.generate_evocative} | "   # organ AND --no-gen not set
               f"{len(needs)} needs × up to {acfg.per_need} kept (images over-fetch ×{acfg.over_fetch}, "
               f"video ×{acfg.over_fetch_video})")
         import shutil
@@ -477,6 +486,20 @@ def main():
     if pool and not args.no_caption:
         print("SCORE + CAPTION (VLM usability floor + inventory)" if acfg.vlm_cull else "CAPTION (VLM, no cull)")
         pool = asyncio.run(score_and_caption(cfg, pool, assets_dir, needs, acfg))
+
+    # POST-CULL GAP-FILL: the VLM cull empties needs that HAD candidates at retrieval time (so the
+    # engine's floor-gated generation never fired for them). Without this, an abstract essay — where
+    # stock/library yield is genuinely poor — ships with a third of its beats unillustrated. Regenerate
+    # a bespoke still for every need the cull left empty (generated art is exempt from the cull).
+    if not args.no_gen:
+        empties = _empty_needs(needs, pool)
+        if empties:
+            print(f"POST-CULL GAP-FILL — {len(empties)} need(s) emptied by the cull → generate")
+            try:
+                asyncio.run(gen_fill(cfg, empties, assets_dir, pool))
+            except Exception as e:
+                print(f"  post-cull gen skipped: {type(e).__name__}: {e}")
+
     write_inventory(pool, project)
 
 

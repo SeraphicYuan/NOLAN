@@ -24,6 +24,20 @@ def _load_pool():
     return mod
 
 
+def test_empty_needs_finds_cull_emptied():
+    """POST-CULL GAP-FILL targets exactly the needs the cull emptied (no surviving pool asset)."""
+    pool = _load_pool()
+    needs = [{"id": "a1"}, {"id": "a2"}, {"id": "a3"}]
+    survived = [{"id": "a1", "file": "x.jpg"}]           # a2 + a3 emptied by the VLM cull
+    empties = pool._empty_needs(needs, survived)
+    assert {e["id"] for e in empties} == {"a2", "a3"}
+
+
+def test_empty_needs_none_when_all_covered():
+    pool = _load_pool()
+    assert pool._empty_needs([{"id": "a1"}], [{"id": "a1", "file": "x.jpg"}]) == []
+
+
 class _FakeLLM:
     def __init__(self, raw):
         self.raw = raw
