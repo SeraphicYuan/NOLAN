@@ -385,6 +385,13 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
     sem = asyncio.Semaphore(4)
 
     async def judge(item):
+        # CULL CASCADE Lever A: library clips are pre-captioned (stored vision description) + curated +
+        # already passed the engine's cheap CLIP frame-relevance gate — skip the expensive VLM filmstrip.
+        if "clips_library" in str(item.get("source", "")):
+            item.setdefault("usable", True)
+            if not item.get("caption"):
+                item["caption"] = f"[video] {item.get('query', '')}".strip()
+            return
         need = need_by_id.get(item["id"], {"query": item.get("query", "")})
         img = assets_dir / item["file"]
         is_video = item["media_type"] == "video"
@@ -477,11 +484,14 @@ def _candidates_to_pool(kept, assets_dir: Path):
             shutil.copyfile(str(c.path), str(dest))   # copy (library files stay in the library; temp gets cleaned)
         except Exception:
             continue
+        # library clips arrive pre-captioned from their stored vision description (cull cascade Lever A —
+        # skips a redundant VLM re-caption; they already passed the engine's cheap CLIP gate)
+        cap = f"[video] {c.meta.get('description', '')}".strip() if c.source == "clips_library" else ""
         pool.append({"id": need, "file": rel, "media_type": c.modality, "query": c.meta.get("query", ""),
                      "source": c.meta.get("source", c.source), "source_url": c.meta.get("source_url", ""),
                      "photographer": c.meta.get("photographer", ""), "license": c.meta.get("license", ""),
                      "width": c.meta.get("width", 0), "height": c.meta.get("height", 0),
-                     "duration": c.meta.get("duration"), "relevance": round(c.relevance, 3), "caption": ""})
+                     "duration": c.meta.get("duration"), "relevance": round(c.relevance, 3), "caption": cap})
     return pool
 
 

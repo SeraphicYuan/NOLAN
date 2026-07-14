@@ -37,6 +37,7 @@ class Context:
     search_clips: Optional[Callable] = None     # (need, n) -> [Candidate] (local video, materialised in download)
     download: Optional[Callable] = None          # (Candidate, dest_dir) -> bool  (fills .path)
     relevance: Optional[Callable] = None         # (text, path) -> float in [0,1]
+    video_relevance: Optional[Callable] = None   # (text, video_path) -> float — cheap CLIP frame-relevance for video
     generate: Optional[Callable] = None          # (prompt, out_path) -> bool
 
 
@@ -173,6 +174,13 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
             tcover = float(c.meta.get("title_cover", 0) or 0)
             if c.source == "library" and tcover > 0:
                 c.relevance = max(c.relevance, tcover)
+        elif c.modality == "video" and c.source == "clips_library" and ctx.video_relevance:
+            # CULL CASCADE: cheap CLIP frame-relevance so off-topic library clips are dropped in _keep
+            # (before the expensive VLM), and this real relevance also feeds the video score below.
+            try:
+                c.relevance = float(ctx.video_relevance(text, c.path))
+            except Exception:
+                c.relevance = 0.0
         if evocative:
             # evocative beats want CURATED/artistic sources (library, artvee, museums) — literal CLIP
             # relevance would wrongly DEMOTE the non-literal art. But tier ALONE lets one source flood a
@@ -194,7 +202,9 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
     if ctx.relevance:
         def _keep(c: Candidate) -> bool:
             if c.modality != "image":
-                return True                                   # video is unscored — keep
+                if c.source == "clips_library" and ctx.video_relevance:
+                    return c.relevance >= cfg.clip_lib_relevance_floor  # cheap CLIP gate BEFORE the VLM
+                return True                                   # other video is unscored — keep
             prov = _provider_of(c.source)
             if c.source == "library":
                 return c.relevance >= cfg.library_min_relevance

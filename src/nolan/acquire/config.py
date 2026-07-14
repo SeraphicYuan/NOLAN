@@ -28,6 +28,11 @@ class AcquireConfig:
     # local clips-library depth (bounds the ffmpeg trims — video is expensive)
     clip_lib_max: int = 4             # keep at most this many local library clips per need
     clip_lib_min_sim: float = 0.55    # drop the weak tail below this similarity (a floor, not a topic gate)
+    clip_lib_relevance_floor: float = 0.20  # CULL CASCADE: a cheap CLIP frame-relevance floor for library
+                                      # clips, applied in the engine BEFORE the expensive VLM — the segment
+                                      # text-embedding can't discriminate topic (compressed band), but CLIP
+                                      # image-text on the actual frame can, so off-topic library clips are
+                                      # dropped here instead of burning a VLM filmstrip call to reject them
     # relevance + fitness gating
     relevance_floor: float = 0.5      # (evocative beats only) generate originals unless stock relevance clears
                                       # this — set high on purpose so abstract beats get bespoke art, not thin stock

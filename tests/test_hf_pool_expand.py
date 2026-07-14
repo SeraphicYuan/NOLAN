@@ -55,6 +55,21 @@ def test_enhance_gen_prompts_disambiguates_via_domain():
     assert '"' not in needs[0]["gen_prompt"]                          # surrounding quotes stripped
 
 
+def test_clips_library_pool_item_carries_stored_caption(tmp_path):
+    """CULL CASCADE Lever A: a library clip lands in the pool PRE-captioned from its stored vision
+    description, so score_and_caption can skip the redundant VLM filmstrip for it."""
+    pool = _load_pool()
+    from nolan.acquire import Candidate
+    clip = tmp_path / "c.mp4"
+    clip.write_bytes(b"\0" * 30_000)
+    c = Candidate(ref="x", source="clips_library", modality="video", path=clip, relevance=0.6,
+                  meta={"need": "n1", "source": "clips_library (local)", "description": "a bard sings to a crowd"})
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    out = pool._candidates_to_pool([c], assets)
+    assert out and out[0]["caption"] == "[video] a bard sings to a crowd"
+
+
 def test_enhance_gen_prompts_contained_on_dead_llm():
     import asyncio
     pool = _load_pool()

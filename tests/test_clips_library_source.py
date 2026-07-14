@@ -72,6 +72,34 @@ def test_engine_fanout_invokes_search_clips_and_keeps_video(tmp_path):
     assert any(c.source == "clips_library" and c.modality == "video" and c.path == trimmed for c in kept)
 
 
+def test_clips_library_video_culled_by_cheap_clip_gate(tmp_path):
+    """CULL CASCADE Lever B: an off-topic library clip is dropped by the cheap CLIP frame-relevance gate
+    in the engine (below clip_lib_relevance_floor) — BEFORE it can burn an expensive VLM call."""
+    from nolan.acquire import Candidate, Context, AcquireConfig, acquire_need
+
+    good, bad = tmp_path / "good.mp4", tmp_path / "bad.mp4"
+    good.write_bytes(b"\0" * 30_000)
+    bad.write_bytes(b"\0" * 30_000)
+
+    def search_clips(need, n):
+        return [Candidate(ref="g", source="clips_library", modality="video", path=None, relevance=0.7,
+                          meta={"source_video": "g.mp4", "clip_start": 0, "clip_dur": 4}),
+                Candidate(ref="b", source="clips_library", modality="video", path=None, relevance=0.7,
+                          meta={"source_video": "b.mp4", "clip_start": 0, "clip_dur": 4})]
+
+    def download(c, dest):
+        c.path = good if c.ref == "g" else bad
+        return True
+
+    ctx = Context(search_clips=search_clips, download=download,
+                  relevance=lambda t, p: 0.0,                      # present so the keep-gate activates
+                  video_relevance=lambda t, p: 0.4 if str(p) == str(good) else 0.05)
+    cfg = AcquireConfig(sources=("clips_library",), per_need=4, clip_lib_relevance_floor=0.2)
+    kept = acquire_need({"id": "n1", "query": "x", "evocative": True, "category": "art"}, ctx, cfg, tmp_path, [])
+    paths = {str(c.path) for c in kept}
+    assert str(good) in paths and str(bad) not in paths            # off-topic dropped cheaply, relevant kept
+
+
 def test_search_clips_not_called_when_source_disabled(tmp_path):
     from nolan.acquire import Context, AcquireConfig, acquire_need
     called = {"n": 0}

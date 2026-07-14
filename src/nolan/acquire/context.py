@@ -61,6 +61,26 @@ def _fetch_video_segment(url: str, out: Path, clip_seconds: int, duration=None) 
     return False
 
 
+def _extract_midframe(video_path) -> Optional[Path]:
+    """One mid-frame of a local clip → temp jpg, for the cheap CLIP relevance check. Caller unlinks it."""
+    import os as _os
+    import subprocess
+    import tempfile
+    p = Path(video_path)
+    if not p.exists():
+        return None
+    fd, out = tempfile.mkstemp(suffix=".jpg")
+    _os.close(fd)
+    out = Path(out)
+    try:
+        subprocess.run([_ffmpeg(), "-y", "-ss", "0.5", "-i", str(p), "-frames:v", "1",
+                        "-vf", "scale=384:-1", "-q:v", "4", str(out)], capture_output=True, timeout=30)
+    except Exception:
+        out.unlink(missing_ok=True)
+        return None
+    return out if (out.exists() and out.stat().st_size > 800) else None
+
+
 def _clip_window(seg_start, seg_end, clip_seconds, lead: float = 0.1, min_dur: float = 2.5,
                  max_shot: float = 5.0):
     """Trim window for a local library clip. Start ON the matched segment — a small inset PAST the cut-in,
@@ -352,6 +372,21 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                 iv = emb.embed_image(path)
                 return _cos(t, iv) if (t and iv) else 0.0
             ctx.relevance = relevance
+
+            def video_relevance(text, video_path):
+                """Cheap frame-relevance for a video: score ONE mid-frame with the same CLIP cosine as
+                images. The discriminating signal the segment text-embedding lacks (compressed band), so
+                off-topic library clips are dropped BEFORE the expensive VLM filmstrip (cull cascade)."""
+                fr = _extract_midframe(video_path)
+                if not fr:
+                    return 0.0
+                try:
+                    return relevance(text, fr)
+                except Exception:
+                    return 0.0
+                finally:
+                    fr.unlink(missing_ok=True)
+            ctx.video_relevance = video_relevance
         except Exception:
             pass
 
