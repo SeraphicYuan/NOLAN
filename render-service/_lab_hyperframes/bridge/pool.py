@@ -277,8 +277,10 @@ async def enhance_gen_prompts(cfg, needs, *, essay_context: str = "", theme: str
               "subject, the essay's context, and a mood, produce an UNAMBIGUOUS prompt: name the subject "
               "PRECISELY so the model can't pick the wrong entity (e.g. 'Homer' in an essay about ancient "
               "Greek epic = the blind poet Homer, a classical/neoclassical figure — NOT the cartoon Homer "
-              "Simpson); add medium, composition, era and lighting that fit the essay + mood. One line, no "
-              "preamble, no surrounding quotes.")
+              "Simpson); add medium, composition, era and lighting that fit the essay. Let the mood/theme "
+              "guide PALETTE, LIGHTING and ATMOSPHERE only — do NOT paste literal theme objects (vines, "
+              "ivy, etc.) into scenes where they'd be incongruous (an archival photo, a diagram, a real "
+              "historical portrait). One line, no preamble, no surrounding quotes.")
 
     async def _one(nd):
         raw = (nd.get("gen_prompt") or nd["query"]).strip()
