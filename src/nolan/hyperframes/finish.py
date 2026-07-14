@@ -79,6 +79,20 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                             "--storyboard", "./STORYBOARD.md"], cwd=pdir, dry=dry_run, soft=True)
     # 2 · word-sync: force-align the VO, place each scene + fire its highlight on the spoken word
     _run("word-sync", py + ["-m", "nolan.hyperframes.sync", str(pdir)], dry=dry_run)
+    # 2b · advisory (⑨): the reliever exists but wasn't in the loop — surface long static holds so the
+    #      author can `nolan.hyperframes.relieve` them (or accept), instead of finding them post-render.
+    if not dry_run:
+        try:
+            from .relieve import long_holds
+            holds = long_holds(comp)
+            if holds:
+                print(f"⚠ {len(holds)} long static hold(s) — consider "
+                      f"`python -X utf8 -m nolan.hyperframes.relieve {comp}`:")
+                for h in holds[:6]:
+                    print(f"    {h.get('frame')}/{h.get('scene')} [{h.get('block')}] "
+                          f"{h.get('dur')}s — {h.get('verdict')}")
+        except Exception as e:
+            print(f"  (long-hold advisory skipped: {type(e).__name__}: {e})")
     # 3 · recompose every frame's HTML from its (now retimed) spec, in the comp's theme
     if dry_run:
         print("  [recompose] hfedit.recompose_frame() for each frame (rebuild HTML in-theme)")
