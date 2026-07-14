@@ -61,6 +61,22 @@ def _fetch_video_segment(url: str, out: Path, clip_seconds: int, duration=None) 
     return False
 
 
+def _clip_window(seg_start, seg_end, clip_seconds, lead: float = 0.1, min_dur: float = 2.5,
+                 max_shot: float = 5.0):
+    """Trim window for a local library clip. Start ON the matched segment — a small inset PAST the cut-in,
+    never a pre-roll into the PREVIOUS shot — and hold a SHORT, single-shot-likely window (≤ max_shot),
+    which the pre-render freeze-heal boomerang-loops to fill the scene. The old window began 0.4s BEFORE
+    the segment (dipping into the previous documentary shot) AND ran the full clip_seconds (~30s), so a
+    scene ground opened on the wrong shot and then cut repeatedly as it played through the source's
+    internal cuts — the homer 'flash'. Segments here are NOT single-shot (5–30s spans), so a short window
+    from the segment start beats a long play-through; a true single-shot trim needs the `shots` table
+    (follow-up: partial coverage). `clip_seconds` is retained for signature stability."""
+    seg = max(0.0, float(seg_end) - float(seg_start))
+    start = max(0.0, float(seg_start) + lead)
+    dur = round(min(max(min_dur, seg or min_dur), float(max_shot)), 2)   # [min_dur, max_shot]
+    return round(start, 2), dur
+
+
 def _resolve_clips_db(cfg) -> Optional[Path]:
     """The video-library DB from config (indexing.database). `load_config()` is now CWD-robust — it
     walks up to the repo-root nolan.yaml — so cfg carries the right path whether acquisition runs from
@@ -254,11 +270,17 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                             key = (r.video_path, round(float(r.timestamp_start), 1))
                             if key not in best or r.score > best[key].score:
                                 best[key] = r
-                    ranked = sorted(best.values(), key=lambda r: r.score, reverse=True)[:clip_lib_max]
+                    # prefer SHORT, single-shot-likely segments: a 25s montage inherits the source's
+                    # internal cuts (the homer 'flash'), a 3-5s segment is usually one continuous shot.
+                    # Mild penalty (compressed similarity band) so a much-better long match still wins.
+                    def _eff(r):
+                        span = max(0.0, float(r.timestamp_end) - float(r.timestamp_start))
+                        return float(r.score) - 0.006 * max(0.0, span - 5.0)
+                    ranked = sorted(best.values(), key=_eff, reverse=True)[:clip_lib_max]
                     out = []
                     for r in ranked:
                         src = _resolve_src(r.video_path)
-                        start = max(0.0, float(r.timestamp_start) - 0.4)
+                        start, dur = _clip_window(r.timestamp_start, r.timestamp_end, clip_seconds)
                         out.append(Candidate(
                             ref=f"{src}#{start:.1f}", source="clips_library", modality="video",
                             path=None,                       # materialised (trimmed) in download()
@@ -266,8 +288,8 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                             meta={"source": "clips_library (local)", "license": "library",
                                   "description": r.description, "transcript": r.transcript,
                                   "people": r.people, "location": r.location,
-                                  "source_video": str(src), "clip_start": round(start, 2),
-                                  "clip_dur": float(clip_seconds), "similarity": round(float(r.score), 3)}))
+                                  "source_video": str(src), "clip_start": start,
+                                  "clip_dur": dur, "similarity": round(float(r.score), 3)}))
                     return out
                 ctx.search_clips = search_clips
 

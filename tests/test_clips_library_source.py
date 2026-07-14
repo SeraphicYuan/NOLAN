@@ -29,6 +29,16 @@ def test_context_exposes_search_clips_field():
     assert "search_clips" in Context.__dataclass_fields__
 
 
+def test_clip_window_drops_lead_and_caps_to_single_shot():
+    """The trim window must start ON the matched segment (small inset, NEVER a pre-roll into the previous
+    shot) and cap SHORT so a scene ground is one shot, not a play-through of the source's cuts (the flash)."""
+    from nolan.acquire.context import _clip_window
+    assert _clip_window(100.0, 103.0, 30) == (100.1, 3.0)      # short seg → its span, +0.1 inset
+    assert _clip_window(100.0, 130.0, 30) == (100.1, 5.0)      # 30s montage → capped to one shot, NOT 30s
+    assert _clip_window(50.0, 50.2, 30) == (50.1, 2.5)         # tiny seg → min-dur floor
+    assert _clip_window(0.0, 2.0, 30)[0] == 0.1                # never seeks before 0
+
+
 def test_engine_fanout_invokes_search_clips_and_keeps_video(tmp_path):
     """acquire_need must call ctx.search_clips, materialise the clip via download(), and KEEP the
     (unscored) video candidate — the whole point of adding the source."""
