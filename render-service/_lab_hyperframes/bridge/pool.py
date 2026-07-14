@@ -242,6 +242,61 @@ async def expand_needs(cfg, needs, max_metaphor: int = 4):
             print(f"    [{nd['id']}] +{len(mets)} metaphor quer{'y' if len(mets) == 1 else 'ies'}: {mets!r}")
 
 
+def _essay_context(project: Path) -> tuple:
+    """Best-effort domain context for gen-prompt grounding: the essay's title + opening from SOURCE.md
+    (STORYBOARD.md doesn't exist yet at acquisition time) + the chosen theme. Terse; the LLM infers the rest."""
+    src = ""
+    for cand in ("SOURCE.md", "SCRIPT.md"):
+        p = project / cand
+        if p.exists():
+            src = p.read_text(encoding="utf-8")
+            break
+    ctx = " ".join(src.split())[:400]
+    theme = ""
+    try:
+        theme = json.loads((project / "hyperframes.json").read_text(encoding="utf-8")).get("theme", "")
+    except Exception:
+        pass
+    return ctx, theme
+
+
+async def enhance_gen_prompts(cfg, needs, *, essay_context: str = "", theme: str = "", llm=None):
+    """PROMPT ENHANCEMENT: rewrite each terse `gen_prompt` into a vivid, entity-DISAMBIGUATED T2I prompt
+    grounded in the essay's context — a 3-6 word prompt like "headshot of Homer" made ComfyUI paint Homer
+    SIMPSON; naming the subject precisely for the domain (the blind ancient-Greek poet, neoclassical) fixes
+    it, and a shared visual language keeps the generated art coherent. Per-need rewrites run concurrently;
+    a dead LLM leaves gen_prompt unchanged (contained)."""
+    import asyncio as _a
+    gennable = [nd for nd in needs if (nd.get("gen_prompt") or nd.get("query"))]
+    if not gennable:
+        return
+    if llm is None:
+        from nolan.llm import create_text_llm
+        llm = create_text_llm(cfg)
+    system = ("You write ONE vivid image-generation prompt for a video-essay b-roll still. Given a terse "
+              "subject, the essay's context, and a mood, produce an UNAMBIGUOUS prompt: name the subject "
+              "PRECISELY so the model can't pick the wrong entity (e.g. 'Homer' in an essay about ancient "
+              "Greek epic = the blind poet Homer, a classical/neoclassical figure — NOT the cartoon Homer "
+              "Simpson); add medium, composition, era and lighting that fit the essay + mood. One line, no "
+              "preamble, no surrounding quotes.")
+
+    async def _one(nd):
+        raw = (nd.get("gen_prompt") or nd["query"]).strip()
+        user = f"Subject: {raw}\nEssay: {essay_context or 'a general video essay'}\nMood/theme: {theme or 'cinematic'}"
+        try:
+            out = (await llm.generate(user, system_prompt=system)).strip().strip('"').strip()
+            if out and len(out) >= len(raw):
+                nd["gen_prompt"] = out[:500]
+                return nd["id"]
+        except Exception as e:
+            print(f"    prompt-enhance failed {nd['id']}: {type(e).__name__}: {e}")
+        return None
+
+    done = [x for x in await _a.gather(*[_one(nd) for nd in gennable]) if x]
+    if done:
+        print(f"    enhanced {len(done)} gen prompt(s) (entity-disambiguated + domain-grounded)")
+
+
 def _empty_needs(needs, pool):
     """Needs with NO surviving asset in the pool — the gap the VLM cull leaves behind. A need can have
     candidates at retrieval time (so the engine's floor-gated gen never fires) yet be emptied by the
@@ -455,6 +510,14 @@ def main():
             asyncio.run(expand_needs(cfg, needs))
         except Exception as e:
             print(f"  expand skipped: {type(e).__name__}: {e}")
+
+    if not args.no_gen:                                 # disambiguate + domain-ground gen prompts BEFORE any gen fires
+        print("ENHANCE (entity-disambiguate + domain-ground gen prompts)")
+        _ectx, _theme = _essay_context(project)
+        try:
+            asyncio.run(enhance_gen_prompts(cfg, needs, essay_context=_ectx, theme=_theme))
+        except Exception as e:
+            print(f"  prompt-enhance skipped: {type(e).__name__}: {e}")
 
     if args.legacy:
         print("COLLECT (legacy stock-only)")
