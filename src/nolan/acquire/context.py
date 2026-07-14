@@ -88,8 +88,18 @@ def _resolve_clips_db(cfg) -> Optional[Path]:
         return None
 
 
+def gen_style_for(theme: str) -> str:
+    """Default ComfyUI/Fooocus generation style for a NOLAN theme — dark/moody themes get the confirmed
+    'Dark Moody Atmosphere' style, everything else keeps 'Cinematic'. Was hardcoded to 'Cinematic', so
+    dark essays got a mismatched bright-cinematic look. The new-essay form can override per-project."""
+    t = (theme or "").lower()
+    dark = t in {"dark-botanical", "midnight-press", "monochrome-print"} or \
+        any(k in t for k in ("dark", "midnight", "noir", "night"))
+    return "Dark Moody Atmosphere" if dark else "Cinematic"
+
+
 def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True,
-                  want_clips_library=True, clip_lib_max=4, clip_lib_min_sim=0.55) -> Context:
+                  want_clips_library=True, clip_lib_max=4, clip_lib_min_sim=0.55, gen_style="Cinematic") -> Context:
     ctx = Context()
     # default the video-segment length from the config (was hardcoded 20, ignoring cfg.clip_seconds)
     if clip_seconds is None:
@@ -349,7 +359,7 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
     if want_gen:
         try:
             from nolan.workflow_registry import get_registry
-            gclient, _ = get_registry().build_client("krea2-style-select", cfg, style=",Cinematic")
+            gclient, _ = get_registry().build_client("krea2-style-select", cfg, style=f",{gen_style}")
 
             def generate(prompt, out: Path):
                 out = Path(out)

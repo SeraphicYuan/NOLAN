@@ -193,6 +193,12 @@
             <input id="new-per" type="number" min="2" max="16" value="8"></div>
         </div>
         <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:8px;cursor:pointer"><input type="checkbox" id="new-gen" checked style="width:auto"> Generate originals (krea2/ComfyUI) for thin / evocative beats</label>
+        <div class="field" style="margin-top:7px"><label>generated-art style (ComfyUI)</label>
+          <select id="new-gen-style">
+            <option value="">auto — from theme (dark → moody atmosphere, else cinematic)</option>
+            <option value="Cinematic">Cinematic</option>
+            <option value="Dark Moody Atmosphere">Dark Moody Atmosphere</option>
+          </select></div>
         <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:7px;cursor:pointer"><input type="checkbox" id="new-cull" checked style="width:auto"> VLM usability cull — drop junk (watermark / off-topic / stock-graphic)</label>
         <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:7px;cursor:pointer"><input type="checkbox" id="new-faceless" style="width:auto"> Faceless — skip the asset pool, invent every visual</label>
         <div class="field" style="margin-top:8px"><label>style notes (optional — extra guidance for the agent, not the theme)</label>
@@ -353,6 +359,7 @@ async function submitNew() {
   const payload = {
     name, script, session: $("#new-session").value, style: $("#new-style").value.trim(),
     theme: $("#new-theme").value, asset_density: $("#new-density").value, motion: $("#new-motion").value,
+    gen_style: $("#new-gen-style").value,
     per: parseInt($("#new-per").value) || 8, gen: $("#new-gen").checked, cull: $("#new-cull").checked,
     acquire_pool: !$("#new-faceless").checked, voiceover: vo === "__attach" ? voSrc : vo,
   };

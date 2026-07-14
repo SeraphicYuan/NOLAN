@@ -194,7 +194,8 @@ def attach_voiceover(comp: str, vo_source: str) -> Dict[str, Any]:
 
 def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = True,
               voiceover: Optional[str] = None, asset_density: str = "balanced",
-              theme: Optional[str] = None, motion: Optional[str] = None) -> Dict[str, Any]:
+              theme: Optional[str] = None, motion: Optional[str] = None,
+              gen_style: Optional[str] = None) -> Dict[str, Any]:
     """Scaffold a new HyperFrames essay project under the lab videos root + write a kickoff brief for the
     faceless-explainer agent. Returns {comp, dir, prompt, acquire_pool}; the caller dispatches `prompt` to a
     tmux agent (and, if acquire_pool, first runs the asset pool). Shows up in /hyperframes once frames exist.
@@ -212,9 +213,13 @@ def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool:
     pdir.mkdir(parents=True, exist_ok=True)
     (pdir / "assets").mkdir(exist_ok=True)
     (pdir / "SOURCE.md").write_text(script, encoding="utf-8")
-    if theme and theme_exists(theme):                  # record the chosen theme so author.py applies it (else Vox)
-        (pdir / "hyperframes.json").write_text(
-            json.dumps({"theme": theme, "paths": {"blocks": "compositions"}}), encoding="utf-8")
+    hf = {"paths": {"blocks": "compositions"}}          # record theme (so author.py applies it) + gen_style
+    if theme and theme_exists(theme):
+        hf["theme"] = theme
+    if gen_style:                                       # explicit ComfyUI gen style; else pool.py derives from theme
+        hf["gen_style"] = gen_style
+    if len(hf) > 1:
+        (pdir / "hyperframes.json").write_text(json.dumps(hf), encoding="utf-8")
     (pdir / ".hf_kickoff.md").write_text(
         _kickoff_brief(slug, style, acquire_pool, voiceover=bool(voiceover), asset_density=asset_density,
                        theme=(theme if theme and theme_exists(theme) else None), motion=motion),

@@ -29,6 +29,16 @@ def test_context_exposes_search_clips_field():
     assert "search_clips" in Context.__dataclass_fields__
 
 
+def test_gen_style_for_dark_vs_light_theme():
+    """Generation style follows the theme: dark themes get the dark-moody style, light keep Cinematic
+    (was hardcoded to Cinematic, so dark essays got a bright-cinematic mismatch)."""
+    from nolan.acquire import gen_style_for
+    assert gen_style_for("dark-botanical") == "Dark Moody Atmosphere"
+    assert gen_style_for("midnight-press") == "Dark Moody Atmosphere"
+    assert gen_style_for("kraft-paper") == "Cinematic"
+    assert gen_style_for("") == "Cinematic"
+
+
 def test_clip_window_drops_lead_and_caps_to_single_shot():
     """The trim window must start ON the matched segment (small inset, NEVER a pre-roll into the previous
     shot) and cap SHORT so a scene ground is one shot, not a play-through of the source's cuts (the flash)."""

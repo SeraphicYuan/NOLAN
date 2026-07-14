@@ -39,3 +39,13 @@ def test_ensure_storyboard_never_overwrites_hand_authored(tmp_path, monkeypatch)
     (tmp_path / "STORYBOARD.md").write_text("HAND-AUTHORED", encoding="utf-8")
     hfedit.ensure_storyboard("x")
     assert (tmp_path / "STORYBOARD.md").read_text(encoding="utf-8") == "HAND-AUTHORED"
+
+
+def test_new_essay_records_gen_style_for_the_pool(tmp_path, monkeypatch):
+    """The new-essay form's gen-style choice must land in hyperframes.json — that's the field pool.py
+    reads to override the theme-derived ComfyUI style (UI-wiring: control → artifact field → consumer)."""
+    monkeypatch.setattr(hfedit, "LAB_VIDEOS", tmp_path)
+    res = hfedit.new_essay("test-genstyle", "# T\n\n## A\nSome narration body.\n",
+                           theme="dark-botanical", gen_style="Dark Moody Atmosphere", acquire_pool=False)
+    hf = json.loads((tmp_path / res["comp"] / "hyperframes.json").read_text(encoding="utf-8"))
+    assert hf["gen_style"] == "Dark Moody Atmosphere" and hf["theme"] == "dark-botanical"

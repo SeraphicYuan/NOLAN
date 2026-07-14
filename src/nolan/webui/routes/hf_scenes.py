@@ -333,7 +333,7 @@ def register(app, ctx):
         res = _guard(hfedit.new_essay, name, script, payload.get("style"),
                      bool(payload.get("acquire_pool", True)), payload.get("voiceover") or None,
                      payload.get("asset_density") or "balanced", payload.get("theme") or None,
-                     payload.get("motion") or None)
+                     payload.get("motion") or None, gen_style=payload.get("gen_style") or None)
         if res.get("acquire_pool"):        # acquire the asset pool first (from the script), before authoring
             pjob = job_manager.start("hf_pool", _pool_job, meta={"comp": res["comp"]},
                                      comp=res["comp"], needs=None, script=script,

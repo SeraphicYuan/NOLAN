@@ -305,14 +305,14 @@ def _empty_needs(needs, pool):
     return [nd for nd in needs if nd.get("id") not in have]
 
 
-async def gen_fill(cfg, empties, assets_dir: Path, pool):
+async def gen_fill(cfg, empties, assets_dir: Path, pool, gen_style: str = "Cinematic"):
     """GAP-FILL: when stock returns nothing for a need, GENERATE a still (krea2 / ComfyUI) from the
     need's gen_prompt so the pool is never empty. Contained: no ComfyUI -> logged, need stays empty."""
     if not empties:
         return
     try:
         from nolan.workflow_registry import get_registry
-        client, _ = get_registry().build_client("krea2-style-select", cfg, style=",Cinematic")
+        client, _ = get_registry().build_client("krea2-style-select", cfg, style=f",{gen_style}")
     except Exception as e:
         print(f"  gap-fill gen unavailable: {type(e).__name__}: {e}"); return
     gdir = assets_dir / "generated"; gdir.mkdir(parents=True, exist_ok=True)
@@ -502,8 +502,15 @@ def main():
     project = Path(args.project)
     assets_dir = project / "capture" / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
-    from nolan.acquire import AcquireConfig
+    from nolan.acquire import AcquireConfig, gen_style_for
     acfg = AcquireConfig(per_need=args.per, generate_evocative=not args.no_gen, vlm_cull=not args.no_vlm_cull)
+    # generation style: explicit per-project override (hyperframes.json 'gen_style') else theme-derived
+    _ectx, _theme = _essay_context(project)
+    try:
+        _gs_override = json.loads((project / "hyperframes.json").read_text(encoding="utf-8")).get("gen_style")
+    except Exception:
+        _gs_override = None
+    gen_style = _gs_override or gen_style_for(_theme)
     if not args.no_expand and any(nd.get("evocative") for nd in needs):
         print("EXPAND (evoke_broll metaphors for evocative needs)")
         try:
@@ -512,8 +519,7 @@ def main():
             print(f"  expand skipped: {type(e).__name__}: {e}")
 
     if not args.no_gen:                                 # disambiguate + domain-ground gen prompts BEFORE any gen fires
-        print("ENHANCE (entity-disambiguate + domain-ground gen prompts)")
-        _ectx, _theme = _essay_context(project)
+        print(f"ENHANCE (entity-disambiguate + domain-ground gen prompts) · gen-style: {gen_style}")
         try:
             asyncio.run(enhance_gen_prompts(cfg, needs, essay_context=_ectx, theme=_theme))
         except Exception as e:
@@ -527,12 +533,12 @@ def main():
             if empties:
                 print(f"GAP-FILL GEN ({len(empties)} empty need(s))")
                 try:
-                    asyncio.run(gen_fill(cfg, empties, assets_dir, pool))
+                    asyncio.run(gen_fill(cfg, empties, assets_dir, pool, gen_style=gen_style))
                 except Exception as e:
                     print(f"  gen skipped: {type(e).__name__}: {e}")
     else:
         from nolan.acquire import build_context, acquire_pool
-        ctx = build_context(cfg, clip_seconds=acfg.clip_seconds,
+        ctx = build_context(cfg, clip_seconds=acfg.clip_seconds, gen_style=gen_style,
                             clip_lib_max=acfg.clip_lib_max, clip_lib_min_sim=acfg.clip_lib_min_sim)
         print(f"ACQUIRE — stock={bool(ctx.search_stock)} library={bool(ctx.search_library)} "
               f"clips_library={bool(ctx.search_clips)} "
@@ -559,7 +565,7 @@ def main():
         if empties:
             print(f"POST-CULL GAP-FILL — {len(empties)} need(s) emptied by the cull → generate")
             try:
-                asyncio.run(gen_fill(cfg, empties, assets_dir, pool))
+                asyncio.run(gen_fill(cfg, empties, assets_dir, pool, gen_style=gen_style))
             except Exception as e:
                 print(f"  post-cull gen skipped: {type(e).__name__}: {e}")
 
