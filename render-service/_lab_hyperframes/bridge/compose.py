@@ -45,7 +45,11 @@ CSS = """
 .footage .slnum{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}.footage .kick{color:#F6F7F6;text-shadow:0 1px 8px rgba(0,0,0,0.5);}.footage .sllabel{color:#E9EAE9;text-shadow:0 1px 6px rgba(0,0,0,0.5);}
 .stmt.paper-t{color:var(--text);}
 .stmt.footage-t{color:#F6F7F6;text-shadow:0 2px 14px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}
-.stmt.footage-t .hlwrap{color:#141414;text-shadow:none;}/* operative sits on the accent bar -> dark text */
+/* operative on a DARK footage ground: a PERSISTENT accent backing (dark ink on it), so the phrase is
+   legible BEFORE the .hlblock sweep fires — the sweep is anchored to when the word is SPOKEN, so a
+   late-spoken operative was dark-on-dark and invisible for most of the scene (homer F5/s3 flash). */
+.stmt.footage-t .hlwrap{color:var(--accent-ink);text-shadow:none;background:var(--accent);
+  border-radius:0.05em;padding:0 0.08em;-webkit-box-decoration-break:clone;box-decoration-break:clone;}
 /* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
 .prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
 .prop img{display:block;width:100%;height:auto;}
@@ -105,6 +109,15 @@ CSS = """
 .nharrow path{fill:none;stroke:#C8232C;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;}
 .nhcut{position:absolute;overflow:visible;opacity:0;will-change:transform;}
 .nhcut img{width:100%;height:100%;object-fit:contain;object-position:left center;display:block;filter:grayscale(1) contrast(1.08) drop-shadow(4px 0 0 #C8232C) drop-shadow(-4px 0 0 #C8232C) drop-shadow(0 4px 0 #C8232C) drop-shadow(0 -4px 0 #C8232C) drop-shadow(3px 3px 0 #C8232C) drop-shadow(-3px 3px 0 #C8232C) drop-shadow(3px -3px 0 #C8232C) drop-shadow(-3px -3px 0 #C8232C);}
+/* dark-register newshead (⑥): an aged DARK-newsprint card so it doesn't punch a bright hole in a dark
+   theme; light ink; the highlighted phrase keeps a PERSISTENT accent backing with dark ink (same
+   fix as the footage operative — the swept bar alone left it dark-on-dark before the sweep). */
+.nh-dark .nhcard{background:#211f1b;}
+.nh-dark .nhcard .tex{background-image:radial-gradient(circle,rgba(240,238,230,0.06) 1.1px,transparent 1.4px);}
+.nh-dark .nhcard .vig{box-shadow:inset 0 0 150px rgba(0,0,0,0.42);}
+.nh-dark .nhhead{color:#EDEBE4;}.nh-dark .nhsub{color:#b9b6ab;}.nh-dark .nhcap{color:#8f8c83;}
+.nh-dark .nhhl-wrap{background:var(--accent);border-radius:0.05em;}
+.nh-dark .nhhl-wrap .w{color:var(--accent-ink);}
 /* collage: cut-out subjects (people/objects) assembling into a tableau on a backdrop */
 .clgbg{position:absolute;inset:0;}
 .clgvig{position:absolute;inset:0;pointer-events:none;}
@@ -137,6 +150,11 @@ CSS = """
 .dg-dark .dgnode.hl{background:var(--accent);border-color:var(--accent);}
 .dg-dark .dgnode.hl .lab{color:#0a0b0a;}.dg-dark .dgnode.hl .sub{color:#3a3a2a;}
 .dg-dark .dgnode.root{background:#0a0b0a;border-color:#EDEFEC;}
+/* a HIGHLIGHTED root: .root forces a dark bg but .hl .lab forces dark ink → the label went dark-on-dark
+   (homer F6 'HOMER' center node vanished). Keep the dark node, signal the highlight with an accent BORDER,
+   and restore light ink. */
+.dg-dark .dgnode.root.hl{background:#0a0b0a;border-color:var(--accent);}
+.dg-dark .dgnode.root.hl .lab{color:#F6F7F6;}.dg-dark .dgnode.root.hl .sub{color:#c9ccc9;}
 .dgkick{position:absolute;top:6.2cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;
   letter-spacing:0.14em;text-transform:uppercase;color:#4C4E4D;opacity:0;}
 .dgkick.on-dark{color:#9a9c99;}
@@ -987,8 +1005,9 @@ def newshead(sid, sc):
     def words(s):  # wrap each word in a .w span (cascade target); trailing space preserves flow
         return "".join(f'<span class="w">{esc(w)}</span> ' for w in s.split(" ") if w)
 
+    nhdark = " nh-dark" if _POLARITY == "dark" else ""      # aged dark-newsprint variant on dark themes
     frag = [f'<div id="{sid}-bg" class="clip nhbg" data-start="{start}" data-duration="{dur}" data-track-index="0"></div>',
-            f'<section id="{sid}-scene" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">',
+            f'<section id="{sid}-scene" class="clip{nhdark}" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">',
             f'<div id="{sid}-card" class="nhcard" style="left:{cx0}px;top:{cy0}px;width:{cw}px;height:{ch}px;">',
             '<div class="tex"></div><div class="vig"></div>']
     tl = [f'tl.fromTo("#{sid}-card",{{opacity:0,scale:0.965,y:22,rotation:{tilt}}},{{opacity:1,scale:1,y:0,rotation:{tilt},duration:0.6,ease:"power3.out"}},{start});']
