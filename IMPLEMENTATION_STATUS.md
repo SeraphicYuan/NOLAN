@@ -4,6 +4,14 @@
 **Status:** Complete
 **Last Updated:** 2026-07-12
 
+## Acquisition gen-quality + VLM-cull cascade (homer follow-ups) (2026-07-13)
+
+From the homer post-mortem discussion — generation quality + the VLM-cull efficiency nolan4 flagged. Commits ef942d4, 138cfe5, 8750d48; all tested.
+- **Gen-prompt enhancement** (pool.py `enhance_gen_prompts`): an LLM rewrite BEFORE any generation disambiguates the entity + grounds it in the essay domain — a terse 'headshot of Homer' made ComfyUI paint Homer SIMPSON; now 'the blind ancient-Greek poet, neoclassical oil painting…'. Grounded in SOURCE.md + theme; per-need concurrent; contained (dead LLM -> unchanged); routes to the OpenRouter default. Follow-up: custom negative prompts (client.generate has no negative arg; the workflow's default negative applies).
+- **Theme-derived gen style** (`gen_style_for` + threading): the pool-gen style was HARDCODED ',Cinematic' (wrong for dark themes); dark/moody themes now default to 'Dark Moody Atmosphere'. The new-essay form gains a gen-style picker -> hyperframes.json `gen_style` -> pool.py reads it as an override (else theme-derived).
+- **Cull cascade for clips_library** (Lever A+B): the segment text-embedding over-matches (compressed band returns ~4 for any need), so library clips flooded the expensive VLM which then culled almost all — wasted filmstrip calls. Lever B = a cheap CLIP frame-relevance gate in the engine (`Context.video_relevance` = 1 mid-frame + the same CLIP cosine as images — the discriminating signal the segment embedding lacks) drops off-topic clips below `clip_lib_relevance_floor` BEFORE the VLM. Lever A = survivors carry their STORED vision description as the caption so `score_and_caption` skips the redundant VLM filmstrip. Contained to clips_library (stock video untouched).
+- Context (design Q answered): clips_library retrieves SEMANTICALLY (Chroma vector search) and is a FULL participant in the tonal/conceptual super-search — `expand_needs` merges the evoke_broll metaphors into the shared `need['queries']` that every source reads. It's a unified source, not a standalone lane.
+
 ## HyperFrames cold-start hardening — homer POST_MORTEM program (2026-07-13)
 
 The improvement program from the "Homer Did Not Exist" compose-first run (a full E2E test that also validated the new [[clips_library]] source). Synthesizes nolan4's post-mortem (10 ranked findings) + an editor review + the user's eyeball catch, clustered by ROOT CAUSE. Commits 264aecd..d8f9b40; all tested.
