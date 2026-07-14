@@ -46,7 +46,7 @@ def test_acquire_need_keeps_top_and_generates_when_thin(tmp_path):
 
     gen_calls = []
 
-    def generate(prompt, out):
+    def generate(prompt, out, negative=None):
         Image.fromarray(_patterns()["grad"]).convert("RGB").save(out)
         gen_calls.append(prompt)
         return True
@@ -63,7 +63,7 @@ def test_acquire_need_keeps_top_and_generates_when_thin(tmp_path):
 def test_generate_skipped_for_non_evocative(tmp_path):
     paths = _write(tmp_path, _patterns())
     ctx = Context(search_stock=lambda need, n: [Candidate(ref=k, source="stock:x", path=paths[k]) for k in paths],
-                  relevance=lambda t, p: 0.0, generate=lambda pr, o: (_ for _ in ()).throw(AssertionError("gen!")))
+                  relevance=lambda t, p: 0.0, generate=lambda pr, o, negative=None: (_ for _ in ()).throw(AssertionError("gen!")))
     cfg = AcquireConfig(per_need=2, over_fetch=1, generate_evocative=True)
     got = acquire_need({"id": "n1", "query": "x", "queries": ["x"], "evocative": False}, ctx, cfg, tmp_path, [])
     assert all(c.source != "generate" for c in got)              # not evocative → never generate
