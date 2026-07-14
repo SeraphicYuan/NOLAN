@@ -62,33 +62,14 @@ def _fetch_video_segment(url: str, out: Path, clip_seconds: int, duration=None) 
 
 
 def _resolve_clips_db(cfg) -> Optional[Path]:
-    """Resolve the video-library DB path robustly against CWD. `run_pool` runs `bridge/pool.py` with
-    cwd=BRIDGE, where load_config() cannot see the repo-root nolan.yaml and so defaults indexing.database
-    to the stale ~/.nolan db (the holbein POST_MORTEM #1 class of bug: a config/CWD mixup silently opens
-    the WRONG library). Prefer the repo-root nolan.yaml's configured DB (the one whose vector store also
-    exists), and fall back to whatever cfg carries — so the clips source finds the SAME rich library
-    whether acquisition runs from the repo root or from the bridge dir."""
-    cands = []
-    try:
-        import yaml
-        repo_yaml = Path(__file__).resolve().parents[3] / "nolan.yaml"
-        if repo_yaml.exists():
-            y = yaml.safe_load(repo_yaml.read_text(encoding="utf-8")) or {}
-            d = (y.get("indexing") or {}).get("database")
-            if d:
-                cands.append(Path(d).expanduser())
-    except Exception:
-        pass
+    """The video-library DB from config (indexing.database). `load_config()` is now CWD-robust — it
+    walks up to the repo-root nolan.yaml — so cfg carries the right path whether acquisition runs from
+    the repo root or the bridge dir (was the holbein/homer CWD-config bug, fixed centrally in config.py)."""
     try:
         d = getattr(getattr(cfg, "indexing", None), "database", "") or ""
-        if d:
-            cands.append(Path(d).expanduser())
+        return Path(d).expanduser() if d else None
     except Exception:
-        pass
-    for db in cands:                                    # prefer a DB whose paired vector store exists
-        if db and db.exists() and (db.parent / "vectors").exists():
-            return db
-    return cands[0] if cands else None
+        return None
 
 
 def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True,

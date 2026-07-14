@@ -196,12 +196,22 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
     config.image_sources.coverr_api_key = os.getenv("COVERR_API_KEY", "")
     config.image_sources.freesound_api_key = os.getenv("FREESOUND_API_KEY", "")
 
-    # Auto-detect config file if not provided
+    # Auto-detect config file if not provided. Search the CWD, its ANCESTORS, then the repo root
+    # (derived from this module) — so the SAME config resolves whether nolan runs from the repo root
+    # or a nested working dir like render-service/_lab_hyperframes/bridge (where run_pool shells
+    # pool.py with cwd=BRIDGE). A CWD-relative-only lookup silently fell back to DEFAULT config there,
+    # giving the wrong indexing.database (stale ~/.nolan db) AND the wrong comfyui.port (8188 vs 8080)
+    # — i.e. clips_library retrieval + ComfyUI generation both broke on the pool path (homer POST_MORTEM).
     if config_path is None:
-        for name in ["nolan.yaml", "nolan.yml"]:
-            candidate = Path(name)
-            if candidate.exists():
-                config_path = candidate
+        _cwd = Path.cwd().resolve()
+        _repo = Path(__file__).resolve().parents[2]
+        for _d in [_cwd, *_cwd.parents, _repo]:
+            for name in ("nolan.yaml", "nolan.yml"):
+                cand = _d / name
+                if cand.exists():
+                    config_path = cand
+                    break
+            if config_path is not None:
                 break
 
     # Load YAML overrides if provided
