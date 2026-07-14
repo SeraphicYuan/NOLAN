@@ -4,6 +4,18 @@
 **Status:** Complete
 **Last Updated:** 2026-07-12
 
+## HyperFrames cold-start hardening — homer POST_MORTEM program (2026-07-13)
+
+The improvement program from the "Homer Did Not Exist" compose-first run (a full E2E test that also validated the new [[clips_library]] source). Synthesizes nolan4's post-mortem (10 ranked findings) + an editor review + the user's eyeball catch, clustered by ROOT CAUSE. Commits 264aecd..d8f9b40; all tested.
+- **(0) CWD-config ROOT fix** (config.py): `load_config()` now walks CWD + ancestors + the repo root to find nolan.yaml (was CWD-relative only), so from render-service/.../bridge (run_pool's cwd) it no longer silently loads DEFAULT config — which had broken clips_library (stale ~/.nolan db) AND ComfyUI gen (port 8188 vs 8080). One fix, whole family; simplified the clips `_resolve_clips_db` band-aid. (264aecd)
+- **(1/2/8) generation delivers** (pool.py): POST-CULL GAP-FILL — after the VLM cull empties needs (9/24 on this abstract essay), regenerate a bespoke still per empty need (gen was floor-gated at RETRIEVAL time only, so cull-emptied needs got NO backfill -> ~1/3 of beats unillustrated); + honest `generate=` flag reflecting --no-gen. (0afc0c3)
+- **(3) STORYBOARD scaffold** (edit.py/finish.py): `ensure_storyboard()` synthesizes STORYBOARD.md (audio/captions/assemble-index HARD-require it) from composed frames + audio_meta + SOURCE.md if missing — new_essay didn't scaffold it, so a cold first finish hard-failed. Idempotent. (204880a)
+- **(4/5) VO-drop + anchor suggestions** (sync.py): `sync --report` now flags SOURCE sentences the cloned VO DROPPED (a whole sentence vanished, unflagged -> breaks 'narration owns duration') + suggests the verbatim transcript span for anchors Whisper garbled (Milman Parry->perry). (0795ccf)
+- **(P2b) clips_library flash** (acquire/context.py): library clips were 30s windows starting 0.4s BEFORE the segment -> opened on the PREVIOUS documentary shot + inherited the source's internal cuts (the user's ~0.2s flash). Now: start ON the segment, cap SHORT (<=5s single-shot-likely; freeze-heal loops), + prefer short segments in ranking. Follow-up: true shot-boundary trim via the shots table. (2cff8b2)
+- **(P2a) legibility polarity** (compose.py): the footage operative gets a PERSISTENT accent backing (was dark-on-dark before the spoken-word sweep fired -> F5/s3 'fingerprint of a crowd' invisible); the dark-diagram root+hl node keeps light ink + accent border (F6 'HOMER'); newshead gains a _POLARITY dark-newsprint variant (6). +3 CSS-contract tests. (7e3d02c)
+- **(9) long-hold advisory** (finish.py): finish surfaces >8s static holds + points to `relieve` (was CLI-only). (d8f9b40)
+- Deferred follow-ups: (6b) gallery/pool prefer dark-ground assets on dark themes (acquisition-side); (10) stage the generated/ subdir (staging step not cleanly located); a CLIP frame-relevance gate for clips_library cross-topic discrimination.
+
 ## clips_library acquisition source — local video library as a beat-driven source (2026-07-13)
 
 The local video library (VideoIndex + Chroma vector store: 21 essay/documentary videos, 3588 richly-described segments) is now a first-class VIDEO source in the acquire engine, beside `library` (images) and `stock`. Commits 65fcd2c (source), 80b12f6 (CWD fix). 8 tests; acquire suite (83) green. First exercised on the compose-first 'homer-hf' essay ("Homer Did Not Exist").
