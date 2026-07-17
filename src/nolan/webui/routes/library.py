@@ -232,6 +232,28 @@ def register(app, ctx):
             )
             return {"job_id": job.id, "type": "embed-video", "video_id": row[0]}
 
+        @app.delete("/api/library/videos/{video_path:path}")
+        async def library_delete_video(video_path: str, delete_file: bool = Query(False)):
+            """Completely remove ONE ingested video and ALL its derived data: DB rows (segments/clusters/
+            shots/saved-clips/caches/project links) via VideoIndex.delete_video, its Chroma vectors, and
+            OPTIONALLY the source file (?delete_file=true — default OFF). Returns a per-store removal summary."""
+            from urllib.parse import unquote
+            from nolan.indexer import VideoIndex
+            path = unquote(video_path)
+            index = VideoIndex(db_path)
+            vid = index.get_video_id_by_path(path)
+            if vid is None:
+                raise HTTPException(status_code=404, detail=f"No indexed video at {path}")
+            summary = await asyncio.to_thread(index.delete_video, vid, delete_file=bool(delete_file))
+            try:                                            # drop embeddings (kept out of delete_video: no Chroma dep there)
+                from nolan.vector_search import VectorSearch
+                vs = VectorSearch(db_path=Path(db_path).parent / "vectors", index=index)
+                await asyncio.to_thread(vs.delete_video_vectors, vid)
+                summary["vectors"] = {"ok": True}
+            except Exception as e:
+                summary["vectors"] = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+            return summary
+
         @app.post("/api/library/reconcile-vectors")
         async def library_reconcile_vectors():
             """Embed ALL unembedded/stale videos in one incremental pass (idempotent)."""

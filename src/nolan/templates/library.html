@@ -1256,7 +1256,29 @@
                 ? `<button class="va-btn" onclick="embedVideo('${enc}', this)">Embed</button>` : '';
             box.innerHTML =
                 `<button class="va-btn" title="Reverse-engineer this video's editorial plan (beats, pairing, tempo, motion)" onclick="location.href='/deconstruct?video=${enc}'">🔬 Deconstruct</button>` +
-                embed;
+                embed +
+                `<button class="va-btn" style="color:#c0392b;border-color:#c0392b" title="Remove this video and ALL its data (segments, embeddings, saved clips, caches) from the library — the source file on disk is kept" onclick="deleteVideo('${enc}')">🗑 Delete</button>`;
+        }
+
+        // Completely remove one ingested video + all its derived data (DB rows + embeddings). The source
+        // file is KEPT (UI is the safe path; use `nolan index remove <path> --delete-file` to also drop it).
+        async function deleteVideo(enc) {
+            const path = decodeURIComponent(enc);
+            const name = path.split(/[\\/]/).pop();
+            if (!confirm(`Delete "${name}" and ALL its data — segments, embeddings, saved clips, caches?\n\n`
+                + `The source file on disk is KEPT. This cannot be undone.`)) return;
+            try {
+                const resp = await fetch(`/api/library/videos/${enc}`, { method: 'DELETE' });
+                const s = await resp.json();
+                if (!resp.ok) throw new Error(s.detail || resp.statusText);
+                const t = s.tables || {};
+                const removed = Object.entries(t).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`).join(', ');
+                alert(`Deleted "${name}".\nRemoved: ${removed || 'nothing'}\n`
+                    + `embeddings: ${s.vectors && s.vectors.ok ? 'removed' : 'skipped'}`);
+                location.reload();
+            } catch (err) {
+                alert('Delete failed: ' + (err.message || err));
+            }
         }
 
         // Load segments

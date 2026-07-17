@@ -1686,6 +1686,50 @@ class VideoIndex:
             conn.commit()
             return cursor.rowcount > 0
 
+    def delete_video(self, video_id: int, *, delete_file: bool = False) -> Dict[str, Any]:
+        """Completely remove ONE ingested video and ALL its derived data from the index.
+
+        Every dependent table is deleted EXPLICITLY, because the schema's `ON DELETE CASCADE` clauses
+        are INERT — `PRAGMA foreign_keys = ON` is never set on these connections, so a bare
+        `DELETE FROM videos` would ORPHAN segments/clusters/shots (the same latent bug in delete_project).
+        The data of one video is keyed three different ways, so all three are cleared:
+          • video_id  → segments, clusters, shots, video_projects
+          • file path → saved_clips (keyed by source_video_path, not video_id)
+          • fingerprint → frame_cache, transcript_alignment_cache
+        Chroma vectors are keyed by video_id but live in the vector store — the caller drops them with
+        VectorSearch.delete_video_vectors(video_id) (kept out of here so indexer has no Chroma dependency).
+
+        delete_file: also delete the source video file from disk (OPT-IN, default OFF — never silently nuke
+        footage). Returns a per-table removal summary: {found, path, tables:{name:rowcount}, file_deleted}."""
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute("SELECT path, fingerprint FROM videos WHERE id = ?", (video_id,)).fetchone()
+            if row is None:
+                return {"video_id": video_id, "found": False}
+            path, fingerprint = row[0], row[1]
+            counts: Dict[str, int] = {}
+            for table in ("segments", "clusters", "shots", "video_projects"):
+                counts[table] = conn.execute(f"DELETE FROM {table} WHERE video_id = ?", (video_id,)).rowcount
+            counts["saved_clips"] = (conn.execute("DELETE FROM saved_clips WHERE source_video_path = ?",
+                                                  (path,)).rowcount if path else 0)
+            if fingerprint:
+                counts["frame_cache"] = conn.execute("DELETE FROM frame_cache WHERE fingerprint = ?",
+                                                     (fingerprint,)).rowcount
+                counts["transcript_alignment_cache"] = conn.execute(
+                    "DELETE FROM transcript_alignment_cache WHERE fingerprint = ?", (fingerprint,)).rowcount
+            counts["videos"] = conn.execute("DELETE FROM videos WHERE id = ?", (video_id,)).rowcount
+            conn.commit()
+        summary: Dict[str, Any] = {"video_id": video_id, "found": True, "path": path, "tables": counts,
+                                   "file_deleted": False}
+        if delete_file and path:
+            try:
+                p = Path(path)
+                if p.exists():
+                    p.unlink()
+                    summary["file_deleted"] = True
+            except Exception as e:
+                summary["file_error"] = f"{type(e).__name__}: {e}"
+        return summary
+
     # ------------------------- shots (per-shot visual facts) -------------------------
 
     _SHOT_COLS = ("shot_index", "timestamp_start", "timestamp_end", "cut_score",

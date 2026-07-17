@@ -669,3 +669,41 @@ async def _cluster_all_videos(config, db_path, output_path, summarize, refine, m
     click.echo(f"\nExported {len(videos)} videos ({total_clusters} clusters) to {output_path}")
 
 
+
+@main.command()
+@click.argument('path', type=str)
+@click.option('--delete-file', is_flag=True, default=False,
+              help='Also delete the source video FILE from disk (default: keep the file).')
+@click.option('--yes', '-y', is_flag=True, default=False, help='Skip the confirmation prompt.')
+@click.pass_context
+def remove(ctx, path, delete_file, yes):
+    """Completely remove ONE ingested video and ALL its derived data from the library.
+
+    PATH is the video's stored path (as shown by the library). Removes its DB rows
+    (segments, clusters, shots, saved clips, caches, project links) AND its embedding vectors.
+    The source file is KEPT unless --delete-file is given. This is irreversible.
+    """
+    from nolan.indexer import VideoIndex
+    config = ctx.obj['config']
+    db_path = Path(config.indexing.database).expanduser()
+    index = VideoIndex(db_path)
+    vid = index.get_video_id_by_path(path)
+    if vid is None:
+        click.echo(f"No indexed video at: {path}", err=True)
+        sys.exit(1)
+    if not yes and not click.confirm(
+            f"Delete video {vid} ({path}) and ALL its data"
+            + (" + the source FILE" if delete_file else "") + "?"):
+        click.echo("Aborted.")
+        return
+    summary = index.delete_video(vid, delete_file=delete_file)
+    # drop the embeddings too (kept out of delete_video so indexer has no Chroma dependency)
+    try:
+        from nolan.vector_search import VectorSearch
+        VectorSearch(db_path=db_path.parent / "vectors", index=index).delete_video_vectors(vid)
+        vec = "ok"
+    except Exception as e:
+        vec = f"skipped ({type(e).__name__}: {e})"
+    t = summary.get("tables", {})
+    click.echo(f"Removed video {vid}: " + ", ".join(f"{k}={v}" for k, v in t.items()))
+    click.echo(f"  vectors: {vec}" + (f"  |  file deleted: {summary.get('file_deleted')}" if delete_file else ""))
