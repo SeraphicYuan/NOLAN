@@ -59,6 +59,11 @@ def register(app, ctx):
     async def jobs_cancel(job_id: str):
         return {"cancelled": job_manager.cancel(job_id)}
 
+    @app.get("/jobs", response_class=HTMLResponse)
+    async def jobs_page():
+        p = ctx.templates_dir / "jobs.html"
+        return p.read_text(encoding="utf-8") if p.exists() else "<h1>jobs template missing</h1>"
+
     @app.get("/api/library/tmux-sessions")
     async def list_tmux_sessions():
         """List tmux sessions available as agent-dispatch targets.

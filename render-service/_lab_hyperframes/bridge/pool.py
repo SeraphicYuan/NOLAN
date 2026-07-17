@@ -338,7 +338,9 @@ async def gen_fill(cfg, empties, assets_dir: Path, pool, gen_style: str = "Cinem
             pool.append({"id": nd["id"], "file": f"generated/{base}", "media_type": "image",
                          "query": nd["query"], "source": "krea2 (generated)", "source_url": "",
                          "photographer": "", "license": "generated", "width": 0, "height": 0,
-                         "duration": None, "caption": "", "generated": True})
+                         "duration": None, "caption": "", "generated": True,
+                         "gen_prompt": prompt,                  # the enhanced prompt we generated from — surfaced in the edit UI
+                         **({"gen_negative": nd["gen_negative"]} if nd.get("gen_negative") else {})})
             print(f"    + {base}  (krea2 generated)")
 
 
@@ -500,7 +502,9 @@ def _candidates_to_pool(kept, assets_dir: Path):
                      "source": c.meta.get("source", c.source), "source_url": c.meta.get("source_url", ""),
                      "photographer": c.meta.get("photographer", ""), "license": c.meta.get("license", ""),
                      "width": c.meta.get("width", 0), "height": c.meta.get("height", 0),
-                     "duration": c.meta.get("duration"), "relevance": round(c.relevance, 3), "caption": cap})
+                     "duration": c.meta.get("duration"), "relevance": round(c.relevance, 3), "caption": cap,
+                     **({"gen_prompt": c.meta["gen_prompt"]} if c.meta.get("gen_prompt") else {}),
+                     **({"gen_negative": c.meta["gen_negative"]} if c.meta.get("gen_negative") else {})})
     return pool
 
 

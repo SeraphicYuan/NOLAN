@@ -204,13 +204,13 @@ def create_hub_app(
         match_generate, render_assemble, studio_landing, library,
         script_styles, script_projects, voices, video_styles,
         deconstruct, showcase, scenes, hf_scenes, agents, shortlist, system_map, taste,
-        pool, kb,
+        pool, kb, clipper,
     )
     for module in (core, ingest_process, broll, images_extract, lottie, settings,
                    match_generate, render_assemble, studio_landing, library,
                    script_styles, script_projects, voices, video_styles,
                    deconstruct, showcase, scenes, hf_scenes, agents, shortlist, system_map, taste,
-                   pool, kb):
+                   pool, kb, clipper):
         module.register(app, ctx)
 
     # One /api convention: every API route lives at /api/<domain>/... — the

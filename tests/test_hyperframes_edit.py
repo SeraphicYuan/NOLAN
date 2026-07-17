@@ -252,7 +252,8 @@ def test_batch_brief_and_dispatch(comp):
     assert len(changeset) == 2
     assert f"`{FRAME}`" in brief and "make the opening ominous" in brief
     assert "swap the b-roll for something colder" in brief
-    assert "author.py gate" in brief and "nolan.hyperframes.incremental" in brief   # contract + how-to
+    assert "propose_scene_edit" in brief and "author.py --validate-only" in brief   # PROPOSAL contract + how-to
+    assert "PROPOSAL" in brief and "canonical" in brief                             # never touch canonical directly
     r = batch.dispatch_batch(comp, session=None, now="2026-07-13 00:00")             # no session
     assert r["ok"] and r["comments"] == 2 and r["frames"] == 1 and r["dispatched"] is None
     kick = VIDEOS / comp / ".hf_batch_kickoff.md"
@@ -301,7 +302,7 @@ def test_route_page_smoke(client):
     body = r.text
     assert "/api/hf/compositions" in body and 'id="comp"' in body
     # honesty: the mislabel is gone (the note edit is an LLM, not the tmux fleet)
-    assert "Apply (agent)" not in body and "Apply (AI edit)" in body
+    assert "Apply (agent)" not in body and "Apply with AI" in body
 
 
 def test_route_compositions_lists_comp(client, comp):
@@ -376,6 +377,40 @@ def test_route_batch(client, comp):
     r = client.post("/api/hf/batch/dispatch", json={"comp": comp})               # no session → compiled, not sent
     assert r.status_code == 200 and r.json()["ok"] and r.json()["dispatched"] is None
     assert client.post("/api/hf/batch/dispatch", json={}).status_code == 400
+
+
+def test_route_scene_add_and_remove_asset(client, comp):
+    import io
+    from PIL import Image
+    buf = io.BytesIO(); Image.new("RGB", (8, 8), (20, 150, 90)).save(buf, format="PNG")
+    r = client.post("/api/hf/scene/add-asset",
+                    data={"comp": comp, "frame_id": FRAME, "scene_id": "s1"},
+                    files={"file": ("drop.png", buf.getvalue(), "image/png")})
+    assert r.status_code == 200
+    j = r.json()
+    assert j["name"] == "s1_edit_pic1.png" and j["media_type"] == "image"
+    # junk → 400 (validated, not silently kept)
+    bad = client.post("/api/hf/scene/add-asset",
+                      data={"comp": comp, "frame_id": FRAME, "scene_id": "s1"},
+                      files={"file": ("x.jpg", b"not-an-image", "image/jpeg")})
+    assert bad.status_code == 400
+    # remove from the shortlist
+    rm = client.post("/api/hf/scene/remove-asset",
+                     json={"comp": comp, "frame_id": FRAME, "scene_id": "s1", "name": "s1_edit_pic1.png"})
+    assert rm.status_code == 200 and rm.json()["remaining"] == 0
+
+
+def test_route_proposals_list_accept_reject(client, comp):
+    # an agent creates a proposal (the fleet calls the primitive directly); the UI lists + accepts/rejects it
+    hf.propose_scene_edit(comp, FRAME, "s1",
+                          ops=[{"op": "patch", "scene_id": "s1", "patch": {"data.kicker": "ROUTE"}}],
+                          rationale="add kicker", agent="a")
+    d = client.get("/api/hf/proposals", params={"comp": comp}).json()
+    assert len(d["proposals"]) == 1
+    pid = d["proposals"][0]["id"]
+    r = client.post("/api/hf/proposal/accept", json={"comp": comp, "proposal_id": pid})
+    assert r.status_code == 200 and r.json()["applied"] is True
+    assert client.post("/api/hf/proposal/reject", json={"comp": comp}).status_code == 400   # validation
 
 
 def test_route_activity(client, comp):

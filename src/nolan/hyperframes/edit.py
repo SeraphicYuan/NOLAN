@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -302,7 +303,8 @@ def ensure_storyboard(comp: str) -> Path:
     music = ("dark, cinematic, restrained strings — a low, elegiac underscore" if "dark" in (theme or "")
              else "cinematic, understated score that follows the narration")
     out = ["---", f"format: {fmt}", f"message: {message}", f"arc: {arc}", f"music: {music}", "---", ""]
-    for i, fid in enumerate(frames):
+    for i, fr in enumerate(frames):
+        fid = fr.get("id") if isinstance(fr, dict) else fr    # list_frames returns dicts, not id strings
         dur = voices[i].get("duration_s") if i < len(voices) else None
         vfile = (voices[i].get("file") if i < len(voices) else None) or f"assets/voice/{i + 1:02d}.wav"
         sec = sections[i] if i < len(sections) else {}
@@ -436,17 +438,31 @@ def _scene_summary(s: Dict[str, Any]) -> str:
     return s.get("type", "?")
 
 
+def frame_video_path(comp: str, frame_id: str) -> Optional[Path]:
+    """The newest per-frame rendered video, under EITHER name: `<id>.preview.mp4` (the on-demand
+    render_frame path the edit page historically served) OR `<id>.clip.mp4` (what the incremental
+    render emits). Unifying the two means an incremental render is visible on the edit page with no
+    copy step. Returns None if neither exists."""
+    fdir = _frames_dir(comp)
+    cands = [p for p in (fdir / f"{frame_id}.preview.mp4", fdir / f"{frame_id}.clip.mp4") if p.exists()]
+    return max(cands, key=lambda p: p.stat().st_mtime) if cands else None
+
+
 def list_frames(comp: str) -> List[Dict[str, Any]]:
     """The frame -> scene tree for a composition (the /hyperframes page payload)."""
     fdir = _frames_dir(comp)
     frames = []
     for sf in sorted(fdir.glob("*.spec.json")):
         spec = json.loads(sf.read_text(encoding="utf-8"))
+        sf_mtime = sf.stat().st_mtime
         for fr in spec.get("frames", []):
+            vid = frame_video_path(comp, fr["id"])
             frames.append({
                 "id": fr["id"], "dur": fr.get("dur"), "spec_file": sf.name,
                 "html_exists": (fdir / f'{fr["id"]}.html').exists(),
-                "preview_mp4": (fdir / f'{fr["id"]}.preview.mp4').exists(),
+                "preview_mp4": vid is not None,
+                # the spec was edited after the last render → the preview video is stale (a seek could mislead)
+                "stale": bool(vid and sf_mtime > vid.stat().st_mtime),
                 "scenes": [{
                     "id": s.get("id"), "type": s.get("type"),
                     "start": s.get("start"), "dur": s.get("dur"),
@@ -807,6 +823,33 @@ def list_assets(comp: str) -> List[Dict[str, Any]]:
     return out
 
 
+def asset_pool_meta(comp: str) -> Dict[str, Dict[str, Any]]:
+    """Per-asset provenance from pool.json, keyed by file BASENAME so the edit UI can look an asset up from a
+    scene's media src. Surfaces the enhanced generation prompt (`gen_prompt`) for ComfyUI/krea2-generated
+    assets — the art-directed prompt we generated from — plus the VLM `caption` (a description of the RESULT,
+    kept as a fallback for older assets that pre-date prompt persistence) and the source/generated flags."""
+    pool_f = _comp_dir(comp) / "pool.json"
+    if not pool_f.exists():
+        return {}
+    try:
+        pool = json.loads(pool_f.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    entries = pool if isinstance(pool, list) else pool.get("assets", pool.get("items", []))
+    out: Dict[str, Dict[str, Any]] = {}
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        base = Path(str(e.get("file") or "")).name
+        if not base:
+            continue
+        src = str(e.get("source") or "")
+        out[base] = {"source": src, "generated": bool(e.get("generated")) or "generated" in src.lower(),
+                     "gen_prompt": e.get("gen_prompt") or "", "gen_negative": e.get("gen_negative") or "",
+                     "caption": e.get("caption") or ""}
+    return out
+
+
 def resolve_asset(comp: str, src: str) -> Dict[str, Any]:
     """Land an external/library asset into <comp>/assets/<basename> and return the comp-relative path to
     write into scene data (the 'get it into the project' step; use()/write avoids the /mnt/d chmod issue)."""
@@ -829,10 +872,12 @@ def save_upload(comp: str, filename: str, data: bytes) -> Dict[str, Any]:
     return {"path": f"assets/{safe}", "name": safe}
 
 
-def _register_pool_asset(comp: str, name: str) -> None:
+def _register_pool_asset(comp: str, name: str, *, scene_id: Optional[str] = None,
+                         frame_id: Optional[str] = None, source: str = "manual",
+                         caption: Optional[str] = None, pool_id: Optional[str] = None) -> None:
     """Q5: a frame-added asset also becomes a first-class POOL candidate — not just a one-off frame reference.
-    Copies it into capture/assets/ (the pool's media dir) and appends a `manual`-source entry to pool.json
-    (matching the acquire-engine schema). Idempotent by file name; best-effort (never fail the asset add)."""
+    Copies it into capture/assets/ (the pool's media dir) and appends an entry to pool.json (matching the
+    acquire-engine schema) WITH scene/frame provenance when given. Idempotent by file name; best-effort."""
     try:
         cdir = _comp_dir(comp)
         src = cdir / "assets" / name
@@ -854,14 +899,224 @@ def _register_pool_asset(comp: str, name: str) -> None:
             pool = []
         if any(isinstance(e, dict) and e.get("file") == name for e in pool):
             return                                         # already registered
-        pool.append({"id": f"manual_{sum(1 for e in pool if isinstance(e, dict)) + 1}",
-                     "file": name, "media_type": media_type, "query": "", "source": "manual",
-                     "source_url": "", "photographer": "", "license": "user-provided",
-                     "width": None, "height": None, "duration": None, "relevance": 1.0,
-                     "caption": f"{name} (added to a frame)", "flags": ""})
+        entry = {"id": pool_id or f"manual_{sum(1 for e in pool if isinstance(e, dict)) + 1}",
+                 "file": name, "media_type": media_type, "query": "", "source": source,
+                 "source_url": "", "photographer": "", "license": "user-provided",
+                 "width": None, "height": None, "duration": None, "relevance": 1.0,
+                 "caption": caption or f"{name} (added to a frame)", "flags": ""}
+        if scene_id:
+            entry["scene_id"] = scene_id
+        if frame_id:
+            entry["frame_id"] = frame_id
+        pool.append(entry)
         pool_f.write_text(json.dumps(pool, indent=1), encoding="utf-8")
     except Exception:
         pass                                               # pool bookkeeping must never break the asset add
+
+
+def _next_edit_name(comp: str, scene_id: str, media_type: str, ext: str) -> str:
+    """The next `{scene_id}_edit_{vid|pic}{N}{ext}` name for a scene's manual drag-drop adds (deterministic,
+    scene-scoped, self-documenting as an edit-time add). N counts existing files with that scene+kind prefix."""
+    kind = "vid" if media_type == "video" else "pic"
+    prefix = f"{scene_id}_edit_{kind}"
+    adir = _comp_dir(comp) / "assets"
+    n = 1 + (sum(1 for p in adir.glob(f"{prefix}*") if p.is_file()) if adir.is_dir() else 0)
+    return f"{prefix}{n}{ext}"
+
+
+def _valid_media_file(path: Path, media_type: str) -> bool:
+    """Reject junk (an HTML error page saved as .jpg, a 0-byte 'video'). Image → Pillow-decodable (SVG exempt);
+    video → probes to a real, non-zero duration."""
+    if media_type == "image":
+        if path.suffix.lower() == ".svg":
+            return path.stat().st_size > 20
+        try:
+            from PIL import Image
+            with Image.open(path) as im:
+                im.load()
+            return True
+        except Exception:
+            return False
+    if media_type == "video":
+        try:
+            from nolan.hf_qa import probe
+            return (probe(path).duration or 0) > 0.05
+        except Exception:
+            return path.stat().st_size > 10000
+    return False
+
+
+def add_scene_asset(comp: str, frame_id: str, scene_id: str, filename: str, data: bytes) -> Dict[str, Any]:
+    """Drop an asset onto a SPECIFIC scene (the /hyperframes drag-drop, #5). Validates it, names it
+    `{scene_id}_edit_{vid|pic}{N}`, lands it in assets/ + the pool (with scene/frame provenance), dedupes by
+    content, and adds it to the scene's SHORTLIST (scene.meta.shortlist). Does NOT wire it into the block —
+    the human then picks it from the shortlist / 'use as ground' (a block-aware apply). Returns the entry."""
+    import hashlib
+    ext = Path(filename).suffix.lower() or ".bin"
+    media_type = "video" if ext in _VID_EXT else "image" if ext in _IMG_EXT else "file"
+    if media_type == "file":
+        raise ValueError(f"unsupported asset type '{ext}' — drop an image or video")
+    spec, info = load_frame_spec(comp, frame_id)
+    fr = spec["frames"][info["i"]]
+    sc = _find_scene(fr, scene_id)
+    shortlist = (sc.setdefault("meta", {}) if isinstance(sc, dict) else {}).setdefault("shortlist", [])
+    digest = hashlib.sha1(data).hexdigest()
+    for item in shortlist:                                 # dedup: same content already dropped on this scene
+        if item.get("sha1") == digest:
+            return {**item, "deduped": True}
+    adir = _comp_dir(comp) / "assets"
+    adir.mkdir(parents=True, exist_ok=True)
+    name = _next_edit_name(comp, scene_id, media_type, ext)
+    dest = adir / name
+    dest.write_bytes(data)
+    if not _valid_media_file(dest, media_type):
+        dest.unlink(missing_ok=True)
+        raise ValueError(f"not a decodable {media_type} file")
+    _register_pool_asset(comp, name, scene_id=scene_id, frame_id=frame_id, source="manual-edit",
+                         caption=f"{name} — dropped on {scene_id}", pool_id=name)
+    item = {"name": name, "path": f"assets/{name}", "media_type": media_type, "sha1": digest}
+    shortlist.append(item)
+    save_frame_spec(Path(info["spec_file"]), spec)
+    log_activity(comp, "asset-add", f"dropped {name} on {scene_id}", frame_id=frame_id, scene_id=scene_id, outcome="staged")
+    return item
+
+
+def remove_scene_asset(comp: str, frame_id: str, scene_id: str, name: str) -> Dict[str, Any]:
+    """Remove one asset from a scene's shortlist (leaves the file + pool entry — the asset stays available)."""
+    spec, info = load_frame_spec(comp, frame_id)
+    sc = _find_scene(spec["frames"][info["i"]], scene_id)
+    shortlist = (sc.get("meta", {}) or {}).get("shortlist", []) if isinstance(sc, dict) else []
+    kept = [i for i in shortlist if i.get("name") != name]
+    if isinstance(sc, dict):
+        sc.setdefault("meta", {})["shortlist"] = kept
+    save_frame_spec(Path(info["spec_file"]), spec)
+    log_activity(comp, "asset-remove", f"removed {name} from {scene_id}", frame_id=frame_id, scene_id=scene_id)
+    return {"removed": name, "remaining": len(kept)}
+
+
+def add_pool_asset(comp: str, filename: str, data: bytes) -> Dict[str, Any]:
+    """Q1: drop an asset straight into the POOL — NEUTRAL (no scene, no background assumption, plain name), so
+    it can be referenced anywhere (a motion, props, any media field). Validates + dedups by content, lands it
+    in assets/, registers it in pool.json. Distinct from add_scene_asset (which is scene-scoped + shortlisted)."""
+    import hashlib
+    ext = Path(filename).suffix.lower() or ".bin"
+    media_type = "video" if ext in _VID_EXT else "image" if ext in _IMG_EXT else "file"
+    if media_type == "file":
+        raise ValueError(f"unsupported asset type '{ext}' — drop an image or video")
+    adir = _comp_dir(comp) / "assets"
+    adir.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha1(data).hexdigest()
+    for p in adir.glob("*"):                                # dedup by content: reuse an identical existing file
+        if p.is_file() and p.suffix.lower() == ext and hashlib.sha1(p.read_bytes()).hexdigest() == digest:
+            return {"name": p.name, "path": f"assets/{p.name}", "media_type": media_type, "deduped": True}
+    stem = re.sub(r"[^\w.-]+", "_", Path(filename).stem).strip("._") or "clip"
+    name, n = f"{stem}{ext}", 1
+    while (adir / name).exists():
+        name = f"{stem}_{n}{ext}"; n += 1
+    dest = adir / name
+    dest.write_bytes(data)
+    if not _valid_media_file(dest, media_type):
+        dest.unlink(missing_ok=True)
+        raise ValueError(f"not a decodable {media_type} file")
+    _register_pool_asset(comp, name, source="pool-drop", caption=f"{name} (dropped to pool)", pool_id=name)
+    log_activity(comp, "asset-add", f"dropped {name} to pool", outcome="pooled")
+    return {"name": name, "path": f"assets/{name}", "media_type": media_type}
+
+
+def _resolve_asset_path(comp: str, path: str) -> Path:
+    """A comp-relative asset path → an absolute file INSIDE the comp (guards against traversal)."""
+    root = _comp_dir(comp).resolve()
+    p = (root / path).resolve()
+    if root not in p.parents or not p.is_file():
+        raise FileNotFoundError(f"asset not found in {comp}: {path}")
+    return p
+
+
+def quickedit_asset(comp: str, path: str, op: str, params: Dict[str, Any],
+                    mode: str = "new", name: Optional[str] = None) -> Dict[str, Any]:
+    """Apply a fast ffmpeg quick-edit (crop, …) to an asset. mode='inplace' overwrites the file at `path`
+    (stashing the ORIGINAL as `<stem>.orig<ext>` the first time, so it stays reversible via revert_asset);
+    mode='new' writes a NEW pool asset and registers it. Returns the affected comp-relative path + meta."""
+    import shutil
+    from nolan.hyperframes import quickedit as qe
+    src = _resolve_asset_path(comp, path)
+    root = _comp_dir(comp)
+    if mode == "inplace":
+        orig = src.with_name(src.stem + ".orig" + src.suffix)
+        if not orig.exists():
+            shutil.copy2(src, orig)                        # first edit → back up the true original (once)
+        tmp = src.with_name(src.stem + ".qe_tmp" + src.suffix)
+        try:
+            qe.apply_quick_edit(src, op, params, tmp)      # edit the CURRENT file (what the user sees)
+            tmp.replace(src)
+        finally:
+            tmp.unlink(missing_ok=True)
+        _register_pool_asset(comp, src.name)               # ensure it's a pool entry (no-op if already)
+        log_activity(comp, "asset-edit", f"{op} in place: {src.name}", outcome="applied")
+        return {"path": src.relative_to(root).as_posix(), "name": src.name, "mode": "inplace", "revertable": True}
+
+    # new pool asset
+    stem = re.sub(r"[^\w.-]+", "_", (name or f"{src.stem}_{op}")).strip("._") or f"{src.stem}_{op}"
+    ext = qe.QUICK_EDITS.get(op, {}).get("out_ext") or src.suffix   # e.g. remove_bg → .png (RGBA)
+    adir = root / "assets"
+    out, n = adir / f"{stem}{ext}", 1
+    while out.exists():
+        out = adir / f"{stem}_{n}{ext}"; n += 1
+    qe.apply_quick_edit(src, op, params, out)
+    _register_pool_asset(comp, out.name, source="quick-edit", caption=f"{out.name} ({op} of {src.name})", pool_id=out.name)
+    log_activity(comp, "asset-edit", f"{op} → new pool asset {out.name}", outcome="pooled")
+    return {"path": out.relative_to(root).as_posix(), "name": out.name, "mode": "new"}
+
+
+def fit_ground_to_scene(comp: str, frame_id: str, scene_id: str) -> Dict[str, Any]:
+    """#5: retime a scene's VIDEO ground so the WHOLE clip spans exactly the scene's duration when they differ.
+    Creates a fitted clip (new pool asset — the original is untouched, so it's reversible by re-pointing the
+    ground) and re-composes. No-op (fitted=False) if the ground isn't a video or already matches (±0.15s)."""
+    spec, info = load_frame_spec(comp, frame_id)
+    fr = spec["frames"][info["i"]]
+    sc = _find_scene(fr, scene_id)
+    g = (sc.get("data", {}) or {}).get("ground") or {}
+    if not (isinstance(g, dict) and g.get("kind") == "video" and g.get("src")):
+        return {"fitted": False, "reason": "the scene ground is not a video"}
+    scene_dur = float(sc.get("dur", 0) or 0)
+    if scene_dur <= 0:
+        return {"fitted": False, "reason": "the scene has no duration"}
+    src = _resolve_asset_path(comp, g["src"])
+    from nolan.hf_qa import probe
+    src_dur = float(probe(src).duration or 0)
+    if src_dur <= 0:
+        return {"fitted": False, "reason": "could not read the video duration"}
+    if abs(src_dur - scene_dur) < 0.15:
+        return {"fitted": False, "reason": "already matches the scene"}
+    original = g["src"]                                    # keep the pre-fit src (revert = re-point here)
+    res = quickedit_asset(comp, original, "fit", {"target": scene_dur, "src_dur": src_dur},
+                          mode="new", name=f"{src.stem}_fit{scene_dur:.0f}s")
+    g["src"] = res["path"]                                 # the ground now references the retimed clip
+    save_frame_spec(Path(info["spec_file"]), spec)
+    recompose_frame(comp, frame_id)
+    log_activity(comp, "asset-edit", f"retimed ground {src_dur:.1f}s→{scene_dur:.1f}s on {scene_id}",
+                 frame_id=frame_id, scene_id=scene_id, outcome="applied")
+    return {"fitted": True, "from": round(src_dur, 2), "to": round(scene_dur, 2),
+            "factor": round(src_dur / scene_dur, 3), "path": res["path"], "original": original}
+
+
+def revert_asset(comp: str, path: str) -> Dict[str, Any]:
+    """Undo an in-place quick-edit: restore `<stem>.orig<ext>` over the asset and drop the backup."""
+    src = _resolve_asset_path(comp, path)
+    orig = src.with_name(src.stem + ".orig" + src.suffix)
+    if not orig.exists():
+        raise FileNotFoundError("no backup to revert (this asset wasn't edited in place)")
+    orig.replace(src)
+    _register_pool_asset(comp, src.name)
+    log_activity(comp, "asset-edit", f"reverted {src.name} to original", outcome="applied")
+    return {"path": src.relative_to(_comp_dir(comp)).as_posix(), "name": src.name, "reverted": True}
+
+
+def quick_edit_ops() -> Dict[str, Any]:
+    """The quick-edit registry (op → {label, media, ui, background}) for the edit UI to render controls from."""
+    from nolan.hyperframes import quickedit as qe
+    return {k: {"label": v["label"], "media": list(v["media"]), "ui": v.get("ui", "button"),
+                "background": bool(v.get("background"))} for k, v in qe.QUICK_EDITS.items()}
 
 
 # ------------------------------------------------------------------ per-frame comments (batch changeset)
@@ -947,6 +1202,128 @@ def list_activity(comp: str, limit: int = 100) -> List[Dict[str, Any]]:
             except Exception:
                 pass
     return list(reversed(out))[:limit]
+
+
+# ------------------------------------------------------------------ proposals (agent edit → human accept)
+# The AGENT CONTRACT (CLAUDE.md): an agent's edit is a PROPOSAL that passes the deterministic gate AND a
+# human accept before it becomes canonical — draft → validate → accept. Batch/agent edits land HERE (never
+# straight into the canonical spec); the human reviews the ops + rationale and accepts/rejects each one.
+
+def _proposals_path(comp: str) -> Path:
+    return _comp_dir(comp) / ".hf_proposals.json"
+
+
+def _load_proposals(comp: str) -> List[Dict[str, Any]]:
+    f = _proposals_path(comp)
+    try:
+        d = json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+        return d if isinstance(d, list) else []
+    except Exception:
+        return []
+
+
+def _save_proposals(comp: str, props: List[Dict[str, Any]]) -> None:
+    _proposals_path(comp).write_text(json.dumps(props, indent=1, ensure_ascii=False), encoding="utf-8")
+
+
+def _gate_validate_only(comp: str, spec: Dict[str, Any]) -> Tuple[bool, str]:
+    """Run author.py --validate-only on a spec dict WITHOUT building/saving anything — the proposal gate.
+    Written to a NON-*.spec.json temp under the comp dir so list_frames' glob never picks it up."""
+    tmp = _comp_dir(comp) / f".proposal_gate.{int(time.time() * 1000)}.tmp.json"
+    try:
+        tmp.write_text(json.dumps(spec), encoding="utf-8")
+        r = subprocess.run([sys.executable, "-X", "utf8", str(AUTHOR), "--spec", str(tmp), "--validate-only"],
+                           cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8", errors="replace")
+        return r.returncode == 0, (r.stdout + r.stderr).strip()
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
+                       ops: Optional[List[Dict[str, Any]]] = None, rationale: str = "",
+                       agent: Optional[str] = None, model: Optional[str] = None,
+                       comment_id: Optional[str] = None) -> Dict[str, Any]:
+    """Create a PROPOSAL — apply `ops` (the _apply_ops plan) to a COPY of the frame, GATE it (validate-only),
+    and record it WITHOUT touching the canonical spec. Returns the proposal (with gate_ok + any errors)."""
+    ops = ops or []
+    spec, info = load_frame_spec(comp, frame_id)
+    trial = copy.deepcopy(spec)
+    err = None
+    try:
+        _apply_ops(trial["frames"][info["i"]], ops)
+    except Exception as e:
+        err = f"ops error: {type(e).__name__}: {e}"
+    gate_ok, gate_out = (False, err) if err else _gate_validate_only(comp, trial)
+    props = _load_proposals(comp)
+    prop = {"id": f"p{len(props) + 1}", "frame_id": frame_id, "scene_id": scene_id, "ops": ops,
+            "rationale": (rationale or "").strip(), "gate_ok": gate_ok,
+            "gate_out": "" if gate_ok else (gate_out or "")[-600:],
+            "provenance": {"agent": agent, "model": model, "ts": round(time.time(), 3), "comment_id": comment_id},
+            "status": "proposed"}
+    props.append(prop)
+    _save_proposals(comp, props)
+    log_activity(comp, "proposal", (rationale or f"proposal for {scene_id or frame_id}")[:80],
+                 actor=agent or "agent", frame_id=frame_id, scene_id=scene_id,
+                 outcome="proposed" if gate_ok else "blocked", detail=None if gate_ok else (gate_out or "")[-200:])
+    return prop
+
+
+def list_proposals(comp: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    """All proposals for a comp (optionally filtered by status: proposed|accepted|rejected|accept-failed)."""
+    return [p for p in _load_proposals(comp) if status is None or p.get("status") == status]
+
+
+def accept_proposal(comp: str, proposal_id: str) -> Dict[str, Any]:
+    """Accept a proposal → apply its ops to the CANONICAL spec through the gate (build + revert-on-reject),
+    stamp provenance on the touched scene, resolve the linked comment, mark the proposal accepted."""
+    props = _load_proposals(comp)
+    p = next((x for x in props if x.get("id") == proposal_id), None)
+    if not p:
+        raise KeyError(f"proposal {proposal_id!r} not found")
+    if p.get("status") != "proposed":
+        return {"applied": False, "errors": f"proposal already {p.get('status')}", "proposal": p}
+    prov = p.get("provenance") or {}
+
+    def mutate(fr):
+        _apply_ops(fr, p["ops"])
+        target = _find_scene(fr, p["scene_id"]) if p.get("scene_id") else fr
+        if isinstance(target, dict):
+            target.setdefault("meta", {}).setdefault("provenance", []).append(
+                {"kind": "proposal", "id": proposal_id, **prov})
+
+    res = _edit(comp, p["frame_id"], mutate, kind="proposal-accept", scene_id=p.get("scene_id"),
+                summary=f"accept proposal {proposal_id}", actor=prov.get("agent") or "agent")
+    p["status"] = "accepted" if res.get("applied") else "accept-failed"
+    if not res.get("applied"):
+        p["gate_out"] = (res.get("errors") or "")[-600:]
+    elif prov.get("comment_id"):
+        try:
+            resolve_comment(comp, p["frame_id"], prov["comment_id"], status="applied")
+        except Exception:
+            pass
+    _save_proposals(comp, props)
+    return {**res, "proposal": p}
+
+
+def reject_proposal(comp: str, proposal_id: str, reason: str = "") -> Dict[str, Any]:
+    """Reject a proposal (discard it) and REOPEN the linked comment so it can be re-dispatched."""
+    props = _load_proposals(comp)
+    p = next((x for x in props if x.get("id") == proposal_id), None)
+    if not p:
+        raise KeyError(f"proposal {proposal_id!r} not found")
+    p["status"] = "rejected"
+    if reason:
+        p["reject_reason"] = reason
+    _save_proposals(comp, props)
+    prov = p.get("provenance") or {}
+    if prov.get("comment_id"):
+        try:
+            resolve_comment(comp, p["frame_id"], prov["comment_id"], status="open", reason=reason or None)
+        except Exception:
+            pass
+    log_activity(comp, "proposal", f"rejected {proposal_id}", frame_id=p["frame_id"], scene_id=p.get("scene_id"),
+                 outcome="rejected", detail=reason[:200] if reason else None)
+    return {"rejected": proposal_id, "proposal": p}
 
 
 # ------------------------------------------------------------------ preview / render (npx scaffold)
@@ -1037,8 +1414,20 @@ def snapshot_frame(comp: str, frame_id: str, at: Optional[float] = None) -> Dict
 
 
 def render_frame(comp: str, frame_id: str, out: Optional[str] = None) -> Dict[str, Any]:
-    """Full-frame render (the whole beat clip) — the on-demand step after snapshot iteration."""
+    """Full-frame render (the whole beat clip) — the on-demand step after snapshot iteration. Reconstructs the
+    frame's VIDEO grounds from the spec and injects them, so a JUST-ADDED/CHANGED video ground previews
+    correctly: a `media_ground` video composes to a TRANSPARENT ground in the frame HTML (the clip is meant to
+    be root-injected), so without this the preview would show nothing where the video should be."""
+    from nolan.hyperframes.incremental import frame_grounds, inject_grounds
+    try:
+        recompose_frame(comp, frame_id)                  # frame HTML reflects the CURRENT spec (e.g. a social_card
+    except Exception:                                    # text edit), not whatever was last built — best-effort
+        pass
     pdir = _scaffold_preview(comp, frame_id)
+    idx = pdir / "index.html"
+    grounds = frame_grounds(comp, frame_id)
+    if grounds:
+        idx.write_text(inject_grounds(idx.read_text(encoding="utf-8"), grounds), encoding="utf-8")
     outp = out or str(_frames_dir(comp) / f"{frame_id}.preview.mp4")
     r = subprocess.run(["npx", "--yes", "hyperframes@latest", "render", str(pdir),
                         "--output", outp],

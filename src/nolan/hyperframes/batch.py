@@ -8,9 +8,10 @@ WHOLE batch to ONE Claude agent that edits each frame and re-renders. This modul
   dispatch_batch(comp, ...)  → write the brief as a kickoff file (with provenance), dispatch it to a tmux
                                fleet agent (reusing operations._dispatch_to_tmux), mark the comments dispatched.
 
-Contract (CLAUDE.md): the agent's output is a PROPOSAL — it edits ONLY through the composer-native edit
-engine, which gates every change (author.py) and reverts a rejected one; the human accepts by re-inspecting
-the incremental re-render. No side-doors into canonical files.
+Contract (CLAUDE.md): the agent's output is a PROPOSAL — it records edits via `propose_scene_edit` (each
+gated by author.py --validate-only), which NEVER touch the canonical spec; the human reviews the ops +
+rationale and `accept_proposal`s the ones they want (that is what applies them through the gate). Draft →
+validate → accept. No side-doors into canonical files.
 """
 from __future__ import annotations
 
@@ -31,9 +32,10 @@ def _theme(comp: str) -> str:
         return ""
 
 
-def compile_batch_brief(comp: str) -> Tuple[str, List[Dict]]:
-    """Compile the pending changeset + project/frame context into one agent brief. Returns (markdown, changeset)."""
-    changeset = list_changeset(comp)
+def compile_batch_brief(comp: str, frame_id: Optional[str] = None) -> Tuple[str, List[Dict]]:
+    """Compile the pending changeset + project/frame context into one agent brief. Returns (markdown, changeset).
+    `frame_id` scopes to a single frame (the frame-level batch); None = the whole project (every frame)."""
+    changeset = [c for c in list_changeset(comp) if not frame_id or c.get("frame_id") == frame_id]
     by_frame: Dict[str, List[Dict]] = {}
     for c in changeset:
         by_frame.setdefault(c["frame_id"], []).append(c)
@@ -62,27 +64,33 @@ def compile_batch_brief(comp: str) -> Tuple[str, List[Dict]]:
         L.append("")
 
     L += [
-        "## How to apply (the contract)",
-        "For EACH frame above, edit ONLY through the composer-native engine `nolan.hyperframes.edit` — "
-        "`apply_scene_edit` / `add_scene` / `remove_scene` / `retime_scene`, or `revise_frame_note` for a "
-        "free-text note. Every one goes through the **author.py gate**; a rejected edit reverts (no partial "
-        "state). Do NOT hand-edit canonical files outside the gated engine.",
-        "Split by computability: an asset swap or a timing/motion change is a structured op — apply it "
-        "deterministically. Reserve judgement for the genuinely open-ended notes.",
-        "Then re-render INCREMENTALLY — `python -X utf8 -m nolan.hyperframes.incremental "
-        f"{comp} --only <frame_id>` (only the changed frames re-render; content-hash cached) — and LOOK at "
-        "the result before moving on.",
-        "Report progress to `.nolan/agents/<agent>.json` via `nolan.fleet.write_status` (state="
-        "working→done|error). When done, the human re-inspects the incremental render and accepts.",
+        "## How to apply — PROPOSALS, not direct edits (the contract)",
+        "You do NOT touch the canonical spec. For EACH requested edit, build a structured op plan and record it "
+        "as a **PROPOSAL** the human reviews + accepts:",
+        "```python",
+        "from nolan.hyperframes import propose_scene_edit",
+        f"propose_scene_edit(comp='{comp}', frame_id='<frame>', scene_id='<scene>',",
+        "    ops=[{'op':'patch','scene_id':'<scene>','patch':{'data.<field>': <value>},'deletes':[]}],",
+        "    rationale='<one line: what changes and why>', agent='<your session>', comment_id='<comment id>')",
+        "```",
+        "Op kinds (the `_apply_ops` plan): `patch` (scene_id, patch:{'data.x':v,'start':s,'dur':d}, deletes:[]) · "
+        "`add` (scene:{…}, index?) · `remove` (scene_id) · `retime` (scene_id, start?, dur?) · `transition` "
+        "(scene_id, kind, dur?). Each proposal is GATED (author.py --validate-only) at creation; one that fails "
+        "is recorded `blocked` with the gate output — fix and re-propose.",
+        "Split by computability: an asset swap / timing / motion change is a deterministic `patch`; reserve "
+        "judgement for the open-ended notes. Do NOT recompose or render — the human accepts each proposal "
+        "(which applies it through the gate + rebuilds) and re-renders.",
+        "Report progress to `.nolan/agents/<agent>.json` via `nolan.fleet.write_status` (working→done|error).",
     ]
     return "\n".join(L), changeset
 
 
 def dispatch_batch(comp: str, session: Optional[str] = None, agent: Optional[str] = None,
-                   now: Optional[str] = None) -> Dict:
+                   now: Optional[str] = None, frame_id: Optional[str] = None) -> Dict:
     """Compile the brief, write it as a kickoff file (with provenance), optionally dispatch to a tmux fleet
-    session, and mark the dispatched comments. `now` is injectable for deterministic tests."""
-    brief, changeset = compile_batch_brief(comp)
+    session, and mark the dispatched comments. `frame_id` scopes to one frame; None = the whole project.
+    `now` is injectable for deterministic tests."""
+    brief, changeset = compile_batch_brief(comp, frame_id)
     if not changeset:
         return {"ok": False, "detail": "no staged comments — stage some frame comments first"}
     stamp = now or datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -96,10 +104,11 @@ def dispatch_batch(comp: str, session: Optional[str] = None, agent: Optional[str
         try:
             from nolan.webui import operations
             msg = (f"You are fleet agent '{session}'. Read {kick} and execute the batch HyperFrames edit it "
-                   f"describes: edit each listed frame ONLY through the gated composer engine "
-                   f"(nolan.hyperframes.edit — a rejected edit reverts), then incrementally re-render each with "
-                   f"`python -X utf8 -m nolan.hyperframes.incremental {comp} --only <frame_id>`. Report progress "
-                   f"to .nolan/agents/{session}.json via nolan.fleet.write_status(state=working|done|error).")
+                   f"describes. For EACH requested edit, record a PROPOSAL via "
+                   f"nolan.hyperframes.propose_scene_edit(comp='{comp}', frame_id=…, scene_id=…, ops=…, "
+                   f"rationale=…, agent='{session}', comment_id=…) — do NOT edit canonical specs or render. The "
+                   f"human reviews + accepts each proposal. Report to .nolan/agents/{session}.json via "
+                   f"nolan.fleet.write_status(state=working|done|error).")
             operations._dispatch_to_tmux(session, msg)
             dispatched = session
             log_activity(comp, "batch", f"dispatched {len(changeset)} comment(s) to {session}",

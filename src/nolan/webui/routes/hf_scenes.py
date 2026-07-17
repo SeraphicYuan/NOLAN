@@ -7,6 +7,7 @@ re-render per frame (see kb/frame-vs-scene.md, kb/edit-mode-plan.md).
 """
 import asyncio
 from pathlib import Path
+from typing import Optional
 
 from fastapi import Body, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
@@ -66,10 +67,11 @@ def register(app, ctx):
 
     @app.get("/api/hf/frame-video")
     async def hf_frame_video(comp: str = Query(...), frame_id: str = Query(...)):
-        """Serve a frame's rendered preview clip (from render_frame) — playable in the edit page."""
+        """Serve a frame's rendered per-frame video — the newest of `<id>.preview.mp4` (render_frame)
+        or `<id>.clip.mp4` (incremental render), so both surfaces are playable in the edit page."""
         fdir = (_guard(hfedit.comp_dir, comp) / "compositions" / "frames").resolve()
-        mp4 = (fdir / f"{frame_id}.preview.mp4").resolve()
-        if fdir not in mp4.parents or not mp4.is_file():
+        mp4 = hfedit.frame_video_path(comp, frame_id)
+        if mp4 is None or fdir not in mp4.resolve().parents or not mp4.is_file():
             raise HTTPException(status_code=404, detail="no rendered preview for this frame")
         return FileResponse(str(mp4), media_type="video/mp4")
 
@@ -126,10 +128,15 @@ def register(app, ctx):
             results = []
             for i, fid in enumerate(frame_ids):
                 job.message = f"Rendering frame {i + 1}/{len(frame_ids)}: {fid}…"
+                job.log(f"[{i + 1}/{len(frame_ids)}] rendering {fid}…")
                 res = await asyncio.to_thread(hfedit.render_frame, comp, fid)
                 results.append({"frame_id": fid, "ok": res.get("ok"), "mp4": res.get("mp4")})
+                job.log(f"[{i + 1}/{len(frame_ids)}] {fid}: "
+                        + (f"ok → {res.get('mp4')}" if res.get("ok")
+                           else f"FAILED — {(res.get('output') or '')[-200:]}"))
             done = sum(1 for r in results if r["ok"])
             job.message = f"Rendered {done}/{len(frame_ids)} frame(s)"
+            job.log(f"done: {done}/{len(frame_ids)} rendered")
             return {"results": results}
 
         job = job_manager.start("hf_render", worker,
@@ -142,28 +149,43 @@ def register(app, ctx):
     @app.post("/api/hf/assemble")
     async def hf_assemble(payload: dict = Body(...)):
         """Fast full-video assemble: re-render only changed frames (content-hash cache) + concat →
-        renders/<comp>.mp4. Requires a prior assemble-index (index.html); run hf-finish once first."""
+        renders/<comp>.mp4. `force` re-renders EVERY frame (whole-project rebuild). Requires a prior
+        assemble-index (index.html); run hf-finish once first."""
         comp = (payload.get("comp") or "").strip()
         if not comp:
             raise HTTPException(status_code=400, detail="comp required")
+        force = bool(payload.get("force"))                 # whole project — re-render every frame
+        scope_only = payload.get("only")                   # explicit frame ids (a single-frame / subset render)
 
-        async def worker(job, comp):
-            job.message = "Assembling (incremental — only changed frames re-render)…"
+        async def worker(job, comp, force, scope_only):
             from nolan.hyperframes.incremental import render_incremental
-            r = await asyncio.to_thread(render_incremental, comp, captions=False)
+            if force:
+                only = [f["id"] if isinstance(f, dict) else f for f in _guard(hfedit.list_frames, comp)]
+                job.message = f"Rebuilding all {len(only)} frame(s)…"
+            elif scope_only:
+                only = list(scope_only)
+                job.message = f"Rendering {len(only)} frame(s): {', '.join(only)}…"
+            else:
+                only = None
+                job.message = "Assembling (incremental — only changed frames re-render)…"
+            r = await asyncio.to_thread(
+                lambda: render_incremental(comp, only, True, "high", False, log=job.log))
             job.message = (f"Assembled: {r.get('rendered', 0)} rendered, {r.get('reused', 0)} reused → "
                            f"{r.get('mp4')}") if r.get("ok") else "Assemble failed (is index.html built? run hf-finish once)."
             return r
 
-        job = job_manager.start("hf_assemble", worker, meta={"comp": comp}, comp=comp)
+        job = job_manager.start("hf_assemble", worker, meta={"comp": comp, "force": force, "only": scope_only},
+                                comp=comp, force=force, scope_only=scope_only)
         return {"job_id": job.id, "comp": comp}
 
     @app.get("/api/hf/assembled-video")
     async def hf_assembled_video(comp: str = Query(...)):
-        """Serve the incrementally-assembled full video (renders/<comp>.mp4)."""
+        """Serve the assembled full video — the newest of `renders/<comp>.mp4` or `renders/video.mp4`
+        (finish and the incremental render have historically used different names)."""
         cdir = _guard(hfedit.comp_dir, comp).resolve()
-        mp4 = (cdir / "renders" / f"{comp}.mp4").resolve()
-        if cdir not in mp4.parents or not mp4.is_file():
+        cands = [p for p in ((cdir / "renders" / f"{comp}.mp4"), (cdir / "renders" / "video.mp4")) if p.is_file()]
+        mp4 = max(cands, key=lambda p: p.stat().st_mtime) if cands else None
+        if mp4 is None or cdir not in mp4.resolve().parents:
             raise HTTPException(status_code=404, detail="no assembled video yet — click Assemble")
         return FileResponse(str(mp4), media_type="video/mp4")
 
@@ -203,7 +225,10 @@ def register(app, ctx):
         comp, fid = payload.get("comp"), payload.get("frame_id")
         if not (comp and fid):
             raise HTTPException(status_code=400, detail="comp, frame_id required")
-        return await asyncio.to_thread(_guard, hfedit.resolve_comment, comp, fid, payload.get("comment_id"))
+        # status defaults to 'applied'; the batch preview passes 'dropped' to UN-stage an edit before dispatch
+        return await asyncio.to_thread(_guard, hfedit.resolve_comment, comp, fid,
+                                       payload.get("comment_id"), payload.get("status") or "applied",
+                                       payload.get("reason"))
 
     # ---- activity / feedback feed (every single + batch/agent edit's process, outcome, error)
 
@@ -216,26 +241,53 @@ def register(app, ctx):
     # ---- batch-agent mode (#5): compile the changeset into ONE brief, dispatch to a fleet agent
 
     @app.get("/api/hf/batch/brief")
-    async def hf_batch_brief(comp: str = Query(...)):
-        """Preview the compiled batch-edit brief (project + per-frame context + the staged comments)."""
+    async def hf_batch_brief(comp: str = Query(...), frame_id: Optional[str] = Query(None)):
+        """Preview the compiled batch-edit brief. `frame_id` scopes to one frame (the frame-level batch)."""
         from nolan.hyperframes.batch import compile_batch_brief
-        brief, changeset = _guard(compile_batch_brief, comp)
+        brief, changeset = _guard(compile_batch_brief, comp, frame_id)
         return {"comp": comp, "brief": brief, "comments": len(changeset)}
 
     @app.post("/api/hf/batch/dispatch")
     async def hf_batch_dispatch(payload: dict = Body(...)):
-        """Compile the changeset into a kickoff brief (with provenance) and dispatch it to a tmux fleet agent."""
+        """Compile the changeset into a kickoff brief (with provenance) and dispatch it to a tmux fleet agent.
+        `frame_id` (optional) scopes the dispatch to one frame; omit for the whole project."""
         comp = (payload.get("comp") or "").strip()
         if not comp:
             raise HTTPException(status_code=400, detail="comp required")
         from nolan.hyperframes.batch import dispatch_batch
-        return await asyncio.to_thread(_guard, dispatch_batch, comp, payload.get("session"))
+        return await asyncio.to_thread(_guard, dispatch_batch, comp, payload.get("session"),
+                                       None, None, payload.get("frame_id"))
+
+    # ---- proposals (agent edit → human accept; the agent-contract review surface)
+
+    @app.get("/api/hf/proposals")
+    async def hf_proposals(comp: str = Query(...), status: Optional[str] = Query(None)):
+        return {"comp": comp, "proposals": _guard(hfedit.list_proposals, comp, status)}
+
+    @app.post("/api/hf/proposal/accept")
+    async def hf_proposal_accept(payload: dict = Body(...)):
+        comp, pid = payload.get("comp"), payload.get("proposal_id")
+        if not (comp and pid):
+            raise HTTPException(status_code=400, detail="comp, proposal_id required")
+        return await asyncio.to_thread(_guard, hfedit.accept_proposal, comp, pid)
+
+    @app.post("/api/hf/proposal/reject")
+    async def hf_proposal_reject(payload: dict = Body(...)):
+        comp, pid = payload.get("comp"), payload.get("proposal_id")
+        if not (comp and pid):
+            raise HTTPException(status_code=400, detail="comp, proposal_id required")
+        return _guard(hfedit.reject_proposal, comp, pid, payload.get("reason", ""))
 
     # ---- asset picker target (land an asset in <comp>/assets/, referenced by scene data)
 
     @app.get("/api/hf/assets")
     async def hf_assets(comp: str = Query(...)):
         return {"comp": comp, "assets": _guard(hfedit.list_assets, comp)}
+
+    @app.get("/api/hf/asset-meta")
+    async def hf_asset_meta(comp: str = Query(...)):
+        # pool provenance keyed by file basename → the edit UI shows a generated scene's enhanced prompt
+        return {"comp": comp, "meta": _guard(hfedit.asset_pool_meta, comp)}
 
     @app.get("/api/hf/asset-file")
     async def hf_asset_file(comp: str = Query(...), path: str = Query(...)):
@@ -258,6 +310,88 @@ def register(app, ctx):
     async def hf_asset_upload(comp: str = Form(...), file: UploadFile = File(...)):
         data = await file.read()
         return await asyncio.to_thread(_guard, hfedit.save_upload, comp, file.filename, data)
+
+    @app.post("/api/hf/scene/add-asset")
+    async def hf_scene_add_asset(comp: str = Form(...), frame_id: str = Form(...), scene_id: str = Form(...),
+                                 file: UploadFile = File(...)):
+        """Drag-drop an asset onto a scene (#5): validate → land in assets/ + pool (scene provenance) →
+        add to the scene's shortlist named `{scene_id}_edit_{vid|pic}{N}`. Returns the shortlist entry."""
+        data = await file.read()
+        try:
+            return await asyncio.to_thread(_guard, hfedit.add_scene_asset, comp, frame_id, scene_id,
+                                           file.filename, data)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.post("/api/hf/scene/remove-asset")
+    async def hf_scene_remove_asset(payload: dict = Body(...)):
+        comp, frame_id, scene_id, name = (payload.get(k) for k in ("comp", "frame_id", "scene_id", "name"))
+        if not (comp and frame_id and scene_id and name):
+            raise HTTPException(status_code=400, detail="comp, frame_id, scene_id, name required")
+        return _guard(hfedit.remove_scene_asset, comp, frame_id, scene_id, name)
+
+    @app.post("/api/hf/pool/add")
+    async def hf_pool_add(comp: str = Form(...), file: UploadFile = File(...)):
+        """Q1: drop an asset STRAIGHT into the pool — neutral, plain name, no scene/background. Referenceable anywhere."""
+        data = await file.read()
+        try:
+            return await asyncio.to_thread(_guard, hfedit.add_pool_asset, comp, file.filename, data)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.get("/api/hf/quickedit-ops")
+    async def hf_quickedit_ops():
+        return {"ops": hfedit.quick_edit_ops()}
+
+    @app.post("/api/hf/asset-quickedit")
+    async def hf_asset_quickedit(payload: dict = Body(...)):
+        """Fast ffmpeg quick-edit (crop, …) on an asset. mode='inplace' (reversible backup) | 'new' (new pool asset)."""
+        comp, path, op = payload.get("comp"), payload.get("path"), payload.get("op")
+        if not (comp and path and op):
+            raise HTTPException(status_code=400, detail="comp, path, op required")
+        try:
+            return await asyncio.to_thread(_guard, hfedit.quickedit_asset, comp, path, op,
+                                           payload.get("params") or {}, payload.get("mode") or "new",
+                                           payload.get("name"))
+        except (ValueError, FileNotFoundError) as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.post("/api/hf/asset-revert")
+    async def hf_asset_revert(payload: dict = Body(...)):
+        comp, path = payload.get("comp"), payload.get("path")
+        if not (comp and path):
+            raise HTTPException(status_code=400, detail="comp, path required")
+        try:
+            return _guard(hfedit.revert_asset, comp, path)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @app.post("/api/hf/scene/fit-ground")
+    async def hf_scene_fit_ground(payload: dict = Body(...)):
+        """#5: retime a scene's video ground so it spans exactly the scene's duration (no-op if it already does)."""
+        comp, fid, sid = payload.get("comp"), payload.get("frame_id"), payload.get("scene_id")
+        if not (comp and fid and sid):
+            raise HTTPException(status_code=400, detail="comp, frame_id, scene_id required")
+        return await asyncio.to_thread(_guard, hfedit.fit_ground_to_scene, comp, fid, sid)
+
+    @app.post("/api/hf/asset-removebg")
+    async def hf_asset_removebg(payload: dict = Body(...)):
+        """#3: remove-background (rembg cutout) — slower, so it runs as a BACKGROUND JOB. Returns a job id
+        the UI polls via /api/jobs/{id}; the result is a new RGBA pool asset (the original is kept)."""
+        comp, path = payload.get("comp"), payload.get("path")
+        if not (comp and path):
+            raise HTTPException(status_code=400, detail="comp, path required")
+        from nolan.webui.jobs import get_job_manager
+
+        async def _worker(job, comp=comp, path=path):
+            job.set_progress(0.1, "removing background (rembg)…")
+            res = await asyncio.to_thread(hfedit.quickedit_asset, comp, path, "remove_bg",
+                                          {"model": payload.get("model") or "birefnet"}, "new")
+            job.message = f"cutout → {res['name']}"
+            return res
+
+        job = get_job_manager().start("remove-bg", _worker, meta={"comp": comp, "path": path})
+        return {"job_id": job.id}
 
     # ---- new essay (scaffold script/assets -> dispatch the faceless-explainer agent)
 

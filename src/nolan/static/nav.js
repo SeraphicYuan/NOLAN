@@ -24,6 +24,7 @@
       { id: "library", label: "Library", href: "/library" },
       { id: "ingest", label: "Add to Library", href: "/library/add" },
       { id: "clips", label: "Clips", href: "/clips" },
+      { id: "clipper", label: "Clip from URL", href: "/clipper" },
       { id: "images", label: "Picture Library", href: "/images" },
       { id: "extract", label: "Extract Assets", href: "/extract" },
       { id: "broll", label: "Evocative B-roll", href: "/broll" },
@@ -43,6 +44,7 @@
     ]},
     { title: "System", items: [
       { id: "agents", label: "Agents", href: "/agents" },
+      { id: "jobs", label: "Background Jobs", href: "/jobs" },
       { id: "map", label: "NOLAN Map", href: "/map" },
       { id: "taste", label: "Taste", href: "/taste" },
       { id: "skills", label: "Skills", href: "/skills" },

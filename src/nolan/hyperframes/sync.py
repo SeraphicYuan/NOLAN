@@ -107,6 +107,23 @@ def _content(text: str) -> List[str]:
     return [t for t in _norm(text) if t not in _STOP and len(t) > 1]
 
 
+_NUMBER_WORDS = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+                 "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen",
+                 "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+                 "hundred", "thousand", "million", "billion", "trillion", "percent", "negative", "point"}
+
+
+def _numberish_anchor(text: str) -> bool:
+    """The anchor LEADS with a number — digits OR spelled-out. Whisper transcribes numbers as DIGITS
+    ('900 million', '$13.1 billion', '60%'), never spelled-out, so an anchor that starts on a number-word
+    usually fails to match. Prefer a nearby non-numeric verbatim span. (Checks the leading tokens — a number
+    deeper in the phrase is fine as long as the head is content words.)"""
+    if not text:
+        return False
+    toks = _norm(text)[:3]
+    return any(any(c.isdigit() for c in t) or t in _NUMBER_WORDS for t in toks)
+
+
 def _dropped_sentences(source_text: str, spoken_tokens, min_cover: float = 0.3) -> List[Dict]:
     """SOURCE sentences whose CONTENT words are almost entirely ABSENT from the spoken transcript — i.e.
     the cloned VO DROPPED that line (vs merely garbling a word or two, which the weak-anchor check
@@ -207,7 +224,7 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
     meta = json.loads((comp_dir / "audio_meta.json").read_text(encoding="utf-8"))
     by_frame = {v.get("frame"): v for v in meta.get("voices", [])}
     spec_files = sorted((comp_dir / "compositions" / "frames").glob("*.spec.json"))
-    report = {"frames": [], "fallbacks": 0, "weak_total": 0, "problems": [], "windows": []}
+    report = {"frames": [], "fallbacks": 0, "weak_total": 0, "problems": [], "windows": [], "number_anchors": []}
 
     for i, sf in enumerate(spec_files, start=1):
         spec = json.loads(sf.read_text(encoding="utf-8"))
@@ -283,6 +300,11 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                     sg = _suggest_anchor_span(_scene_query(sc), stream_tokens)
                     if sg:
                         entry["suggest"] = sg
+                aq = _scene_query(sc)
+                if _numberish_anchor(aq):                 # ⑥ leads with a number → Whisper writes digits → risky
+                    entry["number_anchor"] = True
+                    report["number_anchors"].append({"frame": fr.get("id"), "scene": sid, "anchor": aq[:60],
+                                                      "resolved": resolved})
                 report["windows"].append(entry)
                 if v:
                     report["problems"].append({"frame": fr.get("id"), "scene": sid,
@@ -390,10 +412,18 @@ def main():
             print("\n⚠ VO↔script drops (SOURCE lines the voiceover did NOT say — re-synth or re-author):")
             for d in drops:
                 print(f"    frame {d['frame']} (cover {d['coverage']:.0%}): “{d['sentence']}”")
+        nums = rep.get("number_anchors") or []
+        if nums:                                          # ⑥ anchors that lead with a number (Whisper writes digits)
+            unresolved_nums = [n for n in nums if not n.get("resolved")]
+            print(f"\n⚠ {len(nums)} anchor(s) lead with a NUMBER — Whisper transcribes numbers as digits "
+                  f"('nine hundred million'→'900 million'), so these often mis-match. Prefer a nearby "
+                  f"non-numeric span{'; these did NOT resolve:' if unresolved_nums else ' (verify the '+str(len(nums))+'):'}")
+            for n in (unresolved_nums or nums):
+                print(f"    {n['frame']}/{n['scene']}: “{n['anchor']}”")
         probs = rep.get("problems") or []
         print(f"\n— {len(rep['windows'])} scene(s); {len(probs)} degenerate window(s); "
               f"{rep['fallbacks']} frame(s) on proportional fallback; {rep['weak_total']} weak anchor(s); "
-              f"{len(drops)} VO drop(s)")
+              f"{len(nums)} number-anchor(s); {len(drops)} VO drop(s)")
         print("  (dry-run — specs unchanged. Fix anchors, re-run --report, then `sync` to commit + recompose.)")
         return
 

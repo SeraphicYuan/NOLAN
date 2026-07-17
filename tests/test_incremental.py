@@ -62,12 +62,48 @@ def test_window_children_frame_window_and_shift():
     # this frame's sub-comp is included, shifted to local 0; other frame + captions excluded
     assert '<div data-composition-id="02-b" data-composition-src="compositions/frames/02-b.html" data-start="0.0"' in j
     assert "01-a" not in j and "captions" not in j and "compositions/captions.html" not in j
-    # ground g1 (0–5) does NOT overlap [10,18] → dropped; g2 (12–16) overlaps → kept, start 12→2
-    assert "g1.mp4" not in j
-    assert 'src="assets/videos/g2.mp4"' in j and 'data-start="2.0"' in j
-    # bgm spans the whole video → kept, shifted to -10; the frame's voice kept; boolean attr preserved
+    # track-0 GROUNDS are NOT windowed here — they're reconstructed from the spec by _merged_grounds so an
+    # edited/added ground shows on the next incremental render instead of inheriting the stale assembled index
+    assert "g1.mp4" not in j and "g2.mp4" not in j
+    # bgm spans the whole video → kept, shifted to -10; the frame's voice kept, shifted to local 0
     assert "b.mp3" in j and 'data-start="-10.0"' in j
-    assert "02.wav" in j and "muted" in j
+    assert 'src="assets/voice/02.wav"' in j and 'data-start="0.0"' in j
+
+
+def test_window_grounds_windows_track0_videos():
+    # g1 (0–5) does NOT overlap [10,18] → dropped; g2 (12–16) overlaps → kept, shifted to frame-local 12→2
+    g = inc._window_grounds(_kids(), "02-b")
+    assert g == [{"src": "assets/videos/g2.mp4", "start": 2.0, "dur": 4.0}]
+    assert inc._window_grounds(_kids(), "99-nope") == []
+
+
+def test_asset_stem_matches_healed_variants():
+    # a freeze-healed / retimed index src collapses to the same stem as its raw spec src → treated as UNCHANGED
+    assert inc._asset_stem("assets/videos/s01n03_00.filled.mp4") == "s01n03_00"
+    assert inc._asset_stem("assets\\videos\\s01n03_00.mp4") == "s01n03_00"
+    assert inc._asset_stem("assets/f01s03_edit_vid2.mp4") == "f01s03_edit_vid2"   # an edited ground: distinct stem
+
+
+def test_merged_grounds_spec_driven_with_heal_preserved(monkeypatch):
+    """_merged_grounds is driven by the SPEC (which ground plays, current timing) but borrows the healed
+    index src for an UNCHANGED ground; a swapped/added ground renders from its raw spec src; a removed one
+    vanishes. frame_grounds (the spec read) is monkeypatched so this stays a pure-logic test."""
+    kids = _kids()   # index has track-0 ground g2 in frame 02-b's window (local start 2.0, dur 4.0)
+
+    # (a) UNCHANGED: spec ground shares g2's stem + window → keep the index (healed) src, not the raw spec one
+    monkeypatch.setattr(inc, "frame_grounds",
+                        lambda c, f: [{"src": "raw/g2.filled.mp4", "start": 2.0, "dur": 4.0}])
+    assert inc._merged_grounds("c", "02-b", kids) == [{"src": "assets/videos/g2.mp4", "start": 2.0, "dur": 4.0}]
+
+    # (b) SWAPPED/ADDED: a different asset in that window → render from the raw spec src (heal re-applies later)
+    monkeypatch.setattr(inc, "frame_grounds",
+                        lambda c, f: [{"src": "assets/f01s03_edit_vid2.mp4", "start": 2.0, "dur": 4.0}])
+    assert inc._merged_grounds("c", "02-b", kids) == [
+        {"src": "assets/f01s03_edit_vid2.mp4", "start": 2.0, "dur": 4.0}]
+
+    # (c) REMOVED: spec has no grounds → nothing renders (the stale index ground does not linger)
+    monkeypatch.setattr(inc, "frame_grounds", lambda c, f: [])
+    assert inc._merged_grounds("c", "02-b", kids) == []
 
 
 def test_window_children_unknown_frame_is_empty():

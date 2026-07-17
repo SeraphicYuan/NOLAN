@@ -440,6 +440,13 @@ def _props_of(sid, sc):
 
 def esc(s): return html.escape(str(s), quote=True)
 
+
+def _is_video_bg(bg):
+    """True when a scene `backdrop` value is a VIDEO path. A video backdrop can't be a CSS background-image
+    (it won't play) — the block emits NOTHING for it (a transparent scene) and the video is root-injected
+    behind the scene by incremental.frame_grounds (the same proven path as a media_ground video)."""
+    return isinstance(bg, str) and bg.lower().endswith((".mp4", ".mov", ".webm"))
+
 def _safe_sid(sid):
     """CSS-safe id prefix. Element ids/selectors can't start with a digit, but faceless frame
     ids are NN-title (e.g. 01-power) and scenes inherit them → '#01-power-s1-k' throws in
@@ -1152,7 +1159,7 @@ def collage(sid, sc):
     B, W, H = 560, 1920, 1080                     # base subject width @ scale 1.0; canvas
     frag, tl = [], []
     bg = d.get("backdrop", "var(--surface)")      # color | image path | "transparent" (theme default)
-    if bg and bg != "transparent":
+    if bg and bg != "transparent" and not _is_video_bg(bg):
         if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
             frag.append(f'<div class="clip clgbg" data-start="{start}" data-duration="{dur}" data-track-index="0" '
                         f'style="background:#111;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
@@ -1587,6 +1594,7 @@ def comparison(sid, sc):
             fcls += " cmp-vhole"
             vattrs = (f' data-cmp-video="{esc(spec["src"])}" data-cmp-rect="{gx},{gy},{gw},{gh}" '
                       f'data-cmp-id="{pid}-vid" data-cmp-mstart="{spec.get("media_start",0)}" '
+                      f'data-cmp-sstart="{start}" data-cmp-sdur="{dur}" '   # SCENE-local window → the injector
                       f'data-cmp-framed="{1 if framed else 0}" data-cmp-gray="{1 if spec.get("grayscale") else 0}"')
         frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="{1+k}" '
                     f'style="position:absolute;inset:0;">'
@@ -1704,7 +1712,7 @@ def gallery(sid, sc):
 
     frag, tl = [], []
     bg = d.get("backdrop", "var(--shell)")
-    if bg and bg != "transparent":
+    if bg and bg != "transparent" and not _is_video_bg(bg):
         if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
             frag.append(f'<div class="clip galbg" data-start="{start}" data-duration="{dur}" data-track-index="0" '
                         f'style="background:#111;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
@@ -1807,7 +1815,7 @@ def carousel(sid, sc):
     style = d.get("style", "slider")
     frag, tl = [], []
     bg = d.get("backdrop", "var(--shell)")
-    if bg and bg != "transparent":
+    if bg and bg != "transparent" and not _is_video_bg(bg):
         if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
             frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
                         f'style="position:absolute;inset:0;background:#000;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
@@ -2132,7 +2140,7 @@ def lower_third(sid, sc):
     style, posn = d.get("style", "bar"), d.get("position", "bl")
     frag, tl = [], []
     bg = d.get("backdrop")                         # normally transparent (over footage); demo can set it
-    if bg:
+    if bg and not _is_video_bg(bg):
         if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
             frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
                         f'style="position:absolute;inset:0;background:#111;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')
@@ -2359,7 +2367,9 @@ def social_card(sid, sc):
     plat = d.get("platform", "x")
     frag, tl = [], []
     bg = d.get("backdrop", "var(--shell)")
-    if bg and bg != "transparent":
+    # a VIDEO backdrop (_is_video_bg) is left transparent here and root-injected behind the card by
+    # incremental.frame_grounds (a CSS background-image can't play a video). image/colour render inline.
+    if bg and bg != "transparent" and not _is_video_bg(bg):
         if isinstance(bg, str) and (bg.endswith((".png", ".jpg", ".jpeg", ".webp")) or "/" in bg):
             frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
                         f'style="position:absolute;inset:0;background:#111;background-image:url(\'{esc(bg)}\');background-size:cover;background-position:center;"></div>')

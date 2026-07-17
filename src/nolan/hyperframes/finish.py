@@ -57,8 +57,14 @@ def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, sof
 
 
 def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool = False,
-           render_mode: str = "whole") -> dict:
-    """Run the compose-first finish DAG for a comp. Returns a summary dict."""
+           render_mode: str = "whole", burn_captions: bool = False) -> dict:
+    """Run the compose-first finish DAG for a comp. Returns a summary dict.
+
+    `burn_captions` (default OFF): incremental mode composites captions as a SEPARATE full-length
+    transparent overlay render — a single un-chunked ~20-min render that this host currently renders
+    OPAQUE (no alpha) and then discards. Captions already live in the composition (index.html/Studio)
+    and YouTube takes a soft .srt, so burning is opt-in — reserve it for muted-autoplay social cutdowns
+    (and reimplement it chunked / via an ffmpeg-ASS burn when we do)."""
     pdir = _project_dir(comp)
     py = [sys.executable, "-X", "utf8"]
     audio = str(SKILL_SCRIPTS / "audio.mjs")
@@ -140,7 +146,7 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
         else:
             print("▶ render (incremental — per-frame windows of the assembled index)")
             from .incremental import render_incremental
-            r = render_incremental(comp, out=pdir / "renders" / "video.mp4")
+            r = render_incremental(comp, out=pdir / "renders" / "video.mp4", captions=burn_captions)
             if not r.get("ok"):
                 raise RuntimeError("hf-finish: incremental render failed — see output above")
             print(f"  incremental: {r.get('rendered', 0)} rendered, {r.get('reused', 0)} reused")
@@ -178,10 +184,13 @@ def main():
     ap.add_argument("--render", dest="render_mode", default="whole", choices=["whole", "incremental"],
                     help="whole = one npx render of index.html (master/verify); incremental = per-frame "
                          "windows of the SAME index + concat (fast iteration, cached)")
+    ap.add_argument("--burn-captions", action="store_true",
+                    help="incremental mode: composite the caption overlay INTO the mp4 (slow, opt-in — "
+                         "captions already play in the composition; reserve this for muted-autoplay social)")
     a = ap.parse_args()
     try:
         finish(a.comp, render=not a.no_render, sound=not a.no_sound, dry_run=a.dry_run,
-               render_mode=a.render_mode)
+               render_mode=a.render_mode, burn_captions=a.burn_captions)
     except RuntimeError as e:
         print(f"\n✗ {e}", file=sys.stderr)
         sys.exit(1)

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Background Jobs · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 20px; }
+    h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 2px; }
+    .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+    .job { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--bg-secondary); }
+    .jrow { display: flex; align-items: center; gap: 10px; }
+    .jtype { font-weight: 650; }
+    .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 4px; }
+    .badge.running { background: rgba(79,124,255,.18); color: var(--accent, #4f7cff); }
+    .badge.done { background: rgba(48,163,108,.18); color: #30a46c; }
+    .badge.error { background: rgba(229,72,77,.18); color: #e5484d; }
+    .badge.pending { background: var(--bg-primary); color: var(--text-secondary); }
+    .badge.cancelled { background: var(--bg-primary); color: var(--text-secondary); }
+    .jmsg { color: var(--text-secondary); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar { height: 5px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+    .bar > div { height: 100%; background: var(--accent, #4f7cff); transition: width .3s; }
+    .jx { border: none; background: none; color: var(--text-secondary); cursor: pointer; font-size: 12px; }
+    .jx:hover { color: #e5484d; }
+    .logs { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-secondary); white-space: pre-wrap; margin-top: 8px; max-height: 160px; overflow: auto; background: var(--bg-primary); border-radius: 6px; padding: 8px; }
+    .empty { color: var(--text-secondary); text-align: center; padding: 50px; }
+    .head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head"><div><h1>Background Jobs</h1><div class="sub">Long-running tasks (remove-background, renders, …). Auto-refreshes every 2s.</div></div>
+      <span style="flex:1"></span><label style="font-size:12px;color:var(--text-secondary)"><input type="checkbox" id="active-only"> active only</label></div>
+    <div id="jobs"><div class="empty">Loading…</div></div>
+  </div>
+  <script>
+    const $ = s => document.querySelector(s);
+    const openLogs = new Set();
+    const logsCache = {};   // id -> logs[]; the /api/jobs LIST omits logs (include_logs=False), so fetch per-job
+    function esc(s){ return String(s == null ? '' : s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+    async function fetchLogs(id) { try { const j = await (await fetch('/api/jobs/' + id)).json(); logsCache[id] = j.logs || []; } catch {} }
+
+    async function refresh() {
+      let jobs = [];
+      try { jobs = await (await fetch('/api/jobs')).json(); } catch { return; }
+      await Promise.all([...openLogs].map(fetchLogs));   // pull fresh logs for any expanded job
+      if ($('#active-only').checked) jobs = jobs.filter(j => j.status === 'running' || j.status === 'pending');
+      jobs.sort((a, b) => (b.seq || 0) - (a.seq || 0));
+      if (!jobs.length) { $('#jobs').innerHTML = '<div class="empty">No jobs yet.</div>'; return; }
+      $('#jobs').innerHTML = jobs.map(j => {
+        const pct = Math.round((j.progress || 0) * 100);
+        const cancel = (j.status === 'running' || j.status === 'pending')
+          ? `<button class="jx" onclick="cancelJob('${j.id}')">cancel</button>` : '';
+        const meta = j.meta && (j.meta.comp || j.meta.path) ? `<span style="font-size:11px;color:var(--text-secondary)">${esc(j.meta.comp || '')} ${esc((j.meta.path || '').split('/').pop() || '')}</span>` : '';
+        const ll = logsCache[j.id] || [];
+        const logs = openLogs.has(j.id)
+          ? `<div class="logs">${ll.length ? esc(ll.slice(-60).join('\n')) : '(no log output for this job)'}</div>` : '';
+        return `<div class="job">
+          <div class="jrow"><span class="badge ${j.status}">${j.status}</span>
+            <span class="jtype">${esc(j.type || 'job')}</span> ${meta}
+            <span class="jmsg">${esc(j.message || j.error || '')}</span>
+            <button class="jx" onclick="toggleLogs('${j.id}')">${openLogs.has(j.id) ? 'hide' : 'logs'}</button>${cancel}</div>
+          <div class="bar"><div style="width:${pct}%"></div></div>${logs}</div>`;
+      }).join('');
+    }
+    async function cancelJob(id) { try { await fetch('/api/jobs/' + id + '/cancel', { method: 'POST' }); refresh(); } catch {} }
+    async function toggleLogs(id) { if (openLogs.has(id)) { openLogs.delete(id); } else { openLogs.add(id); await fetchLogs(id); } refresh(); }
+    refresh(); setInterval(refresh, 2000);
+    $('#active-only').addEventListener('change', refresh);
+  </script>
+  <script src="/static/nav.js" data-active="jobs"></script>
+</body>
+</html>

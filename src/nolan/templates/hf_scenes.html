@@ -81,7 +81,7 @@
     .pick-item { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--border);
                  border-radius: 8px; cursor: pointer; font-size: 12px; text-align: center; word-break: break-all; }
     .pick-item:hover { border-color: var(--accent,#4f7cff); }
-    .pick-item img { width: 100%; height: 70px; object-fit: cover; border-radius: 5px; }
+    .pick-item img, .pick-item video { width: 100%; height: 70px; object-fit: cover; border-radius: 5px; }
     /* @mention autocomplete (learn from /scenes) */
     .mention-pop { position: absolute; z-index: 400; max-height: 300px; overflow-y: auto; background: var(--bg-secondary);
                    border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.45); padding: 4px; }
@@ -94,8 +94,81 @@
     .frame-head.clickable { cursor: pointer; }
     .card.frame.active { border-color: var(--accent, #4f7cff); }
     .frame-head .go { color: var(--text-secondary); font-size: 11px; }
+    /* accordion: folded frames are compact (head + timeline strip only); the active one is highlighted */
+    .frame-head .chev { color: var(--text-secondary); font-size: 11px; width: 10px; display: inline-block; }
+    .card.frame.folded { padding-top: 10px; padding-bottom: 10px; opacity: .92; }
+    .card.frame.folded .frame-head { margin-bottom: 8px; }
+    .card.frame.folded:hover { opacity: 1; border-color: var(--accent, #4f7cff); }
+    .card.frame.folded .tl { height: 26px; }
+    .card.frame.active .frame-head .chev { color: var(--accent, #4f7cff); }
     .badge.mp4 { background: rgba(46,160,67,0.16); color: #2ea043; }
     .frame-vid { width: 100%; border-radius: 8px; margin-top: 10px; background: #000; max-height: 360px; display: block; }
+    .vidwrap { position: relative; }
+    .loop-scene { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); margin-top: 6px; cursor: pointer; user-select: none; }
+    .playhead { position: absolute; top: 0; bottom: 0; width: 2px; left: 0; background: var(--accent, #4f7cff); pointer-events: none; box-shadow: 0 0 6px rgba(79,124,255,0.7); z-index: 3; }
+    .badge.stale { background: rgba(240,180,60,0.18); color: #e0a000; }
+    .shortlist-box { margin-top: 12px; padding: 9px; border: 1px dashed var(--border); border-radius: 8px; transition: background .12s, border-color .12s; }
+    .shortlist-box.drag { border-color: var(--accent, #4f7cff); background: rgba(79,124,255,0.08); }
+    .shortlist-box > label { display: block; margin-bottom: 7px; }
+    .sl-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sl-empty { font-size: 12px; color: var(--text-secondary); }
+    .sl-item { position: relative; width: 84px; }
+    .sl-item img, .sl-item video { width: 84px; height: 56px; object-fit: cover; border-radius: 6px; background: #000; display: block; }
+    .sl-bar { display: flex; gap: 4px; margin-top: 3px; }
+    .sl-use { flex: 1; font-size: 10px; padding: 2px 0; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-primary); cursor: pointer; color: var(--text); }
+    .sl-x { width: 20px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-primary); cursor: pointer; color: var(--text-secondary); }
+    .sl-use:hover, .sl-x:hover { border-color: var(--accent, #4f7cff); }
+    .sl-use:disabled { opacity: .38; cursor: not-allowed; }
+    .sl-use:disabled:hover { border-color: var(--border); }
+    .gp-box { border: 1px solid var(--border); border-left: 3px solid var(--accent, #4f7cff); border-radius: 6px; padding: 8px 10px; margin: 8px 0 4px; background: var(--bg-primary); }
+    .gp-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); margin-bottom: 5px; }
+    .gp-prompt { font-size: 12px; line-height: 1.45; color: var(--text); white-space: pre-wrap; }
+    .gp-prompt.gp-fallback { color: var(--text-secondary); font-style: italic; }
+    .gp-neg { font-size: 10.5px; color: var(--text-secondary); margin-top: 5px; }
+    .be-list { display: flex; flex-direction: column; gap: 5px; max-height: 300px; overflow: auto; }
+    .be-item { display: flex; align-items: baseline; gap: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-primary); }
+    .be-tgt { font-size: 11px; font-weight: 650; color: var(--accent, #4f7cff); font-family: ui-monospace, monospace; white-space: nowrap; }
+    .be-note { flex: 1; font-size: 12px; color: var(--text); }
+    .be-x { border: none; background: none; color: var(--text-secondary); cursor: pointer; font-size: 13px; padding: 0 2px; }
+    .be-x:hover { color: #e5484d; }
+    /* crop modal */
+    .crop-stage { position: relative; width: 100%; max-height: 60vh; background: #0b0c0e repeating-conic-gradient(#15171a 0 25%, #0f1113 0 50%) 0/22px 22px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; justify-content: center; align-items: center; user-select: none; }
+    .crop-stage img, .crop-stage video { max-width: 100%; max-height: 60vh; display: block; }
+    .crop-sel { position: absolute; border: 2px dashed var(--accent, #4f7cff); background: rgba(79,124,255,0.12); box-shadow: 0 0 0 9999px rgba(0,0,0,0.45); pointer-events: none; }
+    #crop-newname { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 9px; font-size: 12px; }
+    /* pool panel */
+    .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 6px; max-height: 240px; overflow: auto; margin-top: 8px; }
+    .pool-thumb { position: relative; aspect-ratio: 1; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; cursor: pointer; background: var(--bg-primary); }
+    .pool-thumb img, .pool-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .pool-thumb .pt-gen { position: absolute; top: 2px; left: 2px; font-size: 9px; background: rgba(0,0,0,.6); border-radius: 3px; padding: 0 3px; }
+    .pool-thumb .pt-ops { position: absolute; bottom: 2px; left: 2px; right: 2px; display: flex; gap: 2px; justify-content: flex-end; opacity: 0; transition: opacity .1s; }
+    .pool-thumb .pt-ops button { font-size: 9px; background: rgba(0,0,0,.7); border: none; color: #fff; border-radius: 3px; cursor: pointer; padding: 1px 4px; }
+    .pool-thumb .pt-ops button:hover { background: var(--accent, #4f7cff); }
+    .pool-thumb:hover .pt-ops { opacity: 1; }
+    .pool-thumb:hover { border-color: var(--accent, #4f7cff); }
+    /* media-field thumbnail */
+    .mf-row { display: flex; gap: 8px; align-items: flex-start; }
+    .mf-thumb { width: 54px; height: 40px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg-primary); }
+    .mf-thumb img, .mf-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .mf-actions { display: flex; gap: 5px; margin-top: 4px; }
+    .mf-actions button { font-size: 10px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-primary); color: var(--text); cursor: pointer; }
+    .mf-actions button:hover { border-color: var(--accent, #4f7cff); }
+    .mf-kb { font-size: 9px; color: var(--accent, #4f7cff); font-weight: 600; margin-left: 4px; }
+    .rmenu { position: relative; display: inline-block; }
+    .rmenu-pop { display: none; position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 50; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 4px; min-width: 190px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+    .rmenu-pop button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--text); font-size: 12px; padding: 7px 9px; border-radius: 5px; cursor: pointer; }
+    .rmenu-pop button:hover:not(:disabled) { background: var(--bg-primary); }
+    .rmenu-pop button:disabled { opacity: .4; cursor: not-allowed; }
+    .changed-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #f5a524; background: rgba(245,165,36,.15); border-radius: 4px; padding: 2px 7px; }
+    .prop { border: 1px solid var(--border); border-radius: 7px; padding: 8px; margin-top: 7px; }
+    .prop.blocked { border-color: rgba(240,120,60,0.5); }
+    .prop-head { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+    .prop-by { color: var(--text-secondary); font-size: 11px; }
+    .prop-badge { background: rgba(240,120,60,0.18); color: #e07a3c; font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+    .prop-rat { font-size: 12px; margin: 4px 0; }
+    .prop-ops { font-size: 11px; color: var(--text-secondary); font-family: monospace; word-break: break-word; }
+    .prop-err { font-size: 11px; color: #e07a3c; margin-top: 3px; }
+    .prop-actions { display: flex; gap: 6px; margin-top: 6px; }
     #framePanel .fp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
     #framePanel .empty { padding: 18px 10px; }
   </style>
@@ -111,9 +184,17 @@
       <span style="flex:1"></span>
       <button class="btn ghost mini" onclick="refreshComps()" title="Reload compositions (after an agent finishes authoring)">↻</button>
       <button class="btn mini" onclick="openNew()">＋ New essay</button>
-      <button class="btn mini" onclick="assembleVideo()" title="Fast full-video render — only changed frames re-render (incremental); run hf-finish once first">⚙ Assemble</button>
+      <span class="rmenu">
+        <button class="btn mini" onclick="toggleRenderMenu(event)" title="Re-render at a scope — this frame, all changed frames, or the whole project">⚙ Render ▾</button>
+        <div id="render-menu" class="rmenu-pop">
+          <button id="rm-frame" onclick="renderScope('frame')">This frame</button>
+          <button id="rm-changed" onclick="renderScope('changed')">All changed frames</button>
+          <button onclick="renderScope('project')">Whole project · rebuild all</button>
+        </div>
+      </span>
+      <span id="changed-badge" class="changed-badge" style="display:none" title="frames edited since their last render"></span>
       <button class="btn ghost mini" onclick="viewAssembled()" title="Open the assembled video in a new tab">▶ View</button>
-      <button class="btn ghost mini" onclick="batchDispatch()" title="Compile all staged frame comments into ONE agent brief + dispatch to a fleet agent">🤖 Batch</button>
+      <button class="btn ghost mini" onclick="batchDispatch()" title="Compile staged frame comments into an agent brief + dispatch to a fleet agent">🤖 Batch</button>
       <button class="btn ghost mini" onclick="showActivity()" title="Process, updates, errors & agent feedback for every single and batch edit">📋 Activity</button>
     </div>
     <div class="cols">
@@ -132,7 +213,66 @@
         <span class="spacer"></span>
         <button class="btn ghost mini" onclick="$('#activityModal').style.display='none'">✕</button></div>
       <div id="activity-needs"></div>
+      <div id="activity-proposals" style="margin-top:8px"></div>
       <div id="activity-feed" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div id="batchModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><b>Dispatch batch edits</b>
+        <span class="meta" style="color:var(--text-secondary);font-size:12px;">agent proposes → you accept each</span>
+        <span class="spacer"></span>
+        <button class="btn ghost mini" onclick="$('#batchModal').style.display='none'">✕</button></div>
+      <div class="row2" style="margin-top:8px">
+        <div class="field"><label>scope</label><select id="batch-scope" onchange="renderBatchScope()"></select></div>
+        <div class="field"><label>dispatch to agent</label><select id="batch-session"></select></div></div>
+      <div id="batch-count" style="font-size:12px;color:var(--text-secondary);margin:6px 0"></div>
+      <div id="batch-list" class="be-list"></div>
+      <details style="margin-top:8px"><summary style="font-size:11px;color:var(--text-secondary);cursor:pointer">full compiled brief (what the agent actually reads)</summary>
+        <pre id="batch-brief" style="max-height:240px;overflow:auto;font-size:11px;background:var(--bg-primary);padding:8px;border-radius:6px;white-space:pre-wrap;margin-top:6px"></pre></details>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button class="btn" onclick="doBatchDispatch()">Dispatch</button>
+        <span style="font-size:11px;color:var(--text-secondary)">blank agent = just compile the brief file</span></div>
+    </div>
+  </div>
+
+  <div id="cropModal" class="modal">
+    <div class="modal-box" style="max-width:840px">
+      <div class="modal-head"><b>Crop asset</b><span class="meta" id="crop-name" style="color:var(--text-secondary);font-size:12px;"></span>
+        <span class="spacer"></span>
+        <button class="btn ghost mini" onclick="closeCrop()">✕</button></div>
+      <div class="crop-stage" id="crop-stage"><div class="crop-sel" id="crop-sel" style="display:none"></div></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <span style="font-size:12px;color:var(--text-secondary)">drag on the asset to select · <b id="crop-dims">full frame</b></span>
+        <button class="btn ghost mini" onclick="cropReset()">reset</button>
+        <span style="flex:1"></span>
+        <input type="text" id="crop-newname" placeholder="new asset name">
+        <button class="btn ghost" onclick="applyCrop('new')">Crop → new pool asset</button>
+        <button class="btn" onclick="applyCrop('inplace')" title="Replace this asset (original kept as a reversible backup)">Crop in place</button>
+      </div>
+      <div id="crop-result" style="font-size:12px;margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div id="trimModal" class="modal">
+    <div class="modal-box" style="max-width:760px">
+      <div class="modal-head"><b>Trim video</b><span class="meta" id="trim-name" style="color:var(--text-secondary);font-size:12px;"></span>
+        <span class="spacer"></span>
+        <button class="btn ghost mini" onclick="closeTrim()">✕</button></div>
+      <video id="trim-video" controls preload="metadata" style="width:100%;max-height:56vh;background:#000;border-radius:8px;display:block"></video>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <span class="now">t = <b id="trim-now">0.0</b>s</span>
+        <button class="btn ghost mini" onclick="trimMark('in')">⟦ set IN</button>
+        <div class="mk"><label>in</label><input type="number" id="trim-in" step="0.1" value="0"></div>
+        <button class="btn ghost mini" onclick="trimMark('out')">set OUT ⟧</button>
+        <div class="mk"><label>out</label><input type="number" id="trim-out" step="0.1" value="0"></div>
+        <span class="now">len <b id="trim-len">0.0</b>s</span>
+        <span style="flex:1"></span>
+        <input type="text" id="trim-newname" placeholder="new name">
+        <button class="btn ghost" onclick="applyTrim('new')">Trim → new pool asset</button>
+        <button class="btn" onclick="applyTrim('inplace')" title="Replace this video (original kept as a reversible backup)">Trim in place</button>
+      </div>
+      <div id="trim-result" style="font-size:12px;margin-top:8px"></div>
     </div>
   </div>
 
@@ -212,7 +352,8 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let CATALOG = null, FRAMES = [], COMP = null, SEL = null, ACTIVE_FID = null, ASSETS = [], VIDV = 0;  // SEL = {frame_id, scene_id}
+let CATALOG = null, FRAMES = [], COMP = null, SEL = null, ACTIVE_FID = null, ASSETS = [], VIDV = 0, POOLMETA = {}, QE_OPS = {};  // SEL = {frame_id, scene_id}; POOLMETA = pool provenance by file basename; QE_OPS = quick-edit registry
+let LOOP_SCENE = false;   // when true, clicking a scene loops its time range instead of playing through
 
 function toast(msg, kind) {
   const t = $("#toast"); t.textContent = msg; t.className = "toast " + (kind || "");
@@ -237,37 +378,106 @@ async function loadComps(initial) {
   return c.compositions.map(x => x.name);
 }
 function refreshComps() { loadComps(false).then(() => toast("compositions refreshed")); }
-async function assembleVideo() {
-  const comp = $("#comp").value;
-  if (!comp) { toast("pick a composition first", "err"); return; }
-  try { await jpost("/api/hf/assemble", { comp });
-    toast("Assembling (incremental — only changed frames re-render). Click ▶ View when it's done.", "ok");
-  } catch (e) { toast("assemble failed: " + e, "err"); }
+// One scoped render control (aggregates the old Render-frame / Assemble buttons): frame / changed / project.
+function toggleRenderMenu(e) { e.stopPropagation(); const m = $("#render-menu"); m.style.display = m.style.display === 'block' ? 'none' : 'block'; }
+document.addEventListener('click', () => { const m = $("#render-menu"); if (m) m.style.display = 'none'; });
+function changedCount() { return FRAMES.filter(f => f.stale).length; }
+function updateChangedCount() {
+  const n = changedCount(), el = $("#changed-badge");
+  if (el) { el.textContent = n ? `${n} changed` : ''; el.style.display = n ? 'inline-block' : 'none'; }
+  const bf = $("#rm-frame"); if (bf) { bf.textContent = ACTIVE_FID ? `This frame (${ACTIVE_FID})` : 'This frame'; bf.disabled = !ACTIVE_FID; }
+  const bc = $("#rm-changed"); if (bc) { bc.textContent = `All ${n} changed frame${n === 1 ? '' : 's'}`; bc.disabled = !n; }
+}
+async function renderScope(scope) {
+  const m = $("#render-menu"); if (m) m.style.display = 'none';
+  if (!COMP) { toast("pick a composition first", "err"); return; }
+  if (scope === 'frame') {
+    if (!ACTIVE_FID) { toast("expand a frame first", "err"); return; }
+    return renderFrame(ACTIVE_FID);                       // this frame's preview (renders grounds from the spec)
+  }
+  const force = scope === 'project';
+  if (!force && changedCount() === 0) { toast("no changed frames to render — edit something first, or use 'Whole project'", "err"); return; }
+  try {
+    const r = await jpost("/api/hf/assemble", { comp: COMP, force });
+    toast(force ? "Rebuilding all frames…" : `Re-rendering ${changedCount()} changed frame(s)…`, "ok");
+    watchJob(r.job_id, { label: "assemble", onDone: (j) => {
+      const res = j.result || {};
+      if (res.ok === false) return toast("assemble failed — is index.html built? run hf-finish once", "err");
+      toast(`Assembled ✓ — ${res.rendered || 0} rendered, ${res.reused || 0} reused. Click ▶ View.`, "ok");
+    }});
+  } catch (e) { toast("render failed: " + e, "err"); }
 }
 function viewAssembled() {
   const comp = $("#comp").value;
   if (!comp) { toast("pick a composition first", "err"); return; }
   window.open("/api/hf/assembled-video?comp=" + encodeURIComponent(comp) + "&_=" + Date.now(), "_blank");
 }
-async function stageComment(fid) {
-  const t = ($("#fnote").value || "").trim();
-  if (!t) { toast("write a comment first", "err"); return; }
-  try { await jpost("/api/hf/frame/comment", { comp: $("#comp").value, frame_id: fid, text: t });
-    $("#fnote").value = ""; toast("staged for batch — dispatch from 🤖 Batch", "ok");
-  } catch (e) { toast("stage failed: " + e, "err"); }
-}
-async function batchDispatch() {
-  const comp = $("#comp").value;
-  if (!comp) { toast("pick a composition first", "err"); return; }
+// Queue the note for the fleet agent (a batch of reviewable proposals) instead of applying it now.
+// Target = the #note-target toggle: 'scene' → scoped to this scene; 'frame' → whole frame (scene_id null).
+async function queueNote(fid, sid) {
+  const box = $("#note-input"), t = ((box && box.value) || "").trim();
+  if (!t) { toast("write a note first", "err"); return; }
+  const frame = ($("#note-target") || {}).value === 'frame';
   try {
-    const b = await (await fetch("/api/hf/batch/brief?comp=" + encodeURIComponent(comp))).json();
-    if (!b.comments) { toast("no staged comments — Stage some frame edits first", "err"); return; }
-    const session = prompt("Dispatch " + b.comments + " staged edit(s) to which agent session?\n" +
-      "(blank = just compile the brief file)\n\n--- brief preview ---\n" + (b.brief || "").slice(0, 700));
-    if (session === null) return;
-    const r = await jpost("/api/hf/batch/dispatch", { comp, session: session || null });
+    await jpost("/api/hf/frame/comment", { comp: COMP, frame_id: fid, scene_id: frame ? null : sid, text: t });
+    box.value = "";
+    toast(`queued for agent · ${frame ? 'frame ' + fid : 'scene ' + sid} — dispatch from 🤖 Batch`, "ok");
+  } catch (e) { toast("queue failed: " + e, "err"); }
+}
+let BATCH_CS_ALL = [], BATCH_CS = [];    // full staged changeset, and the scope-filtered subset shown
+async function batchDispatch() {
+  const comp = COMP;
+  if (!comp) { toast("pick a composition first", "err"); return; }
+  let cs;
+  try { cs = (await jget("/api/hf/changeset?comp=" + encodeURIComponent(comp))).comments || []; }
+  catch (e) { toast("batch failed: " + e, "err"); return; }
+  if (!cs.length) { toast("no staged comments — stage some scene/frame edits first", "err"); return; }
+  BATCH_CS_ALL = cs;
+  // scope: whole project, or (when a frame with staged comments is open) just this frame
+  let scopeOpts = `<option value="">Whole project (all frames)</option>`;
+  if (ACTIVE_FID && cs.some(c => c.frame_id === ACTIVE_FID)) scopeOpts += `<option value="${ACTIVE_FID}">This frame (${ACTIVE_FID})</option>`;
+  $("#batch-scope").innerHTML = scopeOpts;
+  let opts = '<option value="">— just compile the brief file —</option>';   // real agent picker (was a blind prompt)
+  try { const d = await jget("/api/hf/agents"); opts += (d.sessions || []).map(s => `<option value="${s}">${s}</option>`).join(""); } catch {}
+  $("#batch-session").innerHTML = opts;
+  await renderBatchScope();
+  $("#batchModal").style.display = "flex";
+}
+
+async function renderBatchScope() {
+  const fid = $("#batch-scope").value || null;           // filter the staged edits to the chosen scope
+  BATCH_CS = fid ? BATCH_CS_ALL.filter(c => c.frame_id === fid) : BATCH_CS_ALL.slice();
+  try { const b = await (await fetch("/api/hf/batch/brief?comp=" + encodeURIComponent(COMP) + (fid ? "&frame_id=" + encodeURIComponent(fid) : ""))).json(); $("#batch-brief").textContent = b.brief || ""; } catch {}
+  renderBatchList();
+}
+
+// The scannable "what will be sent" list — one row per staged edit (frame · scene · your note) so you can
+// eyeball them, and remove any before dispatch. The raw compiled brief stays available (collapsed) below.
+function renderBatchList() {
+  const frames = new Set(BATCH_CS.map(c => c.frame_id)).size;
+  $("#batch-count").textContent = `${BATCH_CS.length} staged edit(s) across ${frames} frame(s) → the agent records PROPOSALS you accept in Activity.`;
+  $("#batch-list").innerHTML = BATCH_CS.length
+    ? BATCH_CS.map(c => `<div class="be-item">
+        <span class="be-tgt">${esc(c.frame_id)}${c.scene_id ? ' · ' + esc(c.scene_id) : ''}</span>
+        <span class="be-note">${esc(c.text || '')}</span>
+        <button class="be-x" title="Remove this edit from the batch (does not apply it)" onclick="unstageBatch('${esc(c.frame_id)}','${esc(c.id)}')">✕</button>
+      </div>`).join("")
+    : '<div class="empty" style="padding:10px">All staged edits removed. Nothing to dispatch.</div>';
+}
+
+async function unstageBatch(fid, cid) {
+  try { await jpost("/api/hf/comment/resolve", { comp: COMP, frame_id: fid, comment_id: cid, status: "dropped" }); }
+  catch (e) { toast("couldn't remove: " + e, "err"); return; }
+  BATCH_CS_ALL = BATCH_CS_ALL.filter(c => c.id !== cid);
+  await renderBatchScope();                              // re-filter + refresh the brief for the current scope
+}
+async function doBatchDispatch() {
+  const comp = COMP, session = $("#batch-session").value || null, frame_id = $("#batch-scope").value || null;
+  try {
+    const r = await jpost("/api/hf/batch/dispatch", { comp, session, frame_id });
     if (!r.ok) { toast(r.detail || "batch failed", "err"); return; }
-    toast(r.dispatched ? ("Dispatched " + r.comments + " edit(s) to " + r.dispatched)
+    $("#batchModal").style.display = "none";
+    toast(r.dispatched ? ("Dispatched to " + r.dispatched + " — proposals will appear in Activity")
                        : ("Brief compiled → " + r.brief_path), "ok");
   } catch (e) { toast("batch failed: " + e, "err"); }
 }
@@ -292,7 +502,46 @@ async function showActivity() {
   $("#activity-feed").innerHTML = "<b>Recent activity</b>" + (acts.length
     ? acts.map(a => `<div class="act-row"><span class="act-t">${fmt(a.ts)}</span><span class="act-who">${a.actor || ""}</span><span class="act-badge ${a.outcome || ""}">${a.outcome || ""}</span><span class="act-sum">${esc(a.summary)}</span>${loc(a)}</div>`).join("")
     : '<div class="meta" style="color:var(--text-secondary)">No activity yet.</div>');
+  renderProposals(comp);
   $("#activityModal").style.display = "flex";
+}
+
+// Proposals review (#4): agent-authored edits land as proposals — show ops + rationale + gate status, accept/reject.
+async function renderProposals(comp) {
+  let props = [];
+  try { props = (await jget("/api/hf/proposals?comp=" + encodeURIComponent(comp) + "&status=proposed&_=" + Date.now())).proposals || []; } catch {}
+  const el = $("#activity-proposals");
+  if (!props.length) { el.innerHTML = ""; return; }
+  const opsSummary = ops => (ops || []).map(o => {
+    if (o.op === 'patch') return `patch ${o.scene_id}: ${Object.keys(o.patch || {}).join(', ')}${(o.deletes || []).length ? ' −' + o.deletes.join(',') : ''}`;
+    return o.op + (o.scene_id ? ' ' + o.scene_id : '');
+  }).join('; ');
+  el.innerHTML = `<div class="act-needs"><b>Proposals — review &amp; accept</b>` + props.map(p => `
+    <div class="prop ${p.gate_ok ? '' : 'blocked'}">
+      <div class="prop-head"><b>${p.frame_id}${p.scene_id ? '/' + p.scene_id : ''}</b>
+        <span class="prop-by">${esc((p.provenance || {}).agent || 'agent')}</span>
+        ${p.gate_ok ? '' : '<span class="prop-badge">gate blocked</span>'}</div>
+      <div class="prop-rat">${esc(p.rationale || '(no rationale)')}</div>
+      <div class="prop-ops">${esc(opsSummary(p.ops))}</div>
+      ${p.gate_ok ? '' : `<div class="prop-err">${esc((p.gate_out || '').split('\\n').slice(0, 2).join(' '))}</div>`}
+      <div class="prop-actions">
+        <button class="btn mini" ${p.gate_ok ? '' : 'disabled'} onclick="acceptProposal('${p.id}')">Accept</button>
+        <button class="btn ghost mini" onclick="rejectProposal('${p.id}')">Reject</button></div>
+    </div>`).join("") + `</div>`;
+}
+
+async function acceptProposal(pid) {
+  const comp = $("#comp").value;
+  try {
+    const r = await jpost("/api/hf/proposal/accept", { comp, proposal_id: pid });
+    if (r.applied) { toast("Accepted ✓ — recomposed", "ok"); await loadFrames(comp); showActivity(); }
+    else toast("Accept failed: " + ((r.errors || "").split("\n").slice(0, 2).join(" ")), "err");
+  } catch (e) { toast("accept failed: " + e, "err"); }
+}
+async function rejectProposal(pid) {
+  const comp = $("#comp").value, reason = prompt("Reject reason (optional — reopens the comment):", "") || "";
+  try { await jpost("/api/hf/proposal/reject", { comp, proposal_id: pid, reason }); toast("Rejected", "ok"); showActivity(); }
+  catch (e) { toast("reject failed: " + e, "err"); }
 }
 
 // ---- new essay: scaffold script + dispatch the faceless-explainer agent ----
@@ -386,12 +635,17 @@ function pollForComp(comp) {
 async function loadFrames(comp) {
   COMP = comp; SEL = null;
   try { ASSETS = (await jget("/api/hf/assets?comp=" + encodeURIComponent(comp))).assets || []; } catch { ASSETS = []; }
+  try { POOLMETA = (await jget("/api/hf/asset-meta?comp=" + encodeURIComponent(comp))).meta || {}; } catch { POOLMETA = {}; }
+  if (!Object.keys(QE_OPS).length) { try { QE_OPS = (await jget("/api/hf/quickedit-ops")).ops || {}; } catch { QE_OPS = {}; } }
   const d = await jget("/api/hf/frames?comp=" + encodeURIComponent(comp));
   FRAMES = d.frames;
   $("#status").textContent = `${FRAMES.length} frame(s) · ${FRAMES.reduce((n,f)=>n+f.scenes.length,0)} scene(s)`;
-  ACTIVE_FID = FRAMES[0] ? FRAMES[0].id : null;
+  // Folded by default: restore the last-open frame for this comp (if it still exists), else nothing open.
+  let saved = null;
+  try { saved = localStorage.getItem('hf_active_' + comp) || null; } catch (e) {}
+  ACTIVE_FID = (saved && FRAMES.some(f => f.id === saved)) ? saved : null;
   renderFrames();
-  renderFramePanel(ACTIVE_FID);
+  renderFramePanel(ACTIVE_FID);       // handles null → "Select a frame."
   $("#inspector").innerHTML = '<div class="empty">Select a scene to edit.</div>';
 }
 
@@ -402,33 +656,50 @@ function renderFrames() {
       const L = (s.start||0)/dur*100, W = Math.max(2,(s.dur||0)/dur*100);
       const selc = (SEL && SEL.frame_id===fr.id && SEL.scene_id===s.id) ? " sel" : "";
       const tr = s.transition_out ? `<span class="tl-tr" style="left:${L+W}%" data-k="${s.transition_out}"></span>` : "";
-      return `<div class="tl-seg${selc}" style="left:${L}%;width:${W}%" onclick="selectScene('${fr.id}','${s.id}')">${s.id} <span class="t">${s.type}</span></div>${tr}`;
+      return `<div class="tl-seg${selc}" data-fid="${fr.id}" data-sid="${s.id}" style="left:${L}%;width:${W}%" onclick="selectScene('${fr.id}','${s.id}')">${s.id} <span class="t">${s.type}</span></div>${tr}`;
     }).join("");
-    const rows = fr.scenes.map(s => {
+    // ACCORDION: only the ACTIVE frame renders its scene rows + video; folded frames show just the head +
+    // the compact timeline strip (their at-a-glance "stats": dur, scene count, layout). One frame open at a
+    // time → 1 mounted <video> instead of N, and far less scroll.
+    const expanded = fr.id === ACTIVE_FID;
+    const rows = expanded ? fr.scenes.map(s => {
       const selc = (SEL && SEL.frame_id===fr.id && SEL.scene_id===s.id) ? " sel" : "";
       const end = ((s.start||0)+(s.dur||0)).toFixed(1);
       const rv = s.reveal ? `<span class="badge rv">${s.reveal}</span>` : "";
       const tr = s.transition_out ? `<span class="badge tr">→ ${s.transition_out}</span>` : "";
-      return `<div class="scene-row${selc}" onclick="selectScene('${fr.id}','${s.id}')">
+      return `<div class="scene-row${selc}" data-fid="${fr.id}" data-sid="${s.id}" onclick="selectScene('${fr.id}','${s.id}')">
         <span class="badge">${s.type}</span><span class="sid">${s.id}</span>
         <span class="time">${(s.start||0).toFixed(1)}–${end}s</span>
         <span class="summ">${esc(s.summary||'')}</span>${rv}${tr}</div>`;
-    }).join("");
-    const act = fr.id === ACTIVE_FID ? " active" : "";
-    const vid = fr.preview_mp4 ? `<video class="frame-vid" controls preload="metadata" src="/api/hf/frame-video?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fr.id)}&_=${VIDV}"></video>` : "";
-    return `<div class="card frame${act}">
-      <div class="frame-head clickable" onclick="activateFrame('${fr.id}')">
+    }).join("") : "";
+    // clicking a scene SEEKS this video to the scene and plays its range (see playSceneRange); a stable id
+    // per frame lets us drive it without a full re-render (which would destroy the element mid-playback).
+    const vid = (expanded && fr.preview_mp4) ? `<div class="vidwrap"><video id="frame-vid-${fr.id}" class="frame-vid" controls preload="metadata" src="/api/hf/frame-video?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fr.id)}&_=${VIDV}"></video>
+      <label class="loop-scene" title="Loop the selected scene's time range instead of playing through"><input type="checkbox" ${LOOP_SCENE?'checked':''} onchange="LOOP_SCENE=this.checked"> loop scene</label></div>` : "";
+    const badge = fr.stale ? '<span class="badge stale" title="the spec was edited after this video was rendered — re-render to preview">● edited · re-render</span>'
+                : (fr.preview_mp4 ? '<span class="badge mp4">▶ rendered</span>' : '');
+    return `<div class="card frame${expanded?' active':''}${expanded?'':' folded'}" data-fid="${fr.id}">
+      <div class="frame-head clickable" onclick="activateFrame('${fr.id}')" title="${expanded?'Collapse this frame':'Expand this frame'}">
+        <span class="chev">${expanded?'▾':'▸'}</span>
         <span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span>
-        ${fr.preview_mp4?'<span class="badge mp4">▶ rendered</span>':''}
-        <span class="spacer"></span><span class="go">${fr.id===ACTIVE_FID?'▸ actions in panel':'select →'}</span></div>
-      <div class="tl">${segs}</div>
+        ${badge}
+        <span class="spacer"></span><span class="go">${expanded?'▾ open':'expand →'}</span></div>
+      <div class="tl">${segs}<div class="playhead" id="ph-${fr.id}"></div></div>
       ${rows}
       ${vid}
     </div>`;
   }).join("");
+  updateChangedCount();                                  // keep the "N changed" badge + Render-menu labels current
 }
 
-function activateFrame(fid) { ACTIVE_FID = fid; renderFrames(); renderFramePanel(fid); }
+// Click a frame head: expand it (folding whichever was open), or collapse it if it's already open.
+function activateFrame(fid) {
+  ACTIVE_FID = (ACTIVE_FID === fid) ? null : fid;      // toggle → click the open frame's head to fold it
+  renderFrames();
+  if (ACTIVE_FID) renderFramePanel(ACTIVE_FID);
+  else { $("#framePanel").innerHTML = '<div class="empty">Select a frame.</div>'; }
+  try { localStorage.setItem('hf_active_' + COMP, ACTIVE_FID || ''); } catch (e) {}
+}
 
 // Frame-level actions live ONCE here (right rail), targeting the active frame — not repeated per card.
 function renderFramePanel(fid) {
@@ -439,10 +710,13 @@ function renderFramePanel(fid) {
   p.innerHTML = `
     <div class="frame-head"><span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span></div>
     <div class="fp-actions">
-      <button class="btn ghost mini" onclick="fillTransitions('${fr.id}')">Fill transitions</button>
-      <button class="btn ghost mini" onclick="buildPool()" title="Acquire a stock/gen asset pool from the project's script (NOLAN bridge)">Build asset pool</button>
-      <button class="btn mini" onclick="renderFrame('${fr.id}')">Render frame</button></div>
-    <details class="add"><summary>+ add scene</summary>
+      <button class="btn mini" onclick="renderScope('frame')" title="Render this frame's preview clip (same as ⚙ Render ▾ → This frame).">⚙ Render this frame</button></div>
+    <details class="add" style="margin-top:8px"><summary>▸ Frame setup</summary>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn ghost mini" onclick="fillTransitions('${fr.id}')" title="Auto-add a scene-to-scene transition at every cut in this frame.">Fill transitions</button>
+        <button class="btn ghost mini" onclick="buildPool()" title="Acquire a fresh stock/generated asset pool from the project's script (NOLAN bridge).">Build asset pool</button>
+      </div></details>
+    <details class="add"><summary>＋ add scene</summary>
       <div class="row2" style="margin-top:8px">
         <select id="add-type">${types.map(t=>`<option>${t}</option>`).join("")}</select>
         <input id="add-id" placeholder="id" value="s${fr.scenes.length+1}">
@@ -452,27 +726,135 @@ function renderFramePanel(fid) {
       <textarea id="add-data" placeholder='data JSON, e.g. {"lines":["…"],"operative":"…"}'>{}</textarea>
       <button class="btn mini" style="margin-top:6px" onclick="addScene('${fr.id}')">Add (gated)</button>
     </details>
-    <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask a frame edit (note → AI → gate)</label>
-      <textarea id="fnote" class="mention-input" placeholder="e.g. weave @asset0 into @s2 as a gallery from 3–7s; @transition:crossfade between shots"></textarea>
-      <button class="btn ghost mini" style="margin-top:6px" onclick="reviseFrameNote('${fr.id}')">Apply (AI edit)</button><button class="btn ghost mini" style="margin-top:6px" onclick="stageComment('${fr.id}')" title="Stage this note for a batch agent edit instead of applying now">＋ Stage for batch</button></div>`;
+    <details class="pool-panel" open style="margin-top:12px">
+      <summary style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;cursor:pointer">Asset pool · drop to add, click to use, hover to crop</summary>
+      <div class="shortlist-box" ondragover="poolDragOver(event)" ondragleave="poolDragLeave(event)" ondrop="poolDrop(event)" style="margin-top:8px">
+        <span class="sl-empty" style="font-size:11px">drop image/video here → pool (a plain asset, referenceable in any field)</span></div>
+      <div class="pool-grid" id="pool-grid"></div>
+    </details>`;
+  renderPoolPanel();
 }
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function findScene(fid, sid){ const f = FRAMES.find(x=>x.id===fid); return f && f.scenes.find(s=>s.id===sid); }
 
 async function selectScene(fid, sid) {
+  const frameChanged = !ACTIVE_FID || ACTIVE_FID !== fid;
   SEL = {frame_id: fid, scene_id: sid};
   ACTIVE_FID = fid;
-  renderFrames();
-  renderFramePanel(fid);
+  if (frameChanged) {
+    // switching frames → re-render to EXPAND the newly-active frame (mount its video + scene rows). Safe
+    // to rebuild here: no in-frame video is mid-playback to preserve (that only matters within one frame).
+    renderFrames();
+    renderFramePanel(fid);
+    try { localStorage.setItem('hf_active_' + COMP, fid); } catch (e) {}
+  }
+  applySelectionDOM();                 // toggle highlights WITHOUT re-rendering (which would kill the <video>)
+  playSceneRange(fid, sid);            // seek this frame's video to the scene and play its range
   // fetch the full scene (list only carries a summary) via the frame spec
   const d = await jget(`/api/hf/frame-spec?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fid)}`);
   const scene = (d.frame.scenes||[]).find(s=>s.id===sid);
   renderInspector(scene, fid);
 }
 
+// Toggle .sel/.active in place (no innerHTML rebuild) so the currently-playing <video> survives a scene click.
+function applySelectionDOM() {
+  document.querySelectorAll('.tl-seg.sel, .scene-row.sel').forEach(el => el.classList.remove('sel'));
+  document.querySelectorAll('.card.frame.active').forEach(el => el.classList.toggle('active', el.dataset.fid === ACTIVE_FID));
+  if (!SEL) return;
+  document.querySelectorAll(`[data-fid="${SEL.frame_id}"][data-sid="${SEL.scene_id}"]`).forEach(el => el.classList.add('sel'));
+  const card = document.querySelector(`.card.frame[data-fid="${ACTIVE_FID}"]`);
+  if (card) card.classList.add('active');
+}
+
+// Seek the frame's video to the scene's start and play until its end (or loop the range). Binds a
+// per-video timeupdate that also drives the playhead + follows the active scene as it plays.
+function playSceneRange(fid, sid) {
+  const sc = findScene(fid, sid), v = document.getElementById('frame-vid-' + fid);
+  if (!sc || !v) return;
+  v._rangeStart = sc.start || 0;
+  v._rangeEnd = (sc.start || 0) + (sc.dur || 0);
+  const fr = FRAMES.find(f => f.id === fid);
+  v._frameDur = (fr && fr.dur) || v._rangeEnd || 1;
+  if (!v._boundTU) {                   // bind once per element
+    v._boundTU = true;
+    v.addEventListener('timeupdate', () => onVideoTick(v, fid));
+    v.addEventListener('play', () => onVideoTick(v, fid));
+  }
+  const seek = () => { try { v.currentTime = v._rangeStart; v.play(); } catch (e) {} };
+  if (v.readyState >= 1) seek(); else v.addEventListener('loadedmetadata', seek, {once: true});
+}
+
+function onVideoTick(v, fid) {
+  const t = v.currentTime;
+  if (v._rangeEnd != null && t >= v._rangeEnd - 0.03) {
+    if (LOOP_SCENE) { v.currentTime = v._rangeStart; }
+    else if (!v.paused) { v.pause(); }
+  }
+  // playhead position on the mini-timeline
+  const ph = document.getElementById('ph-' + fid);
+  if (ph && v._frameDur) ph.style.left = Math.min(100, t / v._frameDur * 100) + '%';
+  // follow the active scene (the one whose window contains t) as playback advances
+  const fr = FRAMES.find(f => f.id === fid);
+  if (fr) {
+    const cur = fr.scenes.find(s => t >= (s.start || 0) && t < (s.start || 0) + (s.dur || 0));
+    if (cur && (!SEL || SEL.scene_id !== cur.id || SEL.frame_id !== fid)) {
+      SEL = {frame_id: fid, scene_id: cur.id};
+      applySelectionDOM();
+    }
+  }
+}
+
+// Editor keys: space = play/pause the active frame's video, ←/→ = prev/next scene, L = toggle loop-scene.
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName) || '';
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || (e.target && e.target.isContentEditable)) return;
+  if (!ACTIVE_FID) return;
+  const v = document.getElementById('frame-vid-' + ACTIVE_FID);
+  if (e.key === ' ' && v) { e.preventDefault(); v.paused ? v.play() : v.pause(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    const fr = FRAMES.find(f => f.id === ACTIVE_FID); if (!fr || !fr.scenes.length) return;
+    const i = fr.scenes.findIndex(s => SEL && s.id === SEL.scene_id);
+    const j = Math.max(0, Math.min(fr.scenes.length - 1, (i < 0 ? 0 : i) + (e.key === 'ArrowRight' ? 1 : -1)));
+    selectScene(ACTIVE_FID, fr.scenes[j].id);
+  } else if ((e.key === 'l' || e.key === 'L')) {
+    LOOP_SCENE = !LOOP_SCENE;
+    document.querySelectorAll('.loop-scene input').forEach(c => c.checked = LOOP_SCENE);
+    if (typeof toast === 'function') toast('loop scene: ' + (LOOP_SCENE ? 'on' : 'off'), 'ok');
+  }
+});
+
 const ASSET_RE = /image|asset|avatar|art|src|backdrop|photo|logo|thumb/i;
 const TEXT_BLOCKS = new Set(["statement","newshead","stat","comparison"]);
+
+// Every media file referenced anywhere in a scene's data (ground.src, image, backdrop, subjects[].src, …),
+// by basename — so we can look each up in POOLMETA to surface generated-asset provenance.
+function sceneMediaBasenames(data) {
+  const out = new Set();
+  const walk = v => {
+    if (typeof v === 'string') { if (/\.(png|jpe?g|webp|gif|mp4|mov|webm)$/i.test(v)) out.add(v.split('/').pop()); }
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+  };
+  walk(data || {});
+  return [...out];
+}
+
+// For a scene using a ComfyUI/krea2-generated asset, show the ENHANCED prompt we generated from (or, for
+// assets that pre-date prompt persistence, the VLM caption as a labelled fallback).
+function genPromptPanel(scene) {
+  const gens = sceneMediaBasenames(scene.data).map(b => POOLMETA[b]).filter(m => m && m.generated);
+  if (!gens.length) return '';
+  return gens.map(m => {
+    if (m.gen_prompt) return `<div class="gp-box"><div class="gp-head">🎨 Generated · enhanced prompt</div>`
+      + `<div class="gp-prompt">${esc(m.gen_prompt)}</div>`
+      + (m.gen_negative ? `<div class="gp-neg">negative — ${esc(m.gen_negative)}</div>` : '') + `</div>`;
+    return `<div class="gp-box"><div class="gp-head">🎨 Generated · prompt not recorded</div>`
+      + `<div class="gp-prompt gp-fallback">${esc(m.caption || '(no prompt or description stored — pre-dates prompt persistence)')}</div>`
+      + `<div class="gp-neg">VLM description of the result — the enhanced prompt wasn't saved for this asset</div></div>`;
+  }).join('');
+}
 
 function renderInspector(scene, fid) {
   const tmpl = CATALOG.scene_templates[scene.type] || {};
@@ -483,13 +865,27 @@ function renderInspector(scene, fid) {
     if (k === "reveal") continue; // handled by its own control
     const cur = data[k];
     const val = cur === undefined ? "" : (typeof cur === "object" ? JSON.stringify(cur) : String(cur));
-    const isAsset = ASSET_RE.test(k + " " + desc);
+    const mp = fieldMediaPath(cur);
+    // a "media field" = named like an asset (ASSET_RE), OR the value already resolves to a media file, OR the
+    // schema calls it a ground/media/footage (so `ground`, whose value is a media_ground OBJECT, qualifies)
+    const isMedia = k === "ground" || ASSET_RE.test(k + " " + desc) || !!mp;   // ground is a media_ground object (value may be {kind:transparent})
     const big = typeof cur === "object";
+    const foc = isMedia ? ' onfocus="LAST_ASSET_EL=this"' : '';   // pool-thumb clicks insert into the focused field
     const inp = big
-      ? `<textarea data-f="${k}">${esc(val)}</textarea>`
-      : `<input data-f="${k}" value="${esc(val)}">`;
-    const browse = isAsset ? `<button class="btn ghost mini" style="margin-top:4px" onclick="openPicker(this)">Browse assets…</button>` : '';
-    fields += `<div class="field"><label>${k}${isAsset?'<span class="asset-tag">asset</span>':''}</label>${inp}${browse}<div class="desc">${esc(desc)}</div></div>`;
+      ? `<textarea data-f="${k}"${foc}>${esc(val)}</textarea>`
+      : `<input data-f="${k}" value="${esc(val)}"${foc}>`;
+    if (isMedia) {
+      // #2: visual media field — thumbnail of the current asset + pick-from-pool + inline crop, instead of a bare path/JSON
+      const kk = mp ? (/\.(mp4|mov|webm)$/i.test(mp) ? 'video' : 'image') : null;
+      const thumb = mp
+        ? `<div class="mf-thumb">${kk === 'video' ? `<video src="${assetUrl(mp)}#t=0.5" muted preload="metadata"></video>` : `<img src="${assetUrl(mp)}">`}</div>`
+        : `<div class="mf-thumb" style="display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-secondary)">none</div>`;
+      const actions = `<div class="mf-actions"><button onclick="openPicker(this)">pick from pool</button>${mp ? assetActions(mp, kk) : ''}</div>`;
+      const kb = (k === "ground" && kk === "image") ? ` <span class="mf-kb" title="Image grounds get a default Ken Burns push">🎥 Ken Burns</span>` : '';
+      fields += `<div class="field"><label>${k}<span class="asset-tag">asset</span>${kb}</label><div class="mf-row">${thumb}<div style="flex:1;min-width:0">${inp}${actions}</div></div><div class="desc">${esc(desc)}</div></div>`;
+    } else {
+      fields += `<div class="field"><label>${k}</label>${inp}<div class="desc">${esc(desc)}</div></div>`;
+    }
   }
   const revealOpts = ["", ...Object.keys(CATALOG.reveals||{}).filter(x=>x!=="_doc")];
   const trOpts = ["", ...Object.keys(CATALOG.transitions||{}).filter(x=>x!=="_doc")];
@@ -498,6 +894,7 @@ function renderInspector(scene, fid) {
   const curTrDur = (scene.transition_out||{}).dur || 0.6;
   $("#inspector").innerHTML = `
     <div class="frame-head"><span class="id">${scene.id}</span><span class="badge">${scene.type}</span><span class="spacer"></span></div>
+    ${genPromptPanel(scene)}
     <div class="row2">
       <div class="field"><label>start (s)</label><input id="insp-start" type="number" step="0.1" value="${scene.start||0}"></div>
       <div class="field"><label>dur (s)</label><input id="insp-dur" type="number" step="0.1" value="${scene.dur||0}"></div>
@@ -508,17 +905,121 @@ function renderInspector(scene, fid) {
       <div class="field"><label>transition out</label><select id="insp-tr">${trOpts.map(o=>`<option value="${o}" ${o===curTr?'selected':''}>${o||'— none —'}</option>`).join("")}</select></div>
       <div class="field"><label>transition dur</label><input id="insp-trdur" type="number" step="0.1" value="${curTrDur}"></div>
     </div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
-    <div id="insp-fields">${fields}</div>
     <div class="insp-actions">
-      <button class="btn" onclick="applyEdit('${fid}','${scene.id}')">Apply + recompose</button>
-      <button class="btn ghost" onclick="previewScene('${fid}','${scene.id}')">Preview</button>
-      <button class="btn ghost" onclick="removeScene('${fid}','${scene.id}')">Remove</button>
+      <button class="btn" onclick="applyEdit('${fid}','${scene.id}')" title="Commit the fields you edited (timing, text, ground…) and rebuild this scene through the composer gate. Does not render video.">Save changes</button>
+      <button class="btn ghost" onclick="previewScene('${fid}','${scene.id}')" title="Render a quick STILL image of this scene (no video) — shown below.">Preview still</button>
+      <button class="btn ghost" onclick="removeScene('${fid}','${scene.id}')" title="Remove this scene from the frame.">Delete scene</button>
     </div>
-    <div class="note-box"><label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Ask an edit (note → AI → gate)</label>
-      <textarea id="insp-note" class="mention-input" placeholder="e.g. apply @reveal:scramble to the title, then dip to black after"></textarea>
-      <button class="btn mini" style="margin-top:6px" onclick="reviseNote('${fid}','${scene.id}')">Apply note</button></div>
-    <img id="preview">`;
+    <img id="preview">
+    <div class="note-box">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;margin:0">Edit with AI</label>
+        <select id="note-target" style="font-size:11px;padding:3px 6px" title="What the note applies to — the selected scene, or the whole frame (spanning scenes).">
+          <option value="scene">this scene (${scene.id})</option>
+          <option value="frame">whole frame (${fid})</option>
+        </select>
+      </div>
+      <textarea id="note-input" class="mention-input" placeholder="Describe the change in plain words — e.g. apply @reveal:scramble to the title then dip to black; or weave @asset0 into a gallery from 3–7s"></textarea>
+      <button class="btn mini" style="margin-top:6px" onclick="applyNote('${fid}','${scene.id}')" title="Send this note to the AI — it works out the edit and applies it NOW, through the composer gate.">Apply with AI</button><button class="btn ghost mini" style="margin-top:6px" onclick="queueNote('${fid}','${scene.id}')" title="Add this note to a batch a fleet agent handles LATER as reviewable proposals — instead of applying now. Dispatch from 🤖 Batch.">Queue for agent</button></div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+    <div class="fields-head" style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px">Scene fields</div>
+    <div id="insp-fields">${fields}</div>
+    <div class="shortlist-box" ondragover="sceneDragOver(event)" ondragleave="sceneDragLeave(event)" ondrop="sceneDrop(event,'${fid}','${scene.id}')">
+      <label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;">Scene assets · drag &amp; drop image/video → pool + shortlist</label>
+      <div class="sl-grid" id="sl-${scene.id}">${shortlistHtml(scene, fid)}</div>
+    </div>`;
+}
+
+// ---- per-scene shortlist + drag-drop (#5): drop image/video → pool + shortlist, then "use as ground" ----
+function shortlistHtml(scene, fid) {
+  const sl = ((scene.meta || {}).shortlist) || [];
+  if (!sl.length) return '<span class="sl-empty">drop image/video files here</span>';
+  return sl.map(a => {
+    const url = `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(a.path)}`;
+    const thumb = a.media_type === 'video'
+      ? `<video src="${url}#t=0.5" muted preload="metadata"></video>`
+      : `<img src="${url}" loading="lazy">`;
+    const slot = groundSlot(scene.type, a.media_type);
+    const useBtn = slot
+      ? `<button class="sl-use" onclick="useSceneAsset('${fid}','${scene.id}','${esc(a.path)}','${a.media_type}')" title="Set as this ${scene.type}'s ${a.media_type === 'video' ? 'ground' : 'background'} (${slot.field}, gated)">use</button>`
+      : `<button class="sl-use" disabled title="'${scene.type}' has no ${a.media_type} background slot — keep it shortlisted and set a field manually">use</button>`;
+    return `<div class="sl-item" title="${esc(a.name)}">${thumb}
+      <div class="sl-bar">${useBtn}
+      <button class="sl-x" onclick="removeSceneAsset('${fid}','${scene.id}','${esc(a.name)}')" title="Remove from shortlist">×</button></div></div>`;
+  }).join("");
+}
+
+function sceneDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag'); }
+function sceneDragLeave(e) { e.currentTarget.classList.remove('drag'); }
+async function sceneDrop(e, fid, sid) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag');
+  const files = [...((e.dataTransfer && e.dataTransfer.files) || [])];
+  if (!files.length) return;
+  let added = 0;
+  for (const f of files) {
+    const fd = new FormData();
+    fd.append('comp', COMP); fd.append('frame_id', fid); fd.append('scene_id', sid); fd.append('file', f);
+    try {
+      const r = await fetch('/api/hf/scene/add-asset', {method: 'POST', body: fd});
+      if (r.ok) added++;
+      else { const j = await r.json().catch(() => ({})); toast('drop rejected: ' + (j.detail || r.status), 'err'); }
+    } catch (err) { toast('drop failed: ' + err.message, 'err'); }
+  }
+  if (added) { toast(`added ${added} asset(s) to ${sid}`, 'ok'); selectScene(fid, sid); }  // refresh the shortlist
+}
+
+// Which data field takes a dropped asset, DERIVED from the block's catalog data_schema (the single source of
+// truth — stays correct as blocks are added, no hardcoded map to rot). Video only fits root-mounted slots
+// (media ground / comparison side); `backdrop`/`image`/`source` are CSS image-only. `background` (linedraw)
+// and comparison's `backdrop` are colour-only so they're intentionally NOT image targets. null = the block
+// has no background slot for this media type (geo/timeline/diagram/chart/code/raw, or video on an image-only block).
+function groundSlot(type, mt) {
+  const fields = Object.keys((CATALOG.scene_templates[type] || {}).data_schema || {});
+  const has = f => fields.includes(f);
+  if (mt === 'video') {
+    if (has('ground')) return { field: 'data.ground', kind: 'ground' };   // statement/stat media_ground(video)
+    if (has('right'))  return { field: 'data.right',  kind: 'side' };     // comparison side (root-mounted video)
+    return null;
+  }
+  if (has('ground'))   return { field: 'data.ground',   kind: 'ground' };
+  if (has('image'))    return { field: 'data.image',    kind: 'path' };   // newshead
+  if (has('source'))   return { field: 'data.source',   kind: 'path' };   // document
+  if (has('right'))    return { field: 'data.right',    kind: 'side' };   // comparison
+  if (has('backdrop')) return { field: 'data.backdrop', kind: 'path' };   // lower_third/collage/gallery/carousel/social_card/document
+  return null;
+}
+
+function groundPatchForBlock(type, path, mt) {
+  const slot = groundSlot(type, mt);
+  if (!slot) return null;
+  if (slot.kind === 'ground') {
+    const g = { kind: mt === 'video' ? 'video' : 'image', src: path };
+    if (mt === 'image') g.kb = [1.0, 1.08];
+    const patch = { [slot.field]: g };
+    if ((CATALOG.scene_templates[type] || {}).data_schema && 'register' in CATALOG.scene_templates[type].data_schema)
+      patch['data.register'] = 'footage';                // statement/stat: footage register reveals the media ground
+    return patch;
+  }
+  if (slot.kind === 'side') return { [slot.field]: { type: mt, src: path } };
+  return { [slot.field]: path };                         // path kind: image / source / backdrop
+}
+
+async function useSceneAsset(fid, sid, path, mt) {
+  const sc = findScene(fid, sid); if (!sc) return;
+  const patch = groundPatchForBlock(sc.type, path, mt);
+  if (!patch) { toast(`'${sc.type}' has no ${mt} background slot — keep it shortlisted and set a field manually`, 'err'); return; }
+  try {
+    const r = await jpost('/api/hf/scene/revise', {comp: COMP, frame_id: fid, scene_id: sid, patch, deletes: []});
+    if (!r.applied) { toast('Rejected by gate: ' + (r.errors || '').split('\n').slice(0, 2).join(' '), 'err'); return; }
+    toast('set as ground ✓ — recomposed', 'ok');
+    await loadFrames(COMP); await selectScene(fid, sid); previewScene(fid, sid);
+    if (mt === 'video') await maybeAutoFit(fid, sid);    // #5: retime the video to the scene length if they differ
+  } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+async function removeSceneAsset(fid, sid, name) {
+  try { await jpost('/api/hf/scene/remove-asset', {comp: COMP, frame_id: fid, scene_id: sid, name}); selectScene(fid, sid); }
+  catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 function parseVal(v) { v = v.trim(); if (v === "") return undefined; try { return JSON.parse(v); } catch { return v; } }
@@ -543,6 +1044,8 @@ async function applyEdit(fid, sid) {
     if (!r.applied) { toast("Rejected by gate: " + (r.errors||"").split("\n").slice(0,3).join(" "), "err"); return; }
     toast("Applied + recomposed ✓", "ok");
     await loadFrames(COMP); await selectScene(fid, sid); previewScene(fid, sid);
+    const g = (patch["data.ground"]);                    // #5: if a video ground was just set, auto-fit it to the scene
+    if (g && typeof g === 'object' && g.kind === 'video') await maybeAutoFit(fid, sid);
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 
@@ -590,44 +1093,48 @@ async function previewScene(fid, sid) {
 
 async function renderFrame(fid) {
   try { const r = await jpost("/api/hf/frame/rerender", {comp: COMP, frame_ids: [fid]});
-    toast(`Render started (job ${r.job_id}). Watching for the clip…`, "ok");
-    pollForRender(fid);
+    toast(`Rendering ${fid}… (job ${r.job_id})`, "ok");
+    watchJob(r.job_id, { label: `frame ${fid}`, onDone: () => {
+      const fr = FRAMES.find(f => f.id === fid);
+      // honest: a rendered frame that is STILL stale means recompose/render didn't reflect the spec
+      toast(fr && fr.stale ? `${fid} rendered but STILL stale — the render didn't reflect the spec`
+                           : `${fid} clip ready ✓`, fr && fr.stale ? "err" : "ok");
+    }});
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 let _renderPoll = null;
-function pollForRender(fid) {
+// Poll a background job to REAL completion (not file-exists — a prior clip always exists, which used to make
+// the loop claim "ready ✓" on the first tick and show the OLD video). On done: re-fetch frames so `stale`
+// recomputes, bust the video cache (VIDV) so the NEW clip loads, then run onDone. Honest on error/timeout.
+function watchJob(jobId, { onDone, label } = {}) {
   clearInterval(_renderPoll); let n = 0;
   _renderPoll = setInterval(async () => {
     n++;
-    try {
-      const d = await jget("/api/hf/frames?comp=" + encodeURIComponent(COMP));
-      FRAMES = d.frames;
-      const fr = FRAMES.find(f => f.id === fid);
-      if (fr && fr.preview_mp4) { clearInterval(_renderPoll); VIDV = n + 1; renderFrames(); if (ACTIVE_FID) renderFramePanel(ACTIVE_FID); toast(`'${fid}' clip ready ✓`, "ok"); }
-      else { renderFrames(); if (n > 24) clearInterval(_renderPoll); }  // give up after ~6 min
-    } catch {}
-  }, 15000);
+    let j; try { j = await jget('/api/jobs/' + jobId); } catch { return; }
+    if (j.status === 'done' || j.status === 'error' || j.status === 'cancelled') {
+      clearInterval(_renderPoll);
+      if (j.status !== 'done') { toast(`${label || 'job'} ${j.status}: ${((j.error || j.message) || '').slice(0, 160)}`, "err"); return; }
+      try { const d = await jget("/api/hf/frames?comp=" + encodeURIComponent(COMP)); FRAMES = d.frames; } catch {}
+      VIDV++; renderFrames(); if (ACTIVE_FID) renderFramePanel(ACTIVE_FID);
+      if (onDone) onDone(j);
+    } else if (n > 144) { clearInterval(_renderPoll); toast(`${label || 'job'} still running — check Background Jobs`, "err"); }   // ~6 min
+  }, 2500);
 }
 
 // ---- Phase 2: note edits (comment -> AI/LLM -> gate; NOT the tmux fleet — that's #5 batch mode) ----
-async function reviseNote(fid, sid) {
-  const note = $("#insp-note").value.trim(); if (!note) return;
+// Ask the AI to make the edit and apply it NOW (through the gate). Target = the #note-target toggle:
+// 'scene' → scoped to this scene; 'frame' → whole frame (the LLM may touch any scene, with the asset list).
+async function applyNote(fid, sid) {
+  const note = ($("#note-input").value || "").trim(); if (!note) { toast("write a note first", "err"); return; }
+  const frame = ($("#note-target") || {}).value === 'frame';
   toast("Thinking…");
   try {
-    const r = await jpost("/api/hf/frame/revise-note", {comp: COMP, frame_id: fid, scene_id: sid, note});
-    if (!r.applied) return toast("Not applied: " + (r.errors||"").split("\n").slice(0,2).join(" "), "err");
-    toast(`Applied ${(r.ops||[]).length} op(s) ✓`, "ok");
+    const body = frame ? { comp: COMP, frame_id: fid, note, assets: ASSETS.map(a => a.path) }
+                       : { comp: COMP, frame_id: fid, scene_id: sid, note };
+    const r = await jpost("/api/hf/frame/revise-note", body);
+    if (!r.applied) return toast("Not applied: " + (r.errors || "").split("\n").slice(0, 2).join(" "), "err");
+    toast(`Applied ${(r.ops || []).length} op(s) ✓`, "ok");
     await loadFrames(COMP); await selectScene(fid, sid); previewScene(fid, sid);
-  } catch (e) { toast("Error: " + e.message, "err"); }
-}
-async function reviseFrameNote(fid) {
-  const note = $(`#fnote`).value.trim(); if (!note) return;
-  const assets = ASSETS.map(a => a.path);
-  toast("Thinking…");
-  try {
-    const r = await jpost("/api/hf/frame/revise-note", {comp: COMP, frame_id: fid, note, assets});
-    if (!r.applied) return toast("Not applied: " + (r.errors||"").split("\n").slice(0,2).join(" "), "err");
-    toast(`Applied ${(r.ops||[]).length} op(s) ✓`, "ok"); loadFrames(COMP);
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 
@@ -638,13 +1145,20 @@ function closePicker() { $("#picker").style.display = "none"; }
 async function renderPicker() {
   const d = await jget("/api/hf/assets?comp=" + encodeURIComponent(COMP));
   $("#pick-list").innerHTML = d.assets.map(a => {
-    const th = a.kind === "image"
-      ? `<img src="/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(a.path)}">`
+    const th = a.kind === "image" ? `<img src="${assetUrl(a.path)}" loading="lazy">`
+      : a.kind === "video" ? `<video src="${assetUrl(a.path)}#t=0.5" muted preload="metadata"></video>`
       : `<span class="badge">${a.kind}</span>`;
     return `<div class="pick-item" onclick='pickAsset(${JSON.stringify(a.path)})'>${th}<span>${esc(a.name)}</span></div>`;
   }).join("") || '<div class="empty">No assets yet — upload one.</div>';
 }
-function pickAsset(path) { setAsset(PICK_EL, path); closePicker(); toast("Set → " + path, "ok"); }
+async function pickAsset(path) {
+  setAsset(PICK_EL, path); closePicker();
+  // Persist immediately. Previously a pick only filled the form field — if you didn't ALSO click "Save
+  // changes" the edit was silently lost (e.g. a swapped video ground never reached the spec). Now, when a
+  // scene is selected, picking saves + recomposes through the gate (applyEdit); otherwise leave it staged.
+  if (SEL && SEL.frame_id && SEL.scene_id) { await applyEdit(SEL.frame_id, SEL.scene_id); }
+  else { toast("Set → " + path + " (click Save changes to apply)", "ok"); }
+}
 function setAsset(el, path) {
   if (!el) return;
   if (el.tagName === "TEXTAREA") {
@@ -654,6 +1168,170 @@ function setAsset(el, path) {
     else el.value = JSON.stringify(path);
   } else { el.value = path; }
 }
+
+// ---- Asset pool panel (#1): drop STRAIGHT to the pool (neutral) + a browsable grid to reference anywhere ----
+function assetUrl(path) { return `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(path)}&v=${VIDV}`; }
+// the media path referenced by a field value (a bare path string, or a {src} object like media_ground) — else null
+function fieldMediaPath(cur) {
+  if (typeof cur === 'string' && /\.(png|jpe?g|webp|gif|mp4|mov|webm)$/i.test(cur)) return cur;
+  if (cur && typeof cur === 'object' && typeof cur.src === 'string' && /\.(png|jpe?g|webp|gif|mp4|mov|webm)$/i.test(cur.src)) return cur.src;
+  return null;
+}
+function poolThumb(a) {
+  const gen = POOLMETA[a.name] && POOLMETA[a.name].generated ? '<span class="pt-gen">🎨</span>' : '';
+  const media = a.kind === 'image' ? `<img src="${assetUrl(a.path)}" loading="lazy">`
+    : a.kind === 'video' ? `<video src="${assetUrl(a.path)}#t=0.5" muted preload="metadata"></video>` : `<span class="badge">${a.kind}</span>`;
+  return `<div class="pool-thumb" title="${esc(a.name)} — click to use in the focused field" onclick="usePoolAsset(${JSON.stringify(a.path)})">
+    ${media}${gen}<div class="pt-ops">${assetActions(a.path, a.kind)}</div></div>`;
+}
+function renderPoolPanel() {
+  const grid = $("#pool-grid"); if (!grid) return;
+  const media = ASSETS.filter(a => a.kind === 'image' || a.kind === 'video' && !a.name.endsWith('.orig.mp4') && !a.name.endsWith('.orig.png'));
+  grid.innerHTML = media.length ? media.map(poolThumb).join("") : '<div class="empty" style="grid-column:1/-1;padding:14px">Pool is empty — drop assets above.</div>';
+}
+// clicking a pool thumb inserts its path into the LAST-focused media field (or copies it if none focused)
+let LAST_ASSET_EL = null;
+function usePoolAsset(path) {
+  if (LAST_ASSET_EL && document.body.contains(LAST_ASSET_EL)) { setAsset(LAST_ASSET_EL, path); toast("→ " + (LAST_ASSET_EL.getAttribute('data-f') || 'field'), "ok"); }
+  else { navigator.clipboard && navigator.clipboard.writeText(path); toast("copied path (focus a media field to insert): " + path, "ok"); }
+}
+function poolDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag'); }
+function poolDragLeave(e) { e.currentTarget.classList.remove('drag'); }
+async function poolDrop(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag');
+  const files = [...((e.dataTransfer && e.dataTransfer.files) || [])];
+  let added = 0;
+  for (const f of files) {
+    const fd = new FormData(); fd.append('comp', COMP); fd.append('file', f);
+    try { const r = await fetch('/api/hf/pool/add', { method: 'POST', body: fd }); if (r.ok) added++; else { const j = await r.json().catch(() => ({})); toast('rejected: ' + (j.detail || r.status), 'err'); } }
+    catch (err) { toast('drop failed: ' + err.message, 'err'); }
+  }
+  if (added) { toast(`added ${added} to pool`, 'ok'); await refreshAssets(); }
+}
+async function refreshAssets() {
+  try { ASSETS = (await jget("/api/hf/assets?comp=" + encodeURIComponent(COMP))).assets || []; } catch {}
+  try { POOLMETA = (await jget("/api/hf/asset-meta?comp=" + encodeURIComponent(COMP))).meta || {}; } catch {}
+  renderPoolPanel();
+}
+
+// ---- Crop / ffmpeg quick-edit (#3): drag a rectangle on the asset → crop to a new pool asset or in place ----
+let CROP = null;   // { path, kind, dragStart, rect (display px), natW, natH }
+function openCrop(path, kind) {
+  const stage = $("#crop-stage");
+  CROP = { path, kind, rect: null, natW: 0, natH: 0 };
+  $("#crop-name").textContent = path.split('/').pop();
+  $("#crop-newname").value = (path.split('/').pop().replace(/\.[^.]+$/, '')) + '_crop';
+  $("#crop-result").textContent = ''; $("#crop-sel").style.display = 'none'; $("#crop-dims").textContent = 'full frame';
+  const old = stage.querySelector('img,video'); if (old) old.remove();
+  const el = document.createElement(kind === 'video' ? 'video' : 'img');
+  el.src = assetUrl(path);
+  if (kind === 'video') { el.controls = true; el.muted = true; el.addEventListener('loadedmetadata', () => { CROP.natW = el.videoWidth; CROP.natH = el.videoHeight; }); }
+  else { el.addEventListener('load', () => { CROP.natW = el.naturalWidth; CROP.natH = el.naturalHeight; }); }
+  stage.insertBefore(el, $("#crop-sel"));
+  $("#cropModal").style.display = 'flex';
+}
+function closeCrop() { $("#cropModal").style.display = 'none'; CROP = null; }
+function cropReset() { if (!CROP) return; CROP.rect = null; $("#crop-sel").style.display = 'none'; $("#crop-dims").textContent = 'full frame'; }
+function _cropMediaBox() {
+  const el = $("#crop-stage").querySelector('img,video'); if (!el) return null;
+  const s = $("#crop-stage").getBoundingClientRect(), m = el.getBoundingClientRect();
+  return { el, offX: m.left - s.left, offY: m.top - s.top, w: m.width, h: m.height };
+}
+(function bindCropDrag() {
+  const stage = document.getElementById('crop-stage'); if (!stage) return;
+  let start = null;
+  stage.addEventListener('mousedown', e => {
+    const b = _cropMediaBox(); if (!b || !CROP) return;
+    const x = e.clientX - stage.getBoundingClientRect().left, y = e.clientY - stage.getBoundingClientRect().top;
+    start = { x: Math.max(b.offX, Math.min(x, b.offX + b.w)), y: Math.max(b.offY, Math.min(y, b.offY + b.h)) };
+  });
+  window.addEventListener('mousemove', e => {
+    if (!start || !CROP) return;
+    const b = _cropMediaBox(); if (!b) return;
+    const sr = stage.getBoundingClientRect();
+    const cx = Math.max(b.offX, Math.min(e.clientX - sr.left, b.offX + b.w));
+    const cy = Math.max(b.offY, Math.min(e.clientY - sr.top, b.offY + b.h));
+    const x = Math.min(start.x, cx), y = Math.min(start.y, cy), w = Math.abs(cx - start.x), h = Math.abs(cy - start.y);
+    const sel = $("#crop-sel"); sel.style.display = 'block';
+    sel.style.left = x + 'px'; sel.style.top = y + 'px'; sel.style.width = w + 'px'; sel.style.height = h + 'px';
+    CROP.rect = { x: x - b.offX, y: y - b.offY, w, h, dispW: b.w, dispH: b.h };
+    const sc = (CROP.natW || b.w) / b.w;
+    $("#crop-dims").textContent = `${Math.round(w * sc)} × ${Math.round(h * sc)} px`;
+  });
+  window.addEventListener('mouseup', () => { start = null; });
+})();
+async function applyCrop(mode) {
+  if (!CROP) return;
+  if (!CROP.rect || CROP.rect.w < 4 || CROP.rect.h < 4) { $("#crop-result").className = ''; $("#crop-result").textContent = 'Drag a crop region on the asset first.'; return; }
+  const b = _cropMediaBox(); const sc = (CROP.natW || b.w) / CROP.rect.dispW;
+  const params = { x: Math.round(CROP.rect.x * sc), y: Math.round(CROP.rect.y * sc), w: Math.round(CROP.rect.w * sc), h: Math.round(CROP.rect.h * sc) };
+  $("#crop-result").className = ''; $("#crop-result").textContent = 'cropping…';
+  try {
+    const r = await jpost('/api/hf/asset-quickedit', { comp: COMP, path: CROP.path, op: 'crop', params, mode, name: $("#crop-newname").value || null });
+    VIDV++;                                              // bust cached thumbnails (esp. in-place overwrite)
+    await refreshAssets();
+    $("#crop-result").innerHTML = `<span style="color:#30a46c">✓ ${mode === 'inplace' ? 'cropped in place (revertable)' : 'new asset: ' + r.name}</span>`;
+    if (mode === 'inplace') closeCrop();
+    if (SEL) selectScene(SEL.frame_id, SEL.scene_id);    // refresh inspector thumbnails
+  } catch (e) { $("#crop-result").innerHTML = `<span style="color:#e5484d">crop failed: ${esc(e.message)}</span>`; }
+}
+
+// ---- the per-asset quick-edit action buttons (crop / trim / cutout), driven by the QE_OPS registry ----
+function assetActions(path, kind) {
+  const btn = (op, fn, label) => (QE_OPS[op] && QE_OPS[op].media.includes(kind)) ? `<button onclick='event.stopPropagation();${fn}(${JSON.stringify(path)},"${kind}")'>${label}</button>` : '';
+  return btn('crop', 'openCrop', 'crop') + btn('trim', 'openTrim', 'trim') + btn('remove_bg', 'removeBg', 'cutout');
+}
+
+// ---- Trim (#2): mark in/out on a scrubber → cut the range (video quick-edit op) ----
+let TRIM = null;
+function openTrim(path) {
+  TRIM = { path };
+  $("#trim-name").textContent = path.split('/').pop();
+  $("#trim-newname").value = path.split('/').pop().replace(/\.[^.]+$/, '') + '_trim';
+  $("#trim-result").textContent = '';
+  const v = $("#trim-video"); v.src = assetUrl(path);
+  v.onloadedmetadata = () => { $("#trim-in").value = 0; $("#trim-out").value = (v.duration || 0).toFixed(1); trimLen(); };
+  v.ontimeupdate = () => { $("#trim-now").textContent = v.currentTime.toFixed(1); };
+  $("#trimModal").style.display = 'flex';
+}
+function closeTrim() { $("#trimModal").style.display = 'none'; const v = $("#trim-video"); v.pause(); v.src = ''; TRIM = null; }
+function trimMark(which) { $("#trim-" + which).value = $("#trim-video").currentTime.toFixed(1); trimLen(); }
+function trimLen() { $("#trim-len").textContent = Math.max(0, (parseFloat($("#trim-out").value) || 0) - (parseFloat($("#trim-in").value) || 0)).toFixed(1); }
+async function applyTrim(mode) {
+  if (!TRIM) return;
+  const a = parseFloat($("#trim-in").value), b = parseFloat($("#trim-out").value);
+  if (!(b > a)) { $("#trim-result").className = ''; $("#trim-result").textContent = 'Out must be after in.'; return; }
+  $("#trim-result").textContent = 'trimming…';
+  try {
+    const r = await jpost('/api/hf/asset-quickedit', { comp: COMP, path: TRIM.path, op: 'trim', params: { start: a, end: b }, mode, name: $("#trim-newname").value || null });
+    VIDV++; await refreshAssets();
+    $("#trim-result").innerHTML = `<span style="color:#30a46c">✓ ${mode === 'inplace' ? 'trimmed in place (revertable)' : 'new asset: ' + r.name}</span>`;
+    if (mode === 'inplace') closeTrim();
+    if (SEL) selectScene(SEL.frame_id, SEL.scene_id);
+  } catch (e) { $("#trim-result").innerHTML = `<span style="color:#e5484d">trim failed: ${esc(e.message)}</span>`; }
+}
+
+// ---- Remove background (#3): a BACKGROUND JOB (rembg is slow) → poll, then refresh the pool ----
+async function removeBg(path) {
+  let job;
+  try { job = await jpost('/api/hf/asset-removebg', { comp: COMP, path }); }
+  catch (e) { toast('remove-bg failed to start: ' + e.message, 'err'); return; }
+  toast('removing background… (see Background Jobs) ', 'ok');
+  const poll = setInterval(async () => {
+    let j; try { j = await jget('/api/jobs/' + job.job_id); } catch { return; }
+    if (j.status === 'done') { clearInterval(poll); VIDV++; await refreshAssets(); toast('cutout ready: ' + ((j.result || {}).name || ''), 'ok'); }
+    else if (j.status === 'error') { clearInterval(poll); toast('remove-bg failed: ' + (j.error || ''), 'err'); }
+  }, 1500);
+}
+
+// ---- Auto-fit (#5): after a video is set as a scene ground, retime it to the scene duration if they differ ----
+async function maybeAutoFit(fid, sid) {
+  try {
+    const r = await jpost('/api/hf/scene/fit-ground', { comp: COMP, frame_id: fid, scene_id: sid });
+    if (r && r.fitted) { toast(`auto-fit video ${r.from}s → ${r.to}s to match the scene`, 'ok'); VIDV++; await loadFrames(COMP); selectScene(fid, sid); }
+  } catch (e) { /* non-fatal: fit is a convenience */ }
+}
+
 async function uploadAsset(inp) {
   if (!inp.files.length) return;
   const fd = new FormData(); fd.append("comp", COMP); fd.append("file", inp.files[0]);

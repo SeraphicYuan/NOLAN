@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clip from URL · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <script src="/static/hls.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 20px; }
+    h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 2px; }
+    .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    input[type=text], input[type=number], select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 13px; }
+    #url { flex: 1; }
+    .btn { background: var(--accent, #4f7cff); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn.ghost { background: var(--bg-primary); color: var(--text); border: 1px solid var(--border); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .srcinfo { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+    .kind { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft, rgba(79,124,255,.15)); color: var(--accent, #4f7cff); }
+    .playerbox { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; }
+    .playerbox iframe, .playerbox video { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .marks { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .mk { display: flex; align-items: center; gap: 6px; }
+    .mk label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
+    .mk input { width: 90px; }
+    .now { font-family: ui-monospace, monospace; font-size: 13px; color: var(--text); }
+    .rangebar { position: relative; height: 6px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 3px; margin: 12px 0 4px; }
+    .rangesel { position: absolute; top: 0; bottom: 0; background: var(--accent, #4f7cff); opacity: .5; border-radius: 3px; }
+    .dest { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .dest label { font-size: 12px; color: var(--text-secondary); }
+    .result { font-size: 12px; margin-top: 10px; }
+    .result.ok { color: #30a46c; } .result.err { color: #e5484d; }
+    .hint { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+    .empty { color: var(--text-secondary); text-align: center; padding: 40px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Clip from URL</h1>
+    <div class="sub">Paste a YouTube link, a direct <code>.mp4</code>, an <code>.m3u8</code> stream, or a local file path. Scrub, mark in/out, and pull just that range — no full download, no library ingestion.</div>
+
+    <div class="card">
+      <div class="row">
+        <input type="text" id="url" placeholder="https://youtube.com/watch?v=…   ·   https://…/clip.mp4   ·   https://…/stream.m3u8   ·   /mnt/d/…/local.mp4">
+        <button class="btn" id="loadBtn" onclick="loadSource()">Load</button>
+      </div>
+      <div class="hint">YouTube plays via the official embed; direct/HLS are proxied so scrubbing works despite CORS.</div>
+    </div>
+
+    <div class="card" id="stage" style="display:none">
+      <div class="srcinfo"><span class="kind" id="s-kind"></span><b id="s-title"></b><span id="s-dur"></span></div>
+      <div class="playerbox" id="playerbox"></div>
+
+      <div class="marks">
+        <span class="now">t = <b id="s-now">0.0</b>s</span>
+        <button class="btn ghost" onclick="markIn()">⟦ Mark IN</button>
+        <div class="mk"><label>in</label><input type="number" id="in" step="0.1" value="0" oninput="drawRange()"></div>
+        <button class="btn ghost" onclick="markOut()">Mark OUT ⟧</button>
+        <div class="mk"><label>out</label><input type="number" id="out" step="0.1" value="0" oninput="drawRange()"></div>
+        <span class="now">len <b id="s-len">0.0</b>s</span>
+      </div>
+      <div class="rangebar"><div class="rangesel" id="rangesel"></div></div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+      <div class="dest">
+        <div class="mk"><label>name</label><input type="text" id="name" placeholder="clip name"></div>
+        <div class="mk"><label>add to project pool</label>
+          <select id="comp"><option value="">— no, just a folder —</option></select></div>
+        <div class="mk" id="folderWrap"><label>folder</label><input type="text" id="folder" style="width:320px"></div>
+        <button class="btn" id="clipBtn" onclick="doClip()">Clip ✂</button>
+      </div>
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    const $ = s => document.querySelector(s);
+    let SRC = null, ytReady = false, ytPlayer = null, pendingYT = null, nowTimer = null;
+
+    window.onYouTubeIframeAPIReady = () => { ytReady = true; if (pendingYT) { mountYT(pendingYT); pendingYT = null; } };
+
+    async function jpost(u, body) {
+      const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || r.statusText);
+      return d;
+    }
+    function fmt(t) { t = Math.max(0, t || 0); const m = Math.floor(t / 60), s = (t % 60); return `${m}:${s.toFixed(1).padStart(4, '0')}`; }
+
+    async function loadTargets() {
+      try {
+        const d = await (await fetch('/api/clipper/targets')).json();
+        $('#comp').innerHTML = '<option value="">— no, just a folder —</option>' + (d.comps || []).map(c => `<option>${c}</option>`).join('');
+        if (d.default_folder) $('#folder').value = d.default_folder;
+      } catch {}
+    }
+    loadTargets();
+    $('#comp').addEventListener('change', () => { $('#folderWrap').style.display = $('#comp').value ? 'none' : 'flex'; });
+
+    async function loadSource() {
+      const url = $('#url').value.trim();
+      if (!url) return;
+      $('#loadBtn').disabled = true; $('#loadBtn').textContent = 'Loading…';
+      try {
+        SRC = await jpost('/api/clipper/probe', { url });
+      } catch (e) { $('#loadBtn').disabled = false; $('#loadBtn').textContent = 'Load'; alert('Could not load: ' + e.message); return; }
+      $('#loadBtn').disabled = false; $('#loadBtn').textContent = 'Load';
+      $('#stage').style.display = 'block';
+      $('#s-kind').textContent = SRC.kind;
+      $('#s-title').textContent = SRC.title || url;
+      $('#s-dur').textContent = SRC.duration ? '· ' + fmt(SRC.duration) : '';
+      const base = (SRC.title || 'clip').replace(/[^\w.-]+/g, '_').slice(0, 40);
+      $('#name').value = base + '_clip';
+      $('#in').value = 0; $('#out').value = SRC.duration ? Math.min(SRC.duration, 10).toFixed(1) : 5;
+      mountPlayer();
+      drawRange();
+      if (nowTimer) clearInterval(nowTimer);
+      nowTimer = setInterval(tick, 200);
+    }
+
+    function mountPlayer() {
+      const box = $('#playerbox');
+      box.innerHTML = '';
+      ytPlayer = null;
+      if (SRC.kind === 'youtube') {
+        const d = document.createElement('div'); d.id = 'yt-player'; box.appendChild(d);
+        mountYT(SRC.video_id);
+      } else {
+        const v = document.createElement('video'); v.id = 'clip-video'; v.controls = true; v.preload = 'metadata';
+        box.appendChild(v);
+        if (SRC.kind === 'local') { v.src = '/api/clipper/file?path=' + encodeURIComponent(SRC.src); }
+        else if (SRC.kind === 'hls') {
+          if (v.canPlayType('application/vnd.apple.mpegurl')) { v.src = SRC.src; }
+          else if (window.Hls && Hls.isSupported()) { const hls = new Hls(); hls.loadSource(SRC.src); hls.attachMedia(v); }
+          else { v.src = '/api/clipper/proxy?url=' + encodeURIComponent(SRC.src); }
+        } else { // direct / extractor → Range-proxied so seeking works
+          v.src = '/api/clipper/proxy?url=' + encodeURIComponent(SRC.src);
+        }
+      }
+    }
+    function mountYT(id) {
+      if (!ytReady) { pendingYT = id; return; }
+      ytPlayer = new YT.Player('yt-player', { videoId: id, playerVars: { rel: 0, modestbranding: 1 } });
+    }
+
+    function currentTime() {
+      if (SRC && SRC.kind === 'youtube') return (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() : 0;
+      const v = $('#clip-video'); return v ? v.currentTime : 0;
+    }
+    function tick() { $('#s-now').textContent = currentTime().toFixed(1); }
+    function markIn() { $('#in').value = currentTime().toFixed(1); drawRange(); }
+    function markOut() { $('#out').value = currentTime().toFixed(1); drawRange(); }
+
+    function drawRange() {
+      const a = parseFloat($('#in').value) || 0, b = parseFloat($('#out').value) || 0;
+      $('#s-len').textContent = Math.max(0, b - a).toFixed(1);
+      const dur = (SRC && SRC.duration) || Math.max(b, 1);
+      $('#rangesel').style.left = (100 * a / dur) + '%';
+      $('#rangesel').style.width = (100 * Math.max(0, b - a) / dur) + '%';
+    }
+
+    async function doClip() {
+      const a = parseFloat($('#in').value), b = parseFloat($('#out').value);
+      if (!(b > a)) { $('#result').className = 'result err'; $('#result').textContent = 'Out point must be after in.'; return; }
+      $('#clipBtn').disabled = true; $('#clipBtn').textContent = 'Clipping…';
+      $('#result').className = 'result'; $('#result').textContent = 'downloading the range with ffmpeg/yt_dlp…';
+      try {
+        const d = await jpost('/api/clipper/clip', {
+          url: SRC.src, kind: SRC.kind, start: a, end: b,
+          name: $('#name').value, comp: $('#comp').value || null, folder: $('#folder').value || null,
+        });
+        $('#result').className = 'result ok';
+        $('#result').innerHTML = `✓ saved <b>${d.name}</b> → <code>${d.path}</code>` + (d.pooled ? ` · added to <b>${d.comp}</b> pool` : '');
+      } catch (e) { $('#result').className = 'result err'; $('#result').textContent = 'clip failed: ' + e.message; }
+      $('#clipBtn').disabled = false; $('#clipBtn').textContent = 'Clip ✂';
+    }
+  </script>
+  <script src="/static/nav.js" data-active="clipper"></script>
+</body>
+</html>
