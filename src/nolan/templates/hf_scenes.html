@@ -21,6 +21,9 @@
     .btn.mini { padding: 4px 9px; font-size: 12px; }
     .btn:disabled { opacity: 0.45; cursor: default; }
     .cols { display: grid; grid-template-columns: 1fr 400px; gap: 18px; align-items: start; }
+    /* the edit rail scrolls INDEPENDENTLY (sticky + own overflow) — click-to-target scrolls IT, not the page,
+       so the frame + lanes stay put while the inspector brings the right control into view. */
+    .rail { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 2px; }
     .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
     .frame-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
     .frame-head .id { font-weight: 650; font-size: 15px; }
@@ -55,7 +58,39 @@
     .field .desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
     .field input, .field select, .field textarea { width: 100%; box-sizing: border-box; }
     .field .asset-tag { font-size: 10px; color: #e0a000; font-weight: 600; margin-left: 6px; }
+    .field .layer-role { font-size: 9px; color: var(--text-secondary); background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; margin-left: 6px; font-weight: 600; }
+    /* the scene's narration — read-only context so you can tell what a scene is about at a glance */
+    .scene-transcript { font-size: 12px; font-style: italic; color: var(--text-secondary); background: var(--bg-primary); border-left: 3px solid var(--accent, #4f7cff); border-radius: 0 6px 6px 0; padding: 7px 10px; margin: 8px 0 4px; line-height: 1.45; max-height: 96px; overflow-y: auto; }
+    /* click-to-target: a lane chip briefly pulses the control it edits so you don't hunt for it */
+    @keyframes fieldpulse { 0% { box-shadow: 0 0 0 0 var(--accent-glow, rgba(79,124,255,.5)); } 100% { box-shadow: 0 0 0 8px rgba(79,124,255,0); } }
+    .field.pulse, .pulse { border-radius: 8px; animation: fieldpulse 1s ease-out 2; outline: 2px solid var(--accent, #4f7cff); outline-offset: 1px; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .timing-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); }
+    .lock-btn { font-size: 10px; text-transform: none; font-weight: 600; padding: 2px 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text); cursor: pointer; }
+    .lock-btn:hover { border-color: var(--accent, #4f7cff); }
+    .row3 input[readonly] { opacity: .65; cursor: not-allowed; background: var(--bg-primary); }
+    /* Layer-lanes: a video-editor-style strip under the timeline. x = frame time, y = semantic layer.
+       Click a chip → jumps to + pulses the control that edits it. Read-only (NOLAN blocks own their layers). */
+    .lanes { margin: 4px 0 2px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-primary); }
+    .lane { display: flex; align-items: stretch; border-top: 1px solid var(--border); min-height: 26px; }
+    .lane:first-child { border-top: none; }
+    .lane-tag { flex: 0 0 62px; font-size: 9px; font-weight: 700; letter-spacing: .04em; color: var(--text-secondary); text-transform: uppercase; display: flex; align-items: center; padding: 0 8px; background: var(--bg-secondary); border-right: 1px solid var(--border); }
+    .lane-track { position: relative; flex: 1; min-width: 0; }
+    .lane-chip { position: absolute; top: 3px; bottom: 3px; display: flex; align-items: center; gap: 4px; padding: 0 5px; border-radius: 4px; font-size: 10px; color: var(--text); cursor: pointer; overflow: hidden; white-space: nowrap; border: 1px solid transparent; box-sizing: border-box; }
+    .lane-chip:hover { border-color: var(--accent, #4f7cff); z-index: 2; }
+    .lane-chip.kind-asset { background: rgba(46,160,67,0.18); }
+    .lane-chip.kind-text { background: rgba(79,124,255,0.16); }
+    .lane-chip.kind-motion { background: rgba(224,160,0,0.18); }
+    .lane-chip.kind-effect { background: rgba(160,90,220,0.18); }
+    .lane-chip.glow { border-color: var(--accent, #4f7cff); box-shadow: 0 0 0 2px var(--accent-soft, rgba(79,124,255,.3)); z-index: 3; }
+    .lane-chip img { width: 20px; height: 15px; object-fit: cover; border-radius: 2px; flex: 0 0 auto; }
+    .lane-chip .lc-label { overflow: hidden; text-overflow: ellipsis; }
+    /* the scene timeline rides as the FIRST lane so its segments align pixel-for-pixel with the layer chips
+       below (same 62px label column + same flex track). Slightly taller so scene id/type stay readable. */
+    .tl-lane { min-height: 34px; }
+    .tl-lane .lane-track { background: var(--bg-primary); }
+    .tl-lane .lane-tag { color: var(--text); }
     .insp-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
     #preview { width: 100%; border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; background: #111; display: none; }
     .empty { color: var(--text-secondary); font-size: 13px; padding: 30px 10px; text-align: center; }
@@ -144,12 +179,37 @@
     .pool-thumb .pt-ops { position: absolute; bottom: 2px; left: 2px; right: 2px; display: flex; gap: 2px; justify-content: flex-end; opacity: 0; transition: opacity .1s; }
     .pool-thumb .pt-ops button { font-size: 9px; background: rgba(0,0,0,.7); border: none; color: #fff; border-radius: 3px; cursor: pointer; padding: 1px 4px; }
     .pool-thumb .pt-ops button:hover { background: var(--accent, #4f7cff); }
+    /* ✨ Replace sheet — slides in from the right; frame stays visible so you judge candidates in context */
+    .rsheet { position: fixed; top: 0; right: 0; width: 430px; max-width: 94vw; height: 100vh; z-index: 90;
+      background: var(--bg-secondary); border-left: 1px solid var(--border); box-shadow: -8px 0 28px rgba(0,0,0,.35);
+      transform: translateX(105%); transition: transform .22s ease; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .rsheet.open { transform: translateX(0); }
+    .rs-head { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+    .rs-target { font-size: 12px; color: var(--text-secondary); }
+    .rs-ctx { font-size: 12px; font-style: italic; color: var(--text-secondary); background: var(--bg-primary); border-left: 3px solid var(--accent, #4f7cff); border-radius: 0 6px 6px 0; padding: 7px 10px; line-height: 1.4; max-height: 84px; overflow-y: auto; }
+    .rs-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); }
+    .rs-hint { font-weight: 400; text-transform: none; }
+    .rs-prompt { width: 100%; resize: vertical; font-size: 13px; }
+    .rs-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .rs-style { max-width: 150px; font-size: 12px; padding: 4px 6px; }
+    .rs-actions a { font-size: 12px; color: var(--accent, #4f7cff); text-decoration: none; align-self: center; }
+    .rs-status { font-size: 12px; color: var(--text-secondary); min-height: 16px; }
+    .rs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .rs-cand { position: relative; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; cursor: pointer; background: var(--bg-primary); aspect-ratio: 16/10; }
+    .rs-cand:hover { border-color: var(--accent, #4f7cff); }
+    .rs-cand img, .rs-cand video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .rs-cand .rs-src { position: absolute; top: 3px; left: 3px; font-size: 9px; font-weight: 700; color: #fff; background: rgba(0,0,0,.6); border-radius: 3px; padding: 1px 5px; }
+    .rs-cand .rs-use { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; background: rgba(79,124,255,.75); opacity: 0; transition: opacity .12s; }
+    .rs-cand:hover .rs-use { opacity: 1; }
+    .rs-cand.gen { border-color: rgba(160,90,220,.5); } .rs-cand.gen .rs-src { background: rgba(120,60,180,.85); }
     .pool-thumb:hover .pt-ops { opacity: 1; }
     .pool-thumb:hover { border-color: var(--accent, #4f7cff); }
     /* media-field thumbnail */
     .mf-row { display: flex; gap: 8px; align-items: flex-start; }
-    .mf-thumb { width: 54px; height: 40px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg-primary); }
+    .mf-thumb { width: 54px; height: 40px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg-primary); position: relative; }
     .mf-thumb img, .mf-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .pick-item, .sl-item { position: relative; }   /* anchor the ▶ video badge (pool-thumb is already relative) */
+    .pt-vid { position: absolute; top: 3px; right: 3px; font-size: 8px; line-height: 1; color: #fff; background: rgba(0,0,0,.62); border-radius: 3px; padding: 2px 3px; pointer-events: none; }
     .mf-actions { display: flex; gap: 5px; margin-top: 4px; }
     .mf-actions button { font-size: 10px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-primary); color: var(--text); cursor: pointer; }
     .mf-actions button:hover { border-color: var(--accent, #4f7cff); }
@@ -199,7 +259,7 @@
     </div>
     <div class="cols">
       <div id="frames"></div>
-      <div>
+      <div class="rail">
         <div class="card" id="framePanel"><div class="empty">Select a frame.</div></div>
         <div class="card" id="inspector"><div class="empty">Select a scene to edit.</div></div>
       </div>
@@ -285,6 +345,16 @@
       <div id="pick-list" class="pick-grid"></div>
     </div>
   </div>
+  <!-- ✨ Replace: a slide-in sheet (frame stays visible on the left so you judge candidates in context) -->
+  <div id="replace-sheet" class="rsheet">
+    <div class="rs-head"><b>✨ Replace</b> <span id="rs-target" class="rs-target"></span><span class="spacer"></span><button class="btn ghost mini" onclick="closeReplace()">✕ close</button></div>
+    <div id="rs-ctx" class="rs-ctx"></div>
+    <label class="rs-label">Describe what you want <span class="rs-hint">— auto-filled from the scene, edit freely</span></label>
+    <textarea id="rs-prompt" class="rs-prompt" rows="3"></textarea>
+    <div id="rs-actions" class="rs-actions"></div>
+    <div id="rs-status" class="rs-status"></div>
+    <div id="rs-grid" class="rs-grid"></div>
+  </div>
   <div id="newModal" class="modal">
     <div class="modal-box">
       <div class="modal-head"><b>New HyperFrames essay</b>
@@ -352,7 +422,8 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let CATALOG = null, FRAMES = [], COMP = null, SEL = null, ACTIVE_FID = null, ASSETS = [], VIDV = 0, POOLMETA = {}, QE_OPS = {};  // SEL = {frame_id, scene_id}; POOLMETA = pool provenance by file basename; QE_OPS = quick-edit registry
+let CATALOG = null, FRAMES = [], COMP = null, SEL = null, ACTIVE_FID = null, ASSETS = [], VIDV = 0, ASSETV = 0, POOLMETA = {}, QE_OPS = {}, LAYERS = null;
+let TIMING_LOCKED = true; try { TIMING_LOCKED = localStorage.getItem('hf_timing_locked') !== 'false'; } catch (e) {}  // scene times locked by default — a stray change re-fits the ground + cascades  // LAYERS = the active frame's layer map (bg/overlay/text/fx lanes)  // SEL = {frame_id, scene_id}; POOLMETA = pool provenance by file basename; QE_OPS = quick-edit registry. VIDV busts the RENDERED frame video (render-done); ASSETV busts asset THUMBNAILS (crop/cutout/fit) — decoupled so an asset edit doesn't reload the frame video
 let LOOP_SCENE = false;   // when true, clicking a scene loops its time range instead of playing through
 
 function toast(msg, kind) {
@@ -423,6 +494,29 @@ async function queueNote(fid, sid) {
     box.value = "";
     toast(`queued for agent · ${frame ? 'frame ' + fid : 'scene ' + sid} — dispatch from 🤖 Batch`, "ok");
   } catch (e) { toast("queue failed: " + e, "err"); }
+}
+// Clone a reference clip's effect onto this scene as a GSAP `raw` effect (Tier-1 of the Clips→HF adaptation).
+async function effectFromClip(fid, sid) {
+  const clip = prompt("Reference clip to clone the effect FROM — a video path, clipper URL, or clip name:", "");
+  if (clip === null) return;
+  const comment = prompt("What effect to recreate? (the motion / transition / graphic — the more precise, the better)", "") || "";
+  toast("dispatching effect agent…", "ok");
+  try {
+    const r = await jpost("/api/hf/effect/analyze", { comp: COMP, frame_id: fid, scene_id: sid, clip_ref: (clip || "").trim(), comment: comment.trim() });
+    if (r.dispatched) toast(`🎬 effect agent (${r.session}) is analyzing the clip — when it writes a proposal, click ✓ Apply effect`, "ok");
+    else toast(`brief written to ${r.task} — no live agent session; run the effect agent on it, then ✓ Apply effect`, "err");
+  } catch (e) { toast("effect dispatch failed: " + (e.message || e), "err"); }
+}
+// Land the effect agent's written proposal onto this scene (through the composer gate).
+async function applyEffectProposal(fid, sid) {
+  try {
+    const r = await jpost("/api/hf/effect/apply", { comp: COMP, frame_id: fid, scene_id: sid });
+    if (!r.applied) { toast("not applied: " + String(r.errors || "gate rejected").split("\n").slice(0, 2).join(" "), "err"); return; }
+    toast("🎬 effect applied ✓ — scene is now a GSAP effect; re-render this frame to preview", "ok");
+    await reloadFramesLight(); await selectScene(fid, sid);
+  } catch (e) {
+    toast(String(e.message || e).includes("404") ? "no proposal yet — the effect agent hasn't written one for this scene" : "apply failed: " + (e.message || e), "err");
+  }
 }
 let BATCH_CS_ALL = [], BATCH_CS = [];    // full staged changeset, and the scope-filtered subset shown
 async function batchDispatch() {
@@ -646,10 +740,16 @@ async function loadFrames(comp) {
   ACTIVE_FID = (saved && FRAMES.some(f => f.id === saved)) ? saved : null;
   renderFrames();
   renderFramePanel(ACTIVE_FID);       // handles null → "Select a frame."
+  if (ACTIVE_FID) loadLayers(ACTIVE_FID); else LAYERS = null;
   $("#inspector").innerHTML = '<div class="empty">Select a scene to edit.</div>';
 }
 
 function renderFrames() {
+  // Preserve the mounted <video> across a re-render when its src (which carries VIDV) is unchanged. An edit
+  // does NOT re-render the clip, so recreating the element would pointlessly RELOAD + flash it (and lose the
+  // playhead). On a real re-render VIDV bumps → the src differs → a fresh element loads the new clip.
+  const oldVid = ACTIVE_FID ? document.getElementById('frame-vid-' + ACTIVE_FID) : null;
+  const oldSrc = oldVid ? oldVid.getAttribute('src') : null;
   $("#frames").innerHTML = FRAMES.map(fr => {
     const dur = fr.dur || Math.max(...fr.scenes.map(s => (s.start||0)+(s.dur||0)), 1);
     const segs = fr.scenes.map(s => {
@@ -684,20 +784,93 @@ function renderFrames() {
         <span class="id">${fr.id}</span><span class="meta">${dur}s · ${fr.scenes.length} scenes${fr.html_exists?'':' · not built'}</span>
         ${badge}
         <span class="spacer"></span><span class="go">${expanded?'▾ open':'expand →'}</span></div>
-      <div class="tl">${segs}<div class="playhead" id="ph-${fr.id}"></div></div>
+      ${expanded
+        ? `<div class="lanes" id="lanes-${fr.id}">
+             <div class="lane tl-lane"><span class="lane-tag">scenes</span><div class="lane-track">${segs}<div class="playhead" id="ph-${fr.id}"></div></div></div>
+             <div id="layerlanes-${fr.id}"></div>
+           </div>`
+        : `<div class="tl">${segs}<div class="playhead" id="ph-${fr.id}"></div></div>`}
       ${rows}
       ${vid}
     </div>`;
   }).join("");
+  if (oldVid && ACTIVE_FID) {                             // re-attach the preserved element if the clip is unchanged
+    const nv = document.getElementById('frame-vid-' + ACTIVE_FID);
+    if (nv && nv.getAttribute('src') === oldSrc) nv.replaceWith(oldVid);
+  }
+  if (ACTIVE_FID && LAYERS && LAYERS.frame_id === ACTIVE_FID) paintLanes(ACTIVE_FID);   // re-paint from cache
   updateChangedCount();                                  // keep the "N changed" badge + Render-menu labels current
+}
+
+// ---- Layer-lanes: fetch the active frame's layer map + paint the strip; click a chip → jump to its control ----
+async function loadLayers(fid) {
+  if (!fid) { LAYERS = null; return; }
+  try { LAYERS = await jget(`/api/hf/frame-layers?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fid)}`); }
+  catch { LAYERS = null; }
+  paintLanes(fid);
+}
+const LANE_TAG = { bg: 'BG', overlay: 'Overlay', text: 'Text', fx: 'FX' };
+function paintLanes(fid) {
+  const box = document.getElementById('layerlanes-' + fid); if (!box) return;   // the scenes row is rendered separately + stays
+  if (!LAYERS || LAYERS.frame_id !== fid || !(LAYERS.elements || []).length) { box.innerHTML = ''; return; }
+  const dur = LAYERS.dur || Math.max(...LAYERS.elements.map(e => e.start + e.dur), 1);
+  box.innerHTML = LAYERS.lanes.map(lane => {
+    const chips = LAYERS.elements.filter(e => e.lane === lane).map((e, i) => {
+      const L = Math.max(0, (e.start || 0) / dur * 100), W = Math.max(3, (e.dur || 0) / dur * 100);
+      const icon = e.kind === 'motion' ? '✦' : e.kind === 'effect' ? '◐' : e.kind === 'text' ? 'Aa' : '';
+      const thumb = e.thumb ? `<img loading="lazy" src="${assetThumbUrl(e.thumb)}">` : (icon ? `<span>${icon}</span>` : '');
+      const sel = (SEL && SEL.scene_id === e.scene_id && lanesTargetMatches(e)) ? ' glow' : '';
+      return `<div class="lane-chip kind-${e.kind}${sel}" data-sid="${e.scene_id}" data-target="${e.target}"
+        style="left:${L}%;width:${W}%" title="${esc(e.scene_id)} · ${esc(e.label)} — click to edit ${esc(String(e.target))}"
+        onclick="laneClick('${e.scene_id}','${e.target}')">${thumb}<span class="lc-label">${esc(e.label)}</span></div>`;
+    }).join('');
+    return `<div class="lane" data-lane="${lane}"><span class="lane-tag">${LANE_TAG[lane] || lane}</span><div class="lane-track">${chips}</div></div>`;
+  }).join('');
+}
+function lanesTargetMatches() { return true; }            // (placeholder for finer field-level glow)
+
+// Click a lane chip → select its scene (renders the inspector) THEN scroll to + pulse the control it edits.
+async function laneClick(sid, target) {
+  await selectScene(ACTIVE_FID, sid);                     // inspector fields for this scene now exist
+  focusControl(target);
+}
+// Scroll the inspector to the control named by `target` and pulse it. Honest when there's no direct lever.
+function focusControl(target) {
+  let el = null;
+  if (target === 'reveal') el = $('#insp-reveal');
+  else if (target === 'transition') el = $('#insp-tr');
+  else if (target) el = document.querySelector(`#insp-fields [data-f="${target}"]`);
+  if (!el) { toast(`no direct control for '${target}' — use Edit with AI`, 'ok'); return; }
+  const field = el.closest('.field') || el;
+  // scroll the RAIL (the inspector's own scroll region), NOT the window — the frame + lanes stay in focus.
+  const rail = document.querySelector('.rail');
+  if (rail) {
+    const fr = field.getBoundingClientRect(), rr = rail.getBoundingClientRect();
+    rail.scrollBy({ top: (fr.top - rr.top) - (rr.height / 2 - fr.height / 2), behavior: 'smooth' });
+  } else {
+    field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  field.classList.remove('pulse'); void field.offsetWidth; field.classList.add('pulse');   // restart the animation
+  try { el.focus({ preventScroll: true }); } catch (e) {}
+  setTimeout(() => field.classList.remove('pulse'), 2400);
+}
+
+// A LIGHT refresh after an edit: re-fetch only the frame tree (NOT the 349-asset pool + meta, which a field
+// edit doesn't change) and re-render. Pairs with renderFrames' video-preservation → an edit no longer stalls
+// on a full asset reload nor flashes the video. Use loadFrames only when switching comps / after asset ops.
+async function reloadFramesLight() {
+  try { const d = await jget("/api/hf/frames?comp=" + encodeURIComponent(COMP)); FRAMES = d.frames; } catch {}
+  $("#status").textContent = `${FRAMES.length} frame(s) · ${FRAMES.reduce((n,f)=>n+f.scenes.length,0)} scene(s)`;
+  renderFrames();
+  if (ACTIVE_FID) loadLayers(ACTIVE_FID);                // an edit can change assets/motion/timing → refresh lanes
 }
 
 // Click a frame head: expand it (folding whichever was open), or collapse it if it's already open.
 function activateFrame(fid) {
   ACTIVE_FID = (ACTIVE_FID === fid) ? null : fid;      // toggle → click the open frame's head to fold it
   renderFrames();
-  if (ACTIVE_FID) renderFramePanel(ACTIVE_FID);
-  else { $("#framePanel").innerHTML = '<div class="empty">Select a frame.</div>'; }
+  if (ACTIVE_FID) { renderFramePanel(ACTIVE_FID); loadLayers(ACTIVE_FID); }
+  else { $("#framePanel").innerHTML = '<div class="empty">Select a frame.</div>'; LAYERS = null; }
   try { localStorage.setItem('hf_active_' + COMP, ACTIVE_FID || ''); } catch (e) {}
 }
 
@@ -748,13 +921,16 @@ async function selectScene(fid, sid) {
     renderFrames();
     renderFramePanel(fid);
     try { localStorage.setItem('hf_active_' + COMP, fid); } catch (e) {}
+    loadLayers(fid);                   // fetch this frame's layer map for the lanes strip
+  } else if (LAYERS && LAYERS.frame_id === fid) {
+    paintLanes(fid);                   // same frame, new scene → refresh the glow on the selected chip
   }
   applySelectionDOM();                 // toggle highlights WITHOUT re-rendering (which would kill the <video>)
   playSceneRange(fid, sid);            // seek this frame's video to the scene and play its range
   // fetch the full scene (list only carries a summary) via the frame spec
   const d = await jget(`/api/hf/frame-spec?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fid)}`);
   const scene = (d.frame.scenes||[]).find(s=>s.id===sid);
-  renderInspector(scene, fid);
+  renderInspector(scene, fid, (d.transcripts || {})[sid] || "");
 }
 
 // Toggle .sel/.active in place (no innerHTML rebuild) so the currently-playing <video> survives a scene click.
@@ -827,6 +1003,10 @@ document.addEventListener('keydown', (e) => {
 
 const ASSET_RE = /image|asset|avatar|art|src|backdrop|photo|logo|thumb/i;
 const TEXT_BLOCKS = new Set(["statement","newshead","stat","comparison"]);
+// which visual LAYER a media field paints — so the inspector says "Background · ground" not just "ground",
+// and (later) the layer-lanes view can group by it. Matches the composed z-order (ground/backdrop behind).
+const LAYER_ROLE = { ground:"Background", backdrop:"Background", image:"Overlay", source:"Overlay",
+                     subjects:"Overlay", avatar:"Overlay", art:"Overlay", right:"Right panel", left:"Left panel" };
 
 // Every media file referenced anywhere in a scene's data (ground.src, image, backdrop, subjects[].src, …),
 // by basename — so we can look each up in POOLMETA to surface generated-asset provenance.
@@ -856,7 +1036,7 @@ function genPromptPanel(scene) {
   }).join('');
 }
 
-function renderInspector(scene, fid) {
+function renderInspector(scene, fid, transcript) {
   const tmpl = CATALOG.scene_templates[scene.type] || {};
   const schema = tmpl.data_schema || {};
   const data = scene.data || {};
@@ -878,11 +1058,12 @@ function renderInspector(scene, fid) {
       // #2: visual media field — thumbnail of the current asset + pick-from-pool + inline crop, instead of a bare path/JSON
       const kk = mp ? (/\.(mp4|mov|webm)$/i.test(mp) ? 'video' : 'image') : null;
       const thumb = mp
-        ? `<div class="mf-thumb">${kk === 'video' ? `<video src="${assetUrl(mp)}#t=0.5" muted preload="metadata"></video>` : `<img src="${assetUrl(mp)}">`}</div>`
+        ? `<div class="mf-thumb">${thumbImg(mp, kk)}</div>`
         : `<div class="mf-thumb" style="display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-secondary)">none</div>`;
-      const actions = `<div class="mf-actions"><button onclick="openPicker(this)">pick from pool</button>${mp ? assetActions(mp, kk) : ''}</div>`;
+      const actions = `<div class="mf-actions"><button onclick="openReplace('${fid}','${scene.id}','${k}')" title="Find or generate a replacement from the scene's own context — candidates land in the pool">✨ Replace</button><button onclick="openPicker(this)">pick from pool</button>${mp ? assetActions(mp, kk) : ''}</div>`;
       const kb = (k === "ground" && kk === "image") ? ` <span class="mf-kb" title="Image grounds get a default Ken Burns push">🎥 Ken Burns</span>` : '';
-      fields += `<div class="field"><label>${k}<span class="asset-tag">asset</span>${kb}</label><div class="mf-row">${thumb}<div style="flex:1;min-width:0">${inp}${actions}</div></div><div class="desc">${esc(desc)}</div></div>`;
+      const role = LAYER_ROLE[k] ? `<span class="layer-role" title="Which visual layer this field paints">${LAYER_ROLE[k]}</span>` : '';
+      fields += `<div class="field" data-layer-field="${k}"><label>${k}${role}<span class="asset-tag">asset</span>${kb}</label><div class="mf-row">${thumb}<div style="flex:1;min-width:0">${inp}${actions}</div></div><div class="desc">${esc(desc)}</div></div>`;
     } else {
       fields += `<div class="field"><label>${k}</label>${inp}<div class="desc">${esc(desc)}</div></div>`;
     }
@@ -894,10 +1075,14 @@ function renderInspector(scene, fid) {
   const curTrDur = (scene.transition_out||{}).dur || 0.6;
   $("#inspector").innerHTML = `
     <div class="frame-head"><span class="id">${scene.id}</span><span class="badge">${scene.type}</span><span class="spacer"></span></div>
+    ${transcript ? `<div class="scene-transcript" title="The narration spoken during this scene — what it's about">🎙 ${esc(transcript)}</div>` : ''}
     ${genPromptPanel(scene)}
-    <div class="row2">
-      <div class="field"><label>start (s)</label><input id="insp-start" type="number" step="0.1" value="${scene.start||0}"></div>
-      <div class="field"><label>dur (s)</label><input id="insp-dur" type="number" step="0.1" value="${scene.dur||0}"></div>
+    <div class="timing-head"><span>timing</span><button id="timing-lock" class="lock-btn" onclick="toggleTimingLock()"
+        title="Scene times are LOCKED so you can't nudge them by accident (a wrong time re-fits the ground + cascades). Click to edit.">${TIMING_LOCKED ? '🔒 locked' : '🔓 editable'}</button></div>
+    <div class="row3">
+      <div class="field"><label title="When the scene starts, in seconds">start (s)</label><input id="insp-start" type="number" step="0.1" value="${scene.start||0}" oninput="syncTiming('start')"${TIMING_LOCKED ? ' readonly' : ''}></div>
+      <div class="field"><label title="How long the scene lasts. Edit start or dur → end auto-updates.">dur (s)</label><input id="insp-dur" type="number" step="0.1" value="${scene.dur||0}" oninput="syncTiming('dur')"${TIMING_LOCKED ? ' readonly' : ''}></div>
+      <div class="field"><label title="When the scene ends (start + dur). Type an end → dur auto-recomputes.">end (s)</label><input id="insp-end" type="number" step="0.1" value="${((scene.start||0)+(scene.dur||0)).toFixed(2)}" oninput="syncTiming('end')"${TIMING_LOCKED ? ' readonly' : ''}></div>
     </div>
     ${TEXT_BLOCKS.has(scene.type) ? `<div class="field"><label>reveal (text motion)</label>
       <select id="insp-reveal">${revealOpts.map(o=>`<option ${o===curReveal?'selected':''}>${o||'— none —'}</option>`).join("")}</select></div>` : ''}
@@ -920,7 +1105,7 @@ function renderInspector(scene, fid) {
         </select>
       </div>
       <textarea id="note-input" class="mention-input" placeholder="Describe the change in plain words — e.g. apply @reveal:scramble to the title then dip to black; or weave @asset0 into a gallery from 3–7s"></textarea>
-      <button class="btn mini" style="margin-top:6px" onclick="applyNote('${fid}','${scene.id}')" title="Send this note to the AI — it works out the edit and applies it NOW, through the composer gate.">Apply with AI</button><button class="btn ghost mini" style="margin-top:6px" onclick="queueNote('${fid}','${scene.id}')" title="Add this note to a batch a fleet agent handles LATER as reviewable proposals — instead of applying now. Dispatch from 🤖 Batch.">Queue for agent</button></div>
+      <button class="btn mini" style="margin-top:6px" onclick="applyNote('${fid}','${scene.id}')" title="Send this note to the AI — it works out the edit and applies it NOW, through the composer gate.">Apply with AI</button><button class="btn ghost mini" style="margin-top:6px" onclick="queueNote('${fid}','${scene.id}')" title="Add this note to a batch a fleet agent handles LATER as reviewable proposals — instead of applying now. Dispatch from 🤖 Batch.">Queue for agent</button><button class="btn ghost mini" style="margin-top:6px" onclick="effectFromClip('${fid}','${scene.id}')" title="Clone the effect from a reference clip onto this scene as a GSAP effect — dispatches the effect agent; ✓ Apply lands its proposal.">🎬 Effect from clip</button><button class="btn ghost mini" style="margin-top:6px" onclick="applyEffectProposal('${fid}','${scene.id}')" title="Land the effect agent's proposal onto this scene (once it's written one).">✓ Apply effect</button></div>
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div class="fields-head" style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px">Scene fields</div>
     <div id="insp-fields">${fields}</div>
@@ -935,10 +1120,7 @@ function shortlistHtml(scene, fid) {
   const sl = ((scene.meta || {}).shortlist) || [];
   if (!sl.length) return '<span class="sl-empty">drop image/video files here</span>';
   return sl.map(a => {
-    const url = `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(a.path)}`;
-    const thumb = a.media_type === 'video'
-      ? `<video src="${url}#t=0.5" muted preload="metadata"></video>`
-      : `<img src="${url}" loading="lazy">`;
+    const thumb = thumbImg(a.path, a.media_type);
     const slot = groundSlot(scene.type, a.media_type);
     const useBtn = slot
       ? `<button class="sl-use" onclick="useSceneAsset('${fid}','${scene.id}','${esc(a.path)}','${a.media_type}')" title="Set as this ${scene.type}'s ${a.media_type === 'video' ? 'ground' : 'background'} (${slot.field}, gated)">use</button>`
@@ -1012,7 +1194,7 @@ async function useSceneAsset(fid, sid, path, mt) {
     const r = await jpost('/api/hf/scene/revise', {comp: COMP, frame_id: fid, scene_id: sid, patch, deletes: []});
     if (!r.applied) { toast('Rejected by gate: ' + (r.errors || '').split('\n').slice(0, 2).join(' '), 'err'); return; }
     toast('set as ground ✓ — recomposed', 'ok');
-    await loadFrames(COMP); await selectScene(fid, sid); previewScene(fid, sid);
+    await reloadFramesLight(); await selectScene(fid, sid); previewScene(fid, sid);
     if (mt === 'video') await maybeAutoFit(fid, sid);    // #5: retime the video to the scene length if they differ
   } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
@@ -1023,6 +1205,26 @@ async function removeSceneAsset(fid, sid, name) {
 }
 
 function parseVal(v) { v = v.trim(); if (v === "") return undefined; try { return JSON.parse(v); } catch { return v; } }
+
+// Scene times are LOCKED by default so you can't nudge start/dur/end by accident (a wrong time silently
+// re-fits the ground + cascades). Click the lock to edit; the choice persists per browser.
+function toggleTimingLock() {
+  TIMING_LOCKED = !TIMING_LOCKED;
+  try { localStorage.setItem('hf_timing_locked', TIMING_LOCKED); } catch (e) {}
+  ['insp-start', 'insp-dur', 'insp-end'].forEach(id => { const el = $('#' + id); if (el) el.readOnly = TIMING_LOCKED; });
+  const b = $('#timing-lock'); if (b) b.textContent = TIMING_LOCKED ? '🔒 locked' : '🔓 editable';
+}
+
+// start/dur/end are interlocked (end = start + dur). start+dur are canonical (what the spec stores + what
+// applyEdit sends); end is a convenience. Editing start or dur → recompute end; editing end → recompute dur.
+function syncTiming(changed) {
+  const s = parseFloat($("#insp-start").value), d = parseFloat($("#insp-dur").value), e = parseFloat($("#insp-end").value);
+  if (changed === 'end') {
+    if (!isNaN(s) && !isNaN(e)) $("#insp-dur").value = Math.max(0, +(e - s).toFixed(3));
+  } else {
+    if (!isNaN(s) && !isNaN(d)) $("#insp-end").value = +(s + d).toFixed(3);
+  }
+}
 
 async function applyEdit(fid, sid) {
   const scene = findScene(fid, sid);
@@ -1043,7 +1245,7 @@ async function applyEdit(fid, sid) {
     const r = await jpost("/api/hf/scene/revise", {comp: COMP, frame_id: fid, scene_id: sid, patch, deletes});
     if (!r.applied) { toast("Rejected by gate: " + (r.errors||"").split("\n").slice(0,3).join(" "), "err"); return; }
     toast("Applied + recomposed ✓", "ok");
-    await loadFrames(COMP); await selectScene(fid, sid); previewScene(fid, sid);
+    await reloadFramesLight(); await selectScene(fid, sid); previewScene(fid, sid);
     const g = (patch["data.ground"]);                    // #5: if a video ground was just set, auto-fit it to the scene
     if (g && typeof g === 'object' && g.kind === 'video') await maybeAutoFit(fid, sid);
   } catch (e) { toast("Error: " + e.message, "err"); }
@@ -1053,7 +1255,7 @@ async function removeScene(fid, sid) {
   if (!confirm(`Remove scene ${sid} from ${fid}?`)) return;
   try { const r = await jpost("/api/hf/scene/remove", {comp: COMP, frame_id: fid, scene_id: sid});
     if (!r.applied) return toast("Rejected: " + (r.errors||""), "err");
-    toast("Removed ✓", "ok"); loadFrames(COMP);
+    toast("Removed ✓", "ok"); reloadFramesLight();
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 
@@ -1064,7 +1266,7 @@ async function addScene(fid) {
     start: parseFloat($(`#add-start`).value)||0, dur: parseFloat($(`#add-dur`).value)||3, data};
   try { const r = await jpost("/api/hf/scene/add", {comp: COMP, frame_id: fid, scene});
     if (!r.applied) return toast("Rejected by gate: " + (r.errors||"").split("\n").slice(0,3).join(" "), "err");
-    toast("Added ✓", "ok"); loadFrames(COMP);
+    toast("Added ✓", "ok"); reloadFramesLight();
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 
@@ -1079,7 +1281,7 @@ async function buildPool() {
 async function fillTransitions(fid) {
   try { const r = await jpost("/api/hf/transitions/plan", {comp: COMP, frame_id: fid, apply: true});
     toast(`Transitions filled: ${(r.proposals||[]).map(p=>p.scene_id+'→'+p.kind).join(', ')||'none'} ✓`, "ok");
-    loadFrames(COMP);
+    reloadFramesLight();
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 
@@ -1134,7 +1336,7 @@ async function applyNote(fid, sid) {
     const r = await jpost("/api/hf/frame/revise-note", body);
     if (!r.applied) return toast("Not applied: " + (r.errors || "").split("\n").slice(0, 2).join(" "), "err");
     toast(`Applied ${(r.ops || []).length} op(s) ✓`, "ok");
-    await loadFrames(COMP); await selectScene(fid, sid); previewScene(fid, sid);
+    await reloadFramesLight(); await selectScene(fid, sid); previewScene(fid, sid);
   } catch (e) { toast("Error: " + e.message, "err"); }
 }
 
@@ -1145,9 +1347,7 @@ function closePicker() { $("#picker").style.display = "none"; }
 async function renderPicker() {
   const d = await jget("/api/hf/assets?comp=" + encodeURIComponent(COMP));
   $("#pick-list").innerHTML = d.assets.map(a => {
-    const th = a.kind === "image" ? `<img src="${assetUrl(a.path)}" loading="lazy">`
-      : a.kind === "video" ? `<video src="${assetUrl(a.path)}#t=0.5" muted preload="metadata"></video>`
-      : `<span class="badge">${a.kind}</span>`;
+    const th = (a.kind === "image" || a.kind === "video") ? thumbImg(a.path, a.kind) : `<span class="badge">${a.kind}</span>`;
     return `<div class="pick-item" onclick='pickAsset(${JSON.stringify(a.path)})'>${th}<span>${esc(a.name)}</span></div>`;
   }).join("") || '<div class="empty">No assets yet — upload one.</div>';
 }
@@ -1169,8 +1369,103 @@ function setAsset(el, path) {
   } else { el.value = path; }
 }
 
+// ---- ✨ Replace: from a scene's context → stock (auto, cheap) + ComfyUI gen (one-tap). Candidates land in
+//      the pool tagged to the scene; click one to USE it (block-aware set + auto-fit + re-render). ----------
+let RS = null, _rsPoll = null, STYLE_PRESETS = [];   // RS = { fid, sid, field, modality, style, enhanced, negative }
+async function openReplace(fid, sid, field) {
+  RS = { fid, sid, field, modality: 'image', style: '', enhanced: false, negative: '' };
+  const sheet = $("#replace-sheet"); sheet.classList.add('open');
+  $("#rs-grid").innerHTML = ''; $("#rs-status").textContent = 'reading the scene…'; $("#rs-ctx").textContent = ''; $("#rs-prompt").value = '';
+  if (!STYLE_PRESETS.length) { try { STYLE_PRESETS = (await jget('/api/hf/style-presets')).presets || []; } catch {} }
+  let b;
+  try { b = await jget(`/api/hf/replace/brief?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fid)}&scene_id=${encodeURIComponent(sid)}`); }
+  catch (e) { $("#rs-status").textContent = 'could not read the scene: ' + e.message; return; }
+  RS.modality = b.modality || 'image';
+  $("#rs-target").textContent = `${sid} · ${b.field || field} · ${RS.modality}`;
+  $("#rs-ctx").textContent = b.transcript ? '🎙 ' + b.transcript : '(no narration for this scene)';
+  $("#rs-prompt").value = b.prompt || b.query || '';
+  // modality-aware. IMAGE → two-step gen (style preset → ✨ Enhance → tweak → Generate) + stock.
+  // VIDEO → stock (gen makes images) + a clipper link.
+  if (RS.modality === 'image') {
+    const opts = `<option value="">— style: none —</option>` + STYLE_PRESETS.map((p, i) => `<option value="${i}">${esc(p.label)}</option>`).join('');
+    $("#rs-actions").innerHTML =
+      `<select id="rs-style" class="rs-style" onchange="rsStyleChange()" title="Style preset — prepended to set the tone">${opts}</select>`
+      + `<button class="btn ghost mini" onclick="rsEnhance()" title="Step 1: art-direct the prompt (adds medium/reference + your style). Then tweak & Generate.">✨ Enhance</button>`
+      + `<button class="btn mini" onclick="rsGenerate()">✨ Generate ×3</button>`
+      + `<button class="btn ghost mini" onclick="rsSearch()">🔍 Stock</button>`;
+  } else {
+    $("#rs-actions").innerHTML = `<button class="btn ghost mini" onclick="rsSearch()">🔍 Search ${RS.modality}</button>`
+      + ` <a href="/clipper" target="_blank">🎬 clip a link</a>`
+      + ` <span class="rs-hint" style="font-size:11px;color:var(--text-secondary)">stock loads now</span>`;
+  }
+  rsSearch();   // stock auto-fires (cheap); gen/enhance never auto-fire
+}
+function rsStyleChange() { const v = $("#rs-style") ? $("#rs-style").value : ''; RS.style = v === '' ? '' : ((STYLE_PRESETS[+v] || {}).prompt || ''); RS.enhanced = false; }
+async function rsEnhance() {
+  if (!RS) return;
+  const prompt = ($("#rs-prompt").value || '').trim(); if (!prompt) { $("#rs-status").textContent = 'type a prompt first'; return; }
+  $("#rs-status").textContent = 'art-directing the prompt…';
+  try { const r = await jpost('/api/hf/replace/enhance', { comp: COMP, frame_id: RS.fid, scene_id: RS.sid, prompt, style: RS.style || '' });
+    $("#rs-prompt").value = r.prompt || prompt; RS.enhanced = true; RS.negative = r.negative || '';
+    $("#rs-status").textContent = 'enhanced ✓ — tweak if you like, then Generate';
+  } catch (e) { $("#rs-status").textContent = 'enhance failed: ' + e.message; }
+}
+function closeReplace() { $("#replace-sheet").classList.remove('open'); clearInterval(_rsPoll); RS = null; }
+async function rsSearch() {
+  if (!RS) return;
+  const query = ($("#rs-prompt").value || '').trim(); if (!query) { $("#rs-status").textContent = 'type something to search'; return; }
+  $("#rs-status").textContent = `searching ${RS.modality} stock…`;
+  try { const r = await jpost('/api/hf/replace/search', { comp: COMP, frame_id: RS.fid, scene_id: RS.sid, query, modality: RS.modality, n: 6 });
+    rsWatch(r.job_id, 'stock'); } catch (e) { $("#rs-status").textContent = 'search failed: ' + e.message; }
+}
+async function rsGenerate() {
+  if (!RS) return;
+  let prompt = ($("#rs-prompt").value || '').trim(); if (!prompt) { $("#rs-status").textContent = 'type a prompt to generate'; return; }
+  if (!RS.enhanced && RS.style) prompt = RS.style + ', ' + prompt;   // skipped Enhance → prepend the style now (Enhance already folds it in)
+  $("#rs-status").textContent = 'generating (ComfyUI, ~20s)…';
+  try { const r = await jpost('/api/hf/replace/generate', { comp: COMP, frame_id: RS.fid, scene_id: RS.sid, prompt, n: 3, negative: RS.negative || null });
+    rsWatch(r.job_id, 'gen'); } catch (e) { $("#rs-status").textContent = 'gen failed: ' + e.message; }
+}
+function rsWatch(jobId, label) {
+  clearInterval(_rsPoll); let n = 0;
+  _rsPoll = setInterval(async () => {
+    n++;
+    let j; try { j = await jget('/api/jobs/' + jobId); } catch { return; }
+    if (j.status === 'done' || j.status === 'error' || j.status === 'cancelled') {
+      clearInterval(_rsPoll);
+      if (j.status !== 'done') { $("#rs-status").textContent = `${label} ${j.status}: ${(j.error || j.message || '').slice(0,80)}`; return; }
+      const cands = (j.result || {}).candidates || [];
+      $("#rs-status").textContent = cands.length ? `${cands.length} ${label} result(s) — click one to use (all kept in pool)` : `no ${label} results — try editing the prompt`;
+      rsAddCandidates(cands);
+    } else if (n > 100) { clearInterval(_rsPoll); $("#rs-status").textContent = `${label} timed out — check Background Jobs`; }
+  }, 2500);
+}
+function rsAddCandidates(cands) {
+  const grid = $("#rs-grid");
+  for (const c of cands) {
+    if (!c || !c.path) continue;
+    const div = document.createElement('div');
+    div.className = 'rs-cand' + (c.source === 'gen' ? ' gen' : '');
+    const badge = c.source === 'gen' ? '✨ gen' : '🔍 ' + ((c.attribution || {}).provider || 'stock');
+    div.innerHTML = `${thumbImg(c.path, c.media_type)}<span class="rs-src">${esc(badge)}</span><div class="rs-use">use ✓</div>`;
+    div.onclick = () => rsUse(c.path, c.media_type);
+    grid.appendChild(div);
+  }
+}
+async function rsUse(path, mt) {
+  if (!RS) return;
+  const { fid, sid } = RS;
+  $("#rs-status").textContent = 'using it…';
+  closeReplace();
+  await useSceneAsset(fid, sid, path, mt);   // block-aware set → gate → auto-fit → re-render (frame goes stale)
+}
+
 // ---- Asset pool panel (#1): drop STRAIGHT to the pool (neutral) + a browsable grid to reference anywhere ----
-function assetUrl(path) { return `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(path)}&v=${VIDV}`; }
+function assetUrl(path) { return `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(path)}&v=${ASSETV}`; }
+// a TINY cached JPEG poster for grid cells — one lazy <img> instead of a full <video preload=metadata>,
+// so a 200-video pool doesn't stall the page. assetUrl (the real file) is only for the crop modal + <video> use.
+function assetThumbUrl(path) { return `/api/hf/asset-thumb?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(path)}&v=${ASSETV}`; }
+function thumbImg(path, kind) { return `<img loading="lazy" src="${assetThumbUrl(path)}">${kind === 'video' ? '<span class="pt-vid">▶</span>' : ''}`; }
 // the media path referenced by a field value (a bare path string, or a {src} object like media_ground) — else null
 function fieldMediaPath(cur) {
   if (typeof cur === 'string' && /\.(png|jpe?g|webp|gif|mp4|mov|webm)$/i.test(cur)) return cur;
@@ -1179,8 +1474,7 @@ function fieldMediaPath(cur) {
 }
 function poolThumb(a) {
   const gen = POOLMETA[a.name] && POOLMETA[a.name].generated ? '<span class="pt-gen">🎨</span>' : '';
-  const media = a.kind === 'image' ? `<img src="${assetUrl(a.path)}" loading="lazy">`
-    : a.kind === 'video' ? `<video src="${assetUrl(a.path)}#t=0.5" muted preload="metadata"></video>` : `<span class="badge">${a.kind}</span>`;
+  const media = (a.kind === 'image' || a.kind === 'video') ? thumbImg(a.path, a.kind) : `<span class="badge">${a.kind}</span>`;
   return `<div class="pool-thumb" title="${esc(a.name)} — click to use in the focused field" onclick="usePoolAsset(${JSON.stringify(a.path)})">
     ${media}${gen}<div class="pt-ops">${assetActions(a.path, a.kind)}</div></div>`;
 }
@@ -1268,7 +1562,7 @@ async function applyCrop(mode) {
   $("#crop-result").className = ''; $("#crop-result").textContent = 'cropping…';
   try {
     const r = await jpost('/api/hf/asset-quickedit', { comp: COMP, path: CROP.path, op: 'crop', params, mode, name: $("#crop-newname").value || null });
-    VIDV++;                                              // bust cached thumbnails (esp. in-place overwrite)
+    ASSETV++;                                            // bust cached thumbnails (esp. in-place overwrite)
     await refreshAssets();
     $("#crop-result").innerHTML = `<span style="color:#30a46c">✓ ${mode === 'inplace' ? 'cropped in place (revertable)' : 'new asset: ' + r.name}</span>`;
     if (mode === 'inplace') closeCrop();
@@ -1304,7 +1598,7 @@ async function applyTrim(mode) {
   $("#trim-result").textContent = 'trimming…';
   try {
     const r = await jpost('/api/hf/asset-quickedit', { comp: COMP, path: TRIM.path, op: 'trim', params: { start: a, end: b }, mode, name: $("#trim-newname").value || null });
-    VIDV++; await refreshAssets();
+    ASSETV++; await refreshAssets();
     $("#trim-result").innerHTML = `<span style="color:#30a46c">✓ ${mode === 'inplace' ? 'trimmed in place (revertable)' : 'new asset: ' + r.name}</span>`;
     if (mode === 'inplace') closeTrim();
     if (SEL) selectScene(SEL.frame_id, SEL.scene_id);
@@ -1319,7 +1613,7 @@ async function removeBg(path) {
   toast('removing background… (see Background Jobs) ', 'ok');
   const poll = setInterval(async () => {
     let j; try { j = await jget('/api/jobs/' + job.job_id); } catch { return; }
-    if (j.status === 'done') { clearInterval(poll); VIDV++; await refreshAssets(); toast('cutout ready: ' + ((j.result || {}).name || ''), 'ok'); }
+    if (j.status === 'done') { clearInterval(poll); ASSETV++; await refreshAssets(); toast('cutout ready: ' + ((j.result || {}).name || ''), 'ok'); }
     else if (j.status === 'error') { clearInterval(poll); toast('remove-bg failed: ' + (j.error || ''), 'err'); }
   }, 1500);
 }
@@ -1328,7 +1622,7 @@ async function removeBg(path) {
 async function maybeAutoFit(fid, sid) {
   try {
     const r = await jpost('/api/hf/scene/fit-ground', { comp: COMP, frame_id: fid, scene_id: sid });
-    if (r && r.fitted) { toast(`auto-fit video ${r.from}s → ${r.to}s to match the scene`, 'ok'); VIDV++; await loadFrames(COMP); selectScene(fid, sid); }
+    if (r && r.fitted) { toast(`auto-fit video ${r.from}s → ${r.to}s to match the scene`, 'ok'); ASSETV++; await refreshAssets(); await reloadFramesLight(); selectScene(fid, sid); }
   } catch (e) { /* non-fatal: fit is a convenience */ }
 }
 

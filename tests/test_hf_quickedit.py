@@ -1,5 +1,6 @@
 """Quick-edit framework (crop first) + neutral pool-add for the /hyperframes edit page. Crop is fast enough
 to run inline; in-place keeps a reversible `.orig` backup; a new-asset crop registers in the pool."""
+import json
 import re
 import shutil
 import subprocess
@@ -108,3 +109,25 @@ def test_registry_exposes_ui_and_background(comp):
     assert ops["trim"]["media"] == ["video"] and ops["trim"]["ui"] == "trim"
     assert ops["fit"]["ui"] == "auto"
     assert ops["remove_bg"]["background"] is True and ops["remove_bg"]["media"] == ["image"]
+
+
+def test_ensure_grounds_fit_deterministic(comp):
+    """The deterministic backstop: at render time, EVERY un-fit video ground is fit to its scene (whatever set
+    it), idempotently, with a name-based fast-path that skips the ffmpeg probe once a ground is already fit."""
+    name, ff, dst = comp
+    subprocess.run([ff, "-y", "-f", "lavfi", "-i", "testsrc=s=320x240:d=4:r=30", "-c:v", "libx264", "-t", "4",
+                    str(dst / "assets" / "g.mp4")], capture_output=True)
+    if _dur(ff, dst / "assets" / "g.mp4") < 1:
+        pytest.skip("ffmpeg could not build the test clip")
+    (dst / "compositions" / "frames" / "f1.spec.json").write_text(json.dumps({"frames": [{"id": "f1", "dur": 8.0, "scenes": [
+        {"id": "s1", "type": "statement", "start": 0, "dur": 8, "data": {"lines": ["hi"], "ground": {"kind": "video", "src": "assets/g.mp4"}}},
+        {"id": "s2", "type": "statement", "start": 8, "dur": 4, "data": {"lines": ["yo"], "ground": {"kind": "paper"}}},
+    ]}]}), encoding="utf-8")
+    (dst / "hyperframes.json").write_text('{"theme":"highlighter-editorial"}', encoding="utf-8")
+
+    fit1 = hfedit.ensure_grounds_fit(name, "f1")            # s1: 4s video → 8s scene; s2: paper (not a video)
+    assert fit1 == ["s1"]
+    spec, info = hfedit.load_frame_spec(name, "f1")
+    g = spec["frames"][info["i"]]["scenes"][0]["data"]["ground"]
+    assert "_fit8s" in g["src"] and abs(_dur(ff, dst / g["src"]) - 8.0) < 0.4   # the ground now spans the scene
+    assert hfedit.ensure_grounds_fit(name, "f1") == []      # idempotent (fast-path skips the already-fit ground)

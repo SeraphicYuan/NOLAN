@@ -474,6 +474,93 @@ def list_frames(comp: str) -> List[Dict[str, Any]]:
     return frames
 
 
+# ---- layer map: a frame's timeline broken into semantic LANES (for the layer-lanes view) --------------
+_LANE_OF = {"ground": "bg", "backdrop": "bg", "image": "overlay", "source": "overlay",
+            "subjects": "overlay", "avatar": "overlay", "art": "overlay", "right": "overlay", "left": "overlay"}
+_MEDIA_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".mov", ".webm")
+_TEXT_FIELDS = ("lines", "title", "headline", "text", "kicker", "name", "sub", "subtitle", "track", "code", "items")
+
+
+def _media_src(v: Any) -> Optional[str]:
+    """The media path a field value points to — a bare path, or a {src}/{kind,src} object — else None."""
+    if isinstance(v, str) and v.lower().endswith(_MEDIA_EXT):
+        return v
+    if isinstance(v, dict) and isinstance(v.get("src"), str) and v["src"].lower().endswith(_MEDIA_EXT):
+        return v["src"]
+    return None
+
+
+def frame_layers(comp: str, frame_id: str) -> Dict[str, Any]:
+    """A frame's timeline as LANES (bg / overlay / text / fx), one element per asset / text / motion, each with
+    its time window + a `target` = the inspector control it edits (a data-f field name, or 'reveal'/'transition').
+    So clicking a lane chip can jump straight to the right control instead of hunting the scene form. Derived
+    from the SPEC (fields = layers — the author's mental model), which stays correct as blocks evolve."""
+    spec, info = load_frame_spec(comp, frame_id)
+    fr = spec["frames"][info["i"]]
+    cat = catalog().get("scene_templates", {})
+    els: List[Dict[str, Any]] = []
+    for sc in fr.get("scenes", []):
+        sid, typ = sc.get("id"), sc.get("type")
+        start, dur = round(float(sc.get("start", 0) or 0), 3), round(float(sc.get("dur", 0) or 0), 3)
+        d = sc.get("data", {}) or {}
+        schema = cat.get(typ, {}).get("data_schema", {})
+
+        def add(lane, label, target, kind, thumb=None):
+            els.append({"scene_id": sid, "scene_type": typ, "lane": lane, "start": start, "dur": dur,
+                        "label": label, "target": target, "kind": kind, "thumb": thumb})
+
+        for f, lane in _LANE_OF.items():                 # BACKGROUND + OVERLAY: media-valued fields, lane by role
+            if f not in schema:
+                continue
+            v = d.get(f)
+            if f == "subjects" and isinstance(v, list) and v:
+                add("overlay", f"{len(v)} subject(s)", "subjects", "asset", _media_src(v[0]))
+                continue
+            src = _media_src(v)
+            if src:
+                lbl = ((f"{v['kind']} " if isinstance(v, dict) and v.get("kind") else "") + f).strip()
+                add(lane, lbl, f, "asset", src)
+        tf = next((f for f in _TEXT_FIELDS if f in schema), None)   # TEXT + its reveal motion
+        if tf:
+            add("text", (_scene_summary(sc) or typ)[:28], tf, "text", None)
+            if d.get("reveal"):
+                add("text", f"↳ {d['reveal']}", "reveal", "motion", None)
+        tr = sc.get("transition_out") or {}                # FX: transition + a ground colour grade
+        if tr.get("kind"):
+            add("fx", f"→ {tr['kind']}", "transition", "motion", None)
+        g = d.get("ground")
+        if isinstance(g, dict) and g.get("grade"):
+            add("fx", f"grade: {g['grade']}", "ground", "effect", None)
+    return {"frame_id": frame_id, "dur": fr.get("dur"), "lanes": ["bg", "overlay", "text", "fx"], "elements": els}
+
+
+def frame_transcripts(comp: str, frame_id: str) -> Dict[str, str]:
+    """Per-scene NARRATION text — the VO words whose timing overlaps each scene's window (from audio_meta's
+    per-frame word timings; scene start/dur and the words are both frame-local). Lets the editor read what a
+    scene actually SAYS at a glance. Returns {scene_id: text}; empty strings where there's no aligned VO."""
+    spec, info = load_frame_spec(comp, frame_id)
+    fr = spec["frames"][info["i"]]
+    out = {sc.get("id"): "" for sc in fr.get("scenes", [])}
+    mp = _comp_dir(comp) / "audio_meta.json"
+    if not mp.exists():
+        return out
+    try:
+        meta = json.loads(mp.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return out
+    m = re.match(r"(\d+)", str(frame_id))
+    n = int(m.group(1)) if m else None
+    voice = next((v for v in meta.get("voices", []) if str(v.get("frame")) == str(n)), None)
+    words = [w for w in (voice or {}).get("words", []) if isinstance(w, dict) and w.get("start") is not None]
+    for sc in fr.get("scenes", []):
+        s = float(sc.get("start", 0) or 0)
+        e = s + float(sc.get("dur", 0) or 0)
+        toks = [(w.get("word") or w.get("text") or "") for w in words
+                if w["start"] < e and (w.get("end") or w["start"]) > s]
+        out[sc.get("id")] = " ".join(t for t in toks if t).strip()
+    return out
+
+
 def load_frame_spec(comp: str, frame_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     info = _frame_index(comp).get(frame_id)
     if not info:
@@ -1081,23 +1168,72 @@ def fit_ground_to_scene(comp: str, frame_id: str, scene_id: str) -> Dict[str, An
     scene_dur = float(sc.get("dur", 0) or 0)
     if scene_dur <= 0:
         return {"fitted": False, "reason": "the scene has no duration"}
-    src = _resolve_asset_path(comp, g["src"])
+    # ALWAYS fit from the TRUE ORIGINAL — strip any prior `_fit<N>s(_M)` tag off the src. Fitting the CURRENT
+    # (already-fitted) clip is what made a retime round-trip DEGRADE (each fit slowed the last one further) and
+    # spawn redundant `_fit13s_1/_2` copies. Deriving the original + a deterministic fit name fixes both.
+    cur = Path(g["src"])
+    orig_stem = re.sub(r"_fit\d+s(?:_\d+)?$", "", cur.stem)
+    orig_rel = cur.with_name(orig_stem + cur.suffix).as_posix()    # forward slashes — the HTML src needs them
+    fit_name = f"{orig_stem}_fit{scene_dur:.0f}s{cur.suffix}"
+    fit_rel = cur.with_name(fit_name).as_posix()
+    fit_path = _comp_dir(comp) / fit_rel
+    if cur.name == fit_name and fit_path.exists():                 # already pointing at the right fit clip
+        return {"fitted": False, "reason": "already fit to the scene"}
+    if fit_path.exists() and fit_path.stat().st_size > 1000:       # a matching fit clip exists (round-trip) → re-point, no ffmpeg
+        g["src"] = fit_rel
+        save_frame_spec(Path(info["spec_file"]), spec)
+        recompose_frame(comp, frame_id)
+        return {"fitted": True, "to": round(scene_dur, 2), "path": fit_rel, "reused": True}
+    src = _resolve_asset_path(comp, orig_rel)                      # fit the ORIGINAL, not the current fitted clip
     from nolan.hf_qa import probe
     src_dur = float(probe(src).duration or 0)
     if src_dur <= 0:
         return {"fitted": False, "reason": "could not read the video duration"}
-    if abs(src_dur - scene_dur) < 0.15:
+    if abs(src_dur - scene_dur) < 0.15:                           # the original already matches → use it directly
+        if cur.name != Path(orig_rel).name:
+            g["src"] = orig_rel
+            save_frame_spec(Path(info["spec_file"]), spec)
+            recompose_frame(comp, frame_id)
+            return {"fitted": True, "to": round(scene_dur, 2), "path": orig_rel, "reused": True}
         return {"fitted": False, "reason": "already matches the scene"}
-    original = g["src"]                                    # keep the pre-fit src (revert = re-point here)
-    res = quickedit_asset(comp, original, "fit", {"target": scene_dur, "src_dur": src_dur},
-                          mode="new", name=f"{src.stem}_fit{scene_dur:.0f}s")
-    g["src"] = res["path"]                                 # the ground now references the retimed clip
+    res = quickedit_asset(comp, orig_rel, "fit", {"target": scene_dur, "src_dur": src_dur},
+                          mode="new", name=f"{orig_stem}_fit{scene_dur:.0f}s")
+    g["src"] = res["path"]                                        # the ground now references the retimed clip
     save_frame_spec(Path(info["spec_file"]), spec)
     recompose_frame(comp, frame_id)
     log_activity(comp, "asset-edit", f"retimed ground {src_dur:.1f}s→{scene_dur:.1f}s on {scene_id}",
                  frame_id=frame_id, scene_id=scene_id, outcome="applied")
     return {"fitted": True, "from": round(src_dur, 2), "to": round(scene_dur, 2),
-            "factor": round(src_dur / scene_dur, 3), "path": res["path"], "original": original}
+            "factor": round(src_dur / scene_dur, 3), "path": res["path"], "original": orig_rel}
+
+
+def ensure_grounds_fit(comp: str, frame_id: str) -> List[str]:
+    """DETERMINISTIC backstop for the video-ground auto-fit: fit EVERY video ground in a frame to its scene
+    duration, whatever set it (UI / AI / batch / an old session) or however the scene was later retimed.
+    Idempotent — fit_ground_to_scene is a no-op (±0.15s) once a ground matches, so this only does work the
+    first render after a ground-set or a duration change. Run at render time so the fit no longer depends on a
+    frontend trigger firing. Returns the scene ids that were (re)fit."""
+    info = _frame_index(comp).get(frame_id)
+    if not info:
+        return []
+    spec = json.loads(Path(info["spec_file"]).read_text(encoding="utf-8"))
+    fr = spec["frames"][info["i"]]
+    fit = []
+    for sc in list(fr.get("scenes", [])):
+        g = (sc.get("data", {}) or {}).get("ground") or {}
+        if not (isinstance(g, dict) and g.get("kind") == "video" and g.get("src")):
+            continue
+        # fast-path: fit_ground_to_scene names the fitted clip `<stem>_fit<round(dur)>s`; if the current src
+        # already carries a fit tag for ~this scene's duration, it's fit → skip the (ffmpeg) duration probe.
+        m = re.search(r"_fit(\d+)s(?:_\d+)?\.[^.]+$", g["src"])
+        if m and abs(int(m.group(1)) - float(sc.get("dur", 0) or 0)) < 0.6:
+            continue
+        try:
+            if fit_ground_to_scene(comp, frame_id, sc["id"]).get("fitted"):
+                fit.append(sc["id"])
+        except Exception as e:                             # a bad asset shouldn't abort the render
+            print(f"  ⚠ {frame_id}/{sc['id']}: ground auto-fit skipped ({e})")
+    return fit
 
 
 def revert_asset(comp: str, path: str) -> Dict[str, Any]:

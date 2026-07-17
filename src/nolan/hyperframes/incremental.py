@@ -529,7 +529,13 @@ def _recompose(comp: str, frame_id: str) -> None:
     """Rebuild the frame HTML from its CURRENT spec before rendering, so a render always reflects the latest
     edit even when the edit path didn't recompose (or recomposed then went stale). Deterministic (same spec →
     byte-identical HTML) so it never thrashes the sig cache; best-effort — a bespoke frame that can't gate
-    keeps its existing HTML rather than crashing the render."""
+    keeps its existing HTML rather than rendering. ALSO fits any video ground to its scene (deterministic
+    backstop for the auto-fit, so a short/long ground fills the scene however it was set / whenever retimed)."""
+    try:
+        from .edit import ensure_grounds_fit
+        ensure_grounds_fit(comp, frame_id)                # before recompose: fit grounds, then rebuild HTML
+    except Exception as e:                                # pragma: no cover - defensive
+        print(f"  ⚠ {frame_id}: ground auto-fit skipped ({e})")
     try:
         from .edit import recompose_frame
         recompose_frame(comp, frame_id)
@@ -571,10 +577,16 @@ def render_one(comp: str, frame_id: str, quality: str = "high", verify: bool = T
 
 
 def _npx_render(pdir: Path, out: Path, quality: str) -> subprocess.CompletedProcess:
+    # HF_VIDEO_COVERAGE_THRESHOLD=0 disables the renderer's video-coverage gate, which aborts when a clip's
+    # VIDEO pixels fall below ~95%. That's a FALSE POSITIVE for explainer frames — text/diagram scenes on a
+    # painted (non-video) ground are legitimately low-video-coverage but NOT blank. We have our own, NOLAN-aware
+    # verification (render_one's black-panel gate + hf-finish's VLM render gate + frame-extraction QA), so the
+    # generic gate only causes good renders to fail. A genuinely-black clip is still caught by those.
+    env = {**os.environ, "HF_VIDEO_COVERAGE_THRESHOLD": "0"}
     return subprocess.run(["npx", "--yes", "hyperframes@latest", "render", str(pdir),
                            "--quality", quality, "--output", str(out)],
                           cwd=str(pdir), capture_output=True, text=True, encoding="utf-8", errors="replace",
-                          shell=(os.name == "nt"))
+                          shell=(os.name == "nt"), env=env)
 
 
 def _voice_track_src(html: str) -> Optional[str]:

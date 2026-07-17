@@ -6,6 +6,8 @@ transitions, snapshot-preview a frame, and background-render a full frame clip. 
 re-render per frame (see kb/frame-vs-scene.md, kb/edit-mode-plan.md).
 """
 import asyncio
+import json
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -51,10 +53,84 @@ def register(app, ctx):
     async def hf_catalog():
         return hfedit.catalog()
 
+    @app.get("/api/hf/frame-layers")
+    async def hf_frame_layers(comp: str = Query(...), frame_id: str = Query(...)):
+        """The frame's layer map (bg/overlay/text/fx lanes) for the layer-lanes view — each element carries its
+        time window + the inspector control it edits, so a lane chip click jumps straight to that control."""
+        return _guard(hfedit.frame_layers, comp, frame_id)
+
+    # ---- ✨ Replace: per-scene asset replacement (context-derived prompt → stock + ComfyUI gen) --------------
+
+    @app.get("/api/hf/replace/brief")
+    async def hf_replace_brief(comp: str = Query(...), frame_id: str = Query(...), scene_id: str = Query(...)):
+        """The editable starting point for a replace — which asset field, its current src, modality, and a
+        prompt/query DERIVED from the scene (old gen_prompt if any, else the narration) + the theme."""
+        from nolan.hyperframes import replace as rep
+        return _guard(rep.brief, comp, frame_id, scene_id)
+
+    @app.post("/api/hf/replace/search")
+    async def hf_replace_search(payload: dict = Body(...)):
+        """Stock search (background job — download takes a few seconds, esp. video). Result = the candidates,
+        which ALSO land in the pool tagged to the scene."""
+        comp, fid, sid = payload.get("comp"), payload.get("frame_id"), payload.get("scene_id")
+        query, modality, n = payload.get("query", ""), payload.get("modality", "image"), int(payload.get("n", 6))
+        if not (comp and fid and sid):
+            raise HTTPException(status_code=400, detail="comp, frame_id, scene_id required")
+
+        async def worker(job, comp, fid, sid, query, modality, n):
+            from nolan.hyperframes import replace as rep
+            job.message = f"Searching stock for “{query[:40]}”…"
+            job.log(f"stock search: {query!r} ({modality}, up to {n})")
+            cands = await asyncio.to_thread(rep.search, comp, fid, sid, query, n, modality)
+            job.message = f"Found {len(cands)} stock candidate(s)"
+            job.log(f"landed {len(cands)}")
+            return {"candidates": cands}
+
+        job = job_manager.start("hf_replace_search", worker, meta={"comp": comp, "scene": sid},
+                                comp=comp, fid=fid, sid=sid, query=query, modality=modality, n=n)
+        return {"job_id": job.id}
+
+    @app.get("/api/hf/style-presets")
+    async def hf_style_presets():
+        """The text-to-image style presets for the gen dropdown (prepended to the prompt)."""
+        from nolan.hyperframes import replace as rep
+        return {"presets": rep.style_presets()}
+
+    @app.post("/api/hf/replace/enhance")
+    async def hf_replace_enhance(payload: dict = Body(...)):
+        """Two-step gen STEP 1: art-direct the raw prompt (LLM subject + project brief) + prepend the style
+        preset → the final ComfyUI prompt the user then tweaks. Sync (~one LLM call)."""
+        comp, fid, sid = payload.get("comp"), payload.get("frame_id"), payload.get("scene_id")
+        prompt, style = payload.get("prompt", ""), payload.get("style", "")
+        if not (comp and fid and sid and prompt.strip()):
+            raise HTTPException(status_code=400, detail="comp, frame_id, scene_id, prompt required")
+        from nolan.hyperframes import replace as rep
+        return await asyncio.to_thread(_guard, rep.enhance, comp, fid, sid, prompt, style)
+
+    @app.post("/api/hf/replace/generate")
+    async def hf_replace_generate(payload: dict = Body(...)):
+        """ComfyUI generate (background job, one-tap — GPU). Result = the candidates, tagged to the scene."""
+        comp, fid, sid = payload.get("comp"), payload.get("frame_id"), payload.get("scene_id")
+        prompt, n, neg = payload.get("prompt", ""), int(payload.get("n", 3)), payload.get("negative")
+        if not (comp and fid and sid and prompt.strip()):
+            raise HTTPException(status_code=400, detail="comp, frame_id, scene_id, prompt required")
+
+        async def worker(job, comp, fid, sid, prompt, n, neg):
+            from nolan.hyperframes import replace as rep
+            job.message = f"Generating {n} image(s)…"
+            cands = await asyncio.to_thread(rep.generate, comp, fid, sid, prompt, n, neg, job.log)
+            job.message = f"Generated {len(cands)}/{n}"
+            return {"candidates": cands}
+
+        job = job_manager.start("hf_replace_gen", worker, meta={"comp": comp, "scene": sid},
+                                comp=comp, fid=fid, sid=sid, prompt=prompt, n=n, neg=neg)
+        return {"job_id": job.id}
+
     @app.get("/api/hf/frame-spec")
     async def hf_frame_spec(comp: str = Query(...), frame_id: str = Query(...)):
         spec, info = _guard(hfedit.load_frame_spec, comp, frame_id)
-        return {"comp": comp, "frame": spec["frames"][info["i"]]}
+        return {"comp": comp, "frame": spec["frames"][info["i"]],
+                "transcripts": _guard(hfedit.frame_transcripts, comp, frame_id)}
 
     @app.get("/api/hf/snapshot")
     async def hf_snapshot(comp: str = Query(...), frame_id: str = Query(...),
@@ -115,6 +191,48 @@ def register(app, ctx):
         return await asyncio.to_thread(_guard, hfedit.beat_boundary_planner, comp, fid,
                                        bool(payload.get("apply")))
 
+    # ---- 🎬 Effect from a clip (Tier-1): dispatch the agent to clone a reference clip's effect as GSAP -----
+
+    @app.post("/api/hf/effect/analyze")
+    async def hf_effect_analyze(payload: dict = Body(...)):
+        """Dispatch the effect agent (tmux) with a GSAP task brief to clone a reference clip's effect onto a
+        scene. The agent writes a proposal JSON; /api/hf/effect/apply then lands it (gated)."""
+        comp, fid, sid = payload.get("comp"), payload.get("frame_id"), payload.get("scene_id")
+        clip_ref, comment = payload.get("clip_ref", ""), payload.get("comment", "")
+        session = (payload.get("session") or "nolan2").strip()
+        if not (comp and fid and sid):
+            raise HTTPException(status_code=400, detail="comp, frame_id, scene_id required")
+        from nolan.hyperframes import effect as eff
+        brief = _guard(eff.effect_task_brief, comp, fid, sid, clip_ref, comment)
+        task_dir = _guard(hfedit.comp_dir, comp) / "compositions" / "_effects"
+        task_dir.mkdir(parents=True, exist_ok=True)
+        task_file, proposal = task_dir / f"{sid}_task.md", task_dir / f"{sid}.json"
+        task_file.write_text(brief, encoding="utf-8")
+        dispatched = False
+        try:
+            from nolan.webui.operations import _dispatch_to_tmux
+            dispatched = bool(_dispatch_to_tmux(session, f"New HyperFrames GSAP effect task — read {task_file.as_posix()} "
+                                                          f"and write your proposal to {proposal.as_posix()}"))
+        except Exception:
+            dispatched = False
+        return {"dispatched": dispatched, "session": session, "task": task_file.as_posix(), "proposal": proposal.as_posix()}
+
+    @app.post("/api/hf/effect/apply")
+    async def hf_effect_apply(payload: dict = Body(...)):
+        """Land the agent's GSAP effect proposal onto the scene (through the author.py gate)."""
+        comp, fid, sid = payload.get("comp"), payload.get("frame_id"), payload.get("scene_id")
+        if not (comp and fid and sid):
+            raise HTTPException(status_code=400, detail="comp, frame_id, scene_id required")
+        prop = _guard(hfedit.comp_dir, comp) / "compositions" / "_effects" / f"{sid}.json"
+        if not prop.exists():
+            raise HTTPException(status_code=404, detail="no effect proposal for this scene yet")
+        try:
+            data = json.loads(prop.read_text(encoding="utf-8"))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"unreadable proposal: {e}")
+        from nolan.hyperframes import effect as eff
+        return await asyncio.to_thread(_guard, eff.apply_effect, comp, fid, sid, data.get("html"), data.get("tl"))
+
     # ---- render one or more frame clips (background job)
 
     @app.post("/api/hf/frame/rerender")
@@ -125,15 +243,19 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail="comp and frame_ids required")
 
         async def worker(job, comp, frame_ids):
+            # "This frame" renders through the SAME path as assemble (render_one → windows the assembled index):
+            # it renders video grounds/comparison correctly, whereas the old render_frame preview left grounds
+            # black AND tripped the coverage gate. DRAFT quality — this is a fast preview (a 93s frame at "high"
+            # CRF15/slow takes minutes); the deliverable render (⚙ Render → All changed / Whole project) is "high".
+            from nolan.hyperframes.incremental import render_one
             results = []
             for i, fid in enumerate(frame_ids):
                 job.message = f"Rendering frame {i + 1}/{len(frame_ids)}: {fid}…"
-                job.log(f"[{i + 1}/{len(frame_ids)}] rendering {fid}…")
-                res = await asyncio.to_thread(hfedit.render_frame, comp, fid)
-                results.append({"frame_id": fid, "ok": res.get("ok"), "mp4": res.get("mp4")})
-                job.log(f"[{i + 1}/{len(frame_ids)}] {fid}: "
-                        + (f"ok → {res.get('mp4')}" if res.get("ok")
-                           else f"FAILED — {(res.get('output') or '')[-200:]}"))
+                job.log(f"[{i + 1}/{len(frame_ids)}] rendering {fid} (draft preview)…")
+                clip = await asyncio.to_thread(render_one, comp, fid, "draft", True)
+                ok = clip is not None and Path(clip).exists()
+                results.append({"frame_id": fid, "ok": ok, "mp4": str(clip) if clip else None})
+                job.log(f"[{i + 1}/{len(frame_ids)}] {fid}: " + (f"ok → {clip}" if ok else "FAILED (see server log)"))
             done = sum(1 for r in results if r["ok"])
             job.message = f"Rendered {done}/{len(frame_ids)} frame(s)"
             job.log(f"done: {done}/{len(frame_ids)} rendered")
@@ -291,13 +413,41 @@ def register(app, ctx):
 
     @app.get("/api/hf/asset-file")
     async def hf_asset_file(comp: str = Query(...), path: str = Query(...)):
-        """Serve a comp asset for the picker's thumbnails — confined to <comp>/assets/."""
+        """Serve a comp asset (full file, Range-enabled) — for the crop modal + a field's real media.
+        The GRIDS use /api/hf/asset-thumb instead (a tiny cached poster), so a 200-video pool doesn't
+        mount 200 <video> elements."""
         root = _guard(hfedit.comp_dir, comp).resolve()
         target = (root / path).resolve()
         assets_root = (root / "assets").resolve()
         if assets_root not in target.parents or not target.is_file():
             raise HTTPException(status_code=404, detail="asset not found")
         return FileResponse(str(target))
+
+    @app.get("/api/hf/asset-thumb")
+    async def hf_asset_thumb(comp: str = Query(...), path: str = Query(...)):
+        """A small CACHED JPEG poster for an asset (video frame @0.5s, or a downscaled image) — one tiny
+        lazy-loaded <img> per grid cell instead of a full <video preload=metadata>. Keyed by path+mtime so
+        an in-place edit (crop/cutout) invalidates it. This is THE fix for the slow asset pool / picker."""
+        import hashlib
+        import imageio_ffmpeg
+        root = _guard(hfedit.comp_dir, comp).resolve()
+        target = (root / path).resolve()
+        assets_root = (root / "assets").resolve()
+        if assets_root not in target.parents or not target.is_file():
+            raise HTTPException(status_code=404, detail="asset not found")
+        key = hashlib.md5(f"{target}|{int(target.stat().st_mtime)}".encode()).hexdigest()
+        out = root / "compositions" / "_preview" / "_thumbs" / f"{key}.jpg"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        if not out.exists():
+            ff = imageio_ffmpeg.get_ffmpeg_exe()
+            is_video = target.suffix.lower() in (".mp4", ".mov", ".webm", ".mkv", ".m4v")
+            cmd = ([ff, "-y"] + (["-ss", "0.5"] if is_video else [])
+                   + ["-i", str(target), "-frames:v", "1", "-vf", "scale=240:-1:force_original_aspect_ratio=decrease",
+                      "-loglevel", "error", str(out)])
+            await asyncio.to_thread(subprocess.run, cmd, timeout=20, capture_output=True)
+        if out.exists():
+            return FileResponse(str(out), media_type="image/jpeg")
+        raise HTTPException(status_code=404, detail="could not make thumbnail")
 
     @app.post("/api/hf/asset/resolve")
     async def hf_asset_resolve(payload: dict = Body(...)):
