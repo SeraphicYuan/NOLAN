@@ -61,32 +61,26 @@
     "url": "https://cdn.pixabay.com/video/2017/02/26/7960-205810657_medium.mp4"
   },
   {
-    "file": "rain-199889.mp4",
+    "file": "rain-181855.mp4",
     "effect": "rain",
     "blend": "screen",
     "loop": true,
     "tags": [
       "rain",
       "drops",
-      "water",
-      "wet",
-      "drip",
-      "light",
-      "particles",
-      "fall",
-      "abstract",
-      "falling down",
-      "bottom",
-      "art",
-      "wallpaper"
+      "rainfall",
+      "effect",
+      "weather",
+      "rainy",
+      "overlay"
     ],
     "license": "Pixabay License (free, no attribution)",
-    "source": "https://pixabay.com/videos/id-199889/",
-    "pixabay_id": 199889,
-    "w": 1280,
-    "h": 720,
-    "duration": 12,
-    "url": "https://cdn.pixabay.com/video/2024/02/09/199889-911677001_medium.mp4"
+    "source": "https://pixabay.com/videos/id-181855/",
+    "pixabay_id": 181855,
+    "w": 1920,
+    "h": 1080,
+    "duration": 15,
+    "url": "https://cdn.pixabay.com/video/2023/09/22/181855-867371759_large.mp4"
   },
   {
     "file": "snow-9999.mp4",
