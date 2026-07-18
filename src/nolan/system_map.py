@@ -213,6 +213,12 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
         "executed_by": [("render-service/_lab_hyperframes/bridge/compose.py", "_fx_overlays"),
                         ("src/nolan/effects/render.py", "def overlay_layers")],
     },
+    "composition": {
+        "authored_by": [("themes/highlighter-editorial/theme.json", "composition"),
+                        ("src/nolan/hyperframes/bespoke.py", "composition")],
+        "executed_by": [("src/nolan/composition.py", "def brief_section"),
+                        ("src/nolan/hyperframes/bespoke.py", "composition_md")],
+    },
 }
 
 
@@ -261,6 +267,14 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
          "author gate validates ground.treatments against the registry"),
         ("src/nolan/hyperframes/edit.py", "from nolan.effects",
          "edit page serves the registry-derived effects catalog to the Treatments control"),
+    ],
+    "composition": [
+        ("src/nolan/hyperframes/bespoke.py", "_composition.resolve",
+         "the bespoke brief resolves + injects the scene's archetype from the ONE registry"),
+        ("themes/scripts/validate_themes.py", "ARCHETYPE_IDS",
+         "theme validator checks every theme's composition.default/allowed against the registry"),
+        ("skills/common/composition-craft.md", "centered-hero",
+         "craft skill (registry-synced by tests/test_umbrella_skills.py)"),
     ],
     # style packs: cross-umbrella curation (quality program step 6) — every
     # pack field must reach a decision point or it's curation rot
@@ -341,6 +355,14 @@ def _umbrellas() -> Dict[str, Any]:
             for e in EFFECTS]
     except Exception as exc:
         out["effects"] = {"error": str(exc)}
+    try:
+        from nolan.composition import REGISTRY as COMPOSITION
+        out["composition"] = [
+            {"id": aid, "purpose": a["intent"], "when_to_use": a["when_to_use"],
+             "balance": a["balance"], "density": a["density"], "serves_beats": a["serves_beats"]}
+            for aid, a in COMPOSITION.items()]
+    except Exception as exc:
+        out["composition"] = {"error": str(exc)}
     return out
 
 

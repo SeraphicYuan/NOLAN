@@ -9,137 +9,848 @@
     "tone_match": 2,
     "tone_mismatch": -3
   },
-  "fallback": ["monochrome-print", "paper-press", "swiss-ikb"],
+  "fallback": [
+    "monochrome-print",
+    "paper-press",
+    "swiss-ikb"
+  ],
   "synonyms": {
-    "ml": ["ai", "machine", "learning"],
-    "llm": ["ai", "model"],
-    "ai": ["ai", "model"],
-    "gpt": ["ai", "llm"],
-    "crypto": ["web3", "blockchain"],
-    "blockchain": ["web3", "blockchain"],
-    "defi": ["web3", "finance"],
-    "fintech": ["finance", "b2b"],
-    "saas": ["saas", "b2b", "product"],
-    "b2b": ["b2b", "enterprise"],
-    "startup": ["pitch", "product", "launch"],
-    "vc": ["investor", "pitch"],
-    "cli": ["cli", "terminal", "command"],
-    "devops": ["cli", "developer", "infrastructure"],
-    "infra": ["infrastructure", "engineering"],
-    "api": ["api", "developer", "technical"],
-    "sdk": ["sdk", "developer", "technical"],
-    "paper": ["academic", "research", "paper"],
-    "arxiv": ["academic", "research", "paper"],
-    "thesis": ["academic", "research"],
-    "essay": ["essay", "literary", "editorial"],
-    "vlog": ["vlog", "lifestyle"],
-    "tiktok": ["tiktok", "social", "vlog"],
-    "douyin": ["douyin", "social", "vlog"],
-    "xiaohongshu": ["xiaohongshu", "lifestyle", "social"],
-    "rednote": ["xiaohongshu", "lifestyle"],
-    "security": ["security", "hacker"],
-    "infosec": ["security", "hacker"],
-    "pentest": ["security", "hacker"],
-    "museum": ["gallery", "art", "exhibition"],
-    "painting": ["art", "gallery"],
-    "artwork": ["art", "gallery"],
-    "architecture": ["architecture", "space"],
-    "interior": ["interior", "space", "architecture"],
-    "eco": ["nature", "sustainability"],
-    "climate": ["nature", "sustainability", "environment"],
-    "history": ["history", "literary"],
-    "book": ["book", "literary"],
-    "kids": ["children", "education"],
-    "children": ["children", "education"],
-    "onboarding": ["onboarding", "tutorial"],
-    "tutorial": ["tutorial", "education"],
-    "health": ["health", "psychology"],
-    "wellness": ["health", "psychology"],
-    "fashion": ["fashion", "luxury"],
-    "beauty": ["beauty", "fashion"],
-    "luxury": ["luxury", "premium"],
-    "report": ["report", "data"],
-    "dashboard": ["data", "report"],
-    "stats": ["data"],
-    "comparison": ["comparison", "versus"],
-    "versus": ["comparison", "versus"],
-    "vs": ["comparison", "versus"]
+    "ml": [
+      "ai",
+      "machine",
+      "learning"
+    ],
+    "llm": [
+      "ai",
+      "model"
+    ],
+    "ai": [
+      "ai",
+      "model"
+    ],
+    "gpt": [
+      "ai",
+      "llm"
+    ],
+    "crypto": [
+      "web3",
+      "blockchain"
+    ],
+    "blockchain": [
+      "web3",
+      "blockchain"
+    ],
+    "defi": [
+      "web3",
+      "finance"
+    ],
+    "fintech": [
+      "finance",
+      "b2b"
+    ],
+    "saas": [
+      "saas",
+      "b2b",
+      "product"
+    ],
+    "b2b": [
+      "b2b",
+      "enterprise"
+    ],
+    "startup": [
+      "pitch",
+      "product",
+      "launch"
+    ],
+    "vc": [
+      "investor",
+      "pitch"
+    ],
+    "cli": [
+      "cli",
+      "terminal",
+      "command"
+    ],
+    "devops": [
+      "cli",
+      "developer",
+      "infrastructure"
+    ],
+    "infra": [
+      "infrastructure",
+      "engineering"
+    ],
+    "api": [
+      "api",
+      "developer",
+      "technical"
+    ],
+    "sdk": [
+      "sdk",
+      "developer",
+      "technical"
+    ],
+    "paper": [
+      "academic",
+      "research",
+      "paper"
+    ],
+    "arxiv": [
+      "academic",
+      "research",
+      "paper"
+    ],
+    "thesis": [
+      "academic",
+      "research"
+    ],
+    "essay": [
+      "essay",
+      "literary",
+      "editorial"
+    ],
+    "vlog": [
+      "vlog",
+      "lifestyle"
+    ],
+    "tiktok": [
+      "tiktok",
+      "social",
+      "vlog"
+    ],
+    "douyin": [
+      "douyin",
+      "social",
+      "vlog"
+    ],
+    "xiaohongshu": [
+      "xiaohongshu",
+      "lifestyle",
+      "social"
+    ],
+    "rednote": [
+      "xiaohongshu",
+      "lifestyle"
+    ],
+    "security": [
+      "security",
+      "hacker"
+    ],
+    "infosec": [
+      "security",
+      "hacker"
+    ],
+    "pentest": [
+      "security",
+      "hacker"
+    ],
+    "museum": [
+      "gallery",
+      "art",
+      "exhibition"
+    ],
+    "painting": [
+      "art",
+      "gallery"
+    ],
+    "artwork": [
+      "art",
+      "gallery"
+    ],
+    "architecture": [
+      "architecture",
+      "space"
+    ],
+    "interior": [
+      "interior",
+      "space",
+      "architecture"
+    ],
+    "eco": [
+      "nature",
+      "sustainability"
+    ],
+    "climate": [
+      "nature",
+      "sustainability",
+      "environment"
+    ],
+    "history": [
+      "history",
+      "literary"
+    ],
+    "book": [
+      "book",
+      "literary"
+    ],
+    "kids": [
+      "children",
+      "education"
+    ],
+    "children": [
+      "children",
+      "education"
+    ],
+    "onboarding": [
+      "onboarding",
+      "tutorial"
+    ],
+    "tutorial": [
+      "tutorial",
+      "education"
+    ],
+    "health": [
+      "health",
+      "psychology"
+    ],
+    "wellness": [
+      "health",
+      "psychology"
+    ],
+    "fashion": [
+      "fashion",
+      "luxury"
+    ],
+    "beauty": [
+      "beauty",
+      "fashion"
+    ],
+    "luxury": [
+      "luxury",
+      "premium"
+    ],
+    "report": [
+      "report",
+      "data"
+    ],
+    "dashboard": [
+      "data",
+      "report"
+    ],
+    "stats": [
+      "data"
+    ],
+    "comparison": [
+      "comparison",
+      "versus"
+    ],
+    "versus": [
+      "comparison",
+      "versus"
+    ],
+    "vs": [
+      "comparison",
+      "versus"
+    ]
   },
   "themes": {
-    "bauhaus-bold": { "tone": "light", "energy": "high", "formality": "neutral",
-      "tags": ["design", "manifesto", "product", "launch", "opinion", "statement", "branding", "typography", "modernist", "geometric"],
-      "avoid": ["data", "academic", "children", "documentary"] },
-    "aurora-mesh": { "tone": "dark", "energy": "medium", "formality": "neutral",
-      "tags": ["ai", "llm", "generative", "aigc", "web3", "nft", "futurism", "aurora", "gradient", "saas", "launch", "future", "trend", "concept"],
-      "avoid": ["literary", "vintage", "documentary", "children"] },
-    "blueprint": { "tone": "dark", "energy": "calm", "formality": "formal",
-      "tags": ["engineering", "architecture", "system", "technical", "api", "sdk", "developer", "infrastructure", "backend", "protocol"],
-      "avoid": ["lifestyle", "fashion", "children", "beauty"] },
-    "bold-signal": { "tone": "dark", "energy": "high", "formality": "neutral",
-      "tags": ["pitch", "investor", "product", "launch", "marketing", "hero", "keynote", "brand", "announcement", "title"],
-      "avoid": ["academic", "documentary", "literary"] },
-    "chalk-garden": { "tone": "dark", "energy": "medium", "formality": "casual",
-      "tags": ["education", "classroom", "teaching", "science", "explainer", "beginner", "friendly", "knowledge", "tutorial", "children"],
-      "avoid": ["corporate", "enterprise", "luxury", "finance"] },
-    "creative-voltage": { "tone": "dark", "energy": "high", "formality": "casual",
-      "tags": ["creative", "design", "studio", "portfolio", "showcase", "culture", "typography", "music", "festival", "punk", "street", "retro"],
-      "avoid": ["corporate", "academic", "finance", "medical"] },
-    "dark-botanical": { "tone": "dark", "energy": "calm", "formality": "formal",
-      "tags": ["brand", "fashion", "beauty", "lifestyle", "travel", "culture", "art", "luxury", "premium", "elegant", "editorial"],
-      "avoid": ["developer", "technical", "cli", "data"] },
-    "dune": { "tone": "light", "energy": "calm", "formality": "formal",
-      "tags": ["architecture", "interior", "space", "exhibition", "gallery", "designer", "portfolio", "fashion", "luxury", "aesthetic", "art"],
-      "avoid": ["developer", "cli", "finance", "data"] },
-    "electric-studio": { "tone": "light", "energy": "medium", "formality": "formal",
-      "tags": ["b2b", "enterprise", "corporate", "investor", "pitch", "report", "quarterly", "research", "trend", "consulting", "training"],
-      "avoid": ["playful", "children", "art", "vintage"] },
-    "forest-ink": { "tone": "light", "energy": "calm", "formality": "neutral",
-      "tags": ["nature", "sustainability", "environment", "outdoor", "agriculture", "documentary", "culture", "ecology", "slow"],
-      "avoid": ["cyberpunk", "finance", "corporate", "hacker"] },
-    "indigo-porcelain": { "tone": "light", "energy": "calm", "formality": "formal",
-      "tags": ["academic", "research", "paper", "ai", "data", "engineering", "scholarly", "essay", "briefing", "culture"],
-      "avoid": ["playful", "vlog", "children", "social"] },
-    "kraft-paper": { "tone": "light", "energy": "calm", "formality": "casual",
-      "tags": ["book", "literary", "essay", "history", "nostalgia", "vintage", "zine", "handcraft", "food", "agriculture", "humanities", "slow"],
-      "avoid": ["corporate", "technical", "cyberpunk", "enterprise"] },
-    "midnight-press": { "tone": "dark", "energy": "calm", "formality": "neutral",
-      "tags": ["developer", "ai", "tool", "review", "geek", "technical", "deep", "cinematic", "product"],
-      "avoid": ["children", "lifestyle", "beauty"] },
-    "monochrome-print": { "tone": "light", "energy": "calm", "formality": "formal",
-      "tags": ["reading", "academic", "philosophy", "thought", "brand", "premium", "culture", "art", "minimal", "serif", "essay"],
-      "avoid": ["playful", "vlog", "children", "energetic"] },
-    "neon-cyber": { "tone": "dark", "energy": "high", "formality": "neutral",
-      "tags": ["ai", "llm", "web3", "blockchain", "security", "hacker", "futurism", "cyberpunk", "scifi", "future"],
-      "avoid": ["lifestyle", "nature", "children", "literary"] },
-    "neubrutalism": { "tone": "light", "energy": "high", "formality": "casual",
-      "tags": ["bold", "product", "launch", "design", "creative", "tool", "indie", "developer", "trendy", "brand", "statement", "playful", "startup"],
-      "avoid": ["academic", "luxury", "documentary", "corporate"] },
-    "newsroom": { "tone": "light", "energy": "medium", "formality": "formal",
-      "tags": ["documentary", "reportage", "journalism", "review", "affairs", "commentary", "news", "analysis"],
-      "avoid": ["playful", "children", "luxury", "cyberpunk"] },
-    "paper-press": { "tone": "light", "energy": "medium", "formality": "casual",
-      "tags": ["magazine", "lifestyle", "tool", "review", "tutorial", "mainstream", "approachable", "editorial"],
-      "avoid": ["hacker", "cyberpunk", "enterprise", "academic"] },
-    "pastel-dream": { "tone": "light", "energy": "medium", "formality": "casual",
-      "tags": ["onboarding", "tutorial", "friendly", "teaching", "knowledge", "women", "lifestyle", "psychology", "health", "parenting", "soft"],
-      "avoid": ["enterprise", "finance", "hacker", "technical"] },
-    "split-canvas": { "tone": "light", "energy": "medium", "formality": "casual",
-      "tags": ["comparison", "contrast", "debate", "storytelling", "dialogue", "creative", "concept", "versus"],
-      "avoid": ["enterprise", "academic", "luxury"] },
-    "sunset-zine": { "tone": "light", "energy": "high", "formality": "casual",
-      "tags": ["vlog", "lifestyle", "creative", "fun", "review", "xiaohongshu", "tiktok", "douyin", "culture", "expressive", "zine", "social"],
-      "avoid": ["enterprise", "academic", "finance", "technical"] },
-    "swiss-ikb": { "tone": "light", "energy": "medium", "formality": "formal",
-      "tags": ["ai", "tech", "launch", "summary", "data", "report", "design", "engineering", "academic", "international", "infographic", "grid"],
-      "avoid": ["playful", "vintage", "children", "vlog"] },
-    "terminal-green": { "tone": "dark", "energy": "medium", "formality": "neutral",
-      "tags": ["cli", "command", "terminal", "tool", "tutorial", "hacker", "security", "demo", "retro", "devops"],
-      "avoid": ["lifestyle", "beauty", "children", "luxury", "fashion"] },
-    "vintage-editorial": { "tone": "light", "energy": "medium", "formality": "casual",
-      "tags": ["opinion", "commentary", "essay", "aesthetics", "blogger", "voice", "design", "typography", "literary", "witty", "culture"],
-      "avoid": ["enterprise", "data", "finance", "children"] },
-    "warm-keynote": { "tone": "light", "energy": "medium", "formality": "neutral",
-      "tags": ["saas", "keynote", "b2b", "product", "launch", "tool", "team", "briefing", "talk"],
-      "avoid": ["hacker", "cyberpunk", "vintage", "children"] }
+    "bauhaus-bold": {
+      "tone": "light",
+      "energy": "high",
+      "formality": "neutral",
+      "tags": [
+        "design",
+        "manifesto",
+        "product",
+        "launch",
+        "opinion",
+        "statement",
+        "branding",
+        "typography",
+        "modernist",
+        "geometric"
+      ],
+      "avoid": [
+        "data",
+        "academic",
+        "children",
+        "documentary"
+      ]
+    },
+    "aurora-mesh": {
+      "tone": "dark",
+      "energy": "medium",
+      "formality": "neutral",
+      "tags": [
+        "ai",
+        "llm",
+        "generative",
+        "aigc",
+        "web3",
+        "nft",
+        "futurism",
+        "aurora",
+        "gradient",
+        "saas",
+        "launch",
+        "future",
+        "trend",
+        "concept"
+      ],
+      "avoid": [
+        "literary",
+        "vintage",
+        "documentary",
+        "children"
+      ]
+    },
+    "blueprint": {
+      "tone": "dark",
+      "energy": "calm",
+      "formality": "formal",
+      "tags": [
+        "engineering",
+        "architecture",
+        "system",
+        "technical",
+        "api",
+        "sdk",
+        "developer",
+        "infrastructure",
+        "backend",
+        "protocol"
+      ],
+      "avoid": [
+        "lifestyle",
+        "fashion",
+        "children",
+        "beauty"
+      ]
+    },
+    "bold-signal": {
+      "tone": "dark",
+      "energy": "high",
+      "formality": "neutral",
+      "tags": [
+        "pitch",
+        "investor",
+        "product",
+        "launch",
+        "marketing",
+        "hero",
+        "keynote",
+        "brand",
+        "announcement",
+        "title"
+      ],
+      "avoid": [
+        "academic",
+        "documentary",
+        "literary"
+      ]
+    },
+    "chalk-garden": {
+      "tone": "dark",
+      "energy": "medium",
+      "formality": "casual",
+      "tags": [
+        "education",
+        "classroom",
+        "teaching",
+        "science",
+        "explainer",
+        "beginner",
+        "friendly",
+        "knowledge",
+        "tutorial",
+        "children"
+      ],
+      "avoid": [
+        "corporate",
+        "enterprise",
+        "luxury",
+        "finance"
+      ]
+    },
+    "creative-voltage": {
+      "tone": "dark",
+      "energy": "high",
+      "formality": "casual",
+      "tags": [
+        "creative",
+        "design",
+        "studio",
+        "portfolio",
+        "showcase",
+        "culture",
+        "typography",
+        "music",
+        "festival",
+        "punk",
+        "street",
+        "retro"
+      ],
+      "avoid": [
+        "corporate",
+        "academic",
+        "finance",
+        "medical"
+      ]
+    },
+    "dark-botanical": {
+      "tone": "dark",
+      "energy": "calm",
+      "formality": "formal",
+      "tags": [
+        "brand",
+        "fashion",
+        "beauty",
+        "lifestyle",
+        "travel",
+        "culture",
+        "art",
+        "luxury",
+        "premium",
+        "elegant",
+        "editorial"
+      ],
+      "avoid": [
+        "developer",
+        "technical",
+        "cli",
+        "data"
+      ]
+    },
+    "dune": {
+      "tone": "light",
+      "energy": "calm",
+      "formality": "formal",
+      "tags": [
+        "architecture",
+        "interior",
+        "space",
+        "exhibition",
+        "gallery",
+        "designer",
+        "portfolio",
+        "fashion",
+        "luxury",
+        "aesthetic",
+        "art"
+      ],
+      "avoid": [
+        "developer",
+        "cli",
+        "finance",
+        "data"
+      ]
+    },
+    "electric-studio": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "formal",
+      "tags": [
+        "b2b",
+        "enterprise",
+        "corporate",
+        "investor",
+        "pitch",
+        "report",
+        "quarterly",
+        "research",
+        "trend",
+        "consulting",
+        "training"
+      ],
+      "avoid": [
+        "playful",
+        "children",
+        "art",
+        "vintage"
+      ]
+    },
+    "forest-ink": {
+      "tone": "light",
+      "energy": "calm",
+      "formality": "neutral",
+      "tags": [
+        "nature",
+        "sustainability",
+        "environment",
+        "outdoor",
+        "agriculture",
+        "documentary",
+        "culture",
+        "ecology",
+        "slow"
+      ],
+      "avoid": [
+        "cyberpunk",
+        "finance",
+        "corporate",
+        "hacker"
+      ]
+    },
+    "indigo-porcelain": {
+      "tone": "light",
+      "energy": "calm",
+      "formality": "formal",
+      "tags": [
+        "academic",
+        "research",
+        "paper",
+        "ai",
+        "data",
+        "engineering",
+        "scholarly",
+        "essay",
+        "briefing",
+        "culture"
+      ],
+      "avoid": [
+        "playful",
+        "vlog",
+        "children",
+        "social"
+      ]
+    },
+    "kraft-paper": {
+      "tone": "light",
+      "energy": "calm",
+      "formality": "casual",
+      "tags": [
+        "book",
+        "literary",
+        "essay",
+        "history",
+        "nostalgia",
+        "vintage",
+        "zine",
+        "handcraft",
+        "food",
+        "agriculture",
+        "humanities",
+        "slow"
+      ],
+      "avoid": [
+        "corporate",
+        "technical",
+        "cyberpunk",
+        "enterprise"
+      ]
+    },
+    "midnight-press": {
+      "tone": "dark",
+      "energy": "calm",
+      "formality": "neutral",
+      "tags": [
+        "developer",
+        "ai",
+        "tool",
+        "review",
+        "geek",
+        "technical",
+        "deep",
+        "cinematic",
+        "product"
+      ],
+      "avoid": [
+        "children",
+        "lifestyle",
+        "beauty"
+      ]
+    },
+    "monochrome-print": {
+      "tone": "light",
+      "energy": "calm",
+      "formality": "formal",
+      "tags": [
+        "reading",
+        "academic",
+        "philosophy",
+        "thought",
+        "brand",
+        "premium",
+        "culture",
+        "art",
+        "minimal",
+        "serif",
+        "essay"
+      ],
+      "avoid": [
+        "playful",
+        "vlog",
+        "children",
+        "energetic"
+      ]
+    },
+    "neon-cyber": {
+      "tone": "dark",
+      "energy": "high",
+      "formality": "neutral",
+      "tags": [
+        "ai",
+        "llm",
+        "web3",
+        "blockchain",
+        "security",
+        "hacker",
+        "futurism",
+        "cyberpunk",
+        "scifi",
+        "future"
+      ],
+      "avoid": [
+        "lifestyle",
+        "nature",
+        "children",
+        "literary"
+      ]
+    },
+    "neubrutalism": {
+      "tone": "light",
+      "energy": "high",
+      "formality": "casual",
+      "tags": [
+        "bold",
+        "product",
+        "launch",
+        "design",
+        "creative",
+        "tool",
+        "indie",
+        "developer",
+        "trendy",
+        "brand",
+        "statement",
+        "playful",
+        "startup"
+      ],
+      "avoid": [
+        "academic",
+        "luxury",
+        "documentary",
+        "corporate"
+      ]
+    },
+    "newsroom": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "formal",
+      "tags": [
+        "documentary",
+        "reportage",
+        "journalism",
+        "review",
+        "affairs",
+        "commentary",
+        "news",
+        "analysis"
+      ],
+      "avoid": [
+        "playful",
+        "children",
+        "luxury",
+        "cyberpunk"
+      ]
+    },
+    "paper-press": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "casual",
+      "tags": [
+        "magazine",
+        "lifestyle",
+        "tool",
+        "review",
+        "tutorial",
+        "mainstream",
+        "approachable",
+        "editorial"
+      ],
+      "avoid": [
+        "hacker",
+        "cyberpunk",
+        "enterprise",
+        "academic"
+      ]
+    },
+    "pastel-dream": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "casual",
+      "tags": [
+        "onboarding",
+        "tutorial",
+        "friendly",
+        "teaching",
+        "knowledge",
+        "women",
+        "lifestyle",
+        "psychology",
+        "health",
+        "parenting",
+        "soft"
+      ],
+      "avoid": [
+        "enterprise",
+        "finance",
+        "hacker",
+        "technical"
+      ]
+    },
+    "split-canvas": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "casual",
+      "tags": [
+        "comparison",
+        "contrast",
+        "debate",
+        "storytelling",
+        "dialogue",
+        "creative",
+        "concept",
+        "versus"
+      ],
+      "avoid": [
+        "enterprise",
+        "academic",
+        "luxury"
+      ]
+    },
+    "sunset-zine": {
+      "tone": "light",
+      "energy": "high",
+      "formality": "casual",
+      "tags": [
+        "vlog",
+        "lifestyle",
+        "creative",
+        "fun",
+        "review",
+        "xiaohongshu",
+        "tiktok",
+        "douyin",
+        "culture",
+        "expressive",
+        "zine",
+        "social"
+      ],
+      "avoid": [
+        "enterprise",
+        "academic",
+        "finance",
+        "technical"
+      ]
+    },
+    "swiss-ikb": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "formal",
+      "tags": [
+        "ai",
+        "tech",
+        "launch",
+        "summary",
+        "data",
+        "report",
+        "design",
+        "engineering",
+        "academic",
+        "international",
+        "infographic",
+        "grid"
+      ],
+      "avoid": [
+        "playful",
+        "vintage",
+        "children",
+        "vlog"
+      ]
+    },
+    "terminal-green": {
+      "tone": "dark",
+      "energy": "medium",
+      "formality": "neutral",
+      "tags": [
+        "cli",
+        "command",
+        "terminal",
+        "tool",
+        "tutorial",
+        "hacker",
+        "security",
+        "demo",
+        "retro",
+        "devops"
+      ],
+      "avoid": [
+        "lifestyle",
+        "beauty",
+        "children",
+        "luxury",
+        "fashion"
+      ]
+    },
+    "vintage-editorial": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "casual",
+      "tags": [
+        "opinion",
+        "commentary",
+        "essay",
+        "aesthetics",
+        "blogger",
+        "voice",
+        "design",
+        "typography",
+        "literary",
+        "witty",
+        "culture"
+      ],
+      "avoid": [
+        "enterprise",
+        "data",
+        "finance",
+        "children"
+      ]
+    },
+    "warm-keynote": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "neutral",
+      "tags": [
+        "saas",
+        "keynote",
+        "b2b",
+        "product",
+        "launch",
+        "tool",
+        "team",
+        "briefing",
+        "talk"
+      ],
+      "avoid": [
+        "hacker",
+        "cyberpunk",
+        "vintage",
+        "children"
+      ]
+    },
+    "highlighter-editorial": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "neutral",
+      "tags": [
+        "explainer",
+        "journalism",
+        "news",
+        "data",
+        "current-affairs",
+        "video-essay",
+        "analysis",
+        "vox",
+        "reporting",
+        "highlighter"
+      ],
+      "avoid": [
+        "children",
+        "gaming",
+        "beauty",
+        "luxury"
+      ]
+    }
   }
 }

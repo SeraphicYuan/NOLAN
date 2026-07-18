@@ -35,5 +35,15 @@
     "cyberpunk",
     "vintage",
     "children"
-  ]
+  ],
+  "composition": {
+    "default": "centered-hero",
+    "allowed": [
+      "centered-hero",
+      "editorial-column",
+      "swiss-grid",
+      "split-screen",
+      "framed"
+    ]
+  }
 }

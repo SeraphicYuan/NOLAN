@@ -21,9 +21,15 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 THEMES_DIR = HERE.parent  # themes/
 SELECTOR = THEMES_DIR / "selector.json"
-REQUIRED = {"id", "name", "nameZh", "description", "mood", "bestFor", "preview"}
+ARCHETYPES = THEMES_DIR / "composition" / "archetypes.json"
+REQUIRED = {"id", "name", "nameZh", "description", "mood", "bestFor", "preview", "composition"}
 PREVIEW_KEYS = {"shell", "surface", "text", "accent"}
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+try:
+    ARCHETYPE_IDS = set(json.loads(ARCHETYPES.read_text(encoding="utf-8"))["archetypes"])
+except Exception:
+    ARCHETYPE_IDS = set()
 
 errors = []
 
@@ -59,6 +65,20 @@ def main():
         for k, v in prev.items():
             if not HEX.match(str(v)):
                 err(tid, f"preview.{k} not #rrggbb: {v!r}")
+
+        # composition archetype parity — default + allowed must be real archetypes (no drift vs the registry)
+        comp = meta.get("composition")
+        if isinstance(comp, dict):
+            dft, allowed = comp.get("default"), comp.get("allowed") or []
+            if dft not in ARCHETYPE_IDS:
+                err(tid, f"composition.default {dft!r} not in the archetype registry {sorted(ARCHETYPE_IDS)}")
+            for a in allowed:
+                if a not in ARCHETYPE_IDS:
+                    err(tid, f"composition.allowed has unknown archetype {a!r}")
+            if dft and dft not in allowed:
+                err(tid, "composition.default must also be listed in composition.allowed")
+        elif comp is not None:
+            err(tid, "composition must be an object {default, allowed}")
 
         if tid not in sel_themes:
             err(tid, "no selector.json entry"); continue

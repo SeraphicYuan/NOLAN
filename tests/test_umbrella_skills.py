@@ -45,6 +45,14 @@ def test_pairing_catalog_mirrors_prompt_table():
         assert isinstance(v.get("automated_bridge"), bool)
 
 
+def test_composition_skill_covers_every_archetype():
+    from nolan import composition as comp
+    headings = _doc_headings(REPO / "skills" / "common" / "composition-craft.md")
+    ids = set(comp.ids())
+    assert ids - headings == set(), f"composition skill missing archetypes: {ids - headings}"
+    assert headings - ids == set(), f"composition skill lists unregistered archetypes: {headings - ids}"
+
+
 def test_pairing_skill_covers_every_operator():
     from nolan.evoke_broll import OPERATORS
     headings = _doc_headings(REPO / "skills" / "common" / "pairing-craft.md")
@@ -68,7 +76,7 @@ def test_umbrella_skills_registered_in_index():
     idx = json.loads((REPO / "skills" / "index.json").read_text(encoding="utf-8"))
     ids = {s["id"]: s for s in idx["skills"]}
     for sid in ("common.editing-craft", "common.motion-craft",
-                "common.pairing-craft"):
+                "common.pairing-craft", "common.composition-craft"):
         assert sid in ids, f"{sid} not in skills/index.json"
         assert (REPO / ids[sid]["path"]).exists()
     assert idx["count"] == len(idx["skills"])

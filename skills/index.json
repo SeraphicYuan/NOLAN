@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 26,
+  "count": 27,
   "skills": [
     {
       "id": "art.flow",
@@ -567,6 +567,21 @@
       "documents": null,
       "evals": [],
       "path": ".claude/skills/nolan-scene-edit/SKILL.md"
+    },
+    {
+      "id": "common.composition-craft",
+      "name": "Composition craft",
+      "kind": "craft",
+      "purpose": "The composition umbrella — named layout archetypes, when to use each, content-first resolution.",
+      "status": "active",
+      "version": 1,
+      "path": "skills/common/composition-craft.md",
+      "handoffs": [],
+      "uses": [],
+      "evals": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null
     }
   ]
 }

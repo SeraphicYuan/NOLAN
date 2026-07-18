@@ -35,5 +35,16 @@
     "academic",
     "documentary",
     "literary"
-  ]
+  ],
+  "composition": {
+    "default": "focal-card",
+    "allowed": [
+      "focal-card",
+      "centered-hero",
+      "editorial-column",
+      "swiss-grid",
+      "split-screen",
+      "framed"
+    ]
+  }
 }

@@ -36,5 +36,15 @@
     "vlog",
     "children",
     "energetic"
-  ]
+  ],
+  "composition": {
+    "default": "editorial-column",
+    "allowed": [
+      "editorial-column",
+      "centered-hero",
+      "swiss-grid",
+      "split-screen",
+      "framed"
+    ]
+  }
 }

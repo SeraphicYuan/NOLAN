@@ -37,5 +37,16 @@
     "children",
     "luxury",
     "fashion"
-  ]
+  ],
+  "composition": {
+    "default": "full-bleed-overlay",
+    "allowed": [
+      "full-bleed-overlay",
+      "centered-hero",
+      "editorial-column",
+      "swiss-grid",
+      "split-screen",
+      "framed"
+    ]
+  }
 }

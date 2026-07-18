@@ -36,5 +36,15 @@
     "vintage",
     "children",
     "vlog"
-  ]
+  ],
+  "composition": {
+    "default": "swiss-grid",
+    "allowed": [
+      "swiss-grid",
+      "centered-hero",
+      "editorial-column",
+      "split-screen",
+      "framed"
+    ]
+  }
 }

@@ -35,5 +35,15 @@
     "enterprise",
     "academic",
     "luxury"
-  ]
+  ],
+  "composition": {
+    "default": "split-screen",
+    "allowed": [
+      "split-screen",
+      "centered-hero",
+      "editorial-column",
+      "swiss-grid",
+      "framed"
+    ]
+  }
 }
