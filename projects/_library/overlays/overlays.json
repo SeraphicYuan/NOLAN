@@ -420,5 +420,27 @@
     "h": 720,
     "duration": 20,
     "license": "Pixabay License (free, no attribution)"
+  },
+  {
+    "file": "film-burn-211191.mp4",
+    "effect": "film-burn",
+    "blend": "screen",
+    "loop": true,
+    "pixabay_id": 211191,
+    "url": "https://cdn.pixabay.com/video/2024/05/08/211191_medium.mp4",
+    "source": "https://pixabay.com/videos/id-211191/",
+    "tags": [
+      "light leak",
+      "film burn",
+      "transition",
+      "light",
+      "overlay",
+      "texture",
+      "effect"
+    ],
+    "w": 2560,
+    "h": 1440,
+    "duration": 10,
+    "license": "Pixabay License (free, no attribution)"
   }
 ]

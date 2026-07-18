@@ -173,6 +173,9 @@ REGISTRY: List[Effect] = [
     _plate("light-leak", "element", "Analogue lens light-leak / flare wash.",
            "Warm organic imperfection between beats; a nostalgic film-camera register.",
            "light-leak", "screen", 0.55),
+    _plate("film-burn", "element", "Warm film-burn / light-leak flares blooming in from the edge.",
+           "A punchier warm-orange burst than `light-leak` — great as a beat / scene transition.",
+           "film-burn", "screen", 0.7),
 
     # ---- ffmpeg_bake (bake-ONLY — a 3D LUT the browser can't do; Phase 4) ----
     Effect("film-lut", "color",
