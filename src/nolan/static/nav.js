@@ -17,6 +17,7 @@
       { id: "script-styles", label: "Script Styles", href: "/script-styles" },
       { id: "script-projects", label: "Script Projects", href: "/script-projects" },
       { id: "video-styles", label: "Video Styles", href: "/video-styles" },
+      { id: "themes", label: "Themes", href: "/themes" },
       { id: "deconstruct", label: "Deconstruct", href: "/deconstruct" },
       { id: "kb", label: "Knowledge Base", href: "/kb" },
     ]},

@@ -2,7 +2,11 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-17
+**Last Updated:** 2026-07-18
+
+## Theme gallery — visual showcase of every theme + the composition module (2026-07-18)
+
+New `/themes` page (route `src/nolan/webui/routes/themes.py`, template `theme_gallery.html`) — a specimen-card gallery of all 26 themes that closes the “I'm blind to what the themes look like” gap and is the QA surface for the composition module (COMPOSITION_ARCHITECTURE.md §11). Each card renders a LIVE mini-composition of the theme's DEFAULT archetype, styled in the theme's OWN palette + display font (inline `--ss/--st/--sa/--ssh/--sd` derived from the theme's `preview` + `tokens.css`), so the specimen you see is that theme actually laying out that archetype — not a mock. Card also shows composition chips (default highlighted + the theme's `allowed` set, each with the archetype's intent as a tooltip), palette swatches (shell/surface/text/accent), display+body fonts, and mood tags. Toolbar: tone filter (all/light/dark), archetype chips each carrying a LEAD-COUNT badge (how many themes DEFAULT to that archetype — editorial-column 10 / full-bleed-overlay 6 / centered-hero 5 / swiss-grid 3 / … / sidebar 0 / framed 0 dimmed) that filter on the theme's `default` (the discriminating signal the specimen shows, NOT the permissive `allowed` set which matched ~everything), and a free-text search over id/name/mood/description. Data: `GET /api/themes/gallery` aggregates every `themes/*/theme.json` (`preview`, `fonts`, `composition{default,allowed}`, `mood`→tone) + a few surfaced `tokens.css` vars + the archetype vocabulary (id→intent/anchor) from `themes/composition/archetypes.json`. Wired into `nav.js` (Create group) + `hub.py` route registration. Template is read per-request (UI-only edits = browser refresh; a NEW route needs a hub restart). Verified via puppeteer: 26 cards, 34 specimen stages, tone filter dark→9, archetype filter swiss-grid→3 / focal-card→1, only benign 404 = favicon.
 
 ## HF effects umbrella — stackable visual treatments (colour grades / grain / fire-rain overlays) on any asset (2026-07-17)
 
