@@ -93,7 +93,10 @@ NOT an effects-umbrella overlay: a plate BLENDS over ONE asset, but a matte MASK
 screen/multiply plate it just blacks out the picture (verified). It belongs in the scene-transition
 system (compose.TRANSITIONS + the assemble path), as a NEW luma/track-matte transition type: author
 `transition_out: {kind: matte, matte: <clip>}`; execute by luma-keying the incoming clip through the
-matte over the outgoing clip. Distinct mechanism from the effects/plate overlays.
+matte over the outgoing clip. Distinct mechanism from the effects/plate overlays. Same class: GREEN-SCREEN reveal wipes (e.g. a
+fire-burn that burns across and reveals a green gate — Pexels 8828898) — the fire/ink is the wipe,
+the green/matte is where the incoming clip shows. Collect these as `transition_out:{kind:matte|reveal,
+clip}` elements; NOT fx overlays (screen/multiply just paints the green/matte onto one asset).
 
 Status is tracked in the session task list; completed items get their design
 recorded in ARCHITECTURE.md.
