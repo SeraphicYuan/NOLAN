@@ -744,7 +744,11 @@ def highlight_statement(sid, sc):
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")   # was hardcoded "footage" -> light ink on a light theme = invisible
     tcls = "paper-t" if reg == "paper" else "footage-t"
-    g, tl = media_ground(sid, d.get("ground", {"kind": "transparent"}), start, dur)
+    # a type-only (paper) statement has NO media to darken — default to a clean paper ground, not the
+    # transparent+dark-scrim (which smears a hardcoded rgba(20,21,20) gradient over a LIGHT theme). An
+    # explicit ground:{kind:transparent} still scrims a root video (grounded/footage keeps that default).
+    default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
     frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     frag.append(f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>')
     tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.2});')
