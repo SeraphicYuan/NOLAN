@@ -208,17 +208,25 @@ no authoring surface is the mirror bug. Consumers to check + wire:
   archetype is authored (beat-derived or explicit), carried in the plan (a `PLAN_FIELD_CONSUMERS` entry).
 - **The flows** — `src/nolan/flows/` (explainer/art) + `web-video-lab/flows/registry.json`: the beat→
   archetype default lives with beat metadata; theme supplies `allowed`.
-- **The block composer** — `compose.py`: each block declares its archetype; a scene-level archetype can
-  bias a block's layout (Phase-2 B4b) — at minimum blocks are *classified* by archetype.
+- **The block composer** — `compose.py` (B4b — SHIPPED): every catalog block is *classified* by an
+  archetype (coverage honesty-tested; `raw` is the one archetype-agnostic exempt; `linedraw`→focal-card).
+  compose.py stamps `data-archetype` on each scene's content root (a first-class DOM fact — its real
+  consumer is the layout linter, which now reads it for anchor-drift on composed frames) and HONOURS the
+  theme's `--r-card` knob on the generic cards (the THEME_MODULE_REVIEW knob-drop, fixed for radius — so a
+  flat theme finally gets flat cards). Still deferred: the `--stage-pad-x/y` edge-margin knob (cqw-vs-px
+  unit mismatch + a position-shift across every block — needs its own careful pass).
 - **The bespoke agent** — `bespoke.py` `bespoke_task_brief`: passes the resolved archetype + regions +
   exemplar (Phase-2 B2, the proven lever).
 - **Gates / verify** — the deterministic layout linter (`src/nolan/hyperframes/layout_lint.py`, gate
-  v2 — SHIPPED) checks a composed frame's DECLARED geometry against the registry's machine-readable
-  safe-areas (`caption_keep_out_y` / `title_safe_inset`) + per-archetype `zone`: overlap / caption-band
-  collision / off-canvas as HARD errors, anchor-drift as advisory. It is the cheap structural pass
-  wired into BOTH the compose-first finish DAG (a pre-render soft gate) and the bespoke/agent-edit
-  proposal (advisory findings surfaced at review). render_gate stays the VLM perceptual pass; the
-  human still LOOKs. This consolidated roadmap v2-gate-(a) with bespoke-P1 (one linter, two gates).
+  v2 — SHIPPED) checks a composed frame's DECLARED geometry (both inline styles AND the composer's
+  CSS-class positioning — it resolves single-class rules from the frame's `<style>`) against the
+  registry's machine-readable safe-areas (`caption_keep_out_y`=0.85, calibrated to where the caption bar
+  actually sits) + per-archetype `zone`: overlap / caption-band collision / genuine off-canvas as HARD
+  errors, anchor-drift as advisory. It reads each scene's archetype straight from the composed DOM
+  (`data-archetype`). Cheap structural pass wired into BOTH the compose-first finish DAG (pre-render soft
+  gate) and the bespoke/agent-edit proposal (advisory findings surfaced at review). render_gate stays the
+  VLM perceptual pass; the human still LOOKs. Consolidated roadmap v2-gate-(a) with bespoke-P1 (one
+  linter, two gates). Precision: 0 hard errors on the main shipped compose-first comps.
 - **`/map` + the umbrella skills** — the composition registry is auto-surfaced + honesty-tested so the
   catalog can't rot.
 

@@ -62,6 +62,12 @@ def ids() -> List[str]:
     return list(archetypes().keys())
 
 
+# Blocks that are legitimately archetype-AGNOSTIC (no fixed layout): `raw` is the bespoke escape hatch —
+# its layout is whatever the agent authors, so it carries a per-scene `meta.archetype`, not a catalog one.
+# The coverage honesty test exempts these; everything else must be classified (test_composition.py).
+ARCHETYPE_EXEMPT_BLOCKS = frozenset({"raw"})
+
+
 @lru_cache(maxsize=1)
 def _block_map() -> Dict[str, str]:
     """block/scene-type -> archetype id, derived from each archetype's `blocks[]` (the SINGLE source, so
@@ -74,7 +80,8 @@ def _block_map() -> Dict[str, str]:
 
 
 def block_archetype(block_type: str) -> Optional[str]:
-    """The archetype a compose.py block/component belongs to (e.g. stat -> centered-hero)."""
+    """The archetype a compose.py block/component belongs to (e.g. stat -> centered-hero). None for the
+    archetype-agnostic `raw` escape hatch (use the scene's own meta.archetype there)."""
     return _block_map().get(block_type)
 
 

@@ -11,12 +11,12 @@
     ],
     "optical_center": "~45% height (slightly above geometric centre)",
     "safe_areas": {
-      "caption_keep_out": "content stays in the TOP 83% (bottom ~17% reserved for captions)",
-      "title_safe": "keep primary content inside a ~5% inset from every edge",
-      "caption_keep_out_y": 0.83,
+      "caption_keep_out": "content stays in the TOP ~85% (bottom ~15% is where the caption bar sits)",
+      "title_safe": "keep primary content inside a ~5% inset from every edge (advisory)",
+      "caption_keep_out_y": 0.85,
       "title_safe_inset": 0.05
     },
-    "_machine_doc": "The numeric fields (caption_keep_out_y, title_safe_inset, per-archetype `zone`) are the machine-readable contract the deterministic layout linter (nolan.hyperframes.layout_lint) checks a composed frame's declared geometry against. Coords are 0..1 fractions of the 1920x1080 canvas (x→right, y→down). `zone` is the box the scene's content-centroid should fall inside — an ADVISORY anchor check (fuzzy by design); overlap / caption-keep-out / out-of-bounds are the HARD checks."
+    "_machine_doc": "The numeric fields (caption_keep_out_y, title_safe_inset, per-archetype `zone`) are the machine-readable contract the deterministic layout linter (nolan.hyperframes.layout_lint) checks a composed frame's declared geometry against. Coords are 0..1 fractions of the 1920x1080 canvas (x→right, y→down). caption_keep_out_y=0.85 is calibrated to where the composer's caption bar actually sits (bottom ~9-15cqh); a content box whose BOTTOM dips below it is a HARD error. The HARD out-of-bounds check flags only genuinely OFF-CANVAS content (coords <0 or >1); the title_safe_inset is a nicety the composer already roughly respects, so it is NOT gated. `zone` is the box a scene's content-centroid should fall inside — an ADVISORY anchor check (fuzzy, area-weighted)."
   },
   "archetypes": {
     "centered-hero": {
@@ -191,7 +191,8 @@
         "spotlight",
         "document",
         "social_card",
-        "prop_cutout"
+        "prop_cutout",
+        "linedraw"
       ],
       "exemplar": null,
       "zone": {

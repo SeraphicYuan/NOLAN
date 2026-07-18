@@ -136,7 +136,7 @@ CSS = """
 .dgworld{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;}
 .dgnode-w{position:absolute;transform:translate(-50%,-50%);}
 .dgnode{opacity:0;transform-origin:center;min-width:110px;max-width:290px;background:#fff;
-  border:2px solid #2B2D2C;border-radius:12px;padding:0.85cqw 1.2cqw;text-align:center;
+  border:2px solid #2B2D2C;border-radius:var(--r-card,12px);padding:0.85cqw 1.2cqw;text-align:center;
   box-shadow:0 0.4cqw 1.1cqw rgba(0,0,0,0.13);}
 .dgnode.pill{border-radius:999px;}
 .dgnode .lab{font-weight:800;font-size:1.15cqw;line-height:1.14;letter-spacing:-0.01em;color:#2B2D2C;}
@@ -247,7 +247,7 @@ CSS = """
 .cartitle .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.12em;box-decoration-break:clone;text-shadow:none;}
 /* carousel cards layout: a horizontal track of framed cards that scrolls (style:slider, layout:cards) */
 .cartrack{position:absolute;left:0;will-change:transform;}
-.carcarditem{position:absolute;overflow:hidden;border-radius:14px;background:#000;transform-origin:center;
+.carcarditem{position:absolute;overflow:hidden;border-radius:var(--r-card,14px);background:#000;transform-origin:center;
   box-shadow:0 24px 70px rgba(0,0,0,0.55);will-change:transform,opacity;}
 .carcarditem img{width:100%;height:100%;object-fit:cover;display:block;}
 /* linedraw: a self-drawing line-art SVG. draw mode forces a uniform stroke + no fill and animates
@@ -272,7 +272,7 @@ CSS = """
 .doc-label{position:absolute;transform:translate(-50%,-50%) scale(0);background:#C8232C;color:#F7F3EA;font-family:"Inter",sans-serif;
   font-weight:700;font-size:1.0cqw;letter-spacing:0.02em;padding:0.3cqw 0.72cqw;border-radius:6px;white-space:nowrap;
   box-shadow:0 0.3cqw 0.9cqw rgba(0,0,0,0.35);transform-origin:center;}
-.doc-callout{position:absolute;background:#fff;box-shadow:0 1cqw 2.6cqw rgba(0,0,0,0.3);border-radius:12px;padding:1.1cqw 1.4cqw;
+.doc-callout{position:absolute;background:#fff;box-shadow:0 1cqw 2.6cqw rgba(0,0,0,0.3);border-radius:var(--r-card,12px);padding:1.1cqw 1.4cqw;
   opacity:0;max-width:27cqw;border-left:0.4cqw solid var(--accent);}
 .doc-callout .ck{font-family:"Inter",sans-serif;font-weight:600;font-size:0.78cqw;letter-spacing:0.1em;text-transform:uppercase;color:#8a8a80;margin-bottom:0.4cqw;}
 .doc-callout .ct{font-weight:800;font-size:1.35cqw;line-height:1.22;letter-spacing:-0.01em;color:#1c1c19;}
@@ -313,7 +313,7 @@ CSS = """
 .lt-bar{display:inline-flex;align-items:stretch;gap:1cqw;background:var(--surface);border-radius:10px;padding:1cqw 1.5cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.32);}
 .lt-tab{width:0.45cqw;background:var(--accent);border-radius:3px;}
 .lt-txt{display:flex;flex-direction:column;justify-content:center;}
-.lt-card{display:inline-block;background:var(--surface);border-radius:12px;padding:1.2cqw 1.8cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.34);}
+.lt-card{display:inline-block;background:var(--surface);border-radius:var(--r-card,12px);padding:1.2cqw 1.8cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.34);}
 .lt-cardless{display:inline-block;}
 .lt-cardless .lt-name{text-shadow:0 2px 14px rgba(0,0,0,0.6);}
 .lt-cardless .lt-role{text-shadow:0 2px 10px rgba(0,0,0,0.6);}
@@ -338,7 +338,7 @@ CSS = """
 .cd-kicker{position:absolute;top:6cqh;left:16cqw;font-family:var(--font-body);font-weight:700;font-size:0.85cqw;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);opacity:0;}
 .cd-title{position:absolute;top:9.5cqh;left:16cqw;max-width:68cqw;font-weight:900;font-size:2.3cqw;letter-spacing:-0.01em;color:var(--text);opacity:0;}
 .cd-title .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
-.cd-win{position:absolute;left:16cqw;width:68cqw;border-radius:14px;overflow:hidden;box-shadow:0 2cqw 6cqw rgba(0,0,0,0.5);will-change:transform,opacity;}
+.cd-win{position:absolute;left:16cqw;width:68cqw;border-radius:var(--r-card,14px);overflow:hidden;box-shadow:0 2cqw 6cqw rgba(0,0,0,0.5);will-change:transform,opacity;}
 .cd-bar{display:flex;align-items:center;gap:0.55cqw;padding:0.85cqw 1.2cqw;border-bottom:1px solid;}
 .cd-dot{width:0.7cqw;height:0.7cqw;border-radius:50%;display:inline-block;flex:0 0 auto;}
 .cd-fname{margin-left:0.7cqw;font-family:var(--font-mono),monospace;font-size:0.82cqw;}
@@ -2601,6 +2601,35 @@ def _extend_clip_dur(frag, scene_end, extra, eps=0.05):
     return re.sub(r'data-start="([\d.]+)"\s+data-duration="([\d.]+)"', repl, frag)
 
 
+def _scene_archetype(sc):
+    """The scene's composition archetype: an explicit meta.archetype, else derived from its block type
+    (nolan.composition registry — the ONE source). None for the archetype-agnostic `raw` escape hatch."""
+    arch = (sc.get("meta") or {}).get("archetype")
+    if arch:
+        return arch
+    try:
+        from nolan.composition import block_archetype
+        return block_archetype(sc.get("type", ""))
+    except Exception:
+        return None
+
+
+def _stamp_archetype(frags, arch):
+    """Stamp `data-archetype` on the scene's CONTENT root (its track-2 element) so a composed frame
+    carries its archetype as a first-class DOM fact — the real consumer is the layout linter (reads it
+    to run anchor-drift on composed frames without a spec sidecar) + it's inspectable. Additive +
+    idempotent: no-op when arch is falsy, lands exactly once on the track-2 element."""
+    if not arch:
+        return frags
+    out, done = [], False
+    for fr in frags:
+        if not done and 'data-track-index="2"' in fr and "data-archetype=" not in fr:
+            fr = fr.replace('data-track-index="2"', f'data-archetype="{arch}" data-track-index="2"', 1)
+            done = True
+        out.append(fr)
+    return out
+
+
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
     global _POLARITY
     _POLARITY = _theme_polarity(theme)        # so blocks can pick theme-aware (not hardcoded-dark) defaults
@@ -2613,6 +2642,7 @@ def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
     for i, sc in enumerate(scenes):
         sc = {**sc, "id": _safe_sid(sc["id"])}   # digit-first ids break #selectors
         f, t = BLOCKS[sc["type"]](sc["id"], sc)
+        f = _stamp_archetype(f, _scene_archetype(sc))   # archetype-bias hook: DOM fact read by the layout linter
         if has_trans:
             sid = sc["id"]
             trans = sc.get("transition_out") or {}
