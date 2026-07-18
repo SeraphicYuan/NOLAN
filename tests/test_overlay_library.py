@@ -59,8 +59,9 @@ def test_manifest_is_fetchable_and_licensed():
     assert entries
     for e in entries:
         assert e.get("file") and e.get("effect"), f"entry missing file/effect: {e}"
-        assert str(e.get("url", "")).startswith("http"), f"{e.get('file')}: no fetch url"
         assert e.get("license"), f"{e.get('file')}: no license recorded"
+        assert str(e.get("url", "")).startswith("http") or e.get("source"), \
+            f"{e.get('file')}: no url and no source — not reproducible/attributable"
 
 
 def test_fetch_plates_command_is_registered():

@@ -139,6 +139,9 @@ REGISTRY: List[Effect] = [
     _plate("old-film", "damage", "80s film dust, specks and scratches drifting over the frame.",
            "Retro / analogue-decay register — grittier and more coloured than the clean `dust-scratches`.",
            "old-film", "screen", 0.6),
+    _plate("projector", "damage", "Warm film-projector flicker with drifting dust motes and specks.",
+           "Cinema / archival-projection register — warmer and sparser than `old-film`.",
+           "projector", "screen", 0.6),
     _plate("film-roll-h", "damage", "35mm film strip rolling horizontally — sprocket holes top & bottom, light leaks.",
            "Frame the shot as a strip of running film (letterbox-ish); pairs with sepia/old-movie.",
            "film-roll-h", "screen", 0.9),
@@ -176,6 +179,9 @@ REGISTRY: List[Effect] = [
     _plate("film-burn", "element", "Warm film-burn / light-leak flares blooming in from the edge.",
            "A punchier warm-orange burst than `light-leak` — great as a beat / scene transition.",
            "film-burn", "screen", 0.7),
+    _plate("bokeh", "element", "Soft defocused light-orbs drifting across the frame.",
+           "Dreamy / romantic / premium register — warm out-of-focus lights; pairs under a title.",
+           "bokeh", "screen", 0.65),
 
     # ---- ffmpeg_bake (bake-ONLY — a 3D LUT the browser can't do; Phase 4) ----
     Effect("film-lut", "color",

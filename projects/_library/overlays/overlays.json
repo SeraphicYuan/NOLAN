@@ -178,34 +178,6 @@
     "url": "https://cdn.pixabay.com/video/2023/08/26/177754-858853085_medium.mp4"
   },
   {
-    "file": "snow-140842.mp4",
-    "effect": "snow",
-    "blend": "screen",
-    "loop": true,
-    "pixabay_id": 140842,
-    "url": "https://cdn.pixabay.com/video/2022/11/28/140842-776043814_medium.mp4",
-    "source": "https://pixabay.com/videos/id-140842/",
-    "tags": [
-      "snowfall",
-      "snow",
-      "snowing",
-      "snow fall",
-      "winter",
-      "christmas",
-      "xmas",
-      "snow overlay",
-      "snowflakes",
-      "wintry",
-      "decor",
-      "decorations",
-      "green screen"
-    ],
-    "w": 2560,
-    "h": 1440,
-    "duration": 18,
-    "license": "Pixabay License (free, no attribution)"
-  },
-  {
     "file": "old-movie-23083.mp4",
     "effect": "old-movie",
     "blend": "multiply",
@@ -441,6 +413,76 @@
     "w": 2560,
     "h": 1440,
     "duration": 10,
+    "license": "Pixabay License (free, no attribution)"
+  },
+  {
+    "file": "snow-140842.mp4",
+    "effect": "snow",
+    "blend": "screen",
+    "loop": true,
+    "pixabay_id": 140842,
+    "url": "https://cdn.pixabay.com/video/2022/11/28/140842-776043814_medium.mp4",
+    "source": "https://pixabay.com/videos/id-140842/",
+    "tags": [
+      "snowfall",
+      "snow",
+      "snowing",
+      "snow fall",
+      "winter",
+      "christmas",
+      "xmas",
+      "snow overlay",
+      "snowflakes",
+      "wintry",
+      "decor",
+      "decorations",
+      "green screen"
+    ],
+    "w": 2560,
+    "h": 1440,
+    "duration": 18,
+    "license": "Pixabay License (free, no attribution)",
+    "chroma": "0x076f28"
+  },
+  {
+    "file": "fire-9666929-hd_1280_720_25fps.mp4",
+    "effect": "fire",
+    "blend": "screen",
+    "loop": true,
+    "license": "Pexels License (free)",
+    "source": "E:\\Downloads\\9666929-hd_1280_720_25fps.mp4"
+  },
+  {
+    "file": "bokeh-12625558_1920_1080_30fps.mp4",
+    "effect": "bokeh",
+    "blend": "screen",
+    "loop": true,
+    "license": "Pexels License (free)",
+    "source": "E:\\Downloads\\12625558_1920_1080_30fps.mp4"
+  },
+  {
+    "file": "projector-265403.mp4",
+    "effect": "projector",
+    "blend": "screen",
+    "loop": true,
+    "pixabay_id": 265403,
+    "url": "https://cdn.pixabay.com/video/2025/03/17/265403_medium.mp4",
+    "source": "https://pixabay.com/videos/id-265403/",
+    "tags": [
+      "filmstrip",
+      "projector",
+      "analog",
+      "retro",
+      "video editing",
+      "overlays",
+      "transition elements",
+      "video transition elements",
+      "compositing",
+      "video effects"
+    ],
+    "w": 2560,
+    "h": 1440,
+    "duration": 12,
     "license": "Pixabay License (free, no attribution)"
   }
 ]

@@ -91,7 +91,7 @@ def _treat_cmd(ff, src, out, p, mt) -> List[str]:
         elif e.method == "blend_overlay" and e.plate:           # fire/rain/… → composite its plate
             pth = resolve_plate(e.plate)
             if pth:
-                plates.append((pth, n["opacity"]))
+                plates.append((pth, n["opacity"], e.blend or "screen"))
     if not vf and not plates:
         raise ValueError("no bakeable effects selected (scanlines etc. are render-time only)")
     chain = ",".join(vf)
@@ -105,17 +105,17 @@ def _treat_cmd(ff, src, out, p, mt) -> List[str]:
         return [ff, "-y", "-i", str(src), "-vf", vfc, *_VENC, "-c:a", "copy", *(["-t", "1.5"] if pv else []), str(out)]
     cmd = [ff, "-y"]                                            # plate overlay(s) → video out
     cmd += (["-loop", "1", "-i", str(src)] if is_img else ["-i", str(src)])
-    for pth, _o in plates:
+    for pth, *_ in plates:
         cmd += ["-stream_loop", "-1", "-i", pth]                # loop the plate under the base
     # blend in RGB (gbrp): `screen` is a per-channel op — screen-mixing YUV chroma planes casts colour (a
     # fire plate → magenta). Convert base + each plate to gbrp, blend, then back to yuv420p for the encoder.
     base_pre = ",".join(x for x in (chain, scale, "format=gbrp") if x)
     fc = [f"[0:v]{base_pre}[b0]"]
     base = "b0"
-    for i, (pth, op) in enumerate(plates, start=1):             # scale plate to the base, screen-blend at opacity
+    for i, (pth, op, bl) in enumerate(plates, start=1):         # scale plate to the base, blend at its mode + opacity
         fc.append(f"[{i}:v]format=gbrp[pf{i}]")
         fc.append(f"[pf{i}][{base}]scale2ref[pp{i}][bb{i}]")
-        fc.append(f"[bb{i}][pp{i}]blend=all_mode=screen:all_opacity={op:.3f}[b{i}]")
+        fc.append(f"[bb{i}][pp{i}]blend=all_mode={_FF_BLEND.get(bl, 'screen')}:all_opacity={op:.3f}[b{i}]")
         base = f"b{i}"
     fc.append(f"[{base}]format=yuv420p[vout]")
     cmd += ["-filter_complex", ";".join(fc), "-map", "[vout]"]
