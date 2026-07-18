@@ -1196,6 +1196,37 @@ def quickedit_asset(comp: str, path: str, op: str, params: Dict[str, Any],
     return {"path": out.relative_to(root).as_posix(), "name": out.name, "mode": "new"}
 
 
+def cleanup_analyze(comp: str, path: str, confirm: bool = True) -> Dict[str, Any]:
+    """Analyze a pool asset (video OR image) for the composite cleanup — detect a corner LOGO, burned-in
+    CAPTIONS, and (video) stray head/tail frames → a reviewable PLAN (crop + trim). `confirm` runs the
+    OpenRouter vision filter over the CV proposals. No file is written."""
+    from nolan.hyperframes import cleanup as cl
+    src = str(_resolve_asset_path(comp, path))
+    plan = cl.analyze(src, confirm=(cl.make_vision_confirm(src) if confirm else None))
+    return {"path": path, "plan": plan}
+
+
+def cleanup_asset(comp: str, path: str, confirm: bool = True,
+                  plan: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Auto-clean a pool asset → a NEW pool asset in ONE ffmpeg pass (logo/caption crop + head/tail trim).
+    Pass a reviewed `plan` to skip re-analysis; else it analyzes (with the vision `confirm`). Returns
+    {changed, plan, path?, name?}. A no-op (nothing detected) writes NOTHING."""
+    from nolan.hyperframes import cleanup as cl
+    if plan is None:
+        src = str(_resolve_asset_path(comp, path))
+        plan = cl.analyze(src, confirm=(cl.make_vision_confirm(src) if confirm else None))
+    if not plan.get("changed"):
+        log_activity(comp, "asset-edit", f"cleanup: nothing to clean — {Path(path).name}", outcome="noop")
+        return {"changed": False, "plan": plan}
+    res = quickedit_asset(comp, path, "cleanup", {"plan": plan}, mode="new",
+                          name=f"{Path(path).stem}_clean")
+    bits = [b for b in ("logo" if plan.get("logos") else "", "captions" if plan.get("caption") else "",
+                        "trim" if plan.get("trim_in") or (plan.get("trim_out") and plan.get("kind") == "video"
+                        and plan["trim_out"] < (plan.get("dur") or 0) - 1e-3) else "") if b]
+    log_activity(comp, "asset-edit", f"cleanup ({', '.join(bits) or 'crop'}) → {res.get('name')}", outcome="pooled")
+    return {"changed": True, "plan": plan, **res}
+
+
 def treat_preview(comp: str, path: str, effects: list) -> Path:
     """A FAST, low-res REAL bake of the treat effects (NO pool registration) for the fx-modal 'Preview
     result' button — the true ffmpeg output the CSS preview only approximates. A single downscaled frame

@@ -1749,7 +1749,25 @@ async function applyCrop(mode) {
 // ---- the per-asset quick-edit action buttons (crop / trim / cutout), driven by the QE_OPS registry ----
 function assetActions(path, kind) {
   const btn = (op, fn, label) => (QE_OPS[op] && QE_OPS[op].media.includes(kind)) ? `<button onclick='event.stopPropagation();${fn}(${JSON.stringify(path)},"${kind}")'>${label}</button>` : '';
-  return btn('crop', 'openCrop', 'crop') + btn('trim', 'openTrim', 'trim') + btn('remove_bg', 'removeBg', 'cutout') + btn('treat', 'openTreat', 'fx');
+  return btn('crop', 'openCrop', 'crop') + btn('trim', 'openTrim', 'trim') + btn('remove_bg', 'removeBg', 'cutout') + btn('treat', 'openTreat', 'fx') + btn('cleanup', 'cleanupAsset', '🧹 clean');
+}
+
+// Composite auto-cleanup: detect a corner logo + burned-in captions (+ stray head/tail frames on video),
+// crop/trim them in one pass → a NEW pool asset. Uses the OpenRouter vision confirm, so it takes a moment.
+async function cleanupAsset(path, kind) {
+  const detects = 'a corner logo, burned-in captions' + (kind === 'video' ? ', and stray head/tail frames' : '');
+  if (!window.confirm('Auto-clean "' + path.split('/').pop() + '"?\n\nDetects ' + detects + ', crops/trims them, and saves a NEW pool asset (original kept). Takes ~10–30s.')) return;
+  toast('Analyzing ' + path.split('/').pop() + '… (detecting ' + detects + ')');
+  try {
+    const r = await jpost('/api/hf/asset/cleanup', { comp: COMP, path });
+    if (!r.changed) { toast('Nothing to clean — nothing detected on ' + path.split('/').pop(), 'ok'); return; }
+    const p = r.plan, bits = [];
+    if ((p.logos || []).length) bits.push('logo');
+    if (p.caption) bits.push('captions');
+    if (p.trim_in > 0 || (p.kind === 'video' && p.trim_out < (p.dur || 0) - 0.01)) bits.push('trim');
+    toast('Cleaned (' + (bits.join(', ') || 'crop') + ') → ' + r.name, 'ok');
+    await buildPool(); renderPoolPanel();
+  } catch (e) { toast('cleanup failed: ' + (e.message || e), 'err'); }
 }
 
 // ---- Trim (#2): mark in/out on a scrubber → cut the range (video quick-edit op) ----

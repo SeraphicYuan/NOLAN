@@ -146,6 +146,21 @@ def _removebg_fn(src: Path, out: Path, p: Dict) -> None:
     img.save(str(out))
 
 
+def _cleanup_cmd(ff, src, out, p, mt) -> List[str]:
+    """Composite AUTO-cleanup: apply a precomputed PLAN (logo/caption crop + head/tail trim) in ONE ffmpeg
+    pass. The plan comes from nolan.hyperframes.cleanup.analyze() (with the OpenRouter vision confirm) via
+    params['plan'], so this stays a pure argv builder — image OR video."""
+    from nolan.hyperframes.cleanup import build_cmd
+    plan = p.get("plan")
+    if not plan:
+        raise ValueError("cleanup needs a precomputed plan — analyze the asset first")
+    return build_cmd(ff, Path(src), Path(out), plan)
+
+
+def _cleanup_ext(src: Path, params: Dict):
+    return Path(src).suffix if (params.get("plan") or {}).get("kind") == "image" else ".mp4"
+
+
 # ---- registry (extend by adding one entry) ----------------------------------------------------------
 QUICK_EDITS: Dict[str, Dict] = {
     "crop": {"label": "Crop", "media": ("image", "video"), "ui": "crop", "cmd": _crop_cmd},
@@ -155,6 +170,8 @@ QUICK_EDITS: Dict[str, Dict] = {
                   "background": True, "out_ext": ".png", "fn": _removebg_fn},
     "treat": {"label": "Effects", "media": ("image", "video"), "ui": "treat",
               "cmd": _treat_cmd, "out_ext": _treat_ext},
+    "cleanup": {"label": "Clean up (auto)", "media": ("image", "video"), "ui": "auto",
+                "background": True, "cmd": _cleanup_cmd, "out_ext": _cleanup_ext},
 }
 
 

@@ -602,6 +602,26 @@ def register(app, ctx):
         except (ValueError, FileNotFoundError) as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    @app.post("/api/hf/asset/cleanup-analyze")
+    async def hf_asset_cleanup_analyze(payload: dict = Body(...)):
+        """Detect a corner logo / burned-in captions / (video) stray head-tail frames → a reviewable PLAN.
+        Writes nothing. `confirm` (default true) runs the OpenRouter vision filter over the CV proposals."""
+        comp, path = payload.get("comp"), payload.get("path")
+        if not (comp and path):
+            raise HTTPException(status_code=400, detail="comp, path required")
+        return await asyncio.to_thread(_guard, hfedit.cleanup_analyze, comp, path,
+                                       payload.get("confirm", True))
+
+    @app.post("/api/hf/asset/cleanup")
+    async def hf_asset_cleanup(payload: dict = Body(...)):
+        """Auto-clean an asset → a NEW pool asset (logo/caption crop + head/tail trim in one ffmpeg pass).
+        Pass a reviewed `plan` to skip re-analysis. A no-op writes nothing."""
+        comp, path = payload.get("comp"), payload.get("path")
+        if not (comp and path):
+            raise HTTPException(status_code=400, detail="comp, path required")
+        return await asyncio.to_thread(_guard, hfedit.cleanup_asset, comp, path,
+                                       payload.get("confirm", True), payload.get("plan"))
+
     @app.get("/api/hf/overlay-plate")
     async def hf_overlay_plate(tag: str = Query(...)):
         """Serve an effects-umbrella overlay PLATE clip (fire/rain/…) so the fx-modal preview can blend it live."""
