@@ -2497,6 +2497,70 @@ def _theme_polarity(theme):
     return pol
 
 
+# ── Per-theme font loader (audit F3) ────────────────────────────────────────
+# The composer used to @import a FIXED 4 families (Inter/Libre Franklin/Lora/UnifrakturMaguntia), so
+# ~22/26 themes rendered their declared display type in a system FALLBACK. This loads each theme's ACTUAL
+# primary families. css2 is strict — requesting a weight a family doesn't ship 400s the WHOLE request —
+# so we emit ONE @import per family with the weights it ships; a bad one isolates to that font falling
+# back, not all of them. Non-Google families (Fontshare Satoshi/Clash Display, commercial GT Sectra) are
+# not emitted → they fall back per the theme's CSS stack (recorded in docs/ENGINE_AUDIT.md, tier B/D).
+_GF_WEIGHTS = {
+    "Inter": "400;500;600;700;800;900", "Libre Franklin": "400;600;700;800;900",
+    "Lora": "400;500;600;700", "Manrope": "400;500;600;700;800",
+    "Source Serif 4": "400;500;600;700", "Source Serif Pro": "400;600;700",
+    "IBM Plex Sans": "400;500;600;700", "IBM Plex Mono": "400;500;600;700",
+    "Fraunces": "400;500;600;700;900", "Space Grotesk": "400;500;600;700",
+    "Patrick Hand": "400", "Playfair Display": "400;500;600;700;800;900",
+    "Archivo Black": "400", "Archivo": "400;500;600;700;800;900",
+    "Space Mono": "400;700", "Instrument Serif": "400",
+    "Plus Jakarta Sans": "400;500;600;700;800", "Outfit": "400;500;600;700;800;900",
+    "Syne": "400;500;600;700;800", "Cormorant": "400;500;600;700",
+    "Cormorant Garamond": "400;500;600;700", "Work Sans": "400;500;600;700;800;900",
+    "EB Garamond": "400;500;600;700;800", "JetBrains Mono": "400;500;600;700;800",
+    "Caveat": "400;500;600;700", "UnifrakturMaguntia": "400",
+    "Noto Sans SC": "400;500;700;900", "Noto Serif SC": "400;500;700;900",
+}
+_FONT_SUBSTITUTE = {  # Adobe Source Han == Google Noto CJK
+    "Source Han Sans SC": "Noto Sans SC", "Source Han Serif SC": "Noto Serif SC",
+    "Noto Sans Mono CJK SC": "Noto Sans SC",
+}
+_BASE_FONTS = ("Lora", "Inter", "Libre Franklin")  # families the composer CSS hardcodes → always load
+
+
+def _theme_font_families(theme):
+    """Ordered-unique PRIMARY families the theme declares — the first family of each
+    --font-{display-en,display-cn,body,mono}. Excludes --font-features (OpenType tags, not families)."""
+    root = Path(__file__).resolve().parents[3] / "themes"
+    p = root / str(theme) / "tokens.css"
+    if not p.exists():
+        p = root / "highlighter-editorial" / "tokens.css"
+    fams = []
+    try:
+        css = p.read_text(encoding="utf-8")
+    except Exception:
+        return fams
+    for m in re.finditer(r"--font-(?:display-en|display-cn|body|mono)\s*:\s*([^;]+);", css):
+        first = re.split(r",", m.group(1))[0].strip().strip('"').strip("'")
+        if first and not first.startswith("var(") and first not in fams:
+            fams.append(first)
+    return fams
+
+
+def _theme_fonts(theme):
+    """Google-Fonts @import block for the theme's declared families + the composer's base fonts, so a
+    theme renders in its ACTUAL type instead of a fallback. Replaces the fixed FONTS constant."""
+    want = _theme_font_families(theme)
+    want += [f for f in _BASE_FONTS if f not in want]
+    seen, out = set(), []
+    for fam in want:
+        fam = _FONT_SUBSTITUTE.get(fam, fam)
+        if fam in seen or fam not in _GF_WEIGHTS:   # not on Google Fonts → falls back per the CSS stack
+            continue
+        seen.add(fam)
+        out.append(f"@import url('https://fonts.googleapis.com/css2?family={fam.replace(' ', '+')}:wght@{_GF_WEIGHTS[fam]}&display=swap');")
+    return "".join(out)
+
+
 def _theme_vars(theme):
     """Inject a NOLAN theme's tokens.css as scoped CSS custom properties on #root so the block CSS
     (which references var(--accent) etc.) resolves. Falls back to the Vox 'highlighter-editorial'
@@ -2677,7 +2741,7 @@ def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
         if "us" in kinds:    libs += '  <script src="vendor/us-states.js"></script>\n'
         if "world" in kinds: libs += '  <script src="vendor/world.js"></script>\n'
     return f"""<template>
-  <style>{FONTS}{_theme_vars(theme)}{CSS}</style>
+  <style>{_theme_fonts(theme)}{_theme_vars(theme)}{CSS}</style>
   <div id="root" data-composition-id="{frame_id}" data-width="1920" data-height="1080">
     {chr(10).join('    '+b for b in body)}
   </div>
