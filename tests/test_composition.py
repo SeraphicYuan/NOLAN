@@ -63,6 +63,25 @@ def test_resolve_is_content_first_with_direction_override_and_allowed_constraint
     assert comp.resolve(scene_type="xyz", beat="") in comp.ids()
 
 
+def test_scene_authoring_prompt_archetype_vocab_matches_registry():
+    # the orchestrator's scene-authoring prompt lists an archetype vocabulary — it must match the registry
+    # EXACTLY (docs claim, tests enforce: no drift between the prompt and the archetype ids)
+    import re
+    from nolan.scenes import PASS2_SCENES_PROMPT   # the beats->visual-scenes authoring prompt
+    m = re.search(r'"archetype":\s*"([a-z0-9\-|]+)"', PASS2_SCENES_PROMPT)
+    assert m, "no archetype field in the scene-authoring prompt schema"
+    listed = set(m.group(1).split("|"))
+    assert listed == set(comp.ids()), f"scene prompt archetypes {listed} != registry {set(comp.ids())}"
+
+
+def test_render_gate_judge_prompt_is_archetype_aware():
+    from nolan.hyperframes.render_gate import judge_prompt
+    base = judge_prompt("a beat")
+    assert '"composed"' not in base                      # no archetype -> no layout check (back-compat)
+    with_a = judge_prompt("a beat", archetype="centered-hero")
+    assert "centered-hero" in with_a and '"composed"' in with_a   # archetype -> the VLM checks the layout
+
+
 def test_brief_section_renders_named_archetype_and_grid():
     s = comp.brief_section("centered-hero")
     assert "centered-hero" in s and "Intent:" in s and "rule-of-thirds" in s

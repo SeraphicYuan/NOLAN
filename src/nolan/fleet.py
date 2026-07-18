@@ -120,12 +120,15 @@ def _flow_context(plan_path: str, scene_ids: List[str]) -> Optional[dict]:
         palette = (t or {}).get("palette", [])
     except (OSError, json.JSONDecodeError):
         pass
+    from nolan import composition as _composition
     beats = {}
     try:
         rows = [s for sec in json.loads(Path(plan_path).read_text(encoding="utf-8")).get("sections", {}).values() for s in sec]
         for r in rows:
             if r.get("id") in scene_ids:
-                beats[r["id"]] = {"block": r.get("block"),
+                # the beat's macro layout: its authored archetype, else derived from its block
+                archetype = r.get("archetype") or _composition.block_archetype(r.get("block"))
+                beats[r["id"]] = {"block": r.get("block"), "archetype": archetype,
                                   "tray": [a.get("src") for a in (r.get("assets") or [])],
                                   "wishlist": [w.get("want") for w in (r.get("wishlist") or []) if w.get("want")]}
     except (OSError, json.JSONDecodeError):
@@ -143,6 +146,8 @@ def build_flow_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str],
     for bid in scene_ids:
         b = ctx["beats"].get(bid, {})
         bits = [f"block={b.get('block')}"]
+        if b.get("archetype"):
+            bits.append(f"archetype={b['archetype']} (the beat's macro layout — keep it)")
         if b.get("tray"):
             bits.append(f"the human added {len(b['tray'])} asset(s) to its tray — use them")
         if b.get("wishlist"):
@@ -160,7 +165,7 @@ def build_flow_dispatch_prompt(agent: str, plan_path: str, scene_ids: List[str],
         f"Use assets already bound/added to the beat; source new only if needed. "
         f"Re-render ONLY the named beat(s) via the chapter-block mechanism: "
         f"rerender_scenes(\"{plan_path}\", {scene_ids}). Leave neighbors untouched. "
-        f"Capability catalog (editing/motion/pairing, each with when-to-use): `nolan capabilities` "
+        f"Capability catalog (editing/motion/pairing/composition, each with when-to-use): `nolan capabilities` "
         f"or GET /api/map; craft docs in skills/common/*-craft.md. "
         f"Report to .nolan/agents/{agent}.json (state working->done|error, scene_ids, message, result); "
         f"start by writing state 'working'."

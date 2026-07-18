@@ -24,7 +24,7 @@ def _ffmpeg() -> str:
 
 
 # --- pure prompt / parse / decision (testable without a VLM) --------------------------------------
-def judge_prompt(beat: str, atmospheric: bool = False) -> str:
+def judge_prompt(beat: str, atmospheric: bool = False, archetype: str = "") -> str:
     # ROLE awareness: an atmospheric GROUND (b-roll under narration) is establishing/mood, so a shot of the
     # place or an evocative metaphor is CORRECT — only a clearly wrong subject is a miss. A literal-subject
     # block (document / newshead / gallery) should depict the thing. Without this the gate cried wolf on the
@@ -35,12 +35,20 @@ def judge_prompt(beat: str, atmospheric: bool = False) -> str:
             "shot or an indirect/ironic metaphor is NOT off-topic."
             if atmospheric else
             "The imagery IS the subject of the beat — score whether it clearly depicts what the beat is about.")
+    layout = (f' The scene\'s composition archetype is "{archetype}" — the layout should read as that '
+              "(e.g. centered-hero → the primary element is centred using the canvas; split-screen → two "
+              "side-by-side zones; full-bleed-overlay → media edge-to-edge). Score `composed` LOW if the "
+              "layout ignores its archetype (e.g. everything crowded in one corner for a centered-hero)."
+              if archetype else "")
+    composed = ('"composed": <0-10 — does the layout read as its archetype (per above); 10 if no archetype given>, '
+                if archetype else "")
     return (f'A still frame from a rendered explainer video, at the moment the narration means: "{beat}".\n'
-            f"{role}\nJudge it as a professional editor. Reply STRICT JSON only, DETERMINISTICALLY (same "
+            f"{role}{layout}\nJudge it as a professional editor. Reply STRICT JSON only, DETERMINISTICALLY (same "
             "frame → same scores): {"
             '"legible": <0-10 — is ALL on-screen text clearly readable over its background? white/light text '
             "on a bright or busy image, or clipped text, scores LOW>, "
             '"relevant": <0-10 — per the ROLE above>, '
+            f'{composed}'
             '"flags": "<any of: blank / low-contrast text / text clipped / off-topic / watermark; empty if clean>", '
             '"why": "<=12 words"}')
 
@@ -117,6 +125,7 @@ def _stable_t(t: float, groups: List[Dict], lo: float, hi: float) -> float:
 
 def scene_samples(comp_dir: Path) -> List[Dict]:
     """Every scene's GLOBAL sample time + a beat label (from the specs + audio_meta frame offsets)."""
+    from nolan import composition as _composition
     comp_dir = Path(comp_dir)
     meta = {}
     mp = comp_dir / "audio_meta.json"
@@ -146,9 +155,12 @@ def scene_samples(comp_dir: Path) -> List[Dict]:
                 du = float(sc.get("dur", 0) or 0)
                 data = sc.get("data", {}) or {}
                 atmospheric = bool((data.get("ground") or {}).get("kind"))   # b-roll backdrop → not literal
+                # the scene's composition archetype: persisted meta wins (a raw scene lost its block type),
+                # else derive from the block type. "" = no archetype check.
+                archetype = (sc.get("meta", {}) or {}).get("archetype") or _composition.block_archetype(sc.get("type")) or ""
                 t = _stable_t(offset + st + du / 2, cap_groups, offset + st + 0.3, offset + st + du - 0.3)
                 out.append({"frame": fr.get("id"), "scene": sc.get("id"), "type": sc.get("type"),
-                            "t": t, "beat": _beat_label(sc), "atmospheric": atmospheric})
+                            "t": t, "beat": _beat_label(sc), "atmospheric": atmospheric, "archetype": archetype})
         offset += fdur
     return out
 
@@ -197,7 +209,7 @@ def perceptual_qa(comp_dir, vision=None, floor: float = 4.0, out_dir=None) -> Di
                 return
             async with sem:
                 try:
-                    raw = await vision.describe_image(png, judge_prompt(s["beat"], s.get("atmospheric", False)))
+                    raw = await vision.describe_image(png, judge_prompt(s["beat"], s.get("atmospheric", False), s.get("archetype", "")))
                     v = parse_verdict(extract_json(raw))
                 except Exception:
                     v = parse_verdict(None)

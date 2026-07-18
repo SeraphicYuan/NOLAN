@@ -1941,6 +1941,9 @@ class Director:
             f"- duration_seconds: {ctx.duration_seconds}\n\n"
             f"# Pre-run summary\n"
             f"- info-scenes missing layout_spec: {before_missing}\n"
+            f"- Honor each scene's `archetype` (its macro layout: centered-hero / split-screen /"
+            f" swiss-grid / full-bleed-overlay / focal-card / editorial-column / sidebar / framed) —"
+            f" choose the layout_spec that REALISES that composition; don't default to a left column.\n"
             + _sp_slides_guidance(self._style_pack())
             + self._taste_guidance("slides", state)
         )

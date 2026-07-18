@@ -282,6 +282,7 @@ Return JSON array:
     "id": "scene_001",
     "covers_beats": ["beat_001"],
     "visual_type": "b-roll|graphics|a-roll|generated|host",
+    "archetype": "centered-hero|editorial-column|swiss-grid|split-screen|full-bleed-overlay|focal-card|sidebar|framed",
     "visual_description": "detailed description of what appears on screen",
     "narration_excerpt": "the key phrase from covered beats for timing alignment",
     "duration": "Xs",
@@ -303,6 +304,11 @@ Return JSON array:
 
 GUIDELINES:
 - Include only relevant fields per visual_type
+- `archetype` = the scene's MACRO LAYOUT (where content sits on the frame). Pick per the BEAT, content-first:
+  a single number/question/thesis -> centered-hero; a comparison/before-after -> split-screen; an
+  enumeration/multi-item -> swiss-grid; media/atmosphere as the hero -> full-bleed-overlay; one hero
+  subject/object/card -> focal-card; a running text claim -> editorial-column; an index/label + body ->
+  sidebar; a contained chart/quote/code -> framed. Do NOT default every scene to a left column.
 - ALWAYS include a concrete `comfyui_prompt` for "generated" scenes (single subject, cinematic,
   period/style-accurate)
 - For graphics with multiple data points, use sync_points to reveal items on trigger words
@@ -418,6 +424,7 @@ def normalize_plan_visual_types(plan: Dict[str, Any]):
 PLAN_FIELD_CONSUMERS: Dict[str, str] = {
     "narration_excerpt": "src/nolan/aligner.py",
     "visual_type":       "src/nolan/asset_engine.py",
+    "archetype":         "src/nolan/orchestrator/director.py",   # macro layout -> slide_designer honors it
     "visual_description": "src/nolan/asset_engine.py",
     "search_query":      "src/nolan/asset_engine.py",
     "comfyui_prompt":    "src/nolan/asset_engine.py",
