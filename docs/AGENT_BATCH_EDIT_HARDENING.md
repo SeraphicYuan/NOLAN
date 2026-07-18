@@ -167,8 +167,8 @@ prose hides misses.
 - *Fix 3 over-trust:* coverage is agent self-report — keep it **advisory** (a warning, never a hard
   accept-block), or it becomes a gate that lies (the phantom-gate trap).
 
-**Explicitly out of scope (deferred):** the full typed-grammar picker (`@[vid]` category tray) is the
-natural follow-on to Fix 1 but is UI-heavy — spec it separately once Fix 1's `{type, ref}` model lands.
+**Follow-ons:** the typed-grammar category tray (`@vid`/`@pic`/`@scene`/`@reveal`/`@transition`/`@asset`
+to filter the picker + clickable chips) is BUILT on top of Fix 1's `{type,ref}` model (2026-07-18).
 Agent-authored-asset provenance (source URL / license stamping for fetched photos) is real but distinct
 from these three; track it against the existing `asset_provenance_gate`.
 
