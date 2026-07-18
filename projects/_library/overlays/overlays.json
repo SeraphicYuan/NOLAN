@@ -398,5 +398,27 @@
     "h": 1440,
     "duration": 15,
     "license": "Pixabay License (free, no attribution)"
+  },
+  {
+    "file": "particles-center-299639.mp4",
+    "effect": "particles-center",
+    "blend": "screen",
+    "loop": true,
+    "pixabay_id": 299639,
+    "url": "https://cdn.pixabay.com/video/2025/08/25/299639_medium.mp4",
+    "source": "https://pixabay.com/videos/id-299639/",
+    "tags": [
+      "dust particle",
+      "blackscreen",
+      "effect",
+      "overlay effects",
+      "overlay",
+      "dust",
+      "particles"
+    ],
+    "w": 1280,
+    "h": 720,
+    "duration": 20,
+    "license": "Pixabay License (free, no attribution)"
   }
 ]

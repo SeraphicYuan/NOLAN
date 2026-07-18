@@ -149,6 +149,9 @@ REGISTRY: List[Effect] = [
     _plate("particles", "element", "Fine dust motes / particles drifting through the frame.",
            "Atmosphere + depth — floating dust in a light beam; softer and cooler than `embers`.",
            "particles", "screen", 0.55),
+    _plate("particles-center", "element", "Dust particles bursting from the centre of the frame.",
+           "A soft particle burst anchored centre-frame (vs `particles` drifting from a corner).",
+           "particles-center", "screen", 0.55),
 
     # ---- element (library PLATE — Phase 3; the physical-element overlays) ----
     _plate("fire", "element", "Real fire / flame licking up over the media.",
