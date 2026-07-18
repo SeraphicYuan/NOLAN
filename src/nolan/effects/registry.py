@@ -139,6 +139,11 @@ REGISTRY: List[Effect] = [
     _plate("old-film", "damage", "80s film dust, specks and scratches drifting over the frame.",
            "Retro / analogue-decay register — grittier and more coloured than the clean `dust-scratches`.",
            "old-film", "screen", 0.6),
+    _plate("film-roll-h", "damage", "35mm film strip rolling horizontally — sprocket holes top & bottom, light leaks.",
+           "Frame the shot as a strip of running film (letterbox-ish); pairs with sepia/old-movie.",
+           "film-roll-h", "screen", 0.9),
+    _plate("film-roll-v", "damage", "35mm film strip rolling vertically — sprocket holes left & right, light leaks.",
+           "Frame the shot as a vertical filmstrip; portrait/scroll register.", "film-roll-v", "screen", 0.9),
 
     # ---- particles (library PLATE) ----
     _plate("particles", "element", "Fine dust motes / particles drifting through the frame.",
@@ -157,6 +162,9 @@ REGISTRY: List[Effect] = [
            "Winter, isolation, quiet; a cold beat over a landscape.", "snow", "screen", 0.75),
     _plate("smoke", "element", "Rolling smoke / haze drifting through.",
            "Mystery, war, industry; add atmosphere and depth to a flat plate.", "smoke", "screen", 0.6),
+    _plate("light-smoke", "element", "Low, soft haze creeping up from the bottom of the frame.",
+           "Subtle atmosphere — a gentle mood wash under a scene; lighter/wispier than `smoke`.",
+           "light-smoke", "screen", 0.5),
     _plate("fog", "element", "Low fog / mist.",
            "Dread, dreaminess, the unknown; soften and recede a background.", "fog", "lighten", 0.5),
     _plate("light-leak", "element", "Analogue lens light-leak / flare wash.",
