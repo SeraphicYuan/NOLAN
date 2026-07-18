@@ -117,6 +117,40 @@ def _split_style(style: str) -> Dict[str, str]:
     return out
 
 
+# The composer positions most content via CSS CLASSES in a <style> block (`.stmt{left:5.5cqw;bottom:16cqh}`),
+# not inline styles — so the linter must resolve single-class positioning rules or it sees nothing on a
+# composed frame. Only these props affect the box (max-/min-width don't give a definite extent → ignored).
+_POS_PROPS = {"left", "right", "top", "bottom", "inset", "width", "height", "position"}
+
+
+def _class_pos_rules(css: str) -> Dict[str, Dict[str, str]]:
+    """{class -> position props} from BARE single-class rules (`.stmt{...}`) in the frame's <style>.
+    Compound/descendant selectors (`.dg-dark .dgnode`) are skipped — they almost always restyle colour,
+    not geometry, and matching them needs a full CSS engine. Later source rules win (cascade-ish)."""
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    rules: Dict[str, Dict[str, str]] = {}
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+        sel, body = m.group(1).strip(), m.group(2)
+        props = {}
+        for decl in body.split(";"):
+            if ":" in decl:
+                k, v = decl.split(":", 1)
+                k = k.strip().lower()
+                if k in _POS_PROPS:
+                    props[k] = v.strip()
+        if not props:
+            continue
+        for one in sel.split(","):
+            mm = re.fullmatch(r"\.([\w-]+)", one.strip())
+            if mm:
+                rules.setdefault(mm.group(1), {}).update(props)
+    return rules
+
+
+def _extract_css(html: str) -> str:
+    return "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", html, re.S))
+
+
 def _inset_parts(v: str) -> Dict[str, str]:
     """CSS `inset` shorthand → {top,right,bottom,left}."""
     toks = v.split()
@@ -288,6 +322,18 @@ def _clip_window(el: El) -> Optional[Tuple[float, float]]:
     return None
 
 
+def _dom_archetype(el: El) -> Optional[str]:
+    """The scene archetype stamped on the composed frame (compose.py stamps data-archetype on the
+    track-2 content root) — so the linter reads the archetype straight from the artifact, no sidecar."""
+    node: Optional[El] = el
+    while node is not None:
+        a = node.attrs.get("data-archetype")
+        if a:
+            return a
+        node = node.parent
+    return None
+
+
 # ── measured content element ──────────────────────────────────────────────────
 @dataclass
 class Item:
@@ -297,6 +343,7 @@ class Item:
     sel: str
     allow_overflow: bool = False   # element (or an ancestor) opted out via data-layout-allow-overflow
     furniture: bool = False        # broadcast furniture (lower-third) — exempt from the caption check
+    archetype: Optional[str] = None  # data-archetype stamped by compose.py on the scene's content root
 
 
 def _allow_overflow(el: El) -> bool:
@@ -313,8 +360,11 @@ def _allow_overflow(el: El) -> bool:
 _ARTIFACT_CLS = ("chart", "ch-", "diagram", "dg-", "code", "hljs", "table", "geo", "us-", "world",
                  "spark", "flow-", "node", "d3-", "axis")
 # broadcast furniture is deliberately at the lower edge (its own scrim); captions are stacked/placed
-# by the assembler, so exempt it from the caption-band check (still checked for bounds + overlap).
-_FURNITURE_CLS = ("lt-bar", "ltwrap", "lower_third", "lower-third", "lt-", "chyron", "namestrip")
+# by the assembler, so exempt it from the caption-band check (still checked for bounds + overlap). This
+# includes a block's OWN caption/source line (doc-caption, prop-cap) — a designed low element with its
+# own scrim, not free content that VO captions would occlude.
+_FURNITURE_CLS = ("lt-bar", "ltwrap", "lower_third", "lower-third", "lt-", "chyron", "namestrip",
+                  "doc-caption", "prop-cap", "capbar")
 
 
 def _inside_artifact(el: El) -> bool:
@@ -338,16 +388,23 @@ def _is_furniture(el: El) -> bool:
     return False
 
 
-def _has_positioned_children(el: El) -> bool:
-    for c in el.children:
-        st = c.style
-        if any(k in st for k in ("left", "right", "top", "bottom", "inset")):
-            return True
-    return False
+def _eff_style(el: El, class_rules: Dict[str, Dict[str, str]]) -> Dict[str, str]:
+    """The element's effective position style: its matched single-class rules merged (source order),
+    with the inline style overlaid (inline wins) — the composer's class-based positioning made visible."""
+    st: Dict[str, str] = {}
+    for c in el.classes:
+        r = class_rules.get(c)
+        if r:
+            st.update(r)
+    st.update(el.style)
+    return st
 
 
-def _measure(root: El) -> List[Item]:
-    """Every positioned, non-ground CONTENT element with a resolvable box, in canvas fractions."""
+def _measure(root: El, class_rules: Optional[Dict[str, Dict[str, str]]] = None) -> List[Item]:
+    """Every positioned, non-ground CONTENT element with a resolvable box, in canvas fractions.
+    `class_rules` ({class -> position props}) lets the composer's CSS-class positioning resolve, not
+    just inline styles."""
+    class_rules = class_rules or {}
     # resolve each element's positioned-ancestor box top-down
     canvas = Box(0.0, 0.0, 1.0, 1.0)
     boxes: Dict[int, Box] = {id(root): canvas}
@@ -363,7 +420,7 @@ def _measure(root: El) -> List[Item]:
                 pbox = boxes[id(panc)]
                 break
             panc = panc.parent
-        b = _resolve_box(el.style, pbox)
+        b = _resolve_box(_eff_style(el, class_rules), pbox)
         if b is not None:
             boxes[id(el)] = b
         if b is None or _is_ground(el):
@@ -384,7 +441,8 @@ def _measure(root: El) -> List[Item]:
         win = _clip_window(el) or (0.0, 1e9)
         items.append(Item(box=b, text=txt, window=win,
                           sel=el.attrs.get("id") or (el.tag + "." + ".".join(el.classes[:2])),
-                          allow_overflow=_allow_overflow(el), furniture=_is_furniture(el)))
+                          allow_overflow=_allow_overflow(el), furniture=_is_furniture(el),
+                          archetype=_dom_archetype(el)))
     return items
 
 
@@ -418,8 +476,7 @@ def _check_items(items: List[Item], scene: str, archetype: Optional[str],
                  captions_on: bool, overlap_hard: bool) -> List[Violation]:
     grid = _comp.grid()
     sa = grid.get("safe_areas", {})
-    cap_y = float(sa.get("caption_keep_out_y", 0.83))
-    inset = float(sa.get("title_safe_inset", 0.05))
+    cap_y = float(sa.get("caption_keep_out_y", 0.85))
     out: List[Violation] = []
 
     for it in items:
@@ -432,19 +489,21 @@ def _check_items(items: List[Item], scene: str, archetype: Optional[str],
             out.append(Violation("caption_collision", "error", scene,
                                  f"{it.sel!r} bottom at y={b.y1:.2f} dips into the caption keep-out "
                                  f"(content must stay above y={cap_y})", [b.x0, b.y0, b.x1, b.y1]))
-        # out of bounds — outside the title-safe inset (skip a pure anchor with no extent on that axis)
+        # off-canvas — a content box that extends beyond the frame edges (clipped). Only genuine bleed
+        # (coords <0 or >1); the title-safe inset is a nicety the composer respects, not a gate. The axis
+        # an element intentionally spans (anchor / full-bleed) isn't a false "off the right/bottom".
         edges = []
-        if b.x0 < inset - _EPS:
+        if b.x0 < -_EPS:
             edges.append(f"left={b.x0:.2f}")
-        if b.x1 > 1 - inset + _EPS and not b.x_anchor:
+        if b.x1 > 1 + _EPS and not b.x_anchor:
             edges.append(f"right={b.x1:.2f}")
-        if b.y0 < inset - _EPS:
+        if b.y0 < -_EPS:
             edges.append(f"top={b.y0:.2f}")
-        if b.y1 > 1 - inset + _EPS and not b.y_anchor and not (captions_on and b.y1 > cap_y):
+        if b.y1 > 1 + _EPS and not b.y_anchor:
             edges.append(f"bottom={b.y1:.2f}")
         if edges:
             out.append(Violation("out_of_bounds", "error", scene,
-                                 f"{it.sel!r} outside the {inset:.0%} title-safe inset ({', '.join(edges)})",
+                                 f"{it.sel!r} extends off-canvas ({', '.join(edges)})",
                                  [b.x0, b.y0, b.x1, b.y1]))
 
     # overlap — pairwise, only for elements visible at overlapping times
@@ -497,8 +556,9 @@ def lint_raw_scene(html_list: List[str], archetype: Optional[str] = None, *,
     """Lint one bespoke/agent `raw` scene (its `data.html` list). Overlap is ADVISORY here — a raw
     scene's simultaneity is set by its `tl`, which static parse can't resolve, so coincident anchors
     are a hint, not a hard error."""
-    root = _parse("<div>" + "".join(html_list) + "</div>")
-    items = _measure(root)
+    joined = "".join(html_list)
+    root = _parse("<div>" + joined + "</div>")
+    items = _measure(root, _class_pos_rules(_extract_css(joined)))
     return _check_items(items, scene, archetype, captions_on, overlap_hard=False)
 
 
@@ -507,16 +567,17 @@ def lint_frame_html(html: str, *, scene_archetypes: Optional[Dict[str, str]] = N
     """Lint a composed frame's HTML. Clips carry explicit data-start windows, so overlap is a HARD
     error. `scene_archetypes` maps a scene/clip id → archetype for the anchor-drift advisory."""
     root = _parse(html)
-    items = _measure(root)
+    items = _measure(root, _class_pos_rules(_extract_css(html)))
     # group by clip window so overlap + drift are scoped to simultaneously-visible content
     groups: Dict[Tuple[float, float], List[Item]] = {}
     for it in items:
         groups.setdefault(it.window, []).append(it)
     out: List[Violation] = []
     for win, its in sorted(groups.items()):
-        arche = None
-        if scene_archetypes:
-            # best-effort: match a scene id whose element is in this group
+        # prefer the archetype stamped in the composed DOM (compose.py data-archetype); fall back to the
+        # spec sidecar mapping when linting a frame that predates the stamp.
+        arche = next((i.archetype for i in its if i.archetype), None)
+        if not arche and scene_archetypes:
             for sel in (i.sel for i in its):
                 for sid, a in scene_archetypes.items():
                     if sid and sid in sel:

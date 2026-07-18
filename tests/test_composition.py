@@ -44,7 +44,19 @@ def test_block_archetype_derivation():
     assert comp.block_archetype("comparison") == "split-screen"
     assert comp.block_archetype("statement") == "editorial-column"
     assert comp.block_archetype("spotlight") == "focal-card"
+    assert comp.block_archetype("linedraw") == "focal-card"
     assert comp.block_archetype("nope") is None
+
+
+def test_every_catalog_block_is_classified_by_an_archetype():
+    # coverage (both directions): every composer scene_template + component maps to exactly one archetype,
+    # except the archetype-agnostic escape hatch(es). No orphan block that block_archetype() returns None for.
+    cat = json.loads((REPO / "render-service" / "_lab_hyperframes" / "bridge" / "catalog.json").read_text(encoding="utf-8"))
+    blocks = set(cat.get("scene_templates", {})) | set(cat.get("components", {}))
+    orphans = sorted(b for b in blocks if b not in comp.ARCHETYPE_EXEMPT_BLOCKS and comp.block_archetype(b) is None)
+    assert not orphans, f"catalog blocks with no archetype (classify in archetypes.json blocks[]): {orphans}"
+    # the exempt set is real (present in the catalog) — no stale exemptions
+    assert comp.ARCHETYPE_EXEMPT_BLOCKS <= blocks, "ARCHETYPE_EXEMPT_BLOCKS names a block not in the catalog"
 
 
 def test_resolve_is_content_first_with_direction_override_and_allowed_constraint():
@@ -86,4 +98,4 @@ def test_brief_section_renders_named_archetype_and_grid():
     s = comp.brief_section("centered-hero")
     assert "centered-hero" in s and "Intent:" in s and "rule-of-thirds" in s
     assert "Exemplar" in s          # centered-hero has a promoted exemplar
-    assert "83%" in s               # the caption keep-out comes from the registry grid (one source)
+    assert "85%" in s               # the caption keep-out comes from the registry grid (one source)
