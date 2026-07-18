@@ -196,30 +196,68 @@ def register(app, ctx):
     @app.post("/api/hf/effect/analyze")
     async def hf_effect_analyze(payload: dict = Body(...)):
         """Dispatch the effect agent (tmux) with a GSAP task brief to clone a reference clip's effect onto a
-        scene. The agent writes a proposal JSON; /api/hf/effect/apply then lands it (gated)."""
+        scene. A Clips-page `clip_id` is resolved → sampled frames the agent can SEE (mirrors the Clips
+        analyze flow) → a GSAP brief. The agent writes a proposal JSON; /api/hf/effect/apply lands it (gated).
+        Runs as a background job (frame extraction). `clip_ref` (free text) is the fallback when no clip_id."""
         comp, fid, sid = payload.get("comp"), payload.get("frame_id"), payload.get("scene_id")
+        clip_id = (payload.get("clip_id") or "").strip()
         clip_ref, comment = payload.get("clip_ref", ""), payload.get("comment", "")
         session = (payload.get("session") or "nolan2").strip()
+        num_frames = int(payload.get("num_frames") or 8)
         if not (comp and fid and sid):
             raise HTTPException(status_code=400, detail="comp, frame_id, scene_id required")
-        from nolan.hyperframes import effect as eff
-        brief = _guard(eff.effect_task_brief, comp, fid, sid, clip_ref, comment)
-        task_dir = _guard(hfedit.comp_dir, comp) / "compositions" / "_effects"
-        task_dir.mkdir(parents=True, exist_ok=True)
-        task_file, proposal = task_dir / f"{sid}_task.md", task_dir / f"{sid}.json"
-        task_file.write_text(brief, encoding="utf-8")
-        dispatched = False
-        try:
-            from nolan.webui.operations import _dispatch_to_tmux
-            dispatched = bool(_dispatch_to_tmux(session, f"New HyperFrames GSAP effect task — read {task_file.as_posix()} "
-                                                          f"and write your proposal to {proposal.as_posix()}"))
-        except Exception:
+
+        async def worker(job, comp, fid, sid, clip_id, clip_ref, comment, session, num_frames):
+            from nolan.hyperframes import effect as eff
+            from nolan.webui import operations
+            frame_paths, clip_meta = [], None
+            # Resolve a Clips-page clip_id → evenly-spaced frames the agent can inspect (same extractor the
+            # Clips "Analyze effect" flow uses; cached under projects/_clips/<clip_id>/frames).
+            if clip_id:
+                if not (ctx.db_path and Path(ctx.db_path).exists()):
+                    raise RuntimeError("no library DB configured — cannot resolve clip_id")
+                job.message = f"Extracting {num_frames} frames from {clip_id}…"
+                job.log(f"resolving clip {clip_id}; extracting {num_frames} frames")
+                res = await operations.materialize_clip(job, db_path=Path(ctx.db_path), clip_id=clip_id,
+                                                        form="frames", num_frames=num_frames)
+                frame_paths = [Path(p).as_posix() for p in (res.get("frames") or [])]
+                mc = res.get("matched_clip") or {}
+                clip_meta = {"clip_id": clip_id, "video": mc.get("video_path"),
+                             "start": mc.get("clip_start"), "end": mc.get("clip_end")}
+                if not clip_ref:
+                    clip_ref = (f"{clip_id} — {Path(str(mc.get('video_path') or '')).name} "
+                                f"[{mc.get('clip_start')}–{mc.get('clip_end')}s]")
+                job.log(f"extracted {len(frame_paths)} frames → {res.get('dir')}")
+            brief = eff.effect_task_brief(comp, fid, sid, clip_ref=clip_ref, comment=comment,
+                                          frame_paths=frame_paths, clip_meta=clip_meta)
+            task_dir = hfedit.comp_dir(comp) / "compositions" / "_effects"
+            task_dir.mkdir(parents=True, exist_ok=True)
+            task_file, proposal = task_dir / f"{sid}_task.md", task_dir / f"{sid}.json"
+            task_file.write_text(brief, encoding="utf-8")
             dispatched = False
-        return {"dispatched": dispatched, "session": session, "task": task_file.as_posix(), "proposal": proposal.as_posix()}
+            try:
+                from nolan.webui.operations import _dispatch_to_tmux
+                await asyncio.to_thread(_dispatch_to_tmux, session,
+                                        f"New HyperFrames GSAP effect task — read {task_file.as_posix()} "
+                                        f"and write your proposal to {proposal.as_posix()}")
+                dispatched = True
+            except Exception as e:
+                job.log(f"dispatch to tmux '{session}' failed: {e}")
+            job.message = (f"Effect agent {'dispatched to ' + session if dispatched else 'brief written (no live session)'}"
+                           f" — {len(frame_paths)} frames")
+            return {"dispatched": dispatched, "session": session, "frames": len(frame_paths),
+                    "task": task_file.as_posix(), "proposal": proposal.as_posix()}
+
+        job = job_manager.start("hf_effect_analyze", worker, meta={"comp": comp, "scene": sid},
+                                comp=comp, fid=fid, sid=sid, clip_id=clip_id, clip_ref=clip_ref,
+                                comment=comment, session=session, num_frames=num_frames)
+        return {"job_id": job.id}
 
     @app.post("/api/hf/effect/apply")
     async def hf_effect_apply(payload: dict = Body(...)):
-        """Land the agent's GSAP effect proposal onto the scene (through the author.py gate)."""
+        """Land the agent's effect proposal onto the scene (through the author.py gate). Two proposal
+        shapes: `{"block":{"type","data"}}` retargets the scene onto a REUSABLE catalog block (Tier-2,
+        e.g. spotlight); `{"html":[...],"tl":[...]}` lands a bespoke `raw` GSAP effect (Tier-1)."""
         comp, fid, sid = payload.get("comp"), payload.get("frame_id"), payload.get("scene_id")
         if not (comp and fid and sid):
             raise HTTPException(status_code=400, detail="comp, frame_id, scene_id required")
@@ -231,7 +269,53 @@ def register(app, ctx):
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"unreadable proposal: {e}")
         from nolan.hyperframes import effect as eff
-        return await asyncio.to_thread(_guard, eff.apply_effect, comp, fid, sid, data.get("html"), data.get("tl"))
+        block = data.get("block")
+        if isinstance(block, dict) and block.get("type"):    # Tier-2: reusable block
+            return await asyncio.to_thread(_guard, eff.apply_block, comp, fid, sid,
+                                           block.get("type"), block.get("data") or {})
+        return await asyncio.to_thread(_guard, eff.apply_effect, comp, fid, sid,   # Tier-1: raw
+                                       data.get("html"), data.get("tl"))
+
+    @app.get("/api/hf/effect/proposal")
+    async def hf_effect_proposal(comp: str = Query(...), scene_id: str = Query(...)):
+        """The agent's written proposal for a scene, so the UI can PREVIEW it before ✓ Apply
+        (block type+data, or raw html/tl + rationale). 404 until the agent has written one."""
+        prop = _guard(hfedit.comp_dir, comp) / "compositions" / "_effects" / f"{scene_id}.json"
+        if not prop.exists():
+            raise HTTPException(status_code=404, detail="no proposal yet")
+        try:
+            data = json.loads(prop.read_text(encoding="utf-8"))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"unreadable proposal: {e}")
+        block = data.get("block") if isinstance(data.get("block"), dict) else None
+        return {"kind": "block" if block else "raw",
+                "block_type": (block or {}).get("type"),
+                "data": (block or {}).get("data"),
+                "html": data.get("html"), "tl": data.get("tl"),
+                "dedup": data.get("dedup"), "rationale": data.get("rationale")}
+
+    # ---- bespoke mode: hand SELECTED scene(s) to fleet agents for fully-custom `raw` authoring ----
+
+    @app.post("/api/hf/bespoke/dispatch")
+    async def hf_bespoke_dispatch(payload: dict = Body(...)):
+        """Fan out ONE agent per selected scene (round-robin across fleet sessions), each with a rich
+        context brief. Each agent authors a bespoke `raw` scene and submits it via propose_scene_edit —
+        the proposals then appear in the SAME review panel as batch edits (accept → gate → render)."""
+        comp = payload.get("comp")
+        scene_ids = payload.get("scene_ids") or []
+        if not (comp and scene_ids):
+            raise HTTPException(status_code=400, detail="comp and scene_ids required")
+        from nolan.hyperframes import bespoke as bsp
+        return await asyncio.to_thread(_guard, bsp.dispatch_bespoke, comp, scene_ids,
+                                       payload.get("direction", ""), payload.get("sessions"))
+
+    @app.get("/api/hf/bespoke/brief")
+    async def hf_bespoke_brief(comp: str = Query(...), frame_id: str = Query(...),
+                               scene_id: str = Query(...), direction: str = Query("")):
+        """Preview the exact context brief a bespoke agent would receive for a scene (transparency —
+        so you can see WHAT the agent is told before dispatching)."""
+        from nolan.hyperframes import bespoke as bsp
+        return {"brief": _guard(bsp.bespoke_task_brief, comp, frame_id, scene_id, direction)}
 
     # ---- render one or more frame clips (background job)
 

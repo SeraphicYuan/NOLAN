@@ -20,12 +20,12 @@ BLOCK_FAMILY: Dict[str, str] = {
     "statement": "text", "lower_third": "text", "code": "text", "document": "text",
     "stat": "dataviz", "chart": "dataviz", "geo": "dataviz", "diagram": "dataviz", "timeline": "dataviz",
     "collage": "media", "gallery": "media", "carousel": "media", "linedraw": "media",
-    "comparison": "media", "newshead": "media", "social_card": "media",
+    "comparison": "media", "newshead": "media", "social_card": "media", "spotlight": "media",
     "raw": "structural",
 }
 # blocks that CAN host a real photo/clip (used to suggest upgrades for text-only beats)
 MEDIA_CAPABLE = {"statement", "comparison", "newshead", "collage", "gallery", "carousel",
-                 "social_card", "linedraw", "raw", "document"}
+                 "social_card", "linedraw", "raw", "document", "spotlight"}
 
 # minimum READABLE window per block — a scene shorter than this can't be read on screen (a 0.94s
 # comparison is a worse defect than a 12s hold, and was invisible to every gate). Text-dense blocks
@@ -34,6 +34,7 @@ MIN_READABLE: Dict[str, float] = {
     "newshead": 5.0, "comparison": 5.0, "document": 5.0, "timeline": 5.0, "collage": 4.5,
     "gallery": 4.0, "carousel": 4.0, "diagram": 4.0, "chart": 4.0, "geo": 4.0, "code": 4.0,
     "social_card": 3.0, "statement": 2.5, "stat": 2.5, "linedraw": 3.0, "lower_third": 2.0, "raw": 2.5,
+    "spotlight": 2.5,
 }
 DEFAULT_MIN_READABLE = 3.0
 

@@ -345,6 +345,46 @@
       <div id="pick-list" class="pick-grid"></div>
     </div>
   </div>
+  <!-- 🎬 Effect from clip: pick a reference clip (from the Clips library) + a note → dispatch the effect agent -->
+  <div id="effectModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><b>🎬 Clone effect from a clip</b><span class="meta" style="color:var(--text-secondary);font-size:12px;">the agent looks at the clip's frames, then proposes a GSAP effect (a reusable block when one fits)</span>
+        <span class="spacer"></span><button class="btn ghost mini" onclick="closeEffectModal()">Close</button></div>
+      <div style="display:flex;gap:6px;align-items:center;margin:8px 0"><input id="effect-clip-filter" placeholder="filter clips…" oninput="renderEffectClips()" style="flex:1"><span id="effect-clip-count" class="meta" style="font-size:11px;color:var(--text-secondary)"></span></div>
+      <div id="effect-clip-list" style="max-height:34vh;overflow:auto;border:1px solid var(--border);border-radius:8px"></div>
+      <div style="margin-top:8px"><input id="effect-clip-id" placeholder="…or paste a clip_id / video path / URL" style="width:100%"></div>
+      <label class="rs-label" style="margin-top:8px">What effect to recreate?</label>
+      <textarea id="effect-note" rows="2" placeholder="the motion / transition / graphic — the more precise, the better" style="width:100%"></textarea>
+      <div style="display:flex;gap:6px;margin-top:8px;align-items:center"><button class="btn" onclick="effectAnalyze()">Analyze + dispatch agent</button><span id="effect-status" class="meta" style="font-size:12px;color:var(--text-secondary)"></span></div>
+    </div>
+  </div>
+  <!-- ✓ Apply effect: preview the agent's PROPOSAL (block+params, or raw) before landing it through the gate -->
+  <div id="effectPreviewModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><b>Effect proposal</b><span id="effect-prev-target" class="meta" style="color:var(--text-secondary);font-size:12px;"></span>
+        <span class="spacer"></span><button class="btn ghost mini" onclick="closeEffectPreview()">Close</button></div>
+      <div id="effect-prev-body" style="max-height:52vh;overflow:auto"></div>
+      <div style="display:flex;gap:6px;margin-top:10px"><button class="btn" onclick="effectApplyConfirmed()">✓ Apply through the gate</button><button class="btn ghost" onclick="closeEffectPreview()">Cancel</button></div>
+    </div>
+  </div>
+  <!-- 🎨 Bespoke action bar: appears when scenes are checkbox-selected; hands them to fleet agents for custom design -->
+  <div id="bespoke-bar" style="display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;
+       background:var(--surface,#1a1a1a);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.45);
+       padding:10px 14px;display:none;align-items:center;gap:10px;max-width:min(760px,94vw)">
+    <span style="font-size:13px;font-weight:600">🎨 Bespoke <span id="bespoke-count">0</span></span>
+    <span id="bespoke-ids" class="meta" style="font-size:11px;color:var(--text-secondary);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <input id="bespoke-direction" placeholder="direction (optional) — e.g. kinetic type that stamps each phrase" style="flex:1;min-width:220px">
+    <button class="btn mini" onclick="bespokePreview()" title="Preview the exact context an agent would receive for the first selected scene">Preview brief</button>
+    <button class="btn" onclick="dispatchBespoke()" title="One agent per scene authors a fully-custom design → proposals in the review panel">Dispatch agents</button>
+    <button class="btn ghost mini" onclick="clearBespoke()">clear</button>
+  </div>
+  <div id="bespokeBriefModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><b>Bespoke brief</b><span id="bespoke-brief-target" class="meta" style="color:var(--text-secondary);font-size:12px"></span>
+        <span class="spacer"></span><button class="btn ghost mini" onclick="$('#bespokeBriefModal').style.display='none'">Close</button></div>
+      <pre id="bespoke-brief-body" style="max-height:60vh;overflow:auto;font-size:11px;background:var(--surface,#111);padding:12px;border-radius:8px;white-space:pre-wrap"></pre>
+    </div>
+  </div>
   <!-- ✨ Replace: a slide-in sheet (frame stays visible on the left so you judge candidates in context) -->
   <div id="replace-sheet" class="rsheet">
     <div class="rs-head"><b>✨ Replace</b> <span id="rs-target" class="rs-target"></span><span class="spacer"></span><button class="btn ghost mini" onclick="closeReplace()">✕ close</button></div>
@@ -423,6 +463,7 @@
 <script>
 const $ = s => document.querySelector(s);
 let CATALOG = null, FRAMES = [], COMP = null, SEL = null, ACTIVE_FID = null, ASSETS = [], VIDV = 0, ASSETV = 0, POOLMETA = {}, QE_OPS = {}, LAYERS = null;
+let BESPOKE_SEL = new Set();   // scene ids checkbox-selected for bespoke mode
 let TIMING_LOCKED = true; try { TIMING_LOCKED = localStorage.getItem('hf_timing_locked') !== 'false'; } catch (e) {}  // scene times locked by default — a stray change re-fits the ground + cascades  // LAYERS = the active frame's layer map (bg/overlay/text/fx lanes)  // SEL = {frame_id, scene_id}; POOLMETA = pool provenance by file basename; QE_OPS = quick-edit registry. VIDV busts the RENDERED frame video (render-done); ASSETV busts asset THUMBNAILS (crop/cutout/fit) — decoupled so an asset edit doesn't reload the frame video
 let LOOP_SCENE = false;   // when true, clicking a scene loops its time range instead of playing through
 
@@ -495,28 +536,114 @@ async function queueNote(fid, sid) {
     toast(`queued for agent · ${frame ? 'frame ' + fid : 'scene ' + sid} — dispatch from 🤖 Batch`, "ok");
   } catch (e) { toast("queue failed: " + e, "err"); }
 }
-// Clone a reference clip's effect onto this scene as a GSAP `raw` effect (Tier-1 of the Clips→HF adaptation).
+// ---- 🎬 Effect from clip (Tier-1 raw OR Tier-2 reusable block, whichever the agent picks) ----
+let EFFECT_CTX = null, EFFECT_CLIPS = [], EFFECT_SEL = null;
+// Open the clip picker: browse the Clips library, pick a reference clip (or paste an id/path), add a note.
 async function effectFromClip(fid, sid) {
-  const clip = prompt("Reference clip to clone the effect FROM — a video path, clipper URL, or clip name:", "");
-  if (clip === null) return;
-  const comment = prompt("What effect to recreate? (the motion / transition / graphic — the more precise, the better)", "") || "";
-  toast("dispatching effect agent…", "ok");
-  try {
-    const r = await jpost("/api/hf/effect/analyze", { comp: COMP, frame_id: fid, scene_id: sid, clip_ref: (clip || "").trim(), comment: comment.trim() });
-    if (r.dispatched) toast(`🎬 effect agent (${r.session}) is analyzing the clip — when it writes a proposal, click ✓ Apply effect`, "ok");
-    else toast(`brief written to ${r.task} — no live agent session; run the effect agent on it, then ✓ Apply effect`, "err");
-  } catch (e) { toast("effect dispatch failed: " + (e.message || e), "err"); }
+  EFFECT_CTX = { fid, sid }; EFFECT_SEL = null;
+  $("#effect-clip-id").value = ""; $("#effect-note").value = ""; $("#effect-clip-filter").value = "";
+  $("#effect-status").textContent = ""; $("#effect-clip-list").innerHTML = '<div class="empty" style="padding:12px">loading clips…</div>';
+  $("#effectModal").style.display = "flex";
+  try { EFFECT_CLIPS = (await jget("/api/library/clips")).clips || []; } catch (e) { EFFECT_CLIPS = []; }
+  renderEffectClips();
 }
-// Land the effect agent's written proposal onto this scene (through the composer gate).
+function closeEffectModal() { $("#effectModal").style.display = "none"; }
+function renderEffectClips() {
+  const q = ($("#effect-clip-filter").value || "").toLowerCase();
+  const rows = EFFECT_CLIPS.filter(c => !q || (c.id + " " + (c.video_name || "") + " " + (c.label || "")).toLowerCase().includes(q));
+  $("#effect-clip-count").textContent = `${rows.length}/${EFFECT_CLIPS.length}`;
+  $("#effect-clip-list").innerHTML = rows.length ? rows.map(c => {
+    const dur = (c.duration != null) ? `${(+c.duration).toFixed(1)}s` : "";
+    const sel = EFFECT_SEL === c.id ? "background:var(--accent-soft,rgba(120,150,255,.18))" : "";
+    return `<div class="effect-clip-row" onclick="pickEffectClip('${c.id}')" style="display:flex;gap:8px;padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border);${sel}">
+      <code style="font-size:11px;color:var(--accent,#89f)">${c.id}</code>
+      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.video_name || c.source_video_path || "")}</span>
+      <span class="meta" style="font-size:11px;color:var(--text-secondary)">${(c.clip_start!=null?(+c.clip_start).toFixed(0):"")}–${(c.clip_end!=null?(+c.clip_end).toFixed(0):"")}s · ${dur}</span></div>`;
+  }).join("") : '<div class="empty" style="padding:12px">no clips — save some on the Clips page, or paste an id/path below</div>';
+}
+function pickEffectClip(id) { EFFECT_SEL = id; $("#effect-clip-id").value = ""; renderEffectClips(); }
+async function effectAnalyze() {
+  const { fid, sid } = EFFECT_CTX || {};
+  const typed = ($("#effect-clip-id").value || "").trim();
+  const ref = typed || EFFECT_SEL;
+  if (!ref) { $("#effect-status").textContent = "pick a clip or paste an id/path first"; return; }
+  const isId = !typed || /^clip_[0-9a-f]+$/i.test(ref);
+  const body = { comp: COMP, frame_id: fid, scene_id: sid, comment: ($("#effect-note").value || "").trim() };
+  if (isId && /^clip_/i.test(ref)) body.clip_id = ref; else body.clip_ref = ref;
+  $("#effect-status").textContent = body.clip_id ? "extracting clip frames…" : "dispatching…";
+  try {
+    const r = await jpost("/api/hf/effect/analyze", body);
+    closeEffectModal();
+    watchJob(r.job_id, { label: "effect analyze", onDone: (j) => {
+      const res = j.result || {};
+      if (res.dispatched) toast(`🎬 effect agent (${res.session}) is analyzing ${res.frames} frame(s) — when it's done, click ✓ Apply effect to preview + land`, "ok");
+      else toast(`brief written (${res.frames} frames) — no live '${res.session}' session; run the effect agent, then ✓ Apply effect`, "err");
+    }});
+  } catch (e) { $("#effect-status").textContent = "failed: " + (e.message || e); }
+}
+// ✓ Apply effect: FETCH the agent's proposal and PREVIEW it (block+params, or raw) before landing it.
 async function applyEffectProposal(fid, sid) {
+  EFFECT_CTX = { fid, sid };
+  let p;
+  try { p = await jget(`/api/hf/effect/proposal?comp=${encodeURIComponent(COMP)}&scene_id=${encodeURIComponent(sid)}`); }
+  catch (e) { return toast(String(e.message || e).includes("404") ? "no proposal yet — the effect agent hasn't written one for this scene" : "couldn't load proposal: " + (e.message || e), "err"); }
+  $("#effect-prev-target").textContent = `${fid} · ${sid}`;
+  let body = "";
+  if (p.rationale || p.dedup) body += `<div class="meta" style="font-size:12px;margin-bottom:8px"><b>${esc(p.dedup || "")}</b> — ${esc(p.rationale || "")}</div>`;
+  if (p.kind === "block") {
+    body += `<div style="margin-bottom:6px">Reusable block: <code style="color:var(--accent,#89f)">${esc(p.block_type)}</code> <span class="meta" style="font-size:11px">(parametric — lands through the gate)</span></div>`;
+    body += `<pre style="background:var(--surface,#111);padding:10px;border-radius:8px;font-size:11px;overflow:auto;max-height:34vh">${esc(JSON.stringify(p.data, null, 2))}</pre>`;
+  } else {
+    const h = (p.html || []).length, t = (p.tl || []).length;
+    body += `<div style="margin-bottom:6px">Bespoke <code>raw</code> GSAP effect — ${h} HTML fragment(s), ${t} timeline line(s)</div>`;
+    body += `<pre style="background:var(--surface,#111);padding:10px;border-radius:8px;font-size:11px;overflow:auto;max-height:34vh">${esc(((p.html || []).join("\n") + "\n\n" + (p.tl || []).join("\n")).slice(0, 4000))}</pre>`;
+  }
+  $("#effect-prev-body").innerHTML = body;
+  $("#effectPreviewModal").style.display = "flex";
+}
+function closeEffectPreview() { $("#effectPreviewModal").style.display = "none"; }
+async function effectApplyConfirmed() {
+  const { fid, sid } = EFFECT_CTX || {};
   try {
     const r = await jpost("/api/hf/effect/apply", { comp: COMP, frame_id: fid, scene_id: sid });
     if (!r.applied) { toast("not applied: " + String(r.errors || "gate rejected").split("\n").slice(0, 2).join(" "), "err"); return; }
-    toast("🎬 effect applied ✓ — scene is now a GSAP effect; re-render this frame to preview", "ok");
+    closeEffectPreview();
+    toast("🎬 effect applied ✓ — re-render this frame to preview", "ok");
     await reloadFramesLight(); await selectScene(fid, sid);
-  } catch (e) {
-    toast(String(e.message || e).includes("404") ? "no proposal yet — the effect agent hasn't written one for this scene" : "apply failed: " + (e.message || e), "err");
-  }
+  } catch (e) { toast("apply failed: " + (e.message || e), "err"); }
+}
+
+// ---- 🎨 Bespoke mode: select scene(s) → one fleet agent per scene authors a custom `raw` design ----
+function frameOfScene(sid) { const f = FRAMES.find(fr => fr.scenes.some(s => s.id === sid)); return f ? f.id : null; }
+function toggleBespokeScene(sid, on) { if (on) BESPOKE_SEL.add(sid); else BESPOKE_SEL.delete(sid); updateBespokeBar(); }
+function updateBespokeBar() {
+  const bar = $("#bespoke-bar"), n = BESPOKE_SEL.size;
+  if (!bar) return;
+  bar.style.display = n ? "flex" : "none";
+  if (n) { $("#bespoke-count").textContent = n === 1 ? "1 scene" : n + " scenes"; $("#bespoke-ids").textContent = [...BESPOKE_SEL].join(", "); }
+}
+function clearBespoke() { BESPOKE_SEL.clear(); updateBespokeBar(); renderFrames(); }
+async function bespokePreview() {
+  const sid = [...BESPOKE_SEL][0]; if (!sid) return;
+  const fid = frameOfScene(sid); if (!fid) return toast("scene not in the loaded frames", "err");
+  try {
+    const d = await jget(`/api/hf/bespoke/brief?comp=${encodeURIComponent(COMP)}&frame_id=${encodeURIComponent(fid)}&scene_id=${encodeURIComponent(sid)}&direction=${encodeURIComponent($("#bespoke-direction").value || "")}`);
+    $("#bespoke-brief-target").textContent = `${fid} · ${sid}`;
+    $("#bespoke-brief-body").textContent = d.brief || "(empty)";
+    $("#bespokeBriefModal").style.display = "flex";
+  } catch (e) { toast("couldn't build brief: " + (e.message || e), "err"); }
+}
+async function dispatchBespoke() {
+  const ids = [...BESPOKE_SEL]; if (!ids.length) return;
+  toast(`dispatching ${ids.length} bespoke agent(s)…`, "ok");
+  try {
+    const r = await jpost("/api/hf/bespoke/dispatch", { comp: COMP, scene_ids: ids, direction: $("#bespoke-direction").value || "" });
+    const ok = (r.results || []).filter(x => x.dispatched);
+    const bad = (r.results || []).filter(x => !x.dispatched);
+    if (ok.length) toast(`🎨 ${ok.length} agent(s) dispatched (${ok.map(x => x.scene_id + '→' + x.session).join(', ')}). Proposals will appear in 🧾 Activity → review + accept.`, "ok");
+    if (bad.length) toast(`${bad.length} not dispatched: ${bad.map(x => x.scene_id + ' (' + (x.error || 'no session') + ')').join('; ')}`, "err");
+    clearBespoke();
+  } catch (e) { toast("dispatch failed: " + (e.message || e), "err"); }
 }
 let BATCH_CS_ALL = [], BATCH_CS = [];    // full staged changeset, and the scope-filtered subset shown
 async function batchDispatch() {
@@ -767,7 +894,9 @@ function renderFrames() {
       const end = ((s.start||0)+(s.dur||0)).toFixed(1);
       const rv = s.reveal ? `<span class="badge rv">${s.reveal}</span>` : "";
       const tr = s.transition_out ? `<span class="badge tr">→ ${s.transition_out}</span>` : "";
+      const bchk = BESPOKE_SEL.has(s.id) ? "checked" : "";
       return `<div class="scene-row${selc}" data-fid="${fr.id}" data-sid="${s.id}" onclick="selectScene('${fr.id}','${s.id}')">
+        <input type="checkbox" class="scene-check" ${bchk} title="Select for bespoke mode (custom-design this scene)" onclick="event.stopPropagation();toggleBespokeScene('${s.id}',this.checked)">
         <span class="badge">${s.type}</span><span class="sid">${s.id}</span>
         <span class="time">${(s.start||0).toFixed(1)}–${end}s</span>
         <span class="summ">${esc(s.summary||'')}</span>${rv}${tr}</div>`;
@@ -800,6 +929,7 @@ function renderFrames() {
   }
   if (ACTIVE_FID && LAYERS && LAYERS.frame_id === ACTIVE_FID) paintLanes(ACTIVE_FID);   // re-paint from cache
   updateChangedCount();                                  // keep the "N changed" badge + Render-menu labels current
+  updateBespokeBar();                                    // keep the bespoke selection bar in sync
 }
 
 // ---- Layer-lanes: fetch the active frame's layer map + paint the strip; click a chip → jump to its control ----

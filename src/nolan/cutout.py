@@ -107,15 +107,31 @@ def cutout_file(
     src: Union[str, Path],
     dst: Union[str, Path, None] = None,
     model: str = DEFAULT_MODEL,
+    trim: bool = False,
+    trim_pad: int = 0,
     **kwargs,
 ) -> Path:
     """Cut out `src` and write a transparent PNG. Returns the output path.
 
     Default output is ``<src-stem>.cutout.png`` beside the source.
+
+    ``trim`` crops the result to its alpha bounding box (+ ``trim_pad`` px margin) so the subject
+    fills the frame instead of floating in transparent margins — REQUIRED for any downstream that
+    POSITIONS the cutout (e.g. the composer's ``spotlight`` block placing it left/right); a full-frame
+    cutout can't be moved off-center because its transparent bbox spans the whole canvas.
     """
     src = Path(src)
     out = Path(dst) if dst else src.with_suffix("").with_name(src.stem + ".cutout.png")
     out.parent.mkdir(parents=True, exist_ok=True)
     result = remove_background(src, model=model, **kwargs)
+    if trim:
+        rgba = result.convert("RGBA")
+        bbox = rgba.split()[-1].getbbox()   # bbox of non-zero alpha
+        if bbox:
+            if trim_pad:
+                l, t, r, b = bbox
+                bbox = (max(0, l - trim_pad), max(0, t - trim_pad),
+                        min(rgba.width, r + trim_pad), min(rgba.height, b + trim_pad))
+            result = rgba.crop(bbox)
     result.save(out)  # PNG keeps the alpha channel
     return out

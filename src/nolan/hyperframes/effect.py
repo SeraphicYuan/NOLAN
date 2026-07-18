@@ -35,6 +35,29 @@ def apply_effect(comp: str, frame_id: str, scene_id: str, html: Union[str, List[
     return _edit(comp, frame_id, mutate, kind="effect", scene_id=scene_id, summary=f"GSAP effect on {scene_id}")
 
 
+def apply_block(comp: str, frame_id: str, scene_id: str, block_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Tier-2 landing: retarget ONE scene onto a REUSABLE catalog block (e.g. `spotlight`) instead of a
+    bespoke `raw` effect. Validates the block_type against the composer catalog, then sets sc.type +
+    sc.data through the author.py gate (a bad type / bad data reverts). Timing + scene id are preserved.
+    This is the payoff of promoting a cloned effect into a parametric block — the agent picks params,
+    the deterministic layout lives in the block."""
+    known = set((catalog().get("scene_templates") or {}).keys())
+    if block_type not in known:
+        return {"applied": False, "errors": f"unknown block type {block_type!r} — not in the composer catalog"}
+    if not isinstance(data, dict) or not data:
+        return {"applied": False, "errors": "empty block data"}
+
+    def mutate(fr):
+        sc = _find_scene(fr, scene_id)
+        sc["type"] = block_type
+        sc["data"] = dict(data)
+        sc.setdefault("meta", {})["effect_source"] = "agent-clip-clone"      # provenance
+        sc["meta"]["effect_block"] = block_type
+
+    return _edit(comp, frame_id, mutate, kind="effect", scene_id=scene_id,
+                 summary=f"{block_type} block on {scene_id}")
+
+
 def hf_catalog_md() -> str:
     """The HyperFrames motion catalog (blocks / text reveals / scene transitions) the agent must DEDUP against
     before proposing a new effect — the GSAP analogue of the Remotion pipeline's `_motion_catalog_md`."""
@@ -51,7 +74,7 @@ def hf_catalog_md() -> str:
 
 
 def effect_task_brief(comp: str, frame_id: str, scene_id: str, clip_ref: str = "", comment: str = "",
-                      frame_paths: List[str] = None) -> str:
+                      frame_paths: List[str] = None, clip_meta: Dict[str, Any] = None) -> str:
     """The GSAP task brief for the effect agent (retargeted from the Remotion `_effect_task_markdown`). Asks it
     to recreate a reference clip's effect as a scene-scoped `raw` GSAP effect, deduped against the HF catalog,
     written as a proposal JSON that `apply_effect` lands. Returned to the caller to dispatch into tmux."""
@@ -60,7 +83,11 @@ def effect_task_brief(comp: str, frame_id: str, scene_id: str, clip_ref: str = "
     dur = float(sc.get("dur", 0) or 0)
     transcript = (frame_transcripts(comp, frame_id) or {}).get(scene_id, "")
     proposal = (_comp_dir(comp) / "compositions" / "_effects" / f"{scene_id}.json").as_posix()
-    frames_md = "\n".join(f"- {p}" for p in (frame_paths or [])) or "(no frames extracted)"
+    frames_md = "\n".join(f"- {p}" for p in (frame_paths or [])) or "(no frames extracted — inspect the clip file)"
+    src_md = ""
+    if clip_meta:
+        src_md = (f"\n- Source: {clip_meta.get('video')} "
+                  f"[{clip_meta.get('start')}–{clip_meta.get('end')}s]")
     return f"""# Clone a video effect onto HyperFrames scene `{scene_id}` (GSAP, not Remotion)
 
 You are recreating the motion/effect from a REFERENCE CLIP as a **scene-scoped GSAP effect** in NOLAN's
@@ -69,8 +96,8 @@ lines merged into the frame's ONE paused, seek-safe timeline). This is NOT Remot
 `useCurrentFrame()`; use GSAP `tl.fromTo("#id",{{…}},{{…}},<absolute-seconds>)` on transforms/opacity only.
 
 ## The reference
-- Clip: {clip_ref or "(none provided)"}
-- Sampled frames:
+- Clip: {clip_ref or "(none provided)"}{src_md}
+- Sampled frames (LOOK at these — they ARE the effect to clone):
 {frames_md}
 - Human note: {comment or "(none)"}
 
@@ -81,13 +108,19 @@ lines merged into the frame's ONE paused, seek-safe timeline). This is NOT Remot
 
 ## Steps
 1. Describe the reference effect precisely (camera move / transition / text or graphic animation / color).
-2. DEDUP FIRST against the HyperFrames catalog below — if an existing reveal/transition/block already does it,
-   say so (name it) and STOP; don't reinvent it.
-3. If genuinely new, author the GSAP `raw` effect. Deterministic + seek-safe: transforms/opacity/onUpdate-proxy
-   only, no CSS transitions, no `Math.random`/`Date.now`.
-4. Write your proposal to `{proposal}` as JSON:
-   `{{"dedup": "<covered-by X | new>", "rationale": "...", "html": ["<div ...>", ...], "tl": ["tl.fromTo(...)", ...]}}`.
-   Then the human accepts it (it lands via `apply_effect`, gated by the composer).
+2. DEDUP FIRST against the HyperFrames catalog below. **PREFER a reusable block**: if an existing block already
+   does it (e.g. `spotlight` = bg-removed subject center/left/right + position-responsive label), instantiate
+   THAT with parameters — do NOT hand-author raw HTML for something a block covers. Only go `raw` when no
+   block/reveal/transition fits.
+3a. **Block form (preferred)** — the effect maps to a catalog block: pick it, fill its `data` from the catalog's
+    `data_schema`. This is a parametric, reusable, gated landing.
+3b. **Raw form (only if nothing fits)** — author a GSAP `raw` effect. Deterministic + seek-safe:
+    transforms/opacity/onUpdate-proxy only, no CSS transitions, no `Math.random`/`Date.now`; IDs prefixed
+    `{scene_id}-`, every timed element `class="clip"` with data-start/data-duration/data-track-index.
+4. Write your proposal to `{proposal}` as JSON — ONE of:
+   - block: `{{"dedup": "covered-by <block>", "rationale": "...", "block": {{"type": "<block>", "data": {{…}}}}}}`
+   - raw:   `{{"dedup": "new", "rationale": "...", "html": ["<div ...>", …], "tl": ["tl.fromTo(...)", …]}}`
+   Then the human accepts it (block lands via `apply_block`, raw via `apply_effect` — both gated by the composer).
 
 {hf_catalog_md()}
 """

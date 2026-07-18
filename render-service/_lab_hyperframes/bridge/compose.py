@@ -2420,6 +2420,16 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
           "code": code, "social_card": social_card}
 
+# Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so
+# check_catalog.py still enforces BLOCKS<->catalog parity over the merged set). Imported LAST so the
+# extension can reference compose's helpers (esc / _POLARITY / reveal_text) at call time.
+try:
+    from compose_extension import EXT_BLOCKS
+    BLOCKS.update(EXT_BLOCKS)
+except Exception as _ext_err:   # an extension import must never take the core composer down
+    import sys as _sys
+    print(f"[compose] extension blocks unavailable: {_ext_err}", file=_sys.stderr)
+
 _FIT_SCRIPT = ("(function(){var W=1920;function fit(){"
   "Array.prototype.forEach.call(document.querySelectorAll('#root [data-fit]'),function(el){"
   "var raw=el.getAttribute('data-fit-w')||'',t;"

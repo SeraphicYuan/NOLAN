@@ -163,8 +163,10 @@
         "title": "string? — big frame title",
         "titleHi": "string? — substring of title to highlight yellow",
         "shape": "enum(pill)? — rounded-pill nodes instead of cards (per-node override via root.*.shape)",
-        "dx": "number? — sibling spacing px (advanced)", "dy": "number? — depth spacing px (advanced)",
-        "rstep": "number? — radial ring spacing px (advanced)", "box": "[[x0,y0],[x1,y1]]? — fit box (advanced)"
+        "dx": "number? — sibling spacing px (advanced)",
+        "dy": "number? — depth spacing px (advanced)",
+        "rstep": "number? — radial ring spacing px (advanced)",
+        "box": "[[x0,y0],[x1,y1]]? — fit box (advanced)"
       },
       "constraints": [
         "duration_preserving",
@@ -297,7 +299,9 @@
         "aged": "bool? — sepia/parchment tint for old paper",
         "tilt": "number? — sheet rotation in degrees",
         "camera": "enum(push|scroll|static) — push = slow Ken-Burns; scroll = gentle vertical drift; static (default)",
-        "kicker": "string?", "title": "string?", "titleHi": "string? — substring of title to highlight",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string? — substring of title to highlight",
         "annotations": "array of {type, ...}. Position EITHER by text — {find:\"phrase on the page\"} — resolved to a rect by bridge/resolve_doc_annotations.py (PREFERRED; OCR for images, PyMuPDF text-layer for PDFs), OR by explicit fraction (the escape hatch). highlight {find|rect:[fx,fy,fw,fh], color?, cue?}; underline {find|rect:[fx,fy,fw], color?, cue?}; label {find|at:[fx,fy], text, color?, cue?} (pinned, rides the camera); callout {text:str|[lines], title?, side?:right|left, y?:0..1, cue?} (screen-fixed card); caption {text, underline?:substr, cue?} (bottom italic, red underline draw)",
         "page_size": "[w,h]? — set by resolve_doc_annotations.py; sizes the sheet to the page aspect so annotation fractions map 1:1 (no crop). Omit for full-bleed cover."
       },
@@ -402,6 +406,29 @@
         "seek_safe"
       ],
       "note": "BRAND-FIXED palette: each platform uses its OWN colours inline (Reddit orange #ff4500, X blue #1d9bf0, Spotify green #1db954) — NOT the NOLAN video theme (a Reddit card is always Reddit). Only the scene backdrop is NOLAN-themed. Reveal is transform/opacity only. Deferred platforms (same block): instagram/tiktok follow, youtube subscribe, macos notification."
+    },
+    "spotlight": {
+      "fn": "spotlight",
+      "purpose": "A background-removed SUBJECT (cutout image or video) placed center | left | right with a position-responsive LABEL: split to BOTH sides and sitting BEHIND a centered subject (the body overlaps the inner glyphs), or one block on the OPPOSITE side of a left/right subject. Deterministic layout — each label is region-bounded and auto-fits (never overflows its side), z-order is computed (label behind, subject in front), reveal is seek-safe (label spreads/slides in, subject fades + rises on top).",
+      "when_to_use": "A beat built around ONE person/object cutout as the hero with a short 1-2 part title framing it — the 'talking-head reel' look (a figure flanked by big kinetic words). The generalized form of the SpaceX/Falcon reel effect.",
+      "not_for": "A plain statement with no subject cutout (use statement), a news clipping (newshead), multiple images (collage/gallery), or a subject that must overlap arbitrary custom graphics (go raw).",
+      "data_schema": {
+        "subject": "string — asset path to a bg-removed cutout, image OR video (assets/x.png|.mp4). REQUIRED.",
+        "position": "enum(center|left|right) — where the subject sits; default center.",
+        "words": "array[str] (2-part label, one per side) OR a string (auto-split at its midpoint). The label.",
+        "kicker": "string? — a small centered overline above the scene.",
+        "behind": "bool? — label behind the subject (default true; the center-subject overlap effect).",
+        "motion": "enum(rise|fade)? — subject entrance; default rise (fade+scale+move-up then slow float).",
+        "label_layout": "enum(overlap|clear)? — center only. default overlap (reel look: words centered, 47% each side, body overlaps inner glyphs). clear = auto-place words in the subject CLEAR zone (up + outside the silhouette), MEASURED from the cutout alpha so it adapts to any shape; deterministic + seek-safe; falls back loudly to overlap if not measurable (video/opaque/no clear band).",
+        "label_valign": "enum(auto|top|center)|number(0..1)? — clear mode only. vertical band for the words; auto=narrowest upper row (biased up); a number is a fraction of silhouette height from its top.",
+        "clearance": "number? — clear mode only. margin multiplier between word and silhouette (default 1.0).",
+        "subject_scale": "number(0..1)? — clear mode only. shrink the hero (default 1.0) to open a clear band."
+      },
+      "constraints": {
+        "duration_preserving": true,
+        "seek_safe": true,
+        "notes": "transforms/opacity only; label sizing is deterministic via data-fit."
+      }
     }
   },
   "components": {

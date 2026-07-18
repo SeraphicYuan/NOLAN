@@ -52,6 +52,32 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highligh
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
 
 
+# Seek-safety lint for `raw` (bespoke) scenes: author.py otherwise gates STRUCTURE only, so a hand-authored
+# scene with a non-deterministic / time-based / repeating tween would pass the composer gate and only break
+# later at assembly. These patterns unambiguously break the ONE-paused-timeline seek model, so reject them here
+# (the whole frame reverts). Templated blocks are seek-safe by construction; this only inspects `raw` html/tl.
+_RAW_SEEK_FORBIDDEN = [
+    ("Math.random", "non-deterministic Math.random()"),
+    ("Date.now", "time-based Date.now()"),
+    ("new Date(", "time-based new Date()"),
+    ("performance.now", "time-based performance.now()"),
+    ("yoyo:", "a yoyo (repeating) tween"),
+    ("yoyo :", "a yoyo (repeating) tween"),
+    ("repeat:-1", "an infinite repeat"),
+    ("repeat: -1", "an infinite repeat"),
+]
+
+
+def _raw_seek_errors(fid, sid, data):
+    """Return seek-safety violations in a raw scene's html/tl strings (transforms/opacity + deterministic only)."""
+    frag = data.get("html") or []
+    if isinstance(frag, str):
+        frag = [frag]
+    blob = " ".join(str(x) for x in frag) + " " + " ".join(str(x) for x in (data.get("tl") or []))
+    return [f"{fid}/{sid} (raw): {why} — not seek-safe (the frame is ONE paused, seeked timeline)"
+            for needle, why in _RAW_SEEK_FORBIDDEN if needle in blob]
+
+
 def validate_spec(spec):
     errs = []
     templ = CATALOG["scene_templates"]
@@ -73,6 +99,8 @@ def validate_spec(spec):
                 v = d.get(req)
                 if v is None or (isinstance(v, (list, str)) and len(v) == 0):
                     errs.append(f"{fid}/{sid} ({t}): data.{req} required and non-empty")
+            if t == "raw":
+                errs.extend(_raw_seek_errors(fid, sid, d))
             tr = sc.get("transition_out")
             if tr is not None:
                 tk = tr.get("kind") if isinstance(tr, dict) else None
@@ -122,6 +150,16 @@ def main():
     ap.add_argument("--theme", help="theme slug under themes/ (else spec.theme / the comp's hyperframes.json / Vox default)")
     args = ap.parse_args()
     spec = json.load(open(args.spec, encoding="utf-8"))
+
+    # Asset base for compose-time measurement (spotlight's clear mode reads the cutout's pixels). Derived
+    # from --out-dir (<comp>/compositions/frames -> <comp>); unset under --validate-only so the gate stays
+    # pure and blocks fall back deterministically.
+    compose._ASSET_BASE = None
+    if args.out_dir:
+        try:
+            compose._ASSET_BASE = Path(args.out_dir).resolve().parents[1]
+        except Exception:
+            compose._ASSET_BASE = None
 
     errs = validate_spec(spec)
     if errs:
