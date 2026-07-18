@@ -22,8 +22,22 @@ from typing import Any, Dict, List, Optional
 from . import batch as _batch
 from .edit import (asset_pool_meta, catalog, comp_dir, frame_transcripts, list_assets,
                    load_frame_spec, log_activity)
+from nolan import composition as _composition
 
 REPO = Path(__file__).resolve().parents[3]
+
+
+def _theme_composition_allowed(theme_slug: str):
+    """The theme's declared composition.allowed set (constrains archetype choice), or None if the theme
+    doesn't declare one yet — in which case selection is purely content-first (scene type / beat)."""
+    if not theme_slug:
+        return None
+    f = REPO / "themes" / theme_slug / "theme.json"
+    try:
+        c = json.loads(f.read_text(encoding="utf-8")).get("composition") or {}
+        return c.get("allowed") or None
+    except Exception:
+        return None
 FLEET_SESSIONS = ["nolan1", "nolan2", "nolan3", "nolan4", "nolan5", "nolan6"]
 
 
@@ -104,6 +118,12 @@ def bespoke_task_brief(comp: str, frame_id: str, scene_id: str, direction: str =
     pool = asset_pool_meta(comp)
     words_md = ", ".join(f'"{w["w"]}"@{w["start"]}s' for w in words[:40]) or "(no aligned words — pace to the duration)"
     tokens_md = "\n".join(f"  {k}: {v}" for k, v in tokens.items()) or "  (theme has no tokens.css — use the composer default palette)"
+    # Composition archetype — the layout LEVER (A/B/C/D proved an explicit named archetype moves the agent
+    # off its left-column default). Content-first: the scene's beat/type suggests it, the theme's allowed
+    # set constrains it, an explicit human direction overrides it.
+    archetype = _composition.resolve(scene_type=sc.get("type"), beat=transcript, direction=direction,
+                                     allowed=_theme_composition_allowed(theme))
+    composition_md = _composition.brief_section(archetype)
     schema = _raw_schema()
     op = ('[{"op":"patch","scene_id":"%s","patch":{"type":"raw","data":{"html":["<...>"],"tl":["tl.fromTo(...)"]}}}]'
           % scene_id)
@@ -125,6 +145,8 @@ it as a PROPOSAL (the human reviews + accepts; you do NOT touch canonical specs 
 ## The look — match the theme `{theme or "(default)"}`
 Use these design tokens (they resolve as CSS `var(--name)` on `#root`; prefer them over hardcoded colors):
 {tokens_md}
+
+{composition_md}
 
 ## Continuity — the frame's OTHER scenes (do not clash; be consistent)
 {chr(10).join(others) or "  (this is the only scene in the frame)"}

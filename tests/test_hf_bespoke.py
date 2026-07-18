@@ -41,6 +41,9 @@ def test_bespoke_brief_carries_scene_context():
         assert "--accent" in brief or "--text" in brief
         # continuity: the frame's OTHER scene is named
         assert "f01s01" in brief and "statement" in brief
+        # composition archetype injected (the A/B/C/D lever): f01s02 is a `stat` scene -> centered-hero
+        assert "the layout archetype" in brief and "centered-hero" in brief
+        assert "rule-of-thirds" in brief                                  # grid guidance, not pixels
         # the hard contract + the exact submit call
         assert "transforms + opacity ONLY" in brief and "data-track-index" in brief and "83%" in brief
         assert "propose_scene_edit" in brief and "type\":\"raw\"" in brief
