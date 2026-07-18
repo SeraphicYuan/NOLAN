@@ -7,7 +7,7 @@ See render-service/_lab_hyperframes/kb/edit-mode-plan.md.
 """
 from .edit import (
     discover_compositions, list_frames, load_frame_spec, save_frame_spec, frame_layers, frame_transcripts,
-    apply_scene_edit, add_scene, remove_scene, retime_scene,
+    apply_scene_edit, add_scene, remove_scene, retime_scene, set_frame_transition,
     recompose_frame, snapshot_frame, render_frame, beat_boundary_planner, catalog,
     revise_frame_note, build_note_prompt, list_assets, asset_pool_meta, resolve_asset, save_upload, comp_dir,
     new_essay, derive_asset_needs, run_pool, attach_voiceover, frame_video_path,
@@ -20,7 +20,7 @@ from .edit import (
 
 __all__ = [
     "discover_compositions", "list_frames", "load_frame_spec", "save_frame_spec", "frame_layers", "frame_transcripts",
-    "apply_scene_edit", "add_scene", "remove_scene", "retime_scene",
+    "apply_scene_edit", "add_scene", "remove_scene", "retime_scene", "set_frame_transition",
     "recompose_frame", "snapshot_frame", "render_frame", "beat_boundary_planner", "catalog",
     "revise_frame_note", "build_note_prompt", "list_assets", "asset_pool_meta", "resolve_asset", "save_upload", "comp_dir",
     "new_essay", "derive_asset_needs", "run_pool", "attach_voiceover", "frame_video_path",

@@ -99,6 +99,21 @@ def frame_sig(comp: str, frame_id: str) -> str:
     return h.hexdigest()[:16]
 
 
+def _frame_transition(comp: str, frame_id: str) -> Optional[Dict]:
+    """A frame's clip-driven `transition_out` (into the NEXT frame): {kind, dur} where kind is a stocked
+    clip-transition (nolan.hyperframes.transitions), or None. Distinct from a SCENE's transition_out (the
+    within-frame GSAP seam in compose.TRANSITIONS) — this is the frame→frame pixel wipe at the concat
+    seam. Read straight from the frame spec so it survives round-trips (lossless meta)."""
+    try:
+        spec, info = load_frame_spec(comp, frame_id)
+        tr = spec["frames"][info["i"]].get("transition_out")
+    except Exception:
+        return None
+    if isinstance(tr, dict) and tr.get("kind"):
+        return {"kind": tr["kind"], "dur": float(tr.get("dur") or 1.0)}
+    return None
+
+
 def frame_offset(comp: str, frame_id: str) -> float:
     """Global start time of a frame = sum of PRIOR frame (VO section) durations."""
     cdir = _comp_dir(comp)
@@ -682,6 +697,86 @@ def _av_durations(path: Path, ff: str) -> tuple:
     return vdur, adur
 
 
+def _probe_vparams(path: Path, ff: str) -> tuple:
+    """(width, height, fps) of a clip's video stream, parsed from ffmpeg -i stderr (no bundled ffprobe).
+    Used so a spliced transition segment / trimmed clip encodes to the SAME geometry+rate as the frame
+    clips, keeping the stream-copy concat compatible."""
+    txt = subprocess.run([ff, "-i", str(path)], capture_output=True, text=True)
+    blob = txt.stdout + txt.stderr
+    vline = next((ln for ln in blob.splitlines() if "Video:" in ln), "")
+    dims = re.search(r"(\d{2,5})x(\d{2,5})", vline)
+    W, H = (int(dims.group(1)), int(dims.group(2))) if dims else (1920, 1080)
+    fm = re.search(r"([\d.]+) fps", vline)
+    fps = int(round(float(fm.group(1)))) if fm else 30
+    return W, H, fps
+
+
+def _trim_clip(src: Path, head: float, tail: float, out: Path, ff: str, W: int, H: int, fps: int) -> bool:
+    """Re-encode `src` minus `head` seconds off the front and `tail` off the end (net-zero transition
+    splice: the trimmed portion is carried by the neighbouring transition segment). Frame-accurate (-ss
+    after -i), re-encoded to canonical params so it concatenates with the untouched frame clips."""
+    vdur, _ = _av_durations(src, ff)
+    keep = max(0.05, vdur - head - tail)
+    r = subprocess.run(
+        [ff, "-y", "-i", str(src), "-ss", f"{head:.3f}", "-t", f"{keep:.3f}",
+         "-vf", f"scale={W}:{H},fps={fps}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+         "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-b:a", "194k", str(out)],
+        capture_output=True)
+    return out.exists() and out.stat().st_size > 0 and r.returncode == 0
+
+
+def splice_transitions(clips: List[Path], specs: List[Optional[Dict]], work: Path, ff: str = None) -> List[Path]:
+    """Given the ordered frame clips and a per-clip `transition_out` spec (specs[i] = {kind,dur} for the
+    clip-driven transition AFTER clip i, into clip i+1, else None), return a NEW ordered clip list where
+    each transitioned seam is replaced by [prev-trimmed | segment | next-trimmed]. NET-ZERO: dur/2 is
+    trimmed from each side and a dur segment (carrying that exact audio) inserted, so the global timeline
+    — and thus the caption overlay + BGM bed — is unchanged. Frames with no transition pass through
+    untouched (stream-copy stays lossless for them). Falls back to the raw clip on any splice failure."""
+    from .transitions import resolve as _tr_resolve, transition_segment
+    ff = ff or _ffmpeg()
+    work.mkdir(parents=True, exist_ok=True)
+    n = len(clips)
+    head = [0.0] * n
+    tail = [0.0] * n
+    active = []                                                # (i, kind, dur) seams that resolved
+    for i, sp in enumerate(specs):
+        if not sp or i + 1 >= n:
+            continue
+        kind = sp.get("kind") if isinstance(sp, dict) else None
+        if not kind or not _tr_resolve(kind):                  # unknown/unstocked kind → skip (loud, no crash)
+            if kind:
+                print(f"  ⚠ transition {kind!r} at seam {i}→{i+1} not stocked — skipped")
+            continue
+        d = float(sp.get("dur") or 1.0)
+        tail[i] += d / 2.0
+        head[i + 1] += d / 2.0
+        active.append((i, kind, d))
+    if not active:
+        return clips
+    W, H, fps = _probe_vparams(clips[0], ff)
+    trimmed: List[Path] = []
+    for i, c in enumerate(clips):
+        if head[i] or tail[i]:
+            tc = work / f"{Path(c).stem}.trim.mp4"
+            trimmed.append(tc if _trim_clip(Path(c), head[i], tail[i], tc, ff, W, H, fps) else Path(c))
+        else:
+            trimmed.append(Path(c))
+    seam_seg = {}
+    for i, kind, d in active:
+        seg = work / f"_tr_{i}_{kind}.mp4"
+        try:
+            transition_segment(clips[i], clips[i + 1], kind, seg, dur=d, size=(W, H), fps=fps, with_audio=True)
+            seam_seg[i] = seg
+        except Exception as ex:                                # honest failure → leave the hard cut, don't abort the render
+            print(f"  ⚠ transition segment {kind!r} at seam {i}→{i+1} failed ({ex}) — hard cut kept")
+    out: List[Path] = []
+    for i, tc in enumerate(trimmed):
+        out.append(tc)
+        if i in seam_seg:
+            out.append(seam_seg[i])
+    return out
+
+
 def concat_clips(clips: List[Path], out: Path, comp_dir: Path, bgm: bool = True) -> bool:
     """Concat the per-frame clips → out, then (soft) re-lay the BGM bed under the concatenated voice."""
     ff = _ffmpeg()
@@ -754,7 +849,7 @@ def render_incremental(comp: str, only: Optional[List[str]] = None, bgm: bool = 
     cache_f = cdir / "compositions" / "_preview" / "clip_cache.json"
     cache = json.loads(cache_f.read_text(encoding="utf-8")) if cache_f.exists() else {}
     only = set(only or [])
-    clips, rendered, reused = [], 0, 0
+    clips, trans_specs, rendered, reused = [], [], 0, 0
     for i, fid in enumerate(frames):
         _recompose(comp, fid)                                        # spec → fresh HTML BEFORE the sig, so an
         key = f"{_CACHE_VERSION}:{quality}:{frame_sig(comp, fid)}"   # edit-without-recompose still invalidates
@@ -772,9 +867,14 @@ def render_incremental(comp: str, only: Optional[List[str]] = None, bgm: bool = 
             rendered += 1
             _log(f"[{i + 1}/{len(frames)}] rendered {fid} ✓")
         clips.append(clip)
+        trans_specs.append(_frame_transition(comp, fid))       # frame-level clip transition INTO the next frame
     cache_f.parent.mkdir(parents=True, exist_ok=True)
     cache_f.write_text(json.dumps(cache, indent=1), encoding="utf-8")
     out = Path(out) if out else (cdir / "renders" / f"{comp}.mp4")
+    if any(trans_specs):                                        # clip-driven frame transitions → net-zero splice at the seams
+        n_tr = sum(1 for t in trans_specs if t)
+        _log(f"splicing {n_tr} frame transition(s) at the seams…")
+        clips = splice_transitions(clips, trans_specs, cdir / "compositions" / "_preview" / "_transitions")
     _log(f"stitching {len(clips)} clip(s){' + BGM' if bgm else ''}{' + captions' if captions else ''}…")
     ok = concat_clips(clips, out, cdir, bgm)
     cap_used = False

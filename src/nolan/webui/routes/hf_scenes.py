@@ -191,6 +191,16 @@ def register(app, ctx):
         return await asyncio.to_thread(_guard, hfedit.beat_boundary_planner, comp, fid,
                                        bool(payload.get("apply")))
 
+    @app.post("/api/hf/frame/set-transition")
+    async def hf_frame_set_transition(payload: dict = Body(...)):
+        """Set/clear a FRAME-level clip transition INTO the next frame (frame.transition_out={kind,dur}) —
+        the frame→frame matte/reveal wipe spliced at the concat seam. `kind` falsy clears it."""
+        comp, fid = payload.get("comp"), payload.get("frame_id")
+        if not (comp and fid):
+            raise HTTPException(status_code=400, detail="comp, frame_id required")
+        return await asyncio.to_thread(_guard, hfedit.set_frame_transition, comp, fid,
+                                       payload.get("kind") or None, float(payload.get("dur") or 1.2))
+
     # ---- 🎬 Effect from a clip (Tier-1): dispatch the agent to clone a reference clip's effect as GSAP -----
 
     @app.post("/api/hf/effect/analyze")

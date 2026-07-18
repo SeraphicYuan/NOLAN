@@ -172,3 +172,143 @@ def add_plate(source, effect, blend, pixabay_id, chroma, lic):
         click.echo(f"  ⚠ '{effect}' is NOT a registered effect yet — add a _plate('{effect}', …) entry in "
                    f"src/nolan/effects/registry.py so it appears in the catalog + fx UI.")
     click.echo(f"plate ready → {fxlib.OVERLAY_LIBRARY / entry['file']}  ·  commit overlays.json to share it")
+
+
+def _clip_len(src, ff, probe_exe):
+    """Duration (s) of a clip — ffprobe if bundled, else parse ffmpeg -i stderr (WSL has no ffprobe)."""
+    r = subprocess.run([probe_exe, "-v", "error", "-show_entries", "format=duration",
+                        "-of", "csv=p=0", str(src)], capture_output=True, text=True)
+    try:
+        return round(float(r.stdout.strip()), 3)
+    except (ValueError, AttributeError):
+        pass
+    info = subprocess.run([ff, "-i", str(src)], capture_output=True, text=True)
+    for ln in (info.stdout + info.stderr).splitlines():
+        if "Duration:" in ln:
+            try:
+                h, m, s = ln.split("Duration:")[1].split(",")[0].strip().split(":")
+                return round(int(h) * 3600 + int(m) * 60 + float(s), 3)
+            except Exception:
+                return None
+    return None
+
+
+@effects.command("add-transition")
+@click.argument("source")
+@click.option("--kind", "-k", required=True, help="Transition kind name (e.g. ink-wipe, fire-reveal) — the authored `transition_out.kind`.")
+@click.option("--type", "-t", "ttype", type=click.Choice(["luma", "chroma"]), required=True,
+              help="luma = ink/liquid grayscale MATTE (maskedmerge); chroma = GREEN-SCREEN reveal (e.g. fire, keyed foreground screened on top).")
+@click.option("--invert", is_flag=True, help="luma only: negate the matte (for a clip that sweeps WHITE→black instead of black→white).")
+@click.option("--chroma", default=None, help="chroma only: the green key colour (0xRRGGBB, or 'auto' to sample the clip's top-left corner).")
+@click.option("--dur", default=1.2, show_default=True, type=float, help="Default seam duration (s) the wipe fills — the authored transition_out.dur can override.")
+@click.option("--license", "lic", default=None, help="License note (e.g. 'Pixabay License (free)' / 'Pexels License (free)').")
+@click.option("--pixabay-id", default=None, help="Pixabay video id for provenance + a re-fetch URL (auto-detected from a <id>… filename).")
+def add_transition(source, kind, ttype, invert, chroma, dur, lic, pixabay_id):
+    """Add or REPLACE a clip-driven FRAME transition KIND from a local file, an http(s) URL, or a Pixabay id.
+
+    Verifies it's a video, probes its length, copies it into projects/_library/transitions/, and records
+    {kind, type, dur, clip_len, chroma?/invert?, license, url} in transitions.json (the registry the
+    author gate + the concat-seam splicer read). A GREEN-SCREEN reveal keeps the ORIGINAL green clip
+    (unlike an overlay plate) — transition_segment keys the green live at composite time.
+    """
+    import re
+    import urllib.parse
+    import urllib.request
+
+    from nolan.ffmpeg_utils import FFMPEG
+    from nolan.hyperframes import transitions as trlib
+
+    src = Path(source)
+    if not pixabay_id:
+        m = re.match(r"(\d+)", src.stem)
+        if m:
+            pixabay_id = m.group(1)
+    prov = {}
+    if pixabay_id:
+        try:
+            from nolan.config import load_config
+            key = load_config().image_sources.pixabay_api_key
+            hits = json.loads(urllib.request.urlopen("https://pixabay.com/api/videos/?" + urllib.parse.urlencode(
+                {"key": key, "id": str(pixabay_id)}), timeout=20).read()).get("hits", [])
+            if hits:
+                h = hits[0]
+                v = h["videos"].get("medium") or h["videos"].get("large") or h["videos"].get("small")
+                prov = {"url": v["url"], "source": h.get("pageURL"),
+                        "license": "Pixabay License (free, no attribution)"}
+                click.echo(f"  provenance: {h.get('tags')}")
+        except Exception as ex:
+            click.echo(f"  (provenance lookup failed: {ex})")
+    prov.setdefault("license", lic or "user-provided (local)")
+    prov.setdefault("source", source)
+
+    tmp = None
+    if source.lower().startswith("http") or (not src.exists() and prov.get("url")):
+        url = source if source.lower().startswith("http") else prov["url"]
+        trlib.TRANS_LIBRARY.mkdir(parents=True, exist_ok=True)
+        tmp = trlib.TRANS_LIBRARY / f"_dl_{pixabay_id or 'trans'}.mp4"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=180) as r, open(tmp, "wb") as f:
+            f.write(r.read())
+        prov.setdefault("url", url)
+        src = tmp
+    if not src.exists():
+        raise click.ClickException(f"can't resolve source {source!r} (not a file / URL / known Pixabay id)")
+
+    ff = str(Path(FFMPEG))
+    probe = Path(FFMPEG).with_name("ffprobe.exe")
+    probe_exe = str(probe) if probe.exists() else "ffprobe"
+
+    col = None
+    if ttype == "chroma":
+        col = chroma or "auto"
+        if col == "auto":
+            raw = subprocess.run([ff, "-i", str(src), "-frames:v", "1", "-vf",
+                                  "crop=40:40:0:0,scale=1:1,format=rgb24", "-f", "rawvideo", "-"],
+                                 capture_output=True).stdout
+            if len(raw) >= 3:
+                col = f"0x{raw[0]:02x}{raw[1]:02x}{raw[2]:02x}"
+            click.echo(f"  sampled green key → {col}")
+
+    pr = subprocess.run([probe_exe, "-v", "error", "-select_streams", "v:0", "-show_entries",
+                         "stream=width,height", "-of", "csv=p=0", str(src)], capture_output=True, text=True)
+    if pr.returncode != 0 or "," not in (pr.stdout or ""):
+        if tmp:
+            tmp.unlink(missing_ok=True)
+        raise click.ClickException(f"not a valid video: {(pr.stderr or '').strip()[:140]}")
+    clen = _clip_len(src, ff, probe_exe)
+
+    entry = trlib.add_transition(src, kind, type=ttype, invert=invert, chroma=col, dur=dur,
+                                 clip_len=clen, provenance=prov, replace=True)
+    if tmp:
+        tmp.unlink(missing_ok=True)
+    click.echo(f"  ✓ {entry['file']}  (kind={kind}, type={ttype}, dur={dur}s, clip_len={clen}s, {pr.stdout.strip()})")
+    click.echo(f"transition ready → {trlib.TRANS_LIBRARY / entry['file']}  ·  commit transitions.json to share it")
+
+
+@effects.command("fetch-transitions")
+@click.option("--force", is_flag=True, help="Re-download even if a clip already exists.")
+def fetch_transitions(force):
+    """Download the clip-driven FRAME transition clips named in projects/_library/transitions/transitions.json."""
+    from nolan.hyperframes.transitions import TRANS_LIBRARY
+    manifest = TRANS_LIBRARY / "transitions.json"
+    if not manifest.exists():
+        raise click.ClickException(f"no manifest at {manifest}")
+    entries = json.loads(manifest.read_text(encoding="utf-8"))
+    got = skipped = failed = 0
+    for e in entries:
+        dst = TRANS_LIBRARY / e["file"]
+        if dst.exists() and dst.stat().st_size > 0 and not force:
+            click.echo(f"  ✓ {e['file']} (present)"); skipped += 1; continue
+        url = e.get("url")
+        if not url:
+            click.echo(f"  · {e['file']} (local-only — no fetch url)"); skipped += 1; continue
+        try:                                                    # chroma reveals keep the ORIGINAL green clip (keyed live) — no re-key
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=180) as r, open(dst, "wb") as f:
+                f.write(r.read())
+            click.echo(f"  ↓ {e['file']}  ({e.get('kind')}, {e.get('license', '')})"); got += 1
+        except Exception as ex:
+            click.echo(f"  ✗ {e['file']}: {type(ex).__name__}: {ex}"); failed += 1
+    click.echo(f"transitions: {got} fetched, {skipped} present, {failed} failed → {TRANS_LIBRARY}")
+    if failed:
+        raise SystemExit(1)

@@ -1081,7 +1081,9 @@ function renderFramePanel(fid) {
       <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
         <button class="btn ghost mini" onclick="fillTransitions('${fr.id}')" title="Auto-add a scene-to-scene transition at every cut in this frame.">Fill transitions</button>
         <button class="btn ghost mini" onclick="buildPool()" title="Acquire a fresh stock/generated asset pool from the project's script (NOLAN bridge).">Build asset pool</button>
-      </div></details>
+      </div>
+      ${clipTransitionCtrl(fr)}
+    </details>
     <details class="add"><summary>＋ add scene</summary>
       <div class="row2" style="margin-top:8px">
         <select id="add-type">${types.map(t=>`<option>${t}</option>`).join("")}</select>
@@ -1104,6 +1106,29 @@ function renderFramePanel(fid) {
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function findScene(fid, sid){ const f = FRAMES.find(x=>x.id===fid); return f && f.scenes.find(s=>s.id===sid); }
+
+// FRAME-level clip transition INTO the next frame (matte/reveal WIPE spliced at the concat seam —
+// distinct from a scene's within-frame GSAP transition_out). Kinds come from _library/transitions.
+function clipTransitionCtrl(fr){
+  const cl = CATALOG.clip_transitions || {};
+  const kinds = Object.keys(cl);
+  if (!kinds.length) return `<div class="dim" style="font-size:10px;margin-top:8px" title="Add clip transitions with: nolan effects add-transition">no clip transitions stocked — <code>nolan effects add-transition</code></div>`;
+  const cur = fr.clip_transition || "";
+  const curDur = fr.clip_transition_dur || 1.2;
+  const opts = ["", ...kinds].map(k=>`<option value="${k}" ${k===cur?'selected':''}>${k?`${k} (${cl[k].type})`:'— none —'}</option>`).join("");
+  return `<div class="field" style="margin-top:8px"><label title="A matte/reveal WIPE from THIS frame into the NEXT (spliced at the seam, net-zero so captions/BGM stay in sync). Applied on the final stitch (hf-render), not the per-frame preview.">transition → next frame</label>
+    <div class="row2"><select id="fr-clip-tr" onchange="setFrameTransition('${fr.id}')">${opts}</select>
+      <input id="fr-clip-trdur" type="number" step="0.1" min="0.4" value="${curDur}" title="seam duration (s)" onchange="setFrameTransition('${fr.id}')"></div></div>`;
+}
+
+async function setFrameTransition(fid){
+  const kind = ($("#fr-clip-tr")||{}).value || "";
+  const dur = parseFloat(($("#fr-clip-trdur")||{}).value) || 1.2;
+  const r = await jpost("/api/hf/frame/set-transition", {comp: COMP, frame_id: fid, kind, dur});
+  if (!r.applied){ toast((r.errors&&r.errors.join?r.errors.join("; "):r.errors)||"transition rejected", "err"); return; }
+  const f = FRAMES.find(x=>x.id===fid); if (f){ f.clip_transition = kind||null; f.clip_transition_dur = kind?dur:null; }
+  toast(kind?`transition → next frame: ${kind} (re-render to apply)`:"transition cleared");
+}
 
 async function selectScene(fid, sid) {
   const frameChanged = !ACTIVE_FID || ACTIVE_FID !== fid;

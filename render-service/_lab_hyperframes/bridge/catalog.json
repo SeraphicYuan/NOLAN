@@ -462,5 +462,8 @@
     "slide_up": "departing scene slides up out of frame, uncovering the next",
     "scale_out": "departing scene zooms up + fades (scale dissolve)",
     "fade_through": "dip through a colour (default black) between scenes; data.color overrides"
+  },
+  "clip_transitions": {
+    "_doc": "FRAME-to-frame clip-driven transitions (matte/reveal WIPES between two rendered frame clips). A FRAME-level `transition_out` ({kind, dur?}) on a frame = the wipe INTO the next frame, spliced at the concat seam (nolan.hyperframes.transitions.transition_segment + incremental.splice_transitions). Distinct from a SCENE's `transition_out` above (within-frame GSAP, no pixel compositing). NET-ZERO: dur/2 is trimmed from each side + a dur segment (carrying that exact audio) inserted, so the global timeline / captions / BGM stay in sync (narration-owns-duration safe). Kinds are DATA, not code — they come from projects/_library/transitions/transitions.json (add via `nolan effects add-transition`), so this section is a doc, not a static key list; the live set is `nolan.hyperframes.transitions.transition_kinds()` (author.py gates the frame field against it). Two mechanisms: luma (ink/liquid matte -> maskedmerge) + chroma (green-screen reveal, e.g. fire, keyed foreground screened on top)."
   }
 }

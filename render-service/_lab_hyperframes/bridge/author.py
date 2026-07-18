@@ -85,6 +85,16 @@ def validate_spec(spec):
         fid = fr.get("id", "?")
         if "dur" not in fr:
             errs.append(f"{fid}: frame missing dur")
+        ftr = fr.get("transition_out")                          # FRAME-level clip transition INTO the next frame
+        if isinstance(ftr, dict) and ftr.get("kind"):           # (distinct from a SCENE's within-frame transition_out)
+            try:
+                from nolan.hyperframes.transitions import transition_kinds
+                kinds = transition_kinds()
+                if ftr["kind"] not in kinds:
+                    errs.append(f"{fid}: frame transition_out.kind {ftr['kind']!r} not a stocked clip "
+                                f"transition {sorted(kinds)}")
+            except ImportError:                                 # bare bridge — executor resolves against the manifest
+                pass
         for sc in fr.get("scenes", []):
             sid = sc.get("id", "?")
             t = sc.get("type")

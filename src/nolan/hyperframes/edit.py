@@ -457,10 +457,12 @@ def list_frames(comp: str) -> List[Dict[str, Any]]:
         sf_mtime = sf.stat().st_mtime
         for fr in spec.get("frames", []):
             vid = frame_video_path(comp, fr["id"])
+            ftr = fr.get("transition_out") or {}                # FRAME-level clip transition INTO the next frame
             frames.append({
                 "id": fr["id"], "dur": fr.get("dur"), "spec_file": sf.name,
                 "html_exists": (fdir / f'{fr["id"]}.html').exists(),
                 "preview_mp4": vid is not None,
+                "clip_transition": ftr.get("kind"), "clip_transition_dur": ftr.get("dur"),
                 # the spec was edited after the last render → the preview video is stale (a seek could mislead)
                 "stale": bool(vid and sf_mtime > vid.stat().st_mtime),
                 "scenes": [{
@@ -597,6 +599,13 @@ def catalog() -> Dict[str, Any]:
                           for e in _FX}
     except Exception:                                       # effects pkg missing → edit page still loads (no Treatments control)
         pass
+    try:                                                    # clip-driven FRAME transitions (stocked kinds from the manifest)
+        from nolan.hyperframes.transitions import load_transitions
+        cat["clip_transitions"] = {t["kind"]: {"type": t["type"], "dur": t.get("dur", 1.0),
+                                               "desc": t.get("desc") or t.get("when_to_use", "")}
+                                   for t in load_transitions()}
+    except Exception:
+        pass
     return cat
 
 
@@ -731,6 +740,20 @@ def retime_scene(comp: str, frame_id: str, scene_id: str,
         if dur is not None:
             sc["dur"] = float(dur)
     return _edit(comp, frame_id, mutate, kind="retime", scene_id=scene_id, summary=f"retime {scene_id}")
+
+
+def set_frame_transition(comp: str, frame_id: str, kind: Optional[str], dur: float = 1.2) -> Dict[str, Any]:
+    """Set (or clear, when `kind` is falsy) a FRAME-level clip transition INTO the next frame:
+    frame.transition_out = {kind, dur}. This is the frame→frame matte/reveal WIPE spliced at the concat
+    seam (nolan.hyperframes.transitions), NOT the within-frame GSAP transition_out on a scene. Gated
+    against the stocked clip-transition registry (author.py); reverts on reject like any other edit."""
+    def mutate(fr):
+        if kind:
+            fr["transition_out"] = {"kind": kind, "dur": float(dur)}
+        else:
+            fr.pop("transition_out", None)
+    return _edit(comp, frame_id, mutate, kind="frame-transition",
+                 summary=f"frame transition → {kind or 'none'}")
 
 
 # ------------------------------------------------------------------ within-frame transition planner

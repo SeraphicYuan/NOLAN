@@ -68,11 +68,56 @@ def transition_kinds(library: Path = None) -> List[str]:
     return [t["kind"] for t in load_transitions(library)]
 
 
+def add_transition(src_file, kind: str, *, type: str = "luma", invert: bool = False,
+                   chroma: str = None, dur: float = 1.2, clip_len: float = None,
+                   provenance: Dict[str, Any] = None, replace: bool = True,
+                   library: Path = None) -> Dict[str, Any]:
+    """Copy a transition CLIP into the library and upsert its manifest entry (the registry). A luma
+    (ink/liquid) matte stores `invert`; a chroma (green-screen reveal) stores the key `chroma` colour
+    (the ORIGINAL green clip is kept — transition_segment keys it live). Returns the manifest entry.
+    Filesystem-only (no ffmpeg); the CLI probes clip_len + verifies the video before calling this."""
+    import shutil
+    library = Path(library) if library else TRANS_LIBRARY
+    library.mkdir(parents=True, exist_ok=True)
+    src = Path(src_file)
+    dst = library / f"{kind}-{src.stem}{src.suffix.lower()}"
+    if src.resolve() != dst.resolve():
+        shutil.copy2(src, dst)
+    entry: Dict[str, Any] = {"file": dst.name, "kind": kind, "type": type, "dur": round(float(dur), 3)}
+    if type == "luma" and invert:
+        entry["invert"] = True
+    if type == "chroma" and chroma:
+        entry["chroma"] = chroma
+    if clip_len:
+        entry["clip_len"] = round(float(clip_len), 3)
+    for k in ("desc", "when_to_use", "license", "source", "url"):
+        if provenance and provenance.get(k):
+            entry[k] = provenance[k]
+    mpath = library / _MANIFEST
+    entries: List[Dict[str, Any]] = []
+    if mpath.exists():
+        try:
+            entries = json.loads(mpath.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            entries = []
+    if replace:                                                # drop any prior entry for this kind OR this file
+        entries = [e for e in entries if e.get("kind") != kind and e.get("file") != dst.name]
+    entries.append(entry)
+    mpath.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+    return entry
+
+
 def transition_segment(prev_clip, next_clip, kind, out, *, dur: float = 1.0,
-                       size=(1920, 1080), fps: int = 30, library: Path = None) -> Path:
+                       size=(1920, 1080), fps: int = 30, with_audio: bool = False,
+                       library: Path = None) -> Path:
     """Render the DUR-second transition SEGMENT that replaces the seam: the tail of `prev_clip` wiping to
     the head of `next_clip`, driven by the transition clip. luma → maskedmerge; chroma → reveal-through-
-    green + the keyed foreground screened on top. Returns `out` (encoded to match the frame clips)."""
+    green + the keyed foreground screened on top. Returns `out` (encoded to match the frame clips).
+
+    with_audio: also emit an audio track = prev's LAST dur/2 followed by next's FIRST dur/2 (the exact
+    audio the net-zero splice trims from each side). Concatenated (not crossfaded) so every sample plays
+    at its original global time — nothing is lost or duplicated (narration-owns-duration safe). Requires
+    both clips to carry an audio stream."""
     e = resolve(kind, library)
     if not e:
         raise ValueError(f"unknown transition kind {kind!r} (have: {', '.join(transition_kinds(library))})")
@@ -99,9 +144,15 @@ def transition_segment(prev_clip, next_clip, kind, out, *, dur: float = 1.0,
               f"[t2]chromakey={col}:0.20:0.08[k2];"                                      # fire opaque, green transparent
               f"color=black:s={W}x{H}:d={dur}:r={fps}[blk];[blk][k2]overlay=format=auto[fb];"  # fire on black (green dropped)
               f"[fb]format=gbrp[fg];[wipe][fg]blend=all_mode=screen,format=yuv420p[v]")  # screen fire (RGB) on top
+    amaps = []
+    if with_audio:                                             # net-zero seam audio: prev last dur/2 ++ next first dur/2
+        half = dur / 2.0
+        fc += (f";[0:a]atrim=start={half:.4f},asetpts=N/SR/TB[pa];"
+               f"[1:a]atrim=end={half:.4f},asetpts=N/SR/TB[na];[pa][na]concat=n=2:v=0:a=1[a]")
+        amaps = ["-map", "[a]", "-c:a", "aac", "-ar", "48000", "-ac", "2", "-b:a", "194k"]
     cmd = [ff, "-y", "-sseof", f"-{dur:.3f}", "-t", f"{dur:.3f}", "-i", str(prev_clip),   # prev's TAIL
            "-t", f"{dur:.3f}", "-i", str(next_clip), "-i", matte,   # whole matte; `mpts` speeds it to `dur`
-           "-filter_complex", fc, "-map", "[v]", "-t", f"{dur:.3f}", "-r", str(fps), *_VENC, str(out)]
+           "-filter_complex", fc, "-map", "[v]", *amaps, "-t", f"{dur:.3f}", "-r", str(fps), *_VENC, str(out)]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0 or not Path(out).exists() or Path(out).stat().st_size == 0:
         err = (r.stderr or "")
