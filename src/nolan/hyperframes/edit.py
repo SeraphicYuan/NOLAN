@@ -781,29 +781,46 @@ def _extract_json(text: str) -> Dict[str, Any]:
         return {}
 
 
-_HF_MENTION_RE = re.compile(r"@(\w+(?::[\w-]+)?)")
+_HF_MENTION_RE = re.compile(r"@([\w-]+(?::[\w-]+)?)")   # base token allows '-' so stable slugs (@bg-s08n37) match
 
 
-def _resolve_hf_mentions(note: Optional[str], fr: Dict[str, Any], assets: Optional[List[str]]) -> str:
-    """Expand @-grammar in a note into an explicit MENTIONS appendix the LLM can trust:
-    @sN -> a scene id, @reveal:X / @transition:X -> a vocabulary entry, @assetN -> an asset path."""
-    if not note:
-        return ""
-    ids = {s.get("id"): s for s in fr.get("scenes", [])}
-    res = []
-    for tok in dict.fromkeys(_HF_MENTION_RE.findall(note)):
-        if tok in ids:
-            res.append(f"  @{tok} = scene {tok} (type {ids[tok].get('type')})")
+def resolve_mentions(text: Optional[str], fr: Optional[Dict[str, Any]] = None,
+                     assets: Optional[List[str]] = None,
+                     mentions: Optional[List[Dict[str, Any]]] = None) -> List[str]:
+    """Resolve @-tokens in `text` to explicit '@token = resolution' lines. PREFERS persisted structured
+    bindings (`mentions`=[{token,type,ref,label}]) — captured when the human picked from the tray, so they
+    never drift. Falls back to LEGACY resolution when a token has no binding: @sN -> scene, @reveal:/
+    @transition: -> vocabulary, @assetN -> the Nth asset (POSITIONAL — may drift; flagged loudly). Shared by
+    the batch kickoff and the LLM note-edit so both resolve identically."""
+    if not text:
+        return []
+    bound = {(m.get("token") or "").lstrip("@"): m for m in (mentions or []) if m.get("token")}
+    ids = {s.get("id"): s for s in (fr.get("scenes", []) if fr else [])}
+    out: List[str] = []
+    for tok in dict.fromkeys(_HF_MENTION_RE.findall(text)):
+        if tok in bound:                                   # stable, pick-time binding (the good path)
+            m = bound[tok]
+            lbl = f"  ({m['label']})" if m.get("label") else ""
+            out.append(f"@{tok} = {m.get('type', 'ref')} → {m.get('ref')}{lbl}")
+        elif tok in ids:
+            out.append(f"@{tok} = scene {tok} (type {ids[tok].get('type')})")
         elif tok.startswith("reveal:"):
-            res.append(f"  @{tok} = reveal '{tok.split(':', 1)[1]}'")
+            out.append(f"@{tok} = reveal '{tok.split(':', 1)[1]}'")
         elif tok.startswith("transition:"):
-            res.append(f"  @{tok} = transition '{tok.split(':', 1)[1]}'")
-        elif assets and tok.startswith("asset"):
+            out.append(f"@{tok} = transition '{tok.split(':', 1)[1]}'")
+        elif assets and tok.startswith("asset") and tok[5:].isdigit():
             try:
-                res.append(f"  @{tok} = asset path {assets[int(tok[5:])]}")
+                out.append(f"@{tok} = asset {assets[int(tok[5:])]}  ⚠ UNBOUND (positional — may drift)")
             except (ValueError, IndexError):
-                pass
-    return ("MENTIONS:\n" + "\n".join(res) + "\n") if res else ""
+                out.append(f"@{tok} = ⚠ UNRESOLVED (positional index out of range)")
+    return out
+
+
+def _resolve_hf_mentions(note: Optional[str], fr: Dict[str, Any], assets: Optional[List[str]],
+                         mentions: Optional[List[Dict[str, Any]]] = None) -> str:
+    """MENTIONS appendix for the LLM note-edit prompt (thin wrapper over `resolve_mentions`)."""
+    lines = resolve_mentions(note, fr, assets, mentions)
+    return ("MENTIONS:\n" + "\n".join("  " + ln for ln in lines) + "\n") if lines else ""
 
 
 _NOTE_GUIDE = (
@@ -870,19 +887,22 @@ def _apply_ops(fr: Dict[str, Any], ops: List[Dict[str, Any]]) -> None:
 
 
 def build_note_prompt(fr: Dict[str, Any], note: str, scene_id: Optional[str],
-                      assets: Optional[List[str]], cat: Dict[str, Any]) -> Tuple[str, str]:
+                      assets: Optional[List[str]], cat: Dict[str, Any],
+                      mentions: Optional[List[Dict[str, Any]]] = None) -> Tuple[str, str]:
     """The (system, user) prompt for a note edit — spec + registry + resolved @mentions + note."""
     system = _NOTE_GUIDE + "\n\n" + _catalog_brief(cat)
     target = f"TARGET SCENE: {scene_id}\n" if scene_id else "TARGET: the whole frame\n"
     assets_block = ("AVAILABLE ASSETS (reference a path in scene data):\n"
                     + "\n".join(f"  [{i}] {a}" for i, a in enumerate(assets)) + "\n") if assets else ""
     prompt = (f"{target}FRAME SPEC:\n{json.dumps(fr, default=str)[:3500]}\n"
-              f"{assets_block}{_resolve_hf_mentions(note, fr, assets)}HUMAN NOTE:\n{note}\n\nReturn the JSON ops now.")
+              f"{assets_block}{_resolve_hf_mentions(note, fr, assets, mentions)}HUMAN NOTE:\n{note}\n\n"
+              f"Return the JSON ops now.")
     return system, prompt
 
 
 async def revise_frame_note(comp: str, frame_id: str, note: str, scene_id: Optional[str] = None,
-                            assets: Optional[List[str]] = None, client=None, retry: int = 1) -> Dict[str, Any]:
+                            assets: Optional[List[str]] = None, client=None, retry: int = 1,
+                            mentions: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     """Turn a human note into gated edits on a frame. The LLM proposes an ops plan; author.py accepts or
     rejects (with one self-correct retry on rejection). Reverts on failure. Returns {applied, ops, errors}."""
     if client is None:  # lazy real client; tests inject a stub
@@ -891,7 +911,7 @@ async def revise_frame_note(comp: str, frame_id: str, note: str, scene_id: Optio
         client = create_text_llm(load_config())
     spec, info = load_frame_spec(comp, frame_id)
     fr = spec["frames"][info["i"]]
-    system, prompt = build_note_prompt(fr, note, scene_id, assets, catalog())
+    system, prompt = build_note_prompt(fr, note, scene_id, assets, catalog(), mentions)
     last: Dict[str, Any] = {"applied": False, "ops": [], "errors": "no proposal"}
     for _attempt in range(max(0, int(retry)) + 1):
         raw = await client.generate(prompt, system_prompt=system)
@@ -1292,9 +1312,13 @@ def quick_edit_ops() -> Dict[str, Any]:
 
 # ------------------------------------------------------------------ per-frame comments (batch changeset)
 
-def stage_comment(comp: str, frame_id: str, text: str, scene_id: Optional[str] = None) -> Dict[str, Any]:
+def stage_comment(comp: str, frame_id: str, text: str, scene_id: Optional[str] = None,
+                  mentions: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     """Stage a free-text edit comment on a frame WITHOUT applying it — the batch-edit changeset (#4/#5).
-    Persisted losslessly in the frame spec's meta.comments (survives every round-trip)."""
+    Persisted losslessly in the frame spec's meta.comments (survives every round-trip). `mentions` are the
+    STABLE @-token bindings captured when the human picked from the tray — [{token,type,ref,label}] — so a
+    referenced asset/scene resolves unambiguously downstream (the batch agent + the LLM path both read
+    them); without this only the positional text '@asset0' survived and the reference drifted/was lost."""
     text = (text or "").strip()
     if not text:
         raise ValueError("comment text required")
@@ -1302,6 +1326,10 @@ def stage_comment(comp: str, frame_id: str, text: str, scene_id: Optional[str] =
     fr = spec["frames"][info["i"]]
     comments = fr.setdefault("meta", {}).setdefault("comments", [])
     c = {"id": f"c{len(comments) + 1}", "text": text, "scene_id": scene_id, "status": "open"}
+    clean = [{k: m.get(k) for k in ("token", "type", "ref", "label") if m.get(k) is not None}
+             for m in (mentions or []) if isinstance(m, dict) and m.get("token") and m.get("ref")]
+    if clean:
+        c["mentions"] = clean
     comments.append(c)
     save_frame_spec(Path(info["spec_file"]), spec)
     log_activity(comp, "comment", f"staged: {text[:80]}", frame_id=frame_id, scene_id=scene_id, outcome="staged")
@@ -1417,9 +1445,13 @@ def _gate_validate_only(comp: str, spec: Dict[str, Any]) -> Tuple[bool, str]:
 def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
                        ops: Optional[List[Dict[str, Any]]] = None, rationale: str = "",
                        agent: Optional[str] = None, model: Optional[str] = None,
-                       comment_id: Optional[str] = None) -> Dict[str, Any]:
+                       comment_id: Optional[str] = None,
+                       requirements: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     """Create a PROPOSAL — apply `ops` (the _apply_ops plan) to a COPY of the frame, GATE it (validate-only),
-    and record it WITHOUT touching the canonical spec. Returns the proposal (with gate_ok + any errors)."""
+    and record it WITHOUT touching the canonical spec. Returns the proposal (with gate_ok + any errors).
+    `requirements` is the agent's coverage report against the comment's extracted checklist —
+    [{req_id, status: met|partial|unmet|deferred, note}] — surfaced at review so a miss is visible, not
+    silent (advisory: it never blocks accept)."""
     ops = ops or []
     spec, info = load_frame_spec(comp, frame_id)
     trial = copy.deepcopy(spec)
@@ -1435,6 +1467,9 @@ def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
             "gate_out": "" if gate_ok else (gate_out or "")[-600:],
             "provenance": {"agent": agent, "model": model, "ts": round(time.time(), 3), "comment_id": comment_id},
             "status": "proposed"}
+    if requirements:
+        prop["requirements"] = [{k: r.get(k) for k in ("req_id", "status", "note") if r.get(k) is not None}
+                                for r in requirements if isinstance(r, dict)]
     props.append(prop)
     _save_proposals(comp, props)
     log_activity(comp, "proposal", (rationale or f"proposal for {scene_id or frame_id}")[:80],
@@ -1501,22 +1536,69 @@ def reject_proposal(comp: str, proposal_id: str, reason: str = "") -> Dict[str, 
     return {"rejected": proposal_id, "proposal": p}
 
 
+def _build_trial_html(comp: str, frame_id: str, trial_frame: Dict[str, Any]) -> str:
+    """Compose a TRIAL frame's HTML (ops already applied to `trial_frame`) via author.py, to a scratch dir —
+    the CANONICAL frame HTML is never touched. Returns the HTML string; raises on gate failure."""
+    scratch = _comp_dir(comp) / "compositions" / "_preview" / "_trial_build"
+    (scratch / "frames").mkdir(parents=True, exist_ok=True)
+    tmp = scratch / f".{frame_id}.trial.spec.json"
+    tmp.write_text(json.dumps({"frames": [trial_frame]}), encoding="utf-8")
+    try:
+        r = subprocess.run([sys.executable, "-X", "utf8", str(AUTHOR), "--spec", str(tmp),
+                            "--out-dir", str(scratch / "frames")],
+                           cwd=str(BRIDGE), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    finally:
+        tmp.unlink(missing_ok=True)
+    out_html = scratch / "frames" / f"{frame_id}.html"
+    if r.returncode != 0 or not out_html.exists():
+        raise RuntimeError((r.stdout + r.stderr).strip()[-400:] or "trial build failed")
+    return out_html.read_text(encoding="utf-8")
+
+
+def proposal_preview(comp: str, proposal_id: str, at: Optional[float] = None) -> Dict[str, Any]:
+    """Render a still PREVIEW of what a proposal would look like — WITHOUT touching canonical (ops applied
+    to a COPY, built to a scratch dir, snapshot). Lets the human eyeball the end result before accepting
+    (esp. important for full-auto batch edits). Lazy by design: call on review + cache the PNG. Snapshots
+    the EDITED scene's window (start + 60% of its dur) unless `at` is given."""
+    props = _load_proposals(comp)
+    p = next((x for x in props if x.get("id") == proposal_id), None)
+    if not p:
+        raise KeyError(f"proposal {proposal_id!r} not found")
+    spec, info = load_frame_spec(comp, p["frame_id"])
+    trial = copy.deepcopy(spec["frames"][info["i"]])
+    _apply_ops(trial, p.get("ops") or [])                       # on a COPY — canonical untouched
+    sc = next((s for s in trial.get("scenes", []) if s.get("id") == p.get("scene_id")), None)
+    if at is None:
+        at = (float(sc.get("start", 0)) + 0.6 * float(sc.get("dur", 5))) if sc else float(trial.get("dur", 5)) * 0.5
+    html = _build_trial_html(comp, p["frame_id"], trial)
+    pdir = _scaffold_preview(comp, p["frame_id"], html_text=html, preview_id=f"_prop_{proposal_id}")
+    r = subprocess.run(["npx", "--yes", "hyperframes@latest", "snapshot", str(pdir),
+                        "--at", f"{at:g}", "--no-end", "--describe", "false"],
+                       cwd=str(pdir), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       shell=(os.name == "nt"))
+    snaps = sorted((pdir / "snapshots").glob("frame-*.png")) if (pdir / "snapshots").is_dir() else []
+    return {"ok": r.returncode == 0 and bool(snaps), "png": str(snaps[0]) if snaps else None,
+            "at": round(float(at), 2), "output": (r.stdout + r.stderr).strip()[-400:]}
+
+
 # ------------------------------------------------------------------ preview / render (npx scaffold)
 
-def _scaffold_preview(comp: str, frame_id: str) -> Path:
+def _scaffold_preview(comp: str, frame_id: str, html_text: Optional[str] = None,
+                      preview_id: Optional[str] = None) -> Path:
     """Build a throwaway single-frame hyperframes project so `npx hyperframes snapshot|render` can target
     ONE frame in isolation (cross-platform: self-contained headless Chrome). Copies the frame HTML (+ any
-    vendor dir a geo/diagram scene needs) so relative paths resolve."""
+    vendor dir a geo/diagram scene needs) so relative paths resolve. `html_text` overrides the frame HTML
+    (a TRIAL build for a proposal preview — canonical HTML untouched); `preview_id` isolates the scratch dir."""
     fdir = _frames_dir(comp)
     html = fdir / f"{frame_id}.html"
-    if not html.exists():
+    if html_text is None and not html.exists():
         recompose_frame(comp, frame_id)
     spec, info = load_frame_spec(comp, frame_id)
     dur = float(spec["frames"][info["i"]].get("dur", 5))
-    pdir = _comp_dir(comp) / "compositions" / "_preview" / frame_id
+    pdir = _comp_dir(comp) / "compositions" / "_preview" / (preview_id or frame_id)
     (pdir / "compositions" / "frames").mkdir(parents=True, exist_ok=True)
     (pdir / "compositions" / "frames" / f"{frame_id}.html").write_text(
-        html.read_text(encoding="utf-8"), encoding="utf-8")
+        html_text if html_text is not None else html.read_text(encoding="utf-8"), encoding="utf-8")
     vend = _comp_dir(comp) / "vendor"
     if not vend.is_dir():
         vend = BRIDGE / "vendor"

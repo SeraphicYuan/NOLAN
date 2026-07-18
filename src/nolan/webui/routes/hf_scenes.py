@@ -407,7 +407,8 @@ def register(app, ctx):
         client = create_text_llm(load_config())
         try:
             return await hfedit.revise_frame_note(comp, fid, note, scene_id=payload.get("scene_id"),
-                                                  assets=payload.get("assets"), client=client)
+                                                  assets=payload.get("assets"), client=client,
+                                                  mentions=payload.get("mentions"))
         except (FileNotFoundError, KeyError) as e:
             raise HTTPException(status_code=404, detail=str(e))
 
@@ -419,7 +420,8 @@ def register(app, ctx):
         text = payload.get("text") or payload.get("note")
         if not (comp and fid and text):
             raise HTTPException(status_code=400, detail="comp, frame_id, text required")
-        return await asyncio.to_thread(_guard, hfedit.stage_comment, comp, fid, text, payload.get("scene_id"))
+        return await asyncio.to_thread(_guard, hfedit.stage_comment, comp, fid, text,
+                                       payload.get("scene_id"), payload.get("mentions"))
 
     @app.get("/api/hf/changeset")
     async def hf_changeset(comp: str = Query(...)):
@@ -483,6 +485,16 @@ def register(app, ctx):
         if not (comp and pid):
             raise HTTPException(status_code=400, detail="comp, proposal_id required")
         return _guard(hfedit.reject_proposal, comp, pid, payload.get("reason", ""))
+
+    @app.get("/api/hf/proposal/preview")
+    async def hf_proposal_preview(comp: str = Query(...), proposal_id: str = Query(...),
+                                  at: Optional[float] = Query(None)):
+        """Render (lazily) a still preview of a proposal's result — so the human eyeballs the end result
+        before accepting. Applies the ops to a COPY; canonical is untouched. Returns the PNG."""
+        res = await asyncio.to_thread(_guard, hfedit.proposal_preview, comp, proposal_id, at)
+        if not res.get("ok") or not res.get("png") or not Path(res["png"]).exists():
+            raise HTTPException(status_code=422, detail=(res.get("output") or "preview render failed")[-300:])
+        return FileResponse(res["png"], media_type="image/png")
 
     # ---- asset picker target (land an asset in <comp>/assets/, referenced by scene data)
 

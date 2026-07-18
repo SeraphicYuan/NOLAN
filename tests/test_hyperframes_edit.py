@@ -243,6 +243,94 @@ def test_frame_comment_changeset(comp):
         hf.stage_comment(comp, FRAME, "   ")                              # empty comment rejected
 
 
+def test_comment_mentions_persist_and_resolve_stably(comp):
+    """Fix 1: @-mention BINDINGS persist losslessly and resolve to a STABLE ref (path), NOT a positional
+    index — so the batch agent gets the real asset (closes the @asset0-drift gap). Writer=stage_comment,
+    consumers=resolve_mentions + compile_batch_brief."""
+    from nolan.hyperframes import batch as hfbatch
+    mentions = [{"token": "@bg-s08", "type": "asset", "ref": "assets/videos/s08.mp4", "label": "s08 · video"}]
+    c = hf.stage_comment(comp, FRAME, "redesign; background use @bg-s08", scene_id="s1", mentions=mentions)
+    assert c.get("mentions") == mentions                                   # returned
+    spec = json.loads(_spec_path(comp).read_text(encoding="utf-8"))        # persisted losslessly
+    stored = next(x for x in spec["frames"][0]["meta"]["comments"] if x["id"] == c["id"])
+    assert stored["mentions"] == mentions
+    # shared resolver prefers the binding -> the ref path, NOT flagged unbound
+    lines = hf.resolve_mentions("... @bg-s08 ...", None, None, mentions)
+    assert any("assets/videos/s08.mp4" in ln and "UNBOUND" not in ln for ln in lines)
+    # the batch kickoff carries the resolved ref, not a bare @token the agent can't decode
+    brief, _ = hfbatch.compile_batch_brief(comp, FRAME)
+    assert "assets/videos/s08.mp4" in brief
+
+
+def test_positional_asset_mention_is_resolved_but_flagged():
+    """Fix 1 back-compat: a legacy positional @assetN with NO binding still resolves, but is flagged
+    ⚠ UNBOUND (may drift) — loud, not silent."""
+    lines = hf.resolve_mentions("use @asset0 as bg", None, ["assets/a.png", "assets/b.png"], None)
+    assert any("assets/a.png" in ln and "UNBOUND" in ln for ln in lines)
+    # a bound token wins even if it looks like a positional one
+    lines2 = hf.resolve_mentions("use @asset0", None, ["assets/a.png"],
+                                 [{"token": "@asset0", "type": "asset", "ref": "assets/real.png"}])
+    assert any("assets/real.png" in ln and "UNBOUND" not in ln for ln in lines2)
+
+
+def test_proposal_preview_builds_trial_without_touching_canonical(comp):
+    """Fix 2: a proposal preview composes the EDIT (ops applied) to a scratch dir and never touches the
+    canonical frame HTML/spec — so the human can eyeball the end result before accepting (esp. full-auto
+    batch edits). The npx snapshot itself is integration-verified separately; this locks the two guarantees
+    that must hold deterministically: the edit is reflected, and canonical is byte-identical."""
+    import copy as _copy
+    from nolan.hyperframes import edit as hfe
+    hfe.recompose_frame(comp, FRAME)                                   # ensure canonical HTML exists
+    html_path = VIDEOS / TEST_COMP / "compositions" / "frames" / f"{FRAME}.html"
+    before_html = html_path.read_text(encoding="utf-8")
+    before_spec = _spec_path(comp).read_text(encoding="utf-8")
+    spec, info = hfe.load_frame_spec(comp, FRAME)
+    trial = _copy.deepcopy(spec["frames"][info["i"]])
+    hfe._apply_ops(trial, [{"op": "add", "scene": {"id": "ztrial", "type": "raw", "start": 0.0, "dur": 1.0,
+        "data": {"html": ["<div id='ztrial-x' class='clip' data-start='0' data-duration='1' "
+                           "data-track-index='2'>TRIALMARK42</div>"],
+                 "tl": ["tl.fromTo('#ztrial-x',{opacity:0},{opacity:1,duration:0.3},0.1);"]}}}])
+    trial_html = hfe._build_trial_html(comp, FRAME, trial)
+    assert "TRIALMARK42" in trial_html                                # the EDIT is reflected in the preview build
+    assert html_path.read_text(encoding="utf-8") == before_html       # canonical HTML untouched
+    assert _spec_path(comp).read_text(encoding="utf-8") == before_spec
+
+
+def test_requirement_checklist_extract_persist_and_cover(comp):
+    """Fix 3: a comment decomposes into a requirement CHECKLIST (persisted at dispatch + listed in the
+    kickoff), and a proposal carries the agent's coverage report — so a miss (e.g. 'kinetic' collapsed to
+    nothing) is VISIBLE at review, not silent. Advisory: it never blocks accept."""
+    from nolan.hyperframes import batch as hfbatch
+    reqs = hfbatch._extract_requirements("put two cutouts one left and one right. also add kinetic work")
+    assert len(reqs) >= 2 and any("kinetic" in r["text"] for r in reqs)          # decomposed, atomic
+    c = hf.stage_comment(comp, FRAME, "redesign this. add cutouts. also add kinetic work", scene_id="s1")
+    brief, _ = hfbatch.compile_batch_brief(comp, FRAME, persist_requirements=True)  # DISPATCH mode
+    assert "Requirements —" in brief and "kinetic" in brief                       # listed in the kickoff
+    spec = json.loads(_spec_path(comp).read_text(encoding="utf-8"))
+    stored = next(x for x in spec["frames"][0]["meta"]["comments"] if x["id"] == c["id"])
+    assert stored.get("requirements") and any("kinetic" in r["text"] for r in stored["requirements"])
+    # a proposal carries the agent's coverage — an honest 'unmet' survives to the review surface
+    sid = spec["frames"][0]["scenes"][0]["id"]
+    p = hf.propose_scene_edit(comp, FRAME, scene_id=sid,
+                              ops=[{"op": "patch", "scene_id": sid, "patch": {"data.kicker": "x"}}],
+                              rationale="t", agent="pytest",
+                              requirements=[{"req_id": "r1", "status": "met", "note": "cutouts added"},
+                                            {"req_id": "r2", "status": "unmet", "note": "kinetic not done"}])
+    saved = next(x for x in hf.list_proposals(comp) if x["id"] == p["id"])
+    assert any(r["status"] == "unmet" for r in saved.get("requirements", []))
+
+
+def test_requirements_preview_compile_is_readonly(comp):
+    """Fix 3 guard: the read-only brief PREVIEW (no persist flag) must NOT mutate comments — only DISPATCH
+    persists the checklist."""
+    from nolan.hyperframes import batch as hfbatch
+    c = hf.stage_comment(comp, FRAME, "make it ominous. also add kinetic text", scene_id="s1")
+    hfbatch.compile_batch_brief(comp, FRAME)                                       # preview, no persist
+    spec = json.loads(_spec_path(comp).read_text(encoding="utf-8"))
+    cm = next(x for x in spec["frames"][0]["meta"]["comments"] if x["id"] == c["id"])
+    assert "requirements" not in cm
+
+
 def test_batch_brief_and_dispatch(comp):
     """#5: the changeset compiles into a self-contained agent brief; dispatch writes a kickoff + provenance."""
     from nolan.hyperframes import batch

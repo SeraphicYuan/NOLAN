@@ -14,8 +14,8 @@ from .edit import (
     add_scene_asset, remove_scene_asset, add_pool_asset, quickedit_asset, treat_preview, revert_asset,
     quick_edit_ops, fit_ground_to_scene, ensure_grounds_fit,
     list_themes, suggest_theme, theme_exists,
-    stage_comment, list_changeset, resolve_comment, log_activity, list_activity,
-    propose_scene_edit, list_proposals, accept_proposal, reject_proposal,
+    stage_comment, list_changeset, resolve_comment, log_activity, list_activity, resolve_mentions,
+    propose_scene_edit, list_proposals, accept_proposal, reject_proposal, proposal_preview,
 )
 
 __all__ = [
@@ -27,6 +27,6 @@ __all__ = [
     "add_scene_asset", "remove_scene_asset", "add_pool_asset", "quickedit_asset", "treat_preview", "revert_asset",
     "quick_edit_ops", "fit_ground_to_scene", "ensure_grounds_fit",
     "list_themes", "suggest_theme", "theme_exists",
-    "stage_comment", "list_changeset", "resolve_comment", "log_activity", "list_activity",
-    "propose_scene_edit", "list_proposals", "accept_proposal", "reject_proposal",
+    "stage_comment", "list_changeset", "resolve_comment", "log_activity", "list_activity", "resolve_mentions",
+    "propose_scene_edit", "list_proposals", "accept_proposal", "reject_proposal", "proposal_preview",
 ]

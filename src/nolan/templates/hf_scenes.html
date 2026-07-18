@@ -531,7 +531,7 @@ async function queueNote(fid, sid) {
   if (!t) { toast("write a note first", "err"); return; }
   const frame = ($("#note-target") || {}).value === 'frame';
   try {
-    await jpost("/api/hf/frame/comment", { comp: COMP, frame_id: fid, scene_id: frame ? null : sid, text: t });
+    await jpost("/api/hf/frame/comment", { comp: COMP, frame_id: fid, scene_id: frame ? null : sid, text: t, mentions: (window.collectMentions ? window.collectMentions(t) : []) });
     box.value = "";
     toast(`queued for agent · ${frame ? 'frame ' + fid : 'scene ' + sid} — dispatch from 🤖 Batch`, "ok");
   } catch (e) { toast("queue failed: " + e, "err"); }
@@ -745,10 +745,25 @@ async function renderProposals(comp) {
       <div class="prop-rat">${esc(p.rationale || '(no rationale)')}</div>
       <div class="prop-ops">${esc(opsSummary(p.ops))}</div>
       ${p.gate_ok ? '' : `<div class="prop-err">${esc((p.gate_out || '').split('\\n').slice(0, 2).join(' '))}</div>`}
+      ${(p.requirements || []).length ? `<div class="prop-reqs">${p.requirements.some(r => ['unmet','partial'].includes(r.status)) ? '<span class="prop-badge warn" title="the agent reports it did not fully satisfy the note">⚠ requirements not fully met</span>' : ''}${p.requirements.map(r => `<div class="req-line" style="font-size:11px;color:var(--text-secondary)">${({met:'✓',partial:'◐',unmet:'✗',deferred:'⏸'}[r.status] || '•')} <b>${esc(r.req_id || '')}</b> ${esc(r.note || r.status || '')}</div>`).join('')}</div>` : ''}
+      <div class="prop-preview" id="prevwrap-${p.id}"></div>
       <div class="prop-actions">
         <button class="btn mini" ${p.gate_ok ? '' : 'disabled'} onclick="acceptProposal('${p.id}')">Accept</button>
+        ${p.gate_ok ? `<button class="btn ghost mini" onclick="previewProposal('${p.id}')" title="Render a still of the result (non-destructive) — eyeball it before accepting">👁 Preview</button>` : ''}
         <button class="btn ghost mini" onclick="rejectProposal('${p.id}')">Reject</button></div>
     </div>`).join("") + `</div>`;
+}
+
+// Fix 2: lazy, on-demand still preview of a proposal's RESULT (canonical untouched) — eyeball before accept.
+async function previewProposal(pid) {
+  const comp = $("#comp").value, wrap = document.getElementById('prevwrap-' + pid);
+  if (!wrap) return;
+  if (wrap.dataset.loaded) { wrap.innerHTML = ''; delete wrap.dataset.loaded; return; }   // toggle off
+  wrap.innerHTML = '<div class="meta" style="font-size:11px;padding:4px 0">rendering preview…</div>';
+  const img = new Image();
+  img.onload = () => { wrap.innerHTML = ''; img.style.cssText = 'max-width:100%;border-radius:6px;margin:4px 0'; wrap.appendChild(img); wrap.dataset.loaded = '1'; };
+  img.onerror = () => { wrap.innerHTML = '<div class="meta" style="font-size:11px;color:var(--danger,#c33);padding:4px 0">preview failed — see server log</div>'; };
+  img.src = `/api/hf/proposal/preview?comp=${encodeURIComponent(comp)}&proposal_id=${encodeURIComponent(pid)}&_=${Date.now()}`;
 }
 
 async function acceptProposal(pid) {
@@ -1480,8 +1495,9 @@ async function applyNote(fid, sid) {
   const frame = ($("#note-target") || {}).value === 'frame';
   toast("Thinking…");
   try {
-    const body = frame ? { comp: COMP, frame_id: fid, note, assets: ASSETS.map(a => a.path) }
-                       : { comp: COMP, frame_id: fid, scene_id: sid, note };
+    const mentions = window.collectMentions ? window.collectMentions(note) : [];
+    const body = frame ? { comp: COMP, frame_id: fid, note, assets: ASSETS.map(a => a.path), mentions }
+                       : { comp: COMP, frame_id: fid, scene_id: sid, note, mentions };
     const r = await jpost("/api/hf/frame/revise-note", body);
     if (!r.applied) return toast("Not applied: " + (r.errors || "").split("\n").slice(0, 2).join(" "), "err");
     toast(`Applied ${(r.ops || []).length} op(s) ✓`, "ok");
@@ -1883,23 +1899,37 @@ async function uploadAsset(inp) {
 // Suggests the tokens _resolve_hf_mentions understands: @sN (scene), @reveal:X, @transition:X, @assetN.
 (function () {
   let pop = null, curTa = null, matchStart = 0, active = 0, items = [];
+  // token -> {token,type,ref,label} STABLE binding recorded when a tray item is picked, so a referenced
+  // asset/scene resolves unambiguously downstream (sent with the comment/note). collectMentions() below
+  // returns the bindings whose token still appears in a given text.
+  const MENTIONS = (window.__hfMentions = window.__hfMentions || {});
+  const slug = s => (String(s || '').replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '-')
+                       .replace(/^-+|-+$/g, '').slice(0, 40) || 'a');
   const ensure = () => (pop || (pop = Object.assign(document.createElement('div'), {className:'mention-pop'}), pop.style.display='none', document.body.appendChild(pop), pop));
   const hide = () => { if (pop) pop.style.display = 'none'; curTa = null; items = []; };
   const isField = el => el.classList && el.classList.contains('mention-input');
   function candidates() {
     const out = [], fr = FRAMES.find(f => f.id === ACTIVE_FID);
-    (fr ? fr.scenes : []).forEach(s => out.push({ token: '@' + s.id, label: `scene · ${s.type} · ${(s.summary||'').slice(0,30)}` }));
-    Object.keys((CATALOG&&CATALOG.reveals) || {}).filter(x => x !== '_doc').forEach(r => out.push({ token: '@reveal:' + r, label: 'reveal · text motion' }));
-    Object.keys((CATALOG&&CATALOG.transitions) || {}).filter(x => x !== '_doc').forEach(t => out.push({ token: '@transition:' + t, label: 'scene transition' }));
-    ASSETS.forEach((a, i) => out.push({ token: '@asset' + i, label: `asset · ${a.name || a.path}`, thumb: a.kind === 'image' ? `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(a.path)}` : null }));
+    (fr ? fr.scenes : []).forEach(s => out.push({ token: '@' + s.id, type: 'scene', ref: s.id, label: `scene · ${s.type} · ${(s.summary||'').slice(0,30)}` }));
+    Object.keys((CATALOG&&CATALOG.reveals) || {}).filter(x => x !== '_doc').forEach(r => out.push({ token: '@reveal:' + r, type: 'reveal', ref: r, label: 'reveal · text motion' }));
+    Object.keys((CATALOG&&CATALOG.transitions) || {}).filter(x => x !== '_doc').forEach(t => out.push({ token: '@transition:' + t, type: 'transition', ref: t, label: 'scene transition' }));
+    const seen = {};
+    ASSETS.forEach(a => {                                   // STABLE token from the file stem (not the index)
+      const base = '@' + slug(a.name || a.path); let tk = base, n = 1;
+      while (seen[tk]) tk = base + '-' + (++n);
+      seen[tk] = 1;
+      out.push({ token: tk, type: 'asset', ref: a.path, label: `asset · ${a.name || a.path}`,
+                 thumb: a.kind === 'image' ? `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(a.path)}` : null });
+    });
     return out;
   }
   function render() { ensure().innerHTML = items.map((it, i) => `<div class="mention-item${i===active?' active':''}" data-i="${i}">${it.thumb ? `<img src="${it.thumb}" onerror="this.style.visibility='hidden'">` : ''}<b>${esc(it.token)}</b><span class="mi-label">${esc(it.label)}</span></div>`).join(''); }
   function show(ta) { const p = ensure(); render(); const r = ta.getBoundingClientRect(); p.style.left = (r.left+window.scrollX)+'px'; p.style.top = (r.bottom+window.scrollY+2)+'px'; p.style.width = Math.max(260, r.width)+'px'; p.style.display = 'block'; }
-  function insert(it) { if (!curTa || !it) return; const ta = curTa, pos = ta.selectionStart; ta.value = ta.value.slice(0, matchStart) + it.token + ' ' + ta.value.slice(pos); const np = matchStart + it.token.length + 1; ta.focus(); ta.setSelectionRange(np, np); hide(); }
+  function insert(it) { if (!curTa || !it) return; const ta = curTa, pos = ta.selectionStart; ta.value = ta.value.slice(0, matchStart) + it.token + ' ' + ta.value.slice(pos); const np = matchStart + it.token.length + 1; ta.focus(); ta.setSelectionRange(np, np); if (it.ref) MENTIONS[it.token] = { token: it.token, type: it.type, ref: it.ref, label: it.label }; hide(); }
+  window.collectMentions = text => Object.values(MENTIONS).filter(m => (text || '').includes(m.token));
   document.addEventListener('input', e => {
     const ta = e.target; if (!isField(ta)) return;
-    const m = ta.value.slice(0, ta.selectionStart).match(/@([\w:]*)$/); if (!m) return hide();
+    const m = ta.value.slice(0, ta.selectionStart).match(/@([\w:-]*)$/); if (!m) return hide();
     curTa = ta; matchStart = ta.selectionStart - m[0].length; const q = (m[1]||'').toLowerCase();
     items = candidates().filter(it => it.token.slice(1).toLowerCase().includes(q)).slice(0, 10); active = 0;
     items.length ? show(ta) : hide();
