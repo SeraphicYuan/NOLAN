@@ -48,6 +48,23 @@ def _grade_filter(name):
         return None
 
 
+def _ground_filter(g):
+    """CSS filter for a VIDEO ground = legacy `grade` + the colour `treatments` (effects umbrella),
+    composed. Returns None if neither is set (mirrors the image-ground path in compose.media_ground)."""
+    parts = []
+    gf = _grade_filter(g.get("grade"))
+    if gf:
+        parts.append(gf)
+    try:
+        from nolan.effects.render import filter_chain
+        fx = filter_chain(g.get("treatments"))
+        if fx:
+            parts.append(fx)
+    except Exception:
+        pass
+    return " ".join(parts) or None
+
+
 def collect_video_grounds(comp_dir: Path):
     """Root <video> clips for every scene whose ground is a pool clip, on the global timeline."""
     fdir = comp_dir / "compositions" / "frames"
@@ -63,7 +80,7 @@ def collect_video_grounds(comp_dir: Path):
                     clips.append({"src": g["src"],
                                   "start": round(offset + float(sc.get("start", 0) or 0), 3),
                                   "duration": round(float(sc.get("dur", 0) or 0), 3),
-                                  "filter": _grade_filter(g.get("grade"))})
+                                  "filter": _ground_filter(g)})
         offset += durs[i] if i < len(durs) else 0.0
     return clips
 
@@ -132,6 +149,49 @@ def heal_video_freezes(comp_dir: Path, clips, tol: float = 0.15):
     return clips
 
 
+def collect_video_overlays(comp_dir: Path):
+    """Root <video> PLATE overlays (fire/rain/smoke/…) for every scene whose ground.treatments names an
+    element/damage effect with a stocked plate. Root-mounted ABOVE the frame (a <video> is illegal inside
+    a frame sub-comp, same constraint as video grounds — but on a HIGH track so it composites in FRONT).
+    Copies each plate into assets/overlays/ so it resolves relative to the comp. Returns clips
+    {src,start,duration,track,blend,opacity,loop}. Works for image AND video grounds alike."""
+    try:
+        from nolan.effects.registry import normalize_treatments
+        from nolan.effects.library import resolve_plate
+    except Exception:
+        return []
+    import shutil
+    fdir = comp_dir / "compositions" / "frames"
+    spec_files = sorted(fdir.glob("*.spec.json"))
+    durs = _frame_durations(comp_dir, spec_files)
+    ov_dir = comp_dir / "assets" / "overlays"
+    clips, offset, ti = [], 0.0, 0
+    for i, sf in enumerate(spec_files):
+        spec = json.loads(sf.read_text(encoding="utf-8"))
+        for fr in spec.get("frames", []):
+            for sc in fr.get("scenes", []):
+                g = (sc.get("data", {}) or {}).get("ground", {}) or {}
+                for n in normalize_treatments(g.get("treatments")):
+                    eff = n["effect"]
+                    if eff.method != "blend_overlay" or not eff.plate:
+                        continue                                       # colour/procedural handled in compose
+                    src = resolve_plate(eff.plate)
+                    if not src:
+                        continue                                       # plate not stocked — skip (no crash)
+                    ov_dir.mkdir(parents=True, exist_ok=True)
+                    dest = ov_dir / Path(src).name
+                    if not dest.exists():
+                        shutil.copy2(src, dest)
+                    clips.append({"src": f"assets/overlays/{dest.name}",
+                                  "start": round(offset + float(sc.get("start", 0) or 0), 3),
+                                  "duration": round(float(sc.get("dur", 0) or 0), 3),
+                                  "track": 20 + ti, "blend": eff.blend or "screen",
+                                  "opacity": round(n["opacity"], 3), "loop": True})
+                    ti += 1
+        offset += durs[i] if i < len(durs) else 0.0
+    return clips
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit("usage: python -X utf8 assemble_media.py <project_dir>")
@@ -148,6 +208,12 @@ def main():
                         "--index", str(index), "--clips", json.dumps(clips)], check=True)
     else:
         print("no ground:{kind:video} scenes")
+
+    overlays = collect_video_overlays(comp)                            # element/damage plate overlays (effects umbrella)
+    if overlays:
+        print(f"element overlays: {len(overlays)} → inject_root_video (front tracks)")
+        subprocess.run([sys.executable, "-X", "utf8", str(bridge / "inject_root_video.py"),
+                        "--index", str(index), "--clips", json.dumps(overlays)], check=True)
 
     r = subprocess.run([sys.executable, "-X", "utf8", str(bridge / "inject_comparison_videos.py"), str(comp)],
                        capture_output=True, text=True, encoding="utf-8", errors="replace")

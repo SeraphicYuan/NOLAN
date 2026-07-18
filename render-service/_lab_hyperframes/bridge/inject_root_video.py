@@ -23,13 +23,16 @@ def main():
 
     tags = []
     for i, c in enumerate(clips):
-        track = c.get("track", 0)   # 0 = behind the frame track (1); transparent scene reveals it
-        filt = f"filter:{c['filter']};" if c.get("filter") else ""   # ground.grade (cool/warm/darken/…)
+        track = c.get("track", 0)   # 0 = behind the frame track (1); a HIGH track (20+) = an overlay in front
+        filt = f"filter:{c['filter']};" if c.get("filter") else ""   # ground.grade / colour treatments
+        blend = f"mix-blend-mode:{c['blend']};" if c.get("blend") else ""   # element overlays (fire/rain: screen)
+        opac = f"opacity:{c['opacity']};" if c.get("opacity") is not None else ""
+        loop = " loop" if c.get("loop") else ""                      # plate overlays loop under the scene window
         tags.append(
-            f'      <video id="rootvid-{i}" class="clip" muted playsinline '
+            f'      <video id="rootvid-{i}" class="clip" muted playsinline{loop} '
             f'src="{c["src"]}" data-start="{c["start"]}" data-duration="{c["duration"]}" '
             f'data-track-index="{track}" '
-            f'style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;{filt}"></video>'
+            f'style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;{filt}{blend}{opac}"></video>'
         )
     block = "\n".join(tags)
 

@@ -434,7 +434,8 @@
   "components": {
     "media_ground": {
       "purpose": "Full-bleed scene ground: image (dimmed + Ken-Burns + scrim) / paper (flat mist or parchment) / transparent (scrim only, reveals a root video behind).",
-      "attached_via": "scene data.ground = {kind: paper|image|transparent, parchment?, src?, kb?:[from,to]}"
+      "attached_via": "scene data.ground = {kind: paper|image|transparent, parchment?, src?, kb?:[from,to], grade?, treatments?}",
+      "treatments": "optional [effect-id | {id, opacity?}] — stackable visual effects from the effects umbrella (colour grades, grain, film damage, fire/rain overlays). Validated against nolan.effects.registry; see `nolan capabilities -u effects` for the catalog."
     },
     "prop_cutout": {
       "purpose": "Object-as-evidence photo card (cash, GPU, bill, gavel, glass) stacked over a scene on its own track, small scale+settle reveal.",

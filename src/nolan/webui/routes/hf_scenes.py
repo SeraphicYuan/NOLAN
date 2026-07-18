@@ -590,6 +590,31 @@ def register(app, ctx):
         except (ValueError, FileNotFoundError) as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    @app.get("/api/hf/overlay-plate")
+    async def hf_overlay_plate(tag: str = Query(...)):
+        """Serve an effects-umbrella overlay PLATE clip (fire/rain/…) so the fx-modal preview can blend it live."""
+        import os
+        from nolan.effects.library import resolve_plate
+        p = resolve_plate(tag)
+        if not p or not os.path.exists(p):
+            raise HTTPException(status_code=404, detail=f"no plate stocked for {tag!r}")
+        return FileResponse(p, media_type="video/mp4")
+
+    @app.post("/api/hf/asset-treat-preview")
+    async def hf_asset_treat_preview(payload: dict = Body(...)):
+        """Fast low-res REAL bake of the selected effects (NO pool entry) → the fx-modal 'Preview result'."""
+        comp, path, effects = payload.get("comp"), payload.get("path"), payload.get("effects") or []
+        if not (comp and path and effects):
+            raise HTTPException(status_code=400, detail="comp, path, effects required")
+        try:
+            out = await asyncio.to_thread(_guard, hfedit.treat_preview, comp, path, effects)
+        except (ValueError, FileNotFoundError, RuntimeError) as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        low = str(out).lower()
+        mt = ("video/mp4" if low.endswith((".mp4", ".mov", ".webm"))
+              else "image/png" if low.endswith(".png") else "image/jpeg")
+        return FileResponse(str(out), media_type=mt)
+
     @app.post("/api/hf/asset-revert")
     async def hf_asset_revert(payload: dict = Body(...)):
         comp, path = payload.get("comp"), payload.get("path")

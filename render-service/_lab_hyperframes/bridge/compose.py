@@ -471,6 +471,15 @@ GRADES = {
     "noir": "grayscale(1) contrast(1.2)",
 }
 
+# effects umbrella (nolan.effects) SUPERSEDES this bare GRADES map: colour treatments compose into the
+# ground's CSS filter and blend_overlay treatments (grain/scanlines/fire/rain) become stacked layers.
+# Guarded so a bare `python compose.py` outside the venv still imports.
+try:
+    from nolan.effects.render import filter_chain as _fx_filter, overlay_layers as _fx_overlays
+except Exception:  # pragma: no cover - nolan not importable in a bare compose context
+    def _fx_filter(_t): return ""
+    def _fx_overlays(*_a, **_k): return []
+
 
 def media_ground(sid, ground, start, dur):
     """Reusable BLOCK: full-bleed ground. image -> dimmed image + scrim + Ken-Burns;
@@ -478,8 +487,11 @@ def media_ground(sid, ground, start, dur):
     An optional `ground.grade` (see GRADES) applies a CSS filter — the gated visual-treatment lever."""
     frag, tl = [], []
     kind = ground.get("kind", "paper")
+    # ground filter = legacy single `grade` + the colour treatments (effects umbrella), composed.
+    _treat = ground.get("treatments")
     _gf = GRADES.get(ground.get("grade"))
-    _gsty = f"filter:{_gf};" if _gf else ""
+    _filter = " ".join(x for x in (_gf, _fx_filter(_treat)) if x)
+    _gsty = f"filter:{_filter};" if _filter else ""
     if kind == "image":
         scr = "linear-gradient(90deg,rgba(20,21,20,0.72),rgba(20,21,20,0.30) 55%,rgba(20,21,20,0.45))," \
               "linear-gradient(rgba(20,21,20,0) 45%,rgba(20,21,20,0.62))"
@@ -487,6 +499,7 @@ def media_ground(sid, ground, start, dur):
                     f'data-track-index="0" data-layout-allow-overflow style="background-image:url(\'{esc(ground["src"])}\');{_gsty}"></div>')
         frag.append(f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{scr};"></div>')
+        frag += _fx_overlays(_treat, sid, start, dur)   # blend_overlay treatments (grain/scanlines) over the image
         f0, f1 = ground.get("kb", [1.03, 1.08])
         tl.append(f'tl.fromTo("#{sid}-gnd",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
     elif kind in ("transparent", "video"):  # root video behind; scrim only.

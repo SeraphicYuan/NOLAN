@@ -107,6 +107,13 @@ def validate_spec(spec):
                 if tk not in CATALOG.get("transitions", {}):
                     errs.append(f"{fid}/{sid}: transition_out.kind {tk!r} not in catalog "
                                 f"{sorted(k for k in CATALOG.get('transitions', {}) if k != '_doc')}")
+            g = d.get("ground")                                 # effects umbrella: gate ground.treatments vs the registry
+            if isinstance(g, dict) and g.get("treatments") is not None:
+                try:
+                    from nolan.effects.registry import validate_treatments
+                    errs.extend(f"{fid}/{sid}: {e}" for e in validate_treatments(g["treatments"]))
+                except ImportError:                             # bare compose context — executor is lenient (skips unknown)
+                    pass
             if t == "geo" and d.get("kind") not in ("us", "world"):
                 errs.append(f"{fid}/{sid} (geo): kind must be 'us' or 'world'")
             if t == "statement" and d.get("operative") and not any(d["operative"] in ln for ln in d.get("lines", [])):

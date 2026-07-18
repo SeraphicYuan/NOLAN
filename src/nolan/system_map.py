@@ -207,6 +207,12 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
         "authored_by": [("src/nolan/project_brief.py", "rank_themes")],
         "executed_by": [("render-service/remotion-lib/stage.mjs", "_active-theme")],
     },
+    "effects": {
+        "authored_by": [("render-service/_lab_hyperframes/bridge/catalog.json", "treatments"),
+                        ("src/nolan/templates/hf_scenes.html", "treatments")],
+        "executed_by": [("render-service/_lab_hyperframes/bridge/compose.py", "_fx_overlays"),
+                        ("src/nolan/effects/render.py", "def overlay_layers")],
+    },
 }
 
 
@@ -247,6 +253,14 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
     "themes": [
         ("src/nolan/project_brief.py", "rank_themes",
          "brief compiler ranks the theme registry (Look-based selector)"),
+    ],
+    "effects": [
+        ("render-service/_lab_hyperframes/bridge/compose.py", "from nolan.effects.render",
+         "compose executor emits ground.treatments (filter + overlays) from the ONE registry"),
+        ("render-service/_lab_hyperframes/bridge/author.py", "from nolan.effects.registry",
+         "author gate validates ground.treatments against the registry"),
+        ("src/nolan/hyperframes/edit.py", "from nolan.effects",
+         "edit page serves the registry-derived effects catalog to the Treatments control"),
     ],
     # style packs: cross-umbrella curation (quality program step 6) — every
     # pack field must reach a decision point or it's curation rot
@@ -318,6 +332,15 @@ def _umbrellas() -> Dict[str, Any]:
                                if p.is_dir())
     except Exception as exc:
         out["themes"] = {"error": str(exc)}
+    try:
+        from nolan.effects.registry import REGISTRY as EFFECTS
+        out["effects"] = [
+            {"id": e.id, "purpose": e.purpose, "when_to_use": e.when_to_use,
+             "family": e.family, "method": e.method,
+             "duration_preserving": e.duration_preserving}
+            for e in EFFECTS]
+    except Exception as exc:
+        out["effects"] = {"error": str(exc)}
     return out
 
 

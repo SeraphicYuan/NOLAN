@@ -531,6 +531,10 @@ def frame_layers(comp: str, frame_id: str) -> Dict[str, Any]:
         g = d.get("ground")
         if isinstance(g, dict) and g.get("grade"):
             add("fx", f"grade: {g['grade']}", "ground", "effect", None)
+        if isinstance(g, dict) and g.get("treatments"):                       # effects umbrella: one chip per treatment
+            for _t in g["treatments"]:
+                _tid = _t if isinstance(_t, str) else (_t.get("id") if isinstance(_t, dict) else "?")
+                add("fx", f"fx: {_tid}", "ground", "effect", None)
     return {"frame_id": frame_id, "dur": fr.get("dur"), "lanes": ["bg", "overlay", "text", "fx"], "elements": els}
 
 
@@ -576,8 +580,24 @@ def save_frame_spec(spec_file: Path, spec: Dict[str, Any]) -> None:
 
 def catalog() -> Dict[str, Any]:
     """The composer registry (scene_templates + data_schema + transitions + reveals) — the inspector's
-    schema source, so the edit form is built from the same registry the gate validates against."""
-    return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    schema source, so the edit form is built from the same registry the gate validates against. The
+    `effects` catalog is injected from nolan.effects.REGISTRY (single source — the Treatments control
+    reads it, never a hand-listed copy)."""
+    cat = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    try:
+        from nolan.effects import REGISTRY as _FX, stocked_effects, bakeable as _bake
+        _stocked = stocked_effects()                        # element plates actually present in _library/overlays
+        cat["effects"] = {e.id: {"family": e.family, "purpose": e.purpose, "when_to_use": e.when_to_use,
+                                 "method": e.method,
+                                 "needs_plate": bool(e.plate) and e.plate not in _stocked,
+                                 "stocked": (not e.plate) or (e.plate in _stocked),
+                                 "bakeable": _bake(e),       # can be baked onto a pool asset (per-asset "treat" op)
+                                 "css": e.css, "css_bg": e.css_bg, "blend": e.blend,   # for the live fx-modal preview
+                                 "opacity": e.default_opacity, "plate": e.plate}
+                          for e in _FX}
+    except Exception:                                       # effects pkg missing → edit page still loads (no Treatments control)
+        pass
+    return cat
 
 
 # ------------------------------------------------------------------ patch helpers
@@ -1144,7 +1164,8 @@ def quickedit_asset(comp: str, path: str, op: str, params: Dict[str, Any],
 
     # new pool asset
     stem = re.sub(r"[^\w.-]+", "_", (name or f"{src.stem}_{op}")).strip("._") or f"{src.stem}_{op}"
-    ext = qe.QUICK_EDITS.get(op, {}).get("out_ext") or src.suffix   # e.g. remove_bg → .png (RGBA)
+    _oe = qe.QUICK_EDITS.get(op, {}).get("out_ext")                # may be a callable (treat: image+plate → .mp4)
+    ext = (_oe(src, params) if callable(_oe) else _oe) or src.suffix   # e.g. remove_bg → .png (RGBA)
     adir = root / "assets"
     out, n = adir / f"{stem}{ext}", 1
     while out.exists():
@@ -1153,6 +1174,20 @@ def quickedit_asset(comp: str, path: str, op: str, params: Dict[str, Any],
     _register_pool_asset(comp, out.name, source="quick-edit", caption=f"{out.name} ({op} of {src.name})", pool_id=out.name)
     log_activity(comp, "asset-edit", f"{op} → new pool asset {out.name}", outcome="pooled")
     return {"path": out.relative_to(root).as_posix(), "name": out.name, "mode": "new"}
+
+
+def treat_preview(comp: str, path: str, effects: list) -> Path:
+    """A FAST, low-res REAL bake of the treat effects (NO pool registration) for the fx-modal 'Preview
+    result' button — the true ffmpeg output the CSS preview only approximates. A single downscaled frame
+    for a colour-only image, a ~1.5s downscaled clip otherwise. Overwrites a scratch file per comp."""
+    from nolan.hyperframes import quickedit as qe
+    src = _resolve_asset_path(comp, path)
+    ext = qe._treat_ext(src, {"effects": effects}) or src.suffix
+    pdir = _comp_dir(comp) / "_fxpreview"
+    pdir.mkdir(parents=True, exist_ok=True)
+    out = pdir / f"preview{ext}"
+    qe.apply_quick_edit(src, "treat", {"effects": effects, "preview": True}, out)
+    return out
 
 
 def fit_ground_to_scene(comp: str, frame_id: str, scene_id: str) -> Dict[str, Any]:
@@ -1292,8 +1327,12 @@ def resolve_comment(comp: str, frame_id: str, comment_id: Optional[str] = None,
     spec, info = load_frame_spec(comp, frame_id)
     fr = spec["frames"][info["i"]]
     n = 0
+    # A comment is resolvable until it reaches a TERMINAL state — importantly this includes "dispatched"
+    # (sent to a fleet agent), so accepting that agent's proposal can mark it applied and rejecting can
+    # reopen it. Guarding on == "open" (the old bug) left every dispatched comment stuck forever.
+    _TERMINAL = {"applied", "blocked", "error"}
     for c in fr.get("meta", {}).get("comments", []):
-        if (comment_id is None or c.get("id") == comment_id) and c.get("status", "open") == "open":
+        if (comment_id is None or c.get("id") == comment_id) and c.get("status", "open") not in _TERMINAL:
             c["status"] = status
             if reason:
                 c["reason"] = reason

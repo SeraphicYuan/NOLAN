@@ -1203,6 +1203,13 @@ function renderInspector(scene, fid, transcript) {
   const curReveal = data.reveal || "";
   const curTr = (scene.transition_out||{}).kind || "";
   const curTrDur = (scene.transition_out||{}).dur || 0.6;
+  const fxCat = CATALOG.effects || {};
+  const gnd0 = (data.ground && typeof data.ground==='object') ? data.ground : {};
+  const curFx = (gnd0.treatments||[]).map(t=>typeof t==='string'?t:(t&&t.id)).filter(Boolean);
+  const fxFams = {};
+  for (const [id,m] of Object.entries(fxCat)) (fxFams[m.family]=fxFams[m.family]||[]).push([id,m]);
+  const fxCtrl = Object.keys(fxCat).length ? `<div class="field"><label title="Stackable visual effects on this scene's ground — colour grades, grain, film damage, fire/rain overlays. Ctrl/Cmd-click to stack several; '(plate)' = needs a clip in _library/overlays.">treatments (effects)</label>
+    <select id="insp-fx" multiple size="7" style="width:100%">${Object.entries(fxFams).map(([fam,items])=>`<optgroup label="${fam}">${items.map(([id,m])=>`<option value="${id}" ${curFx.includes(id)?'selected':''} title="${esc(m.purpose||'')}">${id}${m.needs_plate?' (plate)':''}</option>`).join("")}</optgroup>`).join("")}</select></div>` : '';
   $("#inspector").innerHTML = `
     <div class="frame-head"><span class="id">${scene.id}</span><span class="badge">${scene.type}</span><span class="spacer"></span></div>
     ${transcript ? `<div class="scene-transcript" title="The narration spoken during this scene — what it's about">🎙 ${esc(transcript)}</div>` : ''}
@@ -1371,6 +1378,18 @@ async function applyEdit(fid, sid) {
   const tr = $("#insp-tr").value;
   if (tr) patch["transition_out"] = {kind: tr, dur: parseFloat($("#insp-trdur").value) || 0.6};
   else deletes.push("transition_out");
+  const fxEl = $("#insp-fx");
+  if (fxEl) {
+    const chosen = [...fxEl.selectedOptions].map(o=>o.value).filter(Boolean);
+    const curG = (scene.data && typeof scene.data.ground==='object' && scene.data.ground) ? scene.data.ground : null;
+    if (chosen.length || (curG && curG.treatments)) {        // Treatments control is SOLE authority for ground.treatments
+      let gnd = patch["data.ground"];
+      if (gnd === undefined || gnd === null || typeof gnd !== 'object') gnd = curG ? {...curG} : {};
+      if (chosen.length) gnd.treatments = chosen; else delete gnd.treatments;
+      patch["data.ground"] = gnd;
+      const di = deletes.indexOf("data.ground"); if (di>=0) deletes.splice(di,1);
+    }
+  }
   try {
     const r = await jpost("/api/hf/scene/revise", {comp: COMP, frame_id: fid, scene_id: sid, patch, deletes});
     if (!r.applied) { toast("Rejected by gate: " + (r.errors||"").split("\n").slice(0,3).join(" "), "err"); return; }
@@ -1703,7 +1722,7 @@ async function applyCrop(mode) {
 // ---- the per-asset quick-edit action buttons (crop / trim / cutout), driven by the QE_OPS registry ----
 function assetActions(path, kind) {
   const btn = (op, fn, label) => (QE_OPS[op] && QE_OPS[op].media.includes(kind)) ? `<button onclick='event.stopPropagation();${fn}(${JSON.stringify(path)},"${kind}")'>${label}</button>` : '';
-  return btn('crop', 'openCrop', 'crop') + btn('trim', 'openTrim', 'trim') + btn('remove_bg', 'removeBg', 'cutout');
+  return btn('crop', 'openCrop', 'crop') + btn('trim', 'openTrim', 'trim') + btn('remove_bg', 'removeBg', 'cutout') + btn('treat', 'openTreat', 'fx');
 }
 
 // ---- Trim (#2): mark in/out on a scrubber → cut the range (video quick-edit op) ----
@@ -1736,6 +1755,100 @@ async function applyTrim(mode) {
 }
 
 // ---- Remove background (#3): a BACKGROUND JOB (rembg is slow) → poll, then refresh the pool ----
+// ---- per-asset effects (baked "treat" op) with a LIVE preview: select asset -> pick fx -> new asset ----
+let TREATCTX = null;
+function openTreat(path, kind) {
+  const fx = CATALOG.effects || {};
+  const items = Object.entries(fx).filter(([id, m]) => m.bakeable);
+  if (!items.length) { toast("No bakeable effects in the catalog", "err"); return; }
+  TREATCTX = { path, kind };
+  const fams = {};
+  for (const [id, m] of items) (fams[m.family] = fams[m.family] || []).push([id, m]);
+  const groups = Object.entries(fams).map(([fam, list]) =>
+    `<div style="margin:6px 0"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a8a8a;margin:3px 0">${fam}</div>` +
+    list.map(([id, m]) => `<label style="display:inline-flex;align-items:center;gap:5px;margin:3px 12px 3px 0;font-size:13px;cursor:pointer" title="${esc(m.purpose || '')}"><input type="checkbox" value="${id}" onchange="updateTreatPreview()">${id}${(m.method === 'blend_overlay' && m.stocked === false) ? ' (no plate)' : ''}</label>`).join("") +
+    `</div>`).join("");
+  const base = kind === 'video'
+    ? `<video id="tp-base" src="${assetUrl(path)}" muted loop autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>`
+    : `<img id="tp-base" src="${assetUrl(path)}" style="width:100%;height:100%;object-fit:cover">`;
+  const ov = document.createElement("div");
+  ov.id = "treatModal";
+  ov.style = "position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center";
+  ov.innerHTML = `<div style="background:#1c1c20;color:#eaeaea;border:1px solid #3a3a3f;border-radius:10px;padding:16px 18px;width:560px;max-width:92vw;max-height:90vh;overflow:auto;box-shadow:0 14px 44px rgba(0,0,0,.55)">
+    <div style="font-weight:600;font-size:15px;margin-bottom:8px">Effects &rarr; new asset</div>
+    <div id="treatPreview" style="position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden">${base}<div id="tp-overlays" style="position:absolute;inset:0;pointer-events:none"></div></div>
+    <div style="font-size:11px;color:#888;margin:6px 0 8px">Live preview (a CSS approximation of the bake). A fire/rain overlay on an image makes a short video. New pool asset; original kept.</div>
+    ${groups}
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn ghost" onclick="closeTreat()">Cancel</button>
+      <button class="btn ghost" onclick="applyTreatPreview()" title="Bake a fast low-res sample so you see the REAL ffmpeg result (the live preview above is a CSS approximation)">Preview result</button>
+      <button class="btn" onclick="applyTreat()">Apply</button>
+    </div></div>`;
+  ov.addEventListener("click", e => { if (e.target === ov) closeTreat(); });
+  document.body.appendChild(ov);
+  updateTreatPreview();
+}
+function updateTreatPreview() {
+  const _b = document.getElementById("tp-baked"); if (_b) _b.remove();   // editing reverts to the live CSS approximation
+  const fx = CATALOG.effects || {};
+  const ids = [...document.querySelectorAll('#treatModal input:checked')].map(c => c.value);
+  const base = document.getElementById("tp-base");
+  if (base) base.style.filter = ids.map(id => (fx[id] || {}).css).filter(Boolean).join(" ");
+  const ovc = document.getElementById("tp-overlays");
+  if (!ovc) return;
+  ovc.innerHTML = "";
+  for (const id of ids) {
+    const m = fx[id] || {};
+    if (m.method !== "blend_overlay") continue;
+    let el;
+    if (m.css_bg) { el = document.createElement("div"); el.style.background = m.css_bg; el.style.backgroundSize = "cover"; }
+    else if (m.plate && m.stocked) { el = document.createElement("video"); el.src = "/api/hf/overlay-plate?tag=" + encodeURIComponent(m.plate); el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; el.style.width = "100%"; el.style.height = "100%"; el.style.objectFit = "cover"; }
+    else continue;
+    el.style.position = "absolute"; el.style.inset = "0";
+    el.style.mixBlendMode = m.blend || "normal";
+    el.style.opacity = (m.opacity != null ? m.opacity : 1);
+    ovc.appendChild(el);
+    if (el.play) el.play().catch(() => {});
+  }
+}
+function closeTreat() { const m = document.getElementById("treatModal"); if (m) m.remove(); TREATCTX = null; }
+async function applyTreat() {
+  if (!TREATCTX) return;
+  const ids = [...document.querySelectorAll('#treatModal input:checked')].map(c => c.value);
+  if (!ids.length) { toast("Pick at least one effect", "err"); return; }
+  const path = TREATCTX.path;
+  closeTreat();
+  toast("Baking " + ids.join("+") + "… (a video may take a moment)", "ok");
+  try {
+    const r = await jpost("/api/hf/asset-quickedit", { comp: COMP, path, op: "treat", params: { effects: ids }, mode: "new" });
+    ASSETV++; await refreshAssets();
+    toast("Baked → " + (r.name || "new asset") + " ✓", "ok");
+  } catch (e) { toast("Bake failed: " + e.message, "err"); }
+}
+async function applyTreatPreview() {
+  if (!TREATCTX) return;
+  const ids = [...document.querySelectorAll('#treatModal input:checked')].map(c => c.value);
+  if (!ids.length) { toast("Pick an effect first", "err"); return; }
+  const box = document.getElementById("treatPreview");
+  let baked = document.getElementById("tp-baked");
+  if (baked) baked.remove();
+  baked = document.createElement("div"); baked.id = "tp-baked";
+  baked.style.cssText = "position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:12px;z-index:2";
+  baked.textContent = "baking preview…";
+  box.appendChild(baked);
+  try {
+    const r = await fetch("/api/hf/asset-treat-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ comp: COMP, path: TREATCTX.path, effects: ids }) });
+    if (!r.ok) throw new Error((await r.text()).slice(0, 160));
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const isVid = (blob.type || "").startsWith("video");
+    baked.innerHTML = (isVid
+      ? `<video src="${url}" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover"></video>`
+      : `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`)
+      + `<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;padding:2px 7px;border-radius:4px">baked result</div>`;
+  } catch (e) { baked.textContent = "preview failed: " + e.message; }
+}
+
 async function removeBg(path) {
   let job;
   try { job = await jpost('/api/hf/asset-removebg', { comp: COMP, path }); }

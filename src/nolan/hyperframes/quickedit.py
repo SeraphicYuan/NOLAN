@@ -72,6 +72,68 @@ def _fit_cmd(ff, src, out, p, mt) -> List[str]:
     return cmd
 
 
+# ---- effects "treat" op (the baked per-asset path of the effects umbrella) --------------------------
+def _treat_cmd(ff, src, out, p, mt) -> List[str]:
+    """Bake effect TREATMENTS onto an asset (destructive-to-a-copy, like crop): colour/grain via a -vf
+    chain, and element/damage effects by compositing their plate (screen blend, per-effect opacity).
+    A plate overlay on an IMAGE yields a VIDEO (the still, animated under the looping plate)."""
+    from nolan.effects.registry import normalize_treatments, FFMPEG_VF
+    from nolan.effects.library import resolve_plate
+    vf, plates = [], []
+    for n in normalize_treatments(p.get("effects", [])):
+        e = n["effect"]
+        if e.id in FFMPEG_VF:                                   # colour / grain look
+            vf.append(FFMPEG_VF[e.id])
+        elif e.method == "blend_overlay" and e.plate:           # fire/rain/… → composite its plate
+            pth = resolve_plate(e.plate)
+            if pth:
+                plates.append((pth, n["opacity"]))
+    if not vf and not plates:
+        raise ValueError("no bakeable effects selected (scanlines etc. are render-time only)")
+    chain = ",".join(vf)
+    is_img = mt == "image"
+    pv = bool(p.get("preview"))                                # modal "Preview result" → a low-res, short REAL bake
+    scale = "scale=480:-2" if pv else ""                       # cap width so the preview bake is fast
+    if not plates:                                             # single-input colour/grain
+        vfc = ",".join(x for x in (chain, scale) if x)
+        if is_img:
+            return [ff, "-y", "-i", str(src), "-vf", vfc, "-frames:v", "1", "-update", "1", str(out)]
+        return [ff, "-y", "-i", str(src), "-vf", vfc, *_VENC, "-c:a", "copy", *(["-t", "1.5"] if pv else []), str(out)]
+    cmd = [ff, "-y"]                                            # plate overlay(s) → video out
+    cmd += (["-loop", "1", "-i", str(src)] if is_img else ["-i", str(src)])
+    for pth, _o in plates:
+        cmd += ["-stream_loop", "-1", "-i", pth]                # loop the plate under the base
+    # blend in RGB (gbrp): `screen` is a per-channel op — screen-mixing YUV chroma planes casts colour (a
+    # fire plate → magenta). Convert base + each plate to gbrp, blend, then back to yuv420p for the encoder.
+    base_pre = ",".join(x for x in (chain, scale, "format=gbrp") if x)
+    fc = [f"[0:v]{base_pre}[b0]"]
+    base = "b0"
+    for i, (pth, op) in enumerate(plates, start=1):             # scale plate to the base, screen-blend at opacity
+        fc.append(f"[{i}:v]format=gbrp[pf{i}]")
+        fc.append(f"[pf{i}][{base}]scale2ref[pp{i}][bb{i}]")
+        fc.append(f"[bb{i}][pp{i}]blend=all_mode=screen:all_opacity={op:.3f}[b{i}]")
+        base = f"b{i}"
+    fc.append(f"[{base}]format=yuv420p[vout]")
+    cmd += ["-filter_complex", ";".join(fc), "-map", "[vout]"]
+    if not is_img:
+        cmd += ["-map", "0:a?", "-c:a", "copy"]
+    dur = "1.5" if pv else ("8" if is_img else None)           # preview: 1.5s; still+plate: 8s loop; video: its own length
+    tail = ["-t", dur] if dur else ["-shortest"]
+    return cmd + _VENC + tail + [str(out)]
+
+
+def _treat_ext(src: Path, params: Dict):
+    """A plate overlay turns an IMAGE into a video → .mp4; otherwise keep the source's own extension."""
+    if media_type(src) != "image":
+        return None
+    from nolan.effects.registry import normalize_treatments
+    for n in normalize_treatments((params or {}).get("effects", [])):
+        e = n["effect"]
+        if e.method == "blend_overlay" and e.plate:
+            return ".mp4"
+    return None
+
+
 # ---- non-ffmpeg ops ---------------------------------------------------------------------------------
 def _removebg_fn(src: Path, out: Path, p: Dict) -> None:
     """rembg cutout → RGBA PNG. CPU (off the GPU lock); slower than the ffmpeg ops → run as a job."""
@@ -87,6 +149,8 @@ QUICK_EDITS: Dict[str, Dict] = {
     "fit": {"label": "Fit to scene", "media": ("video",), "ui": "auto", "cmd": _fit_cmd},
     "remove_bg": {"label": "Remove background", "media": ("image",), "ui": "button",
                   "background": True, "out_ext": ".png", "fn": _removebg_fn},
+    "treat": {"label": "Effects", "media": ("image", "video"), "ui": "treat",
+              "cmd": _treat_cmd, "out_ext": _treat_ext},
 }
 
 

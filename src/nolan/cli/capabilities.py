@@ -16,7 +16,7 @@ from ._root import main
 @click.option('--json', 'as_json', is_flag=True, default=False,
               help='Full catalog as JSON (the agent-facing form).')
 @click.option('--umbrella', '-u', default=None,
-              type=click.Choice(['editing', 'motion', 'pairing', 'blocks', 'themes']),
+              type=click.Choice(['editing', 'motion', 'pairing', 'blocks', 'themes', 'effects']),
               help='Limit to one umbrella.')
 def capabilities(as_json, umbrella):
     """List every capability registry with when-to-use guidance."""

@@ -54,6 +54,7 @@ from nolan.cli import (  # noqa: E402,F401
     package_cmd,
     retro_cmd,
     kb,
+    effects,
 )
 
 # The main group is the entry point
