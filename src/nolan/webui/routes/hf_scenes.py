@@ -612,6 +612,15 @@ def register(app, ctx):
         return await asyncio.to_thread(_guard, hfedit.cleanup_analyze, comp, path,
                                        payload.get("confirm", True))
 
+    @app.post("/api/hf/asset/cleanup-analyze-batch")
+    async def hf_asset_cleanup_analyze_batch(payload: dict = Body(...)):
+        """Analyze MANY pool assets → reviewable plans for the batch-cleanup UI (one shared vision provider)."""
+        comp, paths = payload.get("comp"), payload.get("paths")
+        if not (comp and isinstance(paths, list) and paths):
+            raise HTTPException(status_code=400, detail="comp and a non-empty paths[] required")
+        return await asyncio.to_thread(_guard, hfedit.cleanup_analyze_batch, comp, paths,
+                                       payload.get("confirm", True))
+
     @app.post("/api/hf/asset/cleanup")
     async def hf_asset_cleanup(payload: dict = Body(...)):
         """Auto-clean an asset → a NEW pool asset (logo/caption crop + head/tail trim in one ffmpeg pass).

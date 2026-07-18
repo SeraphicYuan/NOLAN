@@ -285,6 +285,20 @@ def analyze(path, confirm: Optional[Callable[[str, Dict], bool]] = None) -> Dict
             "changed": bool(crop) or t_in > 0 or (not is_img and t_out < dur - 1e-3)}
 
 
+def default_vision_provider(config=None):
+    """The OpenRouter VISION provider the confirm hook runs on, built from nolan config (mapping
+    openrouter_api_key -> the provider's api_key). Build it ONCE and pass into make_vision_confirm(
+    provider=…) to reuse it across a whole-pool batch instead of reconstructing it per asset."""
+    from nolan.config import load_config
+    from nolan.vision import VisionConfig, create_vision_provider
+    v = (config or load_config()).vision
+    model = v.model if "/" in (v.model or "") else "qwen/qwen3.7-plus"
+    return create_vision_provider(VisionConfig(
+        provider="openrouter", model=model, host=v.host, port=v.port, timeout=v.timeout,
+        api_key=v.openrouter_api_key, base_url=v.base_url,
+        reasoning_enabled=v.reasoning_enabled, reasoning_max_tokens=v.reasoning_max_tokens))
+
+
 def make_vision_confirm(video_path, config=None, provider=None) -> Callable[[str, Dict], bool]:
     """A `confirm(kind, info) -> bool` backed by the OpenRouter VISION model — the semantic filter over the
     CV proposals. It extracts the relevant frame(s) and asks a strict yes/no: is the corner blob really a
@@ -298,14 +312,7 @@ def make_vision_confirm(video_path, config=None, provider=None) -> Callable[[str
     import numpy as np
     from pathlib import Path as _P
     if provider is None:
-        from nolan.config import load_config
-        from nolan.vision import VisionConfig, create_vision_provider
-        v = (config or load_config()).vision                # map openrouter_api_key -> the provider's api_key
-        model = v.model if "/" in (v.model or "") else "qwen/qwen3.7-plus"
-        provider = create_vision_provider(VisionConfig(
-            provider="openrouter", model=model, host=v.host, port=v.port, timeout=v.timeout,
-            api_key=v.openrouter_api_key, base_url=v.base_url,
-            reasoning_enabled=v.reasoning_enabled, reasoning_max_tokens=v.reasoning_max_tokens))
+        provider = default_vision_provider(config)
     is_img = _is_image(video_path)
     if is_img:
         dur = 0.0

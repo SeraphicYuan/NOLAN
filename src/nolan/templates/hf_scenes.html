@@ -338,6 +338,40 @@
     </div>
   </div>
 
+  <style>
+    .cu-legend{font-size:11px;color:var(--text-secondary);margin-bottom:8px}
+    .cu-lg-ex{color:#ff5555;font-weight:700}.cu-lg-keep{color:#33dd88;font-weight:700}
+    .cu-pick{display:flex;gap:8px;align-items:center;padding:4px 2px;font-size:12px}
+    .cu-pick img{width:56px;height:32px;object-fit:cover;border-radius:4px;background:#000;flex:0 0 auto}
+    .cu-card{display:flex;gap:12px;align-items:center;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+    .cu-card.clean{opacity:.55}.cu-card.err{color:#d66;font-size:12px;display:block}
+    .cu-thumb{position:relative;width:184px;flex:0 0 auto;background:#000;border-radius:6px;overflow:hidden}
+    .cu-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .cu-ex{position:absolute;border:2px solid #ff5555;background:rgba(255,60,60,.20);box-sizing:border-box;pointer-events:none}
+    .cu-keep{position:absolute;border:2px solid #33dd88;box-sizing:border-box;pointer-events:none}
+    .cu-info{flex:1;font-size:12px;min-width:0}
+    .cu-name{font-weight:600;margin-bottom:3px;word-break:break-all}
+    .cu-tags{color:var(--text-secondary)}
+    .cu-note{color:#e0a030;font-size:11px;margin-top:3px}
+    .cu-apply{font-size:12px;flex:0 0 auto;white-space:nowrap}
+  </style>
+  <div id="cleanupModal" class="modal">
+    <div class="modal-box" style="max-width:920px">
+      <div class="modal-head"><b>🧹 Clean up pool assets</b>
+        <span class="meta" style="color:var(--text-secondary);font-size:12px;">auto-detect a corner logo · burned-in captions · stray head/tail frames → crop &amp; trim to a new asset</span>
+        <span class="spacer"></span>
+        <button class="btn ghost mini" onclick="closeCleanup()">✕</button></div>
+      <div id="cleanup-body" style="max-height:64vh;overflow:auto;margin-top:8px"></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <label style="font-size:12px;color:var(--text-secondary)"><input type="checkbox" id="cleanup-confirm" checked> vision confirm <span title="An OpenRouter vision model filters false detections (a chyron mistaken for a subtitle, scenery mistaken for a logo). Off = faster, CV-only.">ⓘ</span></label>
+        <span style="flex:1"></span>
+        <button class="btn ghost" id="cleanup-analyze-btn" onclick="runCleanupAnalyze()">Analyze selected</button>
+        <button class="btn" id="cleanup-apply-btn" onclick="applyCleanupSelected()" style="display:none">Apply &amp; save</button>
+      </div>
+      <div id="cleanup-status" style="font-size:12px;margin-top:8px;color:var(--text-secondary)"></div>
+    </div>
+  </div>
+
   <div id="picker" class="modal">
     <div class="modal-box">
       <div class="modal-head"><b>Pick an asset</b><span class="meta" style="color:var(--text-secondary);font-size:12px;">lands in the composition's assets/</span>
@@ -1052,6 +1086,7 @@ function renderFramePanel(fid) {
       <div class="shortlist-box" ondragover="poolDragOver(event)" ondragleave="poolDragLeave(event)" ondrop="poolDrop(event)" style="margin-top:8px">
         <span class="sl-empty" style="font-size:11px">drop image/video here → pool (a plain asset, referenceable in any field)</span></div>
       <div class="pool-grid" id="pool-grid"></div>
+      <button class="btn ghost mini" style="margin-top:8px" onclick="openCleanupReview()" title="Auto-detect a corner logo / burned-in captions / stray head-tail frames across pool assets, review the crop, and save cleaned copies">🧹 Clean up pool…</button>
     </details>`;
   renderPoolPanel();
 }
@@ -1767,8 +1802,95 @@ async function cleanupAsset(path, kind) {
     if (p.caption) bits.push('captions');
     if (p.trim_in > 0 || (p.kind === 'video' && p.trim_out < (p.dur || 0) - 0.01)) bits.push('trim');
     toast('Cleaned (' + (bits.join(', ') || 'crop') + ') → ' + r.name, 'ok');
-    await buildPool(); renderPoolPanel();
+    await refreshAssets();
   } catch (e) { toast('cleanup failed: ' + (e.message || e), 'err'); }
+}
+
+// ---- Batch cleanup review: analyze many pool assets → review the detected crop/trim → apply the picks ----
+let CLEANUP_PLANS = [];   // [{path, plan|error, apply}]
+function poolMedia() {    // the cleanable pool assets (skip .orig backups + already-cleaned outputs)
+  return ASSETS.filter(a => (a.kind === 'image' || a.kind === 'video')
+    && !/\.orig\.(mp4|png)$/.test(a.name) && !/_clean\.[^.]+$/.test(a.name));
+}
+function openCleanupReview() {
+  const media = poolMedia();
+  if (!media.length) return toast('Pool has no image/video assets to clean', 'err');
+  CLEANUP_PLANS = [];
+  const rows = media.map(a => `<label class="cu-pick">
+      <input type="checkbox" class="cu-sel" data-path="${esc(a.path)}" checked>
+      <img src="${assetThumbUrl(a.path)}" loading="lazy">
+      <span>${esc(a.name)}</span><span style="color:var(--text-secondary)">· ${a.kind}</span></label>`).join('');
+  $("#cleanup-body").innerHTML = `<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">Pick assets to scan (${media.length} in pool), then Analyze. Nothing changes until you Apply.</div>${rows}`;
+  $("#cleanup-analyze-btn").style.display = ''; $("#cleanup-analyze-btn").disabled = false;
+  $("#cleanup-apply-btn").style.display = 'none';
+  $("#cleanup-status").textContent = '';
+  $("#cleanupModal").style.display = 'flex';
+}
+function closeCleanup() { $("#cleanupModal").style.display = 'none'; }
+async function runCleanupAnalyze() {
+  const paths = [...document.querySelectorAll('#cleanup-body .cu-sel:checked')].map(c => c.dataset.path);
+  if (!paths.length) return toast('select at least one asset', 'err');
+  const confirm = $("#cleanup-confirm").checked;
+  $("#cleanup-analyze-btn").disabled = true;
+  $("#cleanup-status").textContent = `Analyzing ${paths.length} asset(s)… detecting logo / captions / stray frames${confirm ? ', vision-confirming' : ''} — a few seconds each.`;
+  try {
+    const r = await jpost('/api/hf/asset/cleanup-analyze-batch', { comp: COMP, paths, confirm });
+    CLEANUP_PLANS = (r.results || []).map(x => ({ ...x, apply: !x.error && !!(x.plan && x.plan.changed) }));
+    renderCleanupReview();
+  } catch (e) { $("#cleanup-status").textContent = 'analyze failed: ' + (e.message || e); $("#cleanup-analyze-btn").disabled = false; }
+}
+function cleanupOverlay(p) {   // red = detected (removed) regions · green = the kept same-aspect crop window
+  const pct = v => (Math.max(0, Math.min(1, v)) * 100).toFixed(2) + '%';
+  let b = '';
+  (p.logos || []).forEach(l => { b += `<div class="cu-ex" style="left:${pct(l.x)};top:${pct(l.y)};width:${pct(l.w)};height:${pct(l.h)}"></div>`; });
+  if (p.caption) b += `<div class="cu-ex" style="left:0;top:${pct(p.caption.top)};width:100%;height:${pct(1 - p.caption.top)}"></div>`;
+  if (p.crop && p.ow) { const c = p.crop; b += `<div class="cu-keep" style="left:${pct(c.x / p.ow)};top:${pct(c.y / p.oh)};width:${pct(c.w / p.ow)};height:${pct(c.h / p.oh)}"></div>`; }
+  return b;
+}
+function cleanupTags(p) {
+  const t = [];
+  if ((p.logos || []).length) t.push(`🏷️ logo${p.logos.length > 1 ? '×' + p.logos.length : ''}`);
+  if (p.caption) t.push('💬 captions');
+  if (p.trim_in > 0) t.push(`✂️ head ${p.trim_in}s`);
+  if (p.kind === 'video' && p.trim_out < (p.dur || 0) - 0.01) t.push(`✂️ tail →${p.trim_out}s`);
+  if (p.crop) t.push(`🔍 zoom ×${p.zoom}`);
+  return t;
+}
+function renderCleanupReview() {
+  const cards = CLEANUP_PLANS.map((x, i) => {
+    const nm = esc(x.path.split('/').pop());
+    if (x.error) return `<div class="cu-card err">${nm} — analyze failed: ${esc(x.error)}</div>`;
+    const p = x.plan, changed = !!p.changed;
+    const cand = (p.trim_candidates || []).length ? `<div class="cu-note">? ${p.trim_candidates.length} ambiguous cut(s) left un-trimmed (turn on vision confirm to resolve)</div>` : '';
+    return `<div class="cu-card${changed ? '' : ' clean'}">
+      <div class="cu-thumb" style="aspect-ratio:${p.ow || 16}/${p.oh || 9}"><img src="${assetThumbUrl(x.path)}">${cleanupOverlay(p)}</div>
+      <div class="cu-info"><div class="cu-name">${nm}</div>
+        <div class="cu-tags">${changed ? cleanupTags(p).join(' · ') : '✓ nothing to clean'}</div>${cand}</div>
+      <label class="cu-apply">${changed ? `<input type="checkbox" class="cu-do" data-i="${i}" ${x.apply ? 'checked' : ''}> apply` : ''}</label>
+    </div>`;
+  }).join('');
+  const nChanged = CLEANUP_PLANS.filter(x => !x.error && x.plan.changed).length;
+  $("#cleanup-body").innerHTML = `<div class="cu-legend"><span class="cu-lg-ex">■</span> detected (removed) · <span class="cu-lg-keep">■</span> kept crop</div>${cards}`;
+  $("#cleanup-analyze-btn").style.display = 'none';
+  const ab = $("#cleanup-apply-btn"); ab.style.display = ''; ab.disabled = false;
+  $("#cleanup-status").textContent = `${nChanged} of ${CLEANUP_PLANS.length} need cleanup — review the boxes, untick any you don't want, then Apply.`;
+  const sync = () => { ab.textContent = `Apply & save (${CLEANUP_PLANS.filter(x => x.apply).length})`; };
+  $("#cleanup-body").querySelectorAll('.cu-do').forEach(cb => cb.addEventListener('change', () => { CLEANUP_PLANS[+cb.dataset.i].apply = cb.checked; sync(); }));
+  sync();
+}
+async function applyCleanupSelected() {
+  const todo = CLEANUP_PLANS.filter(x => x.apply && !x.error);
+  if (!todo.length) return toast('nothing ticked to apply', 'err');
+  const ab = $("#cleanup-apply-btn"); ab.disabled = true;
+  let done = 0, fail = 0;
+  for (const x of todo) {
+    $("#cleanup-status").textContent = `Applying ${done + fail + 1}/${todo.length}: ${x.path.split('/').pop()}…`;
+    try { const r = await jpost('/api/hf/asset/cleanup', { comp: COMP, path: x.path, plan: x.plan }); r.changed ? done++ : fail++; }
+    catch (e) { fail++; }
+  }
+  toast(`Cleaned ${done} asset(s)${fail ? `, ${fail} failed` : ''} → new pool assets`, fail ? 'err' : 'ok');
+  await refreshAssets();
+  closeCleanup();
 }
 
 // ---- Trim (#2): mark in/out on a scrubber → cut the range (video quick-edit op) ----

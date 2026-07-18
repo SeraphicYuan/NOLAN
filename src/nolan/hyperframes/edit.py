@@ -1227,6 +1227,28 @@ def cleanup_asset(comp: str, path: str, confirm: bool = True,
     return {"changed": True, "plan": plan, **res}
 
 
+def cleanup_analyze_batch(comp: str, paths: list, confirm: bool = True) -> Dict[str, Any]:
+    """Analyze MANY pool assets for the review UI → {results:[{path, plan} | {path, error}]}. Builds ONE
+    shared vision provider and reuses it across every asset, so a whole-pool review doesn't fan out N
+    provider constructions. Per-asset failures are captured (not raised) so one bad file can't sink the batch."""
+    from nolan.hyperframes import cleanup as cl
+    provider = None
+    if confirm:
+        try:
+            provider = cl.default_vision_provider()          # vision down → provider stays None → CV-only
+        except Exception:
+            provider = None
+    results = []
+    for path in paths:
+        try:
+            src = str(_resolve_asset_path(comp, path))
+            conf = cl.make_vision_confirm(src, provider=provider) if confirm else None
+            results.append({"path": path, "plan": cl.analyze(src, confirm=conf)})
+        except Exception as e:
+            results.append({"path": path, "error": str(e)})
+    return {"results": results}
+
+
 def treat_preview(comp: str, path: str, effects: list) -> Path:
     """A FAST, low-res REAL bake of the treat effects (NO pool registration) for the fx-modal 'Preview
     result' button — the true ffmpeg output the CSS preview only approximates. A single downscaled frame

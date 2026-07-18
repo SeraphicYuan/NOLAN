@@ -235,6 +235,40 @@ def test_analyze_image_skips_trim(monkeypatch):
     assert p["trim_in"] == 0.0 and p["caption"] and p["changed"] is True
 
 
+# ============================================================ batch analyze (shared provider, error isolation)
+
+def test_cleanup_analyze_batch_shares_one_provider_and_isolates_errors(monkeypatch):
+    monkeypatch.setattr(hfedit, "_resolve_asset_path", lambda comp, p: Path("/pool") / p)
+    sentinel = object()
+    monkeypatch.setattr(cl, "default_vision_provider", lambda config=None: sentinel)
+    seen = []
+    monkeypatch.setattr(cl, "make_vision_confirm",
+                        lambda src, provider=None: (seen.append(provider), (lambda k, i: True))[1])
+
+    def fake_analyze(src, confirm=None):
+        if "bad" in src:
+            raise RuntimeError("boom")
+        return {"changed": True, "kind": "video"}
+    monkeypatch.setattr(cl, "analyze", fake_analyze)
+
+    res = hfedit.cleanup_analyze_batch("c", ["a.mp4", "bad.mp4", "b.png"], confirm=True)["results"]
+    assert len(res) == 3
+    assert res[0]["plan"]["changed"] and res[2]["plan"]["changed"]
+    assert "error" in res[1] and "boom" in res[1]["error"]          # one bad file doesn't sink the batch
+    assert seen and set(id(p) for p in seen) == {id(sentinel)}      # every confirm reused the ONE provider
+
+
+def test_cleanup_analyze_batch_survives_vision_unavailable(monkeypatch):
+    monkeypatch.setattr(hfedit, "_resolve_asset_path", lambda comp, p: Path("/pool") / p)
+    monkeypatch.setattr(cl, "default_vision_provider",
+                        lambda config=None: (_ for _ in ()).throw(RuntimeError("no key")))
+    got = {}
+    monkeypatch.setattr(cl, "make_vision_confirm", lambda src, provider=None: got.__setitem__("prov", provider))
+    monkeypatch.setattr(cl, "analyze", lambda src, confirm=None: {"changed": False})
+    res = hfedit.cleanup_analyze_batch("c", ["a.mp4"], confirm=True)["results"]
+    assert res[0]["plan"] == {"changed": False} and got["prov"] is None   # provider build failed -> CV-only
+
+
 # ============================================================ end-to-end: plan -> new pool asset (real ffmpeg)
 
 def _ffmpeg_or_skip():
@@ -323,3 +357,13 @@ def test_route_cleanup_analyze_dispatches(client, monkeypatch):
                         lambda comp, path, confirm=True: {"path": path, "plan": {"changed": False}})
     r = client.post("/api/hf/asset/cleanup-analyze", json={"comp": "c", "path": "assets/z.mp4"})
     assert r.status_code == 200 and r.json()["plan"] == {"changed": False}
+
+
+def test_route_cleanup_batch_validates_and_dispatches(client, monkeypatch):
+    assert client.post("/api/hf/asset/cleanup-analyze-batch", json={"comp": "c"}).status_code == 400
+    assert client.post("/api/hf/asset/cleanup-analyze-batch", json={"comp": "c", "paths": []}).status_code == 400
+    from nolan import hyperframes as hf
+    monkeypatch.setattr(hf, "cleanup_analyze_batch",
+                        lambda comp, paths, confirm=True: {"results": [{"path": p, "plan": {"changed": True}} for p in paths]})
+    r = client.post("/api/hf/asset/cleanup-analyze-batch", json={"comp": "c", "paths": ["a.mp4", "b.png"]})
+    assert r.status_code == 200 and len(r.json()["results"]) == 2
