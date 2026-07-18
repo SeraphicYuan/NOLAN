@@ -39,7 +39,19 @@ meant to produce; expect more cells like it.**
 
 ---
 
-## F3 · Composer loads only 4 font families; ~30 theme fonts silently fall back — `LOGGED` (structural, HIGH)
+## F3 · Composer loads only 4 font families; ~30 theme fonts silently fall back — `FIXED` (per-theme loader; tier-B vendoring pending)
+
+**Fixed:** `compose.py` now has a per-theme font loader (`_theme_fonts` / `_theme_font_families`) that
+replaces the fixed `FONTS` `@import`. It reads each theme's PRIMARY families from its `--font-*` stacks,
+substitutes Source Han → Noto, and emits one Google-Fonts `@import` per family (isolated so a bad weight
+fails just that font). Verified by render: newsroom→Playfair, bauhaus-bold→Archivo Black, kraft-paper→
+Fraunces (were all Libre-Franklin fallback before). Honesty test: `tests/test_theme_fonts.py`.
+**Still pending:** tier-B Fontshare faces (Satoshi, Clash Display — neon-cyber) aren't on Google Fonts,
+so they still fall back until vendored as `@font-face` woff2. Tier-D (GT Sectra etc.) turned out to be
+only *fallback* entries in stacks, never a primary, so no substitution was needed.
+
+--- original finding, kept for the record ---
+
 
 **Evidence:** `compose.py` `FONTS` is a fixed `@import` of **Inter, Libre Franklin, Lora,
 UnifrakturMaguntia**. The 26 themes declare **~30 real families**. `_theme_vars` injects each theme's
