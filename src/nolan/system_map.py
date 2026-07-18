@@ -220,7 +220,8 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
         "authored_by": [("themes/highlighter-editorial/theme.json", "composition"),
                         ("src/nolan/hyperframes/bespoke.py", "composition")],
         "executed_by": [("src/nolan/composition.py", "def brief_section"),
-                        ("src/nolan/hyperframes/bespoke.py", "composition_md")],
+                        ("src/nolan/hyperframes/bespoke.py", "composition_md"),
+                        ("src/nolan/hyperframes/layout_lint.py", "def lint_frame_html")],
     },
 }
 
@@ -276,6 +277,9 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
          "the bespoke brief resolves + injects the scene's archetype from the ONE registry"),
         ("themes/scripts/validate_themes.py", "ARCHETYPE_IDS",
          "theme validator checks every theme's composition.default/allowed against the registry"),
+        ("src/nolan/hyperframes/layout_lint.py", "safe_areas",
+         "the deterministic layout linter (gate v2) checks a composed frame's geometry against the "
+         "registry's caption_keep_out_y / title_safe_inset / per-archetype zone"),
         ("skills/common/composition-craft.md", "centered-hero",
          "craft skill (registry-synced by tests/test_umbrella_skills.py)"),
     ],

@@ -12,8 +12,11 @@
     "optical_center": "~45% height (slightly above geometric centre)",
     "safe_areas": {
       "caption_keep_out": "content stays in the TOP 83% (bottom ~17% reserved for captions)",
-      "title_safe": "keep primary content inside a ~5% inset from every edge"
-    }
+      "title_safe": "keep primary content inside a ~5% inset from every edge",
+      "caption_keep_out_y": 0.83,
+      "title_safe_inset": 0.05
+    },
+    "_machine_doc": "The numeric fields (caption_keep_out_y, title_safe_inset, per-archetype `zone`) are the machine-readable contract the deterministic layout linter (nolan.hyperframes.layout_lint) checks a composed frame's declared geometry against. Coords are 0..1 fractions of the 1920x1080 canvas (x→right, y→down). `zone` is the box the scene's content-centroid should fall inside — an ADVISORY anchor check (fuzzy by design); overlap / caption-keep-out / out-of-bounds are the HARD checks."
   },
   "archetypes": {
     "centered-hero": {
@@ -33,7 +36,17 @@
       "blocks": [
         "stat"
       ],
-      "exemplar": "exemplars/centered-hero.json"
+      "exemplar": "exemplars/centered-hero.json",
+      "zone": {
+        "x": [
+          0.28,
+          0.72
+        ],
+        "y": [
+          0.25,
+          0.75
+        ]
+      }
     },
     "editorial-column": {
       "intent": "Text set as a reading column against a margin axis, ragged right — the Vox/editorial voice.",
@@ -53,7 +66,17 @@
         "statement",
         "lower_third"
       ],
-      "exemplar": null
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.03,
+          0.6
+        ],
+        "y": [
+          0.08,
+          0.8
+        ]
+      }
     },
     "swiss-grid": {
       "intent": "A modular grid — several items placed on columns and rows with consistent gutters.",
@@ -77,7 +100,17 @@
         "timeline",
         "diagram"
       ],
-      "exemplar": null
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.06,
+          0.94
+        ],
+        "y": [
+          0.08,
+          0.8
+        ]
+      }
     },
     "split-screen": {
       "intent": "Two zones side by side, in dialogue.",
@@ -96,7 +129,17 @@
       "blocks": [
         "comparison"
       ],
-      "exemplar": null
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.05,
+          0.95
+        ],
+        "y": [
+          0.2,
+          0.8
+        ]
+      }
     },
     "full-bleed-overlay": {
       "intent": "Media or atmosphere fills the frame edge-to-edge; text is overlaid on a legible zone.",
@@ -117,7 +160,17 @@
         "geo",
         "media_ground"
       ],
-      "exemplar": null
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.04,
+          0.96
+        ],
+        "y": [
+          0.45,
+          0.8
+        ]
+      }
     },
     "focal-card": {
       "intent": "One object or subject anchors the stage; supporting text orbits it.",
@@ -140,7 +193,17 @@
         "social_card",
         "prop_cutout"
       ],
-      "exemplar": null
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.18,
+          0.82
+        ],
+        "y": [
+          0.18,
+          0.82
+        ]
+      }
     },
     "sidebar": {
       "intent": "A narrow fixed rail beside a wide flexible content zone.",
@@ -157,7 +220,17 @@
       "balance": "asymmetric",
       "density": "normal",
       "blocks": [],
-      "exemplar": null
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.22,
+          0.97
+        ],
+        "y": [
+          0.1,
+          0.82
+        ]
+      }
     },
     "framed": {
       "intent": "A self-contained artefact presented cleanly within a margin frame.",
@@ -180,7 +253,17 @@
         "diagram",
         "document"
       ],
-      "exemplar": null
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.1,
+          0.9
+        ],
+        "y": [
+          0.1,
+          0.85
+        ]
+      }
     }
   }
 }

@@ -748,6 +748,7 @@ async function renderProposals(comp) {
       <div class="prop-ops">${esc(opsSummary(p.ops))}</div>
       ${p.gate_ok ? '' : `<div class="prop-err">${esc((p.gate_out || '').split('\\n').slice(0, 2).join(' '))}</div>`}
       ${(p.requirements || []).length ? `<div class="prop-reqs">${p.requirements.some(r => ['unmet','partial'].includes(r.status)) ? '<span class="prop-badge warn" title="the agent reports it did not fully satisfy the note">⚠ requirements not fully met</span>' : ''}${p.requirements.map(r => `<div class="req-line" style="font-size:11px;color:var(--text-secondary)">${({met:'✓',partial:'◐',unmet:'✗',deferred:'⏸'}[r.status] || '•')} <b>${esc(r.req_id || '')}</b> ${esc(r.note || r.status || '')}</div>`).join('')}</div>` : ''}
+      ${(p.layout || []).length ? `<div class="prop-layout"><span class="prop-badge warn" title="deterministic composition-gate findings on the proposed layout (advisory)">▦ layout: ${p.layout.length} note${p.layout.length>1?'s':''}</span>${p.layout.map(v => `<div class="req-line" style="font-size:11px;color:var(--text-secondary)">${v.severity==='error'?'✗':'·'} <b>${esc(v.kind)}</b> ${esc(v.detail || '')}</div>`).join('')}</div>` : ''}
       <div class="prop-preview" id="prevwrap-${p.id}"></div>
       <div class="prop-actions">
         <button class="btn mini" ${p.gate_ok ? '' : 'disabled'} onclick="acceptProposal('${p.id}')">Accept</button>
