@@ -354,6 +354,17 @@
     .cu-tags{color:var(--text-secondary)}
     .cu-note{color:#e0a030;font-size:11px;margin-top:3px}
     .cu-apply{font-size:12px;flex:0 0 auto;white-space:nowrap}
+    .cu-cands{margin-top:6px;padding:6px 8px;border:1px dashed #e0a030;border-radius:6px;background:rgba(224,160,48,.06)}
+    .cu-cands-h{font-size:11px;color:#e0a030;margin-bottom:5px}
+    .cu-cand-row{display:flex;gap:8px;align-items:center;font-size:11px;padding:2px 0}
+    .cu-cand-desc{flex:0 0 74px;color:var(--text-secondary);text-transform:capitalize;line-height:1.25}
+    .cu-cand-frac{font-size:10px;opacity:.8}
+    .cu-fr{position:relative;flex:0 0 auto}
+    .cu-fr img{width:88px;height:50px;object-fit:cover;border-radius:3px;background:#000;display:block;border:1px solid var(--border)}
+    .cu-fr.stray img{border-color:#ff5555}
+    .cu-fr em{position:absolute;left:2px;bottom:2px;font-style:normal;font-size:9px;padding:0 3px;border-radius:2px;background:rgba(0,0,0,.66);color:#fff}
+    .cu-fr.stray em{background:#ff5555}
+    .cu-cut{color:#e0a030;font-size:14px;flex:0 0 auto}
   </style>
   <div id="cleanupModal" class="modal">
     <div class="modal-box" style="max-width:920px">
@@ -1835,7 +1846,11 @@ async function runCleanupAnalyze() {
   $("#cleanup-status").textContent = `Analyzing ${paths.length} asset(s)… detecting logo / captions / stray frames${confirm ? ', vision-confirming' : ''} — a few seconds each.`;
   try {
     const r = await jpost('/api/hf/asset/cleanup-analyze-batch', { comp: COMP, paths, confirm });
-    CLEANUP_PLANS = (r.results || []).map(x => ({ ...x, apply: !x.error && !!(x.plan && x.plan.changed) }));
+    CLEANUP_PLANS = (r.results || []).map(x => {          // capture the ANALYZE-time trim so candidate toggles recompute cleanly
+      const p = x.plan;
+      return { ...x, apply: !x.error && !!(p && p.changed), acc: new Set(),
+        autoIn: p ? (p.trim_in || 0) : 0, autoOut: p ? (p.trim_out != null ? p.trim_out : (p.dur || 0)) : 0 };
+    });
     renderCleanupReview();
   } catch (e) { $("#cleanup-status").textContent = 'analyze failed: ' + (e.message || e); $("#cleanup-analyze-btn").disabled = false; }
 }
@@ -1856,27 +1871,65 @@ function cleanupTags(p) {
   if (p.crop) t.push(`🔍 zoom ×${p.zoom}`);
   return t;
 }
+function assetFrameUrl(path, t) { return `/api/hf/asset-frame?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(path)}&t=${Math.max(0, t).toFixed(3)}&v=${ASSETV}`; }
+// re-derive trim_in/out (+ changed) from the analyze-time baseline plus whichever ambiguous candidates the reviewer has accepted
+function recomputeTrim(x) {
+  const p = x.plan; let ti = x.autoIn, to = x.autoOut;
+  (p.trim_candidates || []).forEach((c, ci) => { if (x.acc.has(ci)) { if (c.side === 'head') ti = Math.max(ti, c.t); else to = Math.min(to, c.t); } });
+  p.trim_in = Math.round(ti * 1000) / 1000; p.trim_out = Math.round(to * 1000) / 1000;
+  p.changed = !!p.crop || p.trim_in > 0 || (p.kind === 'video' && p.trim_out < (p.dur || 0) - 0.01);
+}
+// an ambiguous cut: show the two shots straddling it (which side is the possible stray) → tick to trim it away
+function candBlock(x, i) {
+  const cands = x.plan.trim_candidates || [];
+  if (!cands.length) return '';
+  return `<div class="cu-cands"><div class="cu-cands-h">Ambiguous cut${cands.length > 1 ? 's' : ''} — look, then tick to trim the stray:</div>` +
+    cands.map((c, ci) => {
+      const lThumb = assetFrameUrl(x.path, c.t - 0.15), rThumb = assetFrameUrl(x.path, c.t + 0.15);
+      const lLbl = c.side === 'head' ? 'stray?' : 'keep', rLbl = c.side === 'head' ? 'keep' : 'stray?';
+      return `<label class="cu-cand-row"><input type="checkbox" class="cu-cand" data-i="${i}" data-ci="${ci}" ${x.acc.has(ci) ? 'checked' : ''}>
+        <span class="cu-cand-desc">${c.side} ${c.len}s<br><span class="cu-cand-frac">${Math.round(c.frac * 100)}% of clip</span></span>
+        <span class="cu-fr ${c.side === 'head' ? 'stray' : ''}"><img src="${lThumb}" loading="lazy"><em>${lLbl}</em></span>
+        <span class="cu-cut">✂</span>
+        <span class="cu-fr ${c.side === 'tail' ? 'stray' : ''}"><img src="${rThumb}" loading="lazy"><em>${rLbl}</em></span></label>`;
+    }).join('') + `</div>`;
+}
+function cleanupCardHTML(x, i) {
+  const nm = esc(x.path.split('/').pop());
+  if (x.error) return `<div class="cu-card err">${nm} — analyze failed: ${esc(x.error)}</div>`;
+  const p = x.plan, actionable = !!p.changed || (p.trim_candidates || []).length > 0;
+  return `<div class="cu-card${actionable ? '' : ' clean'}" id="cu-card-${i}">
+    <div class="cu-thumb" style="aspect-ratio:${p.ow || 16}/${p.oh || 9}"><img src="${assetThumbUrl(x.path)}">${cleanupOverlay(p)}</div>
+    <div class="cu-info"><div class="cu-name">${nm}</div>
+      <div class="cu-tags">${p.changed ? cleanupTags(p).join(' · ') : '✓ nothing auto-detected'}</div>
+      ${candBlock(x, i)}</div>
+    <label class="cu-apply">${actionable ? `<input type="checkbox" class="cu-do" data-i="${i}" ${x.apply ? 'checked' : ''} ${p.changed ? '' : 'disabled'}> apply` : ''}</label>
+  </div>`;
+}
+function patchCleanupCard(i) {   // in-place update after a candidate toggle (no full re-render → no image reload flicker)
+  const x = CLEANUP_PLANS[i], p = x.plan, card = document.getElementById('cu-card-' + i);
+  if (!card) return;
+  card.classList.toggle('clean', !p.changed && !(p.trim_candidates || []).length);
+  const tg = card.querySelector('.cu-tags'); if (tg) tg.innerHTML = p.changed ? cleanupTags(p).join(' · ') : '✓ nothing auto-detected';
+  const ap = card.querySelector('.cu-do'); if (ap) { ap.checked = x.apply; ap.disabled = !p.changed; }
+}
+function cleanupApplyCount() { $("#cleanup-apply-btn").textContent = `Apply & save (${CLEANUP_PLANS.filter(x => x.apply).length})`; }
 function renderCleanupReview() {
-  const cards = CLEANUP_PLANS.map((x, i) => {
-    const nm = esc(x.path.split('/').pop());
-    if (x.error) return `<div class="cu-card err">${nm} — analyze failed: ${esc(x.error)}</div>`;
-    const p = x.plan, changed = !!p.changed;
-    const cand = (p.trim_candidates || []).length ? `<div class="cu-note">? ${p.trim_candidates.length} ambiguous cut(s) left un-trimmed (turn on vision confirm to resolve)</div>` : '';
-    return `<div class="cu-card${changed ? '' : ' clean'}">
-      <div class="cu-thumb" style="aspect-ratio:${p.ow || 16}/${p.oh || 9}"><img src="${assetThumbUrl(x.path)}">${cleanupOverlay(p)}</div>
-      <div class="cu-info"><div class="cu-name">${nm}</div>
-        <div class="cu-tags">${changed ? cleanupTags(p).join(' · ') : '✓ nothing to clean'}</div>${cand}</div>
-      <label class="cu-apply">${changed ? `<input type="checkbox" class="cu-do" data-i="${i}" ${x.apply ? 'checked' : ''}> apply` : ''}</label>
-    </div>`;
-  }).join('');
   const nChanged = CLEANUP_PLANS.filter(x => !x.error && x.plan.changed).length;
-  $("#cleanup-body").innerHTML = `<div class="cu-legend"><span class="cu-lg-ex">■</span> detected (removed) · <span class="cu-lg-keep">■</span> kept crop</div>${cards}`;
+  const nCand = CLEANUP_PLANS.filter(x => !x.error && (x.plan.trim_candidates || []).length).length;
+  $("#cleanup-body").innerHTML = `<div class="cu-legend"><span class="cu-lg-ex">■</span> detected (removed) · <span class="cu-lg-keep">■</span> kept crop</div>${CLEANUP_PLANS.map(cleanupCardHTML).join('')}`;
   $("#cleanup-analyze-btn").style.display = 'none';
   const ab = $("#cleanup-apply-btn"); ab.style.display = ''; ab.disabled = false;
-  $("#cleanup-status").textContent = `${nChanged} of ${CLEANUP_PLANS.length} need cleanup — review the boxes, untick any you don't want, then Apply.`;
-  const sync = () => { ab.textContent = `Apply & save (${CLEANUP_PLANS.filter(x => x.apply).length})`; };
-  $("#cleanup-body").querySelectorAll('.cu-do').forEach(cb => cb.addEventListener('change', () => { CLEANUP_PLANS[+cb.dataset.i].apply = cb.checked; sync(); }));
-  sync();
+  $("#cleanup-status").textContent = `${nChanged} of ${CLEANUP_PLANS.length} need cleanup${nCand ? ` · ${nCand} with an ambiguous cut to review` : ''} — review, untick any, then Apply.`;
+  const body = $("#cleanup-body");
+  body.querySelectorAll('.cu-do').forEach(cb => cb.addEventListener('change', () => { CLEANUP_PLANS[+cb.dataset.i].apply = cb.checked; cleanupApplyCount(); }));
+  body.querySelectorAll('.cu-cand').forEach(cb => cb.addEventListener('change', () => {
+    const i = +cb.dataset.i, ci = +cb.dataset.ci, x = CLEANUP_PLANS[i];
+    cb.checked ? x.acc.add(ci) : x.acc.delete(ci);
+    recomputeTrim(x); x.apply = x.plan.changed;      // accepting a stray auto-arms apply; unticking the last one disarms it
+    patchCleanupCard(i); cleanupApplyCount();
+  }));
+  cleanupApplyCount();
 }
 async function applyCleanupSelected() {
   const todo = CLEANUP_PLANS.filter(x => x.apply && !x.error);

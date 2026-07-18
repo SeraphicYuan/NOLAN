@@ -367,3 +367,8 @@ def test_route_cleanup_batch_validates_and_dispatches(client, monkeypatch):
                         lambda comp, paths, confirm=True: {"results": [{"path": p, "plan": {"changed": True}} for p in paths]})
     r = client.post("/api/hf/asset/cleanup-analyze-batch", json={"comp": "c", "paths": ["a.mp4", "b.png"]})
     assert r.status_code == 200 and len(r.json()["results"]) == 2
+
+
+def test_route_asset_frame_guards_unknown_comp(client):
+    # the ambiguous-trim preview frame grab: an unknown comp -> 404 (never serves outside assets/)
+    assert client.get("/api/hf/asset-frame", params={"comp": "_nope_", "path": "assets/x.mp4", "t": 1.0}).status_code == 404

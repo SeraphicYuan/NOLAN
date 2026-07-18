@@ -545,6 +545,31 @@ def register(app, ctx):
             return FileResponse(str(out), media_type="image/jpeg")
         raise HTTPException(status_code=404, detail="could not make thumbnail")
 
+    @app.get("/api/hf/asset-frame")
+    async def hf_asset_frame(comp: str = Query(...), path: str = Query(...), t: float = Query(0.0)):
+        """A small CACHED JPEG of a VIDEO frame at time `t` (seconds). Powers the cleanup review's
+        ambiguous-trim preview — the two shots straddling a candidate cut, so the reviewer can SEE whether a
+        head/tail is a stray before trimming it. Keyed by path+mtime+t (an in-place edit invalidates it)."""
+        import hashlib
+        import imageio_ffmpeg
+        root = _guard(hfedit.comp_dir, comp).resolve()
+        target = (root / path).resolve()
+        assets_root = (root / "assets").resolve()
+        if assets_root not in target.parents or not target.is_file():
+            raise HTTPException(status_code=404, detail="asset not found")
+        ts = max(0.0, float(t))
+        key = hashlib.md5(f"{target}|{int(target.stat().st_mtime)}|{ts:.3f}".encode()).hexdigest()
+        out = root / "compositions" / "_preview" / "_thumbs" / f"f{key}.jpg"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        if not out.exists():
+            ff = imageio_ffmpeg.get_ffmpeg_exe()
+            cmd = [ff, "-y", "-ss", f"{ts:.3f}", "-i", str(target), "-frames:v", "1",
+                   "-vf", "scale=240:-1:force_original_aspect_ratio=decrease", "-loglevel", "error", str(out)]
+            await asyncio.to_thread(subprocess.run, cmd, timeout=20, capture_output=True)
+        if out.exists():
+            return FileResponse(str(out), media_type="image/jpeg")
+        raise HTTPException(status_code=404, detail="could not grab frame")
+
     @app.post("/api/hf/asset/resolve")
     async def hf_asset_resolve(payload: dict = Body(...)):
         comp, src = payload.get("comp"), payload.get("src")
