@@ -19,6 +19,10 @@ from typing import Dict, List
 
 _IMG_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 _VENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-movflags", "+faststart"]
+# CSS mix-blend-mode -> ffmpeg `blend=all_mode=` name (the baked path must match the render-time CSS blend).
+_FF_BLEND = {"screen": "screen", "multiply": "multiply", "overlay": "overlay", "lighten": "lighten",
+             "darken": "darken", "soft-light": "softlight", "hard-light": "hardlight",
+             "color-dodge": "dodge", "color-burn": "burn", "normal": "normal"}
 
 
 def _ffmpeg() -> str:

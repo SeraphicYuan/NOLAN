@@ -54,3 +54,35 @@ def resolve_plate(effect_tag: str, library: Path = None) -> Optional[str]:
 def stocked_effects(library: Path = None) -> set:
     """The set of effect tags that HAVE a plate in the library (for honest UI/gating)."""
     return {p["effect"] for p in load_overlay_library(library)}
+
+
+def add_plate(src_file, effect: str, *, blend: str = "screen", provenance: Optional[Dict[str, Any]] = None,
+              replace: bool = True, library: Path = None) -> Dict[str, Any]:
+    """Add / REPLACE the overlay PLATE for `effect` from a local video file. Copies it into the library as
+    `<effect>-<pixabay_id|stem>.<ext>`, adds/updates its overlays.json entry (merging the `provenance` dict
+    — url/source/tags/license/pixabay_id/w/h/duration — so `nolan effects fetch-plates` can repopulate it),
+    and returns the entry. Filesystem-only (the CLI handles URL/id download + probe + provenance lookup);
+    `replace` removes any prior plate file+entry for the same effect. This is the seam for expanding the fx
+    list — one call per new plate."""
+    import shutil
+    library = Path(library) if library else OVERLAY_LIBRARY
+    library.mkdir(parents=True, exist_ok=True)
+    src_file = Path(src_file)
+    prov = dict(provenance or {})
+    tag = prov.get("pixabay_id") or src_file.stem
+    fname = f"{effect}-{tag}{src_file.suffix.lower()}"
+    dst = library / fname
+    manifest = library / _MANIFEST
+    entries = json.loads(manifest.read_text(encoding="utf-8")) if manifest.exists() else []
+    if replace:
+        for old in [e for e in entries if e.get("effect") == effect]:
+            of = library / old.get("file", "")
+            if of.exists() and of.resolve() not in (src_file.resolve(), dst.resolve()):
+                of.unlink()
+        entries = [e for e in entries if e.get("effect") != effect]
+    if src_file.resolve() != dst.resolve():
+        shutil.copy2(src_file, dst)
+    entry = {"file": fname, "effect": effect, "blend": blend, "loop": True, **prov}
+    entries.append(entry)
+    manifest.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
+    return entry

@@ -45,3 +45,108 @@ def fetch_plates(force):
     click.echo(f"plates: {got} fetched, {skipped} present, {failed} failed → {OVERLAY_LIBRARY}")
     if failed:
         raise SystemExit(1)
+
+
+@effects.command("add-plate")
+@click.argument("source")
+@click.option("--effect", "-e", required=True, help="Effect tag this plate is for (fire, rain, snow, … or a NEW element tag).")
+@click.option("--blend", default="screen", show_default=True,
+              type=click.Choice(["screen", "multiply", "overlay", "soft-light", "lighten", "color-dodge"]),
+              help="mix-blend-mode (screen = an element on black; multiply = a texture/vignette).")
+@click.option("--pixabay-id", default=None, help="Pixabay video id for provenance + a re-fetch URL (auto-detected from a <id>… filename).")
+@click.option("--chroma", default=None, help="GREEN-SCREEN plate: key a bg colour → black so a screen blend works. 'auto' samples the top-left corner, or pass 0xRRGGBB.")
+def add_plate(source, effect, blend, pixabay_id, chroma):
+    """Add or REPLACE the overlay plate for EFFECT from a local file, an http(s) URL, or a Pixabay id.
+
+    Verifies it's a video, copies/downloads it into projects/_library/overlays/, records provenance +
+    a direct re-fetch URL in overlays.json, and warns if EFFECT isn't a registered effect (add a
+    _plate(...) entry in nolan/effects/registry.py so it appears in the catalog + fx UI).
+    """
+    import json
+    import re
+    import subprocess
+    import urllib.parse
+    import urllib.request
+    from pathlib import Path
+
+    from nolan.effects import library as fxlib
+    from nolan.effects.registry import REGISTRY
+    from nolan.ffmpeg_utils import FFMPEG
+
+    src = Path(source)
+    if not pixabay_id:                                          # detect id from 299595_medium.mp4 / 140842-….mp4
+        m = re.match(r"(\d+)", src.stem)
+        if m:
+            pixabay_id = m.group(1)
+    prov = {}
+    if pixabay_id:
+        try:
+            from nolan.config import load_config
+            key = load_config().image_sources.pixabay_api_key
+            hits = json.loads(urllib.request.urlopen("https://pixabay.com/api/videos/?" + urllib.parse.urlencode(
+                {"key": key, "id": str(pixabay_id)}), timeout=20).read()).get("hits", [])
+            if hits:
+                h = hits[0]
+                v = h["videos"].get("medium") or h["videos"].get("large") or h["videos"].get("small")
+                prov = {"pixabay_id": int(pixabay_id), "url": v["url"], "source": h.get("pageURL"),
+                        "tags": h.get("tags", "").split(", "), "w": v.get("width"), "h": v.get("height"),
+                        "duration": h.get("duration"), "license": "Pixabay License (free, no attribution)"}
+                click.echo(f"  provenance: {h.get('tags')}")
+        except Exception as ex:
+            click.echo(f"  (provenance lookup failed: {ex})")
+
+    tmp = None                                                  # resolve SOURCE → a local file
+    if source.lower().startswith("http") or (not src.exists() and prov.get("url")):
+        url = source if source.lower().startswith("http") else prov["url"]
+        fxlib.OVERLAY_LIBRARY.mkdir(parents=True, exist_ok=True)
+        tmp = fxlib.OVERLAY_LIBRARY / f"_dl_{pixabay_id or 'plate'}.mp4"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})   # Pixabay CDN 403s the default UA
+        with urllib.request.urlopen(req, timeout=180) as r, open(tmp, "wb") as f:
+            f.write(r.read())
+        prov.setdefault("url", url)
+        src = tmp
+    if not src.exists():
+        raise click.ClickException(f"can't resolve source {source!r} (not a file / URL / known Pixabay id)")
+
+    ff = Path(FFMPEG)
+    probe = ff.with_name("ffprobe.exe")
+    probe_exe = str(probe) if probe.exists() else "ffprobe"
+
+    if chroma:                                                  # GREEN-SCREEN plate → key the bg colour to black
+        col = chroma
+        if chroma == "auto":                                    # sample the averaged top-left corner
+            raw = subprocess.run([str(ff), "-i", str(src), "-frames:v", "1", "-vf",
+                                  "crop=40:40:0:0,scale=1:1,format=rgb24", "-f", "rawvideo", "-"], capture_output=True).stdout
+            if len(raw) >= 3:
+                col = f"0x{raw[0]:02x}{raw[1]:02x}{raw[2]:02x}"
+            click.echo(f"  keying corner colour {col}")
+        dm = subprocess.run([probe_exe, "-v", "error", "-select_streams", "v:0", "-show_entries",
+                             "stream=width,height", "-of", "csv=p=0", str(src)], capture_output=True, text=True).stdout.strip()
+        w, h = (dm.split(",") + ["1920", "1080"])[:2]
+        keyed = fxlib.OVERLAY_LIBRARY / f"_key_{pixabay_id or 'plate'}.mp4"
+        kr = subprocess.run([str(ff), "-y", "-i", str(src), "-f", "lavfi", "-i", f"color=black:s={w}x{h}",
+                             "-filter_complex",
+                             f"[0:v]chromakey={col}:0.30:0.12[ck];[1:v][ck]overlay=shortest=1,format=yuv420p[o]",
+                             "-map", "[o]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(keyed)],
+                            capture_output=True, text=True)
+        if not (keyed.exists() and keyed.stat().st_size > 0):
+            raise click.ClickException(f"chroma-key failed: {(kr.stderr or '').strip()[-160:]}")
+        if tmp:
+            tmp.unlink(missing_ok=True)
+        tmp = src = keyed
+
+    pr = subprocess.run([probe_exe, "-v", "error", "-select_streams", "v:0",   # verify it's a real video
+                         "-show_entries", "stream=width,height", "-of", "csv=p=0", str(src)], capture_output=True, text=True)
+    if pr.returncode != 0 or "," not in (pr.stdout or ""):
+        if tmp:
+            tmp.unlink(missing_ok=True)
+        raise click.ClickException(f"not a valid video: {(pr.stderr or '').strip()[:140]}")
+
+    entry = fxlib.add_plate(src, effect, blend=blend, provenance=prov, replace=True)
+    if tmp:
+        tmp.unlink(missing_ok=True)
+    click.echo(f"  ✓ {entry['file']}  (effect={effect}, blend={blend}, {pr.stdout.strip()})")
+    if effect not in {e.plate for e in REGISTRY if e.plate}:
+        click.echo(f"  ⚠ '{effect}' is NOT a registered effect yet — add a _plate('{effect}', …) entry in "
+                   f"src/nolan/effects/registry.py so it appears in the catalog + fx UI.")
+    click.echo(f"plate ready → {fxlib.OVERLAY_LIBRARY / entry['file']}  ·  commit overlays.json to share it")

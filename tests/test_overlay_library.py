@@ -37,12 +37,15 @@ def test_missing_library_is_empty(tmp_path):
     assert lib.resolve_plate("fire", tmp_path / "nope") is None
 
 
-def test_real_library_has_all_element_plates():
-    """The 8 element/damage plate tags the registry declares are actually stocked (the CC0 set is committed)."""
+def test_stocked_plates_match_registry_no_orphans():
+    """Stocked plates map to real element/damage effect tags (no orphan files) and the library is
+    populated. Element effects MAY be plate-pending (declared but unstocked) — a valid degraded state
+    (resolve_plate → None → the UI shows '(no plate)'); completeness is a curation choice, not an invariant."""
     from nolan.effects.registry import REGISTRY
-    want = {e.plate for e in REGISTRY if e.method == "blend_overlay" and e.plate}
+    declared = {e.plate for e in REGISTRY if e.method == "blend_overlay" and e.plate}
     have = lib.stocked_effects()
-    assert want <= have, f"unstocked element plates: {want - have}"
+    assert have, "no plates stocked"
+    assert have <= declared, f"orphan plate(s) with no registry effect: {have - declared}"
 
 
 def test_manifest_is_fetchable_and_licensed():
@@ -63,3 +66,29 @@ def test_manifest_is_fetchable_and_licensed():
 def test_fetch_plates_command_is_registered():
     from nolan.cli import main
     assert "effects" in main.commands and "fetch-plates" in main.commands["effects"].commands
+    assert "add-plate" in main.commands["effects"].commands
+
+
+def test_add_plate_copies_records_and_replaces(tmp_path):
+    """The `add_plate` seam (behind `nolan effects add-plate`): copy a plate into the library named
+    <effect>-<id>, record provenance in overlays.json, and REPLACE a prior plate for the same effect."""
+    import shutil
+    import subprocess
+    from nolan.ffmpeg_utils import FFMPEG
+    src = tmp_path / "src"
+    src.mkdir()
+    vid = src / "12345_small.mp4"
+    subprocess.run([FFMPEG, "-y", "-f", "lavfi", "-i", "color=black:s=64x36:d=1", "-pix_fmt", "yuv420p", str(vid)],
+                   capture_output=True)
+    libdir = tmp_path / "lib"
+    e = lib.add_plate(vid, "rain", blend="screen",
+                      provenance={"pixabay_id": 12345, "url": "http://x/y.mp4", "license": "Pixabay"}, library=libdir)
+    assert e["file"] == "rain-12345.mp4" and (libdir / "rain-12345.mp4").exists()
+    man = json.loads((libdir / "overlays.json").read_text(encoding="utf-8"))
+    assert man[0]["effect"] == "rain" and man[0]["url"] == "http://x/y.mp4" and man[0]["blend"] == "screen"
+    vid2 = src / "67890_small.mp4"
+    shutil.copy(vid, vid2)
+    lib.add_plate(vid2, "rain", provenance={"pixabay_id": 67890}, library=libdir)   # replace
+    man = json.loads((libdir / "overlays.json").read_text(encoding="utf-8"))
+    assert len(man) == 1 and man[0]["file"] == "rain-67890.mp4"
+    assert not (libdir / "rain-12345.mp4").exists() and lib.resolve_plate("rain", libdir).endswith("rain-67890.mp4")

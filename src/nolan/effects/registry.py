@@ -132,6 +132,18 @@ REGISTRY: List[Effect] = [
     _plate("dust-scratches", "damage", "Film dust, hairs and vertical scratches drifting over the frame.",
            "Aged-celluloid / decaying-archive register; the core of the `old-film` preset.",
            "dust", "screen", 0.55),
+    _plate("old-movie", "damage", "Super-8 / old-film frame: warm grain, gate vignette, dust & flicker.",
+           "Vintage / archival / nostalgic register — make modern footage read as projected film. MULTIPLY "
+           "so the light film gate tints + vignettes the image rather than washing it out.",
+           "old-movie", "multiply", 0.8),
+    _plate("old-film", "damage", "80s film dust, specks and scratches drifting over the frame.",
+           "Retro / analogue-decay register — grittier and more coloured than the clean `dust-scratches`.",
+           "old-film", "screen", 0.6),
+
+    # ---- particles (library PLATE) ----
+    _plate("particles", "element", "Fine dust motes / particles drifting through the frame.",
+           "Atmosphere + depth — floating dust in a light beam; softer and cooler than `embers`.",
+           "particles", "screen", 0.55),
 
     # ---- element (library PLATE — Phase 3; the physical-element overlays) ----
     _plate("fire", "element", "Real fire / flame licking up over the media.",

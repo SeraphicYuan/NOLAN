@@ -37,12 +37,12 @@ def test_treat_bakes_and_registers_a_new_pool_asset():
 
 def test_treat_image_plus_plate_becomes_mp4():
     from nolan.effects.library import resolve_plate
-    if not resolve_plate("fire"):
+    if not resolve_plate("rain"):
         import pytest
-        pytest.skip("fire plate not stocked")
+        pytest.skip("rain plate not stocked")
     name, dst = _comp()
     try:
-        r = hfedit.quickedit_asset(name, "assets/pic.png", "treat", {"effects": ["noir", "fire"]}, "new")
+        r = hfedit.quickedit_asset(name, "assets/pic.png", "treat", {"effects": ["noir", "rain"]}, "new")
         out = dst / r["path"]
         assert out.suffix == ".mp4" and out.exists() and out.stat().st_size > 0   # image + plate → animated video
         assert out.name in (dst / "pool.json").read_text(encoding="utf-8")

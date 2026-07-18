@@ -41,9 +41,9 @@ def test_treatments_compose_with_legacy_grade():
 
 
 def test_plate_treatment_no_overlay_without_library():
-    # an element effect (fire) needs a plate; compose passes no resolver -> no overlay emitted, no crash
-    html = "".join(compose.media_ground("s4", {"kind": "image", "src": "d.jpg", "treatments": ["fire"]}, 0, 5)[0])
-    assert "s4-fx-fire" not in html
+    # an element effect (rain) needs a plate; compose passes no resolver -> no overlay emitted, no crash
+    html = "".join(compose.media_ground("s4", {"kind": "image", "src": "d.jpg", "treatments": ["rain"]}, 0, 5)[0])
+    assert "s4-fx-rain" not in html
 
 
 def test_no_treatments_no_filter():
@@ -74,14 +74,14 @@ def test_video_ground_filter_composes_treatments():
 # --- element/damage PLATE overlays root-mount at assemble (can't live in a sub-comp) ---------
 def test_collect_video_overlays_roots_a_plate(tmp_path):
     from nolan.effects.library import resolve_plate
-    if not resolve_plate("fire"):
+    if not resolve_plate("rain"):
         import pytest
-        pytest.skip("fire plate not stocked in projects/_library/overlays")
+        pytest.skip("rain plate not stocked in projects/_library/overlays")
     fdir = tmp_path / "compositions" / "frames"
     fdir.mkdir(parents=True)
     (fdir / "01.spec.json").write_text(json.dumps({"frames": [{"id": "01", "dur": 6, "scenes": [
         {"id": "s1", "type": "statement", "start": 0, "dur": 6,
-         "data": {"lines": ["x"], "ground": {"kind": "image", "src": "a.jpg", "treatments": ["fire"]}}}]}]}), encoding="utf-8")
+         "data": {"lines": ["x"], "ground": {"kind": "image", "src": "a.jpg", "treatments": ["rain"]}}}]}]}), encoding="utf-8")
     ov = assemble_media.collect_video_overlays(tmp_path)
     assert len(ov) == 1
     c = ov[0]
@@ -94,7 +94,7 @@ def test_inject_root_video_stamps_blend_opacity(tmp_path):
     idx = tmp_path / "index.html"
     idx.write_text('<div id="root" data-composition-id="main"></div>', encoding="utf-8")
     subprocess.run([sys.executable, "-X", "utf8", str(BRIDGE / "inject_root_video.py"), "--index", str(idx),
-                    "--clips", json.dumps([{"src": "assets/overlays/fire.mp4", "start": 0, "duration": 6,
+                    "--clips", json.dumps([{"src": "assets/overlays/rain.mp4", "start": 0, "duration": 6,
                                             "track": 20, "blend": "screen", "opacity": 0.9, "loop": True}])], check=True)
     html = idx.read_text(encoding="utf-8")
     assert "mix-blend-mode:screen" in html and "opacity:0.9" in html
@@ -114,10 +114,10 @@ def test_treat_cmd_colour_chain_single_input():
 def test_treat_cmd_plate_overlay_two_input():
     from nolan.hyperframes.quickedit import _treat_cmd
     from nolan.effects.library import resolve_plate
-    if not resolve_plate("fire"):
+    if not resolve_plate("rain"):
         import pytest
-        pytest.skip("fire plate not stocked")
-    cmd = _treat_cmd("ff", "a.jpg", "o.mp4", {"effects": ["noir", "fire"]}, "image")
+        pytest.skip("rain plate not stocked")
+    cmd = _treat_cmd("ff", "a.jpg", "o.mp4", {"effects": ["noir", "rain"]}, "image")
     j = " ".join(cmd)
     assert "-filter_complex" in cmd and "blend=all_mode=screen" in j and "scale2ref" in j
     assert cmd.count("-i") == 2 and "-loop" in cmd and "-t" in cmd     # image looped + plate, capped to a short clip
@@ -129,8 +129,8 @@ def test_treat_ext_image_plate_becomes_video(tmp_path):
     img = tmp_path / "a.jpg"
     img.write_bytes(b"\0")
     assert _treat_ext(img, {"effects": ["sepia"]}) is None            # colour only → keep the image ext
-    if resolve_plate("fire"):
-        assert _treat_ext(img, {"effects": ["fire"]}) == ".mp4"       # a plate → video
+    if resolve_plate("rain"):
+        assert _treat_ext(img, {"effects": ["rain"]}) == ".mp4"       # a plate → video
 
 
 def test_treat_cmd_rejects_unbakeable_only():
@@ -143,10 +143,10 @@ def test_treat_cmd_rejects_unbakeable_only():
 def test_treat_cmd_preview_downscales_and_shortens():
     from nolan.hyperframes.quickedit import _treat_cmd
     from nolan.effects.library import resolve_plate
-    if not resolve_plate("fire"):
+    if not resolve_plate("rain"):
         import pytest
-        pytest.skip("fire plate not stocked")
-    cmd = _treat_cmd("ff", "a.jpg", "o.mp4", {"effects": ["noir", "fire"], "preview": True}, "image")
+        pytest.skip("rain plate not stocked")
+    cmd = _treat_cmd("ff", "a.jpg", "o.mp4", {"effects": ["noir", "rain"], "preview": True}, "image")
     assert "scale=480" in " ".join(cmd) and "-t" in cmd and "1.5" in cmd     # low-res + short sample
-    full = " ".join(_treat_cmd("ff", "a.jpg", "o.mp4", {"effects": ["noir", "fire"]}, "image"))
+    full = " ".join(_treat_cmd("ff", "a.jpg", "o.mp4", {"effects": ["noir", "rain"]}, "image"))
     assert "scale=480" not in full and "1.5" not in full                     # the real bake is full-size
