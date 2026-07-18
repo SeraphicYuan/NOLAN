@@ -1259,7 +1259,7 @@ function renderInspector(scene, fid, transcript) {
         </select>
       </div>
       <textarea id="note-input" class="mention-input" placeholder="Describe the change in plain words — e.g. apply @reveal:scramble to the title then dip to black; or weave @asset0 into a gallery from 3–7s"></textarea>
-      <button class="btn mini" style="margin-top:6px" onclick="applyNote('${fid}','${scene.id}')" title="Send this note to the AI — it works out the edit and applies it NOW, through the composer gate.">Apply with AI</button><button class="btn ghost mini" style="margin-top:6px" onclick="queueNote('${fid}','${scene.id}')" title="Add this note to a batch a fleet agent handles LATER as reviewable proposals — instead of applying now. Dispatch from 🤖 Batch.">Queue for agent</button><button class="btn ghost mini" style="margin-top:6px" onclick="effectFromClip('${fid}','${scene.id}')" title="Clone the effect from a reference clip onto this scene as a GSAP effect — dispatches the effect agent; ✓ Apply lands its proposal.">🎬 Effect from clip</button><button class="btn ghost mini" style="margin-top:6px" onclick="applyEffectProposal('${fid}','${scene.id}')" title="Land the effect agent's proposal onto this scene (once it's written one).">✓ Apply effect</button></div>
+      <button class="btn ghost mini" style="margin-top:6px" onclick="openPoolForNote()" title="Pick an asset from the pool → inserts a stable @-mention into the note (thumbnails, full list, videos too)">📎 Pool</button><button class="btn mini" style="margin-top:6px" onclick="applyNote('${fid}','${scene.id}')" title="Send this note to the AI — it works out the edit and applies it NOW, through the composer gate.">Apply with AI</button><button class="btn ghost mini" style="margin-top:6px" onclick="queueNote('${fid}','${scene.id}')" title="Add this note to a batch a fleet agent handles LATER as reviewable proposals — instead of applying now. Dispatch from 🤖 Batch.">Queue for agent</button><button class="btn ghost mini" style="margin-top:6px" onclick="effectFromClip('${fid}','${scene.id}')" title="Clone the effect from a reference clip onto this scene as a GSAP effect — dispatches the effect agent; ✓ Apply lands its proposal.">🎬 Effect from clip</button><button class="btn ghost mini" style="margin-top:6px" onclick="applyEffectProposal('${fid}','${scene.id}')" title="Land the effect agent's proposal onto this scene (once it's written one).">✓ Apply effect</button></div>
     <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
     <div class="fields-head" style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px">Scene fields</div>
     <div id="insp-fields">${fields}</div>
@@ -1508,17 +1508,26 @@ async function applyNote(fid, sid) {
 }
 
 // ---- asset picker ----
-let PICK_EL = null;
-function openPicker(btn) { PICK_EL = btn.closest(".field").querySelector("[data-f]"); $("#picker").style.display = "flex"; renderPicker(); }
-function closePicker() { $("#picker").style.display = "none"; }
+let PICK_EL = null, PICK_MODE = 'field', PICK_TA = null, PICK_ASSETS = [];
+function openPicker(btn) { PICK_MODE = 'field'; PICK_EL = btn.closest(".field").querySelector("[data-f]"); $("#picker").style.display = "flex"; renderPicker(); }
+// #2: pick an asset from the pool → insert an @-mention into the note box (instead of setting a field).
+function openPoolForNote() { PICK_MODE = 'mention'; PICK_TA = $("#note-input"); $("#picker").style.display = "flex"; renderPicker(); }
+function closePicker() { $("#picker").style.display = "none"; PICK_MODE = 'field'; }
 async function renderPicker() {
   const d = await jget("/api/hf/assets?comp=" + encodeURIComponent(COMP));
-  $("#pick-list").innerHTML = d.assets.map(a => {
+  PICK_ASSETS = d.assets || [];
+  $("#pick-list").innerHTML = PICK_ASSETS.map(a => {
     const th = (a.kind === "image" || a.kind === "video") ? thumbImg(a.path, a.kind) : `<span class="badge">${a.kind}</span>`;
     return `<div class="pick-item" onclick='pickAsset(${JSON.stringify(a.path)})'>${th}<span>${esc(a.name)}</span></div>`;
   }).join("") || '<div class="empty">No assets yet — upload one.</div>';
 }
 async function pickAsset(path) {
+  if (PICK_MODE === 'mention') {                      // insert a stable @-mention into the note box
+    const a = PICK_ASSETS.find(x => x.path === path) ||
+              { path, name: path.split('/').pop(), kind: /\.(mp4|mov|webm|m4v)$/i.test(path) ? 'video' : 'image' };
+    (window.insertMention || (() => {}))(PICK_TA, a); closePicker();
+    return toast('Inserted ' + '@' + (a.name || path), 'ok');
+  }
   setAsset(PICK_EL, path); closePicker();
   // Persist immediately. Previously a pick only filled the form field — if you didn't ALSO click "Save
   // changes" the edit was silently lost (e.g. a swapped video ground never reached the spec). Now, when a
@@ -1931,7 +1940,8 @@ async function uploadAsset(inp) {
       seen[tk] = 1;
       out.push({ token: tk, type: 'asset', cat: a.kind === 'video' ? 'vid' : 'pic', ref: a.path,
                  label: `${a.kind === 'video' ? 'video' : 'image'} · ${a.name || a.path}`,
-                 thumb: a.kind === 'image' ? `/api/hf/asset-file?comp=${encodeURIComponent(COMP)}&path=${encodeURIComponent(a.path)}` : null });
+                 // cached poster (video frame @0.5s or downscaled image) — so @vid shows previews too
+                 thumb: (a.kind === 'image' || a.kind === 'video') ? assetThumbUrl(a.path) : null });
     });
     return out;
   }
@@ -1939,7 +1949,7 @@ async function uploadAsset(inp) {
     const all = candidates();
     const first = q.split(' ')[0], sub = q.includes(' ') ? q.slice(q.indexOf(' ') + 1).trim() : '';
     const cat = CAT_ALIAS[first];
-    if (cat) return all.filter(it => inCat(it, cat)).filter(it => !sub || hay(it).includes(sub)).slice(0, 14);
+    if (cat) return all.filter(it => inCat(it, cat)).filter(it => !sub || hay(it).includes(sub)).slice(0, 50);
     // no category yet — lead with category chips (short query), then fuzzy candidates
     const chips = q.length <= 3 ? CATS.filter(c => !q || c.key.startsWith(q) || c.label.startsWith(q))
                                       .map(c => ({ catFilter: c.key, label: c.label })) : [];
@@ -1948,7 +1958,7 @@ async function uploadAsset(inp) {
   function render() {
     ensure().innerHTML = items.map((it, i) => it.catFilter
       ? `<div class="mention-item cat${i===active?' active':''}" data-i="${i}"><b>▸ @${esc(it.catFilter)}</b><span class="mi-label">filter · ${esc(it.label)}</span></div>`
-      : `<div class="mention-item${i===active?' active':''}" data-i="${i}">${it.thumb ? `<img src="${it.thumb}" onerror="this.style.visibility='hidden'">` : ''}<b>${esc(it.token)}</b><span class="mi-label">${esc(it.label)}</span></div>`).join('');
+      : `<div class="mention-item${i===active?' active':''}" data-i="${i}">${it.thumb ? `<img loading="lazy" src="${it.thumb}" onerror="this.style.visibility='hidden'">` : ''}<b>${esc(it.token)}</b><span class="mi-label">${esc(it.label)}</span></div>`).join('');
   }
   function show(ta) { const p = ensure(); render(); const r = ta.getBoundingClientRect(); p.style.left = (r.left+window.scrollX)+'px'; p.style.top = (r.bottom+window.scrollY+2)+'px'; p.style.width = Math.max(260, r.width)+'px'; p.style.display = 'block'; }
   function insert(it) {
@@ -1966,6 +1976,20 @@ async function uploadAsset(inp) {
     hide();
   }
   window.collectMentions = text => Object.values(MENTIONS).filter(m => (text || '').includes(m.token));
+  // Insert a stable @-mention for a hand-picked pool asset (used by the "📎 Pool" picker) — same
+  // {token,type,ref,label} binding the tray records, so it resolves unambiguously downstream.
+  window.insertMention = (ta, asset) => {
+    if (!ta || !asset || !asset.path) return;
+    const base = '@' + slug(asset.name || asset.path); let tk = base, n = 1;
+    while (MENTIONS[tk] && MENTIONS[tk].ref !== asset.path) tk = base + '-' + (++n);
+    MENTIONS[tk] = { token: tk, type: 'asset', ref: asset.path,
+                     label: `${asset.kind === 'video' ? 'video' : 'image'} · ${asset.name || asset.path}` };
+    const pos = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+    const pre = ta.value.slice(0, pos), post = ta.value.slice(pos);
+    const sep = (pre && !/\s$/.test(pre)) ? ' ' : '';
+    ta.value = pre + sep + tk + ' ' + post;
+    ta.focus(); const np = pos + sep.length + tk.length + 1; ta.setSelectionRange(np, np);
+  };
   function refilter() {
     const ta = curTa; if (!ta) return hide();
     const m = ta.value.slice(0, ta.selectionStart).match(/@([\w:-]*(?: [\w-]*)?)$/); if (!m) return hide();
