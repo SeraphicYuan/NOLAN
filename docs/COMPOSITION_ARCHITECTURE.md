@@ -212,8 +212,13 @@ no authoring surface is the mirror bug. Consumers to check + wire:
   bias a block's layout (Phase-2 B4b) — at minimum blocks are *classified* by archetype.
 - **The bespoke agent** — `bespoke.py` `bespoke_task_brief`: passes the resolved archetype + regions +
   exemplar (Phase-2 B2, the proven lever).
-- **Gates / verify** — the position/overlap linter checks the rendered scene respects the archetype's
-  anchor; render_gate is archetype-aware.
+- **Gates / verify** — the deterministic layout linter (`src/nolan/hyperframes/layout_lint.py`, gate
+  v2 — SHIPPED) checks a composed frame's DECLARED geometry against the registry's machine-readable
+  safe-areas (`caption_keep_out_y` / `title_safe_inset`) + per-archetype `zone`: overlap / caption-band
+  collision / off-canvas as HARD errors, anchor-drift as advisory. It is the cheap structural pass
+  wired into BOTH the compose-first finish DAG (a pre-render soft gate) and the bespoke/agent-edit
+  proposal (advisory findings surfaced at review). render_gate stays the VLM perceptual pass; the
+  human still LOOKs. This consolidated roadmap v2-gate-(a) with bespoke-P1 (one linter, two gates).
 - **`/map` + the umbrella skills** — the composition registry is auto-surfaced + honesty-tested so the
   catalog can't rot.
 

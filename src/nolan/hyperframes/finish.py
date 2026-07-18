@@ -134,6 +134,13 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                             "--hyperframes", "."], cwd=pdir, dry=dry_run)
     # 7 · inject video grounds + PRE-RENDER freeze-heal (AFTER assemble-index, BEFORE render)
     _run("assemble-media", py + [str(BRIDGE / "assemble_media.py"), str(pdir)], dry=dry_run)
+    # 7.5 · deterministic layout lint (composition gate v2): overlap / caption-band / off-canvas on the
+    #       composed frames' declared geometry — structural, pre-render, cheap. Soft: report before the
+    #       render spend; the VLM render-gate + human LOOK stay the perceptual passes.
+    _cg = pdir / "caption_groups.json"
+    _cap_on = _cg.exists() and _cg.stat().st_size > 4
+    _layout_cmd = py + ["-m", "nolan.hyperframes.layout_lint", str(pdir)] + ([] if _cap_on else ["--no-captions"])
+    _run("layout", _layout_cmd, dry=dry_run, soft=True)
     if not render:
         print("hf-finish: stopped before render (--no-render). Preview then re-run to render.")
         return {"comp": comp, "rendered": False}

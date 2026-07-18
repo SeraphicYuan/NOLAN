@@ -1473,6 +1473,33 @@ def _gate_validate_only(comp: str, spec: Dict[str, Any]) -> Tuple[bool, str]:
         tmp.unlink(missing_ok=True)
 
 
+def _proposal_layout_lint(fr: Dict[str, Any], scene_id: Optional[str]) -> List[Dict[str, Any]]:
+    """Deterministic layout lint of the proposal's touched RAW scene(s) — the composition gate v2.
+    ADVISORY: surfaced at review (like `requirements`), never blocks accept. Only raw scenes are
+    linted here (their declared geometry is in the spec; block scenes are linted post-compose in
+    finish). Archetype comes from the scene's meta or its block type."""
+    try:
+        from nolan.hyperframes import layout_lint as _ll
+        from nolan import composition as _comp
+    except Exception:
+        return []
+    scenes = fr.get("scenes", []) if isinstance(fr, dict) else []
+    targets = [s for s in scenes if isinstance(s, dict) and (scene_id is None or s.get("id") == scene_id)]
+    out: List[Dict[str, Any]] = []
+    for sc in targets:
+        data = sc.get("data") or {}
+        html = data.get("html")
+        if sc.get("type") != "raw" or not html:
+            continue
+        arche = (sc.get("meta") or {}).get("archetype") or _comp.block_archetype(sc.get("type", ""))
+        try:
+            vios = _ll.lint_raw_scene(html if isinstance(html, list) else [html], arche, scene=sc.get("id") or "raw")
+        except Exception:
+            continue
+        out.extend(v.as_dict() for v in vios)
+    return out[:20]
+
+
 def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
                        ops: Optional[List[Dict[str, Any]]] = None, rationale: str = "",
                        agent: Optional[str] = None, model: Optional[str] = None,
@@ -1501,6 +1528,10 @@ def propose_scene_edit(comp: str, frame_id: str, scene_id: Optional[str] = None,
     if requirements:
         prop["requirements"] = [{k: r.get(k) for k in ("req_id", "status", "note") if r.get(k) is not None}
                                 for r in requirements if isinstance(r, dict)]
+    if not err:
+        layout = _proposal_layout_lint(trial["frames"][info["i"]], scene_id)
+        if layout:
+            prop["layout"] = layout   # advisory composition-gate findings, shown at review
     props.append(prop)
     _save_proposals(comp, props)
     log_activity(comp, "proposal", (rationale or f"proposal for {scene_id or frame_id}")[:80],
