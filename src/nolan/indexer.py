@@ -15,6 +15,24 @@ from nolan.models.video import InferredContext, VideoSegment
 __all__ = ['InferredContext', 'VideoSegment', 'VideoIndex', 'HybridVideoIndexer', 'VideoIndexer']
 
 
+def _connect(db_path) -> sqlite3.Connection:
+    """Open a SQLite connection tuned for the concurrent ingest path.
+
+    During ``index_video`` many short-lived reader connections (``get_cached_frame``) run against the
+    same file as the long-lived writer connection. In the default rollback-journal mode a writer blocks
+    ALL readers, so a large/slow write (page-cache spill on a long video) made the readers time out with
+    ``database is locked``. WAL lets readers and the single writer proceed concurrently, and a real
+    ``busy_timeout`` makes any remaining writer↔writer contention WAIT instead of erroring immediately.
+    ``journal_mode=WAL`` is a persistent property of the file (set once, sticks); the timeouts are
+    per-connection, so every connection must opt in — hence this shared factory.
+    """
+    conn = sqlite3.connect(db_path, timeout=30.0)
+    conn.execute("PRAGMA busy_timeout=30000")   # 30s: wait out transient locks rather than raise
+    conn.execute("PRAGMA journal_mode=WAL")      # readers don't block on the writer (persists on the file)
+    conn.execute("PRAGMA synchronous=NORMAL")    # safe with WAL, much faster for bulk inserts
+    return conn
+
+
 class VideoIndex:
     """SQLite-backed video index with content-based fingerprints."""
 
@@ -33,7 +51,7 @@ class VideoIndex:
 
     def _init_db(self) -> None:
         """Create database tables if they don't exist."""
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             # Check schema version
             conn.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER)")
             cursor = conn.execute("SELECT version FROM schema_version LIMIT 1")
@@ -490,7 +508,7 @@ class VideoIndex:
             The video_id of the inserted/updated video.
         """
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -541,7 +559,7 @@ class VideoIndex:
     ) -> None:
         """Update stored path (and optionally project) for a video fingerprint."""
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -565,7 +583,7 @@ class VideoIndex:
         Returns:
             Video ID or None if not found.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute(
                 "SELECT id FROM videos WHERE fingerprint = ?", (fingerprint,)
             )
@@ -581,7 +599,7 @@ class VideoIndex:
         Returns:
             Video ID or None if not found.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute(
                 "SELECT id FROM videos WHERE path = ?", (path,)
             )
@@ -593,28 +611,28 @@ class VideoIndex:
         """Associate a video with a project (idempotent). No re-embed — the project scope is a
         pure SQL fact that VectorSearch post-filters on. Returns True if newly added."""
         from datetime import datetime
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cur = conn.execute(
                 "INSERT OR IGNORE INTO video_projects (video_id, project_id, added_at) VALUES (?, ?, ?)",
                 (video_id, project_id, datetime.now().isoformat()))
             return cur.rowcount > 0
 
     def remove_video_from_project(self, video_id: int, project_id: str) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cur = conn.execute(
                 "DELETE FROM video_projects WHERE video_id = ? AND project_id = ?", (video_id, project_id))
             return cur.rowcount > 0
 
     def get_project_video_ids(self, project_id: str) -> set:
         """The set of video_ids in a project (join table + legacy videos.project_id)."""
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             rows = conn.execute("SELECT video_id FROM video_projects WHERE project_id = ?", (project_id,)).fetchall()
             legacy = conn.execute("SELECT id FROM videos WHERE project_id = ?", (project_id,)).fetchall()
         return {r[0] for r in rows} | {r[0] for r in legacy}
 
     def get_video_projects(self, video_id: int) -> List[Dict[str, Any]]:
         """Projects a video belongs to (join table ∪ legacy), as project dicts."""
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             ids = {r[0] for r in conn.execute(
                 "SELECT project_id FROM video_projects WHERE video_id = ?", (video_id,)).fetchall()}
             legacy = conn.execute("SELECT project_id FROM videos WHERE id = ?", (video_id,)).fetchone()
@@ -628,7 +646,7 @@ class VideoIndex:
         Returns:
             List of video dictionaries with id, path, duration, indexed_at.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT DISTINCT v.id, v.path, v.duration, v.indexed_at, v.fingerprint
                 FROM videos v
@@ -653,7 +671,7 @@ class VideoIndex:
         Returns:
             List of project IDs.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT DISTINCT project_id FROM videos
                 WHERE project_id IS NOT NULL
@@ -668,7 +686,7 @@ class VideoIndex:
             video_id: Video ID.
             project_id: Project ID to set.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             conn.execute(
                 "UPDATE videos SET project_id = ? WHERE id = ?",
                 (project_id, video_id)
@@ -737,7 +755,7 @@ class VideoIndex:
 
         created_at = datetime.now().isoformat()
 
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             try:
                 conn.execute("""
                     INSERT INTO projects (id, slug, name, description, path, created_at)
@@ -765,7 +783,7 @@ class VideoIndex:
         Returns:
             Project dictionary or None if not found.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             # Try by slug first (more common), then by ID
             cursor = conn.execute("""
                 SELECT id, slug, name, description, path, created_at
@@ -794,7 +812,7 @@ class VideoIndex:
         Returns:
             Project ID or None if not found.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute(
                 "SELECT id FROM projects WHERE slug = ?", (slug,)
             )
@@ -807,7 +825,7 @@ class VideoIndex:
         Returns:
             List of project dictionaries with video_count.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT p.id, p.slug, p.name, p.description, p.path, p.created_at,
                        COUNT(v.id) as video_count
@@ -868,7 +886,7 @@ class VideoIndex:
 
         params.append(project["id"])
 
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             conn.execute(
                 f"UPDATE projects SET {', '.join(updates)} WHERE id = ?",
                 params
@@ -890,7 +908,7 @@ class VideoIndex:
         if not project:
             return False
 
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             if delete_videos:
                 # Delete videos and their segments (CASCADE will handle segments)
                 conn.execute("DELETE FROM videos WHERE project_id = ?", (project["id"],))
@@ -942,7 +960,7 @@ class VideoIndex:
         context_json = json.dumps(inferred_context.to_dict()) if inferred_context else None
 
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -987,7 +1005,7 @@ class VideoIndex:
             ))
 
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -1016,7 +1034,7 @@ class VideoIndex:
         Returns:
             List of VideoSegment objects.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             # Separator-insensitive match: stored paths may use Windows backslashes,
             # but browsers normalize '\' -> '/' in URLs, so an exact match would miss.
             cursor = conn.execute("""
@@ -1040,7 +1058,7 @@ class VideoIndex:
         Returns:
             List of VideoSegment objects.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT v.path, s.timestamp_start, s.timestamp_end,
                        s.frame_description, s.transcript, s.combined_summary,
@@ -1080,7 +1098,7 @@ class VideoIndex:
         Returns:
             True if indexing is needed.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute(
                 "SELECT checksum FROM videos WHERE fingerprint = ?",
                 (fingerprint,)
@@ -1099,7 +1117,7 @@ class VideoIndex:
             video_id: Video ID.
         """
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -1121,7 +1139,7 @@ class VideoIndex:
             value: True if the video has a transcript (subtitle or Whisper).
         """
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -1145,7 +1163,7 @@ class VideoIndex:
         Returns:
             Number of segments for this video.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute(
                 "SELECT COUNT(*) FROM segments WHERE video_id = ?", (video_id,)
             )
@@ -1161,7 +1179,7 @@ class VideoIndex:
     ) -> Optional[Dict[str, Any]]:
         """Fetch cached frame analysis if available."""
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -1200,7 +1218,7 @@ class VideoIndex:
         """Store frame analysis in cache."""
         context_json = json.dumps(inferred_context.to_dict()) if inferred_context else None
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -1235,7 +1253,7 @@ class VideoIndex:
     ) -> Optional[List[Optional[str]]]:
         """Fetch cached transcript alignment if available."""
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -1264,7 +1282,7 @@ class VideoIndex:
     ) -> None:
         """Store transcript alignment in cache."""
         if conn is None:
-            managed_conn = sqlite3.connect(self.db_path)
+            managed_conn = _connect(self.db_path)
         else:
             managed_conn = None
         try:
@@ -1312,7 +1330,7 @@ class VideoIndex:
         keywords = query.lower().split()
         search_all = fields is None or len(fields) == 0
 
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             sql = """
                 SELECT v.path, s.timestamp_start, s.timestamp_end,
                        s.frame_description, s.transcript, s.combined_summary,
@@ -1422,7 +1440,7 @@ class VideoIndex:
         Returns:
             The cluster_id of the inserted cluster.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("""
                 INSERT INTO clusters (
                     video_id, cluster_index, timestamp_start, timestamp_end,
@@ -1449,7 +1467,7 @@ class VideoIndex:
         Returns:
             List of cluster dictionaries.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT c.id, c.cluster_index, c.timestamp_start, c.timestamp_end,
                        c.cluster_summary, c.people, c.locations, c.segment_ids,
@@ -1471,7 +1489,7 @@ class VideoIndex:
         Returns:
             List of cluster dictionaries.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT c.id, c.cluster_index, c.timestamp_start, c.timestamp_end,
                        c.cluster_summary, c.people, c.locations, c.segment_ids,
@@ -1524,7 +1542,7 @@ class VideoIndex:
         keywords = query.lower().split()
         search_all = fields is None or len(fields) == 0
 
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             sql = """
                 SELECT c.id, c.cluster_index, c.timestamp_start, c.timestamp_end,
                        c.cluster_summary, c.people, c.locations, c.segment_ids,
@@ -1621,7 +1639,7 @@ class VideoIndex:
         if clip_end <= clip_start:
             raise ValueError("clip_end must be greater than clip_start")
         clip_id = f"clip_{uuid.uuid4().hex[:8]}"
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO saved_clips (
                     id, source_video_path, clip_start, clip_end,
@@ -1651,7 +1669,7 @@ class VideoIndex:
             include_global: When scoping by project_ids, also include global
                 clips (project_id IS NULL). Ignored when project_ids is None.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             sql = (
                 "SELECT id, source_video_path, clip_start, clip_end, "
                 "label, tags, project_id, created_at FROM saved_clips"
@@ -1670,7 +1688,7 @@ class VideoIndex:
 
     def get_saved_clip(self, clip_id: str) -> Optional[Dict[str, Any]]:
         """Get a single saved clip by id."""
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("""
                 SELECT id, source_video_path, clip_start, clip_end,
                        label, tags, project_id, created_at
@@ -1681,7 +1699,7 @@ class VideoIndex:
 
     def delete_saved_clip(self, clip_id: str) -> bool:
         """Delete a saved clip. Returns True if a row was removed."""
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             cursor = conn.execute("DELETE FROM saved_clips WHERE id = ?", (clip_id,))
             conn.commit()
             return cursor.rowcount > 0
@@ -1701,7 +1719,7 @@ class VideoIndex:
 
         delete_file: also delete the source video file from disk (OPT-IN, default OFF — never silently nuke
         footage). Returns a per-table removal summary: {found, path, tables:{name:rowcount}, file_deleted}."""
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             row = conn.execute("SELECT path, fingerprint FROM videos WHERE id = ?", (video_id,)).fetchone()
             if row is None:
                 return {"video_id": video_id, "found": False}
@@ -1739,7 +1757,7 @@ class VideoIndex:
 
     def clear_shots(self, video_id: int) -> None:
         """Remove all shot rows for a video (before a facts re-run)."""
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             conn.execute("DELETE FROM shots WHERE video_id = ?", (video_id,))
             conn.commit()
 
@@ -1751,7 +1769,7 @@ class VideoIndex:
         rows = [tuple(s.get(c) for c in self._SHOT_COLS) + (now,) for s in shots]
         cols = ", ".join(self._SHOT_COLS)
         ph = ", ".join("?" for _ in range(len(self._SHOT_COLS) + 2))
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             conn.executemany(
                 f"INSERT INTO shots (video_id, {cols}, created_at) VALUES ({ph})",
                 [(video_id,) + r for r in rows])
@@ -1765,7 +1783,7 @@ class VideoIndex:
 
     def get_shots_by_video_id(self, video_id: int) -> List[Dict[str, Any]]:
         """All shot rows for a video id, time-ordered, as dicts (with id)."""
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 "SELECT * FROM shots WHERE video_id = ? ORDER BY shot_index",
@@ -1778,7 +1796,7 @@ class VideoIndex:
         vid = self.get_video_id_by_path(video_path)
         if vid is None:
             return []
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 "SELECT * FROM shots WHERE video_id = ? AND timestamp_start < ? "
@@ -1798,7 +1816,7 @@ class VideoIndex:
                 vals.append(v)
         if not sets:
             return
-        with sqlite3.connect(self.db_path) as conn:
+        with _connect(self.db_path) as conn:
             conn.execute(f"UPDATE shots SET {', '.join(sets)} WHERE id = ?", (*vals, shot_id))
             conn.commit()
 
@@ -1990,7 +2008,7 @@ class HybridVideoIndexer:
         fingerprint = compute_video_fingerprint(video_path)
         checksum = compute_checksum(video_path)
 
-        conn = sqlite3.connect(self.index.db_path)
+        conn = _connect(self.index.db_path)
         try:
             if not self.force_reindex and not self.index.needs_indexing(fingerprint, checksum):
                 self.index.update_video_path(
@@ -2301,6 +2319,10 @@ class HybridVideoIndexer:
                         conn=conn
                     )
 
+                # Commit each batch so the writer never holds one transaction across the WHOLE video
+                # (which is what let the lock/journal grow until readers timed out). Bounds lock duration
+                # and WAL size; the outer conn.commit() at the end is now just the final flush.
+                conn.commit()
                 return segments_added, segment_errors
 
             segments_added = 0
