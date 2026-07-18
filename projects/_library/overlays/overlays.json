@@ -1,33 +1,25 @@
 [
   {
-    "file": "fire-31440.mp4",
+    "file": "fire-299595.mp4",
     "effect": "fire",
     "blend": "screen",
     "loop": true,
     "tags": [
-      "candle",
-      "flame",
-      "light",
-      "grief",
-      "burn",
-      "fire",
-      "candlelight",
-      "flicker",
-      "contemplative",
-      "beautiful wallpaper",
-      "dark",
-      "black",
-      "quiet",
-      "meditation",
-      "background"
+      "fire sparks",
+      "blackscreen",
+      "effect",
+      "overlay effects",
+      "overlay",
+      "dust",
+      "particles"
     ],
     "license": "Pixabay License (free, no attribution)",
-    "source": "https://pixabay.com/videos/id-31440/",
-    "pixabay_id": 31440,
-    "w": 1280,
-    "h": 720,
-    "duration": 30,
-    "url": "https://cdn.pixabay.com/video/2020/01/20/31440-386853550_medium.mp4"
+    "source": "https://pixabay.com/videos/id-299595/",
+    "pixabay_id": 299595,
+    "w": 2560,
+    "h": 1440,
+    "duration": 31,
+    "url": "https://cdn.pixabay.com/video/2025/08/25/299595_medium.mp4"
   },
   {
     "file": "embers-7960.mp4",
