@@ -85,5 +85,15 @@ one, in this order.
    data; per-channel tuning of slide_designer + tempo prompts so the system
    compounds instead of resetting each project.
 
+## Matte / ink-wipe SCENE transitions (deferred — 2026-07-18)
+
+A user-supplied ink/liquid TRACK-MATTE clip (e.g. Pixabay 19427 — black ink spreading on white) is
+NOT an effects-umbrella overlay: a plate BLENDS over ONE asset, but a matte MASKS between TWO clips
+(clip A shows where the matte is black, clip B where white, animating A->B). Applied as a
+screen/multiply plate it just blacks out the picture (verified). It belongs in the scene-transition
+system (compose.TRANSITIONS + the assemble path), as a NEW luma/track-matte transition type: author
+`transition_out: {kind: matte, matte: <clip>}`; execute by luma-keying the incoming clip through the
+matte over the outgoing clip. Distinct mechanism from the effects/plate overlays.
+
 Status is tracked in the session task list; completed items get their design
 recorded in ARCHITECTURE.md.
