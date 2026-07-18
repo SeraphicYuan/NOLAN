@@ -1,0 +1,28 @@
+[
+  {
+    "file": "ink-wipe-19427.mp4",
+    "kind": "ink-wipe",
+    "type": "luma",
+    "dur": 1.2,
+    "desc": "Ink/liquid luma-matte wipe — the next scene bleeds through as the ink spreads.",
+    "when_to_use": "A dramatic, organic chapter break.",
+    "license": "Pixabay License (free, no attribution)",
+    "source": "https://pixabay.com/videos/id-19427/",
+    "pixabay_id": 19427,
+    "url": "https://cdn.pixabay.com/video/2018/11/19/19427-302195794_medium.mp4",
+    "invert": true,
+    "clip_len": 5.0
+  },
+  {
+    "file": "fire-reveal-8828898.mp4",
+    "kind": "fire-reveal",
+    "type": "chroma",
+    "chroma": "0x62c9a1",
+    "dur": 1.5,
+    "desc": "Fire burns across and reveals the next scene through the gate.",
+    "when_to_use": "A high-energy, intense chapter break.",
+    "license": "Pexels License (free)",
+    "source": "local",
+    "clip_len": 18.0
+  }
+]
