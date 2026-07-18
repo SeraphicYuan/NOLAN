@@ -83,6 +83,9 @@ SURFACES = [
              "existing VO (pipeline projects AND hybrid HyperFrames comps) with players"},
     {"id": "map", "label": "NOLAN Map", "path": "/map",
      "role": "this page — the introspected system catalog"},
+    {"id": "themes", "label": "Themes", "path": "/themes",
+     "role": "visual showcase of every theme (palette / type / mood) + its composition archetype rendered "
+             "as a live specimen in the theme's own tokens; the QA surface for the composition module"},
     {"id": "taste", "label": "Taste", "path": "/taste",
      "role": "learned channel preferences: review distiller proposals, "
              "amend/lock/retire rules (priors, not laws)"},
@@ -386,7 +389,7 @@ _HF_PIPELINE = [
     {"name": "2 · acquire", "purpose": "multi-source pool (src/nolan/acquire): fan out to library-CLIP + stock/archival/museum → over-fetch → score (CLIP relevance + fitness, per-need-type tier) → relevance floors → semantic dedup → GENERATE originals for thin/evocative beats"},
     {"name": "2.1 · cull + caption", "purpose": "VLM usability floor (judge.py) fused with captioning — drop watermark/off-topic/stock-graphic junk → capture/pool.json (+ /pool HyperFrames tab)"},
     {"name": "3 · storyboard + VO", "purpose": "STORYBOARD.md + the cloned voiceover bridged in (audio_meta.json, per-section word timings)"},
-    {"name": "4 · compose-first", "purpose": "per beat: pick a bridge/catalog.json template → author.py GATE (validate→build) → compose.py themed frame; bespoke raw only where no template fits"},
+    {"name": "4 · compose-first", "purpose": "per beat: RESOLVE the composition archetype (themes/composition registry: scene-type → archetype, theme-allowed constrains, direction overrides) → pick a bridge/catalog.json template → author.py GATE (validate→build) → compose.py themed frame; bespoke raw (fleet agent, propose→gate→accept) only where no template fits"},
     {"name": "5 · sync", "purpose": "force-align the VO, place each scene + fire its highlight on the SPOKEN word; recompose changed frames"},
     {"name": "6 · render + QA", "purpose": "seek render → mp4; hf_qa (freeze/audio) + style-contract lint gates → fix + re-render"},
 ]
@@ -437,10 +440,13 @@ def _hyperframes() -> Dict[str, Any]:
                      "Chrome; --docker byte-reproducible",
         "determinism": "one paused GSAP timeline per composition; transform/opacity only; "
                        "no Date.now / Math.random / CSS transitions (seek-safe)",
-        "authoring": "NOLAN default = COMPOSE-FIRST (hybrid): each beat is a bridge/catalog.json composer "
-                     "template, gated by author.py and built by compose.py in the chosen theme (themes/ "
-                     "registry); bespoke raw / native-HF only where no template fits. Visuals come from the "
-                     "multi-source acquisition pool. (Stock skill-routing still available via the workflows below.)",
+        "authoring": "NOLAN default = COMPOSE-FIRST (hybrid): each beat resolves a composition ARCHETYPE (the "
+                     "themes/composition registry — one shared layout vocabulary) then becomes a bridge/catalog.json "
+                     "composer template, gated by author.py and built by compose.py in the chosen theme (themes/ "
+                     "registry); bespoke raw (a fleet agent authors a custom scene, propose→gate→accept) / native-HF "
+                     "only where no template fits. Visuals come from the multi-source acquisition pool. Then a Gate-B "
+                     "edit loop (per-scene / batch / effect-from-clip) refines it. (Stock skill-routing still "
+                     "available via the workflows below.)",
         "pipeline": _HF_PIPELINE,
         "domain_skills": [entry(n) for n in _HF_DOMAIN],
         "workflows": [entry(n) for n in _HF_WORKFLOWS],
@@ -494,8 +500,10 @@ BRIDGES = [
     {"id": "editing", "label": "Scene edit mode", "stage": "live",
      "purpose": "the /hyperframes page — human-in-the-loop editing OF the composer: patch/add/remove/"
                 "retime a scene through the author.py gate, plan within-frame transitions, snapshot-"
-                "preview + re-render a frame. Edit per scene, re-render per frame. A NOLAN-side seam.",
-     "nolan": "nolan.hyperframes edit engine (mirrors iterate's load→patch→gate→re-render) + /api/hf/* routes",
+                "preview + re-render a frame. Edit per scene, re-render per frame. TWO edit classes: direct UI "
+                "patches, and agent edits which are PROPOSALS (comment→agent→gate→human accept→canonical, with "
+                "provenance) surfaced in a review panel + activity feed. A NOLAN-side seam.",
+     "nolan": "nolan.hyperframes edit engine (mirrors iterate's load→patch→gate→re-render) + propose/accept_proposal + /api/hf/* routes",
      "hf": "re-gates the frame's spec → recomposes compositions/frames/<id>.html → snapshot/render",
      "wire": ("src/nolan/hyperframes/edit.py", "apply_scene_edit")},
     {"id": "voiceover", "label": "Voiceover bridge", "stage": "live",
@@ -526,6 +534,34 @@ BRIDGES = [
      "nolan": "src/nolan/acquire (engine + build_context + judge, injectable organs) driven by bridge/pool.py",
      "hf": "capture/pool.json + asset-descriptions.md → storyboard SELECTS asset_candidates; browse per-need on /pool (HyperFrames tab)",
      "wire": ("src/nolan/acquire/engine.py", "def acquire_pool")},
+    {"id": "composition", "label": "Composition archetype", "stage": "live",
+     "purpose": "the ONE shared layout vocabulary (8 archetypes: centered-hero / editorial-column / swiss-grid "
+                "/ split-screen / full-bleed-overlay / focal-card / sidebar / framed) so every consumer speaks one "
+                "dialect. resolve() is content-first (scene-type→archetype), the theme's composition.allowed "
+                "CONSTRAINS, an explicit direction OVERRIDES (the A/B/C/D-proven lever — theme name alone doesn't "
+                "steer layout). Injected into the bespoke brief + scene-plan schema + flow dispatch + render-gate "
+                "VLM check; showcased on /themes. A NOLAN-side registry seam.",
+     "nolan": "themes/composition/archetypes.json → nolan.composition.resolve/brief_section; theme.composition.default/allowed",
+     "hf": "the resolved archetype steers where the composer/agent lays a scene out (grid + safe-areas)",
+     "wire": ("src/nolan/composition.py", "def resolve")},
+    {"id": "bespoke", "label": "Bespoke scene authoring", "stage": "live",
+     "purpose": "select one scene or a batch on /hyperframes → 🎨 Bespoke → one fleet agent per scene authors a "
+                "fully-CUSTOM raw GSAP scene from a rich brief (narration + word-timings + theme tokens + resolved "
+                "composition archetype + continuity + the seek-safe raw contract). REUSES the propose→gate→accept "
+                "pipeline: the agent's output is a PROPOSAL that passes author.py's gate (incl. the universal raw "
+                "seek-lint) before a human accepts it as canonical. Round-robins nolan1-6.",
+     "nolan": "src/nolan/hyperframes/bespoke.py (bespoke_task_brief + dispatch_bespoke) → propose_scene_edit",
+     "hf": "accepted raw scene recomposes compositions/frames/<id>.html; provenance carried on the scene",
+     "wire": ("src/nolan/hyperframes/bespoke.py", "def dispatch_bespoke")},
+    {"id": "effect-clone", "label": "Effect-from-clip", "stage": "live",
+     "purpose": "🎬 pick a Clips-page clip → analyze frames → a GSAP brief → an agent authors the motion, landing "
+                "either as a per-scene raw {html,tl} (apply_effect) OR as a reusable block (apply_block). Tier-2 "
+                "promotes the recurring 'subject + flanking label' shape to the `spotlight` composer block "
+                "(bg-removed subject center/left/right + position-responsive label) in compose_extension.py, merged "
+                "into compose.BLOCKS with catalog + style-contract parity.",
+     "nolan": "src/nolan/hyperframes/effect.py (apply_effect raw / apply_block reusable) + compose_extension.EXT_BLOCKS",
+     "hf": "raw lands in the scene's timeline; spotlight is a first-class catalog block any frame can use",
+     "wire": ("render-service/_lab_hyperframes/bridge/compose_extension.py", "spotlight")},
 ]
 
 
@@ -594,6 +630,16 @@ BRIDGE_KB = [
                 "5 build components, edit vocabulary, two edit classes, phasing (P1 direct edits, P2 "
                 "comment→agent→gate), and parked assemble-layer items.",
      "doc": "render-service/_lab_hyperframes/kb/edit-mode-plan.md"},
+    {"id": "composition-architecture",
+     "title": "Composition module — architecture & wiring",
+     "purpose": "Why layout/composition is a proper MODULE, not per-theme adhoc: an 'Every Layout'-grounded "
+                "archetype registry each theme references, resolved content-first with theme constraint + "
+                "direction override. Records the A/B/C/D finding (an explicit named instruction is what moves "
+                "layout — theme name doesn't; the left-default is the CSS platform default, not set by NOLAN), "
+                "the full pipeline wiring (bespoke brief, scene plan, flows, render-gate, /themes showcase), and "
+                "the v2 deferrals (deterministic overlap/position linter, per-block catalog archetype, compose.py "
+                "archetype-bias).",
+     "doc": "docs/COMPOSITION_ARCHITECTURE.md"},
 ]
 
 
