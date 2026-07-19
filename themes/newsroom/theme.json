@@ -47,5 +47,8 @@
       "framed",
       "focal-card"
     ]
-  }
+  },
+  "decoration": [
+    "grain"
+  ]
 }

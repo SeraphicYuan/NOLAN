@@ -34,6 +34,31 @@
       "group": "G10-rail", "kind": "signature", "scope": "frame",
       "purpose": "a vertical rotated wayfinder label along the left edge — magazine-spine metadata (biennale-yellow, cobalt-grid).",
       "params": {"text": "the label string (default a generic marker)"}
+    },
+    "background-ordinal": {
+      "group": "G4-ordinal", "kind": "signature", "scope": "frame",
+      "purpose": "a giant low-opacity numeral/char behind content (bottom-right) — chapter identity + region fill (grove, emerald-editorial, biennale).",
+      "token": "--font-display-en", "params": {"text": "the ordinal/char (default 01)"}
+    },
+    "blob": {
+      "group": "G3-shape", "kind": "signature", "scope": "frame",
+      "purpose": "soft organic blob masses at the corners — friendly / playful / kawaii (playful, pastel-dream, daisy-days).",
+      "token": "--accent"
+    },
+    "ribbon": {
+      "group": "G5-ribbon", "kind": "signature", "scope": "frame",
+      "purpose": "diagonal multi-colour bands sweeping across the canvas — zine / expressive atmospheric layer (sakura-chroma, retro-zine).",
+      "token": "--accent"
+    },
+    "glow": {
+      "group": "G3-shape", "kind": "signature", "scope": "frame",
+      "purpose": "an off-centre radial bloom/halo — the primary depth mechanism in shadowless dark systems (pink-script, aurora, biennale).",
+      "token": "--accent"
+    },
+    "seal": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "a rotated circular rubber-stamp / seal mark (top-right) — 'officially marked' authority (pin-and-paper, sakura, creative-mode).",
+      "token": "--accent", "params": {"text": "the seal text (default Est. 2026)"}
     }
   }
 }

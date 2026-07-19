@@ -48,5 +48,12 @@
       "full-bleed-overlay",
       "focal-card"
     ]
-  }
+  },
+  "decoration": [
+    "grain",
+    {
+      "id": "rail-label",
+      "text": "Essay"
+    }
+  ]
 }

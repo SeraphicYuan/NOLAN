@@ -46,5 +46,12 @@
       "split-screen",
       "framed"
     ]
-  }
+  },
+  "decoration": [
+    "grain",
+    {
+      "id": "rail-label",
+      "text": "Notes"
+    }
+  ]
 }

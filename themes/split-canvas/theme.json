@@ -45,5 +45,8 @@
       "swiss-grid",
       "framed"
     ]
-  }
+  },
+  "decoration": [
+    "blob"
+  ]
 }
