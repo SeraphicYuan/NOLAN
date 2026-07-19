@@ -31,6 +31,10 @@ from nolan.sound.registry import KINDS
 from .sync import _phrase_time
 
 _GLITCH_REVEALS = {"decode", "scramble", "glitch"}
+# a whoosh is a MOTION cue — fire it on a frame transition INTO a graphic-forward
+# scene (a real visual change worth a sweep), not on every section boundary.
+_GRAPHIC_TYPES = {"newshead", "stat", "comparison", "document", "social_card",
+                  "chart", "diagram", "linedraw", "geo", "timeline"}
 _MONEY_RE = re.compile(r"\$\s?\d|\b\d[\d.,]*\s*(?:billion|million|trillion|dollars?|cents?)\b", re.I)
 # min seconds between two cues of the SAME family within a frame (restraint budget)
 _MIN_GAP = {"whoosh": 8.0, "impact-soft": 6.0, "impact-hard": 10.0, "sub-drop": 12.0,
@@ -93,14 +97,21 @@ def _scene_context(scene: Dict[str, Any], words: List[Dict[str, Any]]) -> Dict[s
     }
 
 
-def _deterministic_cues(ctx: Dict[str, Any], *, frame_first: bool) -> List[Tuple[str, float, int, str]]:
-    """(kind, at, priority, why) candidates from the visual + verbal signals."""
+def _deterministic_cues(ctx: Dict[str, Any], *, frame_first: bool,
+                        transitions: str = "sparse") -> List[Tuple[str, float, int, str]]:
+    """(kind, at, priority, why) candidates from the visual + verbal signals.
+
+    `transitions`: whoosh cadence — "off" (none), "sparse" (default; only a frame
+    that OPENS on a graphic-forward scene — a real visual change), "all" (every
+    frame enter). Sparse keeps whooshes motion-motivated, not one-per-section.
+    """
     t, d, dur = ctx["type"], ctx["data"], ctx["dur"]
     cue = ctx["cue"]
     reveal_t = cue if cue is not None else round(min(0.4, dur * 0.15), 3)
     out: List[Tuple[str, float, int, str]] = []
 
-    if frame_first:                                            # structural: the cut
+    if frame_first and transitions != "off" and (            # structural: the cut
+            transitions == "all" or t in _GRAPHIC_TYPES):
         out.append(("whoosh", 0.0, 1, "frame enter"))
 
     if t == "newshead":                                        # visual: block type
@@ -147,11 +158,13 @@ def _budget(cues: List[Tuple[str, float, int, str]]) -> List[Tuple[str, float, i
     return kept
 
 
-def design(comp: str, *, apply: bool = False, llm: bool = False) -> Dict[str, Any]:
+def design(comp: str, *, apply: bool = False, llm: bool = False,
+           transitions: str = "sparse") -> Dict[str, Any]:
     """Propose scene.data.sfx across a comp from its spec + word timings.
 
     Returns ``{plan: [{frame, scene, cues:[{cue,at,why}]}], total, applied}``.
-    `apply` writes the cues into the frame specs; `llm` refines taste calls.
+    `apply` writes the cues into the frame specs; `llm` refines taste calls;
+    `transitions` sets the whoosh cadence (off | sparse | all).
     """
     from .edit import _project_dir, list_frames, load_frame_spec, save_frame_spec
 
@@ -173,7 +186,7 @@ def design(comp: str, *, apply: bool = False, llm: bool = False) -> Dict[str, An
         changed = False
         for si, sc in enumerate(scenes):
             ctx = _scene_context(sc, words)
-            cands = _deterministic_cues(ctx, frame_first=(si == 0))
+            cands = _deterministic_cues(ctx, frame_first=(si == 0), transitions=transitions)
             kept = _budget(cands)
             if llm and kept is not None:
                 kept = _llm_refine(ctx, kept)                 # taste layer (optional)
@@ -233,8 +246,10 @@ def main():
     ap.add_argument("comp")
     ap.add_argument("--apply", action="store_true", help="write the cues into the frame specs")
     ap.add_argument("--llm", action="store_true", help="LLM taste pass over the deterministic candidates")
+    ap.add_argument("--transitions", choices=["off", "sparse", "all"], default="sparse",
+                    help="whoosh cadence: sparse (default; graphic-opening frames only), all, off")
     a = ap.parse_args()
-    res = design(a.comp, apply=a.apply, llm=a.llm)
+    res = design(a.comp, apply=a.apply, llm=a.llm, transitions=a.transitions)
     for p in res["plan"]:
         cues = ", ".join(f"{c['cue']}@{c['at']}s ({c['why']})" for c in p["cues"])
         print(f"  {p['frame']}/{p['scene']} [{p['type']}]: {cues}")

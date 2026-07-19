@@ -206,6 +206,17 @@ Note: adding `sound` to `_umbrellas()` forces `UMBRELLA_WIRING` + `CATALOG_CONSU
 Full chain (no underwiring): **sfx_design** (author) → `scene.data.sfx` (validated
 field) → **apply_scene_sfx** (resolve + stage + merge) → `audio_meta.sfx[]` →
 **assemble-index** (mount, track 20+i) → render. Every link exercised end-to-end.
+
+Tuning (from the aeneid-essay listen test):
+- **Whoosh cadence** — a whoosh is a *motion* cue, so it fires only when a frame
+  OPENS on a graphic-forward scene (newshead/stat/comparison/…), not on every
+  section boundary (was one-per-frame → too many). `--transitions off|sparse|all`
+  (default sparse).
+- **HF gain profile** (`resolve.hf_gain`) — the HyperFrames render mounts SFX as
+  separate `<audio>` tracks with NO VO-ducking (unlike the Director's sidechain
+  mix), so cues over narration were inaudible at the ducked registry `gain`. HF
+  gains boost by family (content one-shots ×2.5, transitions ×1.3, beds ×1.0) so
+  they cut through un-ducked. Measured audible on aeneid (paper/shutter over VO).
 - **Phase 4 — the pairing operator**: registry-aware auto-author pass over the spec
   (deterministic-first, LLM only for taste calls), human-reviewed.
 

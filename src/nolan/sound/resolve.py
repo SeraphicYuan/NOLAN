@@ -79,6 +79,19 @@ def resolve_cue(kind: str, *, root: Optional[Path] = None,
     }
 
 
+# HyperFrames renders SFX as separate <audio> tracks with NO VO-ducking (unlike
+# the Director's sidechain mix), so a cue that lands over narration needs a hotter
+# level than the ducked registry `gain`. Boost by family: content one-shots cut
+# through; transitions ride a gap so stay subtle; beds stay low (they're beds).
+_HF_GAIN_FACTOR = {"transition": 1.3, "one-shot": 2.5, "loop": 1.8, "bed": 1.0}
+
+
+def hf_gain(kind: str) -> float:
+    """The gain for the un-ducked HyperFrames render (louder than the ducked `gain`)."""
+    c = BY_ID.get(kind)
+    return round(min(0.9, c.gain * _HF_GAIN_FACTOR.get(c.family, 2.0)), 3) if c else 0.3
+
+
 def sfx_event_for_cue(kind: str, *, frame: Any, offset_s: float,
                       root: Optional[Path] = None, exclude: tuple = (),
                       gain: Optional[float] = None) -> Optional[Dict[str, Any]]:
@@ -98,7 +111,7 @@ def sfx_event_for_cue(kind: str, *, frame: Any, offset_s: float,
         "file": r["file"],
         "offset_s": round(float(offset_s), 3),
         "duration_s": r.get("duration"),
-        "volume": float(gain if gain is not None else r["gain"]),
+        "volume": float(gain if gain is not None else hf_gain(kind)),
         "kind": kind,
         "cue_id": r.get("id"),
     }

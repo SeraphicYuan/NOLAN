@@ -20,7 +20,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from nolan.sound.resolve import resolve_cue, sfx_event_for_cue
+from nolan.sound.resolve import resolve_cue, sfx_event_for_cue, hf_gain
 from nolan.sound.registry import validate_scene_sound
 
 # a cue tuple: (frame, offset_s, kind[, gain])
@@ -128,7 +128,7 @@ def apply_scene_sfx(comp: str) -> Dict[str, Any]:
                     "frame": num, "file": staged[src.name],
                     "offset_s": round(start + at, 3),
                     "duration_s": r.get("duration"),
-                    "volume": float(gain if gain is not None else r["gain"]),
+                    "volume": float(gain if gain is not None else hf_gain(kind)),
                     "kind": kind, "cue_id": r.get("id"),
                 })
 

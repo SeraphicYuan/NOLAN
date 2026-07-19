@@ -157,6 +157,23 @@ def test_sfx_design_reads_both_signals(tmp_path, monkeypatch):
     assert 0.0 <= cash["at"] <= 1.0                            # anchored to the spoken figure (~0.3s)
 
 
+def test_whoosh_is_sparse_and_hf_gain_hotter():
+    from nolan.hyperframes.sfx_design import _deterministic_cues
+    from nolan.sound.resolve import hf_gain
+    from nolan.sound.registry import BY_ID
+    base = {"data": {}, "dur": 5.0, "cue": None, "start": 0.0, "operative": None,
+            "has_money": False, "money_at": None, "has_image": False, "words": [], "text": ""}
+    stmt = {**base, "type": "statement"}
+    graf = {**base, "type": "newshead"}
+    ks = lambda ctx, tr: {c[0] for c in _deterministic_cues(ctx, frame_first=True, transitions=tr)}
+    assert "whoosh" not in ks(stmt, "sparse") and "whoosh" in ks(graf, "sparse")  # motion-motivated
+    assert "whoosh" in ks(stmt, "all") and "whoosh" not in ks(graf, "off")        # the knob
+    # HF (un-ducked) gain is hotter than the ducked registry gain for content,
+    # but a transition stays subtler than a hit
+    assert hf_gain("impact-soft") > BY_ID["impact-soft"].gain
+    assert hf_gain("whoosh") < hf_gain("impact-soft")
+
+
 def test_finish_dag_includes_scene_sfx_step():
     """The finish DAG actually calls the executor (not a dangling field)."""
     src = (REPO / "src/nolan/hyperframes/finish.py").read_text(encoding="utf-8")
