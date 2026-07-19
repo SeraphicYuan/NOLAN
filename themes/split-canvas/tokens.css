@@ -30,8 +30,8 @@
   --text-faint:   #9a8a7c;
   --rule:         #b8a89a;
   --accent:       #d24a78;             /* magenta */
-  --accent-soft:  rgba(210, 74, 120, 0.10);
-  --accent-glow:  rgba(210, 74, 120, 0.35);
+  --accent-soft:  color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 35%, transparent);
   --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */

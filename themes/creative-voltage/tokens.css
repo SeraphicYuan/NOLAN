@@ -25,10 +25,10 @@
   --text-2:       #e8eaff;
   --text-mute:    #98a4d8;
   --text-faint:   #6878b8;
-  --rule:         rgba(212, 255, 0, 0.32);
+  --rule:         color-mix(in srgb, var(--accent) 32%, transparent);
   --accent:       #d4ff00;             /* neon yellow */
-  --accent-soft:  rgba(212, 255, 0, 0.14);
-  --accent-glow:  rgba(212, 255, 0, 0.50);
+  --accent-soft:  color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 50%, transparent);
   --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */

@@ -36,7 +36,7 @@
   --text-faint:   #9a9a9a;
   --rule:         #141414;            /* BLACK borders + dividers */
   --accent:       #f5197a;            /* hot magenta */
-  --accent-soft:  rgba(245, 25, 122, 0.12);
+  --accent-soft:  color-mix(in srgb, var(--accent) 12%, transparent);
   --accent-glow:  transparent;         /* neubrutalism is FLAT — no glow */
   --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 

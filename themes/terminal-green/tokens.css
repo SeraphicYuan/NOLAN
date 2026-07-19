@@ -23,10 +23,10 @@
   --text-2:       #2ed084;
   --text-mute:    #1a8a55;
   --text-faint:   #0f5c39;
-  --rule:         rgba(65, 255, 151, 0.30);
+  --rule:         color-mix(in srgb, var(--accent) 30%, transparent);
   --accent:       #41ff97;
-  --accent-soft:  rgba(65, 255, 151, 0.10);
-  --accent-glow:  rgba(65, 255, 151, 0.7);
+  --accent-soft:  color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 70%, transparent);
   --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts (mono everywhere) ─── */

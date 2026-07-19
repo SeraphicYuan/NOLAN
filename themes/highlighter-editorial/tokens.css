@@ -17,10 +17,10 @@
   --text-faint:   #9A9C96;
 
   /* rule + accent — the highlighter yellow */
-  --rule:         rgba(43, 45, 44, 0.22);
+  --rule:         color-mix(in srgb, var(--text) 22%, transparent);
   --accent:       #FFF200;
-  --accent-soft:  rgba(255, 242, 0, 0.18);
-  --accent-glow:  rgba(255, 242, 0, 0.50);
+  --accent-soft:  color-mix(in srgb, var(--accent) 18%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 50%, transparent);
   --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* typography — Vox editorial ramp */
