@@ -513,7 +513,14 @@ def media_ground(sid, ground, start, dur):
         frag.append(f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{scr};"></div>')
     else:  # paper / parchment
-        col = "var(--surface-2)" if ground.get("parchment") else "var(--surface)"
+        # a FULL-BLEED statement ground is the theme's CANVAS, not the raised panel: --shell is what
+        # every other block's ground uses (2225/2322/1732/1835/2387), so --surface here made the
+        # statement the lone odd-one-out — a theme whose identity IS its canvas colour (blue-professional:
+        # cream --shell vs white --surface) lost it on this one block. But the inverted-card themes
+        # (dark --shell + light --surface) tune --text to --surface, so there --shell would go dark-on-dark
+        # → fall back to --surface for them. Parchment stays an explicit warm variant.
+        canvas = "var(--shell)" if _SHELL_TEXTSAFE else "var(--surface)"
+        col = "var(--surface-2)" if ground.get("parchment") else canvas
         frag.append(f'<div class="clip paper-gnd" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{col};"></div>')
     return frag, tl
@@ -2498,6 +2505,47 @@ def _theme_polarity(theme):
     return pol
 
 
+_SHELL_TEXTSAFE = True                   # per-frame: is --shell the same polarity as --surface (i.e. is
+_SHELL_TEXTSAFE_CACHE = {}               # --text legible on it)? set by compose_frame alongside _POLARITY.
+
+def _theme_shell_textsafe(theme):
+    """True iff --shell shares --surface's light/dark polarity — i.e. --text (tuned to --surface, the
+    composer's polarity signal) is legible on --shell. A full-bleed statement ground prefers --shell (the
+    canvas) so a theme keeps its canvas colour (blue-professional: cream --shell), but the INVERTED-CARD
+    themes (electric-studio/bauhaus-bold: dark --shell + light --surface, light content on dark frame) fail
+    this — for them the statement must stay on --surface or the phrase goes dark-on-dark. Same formula as
+    _theme_polarity; both cached, single-process."""
+    theme = str(theme)
+    if theme in _SHELL_TEXTSAFE_CACHE:
+        return _SHELL_TEXTSAFE_CACHE[theme]
+    def _lum(hexstr):
+        h = hexstr
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        if len(h) != 6:
+            return None
+        r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        def _ch(c): return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+        return 0.2126 * _ch(r) + 0.7152 * _ch(g) + 0.0722 * _ch(b)
+    safe = True
+    try:
+        root = Path(__file__).resolve().parents[3] / "themes"
+        p = root / theme / "tokens.css"
+        if not p.exists():
+            p = root / "highlighter-editorial" / "tokens.css"
+        css = p.read_text(encoding="utf-8")
+        ms = re.search(r"--shell\s*:\s*#([0-9a-fA-F]{3,6})", css)
+        mf = re.search(r"--surface\s*:\s*#([0-9a-fA-F]{3,6})", css)
+        if ms and mf:
+            ls, lf = _lum(ms.group(1)), _lum(mf.group(1))
+            if ls is not None and lf is not None:
+                safe = (ls < 0.4) == (lf < 0.4)   # same polarity → text legible on shell
+    except Exception:
+        safe = True
+    _SHELL_TEXTSAFE_CACHE[theme] = safe
+    return safe
+
+
 # ── Per-theme font loader (audit F3) ────────────────────────────────────────
 # The composer used to @import a FIXED 4 families (Inter/Libre Franklin/Lora/UnifrakturMaguntia), so
 # ~22/26 themes rendered their declared display type in a system FALLBACK. This loads each theme's ACTUAL
@@ -2819,8 +2867,9 @@ def _stamp_archetype(frags, arch):
 
 
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
-    global _POLARITY
+    global _POLARITY, _SHELL_TEXTSAFE
     _POLARITY = _theme_polarity(theme)        # so blocks can pick theme-aware (not hardcoded-dark) defaults
+    _SHELL_TEXTSAFE = _theme_shell_textsafe(theme)   # full-bleed grounds prefer --shell unless it's dark-on-dark
     body, tl = [], []
     # Scene transitions (optional): if ANY scene carries a `transition_out`, wrap every scene in a
     # z-ordered wrapper (earlier scene ON TOP, so a departing scene's exit uncovers the next

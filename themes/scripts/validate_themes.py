@@ -26,6 +26,57 @@ REQUIRED = {"id", "name", "nameZh", "description", "mood", "bestFor", "preview",
 PREVIEW_KEYS = {"shell", "surface", "text", "accent"}
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
+# ── eyebrow legibility floor (finding #2) ────────────────────────────────────
+# The eyebrow is small tracked uppercase; a theme that points --eyebrow-color at an accent too close to
+# its own --shell renders a near-invisible kicker (vellum shipped a dusty teal at 2.2:1 on its navy field).
+# WCAG large-text AA is 3:1 — we require the eyebrow colour to clear it against the canvas. Only themes
+# that EXPLICITLY set --eyebrow-color are checked; the seed/block default (var(--text-2)) is always legible.
+EYEBROW_MIN_CONTRAST = 3.0
+
+
+def _tokens(css_text):
+    return {m.group(1): m.group(2).strip()
+            for m in re.finditer(r"--([\w-]+)\s*:\s*([^;]+);", css_text)}
+
+
+def _rgb(val, tokens, bg=None, depth=0):
+    """Resolve a CSS colour token to an (r,g,b) triple, following one+ var() levels and compositing
+    rgba() over `bg` (an (r,g,b) already-resolved background). Returns None if unparseable."""
+    val = (val or "").strip()
+    if depth > 6:
+        return None
+    m = re.match(r"var\(\s*--([\w-]+)\s*(?:,\s*(.+))?\)\s*$", val)
+    if m:
+        inner = tokens.get(m.group(1))
+        if inner is None and m.group(2) is not None:
+            inner = m.group(2).strip()
+        return _rgb(inner, tokens, bg, depth + 1) if inner is not None else None
+    m = re.match(r"#([0-9a-fA-F]{3})$", val)
+    if m:
+        return tuple(int(c * 2, 16) for c in m.group(1))
+    m = re.match(r"#([0-9a-fA-F]{6})$", val)
+    if m:
+        return tuple(int(m.group(1)[i:i + 2], 16) for i in (0, 2, 4))
+    m = re.match(r"rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\s*\)$", val)
+    if m:
+        r, g, b = (float(m.group(i)) for i in (1, 2, 3))
+        a = float(m.group(4)) if m.group(4) is not None else 1.0
+        if a < 1.0 and bg is not None:
+            r, g, b = (a * ch + (1 - a) * bg[i] for i, ch in enumerate((r, g, b)))
+        return (r, g, b)
+    return None
+
+
+def _contrast(a, b):
+    def lin(c):
+        c /= 255.0
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    def lum(t):
+        return 0.2126 * lin(t[0]) + 0.7152 * lin(t[1]) + 0.0722 * lin(t[2])
+    la, lb = lum(a), lum(b)
+    hi, lo = max(la, lb), min(la, lb)
+    return (hi + 0.05) / (lo + 0.05)
+
 try:
     ARCHETYPE_IDS = set(json.loads(ARCHETYPES.read_text(encoding="utf-8"))["archetypes"])
 except Exception:
@@ -79,6 +130,19 @@ def main():
                 err(tid, "composition.default must also be listed in composition.allowed")
         elif comp is not None:
             err(tid, "composition must be an object {default, allowed}")
+
+        # eyebrow legibility floor — an explicit --eyebrow-color must clear 3:1 against --shell
+        if css.exists():
+            toks = _tokens(css.read_text(encoding="utf-8"))
+            eb = toks.get("eyebrow-color")
+            if eb:
+                shell = _rgb(toks.get("shell", "#111"), toks)
+                col = _rgb(eb, toks, bg=shell)
+                if shell and col:
+                    ratio = _contrast(col, shell)
+                    if ratio < EYEBROW_MIN_CONTRAST:
+                        err(tid, f"--eyebrow-color {eb!r} is {ratio:.2f}:1 on --shell "
+                                 f"(need >= {EYEBROW_MIN_CONTRAST:.0f}:1 — kicker would be near-invisible)")
 
         if tid not in sel_themes:
             err(tid, "no selector.json entry"); continue

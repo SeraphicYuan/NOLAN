@@ -21,9 +21,11 @@
   --text-mute:    rgba(232, 216, 92, 0.55);
   --text-faint:   rgba(232, 216, 92, 0.35);
   --rule:         rgba(232, 216, 92, 0.20);
-  --accent:       #3A7878;             /* dusty teal — the annotation voice */
-  --accent-soft:  rgba(58, 120, 120, 0.18);
-  --accent-glow:  rgba(58, 120, 120, 0.32);
+  --accent:       #58A8A0;             /* teal — the annotation voice (lightened from #3A7878: the dusty
+                                          original was 2.2:1 on the navy field — illegible as an eyebrow/
+                                          %-glyph/node accent; #58A8A0 is 3.96:1, still unmistakably teal) */
+  --accent-soft:  rgba(88, 168, 160, 0.18);
+  --accent-glow:  rgba(88, 168, 160, 0.32);
   --accent-ink:   #E8D85C;
 
   /* ─── fonts (italic serif display, quiet sans body, mono pin-note) ─── */
