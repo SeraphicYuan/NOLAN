@@ -91,14 +91,33 @@ _TIMELINE = (
                           (62, "1991", "The web"), (87, "2007", "Mobile")])
     + '</div></section>')
 
+# The first six are ARCHETYPE specimens (canonical layout per archetype). The last three are BLOCK
+# specimens — real production blocks that exercise the type-role / component character the archetype seeds
+# don't: `stat` shows the LIVE stat block (hero-num + stat-label roles), `bullet-list` shows the
+# bullet-marker component (Layer 4), `chart` shows the bar shape (Layer 3). A `_arch` maps a block specimen
+# to its home archetype for the scene meta (the specimen KEY stays the label in the matrix).
 SEEDS = {
     "centered-hero":    {"type": "raw", "data": {"html": [_CENTERED_HERO], "tl": []}},
     "editorial-column": {"type": "statement",
-                         "data": {"kicker": "The claim", "lines": ["The models are", "getting cheaper", "and better"]}},
+                         "data": {"kicker": "The claim", "lines": ["The models are", "getting cheaper", "and better"],
+                                  "captionBar": "Source: model benchmarks 2021–2024"}},
     "framed":           {"type": "raw", "data": {"html": [_FRAMED], "tl": []}},
     "swiss-grid":       {"type": "raw", "data": {"html": [_SWISS_GRID], "tl": []}},
     "sidebar":          {"type": "raw", "data": {"html": [_SIDEBAR], "tl": []}},
     "timeline":         {"type": "raw", "data": {"html": [_TIMELINE], "tl": []}},
+    "stat":             {"type": "stat", "_arch": "centered-hero",
+                         "data": {"kicker": "By the numbers",
+                                  "items": [{"value": "73%", "label": "of teams shipped faster", "underline": True, "cue": 0.6},
+                                            {"value": "2.4x", "label": "median throughput gain", "cue": 1.0}]}},
+    "bullet-list":      {"type": "bullet_list", "_arch": "editorial-column",
+                         "data": {"kicker": "What changed", "title": "Three shifts that matter", "titleHi": "matter",
+                                  "items": ["Models got cheaper and better", "Context windows grew to millions",
+                                            "Agents can now use real tools"]}},
+    "chart":            {"type": "chart", "_arch": "framed",
+                         "data": {"kicker": "Adoption", "title": "Growth by year", "type": "bar", "suffix": "%",
+                                  "highlight": 3,
+                                  "series": [{"label": "'21", "value": 18}, {"label": "'22", "value": 34},
+                                             {"label": "'23", "value": 52}, {"label": "'24", "value": 73}]}},
 }
 
 THEMES = sorted(d.name for d in (REPO / "themes").iterdir()
@@ -131,15 +150,17 @@ def main():
             shutil.copyfile(cand, OUT / "gsap.min.js")
             break
     manifest = []
-    for arche, seed in SEEDS.items():
+    for label, seed in SEEDS.items():
+        arche = seed.get("_arch", label)                 # real archetype for the scene meta
+        body = {k: v for k, v in seed.items() if not k.startswith("_")}
         for theme in THEMES:
-            scene = {"id": "s1", "start": 0.0, "dur": DUR, "meta": {"archetype": arche}, **seed}
-            tpl = compose.compose_frame(arche, DUR, [scene], theme=theme)
-            (OUT / f"{arche}__{theme}.html").write_text(mount(tpl, theme_bg(theme)), encoding="utf-8")
-            manifest.append({"archetype": arche, "theme": theme,
-                             "html": f"{arche}__{theme}.html", "png": f"{arche}__{theme}.png"})
+            scene = {"id": "s1", "start": 0.0, "dur": DUR, "meta": {"archetype": arche}, **body}
+            tpl = compose.compose_frame(label, DUR, [scene], theme=theme)
+            (OUT / f"{label}__{theme}.html").write_text(mount(tpl, theme_bg(theme)), encoding="utf-8")
+            manifest.append({"archetype": label, "theme": theme,
+                             "html": f"{label}__{theme}.html", "png": f"{label}__{theme}.png"})
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
-    print(f"composed {len(manifest)} cells ({len(SEEDS)} archetypes × {len(THEMES)} themes) → {OUT}")
+    print(f"composed {len(manifest)} cells ({len(SEEDS)} specimens × {len(THEMES)} themes) → {OUT}")
 
 
 if __name__ == "__main__":
