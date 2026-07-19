@@ -28,7 +28,8 @@
                                           %-glyph/node accent; #58A8A0 is 3.96:1, still unmistakably teal) */
   --accent-soft:  color-mix(in srgb, var(--accent) 18%, transparent);
   --accent-glow:  color-mix(in srgb, var(--accent) 32%, transparent);
-  --accent-ink:   #E8D85C;
+  --accent-ink:   #22305F;             /* deep navy ink for text ON the teal accent (highlight / yes-chip);
+                                          the chartreuse #E8D85C text is only 1.9:1 on teal — unreadable */
 
   /* ─── fonts (italic serif display, quiet sans body, mono pin-note) ─── */
   --font-display-cn: "Noto Serif SC", "Source Han Serif SC", serif;
