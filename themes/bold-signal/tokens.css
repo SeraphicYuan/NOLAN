@@ -48,6 +48,7 @@
 
   /* ─── design identity: bold hero ─── */
   --r-card:        var(--r-md);
+  --bullet-marker: "■";  /* Layer-4 bullet component */
   --bw:          3px;        /* border-weight axis (Layer 3 shape scale) */     /* 12px chunky-but-soft */
   --r-stage:       0;
   --rule-w:        2px;

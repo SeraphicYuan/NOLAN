@@ -44,6 +44,7 @@
 
   /* ─── design identity: refined print ─── */
   --r-card:        var(--r-xs);
+  --bullet-marker: "—";  /* Layer-4 bullet component */
   --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */        /* 4px — barely-there refinement */
   --r-stage:       0;
   --rule-w:        1px;

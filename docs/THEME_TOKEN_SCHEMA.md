@@ -145,9 +145,11 @@ on inspection, not left vaguely pending): `card` + `image-card` + `bar` **wired*
 shape scale — sharp vs rounded bars, verified); `pill` **n/a** (a pill is definitionally fully-round — no
 theme radius axis); `timeline-dot` **n/a** (the production timeline is an intentionally cinematic dark
 variant; the themed timeline is the archetype seed); `counter` **n/a** (ordinal type comes from Layer-1 +
-the `background-ordinal` decoration); `bullet-marker` **pending** — genuinely blocked on a bullet/list block
-that doesn't exist (a new BLOCK feature, orthogonal to the token schema). The honesty test enforces that a
-non-`wired` component documents its reason. Layer 4's mechanism + flagship are complete.
+the `background-ordinal` decoration); `bullet-marker` **wired** — a new `bullet_list` block was built for it
+(a titled key-points list, registered in catalog.json + classified under editorial-column), and the marker
+glyph is `--bullet-marker` per theme: brutalist square ■, technical chevron ›, editorial/elegant em-dash —,
+default dot • (set on 19 themes, render-verified). The honesty test enforces that a non-`wired` component
+documents its reason. Layer 4 is complete.
 
 ---
 

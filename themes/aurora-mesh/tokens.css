@@ -52,7 +52,8 @@
   --scale-ratio:   1.28;
 
   /* ─── design identity: luminous AI-era ─── */
-  --r-card:        18px;             /* soft modern */
+  --r-card:        18px;
+  --bullet-marker: "›";  /* Layer-4 bullet component */             /* soft modern */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;

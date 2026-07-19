@@ -64,7 +64,8 @@
       "density": "normal",
       "blocks": [
         "statement",
-        "lower_third"
+        "lower_third",
+        "bullet_list"
       ],
       "exemplar": null,
       "zone": {

@@ -49,6 +49,7 @@
 
   /* ─── design identity: broadsheet ─── */
   --r-card:        var(--r-flat);
+  --bullet-marker: "—";  /* Layer-4 bullet component */
   --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */    /* SIGNATURE — newsprint has no radius */
   --r-stage:       0;
   --rule-w:        1px;

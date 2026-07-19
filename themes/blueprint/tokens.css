@@ -43,7 +43,8 @@
   --dur-cinematic:  1200ms;
 
   /* ─── design identity: drafting board ─── */
-  --r-card:        var(--r-flat);    /* SIGNATURE — engineering, not branding */
+  --r-card:        var(--r-flat);
+  --bullet-marker: "›";  /* Layer-4 bullet component */    /* SIGNATURE — engineering, not branding */
   --r-stage:       0;
   --rule-w:        2px;
   --rule-style:    dashed;            /* SIGNATURE — drafting line */

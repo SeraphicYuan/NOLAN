@@ -51,6 +51,7 @@
 
   /* ─── design identity: heavy geometry ─── */
   --r-card:        var(--r-flat);
+  --bullet-marker: "■";  /* Layer-4 bullet component */
   --bw:          3px;        /* border-weight axis (Layer 3 shape scale) */     /* SIGNATURE — pure rectangles */
   --r-stage:       0;
   --rule-w:        4px;                /* SIGNATURE — heavy lines */
