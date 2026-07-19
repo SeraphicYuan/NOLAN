@@ -12,7 +12,6 @@
  *     • motion         — slow + cinematic (1100ms reveals)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  center;
   --density:  0.9;
   --type-scale:  1.0;
   /* ─── palette ─── */

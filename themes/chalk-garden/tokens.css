@@ -12,7 +12,6 @@
  *     • motion         — soft, hand-drawn pace
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  center;
   --density:  1.0;
   --type-scale:  1.0;
   /* ─── palette ─── */

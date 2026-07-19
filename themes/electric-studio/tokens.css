@@ -15,7 +15,6 @@
  *     • motion         — punchy ease-out (corporate snap)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  center;
   --density:  1.1;
   --type-scale:  1.1;
   /* ─── palette ─── */

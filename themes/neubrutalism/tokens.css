@@ -23,7 +23,6 @@
  *     • motion         — bouncy / punchy (expressive overshoot)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  center;
   --density:  0.75;
   --type-scale:  1.4;
   /* ─── palette ─── */

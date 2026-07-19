@@ -14,7 +14,6 @@
  *     • motion         — slow + tactile (turning a real page)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  center;
   --density:  1.0;
   --type-scale:  0.9;
   /* ─── palette ─── */

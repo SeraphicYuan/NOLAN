@@ -15,7 +15,6 @@
  *     • motion         — quietest pace (sand barely moves)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  center;
   --density:  1.3;
   --type-scale:  0.7;     /* refined — modest type, whitespace */
   /* ─── palette ─── */

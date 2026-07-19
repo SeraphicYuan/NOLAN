@@ -12,7 +12,6 @@
  *     • motion         — snappy + linear (terminal not springy)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  flex-start;
   --density:  0.85;
   --type-scale:  1.0;
   /* ─── palette ─── */

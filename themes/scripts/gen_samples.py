@@ -25,7 +25,7 @@ DUR = 4.0
 # a block name = the real production block (shows exactly what the pipeline emits).
 _CENTERED_HERO = (
     '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;display:flex;'
-    'flex-direction:column;align-items:center;justify-content:var(--gravity,center);gap:calc(2.4cqh*var(--density,1));padding:calc(9cqh*var(--density,1)) 0;color:var(--text)">'
+    'flex-direction:column;align-items:center;justify-content:center;gap:calc(2.4cqh*var(--density,1));color:var(--text)">'
     '<div style="font:700 1.15cqw/1 var(--font-mono),ui-monospace;letter-spacing:.34em;'
     'text-transform:uppercase;color:var(--text-2)">By the numbers</div>'
     '<div style="font:800 calc(20cqw*var(--type-scale,1))/0.84 var(--font-display-en);letter-spacing:-0.02em">'
@@ -34,7 +34,7 @@ _CENTERED_HERO = (
 
 _FRAMED = (
     '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;display:flex;'
-    'align-items:center;justify-content:var(--gravity,center);padding:calc(6cqh*var(--density,1)) 0;color:var(--text)">'
+    'align-items:center;justify-content:center;color:var(--text)">'
     '<div style="width:50cqw;height:60cqh;border:2px solid var(--text);border-radius:var(--r-card,4px);'
     'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(2.2cqh*var(--density,1));'
     'background:var(--surface)">'
@@ -59,7 +59,7 @@ _SIDEBAR = (
     'color:var(--text)">'
     '<div style="width:22cqw;background:var(--accent);color:var(--surface);display:flex;'
     'align-items:center;justify-content:center;font:800 calc(13cqw*var(--type-scale,1))/1 var(--font-display-en)">01</div>'
-    '<div style="flex:1;display:flex;flex-direction:column;justify-content:var(--gravity,center);padding:0 calc(6cqw*var(--density,1));'
+    '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 calc(6cqw*var(--density,1));'
     'gap:calc(1.6cqh*var(--density,1))">'
     '<div style="font:700 0.95cqw/1 var(--font-mono),ui-monospace;letter-spacing:.32em;'
     'text-transform:uppercase;color:var(--text-2)">The first step</div>'
