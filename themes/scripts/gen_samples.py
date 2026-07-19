@@ -224,7 +224,9 @@ _VARIANT_BLOCKS = json.loads(
 # a variant-enabled block's base SEEDS specimen is labelled by its archetype, not its block name — map so
 # the variant specimens group under the SAME matrix cell as their cover (else stat matches but the
 # hyphenated 'bullet-list' / the 'editorial-column' statement specimen would split into a second cell).
-_BLOCK_TO_SPECIMEN = {"stat": "stat", "statement": "editorial-column", "bullet_list": "bullet-list"}
+_BLOCK_TO_SPECIMEN = {"stat": "stat", "statement": "editorial-column", "bullet_list": "bullet-list",
+                      "pull_quote": "pull-quote", "ledger": "ledger",
+                      "comparison_table": "comparison-table", "timeline": "timeline"}
 _STAT_ITEMS = [{"value": "73%", "label": "of teams shipped faster", "underline": True,
                 "delta": {"dir": "up", "value": "+12 pts"}},
                {"value": "2.4x", "label": "median throughput gain", "delta": {"dir": "down", "value": "-0.3x"}},
@@ -257,6 +259,17 @@ def _variant_content(block, v):
                 {"title": "Review", "desc": "Retention pass and a taste ledger", "meta": "06 · 2 min"}]
         n = 6 if v == "two-col" else 4
         return {"kicker": "Contents", "rows": rows[:n], "variant": v}
+    if block == "comparison_table":
+        return {"kicker": "How we compare",
+                "columns": [{"label": "Manual"}, {"label": "NOLAN", "highlight": True}, {"label": "Others"}],
+                "rows": [{"label": "Theme-aware", "cells": ["no", "yes", "partial"]},
+                         {"label": "Auto-render", "cells": ["partial", "yes", "no"]},
+                         {"label": "Editable", "cells": ["yes", "yes", "partial"]},
+                         {"label": "Cost", "cells": ["$$$$", "$", "$$$"]}], "variant": v}
+    if block == "timeline":
+        return {"title": "A short history", "variant": v,
+                "events": [{"year": "1969", "label": "First message"}, {"year": "1983", "label": "TCP / IP"},
+                           {"year": "1991", "label": "The web"}, {"year": "2007", "label": "Mobile"}]}
     return {"variant": v}
 
 
@@ -299,8 +312,14 @@ def main():
     # ── layout-variant specimens (P3): one render per (block, variant, theme) so the Samples tab can show
     # the FULL range of a block's arrangements, not just the auto-picked one. Grouped under the block's
     # `archetype` label with a `variant` field the UI reads for its click-through viewer. ──
+    # `timeline` variants (axis/dir) are real + authorable, but the block is a CINEMATIC camera-pan —
+    # its static end-state shows only the last event on a fixed dark ground, a poor thumbnail. Its raw
+    # archetype specimen (_TIMELINE, all events, theme-painted) is the sample; the axis variants aren't shot.
+    _NO_STATIC_SPECIMEN = {"timeline"}
     nv = 0
     for block, reg in _VARIANT_BLOCKS.items():
+        if block in _NO_STATIC_SPECIMEN:
+            continue
         label = _BLOCK_TO_SPECIMEN.get(block, block)     # group under the base specimen's matrix cell
         for v in reg.get("variants", {}):
             data = _variant_content(block, v)
