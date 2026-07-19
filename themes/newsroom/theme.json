@@ -49,6 +49,7 @@
     ]
   },
   "decoration": [
-    "grain"
+    "grain",
+    "background-ordinal"
   ]
 }

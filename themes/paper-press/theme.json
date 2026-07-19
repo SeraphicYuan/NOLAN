@@ -47,6 +47,10 @@
     ]
   },
   "decoration": [
-    "grain"
+    "grain",
+    {
+      "id": "rail-label",
+      "text": "Feature"
+    }
   ]
 }

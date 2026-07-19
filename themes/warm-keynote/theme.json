@@ -45,5 +45,8 @@
       "split-screen",
       "framed"
     ]
-  }
+  },
+  "decoration": [
+    "dot-grid"
+  ]
 }

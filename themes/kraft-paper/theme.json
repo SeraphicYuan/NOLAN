@@ -52,6 +52,10 @@
     {
       "id": "rail-label",
       "text": "Field Notes"
+    },
+    {
+      "id": "seal",
+      "text": "Handmade"
     }
   ]
 }
