@@ -193,9 +193,19 @@ Note: adding `sound` to `_umbrellas()` forces `UMBRELLA_WIRING` + `CATALOG_CONSU
   `audio_meta.sfx[]` (preserves `voices[]`, idempotent, loud on bank gaps).
   `assemble-index.mjs` mounts them on track 20+i. Verified end-to-end on
   the-openai-debate; honesty-tested in `tests/test_sound.py`.
-- **Phase 4 (next) — the pairing operator**: registry-aware auto-author pass that emits
-  `scene.data.sfx` from the spec (deterministic triggers first, LLM for taste),
-  human-reviewed. The executor + render path it targets are now in place.
+- **Phase 4 — DONE**: `nolan.hyperframes.sfx_design` auto-authors `scene.data.sfx`
+  from BOTH signals — the VISUAL spec (scene type / ground asset / reveal / numbers)
+  and the VERBAL transcript (`audio_meta.voices[].words[]` via `_phrase_time`), placing
+  each cue at its structural or **word-anchored** time (e.g. `cash` on the *spoken*
+  "$43 billion") under a per-family restraint budget. Deterministic backbone + an
+  optional `--llm` taste pass (prune to silence / dread detect); output is a PROPOSAL
+  (`--apply` writes the field, human reviews, `hf-finish` renders). Verified on
+  the-openai-debate (84 cues); honesty-tested. `design` is the `scene.data.sfx`
+  authoring surface in `UMBRELLA_WIRING['sound']`.
+
+Full chain (no underwiring): **sfx_design** (author) → `scene.data.sfx` (validated
+field) → **apply_scene_sfx** (resolve + stage + merge) → `audio_meta.sfx[]` →
+**assemble-index** (mount, track 20+i) → render. Every link exercised end-to-end.
 - **Phase 4 — the pairing operator**: registry-aware auto-author pass over the spec
   (deterministic-first, LLM only for taste calls), human-reviewed.
 

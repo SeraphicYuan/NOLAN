@@ -131,6 +131,32 @@ def test_apply_scene_sfx_end_to_end(tmp_path, monkeypatch):
     assert len(json.loads((tmp_path / "audio_meta.json").read_text(encoding="utf-8"))["sfx"]) == 1
 
 
+def test_sfx_design_reads_both_signals(tmp_path, monkeypatch):
+    """The pairing operator places from the VISUAL (spec) AND VERBAL (transcript)."""
+    from nolan.hyperframes import edit as _edit
+    from nolan.hyperframes import sfx_design as D
+    (tmp_path / "audio_meta.json").write_text(json.dumps({"voices": [
+        {"frame": 1, "words": [
+            {"text": "the", "start": 0.0, "end": 0.2}, {"text": "document", "start": 0.3, "end": 0.7},
+            {"text": "cost", "start": 3.0, "end": 3.2}, {"text": "$43", "start": 3.3, "end": 3.7},
+            {"text": "billion", "start": 3.7, "end": 4.1}]}]}), encoding="utf-8")
+    frame = {"frames": [{"id": "01-x", "scenes": [
+        {"id": "s1", "type": "document", "start": 0.0, "dur": 3.0, "data": {"cue": 0.4}},
+        {"id": "s2", "type": "statement", "start": 3.0, "dur": 2.0,
+         "data": {"operative": "billion"}}]}]}
+    monkeypatch.setattr(_edit, "_project_dir", lambda c: tmp_path)
+    monkeypatch.setattr(_edit, "list_frames", lambda c: [{"id": "01-x"}])
+    monkeypatch.setattr(_edit, "load_frame_spec", lambda c, f: (frame, {"i": 0}))
+
+    res = D.design("x")                                    # dry run
+    got = {(p["scene"], c["cue"]) for p in res["plan"] for c in p["cues"]}
+    assert ("s1", "whoosh") in got and ("s1", "paper") in got  # visual: doc→paper, frame-first→whoosh
+    assert ("s2", "cash") in got                               # verbal: spoken $ → cash
+    s2 = next(p for p in res["plan"] if p["scene"] == "s2")
+    cash = next(c for c in s2["cues"] if c["cue"] == "cash")
+    assert 0.0 <= cash["at"] <= 1.0                            # anchored to the spoken figure (~0.3s)
+
+
 def test_finish_dag_includes_scene_sfx_step():
     """The finish DAG actually calls the executor (not a dangling field)."""
     src = (REPO / "src/nolan/hyperframes/finish.py").read_text(encoding="utf-8")
