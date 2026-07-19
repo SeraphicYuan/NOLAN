@@ -50,6 +50,7 @@
     ]
   },
   "decoration": [
-    "scanlines"
+    "scanlines",
+    "corner-brackets"
   ]
 }

@@ -50,6 +50,7 @@
     ]
   },
   "decoration": [
-    "interior-frame"
+    "interior-frame",
+    "scanlines"
   ]
 }

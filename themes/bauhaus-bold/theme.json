@@ -45,5 +45,9 @@
       "split-screen",
       "framed"
     ]
-  }
+  },
+  "decoration": [
+    "corner-brackets",
+    "background-ordinal"
+  ]
 }

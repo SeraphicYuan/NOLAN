@@ -47,6 +47,7 @@
     ]
   },
   "decoration": [
-    "blob"
+    "blob",
+    "background-ordinal"
   ]
 }

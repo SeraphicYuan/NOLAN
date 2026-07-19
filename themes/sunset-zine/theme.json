@@ -48,6 +48,7 @@
     ]
   },
   "decoration": [
-    "ribbon"
+    "ribbon",
+    "background-ordinal"
   ]
 }

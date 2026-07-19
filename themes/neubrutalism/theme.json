@@ -49,6 +49,7 @@
     ]
   },
   "decoration": [
-    "interior-frame"
+    "interior-frame",
+    "background-ordinal"
   ]
 }
