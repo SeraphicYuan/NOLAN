@@ -66,7 +66,7 @@ renders, not just samples, and a big reason themes feel same-y.
 | B · free, not on GF (Fontshare) | Clash Display, Satoshi | vendor `@font-face` (woff2) |
 | C · CJK (critical — Chinese narration) | Noto Sans SC, Noto Serif SC (GF); Source Han Sans/Serif SC = Noto | load Noto SC/Serif SC; alias Source Han → Noto |
 | D · we DON'T have | GT Sectra (commercial), Recoleta (commercial), Bodoni 72 / SF Mono / SF Pro Display (Apple-only) | substitute a close GF family per theme (record the swap) |
-| E · system (OS-dependent) | Arial, Georgia, Times New Roman (OK on Windows); Helvetica, Helvetica Neue (Mac) | leave for system; Helvetica→Arial/Inter fallback |
+| E · system (OS-dependent) | Arial, Georgia, Times New Roman, Tahoma, MS Sans Serif, Segoe UI (OK on Windows — retro-windows uses this Win9x stack DELIBERATELY for the OS-chrome look); Helvetica, Helvetica Neue (Mac) | leave for system; Helvetica→Arial/Inter fallback |
 
 **Fix (structural pass):** replace the fixed `FONTS` with a per-theme font loader — derive families from
 the theme's `--font-*` (+ CJK Noto), emit a Google-Fonts `@import` for tier A/C, `@font-face` for vendored

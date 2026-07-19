@@ -1,0 +1,48 @@
+{
+  "id": "8-bit-orbit",
+  "typePersonality": "mono-technical",
+  "name": "8-Bit Orbit",
+  "nameZh": "8位轨道",
+  "description": "Pixel-arcade CRT — a dark-void starfield, neon-cyan primary, chunky Tektur display + Space Mono HUD labels, hard rectangular pixel shapes and a hard-offset pixel shadow. Retro-game energy.",
+  "descriptionZh": "像素街机 CRT——暗黑星空场、霓虹青主色、粗壮 Tektur 标题 + Space Mono 界面标签、硬边像素形状与硬投影。复古游戏能量。",
+  "mood": [
+    "dark",
+    "arcade",
+    "pixel",
+    "retro",
+    "neon",
+    "game"
+  ],
+  "bestFor": "Retro-game / arcade / playful-tech topics — 8-bit pixel energy, high-contrast neon-on-void.",
+  "preview": {
+    "shell": "#0A0E27",
+    "surface": "#0F1B3D",
+    "text": "#E2D5F2",
+    "accent": "#5EDCF4"
+  },
+  "composition": {
+    "default": "centered-hero",
+    "allowed": [
+      "centered-hero",
+      "editorial-column",
+      "framed",
+      "swiss-grid",
+      "sidebar",
+      "timeline",
+      "comparison-table",
+      "ledger"
+    ]
+  },
+  "decoration": [
+    "starfield",
+    "pixel-brackets",
+    "pixel-landscape"
+  ],
+  "fonts": {
+    "displayEn": "Tektur",
+    "body": "Chakra Petch",
+    "cjk": "Noto Sans SC",
+    "mono": "Space Mono"
+  },
+  "avoidFor": []
+}
