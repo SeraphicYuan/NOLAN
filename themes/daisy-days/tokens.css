@@ -1,0 +1,75 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · daisy-days   (PORT of the reference design.md)
+ *   Childlike kawaii storybook: a soft cream field, a candy pastel palette
+ *   (coral pop + turquoise + sky + butter), chunky ROUNDED Fredoka One
+ *   display + a friendly Quicksand body, big rounded cards + a soft shadow.
+ *   Decoration = pastel stickers (daisy / star / cloud) + organic blobs.
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --density:  1.0;
+  --type-scale:  1.0;
+  /* ─── palette (cream + candy pastels, coral pop) ─── */
+  --shell:        #F5F0E6;             /* soft cream */
+  --surface:      #ffffff;
+  --surface-2:    #A8D8F0;             /* sky pastel (sticker/cloud fill) */
+  --surface-3:    #ffffff;
+  --text:         #2D2D2D;
+  --text-2:       #6a6a6a;
+  --text-mute:    #7d7d7d;
+  --text-faint:   #a0a0a0;
+  --rule:         rgba(45, 45, 45, 0.16);
+  --accent:       #F8635F;             /* coral — the warm pop */
+  --accent-soft:  rgba(248, 99, 95, 0.12);
+  --accent-glow:  rgba(248, 99, 95, 0.24);
+  --accent-ink:   #ffffff;
+  --positive:     #7ECDC0;             /* turquoise */
+  --negative:     #F8635F;
+
+  /* ─── fonts (chunky rounded display + friendly humanist body) ─── */
+  --font-display-cn: "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  --font-display-en: "Fredoka One", "Nunito", system-ui, sans-serif;
+  --font-body:       "Quicksand", "Nunito", "Noto Sans SC", sans-serif;
+  --font-mono:       "Space Mono", ui-monospace, monospace;
+  --font-features:   "kern";
+
+  /* ─── type roles — single-weight rounded display, friendly labels ─── */
+  --hero-num-font:    var(--font-display-en);
+  --hero-num-style:   normal;
+  --hero-num-weight:  400;
+  --hero-num-track:   -0.005em;
+  --display-style:    normal;
+  --display-weight:   400;
+  --eyebrow-font:     var(--font-body);           /* Quicksand rounded label */
+  --eyebrow-weight:   700;
+  --eyebrow-size:     0.9cqw;
+  --eyebrow-tracking: .14em;
+  --eyebrow-transform: uppercase;
+  --eyebrow-color:    #C9403A;                    /* a darker coral — the raw #F8635F pop is 2.7:1 on cream (illegible eyebrow) */
+  --stat-label-font:  var(--font-body);
+  --stat-label-weight: 600;
+  --stat-label-size:  0.85cqw;
+  --stat-label-tracking: .08em;
+  --stat-label-transform: uppercase;
+  --caption-font:     var(--font-body);
+  --caption-weight:   600;
+  --caption-size:     0.9cqw;
+  --caption-tracking: .06em;
+  --caption-transform: uppercase;
+
+  /* ─── motion (bouncy) ─── */
+  --dur-base:  360ms;
+  --dur-slow:  640ms;
+  --dur-cinematic:  950ms;
+
+  /* ─── shape — big rounded cards, soft candy shadow ─── */
+  --r-card:        20px;
+  --bw:            2px;
+  --r-stage:       0;
+  --rule-w:        1.5px;
+  --rule-style:    solid;
+  --stage-pad-x:   100px;
+  --stage-pad-y:   84px;
+  --card-shadow:   0 0.8cqw 2.4cqw rgba(45, 45, 45, 0.12);
+
+  /* decoration via theme.json (stickers + blob) */
+}

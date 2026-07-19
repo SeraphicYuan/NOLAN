@@ -941,6 +941,21 @@
         "product",
         "workshop"
       ]
+    },
+    "daisy-days": {
+      "tone": "light",
+      "keywords": [
+        "daisy",
+        "kawaii",
+        "playful",
+        "kids",
+        "education",
+        "friendly",
+        "pastel",
+        "storybook",
+        "cute",
+        "fun"
+      ]
     }
   }
 }
