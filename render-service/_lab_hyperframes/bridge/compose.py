@@ -237,12 +237,12 @@ CSS = """
 /* carousel: a temporal image sequence — full-bleed slider (crossfade/kenburns) OR 3D coverflow */
 .carworld{position:absolute;inset:0;}
 .carslide{position:absolute;inset:0;opacity:0;overflow:hidden;will-change:opacity;}
-.carslide.sized{inset:auto;transform-origin:center;border-radius:16px;background:var(--shell);box-shadow:0 30px 90px rgba(0,0,0,0.6);}
+.carslide.sized{inset:auto;transform-origin:center;border-radius:var(--r-card,16px);background:var(--shell);box-shadow:0 30px 90px rgba(0,0,0,0.6);}
 .carslide img{width:100%;height:100%;object-fit:cover;display:block;will-change:transform;}
 .caredge{position:absolute;inset:0;pointer-events:none;z-index:5;}
 .carstage{position:absolute;inset:0;perspective:1600px;}
 .car3d{position:absolute;inset:0;transform-style:preserve-3d;}
-.carcard{position:absolute;left:50%;top:50%;overflow:hidden;border-radius:10px;background:var(--shell);
+.carcard{position:absolute;left:50%;top:50%;overflow:hidden;border-radius:var(--r-card,10px);background:var(--shell);
   box-shadow:0 30px 90px rgba(0,0,0,0.62);backface-visibility:hidden;will-change:transform,opacity;}
 .carcard img{width:100%;height:100%;object-fit:cover;display:block;}
 .carcap{position:absolute;left:0;width:100%;bottom:19cqh;text-align:center;font-family:"Lora",serif;z-index:7;
@@ -315,7 +315,7 @@ CSS = """
 .lt-name{font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;line-height:1.02;color:var(--text);}
 .lt-role{font-family:var(--font-body);font-weight:600;font-size:0.95cqw;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-2);margin-top:0.55cqw;opacity:0;}
 .lt-kicker{font-family:var(--font-body);font-weight:700;font-size:0.78cqw;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:0.45cqw;}
-.lt-bar{display:inline-flex;align-items:stretch;gap:1cqw;background:var(--surface);border-radius:10px;padding:1cqw 1.5cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.32);}
+.lt-bar{display:inline-flex;align-items:stretch;gap:1cqw;background:var(--surface);border-radius:var(--r-card,10px);padding:1cqw 1.5cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.32);}
 .lt-tab{width:0.45cqw;background:var(--accent);border-radius:3px;}
 .lt-txt{display:flex;flex-direction:column;justify-content:center;}
 .lt-card{display:inline-block;background:var(--surface);border-radius:var(--r-card,12px);padding:1.2cqw 1.8cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.34);}

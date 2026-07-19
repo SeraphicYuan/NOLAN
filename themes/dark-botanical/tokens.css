@@ -43,7 +43,8 @@
   --dur-cinematic:  1700ms;
 
   /* ─── design identity: elegant editorial ─── */
-  --r-card:        var(--r-sm);     /* refined paper-lift, not flat */
+  --r-card:        var(--r-sm);
+  --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */     /* refined paper-lift, not flat */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;

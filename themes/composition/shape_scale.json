@@ -1,0 +1,14 @@
+{
+  "_doc": "Shape scale (theme schema v2, Layer 3). The canonical NAMED steps for a theme's shape character — corner radius + border weight. These are the reference values; the MECHANISM is that card-family block CSS reads `var(--r-card, <default>)` (corner) and `var(--bw, <default>)` (border weight), so a theme picks its step by setting --r-card / --bw and every card, framed panel, carousel + listicle follows. --density (Layer 1/2) stays the spacing MULTIPLIER on top. A theme that sets neither falls back to the block defaults (2px border, per-block radius) — backward-compatible. Honesty-tested by tests/test_shape_scale.py (the ladder steps are real + the tokens are consumed).",
+  "radius": {
+    "_var": "--r-card",
+    "_desc": "corner radius — a real theme axis from brutalist-sharp to pill",
+    "steps": {"none": "0", "xs": "4px", "sm": "10px", "md": "14px", "lg": "24px", "pill": "999px", "round": "50%"}
+  },
+  "border-weight": {
+    "_var": "--bw",
+    "_desc": "primary border weight — hairline gallery to heavy brutalist",
+    "default": "2px",
+    "steps": {"hair": "1px", "thin": "1.5px", "base": "2px", "bold": "3px", "heavy": "4px"}
+  }
+}

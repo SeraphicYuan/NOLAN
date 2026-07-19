@@ -43,7 +43,8 @@
   --dur-cinematic:  1700ms;
 
   /* ─── design identity: refined print ─── */
-  --r-card:        var(--r-xs);        /* 4px — barely-there refinement */
+  --r-card:        var(--r-xs);
+  --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */        /* 4px — barely-there refinement */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;

@@ -68,6 +68,7 @@
 
   /* ─── shape + spacing (soft, generous — gallery) ─── */
   --r-card:        2px;
+  --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;

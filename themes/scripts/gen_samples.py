@@ -38,7 +38,7 @@ _CENTERED_HERO = (
 _FRAMED = (
     '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;display:flex;'
     'align-items:center;justify-content:center;color:var(--text)">'
-    '<div style="width:50cqw;height:60cqh;border:2px solid var(--text);border-radius:var(--r-card,4px);'
+    '<div style="width:50cqw;height:60cqh;border:var(--bw,2px) solid var(--text);border-radius:var(--r-card,4px);'
     'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(2.2cqh*var(--density,1));'
     'background:var(--surface)">'
     '<div style="font:700 0.95cqw/1 var(--font-mono),ui-monospace;letter-spacing:.32em;'

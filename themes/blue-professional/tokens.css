@@ -67,6 +67,7 @@
 
   /* ─── shape + spacing (radii ladder + stage pad) ─── */
   --r-card:        14px;
+  --bw:          1.5px;        /* border-weight axis (Layer 3 shape scale) */
   --r-stage:       0;
   --rule-w:        1.5px;
   --rule-style:    solid;

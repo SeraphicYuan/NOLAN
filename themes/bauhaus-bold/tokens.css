@@ -50,7 +50,8 @@
   --dur-cinematic: 1000ms;
 
   /* ─── design identity: heavy geometry ─── */
-  --r-card:        var(--r-flat);     /* SIGNATURE — pure rectangles */
+  --r-card:        var(--r-flat);
+  --bw:          3px;        /* border-weight axis (Layer 3 shape scale) */     /* SIGNATURE — pure rectangles */
   --r-stage:       0;
   --rule-w:        4px;                /* SIGNATURE — heavy lines */
   --rule-style:    solid;
