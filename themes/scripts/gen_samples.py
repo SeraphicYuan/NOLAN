@@ -245,6 +245,18 @@ def _variant_content(block, v):
         n = 5 if v == "two-col" else (4 if v == "numbered-rail" else 3)
         return {"kicker": "What changed", "title": "Three shifts that matter", "titleHi": "matter",
                 "items": list(_BULLET_ITEMS[:n]), "variant": v}
+    if block == "pull_quote":
+        return {"kicker": "In their words", "hi": "invent it", "cite": "Alan Kay, 1971",
+                "quote": "The best way to predict the future is to invent it.", "variant": v}
+    if block == "ledger":
+        rows = [{"title": "Ingest", "desc": "Source → beats, split by narration", "meta": "01 · 2 min"},
+                {"title": "Author", "desc": "Scene plan against a chosen theme", "meta": "02 · 4 min"},
+                {"title": "Acquire", "desc": "Assets per beat: library + stock + gen", "meta": "03 · 6 min"},
+                {"title": "Render", "desc": "Compose frames, assemble to final", "meta": "04 · 8 min"},
+                {"title": "Publish", "desc": "Captions, chapters, and the article", "meta": "05 · 3 min"},
+                {"title": "Review", "desc": "Retention pass and a taste ledger", "meta": "06 · 2 min"}]
+        n = 6 if v == "two-col" else 4
+        return {"kicker": "Contents", "rows": rows[:n], "variant": v}
     return {"variant": v}
 
 

@@ -145,6 +145,24 @@ CSS = """
   letter-spacing:.14em;text-transform:uppercase;color:var(--text-2);opacity:0;}
 .footage .pq-body{color:#F6F7F6;text-shadow:0 2px 14px rgba(0,0,0,0.5);}
 .footage .pq-cite{color:#E4E5E4;}
+/* pull_quote layout variants (P3) — base .pq-wrap is vertically centred + left-aligned. */
+.blk-pull_quote.sv-centered .pq-wrap{align-items:center;text-align:center;}
+.blk-pull_quote.sv-centered .pq-body{max-width:66cqw;}
+.blk-pull_quote.sv-editorial .pq-wrap{align-items:flex-start;text-align:left;padding:0 8cqw 0 6cqw;}
+.blk-pull_quote.sv-editorial .pq-mark{align-self:flex-start;}
+.blk-pull_quote.sv-side-mark .pq-wrap{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2cqw;padding:0 8cqw;text-align:left;}
+.blk-pull_quote.sv-side-mark .pq-mark{font-size:34cqw;line-height:0.6;height:auto;grid-row:1;}
+.blk-pull_quote.sv-side-mark .pq-body,.blk-pull_quote.sv-side-mark .pq-cite{grid-column:2;}
+.blk-pull_quote.sv-framed .pq-wrap{inset:12cqh 12cqw;border:var(--bw,2px) solid var(--rule);border-radius:var(--r-card,4px);box-shadow:var(--card-shadow,none);background:var(--surface);padding:0 6cqw;}
+/* ledger layout variants (P3) — base .lg-wrap == rows. */
+.blk-ledger.sv-two-col .lg-wrap{display:grid;grid-template-columns:1fr 1fr;column-gap:5cqw;align-content:center;}
+.blk-ledger.sv-two-col .lg-row.first{border-top:none;}
+.blk-ledger.sv-centered .kick{left:0;right:0;top:12cqh;text-align:center;}
+.blk-ledger.sv-centered .kick::after{margin-left:auto;margin-right:auto;}
+.blk-ledger.sv-centered .lg-wrap{left:18cqw;right:18cqw;}
+.blk-ledger.sv-boxed .lg-wrap{gap:1.4cqh;}
+.blk-ledger.sv-boxed .lg-row{background:var(--surface);border-bottom:none;border-radius:var(--r-card,4px);padding:1.6cqh 2cqw;}
+.blk-ledger.sv-boxed .lg-row.first{border-top:none;}
 /* comparison_table: a real header-row x row-label x cell MATRIX with state chips + a highlighted "ours"
    column — the `comparison` block is a 2-panel split, not a data table. Universal + theme-painted. */
 .ct-wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 calc(6cqw*var(--density,1));color:var(--text);}
@@ -1016,7 +1034,8 @@ def pull_quote(sid, sc):
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
     g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
-    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    variant = sc.get("_variant") or "centered"       # P3 layout variant
+    frag = [f'<section class="scene clip {reg} blk-pull_quote sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     if d.get("kicker"):
         frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
@@ -1082,7 +1101,8 @@ def ledger_list(sid, sc):
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
     g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
-    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    variant = sc.get("_variant") or "rows"           # P3 layout variant
+    frag = [f'<section class="scene clip {reg} blk-ledger sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     if d.get("kicker"):
         frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
