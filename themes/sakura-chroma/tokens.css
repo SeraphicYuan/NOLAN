@@ -1,0 +1,76 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · sakura-chroma   (PORT of the reference design.md)
+ *   Vintage-Japanese product catalogue: a warm cream-paper field, brown
+ *   ink, and a saturated red primary drawn from a 6-hue catalogue palette.
+ *   Big Shoulders Display (tall condensed, negative tracking) carries every
+ *   headline + numeral; Albert Sans is the humanist body. Decoration =
+ *   ribbon bands + a petal cluster + a rosette seal. Matsumoto-workshop.
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --density:  1.0;
+  --type-scale:  1.0;
+  /* ─── palette (cream paper + brown ink + saturated catalogue red) ─── */
+  --shell:        #F1E6CB;             /* paper cream */
+  --surface:      #E5D6B0;             /* paper-dark panel */
+  --surface-2:    #ddcfa5;
+  --surface-3:    #fffdf5;
+  --text:         #3A2516;             /* brown ink */
+  --text-2:       #7a6144;
+  --text-mute:    #8a7050;
+  --text-faint:   #a48f6c;
+  --rule:         rgba(58, 37, 22, 0.28);
+  --accent:       #E5392A;             /* catalogue red — the primary */
+  --accent-soft:  rgba(229, 57, 42, 0.10);
+  --accent-glow:  rgba(229, 57, 42, 0.22);
+  --accent-ink:   #F1E6CB;
+  --positive:     #3D9F47;             /* green */
+  --negative:     #E5392A;
+
+  /* ─── fonts (condensed industrial display + humanist body + JP accent) ─── */
+  --font-display-cn: "Noto Sans JP", "Noto Sans SC", sans-serif;
+  --font-display-en: "Big Shoulders Display", "Oswald", "Arial Narrow", sans-serif;
+  --font-body:       "Albert Sans", "Inter", "Noto Sans SC", sans-serif;
+  --font-mono:       "Space Mono", ui-monospace, monospace;
+  --font-features:   "kern";
+
+  /* ─── type roles — tall condensed display, tracked-caps humanist labels ─── */
+  --hero-num-font:    var(--font-display-en);
+  --hero-num-style:   normal;
+  --hero-num-weight:  900;
+  --hero-num-track:   -0.02em;
+  --display-style:    normal;
+  --display-weight:   800;
+  --eyebrow-font:     var(--font-body);           /* Albert Sans tracked-caps micro-label */
+  --eyebrow-weight:   700;
+  --eyebrow-size:     0.9cqw;
+  --eyebrow-tracking: .2em;
+  --eyebrow-transform: uppercase;
+  --eyebrow-color:    var(--accent);
+  --stat-label-font:  var(--font-body);
+  --stat-label-weight: 700;
+  --stat-label-size:  0.82cqw;
+  --stat-label-tracking: .14em;
+  --stat-label-transform: uppercase;
+  --caption-font:     var(--font-body);
+  --caption-weight:   600;
+  --caption-size:     0.85cqw;
+  --caption-tracking: .1em;
+  --caption-transform: uppercase;
+
+  /* ─── motion ─── */
+  --dur-base:  340ms;
+  --dur-slow:  600ms;
+  --dur-cinematic:  900ms;
+
+  /* ─── shape — catalogue cards, a soft ink offset ─── */
+  --r-card:        4px;
+  --bw:            2px;
+  --r-stage:       0;
+  --rule-w:        1.5px;
+  --rule-style:    solid;
+  --stage-pad-x:   100px;
+  --stage-pad-y:   80px;
+  --card-shadow:   4px 4px 0 rgba(58, 37, 22, 0.22);
+
+  /* decoration via theme.json (ribbon + petal-cluster + rosette-seal) */
+}

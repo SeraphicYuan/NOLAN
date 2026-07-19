@@ -134,6 +134,11 @@
       "group": "G8-figurative", "kind": "signature", "scope": "frame",
       "purpose": "a tiny blocky pixel mascot (square face, eyes + mouth) upper-right — 8-bit character (8-bit-orbit).",
       "token": "--accent"
+    },
+    "petal-cluster": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "a soft cluster of cherry-blossom petals in a corner — vintage-Japanese (sakura-chroma).",
+      "token": "--accent"
     }
   }
 }
