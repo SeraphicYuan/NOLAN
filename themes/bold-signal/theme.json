@@ -49,7 +49,10 @@
     ]
   },
   "decoration": [
-    "interior-frame",
-    "background-ordinal"
+    "pillar-panels",
+    {
+      "id": "letterpress",
+      "text": "BOLD"
+    }
   ]
 }

@@ -50,8 +50,8 @@
   "decoration": [
     "grain",
     {
-      "id": "rail-label",
-      "text": "Feature"
+      "id": "drop-cap",
+      "text": "F"
     }
   ]
 }

@@ -37,22 +37,29 @@ themes whose mapped templates are deliberately clean stay bare.
 | vintage-editorial | emerald-editorial, retro-zine, cartesian | stamp + numeral → `grain`, `seal`, `background-ordinal` |
 | warm-keynote | blue-professional, soft-editorial | keynote dots → `dot-grid` |
 
-## New-device backlog (mapped templates that want devices we DON'T have yet)
+## New devices — ✅ BUILT + ASSIGNED 2026-07-19
 
-The mapping surfaced decorative elements our 12-device set can't yet express — the priority list for a
-future lever-#3 device expansion (each ties to specific themes):
-- **compass-rings** (cartesian → blueprint, indigo-porcelain) — concentric + dashed drafting arcs
-- **letterpress-shadow** / **pillar-panels** (bold-poster → bold-signal, bauhaus) — stacked 3D text shadow
-- **scribbles / doodles** (playful, pin-and-paper → chalk-garden) — hand-drawn SVG squiggles/stars
-- **tape / thumbtack** (retro-zine, scatterbrain → sunset-zine, kraft-paper) — collage furniture
-- **starfield** / **pixel-brackets** (8-bit-orbit → neon-cyber) — pixel-native marks
-- **OS-chrome** (retro-windows → terminal-green) — title bar / bevel panels
-- **rosette-seal** / **petal-cluster** (sakura-chroma → kraft-paper) — ornate stamp / floral mass
-- **double-rule ornament** (emerald-editorial → vintage-editorial) — a word bracketed by two rules
-- **drop-cap** (retro-zine, soft-editorial → sunset-zine, paper-press) — an oversized initial
-- **diagonal hatch** (coral → split-canvas) — 45° line texture on color panels
+The 12-device set grew to 24: the backlog devices are now renderers in `_DECOR_RENDERERS` + registry
+entries in `decorations.json`, and each is assigned to its signature theme(s) — swapping an APPROXIMATE
+device for the exact one (kept ≤3 per theme, per the clutter rule). Render-verified.
 
-These are the theme-scoped identity devices (per the schema); most map to 1–3 specific themes.
+| Device | Renderer | Assigned to (swapped from) |
+|---|---|---|
+| `compass-rings` | concentric + dashed drafting arcs | blueprint (←corner-brackets), indigo-porcelain (←rail-label) |
+| `pillar-panels` | vertical accent side-panels + hairlines | bold-signal (←interior-frame), bauhaus-bold (←corner-brackets) |
+| `letterpress` | giant faint word + stacked 3D shadow (param: text) | bold-signal ("BOLD") |
+| `scribbles` | hand-drawn squiggles + a star (SVG) | chalk-garden (←blob) |
+| `tape` | semi-transparent collage tape strips | sunset-zine (←ordinal), kraft-paper (←rail-label) |
+| `starfield` | deterministic scattered pixel stars | neon-cyber (←scanlines) |
+| `os-chrome` | window title-bar + traffic-light dots (param: text) | terminal-green (←corner-brackets) |
+| `rosette-seal` | ornate concentric stamp (param: text) | kraft-paper (←seal) |
+| `double-rule` | top+bottom hairline pair bracketing content | vintage-editorial (←seal/ordinal) |
+| `hatch` | 45° diagonal line texture | split-canvas (←blob) |
+| `pixel-brackets` | blocky stepped corner brackets | neon-cyber (←corner-brackets) |
+| `drop-cap` | oversized decorative initial (param: text) | paper-press ("F", ←rail-label) |
+
+The mapping table above still lists the ORIGINAL approximate device names; the 12 themes here now carry the
+exact devices. Not built (a text/type mechanism, not a canvas overlay): `petal-cluster` — deferred.
 
 ## RESOLVED 2026-07-19 — the other layers now exist and COMPOSE with decoration
 

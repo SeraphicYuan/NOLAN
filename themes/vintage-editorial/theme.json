@@ -51,10 +51,6 @@
   },
   "decoration": [
     "grain",
-    {
-      "id": "seal",
-      "text": "Since 2011"
-    },
-    "background-ordinal"
+    "double-rule"
   ]
 }

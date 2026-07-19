@@ -2751,12 +2751,117 @@ def _decor_seal(p):
             f'text-transform:uppercase;color:var(--accent);text-align:center;max-width:9cqw">{txt}</span></div>')
 
 
+# ── new-device backlog (THEME_DECORATION_MAP.md) — exact devices the mapping wanted ────────────────
+def _decor_compass_rings(p):
+    """Concentric + dashed drafting arcs in a corner — cartesian/blueprint drafting furniture."""
+    c = 'position:absolute;border-radius:50%;border:0.14cqw dashed var(--rule,rgba(120,120,120,0.5));'
+    ln = 'position:absolute;background:var(--rule,rgba(120,120,120,0.5));opacity:0.4;'
+    return (f'<div style="{c}width:40cqw;height:40cqw;left:-12cqw;bottom:-16cqh;opacity:0.55"></div>'
+            f'<div style="{c}width:27cqw;height:27cqw;left:-5.5cqw;bottom:-9.5cqh;opacity:0.45"></div>'
+            f'<div style="{c}width:15cqw;height:15cqw;left:0.5cqw;bottom:-3.5cqh;opacity:0.4"></div>'
+            f'<div style="{ln}left:2.5cqw;bottom:4cqh;width:11cqw;height:0.1cqw"></div>'
+            f'<div style="{ln}left:8cqw;bottom:-1.5cqh;width:0.1cqw;height:11cqw"></div>')
+
+def _decor_pillar_panels(p):
+    """Vertical accent side-panels + hairlines — bauhaus/bold-poster architecture."""
+    b = 'position:absolute;top:0;bottom:0;width:6cqw;background:var(--accent);opacity:0.10;'
+    r = 'position:absolute;top:0;bottom:0;width:0.28cqw;background:var(--accent);opacity:0.45;'
+    return (f'<div style="{b}left:0"></div><div style="{b}right:0"></div>'
+            f'<div style="{r}left:6cqw"></div><div style="{r}right:6cqw"></div>')
+
+def _decor_letterpress(p):
+    """A giant faint background word with a stacked 3D offset shadow (letterpress/poster)."""
+    txt = esc(str(p.get("text", "BOLD")))
+    shadow = ",".join(f'{0.16*i:.2f}cqw {0.16*i:.2f}cqw 0 var(--accent)' for i in range(1, 6))
+    return (f'<div style="position:absolute;left:3cqw;bottom:-3cqh;font:900 25cqw/0.85 var(--font-display-en);'
+            f'color:var(--shell);text-shadow:{shadow};opacity:0.17;letter-spacing:-0.04em;white-space:nowrap">{txt}</div>')
+
+def _decor_scribbles(p):
+    """Hand-drawn squiggles + a star (SVG strokes) — playful/classroom."""
+    sq = ('<svg viewBox="0 0 44 12" style="position:absolute;{pos}width:12cqw;height:3.3cqw;opacity:0.6">'
+          '<path d="M2 6 q4 -6 8 0 t8 0 t8 0 t8 0" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/></svg>')
+    star = ('<svg viewBox="0 0 24 24" style="position:absolute;{pos}width:3.2cqw;height:3.2cqw;opacity:0.75">'
+            '<path d="M12 2 l2.4 6.5 6.9 .4 -5.3 4.5 1.8 6.7 -5.8 -3.8 -5.8 3.8 1.8 -6.7 -5.3 -4.5 6.9 -.4z" fill="var(--accent)"/></svg>')
+    return (sq.format(pos='left:4cqw;top:8cqh;') + sq.format(pos='right:5cqw;bottom:9cqh;')
+            + star.format(pos='right:7cqw;top:11cqh;'))
+
+def _decor_tape(p):
+    """Semi-transparent collage tape strips at two corners — zine/kraft scrapbook."""
+    t = 'position:absolute;width:14cqw;height:3.2cqw;background:var(--accent);opacity:0.20;'
+    return (f'<div style="{t}top:-0.8cqh;left:6cqw;transform:rotate(-8deg)"></div>'
+            f'<div style="{t}bottom:-0.8cqh;right:7cqw;transform:rotate(6deg)"></div>')
+
+def _decor_starfield(p):
+    """Deterministic scattered pixel stars (small squares) — 8-bit/cyber field."""
+    pts = [(8, 14, .5), (22, 40, .3), (15, 70, .4), (34, 22, .6), (48, 58, .3), (61, 12, .5),
+           (72, 44, .35), (83, 30, .55), (90, 66, .3), (55, 80, .45), (40, 88, .35), (67, 74, .5),
+           (27, 9, .4), (88, 9, .55), (12, 46, .3)]
+    d = 'position:absolute;width:0.5cqw;height:0.5cqw;background:var(--accent);'
+    return "".join(f'<div style="{d}left:{x}%;top:{y}%;opacity:{o}"></div>' for x, y, o in pts)
+
+def _decor_os_chrome(p):
+    """A retro window title-bar with traffic-light dots — OS/terminal chrome."""
+    txt = esc(str(p.get("text", "README.TXT")))
+    dots = "".join('<div style="width:0.9cqw;height:0.9cqw;border-radius:50%;background:var(--accent);opacity:0.7"></div>'
+                   for _ in range(3))
+    return ('<div style="position:absolute;top:0;left:0;right:0;height:3.4cqh;background:var(--surface-2);'
+            'border-bottom:0.14cqw solid var(--rule,rgba(120,120,120,0.5));display:flex;align-items:center;'
+            f'gap:0.7cqw;padding:0 1.4cqw;opacity:0.92">{dots}'
+            f'<span style="margin-left:0.7cqw;font:700 0.82cqw/1 var(--font-mono),ui-monospace,monospace;'
+            f'letter-spacing:.12em;color:var(--text-2)">{txt}</span></div>')
+
+def _decor_rosette_seal(p):
+    """An ornate concentric stamp (solid + dashed + inner rings) — kraft/sakura seal."""
+    txt = esc(str(p.get("text", "")))
+    ring = 'position:absolute;border-radius:50%;'
+    inner = (f'<span style="font:700 0.9cqw/1.1 var(--font-mono),ui-monospace,monospace;letter-spacing:.1em;'
+             f'text-transform:uppercase;color:var(--accent);text-align:center;max-width:7.5cqw">{txt}</span>') if txt else ""
+    return ('<div style="position:absolute;top:6cqh;right:5cqw;width:11cqw;height:11cqw;display:flex;'
+            'align-items:center;justify-content:center;transform:rotate(-8deg);opacity:0.7">'
+            f'<div style="{ring}inset:0;border:0.3cqw solid var(--accent)"></div>'
+            f'<div style="{ring}inset:1cqw;border:0.14cqw dashed var(--accent)"></div>'
+            f'<div style="{ring}inset:2cqw;border:0.14cqw solid var(--accent)"></div>{inner}</div>')
+
+def _decor_double_rule(p):
+    """A top + bottom pair of hairlines (a word bracketed by two rules) — editorial ornament."""
+    r = 'position:absolute;left:8cqw;right:8cqw;height:0.14cqw;background:var(--text);opacity:0.5;'
+    return (f'<div style="{r}top:6.5cqh"></div><div style="{r}top:7.7cqh"></div>'
+            f'<div style="{r}bottom:6.5cqh"></div><div style="{r}bottom:7.7cqh"></div>')
+
+def _decor_hatch(p):
+    """45deg diagonal line texture — coral/split-canvas panel fill."""
+    return ('<div style="position:absolute;inset:0;background:repeating-linear-gradient(45deg,'
+            'var(--accent) 0,var(--accent) 0.4cqw,transparent 0.4cqw,transparent 2.4cqw);opacity:0.10"></div>')
+
+def _decor_pixel_brackets(p):
+    """Blocky stepped corner brackets (filled L's) — pixel-native marks."""
+    px = 'position:absolute;background:var(--accent);opacity:0.85;'
+    parts = []
+    for vy, vx in (("top:3cqw", "left:3cqw"), ("top:3cqw", "right:3cqw"),
+                   ("bottom:3cqw", "left:3cqw"), ("bottom:3cqw", "right:3cqw")):
+        parts.append(f'<div style="{px}width:4cqw;height:1.1cqw;{vy};{vx}"></div>')
+        parts.append(f'<div style="{px}width:1.1cqw;height:4cqw;{vy};{vx}"></div>')
+    return "".join(parts)
+
+def _decor_drop_cap(p):
+    """An oversized decorative initial in the upper-left — zine/soft-editorial."""
+    txt = esc(str(p.get("text", "A"))[:1])
+    return (f'<div style="position:absolute;left:4cqw;top:7cqh;font:900 22cqw/0.78 var(--font-display-en);'
+            f'font-style:var(--display-style,normal);color:var(--accent);opacity:0.16">{txt}</div>')
+
+
 _DECOR_RENDERERS = {
     "graph-paper": _decor_graph_paper, "dot-grid": _decor_dot_grid, "scanlines": _decor_scanlines,
     "grain": _decor_grain, "corner-brackets": _decor_corner_brackets,
     "interior-frame": _decor_interior_frame, "rail-label": _decor_rail_label,
     "background-ordinal": _decor_background_ordinal, "blob": _decor_blob, "ribbon": _decor_ribbon,
     "glow": _decor_glow, "seal": _decor_seal,
+    # new-device backlog
+    "compass-rings": _decor_compass_rings, "pillar-panels": _decor_pillar_panels,
+    "letterpress": _decor_letterpress, "scribbles": _decor_scribbles, "tape": _decor_tape,
+    "starfield": _decor_starfield, "os-chrome": _decor_os_chrome, "rosette-seal": _decor_rosette_seal,
+    "double-rule": _decor_double_rule, "hatch": _decor_hatch, "pixel-brackets": _decor_pixel_brackets,
+    "drop-cap": _decor_drop_cap,
 }
 
 

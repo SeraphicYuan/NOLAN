@@ -46,15 +46,18 @@ def test_every_theme_decoration_names_a_real_device():
 
 def test_declared_decoration_renders_and_bare_theme_is_empty():
     # a decorated theme emits the overlay with its devices; an un-decorated theme emits nothing
-    deco = compose._theme_decorations("blueprint")
-    assert 'class="decor' in deco and "background-size:3.2cqw" in deco  # graph-paper
-    assert "border-right:none" in deco                                  # corner-brackets
+    deco = compose._theme_decorations("blueprint")                      # graph-paper + compass-rings
+    assert 'class="decor' in deco and "background-size:3.2cqw" in deco  # graph-paper (stable on blueprint)
     # pick a theme with no `decoration` key
     bare = next(t.parent.name for t in (REPO / "themes").glob("*/theme.json")
                 if "decoration" not in json.loads(t.read_text(encoding="utf-8")))
     assert compose._theme_decorations(bare) == "", f"{bare} should render no decoration"
 
 
-def test_rail_label_honours_its_param():
-    deco = compose._theme_decorations("kraft-paper")
-    assert "Field Notes" in deco  # the {id:rail-label,text:...} param reached the renderer
+def test_param_devices_honour_their_param():
+    # test the param-carrying renderers directly (decoupled from any theme's current assignment):
+    # a {id, text} spec must reach the renderer's output
+    assert "Field Notes" in compose._DECOR_RENDERERS["rail-label"]({"text": "Field Notes"})
+    assert "Handmade" in compose._DECOR_RENDERERS["rosette-seal"]({"text": "Handmade"})
+    assert "BOLD" in compose._DECOR_RENDERERS["letterpress"]({"text": "BOLD"})
+    assert "bash" in compose._DECOR_RENDERERS["os-chrome"]({"text": "~/nolan — bash"})
