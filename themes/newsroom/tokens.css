@@ -13,6 +13,11 @@
  *     • motion         — quiet, longer durations (printed page pace)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --eyebrow-font:  var(--font-display-en);
+  --eyebrow-weight:  500;
+  --eyebrow-size:  1.5cqw;
+  --eyebrow-tracking:  .02em;
+  --eyebrow-transform:  none;
   --density:  0.85;
   --type-scale:  0.92;
   /* ─── palette ─── */
