@@ -46,6 +46,7 @@
 
   /* ─── design identity: porcelain editorial ─── */
   --r-card:        var(--r-sm);
+  --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;

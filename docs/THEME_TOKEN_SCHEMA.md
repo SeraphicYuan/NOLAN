@@ -95,7 +95,25 @@ pairs (broadside dark+orange, no light).
 
 ---
 
-## Layer 3 — Shape + spacing scale (we tokenize radii only)
+## Layer 3 — Shape + spacing scale — ✅ DONE (shape axis) 2026-07-19
+
+**Shipped** the shape half — corner radius + border weight as a real theme axis. `themes/composition/
+shape_scale.json` documents the canonical ladders (radius `none/xs/sm/md/lg/pill/round`; border-weight
+`hair 1 / thin 1.5 / base 2 / bold 3 / heavy 4`). Mechanism: the card-family block CSS reads
+`var(--r-card, <default>)` (corner) + `var(--bw, 2px)` (border weight), so a theme sets `--r-card` / `--bw`
+and every framed panel, carousel + listicle card follows — backward-compatible (a theme setting neither
+keeps the block defaults). `--bw` set across 10 themes by shape character: brutalist (bauhaus/bold-signal/
+neubrutalism) 3px, editorial/gallery (vellum/dark-botanical/newsroom/…) 1px, consulting (blue-professional)
+1.5px, rest 2px. Render-verified: the framed card border ranges heavy→hairline across themes. Honesty-tested
+(`tests/test_shape_scale.py`: tokens consumed, values are ladder steps, axis separates brutalist>gallery).
+**Remaining:** the SPACING half — `--density` already multiplies insets/gaps (Layer 1); named pad/gap steps
+(`pad.slide`, `pad.card`, `gap.grid`, `max-content-width`) + the theme-specific pixel-unit / frame-inset
+sets are not yet tokenised (lower value — `--density` + `--stage-pad-*` already cover the visible cases).
+
+---
+
+### Original design (for reference)
+
 
 **Radius ladder (a real theme axis, 0 → pill):** `0` (brutalist: raw-grid/studio/monochrome) · `xs 4` ·
 `sm 10` · `md 14` (soft cards) · `lg 24` (vellum/daisy) · `pill 999` (capsule/emerald) · `round 50%`
@@ -128,7 +146,8 @@ rosette-seal, etc.
 2. ✅ **Color-alias layer + ladders** (Layer 2) — DONE. Alias half already satisfied (our tokens ARE
    semantic); ladder half shipped as native `color-mix()` in tokens.css (dual-path-safe), proven on
    blue-professional + vellum. Remaining: roll to the other single-accent themes (per-theme ratios).
-3. **Shape + spacing scale** (Layer 3).
+3. ✅ **Shape + spacing scale** (Layer 3) — shape axis DONE (radius ladder + `--bw` border weight,
+   shape_scale.json, wired into card-family blocks + 10 themes). Remaining: named pad/gap spacing steps.
 4. **Component tokens** (Layer 4).
 5. **A/B validation** — map a reference `design.md` (blue-professional) into the v2 token system, render
    through our engine (archetypes + decoration + levers), and compare side-by-side with our nearest theme

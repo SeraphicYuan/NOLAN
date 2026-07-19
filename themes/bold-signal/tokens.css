@@ -47,7 +47,8 @@
   --dur-cinematic: 1050ms;
 
   /* ─── design identity: bold hero ─── */
-  --r-card:        var(--r-md);     /* 12px chunky-but-soft */
+  --r-card:        var(--r-md);
+  --bw:          3px;        /* border-weight axis (Layer 3 shape scale) */     /* 12px chunky-but-soft */
   --r-stage:       0;
   --rule-w:        2px;
   --rule-style:    solid;

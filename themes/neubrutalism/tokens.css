@@ -57,7 +57,8 @@
 
   /* ─── design identity: thick-border sticker blocks ─── */
   --bw-1:          3px;               /* SIGNATURE — chunky black borders */
-  --r-card:        var(--r-sm);       /* 8px ROUNDED — vs bauhaus 0 */
+  --r-card:        var(--r-sm);
+  --bw:          3px;        /* border-weight axis (Layer 3 shape scale) */       /* 8px ROUNDED — vs bauhaus 0 */
   --r-stage:       0;
   --rule-w:        3px;               /* heavy dividers */
   --rule-style:    solid;

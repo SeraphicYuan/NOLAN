@@ -48,7 +48,8 @@
   --dur-cinematic:  1500ms;
 
   /* ─── design identity: broadsheet ─── */
-  --r-card:        var(--r-flat);    /* SIGNATURE — newsprint has no radius */
+  --r-card:        var(--r-flat);
+  --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */    /* SIGNATURE — newsprint has no radius */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;
