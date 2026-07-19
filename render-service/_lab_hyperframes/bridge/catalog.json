@@ -10,7 +10,7 @@
         "kicker": "string — small eyebrow label (design intent, not narration)",
         "register": "enum(paper|footage) — ink-on-mist, or white text for a media ground",
         "ground": "object — a media_ground spec: {kind: paper|image|transparent, parchment?, src?, kb?}",
-        "items": "array of {from,to | value, prefix?, suffix?, label, cue, underline?}",
+        "items": "array of {from,to | value, prefix?, suffix?, label, cue, underline?, delta?} where delta={dir:up|down|flat, value:string} renders a colored metric-change chip (▲/▼/→) below the label",
         "props": "array of prop_cutout specs (optional evidence overlays)",
         "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch)? — text-entrance style applied to the LABELS (numerals keep their count-up); see the 'reveals' catalog. Seek-safe."
       },
