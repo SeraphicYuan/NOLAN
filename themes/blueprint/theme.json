@@ -47,5 +47,9 @@
       "framed",
       "full-bleed-overlay"
     ]
-  }
+  },
+  "decoration": [
+    "graph-paper",
+    "corner-brackets"
+  ]
 }

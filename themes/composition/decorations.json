@@ -1,0 +1,39 @@
+{
+  "_doc": "Signature-decoration registry (composition-DNA lever #3) — the palette of decorative DEVICES a theme can declare as its signature, cataloged from the 34-template study (docs/REFERENCE_TEMPLATE_ANALYSIS.md, the ~10 motif groups G1-G10). A device is a named, positionable, token-driven primitive. A theme.json declares `decoration: [<device-id>, ...]`; compose.py's _theme_decorations renders the declared devices as a canvas-wide overlay in the theme's own tokens. `kind`: shared = a reusable parameterized primitive (same executor, theme palette varies it); signature = an identity-defining device. `scope`: frame = canvas-wide (always-on furniture); scene = tied to a scene's content (not yet wired). Every device here MUST have a renderer in compose._DECOR_RENDERERS (honesty-tested), and every theme's declared devices must be ids in here.",
+  "version": 1,
+  "devices": {
+    "graph-paper": {
+      "group": "G6-texture", "kind": "signature", "scope": "frame",
+      "purpose": "a ruled graph-paper grid wash — engineering / technical / trend-index register (blueprint, cobalt-grid).",
+      "token": "--rule"
+    },
+    "scanlines": {
+      "group": "G6-texture", "kind": "signature", "scope": "frame",
+      "purpose": "CRT / terminal scanline overlay — retro-digital / phosphor register (terminal-green, 8-bit, retro-windows)."
+    },
+    "grain": {
+      "group": "G6-texture", "kind": "signature", "scope": "frame",
+      "purpose": "fractal print grain — paper / riso / photographic register; the single most common signature texture. Near-universal in the reference decks."
+    },
+    "dot-grid": {
+      "group": "G6-texture", "kind": "shared", "scope": "frame",
+      "purpose": "a faint dot-grid wash — quiet structured paper (block-frame, blue-professional).",
+      "token": "--rule"
+    },
+    "corner-brackets": {
+      "group": "G2-corner", "kind": "shared", "scope": "frame",
+      "purpose": "L-shaped marks at the four corners that imply a frame without enclosing it (8-bit-orbit, block-frame).",
+      "token": "--text"
+    },
+    "interior-frame": {
+      "group": "G2-frame", "kind": "signature", "scope": "frame",
+      "purpose": "a hairline border inset ~4% — a poster / placard 'design within a design' (pink-script, peoples-platform, signal).",
+      "token": "--text"
+    },
+    "rail-label": {
+      "group": "G10-rail", "kind": "signature", "scope": "frame",
+      "purpose": "a vertical rotated wayfinder label along the left edge — magazine-spine metadata (biennale-yellow, cobalt-grid).",
+      "params": {"text": "the label string (default a generic marker)"}
+    }
+  }
+}

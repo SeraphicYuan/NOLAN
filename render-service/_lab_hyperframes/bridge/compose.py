@@ -2561,6 +2561,87 @@ def _theme_fonts(theme):
     return "".join(out)
 
 
+# ── Signature decoration (composition-DNA lever #3) ─────────────────────────
+# A theme declares `decoration: [<device-id>,...]` in theme.json; each id must exist in
+# themes/composition/decorations.json AND have a renderer here (honesty-tested). Renderers return a
+# token-driven, absolutely-positioned, pointer-events:none fragment; _theme_decorations wraps them in a
+# canvas-wide overlay so a theme's furniture (texture / brackets / frame / rail) is part of every scene.
+def _decor_graph_paper(p):
+    return ('<div style="position:absolute;inset:0;background-image:'
+            'linear-gradient(var(--rule,rgba(120,120,120,0.5)) 1px,transparent 1px),'
+            'linear-gradient(90deg,var(--rule,rgba(120,120,120,0.5)) 1px,transparent 1px);'
+            'background-size:3.2cqw 3.2cqw;opacity:0.5"></div>')
+
+
+def _decor_dot_grid(p):
+    return ('<div style="position:absolute;inset:0;background-image:'
+            'radial-gradient(var(--rule,rgba(120,120,120,0.5)) 1px,transparent 1.4px);'
+            'background-size:2.4cqw 2.4cqw;opacity:0.45"></div>')
+
+
+def _decor_scanlines(p):
+    return ('<div style="position:absolute;inset:0;background:repeating-linear-gradient('
+            '0deg,transparent 0,transparent 2px,rgba(0,0,0,0.20) 3px,transparent 3.2px);opacity:0.6"></div>')
+
+
+def _decor_grain(p):
+    svg = ("url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E"
+           "%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E"
+           "%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")")
+    return (f'<div style="position:absolute;inset:0;background-image:{svg};background-size:180px 180px;'
+            'opacity:0.10;mix-blend-mode:multiply"></div>')
+
+
+def _decor_corner_brackets(p):
+    b = 'position:absolute;width:5cqw;height:5cqw;border:0.32cqw solid var(--text)'
+    return ("".join([
+        f'<div style="{b};top:3cqw;left:3cqw;border-right:none;border-bottom:none"></div>',
+        f'<div style="{b};top:3cqw;right:3cqw;border-left:none;border-bottom:none"></div>',
+        f'<div style="{b};bottom:3cqw;left:3cqw;border-right:none;border-top:none"></div>',
+        f'<div style="{b};bottom:3cqw;right:3cqw;border-left:none;border-top:none"></div>']))
+
+
+def _decor_interior_frame(p):
+    return '<div style="position:absolute;inset:3.5cqw;border:0.18cqw solid var(--text);opacity:0.8"></div>'
+
+
+def _decor_rail_label(p):
+    txt = esc(str(p.get("text", "SECTION")))
+    return ('<div style="position:absolute;left:2.2cqw;top:0;bottom:0;display:flex;align-items:center">'
+            '<span style="writing-mode:vertical-rl;transform:rotate(180deg);'
+            'font:700 0.95cqw/1 var(--font-mono),ui-monospace,monospace;letter-spacing:.34em;'
+            f'text-transform:uppercase;color:var(--text-2);opacity:0.75">{txt}</span></div>')
+
+
+_DECOR_RENDERERS = {
+    "graph-paper": _decor_graph_paper, "dot-grid": _decor_dot_grid, "scanlines": _decor_scanlines,
+    "grain": _decor_grain, "corner-brackets": _decor_corner_brackets,
+    "interior-frame": _decor_interior_frame, "rail-label": _decor_rail_label,
+}
+
+
+def _theme_decorations(theme):
+    """Canvas-wide decoration overlay from the theme's declared `decoration` devices (theme.json), each
+    rendered in the theme's own tokens. Empty string when a theme declares none."""
+    root = Path(__file__).resolve().parents[3] / "themes"
+    try:
+        meta = json.loads((root / str(theme) / "theme.json").read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    parts = []
+    for d in (meta.get("decoration") or []):
+        did = d if isinstance(d, str) else d.get("id")
+        fn = _DECOR_RENDERERS.get(did)
+        if fn:
+            parts.append(fn(d if isinstance(d, dict) else {}))
+    if not parts:
+        return ""
+    # track 12 = above content/props but < 14 (the renderer reassigns ≥14); a canvas-wide, always-on
+    # furniture layer (the theme's constant identity across every scene in the frame).
+    return ('<div class="decor clip" data-start="0" data-duration="1000000" data-track-index="12" '
+            'style="position:absolute;inset:0;pointer-events:none;overflow:hidden">' + "".join(parts) + '</div>')
+
+
 def _theme_vars(theme):
     """Inject a NOLAN theme's tokens.css as scoped CSS custom properties on #root so the block CSS
     (which references var(--accent) etc.) resolves. Falls back to the Vox 'highlighter-editorial'
@@ -2744,6 +2825,7 @@ def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
   <style>{_theme_fonts(theme)}{_theme_vars(theme)}{CSS}</style>
   <div id="root" data-composition-id="{frame_id}" data-width="1920" data-height="1080">
     {chr(10).join('    '+b for b in body)}
+    {_theme_decorations(theme)}
   </div>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
 {libs}  <script>{_FIT_SCRIPT}</script>
