@@ -48,6 +48,16 @@
   --eyebrow-tracking: .2em;
   --eyebrow-transform: uppercase;
   --eyebrow-color:    var(--accent);
+  --stat-label-font:  var(--font-mono);           /* pin-note caption: Courier Prime, wide tracked caps */
+  --stat-label-weight: 400;
+  --stat-label-size:  0.82cqw;
+  --stat-label-tracking: .16em;
+  --stat-label-transform: uppercase;
+  --caption-font:     var(--font-mono);            /* figure caption: Courier Prime */
+  --caption-weight:   400;
+  --caption-size:     0.82cqw;
+  --caption-tracking: .12em;
+  --caption-transform: uppercase;
 
   /* ─── motion: still ─── */
   --dur-base:  520ms;
