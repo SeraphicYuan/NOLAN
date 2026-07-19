@@ -136,13 +136,18 @@ def register(app, ctx):
             prov = _provider(src)
             providers.add(prov)
             kind = it.get("media_type") or "image"
-            item = {"file": it.get("file"), "kind": kind, "source": src, "provider": prov,
+            f = it.get("file")
+            # the working copy under <comp>/assets/ is what renders (frame grounds ref assets/…); quick-edit
+            # targets it via the /api/hf/asset/* routes as a comp-relative `assets/<file>` path.
+            item = {"file": f, "kind": kind, "source": src, "provider": prov,
                     "relevance": it.get("relevance"), "usable": it.get("usable"),
                     "flags": it.get("flags") or "", "caption": it.get("caption") or "",
                     "license": it.get("license") or "", "source_url": it.get("source_url") or "",
                     "photographer": it.get("photographer") or "",
-                    "exists": (assets / it["file"]).is_file() if it.get("file") else False,
-                    "url": f"/api/pool/hf/file?comp={comp}&file={it.get('file')}"}
+                    "exists": bool(f) and ((assets / f).is_file() or (d / "assets" / f).is_file()),
+                    "path": f"assets/{f}" if f else None,
+                    "editable": bool(f) and (d / "assets" / f).is_file(),
+                    "url": f"/api/pool/hf/file?comp={comp}&file={f}"}
             b = bins.setdefault(nid, {"need": nid, "query": (needs.get(nid) or {}).get("query", it.get("query", "")),
                                       "evocative": bool((needs.get(nid) or {}).get("evocative")),
                                       "media_type": (needs.get(nid) or {}).get("media_type", kind), "items": []})
@@ -166,15 +171,18 @@ def register(app, ctx):
 
     @app.get("/api/pool/hf/file")
     async def hf_file(comp: str = Query(...), file: str = Query(...)):
-        assets = (_hf_dir(comp) / "capture" / "assets").resolve()
-        try:
-            fp = (assets / file).resolve()
-        except OSError:
-            raise HTTPException(status_code=400, detail="bad path")
-        if assets not in fp.parents or not fp.is_file():
-            raise HTTPException(status_code=404, detail="not found")
-        return FileResponse(str(fp), media_type=_MEDIA_TYPES.get(
-            fp.suffix.lower(), "application/octet-stream"))
+        # serve from capture/assets/ (acquisition mirror) OR fall back to assets/ (the working set) — so
+        # cleaned/edited outputs that land in assets/ are viewable here too.
+        d = _hf_dir(comp)
+        for root in ((d / "capture" / "assets").resolve(), (d / "assets").resolve()):
+            try:
+                fp = (root / file).resolve()
+            except OSError:
+                raise HTTPException(status_code=400, detail="bad path")
+            if root in fp.parents and fp.is_file():
+                return FileResponse(str(fp), media_type=_MEDIA_TYPES.get(
+                    fp.suffix.lower(), "application/octet-stream"))
+        raise HTTPException(status_code=404, detail="not found")
 
     @app.post("/api/pool/shortlist")
     async def pool_shortlist(body: dict = Body(...)):

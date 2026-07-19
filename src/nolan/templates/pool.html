@@ -90,6 +90,7 @@
 </head>
 <body>
   <script src="/static/nav.js" data-active="pool"></script>
+  <script src="/static/asset_edit.js"></script>
   <div class="wrap">
     <h1>Asset Pool</h1>
     <div class="sub">Every visual asset in the project, tagged by how far it made it:
@@ -111,6 +112,7 @@
       </select>
       <select id="compSel" style="display:none"><option value="">Select comp…</option></select>
       <select id="providerSel" style="display:none"><option value="">All sources</option></select>
+      <button id="hfCleanupBtn" style="display:none" title="Auto-detect a corner logo / burned-in captions / stray head-tail frames across this comp's assets, review, and save cleaned copies" onclick="AssetEdit.openCleanupReview()">🧹 Clean up…</button>
       <span class="warn" id="manifestWarn" style="display:none">no render manifest yet — “in-video” unknown until the next render</span>
     </div>
     <div class="chips" id="chips"></div>
@@ -137,6 +139,14 @@
     let visible = [];   // the currently rendered (filtered) items, index-addressed
     let projLoaded = false, hfPool = null, hfComp = '', hfLoaded = false;   // HyperFrames-mode state
     const STATUSES = ['in-video', 'selected', 'candidate', 'shortlisted', 'unused'];
+
+    // shared per-asset edit subsystem (crop/trim/effects/cleanup) — works on the comp's working assets/ copy
+    window.AE_ENV = {
+      comp: () => hfComp,
+      listAssets: () => (hfPool ? hfPool.bins.flatMap(b => b.items) : []).filter(i => i.editable).map(i => ({ path: i.path, kind: i.kind, name: i.file })),
+      onEdited: () => loadHfPool(),
+    };
+    AssetEdit.init().then(() => { if (hfPool) renderHf(); });   // re-render once the op registry loads → ✎ appears
 
     function qs(id) { return document.getElementById(id); }
     function fileUrl(p) { return `/api/pool/file?path=${encodeURIComponent(p)}`; }
@@ -297,6 +307,7 @@
       qs('thinBanner').style.display = 'none';
       qs('compSel').style.display = hf ? '' : 'none';
       qs('providerSel').style.display = hf ? '' : 'none';
+      qs('hfCleanupBtn').style.display = (hf && hfComp) ? '' : 'none';
       qs('hfContainer').style.display = hf ? '' : 'none';
       const u = new URL(location); u.searchParams.set('src', src); history.replaceState(null, '', u);
       if (hf) { hfLoaded ? renderHf() : loadHfComps(); }
@@ -320,7 +331,8 @@
     }
 
     async function loadHfPool() {
-      if (!hfComp) { qs('hfContainer').innerHTML = ''; return; }
+      if (!hfComp) { qs('hfContainer').innerHTML = ''; qs('hfCleanupBtn').style.display = 'none'; return; }
+      qs('hfCleanupBtn').style.display = '';
       const res = await fetch(`/api/pool/hf?comp=${encodeURIComponent(hfComp)}`);
       if (!res.ok) { qs('hfContainer').innerHTML = ''; qs('empty').style.display = ''; return; }
       hfPool = await res.json();
@@ -351,6 +363,7 @@
           <div class="name" title="${esc(it.file)}">${esc(it.caption || it.file)}</div>
           <div class="lic">${esc(lic)}${rel ? ' · ' : ''}${rel}</div>
           ${it.flags ? `<div class="flagline">⚑ ${esc(it.flags)}</div>` : ''}
+          ${it.editable ? `<div class="hf-actions">${AssetEdit.actions(it.path, it.kind)}</div>` : ''}
         </div>
       </div>`;
     }
