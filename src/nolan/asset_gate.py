@@ -68,6 +68,16 @@ _OPEN_LICENSE_RE = re.compile(
     r"public\s*domain|\bpd\b|cc0|cc[\s-]?by|creative\s*commons|"
     r"no\s+known\s+copyright|open\s*access", re.I)
 
+# Sound-license policy (CC0-first, see docs/SOUND_DESIGN.md). Order matters:
+# NC/ND must reject BEFORE the CC-BY matcher (a "by-nc" string contains "by").
+_SND_NONFREE_RE = re.compile(
+    r"non[\s-]?commercial|\bnc\b|no[\s-]?deriv(atives)?|\bnd\b|"
+    r"licenses/by-nc|licenses/by-nd", re.I)
+_SND_CC0_RE = re.compile(
+    r"cc0|creative\s*commons\s*0|publicdomain/zero|public\s*domain|"
+    r"no\s+known\s+copyright", re.I)
+_SND_CCBY_RE = re.compile(r"licenses/by\b|attribution|cc[\s-]?by\b", re.I)
+
 # Museum/institutional download hosts that never watermark their open-access
 # derivatives — the VISION watermark check (~7s/asset) is skipped for these;
 # the free banner heuristic still runs on everything. Aggregators (artvee,
@@ -129,6 +139,9 @@ ASSET_GATE_DOORS = {
     "attribution.build_attribution": {
         "file": "src/nolan/attribution.py", "func": "def build_attribution",
         "calls": ["scan_files"]},
+    "sfx_ingest.add": {
+        "file": "src/nolan/cli/sfx.py", "func": "def sfx_add",
+        "calls": ["check_sound"]},
 }
 
 
@@ -180,6 +193,54 @@ def _license_known_open(result) -> bool:
 def _license_usable(result) -> bool:
     src = (getattr(result, "source", None) or "").lower()
     return src in LICENSED_STOCK_SOURCES or _license_known_open(result)
+
+
+def check_sound(result, source: str = "freesound") -> GateVerdict:
+    """Gate an AUDIO asset before it enters the curated SFX library.
+
+    The audio door (asset_gate is otherwise image-only). License policy is
+    CC0-first (docs/SOUND_DESIGN.md):
+      - CC0 / public domain            → pass, no attribution needed.
+      - a source in LICENSED_STOCK_SOURCES → pass (platform license; no credit).
+      - CC-BY / attribution family      → pass ONLY with a non-empty attribution
+        line (flagged for the credits pipeline); reject if the credit is missing.
+      - NonCommercial / NoDerivatives / unknown → reject (unusable for SFX).
+
+    `result` is an SFXResult-like object or a dict carrying `license`,
+    `attribution`, and optionally `source`.
+    """
+    def _g(key):
+        if isinstance(result, dict):
+            return result.get(key)
+        return getattr(result, key, None)
+
+    v = GateVerdict(ok=True)
+    lic = (_g("license") or "").strip()
+    attr = (_g("attribution") or "").strip()
+    src = (_g("source") or source or "").lower()
+
+    if not lic:
+        v.ok = False
+        v.reasons.append("no license string on the sound")
+        return v
+    if src in LICENSED_STOCK_SOURCES:
+        return v
+    if _SND_NONFREE_RE.search(lic):
+        v.ok = False
+        v.reasons.append(f"non-commercial / no-derivatives license unusable for SFX: {lic!r}")
+        return v
+    if _SND_CC0_RE.search(lic):
+        return v
+    if _SND_CCBY_RE.search(lic):
+        if not attr:
+            v.ok = False
+            v.reasons.append(f"attribution required for {lic!r} but none captured")
+        else:
+            v.flags.append("attribution-required")   # credits pipeline must emit it
+        return v
+    v.ok = False
+    v.reasons.append(f"license not recognized as SFX-usable: {lic!r}")
+    return v
 
 
 def check_candidate(result, tier: str = "stock") -> GateVerdict:

@@ -50,6 +50,7 @@ from nolan.cli import (  # noqa: E402,F401
     capabilities,
     brief_cmd,
     music,
+    sfx,
     lint_cmd,
     package_cmd,
     retro_cmd,

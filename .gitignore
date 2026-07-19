@@ -53,6 +53,13 @@ projects/*/source/*.mov
 projects/*/assets/voiceover/*.mp3
 projects/*/assets/voiceover/*.wav
 
+# Curated SFX library: audio binaries + browse exports are regenerable
+# (audio from sfx.json ids; catalog.db + browse .md from `nolan sfx crawl`).
+# The sfx.json manifest IS tracked — it's the library definition.
+projects/_library/sfx/*.wav
+projects/_library/sfx/*.mp3
+projects/_library/sfx/_candidates/
+
 # Vector stores
 .template_vectors/
 chroma_db/
