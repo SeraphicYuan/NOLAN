@@ -165,6 +165,19 @@ SEEDS = {
     "pull-quote":       {"type": "pull_quote", "_arch": "editorial-column",
                          "data": {"kicker": "In their words", "hi": "invent it", "cite": "Alan Kay, 1971",
                                   "quote": "The best way to predict the future is to invent it."}},
+    "comparison-table": {"type": "comparison_table", "_arch": "comparison-table",
+                         "data": {"kicker": "How we compare",
+                                  "columns": [{"label": "Manual"}, {"label": "NOLAN", "highlight": True}, {"label": "Others"}],
+                                  "rows": [{"label": "Theme-aware", "cells": ["no", "yes", "partial"]},
+                                           {"label": "Auto-render", "cells": ["partial", "yes", "no"]},
+                                           {"label": "Editable", "cells": ["yes", "yes", "partial"]},
+                                           {"label": "Cost", "cells": ["$$$$", "$", "$$$"]}]}},
+    "ledger":           {"type": "ledger", "_arch": "ledger",
+                         "data": {"kicker": "Contents",
+                                  "rows": [{"title": "Ingest", "desc": "Source → beats, split by narration", "meta": "01 · 2 min"},
+                                           {"title": "Author", "desc": "Scene plan against a chosen theme", "meta": "02 · 4 min"},
+                                           {"title": "Acquire", "desc": "Assets per beat: library + stock + gen", "meta": "03 · 6 min"},
+                                           {"title": "Render", "desc": "Compose frames, assemble to final", "meta": "04 · 8 min"}]}},
 }
 
 THEMES = sorted(d.name for d in (REPO / "themes").iterdir()

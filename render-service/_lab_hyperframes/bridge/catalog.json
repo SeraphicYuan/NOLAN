@@ -131,6 +131,34 @@
       },
       "theme_notes": "quote-mark + highlight = --accent; quote uses the display type role + type-scale + display-style; cite = mono."
     },
+    "comparison_table": {
+      "fn": "comparison_table",
+      "purpose": "A tabular comparison MATRIX — column headers x row labels x cells, with state chips (yes/partial/no) + an optional highlighted 'ours' column.",
+      "when_to_use": "a structured many-way comparison: options x criteria, a spec/feature table, a yes/partial/no matrix. Distinct from `comparison` (a 2-panel split).",
+      "not_for": "a two-way this-vs-that (use comparison / split-screen); a uniform item grid (swiss-grid).",
+      "data_schema": {
+        "kicker": "string?",
+        "title": "string?",
+        "columns": "array of {label, highlight?} - the compared options (one may be highlighted)",
+        "rows": "array of {label, cells:[state|text]} - each criterion row; a cell of 'yes'|'no'|'partial' renders a chip, else text",
+        "register": "enum(paper|footage)?",
+        "ground": "object?"
+      },
+      "theme_notes": "header rule + highlight column = --accent/--surface-3; chips = --accent (yes) / --rule (no) / --accent-soft (partial); row labels = display type."
+    },
+    "ledger": {
+      "fn": "ledger_list",
+      "purpose": "A dense hairline-separated row-list — ordinal + title + description + meta per row. A TOC / index / agenda / catalogue.",
+      "when_to_use": "a table of contents, an index, an agenda, a chaptered/catalogued list. Distinct from bullet_list (flat) and swiss-grid (2D cards).",
+      "not_for": "a short bulleted list (bullet_list); 2D item cards (swiss-grid).",
+      "data_schema": {
+        "kicker": "string?",
+        "rows": "array of {title, desc?, meta?, num?} - num defaults to a 01/02 ordinal",
+        "register": "enum(paper|footage)?",
+        "ground": "object?"
+      },
+      "theme_notes": "ordinal = --accent + --hero-num style; title = display type; meta = mono; hairline rows = --rule under a heavier --accent top rule."
+    },
     "newshead": {
       "fn": "newshead",
       "purpose": "A newspaper headline card (Vox 'newspaper animation'): dot-grid paper, red date tag, bold serif headline whose words cascade in with a yellow highlighter sweep, a serif subhead (optional highlight), a blackletter source masthead + drawn rule, an optional framed grayscale photo sliding in, and an optional red hand-drawn arrow annotation.",
