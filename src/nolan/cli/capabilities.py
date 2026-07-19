@@ -16,13 +16,16 @@ from ._root import main
 @click.option('--json', 'as_json', is_flag=True, default=False,
               help='Full catalog as JSON (the agent-facing form).')
 @click.option('--umbrella', '-u', default=None,
-              type=click.Choice(['editing', 'motion', 'pairing', 'blocks', 'themes', 'effects']),
-              help='Limit to one umbrella.')
+              help='Limit to one umbrella (any key from the live catalog).')
 def capabilities(as_json, umbrella):
     """List every capability registry with when-to-use guidance."""
     from nolan.system_map import _umbrellas
     cat = _umbrellas()
     if umbrella:
+        if umbrella not in cat:
+            raise click.BadParameter(
+                f"{umbrella!r} — choose one of: {', '.join(sorted(cat))}",
+                param_hint="--umbrella")
         cat = {umbrella: cat.get(umbrella)}
     if as_json:
         click.echo(json.dumps(cat, indent=2, ensure_ascii=False))
