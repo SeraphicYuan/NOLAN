@@ -2750,6 +2750,7 @@ def _theme_shell_textsafe(theme):
 # back, not all of them. Non-Google families (Fontshare Satoshi/Clash Display, commercial GT Sectra) are
 # not emitted → they fall back per the theme's CSS stack (recorded in docs/ENGINE_AUDIT.md, tier B/D).
 _GF_WEIGHTS = {
+    "VT323": "400", "Press Start 2P": "400",
     "Inter": "400;500;600;700;800;900", "Libre Franklin": "400;600;700;800;900",
     "Lora": "400;500;600;700", "Manrope": "400;500;600;700;800",
     "Source Serif 4": "400;500;600;700", "Source Serif Pro": "400;600;700",
@@ -2992,6 +2993,17 @@ def _decor_drop_cap(p):
     return (f'<div style="position:absolute;left:4cqw;top:7cqh;font:900 22cqw/0.78 var(--font-display-en);'
             f'font-style:var(--display-style,normal);color:var(--accent);opacity:0.16">{txt}</div>')
 
+def _decor_window_bevel(p):
+    """A raised 3D window bevel frame (Win9x): a light top/left + dark bottom/right double border, inset
+    slightly, so the whole scene reads as a raised OS panel. Neutral highlight/shadow (a bevel is light+dark,
+    not the accent) — pairs with os-chrome for the retro-windows look."""
+    return ('<div style="position:absolute;inset:1.8cqw;pointer-events:none;'
+            'border-top:0.3cqw solid #ffffff;border-left:0.3cqw solid #ffffff;'
+            'border-right:0.3cqw solid #000000;border-bottom:0.3cqw solid #000000">'
+            '<div style="position:absolute;inset:0;'
+            'border-top:0.16cqw solid #dfdfdf;border-left:0.16cqw solid #dfdfdf;'
+            'border-right:0.16cqw solid #808080;border-bottom:0.16cqw solid #808080"></div></div>')
+
 
 _DECOR_RENDERERS = {
     "graph-paper": _decor_graph_paper, "dot-grid": _decor_dot_grid, "scanlines": _decor_scanlines,
@@ -3004,7 +3016,7 @@ _DECOR_RENDERERS = {
     "letterpress": _decor_letterpress, "scribbles": _decor_scribbles, "tape": _decor_tape,
     "starfield": _decor_starfield, "os-chrome": _decor_os_chrome, "rosette-seal": _decor_rosette_seal,
     "double-rule": _decor_double_rule, "hatch": _decor_hatch, "pixel-brackets": _decor_pixel_brackets,
-    "drop-cap": _decor_drop_cap,
+    "drop-cap": _decor_drop_cap, "window-bevel": _decor_window_bevel,
 }
 
 

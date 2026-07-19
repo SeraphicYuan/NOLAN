@@ -897,6 +897,21 @@
         "playful",
         "children"
       ]
+    },
+    "retro-windows": {
+      "tone": "light",
+      "keywords": [
+        "retro",
+        "windows",
+        "os",
+        "chrome",
+        "nostalgic",
+        "technical",
+        "system",
+        "desktop",
+        "90s",
+        "cli"
+      ]
     }
   }
 }
