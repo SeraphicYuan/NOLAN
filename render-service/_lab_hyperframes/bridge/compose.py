@@ -554,6 +554,17 @@ except Exception:  # pragma: no cover - nolan not importable in a bare compose c
     def _fx_overlays(*_a, **_k): return []
 
 
+def _page_bg():
+    """THE single source of truth for a full-bleed PAGE background token, shell-textsafe-aware.
+
+    --shell is the theme's canvas colour, but on an INVERTED-CARD theme (dark --shell tuned so
+    that --text is legible on the light --surface, e.g. bauhaus-bold #1a1a1a shell / #f4f1ea surface)
+    a raw --shell ground goes dark-on-a-light-theme. So fall back to --surface there. Every block that
+    paints a full-bleed page ground MUST call this — never hardcode a raw shell token on a full-bleed
+    clip (that is the chart/code 'lone odd-one-out' bug class; guarded by test_block_token_fidelity)."""
+    return "var(--shell)" if _SHELL_TEXTSAFE else "var(--surface)"
+
+
 def media_ground(sid, ground, start, dur):
     """Reusable BLOCK: full-bleed ground. image -> dimmed image + scrim + Ken-Burns;
     paper -> flat mist/parchment; transparent -> scrim only (root video shows through).
@@ -591,7 +602,7 @@ def media_ground(sid, ground, start, dur):
         # cream --shell vs white --surface) lost it on this one block. But the inverted-card themes
         # (dark --shell + light --surface) tune --text to --surface, so there --shell would go dark-on-dark
         # → fall back to --surface for them. Parchment stays an explicit warm variant.
-        canvas = "var(--shell)" if _SHELL_TEXTSAFE else "var(--surface)"
+        canvas = _page_bg()
         col = "var(--surface-2)" if ground.get("parchment") else canvas
         frag.append(f'<div class="clip paper-gnd" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{col};"></div>')
@@ -2438,7 +2449,7 @@ def chart(sid, sc):
     hl = int(hl) if isinstance(hl, (int, float)) and 0 <= int(hl) < n else None
     PX, PW, BASE, PH = 210, 1500, 190, 600         # plot left, width, baseline (from bottom), max height
     frag = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:var(--shell);"></div>']
+            f'style="position:absolute;inset:0;background:{_page_bg()};"></div>']
     world = [f'<section class="clip chart" data-start="{start}" data-duration="{dur}" data-track-index="2" '
              f'style="position:absolute;inset:0;">']
     tl = []
@@ -2535,7 +2546,7 @@ def code(sid, sc):
     hl = d.get("highlight")
     hl = int(hl) if isinstance(hl, (int, float)) and 1 <= int(hl) <= n else None
     frag = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:var(--shell);"></div>']
+            f'style="position:absolute;inset:0;background:{_page_bg()};"></div>']
     world = [f'<section class="clip codeblk" data-start="{start}" data-duration="{dur}" data-track-index="2" '
              f'style="position:absolute;inset:0;">']
     tl = []
