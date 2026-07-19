@@ -67,9 +67,12 @@ decorations.json + a theme's `decoration:[...]`):
 - **petal-cluster** + **rosette-seal** (vintage-JP) — sakura-chroma.
 - **safety-pin** (field-notebook) — hand-drawn off-axis pins (pin-and-paper), over the shared `grain`.
 
+- **metric-change delta chip** — shipped as a UNIVERSAL stat sub-field (not theme-scoped): `delta={dir,value}`
+  on a stat item → ▲/▼/→ chip in --positive/--negative. The one Tier-4 niche with a universal consumer.
+
 Still open Tier-4 (not tied to a shipped theme, build when their theme is the priority): rotation/tilt knob,
-color-swatch row, metric-change delta chip, drafting guide line, block-stamp 2×2, diagonal-clip, zigzag,
-QR-tile, marquee, tree-view, RSVP form-field, toggle, card notch, orbit/radial.
+color-swatch row, drafting guide line, block-stamp 2×2, diagonal-clip, zigzag, QR-tile, marquee, tree-view,
+RSVP form-field, toggle, card notch, orbit/radial.
 
 ## Ranked cross-theme gap backlog (by # of themes it blocks × build cost)
 
