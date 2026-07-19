@@ -1,0 +1,38 @@
+{
+  "_doc": "Layout-variant registry (composition-quality program P3). Each block declares 4-5 arrangement VARIANTS. A variant changes PLACEMENT / emphasis / structure (centered vs left-rail vs grid); the theme tokens still paint IDENTITY, so every variant stays theme-true and is built ONCE (universal, like Tier 1-3). Selection is HYBRID: data.variant overrides; else auto-pick by content shape (the `auto` map keyed by item/line count, else `default`); a no-repeat variety rule rotates among content-COMPATIBLE variants (fits=[min,max]) so a video doesn't render the same arrangement twice in a row. The block's executor branches on the resolved variant (stamped as sc['_variant'] by compose_frame._resolve_variant). Honesty-tested by tests/test_layout_variants.py: every variant id is consumed by its block, every auto/default id exists, and the samples matrix carries a specimen per variant. NO theme weighting (variants are content-driven).",
+  "blocks": {
+    "stat": {
+      "default": "stack-left",
+      "auto": {"1": "hero-single", "2": "centered-row", "3": "centered-row", "4": "stacked-list"},
+      "variants": {
+        "stack-left":   {"desc": "left-anchored horizontal row of 1-3 figures (the editorial classic)", "zone": "editorial-column", "fits": [1, 3]},
+        "centered-row": {"desc": "the figures centered as a balanced row on the canvas", "zone": "centered-hero", "fits": [1, 3]},
+        "hero-single":  {"desc": "ONE oversized figure centered — a single killer number", "zone": "centered-hero", "fits": [1, 1]},
+        "lead-rail":    {"desc": "a big figure on an accent left rail + supporting label/context on the right", "zone": "sidebar", "fits": [1, 2]},
+        "stacked-list": {"desc": "figures stacked vertically as a left-aligned list (a set of metrics)", "zone": "editorial-column", "fits": [2, 4]}
+      }
+    },
+    "statement": {
+      "default": "editorial-left",
+      "auto": {},
+      "variants": {
+        "editorial-left": {"desc": "left-anchored, lower-third baseline (the editorial default)", "zone": "editorial-column", "fits": [1, 4]},
+        "centered":       {"desc": "the phrase centered in the middle of the canvas", "zone": "centered-hero", "fits": [1, 3]},
+        "framed-card":    {"desc": "the phrase inside a bordered card, centered", "zone": "framed", "fits": [1, 3]},
+        "banner-top":     {"desc": "top-anchored, a headline banner reading down the page", "zone": "editorial-column", "fits": [1, 3]},
+        "rail-accent":    {"desc": "an accent rail bar to the left of the phrase", "zone": "sidebar", "fits": [1, 3]}
+      }
+    },
+    "bullet_list": {
+      "default": "stack",
+      "auto": {"5": "two-col", "6": "two-col"},
+      "variants": {
+        "stack":         {"desc": "title above a single vertical list (the classic)", "zone": "editorial-column", "fits": [1, 5]},
+        "centered":      {"desc": "centered title above a centered list", "zone": "centered-hero", "fits": [1, 4]},
+        "two-col":       {"desc": "title above a two-column list (for 4-6 items)", "zone": "editorial-column", "fits": [4, 6]},
+        "numbered-rail": {"desc": "an accent rail with the title, the numbered list beside it", "zone": "sidebar", "fits": [1, 5]},
+        "card-row":      {"desc": "each item as a small bordered card in a row/grid", "zone": "swiss-grid", "fits": [2, 4]}
+      }
+    }
+  }
+}

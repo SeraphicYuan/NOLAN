@@ -61,6 +61,25 @@ CSS = """
 .footage .sldelta{text-shadow:0 1px 6px rgba(0,0,0,0.5);}
 .paper .slnum,.paper .sllead{color:var(--text);}.paper .kick{color:var(--text-2);}.paper .sllabel{color:var(--text-mute);}
 .footage .slnum{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}.footage .kick{color:#F6F7F6;text-shadow:0 1px 8px rgba(0,0,0,0.5);}.footage .sllabel{color:#E9EAE9;text-shadow:0 1px 6px rgba(0,0,0,0.5);}
+/* stat layout variants (P3) — placement/emphasis per variant; tokens paint identity. Centered variants
+   use full-bleed flex (NOT transform) so the .slrow data-fit scale stays free. Base .slrow == stack-left. */
+.slrow.v-centered-row,.slrow.v-hero-single{left:0;right:0;top:0;bottom:0;justify-content:center;align-items:center;gap:6cqw;}
+.slrow.v-centered-row .slitem,.slrow.v-hero-single .slitem{align-items:center;text-align:center;min-width:0;}
+.slrow.v-hero-single .slnum{font-size:calc(13cqw*var(--type-scale,1));}
+.slrow.v-hero-single .sllabel{max-width:44cqw;}
+.slrow.v-stacked-list{top:0;bottom:0;flex-direction:column;justify-content:center;align-items:flex-start;gap:3.2cqh;}
+.slrow.v-stacked-list .slitem{flex-direction:row;align-items:baseline;gap:2cqw;min-width:0;}
+.slrow.v-stacked-list .slnum{font-size:calc(4.4cqw*var(--type-scale,1));}
+.slrow.v-stacked-list .sllabel{margin-top:0;}
+.sv-centered-row .kick,.sv-hero-single .kick{left:0;right:0;top:15cqh;text-align:center;}
+.sv-centered-row .kick::after,.sv-hero-single .kick::after{margin-left:auto;margin-right:auto;}
+.sl-rail{position:absolute;inset:0;display:flex;align-items:stretch;}
+.sl-railbar{width:36cqw;background:var(--accent);color:var(--accent-ink);display:flex;flex-direction:column;
+  align-items:flex-start;justify-content:center;padding:0 4.5cqw;}
+.sl-railbar .slnum,.sl-railbar .sllabel{color:var(--accent-ink);}
+.sl-railbar .sllabel{opacity:0.86;}
+.sl-railbody{flex:1;display:flex;flex-direction:column;justify-content:center;gap:2.6cqh;padding:0 6cqw;}
+.sl-railbody .kick{position:static;left:auto;top:auto;margin-bottom:0.4cqh;}
 .stmt.paper-t{color:var(--text);}
 .stmt.footage-t{color:#F6F7F6;text-shadow:0 2px 14px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}
 /* operative on a DARK footage ground: a PERSISTENT accent backing (dark ink on it), so the phrase is
@@ -623,17 +642,23 @@ def _grounded(d):
     return (d.get("ground") or {}).get("kind") in ("image", "video")
 
 def stat_lockup(sid, sc):
-    """Reusable BLOCK: 1-3 count-up numerals + labels + one underline sweep."""
+    """Reusable BLOCK: count-up figures + labels, arranged by the resolved layout VARIANT
+    (stack-left / centered-row / hero-single / lead-rail / stacked-list — themes/composition/
+    layout_variants.json). The variant changes placement/emphasis; tokens paint identity."""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
+    variant = sc.get("_variant") or "stack-left"
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")   # dark ink only over real footage
     g, tl = media_ground(sid, d.get("ground", {"kind": "paper", "parchment": d.get("parchment")}), start, dur)
-    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
-    frag.append(f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>')
-    frag.append(f'<div class="slrow" data-fit data-fit-w="89cqw" data-fit-origin="left top">')
+    frag = [f'<section class="scene clip {reg} sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    kicker_html = f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>'
     tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.1});')
+    if variant != "lead-rail":                      # lead-rail carries the kicker in its body (below)
+        frag.append(kicker_html)
     reveal = d.get("reveal")
     lbase = "var(--text)" if reg == "paper" else "#F6F7F6"   # paper ink follows the theme (was cold #2B2D2C)
-    for i, it in enumerate(d["items"]):
+
+    def _item(i, it):
+        """One stat item (number + label + optional delta/underline) -> HTML; its timeline is appended to tl."""
         nid, uid, lid = f"{sid}-n{i}", f"{sid}-u{i}", f"{sid}-l{i}"
         ul = f'<span class="slul" id="{uid}"></span>' if it.get("underline") else ""
         cue = start + float(it.get("cue", 0.6 + i*0.4))
@@ -652,7 +677,7 @@ def stat_lockup(sid, sc):
             gly = {"up": "▲", "down": "▼", "flat": "→"}[dirn]
             delta_div = (f'<div class="sldelta {dirn}" id="{did}"><span class="dg">{gly}</span>'
                          f'{esc(str(dl["value"]))}</div>')
-        frag.append(f'<div class="slitem"><div class="slnumwrap"><span class="slnum" id="{nid}"></span>{ul}</div>{label_div}{delta_div}</div>')
+        html = f'<div class="slitem"><div class="slnumwrap"><span class="slnum" id="{nid}"></span>{ul}</div>{label_div}{delta_div}</div>'
         if it.get("value") is not None and it.get("from") is None:
             tl.append(f'document.getElementById("{nid}").textContent={json.dumps(str(it["value"]))};')
             tl.append(f'tl.fromTo("#{nid}",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:0.5,ease:"power4.out"}},{cue});')
@@ -662,12 +687,26 @@ def stat_lockup(sid, sc):
             tl.append(f'(function(){{var el=document.getElementById("{nid}"),st={{v:{frm}}},f=function(n){{return {pre}+Math.round(n)+{suf};}};'
                       f'el.textContent=f({frm});tl.set(el,{{opacity:1}},{cue});'
                       f'tl.fromTo(st,{{v:{frm}}},{{v:{to},duration:1.4,ease:"power3.out",onUpdate:function(){{el.textContent=f(st.v);}}}},{cue});}})();')
-        tl += ltl
+        tl.extend(ltl)
         if delta_div:
             tl.append(f'tl.fromTo("#{did}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.45}},{cue+0.45});')
         if it.get("underline"):
             tl.append(f'tl.fromTo("#{uid}",{{scaleX:0}},{{scaleX:1,duration:0.45,ease:"power2.out"}},{cue+1.2});')
-    frag.append('</div></section>')
+        return html
+
+    items = d["items"]
+    if variant == "lead-rail" and items:
+        # the lead figure on an accent rail; the kicker (repositioned via CSS) + any further figures beside it
+        rail = _item(0, items[0])
+        body = "".join(_item(i, it) for i, it in enumerate(items[1:], start=1))
+        frag.append(f'<div class="sl-rail"><div class="sl-railbar">{rail}</div>'
+                    f'<div class="sl-railbody">{kicker_html}{body}</div></div>')
+    else:
+        origin = {"centered-row": "center center", "hero-single": "center center",
+                  "stacked-list": "left center"}.get(variant, "left top")
+        items_html = "".join(_item(i, it) for i, it in enumerate(items))
+        frag.append(f'<div class="slrow v-{variant}" data-fit data-fit-w="89cqw" data-fit-origin="{origin}">{items_html}</div>')
+    frag.append('</section>')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
 
@@ -3349,6 +3388,56 @@ def _stamp_archetype(frags, arch):
     return out
 
 
+# ── Layout variants (composition-quality program P3) ────────────────────────────
+# Each block declares 4-5 arrangement variants in themes/composition/layout_variants.json. A variant
+# changes placement/emphasis while tokens paint identity — so one theme renders a block many ways and a
+# video gets visual rhythm. Selection is hybrid: explicit data.variant wins, else auto by content count,
+# else default; a no-repeat rule rotates among content-compatible variants. compose_frame stamps the
+# resolved id as sc['_variant']; the block executor branches on it. Honesty-tested (test_layout_variants).
+_VARIANTS_CACHE = None
+
+
+def _layout_variants():
+    global _VARIANTS_CACHE
+    if _VARIANTS_CACHE is None:
+        try:
+            p = Path(__file__).resolve().parents[3] / "themes" / "composition" / "layout_variants.json"
+            _VARIANTS_CACHE = json.loads(p.read_text(encoding="utf-8")).get("blocks", {})
+        except Exception:
+            _VARIANTS_CACHE = {}
+    return _VARIANTS_CACHE
+
+
+def _content_n(data):
+    """The content-shape count that drives auto-selection (stat items / bullet items / statement lines)."""
+    for k in ("items", "lines"):
+        v = data.get(k)
+        if isinstance(v, list):
+            return len(v)
+    return 0
+
+
+def _resolve_variant(block, data, prev=None):
+    """Hybrid variant selection: explicit data.variant wins; else auto by content count; else default.
+    A no-repeat variety rule rotates to another content-COMPATIBLE variant when the pick equals `prev`.
+    Returns None for a block with no variant registry (unchanged behaviour)."""
+    reg = _layout_variants().get(block)
+    if not reg:
+        return None
+    variants = reg.get("variants", {})
+    v = data.get("variant")
+    if v in variants:
+        return v                                     # explicit author/LLM override
+    n = _content_n(data)
+    v = reg.get("auto", {}).get(str(n)) or reg.get("default") or next(iter(variants), None)
+    if v == prev and len(variants) > 1:              # variety: avoid repeating the previous scene's variant
+        fitting = [name for name, m in variants.items()
+                   if m.get("fits", [1, 99])[0] <= (n or 1) <= m.get("fits", [1, 99])[1] and name != prev]
+        if fitting:
+            v = fitting[0]
+    return v
+
+
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
     global _POLARITY, _SHELL_TEXTSAFE
     _POLARITY = _theme_polarity(theme)        # so blocks can pick theme-aware (not hardcoded-dark) defaults
@@ -3359,8 +3448,13 @@ def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
     # underneath) and apply the seam operator on the departing wrapper. No transitions -> emit
     # byte-identical to before (no wrappers), so existing frames are unaffected.
     has_trans = any((sc.get("transition_out") or {}).get("kind") in TRANSITIONS for sc in scenes)
+    prev_variant = {}                            # per-block last-picked variant → no-repeat variety
     for i, sc in enumerate(scenes):
         sc = {**sc, "id": _safe_sid(sc["id"])}   # digit-first ids break #selectors
+        _bv = _resolve_variant(sc["type"], sc.get("data", {}), prev_variant.get(sc["type"]))
+        if _bv:
+            sc = {**sc, "_variant": _bv}
+            prev_variant[sc["type"]] = _bv
         f, t = BLOCKS[sc["type"]](sc["id"], sc)
         f = _stamp_archetype(f, _scene_archetype(sc))   # archetype-bias hook: DOM fact read by the layout linter
         if has_trans:
