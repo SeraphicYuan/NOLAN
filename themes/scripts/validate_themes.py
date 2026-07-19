@@ -77,10 +77,17 @@ def _contrast(a, b):
     hi, lo = max(la, lb), min(la, lb)
     return (hi + 0.05) / (lo + 0.05)
 
+TYPE_ROLES = THEMES_DIR / "composition" / "type_roles.json"
+
 try:
     ARCHETYPE_IDS = set(json.loads(ARCHETYPES.read_text(encoding="utf-8"))["archetypes"])
 except Exception:
     ARCHETYPE_IDS = set()
+
+try:
+    PERSONALITY_IDS = set(json.loads(TYPE_ROLES.read_text(encoding="utf-8"))["personalities"])
+except Exception:
+    PERSONALITY_IDS = set()
 
 errors = []
 
@@ -130,6 +137,14 @@ def main():
                 err(tid, "composition.default must also be listed in composition.allowed")
         elif comp is not None:
             err(tid, "composition must be an object {default, allowed}")
+
+        # type-role personality parity — every theme names a personality that exists in the registry
+        # (the _theme_type_roles executor emits its Layer-1 role vars). No drift vs type_roles.json.
+        tp = meta.get("typePersonality")
+        if not tp:
+            err(tid, "missing typePersonality (see themes/composition/type_roles.json)")
+        elif PERSONALITY_IDS and tp not in PERSONALITY_IDS:
+            err(tid, f"typePersonality {tp!r} not in the registry {sorted(PERSONALITY_IDS)}")
 
         # eyebrow legibility floor — an explicit --eyebrow-color must clear 3:1 against --shell
         if css.exists():

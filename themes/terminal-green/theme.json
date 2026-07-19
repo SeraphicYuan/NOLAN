@@ -1,5 +1,6 @@
 {
   "id": "terminal-green",
+  "typePersonality": "mono-technical",
   "name": "Terminal Green",
   "nameZh": "终端绿",
   "description": "True-black backdrop with phosphor-green accent and JetBrains Mono everywhere. Matrix / hacker / 80s terminal vibe — best for technical demos and CLI walkthroughs.",
