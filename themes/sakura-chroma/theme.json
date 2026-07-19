@@ -1,0 +1,51 @@
+{
+  "id": "sakura-chroma",
+  "typePersonality": "geometric-sans",
+  "name": "Sakura Chroma",
+  "nameZh": "樱花色谱",
+  "description": "Vintage-Japanese product catalogue — a warm cream-paper field, brown ink, and a saturated catalogue red, with tall condensed Big Shoulders Display headlines + numerals and a humanist Albert Sans body. Ribbon bands, a petal cluster, a rosette seal.",
+  "descriptionZh": "复古日式产品目录——暖奶油纸底、棕墨、饱和目录红，高瘦压缩 Big Shoulders 标题与数字 + 人文 Albert Sans 正文。缎带、花瓣簇、玫瑰印章。",
+  "mood": [
+    "light",
+    "vintage",
+    "japanese",
+    "catalogue",
+    "warm",
+    "expressive"
+  ],
+  "bestFor": "Product / craft / culture / catalogue topics — a warm expressive vintage-Japanese workshop register.",
+  "preview": {
+    "shell": "#F1E6CB",
+    "surface": "#E5D6B0",
+    "text": "#3A2516",
+    "accent": "#E5392A"
+  },
+  "composition": {
+    "default": "swiss-grid",
+    "allowed": [
+      "swiss-grid",
+      "centered-hero",
+      "editorial-column",
+      "framed",
+      "sidebar",
+      "timeline",
+      "comparison-table",
+      "ledger"
+    ]
+  },
+  "decoration": [
+    "ribbon",
+    "petal-cluster",
+    {
+      "id": "rosette-seal",
+      "text": "SAKURA"
+    }
+  ],
+  "fonts": {
+    "displayEn": "Big Shoulders Display",
+    "body": "Albert Sans",
+    "cjk": "Noto Sans JP",
+    "mono": "Space Mono"
+  },
+  "avoidFor": []
+}

@@ -2750,6 +2750,10 @@ def _theme_shell_textsafe(theme):
 # back, not all of them. Non-Google families (Fontshare Satoshi/Clash Display, commercial GT Sectra) are
 # not emitted → they fall back per the theme's CSS stack (recorded in docs/ENGINE_AUDIT.md, tier B/D).
 _GF_WEIGHTS = {
+    "Noto Sans JP": "400;500;700",
+    "Oswald": "400;600;700",
+    "Albert Sans": "400;500;600;700",
+    "Big Shoulders Display": "700;900",
     "Tektur": "400;500;600;700;800;900", "Chakra Petch": "400;500;600;700", 
     "VT323": "400", "Press Start 2P": "400",
     "Inter": "400;500;600;700;800;900", "Libre Franklin": "400;600;700;800;900",
@@ -3022,6 +3026,14 @@ def _decor_pixel_face(p):
             f'<rect x="6.6" y="4.4" width="1.4" height="1.4" style="{a}"/>'
             f'<rect x="4" y="7.2" width="4" height="1" style="{a}"/></svg>')
 
+def _decor_petal_cluster(p):
+    """A soft cluster of cherry-blossom petals in a corner — vintage-Japanese (sakura)."""
+    pet = 'position:absolute;background:var(--accent);border-radius:52% 0 52% 0;'
+    return "".join(f'<div style="{pet}width:{w}cqw;height:{w}cqw;{pos};transform:rotate({r}deg);opacity:{o}"></div>'
+                   for w, pos, r, o in [(7, "top:-2.5cqh;right:2cqw", 24, 0.5), (5, "top:5cqh;right:8.5cqw", 74, 0.4),
+                                        (6, "top:9cqh;right:1cqw", -28, 0.45), (4, "top:1cqh;right:11.5cqw", 130, 0.35),
+                                        (5, "top:13cqh;right:6cqw", 200, 0.4)])
+
 
 _DECOR_RENDERERS = {
     "graph-paper": _decor_graph_paper, "dot-grid": _decor_dot_grid, "scanlines": _decor_scanlines,
@@ -3036,6 +3048,7 @@ _DECOR_RENDERERS = {
     "double-rule": _decor_double_rule, "hatch": _decor_hatch, "pixel-brackets": _decor_pixel_brackets,
     "drop-cap": _decor_drop_cap, "window-bevel": _decor_window_bevel,
     "pixel-landscape": _decor_pixel_landscape, "pixel-face": _decor_pixel_face,
+    "petal-cluster": _decor_petal_cluster,
 }
 
 
