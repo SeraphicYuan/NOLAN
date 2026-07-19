@@ -97,7 +97,6 @@
         "gallery",
         "collage",
         "carousel",
-        "timeline",
         "diagram"
       ],
       "exemplar": null,
@@ -262,6 +261,37 @@
         ],
         "y": [
           0.1,
+          0.85
+        ]
+      }
+    },
+    "timeline": {
+      "intent": "A sequence of events or steps connected along a spine, with directional flow.",
+      "when_to_use": "the beat walks a SEQUENCE — a chronology, a history, a process, milestones, 'then… then… then', how-it-works steps.",
+      "not_for": "unordered items (use swiss-grid), a two-way comparison (use split-screen), or a single moment (use centered-hero).",
+      "serves_beats": [
+        "chronology",
+        "history",
+        "process",
+        "milestones",
+        "sequence",
+        "how-it-works",
+        "steps"
+      ],
+      "anchor": "a spine (horizontal left→right or vertical top→bottom) with a node at each event; year/label callouts sit off the spine; draw order / arrows carry the directional flow.",
+      "balance": "sequential",
+      "density": "normal",
+      "blocks": [
+        "timeline"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.05,
+          0.95
+        ],
+        "y": [
+          0.15,
           0.85
         ]
       }

@@ -282,7 +282,7 @@ Return JSON array:
     "id": "scene_001",
     "covers_beats": ["beat_001"],
     "visual_type": "b-roll|graphics|a-roll|generated|host",
-    "archetype": "centered-hero|editorial-column|swiss-grid|split-screen|full-bleed-overlay|focal-card|sidebar|framed",
+    "archetype": "centered-hero|editorial-column|swiss-grid|split-screen|full-bleed-overlay|focal-card|sidebar|framed|timeline",
     "visual_description": "detailed description of what appears on screen",
     "narration_excerpt": "the key phrase from covered beats for timing alignment",
     "duration": "Xs",
