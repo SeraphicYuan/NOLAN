@@ -94,3 +94,24 @@ def register(app, ctx):
                 "archetypes": sorted({c["archetype"] for c in cells}),
                 "themes": sorted({c["theme"] for c in cells}),
                 "ready": sum(1 for c in cells if c["ready"]), "total": len(cells)}
+
+    @app.get("/api/themes/books")
+    async def theme_books():
+        """The per-theme theme books (themes/scripts/gen_theme_books.py): the authoring-facing identity +
+        capability poster per theme, served at /theme-books/<theme>.png with a JSON companion."""
+        bdir = repo / "themes" / "_books"
+        books = []
+        if bdir.exists():
+            for p in sorted(bdir.glob("*.png")):
+                meta = {}
+                j = bdir / (p.stem + ".json")
+                if j.exists():
+                    try:
+                        meta = json.loads(j.read_text(encoding="utf-8"))
+                    except Exception:
+                        pass
+                books.append({"theme": p.stem, "png": p.name, "name": meta.get("name", p.stem),
+                              "personality": meta.get("personality"), "mood": meta.get("mood", []),
+                              "specimens": meta.get("specimens", []),
+                              "description": meta.get("description", "")})
+        return {"books": books, "total": len(books)}

@@ -181,6 +181,11 @@ def create_hub_app(
     theme_samples_dir = Path(__file__).parent.parent.parent / "themes" / "_samples"
     theme_samples_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/theme-samples", StaticFiles(directory=str(theme_samples_dir)), name="theme_samples")
+    # Per-theme theme books (themes/scripts/gen_theme_books.py) for the /themes Books tab — the
+    # authoring-facing identity+capability poster per theme.
+    theme_books_dir = Path(__file__).parent.parent.parent / "themes" / "_books"
+    theme_books_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/theme-books", StaticFiles(directory=str(theme_books_dir)), name="theme_books")
 
     # ---- shared context for the route modules (split from the former monolith).
     # Route bodies live in nolan.webui.routes.*; each module's register(app, ctx)
