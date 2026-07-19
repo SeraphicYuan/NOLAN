@@ -70,8 +70,11 @@ directly — an executor would have derived only for the composer and left the p
 undefined). Exemplars: **blue-professional** (cobalt accent ladder 4/8/15/20%), **vellum** (fg-alpha ladder,
 chartreuse text at 62/55/35%). Render A/B: pixel-equivalent to the hand-set rgba (worst Δ=2/255). Enforced by
 `tests/test_color_ladders.py` (ladder is a monotonic function of one base var, base is a hex literal).
-**Remaining:** roll the pattern to the other single-accent themes (each theme's ratios differ, so per-theme,
-verified); the multi-hue *candy* palettes stay bespoke.
+**Rollout DONE 2026-07-19:** all 27 single-accent themes converted — 58 accent/text-derived rgba tokens
+(`--accent-soft`/`--accent-glow` universally, plus per-theme `--surface-3`/`--rule`/fg tokens) rewritten to
+`color-mix(var(--accent|--text) N%, transparent)` at each theme's OWN opacity, so every theme's accent is a
+true single knob. Pixel-verified equivalent (worst Δ=2/255 across 84 cells). The multi-hue *candy* palettes
+stay bespoke (no single-accent ladder).
 
 ---
 

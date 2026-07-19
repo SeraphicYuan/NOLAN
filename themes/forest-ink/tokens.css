@@ -28,8 +28,8 @@
   --text-faint:   #909a92;
   --rule:         #c8c0a8;
   --accent:       #4d7a4d;             /* slightly brighter forest for emphasis */
-  --accent-soft:  rgba(77, 122, 77, 0.10);
-  --accent-glow:  rgba(77, 122, 77, 0.32);
+  --accent-soft:  color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 32%, transparent);
   --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */

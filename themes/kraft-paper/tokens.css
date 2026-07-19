@@ -27,8 +27,8 @@
   --text-faint:   #a08c70;
   --rule:         #b8a486;
   --accent:       #a35b2a;             /* copper-rust */
-  --accent-soft:  rgba(163, 91, 42, 0.10);
-  --accent-glow:  rgba(163, 91, 42, 0.32);
+  --accent-soft:  color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 32%, transparent);
   --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */

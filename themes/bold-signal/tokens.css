@@ -29,8 +29,8 @@
   --text-faint:   #5a5a5a;
   --rule:         #3d3d3d;
   --accent:       #ff5722;             /* hot signal orange */
-  --accent-soft:  rgba(255, 87, 34, 0.14);
-  --accent-glow:  rgba(255, 87, 34, 0.50);
+  --accent-soft:  color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 50%, transparent);
   --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */

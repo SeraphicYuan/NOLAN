@@ -31,8 +31,8 @@
   --text-faint:   #8c8473;
   --rule:         #968e7a;
   --accent:       #c8260d;
-  --accent-soft:  rgba(200, 38, 13, 0.10);
-  --accent-glow:  rgba(200, 38, 13, 0.30);
+  --accent-soft:  color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 30%, transparent);
   --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts ─── */

@@ -25,9 +25,9 @@
   --text-2:       #b8c8e0;
   --text-mute:    #6a7a98;
   --text-faint:   #3a4660;
-  --rule:         rgba(0, 255, 204, 0.22);
+  --rule:         color-mix(in srgb, var(--accent) 22%, transparent);
   --accent:       #00ffcc;             /* electric cyan */
-  --accent-soft:  rgba(0, 255, 204, 0.10);
+  --accent-soft:  color-mix(in srgb, var(--accent) 10%, transparent);
   --accent-glow:  rgba(255, 0, 170, 0.55);   /* SIGNATURE — magenta glow */
   --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 

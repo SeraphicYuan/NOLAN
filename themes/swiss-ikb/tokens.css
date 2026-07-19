@@ -41,8 +41,8 @@
   --text-faint:   #a8a8a8;
   --rule:         #e0e0e0;
   --accent:       #002fa7;             /* IKB — International Klein Blue */
-  --accent-soft:  rgba(0, 47, 167, 0.08);
-  --accent-glow:  rgba(0, 47, 167, 0.35);
+  --accent-soft:  color-mix(in srgb, var(--accent) 8%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 35%, transparent);
   --accent-ink:   #f7f7f5;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts (sans everywhere — Swiss is anti-serif) ─── */

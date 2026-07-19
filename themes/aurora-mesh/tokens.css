@@ -30,10 +30,10 @@
   --text-2:       #c6bdf2;
   --text-mute:    #847baa;
   --text-faint:   #4c4670;
-  --rule:         rgba(157, 123, 255, 0.28);
+  --rule:         color-mix(in srgb, var(--accent) 28%, transparent);
   --accent:       #9d7bff;            /* electric violet — pops, survives h.264 */
-  --accent-soft:  rgba(157, 123, 255, 0.12);
-  --accent-glow:  rgba(157, 123, 255, 0.50);
+  --accent-soft:  color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 50%, transparent);
   --accent-ink:   #14140f;             /* text ON the accent (auto by luminance) */
 
   /* ─── fonts (all loaded in index.tsx) ─── */

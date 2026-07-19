@@ -22,12 +22,12 @@
   --text-2:       color-mix(in srgb, var(--text) 62%, transparent);
   --text-mute:    color-mix(in srgb, var(--text) 55%, transparent);
   --text-faint:   color-mix(in srgb, var(--text) 35%, transparent);
-  --rule:         rgba(232, 216, 92, 0.20);
+  --rule:         color-mix(in srgb, var(--text) 20%, transparent);
   --accent:       #58A8A0;             /* teal — the annotation voice (lightened from #3A7878: the dusty
                                           original was 2.2:1 on the navy field — illegible as an eyebrow/
                                           %-glyph/node accent; #58A8A0 is 3.96:1, still unmistakably teal) */
-  --accent-soft:  rgba(88, 168, 160, 0.18);
-  --accent-glow:  rgba(88, 168, 160, 0.32);
+  --accent-soft:  color-mix(in srgb, var(--accent) 18%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 32%, transparent);
   --accent-ink:   #E8D85C;
 
   /* ─── fonts (italic serif display, quiet sans body, mono pin-note) ─── */
