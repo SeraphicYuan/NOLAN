@@ -87,6 +87,7 @@ def register(app, ctx):
             try:
                 for c in json.loads(man.read_text(encoding="utf-8")):
                     cells.append({"archetype": c.get("archetype"), "theme": c.get("theme"),
+                                  "variant": c.get("variant"),   # P3: set on per-variant specimens
                                   "png": c.get("png"), "ready": (sdir / c.get("png", "")).exists()})
             except Exception:
                 pass
