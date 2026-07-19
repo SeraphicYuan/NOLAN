@@ -119,6 +119,11 @@
       "group": "G4-ordinal", "kind": "signature", "scope": "frame",
       "purpose": "an oversized decorative initial in the upper-left — zine / soft-editorial (sunset-zine, paper-press).",
       "token": "--accent", "param": "text (the initial)"
+    },
+    "window-bevel": {
+      "group": "G2-frame", "kind": "signature", "scope": "frame",
+      "purpose": "a raised 3D window bevel frame (light top/left + dark bottom/right) — Win9x OS chrome; pairs with os-chrome (retro-windows).",
+      "token": "--surface"
     }
   }
 }

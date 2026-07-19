@@ -1,0 +1,50 @@
+{
+  "id": "retro-windows",
+  "typePersonality": "geometric-sans",
+  "name": "Retro Windows",
+  "nameZh": "复古视窗",
+  "description": "Win9x desktop OS chrome — warm-grey button-face panels, navy title bars and headlines, white sunken content wells, hard rectangular bevels, a system-sans UI voice + a VT323 CRT-terminal accent.",
+  "descriptionZh": "Win9x 桌面系统界面——暖灰按钮面板、深蓝标题栏与标题、白色内容区、硬边框浮雕，系统无衬线 + VT323 终端字体。",
+  "mood": [
+    "light",
+    "retro",
+    "os-chrome",
+    "nostalgic",
+    "technical",
+    "system-ui"
+  ],
+  "bestFor": "Retro / technical / systems talks — the visual language of 1990s desktop software (CLI tools, dev tooling, nostalgia).",
+  "preview": {
+    "shell": "#d4d0c8",
+    "surface": "#ffffff",
+    "text": "#222222",
+    "accent": "#000080"
+  },
+  "composition": {
+    "default": "framed",
+    "allowed": [
+      "framed",
+      "centered-hero",
+      "editorial-column",
+      "swiss-grid",
+      "sidebar",
+      "timeline",
+      "comparison-table",
+      "ledger"
+    ]
+  },
+  "decoration": [
+    {
+      "id": "os-chrome",
+      "text": "NOLAN.EXE"
+    },
+    "window-bevel"
+  ],
+  "fonts": {
+    "displayEn": "Tahoma",
+    "body": "Tahoma",
+    "cjk": "Noto Sans SC",
+    "mono": "VT323"
+  },
+  "avoidFor": []
+}

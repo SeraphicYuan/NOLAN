@@ -1,0 +1,76 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · retro-windows   (PORT of the reference design.md)
+ *   Win9x desktop OS chrome: warm-grey button-face panels, navy title bars
+ *   + headlines, white SUNKEN content wells, hard rectangular bevels, the
+ *   system-sans UI voice + a VT323 CRT-terminal accent. Decoration is the
+ *   os-chrome title bar + a raised window-bevel frame. No italics, no radius.
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --density:  1.0;
+  --type-scale:  1.0;
+  /* ─── palette (button-face chrome + navy primary + white content wells) ─── */
+  --shell:        #d4d0c8;             /* button-face chrome — the window body */
+  --surface:      #ffffff;             /* sunken content well */
+  --surface-2:    #c0c0c0;             /* gray — table header / track */
+  --surface-3:    #ffffff;
+  --text:         #222222;
+  --text-2:       #555555;
+  --text-mute:    #555555;
+  --text-faint:   #808080;
+  --rule:         #808080;
+  --accent:       #000080;             /* navy — title bar / headline / primary */
+  --accent-soft:  rgba(0, 0, 128, 0.10);
+  --accent-glow:  rgba(0, 0, 128, 0.18);
+  --accent-ink:   #ffffff;
+  --positive:     #008000;             /* DOS green — OK/success (semantic, not paint) */
+  --negative:     #800000;             /* brick red — error/warning */
+
+  /* ─── fonts (system-sans UI + VT323 CRT terminal) ─── */
+  --font-display-cn: "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  --font-display-en: "Tahoma", "MS Sans Serif", "Segoe UI", Geneva, Verdana, sans-serif;
+  --font-body:       "Tahoma", "MS Sans Serif", "Segoe UI", Geneva, Verdana, sans-serif;
+  --font-mono:       "VT323", "Courier New", ui-monospace, monospace;
+  --font-features:   "kern";
+
+  /* ─── type roles — navy headlines, bold system-sans labels, no italic ─── */
+  --hero-num-font:    var(--font-display-en);
+  --hero-num-style:   normal;
+  --hero-num-weight:  700;
+  --hero-num-track:   0;
+  --display-style:    normal;
+  --display-weight:   700;
+  --eyebrow-font:     var(--font-display-en);
+  --eyebrow-weight:   700;
+  --eyebrow-size:     0.95cqw;
+  --eyebrow-tracking: .04em;
+  --eyebrow-transform: uppercase;
+  --eyebrow-color:    var(--accent);
+  --stat-label-font:  var(--font-display-en);
+  --stat-label-weight: 400;
+  --stat-label-size:  0.85cqw;
+  --stat-label-tracking: .02em;
+  --stat-label-transform: none;
+  --caption-font:     var(--font-mono);           /* VT323 terminal voice */
+  --caption-weight:   400;
+  --caption-size:     1.05cqw;
+  --caption-tracking: .02em;
+  --caption-transform: none;
+
+  /* ─── motion (snappy UI) ─── */
+  --dur-base:  260ms;
+  --dur-slow:  480ms;
+  --dur-cinematic:  700ms;
+
+  /* ─── shape — hard rectangular, a raised Win9x bevel as the card ─── */
+  --r-card:        0;
+  --bw:            2px;
+  --r-stage:       0;
+  --rule-w:        1px;
+  --rule-style:    solid;
+  --stage-pad-x:   90px;
+  --stage-pad-y:   72px;
+  --card-shadow:   inset 0.14cqw 0.14cqw 0 #ffffff, inset -0.14cqw -0.14cqw 0 #808080,
+                   inset 0.3cqw 0.3cqw 0 #dfdfdf, inset -0.3cqw -0.3cqw 0 #000000;
+
+  /* decoration via theme.json (os-chrome title bar + window-bevel raised frame) */
+}
