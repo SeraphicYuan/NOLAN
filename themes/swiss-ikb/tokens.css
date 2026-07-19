@@ -24,6 +24,8 @@
  *     • motion         — punchy + linear (Swiss isn't springy)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --density:  0.65;
+  --gravity:  flex-start;
   --type-scale:  0.8;
   /* ─── palette ─── */
   --shell:        #e8e8e6;

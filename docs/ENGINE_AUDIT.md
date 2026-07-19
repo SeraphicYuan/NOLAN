@@ -73,3 +73,13 @@ the theme's `--font-*` (+ CJK Noto), emit a Google-Fonts `@import` for tier A/C,
 tier B, and a substitution table for tier D (theme keeps its declared name; the loader maps it to a real
 face + records the swap). This is a **prerequisite for a trustworthy sample matrix** — samples in fallback
 fonts misrepresent the theme.
+
+## F4 · electric-studio: primary text invisible on its base canvas (--text ≈ --shell) — `LOGGED` (theme palette)
+
+**Evidence:** the centered-hero sample renders only the "%" — the "73" (`var(--text)`) is invisible on
+electric-studio's shell. WCAG contrast scan across all 26 themes: electric-studio `--text`-vs-`--shell` =
+**1.0** (text colour ≈ shell colour); every other theme is ≥10. On a card `--text`-vs-`--surface` = 19.8
+(fine) — so the theme was designed for text-on-CARD, and a type-only beat on the bare canvas breaks.
+**Isolated to this one theme.** Fix (a palette decision): darken electric-studio's `--text` for canvas
+legibility, OR guarantee centred/type-only content sits on a `--surface` panel at compose time. Surfaced
+by the type-scale rollout matrix.

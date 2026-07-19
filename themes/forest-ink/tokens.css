@@ -15,6 +15,8 @@
  *     • motion         — slow + cinematic (documentary pace)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --gravity:  center;
+  --density:  1.05;
   --type-scale:  0.95;
   /* ─── palette ─── */
   --shell:        #ece7da;

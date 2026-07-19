@@ -12,6 +12,8 @@
  *     • motion         — slow + cinematic
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --gravity:  center;
+  --density:  1.0;
   --type-scale:  1.0;
   /* ─── palette ─── */
   --shell:        #d8cfb8;

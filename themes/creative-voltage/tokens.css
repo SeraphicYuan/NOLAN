@@ -14,6 +14,8 @@
  *     • motion         — punchy + slight overshoot (energy)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --gravity:  center;
+  --density:  0.85;
   --type-scale:  1.3;
   /* ─── palette ─── */
   --shell:        #001a4d;

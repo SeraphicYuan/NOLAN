@@ -17,6 +17,8 @@
  *     • motion         — playful, medium-fast
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --gravity:  center;
+  --density:  1.0;
   --type-scale:  1.05;
   /* ─── palette ─── */
   --shell:        #dcc7b8;
