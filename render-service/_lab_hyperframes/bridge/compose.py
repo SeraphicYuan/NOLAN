@@ -2750,6 +2750,9 @@ def _theme_shell_textsafe(theme):
 # back, not all of them. Non-Google families (Fontshare Satoshi/Clash Display, commercial GT Sectra) are
 # not emitted → they fall back per the theme's CSS stack (recorded in docs/ENGINE_AUDIT.md, tier B/D).
 _GF_WEIGHTS = {
+    "Nunito": "400;600;700;800",
+    "Quicksand": "400;500;600;700",
+    "Fredoka One": "400",
     "Noto Sans JP": "400;500;700",
     "Oswald": "400;600;700",
     "Albert Sans": "400;500;600;700",
@@ -3034,6 +3037,22 @@ def _decor_petal_cluster(p):
                                         (6, "top:9cqh;right:1cqw", -28, 0.45), (4, "top:1cqh;right:11.5cqw", 130, 0.35),
                                         (5, "top:13cqh;right:6cqw", 200, 0.4)])
 
+def _decor_stickers(p):
+    """A scatter of pastel outlined stickers — daisy / star / cloud — kawaii storybook (daisy-days)."""
+    ink = "var(--text)"
+    daisy = ('<svg viewBox="0 0 24 24" style="position:absolute;{pos}width:6cqw;height:6cqw;opacity:0.92">'
+             + "".join(f'<ellipse cx="12" cy="5.5" rx="2.3" ry="4" fill="var(--accent)" transform="rotate({a} 12 12)"/>'
+                       for a in range(0, 360, 45))
+             + f'<circle cx="12" cy="12" r="3" fill="var(--positive)" stroke="{ink}" stroke-width="0.8"/></svg>')
+    star = ('<svg viewBox="0 0 24 24" style="position:absolute;{pos}width:3.8cqw;height:3.8cqw;opacity:0.9">'
+            f'<path d="M12 2 l2.5 7 7.3 .3 -5.8 4.6 2 7.2 -6 -4.4 -6 4.4 2 -7.2 -5.8 -4.6 7.3 -.3z" '
+            f'fill="var(--positive)" stroke="{ink}" stroke-width="0.7"/></svg>')
+    cloud = ('<svg viewBox="0 0 40 22" style="position:absolute;{pos}width:8cqw;height:4.4cqw;opacity:0.9">'
+             f'<path d="M9 20 a6 6 0 0 1 1 -12 a8 8 0 0 1 15 1 a5.5 5.5 0 0 1 4 11 z" '
+             f'fill="var(--surface-2)" stroke="{ink}" stroke-width="1"/></svg>')
+    return (daisy.format(pos='top:6cqh;right:6cqw;') + star.format(pos='top:15cqh;right:14cqw;')
+            + cloud.format(pos='top:5cqh;left:5cqw;') + star.format(pos='bottom:11cqh;left:9cqw;'))
+
 
 _DECOR_RENDERERS = {
     "graph-paper": _decor_graph_paper, "dot-grid": _decor_dot_grid, "scanlines": _decor_scanlines,
@@ -3048,7 +3067,7 @@ _DECOR_RENDERERS = {
     "double-rule": _decor_double_rule, "hatch": _decor_hatch, "pixel-brackets": _decor_pixel_brackets,
     "drop-cap": _decor_drop_cap, "window-bevel": _decor_window_bevel,
     "pixel-landscape": _decor_pixel_landscape, "pixel-face": _decor_pixel_face,
-    "petal-cluster": _decor_petal_cluster,
+    "petal-cluster": _decor_petal_cluster, "stickers": _decor_stickers,
 }
 
 

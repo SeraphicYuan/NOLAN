@@ -139,6 +139,11 @@
       "group": "G8-figurative", "kind": "signature", "scope": "frame",
       "purpose": "a soft cluster of cherry-blossom petals in a corner — vintage-Japanese (sakura-chroma).",
       "token": "--accent"
+    },
+    "stickers": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "a scatter of pastel outlined stickers (daisy / star / cloud) — kawaii storybook (daisy-days).",
+      "token": "--accent"
     }
   }
 }

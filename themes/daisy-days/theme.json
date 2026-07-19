@@ -1,0 +1,47 @@
+{
+  "id": "daisy-days",
+  "typePersonality": "friendly-rounded",
+  "name": "Daisy Days",
+  "nameZh": "雏菊时光",
+  "description": "Childlike kawaii storybook — a soft cream field, a candy pastel palette with a coral pop, chunky rounded Fredoka One display + a friendly Quicksand body, big rounded cards. Pastel stickers (daisy / star / cloud) and organic blobs.",
+  "descriptionZh": "童趣可爱绘本——柔和奶油底、糖果般粉彩配珊瑚色点缀、圆润 Fredoka One 标题 + 友好 Quicksand 正文、大圆角卡片。粉彩贴纸（雏菊/星星/云）与有机色块。",
+  "mood": [
+    "light",
+    "kawaii",
+    "playful",
+    "friendly",
+    "pastel",
+    "storybook"
+  ],
+  "bestFor": "Kids / education / friendly-brand / lighthearted topics — a warm playful storybook register.",
+  "preview": {
+    "shell": "#F5F0E6",
+    "surface": "#ffffff",
+    "text": "#2D2D2D",
+    "accent": "#F8635F"
+  },
+  "composition": {
+    "default": "centered-hero",
+    "allowed": [
+      "centered-hero",
+      "editorial-column",
+      "framed",
+      "swiss-grid",
+      "sidebar",
+      "timeline",
+      "comparison-table",
+      "ledger"
+    ]
+  },
+  "decoration": [
+    "stickers",
+    "blob"
+  ],
+  "fonts": {
+    "displayEn": "Fredoka One",
+    "body": "Quicksand",
+    "cjk": "Noto Sans SC",
+    "mono": "Space Mono"
+  },
+  "avoidFor": []
+}
