@@ -32,6 +32,10 @@ CSS = """
 .stmt{position:absolute;left:calc(5.5cqw*var(--density,1));bottom:16cqh;max-width:80cqw;font-weight:var(--display-weight,800);font-style:var(--display-style,normal);font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}
+/* universal overflow guard: a word wider than its box WRAPS instead of breaching the margin (a heavy
+   theme face / a long compound word / a URL). Complements data-fit (scale-to-box) — break-word never
+   conflicts with the GSAP entrance transforms, so it is safe on the per-element-animated blocks. */
+.stmt,.bl-title,.bl-text,.pq-body,.lg-title,.lg-desc,.ct-rlabel,.ct-cell{overflow-wrap:break-word;}
 .hlwrap{position:relative;display:inline-block;isolation:isolate;}
 .hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:var(--accent);transform:scaleX(0);
   transform-origin:left center;z-index:-1;}
@@ -857,7 +861,10 @@ def highlight_statement(sid, sc):
     reveal = d.get("reveal", "rise")
     if reveal not in REVEALS:
         reveal = "rise"
-    frag.append(f'<div class="stmt {tcls}">')
+    # data-fit: a too-wide display line (a heavy theme face, a long unbreakable word) is scaled to the
+    # content safe-box instead of breaching the right margin. .stmt is not GSAP-animated (the .ln children
+    # are), so the fit transform is free. Origin left-bottom = the block's anchored corner.
+    frag.append(f'<div class="stmt {tcls}" data-fit data-fit-w="80cqw" data-fit-origin="left bottom">')
     if reveal == "rise":
         # ── default path (unchanged): the whole line rises, the operative gets a yellow sweep ──
         for li, line in enumerate(d["lines"]):
@@ -2942,11 +2949,13 @@ def _decor_compass_rings(p):
             f'<div style="{ln}left:8cqw;bottom:-1.5cqh;width:0.1cqw;height:11cqw"></div>')
 
 def _decor_pillar_panels(p):
-    """Vertical accent side-panels + hairlines — bauhaus/bold-poster architecture."""
-    b = 'position:absolute;top:0;bottom:0;width:6cqw;background:var(--accent);opacity:0.10;'
+    """Vertical accent side-panels + hairlines — bauhaus/bold-poster architecture. The band + rule sit at
+    4cqw, INSIDE the ~5.5cqw content margin, so the block content (and its full-width table rules) clears
+    the pillar line instead of crossing it (the 'breach' fix — furniture stays in the margin)."""
+    b = 'position:absolute;top:0;bottom:0;width:4cqw;background:var(--accent);opacity:0.10;'
     r = 'position:absolute;top:0;bottom:0;width:0.28cqw;background:var(--accent);opacity:0.45;'
     return (f'<div style="{b}left:0"></div><div style="{b}right:0"></div>'
-            f'<div style="{r}left:6cqw"></div><div style="{r}right:6cqw"></div>')
+            f'<div style="{r}left:4cqw"></div><div style="{r}right:4cqw"></div>')
 
 def _decor_letterpress(p):
     """A giant faint background word with a stacked 3D offset shadow (letterpress/poster)."""
