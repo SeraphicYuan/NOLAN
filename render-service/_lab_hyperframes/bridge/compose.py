@@ -32,6 +32,20 @@ CSS = """
 .stmt{position:absolute;left:calc(5.5cqw*var(--density,1));bottom:16cqh;max-width:80cqw;font-weight:var(--display-weight,800);font-style:var(--display-style,normal);font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}
+/* statement layout variants (P3) — base .stmt == editorial-left (left, lower-third baseline). */
+.sv-centered .stmt{left:0;right:0;top:0;bottom:0;max-width:none;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;text-align:center;padding:0 10cqw;}
+.sv-centered .kick{left:0;right:0;text-align:center;}          /* shared: centre the kicker */
+.sv-centered .kick::after{margin-left:auto;margin-right:auto;}
+.blk-statement.sv-centered .kick{top:19cqh;}                   /* block-scoped vertical anchor */
+.sv-banner-top .stmt{bottom:auto;top:22cqh;}
+.sv-rail-accent .stmt{left:11cqw;}
+.stmt-rail{position:absolute;left:5.5cqw;bottom:16.5cqh;width:0.7cqw;height:23cqh;background:var(--accent);}
+.stmt-card{position:absolute;inset:13cqh 11cqw;border:var(--bw,2px) solid var(--text);border-radius:var(--r-card,4px);
+  box-shadow:var(--card-shadow,none);background:var(--surface);display:flex;flex-direction:column;
+  justify-content:center;align-items:center;padding:0 5cqw;}
+.sv-framed-card .stmt{position:static;left:auto;bottom:auto;max-width:none;text-align:center;}
+.sv-framed-card .kick{position:static;left:auto;top:auto;text-align:center;margin-bottom:1.4cqh;}
 /* universal overflow guard: a word wider than its box WRAPS instead of breaching the margin (a heavy
    theme face / a long compound word / a URL). Complements data-fit (scale-to-box) — break-word never
    conflicts with the GSAP entrance transforms, so it is safe on the per-element-animated blocks. */
@@ -95,6 +109,16 @@ CSS = """
 .bl-title .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.12em;-webkit-box-decoration-break:clone;box-decoration-break:clone;}
 .bl-wrap{position:absolute;top:34cqh;left:calc(5.5cqw*var(--density,1));right:calc(8cqw*var(--density,1));
   display:flex;flex-direction:column;gap:calc(2.4cqh*var(--density,1));}
+/* bullet_list layout variants (P3) — base == stack (title top, single vertical list). */
+.sv-centered .bl-title{left:0;right:0;text-align:center;}
+.blk-bullet_list.sv-centered .kick{top:7cqh;}                  /* above the centred title (block-scoped) */
+.sv-centered .bl-wrap{left:0;right:0;top:40cqh;align-items:center;}
+.sv-two-col .bl-wrap{display:grid;grid-template-columns:1fr 1fr;column-gap:6cqw;row-gap:2.4cqh;align-content:start;}
+.sv-numbered-rail .bl-wrap{border-left:0.5cqw solid var(--accent);padding-left:3cqw;left:calc(8cqw*var(--density,1));}
+.sv-card-row .bl-wrap{flex-direction:row;flex-wrap:wrap;top:32cqh;gap:2cqw;}
+.sv-card-row .bl-item{flex:1;min-width:22cqw;max-width:30cqw;flex-direction:column;align-items:flex-start;gap:0.8cqh;
+  border:var(--bw,2px) solid var(--rule);border-radius:var(--r-card,4px);box-shadow:var(--card-shadow,none);
+  background:var(--surface);padding:2.2cqh 1.8cqw;}
 .bl-item{display:flex;align-items:baseline;gap:1.4cqw;opacity:0;}
 .bl-mark{flex:none;color:var(--accent);font-weight:800;font-size:1.7cqw;line-height:1;font-family:var(--font-display-en);}
 .bl-mark::before{content:var(--bullet-marker,"\\2022");}
@@ -649,7 +673,7 @@ def stat_lockup(sid, sc):
     variant = sc.get("_variant") or "stack-left"
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")   # dark ink only over real footage
     g, tl = media_ground(sid, d.get("ground", {"kind": "paper", "parchment": d.get("parchment")}), start, dur)
-    frag = [f'<section class="scene clip {reg} sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    frag = [f'<section class="scene clip {reg} blk-stat sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     kicker_html = f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>'
     tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.1});')
     if variant != "lead-rail":                      # lead-rail carries the kicker in its body (below)
@@ -893,17 +917,26 @@ def highlight_statement(sid, sc):
     # explicit ground:{kind:transparent} still scrims a root video (grounded/footage keeps that default).
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
     g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
-    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
-    frag.append(f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>')
+    variant = sc.get("_variant") or "editorial-left"   # P3 layout variant
+    frag = [f'<section class="scene clip {reg} blk-statement sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    kicker_html = f'<div id="{sid}-k" class="kick">{esc(d.get("kicker",""))}</div>'
     tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.2});')
+    if variant == "rail-accent":                       # a vertical accent rail beside the phrase
+        frag.append('<div class="stmt-rail"></div>')
+    if variant == "framed-card":                       # kicker + phrase live inside a centered card
+        frag.append(f'<div class="stmt-card">{kicker_html}')
+    else:
+        frag.append(kicker_html)
     op = d.get("operative", "")
     reveal = d.get("reveal", "rise")
     if reveal not in REVEALS:
         reveal = "rise"
     # data-fit: a too-wide display line (a heavy theme face, a long unbreakable word) is scaled to the
-    # content safe-box instead of breaching the right margin. .stmt is not GSAP-animated (the .ln children
-    # are), so the fit transform is free. Origin left-bottom = the block's anchored corner.
-    frag.append(f'<div class="stmt {tcls}" data-fit data-fit-w="80cqw" data-fit-origin="left bottom">')
+    # content safe-box instead of breaching the margin. .stmt is not GSAP-animated (the .ln children are),
+    # so the fit transform is free. Origin follows the variant's anchored corner.
+    fit_origin = {"centered": "center bottom", "framed-card": "center bottom",
+                  "banner-top": "left top"}.get(variant, "left bottom")
+    frag.append(f'<div class="stmt {tcls}" data-fit data-fit-w="80cqw" data-fit-origin="{fit_origin}">')
     if reveal == "rise":
         # ── default path (unchanged): the whole line rises, the operative gets a yellow sweep ──
         for li, line in enumerate(d["lines"]):
@@ -929,6 +962,8 @@ def highlight_statement(sid, sc):
             frag.append(f'<span class="{("ln " + cls).strip()}" id="{lid}"{attr}>{inner}</span>')
             tl += tll
     frag.append('</div>')
+    if variant == "framed-card":
+        frag.append('</div>')                          # close .stmt-card
     if d.get("captionBar"):
         cid = f"{sid}-cap"
         frag.append(f'<div id="{cid}" class="capbar">{esc(d["captionBar"])}</div>')
@@ -946,7 +981,8 @@ def bullet_list(sid, sc):
     reg = d.get("register") or ("footage" if _grounded(d) else "paper")
     default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
     g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
-    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    variant = sc.get("_variant") or "stack"            # P3 layout variant
+    frag = [f'<section class="scene clip {reg} blk-bullet_list sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     if d.get("kicker"):
         frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
@@ -956,7 +992,7 @@ def bullet_list(sid, sc):
                   if op and op in t else esc(t))
         frag.append(f'<div id="{sid}-t" class="bl-title">{html_t}</div>')
         tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.3});')
-    numbered = bool(d.get("numbered"))
+    numbered = bool(d.get("numbered")) or variant == "numbered-rail"   # the rail variant is ordinal by design
     frag.append('<div class="bl-wrap">')
     for i, it in enumerate(d.get("items", [])):
         text = it if isinstance(it, str) else it.get("text", "")
