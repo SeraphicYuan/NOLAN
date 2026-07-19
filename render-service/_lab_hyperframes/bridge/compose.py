@@ -2750,6 +2750,7 @@ def _theme_shell_textsafe(theme):
 # back, not all of them. Non-Google families (Fontshare Satoshi/Clash Display, commercial GT Sectra) are
 # not emitted → they fall back per the theme's CSS stack (recorded in docs/ENGINE_AUDIT.md, tier B/D).
 _GF_WEIGHTS = {
+    "Tektur": "400;500;600;700;800;900", "Chakra Petch": "400;500;600;700", 
     "VT323": "400", "Press Start 2P": "400",
     "Inter": "400;500;600;700;800;900", "Libre Franklin": "400;600;700;800;900",
     "Lora": "400;500;600;700", "Manrope": "400;500;600;700;800",
@@ -3004,6 +3005,23 @@ def _decor_window_bevel(p):
             'border-top:0.16cqw solid #dfdfdf;border-left:0.16cqw solid #dfdfdf;'
             'border-right:0.16cqw solid #808080;border-bottom:0.16cqw solid #808080"></div></div>')
 
+def _decor_pixel_landscape(p):
+    """A stepped pixel mountain-horizon silhouette along the bottom edge — 8-bit arcade scenery."""
+    return ('<svg viewBox="0 0 160 30" preserveAspectRatio="none" style="position:absolute;left:0;right:0;'
+            'bottom:0;width:100%;height:15cqh;opacity:0.20">'
+            '<path d="M0 30 V18 h8 V12 h8 V20 h8 V8 h8 V14 h8 V22 h8 V10 h8 V16 h8 V6 h8 V12 h8 V20 h8 '
+            'V14 h8 V22 h8 V10 h8 V18 h8 V12 h8 V20 h8 V30 Z" fill="var(--accent)"/></svg>')
+
+def _decor_pixel_face(p):
+    """A tiny blocky pixel mascot (a square face — eyes + mouth) in the upper-right — 8-bit character."""
+    a = 'fill:var(--accent)'
+    return ('<svg viewBox="0 0 12 12" shape-rendering="crispEdges" style="position:absolute;right:6cqw;'
+            'top:9cqh;width:5.5cqw;height:5.5cqw;opacity:0.75">'
+            f'<rect x="2" y="2" width="8" height="8" fill="none" stroke="var(--accent)" stroke-width="1"/>'
+            f'<rect x="4" y="4.4" width="1.4" height="1.4" style="{a}"/>'
+            f'<rect x="6.6" y="4.4" width="1.4" height="1.4" style="{a}"/>'
+            f'<rect x="4" y="7.2" width="4" height="1" style="{a}"/></svg>')
+
 
 _DECOR_RENDERERS = {
     "graph-paper": _decor_graph_paper, "dot-grid": _decor_dot_grid, "scanlines": _decor_scanlines,
@@ -3017,6 +3035,7 @@ _DECOR_RENDERERS = {
     "starfield": _decor_starfield, "os-chrome": _decor_os_chrome, "rosette-seal": _decor_rosette_seal,
     "double-rule": _decor_double_rule, "hatch": _decor_hatch, "pixel-brackets": _decor_pixel_brackets,
     "drop-cap": _decor_drop_cap, "window-bevel": _decor_window_bevel,
+    "pixel-landscape": _decor_pixel_landscape, "pixel-face": _decor_pixel_face,
 }
 
 

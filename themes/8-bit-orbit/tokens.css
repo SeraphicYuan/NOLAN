@@ -1,0 +1,76 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · 8-bit-orbit   (PORT of the reference design.md)
+ *   Pixel-arcade CRT: a dark-void starfield, neon-cyan primary, chunky
+ *   Tektur display + Space Mono HUD labels, hard rectangular pixel shapes,
+ *   a hard-offset pixel shadow on cards. Retro-game energy. Distinct from
+ *   neon-cyber (dark-neon, not PIXELATED). Decoration = starfield + pixel-
+ *   brackets + a pixel-mountain horizon.
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --density:  1.0;
+  --type-scale:  1.0;
+  /* ─── palette (dark void + neon cyan + pixel accents) ─── */
+  --shell:        #0A0E27;             /* dark void field */
+  --surface:      #0F1B3D;             /* deep navy panel */
+  --surface-2:    #16244d;
+  --surface-3:    #0F1B3D;
+  --text:         #E2D5F2;             /* soft lavender */
+  --text-2:       rgba(226, 213, 242, 0.66);
+  --text-mute:    rgba(226, 213, 242, 0.55);
+  --text-faint:   rgba(226, 213, 242, 0.35);
+  --rule:         rgba(94, 220, 244, 0.28);
+  --accent:       #5EDCF4;             /* neon cyan — the primary */
+  --accent-soft:  rgba(94, 220, 244, 0.12);
+  --accent-glow:  rgba(94, 220, 244, 0.50);
+  --accent-ink:   #0A0E27;
+  --positive:     #F4D03F;             /* neon yellow */
+  --negative:     #F0A6CA;             /* neon pink */
+
+  /* ─── fonts (chunky Tektur display + Space Mono HUD) ─── */
+  --font-display-cn: "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  --font-display-en: "Tektur", "Chakra Petch", system-ui, sans-serif;
+  --font-body:       "Chakra Petch", "Space Mono", system-ui, sans-serif;
+  --font-mono:       "Space Mono", ui-monospace, monospace;
+  --font-features:   "kern";
+
+  /* ─── type roles — chunky pixel display, wide-tracked mono HUD ─── */
+  --hero-num-font:    var(--font-display-en);
+  --hero-num-style:   normal;
+  --hero-num-weight:  900;
+  --hero-num-track:   0.01em;
+  --display-style:    normal;
+  --display-weight:   800;
+  --eyebrow-font:     var(--font-mono);           /* Space Mono HUD label */
+  --eyebrow-weight:   700;
+  --eyebrow-size:     0.9cqw;
+  --eyebrow-tracking: .3em;
+  --eyebrow-transform: uppercase;
+  --eyebrow-color:    var(--accent);
+  --stat-label-font:  var(--font-mono);
+  --stat-label-weight: 400;
+  --stat-label-size:  0.82cqw;
+  --stat-label-tracking: .18em;
+  --stat-label-transform: uppercase;
+  --caption-font:     var(--font-mono);
+  --caption-weight:   400;
+  --caption-size:     0.82cqw;
+  --caption-tracking: .16em;
+  --caption-transform: uppercase;
+
+  /* ─── motion (snappy arcade) ─── */
+  --dur-base:  240ms;
+  --dur-slow:  440ms;
+  --dur-cinematic:  680ms;
+
+  /* ─── shape — hard rectangular pixel, hard-offset shadow ─── */
+  --r-card:        0;
+  --bw:            2px;
+  --r-stage:       0;
+  --rule-w:        1.5px;
+  --rule-style:    solid;
+  --stage-pad-x:   100px;
+  --stage-pad-y:   80px;
+  --card-shadow:   5px 5px 0 var(--accent);       /* hard pixel-offset drop */
+
+  /* decoration via theme.json (starfield + pixel-brackets + pixel-landscape) */
+}

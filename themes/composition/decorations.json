@@ -124,6 +124,16 @@
       "group": "G2-frame", "kind": "signature", "scope": "frame",
       "purpose": "a raised 3D window bevel frame (light top/left + dark bottom/right) — Win9x OS chrome; pairs with os-chrome (retro-windows).",
       "token": "--surface"
+    },
+    "pixel-landscape": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "a stepped pixel mountain-horizon silhouette along the bottom edge — 8-bit arcade scenery (8-bit-orbit).",
+      "token": "--accent"
+    },
+    "pixel-face": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "a tiny blocky pixel mascot (square face, eyes + mouth) upper-right — 8-bit character (8-bit-orbit).",
+      "token": "--accent"
     }
   }
 }
