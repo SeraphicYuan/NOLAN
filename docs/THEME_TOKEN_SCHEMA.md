@@ -109,9 +109,11 @@ keeps the block defaults). `--bw` set across 10 themes by shape character: bruta
 neubrutalism) 3px, editorial/gallery (vellum/dark-botanical/newsroom/…) 1px, consulting (blue-professional)
 1.5px, rest 2px. Render-verified: the framed card border ranges heavy→hairline across themes. Honesty-tested
 (`tests/test_shape_scale.py`: tokens consumed, values are ladder steps, axis separates brutalist>gallery).
-**Remaining:** the SPACING half — `--density` already multiplies insets/gaps (Layer 1); named pad/gap steps
-(`pad.slide`, `pad.card`, `gap.grid`, `max-content-width`) + the theme-specific pixel-unit / frame-inset
-sets are not yet tokenised (lower value — `--density` + `--stage-pad-*` already cover the visible cases).
+**Spacing half — resolved (covered, not a gap):** each render path already tokenises spacing. The HyperFrames
+composer scales every inset/gap via `--density` on container-relative `cqw` units (so a theme is more/less
+generous — vellum density 1.2), and the Remotion pipeline consumes the absolute `--stage-pad-x/y` steps
+(Surface.tsx). Named `pad.card`/`gap.grid` sub-steps are deliberately NOT added — they'd duplicate `--density`
+for negligible gain. Layer 3 is complete.
 
 ---
 
@@ -138,10 +140,14 @@ Layer-4 token). Wiring it (framed card + `.lt-bar`/`.lt-card`) activated a huge 
 character: neubrutalism/bauhaus HARD-OFFSET shadow (7/8px, no blur — the brutalist signature), swiss-ikb
 INSET hairline, terminal-green inset + phosphor GLOW, aurora-mesh layered drop+glow, blue-professional/vellum
 FLAT (none) — verified across the framed archetype. Scoped to PANEL cards; image cards (galcard/carousel)
-keep their block-tuned lift (the schema's card vs img-placeholder split). Registry status: `card` +
-`image-card` wired; `bullet-marker` (needs a list block — none exists), `timeline-dot`, `pill`, `bar`,
-`counter` documented `pending` with the block each needs. **Remaining:** wire the pending components as their
-blocks appear; this also unblocks the decoration-map revisit (THEME_DECORATION_MAP.md).
+keep their block-tuned lift (the schema's card vs img-placeholder split). Registry status (each resolved
+on inspection, not left vaguely pending): `card` + `image-card` + `bar` **wired** (bar-cap radius follows the
+shape scale — sharp vs rounded bars, verified); `pill` **n/a** (a pill is definitionally fully-round — no
+theme radius axis); `timeline-dot` **n/a** (the production timeline is an intentionally cinematic dark
+variant; the themed timeline is the archetype seed); `counter` **n/a** (ordinal type comes from Layer-1 +
+the `background-ordinal` decoration); `bullet-marker` **pending** — genuinely blocked on a bullet/list block
+that doesn't exist (a new BLOCK feature, orthogonal to the token schema). The honesty test enforces that a
+non-`wired` component documents its reason. Layer 4's mechanism + flagship are complete.
 
 ---
 

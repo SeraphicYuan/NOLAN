@@ -333,7 +333,7 @@ CSS = """
 .ch-title .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
 .ch-base{position:absolute;height:2px;background:var(--rule);}
 .ch-grid{position:absolute;height:1px;background:var(--rule);opacity:0.45;}
-.ch-bar{position:absolute;transform-origin:bottom center;border-radius:5px 5px 0 0;will-change:transform;}
+.ch-bar{position:absolute;transform-origin:bottom center;border-radius:var(--r-card,5px) var(--r-card,5px) 0 0;will-change:transform;}
 .ch-val{position:absolute;text-align:center;font-weight:800;font-size:1.15cqw;color:var(--text);opacity:0;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .ch-xlab{position:absolute;text-align:center;font-family:var(--font-body);font-weight:600;font-size:0.82cqw;letter-spacing:0.04em;color:var(--text-2);white-space:nowrap;}
 .ch-svg{position:absolute;inset:0;width:100%;height:100%;}

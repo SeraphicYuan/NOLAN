@@ -1,5 +1,5 @@
 {
-  "_doc": "Component-token registry (theme schema v2, Layer 4). Each COMMON component is a small param bundle a theme fills so a 'brutalist card' and a 'porcelain card' differ WITHOUT touching block code. The bundle params map to theme tokens the block CSS consumes via var(--token, <default>) — backward-compatible. `status: wired` means every listed token IS consumed by a block (honesty-tested by tests/test_components.py — this is what caught --card-shadow being authored by 24 themes yet dead); `status: pending` names what's still hardcoded + the block it needs. Theme-specific components (retro-windows OS-chrome, 8-bit pixel-stack, sakura seal) live in the extension registry (compose_extension.py), not here.",
+  "_doc": "Component-token registry (theme schema v2, Layer 4). Each COMMON component is a small param bundle a theme fills so a 'brutalist card' and a 'porcelain card' differ WITHOUT touching block code. The bundle params map to theme tokens the block CSS consumes via var(--token, <default>) — backward-compatible. `status: wired` means every listed token IS consumed by a block (honesty-tested by tests/test_components.py — this is what caught --card-shadow being authored by 24 themes yet dead); `status: pending` names a component that still needs a block that doesn't exist; `status: n/a` records a component that on inspection is NOT a per-theme axis here (with the reason), so it isn't force-wired for completeness. Theme-specific components (retro-windows OS-chrome, 8-bit pixel-stack, sakura seal) live in the extension registry (compose_extension.py), not here.",
   "components": {
     "card": {
       "status": "wired",
@@ -13,29 +13,30 @@
       "tokens": {"radius": "--r-card"},
       "consumed_by": [".carslide", ".carcard", ".carcarditem"]
     },
+    "bar": {
+      "status": "wired",
+      "_desc": "data bar (bar chart) — fill is the accent (highlight/mute handled in-block), and the cap radius now follows the shape scale so a sharp theme gets sharp bars and a soft theme rounded ones (vellum r2 vs blue-professional r14, verified).",
+      "tokens": {"fill": "--accent", "radius": "--r-card"},
+      "consumed_by": [".ch-bar (chart block)"]
+    },
     "bullet-marker": {
       "status": "pending",
-      "_desc": "the list-item marker glyph (em-dash / slash / chevron / dot / square) — a real per-theme choice (brutalist square vs editorial em-dash vs technical chevron). BLOCKED: no bullet/checklist block exists yet; add one, then tokenise --bullet-marker.",
+      "_desc": "the list-item marker glyph (em-dash / slash / chevron / dot / square) — a real per-theme choice. BLOCKED on a bullet/checklist block, which does not exist yet — that is a new BLOCK feature (orthogonal to the token schema), not a token wiring. Build the block first, then tokenise --bullet-marker.",
       "tokens": {"glyph": "--bullet-marker"}
     },
+    "pill": {
+      "status": "n/a",
+      "_desc": "a pill/tag chip is DEFINITIONALLY fully-round (border-radius:999px = the pill shape); there is no per-theme radius axis to expose. Its fill/ink already resolve from --accent tokens. Not a shape axis → not wired.",
+      "tokens": {"fill": "--accent-soft", "ink": "--accent"}
+    },
     "timeline-dot": {
-      "status": "pending",
-      "_desc": "the node marker on a timeline spine — ring width + fill. Currently .tlnode hardcodes 28px / 5px accent ring / #0a0b0a fill (the Vox cinematic variant); tokenise ring-weight + fill so a flat theme gets a flat dot.",
+      "status": "n/a",
+      "_desc": "the production `timeline` block is an INTENTIONALLY cinematic dark variant (fixed dramatic look — .tlbg radial dark, accent-ring node); the theme-robust timeline is the archetype SEED (already themed). Tokenising the dark block's dot would fight its deliberate design, so it is left as-is.",
       "tokens": {"ring-weight": "--bw", "fill": "--surface"}
     },
-    "pill": {
-      "status": "pending",
-      "_desc": "tag / pill chip — fill/border/radius/padding. Several blocks hardcode a pill (dgnode.pill 999px, kicker chips); unify to a --pill-* bundle.",
-      "tokens": {"fill": "--accent-soft", "radius": "--r-pill", "ink": "--accent"}
-    },
-    "bar": {
-      "status": "pending",
-      "_desc": "data bar track + fill (bar chart / progress). --ch-bar / .lt-tab hardcode radius + accent fill; tokenise track + fill + cap-radius.",
-      "tokens": {"track": "--surface-2", "fill": "--accent", "radius": "--r-card"}
-    },
     "counter": {
-      "status": "pending",
-      "_desc": "page number / ordinal counter (the 01/02 markers + background-ordinal decoration). Type comes from the type-role system; a --counter-* bundle would carry its own weight/opacity.",
+      "status": "n/a",
+      "_desc": "the ordinal/counter treatment is already theme-driven upstream — its typography comes from the type-role system (Layer 1) and its big-numeral form from the `background-ordinal` DECORATION (lever #3). No separate component token adds character.",
       "tokens": {"ink": "--text-faint"}
     }
   }
