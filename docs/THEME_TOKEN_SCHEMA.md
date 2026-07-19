@@ -14,7 +14,26 @@ Source: `docs/REFERENCE_TEMPLATE_ANALYSIS.md` + a 34-template token extraction (
 
 ---
 
-## Layer 1 — Type-role tokens (highest priority; fixes the eyebrow-sameness)
+## Layer 1 — Type-role tokens (highest priority; fixes the eyebrow-sameness) — ✅ DONE 2026-07-19
+
+**Shipped** via a personality REGISTRY + EXECUTOR rather than 26 hand-set CSS blocks. Roles wired into
+BOTH seeds and the live production blocks: `eyebrow` (`.kick`), `hero-num`/`stat-number` (`.slnum`),
+`display` (`.stmt`), `stat-label` (`.sllabel`), `caption` (`.capbar`) — each `var(--{role}-{prop},
+default)`, backward-compatible. `themes/composition/type_roles.json` defines 6 **personalities**
+(geometric-sans / editorial-serif / elegant-italic / mono-technical / brutalist-heavy / friendly-rounded),
+each a recipe assigning every role a font SLOT (display|body|mono) + weight/size/tracking/style; every
+`theme.json` names a `typePersonality`; `compose._theme_type_roles()` emits the recipe's vars on `#root`
+BEFORE `_theme_vars` so a theme's own tokens.css (the two ported exemplars, blue-professional + vellum)
+overrides. Slots resolve against each theme's own fonts → same-personality themes still differ by typeface.
+Honesty-tested (`tests/test_type_roles.py`: phantom-field guard + parity; `validate_themes.py`: personality
+∈ registry). Drove by A/B-porting two reference `design.md` systems (docs below). **Remaining in Layer 1:**
+the THEME-SPECIFIC signature numerals/decorative display variants (agenda-num, drop-cap, script ladder) —
+the open per-theme extras, not yet exposed.
+
+---
+
+### Original design (for reference)
+
 
 Replace the 6 family-only font vars with a `type.<role>` map. **Family selectable per role** (most
 templates use a 3-face model: display / body / mono, assigned per role — not one global triple).
@@ -81,9 +100,10 @@ rosette-seal, etc.
 
 ## Build plan (theme schema v2)
 
-1. **Type-role tokens** (Layer 1) — the biggest, most visible win. Define the 12 common roles + wire
-   eyebrow/stat/quote/caption in the blocks + seeds to consume them; give each of the 26 themes role
-   values (a considered default set + per-theme character). Fixes the eyebrow-sameness.
+1. ✅ **Type-role tokens** (Layer 1) — DONE. Shipped as the personality registry + executor (see the
+   Layer-1 section above): eyebrow/hero-num/display/stat-label/caption wired in blocks + seeds; all 28
+   themes carry a `typePersonality`; the 2 ported exemplars keep hand-tuned overrides. Fixes the
+   eyebrow-sameness. Remaining: the theme-specific signature-numeral extras.
 2. **Color-alias layer + ladders** (Layer 2) — the semantic contract + auto-derived opacity/alpha.
 3. **Shape + spacing scale** (Layer 3).
 4. **Component tokens** (Layer 4).
