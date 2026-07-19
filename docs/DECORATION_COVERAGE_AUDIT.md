@@ -52,6 +52,25 @@ layers — closing its gap for ALL affected themes at once, not per-theme.
 Each is a specimen now, so the theme books + samples matrix show it, and any theme can author it. Mean
 coverage lifts from ~73% toward the high-80s across the board. Remaining are Tier-4 theme-scoped niches.
 
+### ✅ Tier-4 signatures shipped via the 6 new Tier-1 themes (2026-07-19)
+
+The theme-scoped niches don't build "once" — they ship as a new theme's signature device. Building the 6
+Tier-1 gap-filling themes delivered these Tier-4 items along the way (each is a `_DECOR_RENDERERS` entry +
+decorations.json + a theme's `decoration:[...]`):
+
+- **hand-script font role** (4) — delivered by **scatterbrain**'s Caveat, routed through the `--font-mono`
+  slot (loader scans only display/body/mono) as the kicker/caption voice.
+- **pastel sticker ornaments** (kawaii) — `stickers` (daisy/star/cloud, daisy-days) + `pushpins` (tacked
+  sticky notes + tape, scatterbrain).
+- **pixel-face + pixel-landscape** (8-bit family) — `pixel-face`, `pixel-landscape` (8-bit-orbit).
+- **window-bevel raised/sunken** (retro-windows) — `window-bevel`.
+- **petal-cluster** + **rosette-seal** (vintage-JP) — sakura-chroma.
+- **safety-pin** (field-notebook) — hand-drawn off-axis pins (pin-and-paper), over the shared `grain`.
+
+Still open Tier-4 (not tied to a shipped theme, build when their theme is the priority): rotation/tilt knob,
+color-swatch row, metric-change delta chip, drafting guide line, block-stamp 2×2, diagonal-clip, zigzag,
+QR-tile, marquee, tree-view, RSVP form-field, toggle, card notch, orbit/radial.
+
 ## Ranked cross-theme gap backlog (by # of themes it blocks × build cost)
 
 ### Tier 1 — cheap + near-universal (build first)
