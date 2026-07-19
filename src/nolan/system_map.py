@@ -223,6 +223,12 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
                         ("src/nolan/hyperframes/bespoke.py", "composition_md"),
                         ("src/nolan/hyperframes/layout_lint.py", "def lint_frame_html")],
     },
+    "sound": {
+        "authored_by": [("src/nolan/audio_mix.py", "author_sfx_cues"),
+                        ("src/nolan/audio_mix.py", "_scene_sfx_cues")],
+        "executed_by": [("src/nolan/audio_mix.py", "_source_scene_sfx"),
+                        ("src/nolan/audio_mix.py", "mix_from_spec")],
+    },
 }
 
 
@@ -282,6 +288,14 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
          "registry's caption_keep_out_y / title_safe_inset / per-archetype zone"),
         ("skills/common/composition-craft.md", "centered-hero",
          "craft skill (registry-synced by tests/test_umbrella_skills.py)"),
+    ],
+    "sound": [
+        ("src/nolan/audio_mix.py", "from nolan.sound",
+         "the mix executor resolves a scene's cue-kind to a curated bank file "
+         "from the ONE registry (nolan.sound.resolve), preferring it over a live "
+         "web search — the same resolver the HyperFrames finish step uses"),
+        ("skills/common/sound-craft.md", "whoosh",
+         "craft skill (registry-synced by tests/test_sound.py)"),
     ],
     # style packs: cross-umbrella curation (quality program step 6) — every
     # pack field must reach a decision point or it's curation rot
@@ -370,6 +384,15 @@ def _umbrellas() -> Dict[str, Any]:
             for aid, a in COMPOSITION.items()]
     except Exception as exc:
         out["composition"] = {"error": str(exc)}
+    try:
+        from nolan.sound.registry import REGISTRY as SOUND
+        out["sound"] = [
+            {"id": c.id, "purpose": c.purpose, "when_to_use": c.when_to_use,
+             "family": c.family, "authored_by": c.authored_by,
+             "duration_preserving": c.duration_preserving}
+            for c in SOUND]
+    except Exception as exc:
+        out["sound"] = {"error": str(exc)}
     return out
 
 

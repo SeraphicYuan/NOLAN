@@ -140,17 +140,17 @@ lives in `src/nolan/sound/registry.py`. `data-punch` aliases the legacy
    blank). The `audio_meta → assemble-index` path already does this.
 4. One timeline **lane per cue** (track 20+i); same-track overlap is a lint failure.
 
-## Gaps to close (all small, flagged by research)
+## Gaps — status
 
-1. **Anchor `SFX_LIBRARY` to repo-root**, not CWD (`sfx_search.py` uses
-   `Path("projects/_library/sfx")` → reads empty from the bridge dir — the known
-   library-CWD class of bug).
-2. **Add Freesound to `_RateLimiter`** (60 req/min, 2000/day) — the image path has
-   it; the SFX path has none.
-3. **Add an audio door to `asset_gate.py`** (image-only today): reject a CC-BY sound
-   with empty `attribution`; register `source_sfx` in `ASSET_GATE_DOORS` +
-   `test_asset_gate.py` (pitfall #8, ungated acquisition).
-4. **Wire `measure_sfx_audibility` into the HF checkpoint** (pitfall #6).
+1. **Anchor to repo-root** — ✅ done in the new code (`crawl.library_dir`,
+   `resolve` use a repo-root anchor). The legacy `sfx_search.SFX_LIBRARY` (used only
+   by the live-search fallback) is still CWD-relative; the curated `cue` path is safe.
+2. **Freesound `_RateLimiter`** — ⬜ still open (the crawler throttles; the rare
+   live `source_sfx` path is unbounded). Low priority.
+3. **Audio acquisition gate** — ✅ `check_sound` gates both download doors
+   (`cli/sfx.py`, `sfx_search.fetch_to_library`), in `ASSET_GATE_DOORS`.
+4. **`measure_sfx_audibility` in the checkpoint** — ✅ already wired
+   (`director.py` soundtrack mix step).
 
 ## Module-contract checklist (what makes `sound` a real umbrella)
 
@@ -161,27 +161,34 @@ lives in `src/nolan/sound/registry.py`. `data-punch` aliases the legacy
 | Spine step | ✅ exists | `director.py` `soundtrack` |
 | Authored field `scene.sfx` | ✅ exists + in `PLAN_FIELD_CONSUMERS` | `scenes.py` |
 | Executor (organ) | ✅ exists | `audio_mix._source_scene_sfx`, `mix_from_spec` |
+| Shared resolver (kind → curated file) | ✅ Phase 2 | `src/nolan/sound/resolve.py` (`resolve_cue`, `sfx_event_for_cue`) |
+| `_umbrellas()['sound']` | ✅ Phase 2 | `system_map.py` (22 cue-kinds) |
+| `UMBRELLA_WIRING['sound']` | ✅ Phase 2 | `system_map.py` |
+| `CATALOG_CONSUMERS['sound']` | ✅ Phase 2 | `system_map.py` (audio_mix `from nolan.sound` + skill) |
+| Skill `common.sound-craft` | ✅ Phase 2 | `skills/common/sound-craft.md` + `skills/index.json` |
+| Honesty tests (umbrella/skill/catalog) | ✅ Phase 2 | `tests/test_sound.py` (+ generic umbrella/consumer tests) |
+| Audio acquisition gate | ✅ Phase 2 | `check_sound` on `cli/sfx.py` **and** `sfx_search.fetch_to_library` (both in `ASSET_GATE_DOORS`) |
+| HF-usable merge primitive | ✅ Phase 2 | `src/nolan/hyperframes/sound.py` (`build_audio_meta_sfx` + `merge_sfx_into_audio_meta`, preserves `voices[]`) |
 | Authored field `scene.data.sfx` (HF) | ⬜ Phase 3 | frame spec + `PLAN_FIELD_CONSUMERS` |
-| HF merge executor | ⬜ Phase 3 | new `finish.py` step |
-| `_umbrellas()['sound']` | ⬜ Phase 2 | `system_map.py` |
-| `UMBRELLA_WIRING['sound']` | ⬜ Phase 2 | `system_map.py` |
-| `CATALOG_CONSUMERS['sound']` | ⬜ Phase 2 | `system_map.py` |
-| Skill `common.sound-craft` | ⬜ Phase 2 | `skills/common/` + `skills/index.json` |
-| Honesty tests (umbrella/skill/catalog) | ⬜ Phase 2 | `tests/test_umbrella_*` pattern |
-| Audio acquisition gate | ⬜ (gap #3) | `asset_gate.py` + `ASSET_GATE_DOORS` |
+| HF merge executor (wire into finish DAG) | ⬜ Phase 3 | `finish.py` step calling `hyperframes/sound.py` |
 
-Note: the umbrella honesty tests only fire once `sound` is declared in
-`_umbrellas()`, so Phase 0's standalone registry does not break the suite.
+Note: adding `sound` to `_umbrellas()` forces `UMBRELLA_WIRING` + `CATALOG_CONSUMERS`
+(both grep-verified) — done together in Phase 2, suite green.
 
 ## Phased roadmap
 
-- **Phase 0 — DONE**: `src/nolan/sound/{__init__,registry}.py` (19 kinds + validators).
-- **Phase 1 — curate the ~100**: `nolan sfx add <freesound-id> --kind <k> --rating N`
-  (mirror `nolan music add`) → download → normalize to 48 kHz stereo → audio gate →
-  curated record. CC0-first.
-- **Phase 2 — umbrella skin**: `_umbrellas`/`UMBRELLA_WIRING`/`CATALOG_CONSUMERS` +
-  `skills/common/sound-craft.md` + honesty tests; gaps #1–#4.
-- **Phase 3 — HF authoring**: `scene.data.sfx` field + the `finish.py` merge step.
+- **Phase 0 — DONE**: `src/nolan/sound/{__init__,registry}.py` (cue-kinds + validators).
+- **Phase 1 — DONE**: `nolan sfx crawl/search/add/remove/list/doctor`; catalog
+  (SQLite+FTS, 7.5k CC0); **118 curated CC0 sounds across 22 kinds** (48 kHz stereo,
+  silence-trimmed, gated).
+- **Phase 2 — DONE**: first-class umbrella (`_umbrellas`/`UMBRELLA_WIRING`/
+  `CATALOG_CONSUMERS`) + `skills/common/sound-craft.md` + `tests/test_sound.py`; the
+  shared `resolve_cue`/`sfx_event_for_cue` (Director prefers the curated bank via it);
+  the HF-usable `hyperframes/sound.py` merge primitive (preserves `voices[]`); both
+  download doors gated. Gap #2 (rate-limiter) remains.
+- **Phase 3 — HF authoring (next)**: the `scene.data.sfx` frame-spec field + the
+  `finish.py` step (between word-sync and assemble-index) that reads it, resolves via
+  `hyperframes/sound.build_audio_meta_sfx`, and `merge_sfx_into_audio_meta`.
 - **Phase 4 — the pairing operator**: registry-aware auto-author pass over the spec
   (deterministic-first, LLM only for taste calls), human-reviewed.
 

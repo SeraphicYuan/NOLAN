@@ -142,6 +142,9 @@ ASSET_GATE_DOORS = {
     "sfx_ingest.add": {
         "file": "src/nolan/cli/sfx.py", "func": "def sfx_add",
         "calls": ["check_sound"]},
+    "sfx_search.fetch_to_library": {
+        "file": "src/nolan/sfx_search.py", "func": "def fetch_to_library",
+        "calls": ["check_sound"]},
 }
 
 

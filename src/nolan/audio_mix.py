@@ -169,12 +169,14 @@ def author_sfx_cues(plan: Dict[str, Any], *, max_per_section: int = 2,
 
 
 def _scene_sfx_cues(plan: Dict[str, Any]):
-    """Yield ``(t_seconds, query, volume)`` from per-scene ``sfx`` cues in the plan.
+    """Yield ``(t_seconds, query, volume, cue_kind)`` from per-scene ``sfx`` cues.
 
     A scene may declare ``sfx`` as a string (``"coin pickup"``), a dict
-    (``{"query": ..., "at": "start"|"end", "volume": ...}``), or a list of those.
-    Opt-in: scenes without an ``sfx`` field contribute nothing, so the default
-    soundtrack is unchanged until the Director/designer marks a beat.
+    (``{"query"|"cue": ..., "at": "start"|"end"|<seconds>, "volume"|"gain": ...}``),
+    or a list of those. ``cue`` names a registry cue-kind resolved from the
+    curated bank (nolan.sound); ``query`` is a free-text live search. ``at`` may
+    be a number (scene-local seconds), mirroring the HyperFrames cue offset.
+    Opt-in: scenes without ``sfx`` contribute nothing.
     """
     for scenes in (plan.get("sections") or {}).values():
         if not isinstance(scenes, list):
@@ -184,18 +186,26 @@ def _scene_sfx_cues(plan: Dict[str, Any]):
                 continue
             cue = s["sfx"]
             for it in (cue if isinstance(cue, list) else [cue]):
+                kind = None
                 if isinstance(it, str):
                     query, at, vol = it, "start", 0.7
                 elif isinstance(it, dict):
+                    kind = it.get("cue")
                     query = it.get("query") or it.get("q") or ""
-                    at, vol = it.get("at", "start"), float(it.get("volume", 0.7))
+                    at = it.get("at", "start")
+                    vol = float(it.get("volume", it.get("gain", 0.7)))
                 else:
                     continue
-                if not query:
+                if not (query or kind):
                     continue
-                t = (float(s.get("end_seconds") or 0) if at == "end"
-                     else float(s.get("start_seconds") or 0))
-                yield (round(t, 3), query, vol)
+                start = float(s.get("start_seconds") or 0)
+                if isinstance(at, (int, float)):
+                    t = start + float(at)
+                elif at == "end":
+                    t = float(s.get("end_seconds") or 0)
+                else:
+                    t = start
+                yield (round(t, 3), query, vol, kind)
 
 
 def _source_scene_sfx(plan: Dict[str, Any], provider: str = "freesound"):
@@ -206,20 +216,26 @@ def _source_scene_sfx(plan: Dict[str, Any], provider: str = "freesound"):
     sourced once (``source_sfx`` also caches to the library).
     """
     from .sfx_search import source_sfx  # stdlib-only; lazy keeps import light
+    from nolan.sound.resolve import resolve_cue  # curated bank preferred over live search
     events: List[Dict[str, Any]] = []
     cached: Dict[str, Optional[Path]] = {}
-    for t, query, vol in _scene_sfx_cues(plan):
-        if query not in cached:
+    for t, query, vol, kind in _scene_sfx_cues(plan):
+        key = f"cue:{kind}" if kind else query
+        if key not in cached:
             try:
-                cached[query] = source_sfx(query, provider=provider)
+                if kind:
+                    r = resolve_cue(kind)
+                    cached[key] = Path(r["file"]) if r else None
+                else:
+                    cached[key] = source_sfx(query, provider=provider)
             except Exception as exc:  # noqa: BLE001
-                logger.warning("sfx source failed for %r: %s", query, exc)
-                cached[query] = None
-        path = cached[query]
+                logger.warning("sfx source failed for %r: %s", key, exc)
+                cached[key] = None
+        path = cached[key]
         if not path:
-            logger.info("sfx cue skipped (unsourced): %r", query)
+            logger.info("sfx cue skipped (unsourced): %r", key)
             continue
-        events.append({"t": t, "kind": "sfx", "query": query,
+        events.append({"t": t, "kind": "sfx", "query": query or kind,
                        "file": str(path), "volume": vol, "lead": 0.0})
     return events
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 27,
+  "count": 28,
   "skills": [
     {
       "id": "art.flow",
@@ -117,6 +117,21 @@
       "status": "active",
       "version": 1,
       "path": "skills/common/editing-craft.md",
+      "handoffs": [],
+      "uses": [],
+      "evals": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null
+    },
+    {
+      "id": "common.sound-craft",
+      "name": "Sound craft",
+      "kind": "craft",
+      "purpose": "The sound umbrella — SFX cue-kinds (whoosh, impact, paper, data-punch, ambience beds), when to fire each, how to author them as data on a scene.",
+      "status": "active",
+      "version": 1,
+      "path": "skills/common/sound-craft.md",
       "handoffs": [],
       "uses": [],
       "evals": [],

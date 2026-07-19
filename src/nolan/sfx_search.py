@@ -261,6 +261,12 @@ def fetch_to_library(result: SFXResult, library: Path = None,
             if p.exists():
                 logger.info("sfx cached: %s", e["file"])
                 return p
+    from nolan import asset_gate  # acquisition gate (WIRING_CHECKLIST pitfall #8)
+    verdict = asset_gate.check_sound(result, source=result.provider)
+    if not verdict:
+        logger.warning("sfx gate rejected %s/%s (%s): %s", result.provider,
+                       result.id, result.license, "; ".join(verdict.reasons))
+        return None
     ext = ".mp3" if ".mp3" in result.download_url.lower() else \
           (".wav" if ".wav" in result.download_url.lower() else ".mp3")
     fname = f"{result.provider}-{_slug(result.query or result.title)[:40]}-{result.id}{ext}"
