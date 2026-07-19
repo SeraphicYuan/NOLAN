@@ -75,6 +75,7 @@
   <div class="viewtabs">
     <button class="vtab on" data-view="gallery" onclick="setView('gallery',this)">Gallery</button>
     <button class="vtab" data-view="samples" onclick="setView('samples',this)">Samples <span class="vcount" id="samples-count"></span></button>
+    <button class="vtab" data-view="books" onclick="setView('books',this)">Books <span class="vcount" id="books-count"></span></button>
   </div>
 
   <div id="view-gallery">
@@ -100,6 +101,11 @@
       <span class="count" id="scount"></span>
     </div>
     <div id="smatrix"></div>
+  </div>
+
+  <div id="view-books" hidden>
+    <p class="sub" style="margin-top:0">Each theme's <b>book</b> — its identity card + all specimens + metadata: the authoring-facing reference an LLM reads to grok a theme (<code>gen_theme_books.py</code>). Click a card to open the full poster.</p>
+    <div id="books-grid" class="grid"></div>
   </div>
 </div>
 
@@ -182,11 +188,27 @@ function setArch(a, el){ ARCH=(ARCH===a?"all":a); document.querySelectorAll("[da
 
 // ── Samples tab: the real theme × archetype render matrix ──
 let SDATA = { cells: [], archetypes: [], themes: [] }, STONE = "all", SARCH = "all";
+let BDATA = [];
 function setView(v, el){
   document.querySelectorAll(".vtab").forEach(t=>t.classList.toggle("on", t===el));
   document.getElementById("view-gallery").hidden = v!=="gallery";
   document.getElementById("view-samples").hidden = v!=="samples";
+  document.getElementById("view-books").hidden = v!=="books";
   if (v==="samples" && !SDATA.cells.length) loadSamples();
+  if (v==="books" && !BDATA.length) loadBooks();
+}
+async function loadBooks(){
+  const r = await (await fetch("/api/themes/books")).json();
+  BDATA = r.books || [];
+  document.getElementById("books-count").textContent = BDATA.length || "";
+  document.getElementById("books-grid").innerHTML = BDATA.map(b=>`
+    <a class="card" href="/theme-books/${b.png}" target="_blank" style="text-decoration:none;color:inherit;display:block">
+      <img loading="lazy" src="/theme-books/${b.png}" alt="${esc(b.name)}" style="width:100%;display:block;border-radius:6px 6px 0 0;background:#111">
+      <div style="padding:9px 11px">
+        <div style="font-weight:600">${esc(b.name)}</div>
+        <div style="font-size:12px;color:var(--text-secondary)">${esc(b.personality||"")} · ${esc((b.mood||[]).slice(0,3).join(" "))}</div>
+      </div>
+    </a>`).join("") || "<p class='sub'>No books yet — run <code>python themes/scripts/gen_theme_books.py all</code>.</p>";
 }
 async function loadSamples(){
   SDATA = await (await fetch("/api/themes/samples")).json();
