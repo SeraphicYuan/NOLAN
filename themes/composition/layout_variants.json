@@ -33,6 +33,26 @@
         "numbered-rail": {"desc": "an accent rail with the title, the numbered list beside it", "zone": "sidebar", "fits": [1, 5]},
         "card-row":      {"desc": "each item as a small bordered card in a row/grid", "zone": "swiss-grid", "fits": [2, 4]}
       }
+    },
+    "pull_quote": {
+      "default": "centered",
+      "auto": {},
+      "variants": {
+        "centered":  {"desc": "the quote centred with the big quote-mark above (the classic)", "zone": "centered-hero", "fits": [1, 1]},
+        "editorial": {"desc": "the quote left-aligned in an editorial column", "zone": "editorial-column", "fits": [1, 1]},
+        "side-mark": {"desc": "an oversized quote-mark on the left, the quote beside it", "zone": "editorial-column", "fits": [1, 1]},
+        "framed":    {"desc": "the quote inside a bordered card", "zone": "framed", "fits": [1, 1]}
+      }
+    },
+    "ledger": {
+      "default": "rows",
+      "auto": {"6": "two-col", "7": "two-col", "8": "two-col"},
+      "variants": {
+        "rows":     {"desc": "full-width hairline rows (the classic index/TOC)", "zone": "ledger", "fits": [1, 8]},
+        "two-col":  {"desc": "the rows split across two columns (for long lists)", "zone": "ledger", "fits": [4, 10]},
+        "centered": {"desc": "a centred kicker above a narrower centred row-list", "zone": "centered-hero", "fits": [1, 6]},
+        "boxed":    {"desc": "each row on its own subtle surface panel", "zone": "swiss-grid", "fits": [1, 6]}
+      }
     }
   }
 }
