@@ -2,7 +2,11 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-18
+**Last Updated:** 2026-07-19
+
+## Theme schema-v2 Layer 1 — type-role personalities + 2 ported exemplars (2026-07-19)
+
+Closed the schema-v2 Layer-1 gap (per-role type treatment; every theme's eyebrow/stat/caption was hardcoded identical in block CSS). Drove it by A/B-porting TWO reference `design.md` systems onto the engine as new themes #27/#28 — **blue-professional** (cobalt-on-cream, Space Grotesk) and **vellum** (single navy field, ITALIC Cormorant everywhere, Courier pin-notes) — rendered across all 6 archetypes in their own tokens. Then three moves: (A) two findings the ports surfaced, generalised — the full-bleed `statement` block now grounds on the theme CANVAS (`--shell`, gated by `_theme_shell_textsafe` so inverted-card themes fall back to `--surface`), and an eyebrow legibility FLOOR in `validate_themes.py` (an explicit `--eyebrow-color` must clear 3:1 on `--shell`; vellum's dusty teal was 2.2:1 → lightened to #58A8A0). (B) Wired the remaining Layer-1 roles into the LIVE production blocks (not just seeds): `.slnum`→`--hero-num-*`, `.sllabel`→`--stat-label-*`, `.capbar`→`--caption-*`, all backward-compatible. (C) Generalised per-role typography to all 28 themes via a REGISTRY+EXECUTOR — `themes/composition/type_roles.json` (6 personalities: geometric-sans/editorial-serif/elegant-italic/mono-technical/brutalist-heavy/friendly-rounded), a `typePersonality` field per theme.json, and `compose._theme_type_roles()` emitting the recipe's role vars on #root BEFORE tokens.css (so the ports' explicit values override). Font slots resolve against each theme's own fonts, so same-personality themes still differ by typeface. Render-verified: the 6 personalities read as distinct type systems (mono-technical renders the statement in monospace; elegant-italic gives dark-botanical the italic-Cormorant signature; brutalist-heavy is Archivo Black 900). Registry + honesty tests: `tests/test_type_roles.py` (phantom-field parity guard), `validate_themes.py` (personality ∈ registry, eyebrow floor). Commits df6a359 (ports), 085e6bb (A), 2652a09 (B), 9f5c161 (C).
 
 ## Composite pool asset-cleanup + batch review (2026-07-18)
 
