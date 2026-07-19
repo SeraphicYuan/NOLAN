@@ -38,6 +38,7 @@
   .vbadge:hover { opacity:1; }
   /* lightbox / variant slideshow */
   #lightbox { position:fixed; inset:0; background:rgba(10,10,12,.9); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; }
+  #lightbox[hidden] { display:none; }   /* the id-selector display:flex would otherwise override the `hidden` attribute → stuck-open */
   #lightbox img { max-width:min(1200px,92vw); max-height:78vh; width:auto; border-radius:8px; box-shadow:0 20px 70px -20px rgba(0,0,0,.7); background:#111; }
   .lb-bar { display:flex; align-items:center; gap:18px; color:#fff; }
   .lb-nav { background:rgba(255,255,255,.12); border:none; color:#fff; width:44px; height:44px; border-radius:50%; font-size:20px; cursor:pointer; }
