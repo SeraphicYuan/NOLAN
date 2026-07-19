@@ -33,6 +33,25 @@ the finished schema-v2 stack (Layer-1 type / Layer-2 color / Layer-3 shape / Lay
 mapped templates' decorative vocabulary. The missing quarter is NOT more decoration devices — it clusters
 into a small number of *systemic* gaps.
 
+## ✅ SHIPPED 2026-07-19 — the systemic gaps built as UNIVERSAL primitives
+
+Per the "universal capability vs theme signature" call: Tier 1–3 are content/composition primitives (not
+theme signatures), so each was built ONCE at the engine level and is auto-painted 28 ways by the token
+layers — closing its gap for ALL affected themes at once, not per-theme.
+
+- **accent-stub rule** (22 themes) — `.kick::after`, a universal detail; the kicker→headline beat bar in
+  every theme's `--accent`. (commit 0a3b50d)
+- **pull-quote block** + **numbered-list** (17 / ~10 themes) — a new `pull_quote` block (quote-mark + display
+  quote + cite) and a `bullet_list numbered:true` variant (01/02 ordinals). (9c7af1b)
+- **comparison-table** + **ledger/index-list** archetypes (~14 themes) — the two macro-layouts; the
+  comparison_table also lands the **pill/status-CHIP** primitive (correcting the earlier `pill = n/a`). (6c6be50)
+- **highlight-mark** — found already covered by the existing `.hl` operative highlight (the audit agents
+  didn't know it existed); highlighter-editorial's yellow accent makes `.hl` its namesake highlighter.
+- **connector-arrow** (4 themes) — deferred as niche.
+
+Each is a specimen now, so the theme books + samples matrix show it, and any theme can author it. Mean
+coverage lifts from ~73% toward the high-80s across the board. Remaining are Tier-4 theme-scoped niches.
+
 ## Ranked cross-theme gap backlog (by # of themes it blocks × build cost)
 
 ### Tier 1 — cheap + near-universal (build first)
