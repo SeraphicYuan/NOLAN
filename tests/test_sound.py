@@ -174,6 +174,24 @@ def test_whoosh_is_sparse_and_hf_gain_hotter():
     assert hf_gain("whoosh") < hf_gain("impact-soft")
 
 
+def test_whoosh_gap_thins_across_frames(tmp_path, monkeypatch):
+    """Whooshes are a rare accent: a cross-frame min-gap + skip-repeat-type."""
+    from nolan.hyperframes import edit as _edit
+    from nolan.hyperframes import sfx_design as D
+    (tmp_path / "audio_meta.json").write_text(json.dumps({"voices": [
+        {"frame": 1, "duration_s": 10.0, "words": []},
+        {"frame": 2, "duration_s": 10.0, "words": []}]}), encoding="utf-8")
+    f1 = {"frames": [{"id": "01-a", "scenes": [{"id": "s1", "type": "stat", "start": 0.0, "dur": 10, "data": {}}]}]}
+    f2 = {"frames": [{"id": "02-b", "scenes": [{"id": "s1", "type": "comparison", "start": 0.0, "dur": 10, "data": {}}]}]}
+    specs = {"01-a": (f1, {"i": 0}), "02-b": (f2, {"i": 0})}
+    monkeypatch.setattr(_edit, "_project_dir", lambda c: tmp_path)
+    monkeypatch.setattr(_edit, "list_frames", lambda c: [{"id": "01-a"}, {"id": "02-b"}])
+    monkeypatch.setattr(_edit, "load_frame_spec", lambda c, fid: specs[fid])
+    whoosh = lambda r: [p["frame"] for p in r["plan"] for cc in p["cues"] if cc["cue"] == "whoosh"]
+    assert whoosh(D.design("x")) == ["01-a"]                 # frame 2 @10s < 45s gap → dropped
+    assert set(whoosh(D.design("x", whoosh_gap=5.0))) == {"01-a", "02-b"}  # big gap → both
+
+
 def test_finish_dag_includes_scene_sfx_step():
     """The finish DAG actually calls the executor (not a dangling field)."""
     src = (REPO / "src/nolan/hyperframes/finish.py").read_text(encoding="utf-8")

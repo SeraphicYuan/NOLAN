@@ -159,18 +159,27 @@ def _budget(cues: List[Tuple[str, float, int, str]]) -> List[Tuple[str, float, i
 
 
 def design(comp: str, *, apply: bool = False, llm: bool = False,
-           transitions: str = "sparse") -> Dict[str, Any]:
+           transitions: str = "sparse", whoosh_gap: float = 45.0) -> Dict[str, Any]:
     """Propose scene.data.sfx across a comp from its spec + word timings.
 
     Returns ``{plan: [{frame, scene, cues:[{cue,at,why}]}], total, applied}``.
     `apply` writes the cues into the frame specs; `llm` refines taste calls;
-    `transitions` sets the whoosh cadence (off | sparse | all).
+    `transitions` sets the whoosh cadence (off | sparse | all); `whoosh_gap` is the
+    minimum seconds between whooshes across frames (a whoosh is also skipped if the
+    frame repeats the previous whoosh's scene type) — whooshes are a rare accent.
     """
     from .edit import _project_dir, list_frames, load_frame_spec, save_frame_spec
 
     pdir = Path(_project_dir(comp))
     am = json.loads((pdir / "audio_meta.json").read_text(encoding="utf-8")) \
         if (pdir / "audio_meta.json").exists() else {"voices": []}
+
+    # absolute frame starts (each frame = its VO duration) — for the whoosh gap
+    starts, acc = {}, 0.0
+    for v in sorted(am.get("voices", []), key=lambda v: v.get("frame", 0)):
+        starts[v.get("frame")] = acc
+        acc += float(v.get("duration_s") or 0)
+    last_whoosh_t, last_whoosh_type = -1e9, None
 
     plan: List[Dict[str, Any]] = []
     total = 0
@@ -188,6 +197,17 @@ def design(comp: str, *, apply: bool = False, llm: bool = False,
             ctx = _scene_context(sc, words)
             cands = _deterministic_cues(ctx, frame_first=(si == 0), transitions=transitions)
             kept = _budget(cands)
+            # whooshes are a RARE accent: drop one that's < whoosh_gap since the
+            # last, or that repeats the previous whoosh's scene type
+            pruned = []
+            for c in kept:
+                if c[0] == "whoosh":
+                    abs_t = starts.get(num, 0.0) + c[1]
+                    if abs_t - last_whoosh_t < whoosh_gap or ctx["type"] == last_whoosh_type:
+                        continue
+                    last_whoosh_t, last_whoosh_type = abs_t, ctx["type"]
+                pruned.append(c)
+            kept = pruned
             if llm and kept is not None:
                 kept = _llm_refine(ctx, kept)                 # taste layer (optional)
             cues = [{"cue": k, "at": a, "why": w} for k, a, _p, w in kept if k in KINDS]
@@ -248,8 +268,11 @@ def main():
     ap.add_argument("--llm", action="store_true", help="LLM taste pass over the deterministic candidates")
     ap.add_argument("--transitions", choices=["off", "sparse", "all"], default="sparse",
                     help="whoosh cadence: sparse (default; graphic-opening frames only), all, off")
+    ap.add_argument("--whoosh-gap", type=float, default=45.0,
+                    help="min seconds between whooshes (they're a rare accent; default 45)")
     a = ap.parse_args()
-    res = design(a.comp, apply=a.apply, llm=a.llm, transitions=a.transitions)
+    res = design(a.comp, apply=a.apply, llm=a.llm, transitions=a.transitions,
+                 whoosh_gap=a.whoosh_gap)
     for p in res["plan"]:
         cues = ", ".join(f"{c['cue']}@{c['at']}s ({c['why']})" for c in p["cues"])
         print(f"  {p['frame']}/{p['scene']} [{p['type']}]: {cues}")
