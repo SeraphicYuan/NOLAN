@@ -1,0 +1,54 @@
+{
+  "_doc": "Type-role PERSONALITY registry (theme schema v2, Layer 1). Each theme.json carries a `typePersonality`; the composer's _theme_type_roles() executor looks up the recipe here, resolves the font slots against THAT theme's own --font-display-en/--font-body/--font-mono, and emits the --eyebrow-*/--hero-num-*/--display-*/--stat-label-*/--caption-* vars on #root. A theme's own tokens.css still overrides (it is injected AFTER this), so the two ported exemplars keep their hand-tuned values. Same-personality themes look different because their font families differ. Font slot ∈ {display, body, mono}. Roles + property names must match the block executors in compose.py (honesty-tested by tests/test_type_roles.py + validate_themes.py).",
+  "slots": {"display": "var(--font-display-en)", "body": "var(--font-body)", "mono": "var(--font-mono)"},
+  "personalities": {
+    "geometric-sans": {
+      "desc": "clean geometric grotesque — a tight-tracked sans eyebrow, upright bold sans numerals, mono captions (Swiss / consulting / keynote register)",
+      "eyebrow":    {"font": "display", "weight": 600, "size": "0.95cqw", "tracking": "0.1em",  "transform": "uppercase"},
+      "hero-num":   {"font": "display", "style": "normal", "weight": 700, "track": "-0.02em"},
+      "display":    {"style": "normal", "weight": 700},
+      "stat-label": {"font": "mono", "weight": 500, "size": "0.8cqw",  "tracking": "0.1em",  "transform": "uppercase"},
+      "caption":    {"font": "mono", "weight": 500, "size": "0.82cqw", "tracking": "0.08em", "transform": "uppercase"}
+    },
+    "editorial-serif": {
+      "desc": "upright serif magazine — a mono eyebrow, upright serif numerals, mono captions (newsroom / print / literary)",
+      "eyebrow":    {"font": "mono", "weight": 500, "size": "0.9cqw",  "tracking": "0.18em", "transform": "uppercase"},
+      "hero-num":   {"font": "display", "style": "normal", "weight": 600, "track": "0"},
+      "display":    {"style": "normal", "weight": 600},
+      "stat-label": {"font": "mono", "weight": 500, "size": "0.82cqw", "tracking": "0.12em", "transform": "uppercase"},
+      "caption":    {"font": "mono", "weight": 500, "size": "0.82cqw", "tracking": "0.1em",  "transform": "uppercase"}
+    },
+    "elegant-italic": {
+      "desc": "italic serif gallery — a quiet mono eyebrow, ITALIC serif numerals + display, wide mono captions (the vellum/dark-botanical signature)",
+      "eyebrow":    {"font": "mono", "weight": 400, "size": "0.9cqw",  "tracking": "0.2em",  "transform": "uppercase"},
+      "hero-num":   {"font": "display", "style": "italic", "weight": 600, "track": "0"},
+      "display":    {"style": "italic", "weight": 500},
+      "stat-label": {"font": "mono", "weight": 400, "size": "0.82cqw", "tracking": "0.16em", "transform": "uppercase"},
+      "caption":    {"font": "mono", "weight": 400, "size": "0.82cqw", "tracking": "0.12em", "transform": "uppercase"}
+    },
+    "mono-technical": {
+      "desc": "engineering / terminal — a wide-tracked mono eyebrow + labels, upright display numerals (blueprint / terminal / cyber / voltage)",
+      "eyebrow":    {"font": "mono", "weight": 500, "size": "0.88cqw", "tracking": "0.28em", "transform": "uppercase"},
+      "hero-num":   {"font": "display", "style": "normal", "weight": 700, "track": "0"},
+      "display":    {"style": "normal", "weight": 600},
+      "stat-label": {"font": "mono", "weight": 500, "size": "0.8cqw",  "tracking": "0.18em", "transform": "uppercase"},
+      "caption":    {"font": "mono", "weight": 500, "size": "0.8cqw",  "tracking": "0.14em", "transform": "uppercase"}
+    },
+    "brutalist-heavy": {
+      "desc": "black-display manifesto — a heavy tight sans eyebrow, ultra-bold numerals, heavy body labels (bauhaus / signal / neubrutalism)",
+      "eyebrow":    {"font": "display", "weight": 800, "size": "0.95cqw", "tracking": "0.04em", "transform": "uppercase"},
+      "hero-num":   {"font": "display", "style": "normal", "weight": 900, "track": "-0.03em"},
+      "display":    {"style": "normal", "weight": 800},
+      "stat-label": {"font": "body", "weight": 700, "size": "0.85cqw", "tracking": "0.06em", "transform": "uppercase"},
+      "caption":    {"font": "body", "weight": 700, "size": "0.85cqw", "tracking": "0.06em", "transform": "uppercase"}
+    },
+    "friendly-rounded": {
+      "desc": "soft / approachable — a body-font eyebrow, rounded bold numerals, sentence-warm labels (pastel / split / chalk)",
+      "eyebrow":    {"font": "body", "weight": 700, "size": "0.92cqw", "tracking": "0.12em", "transform": "uppercase"},
+      "hero-num":   {"font": "display", "style": "normal", "weight": 800, "track": "-0.01em"},
+      "display":    {"style": "normal", "weight": 700},
+      "stat-label": {"font": "body", "weight": 600, "size": "0.85cqw", "tracking": "0.1em",  "transform": "uppercase"},
+      "caption":    {"font": "body", "weight": 600, "size": "0.85cqw", "tracking": "0.08em", "transform": "uppercase"}
+    }
+  }
+}

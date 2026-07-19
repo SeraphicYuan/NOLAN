@@ -2733,6 +2733,53 @@ def _theme_decorations(theme):
             'style="position:absolute;inset:0;pointer-events:none;overflow:hidden">' + "".join(parts) + '</div>')
 
 
+_TYPE_ROLES_CACHE = {}
+_TYPE_ROLES_REGISTRY = None
+
+def _load_type_roles():
+    global _TYPE_ROLES_REGISTRY
+    if _TYPE_ROLES_REGISTRY is None:
+        try:
+            p = Path(__file__).resolve().parents[3] / "themes" / "composition" / "type_roles.json"
+            _TYPE_ROLES_REGISTRY = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            _TYPE_ROLES_REGISTRY = {"slots": {}, "personalities": {}}
+    return _TYPE_ROLES_REGISTRY
+
+def _theme_type_roles(theme):
+    """Emit a theme's Layer-1 type-role vars from its `typePersonality` recipe (themes/composition/
+    type_roles.json). The recipe assigns each role (eyebrow/hero-num/display/stat-label/caption) a FONT
+    SLOT (display|body|mono) + weight/size/tracking/etc.; the slot resolves against THIS theme's own font
+    vars, so same-personality themes still differ by typeface. Each recipe property maps 1:1 to the var the
+    block consumes (`--{role}-{prop}`, e.g. hero-num.track -> --hero-num-track). Emitted BEFORE _theme_vars
+    so a theme's own tokens.css still overrides (the two ported exemplars keep their hand-tuned values).
+    A theme with no/unknown personality emits nothing -> blocks fall back to their hardcoded defaults."""
+    theme = str(theme)
+    if theme in _TYPE_ROLES_CACHE:
+        return _TYPE_ROLES_CACHE[theme]
+    css = ""
+    try:
+        root = Path(__file__).resolve().parents[3] / "themes"
+        tj = root / theme / "theme.json"
+        pid = json.loads(tj.read_text(encoding="utf-8")).get("typePersonality") if tj.exists() else None
+        reg = _load_type_roles()
+        recipe = (reg.get("personalities") or {}).get(pid)
+        if recipe:
+            slots = reg.get("slots") or {}
+            decls = []
+            for role, props in recipe.items():
+                if role == "desc" or not isinstance(props, dict):
+                    continue
+                for prop, val in props.items():
+                    resolved = slots.get(val, val) if prop == "font" else val
+                    decls.append(f"--{role}-{prop}: {resolved}")
+            css = ("#root{" + ";".join(decls) + ";}") if decls else ""
+    except Exception:
+        css = ""
+    _TYPE_ROLES_CACHE[theme] = css
+    return css
+
+
 def _theme_vars(theme):
     """Inject a NOLAN theme's tokens.css as scoped CSS custom properties on #root so the block CSS
     (which references var(--accent) etc.) resolves. Falls back to the Vox 'highlighter-editorial'
@@ -2914,7 +2961,7 @@ def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
         if "us" in kinds:    libs += '  <script src="vendor/us-states.js"></script>\n'
         if "world" in kinds: libs += '  <script src="vendor/world.js"></script>\n'
     return f"""<template>
-  <style>{_theme_fonts(theme)}{_theme_vars(theme)}{CSS}</style>
+  <style>{_theme_fonts(theme)}{_theme_type_roles(theme)}{_theme_vars(theme)}{CSS}</style>
   <div id="root" data-composition-id="{frame_id}" data-width="1920" data-height="1080">
     {chr(10).join('    '+b for b in body)}
     {_theme_decorations(theme)}

@@ -1,5 +1,6 @@
 {
   "id": "blueprint",
+  "typePersonality": "mono-technical",
   "name": "Blueprint",
   "nameZh": "蓝图",
   "description": "Deep navy backdrop with cyan accent and IBM Plex Mono. Engineering blueprint / industrial schematic vibe — best for system architecture and technical breakdowns.",
