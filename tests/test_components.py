@@ -20,8 +20,11 @@ THEMES = sorted(d.name for d in (REPO / "themes").iterdir() if d.is_dir() and (d
 def test_registry_shape():
     assert REG["components"], "no components"
     for name, c in REG["components"].items():
-        assert c.get("status") in ("wired", "pending"), f"{name}: bad status"
+        assert c.get("status") in ("wired", "pending", "n/a"), f"{name}: bad status"
         assert c.get("tokens"), f"{name}: needs a token bundle"
+        # a component that is NOT wired must carry a reason (why pending / why not an axis)
+        if c["status"] != "wired":
+            assert c.get("_desc"), f"{name}: {c['status']} components must document a reason"
 
 
 def test_wired_components_have_every_token_consumed():
