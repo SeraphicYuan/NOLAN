@@ -61,6 +61,43 @@ def test_lanes_and_targets(comp):
     assert not _by(els, "s2", "bg") and not _by(els, "s2", "fx")
 
 
+@pytest.fixture()
+def usage_comp():
+    name = "_hf_usage_pytest"
+    dst = VIDEOS / name
+    if dst.exists():
+        shutil.rmtree(dst)
+    fdir = dst / "compositions" / "frames"
+    fdir.mkdir(parents=True)
+    (fdir / "f1.spec.json").write_text(json.dumps({"frames": [{"id": "f1", "dur": 10, "scenes": [
+        {"id": "f1s1", "type": "statement", "start": 0, "dur": 5,
+         "data": {"lines": ["a"], "ground": {"kind": "video", "src": "assets/videos/shared.mp4"}}},
+        {"id": "f1s2", "type": "newshead", "start": 5, "dur": 5,
+         "data": {"headline": "b", "image": "assets\\pic1.png"}},                       # backslash + no subdir
+    ]}]}), encoding="utf-8")
+    (fdir / "f2.spec.json").write_text(json.dumps({"frames": [{"id": "f2", "dur": 8, "scenes": [
+        {"id": "f2s1", "type": "statement", "start": 0, "dur": 5,
+         "data": {"lines": ["c"], "ground": {"kind": "video", "src": "capture/assets/videos/shared.mp4"}}},  # same file, other prefix
+        {"id": "f2s2", "type": "statement", "start": 5, "dur": 3, "data": {"lines": ["text only"]}},          # no media
+    ]}]}), encoding="utf-8")
+    (dst / "hyperframes.json").write_text('{"theme":"highlighter-editorial"}', encoding="utf-8")
+    try:
+        yield name
+    finally:
+        shutil.rmtree(dst, ignore_errors=True)
+
+
+def test_asset_scene_usage_reverse_index(usage_comp):
+    """The /pool HF by-scene index: file -> [scene_id], normalized across assets/ + capture/assets/ prefixes
+    (backslashes tolerated); a file used in N scenes lists N; text-only scenes contribute nothing."""
+    u = hfedit.asset_scene_usage(usage_comp)
+    bf, order = u["by_file"], u["scene_order"]
+    assert bf["videos/shared.mp4"] == ["f1s1", "f2s1"]        # same file, two scenes, two frames, two prefixes
+    assert bf["pic1.png"] == ["f1s2"]                          # backslash + bare-name normalization
+    assert order == ["f1s1", "f1s2", "f2s1", "f2s2"]           # frame/scene order preserved
+    assert "capture/assets/videos/shared.mp4" not in bf and "assets/videos/shared.mp4" not in bf  # prefixes stripped
+
+
 def test_no_media_field_no_asset_chip(comp):
     # a scene whose ground is a non-media kind (paper) contributes NO bg asset chip (nothing to target)
     sf = (VIDEOS / comp / "compositions" / "frames" / "f1.spec.json")
