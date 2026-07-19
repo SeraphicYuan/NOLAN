@@ -50,6 +50,11 @@ CSS = """
 .sllabel{margin-top:1.1cqw;font-family:var(--stat-label-font,var(--font-body));font-weight:var(--stat-label-weight,500);
   font-size:calc(var(--stat-label-size,0.85cqw)*var(--type-scale,1));letter-spacing:var(--stat-label-tracking,0.12em);
   text-transform:var(--stat-label-transform,uppercase);max-width:22cqw;line-height:1.45;opacity:0;}
+.sldelta{display:inline-flex;align-items:center;gap:0.34cqw;margin-top:0.8cqh;opacity:0;
+  font:700 1.0cqw/1 var(--font-mono),ui-monospace,monospace;letter-spacing:0.01em;}
+.sldelta .dg{font-size:0.82cqw;line-height:1;}
+.sldelta.up{color:var(--positive);}.sldelta.down{color:var(--negative);}.sldelta.flat{color:var(--text-mute);}
+.footage .sldelta{text-shadow:0 1px 6px rgba(0,0,0,0.5);}
 .paper .slnum,.paper .sllead{color:var(--text);}.paper .kick{color:var(--text-2);}.paper .sllabel{color:var(--text-mute);}
 .footage .slnum{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}.footage .kick{color:#F6F7F6;text-shadow:0 1px 8px rgba(0,0,0,0.5);}.footage .sllabel{color:#E9EAE9;text-shadow:0 1px 6px rgba(0,0,0,0.5);}
 .stmt.paper-t{color:var(--text);}
@@ -624,7 +629,15 @@ def stat_lockup(sid, sc):
         else:
             label_div = f'<div class="sllabel" id="{lid}">{esc(it.get("label",""))}</div>'
             ltl = [f'tl.fromTo("#{lid}",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.5}},{cue+0.15});']
-        frag.append(f'<div class="slitem"><div class="slnumwrap"><span class="slnum" id="{nid}"></span>{ul}</div>{label_div}</div>')
+        # optional metric-change delta chip (up ▲ / down ▼ / flat →), colored by --positive/--negative
+        dl, delta_div, did = it.get("delta"), "", f"{sid}-d{i}"
+        if isinstance(dl, dict) and dl.get("value") is not None:
+            dirn = str(dl.get("dir", "up")).lower()
+            dirn = dirn if dirn in ("up", "down", "flat") else "up"
+            gly = {"up": "▲", "down": "▼", "flat": "→"}[dirn]
+            delta_div = (f'<div class="sldelta {dirn}" id="{did}"><span class="dg">{gly}</span>'
+                         f'{esc(str(dl["value"]))}</div>')
+        frag.append(f'<div class="slitem"><div class="slnumwrap"><span class="slnum" id="{nid}"></span>{ul}</div>{label_div}{delta_div}</div>')
         if it.get("value") is not None and it.get("from") is None:
             tl.append(f'document.getElementById("{nid}").textContent={json.dumps(str(it["value"]))};')
             tl.append(f'tl.fromTo("#{nid}",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:0.5,ease:"power4.out"}},{cue});')
@@ -635,6 +648,8 @@ def stat_lockup(sid, sc):
                       f'el.textContent=f({frm});tl.set(el,{{opacity:1}},{cue});'
                       f'tl.fromTo(st,{{v:{frm}}},{{v:{to},duration:1.4,ease:"power3.out",onUpdate:function(){{el.textContent=f(st.v);}}}},{cue});}})();')
         tl += ltl
+        if delta_div:
+            tl.append(f'tl.fromTo("#{did}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.45}},{cue+0.45});')
         if it.get("underline"):
             tl.append(f'tl.fromTo("#{uid}",{{scaleX:0}},{{scaleX:1,duration:0.45,ease:"power2.out"}},{cue+1.2});')
     frag.append('</div></section>')
