@@ -177,6 +177,11 @@ def create_hub_app(
     gen_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/broll-gen", StaticFiles(directory=str(gen_dir)), name="broll_gen")
 
+    # Theme × archetype sample renders (themes/scripts/gen_samples.py) for the /themes Samples tab.
+    theme_samples_dir = Path(__file__).parent.parent.parent / "themes" / "_samples"
+    theme_samples_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/theme-samples", StaticFiles(directory=str(theme_samples_dir)), name="theme_samples")
+
     # ---- shared context for the route modules (split from the former monolith).
     # Route bodies live in nolan.webui.routes.*; each module's register(app, ctx)
     # unpacks these into locals with the original closure names.

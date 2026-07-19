@@ -140,3 +140,6 @@ render-service/_lab_hyperframes/videos/*/capture/_perceptual/
 render-service/_lab_hyperframes/videos/*/capture/_temporal/
 # Stale editor temp files (e.g. *.css.tmp-19692)
 *.tmp-*
+
+# theme×archetype sample renders (regenerate: python themes/scripts/gen_samples.py + node theme_samples_shot.mjs)
+themes/_samples/
