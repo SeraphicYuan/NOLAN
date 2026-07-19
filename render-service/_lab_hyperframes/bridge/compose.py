@@ -70,11 +70,29 @@ CSS = """
 .bl-item{display:flex;align-items:baseline;gap:1.4cqw;opacity:0;}
 .bl-mark{flex:none;color:var(--accent);font-weight:800;font-size:1.7cqw;line-height:1;font-family:var(--font-display-en);}
 .bl-mark::before{content:var(--bullet-marker,"\\2022");}
+.bl-num{flex:none;font-family:var(--hero-num-font,var(--font-display-en));font-style:var(--hero-num-style,normal);
+  font-weight:var(--hero-num-weight,800);font-variant-numeric:tabular-nums;font-size:1.55cqw;line-height:1.15;
+  letter-spacing:var(--hero-num-track,-0.01em);color:var(--accent);min-width:2.8cqw;}
 .bl-text{font-family:var(--font-display-en);font-style:var(--display-style,normal);font-weight:var(--display-weight,600);
   font-size:calc(2.1cqw*var(--type-scale,1));line-height:1.25;color:var(--text);}
 .bl-sub{display:block;font-family:var(--font-body);font-weight:400;font-size:1.02cqw;line-height:1.4;color:var(--text-2);margin-top:0.4cqh;}
 .footage .bl-title,.footage .bl-text{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.55);}
 .footage .bl-sub{color:#E4E5E4;}
+/* pull_quote: an oversized decorative quote-mark glyph + the quote (display type) + attribution — the
+   attributed pull-quote `statement` doesn't cover. Universal + theme-painted (accent glyph, display face). */
+.pq-wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
+  padding:0 calc(9cqw*var(--density,1));color:var(--text);}
+.pq-mark{font-family:var(--font-display-en);font-style:var(--display-style,normal);font-weight:900;
+  font-size:20cqw;line-height:0.66;color:var(--accent);opacity:0;height:8.5cqh;overflow:visible;}
+.pq-body{font-family:var(--font-display-en);font-style:var(--display-style,normal);
+  font-weight:var(--display-weight,600);font-size:calc(4cqw*var(--type-scale,1));line-height:1.22;
+  max-width:78cqw;opacity:0;}
+.pq-body .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;}
+.pq-cite{margin-top:3.2cqh;font-family:var(--font-mono),ui-monospace;font-weight:600;font-size:1cqw;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--text-2);opacity:0;}
+.footage .pq-body{color:#F6F7F6;text-shadow:0 2px 14px rgba(0,0,0,0.5);}
+.footage .pq-cite{color:#E4E5E4;}
 /* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
 .prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
 .prop img{display:block;width:100%;height:auto;}
@@ -841,16 +859,47 @@ def bullet_list(sid, sc):
                   if op and op in t else esc(t))
         frag.append(f'<div id="{sid}-t" class="bl-title">{html_t}</div>')
         tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.3});')
+    numbered = bool(d.get("numbered"))
     frag.append('<div class="bl-wrap">')
     for i, it in enumerate(d.get("items", [])):
         text = it if isinstance(it, str) else it.get("text", "")
         sub = "" if isinstance(it, str) else it.get("sub", "")
         iid = f"{sid}-i{i}"
         subhtml = f'<span class="bl-sub">{esc(sub)}</span>' if sub else ""
-        frag.append(f'<div class="bl-item" id="{iid}"><span class="bl-mark"></span>'
+        mark = f'<span class="bl-num">{i+1:02d}</span>' if numbered else '<span class="bl-mark"></span>'
+        frag.append(f'<div class="bl-item" id="{iid}">{mark}'
                     f'<span class="bl-text">{esc(text)}{subhtml}</span></div>')
         tl.append(f'tl.fromTo("#{iid}",{{opacity:0,x:-14}},{{opacity:1,x:0,duration:0.5,ease:"power2.out"}},{start+0.6+i*0.32});')
     frag.append('</div></section>')
+    pf, pt = _props_of(sid, sc)
+    return g + frag + pf, tl + pt
+
+def pull_quote(sid, sc):
+    """Reusable BLOCK: an attributed pull-quote — an oversized decorative quote-mark glyph, the quote in
+    the theme's display type (optional `hi` substring highlighted), and a mono attribution. The reference
+    decks' near-universal quote element that `statement` (a manifesto) doesn't cover. data: {quote, cite?,
+    hi?, kicker?, register?, ground?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    reg = d.get("register") or ("footage" if _grounded(d) else "paper")
+    default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
+    q, hi = d.get("quote", ""), d.get("hi", "")
+    qhtml = (f'{esc(q.split(hi,1)[0])}<span class="hl">{esc(hi)}</span>{esc(q.split(hi,1)[1])}'
+             if hi and hi in q else esc(q))
+    frag.append('<div class="pq-wrap">')
+    frag.append(f'<div id="{sid}-qm" class="pq-mark">“</div>')
+    frag.append(f'<div id="{sid}-q" class="pq-body">{qhtml}</div>')
+    if d.get("cite"):
+        frag.append(f'<div id="{sid}-c" class="pq-cite">{esc(d["cite"])}</div>')
+    frag.append('</div></section>')
+    tl.append(f'tl.fromTo("#{sid}-qm",{{opacity:0,scale:0.72,y:8}},{{opacity:1,scale:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.3});')
+    tl.append(f'tl.fromTo("#{sid}-q",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.7,ease:"power3.out"}},{start+0.5});')
+    if d.get("cite"):
+        tl.append(f'tl.fromTo("#{sid}-c",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{start+1.2});')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
 
@@ -2496,7 +2545,7 @@ def social_card(sid, sc):
 
 
 BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map, "raw": raw_scene,
-          "bullet_list": bullet_list,
+          "bullet_list": bullet_list, "pull_quote": pull_quote,
           "timeline": timeline, "newshead": newshead, "collage": collage,
           "diagram": diagram, "comparison": comparison, "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,

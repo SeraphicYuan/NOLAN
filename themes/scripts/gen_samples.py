@@ -162,6 +162,9 @@ SEEDS = {
                                   "highlight": 3,
                                   "series": [{"label": "'21", "value": 18}, {"label": "'22", "value": 34},
                                              {"label": "'23", "value": 52}, {"label": "'24", "value": 73}]}},
+    "pull-quote":       {"type": "pull_quote", "_arch": "editorial-column",
+                         "data": {"kicker": "In their words", "hi": "invent it", "cite": "Alan Kay, 1971",
+                                  "quote": "The best way to predict the future is to invent it."}},
 }
 
 THEMES = sorted(d.name for d in (REPO / "themes").iterdir()
