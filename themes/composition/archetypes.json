@@ -1,301 +1,302 @@
-{
-  "_doc": "NOLAN composition archetype registry — the SHARED layout vocabulary every theme references and both the block composer AND the bespoke agent read (one dialect). A scene's archetype = its macro layout. Themes declare composition:{default,allowed[]} pointing at these ids; the bespoke agent picks from a theme's allowed set given the beat; blocks are classified by archetype. Design: docs/COMPOSITION_ARCHITECTURE.md. Vocabulary grounded in the 26 themes + 18 blocks (editorial/presentation/broadcast), with the composable-primitive discipline of 'Every Layout'. Anchors are GRID guidance (rule-of-thirds / 12-column), not pixels — robust across content length, font width, aspect (like data-fit for text). Exemplars are the biggest LLM-quality lever: seeded by promoting real renders + hand-authoring gaps (see exemplar field; null = not yet promoted).",
-  "version": 1,
-  "grid": {
-    "_doc": "The substrate ALL archetypes place against — not an archetype itself. A 1920x1080 frame divided into 12 columns and rule-of-thirds horizontal bands. Anchors below reference these.",
-    "columns": 12,
-    "bands": [
-      "upper-third",
-      "middle-third",
-      "lower-third"
-    ],
-    "optical_center": "~45% height (slightly above geometric centre)",
-    "safe_areas": {
-      "caption_keep_out": "content stays in the TOP ~85% (bottom ~15% is where the caption bar sits)",
-      "title_safe": "keep primary content inside a ~5% inset from every edge (advisory)",
-      "caption_keep_out_y": 0.85,
-      "title_safe_inset": 0.05
-    },
-    "_machine_doc": "The numeric fields (caption_keep_out_y, title_safe_inset, per-archetype `zone`) are the machine-readable contract the deterministic layout linter (nolan.hyperframes.layout_lint) checks a composed frame's declared geometry against. Coords are 0..1 fractions of the 1920x1080 canvas (x→right, y→down). caption_keep_out_y=0.85 is calibrated to where the composer's caption bar actually sits (bottom ~9-15cqh); a content box whose BOTTOM dips below it is a HARD error. The HARD out-of-bounds check flags only genuinely OFF-CANVAS content (coords <0 or >1); the title_safe_inset is a nicety the composer already roughly respects, so it is NOT gated. `zone` is the box a scene's content-centroid should fall inside — an ADVISORY anchor check (fuzzy, area-weighted)."
-  },
-  "archetypes": {
-    "centered-hero": {
-      "intent": "One dominant idea, dead-centre, using the full canvas.",
-      "when_to_use": "the beat has ONE thing to say — a single statement, a big number, a big question, a thesis, a reveal.",
-      "not_for": "lists, comparisons, or dense multi-part data.",
-      "serves_beats": [
-        "thesis",
-        "big-number",
-        "big-question",
-        "statement",
-        "reveal"
-      ],
-      "anchor": "primary element at optical centre; a short eyebrow on the upper third, optional support on the lower third. Symmetric about the vertical axis.",
-      "balance": "symmetric",
-      "density": "generous",
-      "blocks": [
-        "stat"
-      ],
-      "exemplar": "exemplars/centered-hero.json",
-      "zone": {
-        "x": [
-          0.28,
-          0.72
-        ],
-        "y": [
-          0.25,
-          0.75
-        ]
-      }
-    },
-    "editorial-column": {
-      "intent": "Text set as a reading column against a margin axis, ragged right — the Vox/editorial voice.",
-      "when_to_use": "narration-led running claims, a quote with attribution, a labelled statement — text carries the beat.",
-      "not_for": "a single hero word (use centered-hero) or media-forward beats.",
-      "serves_beats": [
-        "claim",
-        "statement",
-        "quote",
-        "narration",
-        "definition"
-      ],
-      "anchor": "column occupies the left ~55% (columns 1-7) with a rule/margin at its edge; content top-aligned to the upper third and flowing down.",
-      "balance": "asymmetric",
-      "density": "normal",
-      "blocks": [
-        "statement",
-        "lower_third",
-        "bullet_list"
-      ],
-      "exemplar": null,
-      "zone": {
-        "x": [
-          0.03,
-          0.6
-        ],
-        "y": [
-          0.08,
-          0.8
-        ]
-      }
-    },
-    "swiss-grid": {
-      "intent": "A modular grid — several items placed on columns and rows with consistent gutters.",
-      "when_to_use": "an enumeration, a multi-item structure, a small matrix, several stats or images together.",
-      "not_for": "a single idea (use centered-hero) or a two-way comparison (use split-screen).",
-      "serves_beats": [
-        "list",
-        "enumeration",
-        "gallery",
-        "multi-stat",
-        "matrix",
-        "index"
-      ],
-      "anchor": "items laid on the 12-column grid with even gutters and a shared baseline; a strong top rule or header row.",
-      "balance": "symmetric",
-      "density": "tight",
-      "blocks": [
-        "gallery",
-        "collage",
-        "carousel",
-        "diagram"
-      ],
-      "exemplar": null,
-      "zone": {
-        "x": [
-          0.06,
-          0.94
-        ],
-        "y": [
-          0.08,
-          0.8
-        ]
-      }
-    },
-    "split-screen": {
-      "intent": "Two zones side by side, in dialogue.",
-      "when_to_use": "a comparison, before/after, this-vs-that, a two-sided argument.",
-      "not_for": "a single idea, or more than two items (use swiss-grid).",
-      "serves_beats": [
-        "comparison",
-        "versus",
-        "before-after",
-        "dialogue",
-        "tension"
-      ],
-      "anchor": "left half (cols 1-6) + right half (cols 7-12) with a seam at centre; each half's content centred within its zone; an optional 'vs' hinge on the seam.",
-      "balance": "symmetric",
-      "density": "normal",
-      "blocks": [
-        "comparison"
-      ],
-      "exemplar": null,
-      "zone": {
-        "x": [
-          0.05,
-          0.95
-        ],
-        "y": [
-          0.2,
-          0.8
-        ]
-      }
-    },
-    "full-bleed-overlay": {
-      "intent": "Media or atmosphere fills the frame edge-to-edge; text is overlaid on a legible zone.",
-      "when_to_use": "a photo/video/map/gradient IS the hero; an establishing or atmospheric beat.",
-      "not_for": "type-only beats (nothing to fill the bleed).",
-      "serves_beats": [
-        "media",
-        "establishing",
-        "atmosphere",
-        "map",
-        "b-roll",
-        "cold-open"
-      ],
-      "anchor": "media on track 0 edge-to-edge; a scrim (track 1) for contrast; text confined to a safe zone (lower third, or a corner panel) — never floating over busy media.",
-      "balance": "asymmetric",
-      "density": "normal",
-      "blocks": [
-        "geo",
-        "media_ground"
-      ],
-      "exemplar": null,
-      "zone": {
-        "x": [
-          0.04,
-          0.96
-        ],
-        "y": [
-          0.45,
-          0.8
-        ]
-      }
-    },
-    "focal-card": {
-      "intent": "One object or subject anchors the stage; supporting text orbits it.",
-      "when_to_use": "a background-removed subject, a hero object, a news card, a document, a portrait.",
-      "not_for": "beats with no single focal object.",
-      "serves_beats": [
-        "subject",
-        "object-as-evidence",
-        "news-card",
-        "portrait",
-        "document"
-      ],
-      "anchor": "focal element centred (or offset to a thirds line); label/kicker flanking it or on the lower third; the focal object owns the middle band.",
-      "balance": "symmetric or asymmetric (centred vs offset)",
-      "density": "normal",
-      "blocks": [
-        "newshead",
-        "spotlight",
-        "document",
-        "social_card",
-        "prop_cutout",
-        "linedraw"
-      ],
-      "exemplar": null,
-      "zone": {
-        "x": [
-          0.18,
-          0.82
-        ],
-        "y": [
-          0.18,
-          0.82
-        ]
-      }
-    },
-    "sidebar": {
-      "intent": "A narrow fixed rail beside a wide flexible content zone.",
-      "when_to_use": "an index/number/label/step marker beside the main content; a running marker + body.",
-      "not_for": "50/50 comparisons (use split-screen).",
-      "serves_beats": [
-        "indexed",
-        "labelled",
-        "step",
-        "annotated",
-        "chapter"
-      ],
-      "anchor": "a narrow rail (~cols 1-3: a number, label, or index) + a wide content zone (cols 4-12) filling the rest; the rail is a persistent marker, the body carries the beat.",
-      "balance": "asymmetric",
-      "density": "normal",
-      "blocks": [],
-      "exemplar": null,
-      "zone": {
-        "x": [
-          0.22,
-          0.97
-        ],
-        "y": [
-          0.1,
-          0.82
-        ]
-      }
-    },
-    "framed": {
-      "intent": "A self-contained artefact presented cleanly within a margin frame.",
-      "when_to_use": "a chart, a code block, a pull-quote, a diagram — an object to present, not narrate.",
-      "not_for": "full-bleed media or running narration.",
-      "serves_beats": [
-        "chart",
-        "code",
-        "quote",
-        "diagram",
-        "artefact",
-        "spec"
-      ],
-      "anchor": "artefact centred within a generous margin (frame inset ~10-14%); a caption or source on the lower third; the frame itself may carry the theme's rule/decoration.",
-      "balance": "symmetric",
-      "density": "generous",
-      "blocks": [
-        "chart",
-        "code",
-        "diagram",
-        "document"
-      ],
-      "exemplar": null,
-      "zone": {
-        "x": [
-          0.1,
-          0.9
-        ],
-        "y": [
-          0.1,
-          0.85
-        ]
-      }
-    },
-    "timeline": {
-      "intent": "A sequence of events or steps connected along a spine, with directional flow.",
-      "when_to_use": "the beat walks a SEQUENCE — a chronology, a history, a process, milestones, 'then… then… then', how-it-works steps.",
-      "not_for": "unordered items (use swiss-grid), a two-way comparison (use split-screen), or a single moment (use centered-hero).",
-      "serves_beats": [
-        "chronology",
-        "history",
-        "process",
-        "milestones",
-        "sequence",
-        "how-it-works",
-        "steps"
-      ],
-      "anchor": "a spine (horizontal left→right or vertical top→bottom) with a node at each event; year/label callouts sit off the spine; draw order / arrows carry the directional flow.",
-      "balance": "sequential",
-      "density": "normal",
-      "blocks": [
-        "timeline"
-      ],
-      "exemplar": null,
-      "zone": {
-        "x": [
-          0.05,
-          0.95
-        ],
-        "y": [
-          0.15,
-          0.85
-        ]
-      }
-    }
-  }
-}
+{
+  "_doc": "NOLAN composition archetype registry — the SHARED layout vocabulary every theme references and both the block composer AND the bespoke agent read (one dialect). A scene's archetype = its macro layout. Themes declare composition:{default,allowed[]} pointing at these ids; the bespoke agent picks from a theme's allowed set given the beat; blocks are classified by archetype. Design: docs/COMPOSITION_ARCHITECTURE.md. Vocabulary grounded in the 26 themes + 18 blocks (editorial/presentation/broadcast), with the composable-primitive discipline of 'Every Layout'. Anchors are GRID guidance (rule-of-thirds / 12-column), not pixels — robust across content length, font width, aspect (like data-fit for text). Exemplars are the biggest LLM-quality lever: seeded by promoting real renders + hand-authoring gaps (see exemplar field; null = not yet promoted).",
+  "version": 1,
+  "grid": {
+    "_doc": "The substrate ALL archetypes place against — not an archetype itself. A 1920x1080 frame divided into 12 columns and rule-of-thirds horizontal bands. Anchors below reference these.",
+    "columns": 12,
+    "bands": [
+      "upper-third",
+      "middle-third",
+      "lower-third"
+    ],
+    "optical_center": "~45% height (slightly above geometric centre)",
+    "safe_areas": {
+      "caption_keep_out": "content stays in the TOP ~85% (bottom ~15% is where the caption bar sits)",
+      "title_safe": "keep primary content inside a ~5% inset from every edge (advisory)",
+      "caption_keep_out_y": 0.85,
+      "title_safe_inset": 0.05
+    },
+    "_machine_doc": "The numeric fields (caption_keep_out_y, title_safe_inset, per-archetype `zone`) are the machine-readable contract the deterministic layout linter (nolan.hyperframes.layout_lint) checks a composed frame's declared geometry against. Coords are 0..1 fractions of the 1920x1080 canvas (x→right, y→down). caption_keep_out_y=0.85 is calibrated to where the composer's caption bar actually sits (bottom ~9-15cqh); a content box whose BOTTOM dips below it is a HARD error. The HARD out-of-bounds check flags only genuinely OFF-CANVAS content (coords <0 or >1); the title_safe_inset is a nicety the composer already roughly respects, so it is NOT gated. `zone` is the box a scene's content-centroid should fall inside — an ADVISORY anchor check (fuzzy, area-weighted)."
+  },
+  "archetypes": {
+    "centered-hero": {
+      "intent": "One dominant idea, dead-centre, using the full canvas.",
+      "when_to_use": "the beat has ONE thing to say — a single statement, a big number, a big question, a thesis, a reveal.",
+      "not_for": "lists, comparisons, or dense multi-part data.",
+      "serves_beats": [
+        "thesis",
+        "big-number",
+        "big-question",
+        "statement",
+        "reveal"
+      ],
+      "anchor": "primary element at optical centre; a short eyebrow on the upper third, optional support on the lower third. Symmetric about the vertical axis.",
+      "balance": "symmetric",
+      "density": "generous",
+      "blocks": [
+        "stat"
+      ],
+      "exemplar": "exemplars/centered-hero.json",
+      "zone": {
+        "x": [
+          0.28,
+          0.72
+        ],
+        "y": [
+          0.25,
+          0.75
+        ]
+      }
+    },
+    "editorial-column": {
+      "intent": "Text set as a reading column against a margin axis, ragged right — the Vox/editorial voice.",
+      "when_to_use": "narration-led running claims, a quote with attribution, a labelled statement — text carries the beat.",
+      "not_for": "a single hero word (use centered-hero) or media-forward beats.",
+      "serves_beats": [
+        "claim",
+        "statement",
+        "quote",
+        "narration",
+        "definition"
+      ],
+      "anchor": "column occupies the left ~55% (columns 1-7) with a rule/margin at its edge; content top-aligned to the upper third and flowing down.",
+      "balance": "asymmetric",
+      "density": "normal",
+      "blocks": [
+        "statement",
+        "lower_third",
+        "bullet_list",
+        "pull_quote"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.03,
+          0.6
+        ],
+        "y": [
+          0.08,
+          0.8
+        ]
+      }
+    },
+    "swiss-grid": {
+      "intent": "A modular grid — several items placed on columns and rows with consistent gutters.",
+      "when_to_use": "an enumeration, a multi-item structure, a small matrix, several stats or images together.",
+      "not_for": "a single idea (use centered-hero) or a two-way comparison (use split-screen).",
+      "serves_beats": [
+        "list",
+        "enumeration",
+        "gallery",
+        "multi-stat",
+        "matrix",
+        "index"
+      ],
+      "anchor": "items laid on the 12-column grid with even gutters and a shared baseline; a strong top rule or header row.",
+      "balance": "symmetric",
+      "density": "tight",
+      "blocks": [
+        "gallery",
+        "collage",
+        "carousel",
+        "diagram"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.06,
+          0.94
+        ],
+        "y": [
+          0.08,
+          0.8
+        ]
+      }
+    },
+    "split-screen": {
+      "intent": "Two zones side by side, in dialogue.",
+      "when_to_use": "a comparison, before/after, this-vs-that, a two-sided argument.",
+      "not_for": "a single idea, or more than two items (use swiss-grid).",
+      "serves_beats": [
+        "comparison",
+        "versus",
+        "before-after",
+        "dialogue",
+        "tension"
+      ],
+      "anchor": "left half (cols 1-6) + right half (cols 7-12) with a seam at centre; each half's content centred within its zone; an optional 'vs' hinge on the seam.",
+      "balance": "symmetric",
+      "density": "normal",
+      "blocks": [
+        "comparison"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.05,
+          0.95
+        ],
+        "y": [
+          0.2,
+          0.8
+        ]
+      }
+    },
+    "full-bleed-overlay": {
+      "intent": "Media or atmosphere fills the frame edge-to-edge; text is overlaid on a legible zone.",
+      "when_to_use": "a photo/video/map/gradient IS the hero; an establishing or atmospheric beat.",
+      "not_for": "type-only beats (nothing to fill the bleed).",
+      "serves_beats": [
+        "media",
+        "establishing",
+        "atmosphere",
+        "map",
+        "b-roll",
+        "cold-open"
+      ],
+      "anchor": "media on track 0 edge-to-edge; a scrim (track 1) for contrast; text confined to a safe zone (lower third, or a corner panel) — never floating over busy media.",
+      "balance": "asymmetric",
+      "density": "normal",
+      "blocks": [
+        "geo",
+        "media_ground"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.04,
+          0.96
+        ],
+        "y": [
+          0.45,
+          0.8
+        ]
+      }
+    },
+    "focal-card": {
+      "intent": "One object or subject anchors the stage; supporting text orbits it.",
+      "when_to_use": "a background-removed subject, a hero object, a news card, a document, a portrait.",
+      "not_for": "beats with no single focal object.",
+      "serves_beats": [
+        "subject",
+        "object-as-evidence",
+        "news-card",
+        "portrait",
+        "document"
+      ],
+      "anchor": "focal element centred (or offset to a thirds line); label/kicker flanking it or on the lower third; the focal object owns the middle band.",
+      "balance": "symmetric or asymmetric (centred vs offset)",
+      "density": "normal",
+      "blocks": [
+        "newshead",
+        "spotlight",
+        "document",
+        "social_card",
+        "prop_cutout",
+        "linedraw"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.18,
+          0.82
+        ],
+        "y": [
+          0.18,
+          0.82
+        ]
+      }
+    },
+    "sidebar": {
+      "intent": "A narrow fixed rail beside a wide flexible content zone.",
+      "when_to_use": "an index/number/label/step marker beside the main content; a running marker + body.",
+      "not_for": "50/50 comparisons (use split-screen).",
+      "serves_beats": [
+        "indexed",
+        "labelled",
+        "step",
+        "annotated",
+        "chapter"
+      ],
+      "anchor": "a narrow rail (~cols 1-3: a number, label, or index) + a wide content zone (cols 4-12) filling the rest; the rail is a persistent marker, the body carries the beat.",
+      "balance": "asymmetric",
+      "density": "normal",
+      "blocks": [],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.22,
+          0.97
+        ],
+        "y": [
+          0.1,
+          0.82
+        ]
+      }
+    },
+    "framed": {
+      "intent": "A self-contained artefact presented cleanly within a margin frame.",
+      "when_to_use": "a chart, a code block, a pull-quote, a diagram — an object to present, not narrate.",
+      "not_for": "full-bleed media or running narration.",
+      "serves_beats": [
+        "chart",
+        "code",
+        "quote",
+        "diagram",
+        "artefact",
+        "spec"
+      ],
+      "anchor": "artefact centred within a generous margin (frame inset ~10-14%); a caption or source on the lower third; the frame itself may carry the theme's rule/decoration.",
+      "balance": "symmetric",
+      "density": "generous",
+      "blocks": [
+        "chart",
+        "code",
+        "diagram",
+        "document"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.1,
+          0.9
+        ],
+        "y": [
+          0.1,
+          0.85
+        ]
+      }
+    },
+    "timeline": {
+      "intent": "A sequence of events or steps connected along a spine, with directional flow.",
+      "when_to_use": "the beat walks a SEQUENCE — a chronology, a history, a process, milestones, 'then… then… then', how-it-works steps.",
+      "not_for": "unordered items (use swiss-grid), a two-way comparison (use split-screen), or a single moment (use centered-hero).",
+      "serves_beats": [
+        "chronology",
+        "history",
+        "process",
+        "milestones",
+        "sequence",
+        "how-it-works",
+        "steps"
+      ],
+      "anchor": "a spine (horizontal left→right or vertical top→bottom) with a node at each event; year/label callouts sit off the spine; draw order / arrows carry the directional flow.",
+      "balance": "sequential",
+      "density": "normal",
+      "blocks": [
+        "timeline"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.05,
+          0.95
+        ],
+        "y": [
+          0.15,
+          0.85
+        ]
+      }
+    }
+  }
+}

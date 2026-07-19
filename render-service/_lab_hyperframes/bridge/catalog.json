@@ -116,6 +116,21 @@
       },
       "theme_notes": "marker glyph = --bullet-marker (square/em-dash/chevron/dot per theme); text uses the display type role + type-scale."
     },
+    "pull_quote": {
+      "fn": "pull_quote",
+      "purpose": "An attributed pull-quote — an oversized decorative quote-mark glyph, the quote in the theme's display type, and a mono attribution line.",
+      "when_to_use": "The beat IS a quotation or a single memorable line attributed to a source (an expert, a study, a person). Distinct from statement (an un-attributed manifesto/claim).",
+      "not_for": "An un-attributed thesis (use statement). A data callout (stat/chart). A list (bullet_list).",
+      "data_schema": {
+        "quote": "string - the quoted line",
+        "cite": "string? - attribution (name / source), rendered mono/uppercase",
+        "hi": "string? - a substring of quote to highlight with the accent",
+        "kicker": "string? - small eyebrow label",
+        "register": "enum(paper|footage)?",
+        "ground": "object? - a media_ground spec"
+      },
+      "theme_notes": "quote-mark + highlight = --accent; quote uses the display type role + type-scale + display-style; cite = mono."
+    },
     "newshead": {
       "fn": "newshead",
       "purpose": "A newspaper headline card (Vox 'newspaper animation'): dot-grid paper, red date tag, bold serif headline whose words cascade in with a yellow highlighter sweep, a serif subhead (optional highlight), a blackletter source masthead + drawn rule, an optional framed grayscale photo sliding in, and an optional red hand-drawn arrow annotation.",
