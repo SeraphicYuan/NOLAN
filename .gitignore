@@ -143,3 +143,5 @@ render-service/_lab_hyperframes/videos/*/capture/_temporal/
 
 # theme×archetype sample renders (regenerate: python themes/scripts/gen_samples.py + node theme_samples_shot.mjs)
 themes/_samples/
+# per-theme theme books (regenerate: python themes/scripts/gen_theme_books.py)
+themes/_books/
