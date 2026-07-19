@@ -91,12 +91,56 @@ _TIMELINE = (
                           (62, "1991", "The web"), (87, "2007", "Mobile")])
     + '</div></section>')
 
+# THEME IDENTITY CARD — a single specimen that shows the theme's DNA in its own tokens: the palette
+# (shell/surface/accent/text + the derived ladder), the four type roles (eyebrow / display / stat-value /
+# body / mono), and the shape (card radius + border weight + card-shadow). Generic (no theme name — the
+# book generator adds that); every value is a var() so it renders in the theme's real identity, and the
+# theme's declared decoration furniture auto-composites over it. This is the hero panel of the theme book.
+_ID_SW = [("shell", "var(--shell)"), ("surface", "var(--surface)"), ("surface-2", "var(--surface-2)"),
+          ("accent", "var(--accent)"), ("accent 8%", "var(--accent-soft)"), ("rule", "var(--rule)"),
+          ("text", "var(--text)"), ("text-2", "var(--text-2)")]
+_IDENTITY = (
+    '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;'
+    'padding:5.5cqw 6cqw;color:var(--text);display:flex;flex-direction:column;justify-content:center;'
+    'gap:4cqh;font-family:var(--font-body)">'
+    '<div style="display:flex;gap:1.3cqw">'
+    + "".join(f'<div style="flex:1;display:flex;flex-direction:column;gap:0.9cqh">'
+              f'<div style="height:7.5cqh;border-radius:var(--r-card,4px);background:{c};'
+              f'border:1px solid var(--rule,rgba(128,128,128,0.28))"></div>'
+              f'<div style="font-family:var(--font-mono),ui-monospace;font-size:0.72cqw;letter-spacing:.05em;'
+              f'color:var(--text-2);text-transform:uppercase">{n}</div></div>'
+              for n, c in _ID_SW)
+    + '</div>'
+    '<div style="display:flex;gap:4cqw;align-items:center">'
+    '<div style="font-family:var(--hero-num-font,var(--font-display-en));font-style:var(--hero-num-style,normal);'
+    'font-weight:var(--hero-num-weight,800);font-size:9cqw;line-height:0.78;'
+    'letter-spacing:var(--hero-num-track,-0.02em)">73<span style="color:var(--accent)">%</span></div>'
+    '<div style="flex:1;display:flex;flex-direction:column;gap:1.3cqh">'
+    '<div style="font-family:var(--eyebrow-font,var(--font-mono)),ui-monospace;font-weight:var(--eyebrow-weight,600);'
+    'letter-spacing:var(--eyebrow-tracking,.2em);text-transform:var(--eyebrow-transform,uppercase);'
+    'font-size:1cqw;color:var(--eyebrow-color,var(--text-2))">Eyebrow · the kicker</div>'
+    '<div style="font-family:var(--font-display-en);font-style:var(--display-style,normal);'
+    'font-weight:var(--display-weight,700);font-size:3.1cqw;line-height:1.02">The quick brown fox jumps</div>'
+    '<div style="font-family:var(--font-body);font-size:1.35cqw;line-height:1.4;color:var(--text-2);max-width:50cqw">'
+    'Body — over the lazy dog. The five boxing wizards jump quickly. 0123456789.</div>'
+    '<div style="font-family:var(--font-mono),ui-monospace;font-size:0.95cqw;letter-spacing:.12em;color:var(--text-mute)">'
+    'MONO · LABEL · CAPTION · 01 / 02 / 03</div>'
+    '</div>'
+    '<div style="width:15cqw;height:20cqh;border:var(--bw,2px) solid var(--text);border-radius:var(--r-card,4px);'
+    'box-shadow:var(--card-shadow,none);background:var(--surface);display:flex;flex-direction:column;'
+    'align-items:center;justify-content:center;gap:0.6cqh">'
+    '<div style="font-family:var(--font-display-en);font-style:var(--display-style,normal);'
+    'font-weight:var(--display-weight,700);font-size:2cqw">Card</div>'
+    '<div style="font-family:var(--font-mono),ui-monospace;font-size:0.7cqw;color:var(--text-2)">radius·border·shadow</div>'
+    '</div></div></section>')
+
 # The first six are ARCHETYPE specimens (canonical layout per archetype). The last three are BLOCK
 # specimens — real production blocks that exercise the type-role / component character the archetype seeds
 # don't: `stat` shows the LIVE stat block (hero-num + stat-label roles), `bullet-list` shows the
 # bullet-marker component (Layer 4), `chart` shows the bar shape (Layer 3). A `_arch` maps a block specimen
 # to its home archetype for the scene meta (the specimen KEY stays the label in the matrix).
 SEEDS = {
+    "identity":         {"type": "raw", "_arch": "framed", "data": {"html": [_IDENTITY], "tl": []}},
     "centered-hero":    {"type": "raw", "data": {"html": [_CENTERED_HERO], "tl": []}},
     "editorial-column": {"type": "statement",
                          "data": {"kicker": "The claim", "lines": ["The models are", "getting cheaper", "and better"],
