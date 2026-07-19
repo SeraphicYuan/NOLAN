@@ -540,6 +540,54 @@ def frame_layers(comp: str, frame_id: str) -> Dict[str, Any]:
     return {"frame_id": frame_id, "dur": fr.get("dur"), "lanes": ["bg", "overlay", "text", "fx"], "elements": els}
 
 
+def asset_scene_usage(comp: str) -> Dict[str, Any]:
+    """Reverse index for the /pool HF by-scene view: which SCENES reference each pool asset FILE. Walks every
+    frame spec's scenes, collecting media refs (ground / overlay / subjects / any nested {src}) normalized to
+    the pool `file` key — a path under assets/ or capture/assets/, backslashes tolerated. Scene ids are
+    globally unique (frame-prefixed, e.g. f02s05). Returns {by_file: {file: [scene_id,…]}, scene_order: […]}.
+    HF has no such index natively (its pool groups by acquisition NEED, not by where an asset actually lands)."""
+    def _norm(src: str) -> Optional[str]:
+        s = src.replace("\\", "/").lstrip("/")
+        for pre in ("capture/assets/", "assets/"):
+            if s.startswith(pre):
+                return s[len(pre):] or None
+        return s or None
+
+    def _collect(v: Any, out: set) -> None:
+        m = _media_src(v)
+        if m:
+            out.add(m)
+        if isinstance(v, dict):
+            for vv in v.values():
+                _collect(vv, out)
+        elif isinstance(v, list):
+            for vv in v:
+                _collect(vv, out)
+
+    by_file: Dict[str, List[str]] = {}
+    order: List[str] = []
+    for fr_meta in list_frames(comp):
+        fid = fr_meta.get("id")
+        try:
+            spec, info = load_frame_spec(comp, fid)
+        except Exception:
+            continue
+        for sc in spec["frames"][info["i"]].get("scenes", []):
+            sid = sc.get("id")
+            if not sid:
+                continue
+            order.append(sid)
+            refs: set = set()
+            _collect(sc.get("data", {}) or {}, refs)
+            for src in refs:
+                f = _norm(src)
+                if f:
+                    lst = by_file.setdefault(f, [])
+                    if sid not in lst:
+                        lst.append(sid)
+    return {"by_file": by_file, "scene_order": order}
+
+
 def frame_transcripts(comp: str, frame_id: str) -> Dict[str, str]:
     """Per-scene NARRATION text — the VO words whose timing overlaps each scene's window (from audio_meta's
     per-frame word timings; scene start/dur and the words are both frame-local). Lets the editor read what a

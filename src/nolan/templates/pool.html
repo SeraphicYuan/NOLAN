@@ -116,7 +116,7 @@
         <option value="video">Video</option>
       </select>
       <select id="groupSel" title="how to arrange the pool">
-        <option value="flat">Flat grid</option>
+        <option value="flat">Default view</option>
         <option value="scene">Group by scene</option>
       </select>
       <select id="compSel" style="display:none"><option value="">Select comp…</option></select>
@@ -323,11 +323,11 @@
     });
     qs('sceneSel').addEventListener('change', render);
     qs('kindSel').addEventListener('change', render);
-    qs('groupSel').addEventListener('change', render);
+    qs('groupSel').addEventListener('change', () => { qs('sourceSel').value === 'hf' ? renderHf() : render(); });
 
     // ---- HyperFrames comp-pool mode: pre-selection CANDIDATES grouped by NEED, with acquisition
     //      provenance (source + CLIP relevance) and the VLM curation verdict (usable/flags). ----
-    const PROJ_CTRLS = ['projectSel', 'sceneSel', 'kindSel', 'groupSel'];
+    const PROJ_CTRLS = ['projectSel', 'sceneSel', 'kindSel'];   // groupSel stays visible in BOTH modes
 
     function setSource(src) {
       const hf = src === 'hf';
@@ -400,6 +400,25 @@
       </div>`;
     }
 
+    // HF pool grouped by the SCENE each asset actually lands in (from the computed reverse index), instead
+    // of by acquisition need. Placed assets sort by scene-plan order; unplaced candidates get a trailing group.
+    function renderHfByScene() {
+      const prov = qs('providerSel').value;
+      const items = (hfPool.bins || []).flatMap(b => b.items).filter(it => !prov || it.provider === prov);
+      const byScene = {}, noScene = [];
+      items.forEach(it => {
+        const sids = [...new Set(it.scenes || [])];
+        if (sids.length) sids.forEach(sid => (byScene[sid] = byScene[sid] || []).push(it));
+        else noScene.push(it);
+      });
+      const order = (hfPool.scene_order || []).filter(s => byScene[s]);
+      Object.keys(byScene).forEach(s => { if (!order.includes(s)) order.push(s); });
+      let html = order.map(sid =>
+        `<div class="hf-bin"><h3><span class="nid">${esc(sid)}</span> <span class="cnt">${byScene[sid].length} asset${byScene[sid].length > 1 ? 's' : ''}</span></h3><div class="grid">${byScene[sid].map(hfCard).join('')}</div></div>`).join('');
+      if (noScene.length) html += `<div class="hf-bin"><h3><span class="nid">—</span> <span class="cnt">not placed in any scene · ${noScene.length}</span></h3><div class="grid">${noScene.map(hfCard).join('')}</div></div>`;
+      qs('hfContainer').innerHTML = html || '<div class="empty">No assets.</div>';
+    }
+
     function renderHf() {
       if (!hfPool) return;
       const thin = hfPool.thin_needs || [];
@@ -408,6 +427,7 @@
         tb.style.display = '';
         tb.innerHTML = `⚠ <b>Thin beats</b> (under 3 candidates): ${thin.map(esc).join(', ')} — re-run acquisition with a higher <code>--per</code>, or they lean on generation.`;
       } else tb.style.display = 'none';
+      if (qs('groupSel').value === 'scene') return renderHfByScene();
       const prov = qs('providerSel').value;
       const html = (hfPool.bins || []).map(b => {
         const items = b.items.filter(it => !prov || it.provider === prov);

@@ -122,6 +122,12 @@ def register(app, ctx):
             except Exception:
                 needs = {}
         assets = d / "capture" / "assets"
+        from nolan.hyperframes import edit as hfedit
+        try:                                                    # reverse index: which SCENES reference each file
+            usage = hfedit.asset_scene_usage(comp)
+        except Exception:
+            usage = {"by_file": {}, "scene_order": []}
+        by_file = usage.get("by_file", {})
 
         def _provider(src: str) -> str:
             s = str(src or "?")
@@ -147,6 +153,7 @@ def register(app, ctx):
                     "exists": bool(f) and ((assets / f).is_file() or (d / "assets" / f).is_file()),
                     "path": f"assets/{f}" if f else None,
                     "editable": bool(f) and (d / "assets" / f).is_file(),
+                    "scenes": by_file.get(f, []) if f else [],   # scenes that actually reference this file
                     "url": f"/api/pool/hf/file?comp={comp}&file={f}"}
             b = bins.setdefault(nid, {"need": nid, "query": (needs.get(nid) or {}).get("query", it.get("query", "")),
                                       "evocative": bool((needs.get(nid) or {}).get("evocative")),
@@ -167,7 +174,7 @@ def register(app, ctx):
                 thin.append(nid)
             binlist.append(b)
         return {"comp": comp, "total": len(pool), "providers": sorted(providers),
-                "thin_needs": thin, "bins": binlist}
+                "thin_needs": thin, "bins": binlist, "scene_order": usage.get("scene_order", [])}
 
     @app.get("/api/pool/hf/file")
     async def hf_file(comp: str = Query(...), file: str = Query(...)):
