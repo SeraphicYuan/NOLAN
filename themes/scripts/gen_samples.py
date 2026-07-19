@@ -185,6 +185,37 @@ SEEDS = {
 THEMES = sorted(d.name for d in (REPO / "themes").iterdir()
                 if d.is_dir() and (d / "theme.json").exists())
 
+# ── layout-variant specimens (P3): render every variant of every variant-enabled block so the Samples
+# tab shows a block's full arrangement range. Content is sized to each variant's sweet spot (a hero-single
+# wants ONE figure, a two-col wants ~5 items) so each specimen reads at its best. ──
+_VARIANT_BLOCKS = json.loads(
+    (REPO / "themes" / "composition" / "layout_variants.json").read_text(encoding="utf-8")).get("blocks", {})
+# a variant-enabled block's base SEEDS specimen is labelled by its archetype, not its block name — map so
+# the variant specimens group under the SAME matrix cell as their cover (else stat matches but the
+# hyphenated 'bullet-list' / the 'editorial-column' statement specimen would split into a second cell).
+_BLOCK_TO_SPECIMEN = {"stat": "stat", "statement": "editorial-column", "bullet_list": "bullet-list"}
+_STAT_ITEMS = [{"value": "73%", "label": "of teams shipped faster", "underline": True,
+                "delta": {"dir": "up", "value": "+12 pts"}},
+               {"value": "2.4x", "label": "median throughput gain", "delta": {"dir": "down", "value": "-0.3x"}},
+               {"value": "11k", "label": "projects rendered"}]
+_BULLET_ITEMS = ["Models got cheaper and better", "Context windows grew to millions", "Agents can now use real tools",
+                 "Latency dropped below a second", "Costs fell 10x in two years"]
+
+
+def _variant_content(block, v):
+    """Best-fit specimen content for a (block, variant) pair — sized so each arrangement reads well."""
+    if block == "stat":
+        n = 1 if v == "hero-single" else (3 if v == "stacked-list" else 2)
+        return {"kicker": "By the numbers", "items": [dict(x) for x in _STAT_ITEMS[:n]], "variant": v}
+    if block == "statement":
+        return {"kicker": "The claim", "lines": ["The models are", "getting cheaper", "and better"],
+                "operative": "cheaper", "variant": v}
+    if block == "bullet_list":
+        n = 5 if v == "two-col" else (4 if v == "numbered-rail" else 3)
+        return {"kicker": "What changed", "title": "Three shifts that matter", "titleHi": "matter",
+                "items": list(_BULLET_ITEMS[:n]), "variant": v}
+    return {"variant": v}
+
 
 def theme_bg(theme):
     try:
@@ -221,8 +252,25 @@ def main():
             (OUT / f"{label}__{theme}.html").write_text(mount(tpl, theme_bg(theme)), encoding="utf-8")
             manifest.append({"archetype": label, "theme": theme,
                              "html": f"{label}__{theme}.html", "png": f"{label}__{theme}.png"})
+
+    # ── layout-variant specimens (P3): one render per (block, variant, theme) so the Samples tab can show
+    # the FULL range of a block's arrangements, not just the auto-picked one. Grouped under the block's
+    # `archetype` label with a `variant` field the UI reads for its click-through viewer. ──
+    nv = 0
+    for block, reg in _VARIANT_BLOCKS.items():
+        label = _BLOCK_TO_SPECIMEN.get(block, block)     # group under the base specimen's matrix cell
+        for v in reg.get("variants", {}):
+            data = _variant_content(block, v)
+            for theme in THEMES:
+                scene = {"id": "s1", "start": 0.0, "dur": DUR, "type": block, "data": dict(data)}
+                tpl = compose.compose_frame(f"{block}~{v}", DUR, [scene], theme=theme)
+                stem = f"{block}~{v}__{theme}"
+                (OUT / f"{stem}.html").write_text(mount(tpl, theme_bg(theme)), encoding="utf-8")
+                manifest.append({"archetype": label, "theme": theme, "variant": v,
+                                 "html": f"{stem}.html", "png": f"{stem}.png"})
+                nv += 1
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
-    print(f"composed {len(manifest)} cells ({len(SEEDS)} specimens × {len(THEMES)} themes) → {OUT}")
+    print(f"composed {len(manifest)} cells ({len(SEEDS)} specimens + {nv} variant specimens × {len(THEMES)} themes) → {OUT}")
 
 
 if __name__ == "__main__":
