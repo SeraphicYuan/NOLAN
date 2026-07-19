@@ -66,6 +66,27 @@ _SIDEBAR = (
     '<div style="font:700 calc(4cqw*var(--type-scale,1))/1.12 var(--font-display-en);max-width:52cqw">'
     'A running marker beside the body</div></div></section>')
 
+# a clean, static, theme-robust timeline (all events visible on a spine; no images; respects polarity) —
+# the archetype's ideal layout (the Vox `timeline` block is the animated cinematic production variant)
+_TIMELINE = (
+    '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;display:flex;'
+    'flex-direction:column;justify-content:center;padding:0 calc(9cqw*var(--density,1));color:var(--text)">'
+    '<div style="font:700 0.95cqw/1 var(--font-mono),ui-monospace,monospace;letter-spacing:.32em;'
+    'text-transform:uppercase;color:var(--text-2)">A short history</div>'
+    '<div style="position:relative;margin-top:13cqh;height:0.32cqh;background:var(--accent)">'
+    + "".join(
+        f'<div style="position:absolute;left:{x}%;top:50%;transform:translate(-50%,-50%);text-align:center">'
+        f'<div style="position:absolute;left:50%;bottom:2.4cqh;transform:translateX(-50%);'
+        f'font:800 calc(3.4cqw*var(--type-scale,1))/1 var(--font-display-en);white-space:nowrap">{yr}</div>'
+        '<div style="width:1.5cqw;height:1.5cqw;border-radius:50%;background:var(--accent);'
+        'border:0.28cqw solid var(--surface);box-sizing:border-box"></div>'
+        f'<div style="position:absolute;left:50%;top:2.4cqh;transform:translateX(-50%);'
+        f'font:600 0.9cqw/1.35 var(--font-mono),ui-monospace,monospace;letter-spacing:.08em;'
+        f'text-transform:uppercase;color:var(--text-2);white-space:nowrap">{lb}</div></div>'
+        for x, yr, lb in [(12, "1969", "First<br>message"), (37, "1983", "TCP / IP"),
+                          (62, "1991", "The web"), (87, "2007", "Mobile")])
+    + '</div></section>')
+
 SEEDS = {
     "centered-hero":    {"type": "raw", "data": {"html": [_CENTERED_HERO], "tl": []}},
     "editorial-column": {"type": "statement",
@@ -73,6 +94,7 @@ SEEDS = {
     "framed":           {"type": "raw", "data": {"html": [_FRAMED], "tl": []}},
     "swiss-grid":       {"type": "raw", "data": {"html": [_SWISS_GRID], "tl": []}},
     "sidebar":          {"type": "raw", "data": {"html": [_SIDEBAR], "tl": []}},
+    "timeline":         {"type": "raw", "data": {"html": [_TIMELINE], "tl": []}},
 }
 
 THEMES = sorted(d.name for d in (REPO / "themes").iterdir()
