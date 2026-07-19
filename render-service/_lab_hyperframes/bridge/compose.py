@@ -25,6 +25,10 @@ CSS = """
 .kick{position:absolute;top:6.4cqw;left:calc(5.5cqw*var(--density,1));font-family:var(--eyebrow-font,var(--font-body));
   font-weight:var(--eyebrow-weight,600);font-size:calc(var(--eyebrow-size,0.9cqw)*var(--type-scale,1));
   letter-spacing:var(--eyebrow-tracking,0.14em);text-transform:var(--eyebrow-transform,uppercase);opacity:0;}
+/* accent-stub rule — the short accent bar in the kicker->headline beat (near-universal in the reference
+   decks). Universal + theme-painted (var(--accent)); a theme opts out with --stub-w:0. */
+.kick::after{content:"";display:block;width:var(--stub-w,2.6cqw);height:var(--stub-h,0.34cqh);
+  background:var(--accent);margin-top:0.95cqh;border-radius:var(--stub-r,1px);}
 .stmt{position:absolute;left:calc(5.5cqw*var(--density,1));bottom:16cqh;max-width:80cqw;font-weight:var(--display-weight,800);font-style:var(--display-style,normal);font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}
