@@ -75,3 +75,22 @@ def register(app, ctx):
         archetypes = {aid: {"intent": a.get("intent", ""), "anchor": a.get("anchor", "")}
                       for aid, a in arch.items()}
         return {"themes": themes, "count": len(themes), "archetypes": archetypes}
+
+    @app.get("/api/themes/samples")
+    async def theme_samples():
+        """The generated theme × archetype sample matrix (themes/scripts/gen_samples.py): the real
+        composed renders that power the Samples tab. Reports which cells have a rendered PNG on disk."""
+        sdir = repo / "themes" / "_samples"
+        man = sdir / "manifest.json"
+        cells = []
+        if man.exists():
+            try:
+                for c in json.loads(man.read_text(encoding="utf-8")):
+                    cells.append({"archetype": c.get("archetype"), "theme": c.get("theme"),
+                                  "png": c.get("png"), "ready": (sdir / c.get("png", "")).exists()})
+            except Exception:
+                pass
+        return {"cells": cells,
+                "archetypes": sorted({c["archetype"] for c in cells}),
+                "themes": sorted({c["theme"] for c in cells}),
+                "ready": sum(1 for c in cells if c["ready"]), "total": len(cells)}
