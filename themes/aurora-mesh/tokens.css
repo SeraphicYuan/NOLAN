@@ -19,6 +19,7 @@
  *     • motion         — smooth / flowing (slightly calm intensity)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.0;
   /* ─── palette ─── */
   --shell:        #06050f;
   --surface:      #0c0a1a;

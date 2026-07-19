@@ -14,6 +14,7 @@
  *     • motion         — punchy + slight overshoot (energy)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.3;
   /* ─── palette ─── */
   --shell:        #001a4d;
   --surface:      #0033b8;             /* saturated electric blue */

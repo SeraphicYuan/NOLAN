@@ -13,6 +13,7 @@
  *     • motion         — measured (precise drafting tools)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.0;
   /* ─── palette ─── */
   --shell:        #0a1224;
   --surface:      #0e1a2e;

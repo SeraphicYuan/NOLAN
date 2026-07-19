@@ -15,6 +15,7 @@
  *     • motion         — slow + cinematic (documentary pace)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  0.95;
   /* ─── palette ─── */
   --shell:        #ece7da;
   --surface:      #f5f1e8;

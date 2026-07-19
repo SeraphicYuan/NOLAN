@@ -12,6 +12,7 @@
  *     • motion         — snappy + linear (terminal not springy)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.0;
   /* ─── palette ─── */
   --shell:        #000000;
   --surface:      #050a07;

@@ -14,6 +14,7 @@
  *     • motion         — soft springy (gentle overshoot)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  0.95;
   /* ─── palette ─── */
   --shell:        #c8d9e6;
   --surface:      #faf9f7;

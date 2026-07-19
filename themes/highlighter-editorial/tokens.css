@@ -2,6 +2,7 @@
    Reproduces the compose.py block-kit's original hardcoded palette so tokenizing the blocks
    is a no-op under THIS theme (the parity baseline) and any of the other themes restyle them. */
 :root {
+  --type-scale:  1.0;
   /* surfaces — light "mist / parchment" ground */
   --shell:        #E7E9E6;
   --surface:      #F1F3F2;

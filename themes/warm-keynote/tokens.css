@@ -12,6 +12,7 @@
  *     • motion         — springy with slight overshoot
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.0;
   /* ─── palette ─── */
   --shell:        #f5efe1;
   --surface:      #fdfbf7;

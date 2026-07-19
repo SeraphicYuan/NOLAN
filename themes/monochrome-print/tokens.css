@@ -13,6 +13,7 @@
  *     • motion         — extra-quiet, longer durations
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  0.75;
   /* ─── palette ─── */
   --shell:        #e8e3d8;
   --surface:      #fbf9f4;
