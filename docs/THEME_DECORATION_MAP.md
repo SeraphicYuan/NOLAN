@@ -53,3 +53,21 @@ future lever-#3 device expansion (each ties to specific themes):
 - **diagonal hatch** (coral → split-canvas) — 45° line texture on color panels
 
 These are the theme-scoped identity devices (per the schema); most map to 1–3 specific themes.
+
+## ⚠️ REVISIT — this mapping covers only ONE layer
+
+A reference `design.md`'s flat "Decorative Element Types" list actually spans **4–5 of our layers**; this
+mapping (lever #3) enriched only the **canvas-wide signature** layer. Worked example (vellum, ~11
+elements): `pin-annotation`/`chrome-bar`/`foot-bar` = canvas decoration (this layer — and even here I used
+APPROXIMATE fits: `rail-label` ≈ pin-note, `interior-frame` ≈ hairline frame; the exact devices are in the
+new-device backlog above); `kicker`/`display`/`stat-value`/`caption`/`label` = **Layer-1 type roles**
+(only eyebrow wired so far); `pin-stat`/`bullet-list-numbered`/`bar-fill`/`chart-baseline`/`img-placeholder`
+= **Layer-4 component tokens** (NOT built — hardcoded in block CSS today, unvaryable per theme);
+`rule`(accent-stub)/`quote-mark` = **scene-scoped decoration** (NOT built); `compare-panel-pair` = the
+split-screen archetype (built).
+
+**So for EVERY theme's decoration here, revisit once the other layers exist:** (a) swap approximate
+canvas devices for exact ones as the new-device backlog is built; (b) fold in the Layer-1 type-role
+character; (c) add Layer-4 component treatments; (d) add scene-scoped devices (accent-rule, quote-mark).
+The decoration mapping alone can't match a reference template's richness — it's ~1 of ~5 layers. See
+`docs/THEME_TOKEN_SCHEMA.md` for the full layer plan.
