@@ -53,6 +53,25 @@
         "centered": {"desc": "a centred kicker above a narrower centred row-list", "zone": "centered-hero", "fits": [1, 6]},
         "boxed":    {"desc": "each row on its own subtle surface panel", "zone": "swiss-grid", "fits": [1, 6]}
       }
+    },
+    "comparison_table": {
+      "default": "matrix",
+      "auto": {},
+      "variants": {
+        "matrix":   {"desc": "the full-width header x row-label x cell matrix (the classic)", "zone": "comparison-table", "fits": [1, 6]},
+        "centered": {"desc": "a centred kicker above a narrower centred matrix", "zone": "centered-hero", "fits": [1, 5]},
+        "panel":    {"desc": "the matrix inside a bordered surface panel", "zone": "framed", "fits": [1, 5]},
+        "compact":  {"desc": "tighter rows for a denser matrix", "zone": "comparison-table", "fits": [4, 8]}
+      }
+    },
+    "timeline": {
+      "default": "horizontal",
+      "auto": {},
+      "variants": {
+        "horizontal":  {"desc": "the spine runs left->right, callouts alternate up/down (the Vox default)", "zone": "timeline", "fits": [2, 6]},
+        "vertical":    {"desc": "the spine runs top->bottom, branches alternate left/right", "zone": "sidebar", "fits": [2, 6]},
+        "vertical-up": {"desc": "a vertical spine travelled bottom->top (a rising history)", "zone": "sidebar", "fits": [2, 6]}
+      }
     }
   }
 }

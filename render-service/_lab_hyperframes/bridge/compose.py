@@ -178,6 +178,13 @@ CSS = """
 .chip.no{background:transparent;border:0.16cqw solid var(--rule);color:var(--text-mute);}
 .chip.partial{background:var(--accent-soft);color:var(--accent);border:0.16cqw solid var(--accent);}
 .footage .ct-rlabel,.footage .ct-cell{color:#F6F7F6;}
+/* comparison_table layout variants (P3) — base .ct-wrap == matrix (full-width table). */
+.blk-comparison_table.sv-centered .kick{left:0;right:0;top:11cqh;text-align:center;}
+.blk-comparison_table.sv-centered .kick::after{margin-left:auto;margin-right:auto;}
+.blk-comparison_table.sv-centered .ct-wrap{padding:0 16cqw;}
+.blk-comparison_table.sv-panel .ct-wrap{inset:17cqh 9cqw 11cqh;border:var(--bw,2px) solid var(--rule);border-radius:var(--r-card,4px);box-shadow:var(--card-shadow,none);background:var(--surface);padding:0 4cqw;}
+.blk-comparison_table.sv-compact .ct-rlabel,.blk-comparison_table.sv-compact .ct-cell{padding-top:1cqh;padding-bottom:1cqh;}
+.blk-comparison_table.sv-compact .ct-rlabel{font-size:1.2cqw;}
 /* ledger_list: a dense hairline-separated row-list (ordinal + title + description + meta) — TOC / index /
    agenda / catalogue. Distinct from bullet_list (flat) + swiss-grid (2D cards). Universal + theme-painted. */
 .lg-wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 calc(6cqw*var(--density,1));color:var(--text);}
@@ -1073,7 +1080,8 @@ def comparison_table(sid, sc):
     g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
     cols, rows = d.get("columns", []), d.get("rows", [])
     n = max(1, len(cols))
-    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    variant = sc.get("_variant") or "matrix"         # P3 layout variant
+    frag = [f'<section class="scene clip {reg} blk-comparison_table sv-{variant}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
     if d.get("kicker"):
         frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
@@ -1184,6 +1192,10 @@ def timeline(sid, sc):
         branches go out LEFT/RIGHT (side:"left"|"right", auto-alternates).
     data: {events:[{year, label?, image?, side?}], axis?, dir?, title?, titleHi?, focus?, gap?, spine?}."""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
+    # P3 layout variant → the block's existing axis/dir modes (explicit data.axis/dir still win)
+    variant = sc.get("_variant")
+    if variant in ("vertical", "vertical-up") and "axis" not in d:
+        d = {**d, "axis": "vertical", "dir": ("up" if variant == "vertical-up" else "down")}
     events = d.get("events", [])
     n = max(1, len(events))
     D = 260; R = D / 2 - 6; C = 2 * math.pi * R   # circle diam, ring radius, circumference (build-time draw)
