@@ -2613,10 +2613,47 @@ def _decor_rail_label(p):
             f'text-transform:uppercase;color:var(--text-2);opacity:0.75">{txt}</span></div>')
 
 
+def _decor_background_ordinal(p):
+    txt = esc(str(p.get("text", "01")))
+    return (f'<div style="position:absolute;right:1cqw;bottom:-6cqh;font:800 44cqw/0.8 var(--font-display-en);'
+            f'color:var(--text);opacity:0.055;letter-spacing:-0.03em">{txt}</div>')
+
+
+def _decor_blob(p):
+    b = 'position:absolute;background:var(--accent);'
+    return (f'<div style="{b};width:34cqw;height:34cqw;top:-9cqh;right:-6cqw;opacity:0.14;'
+            'border-radius:42% 58% 55% 45%/48% 42% 58% 52%"></div>'
+            f'<div style="{b};width:22cqw;height:22cqw;bottom:-6cqh;left:-4cqw;opacity:0.10;'
+            'border-radius:56% 44% 48% 52%/52% 56% 44% 48%"></div>')
+
+
+def _decor_ribbon(p):
+    r = 'position:absolute;left:-12cqw;right:-12cqw;height:5cqh;transform:rotate(-18deg)'
+    return (f'<div style="{r};top:19cqh;background:var(--accent);opacity:0.16"></div>'
+            f'<div style="{r};top:33cqh;background:var(--text);opacity:0.08"></div>'
+            f'<div style="{r};top:47cqh;background:var(--accent);opacity:0.12"></div>')
+
+
+def _decor_glow(p):
+    return ('<div style="position:absolute;inset:0;background:radial-gradient(ellipse 50% 45% at 68% 28%,'
+            'var(--accent),transparent 62%);opacity:0.18;mix-blend-mode:screen"></div>')
+
+
+def _decor_seal(p):
+    txt = esc(str(p.get("text", "Est. 2026")))
+    return ('<div style="position:absolute;top:6cqh;right:5cqw;width:11cqw;height:11cqw;'
+            'border:0.3cqw solid var(--accent);border-radius:50%;display:flex;align-items:center;'
+            'justify-content:center;transform:rotate(-12deg);opacity:0.7">'
+            '<span style="font:700 1.1cqw/1.15 var(--font-mono),ui-monospace,monospace;letter-spacing:.1em;'
+            f'text-transform:uppercase;color:var(--accent);text-align:center;max-width:9cqw">{txt}</span></div>')
+
+
 _DECOR_RENDERERS = {
     "graph-paper": _decor_graph_paper, "dot-grid": _decor_dot_grid, "scanlines": _decor_scanlines,
     "grain": _decor_grain, "corner-brackets": _decor_corner_brackets,
     "interior-frame": _decor_interior_frame, "rail-label": _decor_rail_label,
+    "background-ordinal": _decor_background_ordinal, "blob": _decor_blob, "ribbon": _decor_ribbon,
+    "glow": _decor_glow, "seal": _decor_seal,
 }
 
 

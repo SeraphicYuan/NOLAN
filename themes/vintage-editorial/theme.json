@@ -47,5 +47,12 @@
       "framed",
       "focal-card"
     ]
-  }
+  },
+  "decoration": [
+    "grain",
+    {
+      "id": "seal",
+      "text": "Since 2011"
+    }
+  ]
 }

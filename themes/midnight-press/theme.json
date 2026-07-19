@@ -45,5 +45,8 @@
       "framed",
       "focal-card"
     ]
-  }
+  },
+  "decoration": [
+    "scanlines"
+  ]
 }

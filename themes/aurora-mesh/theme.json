@@ -49,5 +49,8 @@
       "framed",
       "focal-card"
     ]
-  }
+  },
+  "decoration": [
+    "glow"
+  ]
 }

@@ -47,5 +47,8 @@
       "split-screen",
       "framed"
     ]
-  }
+  },
+  "decoration": [
+    "interior-frame"
+  ]
 }
