@@ -46,6 +46,16 @@
   --eyebrow-tracking: .08em;
   --eyebrow-transform: uppercase;
   --eyebrow-color:    var(--accent);
+  --stat-label-font:  var(--font-mono);           /* metric caption: IBM Plex Mono, tracked small caps */
+  --stat-label-weight: 500;
+  --stat-label-size:  0.8cqw;
+  --stat-label-tracking: .1em;
+  --stat-label-transform: uppercase;
+  --caption-font:     var(--font-mono);            /* figure caption: IBM Plex Mono */
+  --caption-weight:   500;
+  --caption-size:     0.82cqw;
+  --caption-tracking: .08em;
+  --caption-transform: uppercase;
 
   /* ─── motion ─── */
   --dur-base:  380ms;

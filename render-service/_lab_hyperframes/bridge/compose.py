@@ -32,16 +32,20 @@ CSS = """
 .hlblock{position:absolute;left:-0.08em;right:-0.08em;top:0.06em;bottom:0.08em;background:var(--accent);transform:scaleX(0);
   transform-origin:left center;z-index:-1;}
 .capbar{position:absolute;left:5.5cqw;bottom:9cqh;background:var(--surface);color:var(--text);padding:0.5cqw 1.1cqw;
-  font-family:var(--font-body);font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;opacity:0;}
+  font-family:var(--caption-font,var(--font-body));font-weight:var(--caption-weight,600);
+  font-size:calc(var(--caption-size,0.82cqw)*var(--type-scale,1));letter-spacing:var(--caption-tracking,0.1em);
+  text-transform:var(--caption-transform,uppercase);opacity:0;}
 .slrow{position:absolute;left:5.5cqw;top:34cqh;display:flex;gap:4cqw;align-items:flex-start;}
 .slitem{display:flex;flex-direction:column;min-width:18cqw;}
 .slnumwrap{position:relative;display:inline-block;}
-.slnum{font-weight:900;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums;font-size:6cqw;
-  white-space:nowrap;opacity:0;}
+.slnum{font-family:var(--hero-num-font,var(--font-display-en));font-style:var(--hero-num-style,normal);
+  font-weight:var(--hero-num-weight,900);letter-spacing:var(--hero-num-track,-0.03em);line-height:1;
+  font-variant-numeric:tabular-nums;font-size:calc(6cqw*var(--type-scale,1));white-space:nowrap;opacity:0;}
 .slpre{font-size:0.7em;}.slsuf{font-size:0.62em;}
 .slul{position:absolute;left:0;right:0;bottom:-0.16em;height:0.14em;background:var(--accent);transform:scaleX(0);transform-origin:left center;}
-.sllabel{margin-top:1.1cqw;font-family:var(--font-body);font-weight:500;font-size:0.85cqw;letter-spacing:0.12em;
-  text-transform:uppercase;max-width:22cqw;line-height:1.45;opacity:0;}
+.sllabel{margin-top:1.1cqw;font-family:var(--stat-label-font,var(--font-body));font-weight:var(--stat-label-weight,500);
+  font-size:calc(var(--stat-label-size,0.85cqw)*var(--type-scale,1));letter-spacing:var(--stat-label-tracking,0.12em);
+  text-transform:var(--stat-label-transform,uppercase);max-width:22cqw;line-height:1.45;opacity:0;}
 .paper .slnum,.paper .sllead{color:var(--text);}.paper .kick{color:var(--text-2);}.paper .sllabel{color:var(--text-mute);}
 .footage .slnum{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.55),0 1px 3px rgba(0,0,0,0.5);}.footage .kick{color:#F6F7F6;text-shadow:0 1px 8px rgba(0,0,0,0.5);}.footage .sllabel{color:#E9EAE9;text-shadow:0 1px 6px rgba(0,0,0,0.5);}
 .stmt.paper-t{color:var(--text);}
