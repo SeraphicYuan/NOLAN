@@ -20,9 +20,10 @@
       "consumed_by": [".ch-bar (chart block)"]
     },
     "bullet-marker": {
-      "status": "pending",
-      "_desc": "the list-item marker glyph (em-dash / slash / chevron / dot / square) — a real per-theme choice. BLOCKED on a bullet/checklist block, which does not exist yet — that is a new BLOCK feature (orthogonal to the token schema), not a token wiring. Build the block first, then tokenise --bullet-marker.",
-      "tokens": {"glyph": "--bullet-marker"}
+      "status": "wired",
+      "_desc": "the list-item marker glyph — a real per-theme choice, now that the `bullet_list` block exists (built for this): brutalist square (bauhaus/neubrutalism/bold-signal), technical chevron (blueprint/terminal-green/neon-cyber/creative-voltage/aurora-mesh), editorial/elegant em-dash (newsroom/vellum/dark-botanical/…), default dot elsewhere. Set on 19 themes; consumed by .bl-mark::before content.",
+      "tokens": {"glyph": "--bullet-marker"},
+      "consumed_by": [".bl-mark (bullet_list block)"]
     },
     "pill": {
       "status": "n/a",

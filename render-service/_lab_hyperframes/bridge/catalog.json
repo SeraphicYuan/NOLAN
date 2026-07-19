@@ -101,6 +101,21 @@
         "sid_prefixed_ids"
       ]
     },
+    "bullet_list": {
+      "fn": "bullet_list",
+      "purpose": "A titled list of 3-6 key points, each led by the theme's bullet marker, staggered in — the classic explainer 'takeaways / steps / features' beat.",
+      "when_to_use": "The beat enumerates a small set of parallel points (takeaways, steps, features, reasons) read as a list, not a paragraph or a single statement.",
+      "not_for": "A single claim (use statement). A number/data callout (use stat/chart). More than ~6 items (split the beat).",
+      "data_schema": {
+        "kicker": "string - small eyebrow label (design intent, not narration)",
+        "title": "string? - the list's heading",
+        "titleHi": "string? - a substring of title to highlight with the accent",
+        "items": "array of (string | {text, sub?}) - the points; sub is an optional secondary line",
+        "register": "enum(paper|footage)? - ink-on-paper (default) or light text over a media ground",
+        "ground": "object? - a media_ground spec {kind: paper|image|transparent, ...}"
+      },
+      "theme_notes": "marker glyph = --bullet-marker (square/em-dash/chevron/dot per theme); text uses the display type role + type-scale."
+    },
     "newshead": {
       "fn": "newshead",
       "purpose": "A newspaper headline card (Vox 'newspaper animation'): dot-grid paper, red date tag, bold serif headline whose words cascade in with a yellow highlighter sweep, a serif subhead (optional highlight), a blackletter source masthead + drawn rule, an optional framed grayscale photo sliding in, and an optional red hand-drawn arrow annotation.",

@@ -42,7 +42,8 @@
   --dur-cinematic:  1300ms;
 
   /* ─── design identity: zine ─── */
-  --r-card:        var(--r-md);       /* slight softening */
+  --r-card:        var(--r-md);
+  --bullet-marker: "—";  /* Layer-4 bullet component */       /* slight softening */
   --r-stage:       0;
   --rule-w:        2px;
   --rule-style:    dashed;             /* SIGNATURE — cut-and-paste */

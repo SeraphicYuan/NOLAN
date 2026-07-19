@@ -42,7 +42,8 @@
   --dur-cinematic:  1600ms;
 
   /* ─── design identity ─── */
-  --r-card:        var(--r-sm);     /* refined, almost flat */
+  --r-card:        var(--r-sm);
+  --bullet-marker: "—";  /* Layer-4 bullet component */     /* refined, almost flat */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;

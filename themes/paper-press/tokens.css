@@ -43,6 +43,7 @@
 
   /* ─── design identity ─── */
   --r-card:        var(--r-sm);
+  --bullet-marker: "—";  /* Layer-4 bullet component */
   --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */
   --r-stage:       0;
   --rule-w:        1px;

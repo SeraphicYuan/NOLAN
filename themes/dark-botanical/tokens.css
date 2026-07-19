@@ -44,6 +44,7 @@
 
   /* ─── design identity: elegant editorial ─── */
   --r-card:        var(--r-sm);
+  --bullet-marker: "—";  /* Layer-4 bullet component */
   --bw:          1px;        /* border-weight axis (Layer 3 shape scale) */     /* refined paper-lift, not flat */
   --r-stage:       0;
   --rule-w:        1px;

@@ -45,7 +45,8 @@
   --dur-cinematic: 1000ms;
 
   /* ─── design identity: terminal cells ─── */
-  --r-card:        var(--r-flat);    /* SIGNATURE — sharp corners */
+  --r-card:        var(--r-flat);
+  --bullet-marker: "›";  /* Layer-4 bullet component */    /* SIGNATURE — sharp corners */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;

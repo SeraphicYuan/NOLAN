@@ -55,6 +55,22 @@ CSS = """
    late-spoken operative was dark-on-dark and invisible for most of the scene (homer F5/s3 flash). */
 .stmt.footage-t .hlwrap{color:var(--accent-ink);text-shadow:none;background:var(--accent);
   border-radius:0.05em;padding:0 0.08em;-webkit-box-decoration-break:clone;box-decoration-break:clone;}
+/* bullet_list: a titled list of key points, each led by the THEME's bullet marker (--bullet-marker:
+   square / em-dash / chevron / dot per theme — Layer-4 component). Marker is a ::before content var. */
+.bl-title{position:absolute;top:14cqh;left:calc(5.5cqw*var(--density,1));right:calc(5.5cqw*var(--density,1));
+  font-family:var(--font-display-en);font-style:var(--display-style,normal);font-weight:var(--display-weight,800);
+  font-size:calc(3.6cqw*var(--type-scale,1));line-height:1.1;color:var(--text);opacity:0;}
+.bl-title .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.12em;-webkit-box-decoration-break:clone;box-decoration-break:clone;}
+.bl-wrap{position:absolute;top:34cqh;left:calc(5.5cqw*var(--density,1));right:calc(8cqw*var(--density,1));
+  display:flex;flex-direction:column;gap:calc(2.4cqh*var(--density,1));}
+.bl-item{display:flex;align-items:baseline;gap:1.4cqw;opacity:0;}
+.bl-mark{flex:none;color:var(--accent);font-weight:800;font-size:1.7cqw;line-height:1;font-family:var(--font-display-en);}
+.bl-mark::before{content:var(--bullet-marker,"\\2022");}
+.bl-text{font-family:var(--font-display-en);font-style:var(--display-style,normal);font-weight:var(--display-weight,600);
+  font-size:calc(2.1cqw*var(--type-scale,1));line-height:1.25;color:var(--text);}
+.bl-sub{display:block;font-family:var(--font-body);font-weight:400;font-size:1.02cqw;line-height:1.4;color:var(--text-2);margin-top:0.4cqh;}
+.footage .bl-title,.footage .bl-text{color:#F6F7F6;text-shadow:0 2px 12px rgba(0,0,0,0.55);}
+.footage .bl-sub{color:#E4E5E4;}
 /* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
 .prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
 .prop img{display:block;width:100%;height:auto;}
@@ -799,6 +815,38 @@ def highlight_statement(sid, sc):
         frag.append(f'<div id="{cid}" class="capbar">{esc(d["captionBar"])}</div>')
         tl.append(f'tl.fromTo("#{cid}",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+float(d.get("capCue",dur*0.8))});')
     frag.append('</section>')
+    pf, pt = _props_of(sid, sc)
+    return g + frag + pf, tl + pt
+
+def bullet_list(sid, sc):
+    """Reusable BLOCK: a titled list of key points, each led by the theme's bullet marker and staggered
+    in. The marker glyph is the theme's --bullet-marker (square / em-dash / chevron / dot — a real per-theme
+    choice; Layer-4 `bullet-marker` component), so a brutalist list reads differently from an editorial one.
+    data: {kicker?, title?, titleHi?, items:[str | {text, sub?}], register?, ground?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    reg = d.get("register") or ("footage" if _grounded(d) else "paper")
+    default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
+    if d.get("title"):
+        t, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}'
+                  if op and op in t else esc(t))
+        frag.append(f'<div id="{sid}-t" class="bl-title">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.3});')
+    frag.append('<div class="bl-wrap">')
+    for i, it in enumerate(d.get("items", [])):
+        text = it if isinstance(it, str) else it.get("text", "")
+        sub = "" if isinstance(it, str) else it.get("sub", "")
+        iid = f"{sid}-i{i}"
+        subhtml = f'<span class="bl-sub">{esc(sub)}</span>' if sub else ""
+        frag.append(f'<div class="bl-item" id="{iid}"><span class="bl-mark"></span>'
+                    f'<span class="bl-text">{esc(text)}{subhtml}</span></div>')
+        tl.append(f'tl.fromTo("#{iid}",{{opacity:0,x:-14}},{{opacity:1,x:0,duration:0.5,ease:"power2.out"}},{start+0.6+i*0.32});')
+    frag.append('</div></section>')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
 
@@ -2444,6 +2492,7 @@ def social_card(sid, sc):
 
 
 BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map, "raw": raw_scene,
+          "bullet_list": bullet_list,
           "timeline": timeline, "newshead": newshead, "collage": collage,
           "diagram": diagram, "comparison": comparison, "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,

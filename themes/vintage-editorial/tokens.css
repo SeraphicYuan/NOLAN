@@ -44,6 +44,7 @@
 
   /* ─── design identity: witty editorial ─── */
   --r-card:        var(--r-sm);
+  --bullet-marker: "—";  /* Layer-4 bullet component */
   --r-stage:       0;
   --rule-w:        1px;
   --rule-style:    solid;
