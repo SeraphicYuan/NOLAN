@@ -20,6 +20,11 @@
     .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
     .chip .n { opacity: .65; margin-left: 4px; font-variant-numeric: tabular-nums; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+    .grid.grouped { display: block; }
+    .scene-group { margin-bottom: 20px; }
+    .scene-h { font-size: 14px; font-weight: 600; margin: 14px 0 8px; display: flex; align-items: center; gap: 10px; }
+    .scene-h .cnt { font-size: 12px; color: var(--text-secondary, #888); font-weight: 400; }
+    .scene-h .jump { font-size: 11px; padding: 2px 8px; cursor: pointer; }
     .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
             overflow: hidden; display: flex; flex-direction: column; }
     .card .th { position: relative; aspect-ratio: 16/10; background: #111; }
@@ -109,6 +114,10 @@
         <option value="">Images + video</option>
         <option value="image">Images</option>
         <option value="video">Video</option>
+      </select>
+      <select id="groupSel" title="how to arrange the pool">
+        <option value="flat">Flat grid</option>
+        <option value="scene">Group by scene</option>
       </select>
       <select id="compSel" style="display:none"><option value="">Select comp…</option></select>
       <select id="providerSel" style="display:none"><option value="">All sources</option></select>
@@ -208,7 +217,29 @@
         (!kind || it.kind === kind) &&
         (!scene || (it.scenes && it.scenes[scene]) || it.scene_hint === scene));
       qs('empty').style.display = visible.length ? 'none' : '';
-      qs('grid').innerHTML = visible.map(card).join('');
+      renderGrid();
+    }
+
+    // flat grid, or grouped into per-scene sections using each item's scenes:{sid:[roles]} reverse index
+    // (an asset used in N scenes appears under each; unused/general assets get a trailing section)
+    function renderGrid() {
+      const grid = qs('grid');
+      if (qs('groupSel').value !== 'scene') { grid.classList.remove('grouped'); grid.innerHTML = visible.map(card).join(''); return; }
+      grid.classList.add('grouped');
+      const byScene = {}, noScene = [];
+      visible.forEach((it, i) => {
+        const sids = Object.keys(it.scenes || {});
+        if (it.scene_hint && !(it.scenes || {})[it.scene_hint]) sids.push(it.scene_hint);
+        const uniq = [...new Set(sids)];
+        if (uniq.length) uniq.forEach(sid => (byScene[sid] = byScene[sid] || []).push(i));
+        else noScene.push(i);
+      });
+      const ordered = (pool.scenes || []).filter(s => s && byScene[s]);   // scene-plan order first
+      Object.keys(byScene).forEach(s => { if (!ordered.includes(s)) ordered.push(s); });
+      let html = ordered.map(sid =>
+        `<div class="scene-group"><h3 class="scene-h">${esc(sid)} <span class="cnt">${byScene[sid].length}</span> <button class="jump" onclick="openScene('${esc(sid)}')">open scene ›</button></h3><div class="grid">${byScene[sid].map(i => card(visible[i], i)).join('')}</div></div>`).join('');
+      if (noScene.length) html += `<div class="scene-group"><h3 class="scene-h">— not in any scene <span class="cnt">${noScene.length}</span></h3><div class="grid">${noScene.map(i => card(visible[i], i)).join('')}</div></div>`;
+      grid.innerHTML = html;
     }
 
     function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -292,10 +323,11 @@
     });
     qs('sceneSel').addEventListener('change', render);
     qs('kindSel').addEventListener('change', render);
+    qs('groupSel').addEventListener('change', render);
 
     // ---- HyperFrames comp-pool mode: pre-selection CANDIDATES grouped by NEED, with acquisition
     //      provenance (source + CLIP relevance) and the VLM curation verdict (usable/flags). ----
-    const PROJ_CTRLS = ['projectSel', 'sceneSel', 'kindSel'];
+    const PROJ_CTRLS = ['projectSel', 'sceneSel', 'kindSel', 'groupSel'];
 
     function setSource(src) {
       const hf = src === 'hf';
