@@ -169,8 +169,8 @@ lives in `src/nolan/sound/registry.py`. `data-punch` aliases the legacy
 | Honesty tests (umbrella/skill/catalog) | ✅ Phase 2 | `tests/test_sound.py` (+ generic umbrella/consumer tests) |
 | Audio acquisition gate | ✅ Phase 2 | `check_sound` on `cli/sfx.py` **and** `sfx_search.fetch_to_library` (both in `ASSET_GATE_DOORS`) |
 | HF-usable merge primitive | ✅ Phase 2 | `src/nolan/hyperframes/sound.py` (`build_audio_meta_sfx` + `merge_sfx_into_audio_meta`, preserves `voices[]`) |
-| Authored field `scene.data.sfx` (HF) | ⬜ Phase 3 | frame spec + `PLAN_FIELD_CONSUMERS` |
-| HF merge executor (wire into finish DAG) | ⬜ Phase 3 | `finish.py` step calling `hyperframes/sound.py` |
+| Authored field `scene.data.sfx` (HF) | ✅ Phase 3 | validated by `validate_scene_sound`; consumed by `apply_scene_sfx` |
+| HF merge executor + render mount | ✅ Phase 3 | `hyperframes/sound.apply_scene_sfx` (finish DAG step 4b: resolve → **stage into `assets/sfx/`** → merge `audio_meta.sfx`); `assemble-index.mjs` mounts it on track 20+i |
 
 Note: adding `sound` to `_umbrellas()` forces `UMBRELLA_WIRING` + `CATALOG_CONSUMERS`
 (both grep-verified) — done together in Phase 2, suite green.
@@ -186,9 +186,16 @@ Note: adding `sound` to `_umbrellas()` forces `UMBRELLA_WIRING` + `CATALOG_CONSU
   shared `resolve_cue`/`sfx_event_for_cue` (Director prefers the curated bank via it);
   the HF-usable `hyperframes/sound.py` merge primitive (preserves `voices[]`); both
   download doors gated. Gap #2 (rate-limiter) remains.
-- **Phase 3 — HF authoring (next)**: the `scene.data.sfx` frame-spec field + the
-  `finish.py` step (between word-sync and assemble-index) that reads it, resolves via
-  `hyperframes/sound.build_audio_meta_sfx`, and `merge_sfx_into_audio_meta`.
+- **Phase 3 — DONE**: `scene.data.sfx` frame-spec field (validated) + the finish DAG
+  step `apply_scene_sfx` (after word-sync, before assemble-index): reads the field off
+  the ALIGNED specs → resolves via `nolan.sound` → **stages files into
+  `<comp>/assets/sfx/`** (project-relative, what the render mounts) → merges into
+  `audio_meta.sfx[]` (preserves `voices[]`, idempotent, loud on bank gaps).
+  `assemble-index.mjs` mounts them on track 20+i. Verified end-to-end on
+  the-openai-debate; honesty-tested in `tests/test_sound.py`.
+- **Phase 4 (next) — the pairing operator**: registry-aware auto-author pass that emits
+  `scene.data.sfx` from the spec (deterministic triggers first, LLM for taste),
+  human-reviewed. The executor + render path it targets are now in place.
 - **Phase 4 — the pairing operator**: registry-aware auto-author pass over the spec
   (deterministic-first, LLM only for taste calls), human-reviewed.
 

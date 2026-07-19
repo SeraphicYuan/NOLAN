@@ -227,7 +227,8 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
         "authored_by": [("src/nolan/audio_mix.py", "author_sfx_cues"),
                         ("src/nolan/audio_mix.py", "_scene_sfx_cues")],
         "executed_by": [("src/nolan/audio_mix.py", "_source_scene_sfx"),
-                        ("src/nolan/audio_mix.py", "mix_from_spec")],
+                        ("src/nolan/audio_mix.py", "mix_from_spec"),
+                        ("src/nolan/hyperframes/sound.py", "apply_scene_sfx")],
     },
 }
 

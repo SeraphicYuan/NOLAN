@@ -120,6 +120,23 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
              cwd=pdir, dry=dry_run, soft=True)
         _run("sfx", ["node", audio, "fetch-sfx", "--storyboard", "./STORYBOARD.md", "--hyperframes", "."],
              cwd=pdir, dry=dry_run, soft=True)
+        # 4b · SCENE-level SFX (compose-first): read scene.data.sfx off the ALIGNED specs →
+        #      resolve from the curated bank (nolan.sound) → stage into assets/sfx/ → merge into
+        #      audio_meta.sfx (assemble-index mounts them on track 20+i). Preserves voices[].
+        if dry_run:
+            print("  [scene-sfx] read scene.data.sfx → resolve + stage → merge into audio_meta.sfx")
+        else:
+            try:
+                from .sound import apply_scene_sfx
+                res = apply_scene_sfx(comp)
+                print(f"▶ scene-sfx\n  {res['events']} cue(s) placed, {res['staged']} file(s) staged")
+                if res.get("invalid"):
+                    print("  ⚠ malformed sfx cues: " + "; ".join(res["invalid"][:6]))
+                if res.get("unresolved"):
+                    gaps = ", ".join(f"{u['frame']}/{u['scene']}:{u['cue']}" for u in res["unresolved"][:6])
+                    print(f"  ⚠ {len(res['unresolved'])} cue(s) with no curated sound (bank gap): {gaps}")
+            except Exception as e:
+                print(f"  ⚠ scene-sfx skipped ({type(e).__name__}: {e})")
         if before and not dry_run:
             after = len(_json.loads(am.read_text(encoding="utf-8")).get("voices", [])) if am.exists() else 0
             if after < before:

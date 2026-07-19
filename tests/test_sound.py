@@ -87,3 +87,61 @@ def test_hf_sfx_merge_preserves_voices():
     assert out["sfx"] == evs
     with pytest.raises(ValueError):                 # refuses to drop the VO
         merge_sfx_into_audio_meta({"voices": []}, evs)
+
+
+def test_apply_scene_sfx_end_to_end(tmp_path, monkeypatch):
+    """scene.data.sfx → resolve → STAGE into assets/sfx/ → audio_meta.sfx[].
+
+    No underwiring: the executor stages a real file and writes a PROJECT-RELATIVE
+    path (what assemble-index mounts), keyed by 1-based frame number, offset =
+    aligned scene.start + at, and voices[] survive.
+    """
+    from nolan.hyperframes import edit as _edit
+    from nolan.hyperframes.sound import apply_scene_sfx
+
+    # a minimal comp: audio_meta with voices + a global sfx bank with a whoosh
+    (tmp_path / "audio_meta.json").write_text(json.dumps(
+        {"voices": [{"frame": 2, "path": "assets/voice/02.wav"}], "bgm": None, "sfx": []}),
+        encoding="utf-8")
+    bank = tmp_path / "_bank"
+    bank.mkdir()
+    (bank / "w.wav").write_bytes(b"RIFF....WAVE")
+    (bank / "sfx.json").write_text(json.dumps(
+        [{"curated": True, "kind": "whoosh", "file": "w.wav", "id": "1", "rating": 5,
+          "duration": 0.4}]), encoding="utf-8")
+
+    frame = {"frames": [{"id": "02-x", "scenes": [
+        {"id": "s1", "start": 3.0, "data": {"sfx": [{"cue": "whoosh", "at": 0.4}]}}]}]}
+    monkeypatch.setattr(_edit, "_project_dir", lambda c: tmp_path)
+    monkeypatch.setattr(_edit, "list_frames", lambda c: [{"id": "02-x"}])
+    monkeypatch.setattr(_edit, "load_frame_spec", lambda c, fid: (frame, {"i": 0}))
+    # point the resolver's bank at our fixture
+    monkeypatch.setattr("nolan.sound.resolve.library_dir", lambda: bank)
+
+    res = apply_scene_sfx("dummy")
+    assert res["events"] == 1 and res["staged"] == 1 and not res["unresolved"]
+    assert (tmp_path / "assets" / "sfx" / "w.wav").exists()        # staged into the comp
+    am = json.loads((tmp_path / "audio_meta.json").read_text(encoding="utf-8"))
+    assert am["voices"], "voices[] must survive"                    # not regenerated
+    ev = am["sfx"][0]
+    assert ev["frame"] == 2 and ev["file"] == "assets/sfx/w.wav"    # relative, right frame
+    assert ev["offset_s"] == 3.4                                    # scene.start + at
+    # idempotent: a second run doesn't duplicate
+    apply_scene_sfx("dummy")
+    assert len(json.loads((tmp_path / "audio_meta.json").read_text(encoding="utf-8"))["sfx"]) == 1
+
+
+def test_finish_dag_includes_scene_sfx_step():
+    """The finish DAG actually calls the executor (not a dangling field)."""
+    src = (REPO / "src/nolan/hyperframes/finish.py").read_text(encoding="utf-8")
+    assert "apply_scene_sfx" in src, "finish.py no longer runs the scene-sfx step"
+
+
+def test_assemble_index_mounts_sfx():
+    """The render side consumes audio_meta.sfx (else the field is a phantom)."""
+    p = REPO / ".agents/skills/faceless-explainer/scripts/assemble-index.mjs"
+    if not p.exists():
+        import pytest
+        pytest.skip("faceless-explainer skill not installed")
+    text = p.read_text(encoding="utf-8", errors="replace")
+    assert "audio.sfx" in text, "assemble-index no longer mounts audio_meta.sfx"
