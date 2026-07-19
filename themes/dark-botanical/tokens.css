@@ -13,7 +13,6 @@
  *     • motion         — slow + cinematic (editorial pace)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  center;
   --density:  1.2;
   --type-scale:  0.82;
   /* ─── palette ─── */

@@ -14,7 +14,6 @@
  *     • motion         — snappy + futuristic (faster than midnight)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  center;
   --density:  0.9;
   --type-scale:  1.2;
   /* ─── palette ─── */

@@ -13,7 +13,6 @@
  *     • motion         — quiet, longer durations (printed page pace)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  flex-start;
   --density:  0.85;
   --type-scale:  0.92;
   /* ─── palette ─── */

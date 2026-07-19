@@ -13,7 +13,6 @@
  *     • motion         — quick, sharp ease-out only
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  flex-end;
   --density:  0.8;
   --type-scale:  1.5;     /* poster — display type fills the frame */
   /* ─── palette ─── */

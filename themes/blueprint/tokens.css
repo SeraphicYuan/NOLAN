@@ -13,7 +13,6 @@
  *     • motion         — measured (precise drafting tools)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
-  --gravity:  flex-start;
   --density:  0.8;
   --type-scale:  1.0;
   /* ─── palette ─── */
