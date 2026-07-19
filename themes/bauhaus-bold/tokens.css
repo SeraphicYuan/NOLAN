@@ -13,6 +13,11 @@
  *     • motion         — quick, sharp ease-out only
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --eyebrow-font:  var(--font-display-en);
+  --eyebrow-weight:  400;
+  --eyebrow-size:  1.05cqw;
+  --eyebrow-tracking:  .04em;
+  --eyebrow-transform:  uppercase;
   --density:  0.8;
   --type-scale:  1.5;     /* poster — display type fills the frame */
   /* ─── palette ─── */

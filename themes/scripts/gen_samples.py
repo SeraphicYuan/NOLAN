@@ -26,8 +26,11 @@ DUR = 4.0
 _CENTERED_HERO = (
     '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;display:flex;'
     'flex-direction:column;align-items:center;justify-content:center;gap:calc(2.4cqh*var(--density,1));color:var(--text)">'
-    '<div style="font:700 1.15cqw/1 var(--font-mono),ui-monospace;letter-spacing:.34em;'
-    'text-transform:uppercase;color:var(--text-2)">By the numbers</div>'
+    '<div style="font-weight:var(--eyebrow-weight,700);'
+    'font-size:calc(var(--eyebrow-size,1.15cqw)*var(--type-scale,1));'
+    'font-family:var(--eyebrow-font,var(--font-mono)),ui-monospace;line-height:1;'
+    'letter-spacing:var(--eyebrow-tracking,.34em);text-transform:var(--eyebrow-transform,uppercase);'
+    'color:var(--eyebrow-color,var(--text-2))">By the numbers</div>'
     '<div style="font:800 calc(20cqw*var(--type-scale,1))/0.84 var(--font-display-en);letter-spacing:-0.02em">'
     '73<span style="color:var(--accent)">%</span></div>'
     '<div style="width:8cqw;height:0.5cqh;background:var(--accent);border-radius:2px"></div></section>')

@@ -22,8 +22,9 @@ CSS = """
 .gnd{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
 .paper-gnd{position:absolute;inset:0;}
 .scrim{position:absolute;inset:0;pointer-events:none;}
-.kick{position:absolute;top:6.4cqw;left:calc(5.5cqw*var(--density,1));font-family:var(--font-body);font-weight:600;font-size:0.9cqw;
-  letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
+.kick{position:absolute;top:6.4cqw;left:calc(5.5cqw*var(--density,1));font-family:var(--eyebrow-font,var(--font-body));
+  font-weight:var(--eyebrow-weight,600);font-size:calc(var(--eyebrow-size,0.9cqw)*var(--type-scale,1));
+  letter-spacing:var(--eyebrow-tracking,0.14em);text-transform:var(--eyebrow-transform,uppercase);opacity:0;}
 .stmt{position:absolute;left:calc(5.5cqw*var(--density,1));bottom:16cqh;max-width:80cqw;font-weight:800;font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}

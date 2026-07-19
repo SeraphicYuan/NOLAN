@@ -24,6 +24,10 @@
  *     • motion         — punchy + linear (Swiss isn't springy)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --eyebrow-weight:  600;
+  --eyebrow-size:  1.0cqw;
+  --eyebrow-tracking:  .24em;
+  --eyebrow-transform:  uppercase;
   --density:  0.65;
   --type-scale:  0.8;
   /* ─── palette ─── */
