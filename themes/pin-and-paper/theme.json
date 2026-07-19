@@ -1,0 +1,47 @@
+{
+  "id": "pin-and-paper",
+  "typePersonality": "geometric-sans",
+  "name": "Pin & Paper",
+  "nameZh": "别针笔记",
+  "description": "Field-notebook editorial — a saturated legal-pad yellow page, cream pinned-paper cards, deep cobalt-blue ink for every text / border / divider, and a cinnabar-red archival pop. Heavy tight-tracked Space Grotesk headlines + numerals with DM Mono archival catalog labels. A fractal-noise paper grain, hand-drawn safety pins, and a hard cobalt-ink offset shadow (zero blur).",
+  "descriptionZh": "田野笔记编排——饱和便笺黄页面、奶油别针纸卡、深钴蓝墨作全部文字/边框/分隔，配朱砂红档案点缀。厚重紧排 Space Grotesk 标题与数字 + DM Mono 档案编目标签。分形噪点纸纹、手绘安全别针、硬钴墨偏移投影（零模糊）。",
+  "mood": [
+    "analog",
+    "editorial",
+    "field-notebook",
+    "archival",
+    "tactile",
+    "confident"
+  ],
+  "bestFor": "Reports / research / notice-board / archival topics — a confident analog field-notebook register.",
+  "preview": {
+    "shell": "#EFE56A",
+    "surface": "#F8F1D6",
+    "text": "#1F3A8A",
+    "accent": "#C2342B"
+  },
+  "composition": {
+    "default": "swiss-grid",
+    "allowed": [
+      "swiss-grid",
+      "centered-hero",
+      "editorial-column",
+      "framed",
+      "sidebar",
+      "timeline",
+      "comparison-table",
+      "ledger"
+    ]
+  },
+  "decoration": [
+    "grain",
+    "safety-pin"
+  ],
+  "fonts": {
+    "displayEn": "Space Grotesk",
+    "body": "Space Grotesk",
+    "cjk": "Noto Sans SC",
+    "mono": "DM Mono"
+  },
+  "avoidFor": []
+}

@@ -144,6 +144,16 @@
       "group": "G8-figurative", "kind": "signature", "scope": "frame",
       "purpose": "a scatter of pastel outlined stickers (daisy / star / cloud) — kawaii storybook (daisy-days).",
       "token": "--accent"
+    },
+    "pushpins": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "small pastel sticky-note squares tacked with red thumbtacks + tape — corkboard scatter (scatterbrain).",
+      "token": "--accent"
+    },
+    "safety-pin": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "hand-drawn safety-pin illustrations pinning the page, rotated off-axis — field-notebook (pin-and-paper).",
+      "token": "--accent"
     }
   }
 }

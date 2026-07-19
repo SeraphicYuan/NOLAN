@@ -956,6 +956,36 @@
         "cute",
         "fun"
       ]
+    },
+    "scatterbrain": {
+      "tone": "light",
+      "keywords": [
+        "sticky-note",
+        "corkboard",
+        "brainstorm",
+        "workshop",
+        "playful",
+        "handmade",
+        "tactile",
+        "creative",
+        "doodle",
+        "warm"
+      ]
+    },
+    "pin-and-paper": {
+      "tone": "light",
+      "keywords": [
+        "notebook",
+        "field-notes",
+        "analog",
+        "archival",
+        "report",
+        "editorial",
+        "legal-pad",
+        "notice-board",
+        "research",
+        "tactile"
+      ]
     }
   }
 }

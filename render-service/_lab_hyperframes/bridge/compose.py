@@ -2772,6 +2772,7 @@ _GF_WEIGHTS = {
     "Cormorant Garamond": "400;500;600;700", "Work Sans": "400;500;600;700;800;900",
     "EB Garamond": "400;500;600;700;800", "JetBrains Mono": "400;500;600;700;800",
     "Caveat": "400;500;600;700", "UnifrakturMaguntia": "400",
+    "Shrikhand": "400", "Zilla Slab": "300;400;500;600;700", "DM Mono": "400;500",
     "DM Sans": "400;500;600;700", "Courier Prime": "400;700",
     "Noto Sans SC": "400;500;700;900", "Noto Serif SC": "400;500;700;900",
 }
@@ -3053,6 +3054,41 @@ def _decor_stickers(p):
     return (daisy.format(pos='top:6cqh;right:6cqw;') + star.format(pos='top:15cqh;right:14cqw;')
             + cloud.format(pos='top:5cqh;left:5cqw;') + star.format(pos='bottom:11cqh;left:9cqw;'))
 
+def _decor_pushpins(p):
+    """Small pastel sticky-note squares tacked with red thumbtacks + a strip of tape — corkboard scatter
+    (scatterbrain). Notes sit in the corners at a hand-placed tilt so they never crowd the content."""
+    # (fill, corner-pos, tilt, thumbtack-color)
+    notes = [("var(--surface-2)", "top:4.5cqh;left:3.5cqw", -5, "var(--accent)"),
+             ("var(--accent-soft)", "bottom:6cqh;right:4cqw", 4, "var(--positive)"),
+             ("var(--positive)", "bottom:9cqh;left:6cqw", 8, "var(--accent)")]
+    out = []
+    for fill, pos, tilt, tack in notes:
+        out.append(
+            f'<div style="position:absolute;{pos};width:7cqw;height:7cqw;background:{fill};'
+            f'box-shadow:0.2cqw 0.35cqw 1.3cqw rgba(45,42,38,0.20);transform:rotate({tilt}deg);opacity:0.9">'
+            # translucent tape across the top-centre
+            '<div style="position:absolute;top:-0.7cqh;left:1.6cqw;width:3.8cqw;height:1.5cqh;'
+            'background:rgba(255,255,255,0.45);transform:rotate(-3deg)"></div>'
+            # round thumbtack bead
+            f'<div style="position:absolute;top:-1.2cqh;left:2.9cqw;width:1.3cqw;height:1.3cqw;border-radius:50%;'
+            f'background:radial-gradient(circle at 35% 30%,#fff5,{tack});box-shadow:0 0.15cqw 0.3cqw rgba(0,0,0,0.3)"></div>'
+            '</div>')
+    return "".join(out)
+
+def _decor_safety_pin(p):
+    """Hand-drawn safety-pin illustrations 'pinning' the page, rotated off-axis — field-notebook
+    (pin-and-paper). Ink-blue strokes in the theme's --accent; corner-anchored so they read as furniture."""
+    pin = ('<svg viewBox="0 0 360 110" style="position:absolute;{pos}width:{w}cqw;height:auto;'
+           'transform:rotate({rot}deg);opacity:{op}" fill="none" stroke="var(--accent)" '
+           'stroke-width="7" stroke-linecap="round" stroke-linejoin="round">'
+           # shaft sweeping left, coiled spring on the right, oval clasp cap on the left
+           '<path d="M40 70 L300 40"/><path d="M40 70 L295 78"/>'
+           '<ellipse cx="34" cy="72" rx="18" ry="26"/>'
+           '<circle cx="312" cy="58" r="26"/><path d="M312 32 a26 26 0 0 1 0 52"/>'
+           '<path d="M300 40 q22 -6 22 16"/></svg>')
+    return (pin.format(pos="top:3cqh;right:5cqw;", w=17, rot=-12, op=0.85)
+            + pin.format(pos="bottom:5cqh;left:4cqw;", w=12, rot=18, op=0.6))
+
 
 _DECOR_RENDERERS = {
     "graph-paper": _decor_graph_paper, "dot-grid": _decor_dot_grid, "scanlines": _decor_scanlines,
@@ -3068,6 +3104,7 @@ _DECOR_RENDERERS = {
     "drop-cap": _decor_drop_cap, "window-bevel": _decor_window_bevel,
     "pixel-landscape": _decor_pixel_landscape, "pixel-face": _decor_pixel_face,
     "petal-cluster": _decor_petal_cluster, "stickers": _decor_stickers,
+    "pushpins": _decor_pushpins, "safety-pin": _decor_safety_pin,
 }
 
 
