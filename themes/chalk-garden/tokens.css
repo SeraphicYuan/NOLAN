@@ -12,6 +12,7 @@
  *     • motion         — soft, hand-drawn pace
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.0;
   /* ─── palette ─── */
   --shell:        #16171c;
   --surface:      #1e1e24;

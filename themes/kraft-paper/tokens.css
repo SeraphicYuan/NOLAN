@@ -14,6 +14,7 @@
  *     • motion         — slow + tactile (turning a real page)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  0.9;
   /* ─── palette ─── */
   --shell:        #dccab0;
   --surface:      #eedfc7;

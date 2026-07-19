@@ -13,6 +13,7 @@
  *     • motion         — slow + cinematic (editorial pace)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  0.82;
   /* ─── palette ─── */
   --shell:        #0a0a0a;
   --surface:      #141312;

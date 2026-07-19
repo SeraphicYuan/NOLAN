@@ -12,6 +12,7 @@
  *     • motion         — slow + cinematic (1100ms reveals)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.0;
   /* ─── palette ─── */
   --shell:        #0d0b09;
   --surface:      #1a1714;

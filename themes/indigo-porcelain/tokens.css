@@ -15,6 +15,7 @@
  *     • motion         — quiet editorial pace (slower than warm-keynote)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  0.78;
   /* ─── palette ─── */
   --shell:        #e4e8ec;
   --surface:      #f1f3f5;

@@ -13,6 +13,7 @@
  *     • motion         — quick, sharp ease-out only
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.5;     /* poster — display type fills the frame */
   /* ─── palette ─── */
   --shell:        #1a1a1a;
   --surface:      #f4f1ea;

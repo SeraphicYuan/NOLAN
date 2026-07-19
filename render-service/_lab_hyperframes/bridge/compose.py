@@ -24,7 +24,7 @@ CSS = """
 .scrim{position:absolute;inset:0;pointer-events:none;}
 .kick{position:absolute;top:6.4cqw;left:5.5cqw;font-family:var(--font-body);font-weight:600;font-size:0.9cqw;
   letter-spacing:0.14em;text-transform:uppercase;opacity:0;}
-.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:4.6cqw;line-height:1.08;
+.stmt{position:absolute;left:5.5cqw;bottom:16cqh;max-width:80cqw;font-weight:800;font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}
 .hlwrap{position:relative;display:inline-block;isolation:isolate;}

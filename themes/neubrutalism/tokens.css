@@ -23,6 +23,7 @@
  *     • motion         — bouncy / punchy (expressive overshoot)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.4;
   /* ─── palette ─── */
   --shell:        #e8e6de;            /* light shell — bright, not bauhaus's dark */
   --surface:      #ffffff;            /* clean white, not cream */

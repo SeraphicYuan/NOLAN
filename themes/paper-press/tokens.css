@@ -12,6 +12,7 @@
  *     • motion         — slow + cinematic
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.0;
   /* ─── palette ─── */
   --shell:        #d8cfb8;
   --surface:      #efe7d6;

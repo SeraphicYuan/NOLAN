@@ -17,6 +17,7 @@
  *     • motion         — playful, medium-fast
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.05;
   /* ─── palette ─── */
   --shell:        #dcc7b8;
   --surface:      #f5e6dc;             /* peach (left half default) */

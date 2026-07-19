@@ -16,6 +16,7 @@
  *     • motion         — punchy ease-out (quick reveals)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --type-scale:  1.4;
   /* ─── palette ─── */
   --shell:        #0c0c0c;
   --surface:      #1a1a1a;
