@@ -315,10 +315,10 @@ CSS = """
 .lt-name{font-weight:900;font-size:2.6cqw;letter-spacing:-0.01em;line-height:1.02;color:var(--text);}
 .lt-role{font-family:var(--font-body);font-weight:600;font-size:0.95cqw;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-2);margin-top:0.55cqw;opacity:0;}
 .lt-kicker{font-family:var(--font-body);font-weight:700;font-size:0.78cqw;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:0.45cqw;}
-.lt-bar{display:inline-flex;align-items:stretch;gap:1cqw;background:var(--surface);border-radius:var(--r-card,10px);padding:1cqw 1.5cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.32);}
+.lt-bar{display:inline-flex;align-items:stretch;gap:1cqw;background:var(--surface);border-radius:var(--r-card,10px);padding:1cqw 1.5cqw;box-shadow:var(--card-shadow,0 0.8cqw 2.6cqw rgba(0,0,0,0.32));}
 .lt-tab{width:0.45cqw;background:var(--accent);border-radius:3px;}
 .lt-txt{display:flex;flex-direction:column;justify-content:center;}
-.lt-card{display:inline-block;background:var(--surface);border-radius:var(--r-card,12px);padding:1.2cqw 1.8cqw;box-shadow:0 0.8cqw 2.6cqw rgba(0,0,0,0.34);}
+.lt-card{display:inline-block;background:var(--surface);border-radius:var(--r-card,12px);padding:1.2cqw 1.8cqw;box-shadow:var(--card-shadow,0 0.8cqw 2.6cqw rgba(0,0,0,0.34));}
 .lt-cardless{display:inline-block;}
 .lt-cardless .lt-name{text-shadow:0 2px 14px rgba(0,0,0,0.6);}
 .lt-cardless .lt-role{text-shadow:0 2px 10px rgba(0,0,0,0.6);}

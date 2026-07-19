@@ -1,0 +1,42 @@
+{
+  "_doc": "Component-token registry (theme schema v2, Layer 4). Each COMMON component is a small param bundle a theme fills so a 'brutalist card' and a 'porcelain card' differ WITHOUT touching block code. The bundle params map to theme tokens the block CSS consumes via var(--token, <default>) — backward-compatible. `status: wired` means every listed token IS consumed by a block (honesty-tested by tests/test_components.py — this is what caught --card-shadow being authored by 24 themes yet dead); `status: pending` names what's still hardcoded + the block it needs. Theme-specific components (retro-windows OS-chrome, 8-bit pixel-stack, sakura seal) live in the extension registry (compose_extension.py), not here.",
+  "components": {
+    "card": {
+      "status": "wired",
+      "_desc": "a styled PANEL — its shadow token carries the most character: brutalist hard-offset (neubrutalism 7px/bauhaus 8px), Swiss inset hairline, terminal phosphor glow, or flat (none). Fill/radius/border come from the surface + shape scale.",
+      "tokens": {"fill": "--surface", "radius": "--r-card", "border-weight": "--bw", "shadow": "--card-shadow"},
+      "consumed_by": ["the framed-archetype card", ".lt-bar", ".lt-card"]
+    },
+    "image-card": {
+      "status": "wired",
+      "_desc": "gallery / carousel image tile — corner follows the shape scale, but the drop shadow stays block-tuned (image LIFT is a distinct concern from a styled panel; the schema's card vs img-placeholder split).",
+      "tokens": {"radius": "--r-card"},
+      "consumed_by": [".carslide", ".carcard", ".carcarditem"]
+    },
+    "bullet-marker": {
+      "status": "pending",
+      "_desc": "the list-item marker glyph (em-dash / slash / chevron / dot / square) — a real per-theme choice (brutalist square vs editorial em-dash vs technical chevron). BLOCKED: no bullet/checklist block exists yet; add one, then tokenise --bullet-marker.",
+      "tokens": {"glyph": "--bullet-marker"}
+    },
+    "timeline-dot": {
+      "status": "pending",
+      "_desc": "the node marker on a timeline spine — ring width + fill. Currently .tlnode hardcodes 28px / 5px accent ring / #0a0b0a fill (the Vox cinematic variant); tokenise ring-weight + fill so a flat theme gets a flat dot.",
+      "tokens": {"ring-weight": "--bw", "fill": "--surface"}
+    },
+    "pill": {
+      "status": "pending",
+      "_desc": "tag / pill chip — fill/border/radius/padding. Several blocks hardcode a pill (dgnode.pill 999px, kicker chips); unify to a --pill-* bundle.",
+      "tokens": {"fill": "--accent-soft", "radius": "--r-pill", "ink": "--accent"}
+    },
+    "bar": {
+      "status": "pending",
+      "_desc": "data bar track + fill (bar chart / progress). --ch-bar / .lt-tab hardcode radius + accent fill; tokenise track + fill + cap-radius.",
+      "tokens": {"track": "--surface-2", "fill": "--accent", "radius": "--r-card"}
+    },
+    "counter": {
+      "status": "pending",
+      "_desc": "page number / ordinal counter (the 01/02 markers + background-ordinal decoration). Type comes from the type-role system; a --counter-* bundle would carry its own weight/opacity.",
+      "tokens": {"ink": "--text-faint"}
+    }
+  }
+}

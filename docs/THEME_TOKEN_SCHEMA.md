@@ -125,7 +125,25 @@ frame insets (pink-script), pill-pad set (capsule), OS-chrome pads (retro-window
 
 ---
 
-## Layer 4 — Component tokens (currently hardcoded in block CSS)
+## Layer 4 — Component tokens — ✅ DONE (card flagship + registry) 2026-07-19
+
+**Shipped** the component-token mechanism + the flagship. `themes/composition/components.json` is the typed
+registry (each component = a param bundle mapping to `var(--token, <default>)` the block CSS consumes);
+`tests/test_components.py` enforces that every `wired` component's tokens are actually consumed — the guard
+that caught the flagship bug: **`--card-shadow` was authored by 24 themes and read by NOTHING** (a dead
+Layer-4 token). Wiring it (framed card + `.lt-bar`/`.lt-card`) activated a huge amount of designed, dormant
+character: neubrutalism/bauhaus HARD-OFFSET shadow (7/8px, no blur — the brutalist signature), swiss-ikb
+INSET hairline, terminal-green inset + phosphor GLOW, aurora-mesh layered drop+glow, blue-professional/vellum
+FLAT (none) — verified across the framed archetype. Scoped to PANEL cards; image cards (galcard/carousel)
+keep their block-tuned lift (the schema's card vs img-placeholder split). Registry status: `card` +
+`image-card` wired; `bullet-marker` (needs a list block — none exists), `timeline-dot`, `pill`, `bar`,
+`counter` documented `pending` with the block each needs. **Remaining:** wire the pending components as their
+blocks appear; this also unblocks the decoration-map revisit (THEME_DECORATION_MAP.md).
+
+---
+
+### Original design (for reference)
+
 
 Define ~10 COMMON components as a typed registry, each a param bundle `{fill, border, radius, shadow,
 padding}` a theme fills: `card`, `pill`/`tag`, `bar-track`+`bar-fill`, `stat-card`, `rule`/`accent-line`,
@@ -148,7 +166,9 @@ rosette-seal, etc.
    blue-professional + vellum. Remaining: roll to the other single-accent themes (per-theme ratios).
 3. ✅ **Shape + spacing scale** (Layer 3) — shape axis DONE (radius ladder + `--bw` border weight,
    shape_scale.json, wired into card-family blocks + 10 themes). Remaining: named pad/gap spacing steps.
-4. **Component tokens** (Layer 4).
+4. ✅ **Component tokens** (Layer 4) — mechanism + flagship DONE. components.json registry + honesty test;
+   `card` wired (activated the dead `--card-shadow` → hard-offset/inset/glow/flat character). Remaining:
+   wire the pending components (bullet-marker/timeline-dot/pill/bar/counter) as their blocks appear.
 5. **A/B validation** — map a reference `design.md` (blue-professional) into the v2 token system, render
    through our engine (archetypes + decoration + levers), and compare side-by-side with our nearest theme
    (electric-studio / swiss-ikb). Answers "does the richer token layer close the quality gap?" + seeds a
