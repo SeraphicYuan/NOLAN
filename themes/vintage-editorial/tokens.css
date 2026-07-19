@@ -13,6 +13,8 @@
  *     • motion         — medium pace with subtle overshoot (witty)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --gravity:  center;
+  --density:  1.0;
   --type-scale:  0.95;
   /* ─── palette ─── */
   --shell:        #e8e0cf;

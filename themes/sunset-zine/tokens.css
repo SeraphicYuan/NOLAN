@@ -12,6 +12,8 @@
  *     • motion         — springy with overshoot (playful)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --gravity:  center;
+  --density:  0.85;
   --type-scale:  1.15;
   /* ─── palette ─── */
   --shell:        #f4d4b6;

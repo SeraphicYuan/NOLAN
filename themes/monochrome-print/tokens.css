@@ -13,6 +13,8 @@
  *     • motion         — extra-quiet, longer durations
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --gravity:  flex-start;
+  --density:  1.1;
   --type-scale:  0.75;
   /* ─── palette ─── */
   --shell:        #e8e3d8;

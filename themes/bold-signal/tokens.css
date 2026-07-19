@@ -16,6 +16,8 @@
  *     • motion         — punchy ease-out (quick reveals)
  * ───────────────────────────────────────────────────────────────────── */
 :root {
+  --density:  0.9;
+  --gravity:  flex-end;
   --type-scale:  1.4;
   /* ─── palette ─── */
   --shell:        #0c0c0c;
