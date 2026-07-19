@@ -93,6 +93,31 @@ CSS = """
   letter-spacing:.14em;text-transform:uppercase;color:var(--text-2);opacity:0;}
 .footage .pq-body{color:#F6F7F6;text-shadow:0 2px 14px rgba(0,0,0,0.5);}
 .footage .pq-cite{color:#E4E5E4;}
+/* comparison_table: a real header-row x row-label x cell MATRIX with state chips + a highlighted "ours"
+   column — the `comparison` block is a 2-panel split, not a data table. Universal + theme-painted. */
+.ct-wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 calc(6cqw*var(--density,1));color:var(--text);}
+.ct-grid{display:grid;align-items:stretch;opacity:0;}
+.ct-hcell{padding:1.4cqh 0.8cqw;font-family:var(--eyebrow-font,var(--font-mono)),ui-monospace;font-weight:700;font-size:0.96cqw;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);border-bottom:var(--bw,2px) solid var(--accent);text-align:center;align-self:end;}
+.ct-hcell.hi{color:var(--accent);}
+.ct-corner{border-bottom:var(--bw,2px) solid var(--accent);}
+.ct-rlabel{padding:1.7cqh 1.2cqw 1.7cqh 0;font-family:var(--font-display-en);font-style:var(--display-style,normal);font-weight:var(--display-weight,600);font-size:1.5cqw;line-height:1.15;border-bottom:1px solid var(--rule);display:flex;align-items:center;}
+.ct-cell{padding:1.7cqh 0.8cqw;text-align:center;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:center;font-family:var(--font-body);font-size:1.2cqw;}
+.ct-col-hi{background:var(--surface-3);}
+.chip{display:inline-flex;align-items:center;justify-content:center;width:2.4cqw;height:2.4cqw;border-radius:50%;font-weight:800;font-size:1.15cqw;line-height:1;}
+.chip.yes{background:var(--accent);color:var(--accent-ink);}
+.chip.no{background:transparent;border:0.16cqw solid var(--rule);color:var(--text-mute);}
+.chip.partial{background:var(--accent-soft);color:var(--accent);border:0.16cqw solid var(--accent);}
+.footage .ct-rlabel,.footage .ct-cell{color:#F6F7F6;}
+/* ledger_list: a dense hairline-separated row-list (ordinal + title + description + meta) — TOC / index /
+   agenda / catalogue. Distinct from bullet_list (flat) + swiss-grid (2D cards). Universal + theme-painted. */
+.lg-wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 calc(6cqw*var(--density,1));color:var(--text);}
+.lg-row{display:grid;grid-template-columns:3.4cqw 1fr 2fr auto;gap:1.6cqw;align-items:baseline;padding:1.85cqh 0;border-bottom:1px solid var(--rule);opacity:0;}
+.lg-row.first{border-top:var(--bw,2px) solid var(--accent);}
+.lg-num{font-family:var(--hero-num-font,var(--font-display-en));font-style:var(--hero-num-style,normal);font-weight:var(--hero-num-weight,800);font-variant-numeric:tabular-nums;font-size:1.4cqw;color:var(--accent);}
+.lg-title{font-family:var(--font-display-en);font-style:var(--display-style,normal);font-weight:var(--display-weight,600);font-size:1.7cqw;line-height:1.1;}
+.lg-desc{font-family:var(--font-body);font-size:1.02cqw;line-height:1.35;color:var(--text-2);}
+.lg-meta{font-family:var(--font-mono),ui-monospace;font-size:0.88cqw;letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute);white-space:nowrap;}
+.footage .lg-title{color:#F6F7F6;}
 /* prop-cutout: object-as-evidence photo card (Vox), stacked ON TOP of the scene */
 .prop{position:absolute;background:#fff;padding:0.5cqw;box-shadow:0 0.5cqw 1.8cqw rgba(0,0,0,0.38);opacity:0;transform-origin:center;}
 .prop img{display:block;width:100%;height:auto;}
@@ -900,6 +925,70 @@ def pull_quote(sid, sc):
     tl.append(f'tl.fromTo("#{sid}-q",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.7,ease:"power3.out"}},{start+0.5});')
     if d.get("cite"):
         tl.append(f'tl.fromTo("#{sid}-c",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{start+1.2});')
+    pf, pt = _props_of(sid, sc)
+    return g + frag + pf, tl + pt
+
+_CHIP_GLYPH = {"yes": "✓", "no": "–", "partial": "◐"}
+
+def _chip(v):
+    s = str(v).strip().lower()
+    if s in _CHIP_GLYPH:
+        return f'<span class="chip {s}">{_CHIP_GLYPH[s]}</span>'
+    return esc(str(v))
+
+def comparison_table(sid, sc):
+    """Reusable BLOCK: a real header-row x row-label x cell MATRIX with state chips (yes/partial/no) + an
+    optional highlighted 'ours' column. The `comparison` block is a 2-panel split — this is the tabular
+    matrix. data: {kicker?, title?, columns:[{label, highlight?}], rows:[{label, cells:[state|text]}]}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    reg = d.get("register") or ("footage" if _grounded(d) else "paper")
+    default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    cols, rows = d.get("columns", []), d.get("rows", [])
+    n = max(1, len(cols))
+    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
+    frag.append(f'<div class="ct-wrap"><div id="{sid}-g" class="ct-grid" '
+                f'style="grid-template-columns:1.6fr repeat({n},1fr)">')
+    frag.append('<div class="ct-corner"></div>')
+    for c in cols:
+        hi = " hi" if c.get("highlight") else ""
+        frag.append(f'<div class="ct-hcell{hi}">{esc(c.get("label", ""))}</div>')
+    for row in rows:
+        frag.append(f'<div class="ct-rlabel">{esc(row.get("label", ""))}</div>')
+        for j, cell in enumerate(row.get("cells", [])):
+            hi = " ct-col-hi" if j < len(cols) and cols[j].get("highlight") else ""
+            frag.append(f'<div class="ct-cell{hi}">{_chip(cell)}</div>')
+    frag.append('</div></div></section>')
+    tl.append(f'tl.fromTo("#{sid}-g",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.7,ease:"power3.out"}},{start+0.4});')
+    pf, pt = _props_of(sid, sc)
+    return g + frag + pf, tl + pt
+
+def ledger_list(sid, sc):
+    """Reusable BLOCK: a dense hairline-separated row-list — ordinal + title + optional description + meta.
+    A TOC / index / agenda / catalogue. Distinct from bullet_list (flat) and swiss-grid (2D cards). data:
+    {kicker?, rows:[{title, desc?, meta?, num?}]}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    reg = d.get("register") or ("footage" if _grounded(d) else "paper")
+    default_ground = {"kind": "transparent"} if reg == "footage" else {"kind": "paper"}
+    g, tl = media_ground(sid, d.get("ground", default_ground), start, dur)
+    frag = [f'<section class="scene clip {reg}" data-start="{start}" data-duration="{dur}" data-track-index="2">']
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
+    frag.append('<div class="lg-wrap">')
+    for i, row in enumerate(d.get("rows", [])):
+        rid = f"{sid}-r{i}"
+        num = row.get("num", f"{i+1:02d}")
+        first = " first" if i == 0 else ""
+        frag.append(f'<div class="lg-row{first}" id="{rid}"><div class="lg-num">{esc(str(num))}</div>'
+                    f'<div class="lg-title">{esc(row.get("title", ""))}</div>'
+                    f'<div class="lg-desc">{esc(row.get("desc", ""))}</div>'
+                    f'<div class="lg-meta">{esc(row.get("meta", ""))}</div></div>')
+        tl.append(f'tl.fromTo("#{rid}",{{opacity:0,x:-12}},{{opacity:1,x:0,duration:0.5,ease:"power2.out"}},{start+0.5+i*0.18});')
+    frag.append('</div></section>')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
 
@@ -2546,6 +2635,7 @@ def social_card(sid, sc):
 
 BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map, "raw": raw_scene,
           "bullet_list": bullet_list, "pull_quote": pull_quote,
+          "comparison_table": comparison_table, "ledger": ledger_list,
           "timeline": timeline, "newshead": newshead, "collage": collage,
           "diagram": diagram, "comparison": comparison, "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
