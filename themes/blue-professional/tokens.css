@@ -13,16 +13,19 @@
   --shell:        #fdfae7;             /* warm cream canvas */
   --surface:      #ffffff;
   --surface-2:    #f6f3e2;
-  --surface-3:    rgba(30, 43, 250, 0.04);   /* cobalt-tinted card */
   --text:         #111111;
   --text-2:       #6b6b6b;
   --text-mute:    #6b6b6b;
   --text-faint:   #9a9a9a;
-  --rule:         rgba(30, 43, 250, 0.20);
-  --accent:       #1e2bfa;             /* the one saturated cobalt */
-  --accent-soft:  rgba(30, 43, 250, 0.08);
-  --accent-glow:  rgba(30, 43, 250, 0.15);
+  --accent:       #1e2bfa;             /* the one saturated cobalt — the whole depth language */
   --accent-ink:   #ffffff;
+  /* the cobalt opacity LADDER (schema-v2 Layer 2) — one color + a function: change --accent and the
+     card tint / soft fill / glow / hairline all follow. color-mix is native CSS, read by BOTH the
+     HyperFrames composer and the Remotion pipeline (no runtime executor, no per-step hand-tuning). */
+  --surface-3:    color-mix(in srgb, var(--accent)  4%, transparent);   /* cobalt-tinted card */
+  --accent-soft:  color-mix(in srgb, var(--accent)  8%, transparent);
+  --accent-glow:  color-mix(in srgb, var(--accent) 15%, transparent);
+  --rule:         color-mix(in srgb, var(--accent) 20%, transparent);   /* hairline border */
   --positive:     #059669;
   --negative:     #dc2626;
 
