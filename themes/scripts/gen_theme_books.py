@@ -16,6 +16,7 @@ SAMP = REPO / "themes" / "_samples"
 OUT = REPO / "themes" / "_books"
 OUT.mkdir(parents=True, exist_ok=True)
 SPECIMENS = ["centered-hero", "editorial-column", "framed", "swiss-grid", "sidebar", "timeline",
+             "split-screen", "full-bleed-overlay", "focal-card",
              "stat", "bullet-list", "chart", "pull-quote", "comparison-table", "ledger"]
 
 

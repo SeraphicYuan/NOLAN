@@ -91,6 +91,34 @@ _TIMELINE = (
                           (62, "1991", "The web"), (87, "2007", "Mobile")])
     + '</div></section>')
 
+# ── the 3 archetypes that previously had no specimen (split-screen / full-bleed-overlay / focal-card).
+# Static, theme-neutral var() layouts in the same house style as the other raw archetype seeds. ──
+_SPLIT_SCREEN = (
+    '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;display:flex;color:var(--text)">'
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.4cqh;padding:0 6cqw">'
+    '<div style="font:700 0.9cqw/1 var(--font-mono),ui-monospace,monospace;letter-spacing:.3em;text-transform:uppercase;color:var(--text-2)">Before</div>'
+    '<div style="font-weight:var(--display-weight,700);font-style:var(--display-style,normal);font-size:calc(9cqw*var(--type-scale,1));line-height:1;font-family:var(--font-display-en)">Slow</div></div>'
+    '<div style="width:var(--rule-w,2px);background:var(--rule)"></div>'
+    '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.4cqh;padding:0 6cqw;background:var(--accent);color:var(--accent-ink)">'
+    '<div style="font:700 0.9cqw/1 var(--font-mono),ui-monospace,monospace;letter-spacing:.3em;text-transform:uppercase;opacity:.82">After</div>'
+    '<div style="font-weight:var(--display-weight,700);font-style:var(--display-style,normal);font-size:calc(9cqw*var(--type-scale,1));line-height:1;font-family:var(--font-display-en)">Fast</div></div></section>')
+
+_FULL_BLEED_OVERLAY = (
+    '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;color:#fff">'
+    '<div style="position:absolute;inset:0;background:radial-gradient(ellipse 72% 62% at 64% 30%,var(--accent),transparent 66%),linear-gradient(150deg,var(--text),var(--shell))"></div>'
+    '<div style="position:absolute;inset:0;background:linear-gradient(transparent 42%,rgba(0,0,0,0.6))"></div>'
+    '<div style="position:absolute;left:6cqw;right:6cqw;bottom:12cqh">'
+    '<div style="font:700 0.9cqw/1 var(--font-mono),ui-monospace,monospace;letter-spacing:.3em;text-transform:uppercase;opacity:.85;margin-bottom:2.2cqh">The feature</div>'
+    '<div data-fit data-fit-w="88cqw" data-fit-origin="left bottom" style="font-weight:var(--display-weight,700);font-style:var(--display-style,normal);font-size:calc(8cqw*var(--type-scale,1));line-height:1.04;font-family:var(--font-display-en);white-space:nowrap">The whole story,<br>in one frame</div></div></section>')
+
+_FOCAL_CARD = (
+    '<section class="scene clip" data-track-index="2" style="position:absolute;inset:0;display:flex;flex-direction:column;'
+    'align-items:center;justify-content:center;gap:3.2cqh;color:var(--text)">'
+    '<div style="font:700 0.9cqw/1 var(--font-mono),ui-monospace,monospace;letter-spacing:.3em;text-transform:uppercase;color:var(--text-2)">The subject</div>'
+    '<div style="width:30cqw;height:46cqh;background:var(--surface);border:var(--bw,2px) solid var(--rule);'
+    'border-radius:var(--r-card,10px);box-shadow:var(--card-shadow,0 1cqw 3cqw rgba(0,0,0,0.2));display:flex;align-items:center;justify-content:center">'
+    '<div style="font-weight:var(--display-weight,700);font-style:var(--display-style,normal);font-size:calc(5cqw*var(--type-scale,1));font-family:var(--font-display-en)">Fig 1</div></div></section>')
+
 # THEME IDENTITY CARD — a single specimen that shows the theme's DNA in its own tokens: the palette
 # (shell/surface/accent/text + the derived ladder), the four type roles (eyebrow / display / stat-value /
 # body / mono), and the shape (card radius + border weight + card-shadow). Generic (no theme name — the
@@ -149,6 +177,9 @@ SEEDS = {
     "swiss-grid":       {"type": "raw", "data": {"html": [_SWISS_GRID], "tl": []}},
     "sidebar":          {"type": "raw", "data": {"html": [_SIDEBAR], "tl": []}},
     "timeline":         {"type": "raw", "data": {"html": [_TIMELINE], "tl": []}},
+    "split-screen":     {"type": "raw", "data": {"html": [_SPLIT_SCREEN], "tl": []}},
+    "full-bleed-overlay": {"type": "raw", "data": {"html": [_FULL_BLEED_OVERLAY], "tl": []}},
+    "focal-card":       {"type": "raw", "data": {"html": [_FOCAL_CARD], "tl": []}},
     "stat":             {"type": "stat", "_arch": "centered-hero",
                          "data": {"kicker": "By the numbers",
                                   "items": [{"value": "73%", "label": "of teams shipped faster", "underline": True, "cue": 0.6,
