@@ -16,10 +16,12 @@
   --surface:      #343F80;             /* navy-alt panel */
   --surface-2:    #34407A;
   --surface-3:    #1F2858;
-  --text:         #E8D85C;             /* chartreuse-yellow type */
-  --text-2:       rgba(232, 216, 92, 0.62);
-  --text-mute:    rgba(232, 216, 92, 0.55);
-  --text-faint:   rgba(232, 216, 92, 0.35);
+  --text:         #E8D85C;             /* chartreuse-yellow type — the field's only hue */
+  /* the fg-alpha LADDER (schema-v2 Layer 2) — one hue faded down its own opacity for secondary/muted/
+     faint text: change --text and the whole fade follows. Native color-mix, read by both render paths. */
+  --text-2:       color-mix(in srgb, var(--text) 62%, transparent);
+  --text-mute:    color-mix(in srgb, var(--text) 55%, transparent);
+  --text-faint:   color-mix(in srgb, var(--text) 35%, transparent);
   --rule:         rgba(232, 216, 92, 0.20);
   --accent:       #58A8A0;             /* teal — the annotation voice (lightened from #3A7878: the dusty
                                           original was 2.2:1 on the navy field — illegible as an eyebrow/

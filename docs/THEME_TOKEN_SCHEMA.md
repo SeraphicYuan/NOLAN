@@ -55,7 +55,28 @@ declare extras.
 
 ---
 
-## Layer 2 — Semantic color-alias layer + auto-derived ladders (62% of templates have this)
+## Layer 2 — Semantic color-alias layer + auto-derived ladders — ✅ DONE 2026-07-19
+
+**Half already satisfied:** our block CSS already references SEMANTIC token names (`--accent`, `--surface`,
+`--text`, `--rule`, …) — the reference decks needed an alias layer only because their palettes were
+BRAND-named (`cobalt`, `cream`); ours are the aliases. So Layer 2 for us = the **auto-derived ladder** half.
+
+**Shipped** as native CSS `color-mix()` in tokens.css, NOT a runtime executor. A single-accent / single-hue
+theme expresses its whole depth language as one base colour + a function:
+`--surface-3: color-mix(in srgb, var(--accent) 4%, transparent)` (then 8 / 15 / 20% for soft/glow/rule) —
+so changing `--accent` updates the entire ladder. Chosen over a compose-time executor because color-mix is
+read by BOTH render paths (the HyperFrames composer AND the Remotion pipeline, which loads tokens.css
+directly — an executor would have derived only for the composer and left the pipeline's `--accent-soft` etc.
+undefined). Exemplars: **blue-professional** (cobalt accent ladder 4/8/15/20%), **vellum** (fg-alpha ladder,
+chartreuse text at 62/55/35%). Render A/B: pixel-equivalent to the hand-set rgba (worst Δ=2/255). Enforced by
+`tests/test_color_ladders.py` (ladder is a monotonic function of one base var, base is a hex literal).
+**Remaining:** roll the pattern to the other single-accent themes (each theme's ratios differ, so per-theme,
+verified); the multi-hue *candy* palettes stay bespoke.
+
+---
+
+### Original design (for reference)
+
 
 Templates map their arbitrary brand-named palette onto a **canonical semantic vocabulary** that block
 CSS references. Adopt the alias slots as the stable contract:
@@ -104,7 +125,9 @@ rosette-seal, etc.
    Layer-1 section above): eyebrow/hero-num/display/stat-label/caption wired in blocks + seeds; all 28
    themes carry a `typePersonality`; the 2 ported exemplars keep hand-tuned overrides. Fixes the
    eyebrow-sameness. Remaining: the theme-specific signature-numeral extras.
-2. **Color-alias layer + ladders** (Layer 2) — the semantic contract + auto-derived opacity/alpha.
+2. ✅ **Color-alias layer + ladders** (Layer 2) — DONE. Alias half already satisfied (our tokens ARE
+   semantic); ladder half shipped as native `color-mix()` in tokens.css (dual-path-safe), proven on
+   blue-professional + vellum. Remaining: roll to the other single-accent themes (per-theme ratios).
 3. **Shape + spacing scale** (Layer 3).
 4. **Component tokens** (Layer 4).
 5. **A/B validation** — map a reference `design.md` (blue-professional) into the v2 token system, render
