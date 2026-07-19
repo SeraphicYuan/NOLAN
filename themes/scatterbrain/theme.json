@@ -1,0 +1,48 @@
+{
+  "id": "scatterbrain",
+  "typePersonality": "friendly-rounded",
+  "name": "Scatterbrain",
+  "nameZh": "便利贴板",
+  "description": "Post-it-note and cork-board workshop — a warm desk-paper field, pastel sticky-note surfaces (yellow / blue / pink), warm-charcoal ink and a thumbtack-red pop. Chunky decorative Shrikhand display + a friendly Zilla Slab slab-serif body + a Caveat hand-script label voice. Tacked sticky notes, collage tape, and doodle scribbles over a soft lifted drop shadow.",
+  "descriptionZh": "便利贴与软木板工作坊——暖桌面纸底、粉彩便利贴面（黄/蓝/粉）、暖炭墨与图钉红点缀。厚重装饰性 Shrikhand 标题 + 友好 Zilla Slab 板衬线正文 + Caveat 手写标签体。图钉便利贴、拼贴胶带、涂鸦手绘配柔和浮起投影。",
+  "mood": [
+    "playful",
+    "tactile",
+    "warm",
+    "handmade",
+    "workshop",
+    "brainstorm"
+  ],
+  "bestFor": "Brainstorm / creative-process / education / lighthearted topics — a warm hand-made workshop-board register.",
+  "preview": {
+    "shell": "#F7F5F0",
+    "surface": "#FFE066",
+    "text": "#2D2A26",
+    "accent": "#E23B2E"
+  },
+  "composition": {
+    "default": "centered-hero",
+    "allowed": [
+      "centered-hero",
+      "editorial-column",
+      "framed",
+      "swiss-grid",
+      "sidebar",
+      "timeline",
+      "comparison-table",
+      "ledger"
+    ]
+  },
+  "decoration": [
+    "pushpins",
+    "tape",
+    "scribbles"
+  ],
+  "fonts": {
+    "displayEn": "Shrikhand",
+    "body": "Zilla Slab",
+    "cjk": "Noto Sans SC",
+    "mono": "Caveat"
+  },
+  "avoidFor": []
+}

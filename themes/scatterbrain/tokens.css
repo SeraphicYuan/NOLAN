@@ -1,0 +1,78 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · scatterbrain   (PORT of the reference design.md)
+ *   Post-it-note & cork-board workshop: a warm desk-paper field, pastel
+ *   sticky-note surfaces (yellow / blue / pink), warm-charcoal ink, and a
+ *   thumbtack-red pop. Chunky decorative Shrikhand display carries every
+ *   headline + numeral; a friendly Zilla Slab slab-serif is the body; Caveat
+ *   hand-script is the label / caption voice (loaded via the --font-mono
+ *   slot). Decoration = tacked sticky notes + tape + doodle scribbles. The
+ *   defining depth is a SOFT blurred drop shadow — the note lifting off cork.
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --density:  1.0;
+  --type-scale:  1.0;
+  /* ─── palette (desk paper + pastel sticky notes + thumbtack red) ─── */
+  --shell:        #F7F5F0;             /* desk paper */
+  --surface:      #FFE066;             /* yellow sticky — the default note */
+  --surface-2:    #A5D8FF;             /* blue sticky */
+  --surface-3:    #FFC9C9;             /* pink sticky */
+  --text:         #2D2A26;             /* warm charcoal ink */
+  --text-2:       #5C5750;             /* ink-light */
+  --text-mute:    #6e6860;
+  --text-faint:   #9a938a;
+  --rule:         rgba(45, 42, 38, 0.22);
+  --accent:       #E23B2E;             /* thumbtack red — the warm pop */
+  --accent-soft:  rgba(226, 59, 46, 0.12);
+  --accent-glow:  rgba(226, 59, 46, 0.22);
+  --accent-ink:   #ffffff;
+  --positive:     #2F9E44;             /* green sticky, deepened */
+  --negative:     #E23B2E;
+
+  /* ─── fonts (chunky decorative display + slab body + hand-script label) ─── */
+  --font-display-cn: "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  --font-display-en: "Shrikhand", "Zilla Slab", cursive;
+  --font-body:       "Zilla Slab", "Noto Sans SC", serif;
+  --font-mono:       "Caveat", cursive;           /* the hand-script label voice */
+  --font-features:   "kern";
+
+  /* ─── type roles — Shrikhand display, Caveat script eyebrow, Zilla labels ─── */
+  --hero-num-font:    var(--font-display-en);
+  --hero-num-style:   normal;
+  --hero-num-weight:  400;                         /* Shrikhand is single-weight */
+  --hero-num-track:   0.01em;
+  --display-style:    normal;
+  --display-weight:   400;
+  --eyebrow-font:     var(--font-mono);            /* Caveat hand-script kicker */
+  --eyebrow-weight:   600;
+  --eyebrow-size:     1.08cqw;                     /* Caveat has a small x-height — bump it */
+  --eyebrow-tracking: .15em;
+  --eyebrow-transform: uppercase;
+  --eyebrow-color:    var(--accent);
+  --stat-label-font:  var(--font-body);            /* Zilla Slab tracked-caps label */
+  --stat-label-weight: 600;
+  --stat-label-size:  0.85cqw;
+  --stat-label-tracking: .08em;
+  --stat-label-transform: uppercase;
+  --caption-font:     var(--font-mono);            /* Caveat casual quip */
+  --caption-weight:   600;
+  --caption-size:     1.0cqw;
+  --caption-tracking: .03em;
+  --caption-transform: none;
+
+  /* ─── motion (bouncy) ─── */
+  --dur-base:  360ms;
+  --dur-slow:  640ms;
+  --dur-cinematic:  950ms;
+
+  /* ─── shape — post-it: no radius, no border, a SOFT lifted drop shadow ─── */
+  --r-card:        0;
+  --bw:            0;
+  --r-stage:       0;
+  --rule-w:        1.5px;
+  --rule-style:    dashed;                         /* the stat-row hand-drawn hairline */
+  --stage-pad-x:   100px;
+  --stage-pad-y:   84px;
+  --card-shadow:   0.15cqw 0.3cqw 1.4cqw rgba(45, 42, 38, 0.16), 0 0.1cqw 0.3cqw rgba(45, 42, 38, 0.24);
+
+  /* decoration via theme.json (pushpins + tape + scribbles) */
+}

@@ -1,0 +1,78 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · pin-and-paper   (PORT of the reference design.md)
+ *   Field-notebook editorial: a saturated legal-pad YELLOW page, cream
+ *   pinned-paper cards, deep cobalt-blue ink for every text / border /
+ *   divider, and a cinnabar-red archival pop. Heavy tight-tracked Space
+ *   Grotesk carries every printed headline + numeral; DM Mono carries the
+ *   archival catalog labels. Decoration = a fractal-noise paper grain +
+ *   hand-drawn safety pins. The signature depth is a HARD ink-blue offset
+ *   shadow (zero blur) — the card pinned and lifted from the page.
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --density:  1.0;
+  --type-scale:  1.0;
+  /* ─── palette (legal-pad yellow + cream cards + cobalt ink + cinnabar) ─── */
+  --shell:        #EFE56A;             /* legal-pad yellow — the page */
+  --surface:      #F8F1D6;             /* cream card — recedes from the yellow */
+  --surface-2:    #F5ECA0;             /* paper-2, lighter yellow card */
+  --surface-3:    #FBE6A4;             /* paper-extra, warm card variant */
+  --text:         #1F3A8A;             /* deep cobalt ink */
+  --text-2:       #2D4FB8;             /* ink-soft */
+  --text-mute:    #3457C4;             /* ink-line */
+  --text-faint:   #6274c0;
+  --rule:         rgba(31, 58, 138, 0.45);         /* ink-blue dashed dividers */
+  --accent:       #C2342B;             /* cinnabar red — the archival pop */
+  --accent-soft:  rgba(194, 52, 43, 0.10);
+  --accent-glow:  rgba(194, 52, 43, 0.20);
+  --accent-ink:   #F8F1D6;
+  --positive:     #6B7A2E;             /* olive */
+  --negative:     #C2342B;
+
+  /* ─── fonts (heavy geometric grotesque + archival mono) ─── */
+  --font-display-cn: "Noto Sans SC", "Source Han Sans SC", sans-serif;
+  --font-display-en: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-body:       "Space Grotesk", "Noto Sans SC", sans-serif;
+  --font-mono:       "DM Mono", ui-monospace, monospace;
+  --font-features:   "kern";
+
+  /* ─── type roles — heavy negative-track display, DM-Mono archival labels ─── */
+  --hero-num-font:    var(--font-display-en);
+  --hero-num-style:   normal;
+  --hero-num-weight:  700;
+  --hero-num-track:   -0.04em;
+  --display-style:    normal;
+  --display-weight:   700;
+  --eyebrow-font:     var(--font-mono);            /* DM Mono archival catalog tag */
+  --eyebrow-weight:   500;
+  --eyebrow-size:     0.9cqw;
+  --eyebrow-tracking: .16em;
+  --eyebrow-transform: uppercase;
+  --eyebrow-color:    var(--accent);
+  --stat-label-font:  var(--font-mono);
+  --stat-label-weight: 500;
+  --stat-label-size:  0.82cqw;
+  --stat-label-tracking: .16em;
+  --stat-label-transform: uppercase;
+  --caption-font:     var(--font-mono);
+  --caption-weight:   500;
+  --caption-size:     0.82cqw;
+  --caption-tracking: .12em;
+  --caption-transform: uppercase;
+
+  /* ─── motion ─── */
+  --dur-base:  320ms;
+  --dur-slow:  560ms;
+  --dur-cinematic:  880ms;
+
+  /* ─── shape — pinned card: 4px micro-radius, ink border, HARD offset shadow ─── */
+  --r-card:        4px;
+  --bw:            1.5px;
+  --r-stage:       0;
+  --rule-w:        1.5px;
+  --rule-style:    dashed;                         /* the graph-paper dashed dividers */
+  --stage-pad-x:   96px;
+  --stage-pad-y:   72px;
+  --card-shadow:   5px 6px 0 var(--text);          /* hard cobalt-ink offset, zero blur */
+
+  /* decoration via theme.json (grain + safety-pin) */
+}
