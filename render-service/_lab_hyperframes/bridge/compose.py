@@ -25,7 +25,7 @@ CSS = """
 .kick{position:absolute;top:6.4cqw;left:calc(5.5cqw*var(--density,1));font-family:var(--eyebrow-font,var(--font-body));
   font-weight:var(--eyebrow-weight,600);font-size:calc(var(--eyebrow-size,0.9cqw)*var(--type-scale,1));
   letter-spacing:var(--eyebrow-tracking,0.14em);text-transform:var(--eyebrow-transform,uppercase);opacity:0;}
-.stmt{position:absolute;left:calc(5.5cqw*var(--density,1));bottom:16cqh;max-width:80cqw;font-weight:800;font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
+.stmt{position:absolute;left:calc(5.5cqw*var(--density,1));bottom:16cqh;max-width:80cqw;font-weight:var(--display-weight,800);font-style:var(--display-style,normal);font-size:calc(4.6cqw*var(--type-scale,1));line-height:1.08;
   letter-spacing:-0.012em;}
 .stmt .ln{display:block;opacity:0;}
 .hlwrap{position:relative;display:inline-block;isolation:isolate;}
@@ -2519,6 +2519,7 @@ _GF_WEIGHTS = {
     "Cormorant Garamond": "400;500;600;700", "Work Sans": "400;500;600;700;800;900",
     "EB Garamond": "400;500;600;700;800", "JetBrains Mono": "400;500;600;700;800",
     "Caveat": "400;500;600;700", "UnifrakturMaguntia": "400",
+    "DM Sans": "400;500;600;700", "Courier Prime": "400;700",
     "Noto Sans SC": "400;500;700;900", "Noto Serif SC": "400;500;700;900",
 }
 _FONT_SUBSTITUTE = {  # Adobe Source Han == Google Noto CJK

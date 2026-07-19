@@ -1,0 +1,65 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · vellum   (PORT of the reference design.md — A/B target)
+ *   A single monochromatic field of deep periwinkle-navy with warm
+ *   chartreuse-yellow type floating centred on it, every slide. ITALIC
+ *   Cormorant Garamond carries every headline at all sizes — the italic
+ *   serif IS the personality. DM Sans body; Courier Prime mono is the
+ *   "pin-note" annotation voice. Gallery-wall meets archive-folder — quiet,
+ *   monochromatic, deeply still. The `--display-style: italic` lever is its
+ *   signature (all display type is italic).
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --density:  1.2;
+  --type-scale:  1.0;
+  /* ─── palette (one navy field + one warm yellow + a dusty teal accent) ─── */
+  --shell:        #2A3870;             /* deep periwinkle-navy field */
+  --surface:      #343F80;             /* navy-alt panel */
+  --surface-2:    #34407A;
+  --surface-3:    #1F2858;
+  --text:         #E8D85C;             /* chartreuse-yellow type */
+  --text-2:       rgba(232, 216, 92, 0.62);
+  --text-mute:    rgba(232, 216, 92, 0.55);
+  --text-faint:   rgba(232, 216, 92, 0.35);
+  --rule:         rgba(232, 216, 92, 0.20);
+  --accent:       #3A7878;             /* dusty teal — the annotation voice */
+  --accent-soft:  rgba(58, 120, 120, 0.18);
+  --accent-glow:  rgba(58, 120, 120, 0.32);
+  --accent-ink:   #E8D85C;
+
+  /* ─── fonts (italic serif display, quiet sans body, mono pin-note) ─── */
+  --font-display-cn: "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-display-en: "Cormorant Garamond", "Cormorant", Georgia, serif;
+  --font-body:       "DM Sans", "Inter", "Noto Sans SC", -apple-system, sans-serif;
+  --font-mono:       "Courier Prime", "Courier New", ui-monospace, monospace;
+  --font-features:   "dlig", "kern";
+
+  /* ─── type-role tokens (Layer 1) — the italic-everything signature ─── */
+  --hero-num-font:    var(--font-display-en);   /* stat-value: 5.5vw ITALIC Cormorant */
+  --hero-num-style:   italic;
+  --hero-num-weight:  600;
+  --hero-num-track:   0;
+  --display-style:    italic;                    /* every headline is italic serif */
+  --display-weight:   500;
+  --eyebrow-font:     var(--font-mono);           /* kicker / pin-note: Courier Prime mono */
+  --eyebrow-weight:   400;
+  --eyebrow-size:     0.95cqw;
+  --eyebrow-tracking: .2em;
+  --eyebrow-transform: uppercase;
+  --eyebrow-color:    var(--accent);
+
+  /* ─── motion: still ─── */
+  --dur-base:  520ms;
+  --dur-slow:  900ms;
+  --dur-cinematic:  1300ms;
+
+  /* ─── shape + spacing (soft, generous — gallery) ─── */
+  --r-card:        2px;
+  --r-stage:       0;
+  --rule-w:        1px;
+  --rule-style:    solid;
+  --stage-pad-x:   115px;
+  --stage-pad-y:   115px;
+  --card-shadow:   none;
+
+  /* decoration via theme.json `decoration` (rail-label pin-note) */
+}

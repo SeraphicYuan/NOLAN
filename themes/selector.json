@@ -851,6 +851,52 @@
         "beauty",
         "luxury"
       ]
+    },
+    "blue-professional": {
+      "tone": "light",
+      "energy": "medium",
+      "formality": "formal",
+      "tags": [
+        "b2b",
+        "consulting",
+        "professional",
+        "corporate",
+        "investor",
+        "research",
+        "report",
+        "quarterly",
+        "data",
+        "finance",
+        "enterprise"
+      ],
+      "avoid": [
+        "playful",
+        "children",
+        "art",
+        "vintage"
+      ]
+    },
+    "vellum": {
+      "tone": "dark",
+      "energy": "low",
+      "formality": "formal",
+      "tags": [
+        "gallery",
+        "art",
+        "exhibition",
+        "editorial",
+        "essay",
+        "still",
+        "minimal",
+        "monochrome",
+        "literary"
+      ],
+      "avoid": [
+        "corporate",
+        "data",
+        "playful",
+        "children"
+      ]
     }
   }
 }

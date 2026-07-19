@@ -31,7 +31,7 @@ _CENTERED_HERO = (
     'font-family:var(--eyebrow-font,var(--font-mono)),ui-monospace;line-height:1;'
     'letter-spacing:var(--eyebrow-tracking,.34em);text-transform:var(--eyebrow-transform,uppercase);'
     'color:var(--eyebrow-color,var(--text-2))">By the numbers</div>'
-    '<div style="font:800 calc(20cqw*var(--type-scale,1))/0.84 var(--font-display-en);letter-spacing:-0.02em">'
+    '<div style="font-weight:var(--hero-num-weight,800);font-style:var(--hero-num-style,normal);font-size:calc(20cqw*var(--type-scale,1));line-height:0.84;font-family:var(--hero-num-font,var(--font-display-en));letter-spacing:var(--hero-num-track,-0.02em)">'
     '73<span style="color:var(--accent)">%</span></div>'
     '<div style="width:8cqw;height:0.5cqh;background:var(--accent);border-radius:2px"></div></section>')
 
@@ -43,7 +43,7 @@ _FRAMED = (
     'background:var(--surface)">'
     '<div style="font:700 0.95cqw/1 var(--font-mono),ui-monospace;letter-spacing:.32em;'
     'text-transform:uppercase;color:var(--text-2)">Figure 01</div>'
-    '<div style="font:600 calc(3.2cqw*var(--type-scale,1))/1.15 var(--font-display-en);text-align:center;max-width:36cqw">'
+    '<div style="font:600 calc(3.2cqw*var(--type-scale,1))/1.15 var(--font-display-en);font-style:var(--display-style,normal);text-align:center;max-width:36cqw">'
     'The specimen, framed<br>and presented</div></div></section>')
 
 _SWISS_GRID = (
@@ -66,7 +66,7 @@ _SIDEBAR = (
     'gap:calc(1.6cqh*var(--density,1))">'
     '<div style="font:700 0.95cqw/1 var(--font-mono),ui-monospace;letter-spacing:.32em;'
     'text-transform:uppercase;color:var(--text-2)">The first step</div>'
-    '<div style="font:700 calc(4cqw*var(--type-scale,1))/1.12 var(--font-display-en);max-width:52cqw">'
+    '<div style="font:700 calc(4cqw*var(--type-scale,1))/1.12 var(--font-display-en);font-style:var(--display-style,normal);max-width:52cqw">'
     'A running marker beside the body</div></div></section>')
 
 # a clean, static, theme-robust timeline (all events visible on a spine; no images; respects polarity) —
@@ -80,7 +80,7 @@ _TIMELINE = (
     + "".join(
         f'<div style="position:absolute;left:{x}%;top:50%;transform:translate(-50%,-50%);text-align:center">'
         f'<div style="position:absolute;left:50%;bottom:2.4cqh;transform:translateX(-50%);'
-        f'font:800 calc(3.4cqw*var(--type-scale,1))/1 var(--font-display-en);white-space:nowrap">{yr}</div>'
+        f'font:800 calc(3.4cqw*var(--type-scale,1))/1 var(--font-display-en);font-style:var(--display-style,normal);white-space:nowrap">{yr}</div>'
         '<div style="width:1.5cqw;height:1.5cqw;border-radius:50%;background:var(--accent);'
         'border:0.28cqw solid var(--surface);box-sizing:border-box"></div>'
         f'<div style="position:absolute;left:50%;top:2.4cqh;transform:translateX(-50%);'

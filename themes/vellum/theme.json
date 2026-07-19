@@ -1,0 +1,51 @@
+{
+  "id": "vellum",
+  "name": "Vellum",
+  "nameZh": "陈列",
+  "description": "A single monochromatic periwinkle-navy field with warm chartreuse-yellow ITALIC Cormorant type floating centred on it, Courier Prime pin-notes. Gallery-wall meets archive-folder — quiet, still.",
+  "descriptionZh": "单一靛蓝色场，暖黄色斜体 Cormorant 衬线居中漂浮，Courier 便签注脚。画廊墙与档案夹的静谧。",
+  "mood": [
+    "dark",
+    "gallery",
+    "editorial",
+    "still",
+    "monochrome",
+    "elegant"
+  ],
+  "bestFor": "艺术/展览/散文式的静谧叙事——单色场、斜体衬线、极简装饰。",
+  "preview": {
+    "shell": "#2A3870",
+    "surface": "#343F80",
+    "text": "#E8D85C",
+    "accent": "#3A7878"
+  },
+  "fonts": {
+    "displayEn": "Cormorant Garamond",
+    "body": "DM Sans",
+    "cjk": "Noto Serif SC",
+    "mono": "Courier Prime"
+  },
+  "avoidFor": [
+    "corporate",
+    "data",
+    "playful",
+    "children"
+  ],
+  "composition": {
+    "default": "centered-hero",
+    "allowed": [
+      "centered-hero",
+      "editorial-column",
+      "swiss-grid",
+      "split-screen",
+      "framed",
+      "timeline"
+    ]
+  },
+  "decoration": [
+    {
+      "id": "rail-label",
+      "text": "Plate"
+    }
+  ]
+}

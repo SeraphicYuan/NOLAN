@@ -1,0 +1,65 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Theme · blue-professional   (PORT of the reference design.md — A/B target)
+ *   Consulting-grade: a warm cream canvas with ONE saturated cobalt as the
+ *   only accent. Space Grotesk display + numerals, Inter body/chrome. Cards
+ *   are cobalt-tinted at 4% with translucent 20% borders — quiet, never
+ *   solid. McKinsey-brief / investment-research register. Ports the design.md
+ *   token system onto our engine (type-scale/density/type-roles/decoration).
+ * ───────────────────────────────────────────────────────────────────── */
+:root {
+  --density:  1.0;
+  --type-scale:  1.0;
+  /* ─── palette (cobalt @ opacity ladder is the whole depth language) ─── */
+  --shell:        #fdfae7;             /* warm cream canvas */
+  --surface:      #ffffff;
+  --surface-2:    #f6f3e2;
+  --surface-3:    rgba(30, 43, 250, 0.04);   /* cobalt-tinted card */
+  --text:         #111111;
+  --text-2:       #6b6b6b;
+  --text-mute:    #6b6b6b;
+  --text-faint:   #9a9a9a;
+  --rule:         rgba(30, 43, 250, 0.20);
+  --accent:       #1e2bfa;             /* the one saturated cobalt */
+  --accent-soft:  rgba(30, 43, 250, 0.08);
+  --accent-glow:  rgba(30, 43, 250, 0.15);
+  --accent-ink:   #ffffff;
+  --positive:     #059669;
+  --negative:     #dc2626;
+
+  /* ─── fonts (3-face: Space Grotesk display, Inter body, IBM Plex mono) ─── */
+  --font-display-cn: "Noto Sans SC", "Source Han Sans SC", -apple-system, sans-serif;
+  --font-display-en: "Space Grotesk", "Inter", -apple-system, sans-serif;
+  --font-body:       "Inter", "Noto Sans SC", -apple-system, sans-serif;
+  --font-mono:       "IBM Plex Mono", "SF Mono", ui-monospace, monospace;
+  --font-features:   "ss01", "tnum";
+
+  /* ─── type-role tokens (Layer 1) — ported from the design.md typography roles ─── */
+  --hero-num-font:    var(--font-display-en);   /* metric-value: Space Grotesk 700 */
+  --hero-num-style:   normal;
+  --hero-num-weight:  700;
+  --hero-num-track:   -0.02em;
+  --display-style:    normal;
+  --display-weight:   700;
+  --eyebrow-font:     var(--font-display-en);    /* h4-eyebrow: Space Grotesk 600 / 0.08em / uppercase / accent */
+  --eyebrow-weight:   600;
+  --eyebrow-size:     1.05cqw;
+  --eyebrow-tracking: .08em;
+  --eyebrow-transform: uppercase;
+  --eyebrow-color:    var(--accent);
+
+  /* ─── motion ─── */
+  --dur-base:  380ms;
+  --dur-slow:  640ms;
+  --dur-cinematic:  980ms;
+
+  /* ─── shape + spacing (radii ladder + stage pad) ─── */
+  --r-card:        14px;
+  --r-stage:       0;
+  --rule-w:        1.5px;
+  --rule-style:    solid;
+  --stage-pad-x:   96px;
+  --stage-pad-y:   72px;
+  --card-shadow:   none;
+
+  /* decoration handled via theme.json `decoration` (dot-grid — cover dots) */
+}

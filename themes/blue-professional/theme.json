@@ -1,0 +1,48 @@
+{
+  "id": "blue-professional",
+  "name": "Blue Professional",
+  "nameZh": "蓝色专业",
+  "description": "Consulting-grade cobalt-on-cream — Space Grotesk display, cobalt-tinted cards, one saturated accent. McKinsey-brief / investment-research register.",
+  "descriptionZh": "咨询级的钴蓝配奶油底——Space Grotesk 标题、钴蓝浅色卡片、单一饱和强调色。",
+  "mood": [
+    "light",
+    "consulting",
+    "professional",
+    "corporate",
+    "data",
+    "confident"
+  ],
+  "bestFor": "面向高管的咨询/研究/季报路演——数据密集但不拥挤、可远距离阅读。",
+  "preview": {
+    "shell": "#fdfae7",
+    "surface": "#ffffff",
+    "text": "#111111",
+    "accent": "#1e2bfa"
+  },
+  "fonts": {
+    "displayEn": "Space Grotesk",
+    "body": "Inter",
+    "cjk": "Noto Sans SC",
+    "mono": "IBM Plex Mono"
+  },
+  "avoidFor": [
+    "playful",
+    "children",
+    "art",
+    "vintage"
+  ],
+  "composition": {
+    "default": "centered-hero",
+    "allowed": [
+      "centered-hero",
+      "editorial-column",
+      "swiss-grid",
+      "split-screen",
+      "framed",
+      "timeline"
+    ]
+  },
+  "decoration": [
+    "dot-grid"
+  ]
+}
