@@ -52,6 +52,9 @@
   },
   "decoration": [
     "scanlines",
-    "corner-brackets"
+    {
+      "id": "os-chrome",
+      "text": "~/nolan — bash"
+    }
   ]
 }

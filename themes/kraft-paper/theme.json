@@ -50,12 +50,9 @@
   },
   "decoration": [
     "grain",
+    "tape",
     {
-      "id": "rail-label",
-      "text": "Field Notes"
-    },
-    {
-      "id": "seal",
+      "id": "rosette-seal",
       "text": "Handmade"
     }
   ]

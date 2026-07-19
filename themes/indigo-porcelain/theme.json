@@ -50,9 +50,6 @@
   },
   "decoration": [
     "grain",
-    {
-      "id": "rail-label",
-      "text": "Notes"
-    }
+    "compass-rings"
   ]
 }

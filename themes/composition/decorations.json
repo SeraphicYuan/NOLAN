@@ -59,6 +59,66 @@
       "group": "G8-figurative", "kind": "signature", "scope": "frame",
       "purpose": "a rotated circular rubber-stamp / seal mark (top-right) — 'officially marked' authority (pin-and-paper, sakura, creative-mode).",
       "token": "--accent", "params": {"text": "the seal text (default Est. 2026)"}
+    },
+    "compass-rings": {
+      "group": "G2-corner", "kind": "signature", "scope": "frame",
+      "purpose": "concentric + dashed drafting arcs in a corner — cartesian/blueprint drafting furniture (blueprint, indigo-porcelain).",
+      "token": "--rule"
+    },
+    "pillar-panels": {
+      "group": "G2-frame", "kind": "signature", "scope": "frame",
+      "purpose": "vertical accent side-panels + hairlines — bauhaus/bold-poster architecture (bold-signal, bauhaus-bold).",
+      "token": "--accent"
+    },
+    "letterpress": {
+      "group": "G4-ordinal", "kind": "signature", "scope": "frame",
+      "purpose": "a giant faint background word with a stacked 3D offset shadow — poster/manifesto (bold-signal, bauhaus-bold).",
+      "token": "--accent", "param": "text (the word)"
+    },
+    "scribbles": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "hand-drawn squiggles + a star — playful/classroom marks (chalk-garden).",
+      "token": "--accent"
+    },
+    "tape": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "semi-transparent collage tape strips at two corners — zine/kraft scrapbook furniture (sunset-zine, kraft-paper).",
+      "token": "--accent"
+    },
+    "starfield": {
+      "group": "G6-texture", "kind": "signature", "scope": "frame",
+      "purpose": "deterministic scattered pixel stars — 8-bit / cyber field (neon-cyber).",
+      "token": "--accent"
+    },
+    "os-chrome": {
+      "group": "G2-frame", "kind": "signature", "scope": "frame",
+      "purpose": "a retro window title-bar with traffic-light dots — OS / terminal chrome (terminal-green, retro-windows).",
+      "token": "--accent", "param": "text (window title)"
+    },
+    "rosette-seal": {
+      "group": "G8-figurative", "kind": "signature", "scope": "frame",
+      "purpose": "an ornate concentric stamp (solid + dashed + inner rings) — kraft / sakura seal, richer than seal (kraft-paper).",
+      "token": "--accent", "param": "text (optional)"
+    },
+    "double-rule": {
+      "group": "G2-frame", "kind": "signature", "scope": "frame",
+      "purpose": "a top + bottom pair of hairlines bracketing the content — editorial ornament (vintage-editorial).",
+      "token": "--text"
+    },
+    "hatch": {
+      "group": "G6-texture", "kind": "signature", "scope": "frame",
+      "purpose": "45deg diagonal line texture — coral / split-canvas panel fill (split-canvas).",
+      "token": "--accent"
+    },
+    "pixel-brackets": {
+      "group": "G2-corner", "kind": "signature", "scope": "frame",
+      "purpose": "blocky stepped corner brackets (filled L's) — pixel-native marks (neon-cyber, 8-bit).",
+      "token": "--accent"
+    },
+    "drop-cap": {
+      "group": "G4-ordinal", "kind": "signature", "scope": "frame",
+      "purpose": "an oversized decorative initial in the upper-left — zine / soft-editorial (sunset-zine, paper-press).",
+      "token": "--accent", "param": "text (the initial)"
     }
   }
 }
