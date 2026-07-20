@@ -428,6 +428,28 @@ CSS = """
 .fn-in{position:absolute;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;opacity:0;text-shadow:0 0 8px var(--surface),0 0 8px var(--surface),0 0 8px var(--surface);}
 .fn-in .fv{font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.6cqw;color:var(--text);margin-right:0.5cqw;font-variant-numeric:tabular-nums;}
 .fn-in .fl{font-family:"Inter",sans-serif;font-weight:700;font-size:1.05cqw;color:var(--text);}
+/* spectrum: 1-axis positioning (centered-hero) */
+.sp-zone{position:absolute;background:var(--accent);border-radius:8px;}
+.sp-zlab{position:absolute;transform:translateX(-50%);font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-mute);white-space:nowrap;}
+.sp-axis{position:absolute;height:4px;background:var(--rule);transform-origin:left center;border-radius:2px;}
+.sp-end{position:absolute;font-family:"Inter",sans-serif;font-weight:700;font-size:1.05cqw;color:var(--text);white-space:nowrap;}
+.sp-end.hi{transform:translateX(-100%);}
+.sp-axt{position:absolute;transform:translateX(-50%);font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);white-space:nowrap;}
+.sp-stem{position:absolute;width:2px;height:68px;background:var(--rule);}
+.sp-dot{position:absolute;width:22px;height:22px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);transform:translate(-50%,-50%);box-shadow:0 2px 7px rgba(0,0,0,0.3);}
+.sp-dot.hl{background:var(--text);}
+.sp-lab{position:absolute;transform:translateX(-50%);text-align:center;font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.35cqw;line-height:1.12;color:var(--text);white-space:nowrap;opacity:0;}
+.sp-lab .ss{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:0.85cqw;color:var(--text-mute);}
+/* cycle: circular loop (centered-hero) */
+.cy-svg{position:absolute;inset:0;width:100%;height:100%;}
+.cy-arc{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;}
+.cy-node{position:absolute;transform:translate(-50%,-50%);text-align:center;background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:0.7cqw 1.0cqw;max-width:15cqw;box-shadow:0 0.4cqw 1.4cqw rgba(0,0,0,0.22);opacity:0;}
+.cy-node.hl{background:var(--accent);}
+.cy-node.hl .cl{color:var(--accent-ink);}.cy-node.hl .cn{color:var(--accent-ink);}
+.cy-node .cn{display:block;font-family:"Inter",sans-serif;font-weight:800;font-size:0.78cqw;color:var(--accent);letter-spacing:0.04em;}
+.cy-node .cl{font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.25cqw;color:var(--text);line-height:1.12;}
+.cy-node .cs{display:block;font-family:"Inter",sans-serif;font-weight:500;font-size:0.82cqw;color:var(--text-mute);}
+.cy-center{position:absolute;transform:translate(-50%,-50%);text-align:center;font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.7cqw;line-height:1.1;color:var(--text);max-width:12cqw;opacity:0;}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -2592,6 +2614,125 @@ def funnel(sid, sc):
     over.append('</div>')
     return frag + over, tl
 
+def spectrum(sid, sc):
+    """Reusable BLOCK: a 1-axis SPECTRUM — items placed along a SINGLE labelled axis (a scale from lo to hi:
+    the political spectrum, risk appetite, cheap→premium, dove→hawk). Optional tinted zones band the axis;
+    the axis draws, items pop at their x with labels alternating above/below. Seek-safe, theme-driven.
+    Archetype: centered-hero.
+    data: {axis:{label?, lo, hi}, items:[{x(0..1; 0=lo), label, sub?, hl?}], zones?:[{x0,x1,label?}],
+           kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    ax = d.get("axis", {})
+    items = d.get("items") or []
+    zones = d.get("zones") or []
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 0
+    PX, PW = 300, W - 600
+    cy = topPad + (H - topPad) / 2 + 10
+    frag = [f'<div class="clip blk-spectrum" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    for zi, z in enumerate(zones):
+        zx = PX + float(z.get("x0", 0)) * PW
+        zw = (float(z.get("x1", 1)) - float(z.get("x0", 0))) * PW
+        over.append(f'<div class="sp-zone" style="left:{zx:.0f}px;top:{cy-46:.0f}px;width:{zw:.0f}px;height:92px;opacity:{0.10+0.06*(zi%3):.2f};"></div>')
+        if z.get("label"):
+            over.append(f'<div class="sp-zlab" style="left:{zx+zw/2:.0f}px;top:{cy-78:.0f}px;">{esc(z["label"])}</div>')
+    over.append(f'<div id="{sid}-ax" class="sp-axis" style="left:{PX}px;top:{cy-2:.0f}px;width:{PW}px;"></div>')
+    tl.append(f'tl.fromTo("#{sid}-ax",{{scaleX:0}},{{scaleX:1,duration:0.7,ease:"power2.inOut",transformOrigin:"left center"}},{start+0.2});')
+    for cls, ex, txt in [("sp-end lo", PX, ax.get("lo")), ("sp-end hi", PX + PW, ax.get("hi"))]:
+        if txt:
+            over.append(f'<div class="{cls}" style="left:{ex:.0f}px;top:{cy+28:.0f}px;">{esc(txt)}</div>')
+    if ax.get("label"):
+        over.append(f'<div class="sp-axt" style="left:{PX+PW/2:.0f}px;top:{cy+64:.0f}px;">{esc(ax["label"])}</div>')
+    for i, it in enumerate(items):
+        ix = PX + float(it.get("x", 0.5)) * PW
+        up = (i % 2 == 0)
+        hl = " hl" if it.get("hl") else ""
+        stem_top = cy - 74 if up else cy + 6
+        over.append(f'<div id="{sid}-st{i}" class="sp-stem" style="left:{ix-1:.0f}px;top:{stem_top:.0f}px;"></div>')
+        over.append(f'<div id="{sid}-d{i}" class="sp-dot{hl}" style="left:{ix:.0f}px;top:{cy:.0f}px;"></div>')
+        sub = f'<span class="ss">{esc(it["sub"])}</span>' if it.get("sub") else ""
+        ly = cy - 128 if up else cy + 60
+        over.append(f'<div id="{sid}-l{i}" class="sp-lab{hl}" style="left:{ix:.0f}px;top:{ly:.0f}px;">{esc(it.get("label",""))}{sub}</div>')
+        cue = start + 0.9 + i * 0.3
+        tl.append(f'tl.fromTo("#{sid}-d{i}",{{scale:0}},{{scale:1,duration:0.42,ease:"back.out(2.4)",transformOrigin:"50% 50%"}},{cue:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-st{i}",{{scaleY:0}},{{scaleY:1,duration:0.3,transformOrigin:"{"bottom" if up else "top"} center"}},{cue:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.18:.2f});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
+def cycle(sid, sc):
+    """Reusable BLOCK: a CIRCULAR process / LOOP — steps on a ring joined by curved arrows that close back on
+    themselves (a feedback loop, a flywheel, the water/carbon cycle, a virtuous/vicious circle). Nodes pop in
+    sequence, arrows draw between; an optional centre label names the loop. Seek-safe (scale/opacity/dash),
+    theme-driven. Archetype: centered-hero.
+    data: {steps:[{label, sub?, hl?}], center?(centre label), kicker?, title?, titleHi?}"""
+    import math
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    steps = d.get("steps") or []
+    n = max(1, len(steps))
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 0
+    cx, cy = W / 2, topPad + (H - topPad) / 2 + 6
+    Rr = 300
+    frag = [f'<div class="clip blk-cycle" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    svg = [f'<svg class="cy-svg" viewBox="0 0 {W} {H}"><defs><marker id="{sid}-arw" markerWidth="9" markerHeight="9" '
+           f'refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/></marker></defs>']
+    ang = [(-90 + i * 360 / n) * math.pi / 180 for i in range(n)]
+    Ra = Rr * 0.74
+    for i in range(n):
+        a0, a1 = ang[i], ang[(i + 1) % n]
+        g = 0.34                                          # gap so the arc clears the nodes
+        s0, s1 = a0 + g, a1 - g
+        if s1 < s0:
+            s1 += 2 * math.pi
+        x0, y0 = cx + Ra * math.cos(s0), cy + Ra * math.sin(s0)
+        x1, y1 = cx + Ra * math.cos(s1), cy + Ra * math.sin(s1)
+        svg.append(f'<path id="{sid}-arc{i}" d="M{x0:.1f} {y0:.1f} A{Ra:.0f} {Ra:.0f} 0 0 1 {x1:.1f} {y1:.1f}" '
+                   f'class="cy-arc" marker-end="url(#{sid}-arw)"/>')
+        cue = start + 0.6 + i * 0.42
+        tl.append(f'(function(){{var p=document.getElementById("{sid}-arc{i}"),L=p.getTotalLength();'
+                  f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
+                  f'tl.to(p,{{strokeDashoffset:0,duration:0.4,ease:"power1.out"}},{cue+0.2:.2f});}})();')
+    svg.append("</svg>")
+    over += svg
+    for i, s in enumerate(steps):
+        nx, ny = cx + Rr * math.cos(ang[i]), cy + Rr * math.sin(ang[i])
+        hl = " hl" if s.get("hl") else ""
+        sub = f'<span class="cs">{esc(s["sub"])}</span>' if s.get("sub") else ""
+        over.append(f'<div id="{sid}-n{i}" class="cy-node{hl}" style="left:{nx:.0f}px;top:{ny:.0f}px;">'
+                    f'<span class="cn">{i+1}</span><span class="cl">{esc(s.get("label",""))}</span>{sub}</div>')
+        cue = start + 0.5 + i * 0.42
+        tl.append(f'tl.fromTo("#{sid}-n{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.45,ease:"back.out(1.8)",transformOrigin:"50% 50%"}},{cue:.2f});')
+    if d.get("center"):
+        over.append(f'<div id="{sid}-ctr" class="cy-center" style="left:{cx:.0f}px;top:{cy:.0f}px;">{esc(d["center"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-ctr",{{opacity:0,scale:0.85}},{{opacity:1,scale:1,duration:0.5,transformOrigin:"50% 50%"}},{start+0.4});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -3398,7 +3539,7 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
           "annotate": annotate, "quadrant": quadrant, "venn": venn, "sankey": sankey, "scale": scale,
-          "pie": pie, "funnel": funnel,
+          "pie": pie, "funnel": funnel, "spectrum": spectrum, "cycle": cycle,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so

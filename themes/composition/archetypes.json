@@ -38,7 +38,9 @@
         "venn",
         "scale",
         "pie",
-        "funnel"
+        "funnel",
+        "spectrum",
+        "cycle"
       ],
       "exemplar": "exemplars/centered-hero.json",
       "zone": {

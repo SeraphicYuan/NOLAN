@@ -551,6 +551,45 @@
       ],
       "note": "Trapezoids are theme --accent at stepped opacity (hl = full); labels ride on each stage with a --surface halo. 3-6 stages read best."
     },
+    "spectrum": {
+      "fn": "spectrum",
+      "purpose": "A 1-axis SPECTRUM: items placed along a SINGLE labelled axis (a scale from lo to hi). Optional tinted zones band the axis; it draws, items pop at their x with labels alternating above/below.",
+      "when_to_use": "A beat that POSITIONS things on ONE dimension / a scale: the political spectrum, risk appetite, cheap→premium, dove→hawk, 'on a scale from X to Y here's where each falls'.",
+      "not_for": "TWO dimensions at once (use `quadrant`). Precise magnitudes (use `chart`/`scale`). A ranked list (use `bullet_list`/`ledger`). A time sequence (use `timeline`).",
+      "data_schema": {
+        "axis": "object — {label?, lo, hi} (the axis title + the two end labels)",
+        "items": "array of {x (0..1; 0=lo end), label, sub?, hl?} — points on the axis (labels auto-alternate above/below)",
+        "zones": "array of {x0, x1 (0..1), label?}? — tinted bands segmenting the axis (e.g. left/centre/right)",
+        "kicker": "string? — eyebrow over the top title",
+        "title": "string? — a top title",
+        "titleHi": "string? — substring of title to highlight with the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Axis/dots are theme --accent/--rule; a hl item uses --text. item.x is a 0..1 fraction of the axis."
+    },
+    "cycle": {
+      "fn": "cycle",
+      "purpose": "A CIRCULAR process / LOOP: steps on a ring joined by curved arrows that close back on themselves. Nodes pop in sequence, arrows draw between; an optional centre label names the loop.",
+      "when_to_use": "A beat about a REPEATING / self-reinforcing process: a feedback loop, a flywheel, the water/carbon cycle, a virtuous or vicious circle, a process that returns to its start.",
+      "not_for": "A one-way process with an end (use `diagram` flow or `timeline`). A hierarchy (use `diagram` tree). Parts of a whole (use `pie`). A narrowing funnel (use `funnel`).",
+      "data_schema": {
+        "steps": "array of {label, sub?, hl?} — the loop stages, in order (arrows wrap last→first)",
+        "center": "string? — a centre label naming the loop",
+        "kicker": "string? — eyebrow over the top title",
+        "title": "string? — a top title",
+        "titleHi": "string? — substring of title to highlight with the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Nodes are theme --surface cards (hl = accent fill); arrows are accent arcs (strokeDashoffset draw + an arrowhead marker). 3-6 steps read best on the ring."
+    },
     "lower_third": {
       "fn": "lower_third",
       "purpose": "A lower-third identifier — name + role (+ optional kicker) — the on-screen caption for talking-head / interview / podcast footage. One theme-driven block collapsing the registry's ~12 lt-* variants via a `style` param.",
