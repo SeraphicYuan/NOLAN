@@ -111,6 +111,26 @@ BLOCKS = {
                  "text": "After 200 years, folio 12r is home. A thread on what it took to bring it back.",
                  "likes": 1240, "reposts": 330, "replies": 88},
  "linedraw": {"kicker": "The drawing", "viewBox": "0 0 100 100", "paths": ["M20 82 L50 18 L80 82 Z", "M34 82 L66 82", "M50 18 L50 60"]},
+ "juxtaposition": {"kicker": "TWO ACCOUNTS", "vs": "OR",
+                   "left": {"type": "text", "kicker": "The victor", "lines": ["We freed", "the city."], "highlight": "freed"},
+                   "right": {"type": "text", "kicker": "The vanquished", "lines": ["They burned", "our home."], "highlight": "burned"}},
+ "annotate": {"src": IMG(1), "kicker": "THE FOLIO", "title": "What the page tells us", "titleHi": "tells",
+              "callouts": [{"x": 0.3, "y": 0.3, "text": "Marginalia, a later hand"},
+                           {"x": 0.66, "y": 0.42, "text": "Gold-leaf initial"},
+                           {"x": 0.4, "y": 0.7, "text": "Water damage, 1600s"}]},
+ "quadrant": {"kicker": "THE COLLECTION", "title": "Value vs fragility", "titleHi": "fragility",
+              "x": {"label": "Fragility", "lo": "Robust", "hi": "Fragile"}, "y": {"label": "Value", "lo": "Low", "hi": "High"},
+              "quadrants": {"tl": "Insure", "tr": "Vault", "bl": "Store", "br": "Handle freely"},
+              "items": [{"x": 0.8, "y": 0.85, "label": "Manuscripts", "hl": True}, {"x": 0.3, "y": 0.68, "label": "Bronzes"},
+                        {"x": 0.74, "y": 0.3, "label": "Ceramics"}, {"x": 0.26, "y": 0.26, "label": "Prints"}]},
+ "venn": {"kicker": "WHAT MAKES IT MATTER", "title": "A true treasure", "titleHi": "treasure", "overlap": "Priceless",
+          "sets": [{"sub": "old", "label": "Ancient"}, {"sub": "whole", "label": "Intact"}, {"sub": "known", "label": "Provenanced"}]},
+ "sankey": {"kicker": "THE ARCHIVE", "title": "What it holds", "titleHi": "holds", "unit": "%",
+            "source": {"label": "Collection", "value": 100},
+            "targets": [{"label": "Manuscripts", "value": 42, "hl": True}, {"label": "Objects", "value": 26},
+                        {"label": "Prints", "value": 18}, {"label": "Correspondence", "value": 14}]},
+ "scale": {"kicker": "A SENSE OF TIME", "title": "Ages apart", "titleHi": "apart", "unit": " yrs", "ratio": "4x older",
+           "items": [{"label": "The press", "value": 580}, {"label": "The vase", "value": 2500, "hl": True}]},
 }
 # per-block fidelity verdict shown in the hub (theme-independent judgement; 'flag' is dark-theme-specific)
 VERDICTS = {
@@ -135,6 +155,12 @@ VERDICTS = {
  "comparison": ("pass", "Gap/ground via _page_bg(); chips + VS themed (theme-faithful fix)."),
  "document": ("pass", "Ground via _page_bg() on both polarities (theme-faithful fix)."),
  "gallery": ("pass", "Backdrop defaults to var(--shell); framed images + themed title."),
+ "juxtaposition": ("pass", "Two paper zones, display type + operative sweep, themed rule + VS pivot."),
+ "annotate": ("pass", "Image ground + accent markers/leader lines + surface label pills."),
+ "quadrant": ("pass", "Themed axes/arrows/dots/labels; ground via _page_bg()."),
+ "venn": ("pass", "Accent-tinted circles (color-mix, overlaps darken); surface overlap pill."),
+ "sankey": ("pass", "Accent ribbons proportional to value; source/target nodes + labels themed."),
+ "scale": ("pass", "Area-proportional accent circles; themed values, labels, ratio callout."),
 }
 
 

@@ -20,6 +20,18 @@ import compose  # noqa: E402
 OUT = REPO / "themes" / "_samples"
 OUT.mkdir(parents=True, exist_ok=True)
 DUR = 4.0
+_PROBE = "_probe"                                        # shared image assets (see gen_block_probe) for visual samples
+
+
+def _ensure_probe_assets():
+    """Copy a couple of b-roll stills into _samples/_probe/ so visual samples (comparison variants) have real
+    images. Idempotent; shares the dir gen_block_probe uses."""
+    import shutil
+    ap = OUT / _PROBE
+    ap.mkdir(parents=True, exist_ok=True)
+    if not (ap / "img0.png").exists():
+        for i, f in enumerate(sorted((REPO / "projects" / "_library" / "_broll_generated").glob("*.png"))[:4]):
+            shutil.copyfile(f, ap / f"img{i}.png")
 
 # ── canonical seeds — one per archetype (static, theme-neutral). type "raw" = hand-authored final-state;
 # a block name = the real production block (shows exactly what the pipeline emits).
@@ -230,7 +242,8 @@ _VARIANT_BLOCKS = json.loads(
 # hyphenated 'bullet-list' / the 'editorial-column' statement specimen would split into a second cell).
 _BLOCK_TO_SPECIMEN = {"stat": "stat", "statement": "editorial-column", "bullet_list": "bullet-list",
                       "pull_quote": "pull-quote", "ledger": "ledger",
-                      "comparison_table": "comparison-table", "timeline": "timeline", "comparison": "comparison"}
+                      "comparison_table": "comparison-table", "timeline": "timeline", "comparison": "comparison",
+                      "juxtaposition": "comparison"}   # split-screen sibling — group under the same specimen cell
 _STAT_ITEMS = [{"value": "73%", "label": "of teams shipped faster", "underline": True,
                 "delta": {"dir": "up", "value": "+12 pts"}},
                {"value": "2.4x", "label": "median throughput gain", "delta": {"dir": "down", "value": "-0.3x"}},
@@ -274,9 +287,13 @@ def _variant_content(block, v):
         return {"title": "A short history", "variant": v,
                 "events": [{"year": "1969", "label": "First message"}, {"year": "1983", "label": "TCP / IP"},
                            {"year": "1991", "label": "The web"}, {"year": "2007", "label": "Mobile"}]}
-    if block == "comparison":   # theme-neutral text-vs-stat contrast (no assets needed for the sample)
+    if block == "comparison":   # VISUAL contrast — two images (comparison is image/video only now)
         return {"kicker": "Before / after", "title": "The shift", "titleHi": "shift", "vs": True, "variant": v,
-                "left": {"type": "text", "kicker": "2019", "title": ["Manual", "and slow"]},
+                "left": {"type": "image", "src": f"{_PROBE}/img1.png", "label": "2019"},
+                "right": {"type": "image", "src": f"{_PROBE}/img0.png", "label": "NOW"}}
+    if block == "juxtaposition":   # the NON-visual dialectic — text vs stat (no assets)
+        return {"kicker": "THE SHIFT", "vs": "→", "variant": v,
+                "left": {"type": "text", "kicker": "2019", "lines": ["Manual", "and slow"]},
                 "right": {"type": "stat", "value": "3.2x", "label": "faster now"}}
     return {"variant": v}
 
@@ -306,6 +323,7 @@ def main():
         if cand.exists():
             shutil.copyfile(cand, OUT / "gsap.min.js")
             break
+    _ensure_probe_assets()                               # b-roll for the visual (comparison) variant samples
     manifest = []
     for label, seed in SEEDS.items():
         arche = seed.get("_arch", label)                 # real archetype for the scene meta

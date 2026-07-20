@@ -1966,7 +1966,18 @@ def _cmp_overlays(pid, spec, start, dur):
 
 def _panel_content(pid, spec, mtrack, start, dur):
     """One comparison side = an IMAGE fill (+Ken-Burns/scrim/vignette/grayscale/tint) + its overlays.
-    VIDEO sides are mounted inline by comparison() (root-video hole); this handles the image case."""
+    VIDEO sides are mounted inline by comparison() (root-video hole); this handles the image case.
+    LEGACY fallback: a bare text/stat side (gate-rejected for NEW authoring — use `juxtaposition`) still
+    renders as a panel here, so an old spec never hard-crashes on recompose."""
+    if spec.get("type") in ("text", "stat") or not spec.get("src"):
+        reg = spec.get("register", "paper")
+        bg = spec.get("bg", "var(--surface-2)" if reg == "paper" else "#111417")
+        frag = [f'<div class="cmp-paper" style="background:{esc(bg)};"></div>']
+        if spec.get("type") == "stat":
+            f2, t2 = _cmp_stat(pid, spec, start, dur, reg)
+        else:
+            f2, t2 = _cmp_text(pid, spec, start, dur, reg=("paper" if reg == "paper" else "footage"), bottom=False)
+        return frag + f2, t2
     frag, tl = _cmp_media(pid, spec, mtrack, start, dur)
     of, ot = _cmp_overlays(pid, spec, start, dur)
     return frag + of, tl + ot
