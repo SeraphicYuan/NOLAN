@@ -411,7 +411,7 @@ CSS = """
 .doc-bg{position:absolute;inset:0;}
 .doc-vig{position:absolute;inset:0;pointer-events:none;}
 .doc-world{position:absolute;inset:0;transform-origin:50% 46%;will-change:transform;}
-.doc-sheet{position:absolute;background:#fff;background-size:cover;background-position:top center;overflow:hidden;opacity:0;
+.doc-sheet{position:absolute;background:var(--surface);background-size:cover;background-position:top center;overflow:hidden;opacity:0;
   box-shadow:0 1.4cqw 3.4cqw rgba(0,0,0,0.42);will-change:transform,opacity;}
 .doc-sheet.contain{background-size:contain;background-repeat:no-repeat;background-position:center;}
 .doc-sheet.aged{filter:sepia(0.34) contrast(1.02) brightness(1.02);}
