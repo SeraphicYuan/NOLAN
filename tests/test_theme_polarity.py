@@ -50,7 +50,11 @@ def test_comparison_backdrop_and_title_are_polarity_aware():
     data = {"title": "T", "left": {"type": "text", "title": "A"}, "right": {"type": "text", "title": "B"}}
     hl, hd = _frame("comparison", data, LIGHT), _frame("comparison", data, DARK)
     assert "inset:0;background:var(--shell)" in hl          # light theme -> theme-surface backdrop (no dark gaps)
-    assert "inset:0;background:#0a0b0c" in hd               # dark theme keeps the dramatic dark
+    # dark theme: a THEME-FAITHFUL token backdrop (_page_bg = var(--shell)/--surface). The old hardcoded
+    # #0a0b0c dark backdrop was replaced by the comparison theme-faithful fix — the drama now comes from
+    # the theme's OWN dark tokens, so a hardcoded hex must never leak.
+    assert ("inset:0;background:var(--shell)" in hd or "inset:0;background:var(--surface)" in hd)
+    assert "inset:0;background:#0a0b0c" not in hd           # the backdrop is NOT a hardcoded dark hex anymore
     assert "cmp-htitle light" in _body(hl)                  # text panels on a light theme -> light title scrim
     assert "cmp-htitle light" not in _body(hd)
     assert "var(--surface-2)" in hl                         # paper side fill follows the theme (was cold #F1F3F2)
