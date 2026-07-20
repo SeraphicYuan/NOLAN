@@ -5,8 +5,9 @@ import puppeteer from 'puppeteer';
 import fs from 'fs';
 import path from 'path';
 
-const DIR = process.argv[2] || path.resolve('..', 'themes', '_samples');
-const manifest = JSON.parse(fs.readFileSync(path.join(DIR, 'manifest.json'), 'utf-8'));
+const DIR = path.resolve(process.argv[2] || path.resolve('..', 'themes', '_samples'));   // resolve so a relative arg still yields valid file:// URLs
+const MANIFEST = process.argv[3] || 'manifest.json';   // pass a custom manifest so an aux shoot never clobbers manifest.json
+const manifest = JSON.parse(fs.readFileSync(path.join(DIR, MANIFEST), 'utf-8'));
 
 const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
 let ok = 0, bad = 0;

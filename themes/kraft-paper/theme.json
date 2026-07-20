@@ -50,10 +50,6 @@
   },
   "decoration": [
     "grain",
-    "tape",
-    {
-      "id": "rosette-seal",
-      "text": "Handmade"
-    }
+    "tape"
   ]
 }

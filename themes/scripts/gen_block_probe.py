@@ -131,10 +131,10 @@ VERDICTS = {
  "newshead": ("own", "A newspaper identity; accent highlight comes through."),
  "timeline": ("cine", "Cinematic camera-pan on a fixed dark ground; accent picked up."),
  "spotlight": ("cine", "Cinematic dark stage; type + accent themed, ground generic."),
- "diagram": ("flag", "On DARK themes falls to generic black + white nodes (theme-faithful on light)."),
- "comparison": ("flag", "Generic #0a0b0c backdrop on dark themes instead of the theme --shell."),
- "document": ("flag", "Artifact backdrop is a generic dark on dark themes, not the theme --shell."),
- "gallery": ("flag", "Backdrop defaults to a generic dark on dark themes; title is themed."),
+ "diagram": ("pass", "Ground, nodes, links, root all theme-token driven (theme-faithful fix)."),
+ "comparison": ("pass", "Gap/ground via _page_bg(); chips + VS themed (theme-faithful fix)."),
+ "document": ("pass", "Ground via _page_bg() on both polarities (theme-faithful fix)."),
+ "gallery": ("pass", "Backdrop defaults to var(--shell); framed images + themed title."),
 }
 
 

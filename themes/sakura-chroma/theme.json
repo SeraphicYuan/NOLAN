@@ -34,12 +34,7 @@
     ]
   },
   "decoration": [
-    "ribbon",
-    "petal-cluster",
-    {
-      "id": "rosette-seal",
-      "text": "SAKURA"
-    }
+    "ribbon"
   ],
   "fonts": {
     "displayEn": "Big Shoulders Display",

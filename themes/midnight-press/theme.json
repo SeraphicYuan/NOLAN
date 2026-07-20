@@ -48,7 +48,6 @@
     ]
   },
   "decoration": [
-    "scanlines",
-    "background-ordinal"
+    "scanlines"
   ]
 }

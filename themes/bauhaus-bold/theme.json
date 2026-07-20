@@ -48,7 +48,6 @@
     ]
   },
   "decoration": [
-    "pillar-panels",
-    "background-ordinal"
+    "pillar-panels"
   ]
 }

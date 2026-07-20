@@ -48,10 +48,6 @@
     ]
   },
   "decoration": [
-    "grain",
-    {
-      "id": "drop-cap",
-      "text": "F"
-    }
+    "grain"
   ]
 }
