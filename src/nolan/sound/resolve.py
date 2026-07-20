@@ -83,7 +83,7 @@ def resolve_cue(kind: str, *, root: Optional[Path] = None,
 # the Director's sidechain mix), so a cue that lands over narration needs a hotter
 # level than the ducked registry `gain`. Boost by family: content one-shots cut
 # through; transitions ride a gap so stay subtle; beds stay low (they're beds).
-_HF_GAIN_FACTOR = {"transition": 1.3, "one-shot": 2.5, "loop": 1.8, "bed": 1.0}
+_HF_GAIN_FACTOR = {"transition": 1.3, "one-shot": 2.5, "loop": 1.8, "bed": 1.4}
 
 
 def hf_gain(kind: str) -> float:

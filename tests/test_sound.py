@@ -192,6 +192,36 @@ def test_whoosh_gap_thins_across_frames(tmp_path, monkeypatch):
     assert set(whoosh(D.design("x", whoosh_gap=5.0))) == {"01-a", "02-b"}  # big gap → both
 
 
+def test_bed_layer_tiles_to_fill_and_validates(tmp_path, monkeypatch):
+    """An opt-in emotional-floor bed: span-cue validated, tiled to fill in the executor."""
+    from nolan.hyperframes import edit as _edit
+    from nolan.hyperframes.sound import apply_scene_sfx
+    from nolan.sound.registry import validate_scene_sound
+    # span is a bed-only field
+    assert validate_scene_sound({"id": "s", "data": {"sfx": [{"cue": "room-tone", "at": 0, "span": 20}]}}) == []
+    assert validate_scene_sound({"id": "s", "data": {"sfx": [{"cue": "whoosh", "span": 10}]}})  # span on non-bed → flagged
+    # an 8s bed over a 20s span → 3 tiles (8 + 8 + 4)
+    (tmp_path / "audio_meta.json").write_text(json.dumps(
+        {"voices": [{"frame": 1, "path": "v.wav"}]}), encoding="utf-8")
+    bank = tmp_path / "_bank"; bank.mkdir()
+    (bank / "rt.wav").write_bytes(b"RIFFWAVE")
+    (bank / "sfx.json").write_text(json.dumps(
+        [{"curated": True, "kind": "room-tone", "file": "rt.wav", "id": "1", "rating": 5, "duration": 8.0}]),
+        encoding="utf-8")
+    frame = {"frames": [{"id": "01-x", "scenes": [
+        {"id": "s1", "start": 0.0, "data": {"sfx": [{"cue": "room-tone", "at": 0.0, "span": 20.0}]}}]}]}
+    monkeypatch.setattr(_edit, "_project_dir", lambda c: tmp_path)
+    monkeypatch.setattr(_edit, "list_frames", lambda c: [{"id": "01-x"}])
+    monkeypatch.setattr(_edit, "load_frame_spec", lambda c, f: (frame, {"i": 0}))
+    monkeypatch.setattr("nolan.sound.resolve.library_dir", lambda: bank)
+    apply_scene_sfx("x")
+    am = json.loads((tmp_path / "audio_meta.json").read_text(encoding="utf-8"))
+    beds = [e for e in am["sfx"] if e["kind"] == "room-tone"]
+    assert len(beds) == 3 and am["voices"]                    # tiled to fill, voices preserved
+    assert beds[0]["offset_s"] == 0.0 and beds[1]["offset_s"] == 8.0
+    assert abs(beds[2]["duration_s"] - 4.0) < 0.1             # last tile clipped to the span
+
+
 def test_finish_dag_includes_scene_sfx_step():
     """The finish DAG actually calls the executor (not a dangling field)."""
     src = (REPO / "src/nolan/hyperframes/finish.py").read_text(encoding="utf-8")

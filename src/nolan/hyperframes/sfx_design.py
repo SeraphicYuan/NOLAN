@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from nolan.sound.registry import KINDS
+from nolan.sound.registry import KINDS, BY_ID
 from .sync import _phrase_time
 
 _GLITCH_REVEALS = {"decode", "scramble", "glitch"}
@@ -159,7 +159,8 @@ def _budget(cues: List[Tuple[str, float, int, str]]) -> List[Tuple[str, float, i
 
 
 def design(comp: str, *, apply: bool = False, llm: bool = False,
-           transitions: str = "sparse", whoosh_gap: float = 45.0) -> Dict[str, Any]:
+           transitions: str = "sparse", whoosh_gap: float = 45.0,
+           bed: Optional[str] = None) -> Dict[str, Any]:
     """Propose scene.data.sfx across a comp from its spec + word timings.
 
     Returns ``{plan: [{frame, scene, cues:[{cue,at,why}]}], total, applied}``.
@@ -167,17 +168,24 @@ def design(comp: str, *, apply: bool = False, llm: bool = False,
     `transitions` sets the whoosh cadence (off | sparse | all); `whoosh_gap` is the
     minimum seconds between whooshes across frames (a whoosh is also skipped if the
     frame repeats the previous whoosh's scene type) — whooshes are a rare accent.
+    `bed` (a bed-family cue-kind, e.g. 'room-tone' | 'tension-drone' | 'nature-bed')
+    lays a subtle emotional-floor bed under every frame (opt-in; the executor tiles
+    it to fill). None = no bed.
     """
     from .edit import _project_dir, list_frames, load_frame_spec, save_frame_spec
 
     pdir = Path(_project_dir(comp))
     am = json.loads((pdir / "audio_meta.json").read_text(encoding="utf-8")) \
         if (pdir / "audio_meta.json").exists() else {"voices": []}
+    if bed and (bed not in BY_ID or BY_ID[bed].family != "bed"):
+        raise ValueError(f"--bed {bed!r} is not a bed-family cue-kind "
+                         f"({[k for k, c in BY_ID.items() if c.family == 'bed']})")
 
-    # absolute frame starts (each frame = its VO duration) — for the whoosh gap
-    starts, acc = {}, 0.0
+    # absolute frame starts + per-frame duration (each frame = its VO duration)
+    starts, dur_by_frame, acc = {}, {}, 0.0
     for v in sorted(am.get("voices", []), key=lambda v: v.get("frame", 0)):
         starts[v.get("frame")] = acc
+        dur_by_frame[v.get("frame")] = float(v.get("duration_s") or 0)
         acc += float(v.get("duration_s") or 0)
     last_whoosh_t, last_whoosh_type = -1e9, None
 
@@ -211,12 +219,17 @@ def design(comp: str, *, apply: bool = False, llm: bool = False,
             if llm and kept is not None:
                 kept = _llm_refine(ctx, kept)                 # taste layer (optional)
             cues = [{"cue": k, "at": a, "why": w} for k, a, _p, w in kept if k in KINDS]
+            if si == 0 and bed:                               # emotional-floor bed, spanning the frame
+                cues.insert(0, {"cue": bed, "at": 0.0, "why": "emotional bed",
+                                "span": round(dur_by_frame.get(num, 0.0), 3)})
             if cues:
                 plan.append({"frame": fid, "scene": sc.get("id"),
                              "type": ctx["type"], "cues": cues})
                 total += len(cues)
                 if apply:
-                    sc.setdefault("data", {})["sfx"] = [{"cue": c["cue"], "at": c["at"]} for c in cues]
+                    sc.setdefault("data", {})["sfx"] = [
+                        {"cue": c["cue"], "at": c["at"],
+                         **({"span": c["span"]} if c.get("span") else {})} for c in cues]
                     changed = True
         if apply and changed:
             save_frame_spec(pdir / "compositions" / "frames" / f"{fid}.spec.json", spec)
@@ -270,9 +283,12 @@ def main():
                     help="whoosh cadence: sparse (default; graphic-opening frames only), all, off")
     ap.add_argument("--whoosh-gap", type=float, default=45.0,
                     help="min seconds between whooshes (they're a rare accent; default 45)")
+    ap.add_argument("--bed", default=None,
+                    help="lay a subtle emotional-floor bed under every frame "
+                         "(a bed-family kind: room-tone | tension-drone | nature-bed | …)")
     a = ap.parse_args()
     res = design(a.comp, apply=a.apply, llm=a.llm, transitions=a.transitions,
-                 whoosh_gap=a.whoosh_gap)
+                 whoosh_gap=a.whoosh_gap, bed=a.bed)
     for p in res["plan"]:
         cues = ", ".join(f"{c['cue']}@{c['at']}s ({c['why']})" for c in p["cues"])
         print(f"  {p['frame']}/{p['scene']} [{p['type']}]: {cues}")

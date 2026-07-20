@@ -244,6 +244,12 @@ def _validate_cue_list(sid: str, cues: Any, where: str) -> List[str]:
             g = it.get(gk)
             if g is not None and not (isinstance(g, (int, float)) and 0.0 <= g <= 1.0):
                 problems.append(f"{tag} `{gk}` must be a number in 0..1")
+        span = it.get("span")               # a bed spans this many seconds (tiled to fill)
+        if span is not None:
+            if not (isinstance(span, (int, float)) and span > 0):
+                problems.append(f"{tag} `span` must be a positive number")
+            elif cue and BY_ID.get(cue) and BY_ID[cue].family != "bed":
+                problems.append(f"{tag} `span` only applies to a bed-family cue, not {cue!r}")
     return problems
 
 

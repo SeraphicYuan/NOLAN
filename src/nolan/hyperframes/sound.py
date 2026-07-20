@@ -124,13 +124,27 @@ def apply_scene_sfx(comp: str) -> Dict[str, Any]:
                     if src.exists() and not dest.exists():
                         shutil.copy2(src, dest)
                     staged[src.name] = f"assets/sfx/{src.name}"
-                events.append({
-                    "frame": num, "file": staged[src.name],
-                    "offset_s": round(start + at, 3),
-                    "duration_s": r.get("duration"),
-                    "volume": float(gain if gain is not None else hf_gain(kind)),
-                    "kind": kind, "cue_id": r.get("id"),
-                })
+                vol = float(gain if gain is not None else hf_gain(kind))
+                # a bed carries a `span`: TILE the file to fill it (HF <audio> doesn't
+                # loop). Everything else is a single one-shot at its time.
+                span = it.get("span") if isinstance(it, dict) else None
+                filedur = float(r.get("duration") or 0) or 1.0
+                if span and filedur > 0:
+                    k, span = 0, float(span)
+                    while k * filedur < span - 0.05:
+                        t0 = at + k * filedur
+                        events.append({
+                            "frame": num, "file": staged[src.name],
+                            "offset_s": round(start + t0, 3),
+                            "duration_s": round(min(filedur, at + span - t0), 3),
+                            "volume": vol, "kind": kind, "cue_id": r.get("id")})
+                        k += 1
+                else:
+                    events.append({
+                        "frame": num, "file": staged[src.name],
+                        "offset_s": round(start + at, 3),
+                        "duration_s": r.get("duration"),
+                        "volume": vol, "kind": kind, "cue_id": r.get("id")})
 
     am_path = pdir / "audio_meta.json"
     am = json.loads(am_path.read_text(encoding="utf-8")) if am_path.exists() else {}

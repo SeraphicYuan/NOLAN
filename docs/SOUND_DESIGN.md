@@ -217,10 +217,71 @@ Tuning (from the aeneid-essay listen test):
   mix), so cues over narration were inaudible at the ducked registry `gain`. HF
   gains boost by family (content one-shots ×2.5, transitions ×1.3, beds ×1.0) so
   they cut through un-ducked. Measured audible on aeneid (paper/shutter over VO).
-- **Phase 4 — the pairing operator**: registry-aware auto-author pass over the spec
-  (deterministic-first, LLM only for taste calls), human-reviewed.
+- **Whoosh restraint** — a whoosh is a *rare accent*: cross-frame min-gap (default 45s,
+  `--whoosh-gap`) + skip when the frame repeats the previous whoosh's type. homer 6→2.
 
 Litmus (WIRING_CHECKLIST): *which registry did this land in? what field authors it?
 who consumes that field? which gate classifies it? where does an agent learn when to
 use it? which test fails if any answer stops being true?* — Phases 2–3 close the last
 three for `sound`.
+
+---
+
+## Craft critique & authoring roadmap (SFX editor's review, 2026-07)
+
+The authoring *mechanism* (`sfx_design`) is the highest-stakes part — it's where a
+piece sounds *designed* or *amateur*. Honest critique + what we're doing about it.
+
+**The reframe.** What we built is a **spotting engine that Mickey-Mouses**: it maps
+*object on screen* → sound (`newshead→paper`, `photo→camera-shutter`) and *word said*
+→ sound (`operative→impact`). That is the *most literal, lowest* layer of sound
+design. Great sound asks **"what is this moment doing to the viewer, and what does the
+*soundscape* need?"** — a shift from **objects→sounds** to **narrative/emotion→a
+layered design**. Every gap below flows from that.
+
+**The blindspots (SFX-editor's read):**
+1. **No bed / tone layer — the emotional floor is missing.** Pro sound is layered +
+   continuous: an ambience/drone/room-tone bed sets the register; hits punctuate on
+   top. We curated room-tone/tension-drone/nature/machine beds and the auto-author
+   **never places one** — 100% punctuation, 0% underscore. *Biggest single gap.*
+2. **Sound is purely LOCAL — no arc.** Tension should *build* across a section and
+   *release* at the turn; we decide each scene in isolation and **never use `riser`**
+   to build into a reveal. No trajectory.
+3. **Placement ≠ mixing.** Pros duck the VO under a hit, EQ-carve, pan, add space. We
+   have a static family gain and **no ducking in HF** — the gain-boost band-aid is a
+   symptom (buried at low gain, clashing at high).
+4. **Additive-by-default; great sound is subtractive.** Default should be *silence*;
+   a cue must *earn* its place; density is *managed* (~2–3 tracked layers, Murch).
+5. **Semantically blind** — reads `$`/`operative`/`type`, not irony/dread/revelation.
+   The `--llm` layer only *prunes*; it should *propose* subtext cues + motifs.
+6. **Mickey-Mousing** — `paper`+`camera-shutter` on *every* newshead reads cheap;
+   pros *establish-then-imply* a texture, not repeat it.
+7. Smaller: no music/BGM integration; no style/genre palette; a transient *on* the
+   operative syllable can smear diction (place in the micro-gap / ride a sub under);
+   no motif / sonic identity; verification is RMS, not ear.
+
+**SOTA model to aim at:** a **bed** (continuous emotional floor, arced) · **transitions**
+(sparse, motivated, leading-in) · **spot/hits** (rare, earned, ducked-to-sit) ·
+**foley** (established, not repeated) — governed by a **subtractive** philosophy,
+**section-arc** structure, **mix-integration**, **semantic** (subtext) drive, and
+**style-awareness**, verified **by ear**.
+
+**Roadmap (deliberately balanced — SFX is not the core; add craft, not rule-bloat):**
+- ✅ **Restraint** — per-family budget; whoosh as a rare accent (cross-frame gap +
+  skip-repeat). Matches the "less is more" law.
+- ⏳ **Bed / tone layer** (the #1 gap) — an **opt-in** subtle per-frame bed
+  (`sfx_design --bed <kind>`), tiled to fill, low gain, so the curated beds finally
+  carry the emotional floor. Opt-in (not an auto mood-lexicon) to avoid rule-bloat.
+- ⬜ **Ducking** (the correct mix fix, replaces the gain band-aid) — DEFERRED: it's a
+  render-side change in the faceless-explainer skill (assemble-index / renderer),
+  outside NOLAN's Python; do it as a dedicated pass, not a hack.
+- ⬜ **Section-arc + risers into reveals** — DEFERRED: needs an energy/tension model;
+  fuzzier, more rules — worth a focused build, not a bolt-on.
+- ⬜ **LLM-as-taste (propose, not just prune)** — DEFERRED: non-deterministic; design
+  the prompt + eval before trusting it to *add* cues.
+- ⬜ **Establish-then-imply de-literalization, style/theme SFX profiles, music
+  integration, motif** — refinements, DEFERRED to the doc'd backlog.
+
+Why defer the big ones: **ducking is render-side, arc/LLM are non-trivial models, and
+rushing either risks the underwiring we work to avoid.** The bed is the one
+high-conviction leap that's cleanly wireable + testable now, so it's the pick.

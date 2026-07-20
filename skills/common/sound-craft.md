@@ -46,6 +46,26 @@ the same family; hard cues land in VO gaps, never over a clause; beds duck
 under VO; **analogy/emotion beats get space, not sound**; reuse one
 whoosh/impact family per video so it reads as designed.
 
+## Craft principles (think like an SFX editor, not a spotting engine)
+
+Don't map *object on screen → sound* (that Mickey-Mouses). Ask **"what is this
+moment doing to the viewer, and what does the *soundscape* need?"** — narrative
+and emotion drive the design, not literal objects.
+
+- **VO is king.** Every choice serves narration intelligibility. A transient *on*
+  a spoken word can smear it — prefer the micro-gap after, or ride a sub *under*.
+- **Subtractive by default.** Start from silence; a cue must *earn* its place
+  (clarity, narrative, or emotion). Silence is a tool — the held beat before a
+  reveal, the drop for weight. Density is *managed*: ~2–3 tracked layers at once.
+- **Layer, don't just spot.** The full design is a **bed** (a continuous emotional
+  floor — drone / room-tone / ambience), **transitions** (sparse, motivated,
+  leading-in), **spot/hits** (rare, earned), and **foley** (established, then
+  *implied* — don't repeat the same rustle on every newspaper).
+- **Design an arc.** Tension builds across a section and releases at the turn;
+  a riser leads *into* a reveal; the close resolves. Think in sections, not scenes.
+- **Motif over randomness.** Reuse one whoosh/impact family; a recurring idea can
+  earn a recurring sound (a "money" motif) — deliberate repetition, not accident.
+
 ## The cue-kinds
 
 ## whoosh
