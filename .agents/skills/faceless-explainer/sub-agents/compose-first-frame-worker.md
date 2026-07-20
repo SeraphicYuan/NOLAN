@@ -33,12 +33,22 @@ so the assembler, captions, transitions, and lint all treat it identically. You 
      `class="clip"` + `data-start/duration/track-index` on every timed element, transform /
      opacity only, **no exit tween** unless you are the final frame, all content above the
      **83% caption keep-out**).
+   - **Choose each templated Scene's layout `variant`.** A variant-capable block (`stat`,
+     `statement`, `bullet_list`, `pull_quote`, `ledger`, `comparison_table`, `timeline`,
+     `comparison`) offers arrangements *within* the theme's macro-layout. Set `data.variant`
+     to the one the beat's meaning calls for — pick from the **composition-dialect brief in
+     the kickoff** (`.hf_kickoff.md`), which lists the variants THIS theme sanctions with
+     when-to-use. Omit it to let `author.py`/`compose.py` auto-pick (theme-constrained +
+     anti-repeat) — safe but generic; setting it is how the layout says something.
    - Keep each Scene's window (`start`/`dur`) from the shot sequence; the frame `dur` is your
      block's `duration` (already synced to real voice — never change it).
    - **Do NOT set `captionBar`** on any scene — the root caption track owns the bottom band.
-   - Pull colors / fonts from `frame.md`; the composer's defaults are the highlighter-editorial
-     preset — if `frame.md` differs, put the frame's tokens into the `raw` scenes and note
-     the mismatch (a future pass can parametrize the templates' palette).
+   - **Colours + fonts are the theme's job, applied automatically** — `author.py` injects the
+     project theme's tokens on every compose (from `hyperframes.json`), so template scenes
+     inherit them; do NOT hand-set palette on templated scenes. `frame.md` is the design-intent
+     reference (which face carries a beat, the mood); only a `raw` scene needs explicit tokens,
+     and it should reference the theme vars (`var(--accent)` / `var(--shell)` / `var(--font-display-en)`),
+     not literal hexes, so it stays theme-true across a recompose.
 3. **Write the per-frame spec** to `compositions/frames/<frame_id>.spec.json`:
    `{"frames":[{"id":"<frame_id>","dur":<duration>,"scenes":[ … ]}]}`.
 4. **If any scene is `geo`**, make the geometry libs available: copy `BRIDGE_DIR/vendor/*`

@@ -3546,8 +3546,12 @@ def _resolve_variant(block, data, prev=None, allowed=None, rot=0):
     if v in variants:
         return v                                     # explicit author/LLM override — intent always wins
     n = _content_n(data)
-    # the theme-sanctioned pool: variants the theme's allowed-archetype set permits (fallback = all)
-    pool = [name for name, m in variants.items() if not allowed or m.get("zone") in allowed]
+    # the theme-sanctioned pool: variants whose `zone` (an archetype id) the theme permits. The block's
+    # DEFAULT is ALWAYS kept — a theme filters the OPTIONAL arrangement variety, it never forbids a block
+    # its own canonical form (a theme without "ledger" still renders a ledger as `rows`, just doesn't add
+    # the extra ledger-zone variants). Fallback = all when the theme declares no composition.
+    dflt = reg.get("default")
+    pool = [name for name, m in variants.items() if not allowed or m.get("zone") in allowed or name == dflt]
     if not pool:
         pool = list(variants)
     def _fits(name):
