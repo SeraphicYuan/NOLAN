@@ -313,7 +313,7 @@ CSS = """
 .dgtitle.on-dark{color:#F6F7F6;}
 .dgtitle .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
 /* comparison: split A-vs-B; each panel hosts a typed content (image/text/stat/video) + per-side effects */
-.cmp-panel{position:absolute;overflow:hidden;background:#0d0f11;will-change:transform;}
+.cmp-panel{position:absolute;overflow:hidden;background:var(--surface);will-change:transform;}
 .cmp-media{position:absolute;inset:0;background-size:cover;background-position:center;transform-origin:50% 50%;will-change:transform;}
 .cmp-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
 .cmp-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(10,11,12,0) 42%,rgba(10,11,12,0.72));}
@@ -338,7 +338,7 @@ CSS = """
 .cmp-num .l{font-family:"Inter",sans-serif;font-weight:500;font-size:0.9cqw;letter-spacing:0.12em;text-transform:uppercase;margin-top:0.8cqw;opacity:0;}
 .cmp-num.paper .v{color:var(--text);}.cmp-num.paper .l{color:var(--text-mute);}
 .cmp-num.footage .v{color:#F6F7F6;}.cmp-num.footage .l{color:#d6d9d6;}
-.cmp-div{position:absolute;background:#0a0b0c;z-index:5;}
+.cmp-div{position:absolute;background:var(--shell);z-index:5;}
 .cmp-vs-w{position:absolute;transform:translate(-50%,-50%);z-index:6;}
 .cmp-vs{width:5.2cqw;height:5.2cqw;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;
   justify-content:center;font-weight:900;font-size:1.5cqw;letter-spacing:-0.02em;transform-origin:center;transform:scale(0);box-shadow:0 0.4cqw 1.4cqw rgba(0,0,0,0.42);}
@@ -1921,6 +1921,11 @@ def comparison(sid, sc):
         text:  {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?}
         stat:  {from,to | value, prefix?, suffix?, label, register?}}"""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
+    # P3 layout variant -> the block's existing style/axis modes (explicit data.style/axis still win)
+    _vmap = {"split": ("seamless", "vertical"), "cards": ("framed", "vertical"),
+             "over-under": ("seamless", "horizontal"), "cards-stacked": ("framed", "horizontal")}
+    if sc.get("_variant") in _vmap and "style" not in d and "axis" not in d:
+        _st, _ax = _vmap[sc["_variant"]]; d = {**d, "style": _st, "axis": _ax}
     axis = d.get("axis", "vertical")
     framed = d.get("style", "seamless") == "framed"
     backdrop = d.get("backdrop") or _page_bg()   # theme-faithful gap/ground (was a generic dark on dark themes)
