@@ -2891,6 +2891,32 @@ def _theme_shell_textsafe(theme):
     return safe
 
 
+_ALLOWED_ZONES_CACHE = {}
+
+def _theme_allowed_zones(theme):
+    """The archetype ids a theme SANCTIONS (theme.json `composition.allowed`), used to constrain layout-
+    variant selection to the theme's macro-layout dialect (a variant's `zone` is an archetype id — see
+    layout_variants.json). Returns a set, or None when the theme declares no composition field (=> no
+    constraint). This is the wire that makes a theme's declared archetype set actually SHAPE the composed
+    frame in the template path (previously read only by the bespoke agent + orchestrator)."""
+    theme = str(theme)
+    if theme in _ALLOWED_ZONES_CACHE:
+        return _ALLOWED_ZONES_CACHE[theme]
+    zones = None
+    try:
+        root = Path(__file__).resolve().parents[3] / "themes"
+        p = root / theme / "theme.json"
+        if p.exists():
+            comp = (json.loads(p.read_text(encoding="utf-8")).get("composition") or {})
+            allowed = comp.get("allowed")
+            if isinstance(allowed, list) and allowed:
+                zones = set(allowed)
+    except Exception:
+        zones = None
+    _ALLOWED_ZONES_CACHE[theme] = zones
+    return zones
+
+
 # ── Per-theme font loader (audit F3) ────────────────────────────────────────
 # The composer used to @import a FIXED 4 families (Inter/Libre Franklin/Lora/UnifrakturMaguntia), so
 # ~22/26 themes rendered their declared display type in a system FALLBACK. This loads each theme's ACTUAL
@@ -3486,33 +3512,57 @@ def _layout_variants():
 
 
 def _content_n(data):
-    """The content-shape count that drives auto-selection (stat items / bullet items / statement lines)."""
-    for k in ("items", "lines"):
+    """The content-shape count that drives auto-selection. Reads the list-shaped content key each block
+    uses (stat/bullet `items`, statement `lines`, timeline `events`, comparison_table `columns`, ledger
+    `rows`); a two-panel comparison (`left`+`right`) counts as 2. 0 when no shape key is present — the
+    variety machinery then rotates within the block's fits=[min,max] window using min as the floor."""
+    for k in ("items", "lines", "events", "columns", "rows"):
         v = data.get(k)
         if isinstance(v, list):
             return len(v)
+    if data.get("left") is not None and data.get("right") is not None:
+        return 2                                     # comparison: an intrinsically two-panel block
     return 0
 
 
-def _resolve_variant(block, data, prev=None):
-    """Hybrid variant selection: explicit data.variant wins; else auto by content count; else default.
-    A no-repeat variety rule rotates to another content-COMPATIBLE variant when the pick equals `prev`.
+def _resolve_variant(block, data, prev=None, allowed=None, rot=0):
+    """Hybrid, theme-aware variant selection. Precedence:
+      1. explicit `data.variant` (author/LLM intent) — always honoured, even off the theme's dialect;
+      2. else auto-pick, CONSTRAINED to the theme's sanctioned pool: variants whose `zone` (an archetype
+         id) is in `allowed` (the theme's composition.allowed). auto-by-content-count wins, else default,
+         else the first pool variant that fits the content, else the pool head;
+      3. variety: when the pick would repeat `prev`, rotate by `rot` (this block's occurrence index)
+         through the full set of content-fitting pool variants — so a video spreads across the whole
+         library instead of alternating two.
+    `allowed=None` (theme declares no composition) or an empty pool => no constraint (all variants).
     Returns None for a block with no variant registry (unchanged behaviour)."""
     reg = _layout_variants().get(block)
     if not reg:
         return None
     variants = reg.get("variants", {})
+    if not variants:
+        return None
     v = data.get("variant")
     if v in variants:
-        return v                                     # explicit author/LLM override
+        return v                                     # explicit author/LLM override — intent always wins
     n = _content_n(data)
-    v = reg.get("auto", {}).get(str(n)) or reg.get("default") or next(iter(variants), None)
-    if v == prev and len(variants) > 1:              # variety: avoid repeating the previous scene's variant
-        fitting = [name for name, m in variants.items()
-                   if m.get("fits", [1, 99])[0] <= (n or 1) <= m.get("fits", [1, 99])[1] and name != prev]
-        if fitting:
-            v = fitting[0]
-    return v
+    # the theme-sanctioned pool: variants the theme's allowed-archetype set permits (fallback = all)
+    pool = [name for name, m in variants.items() if not allowed or m.get("zone") in allowed]
+    if not pool:
+        pool = list(variants)
+    def _fits(name):
+        lo, hi = (variants[name].get("fits", [1, 99]) + [99])[:2]
+        return lo <= (n or 1) <= hi
+    fitting = [name for name in pool if _fits(name)] or pool   # dict-ordered, so [0] is the block default
+    auto = reg.get("auto", {}).get(str(n))
+    if auto in fitting:                              # a content-DECISIVE pick (e.g. 1 stat -> hero-single): honour it
+        cand = auto
+        if cand == prev and len(fitting) > 1:        # ...unless it repeats — then step to the next fitting variant
+            alt = [name for name in fitting if name != prev]
+            cand = alt[rot % len(alt)]
+    else:                                            # no content signal -> spread EVENLY across the fitting pool by
+        cand = fitting[rot % len(fitting)]           # occurrence index (rot); consecutive indices never repeat
+    return cand
 
 
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
@@ -3526,12 +3576,17 @@ def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
     # byte-identical to before (no wrappers), so existing frames are unaffected.
     has_trans = any((sc.get("transition_out") or {}).get("kind") in TRANSITIONS for sc in scenes)
     prev_variant = {}                            # per-block last-picked variant → no-repeat variety
+    block_rot = {}                               # per-block occurrence index → deep variety rotation
+    allowed_zones = _theme_allowed_zones(theme)  # the theme's sanctioned archetype set constrains variants
     for i, sc in enumerate(scenes):
         sc = {**sc, "id": _safe_sid(sc["id"])}   # digit-first ids break #selectors
-        _bv = _resolve_variant(sc["type"], sc.get("data", {}), prev_variant.get(sc["type"]))
+        _bt = sc["type"]
+        _bv = _resolve_variant(_bt, sc.get("data", {}), prev_variant.get(_bt),
+                               allowed=allowed_zones, rot=block_rot.get(_bt, 0))
+        block_rot[_bt] = block_rot.get(_bt, 0) + 1
         if _bv:
             sc = {**sc, "_variant": _bv}
-            prev_variant[sc["type"]] = _bv
+            prev_variant[_bt] = _bv
         f, t = BLOCKS[sc["type"]](sc["id"], sc)
         f = _stamp_archetype(f, _scene_archetype(sc))   # archetype-bias hook: DOM fact read by the layout linter
         if has_trans:
