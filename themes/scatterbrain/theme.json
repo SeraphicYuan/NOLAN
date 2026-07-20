@@ -30,7 +30,8 @@
       "sidebar",
       "timeline",
       "comparison-table",
-      "ledger"
+      "ledger",
+      "quadrant"
     ]
   },
   "decoration": [],

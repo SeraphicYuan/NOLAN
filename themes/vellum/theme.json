@@ -40,7 +40,8 @@
       "swiss-grid",
       "split-screen",
       "framed",
-      "timeline"
+      "timeline",
+      "quadrant"
     ]
   },
   "decoration": [

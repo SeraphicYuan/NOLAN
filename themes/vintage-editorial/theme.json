@@ -46,7 +46,8 @@
       "swiss-grid",
       "split-screen",
       "framed",
-      "focal-card"
+      "focal-card",
+      "quadrant"
     ]
   },
   "decoration": [

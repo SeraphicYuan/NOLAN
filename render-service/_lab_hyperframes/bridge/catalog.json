@@ -431,6 +431,27 @@
       ],
       "note": "Callout markers/lines/labels use the theme --accent; labels are theme --surface pills. Leader lines draw via strokeDashoffset (seek-safe). src must be a real asset; on-screen label text stays short."
     },
+    "quadrant": {
+      "fn": "quadrant",
+      "purpose": "A 2x2 MATRIX: two labelled axes cross the canvas into four quadrants; items plot at (x,y) and/or each quadrant carries a corner label. The axes draw out from the centre, then items pop staggered. The analytical positioning device (BCG, effort/impact, risk/reward).",
+      "when_to_use": "A beat that POSITIONS things on TWO dimensions at once: effort vs impact, cost vs quality, a 2x2 matrix, mapping trade-offs / a landscape.",
+      "not_for": "A single ranking or list (use `ledger`/`bullet_list`). A time sequence (use `timeline`). A tabular matrix of discrete options x criteria (use `comparison_table`). A one-axis magnitude (use `stat`).",
+      "data_schema": {
+        "x": "object — the horizontal axis: {label, lo?, hi?} (axis title + the two end labels)",
+        "y": "object — the vertical axis: {label, lo?, hi?}",
+        "items": "array of {x, y (0..1; 0 = left/bottom), label, hl?} — plotted points, revealed in order",
+        "quadrants": "object? — corner labels {tl?, tr?, bl?, br?} naming each quadrant",
+        "kicker": "string? — eyebrow over the top title",
+        "title": "string? — a centered top title",
+        "titleHi": "string? — substring of title to highlight with the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Axes + dots use the theme --accent/--rule; item labels are theme --text with a --surface halo. Keep on-screen labels short; item (x,y) are 0..1 fractions of the plot box."
+    },
     "lower_third": {
       "fn": "lower_third",
       "purpose": "A lower-third identifier — name + role (+ optional kicker) — the on-screen caption for talking-head / interview / podcast footage. One theme-driven block collapsing the registry's ~12 lt-* variants via a `style` param.",

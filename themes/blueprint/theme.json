@@ -46,7 +46,8 @@
       "editorial-column",
       "split-screen",
       "framed",
-      "full-bleed-overlay"
+      "full-bleed-overlay",
+      "quadrant"
     ]
   },
   "decoration": [

@@ -370,6 +370,28 @@ CSS = """
 .an-htitle .k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.82);opacity:0;margin-bottom:0.4cqw;}
 .an-htitle .t{font-weight:900;font-size:1.9cqw;letter-spacing:-0.015em;color:#F6F7F6;opacity:0;}
 .an-htitle .t .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
+/* quadrant: a 2x2 analytical matrix (quadrant archetype) */
+.qd-axis-x{position:absolute;height:4px;background:var(--rule,rgba(0,0,0,0.32));transform-origin:center;}
+.qd-axis-y{position:absolute;width:4px;background:var(--rule,rgba(0,0,0,0.32));transform-origin:center;}
+.qd-arrow{position:absolute;width:0;height:0;}
+.qd-arrow.ar{border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:15px solid var(--rule,rgba(0,0,0,0.32));transform:translate(-2px,-50%);}
+.qd-arrow.au{border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:15px solid var(--rule,rgba(0,0,0,0.32));transform:translate(-50%,-13px);}
+.qd-end{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.92cqw;letter-spacing:0.04em;color:var(--text-mute,#888);white-space:nowrap;}
+.qd-end.xhi{transform:translate(-100%,0);}
+.qd-end.yhi{transform:translate(-50%,-100%);}
+.qd-end.ylo{transform:translate(-50%,0);}
+.qd-axt{position:absolute;font-family:"Inter",sans-serif;font-weight:700;font-size:1.05cqw;letter-spacing:0.05em;text-transform:uppercase;color:var(--text);white-space:nowrap;}
+.qd-axt.xt{transform:translate(-50%,0);}
+.qd-axt.yt{transform:translate(-50%,-50%) rotate(-90deg);transform-origin:center;}
+.qd-qlabel{position:absolute;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;line-height:1.3;color:var(--text-mute);max-width:19cqw;opacity:0;}
+.qd-qlabel.r{transform:translate(-100%,0);text-align:right;}
+.qd-item{position:absolute;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);transform:translate(-50%,-50%);box-shadow:0 2px 7px rgba(0,0,0,0.32);}
+.qd-item.hl{background:var(--text);}
+.qd-ilabel{position:absolute;transform:translate(-50%,-100%);font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.2cqw;color:var(--text);white-space:nowrap;opacity:0;text-shadow:0 0 6px var(--surface),0 0 6px var(--surface);}
+.qd-htitle{position:absolute;left:0;right:0;top:0;padding:2.6cqw 3cqw 0;text-align:center;}
+.qd-htitle .k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-mute);opacity:0;margin-bottom:0.4cqw;}
+.qd-htitle .t{font-weight:900;font-size:1.9cqw;letter-spacing:-0.015em;color:var(--text);opacity:0;}
+.qd-htitle .t .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -2175,6 +2197,74 @@ def annotate(sid, sc):
     frag.append('</div>')
     return frag, tl
 
+def quadrant(sid, sc):
+    """Reusable BLOCK: a 2x2 MATRIX — two labelled axes cross the canvas into four quadrants; items plot at
+    (x,y) and/or each quadrant carries a corner label. The analytical positioning device (BCG, effort/impact,
+    this-vs-that on two dimensions). The axes draw out from the centre, then items pop staggered. Seek-safe
+    (scale/opacity), theme-driven (--accent axes/dots, --rule labels). Archetype: quadrant.
+    data: {x:{label, lo?, hi?}, y:{label, lo?, hi?}, items?:[{x,y (0..1; 0=left/bottom), label, hl?}],
+           quadrants?:{tl?,tr?,bl?,br?} (corner labels), kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    xax, yax = d.get("x", {}), d.get("y", {})
+    items = d.get("items") or []
+    quads = d.get("quadrants") or {}
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 46
+    PX, PW = 360, W - 720
+    PY = topPad + 40
+    PH = H - PY - 132
+    cx, cy = PX + PW / 2, PY + PH / 2
+    frag = [f'<div class="clip blk-quadrant" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    # optional quadrant corner labels (tl/tr/bl/br)
+    corners = {"tl": (PX + 24, PY + 20, "l"), "tr": (PX + PW - 24, PY + 20, "r"),
+               "bl": (PX + 24, PY + PH - 20, "l"), "br": (PX + PW - 24, PY + PH - 20, "r")}
+    for key, (qx, qy, al) in corners.items():
+        if quads.get(key):
+            over.append(f'<div id="{sid}-q{key}" class="qd-qlabel {al}" style="left:{qx:.0f}px;top:{qy:.0f}px;">{esc(quads[key])}</div>')
+            tl.append(f'tl.fromTo("#{sid}-q{key}",{{opacity:0}},{{opacity:1,duration:0.5}},{start+1.3});')
+    # axes (draw from centre) + arrowheads
+    over.append(f'<div id="{sid}-ax" class="qd-axis-x" style="left:{PX}px;top:{cy-2:.0f}px;width:{PW}px;"></div>')
+    over.append(f'<div id="{sid}-ay" class="qd-axis-y" style="left:{cx-2:.0f}px;top:{PY}px;height:{PH}px;"></div>')
+    over.append(f'<div class="qd-arrow ar" style="left:{PX+PW-1:.0f}px;top:{cy:.0f}px;"></div>')
+    over.append(f'<div class="qd-arrow au" style="left:{cx:.0f}px;top:{PY+1:.0f}px;"></div>')
+    tl.append(f'tl.fromTo("#{sid}-ax",{{scaleX:0}},{{scaleX:1,duration:0.6,ease:"power2.inOut",transformOrigin:"center"}},{start+0.2});')
+    tl.append(f'tl.fromTo("#{sid}-ay",{{scaleY:0}},{{scaleY:1,duration:0.6,ease:"power2.inOut",transformOrigin:"center"}},{start+0.2});')
+    # axis end labels + titles
+    ends = [("qd-end xhi", PX + PW, cy + 30, xax.get("hi")), ("qd-end xlo", PX, cy + 30, xax.get("lo")),
+            ("qd-end yhi", cx, PY - 8, yax.get("hi")), ("qd-end ylo", cx, PY + PH + 8, yax.get("lo"))]
+    for cls, ex, ey, txt in ends:
+        if txt:
+            over.append(f'<div class="{cls}" style="left:{ex:.0f}px;top:{ey:.0f}px;">{esc(txt)}</div>')
+    if xax.get("label"):
+        over.append(f'<div class="qd-axt xt" style="left:{cx:.0f}px;top:{PY+PH+52:.0f}px;">{esc(xax["label"])}</div>')
+    if yax.get("label"):
+        over.append(f'<div class="qd-axt yt" style="left:{PX-56:.0f}px;top:{cy:.0f}px;">{esc(yax["label"])}</div>')
+    # plotted items
+    for i, it in enumerate(items):
+        ix = PX + float(it.get("x", 0.5)) * PW
+        iy = PY + (1 - float(it.get("y", 0.5))) * PH
+        cid = f"{sid}-i{i}"
+        hl = " hl" if it.get("hl") else ""
+        over.append(f'<div id="{cid}-d" class="qd-item{hl}" style="left:{ix:.0f}px;top:{iy:.0f}px;"></div>')
+        over.append(f'<div id="{cid}-l" class="qd-ilabel{hl}" style="left:{ix:.0f}px;top:{iy-26:.0f}px;">{esc(it.get("label",""))}</div>')
+        cue = start + 1.0 + i * 0.32
+        tl.append(f'tl.fromTo("#{cid}-d",{{scale:0}},{{scale:1,duration:0.4,ease:"back.out(2.4)",transformOrigin:"50% 50%"}},{cue});')
+        tl.append(f'tl.fromTo("#{cid}-l",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.4}},{cue+0.18});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -2951,7 +3041,7 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "diagram": diagram, "comparison": comparison, "juxtaposition": juxtaposition,
           "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
-          "annotate": annotate,
+          "annotate": annotate, "quadrant": quadrant,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so

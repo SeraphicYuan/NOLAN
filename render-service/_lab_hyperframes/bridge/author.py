@@ -50,7 +50,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highligh
             "diagram": ["root"], "comparison": ["left", "right"], "juxtaposition": ["left", "right"],
             "gallery": ["images"],
             "carousel": ["images"], "document": ["source"], "lower_third": ["name"],
-            "annotate": ["src", "callouts"],
+            "annotate": ["src", "callouts"], "quadrant": ["x", "y"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
 
 

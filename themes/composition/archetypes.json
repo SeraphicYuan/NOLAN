@@ -328,6 +328,35 @@
         ]
       }
     },
+    "quadrant": {
+      "intent": "A two-axis positioning plot — two labelled dimensions cross into four quadrants; items sit by their (x,y) values.",
+      "when_to_use": "positioning things on TWO dimensions at once — effort vs impact, cost vs quality, risk vs reward, a 2x2 matrix, mapping trade-offs.",
+      "not_for": "a single ranking or list (use ledger/bullet_list), a time sequence (timeline), a tabular matrix of discrete options+criteria (comparison-table), a one-axis scale (stat).",
+      "serves_beats": [
+        "matrix",
+        "positioning",
+        "trade-off",
+        "two-by-two",
+        "landscape"
+      ],
+      "anchor": "a centred plot box; two axes crossing at the middle (x horizontal, y vertical) with end labels; items placed by (x,y) in 0..1 (0 = left/bottom); optional quadrant corner labels.",
+      "balance": "symmetric",
+      "density": "normal",
+      "blocks": [
+        "quadrant"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.15,
+          0.85
+        ],
+        "y": [
+          0.15,
+          0.85
+        ]
+      }
+    },
     "ledger": {
       "intent": "A dense hairline-separated row-list — ordinal, title, description, meta per row.",
       "when_to_use": "a table of contents, an index, an agenda, a catalogue, a chaptered list of items.",

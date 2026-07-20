@@ -282,7 +282,7 @@ Return JSON array:
     "id": "scene_001",
     "covers_beats": ["beat_001"],
     "visual_type": "b-roll|graphics|a-roll|generated|host",
-    "archetype": "centered-hero|editorial-column|swiss-grid|split-screen|full-bleed-overlay|focal-card|sidebar|framed|timeline|comparison-table|ledger",
+    "archetype": "centered-hero|editorial-column|swiss-grid|split-screen|full-bleed-overlay|focal-card|sidebar|framed|timeline|comparison-table|ledger|quadrant",
     "visual_description": "detailed description of what appears on screen",
     "narration_excerpt": "the key phrase from covered beats for timing alignment",
     "duration": "Xs",
@@ -308,7 +308,8 @@ GUIDELINES:
   a single number/question/thesis -> centered-hero; a comparison/before-after -> split-screen; an
   enumeration/multi-item -> swiss-grid; media/atmosphere as the hero -> full-bleed-overlay; one hero
   subject/object/card -> focal-card; a running text claim -> editorial-column; an index/label + body ->
-  sidebar; a contained chart/quote/code -> framed. Do NOT default every scene to a left column.
+  sidebar; a contained chart/quote/code -> framed; a two-axis 2x2 positioning matrix -> quadrant. Do NOT
+  default every scene to a left column.
 - ALWAYS include a concrete `comfyui_prompt` for "generated" scenes (single subject, cinematic,
   period/style-accurate)
 - For graphics with multiple data points, use sync_points to reveal items on trigger words

@@ -47,7 +47,8 @@
       "split-screen",
       "framed",
       "full-bleed-overlay",
-      "focal-card"
+      "focal-card",
+      "quadrant"
     ]
   },
   "decoration": [
