@@ -82,6 +82,16 @@
         "over-under":    {"desc": "the two panels stacked top/bottom, seamless", "zone": "split-screen", "fits": [2, 2]},
         "cards-stacked": {"desc": "two bordered cards stacked top/bottom", "zone": "split-screen", "fits": [2, 2]}
       }
+    },
+    "juxtaposition": {
+      "default": "split",
+      "auto": {},
+      "variants": {
+        "split":         {"desc": "two zones side-by-side, seamless with a thin rule + centre pivot (the A-vs-B default)", "zone": "split-screen", "fits": [2, 2]},
+        "stacked":       {"desc": "the two zones stacked top/bottom, seamless", "zone": "split-screen", "fits": [2, 2]},
+        "cards":         {"desc": "two bordered cards side-by-side over the theme ground", "zone": "split-screen", "fits": [2, 2]},
+        "cards-stacked": {"desc": "two bordered cards stacked top/bottom", "zone": "split-screen", "fits": [2, 2]}
+      }
     }
   }
 }

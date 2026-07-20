@@ -47,7 +47,8 @@ def resolve_theme(spec, cli_theme=None, out_dir=None):
 # minimum non-empty fields per scene type — the accept gate (schema lives in catalog.json)
 REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highlight"],
             "timeline": ["events"], "raw": ["html", "tl"], "newshead": ["headline"], "collage": ["subjects"],
-            "diagram": ["root"], "comparison": ["left", "right"], "gallery": ["images"],
+            "diagram": ["root"], "comparison": ["left", "right"], "juxtaposition": ["left", "right"],
+            "gallery": ["images"],
             "carousel": ["images"], "document": ["source"], "lower_third": ["name"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
 
@@ -128,6 +129,20 @@ def validate_spec(spec):
                 errs.append(f"{fid}/{sid} (geo): kind must be 'us' or 'world'")
             if t == "statement" and d.get("operative") and not any(d["operative"] in ln for ln in d.get("lines", [])):
                 errs.append(f"{fid}/{sid} (statement): operative {d['operative']!r} not found in any line")
+            if t == "comparison":                               # comparison is a VISUAL contrast — sides are image|video
+                for sk in ("left", "right"):
+                    st = (d.get(sk) or {}).get("type", "image")
+                    if st not in ("image", "video"):
+                        errs.append(f"{fid}/{sid} (comparison): {sk}.type {st!r} is not visual. Comparison sides "
+                                    f"must be image|video (a title/kicker and a `stat` number ride ONLY as an "
+                                    f"OVERLAY). For a text-vs-text / stat-vs-stat / stat-vs-text contrast use "
+                                    f"`juxtaposition`.")
+            if t == "juxtaposition":                            # juxtaposition is the NON-visual dialectic — sides are text|stat
+                for sk in ("left", "right"):
+                    st = (d.get(sk) or {}).get("type", "text")
+                    if st not in ("text", "stat"):
+                        errs.append(f"{fid}/{sid} (juxtaposition): {sk}.type {st!r} — sides must be text|stat. "
+                                    f"For an image/video contrast use `comparison`.")
     return errs
 
 

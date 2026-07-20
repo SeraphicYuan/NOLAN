@@ -350,6 +350,13 @@ CSS = """
 .cmp-htitle.light{background:linear-gradient(var(--surface),rgba(0,0,0,0));}
 .cmp-htitle.light .k{color:var(--text-mute);}.cmp-htitle.light .t{color:var(--text);}
 .cmp-panel.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
+/* juxtaposition: a TEXTUAL/numeric dialectic — centre each zone's content (balanced, clears the seam/VS)
+   and set the claim in the theme DISPLAY face for an editorial voice (vs comparison's media-overlay text).
+   Scoped by a `jx` class ON THE PANEL (the ground's blk-juxtaposition is a sibling of the panels). */
+.cmp-panel.jx .cmp-txt{left:1.5cqw;right:1.5cqw;text-align:center;}
+.cmp-panel.jx .cmp-txt .t{font-family:var(--font-display-en,inherit);font-weight:700;font-size:2.35cqw;line-height:1.14;}
+.cmp-panel.jx .cmp-txt .k{color:var(--text-mute);}
+.cmp-panel.jx.framed{border:2px solid var(--rule,rgba(0,0,0,0.14));box-shadow:0 0.8cqw 2.4cqw rgba(0,0,0,0.22);}
 .cmp-vhole{background:transparent;}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
@@ -1885,41 +1892,44 @@ def _cmp_stat(pid, spec, start, dur, reg):
         tl.append(f'tl.fromTo("#{pid}-l",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.5}},{cue+0.2});')
     return frag, tl
 
+def _cmp_overlays(pid, spec, start, dur):
+    """The text + stat OVERLAYS a comparison side may carry ON its media (comparison is a VISUAL contrast;
+    a title/kicker sweep and/or a stat number burned on the image/video are the only text/number it holds —
+    a pure text or pure stat side belongs to `juxtaposition`)."""
+    frag, tl = [], []
+    if spec.get("title") or spec.get("kicker"):
+        tf, tt = _cmp_text(pid, spec, start, dur, reg="footage", bottom=True)
+        frag += tf; tl += tt
+    if isinstance(spec.get("stat"), dict):                 # a big number overlaid on the media
+        sf, st = _cmp_stat(pid, spec["stat"], start, dur, reg="footage")
+        frag += sf; tl += st
+    return frag, tl
+
+
 def _panel_content(pid, spec, mtrack, start, dur):
-    """Dispatch one comparison side to its content type. image/video → media(+effects)+optional overlaid
-    title; text → paper/dark fill + centered statement; stat → fill + big number."""
-    t = spec.get("type", "text")
-    if t in ("image", "video"):
-        frag, tl = _cmp_media(pid, spec, mtrack, start, dur)
-        if spec.get("title") or spec.get("kicker"):
-            tf, tt = _cmp_text(pid, spec, start, dur, reg="footage", bottom=True)
-            frag += tf; tl += tt
-        return frag, tl
-    reg = spec.get("register", "paper")
-    bg = spec.get("bg", "var(--surface-2)" if reg == "paper" else "#111417")   # paper side follows the theme; explicit dark side stays dark (self-lit, light ink)
-    frag = [f'<div class="cmp-paper" style="background:{esc(bg)};"></div>']
-    if t == "stat":
-        f2, t2 = _cmp_stat(pid, spec, start, dur, reg)
-    else:  # text
-        f2, t2 = _cmp_text(pid, spec, start, dur, reg=("paper" if reg == "paper" else "footage"), bottom=False)
-    return frag + f2, t2
+    """One comparison side = an IMAGE fill (+Ken-Burns/scrim/vignette/grayscale/tint) + its overlays.
+    VIDEO sides are mounted inline by comparison() (root-video hole); this handles the image case."""
+    frag, tl = _cmp_media(pid, spec, mtrack, start, dur)
+    of, ot = _cmp_overlays(pid, spec, start, dur)
+    return frag + of, tl + ot
 
 def comparison(sid, sc):
-    """Reusable BLOCK: a split A-vs-B / before-after CONTRAST. The canvas splits into two panels
+    """Reusable BLOCK: a split A-vs-B / before-after VISUAL CONTRAST. The canvas splits into two panels
     (vertical=side-by-side default, horizontal=stacked); each panel slides in; a divider draws + an
-    optional center VS badge. Each side (`left`/`right`) is ANY content type — an `image` (Ken-Burns +
-    scrim/vignette/grayscale/tint), a `text` block, a `stat`, or a real `video`. Two `style`s: `seamless`
-    (panels tile, thin divider) or `framed` (bordered cards with a gap + backdrop). Seek-safe, one timeline.
+    optional center VS badge. Each side (`left`/`right`) is a VISUAL — an `image` (Ken-Burns +
+    scrim/vignette/grayscale/tint) or a real `video`; text (title/kicker) and a `stat` number ride ONLY as
+    OVERLAYS on that media. A pure text-vs-text / stat-vs-stat / stat-vs-text contrast is NOT this block —
+    it is `juxtaposition` (the gate rejects a non-visual side here). Two `style`s: `seamless` (panels tile,
+    thin divider) or `framed` (bordered cards with a gap + backdrop). Seek-safe, one timeline.
       VIDEO uses archetype B: the panel is a transparent HOLE; the actual <video> is mounted at the INDEX
       root by `inject_comparison_videos.py` (positioned to the panel rect) — the framework's only legal
       motion-video path. So a video-vs-video is literally two stacked root videos with the frame's chrome on top.
     data: {left:{type, ...}, right:{type, ...}, axis?:vertical|horizontal, style?:seamless|framed,
            backdrop?:color, vs?:bool|str, kicker?, title?, titleHi?}.
-      side spec: {type:image|video|text|stat, label?, + type fields:
-        image: {src, kenburns?:[f,t]|bool, scrim?, vignette?, grayscale?, tint?, kicker?, title?, highlight?}
-        video: {src, media_start?, scrim?, grayscale?, kicker?, title?, highlight?}  (mounted at index root)
-        text:  {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?}
-        stat:  {from,to | value, prefix?, suffix?, label, register?}}"""
+      side spec: {type:image|video, label?, + type fields:
+        image: {src, kenburns?:[f,t]|bool, scrim?, vignette?, grayscale?, tint?, kicker?, title?, highlight?, stat?}
+        video: {src, media_start?, scrim?, grayscale?, kicker?, title?, highlight?, stat?}  (mounted at index root)
+        stat OVERLAY (on either): {from,to | value, prefix?, suffix?, label?} — a number burned on the media."""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     # P3 layout variant -> the block's existing style/axis modes (explicit data.style/axis still win)
     _vmap = {"split": ("seamless", "vertical"), "cards": ("framed", "vertical"),
@@ -1971,9 +1981,8 @@ def comparison(sid, sc):
             inner_f, inner_t = [], []
             if spec.get("scrim", True):
                 inner_f.append('<div class="cmp-scrim"></div>')
-            if spec.get("title") or spec.get("kicker"):
-                tf, tt = _cmp_text(pid, spec, start, dur, reg="footage", bottom=True)
-                inner_f += tf; inner_t += tt
+            of, ot = _cmp_overlays(pid, spec, start, dur)   # title/kicker + optional stat, on the root video
+            inner_f += of; inner_t += ot
         else:
             inner_f, inner_t = _panel_content(pid, spec, 5 + k, start, dur)
         frag += inner_f
@@ -2008,6 +2017,86 @@ def comparison(sid, sc):
         # the title scrim is DARK (light text) so it reads over media panels; over text/stat panels on a
         # light theme that dark band clashes → flip to a theme-surface scrim + theme ink.
         light_title = _POLARITY == "light" and not any(s.get("type") in ("image", "video") for s in sides)
+        frag.append(f'<div class="cmp-htitle{" light" if light_title else ""}">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    frag.append('</div>')
+    return frag, tl
+
+def juxtaposition(sid, sc):
+    """Reusable BLOCK: a NON-VISUAL A-vs-B — two claims or two numbers set against each other on a
+    typographic axis. This is the RHETORICAL / NUMERIC contrast (`comparison` is for images/video); each
+    side is `text` (a short statement) or `stat` (a big number + label). Two zones slide in on the theme
+    surface, a rule draws between them, an optional centre VS/pivot lands. Editorial type, theme-driven
+    (--text/--accent), seek-safe, one merged timeline. Split-screen archetype.
+    data: {left:{type:text|stat,...}, right:{type:text|stat,...}, axis?:vertical|horizontal, vs?:bool|str,
+           kicker?, title?, titleHi?, backdrop?}.
+      side text: {kicker?, lines:str|[str] (or title), highlight?, reveal?}
+      side stat: {value | from,to, prefix?, suffix?, label?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    # P3 layout variant -> axis + framed (explicit data.axis still wins)
+    _vmap = {"split": ("vertical", False), "stacked": ("horizontal", False),
+             "cards": ("vertical", True), "cards-stacked": ("horizontal", True)}
+    variant = sc.get("_variant") if sc.get("_variant") in _vmap else "split"
+    axis, framed = _vmap[variant]
+    axis = d.get("axis", axis)
+    W, H = 1920, 1080
+    M = 50 if framed else 0
+    G = 40 if framed else 6
+    topPad = 150 if (d.get("title") or d.get("kicker")) else 0
+    sides = [d["left"], d["right"]]
+    ground = d.get("backdrop") or _page_bg()
+    frag = [f'<div class="clip blk-juxtaposition sv-{variant}" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="0" style="position:absolute;inset:0;background:{esc(ground)};"></div>']
+    tl = []
+    top = topPad + M
+    if axis == "horizontal":
+        ph = (H - top - M - G) // 2
+        geoms = [("top", M, top, W - 2 * M, ph), ("bottom", M, top + ph + G, W - 2 * M, ph)]
+        div_style = f"left:0;top:{topPad+(H-topPad)//2-3}px;width:{W}px;height:6px;transform-origin:left center;"
+        div_prop = "scaleX"
+    else:
+        pw = (W - 2 * M - G) // 2
+        geoms = [("left", M, top, pw, H - top - M), ("right", M + pw + G, top, pw, H - top - M)]
+        div_style = f"left:{W//2-3}px;top:{topPad}px;width:6px;height:{H-topPad}px;transform-origin:center;"
+        div_prop = "scaleY"
+    for k, (spec, geom) in enumerate(zip(sides, geoms)):
+        side, gx, gy, gw, gh = geom
+        pid = f"{sid}-{'l' if k == 0 else 'r'}"
+        fcls = " framed" if framed else ""
+        frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="{1+k}" '
+                    f'style="position:absolute;inset:0;">'
+                    f'<div id="{pid}" class="cmp-panel jx{fcls}" style="left:{gx}px;top:{gy}px;width:{gw}px;height:{gh}px;'
+                    f'background:{"var(--surface)" if framed else "transparent"};">')
+        if spec.get("type") == "stat":
+            f2, t2 = _cmp_stat(pid, spec, start, dur, reg="paper")
+        else:
+            tspec = {**spec, "title": spec.get("lines", spec.get("title"))}
+            f2, t2 = _cmp_text(pid, tspec, start, dur, reg="paper", bottom=False)
+        frag += f2
+        frag.append('</div></div>')
+        tl += t2
+        pcue = start + (0.1 if k == 0 else 0.3)
+        ax, off = {"left": ("xPercent", -10), "right": ("xPercent", 10),
+                   "top": ("yPercent", -10), "bottom": ("yPercent", 10)}.get(side, ("xPercent", 0))
+        tl.append(f'tl.fromTo("#{pid}",{{opacity:0,{ax}:{off}}},{{opacity:1,{ax}:0,duration:0.7,ease:"power3.out"}},{pcue});')
+    frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" style="position:absolute;inset:0;pointer-events:none;">')
+    if not framed:
+        frag.append(f'<div id="{sid}-div" class="cmp-div" style="{div_style}"></div>')
+        tl.append(f'tl.fromTo("#{sid}-div",{{{div_prop}:0}},{{{div_prop}:1,duration:0.5,ease:"power2.inOut"}},{start+0.2});')
+    if d.get("vs"):
+        cx, cy = W // 2, topPad + (H - topPad) // 2
+        frag.append(f'<div class="cmp-vs-w" style="left:{cx}px;top:{cy}px;"><div id="{sid}-vs" class="cmp-vs">'
+                    f'{esc(d["vs"] if isinstance(d["vs"], str) else "VS")}</div></div>')
+        tl.append(f'tl.fromTo("#{sid}-vs",{{scale:0}},{{scale:1,duration:0.5,ease:"back.out(2.2)"}},{start+0.7});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}'
+                  if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        light_title = _POLARITY == "light"        # jx panels are always paper/text → theme-surface scrim
         frag.append(f'<div class="cmp-htitle{" light" if light_title else ""}">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
         if d.get("kicker"):
             tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
@@ -2789,7 +2878,8 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "bullet_list": bullet_list, "pull_quote": pull_quote,
           "comparison_table": comparison_table, "ledger": ledger_list,
           "timeline": timeline, "newshead": newshead, "collage": collage,
-          "diagram": diagram, "comparison": comparison, "gallery": gallery, "carousel": carousel,
+          "diagram": diagram, "comparison": comparison, "juxtaposition": juxtaposition,
+          "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
           "code": code, "social_card": social_card}
 

@@ -250,20 +250,20 @@
     },
     "comparison": {
       "fn": "comparison",
-      "purpose": "A split A-vs-B / before-after CONTRAST: two panels (side-by-side or stacked), a divider that draws + an optional center VS badge, each panel sliding in. Each side is ANY content — an image (Ken-Burns + effects), a text block, a stat, or a framework video.",
-      "when_to_use": "A beat that directly CONTRASTS two things: X vs Y, before vs after, us vs them, promise vs reality, then vs now — where each side needs its own visual (a photo, a claim, a number, footage).",
-      "not_for": "A single subject or ground (use statement/stat/media_ground). More than two things (use stat items or a diagram). A side-by-side that isn't a contrast.",
+      "purpose": "A split A-vs-B / before-after VISUAL CONTRAST: two panels (side-by-side or stacked), a divider that draws + an optional center VS badge, each panel sliding in. Each side is a VISUAL — an image (Ken-Burns + effects) or a framework video; a title/kicker and a stat number ride only as OVERLAYS.",
+      "when_to_use": "A beat that CONTRASTS two things VISUALLY: this photo vs that photo, before vs after footage, the map then vs now — where each side is an image or video.",
+      "not_for": "A text-vs-text / stat-vs-stat / stat-vs-text contrast (use `juxtaposition`). A single subject (use statement/stat/media_ground). More than two things (use a diagram or gallery).",
       "data_schema": {
-        "left": "object — the first side's content spec (see side spec below)",
-        "right": "object — the second side's content spec",
+        "left": "object — the first side's VISUAL spec (image|video; see side spec)",
+        "right": "object — the second side's VISUAL spec",
         "axis": "enum(vertical|horizontal) — vertical = side-by-side (default), horizontal = stacked top/bottom",
         "style": "enum(seamless|framed) — seamless = panels tile with a thin divider (default); framed = bordered cards with a gap on a backdrop",
-        "backdrop": "color? — canvas/gap fill behind framed cards (default #0a0b0c); also the body colour a video side shows against",
+        "backdrop": "color? — canvas/gap fill behind framed cards (default: the theme surface); also the body colour a video side shows against",
         "vs": "bool | string? — center badge; true → 'VS', or a custom short string",
         "kicker": "string? — eyebrow over a centered top title",
         "title": "string? — a centered frame title spanning both panels",
         "titleHi": "string? — substring of title to highlight yellow",
-        "_side_spec": "each side: {type, label?, …type fields}. label = a corner chip (e.g. 'BEFORE'/'2019'). type ∈ image|video|text|stat: image/video {src, kenburns?:[from,to]|bool (default on), scrim?, vignette?:0..1, grayscale?, tint?:color, media_start? (video), kicker?, title?, highlight? (overlaid)}; text {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?:color, reveal?:rise|char|word|flip|typewriter|scramble|decode|gradient|glitch (per-panel; reveals the title, see the 'reveals' catalog)}; stat {from,to | value, prefix?, suffix?, label, register?:paper|footage}",
+        "_side_spec": "each side: {type:image|video, label?, …}. label = a corner chip (e.g. 'BEFORE'). image {src, kenburns?:[from,to]|bool (default on), scrim?, vignette?:0..1, grayscale?, tint?:color, kicker?, title?, highlight?}; video {src, media_start?, scrim?, grayscale?, kicker?, title?, highlight?} (mounted at index root). OVERLAY on either: stat {from,to | value, prefix?, suffix?, label?} → a big number burned on the media. A pure text/stat SIDE is rejected by the gate → use `juxtaposition`.",
         "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): split|cards|over-under|cards-stacked. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "constraints": [
@@ -272,6 +272,30 @@
         "transform_opacity_only"
       ],
       "note": "A `video` side renders as a TRANSPARENT HOLE (the framework can't drive <video> inside a sub-comp); after composing, run `python bridge/inject_comparison_videos.py <project>` to mount each clip as a real <video> at the index root, positioned to the panel rect (archetype B). So a video-vs-video is two stacked root videos with the frame's chrome on top. image/text/stat are fully self-contained (no inject step). All src/image paths must be real assets; on-screen text stays short (caption track carries narration)."
+    },
+    "juxtaposition": {
+      "fn": "juxtaposition",
+      "purpose": "A NON-VISUAL A-vs-B: two claims or two numbers set against each other on a typographic axis — two zones slide in on the theme surface, a rule draws between them, an optional centre VS/pivot lands. Editorial display type, accent operative. This is the rhetorical/numeric contrast comparison is NOT for.",
+      "when_to_use": "A beat that CONTRASTS two things in WORDS or NUMBERS: what they promised vs what it cost, 12% vs 88%, the claim vs the rebuttal, then vs now as figures — where neither side is an image.",
+      "not_for": "A VISUAL contrast — two photos/videos (use `comparison`). A single claim (use `statement`). A single number (use `stat`). More than two things (use a diagram/ledger/bullet_list).",
+      "data_schema": {
+        "left": "object — the first side: {type:text|stat, …} (see below)",
+        "right": "object — the second side: {type:text|stat, …}",
+        "axis": "enum(vertical|horizontal)? — vertical = side-by-side (default), horizontal = stacked top/bottom",
+        "vs": "bool | string? — centre pivot badge; true → 'VS', or a custom short word ('BUT', '=', '→')",
+        "kicker": "string? — eyebrow over a centered top title",
+        "title": "string? — a centered frame title spanning both zones",
+        "titleHi": "string? — substring of title to highlight with the accent",
+        "backdrop": "color? — ground fill (default: the theme surface)",
+        "_side_spec": "each side: text {kicker?, lines:str|[lines] (or title), highlight?, reveal?:rise|char|word|flip|typewriter|scramble|decode|gradient|glitch}; stat {from,to | value, prefix?, suffix?, label?, kicker?}",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): split|stacked|cards|cards-stacked. See themes/composition/layout_variants.json."
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Split-screen archetype (textual). Fully self-contained (no inject step). On-screen text stays short — the caption track carries narration; these are the operative CONTRAST words/numbers only."
     },
     "gallery": {
       "fn": "gallery",

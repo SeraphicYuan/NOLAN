@@ -123,6 +123,43 @@ legible with zero training:
 (The exact set is a v1 proposal — settle it with the team; the mapping shows it fits what you already
 have rather than importing an abstraction.)
 
+### 4a. Block ↔ archetype is MANY-to-MANY, bridged by `variant.zone` (as-built, 2026-07)
+
+The clean intuition "one block = one archetype" is **wrong**, and forcing it would throw away real
+capability. After the layout-variant system (`themes/composition/layout_variants.json`) and the
+theme-constrained resolver (`compose.py::_resolve_variant`), the truth is:
+
+- **A block occupies MULTIPLE archetypes, chosen by its VARIANT.** A `stat`'s `hero-single` variant is
+  `centered-hero`; its `lead-rail` is `sidebar`; its `stack-left` is `editorial-column`. Each variant
+  declares a **`zone`** = an archetype id. So the real, fine-grained "this scene is *that* archetype"
+  signal is **`variant.zone`**, not the coarse `blocks[]` list.
+- **`block_archetype()` (derived from each archetype's `blocks[]`) is a LEGACY DEFAULT** — the archetype
+  a block sits in when it has no variant, and the value stamped for the layout linter. It is deliberately
+  first-wins and many-to-one (`diagram` is listed under both `swiss-grid` and `framed`; `document` under
+  `focal-card` and `framed`). Do NOT try to make it 1:1.
+- **`sidebar` has no base block on purpose** — it is realized entirely through variants
+  (`stat.lead-rail`, `statement.rail-accent`, `bullet_list.numbered-rail`, `timeline.vertical`). An
+  archetype needs a realizing block OR a realizing variant, not a dedicated block.
+- **The theme is the gate.** `theme.composition.allowed` lists archetype ids; `_resolve_variant` keeps
+  only variants whose `zone ∈ allowed` (plus the block's default, always). So a block's *available*
+  arrangements are the intersection of (its variant zones) × (the theme's dialect). This is the wire that
+  makes the theme actually shape layout, and it is surfaced to authoring by
+  `nolan.hyperframes.layout_brief.theme_layout_brief`.
+
+**Why many-to-many is correct, not a defect:** a `diagram` genuinely *is* both a swiss-grid (radial/flow)
+and a framed artefact (a bordered figure) depending on the beat; a `comparison` is split-screen but its
+`cards` variant reads as focal cards. Layout is a function of block **and** variant **and** theme — not a
+property of the block alone.
+
+**Discipline for expanding the arsenal (mandatory — else we re-introduce under-wiring):**
+1. A **new block** declares its home archetype(s) in `archetypes.json` `blocks[]` AND, if it has layout
+   variants, a `layout_variants.json` entry whose every variant carries a valid `zone` (an archetype id).
+2. A **new archetype** is added to `archetypes.json` (intent/when_to_use/serves_beats/anchor/zone) AND to
+   the relevant themes' `composition.allowed` — otherwise no theme sanctions it and it never renders.
+3. Coverage stays honest: **every archetype is realized by ≥1 block or variant; every block maps to ≥1
+   archetype** (honesty-tested). Samples + variants for the new block/archetype are generated onto the
+   themes page (`gen_samples.py`, `gen_block_probe.py`) so the arsenal is *visible*, not just declared.
+
 ## 5. Why this is LLM-friendly (the C/D lesson, generalised)
 
 - **Named semantic archetypes over pixel math** — LLMs reason well about "rule of thirds" and "centered

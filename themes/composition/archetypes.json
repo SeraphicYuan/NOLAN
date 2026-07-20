@@ -115,7 +115,7 @@
     },
     "split-screen": {
       "intent": "Two zones side by side, in dialogue.",
-      "when_to_use": "a comparison, before/after, this-vs-that, a two-sided argument.",
+      "when_to_use": "a comparison, before/after, this-vs-that, a two-sided argument (VISUAL via comparison, TEXTUAL/numeric via juxtaposition).",
       "not_for": "a single idea, or more than two items (use swiss-grid).",
       "serves_beats": [
         "comparison",
@@ -128,7 +128,8 @@
       "balance": "symmetric",
       "density": "normal",
       "blocks": [
-        "comparison"
+        "comparison",
+        "juxtaposition"
       ],
       "exemplar": null,
       "zone": {
