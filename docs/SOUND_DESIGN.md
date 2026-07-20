@@ -248,8 +248,9 @@ layered design**. Every gap below flows from that.
    *release* at the turn; we decide each scene in isolation and **never use `riser`**
    to build into a reveal. No trajectory.
 3. **Placement ≠ mixing.** Pros duck the VO under a hit, EQ-carve, pan, add space. We
-   have a static family gain and **no ducking in HF** — the gain-boost band-aid is a
-   symptom (buried at low gain, clashing at high).
+   had a static family gain and no ducking in HF — the gain-boost band-aid was a symptom
+   (buried at low gain, clashing at high). *Ducking now shipped (`--duck`, below); EQ/pan/
+   space remain.*
 4. **Additive-by-default; great sound is subtractive.** Default should be *silence*;
    a cue must *earn* its place; density is *managed* (~2–3 tracked layers, Murch).
 5. **Semantically blind** — reads `$`/`operative`/`type`, not irony/dread/revelation.
@@ -275,9 +276,16 @@ layered design**. Every gap below flows from that.
   --bed-frames <range>` underscores a *section* (a bed under every frame overwhelms —
   the arc/subtractive principle in action), tiled to fill, low gain (`hf_gain` bed
   ×1.4). Requires an explicit range; no `--bed-frames` → no bed (deliberate, not auto).
-- ⬜ **Ducking** (the correct mix fix, replaces the gain band-aid) — DEFERRED: it's a
-  render-side change in the faceless-explainer skill (assemble-index / renderer),
-  outside NOLAN's Python; do it as a dedicated pass, not a hack.
+- ✅ **Ducking** (the correct mix fix, replaces the gain band-aid) — `nolan.hyperframes.
+  sfx_mix` / `hf-finish --duck`. Real ducking must be a **post-mix** (once the renderer
+  bakes VO+SFX into one track you can't duck one under the other), and the clean path is
+  **NOLAN-side, no render-skill change**: render VO(+bgm)-only, then ffmpeg mixes the SFX
+  on top with the render audio **`sidechaincompress`-ducked** under each cue. Cues play at
+  their honest **registry** gain (0.25–0.30), not the hot `hf_gain` the flat mount needs.
+  Amplitude only — **zero re-alignment** (word-sync/captions/scene-on-word are time-based
+  and untouched). Reuses `collect_scene_sfx_events` for staging/tiling; mutually exclusive
+  with the flat mount (`--duck` skips step 4b). Verified on homer: `ducked < flat` at every
+  cue (VO makes room) yet `ducked > baseline` (still audible).
 - ⬜ **Section-arc + risers into reveals** — DEFERRED: needs an energy/tension model;
   fuzzier, more rules — worth a focused build, not a bolt-on.
 - ⬜ **LLM-as-taste (propose, not just prune)** — DEFERRED: non-deterministic; design
@@ -285,6 +293,8 @@ layered design**. Every gap below flows from that.
 - ⬜ **Establish-then-imply de-literalization, style/theme SFX profiles, music
   integration, motif** — refinements, DEFERRED to the doc'd backlog.
 
-Why defer the big ones: **ducking is render-side, arc/LLM are non-trivial models, and
-rushing either risks the underwiring we work to avoid.** The bed is the one
-high-conviction leap that's cleanly wireable + testable now, so it's the pick.
+Ducking turned out **not** to be render-side after all — a NOLAN-side post-mix does it
+cleanly (see above), so it shipped. Still deferred: **arc/LLM are non-trivial models**
+(an energy model; a prompt+eval before an LLM is trusted to *add* cues), worth focused
+builds, not bolt-ons. Remaining mix craft (EQ, pan, reverb/space) is lower-conviction for
+a mostly-centered video essay.

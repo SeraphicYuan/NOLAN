@@ -131,6 +131,57 @@ def test_apply_scene_sfx_end_to_end(tmp_path, monkeypatch):
     assert len(json.loads((tmp_path / "audio_meta.json").read_text(encoding="utf-8"))["sfx"]) == 1
 
 
+def test_collect_scene_sfx_does_not_touch_audio_meta(tmp_path, monkeypatch):
+    """The shared collector stages + returns events but must NOT write audio_meta
+    (only apply_scene_sfx merges) — so the ducked sfx_mix reuses it with no double-write."""
+    from nolan.hyperframes import edit as _edit
+    from nolan.hyperframes.sound import collect_scene_sfx_events
+
+    (tmp_path / "audio_meta.json").write_text(
+        json.dumps({"voices": [{"frame": 1}], "sfx": []}), encoding="utf-8")
+    bank = tmp_path / "_bank"
+    bank.mkdir()
+    (bank / "w.wav").write_bytes(b"RIFF....WAVE")
+    (bank / "sfx.json").write_text(json.dumps(
+        [{"curated": True, "kind": "whoosh", "file": "w.wav", "id": "1", "rating": 5,
+          "duration": 0.4}]), encoding="utf-8")
+    frame = {"frames": [{"id": "01-x", "scenes": [
+        {"id": "s1", "start": 0.0, "data": {"sfx": [{"cue": "whoosh"}]}}]}]}
+    monkeypatch.setattr(_edit, "_project_dir", lambda c: tmp_path)
+    monkeypatch.setattr(_edit, "list_frames", lambda c: [{"id": "01-x"}])
+    monkeypatch.setattr(_edit, "load_frame_spec", lambda c, fid: (frame, {"i": 0}))
+    monkeypatch.setattr("nolan.sound.resolve.library_dir", lambda: bank)
+
+    c = collect_scene_sfx_events("dummy")
+    assert len(c["events"]) == 1 and c["staged"]
+    assert json.loads((tmp_path / "audio_meta.json").read_text(encoding="utf-8"))["sfx"] == []
+
+
+def test_ducked_mix_uses_absolute_time_and_registry_gain(tmp_path):
+    """sfx_mix maps cues to ABSOLUTE time (cumulative VO) and plays them at the ducked-tuned
+    REGISTRY gain — NOT the hot hf_gain the flat render-mount stores (the duck makes the room)."""
+    from nolan.hyperframes.sfx_mix import _events_absolute
+    from nolan.sound.registry import BY_ID
+
+    (tmp_path / "assets" / "sfx").mkdir(parents=True)
+    (tmp_path / "assets" / "sfx" / "k.wav").write_bytes(b"RIFF....WAVE")
+    am = {"voices": [{"frame": 1, "duration_s": 10.0}, {"frame": 2, "duration_s": 5.0}]}
+    events = [
+        {"frame": 1, "file": "assets/sfx/k.wav", "offset_s": 2.0, "kind": "impact-hard", "volume": 0.99},
+        {"frame": 2, "file": "assets/sfx/k.wav", "offset_s": 1.0, "kind": "impact-hard", "volume": 0.99},
+    ]
+    evs = _events_absolute(tmp_path, am, events)
+    assert [round(t, 2) for t, _, _ in evs] == [2.0, 11.0]          # frame 2 starts at 10s → 10+1
+    assert all(abs(v - BY_ID["impact-hard"].gain) < 1e-9 for _, _, v in evs)  # registry, not 0.99
+
+
+def test_finish_duck_mode_post_mixes_via_sfx_mix():
+    from pathlib import Path as _P
+    src = _P("src/nolan/hyperframes/finish.py").read_text(encoding="utf-8")
+    assert "--duck" in src and "sfx_mix" in src, "finish --duck must post-mix via sfx_mix"
+    assert "deferred" in src, "duck mode must SKIP the flat mount (defer SFX to the post-mix)"
+
+
 def test_sfx_design_reads_both_signals(tmp_path, monkeypatch):
     """The pairing operator places from the VISUAL (spec) AND VERBAL (transcript)."""
     from nolan.hyperframes import edit as _edit

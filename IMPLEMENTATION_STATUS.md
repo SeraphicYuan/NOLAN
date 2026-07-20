@@ -4,6 +4,111 @@
 **Status:** Complete
 **Last Updated:** 2026-07-20
 
+## Ducked SFX post-mix — gap D (2026-07-20)
+
+The HF render mounts SFX as flat, parallel `<audio>` tracks (no VO-ducking), so a cue over speech
+had to be pushed HOT to cut through (the data-punch measured +4097 over VO). Real ducking can't be
+done render-side — once VO+SFX are baked into one track you can't duck one under the other — so it's
+a NOLAN-side POST-MIX, no render-skill change:
+
+- `src/nolan/hyperframes/sfx_mix.py` — render VO(+bgm)-only, then ffmpeg mixes the SFX on top with the
+  render audio `sidechaincompress`-ducked under each cue. Cues play at their honest **registry** gain
+  (0.25-0.30), not the hot `hf_gain` the flat mount needs. Amplitude only → ZERO re-alignment
+  (word-sync/captions/scene-on-word are time-based, untouched).
+- `sound.py` refactor: extracted `collect_scene_sfx_events` (stage + tile, no audio_meta write) shared
+  by `apply_scene_sfx` (flat mount) and `sfx_mix` (ducked) — no duplicated staging, no double-write.
+- `hf-finish --duck`: skips the flat mount (step 4b), renders VO-only, post-mixes → `renders/video.mp4`
+  in place (idempotent; the VO-only render always precedes the mix, so no double-mix). Mutually
+  exclusive with the flat mount.
+- `system_map` UMBRELLA_WIRING['sound'].executed_by += `sfx_mix`; 3 new tests in `tests/test_sound.py`
+  (collect doesn't touch audio_meta; absolute-time + registry-gain mapping; finish --duck wires sfx_mix).
+
+Verified on homer: `ducked < flat` at every cue (VO makes room) yet `ducked > baseline` (still audible).
+Also a **bank quality pass** (gap E): fixed weak top-picks per kind (camera-shutter iPhone->classic click,
+stinger radio-cuba->Stingers-and-Stabs, tension-drone ScaryViolins->Dark-Piano, room-tone birds->interior
+ambience, machine-hum lights-flicker->Electricity; removed a scream mis-filed as a bed). 120 curated.
+See `docs/SOUND_DESIGN.md` (roadmap: ducking ✅).
+
+## Reveal-sync program — 6 craft/structure improvements (2026-07-20)
+
+Follow-on to the reveal-sync fix below; six high-conviction gaps closed, tested each step:
+
+- **#5 Reveal-CHARACTER pool** (`compose.py`): a registry `REVEAL_CHARS` of 5 entrance personalities —
+  `settle` (default), `snap` (hard shock), `build` (gradual trend/total), `drift` (soft ambient),
+  `stamp` (emphatic pop) — each an ease + duration-scale. The scheduler owns WHEN a reveal fires; the
+  character owns HOW. Authored per data scene as `data.reveal_char` (distinct from `data.reveal`, the
+  per-letter TEXT style); executor is `_reveal_ease(d)` + `_reveal_dur(..., d=d)` wired into all 12
+  data-viz blocks (14 sites). Module contract: catalog `reveal_chars` parity (check_catalog) + a
+  consumption honesty test (check_reveal_sync renders snap vs build and requires the tween to differ) +
+  AUTHOR_PROMPT docs. 
+- **#4 Legibility-aware VEIL** (`compose._data_ground`): the image-ground veil is no longer a flat wash
+  — a `color-mix` radial gradient, STRONGEST at the centre+baseline where marks/labels cluster, lighter
+  at the top so the photo breathes; an edge floor keeps corners legible. Polarity-correct (surface
+  colour). Render-verified: top shows image detail, bars stay crisp.
+- **#2 Scene-placement robustness** (`sync._resolve_scene_starts`): scene placement now uses the same
+  number-aware `_phrase_time` as element `at`, and INTERPOLATES unresolved scenes between resolved
+  anchors instead of dumping the whole frame to proportional. The aligner's zero-confidence fuzzy hits
+  are nulled (not trusted). Acid essay: 0 frames on proportional fallback (was dumping frames).
+- **#1 Scene-window RELIEVER** (`sync._relieve_short_windows`): no scene renders below its readable
+  floor — a squeezed sub-MIN_READABLE scene borrows slack from roomy neighbours (never pushing them
+  under their own floor); genuinely over-packed frames report a residual instead of silently squeezing.
+  Acid essay: the two 0.5s illegible scale flashes → 0 SHORT windows.
+- **#6 Critic→author loop** (`author.selection_warnings`): the structural selection critic
+  (`sync._selection_advice` — the ONE implementation) now also fires at AUTHORING time in the compose
+  gate, so the agent hears "these links form a tree → use diagram" / "sparse data on a long hold →
+  anchor/ground/split" before the render spend, not after.
+- **#3 Auto-ground PAIRING** (`nolan.hyperframes.autoground`): for each long ungrounded data scene, an
+  LLM picks a thematically-apt pool image (semantic — a spend chart → data-centre aerial, a shell-web →
+  redacted dockets, "running dry" → parched earth; validated: the LLM reproduced the hand-picks), with
+  a deterministic keyword scorer + paper fallback so a wrong photo never lands. `python -m
+  nolan.hyperframes.autoground <comp> [--apply]`.
+
+Also fixed two infra bugs the datacenter rerun surfaced: `quickedit._fit_cmd` now outputs CFR 30fps
+(VFR fitted grounds broke the whole-render extractor → blocked captions); `finish.py` long-hold
+advisory passed the comp name not path; cycle arc arrowheads gated on opacity (SVG marker-end painted
+before its arc drew, exposed once reveals spread). 293-test affected suite + both bridge honesty tests
+green. Full datacenter essay re-rendered 7:48 WITH captions.
+
+## Data-block reveal sync — the 3-layer fix + selection critic (2026-07-20)
+
+Closed the "data blocks read as a static slide" gap: chart/stat/data blocks used to reveal all
+content on a hardcoded `cue = start + LEAD + i*STEP` stagger — front-loaded in ~2s, then a frozen
+hold, numbers popping *before* the VO says them (the ai-datacenter-debate acid test flagged
+STATIC-HOLD on every data frame). Four coordinated changes:
+
+- **Layer 1 — shared reveal scheduler** (`compose.py` `_reveal_times`/`_reveal_dur`/`_reveal_cues`):
+  every data block's reveals now SPREAD across the block's full window (a 5-item, 14s hold goes from
+  0.6→8.7s instead of cramming into 2s); count-up/draw durations scale to fill their beat. All 19
+  data-block reveal sites rewired off the hardcoded stagger. Precedence `_cue`(aligner) > `cue`
+  (author) > auto-spread; the `(n-1)*2.4` cap stops a sparse block from over-delaying.
+- **Layer 2 — per-element narration anchors** (`hyperframes/sync.py` `_retime_reveals`, now generic):
+  any data element carrying `at` (a spoken phrase) is pulled onto its narration time (`_cue`,
+  absolute) so a number reveals AS it's said; un-anchored elements keep the spread. Field-name-
+  agnostic (covers every data block + future ones). Numbers canonicalized on both sides
+  (`_collapse_nums`) so a spelled-out anchor ('nine hundred million') lands on Whisper's digits
+  ('900 million'); '60%' ≡ 'sixty percent'.
+- **Layer 3 — ambient ground** (`compose.py` `_data_ground`): every data-viz block accepts an optional
+  `data.ground` (image+Ken-Burns / paper stock / transparent-over-root-video) rendered BEHIND the
+  data, ALWAYS with a legibility veil in the theme surface colour (polarity-correct) so lines +
+  numbers never wash out (the @207 vanish bug). `ground.dim` 0..1, default 0.6.
+- **Layer 4 — selection critic** (`sync.py` `_selection_advice`, advisory in `sync --report`): flags
+  structural block mis-picks (connection_board on a TREE/chain not a web; spans on a non-overlapping
+  SEQUENCE not coexisting durations; single-value chart/pie/venn) AND the sparse-long case a perfect
+  spread still can't fill (≤3 elements on a ≥9s hold, ungrounded + unanchored → "reads STATIC: anchor
+  with `at`, add a `data.ground`, or split"). Catalog `when_to_use`/`not_for` sharpened for
+  connection_board + spans. Run against the real acid-test essay it pinpoints exactly the 4 STATIC
+  frames + the spans-as-sequence mismatch.
+
+**Contract + enforcement (docs claim, tests enforce):** new `compose.py` blocks MUST schedule reveals
+through the shared scheduler — documented in `WIRING_CHECKLIST.md` (pitfall #9 + checklist line),
+`AUTHOR_PROMPT.md` ("Reveal timing"), and the catalog `_doc` (REVEAL TIMING + AMBIENT GROUND); the new
+honesty test `bridge/check_reveal_sync.py` fails on any hardcoded `start + i*step` reveal outside a
+short allowlist of reading/entrance cadences (text lines, gallery, code, chat). Also closed two
+pre-existing arsenal gaps: `style_contract` `BLOCK_FAMILY`/`MIN_READABLE` now cover all 37 blocks
+(so `sync._MOTION_BLOCKS` is correct), and `composition-craft.md` covers all 13 archetypes. Verified:
+46 sync tests, `check_catalog`/`check_reveal_sync` green, 289-test subset green, frame 03-boom
+recomposed + reveal cues inspected on the real render artifact.
+
 ## Script review loop — Phase 3 (UI) + Phase 4 (learning ledger) + validation (2026-07-20)
 
 **Phase 3 UI** (script_projects.html + routes/script_projects.py): a 7-step pipeline stepper

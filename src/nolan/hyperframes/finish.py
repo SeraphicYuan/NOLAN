@@ -57,7 +57,7 @@ def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, sof
 
 
 def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool = False,
-           render_mode: str = "whole", burn_captions: bool = False) -> dict:
+           render_mode: str = "whole", burn_captions: bool = False, duck: bool = False) -> dict:
     """Run the compose-first finish DAG for a comp. Returns a summary dict.
 
     `burn_captions` (default OFF): incremental mode composites captions as a SEPARATE full-length
@@ -123,7 +123,11 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
         # 4b · SCENE-level SFX (compose-first): read scene.data.sfx off the ALIGNED specs →
         #      resolve from the curated bank (nolan.sound) → stage into assets/sfx/ → merge into
         #      audio_meta.sfx (assemble-index mounts them on track 20+i). Preserves voices[].
-        if dry_run:
+        #      DUCK mode SKIPS the flat mount — SFX are added post-render by sfx_mix with the VO
+        #      sidechain-ducked under each cue (natural gains), so the render stays VO(+bgm)-only.
+        if duck:
+            print("  [scene-sfx] deferred → ducked post-mix (render stays VO-only)")
+        elif dry_run:
             print("  [scene-sfx] read scene.data.sfx → resolve + stage → merge into audio_meta.sfx")
         else:
             try:
@@ -189,6 +193,24 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
             print(f"  (chunked encode — {total:.0f}s render)")
         _run("render", ["npx", "hyperframes", "render", "--skill=faceless-explainer", "--quality", "high",
                         "--output", "renders/video.mp4"], cwd=pdir, dry=dry_run, env=render_env)
+    # 8b · DUCKED SFX post-mix: the render above is VO(+bgm)-only, so now mix the scene SFX ON TOP
+    #      with that audio sidechain-ducked under each cue (natural registry gains, no re-alignment —
+    #      amplitude only). Replaces video.mp4 in place so QA + downstream see the final mix. Idempotent:
+    #      the VO-only render always precedes this, so there is no double-mix.
+    if duck:
+        if dry_run:
+            print("  [duck] sfx_mix: mix SFX onto the VO-only render, VO sidechain-ducked → video.mp4")
+        else:
+            try:
+                from .sfx_mix import sfx_mix
+                final = pdir / "renders" / "video.mp4"
+                res = sfx_mix(comp, video_in=str(final), out=str(pdir / "renders" / "video.sfx.mp4"))
+                os.replace(res["out"], final)
+                print(f"▶ duck\n  {res['events']} SFX ducked-mixed onto the VO-only render → renders/video.mp4")
+                if res.get("unresolved"):
+                    print(f"  ⚠ {len(res['unresolved'])} cue(s) with no curated sound (bank gap)")
+            except Exception as e:
+                print(f"  ⚠ ducked sfx-mix skipped ({type(e).__name__}: {e}) — render left VO-only")
     # 9 · QA (soft: report — don't crash the driver on a gate fail)
     _run("hf-qa", py + ["-m", "nolan.hf_qa", str(pdir)], dry=dry_run, soft=True)          # freeze + audio (ffmpeg)
     _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)], dry=dry_run, soft=True)  # spec dimensions
@@ -204,6 +226,9 @@ def main():
     ap.add_argument("comp", help="composition id / dir")
     ap.add_argument("--no-render", action="store_true", help="stop before the render (assemble + preview)")
     ap.add_argument("--no-sound", action="store_true", help="skip the bgm/sfx bed")
+    ap.add_argument("--duck", action="store_true",
+                    help="ducked SFX: render VO-only, then post-mix cues with the VO sidechain-ducked "
+                         "under each hit (natural gains) instead of the flat, hot render-mount")
     ap.add_argument("--dry-run", action="store_true", help="print the DAG without running it")
     ap.add_argument("--render", dest="render_mode", default="whole", choices=["whole", "incremental"],
                     help="whole = one npx render of index.html (master/verify); incremental = per-frame "
@@ -214,7 +239,7 @@ def main():
     a = ap.parse_args()
     try:
         finish(a.comp, render=not a.no_render, sound=not a.no_sound, dry_run=a.dry_run,
-               render_mode=a.render_mode, burn_captions=a.burn_captions)
+               render_mode=a.render_mode, burn_captions=a.burn_captions, duck=a.duck)
     except RuntimeError as e:
         print(f"\n✗ {e}", file=sys.stderr)
         sys.exit(1)

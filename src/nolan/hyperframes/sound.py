@@ -72,18 +72,14 @@ def merge_sfx_into_audio_meta(audio_meta: Dict[str, Any],
     return meta
 
 
-def apply_scene_sfx(comp: str) -> Dict[str, Any]:
-    """THE compose-first SFX executor (finish DAG step, after word-sync).
+def collect_scene_sfx_events(comp: str) -> Dict[str, Any]:
+    """Resolve ``scene.data.sfx`` across a comp into ``audio_meta.sfx[]`` events
+    (frame-local ``offset_s``), staging each cue's file into ``<comp>/assets/sfx/``
+    and TILING beds to fill their ``span``. Does NOT touch ``audio_meta.json`` — the
+    shared collector behind both the render-mount executor (``apply_scene_sfx``) and
+    the ducked post-mix (``sfx_mix``).
 
-    Reads ``scene.data.sfx`` off every frame's ALIGNED spec, resolves each cue to
-    a curated bank file, **stages it into ``<comp>/assets/sfx/``** (assemble-index
-    mounts by a project-relative path that must exist on disk), and MERGES the
-    events into ``audio_meta.sfx[]`` — preserving ``voices[]`` (never regenerated).
-    Idempotent: re-running replaces the scene-authored sfx (cue_id-tagged) and
-    keeps any node-authored sfx. Unresolved cues are reported LOUD (capability gap),
-    not silently dropped.
-
-    Returns ``{events, staged, unresolved, invalid}``.
+    Returns ``{pdir, events, staged, unresolved, invalid}``.
     """
     from nolan.hyperframes import edit as _edit  # lazy (patchable) — avoids import cycle
 
@@ -146,10 +142,26 @@ def apply_scene_sfx(comp: str) -> Dict[str, Any]:
                         "duration_s": r.get("duration"),
                         "volume": vol, "kind": kind, "cue_id": r.get("id")})
 
-    am_path = pdir / "audio_meta.json"
+    return {"pdir": pdir, "events": events, "staged": staged,
+            "unresolved": unresolved, "invalid": invalid}
+
+
+def apply_scene_sfx(comp: str) -> Dict[str, Any]:
+    """THE compose-first SFX executor (finish DAG step, after word-sync).
+
+    Collects scene cues (:func:`collect_scene_sfx_events`) and MERGES them into
+    ``audio_meta.sfx[]`` — preserving ``voices[]`` (never regenerated). assemble-index
+    then mounts each on a track by its project-relative path. Idempotent: re-running
+    replaces the scene-authored sfx (cue_id-tagged) and keeps any node-authored sfx.
+    Unresolved cues are reported LOUD (capability gap), not silently dropped.
+
+    Returns ``{events, staged, unresolved, invalid}``.
+    """
+    c = collect_scene_sfx_events(comp)
+    am_path = c["pdir"] / "audio_meta.json"
     am = json.loads(am_path.read_text(encoding="utf-8")) if am_path.exists() else {}
     keep = [e for e in (am.get("sfx") or []) if not e.get("cue_id")]  # non-scene sfx survives
-    merged = merge_sfx_into_audio_meta(am, keep + events, replace=True)
+    merged = merge_sfx_into_audio_meta(am, keep + c["events"], replace=True)
     am_path.write_text(json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8")
-    return {"events": len(events), "staged": len(staged),
-            "unresolved": unresolved, "invalid": invalid}
+    return {"events": len(c["events"]), "staged": len(c["staged"]),
+            "unresolved": c["unresolved"], "invalid": c["invalid"]}

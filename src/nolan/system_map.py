@@ -229,7 +229,8 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
                         ("src/nolan/hyperframes/sfx_design.py", "def design")],
         "executed_by": [("src/nolan/audio_mix.py", "_source_scene_sfx"),
                         ("src/nolan/audio_mix.py", "mix_from_spec"),
-                        ("src/nolan/hyperframes/sound.py", "apply_scene_sfx")],
+                        ("src/nolan/hyperframes/sound.py", "apply_scene_sfx"),
+                        ("src/nolan/hyperframes/sfx_mix.py", "def sfx_mix")],
     },
 }
 
