@@ -51,7 +51,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highligh
             "gallery": ["images"],
             "carousel": ["images"], "document": ["source"], "lower_third": ["name"],
             "annotate": ["src", "callouts"], "quadrant": ["x", "y"], "venn": ["sets"],
-            "sankey": ["source", "targets"], "scale": ["items"],
+            "sankey": ["source", "targets"], "scale": ["items"], "pie": ["segments"], "funnel": ["stages"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
 
 

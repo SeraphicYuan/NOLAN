@@ -416,6 +416,18 @@ CSS = """
 .scl-label .v{display:block;font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.55cqw;color:var(--text);font-variant-numeric:tabular-nums;}
 .scl-label .n{font-family:"Inter",sans-serif;font-weight:600;font-size:0.95cqw;color:var(--text-mute);}
 .scl-ratio{position:absolute;transform:translate(-50%,-50%);font-family:var(--font-display-en,inherit);font-weight:800;font-size:2.9cqw;color:var(--accent);opacity:0;text-shadow:0 0 10px var(--surface),0 0 10px var(--surface);}
+/* pie/donut: share-of-whole radial (centered-hero) */
+.pie-svg,.fn-svg{position:absolute;inset:0;width:100%;height:100%;}
+.pie-center{position:absolute;transform:translate(-50%,-50%);text-align:center;font-family:var(--font-display-en,inherit);font-weight:800;font-size:2.0cqw;line-height:1.1;color:var(--text);opacity:0;max-width:13cqw;}
+.pie-leg{position:absolute;transform:translateY(-50%);display:flex;align-items:center;gap:0.6cqw;opacity:0;white-space:nowrap;}
+.pie-leg .sw{width:1.1cqw;height:1.1cqw;border-radius:3px;background:var(--accent);flex:none;}
+.pie-leg .pv{font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.5cqw;color:var(--text);font-variant-numeric:tabular-nums;min-width:3.6cqw;}
+.pie-leg .pl{font-family:"Inter",sans-serif;font-weight:600;font-size:1.05cqw;color:var(--text-mute);}
+.pie-leg.hl .pl{color:var(--text);}
+/* funnel: narrowing stages (centered-hero) */
+.fn-in{position:absolute;transform:translate(-50%,-50%);text-align:center;white-space:nowrap;opacity:0;text-shadow:0 0 8px var(--surface),0 0 8px var(--surface),0 0 8px var(--surface);}
+.fn-in .fv{font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.6cqw;color:var(--text);margin-right:0.5cqw;font-variant-numeric:tabular-nums;}
+.fn-in .fl{font-family:"Inter",sans-serif;font-weight:700;font-size:1.05cqw;color:var(--text);}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -543,6 +555,7 @@ CSS = """
 .ch-base{position:absolute;height:2px;background:var(--rule);}
 .ch-grid{position:absolute;height:1px;background:var(--rule);opacity:0.45;}
 .ch-bar{position:absolute;transform-origin:bottom center;border-radius:var(--r-card,5px) var(--r-card,5px) 0 0;will-change:transform;}
+.ch-wf-conn{position:absolute;height:0;border-top:2px dashed var(--rule);opacity:0.7;}
 .ch-val{position:absolute;text-align:center;font-weight:800;font-size:1.15cqw;color:var(--text);opacity:0;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .ch-xlab{position:absolute;text-align:center;font-family:var(--font-body);font-weight:600;font-size:0.82cqw;letter-spacing:0.04em;color:var(--text-2);white-space:nowrap;}
 .ch-svg{position:absolute;inset:0;width:100%;height:100%;}
@@ -2463,6 +2476,122 @@ def scale(sid, sc):
     over.append('</div>')
     return frag + over, tl
 
+def pie(sid, sc):
+    """Reusable BLOCK: a PIE / DONUT — share-of-a-whole as radial segments (who owns it, the vote split,
+    market share). Segments sweep in staggered; each carries a %/label; a donut (hole>0) can hold a centre
+    label. Seek-safe (opacity), theme-driven (accent, stepped opacity per slice; hl slice full accent).
+    Archetype: centered-hero.
+    data: {segments:[{label, value, hl?}], hole?(0..1; 0=pie, ~0.58=donut), unit?, center?(donut centre
+           label), kicker?, title?, titleHi?}"""
+    import math
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    segs = d.get("segments") or []
+    total = sum(float(s.get("value", 0)) for s in segs) or 1.0
+    hole = float(d.get("hole", 0) or 0)
+    unit = d.get("unit", "")
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 0
+    cx, cy = W / 2 - 120, topPad + (H - topPad) / 2 + 6
+    R = 296
+    r = hole * R
+    frag = [f'<div class="clip blk-pie" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    svg = [f'<svg class="pie-svg" viewBox="0 0 {W} {H}">']
+    a = -math.pi / 2
+    legend = []
+    for i, s in enumerate(segs):
+        f = float(s.get("value", 0)) / total
+        a1 = a + f * 2 * math.pi
+        x0, y0 = cx + R * math.cos(a), cy + R * math.sin(a)
+        x1, y1 = cx + R * math.cos(a1), cy + R * math.sin(a1)
+        large = 1 if f > 0.5 else 0
+        if r > 0:
+            ix0, iy0 = cx + r * math.cos(a), cy + r * math.sin(a)
+            ix1, iy1 = cx + r * math.cos(a1), cy + r * math.sin(a1)
+            path = f"M{x0:.1f} {y0:.1f} A{R} {R} 0 {large} 1 {x1:.1f} {y1:.1f} L{ix1:.1f} {iy1:.1f} A{r:.0f} {r:.0f} 0 {large} 0 {ix0:.1f} {iy0:.1f} Z"
+        else:
+            path = f"M{cx:.1f} {cy:.1f} L{x0:.1f} {y0:.1f} A{R} {R} 0 {large} 1 {x1:.1f} {y1:.1f} Z"
+        op = 1.0 if s.get("hl") else max(0.30, 0.88 - i * 0.15)
+        svg.append(f'<path id="{sid}-s{i}" d="{path}" fill="var(--accent)" stroke="var(--surface)" stroke-width="3" style="opacity:0;"/>')
+        tl.append(f'tl.fromTo("#{sid}-s{i}",{{opacity:0}},{{opacity:{op:.2f},duration:0.45}},{start+0.35+i*0.16});')
+        legend.append((i, s.get("label", ""), round(f * 100), s.get("hl")))
+        a = a1
+    svg.append("</svg>")
+    over += svg
+    if hole and d.get("center"):
+        over.append(f'<div id="{sid}-ctr" class="pie-center" style="left:{cx:.0f}px;top:{cy:.0f}px;">{esc(d["center"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-ctr",{{opacity:0}},{{opacity:1,duration:0.5}},{start+0.35+len(segs)*0.16});')
+    lx = cx + R + 90
+    ly0 = cy - (len(legend) - 1) * 32
+    for i, lab, pct, is_hl in legend:
+        over.append(f'<div id="{sid}-l{i}" class="pie-leg{" hl" if is_hl else ""}" style="left:{lx:.0f}px;top:{ly0 + i*64:.0f}px;">'
+                    f'<span class="sw" style="opacity:{1.0 if is_hl else max(0.30,0.88-i*0.15):.2f};"></span>'
+                    f'<span class="pv">{pct}{esc(unit) or "%"}</span><span class="pl">{esc(lab)}</span></div>')
+        tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0,x:-6}},{{opacity:1,x:0,duration:0.4}},{start+0.5+i*0.16});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
+def funnel(sid, sc):
+    """Reusable BLOCK: a FUNNEL — narrowing stages (TAM→SAM→SOM, leads→customers, awareness→purchase). Each
+    stage is a trapezoid whose width ∝ value; stages drop in top→bottom staggered, with value + label. Seek-
+    safe, theme-driven (accent stages, stepped opacity; hl full accent). Archetype: centered-hero.
+    data: {stages:[{label, value, hl?}], unit?, kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    stages = d.get("stages") or []
+    n = max(1, len(stages))
+    vals = [max(0.0, float(s.get("value", 0))) for s in stages] or [1.0]
+    vmax = max(vals) or 1.0
+    unit = d.get("unit", "")
+    topPad = 150 if (d.get("title") or d.get("kicker")) else 40
+    MAXW = 980
+    PY = topPad + 20
+    PH = H - PY - 90
+    sh = PH / n
+    cx = W / 2 - 40
+    frag = [f'<div class="clip blk-funnel" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    svg = [f'<svg class="fn-svg" viewBox="0 0 {W} {H}">']
+    for i, s in enumerate(stages):
+        wt = vals[i] / vmax * MAXW
+        wb = (vals[i + 1] / vmax * MAXW) if i + 1 < n else max(60.0, wt * 0.55)
+        y0 = PY + i * sh
+        y1 = y0 + sh - 10
+        poly = f"{cx-wt/2:.0f},{y0:.0f} {cx+wt/2:.0f},{y0:.0f} {cx+wb/2:.0f},{y1:.0f} {cx-wb/2:.0f},{y1:.0f}"
+        op = 1.0 if s.get("hl") else max(0.34, 0.9 - i * 0.13)
+        svg.append(f'<polygon id="{sid}-p{i}" points="{poly}" fill="var(--accent)" stroke="var(--surface)" stroke-width="3" style="opacity:0;"/>')
+        over.append(f'<div id="{sid}-in{i}" class="fn-in" style="left:{cx:.0f}px;top:{(y0+y1)/2:.0f}px;">'
+                    f'<span class="fv">{esc(str(stages[i].get("value","")))}{esc(unit)}</span><span class="fl">{esc(s.get("label",""))}</span></div>')
+        cue = start + 0.4 + i * 0.28
+        tl.append(f'tl.fromTo("#{sid}-p{i}",{{opacity:0,y:-14}},{{opacity:{op:.2f},y:0,duration:0.5,ease:"power2.out"}},{cue:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-in{i}",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.2:.2f});')
+    svg.append("</svg>")
+    over = [over[0]] + svg + over[1:]
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -3006,11 +3135,12 @@ def _num(v):
 
 
 def chart(sid, sc):
-    """Reusable BLOCK: an animated bar OR line chart — GSAP + SVG/CSS, NOT d3/Chart.js (the framework
-    bans chart libs for seek-safety). Bars grow from the baseline staggered, or a line draws in; value
-    labels + axis labels + gridlines reveal. Theme-driven (accent bars/line, text/rule/surface tokens).
-    data: {type?(bar|line), series:[{label,value}], title?, titleHi?, kicker?, prefix?, suffix?, ymax?,
-           highlight?(int index to emphasise; the rest mute)}."""
+    """Reusable BLOCK: an animated bar / line / WATERFALL chart — GSAP + SVG/CSS, NOT d3/Chart.js (the
+    framework bans chart libs for seek-safety). Bars grow from the baseline staggered, a line draws in, or
+    waterfall bars float at the running total (a revenue/budget BRIDGE: +deltas accent, -deltas muted, a
+    `total` item is a full bar from 0, dashed connectors between). Theme-driven (accent/text/rule tokens).
+    data: {type?(bar|line|waterfall), series:[{label, value, total?(waterfall: a full bar from 0)}],
+           title?, titleHi?, kicker?, prefix?, suffix?, ymax?, highlight?(bar/line: int index to emphasise)}."""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     series = d.get("series", [])
     n = max(1, len(series))
@@ -3056,6 +3186,34 @@ def chart(sid, sc):
             cue = start + 0.6 + i * (1.3 / max(1, n - 1))
             tl.append(f'tl.fromTo("#{sid}-dot{i}",{{scale:0}},{{scale:1,duration:0.4,ease:"back.out(2)"}},{cue:.2f});')
             tl.append(f'tl.fromTo("#{sid}-v{i}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.4}},{cue + 0.1:.2f});')
+    elif typ == "waterfall":   # cumulative +/- bars floating at the running total (a revenue/budget bridge)
+        bw = slot * 0.62
+        run = 0.0
+        segs = []                                  # (lo, hi, signed_value, is_total)
+        for i, s in enumerate(series):
+            v = vals[i]
+            if s.get("total"):
+                segs.append((0.0, v, v, True)); run = v
+            else:
+                segs.append((min(run, run + v), max(run, run + v), v, False)); run += v
+        peak = max((hi for _, hi, _, _ in segs), default=1.0) or 1.0
+        wymax = float(d.get("ymax") or peak * 1.16)
+        prev_top = None
+        for i, (lo, hi, v, istotal) in enumerate(segs):
+            h = (hi - lo) / wymax * PH
+            y0 = lo / wymax * PH
+            x = PX + i * slot + (slot - bw) / 2
+            fill = "var(--accent)" if (istotal or v >= 0) else "var(--text-faint)"
+            if prev_top is not None:               # dashed connector from the previous bar's top edge
+                world.append(f'<div class="ch-wf-conn" style="left:{x - (slot - bw):.0f}px;bottom:{BASE + prev_top:.0f}px;width:{slot - bw + 2:.0f}px;"></div>')
+            world.append(f'<div id="{sid}-b{i}" class="ch-bar" style="left:{x:.0f}px;bottom:{BASE + y0:.0f}px;width:{bw:.0f}px;height:{max(3,h):.0f}px;background:{fill};transform-origin:{"bottom" if v>=0 else "top"} center;"></div>')
+            sign = "" if istotal else ("+" if v >= 0 else "−")
+            world.append(f'<div id="{sid}-v{i}" class="ch-val" style="left:{x:.0f}px;bottom:{BASE + hi/wymax*PH + 14:.0f}px;width:{bw:.0f}px;">{sign}{esc(pre)}{_num(abs(v))}{esc(suf)}</div>')
+            world.append(f'<div class="ch-xlab" style="left:{x:.0f}px;bottom:{BASE - 58:.0f}px;width:{bw:.0f}px;">{esc(series[i].get("label", ""))}</div>')
+            cue = start + 0.5 + i * (1.3 / n)
+            tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:0.55,ease:"power3.out"}},{cue:.2f});')
+            tl.append(f'tl.fromTo("#{sid}-v{i}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.4}},{cue + 0.3:.2f});')
+            prev_top = (hi if v >= 0 else lo) / wymax * PH if not istotal else None
     else:  # bar
         bw = slot * 0.6
         for i, s in enumerate(series):
@@ -3240,6 +3398,7 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
           "annotate": annotate, "quadrant": quadrant, "venn": venn, "sankey": sankey, "scale": scale,
+          "pie": pie, "funnel": funnel,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so

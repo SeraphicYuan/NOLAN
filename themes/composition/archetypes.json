@@ -36,7 +36,9 @@
       "blocks": [
         "stat",
         "venn",
-        "scale"
+        "scale",
+        "pie",
+        "funnel"
       ],
       "exemplar": "exemplars/centered-hero.json",
       "zone": {
