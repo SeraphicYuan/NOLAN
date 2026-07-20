@@ -29,8 +29,8 @@ def _ensure_probe_assets():
     import shutil
     ap = OUT / _PROBE
     ap.mkdir(parents=True, exist_ok=True)
-    if not (ap / "img0.png").exists():
-        for i, f in enumerate(sorted((REPO / "projects" / "_library" / "_broll_generated").glob("*.png"))[:4]):
+    if not (ap / "img4.png").exists():
+        for i, f in enumerate(sorted((REPO / "projects" / "_library" / "_broll_generated").glob("*.png"))[:5]):
             shutil.copyfile(f, ap / f"img{i}.png")
 
 # ── canonical seeds — one per archetype (static, theme-neutral). type "raw" = hand-authored final-state;
@@ -307,6 +307,48 @@ def _variant_content(block, v):
     return {"variant": v}
 
 
+# ── content-MODE showcase (2026-07-20): the layout-variant system covers the 8 text blocks' ARRANGEMENTS,
+# but a block's content-MODE variety — chart bar/line/waterfall, pie vs donut, diagram tree/flow/radial,
+# carousel/gallery/document/lower_third/code modes — is content-driven (not aesthetic) so it lives OUTSIDE
+# layout_variants.json and was shown nowhere. Here we render each mode as a Samples-tab specimen tagged like
+# a variant, so the click-through viewer browses a block's FULL look, not just its default.
+_MODE_ARCH = {"chart": "framed", "pie": "centered-hero", "diagram": "swiss-grid", "lower_third": "focal-card",
+              "code": "framed", "gallery": "swiss-grid", "carousel": "swiss-grid", "document": "focal-card"}
+_MODE_HAS_SEED = {"chart"}      # chart's base (bar) is already a SEEDS specimen → its modes are pure variants
+
+
+def _mode_showcase():
+    A = _PROBE
+    ser = [{"label": "'21", "value": 18}, {"label": "'22", "value": 34}, {"label": "'23", "value": 52}, {"label": "'24", "value": 73}]
+    pie_segs = [{"label": "Manuscripts", "value": 42, "hl": True}, {"label": "Objects", "value": 26}, {"label": "Prints", "value": 18}, {"label": "Coins", "value": 14}]
+    tree = {"label": "Archive", "children": [{"label": "Manuscripts", "children": [{"label": "Vellum"}, {"label": "Paper"}]},
+                                             {"label": "Objects", "children": [{"label": "Ceramics"}, {"label": "Metal"}]}]}
+    ltd = {"name": "Dr. Elena Fischer", "role": "Head of Manuscripts", "kicker": "Curator"}
+    code_src = "def find(a, y):\n    return [x for x in a\n            if x.year == y]"
+    return {
+        "chart": [("line", {"type": "line", "kicker": "Adoption", "title": "Growth by year", "titleHi": "year", "suffix": "%", "series": ser}),
+                  ("waterfall", {"type": "waterfall", "kicker": "The bridge", "title": "Revenue to profit", "titleHi": "profit", "prefix": "$", "suffix": "M",
+                                 "series": [{"label": "Rev", "value": 120, "total": True}, {"label": "COGS", "value": -45}, {"label": "Opex", "value": -38}, {"label": "Profit", "value": 37, "total": True}]})],
+        "pie": [("pie", {"kicker": "The collection", "title": "By medium", "titleHi": "medium", "segments": pie_segs}),
+                ("donut", {"kicker": "The collection", "title": "By medium", "titleHi": "medium", "hole": 0.56, "center": "12,400", "segments": pie_segs})],
+        "diagram": [("tree", {"layout": "tree", "kicker": "The archive", "title": "How it is kept", "titleHi": "kept", "root": tree}),
+                    ("flow", {"layout": "flow", "kicker": "The pipeline", "title": "How it moves", "titleHi": "moves", "root": tree}),
+                    ("radial", {"layout": "radial", "kicker": "The system", "title": "At the centre", "titleHi": "centre", "root": tree})],
+        "lower_third": [("bar", {**ltd, "style": "bar"}), ("card", {**ltd, "style": "card"}),
+                        ("underline", {**ltd, "style": "underline"}), ("block", {**ltd, "style": "block"})],
+        "code": [("typing", {"mode": "typing", "title": "query.py", "filename": "query.py", "linenums": True, "theme": "vs-dark", "code": code_src}),
+                 ("highlight", {"mode": "highlight", "title": "query.py", "filename": "query.py", "linenums": True, "theme": "vs-dark", "highlight": 2, "code": code_src})],
+        "gallery": [("grid", {"layout": "grid", "kicker": "The collection", "title": "Recent", "captions": True,
+                              "images": [{"src": f"{A}/img0.png"}, {"src": f"{A}/img1.png"}, {"src": f"{A}/img2.png"}, {"src": f"{A}/img4.png"}]}),
+                    ("masonry", {"layout": "masonry", "kicker": "The collection", "title": "Recent",
+                                 "images": [{"src": f"{A}/img0.png"}, {"src": f"{A}/img1.png"}, {"src": f"{A}/img2.png"}, {"src": f"{A}/img4.png"}]})],
+        "carousel": [("slider", {"style": "slider", "kicker": "A closer look", "title": "The vase", "images": [{"src": f"{A}/img2.png"}, {"src": f"{A}/img0.png"}]}),
+                     ("coverflow", {"style": "coverflow", "kicker": "A closer look", "title": "The vase", "images": [{"src": f"{A}/img2.png"}, {"src": f"{A}/img0.png"}, {"src": f"{A}/img4.png"}]})],
+        "document": [("page", {"mode": "page", "kicker": "The source", "title": "Folio 12r", "source": f"{A}/img1.png"}),
+                     ("artifact", {"mode": "artifact", "kicker": "The source", "title": "Folio 12r", "source": f"{A}/img1.png", "aged": True})],
+    }
+
+
 def theme_bg(theme):
     try:
         p = json.loads((REPO / "themes" / theme / "theme.json").read_text(encoding="utf-8")).get("preview", {})
@@ -366,8 +408,28 @@ def main():
                 manifest.append({"archetype": label, "theme": theme, "variant": v,
                                  "html": f"{stem}.html", "png": f"{stem}.png"})
                 nv += 1
+
+    # ── content-mode showcases: a block's type/mode variety (chart bar/line/waterfall, pie/donut, diagram
+    # tree/flow/radial, …) rendered + grouped under the block so the click-through viewer browses them. ──
+    nm = 0
+    for block, modes in _mode_showcase().items():
+        arche = _MODE_ARCH.get(block, "framed")
+        has_seed = block in _MODE_HAS_SEED
+        for j, (mode, data) in enumerate(modes):
+            is_variant = has_seed or j > 0
+            stem_base = f"{block}~{mode}" if is_variant else block
+            for theme in THEMES:
+                scene = {"id": "s1", "start": 0.0, "dur": DUR, "type": block, "meta": {"archetype": arche}, "data": dict(data)}
+                tpl = compose.compose_frame(stem_base, DUR, [scene], theme=theme)
+                (OUT / f"{stem_base}__{theme}.html").write_text(mount(tpl, theme_bg(theme)), encoding="utf-8")
+                entry = {"archetype": block, "theme": theme, "html": f"{stem_base}__{theme}.html", "png": f"{stem_base}__{theme}.png"}
+                if is_variant:
+                    entry["variant"] = mode
+                manifest.append(entry)
+                nm += 1
+
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
-    print(f"composed {len(manifest)} cells ({len(SEEDS)} specimens + {nv} variant specimens × {len(THEMES)} themes) → {OUT}")
+    print(f"composed {len(manifest)} cells ({len(SEEDS)} specimens + {nv} variant + {nm} mode specimens × {len(THEMES)} themes) → {OUT}")
 
 
 if __name__ == "__main__":
