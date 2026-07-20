@@ -15,9 +15,28 @@ REPO = Path(__file__).resolve().parents[2]
 SAMP = REPO / "themes" / "_samples"
 OUT = REPO / "themes" / "_books"
 OUT.mkdir(parents=True, exist_ok=True)
-SPECIMENS = ["centered-hero", "editorial-column", "framed", "swiss-grid", "sidebar", "timeline",
-             "split-screen", "full-bleed-overlay", "focal-card",
-             "stat", "bullet-list", "chart", "pull-quote", "comparison-table", "ledger"]
+_SPECIMENS_FALLBACK = ["centered-hero", "editorial-column", "framed", "swiss-grid", "sidebar", "timeline",
+                       "split-screen", "full-bleed-overlay", "focal-card",
+                       "stat", "bullet-list", "chart", "pull-quote", "comparison-table", "ledger"]
+
+
+def _load_specimens():
+    """AUTO-DERIVE the book's specimen list from gen_samples' rendered manifest — the BASE specimens (one per
+    SEED: every archetype + block specimen, minus `identity` and the per-variant renders). So a new archetype
+    or block added to gen_samples SEEDS appears in every theme book automatically (no hardcoded list to rot)."""
+    try:
+        man = json.loads((SAMP / "manifest.json").read_text(encoding="utf-8"))
+        seen = []
+        for m in man:
+            a = m.get("archetype")
+            if a and a != "identity" and not m.get("variant") and a not in seen:
+                seen.append(a)
+        return seen or _SPECIMENS_FALLBACK
+    except Exception:
+        return _SPECIMENS_FALLBACK
+
+
+SPECIMENS = _load_specimens()
 
 
 def _hexes(css):

@@ -192,6 +192,15 @@ SEEDS = {
     "split-screen":     {"type": "raw", "data": {"html": [_SPLIT_SCREEN], "tl": []}},
     "full-bleed-overlay": {"type": "raw", "data": {"html": [_FULL_BLEED_OVERLAY], "tl": []}},
     "focal-card":       {"type": "raw", "data": {"html": [_FOCAL_CARD], "tl": []}},
+    "quadrant":         {"type": "quadrant", "_arch": "quadrant",
+                         "data": {"kicker": "Where to focus", "title": "Effort vs impact", "titleHi": "impact",
+                                  "x": {"label": "Effort", "lo": "Low", "hi": "High"}, "y": {"label": "Impact", "lo": "Low", "hi": "High"},
+                                  "quadrants": {"tl": "Quick wins", "tr": "Big bets", "bl": "Time sinks", "br": "Fill-ins"},
+                                  "items": [{"x": 0.22, "y": 0.82, "label": "Captions", "hl": True}, {"x": 0.78, "y": 0.84, "label": "New renderer"},
+                                            {"x": 0.24, "y": 0.24, "label": "Logo tweak"}, {"x": 0.72, "y": 0.2, "label": "Rewrite CLI"}]}},
+    "asymmetric-hero":  {"type": "hero", "_arch": "asymmetric-hero",
+                         "data": {"src": f"{_PROBE}/img0.png", "side": "left", "kicker": "Chapter one",
+                                  "title": ["The idea that", "changed everything"], "titleHi": "changed", "sub": "A story in three acts."}},
     "stat":             {"type": "stat", "_arch": "centered-hero",
                          "data": {"kicker": "By the numbers",
                                   "items": [{"value": "73%", "label": "of teams shipped faster", "underline": True, "cue": 0.6,
@@ -223,10 +232,10 @@ SEEDS = {
                                            {"title": "Author", "desc": "Scene plan against a chosen theme", "meta": "02 · 4 min"},
                                            {"title": "Acquire", "desc": "Assets per beat: library + stock + gen", "meta": "03 · 6 min"},
                                            {"title": "Render", "desc": "Compose frames, assemble to final", "meta": "04 · 8 min"}]}},
-    "comparison":       {"type": "comparison", "_arch": "split-screen",
+    "comparison":       {"type": "comparison", "_arch": "split-screen",   # VISUAL contrast (comparison is image/video only now)
                          "data": {"kicker": "Before / after", "title": "The shift", "titleHi": "shift", "vs": True,
-                                  "left": {"type": "text", "kicker": "2019", "title": ["Manual", "and slow"]},
-                                  "right": {"type": "stat", "value": "3.2x", "label": "faster now"}}},
+                                  "left": {"type": "image", "src": f"{_PROBE}/img1.png", "label": "2019"},
+                                  "right": {"type": "image", "src": f"{_PROBE}/img0.png", "label": "NOW"}}},
 }
 
 THEMES = sorted(d.name for d in (REPO / "themes").iterdir()
