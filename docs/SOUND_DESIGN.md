@@ -267,11 +267,14 @@ layered design**. Every gap below flows from that.
 **style-awareness**, verified **by ear**.
 
 **Roadmap (deliberately balanced — SFX is not the core; add craft, not rule-bloat):**
-- ✅ **Restraint** — per-family budget; whoosh as a rare accent (cross-frame gap +
-  skip-repeat). Matches the "less is more" law.
-- ⏳ **Bed / tone layer** (the #1 gap) — an **opt-in** subtle per-frame bed
-  (`sfx_design --bed <kind>`), tiled to fill, low gain, so the curated beds finally
-  carry the emotional floor. Opt-in (not an auto mood-lexicon) to avoid rule-bloat.
+- ✅ **Subtractive-by-default** — every accent kind is spaced across the whole video
+  by a per-kind cross-frame gap (`_ACCENT_GAP`: impact-soft 30s, paper/shutter 35s,
+  whoosh 45s + skip-repeat, …), so a cue is a *rare, earned* event — not one-per-word
+  (Mickey-Mousing) or one-per-graphic. homer 17→8 cues. Tune the table, not by rules.
+- ✅ **Bed / tone layer — SECTIONAL** (the #1 layer gap) — `sfx_design --bed <kind>
+  --bed-frames <range>` underscores a *section* (a bed under every frame overwhelms —
+  the arc/subtractive principle in action), tiled to fill, low gain (`hf_gain` bed
+  ×1.4). Requires an explicit range; no `--bed-frames` → no bed (deliberate, not auto).
 - ⬜ **Ducking** (the correct mix fix, replaces the gain band-aid) — DEFERRED: it's a
   render-side change in the faceless-explainer skill (assemble-index / renderer),
   outside NOLAN's Python; do it as a dedicated pass, not a hack.

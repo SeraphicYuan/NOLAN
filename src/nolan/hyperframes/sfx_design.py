@@ -158,9 +158,36 @@ def _budget(cues: List[Tuple[str, float, int, str]]) -> List[Tuple[str, float, i
     return kept
 
 
+# Subtractive-by-default: minimum seconds between two cues of the SAME kind across
+# the whole video, so every accent is a spaced, earned event — not one-per-word /
+# one-per-graphic (which Mickey-Mouses). Larger = rarer. Beds are sectional (below),
+# not gapped. Tune here, not by adding rules.
+_ACCENT_GAP = {
+    "riser": 40.0, "impact-soft": 30.0, "impact-hard": 40.0, "sub-drop": 50.0,
+    "stinger": 45.0, "click": 12.0, "type": 30.0, "notification": 25.0,
+    "error-buzz": 25.0, "glitch": 25.0, "camera-shutter": 35.0, "paper": 35.0,
+    "stamp": 35.0, "cash": 25.0, "data-tick": 15.0, "data-punch": 22.0,
+}
+
+
+def _parse_frames(spec: Optional[str]) -> Optional[set]:
+    """'4-6' → {4,5,6}; '2,4,7' → {2,4,7}; '1-3,6' → {1,2,3,6}; None → None."""
+    if not spec:
+        return None
+    out = set()
+    for part in str(spec).split(","):
+        part = part.strip()
+        if "-" in part:
+            a, b = part.split("-", 1)
+            out.update(range(int(a), int(b) + 1))
+        elif part:
+            out.add(int(part))
+    return out or None
+
+
 def design(comp: str, *, apply: bool = False, llm: bool = False,
            transitions: str = "sparse", whoosh_gap: float = 45.0,
-           bed: Optional[str] = None) -> Dict[str, Any]:
+           bed: Optional[str] = None, bed_frames: Optional[set] = None) -> Dict[str, Any]:
     """Propose scene.data.sfx across a comp from its spec + word timings.
 
     Returns ``{plan: [{frame, scene, cues:[{cue,at,why}]}], total, applied}``.
@@ -169,8 +196,9 @@ def design(comp: str, *, apply: bool = False, llm: bool = False,
     minimum seconds between whooshes across frames (a whoosh is also skipped if the
     frame repeats the previous whoosh's scene type) — whooshes are a rare accent.
     `bed` (a bed-family cue-kind, e.g. 'room-tone' | 'tension-drone' | 'nature-bed')
-    lays a subtle emotional-floor bed under every frame (opt-in; the executor tiles
-    it to fill). None = no bed.
+    lays a subtle emotional-floor bed — but ONLY under the frames in `bed_frames`
+    (a deliberate SECTION underscore; a bed under every frame overwhelms). If
+    `bed_frames` is None, no bed is placed. The executor tiles it to fill.
     """
     from .edit import _project_dir, list_frames, load_frame_spec, save_frame_spec
 
@@ -187,7 +215,9 @@ def design(comp: str, *, apply: bool = False, llm: bool = False,
         starts[v.get("frame")] = acc
         dur_by_frame[v.get("frame")] = float(v.get("duration_s") or 0)
         acc += float(v.get("duration_s") or 0)
-    last_whoosh_t, last_whoosh_type = -1e9, None
+    accent_gap = {**_ACCENT_GAP, "whoosh": whoosh_gap}   # whoosh gap is user-tunable
+    last_accent: Dict[str, float] = {}
+    last_whoosh_type = None
 
     plan: List[Dict[str, Any]] = []
     total = 0
@@ -205,21 +235,27 @@ def design(comp: str, *, apply: bool = False, llm: bool = False,
             ctx = _scene_context(sc, words)
             cands = _deterministic_cues(ctx, frame_first=(si == 0), transitions=transitions)
             kept = _budget(cands)
-            # whooshes are a RARE accent: drop one that's < whoosh_gap since the
-            # last, or that repeats the previous whoosh's scene type
+            # SUBTRACTIVE gate: every accent kind is spaced across the video by its
+            # gap (so it's a rare, earned event, not one-per-word/graphic); whoosh
+            # additionally skips a frame that repeats the previous whoosh's type.
             pruned = []
             for c in kept:
-                if c[0] == "whoosh":
+                kind = c[0]
+                gap = accent_gap.get(kind)
+                if gap is not None:
                     abs_t = starts.get(num, 0.0) + c[1]
-                    if abs_t - last_whoosh_t < whoosh_gap or ctx["type"] == last_whoosh_type:
+                    repeat = kind == "whoosh" and ctx["type"] == last_whoosh_type
+                    if abs_t - last_accent.get(kind, -1e9) < gap or repeat:
                         continue
-                    last_whoosh_t, last_whoosh_type = abs_t, ctx["type"]
+                    last_accent[kind] = abs_t
+                    if kind == "whoosh":
+                        last_whoosh_type = ctx["type"]
                 pruned.append(c)
             kept = pruned
             if llm and kept is not None:
                 kept = _llm_refine(ctx, kept)                 # taste layer (optional)
             cues = [{"cue": k, "at": a, "why": w} for k, a, _p, w in kept if k in KINDS]
-            if si == 0 and bed:                               # emotional-floor bed, spanning the frame
+            if si == 0 and bed and bed_frames and num in bed_frames:  # SECTIONAL bed
                 cues.insert(0, {"cue": bed, "at": 0.0, "why": "emotional bed",
                                 "span": round(dur_by_frame.get(num, 0.0), 3)})
             if cues:
@@ -284,11 +320,18 @@ def main():
     ap.add_argument("--whoosh-gap", type=float, default=45.0,
                     help="min seconds between whooshes (they're a rare accent; default 45)")
     ap.add_argument("--bed", default=None,
-                    help="lay a subtle emotional-floor bed under every frame "
-                         "(a bed-family kind: room-tone | tension-drone | nature-bed | …)")
+                    help="a bed-family kind (room-tone | tension-drone | nature-bed | …) "
+                         "to underscore a SECTION — requires --bed-frames")
+    ap.add_argument("--bed-frames", default=None,
+                    help="frames the bed underscores, e.g. '4-6' or '2,4,7' (a bed "
+                         "under every frame overwhelms — place it on a section)")
     a = ap.parse_args()
+    bed_frames = _parse_frames(a.bed_frames)
+    if a.bed and not bed_frames:
+        print("note: --bed needs --bed-frames (a section, e.g. 4-6) — skipping the bed "
+              "(a bed under the whole video overwhelms)")
     res = design(a.comp, apply=a.apply, llm=a.llm, transitions=a.transitions,
-                 whoosh_gap=a.whoosh_gap, bed=a.bed)
+                 whoosh_gap=a.whoosh_gap, bed=a.bed, bed_frames=bed_frames)
     for p in res["plan"]:
         cues = ", ".join(f"{c['cue']}@{c['at']}s ({c['why']})" for c in p["cues"])
         print(f"  {p['frame']}/{p['scene']} [{p['type']}]: {cues}")

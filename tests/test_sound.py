@@ -222,6 +222,29 @@ def test_bed_layer_tiles_to_fill_and_validates(tmp_path, monkeypatch):
     assert abs(beds[2]["duration_s"] - 4.0) < 0.1             # last tile clipped to the span
 
 
+def test_subtractive_gap_and_sectional_bed(tmp_path, monkeypatch):
+    """Every accent kind is spaced across the video; the bed is sectional, not blanket."""
+    from nolan.hyperframes import edit as _edit
+    from nolan.hyperframes import sfx_design as D
+    (tmp_path / "audio_meta.json").write_text(json.dumps({"voices": [
+        {"frame": 1, "duration_s": 10.0, "words": [{"text": "alpha", "start": 2.0, "end": 2.4}]},
+        {"frame": 2, "duration_s": 10.0, "words": [{"text": "beta", "start": 2.0, "end": 2.4}]}]}),
+        encoding="utf-8")
+    mk = lambda fid, op: {"frames": [{"id": fid, "scenes": [
+        {"id": "s1", "type": "statement", "start": 0.0, "dur": 5, "data": {"operative": op, "cue": 2.0}}]}]}
+    specs = {"01-a": (mk("01-a", "alpha"), {"i": 0}), "02-b": (mk("02-b", "beta"), {"i": 0})}
+    monkeypatch.setattr(_edit, "_project_dir", lambda c: tmp_path)
+    monkeypatch.setattr(_edit, "list_frames", lambda c: [{"id": "01-a"}, {"id": "02-b"}])
+    monkeypatch.setattr(_edit, "load_frame_spec", lambda c, fid: specs[fid])
+    pick = lambda r, k: [p["frame"] for p in r["plan"] for cc in p["cues"] if cc["cue"] == k]
+    # impact-soft gap (30s) > the 10s between the two operatives → only the first fires
+    assert pick(D.design("x"), "impact-soft") == ["01-a"]
+    # bed is SECTIONAL: only the named frames get it; no bed_frames → no bed (not blanket)
+    assert pick(D.design("x", bed="room-tone", bed_frames={2}), "room-tone") == ["02-b"]
+    assert pick(D.design("x", bed="room-tone"), "room-tone") == []
+    assert D._parse_frames("4-6") == {4, 5, 6} and D._parse_frames("2,4") == {2, 4}
+
+
 def test_finish_dag_includes_scene_sfx_step():
     """The finish DAG actually calls the executor (not a dangling field)."""
     src = (REPO / "src/nolan/hyperframes/finish.py").read_text(encoding="utf-8")
