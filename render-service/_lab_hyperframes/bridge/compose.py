@@ -2505,7 +2505,10 @@ def lower_third(sid, sc):
     # news-ticker (scrolling crawl). All the same block + a style branch.
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     name, role, kicker = d.get("name", ""), d.get("role", ""), d.get("kicker", "")
-    style, posn = d.get("style", "bar"), d.get("position", "bl")
+    # style: explicit author choice wins; else a theme-COHERENT default from the type personality (a chyron
+    # should match the theme + stay consistent across the video — so this is a theme-default, NOT a variant).
+    style = d.get("style") or _LT_STYLE_BY_PERSONALITY.get(_TYPE_PERSONALITY, "bar")
+    posn = d.get("position", "bl")
     frag, tl = [], []
     bg = d.get("backdrop")                         # normally transparent (over footage); demo can set it
     if bg and not _is_video_bg(bg):
@@ -2889,6 +2892,38 @@ def _theme_shell_textsafe(theme):
         safe = True
     _SHELL_TEXTSAFE_CACHE[theme] = safe
     return safe
+
+
+_TYPE_PERSONALITY = None                 # per-frame theme type-personality; set by compose_frame (like _POLARITY)
+_PERSONALITY_CACHE = {}
+
+def _theme_personality(theme):
+    """The theme's `typePersonality` (themes/composition/type_roles.json recipe key), or None. Lets a
+    block pick a theme-COHERENT default for an aesthetic-but-consistent knob (e.g. a lower-third chyron
+    style) instead of a hardcoded look, without rotating it per beat (chyrons want brand consistency)."""
+    theme = str(theme)
+    if theme in _PERSONALITY_CACHE:
+        return _PERSONALITY_CACHE[theme]
+    p = None
+    try:
+        f = Path(__file__).resolve().parents[3] / "themes" / theme / "theme.json"
+        if f.exists():
+            p = json.loads(f.read_text(encoding="utf-8")).get("typePersonality")
+    except Exception:
+        p = None
+    _PERSONALITY_CACHE[theme] = p
+    return p
+
+
+# personality -> lower_third chyron style: a theme-COHERENT default (consistent per video, NOT rotated).
+_LT_STYLE_BY_PERSONALITY = {
+    "geometric-sans": "bar",       # clean structured card + accent tab
+    "mono-technical": "bar",       # technical, gridded
+    "editorial-serif": "underline",# cardless, a drawn accent rule — editorial
+    "elegant-italic": "underline", # refined, minimal
+    "brutalist-heavy": "block",    # bold accent block wipe, ink slam
+    "friendly-rounded": "card",    # soft surface card + underline
+}
 
 
 _ALLOWED_ZONES_CACHE = {}
@@ -3570,9 +3605,10 @@ def _resolve_variant(block, data, prev=None, allowed=None, rot=0):
 
 
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
-    global _POLARITY, _SHELL_TEXTSAFE
+    global _POLARITY, _SHELL_TEXTSAFE, _TYPE_PERSONALITY
     _POLARITY = _theme_polarity(theme)        # so blocks can pick theme-aware (not hardcoded-dark) defaults
     _SHELL_TEXTSAFE = _theme_shell_textsafe(theme)   # full-bleed grounds prefer --shell unless it's dark-on-dark
+    _TYPE_PERSONALITY = _theme_personality(theme)    # so a block can pick a theme-coherent default (lower_third style)
     body, tl = [], []
     # Scene transitions (optional): if ANY scene carries a `transition_out`, wrap every scene in a
     # z-ordered wrapper (earlier scene ON TOP, so a departing scene's exit uncovers the next

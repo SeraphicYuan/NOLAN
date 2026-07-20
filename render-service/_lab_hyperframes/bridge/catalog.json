@@ -394,7 +394,7 @@
         "name": "string — the person/source name (the main line)",
         "role": "string? — title / role / affiliation (the sub-line)",
         "kicker": "string? — a small accent eyebrow tag above the name",
-        "style": "enum(bar|card|underline|block) — bar (surface card + accent tab, slides in) | card (surface card + drawn accent underline, rises) | underline (cardless: name rises, accent rule draws L->R, text-shadowed for footage) | block (bold accent-colour block wipes in, ink name slams up)",
+        "style": "enum(bar|card|underline|block)? — OMIT to get a THEME-COHERENT default from the theme's type personality (elegant/editorial→underline, brutalist→block, geometric/mono→bar, rounded→card); set it only to override. bar (surface card + accent tab, slides in) | card (surface card + drawn accent underline, rises) | underline (cardless: name rises, accent rule draws L->R, text-shadowed for footage) | block (bold accent-colour block wipes in, ink name slams up)",
         "position": "enum(bl|bc|br) — bottom-left (default) | bottom-centre | bottom-right",
         "backdrop": "string? — STANDALONE/demo only: a color or image behind it. Normally omitted (transparent over the footage/root video)."
       },
