@@ -50,7 +50,7 @@
     "geo": {
       "fn": "geo_map",
       "purpose": "A d3 choropleth (US states or world countries) with one+ regions highlighted, pin + leader + Vox label.",
-      "when_to_use": "A beat about a place: a state, a country, a 'where' — Virginia, Ireland, a multi-state cluster.",
+      "when_to_use": "A beat about a PLACE or MOVEMENT on a map: highlight where something is (states/countries), OR draw ROUTE ARCS for migration / trade / a campaign / spread across a map.",
       "not_for": "Non-geographic data (use stat/raw). A region with no TopoJSON shipped in vendor/.",
       "data_schema": {
         "kind": "enum(us|world) — us takes FIPS ids + geoAlbersUsa; world takes ISO-numeric ids + geoNaturalEarth1",
@@ -58,7 +58,8 @@
         "primary": "string? — which highlighted region gets the pin+leader (default highlight[0])",
         "kicker": "string",
         "title": "string — the big label",
-        "sub": "string — supporting line (inline <b> ok)"
+        "sub": "string — supporting line (inline <b> ok)",
+        "routes": "array of {from:[lon,lat], to:[lon,lat], label?, hl?, bulge?}? — animated ROUTE ARCS on the map (migration, trade, campaigns, spread): a curved arrow draws from→to with an arrowhead + endpoint dots. from/to are [longitude, latitude]. A geo needs `highlight` OR `routes`."
       },
       "constraints": [
         "duration_preserving",

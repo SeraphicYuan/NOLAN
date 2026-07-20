@@ -45,7 +45,7 @@ def resolve_theme(spec, cli_theme=None, out_dir=None):
     return theme, source, theme_exists(theme)
 
 # minimum non-empty fields per scene type — the accept gate (schema lives in catalog.json)
-REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highlight"],
+REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
             "timeline": ["events"], "raw": ["html", "tl"], "newshead": ["headline"], "collage": ["subjects"],
             "diagram": ["root"], "comparison": ["left", "right"], "juxtaposition": ["left", "right"],
             "gallery": ["images"],
@@ -131,6 +131,8 @@ def validate_spec(spec):
                     pass
             if t == "geo" and d.get("kind") not in ("us", "world"):
                 errs.append(f"{fid}/{sid} (geo): kind must be 'us' or 'world'")
+            if t == "geo" and not d.get("highlight") and not d.get("routes"):
+                errs.append(f"{fid}/{sid} (geo): needs `highlight` (regions) or `routes` (arcs) — an empty map shows nothing")
             if t == "statement" and d.get("operative") and not any(d["operative"] in ln for ln in d.get("lines", [])):
                 errs.append(f"{fid}/{sid} (statement): operative {d['operative']!r} not found in any line")
             if t == "comparison":                               # comparison is a VISUAL contrast — sides are image|video

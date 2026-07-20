@@ -204,6 +204,11 @@ CSS = """
 .geomap svg{width:100%;height:100%;display:block;}
 .gstate{fill:var(--surface-3);stroke:var(--surface);stroke-width:1.0;}
 .ghl{fill:var(--accent);stroke:var(--text);stroke-width:1.3;opacity:0;transform-box:fill-box;transform-origin:center;}
+.grt-path{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;}
+.grt-path.hl{stroke-width:4.5;}
+.grt-arw{fill:var(--accent);}
+.grt-dot{fill:var(--accent);stroke:var(--surface);stroke-width:2;transform-box:fill-box;transform-origin:center;}
+.grt-lab{fill:var(--text);font-family:"Inter",sans-serif;font-weight:700;font-size:22px;paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round;}
 .geoleader{position:absolute;inset:0;pointer-events:none;}
 .geoleader path{fill:none;stroke:var(--text);stroke-width:2;}
 .geopin{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:var(--text);opacity:0;}
@@ -692,14 +697,36 @@ _GEO_SETUP = r'''(function(){
   fc.features.forEach(function(f){var dd=geo(f); if(!dd)return; var p=document.createElementNS(NS,"path"); p.setAttribute("d",dd); p.setAttribute("class","gstate"); svg.appendChild(p);});
   CFG.hl.forEach(function(id){var f=byId[id]; if(!f)return; var dd=geo(f); if(!dd)return; var p=document.createElementNS(NS,"path"); p.setAttribute("d",dd); p.setAttribute("class","ghl"); p.setAttribute("id",SID+"-hl-"+id); svg.appendChild(p);});
   document.getElementById(SID+"-map").appendChild(svg);
-  var pf=byId[CFG.primary]||byId[CFG.hl[0]], c=geo.centroid(pf);
-  var pin=document.getElementById(SID+"-pin"); pin.style.left=c[0]+"px"; pin.style.top=c[1]+"px";
-  var label=document.getElementById(SID+"-label"), lx;
-  if(c[0]<W*0.5){label.style.left="auto";label.style.right="8cqw";label.style.textAlign="right";lx=W*0.66;}
-  else{label.style.right="auto";label.style.left="8cqw";label.style.textAlign="left";lx=W*0.34;}
-  var lead=document.getElementById(SID+"-lead");
-  lead.setAttribute("d","M "+lx+" "+(H*0.30)+" L "+c[0]+" "+c[1]);
-  var len=lead.getTotalLength(); lead.style.strokeDasharray=len; lead.style.strokeDashoffset=len;
+  var label=document.getElementById(SID+"-label"), lx=W*0.34;
+  if(CFG.hl && CFG.hl.length){
+    var pf=byId[CFG.primary]||byId[CFG.hl[0]], c=(pf?geo.centroid(pf):[W/2,H/2]);
+    var pin=document.getElementById(SID+"-pin"); pin.style.left=c[0]+"px"; pin.style.top=c[1]+"px";
+    if(c[0]<W*0.5){label.style.left="auto";label.style.right="8cqw";label.style.textAlign="right";lx=W*0.66;}
+    else{label.style.right="auto";label.style.left="8cqw";label.style.textAlign="left";lx=W*0.34;}
+    var lead=document.getElementById(SID+"-lead");
+    lead.setAttribute("d","M "+lx+" "+(H*0.30)+" L "+c[0]+" "+c[1]);
+    var len=lead.getTotalLength(); lead.style.strokeDasharray=len; lead.style.strokeDashoffset=len;
+  } else {
+    label.style.left="8cqw";label.style.right="auto";label.style.textAlign="left";
+    var pel=document.getElementById(SID+"-pin"); if(pel)pel.style.display="none";
+    var lel=document.getElementById(SID+"-leader"); if(lel)lel.style.display="none";
+  }
+  if(CFG.routes && CFG.routes.length){
+    var msvg=document.getElementById(SID+"-map").querySelector("svg");
+    var defs=document.createElementNS(NS,"defs"), mk=document.createElementNS(NS,"marker");
+    mk.setAttribute("id",SID+"-rarw");mk.setAttribute("markerWidth","7");mk.setAttribute("markerHeight","7");mk.setAttribute("refX","5");mk.setAttribute("refY","3");mk.setAttribute("orient","auto");
+    var mkp=document.createElementNS(NS,"path");mkp.setAttribute("d","M0,0 L5,3 L0,6 Z");mkp.setAttribute("class","grt-arw");mk.appendChild(mkp);defs.appendChild(mk);msvg.appendChild(defs);
+    CFG.routes.forEach(function(r,i){
+      var a=proj(r.from), b=proj(r.to); if(!a||!b)return;
+      var mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2, dx=b[0]-a[0],dy=b[1]-a[1], dist=Math.sqrt(dx*dx+dy*dy)||1;
+      var nx=-dy/dist, ny=dx/dist, bulge=(r.bulge!=null?r.bulge:0.24)*dist;
+      var qx=mx+nx*bulge, qy=my+ny*bulge;
+      var p=document.createElementNS(NS,"path");p.setAttribute("d","M"+a[0]+" "+a[1]+" Q"+qx+" "+qy+" "+b[0]+" "+b[1]);
+      p.setAttribute("class","grt-path"+(r.hl?" hl":""));p.setAttribute("id",SID+"-rt"+i);p.setAttribute("marker-end","url(#"+SID+"-rarw)");msvg.appendChild(p);
+      [a,b].forEach(function(pt){var cc=document.createElementNS(NS,"circle");cc.setAttribute("cx",pt[0]);cc.setAttribute("cy",pt[1]);cc.setAttribute("r","5");cc.setAttribute("class","grt-dot");msvg.appendChild(cc);});
+      if(r.label){var tx=document.createElementNS(NS,"text");tx.setAttribute("x",qx);tx.setAttribute("y",qy-8);tx.setAttribute("class","grt-lab");tx.setAttribute("text-anchor","middle");tx.textContent=r.label;msvg.appendChild(tx);}
+    });
+  }
   document.getElementById(SID+"-k").textContent=CFG.kicker;
   var t=document.getElementById(SID+"-t"); var m=document.createElement("span"); m.className="gmark"; m.textContent=CFG.title; t.appendChild(m);
   document.getElementById(SID+"-s").innerHTML=CFG.sub;
@@ -1291,8 +1318,9 @@ def geo_map(sid, sc):
     g = _GEO.get(d.get("kind", "us"), _GEO["us"])
     hl = [str(x) for x in d.get("highlight", [])]
     primary = str(d.get("primary", hl[0] if hl else ""))
+    routes = d.get("routes", [])
     cfg = {"hl": hl, "primary": primary, "kicker": d.get("kicker", ""),
-           "title": d.get("title", ""), "sub": d.get("sub", "")}
+           "title": d.get("title", ""), "sub": d.get("sub", ""), "routes": routes}
     frag = [
         # own mist ground on a track-0 clip (frame-worker rule: never a bg on #root)
         f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
@@ -1320,6 +1348,14 @@ def geo_map(sid, sc):
         f'tl.fromTo("#{sid}-t",{{opacity:0,y:20}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+2.05});',
         f'tl.fromTo("#{sid}-s",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.6}},{start+2.3});',
     ]
+    if routes:   # animate each route arc drawing (strokeDashoffset) + its endpoints/label, staggered
+        for i in range(len(routes)):
+            cue = start + 1.0 + i * 0.55
+            tl.append(f'(function(){{var p=document.getElementById("{sid}-rt{i}");if(!p)return;var L=p.getTotalLength();'
+                      f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
+                      f'tl.to(p,{{strokeDashoffset:0,duration:0.9,ease:"power1.inOut"}},{cue:.2f});}})();')
+        tl.append(f'tl.fromTo("#{sid}-map .grt-dot",{{scale:0,transformOrigin:"50% 50%"}},{{scale:1,duration:0.4,ease:"back.out(2)",stagger:0.09}},{start+1.0});')
+        tl.append(f'tl.fromTo("#{sid}-map .grt-lab",{{opacity:0}},{{opacity:1,duration:0.4,stagger:0.12}},{start+1.7});')
     return frag, tl
 
 def raw_scene(sid, sc):
