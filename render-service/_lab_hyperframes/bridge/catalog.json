@@ -12,7 +12,8 @@
         "ground": "object — a media_ground spec: {kind: paper|image|transparent, parchment?, src?, kb?}",
         "items": "array of {from,to | value, prefix?, suffix?, label, cue, underline?, delta?} where delta={dir:up|down|flat, value:string} renders a colored metric-change chip (▲/▼/→) below the label",
         "props": "array of prop_cutout specs (optional evidence overlays)",
-        "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch)? — text-entrance style applied to the LABELS (numerals keep their count-up); see the 'reveals' catalog. Seek-safe."
+        "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch)? — text-entrance style applied to the LABELS (numerals keep their count-up); see the 'reveals' catalog. Seek-safe.",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack-left|centered-row|hero-single|lead-rail|stacked-list. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "constraints": [
         "duration_preserving",
@@ -35,7 +36,8 @@
         "cue": "number — seconds into scene for the sweep",
         "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch) — how the text enters (default rise); see the 'reveals' catalog below. All seek-safe; operative sweep still fires after the text lands.",
         "captionBar": "string? — optional lower caption chip",
-        "props": "array of prop_cutout specs (optional)"
+        "props": "array of prop_cutout specs (optional)",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): editorial-left|centered|framed-card|banner-top|rail-accent. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "constraints": [
         "duration_preserving",
@@ -74,7 +76,8 @@
         "title": "string? — a persistent frame title (dark register)",
         "titleHi": "string? — substring of title to highlight yellow",
         "focus": "number? — screen x the active node pans to (default 640)",
-        "gap": "number? — world spacing between events in px (default 760)"
+        "gap": "number? — world spacing between events in px (default 760)",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): horizontal|vertical|vertical-up. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "constraints": [
         "duration_preserving",
@@ -112,7 +115,8 @@
         "titleHi": "string? - a substring of title to highlight with the accent",
         "items": "array of (string | {text, sub?}) - the points; sub is an optional secondary line",
         "register": "enum(paper|footage)? - ink-on-paper (default) or light text over a media ground",
-        "ground": "object? - a media_ground spec {kind: paper|image|transparent, ...}"
+        "ground": "object? - a media_ground spec {kind: paper|image|transparent, ...}",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack|centered|two-col|numbered-rail|card-row. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "theme_notes": "marker glyph = --bullet-marker (square/em-dash/chevron/dot per theme); text uses the display type role + type-scale."
     },
@@ -127,7 +131,8 @@
         "hi": "string? - a substring of quote to highlight with the accent",
         "kicker": "string? - small eyebrow label",
         "register": "enum(paper|footage)?",
-        "ground": "object? - a media_ground spec"
+        "ground": "object? - a media_ground spec",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): centered|editorial|side-mark|framed. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "theme_notes": "quote-mark + highlight = --accent; quote uses the display type role + type-scale + display-style; cite = mono."
     },
@@ -142,7 +147,8 @@
         "columns": "array of {label, highlight?} - the compared options (one may be highlighted)",
         "rows": "array of {label, cells:[state|text]} - each criterion row; a cell of 'yes'|'no'|'partial' renders a chip, else text",
         "register": "enum(paper|footage)?",
-        "ground": "object?"
+        "ground": "object?",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): matrix|centered|panel|compact. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "theme_notes": "header rule + highlight column = --accent/--surface-3; chips = --accent (yes) / --rule (no) / --accent-soft (partial); row labels = display type."
     },
@@ -155,7 +161,8 @@
         "kicker": "string?",
         "rows": "array of {title, desc?, meta?, num?} - num defaults to a 01/02 ordinal",
         "register": "enum(paper|footage)?",
-        "ground": "object?"
+        "ground": "object?",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): rows|two-col|centered|boxed. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "theme_notes": "ordinal = --accent + --hero-num style; title = display type; meta = mono; hairline rows = --rule under a heavier --accent top rule."
     },
@@ -249,7 +256,8 @@
         "kicker": "string? — eyebrow over a centered top title",
         "title": "string? — a centered frame title spanning both panels",
         "titleHi": "string? — substring of title to highlight yellow",
-        "_side_spec": "each side: {type, label?, …type fields}. label = a corner chip (e.g. 'BEFORE'/'2019'). type ∈ image|video|text|stat: image/video {src, kenburns?:[from,to]|bool (default on), scrim?, vignette?:0..1, grayscale?, tint?:color, media_start? (video), kicker?, title?, highlight? (overlaid)}; text {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?:color, reveal?:rise|char|word|flip|typewriter|scramble|decode|gradient|glitch (per-panel; reveals the title, see the 'reveals' catalog)}; stat {from,to | value, prefix?, suffix?, label, register?:paper|footage}"
+        "_side_spec": "each side: {type, label?, …type fields}. label = a corner chip (e.g. 'BEFORE'/'2019'). type ∈ image|video|text|stat: image/video {src, kenburns?:[from,to]|bool (default on), scrim?, vignette?:0..1, grayscale?, tint?:color, media_start? (video), kicker?, title?, highlight? (overlaid)}; text {kicker?, title:str|[lines], highlight?, register?:paper|footage, bg?:color, reveal?:rise|char|word|flip|typewriter|scramble|decode|gradient|glitch (per-panel; reveals the title, see the 'reveals' catalog)}; stat {from,to | value, prefix?, suffix?, label, register?:paper|footage}",
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): split|cards|over-under|cards-stacked. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "constraints": [
         "duration_preserving",
