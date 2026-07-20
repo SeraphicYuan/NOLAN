@@ -452,6 +452,25 @@
       ],
       "note": "Axes + dots use the theme --accent/--rule; item labels are theme --text with a --surface halo. Keep on-screen labels short; item (x,y) are 0..1 fractions of the plot box."
     },
+    "venn": {
+      "fn": "venn",
+      "purpose": "A VENN / set-overlap: 2 or 3 labelled circles overlap and the intersection is labelled. Circles scale in, then labels + the centre overlap pill fade. The 'where these meet' explainer device.",
+      "when_to_use": "A beat about the INTERSECTION or overlap of sets: where two/three things meet, the sweet spot, ikigai, 'you need all three', shared ground between groups.",
+      "not_for": "A two-item contrast with no overlap (use `comparison`/`juxtaposition`). More than 3 sets, or a hierarchy (use `diagram`). A ranking or list (use `bullet_list`/`ledger`).",
+      "data_schema": {
+        "sets": "array of 2 or 3 {label, sub?} — the circles (sub = a small overline). 2 → side-by-side, 3 → triangle.",
+        "overlap": "string? — the centre intersection label (a pill in the shared region)",
+        "kicker": "string? — eyebrow over the top title",
+        "title": "string? — a centered top title",
+        "titleHi": "string? — substring of title to highlight with the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Circles are theme --accent (tinted via color-mix so overlaps darken); the overlap pill is a theme --surface card. Keep labels short. 2 or 3 sets only — more overlaps get illegible."
+    },
     "lower_third": {
       "fn": "lower_third",
       "purpose": "A lower-third identifier — name + role (+ optional kicker) — the on-screen caption for talking-head / interview / podcast footage. One theme-driven block collapsing the registry's ~12 lt-* variants via a `style` param.",

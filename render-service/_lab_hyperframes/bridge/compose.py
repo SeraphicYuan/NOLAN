@@ -392,6 +392,11 @@ CSS = """
 .qd-htitle .k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-mute);opacity:0;margin-bottom:0.4cqw;}
 .qd-htitle .t{font-weight:900;font-size:1.9cqw;letter-spacing:-0.015em;color:var(--text);opacity:0;}
 .qd-htitle .t .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
+/* venn: 2-3 overlapping sets (centered-hero archetype) */
+.vn-circle{position:absolute;border-radius:50%;border:3px solid var(--accent);background:color-mix(in srgb, var(--accent) 14%, transparent);transform:translate(-50%,-50%);opacity:0;}
+.vn-set{position:absolute;transform:translate(-50%,-50%);text-align:center;font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.55cqw;line-height:1.14;color:var(--text);max-width:15cqw;opacity:0;}
+.vn-set .sk{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:0.72cqw;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-mute);margin-bottom:0.2cqw;}
+.vn-overlap{position:absolute;transform:translate(-50%,-50%);text-align:center;font-family:"Inter",sans-serif;font-weight:800;font-size:1.0cqw;color:var(--text);background:var(--surface);padding:0.4cqw 0.72cqw;border-radius:8px;box-shadow:0 0.3cqw 1cqw rgba(0,0,0,0.26);opacity:0;max-width:14cqw;line-height:1.22;border:1.5px solid var(--accent);}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -2265,6 +2270,53 @@ def quadrant(sid, sc):
     over.append('</div>')
     return frag + over, tl
 
+def venn(sid, sc):
+    """Reusable BLOCK: a VENN / set-overlap — 2 or 3 labelled circles overlap; the intersection is labelled.
+    The 'where these meet' explainer device. Circles scale in, then labels + the overlap pill fade. Seek-safe,
+    theme-driven (--accent tinted circles). Archetype: centered-hero.
+    data: {sets:[{label, sub?}] (2 or 3), overlap?:str (centre intersection label), kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    sets = (d.get("sets") or [])[:3]
+    n = max(1, len(sets))
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 0
+    cx, cy = W / 2, topPad + (H - topPad) / 2 + 10
+    R = 250
+    if n <= 2:
+        centers = [(cx - R * 0.52, cy), (cx + R * 0.52, cy)][:n]
+        setpos = [(cx - R * 0.86, cy), (cx + R * 0.86, cy)][:n]
+    else:
+        centers = [(cx, cy - R * 0.5), (cx - R * 0.54, cy + R * 0.44), (cx + R * 0.54, cy + R * 0.44)]
+        setpos = [(cx, cy - R * 1.05), (cx - R * 0.98, cy + R * 0.86), (cx + R * 0.98, cy + R * 0.86)]
+    frag = [f'<div class="clip blk-venn" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    for i in range(n):
+        scx, scy = centers[i]
+        over.append(f'<div id="{sid}-c{i}" class="vn-circle" style="left:{scx:.0f}px;top:{scy:.0f}px;width:{2*R}px;height:{2*R}px;"></div>')
+        tl.append(f'tl.fromTo("#{sid}-c{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.6,ease:"back.out(1.5)",transformOrigin:"50% 50%"}},{start+0.25+i*0.18});')
+    for i, s in enumerate(sets):
+        lx, ly = setpos[i]
+        sub = f'<span class="sk">{esc(s["sub"])}</span>' if s.get("sub") else ""
+        over.append(f'<div id="{sid}-l{i}" class="vn-set" style="left:{lx:.0f}px;top:{ly:.0f}px;">{sub}{esc(s.get("label",""))}</div>')
+        tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.45}},{start+0.7+i*0.18});')
+    if d.get("overlap"):
+        oy = cy if n <= 2 else cy + R * 0.12
+        over.append(f'<div id="{sid}-ov" class="vn-overlap" style="left:{cx:.0f}px;top:{oy:.0f}px;">{esc(d["overlap"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-ov",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:0.5,ease:"back.out(2)",transformOrigin:"50% 50%"}},{start+0.7+n*0.18+0.2});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -3041,7 +3093,7 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "diagram": diagram, "comparison": comparison, "juxtaposition": juxtaposition,
           "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
-          "annotate": annotate, "quadrant": quadrant,
+          "annotate": annotate, "quadrant": quadrant, "venn": venn,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so

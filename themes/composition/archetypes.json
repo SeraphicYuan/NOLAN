@@ -34,7 +34,8 @@
       "balance": "symmetric",
       "density": "generous",
       "blocks": [
-        "stat"
+        "stat",
+        "venn"
       ],
       "exemplar": "exemplars/centered-hero.json",
       "zone": {

@@ -50,7 +50,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highligh
             "diagram": ["root"], "comparison": ["left", "right"], "juxtaposition": ["left", "right"],
             "gallery": ["images"],
             "carousel": ["images"], "document": ["source"], "lower_third": ["name"],
-            "annotate": ["src", "callouts"], "quadrant": ["x", "y"],
+            "annotate": ["src", "callouts"], "quadrant": ["x", "y"], "venn": ["sets"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
 
 
