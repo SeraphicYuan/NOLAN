@@ -409,6 +409,13 @@ CSS = """
 .sk-slabel{position:absolute;transform:translate(-100%,-50%);text-align:right;white-space:nowrap;}
 .sk-slabel .v{display:block;font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.7cqw;color:var(--text);font-variant-numeric:tabular-nums;}
 .sk-slabel .n{font-family:"Inter",sans-serif;font-weight:600;font-size:0.95cqw;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);}
+/* scale: magnitude comparison — circles sized by area (centered-hero archetype) */
+.scl-circle{position:absolute;border-radius:50%;background:color-mix(in srgb, var(--accent) 80%, transparent);border:3px solid var(--accent);opacity:0;box-shadow:0 0.6cqw 2cqw rgba(0,0,0,0.2);}
+.scl-circle.hl{background:var(--text);border-color:var(--text);}
+.scl-label{position:absolute;transform:translateX(-50%);text-align:center;white-space:nowrap;opacity:0;}
+.scl-label .v{display:block;font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.55cqw;color:var(--text);font-variant-numeric:tabular-nums;}
+.scl-label .n{font-family:"Inter",sans-serif;font-weight:600;font-size:0.95cqw;color:var(--text-mute);}
+.scl-ratio{position:absolute;transform:translate(-50%,-50%);font-family:var(--font-display-en,inherit);font-weight:800;font-size:2.9cqw;color:var(--accent);opacity:0;text-shadow:0 0 10px var(--surface),0 0 10px var(--surface);}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -2388,6 +2395,63 @@ def sankey(sid, sc):
     over.append('</div>')
     return frag + over, tl
 
+def scale(sid, sc):
+    """Reusable BLOCK: a MAGNITUDE / SCALE comparison — 2+ things drawn as circles sized by AREA (radius ∝
+    sqrt(value)) so relative size reads at a glance ('this is 400x that'). Circles grow from a shared baseline,
+    labels + values land, an optional ratio callout pops. Seek-safe (scale/opacity), theme-driven. Archetype:
+    centered-hero.
+    data: {items:[{label, value, hl?}], unit?, ratio?:str (a called-out ratio like '400x'), kicker?, title?,
+           titleHi?}"""
+    import math
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    items = d.get("items") or []
+    unit = d.get("unit", "")
+    vals = [max(0.0, float(it.get("value", 0))) for it in items]
+    vmax = max(vals) if vals else 1.0
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 0
+    RMAX = 232
+    baseY = topPad + (H - topPad) / 2 + RMAX * 0.55 + 40      # shared baseline the circles grow from
+    radii = [max(9.0, RMAX * math.sqrt(v / vmax)) if vmax > 0 else 9.0 for v in vals]
+    gap = 90
+    tot = sum(2 * r for r in radii) + gap * (len(radii) - 1 if radii else 0)
+    x = (W - tot) / 2
+    frag = [f'<div class="clip blk-scale" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    centers = []
+    for i, it in enumerate(items):
+        r = radii[i]
+        ccx = x + r
+        centers.append((ccx, r))
+        hl = " hl" if it.get("hl") else ""
+        over.append(f'<div id="{sid}-c{i}" class="scl-circle{hl}" style="left:{ccx-r:.0f}px;top:{baseY-2*r:.0f}px;width:{2*r:.0f}px;height:{2*r:.0f}px;"></div>')
+        vtxt = f'{it.get("value","")}{unit}'
+        over.append(f'<div id="{sid}-l{i}" class="scl-label" style="left:{ccx:.0f}px;top:{baseY+18:.0f}px;">'
+                    f'<span class="v">{esc(str(vtxt))}</span><span class="n">{esc(it.get("label",""))}</span></div>')
+        cue = start + 0.5 + i * 0.4
+        tl.append(f'tl.fromTo("#{sid}-c{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.6,ease:"back.out(1.6)",transformOrigin:"50% 100%"}},{cue});')
+        tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.3});')
+        x += 2 * r + gap
+    if d.get("ratio") and radii:
+        gx0, gx1 = centers[0][0] - radii[0], centers[-1][0] + radii[-1]
+        rx = (gx0 + gx1) / 2
+        ry = baseY - 2 * max(radii) - 44                 # the clear band just above the tallest circle
+        over.append(f'<div id="{sid}-ratio" class="scl-ratio" style="left:{rx:.0f}px;top:{ry:.0f}px;">{esc(d["ratio"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-ratio",{{opacity:0}},{{opacity:1,duration:0.5}},{start+0.5+len(items)*0.4});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -3164,7 +3228,7 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "diagram": diagram, "comparison": comparison, "juxtaposition": juxtaposition,
           "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
-          "annotate": annotate, "quadrant": quadrant, "venn": venn, "sankey": sankey,
+          "annotate": annotate, "quadrant": quadrant, "venn": venn, "sankey": sankey, "scale": scale,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so

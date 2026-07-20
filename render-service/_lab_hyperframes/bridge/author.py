@@ -51,7 +51,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highligh
             "gallery": ["images"],
             "carousel": ["images"], "document": ["source"], "lower_third": ["name"],
             "annotate": ["src", "callouts"], "quadrant": ["x", "y"], "venn": ["sets"],
-            "sankey": ["source", "targets"],
+            "sankey": ["source", "targets"], "scale": ["items"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
 
 

@@ -35,7 +35,8 @@
       "density": "generous",
       "blocks": [
         "stat",
-        "venn"
+        "venn",
+        "scale"
       ],
       "exemplar": "exemplars/centered-hero.json",
       "zone": {

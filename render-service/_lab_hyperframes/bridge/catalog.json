@@ -491,6 +491,26 @@
       ],
       "note": "Ribbon widths are proportional to target.value; the source bar spans the full plot height. Ribbons + nodes are theme --accent (color-mix tint); a hl target uses --text. Keep 2-6 targets — more get thin."
     },
+    "scale": {
+      "fn": "scale",
+      "purpose": "A MAGNITUDE / SCALE comparison: 2+ things drawn as circles sized by AREA (radius ∝ sqrt(value)) so relative size reads at a glance. Circles grow from a shared baseline, labels + values land, an optional ratio callout pops. The 'how big is big' device.",
+      "when_to_use": "A beat about RELATIVE SIZE / magnitude: this is N times bigger/smaller, orders of magnitude, 'to scale', a tiny thing next to a huge thing, comparing quantities where the SIZE is the point.",
+      "not_for": "Precise values to read off (use `chart`/`stat`). Parts of a whole as a flow (use `sankey`). A two-way qualitative contrast (use `comparison`/`juxtaposition`).",
+      "data_schema": {
+        "items": "array of {label, value (drives the circle AREA), hl?} — 2+ things, left→right",
+        "unit": "string? — appended to each value (e.g. 'kg', 'x')",
+        "ratio": "string? — a called-out ratio placed above the tallest circle (e.g. '400x')",
+        "kicker": "string? — eyebrow over the top title",
+        "title": "string? — a centered top title",
+        "titleHi": "string? — substring of title to highlight with the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Circle radius ∝ sqrt(value) so AREA is proportional (the honest size encoding); the biggest sets the scale. Circles are theme --accent, a hl item uses --text. Keep 2-5 items; huge ratios make small ones dots."
+    },
     "lower_third": {
       "fn": "lower_third",
       "purpose": "A lower-third identifier — name + role (+ optional kicker) — the on-screen caption for talking-head / interview / podcast footage. One theme-driven block collapsing the registry's ~12 lt-* variants via a `style` param.",
