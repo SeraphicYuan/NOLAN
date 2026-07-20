@@ -168,7 +168,8 @@
       "blocks": [
         "geo",
         "media_ground",
-        "annotate"
+        "annotate",
+        "detail_zoom"
       ],
       "exemplar": null,
       "zone": {
@@ -332,6 +333,35 @@
         "y": [
           0.12,
           0.88
+        ]
+      }
+    },
+    "asymmetric-hero": {
+      "intent": "A rule-of-thirds hero — the subject fills two thirds, the title breathes in the opposite negative space (the cinematic opening / chapter card).",
+      "when_to_use": "a filmic opening, a chapter/section card, a portrait or establishing shot where one subject and a short title share the frame asymmetrically.",
+      "not_for": "a symmetric centred idea (use centered-hero), a running reading column (editorial-column), a two-item contrast (split-screen), a data device.",
+      "serves_beats": [
+        "opening",
+        "chapter",
+        "portrait",
+        "establishing",
+        "hero"
+      ],
+      "anchor": "the subject occupies ~two thirds of the frame; the title sits in the lower third of the OPPOSITE side over a directional scrim; generous negative space between.",
+      "balance": "asymmetric",
+      "density": "airy",
+      "blocks": [
+        "hero"
+      ],
+      "exemplar": null,
+      "zone": {
+        "x": [
+          0.05,
+          0.95
+        ],
+        "y": [
+          0.55,
+          0.92
         ]
       }
     },

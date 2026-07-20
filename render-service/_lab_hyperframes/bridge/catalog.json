@@ -590,6 +590,26 @@
       ],
       "note": "Nodes are theme --surface cards (hl = accent fill); arrows are accent arcs (strokeDashoffset draw + an arrowhead marker). 3-6 steps read best on the ring."
     },
+    "detail_zoom": {
+      "fn": "detail_zoom",
+      "purpose": "A FOCUS TOUR across ONE image: the camera pans + zooms between marked regions with a caption per stop ('look here… now here'). The art-essay close-reading move on a painting, map, or photo.",
+      "when_to_use": "A beat that WALKS THROUGH ONE image in detail: reading a painting region by region, touring parts of a map/diagram/photo, 'notice this… and here… and here' over a single still.",
+      "not_for": "Labelling all parts at once (use `annotate`). A single full-frame image (use `media_ground`). A sequence of DIFFERENT images (use `gallery`/`carousel`). A two-image contrast (use `comparison`).",
+      "data_schema": {
+        "src": "string — the image to tour (a real project asset; a high-res image tours best)",
+        "stops": "array of {x, y (0..1 focus point), scale?(zoom, default ~1.9), caption?, sub?} — the tour stops, in order; the camera pans/zooms to each and holds",
+        "fit": "enum(cover|contain)? — cover (default) or contain",
+        "kicker": "string? — eyebrow over the top title",
+        "title": "string? — a top title over the image",
+        "titleHi": "string? — substring of title to highlight with the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "A single transformed camera layer pans/zooms (transform-only, seek-safe); captions are theme --surface cards fading per stop. dur is split evenly across stops; src must be a real asset."
+    },
     "lower_third": {
       "fn": "lower_third",
       "purpose": "A lower-third identifier — name + role (+ optional kicker) — the on-screen caption for talking-head / interview / podcast footage. One theme-driven block collapsing the registry's ~12 lt-* variants via a `style` param.",
@@ -709,6 +729,28 @@
         "seek_safe": true,
         "notes": "transforms/opacity only; label sizing is deterministic via data-fit."
       }
+    },
+    "hero": {
+      "fn": "hero",
+      "purpose": "A cinematic ASYMMETRIC HERO (rule-of-thirds): a full-bleed image with the title anchored to ONE third and the subject breathing in the opposite two-thirds, over a directional scrim. The filmic opening / chapter card.",
+      "when_to_use": "A filmic OPENING or CHAPTER/section card: a portrait or establishing shot where one subject and a short title share the frame asymmetrically. Sets a scene or a mood.",
+      "not_for": "A symmetric centred statement (use `statement`/`stat`). A full-bleed image with no title (use `media_ground`). Labelling parts of the image (use `annotate`). A data device.",
+      "data_schema": {
+        "src": "string — the full-bleed image asset",
+        "side": "enum(left|right)? — which third holds the text (default left); the subject breathes on the opposite side",
+        "title": "string | [lines] — the hero title (display type over the image)",
+        "titleHi": "string? — substring of title to highlight with the accent",
+        "kicker": "string? — a small accent overline (a chapter no., a date/place)",
+        "sub": "string? — a one-line subtitle under the title",
+        "fit": "enum(cover|contain)? — cover (default)",
+        "kb": "[from,to] | bool? — Ken-Burns scale on the image (default a gentle push)"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Title is white over a directional scrim (kicker + operative use --accent). Image Ken-Burns + text rise are seek-safe. src must be a real asset; keep the title short (a few words)."
     }
   },
   "components": {

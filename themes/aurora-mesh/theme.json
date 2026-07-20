@@ -49,7 +49,8 @@
       "split-screen",
       "framed",
       "focal-card",
-      "quadrant"
+      "quadrant",
+      "asymmetric-hero"
     ]
   },
   "decoration": [

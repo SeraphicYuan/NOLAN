@@ -48,7 +48,8 @@
       "framed",
       "full-bleed-overlay",
       "focal-card",
-      "quadrant"
+      "quadrant",
+      "asymmetric-hero"
     ]
   },
   "decoration": [

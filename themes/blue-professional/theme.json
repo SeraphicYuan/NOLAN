@@ -41,7 +41,8 @@
       "split-screen",
       "framed",
       "timeline",
-      "quadrant"
+      "quadrant",
+      "asymmetric-hero"
     ]
   },
   "decoration": [

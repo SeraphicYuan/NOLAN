@@ -46,7 +46,8 @@
       "swiss-grid",
       "split-screen",
       "framed",
-      "quadrant"
+      "quadrant",
+      "asymmetric-hero"
     ]
   },
   "decoration": [

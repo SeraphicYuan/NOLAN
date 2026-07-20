@@ -450,6 +450,27 @@ CSS = """
 .cy-node .cl{font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.25cqw;color:var(--text);line-height:1.12;}
 .cy-node .cs{display:block;font-family:"Inter",sans-serif;font-weight:500;font-size:0.82cqw;color:var(--text-mute);}
 .cy-center{position:absolute;transform:translate(-50%,-50%);text-align:center;font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.7cqw;line-height:1.1;color:var(--text);max-width:12cqw;opacity:0;}
+/* detail_zoom: a Ken-Burns focus tour across one image (full-bleed-overlay) */
+.dz-cam{position:absolute;top:0;left:0;width:1920px;height:1080px;will-change:transform;}
+.dz-img{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;}
+.dz-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(0,0,0,0.26),rgba(0,0,0,0) 22%,rgba(0,0,0,0) 60%,rgba(0,0,0,0.52));}
+.dz-cap{position:absolute;left:6cqw;bottom:18cqh;max-width:42cqw;background:var(--surface);color:var(--text);font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.6cqw;line-height:1.2;padding:1.0cqw 1.4cqw;border-radius:var(--r-card,12px);border-left:4px solid var(--accent);box-shadow:0 0.5cqw 1.6cqw rgba(0,0,0,0.4);opacity:0;}
+.dz-cap .dzn{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:0.8cqw;letter-spacing:0.12em;color:var(--text-mute);margin-bottom:0.3cqw;}
+.dz-cap .dzs{display:block;font-family:"Inter",sans-serif;font-weight:500;font-size:1.0cqw;color:var(--text-mute);margin-top:0.3cqw;}
+/* hero: cinematic asymmetric hero — rule-of-thirds (asymmetric-hero archetype) */
+.hr-img{position:absolute;inset:-4%;background-repeat:no-repeat;background-position:center;transform-origin:center;will-change:transform;}
+.hr-scrim{position:absolute;inset:0;pointer-events:none;}
+.hr-scrim.left{background:linear-gradient(100deg, rgba(0,0,0,0.74) 0%, rgba(0,0,0,0.48) 32%, rgba(0,0,0,0) 60%);}
+.hr-scrim.right{background:linear-gradient(260deg, rgba(0,0,0,0.74) 0%, rgba(0,0,0,0.48) 32%, rgba(0,0,0,0) 60%);}
+.hr-txt{position:absolute;bottom:13cqh;max-width:42cqw;}
+.hr-txt.left{left:6cqw;text-align:left;}
+.hr-txt.right{right:6cqw;text-align:right;}
+.hr-txt .hk{font-family:"Inter",sans-serif;font-weight:600;font-size:1.0cqw;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:0.7cqw;opacity:0;}
+.hr-txt .hl2{font-family:var(--font-display-en,inherit);font-weight:800;font-size:4.6cqw;line-height:1.02;letter-spacing:-0.02em;color:#fff;}
+.hr-txt .hl2 .ln{display:block;opacity:0;}
+.hr-txt .hl2 .mark{background:var(--accent);color:var(--accent-ink);padding:0 0.08em;box-decoration-break:clone;}
+.hr-txt .hs{font-family:"Inter",sans-serif;font-weight:500;font-size:1.3cqw;line-height:1.4;color:rgba(255,255,255,0.88);margin-top:0.9cqw;opacity:0;max-width:34cqw;}
+.hr-txt.right .hs{margin-left:auto;}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -2733,6 +2754,99 @@ def cycle(sid, sc):
     over.append('</div>')
     return frag + over, tl
 
+def detail_zoom(sid, sc):
+    """Reusable BLOCK: a FOCUS TOUR across ONE image — the camera pans + zooms between marked regions, a
+    caption per stop ('look here… now here'). The art-essay close-reading move (a painting, a map, a photo).
+    Seek-safe (a single transformed camera layer, transform-only), theme-driven captions. Archetype:
+    full-bleed-overlay.
+    data: {src, stops:[{x,y (0..1 focus point), scale?(zoom, default 1.9), caption?, sub?}], fit?:cover|contain,
+           kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    src, fit = d.get("src", ""), d.get("fit", "cover")
+    stops = d.get("stops") or [{"x": 0.5, "y": 0.5, "scale": 1.0}]
+    n = len(stops)
+    seg = dur / n
+    frag = [f'<div class="clip blk-detail_zoom" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};overflow:hidden;">'
+            f'<div id="{sid}-cam" class="dz-cam"><div class="dz-img" style="background-image:url(\'{esc(src)}\');background-size:{esc(fit)};"></div></div>'
+            f'<div class="dz-scrim"></div></div>']
+    tl = []
+    for i, st in enumerate(stops):
+        s = float(st.get("scale", 1.9 if n > 1 and i > 0 else 1.0))
+        px, py = float(st.get("x", 0.5)) * W, float(st.get("y", 0.5)) * H
+        tx, ty = W / 2 - px * s, H / 2 - py * s
+        t = start + i * seg
+        if i == 0:
+            tl.append(f'tl.set("#{sid}-cam",{{x:{tx:.0f},y:{ty:.0f},scale:{s},transformOrigin:"0px 0px"}},{start});')
+        else:
+            tl.append(f'tl.to("#{sid}-cam",{{x:{tx:.0f},y:{ty:.0f},scale:{s},duration:0.95,ease:"power2.inOut"}},{t:.2f});')
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" style="position:absolute;inset:0;pointer-events:none;">']
+    for i, st in enumerate(stops):
+        if not (st.get("caption") or st.get("sub")):
+            continue
+        t = start + i * seg
+        sub = f'<span class="dzs">{esc(st["sub"])}</span>' if st.get("sub") else ""
+        over.append(f'<div id="{sid}-cap{i}" class="dz-cap"><span class="dzn">{i+1}/{n}</span>{esc(st.get("caption",""))}{sub}</div>')
+        tl.append(f'tl.fromTo("#{sid}-cap{i}",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.4}},{t+0.7:.2f});')
+        if i < n - 1:
+            tl.append(f'tl.to("#{sid}-cap{i}",{{opacity:0,duration:0.3}},{t+seg-0.25:.2f});')
+    if d.get("title") or d.get("kicker"):
+        t2, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t2.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t2.split(op,1)[1])}' if op and op in t2 else esc(t2))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="an-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
+def hero(sid, sc):
+    """Reusable BLOCK: a cinematic ASYMMETRIC HERO (rule-of-thirds) — a full-bleed image with the title
+    anchored to ONE third and the subject breathing in the opposite two-thirds; a directional scrim keeps
+    the type legible. The filmic opening / chapter card. Seek-safe (image Ken-Burns + text rise), theme-
+    driven (accent kicker/operative). Archetype: asymmetric-hero.
+    data: {src, side?:left|right (which third holds the text; default left), kicker?, title:str|[lines],
+           titleHi?, sub?, fit?:cover|contain, kb?:[from,to]|bool}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    src, fit = d.get("src", ""), d.get("fit", "cover")
+    side = d.get("side", "left")
+    frag = [f'<div class="clip blk-hero" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};overflow:hidden;">'
+            f'<div id="{sid}-img" class="hr-img" style="background-image:url(\'{esc(src)}\');background-size:{esc(fit)};"></div>'
+            f'<div class="hr-scrim {side}"></div></div>']
+    tl = []
+    kb = d.get("kb", True)
+    if kb:
+        f0, f1 = kb if isinstance(kb, list) else [1.06, 1.15]
+        tl.append(f'tl.fromTo("#{sid}-img",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    over.append(f'<div class="hr-txt {side}">')
+    if d.get("kicker"):
+        over.append(f'<div class="hk" id="{sid}-hk">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{start+0.3});')
+    title = d.get("title", "")
+    lines = title if isinstance(title, list) else [title]
+    op = d.get("titleHi", "")
+    over.append('<div class="hl2">')
+    for li, ln in enumerate(lines):
+        tid = f"{sid}-t{li}"
+        if op and op in ln:
+            b, a = ln.split(op, 1)
+            inner = f'{esc(b)}<span class="mark">{esc(op)}</span>{esc(a)}'
+        else:
+            inner = esc(ln)
+        over.append(f'<span class="ln" id="{tid}">{inner}</span>')
+        tl.append(f'tl.fromTo("#{tid}",{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"}},{start+0.5+li*0.14:.2f});')
+    over.append('</div>')
+    if d.get("sub"):
+        over.append(f'<div class="hs" id="{sid}-hs">{esc(d["sub"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-hs",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.5}},{start+0.5+len(lines)*0.14+0.15:.2f});')
+    over.append('</div></div>')
+    return frag + over, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -3539,7 +3653,8 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
           "annotate": annotate, "quadrant": quadrant, "venn": venn, "sankey": sankey, "scale": scale,
-          "pie": pie, "funnel": funnel, "spectrum": spectrum, "cycle": cycle,
+          "pie": pie, "funnel": funnel, "spectrum": spectrum, "cycle": cycle, "detail_zoom": detail_zoom,
+          "hero": hero,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so
