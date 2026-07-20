@@ -131,7 +131,36 @@ BLOCKS = {
                         {"label": "Prints", "value": 18}, {"label": "Correspondence", "value": 14}]},
  "scale": {"kicker": "A SENSE OF TIME", "title": "Ages apart", "titleHi": "apart", "unit": " yrs", "ratio": "4x older",
            "items": [{"label": "The press", "value": 580}, {"label": "The vase", "value": 2500, "hl": True}]},
+ "pie": {"kicker": "THE COLLECTION", "title": "By medium", "titleHi": "medium", "hole": 0.56, "center": "12,400",
+         "segments": [{"label": "Manuscripts", "value": 42, "hl": True}, {"label": "Objects", "value": 26},
+                      {"label": "Prints", "value": 18}, {"label": "Coins", "value": 14}]},
+ "funnel": {"kicker": "ATTRIBUTION", "title": "How many survive the test", "titleHi": "survive", "unit": "",
+            "stages": [{"label": "Claimed", "value": 1000}, {"label": "Catalogued", "value": 420},
+                       {"label": "Authenticated", "value": 180, "hl": True}, {"label": "Masterworks", "value": 30}]},
+ "spectrum": {"kicker": "DATING THE PIECE", "title": "Where it falls", "titleHi": "falls",
+              "axis": {"lo": "Archaic", "hi": "Late"}, "zones": [{"x": 0, "x1": 0.33, "label": "Early"}, {"x0": 0.33, "x1": 0.66, "label": "Classical"}, {"x0": 0.66, "x1": 1, "label": "Late"}],
+              "items": [{"x": 0.18, "label": "The vase", "sub": "480 BC", "hl": True}, {"x": 0.52, "label": "The relief"}, {"x": 0.82, "label": "The mosaic", "sub": "AD 200"}]},
+ "cycle": {"kicker": "CONSERVATION", "title": "The care cycle", "titleHi": "cycle", "center": "Care",
+           "steps": [{"label": "Survey"}, {"label": "Clean", "hl": True}, {"label": "Stabilise"}, {"label": "Store"}, {"label": "Monitor"}]},
+ "detail_zoom": {"src": IMG(1), "kicker": "CLOSE READING", "title": "The brushwork", "titleHi": "brushwork",
+                 "stops": [{"x": 0.34, "y": 0.32, "scale": 2.1, "caption": "The face, a later glaze", "sub": "note the impasto"},
+                           {"x": 0.24, "y": 0.7, "scale": 2.4, "caption": "The gilt, worn thin"}]},
+ "hero": {"src": IMG(0), "side": "left", "kicker": "PLATE I", "title": ["The sitter,", "unnamed"], "titleHi": "unnamed", "sub": "Oil on oak, c. 1530."},
+ "chat_thread": {"kicker": "THE PROVENANCE", "subject": "Two curators", "messages": [
+     {"from": "them", "text": "The seal doesn't match the 1780 inventory."},
+     {"from": "me", "text": "Then where was it for a century?"},
+     {"from": "them", "text": "That's the question, isn't it."}]},
+ "connection_board": {"kicker": "THE TRAIL", "title": "Chain of custody", "titleHi": "custody", "nodes": [
+     {"id": "a", "label": "The Workshop", "hl": True}, {"id": "b", "label": "A Duke", "sub": "1600s"},
+     {"id": "c", "label": "The Auction"}, {"id": "d", "label": "The Museum"}],
+     "links": [{"from": "a", "to": "b", "label": "commissioned"}, {"from": "b", "to": "c", "label": "sold"}, {"from": "c", "to": "d"}]},
+ "spans": {"kicker": "THEY OVERLAPPED", "title": "Three workshops", "titleHi": "overlapped", "unit": "",
+           "spans": [{"label": "Attic", "start": -530, "end": -320}, {"label": "Apulian", "start": -430, "end": -300, "hl": True}, {"label": "Campanian", "start": -400, "end": -320}]},
 }
+# route-map demo on geo (adds arcs to the world map)
+BLOCKS["geo"] = {**BLOCKS["geo"], "routes": [
+    {"from": [12.5, 41.9], "to": [-0.1, 51.5], "label": "Rome → London", "hl": True},
+    {"from": [23.7, 38.0], "to": [12.5, 41.9]}]}
 # per-block fidelity verdict shown in the hub (theme-independent judgement; 'flag' is dark-theme-specific)
 VERDICTS = {
  "stat": ("pass", "Ground, italic numerals, accent stub — full token pickup."),
@@ -161,7 +190,17 @@ VERDICTS = {
  "venn": ("pass", "Accent-tinted circles (color-mix, overlaps darken); surface overlap pill."),
  "sankey": ("pass", "Accent ribbons proportional to value; source/target nodes + labels themed."),
  "scale": ("pass", "Area-proportional accent circles; themed values, labels, ratio callout."),
+ "pie": ("pass", "Accent slices at stepped opacity; legend + donut centre label themed."),
+ "funnel": ("pass", "Accent trapezoids narrowing; labels with a surface halo."),
+ "spectrum": ("pass", "Themed axis/zones/dots; a hl item uses --text."),
+ "cycle": ("pass", "Surface node cards + accent loop arrows (marker arrowheads)."),
+ "detail_zoom": ("pass", "Transformed camera over the image; surface caption cards per stop."),
+ "hero": ("pass", "Full-bleed image + directional scrim; accent kicker/operative, white title."),
+ "chat_thread": ("pass", "Accent (me) / surface (them) bubbles; themed header."),
+ "connection_board": ("pass", "Surface node cards + accent links (dash-draw); hl accent border."),
+ "spans": ("pass", "Accent duration bars (0.5 opacity so overlaps read); ticks + labels themed."),
 }
+VERDICTS["geo"] = ("pass", "Map ground + accent regions/leader; ROUTE ARCS (arrowheads, dash-draw) themed.")
 
 
 def main():
