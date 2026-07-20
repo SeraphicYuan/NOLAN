@@ -49,10 +49,6 @@
     ]
   },
   "decoration": [
-    "pillar-panels",
-    {
-      "id": "letterpress",
-      "text": "BOLD"
-    }
+    "pillar-panels"
   ]
 }

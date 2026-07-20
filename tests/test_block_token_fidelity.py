@@ -48,9 +48,15 @@ def _tok(css, name):
 
 
 def test_no_block_paints_a_raw_shell_fullbleed_ground():
-    """A full-bleed page ground must route through _page_bg(); a raw var(--shell) goes dark on an
-    inverted-card theme. This is the guard that would have caught the chart + code bug."""
-    hits = re.findall(r"inset:\s*0;\s*background:\s*var\(--shell\)", COMPOSE_SRC)
+    """A full-bleed page ground that TEXT sits on must route through _page_bg(); a raw var(--shell) goes
+    dark on an inverted-card theme. This is the guard that would have caught the chart + code bug.
+
+    EXEMPT: `.dgbg` (the diagram ground). It is a CARD-CONTAINER — the nodes sit on var(--surface) cards,
+    not on the ground — so var(--shell) is correct AND intentional: on inverted themes it gives the
+    dark-canvas + light-cards look, where _page_bg() (surface) would collapse ground==nodes. No direct text
+    on it, so the dark-on-light risk doesn't apply."""
+    src = re.sub(r"\.dgbg\{[^}]*\}", "", COMPOSE_SRC)   # drop the exempt card-container ground
+    hits = re.findall(r"inset:\s*0;\s*background:\s*var\(--shell\)", src)
     assert not hits, (
         f"{len(hits)} full-bleed ground(s) hardcode var(--shell) — route through _page_bg() so "
         f"inverted-card themes (dark shell / light surface) don't render a dark panel under light content"

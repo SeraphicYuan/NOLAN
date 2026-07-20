@@ -50,7 +50,6 @@
     ]
   },
   "decoration": [
-    "interior-frame",
-    "background-ordinal"
+    "interior-frame"
   ]
 }

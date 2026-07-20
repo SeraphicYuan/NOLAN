@@ -33,11 +33,7 @@
       "ledger"
     ]
   },
-  "decoration": [
-    "pushpins",
-    "tape",
-    "scribbles"
-  ],
+  "decoration": [],
   "fonts": {
     "displayEn": "Shrikhand",
     "body": "Zilla Slab",

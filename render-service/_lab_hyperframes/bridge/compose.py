@@ -272,30 +272,34 @@ CSS = """
 .collage-sub img{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:block;}
 .collage-sub.shadow img{filter:drop-shadow(0 16px 26px rgba(0,0,0,0.42));}
 /* diagram: d3-computed node-link graph (tree/flow/radial). d3 lays out ONCE at load; GSAP reveals (seek-safe). */
-.dgbg{position:absolute;inset:0;background:#F1F3F2;}
-.dgbg.dark{background:radial-gradient(120% 120% at 50% 40%,#14171a,#090b0d);}
+/* diagram is fully THEME-TOKEN driven: ground = the theme shell, nodes = surface cards, ink = --text,
+   links = --rule, highlight/root = --accent/--text. Because --surface/--text are polarity-correct by
+   construction, the same tokens read right on light AND dark themes — the dg-dark flip just re-affirms them. */
+.dgbg{position:absolute;inset:0;background:var(--shell);}
+.dgbg.dark{background:var(--shell);}
 .dglinks{position:absolute;inset:0;pointer-events:none;overflow:visible;}
-.dglinks path.dglink{fill:none;stroke:#B7BCB9;stroke-width:3;stroke-linecap:round;}
-.dglinks.dark path.dglink{stroke:#3b4247;}
+.dglinks path.dglink{fill:none;stroke:var(--rule);stroke-width:3;stroke-linecap:round;}
+.dglinks.dark path.dglink{stroke:var(--rule);}
 .dgstage{position:absolute;inset:0;overflow:hidden;}
 .dgworld{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;}
 .dgnode-w{position:absolute;transform:translate(-50%,-50%);}
-.dgnode{opacity:0;transform-origin:center;min-width:110px;max-width:290px;background:#fff;
-  border:2px solid #2B2D2C;border-radius:var(--r-card,12px);padding:0.85cqw 1.2cqw;text-align:center;
-  box-shadow:0 0.4cqw 1.1cqw rgba(0,0,0,0.13);}
+.dgnode{opacity:0;transform-origin:center;min-width:110px;max-width:290px;background:var(--surface);
+  border:var(--bw,2px) solid var(--rule);border-radius:var(--r-card,12px);padding:0.85cqw 1.2cqw;text-align:center;
+  box-shadow:var(--card-shadow,0 0.4cqw 1.1cqw rgba(0,0,0,0.13));}
 .dgnode.pill{border-radius:999px;}
-.dgnode .lab{font-weight:800;font-size:1.15cqw;line-height:1.14;letter-spacing:-0.01em;color:#2B2D2C;}
-.dgnode .sub{font-family:"Inter",sans-serif;font-weight:500;font-size:0.78cqw;line-height:1.3;color:#6b6d6a;margin-top:0.28cqw;}
-.dgnode.hl{background:var(--accent);border-color:var(--accent-ink);}
-.dgnode.hl .sub{color:#4C4E4D;}
-.dgnode.root{background:#2B2D2C;border-color:#2B2D2C;}
-.dgnode.root .lab{color:#F6F7F6;}.dgnode.root .sub{color:#c9ccc9;}
-/* dark register: the node-container clip carries .dg-dark; nodes are its descendants */
-.dg-dark .dgnode{background:#191c1f;border-color:#EDEFEC;box-shadow:0 0.5cqw 1.5cqw rgba(0,0,0,0.5);}
-.dg-dark .dgnode .lab{color:#F6F7F6;}.dg-dark .dgnode .sub{color:#9a9c99;}
+.dgnode .lab{font-weight:800;font-size:1.15cqw;line-height:1.14;letter-spacing:-0.01em;color:var(--text);}
+.dgnode .sub{font-family:var(--font-body);font-weight:500;font-size:0.78cqw;line-height:1.3;color:var(--text-2);margin-top:0.28cqw;}
+.dgnode.hl{background:var(--accent);border-color:var(--accent);}
+.dgnode.hl .lab{color:var(--accent-ink);}.dgnode.hl .sub{color:var(--accent-ink);opacity:0.82;}
+.dgnode.root{background:var(--text);border-color:var(--text);}
+.dgnode.root .lab{color:var(--shell);}.dgnode.root .sub{color:var(--shell);opacity:0.7;}
+/* dark register: nodes are already theme-token-driven (polarity-correct) — re-affirm the same tokens */
+.dg-dark .dgnode{background:var(--surface);border-color:var(--rule);}
+.dg-dark .dgnode .lab{color:var(--text);}.dg-dark .dgnode .sub{color:var(--text-2);}
 .dg-dark .dgnode.hl{background:var(--accent);border-color:var(--accent);}
-.dg-dark .dgnode.hl .lab{color:#0a0b0a;}.dg-dark .dgnode.hl .sub{color:#3a3a2a;}
-.dg-dark .dgnode.root{background:#0a0b0a;border-color:#EDEFEC;}
+.dg-dark .dgnode.hl .lab{color:var(--accent-ink);}.dg-dark .dgnode.hl .sub{color:var(--accent-ink);opacity:0.82;}
+.dg-dark .dgnode.root{background:var(--text);border-color:var(--text);}
+.dg-dark .dgnode.root .lab{color:var(--shell);}
 /* a HIGHLIGHTED root: .root forces a dark bg but .hl .lab forces dark ink → the label went dark-on-dark
    (homer F6 'HOMER' center node vanished). Keep the dark node, signal the highlight with an accent BORDER,
    and restore light ink. */
@@ -1919,7 +1923,7 @@ def comparison(sid, sc):
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     axis = d.get("axis", "vertical")
     framed = d.get("style", "seamless") == "framed"
-    backdrop = d.get("backdrop") or ("#0a0b0c" if _POLARITY == "dark" else "var(--shell)")   # dark gaps only on dark themes
+    backdrop = d.get("backdrop") or _page_bg()   # theme-faithful gap/ground (was a generic dark on dark themes)
     W, H = 1920, 1080
     M = 46 if framed else 0                      # outer margin
     G = 34 if framed else 6                       # gap between the two panels
@@ -2370,7 +2374,7 @@ def document(sid, sc):
     fit = d.get("fit", "contain" if mode == "artifact" else "cover")
     src = d.get("source"); pages = list(src) if isinstance(src, list) else [src]
     W, H = 1920, 1080
-    backdrop = d.get("backdrop") or (("#2a1013" if mode == "artifact" else "#17181b") if _POLARITY == "dark" else "var(--surface)")
+    backdrop = d.get("backdrop") or _page_bg()   # theme-faithful ground (was a generic dark on dark themes; `aged` still tints)
     agedc = " aged" if d.get("aged") else ""
     tilt = float(d.get("tilt", 0))
     # page_size [w,h] (set by resolve_doc_annotations.py) sizes the sheet to the page's aspect so the

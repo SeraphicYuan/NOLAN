@@ -48,7 +48,6 @@
     ]
   },
   "decoration": [
-    "hatch",
-    "background-ordinal"
+    "hatch"
   ]
 }
