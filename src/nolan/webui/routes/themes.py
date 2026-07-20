@@ -96,6 +96,29 @@ def register(app, ctx):
                 "themes": sorted({c["theme"] for c in cells}),
                 "ready": sum(1 for c in cells if c["ready"]), "total": len(cells)}
 
+    @app.get("/api/themes/block-probe")
+    async def theme_block_probe():
+        """Block x theme FIDELITY probe (themes/scripts/gen_block_probe.py): every compose.py block driven
+        with REAL content + assets under every theme, with a per-block fidelity verdict — the QA surface the
+        placeholder samples can't cover for the media-heavy blocks."""
+        sdir = repo / "themes" / "_samples"
+        man = sdir / "_block_probe_manifest.json"
+        cells = []
+        if man.exists():
+            try:
+                for c in json.loads(man.read_text(encoding="utf-8")):
+                    cells.append({"block": c.get("block"), "theme": c.get("theme"),
+                                  "verdict": c.get("verdict"), "note": c.get("note"),
+                                  "png": c.get("png"), "ready": (sdir / c.get("png", "")).exists()})
+            except Exception:
+                pass
+        blocks = []
+        for c in cells:                       # first-seen order (the compose.py block order)
+            if c["block"] not in blocks:
+                blocks.append(c["block"])
+        return {"cells": cells, "blocks": blocks, "themes": sorted({c["theme"] for c in cells}),
+                "ready": sum(1 for c in cells if c["ready"]), "total": len(cells)}
+
     @app.get("/api/themes/books")
     async def theme_books():
         """The per-theme theme books (themes/scripts/gen_theme_books.py): the authoring-facing identity +

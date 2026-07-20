@@ -92,6 +92,7 @@
   <div class="viewtabs">
     <button class="vtab on" data-view="gallery" onclick="setView('gallery',this)">Gallery</button>
     <button class="vtab" data-view="samples" onclick="setView('samples',this)">Samples <span class="vcount" id="samples-count"></span></button>
+    <button class="vtab" data-view="blocks" onclick="setView('blocks',this)">Blocks <span class="vcount" id="blocks-count"></span></button>
     <button class="vtab" data-view="books" onclick="setView('books',this)">Books <span class="vcount" id="books-count"></span></button>
   </div>
 
@@ -118,6 +119,12 @@
       <span class="count" id="scount"></span>
     </div>
     <div id="smatrix"></div>
+  </div>
+
+  <div id="view-blocks" hidden>
+    <p class="sub" style="margin-top:0">Every <code>compose.py</code> block driven with <b>real content + real NOLAN assets</b> under one theme — the fidelity QA the placeholder Samples can't cover for the media-heavy blocks. Pick a theme; each block shows a verdict: <span style="color:#2fae86">picks up the theme</span> · <span style="color:#d69a2a">generic dark on dark themes</span> · <span style="color:var(--text-secondary)">own identity / cinematic (by design)</span>. Regenerate with <code>python themes/scripts/gen_block_probe.py</code>.</p>
+    <div class="toolbar"><span id="bprobe-chips"></span><span class="count" id="bpcount"></span></div>
+    <div class="smcells" id="bprobe-grid"></div>
   </div>
 
   <div id="view-books" hidden>
@@ -221,9 +228,42 @@ function setView(v, el){
   document.querySelectorAll(".vtab").forEach(t=>t.classList.toggle("on", t===el));
   document.getElementById("view-gallery").hidden = v!=="gallery";
   document.getElementById("view-samples").hidden = v!=="samples";
+  document.getElementById("view-blocks").hidden = v!=="blocks";
   document.getElementById("view-books").hidden = v!=="books";
   if (v==="samples" && !SDATA.cells.length) loadSamples();
+  if (v==="blocks" && !PDATA.cells.length) loadBlockProbe();
   if (v==="books" && !BDATA.length) loadBooks();
+}
+
+// ── Blocks tab: every block x one theme, with a fidelity verdict ──
+let PDATA = { cells: [], blocks: [], themes: [] }, PTHEME = "";
+const PVERDICT = { pass:["picks up the theme","#2fae86"], flag:["generic dark on dark","#d69a2a"],
+                   own:["own identity","#8593ad"], cine:["cinematic","#8593ad"] };
+async function loadBlockProbe(){
+  PDATA = await (await fetch("/api/themes/block-probe")).json();
+  document.getElementById("blocks-count").textContent = PDATA.total ? `${PDATA.ready}/${PDATA.total}` : "";
+  if (!PTHEME) PTHEME = PDATA.themes.includes("vellum") ? "vellum" : (PDATA.themes[0]||"");
+  const nm={}; (DATA.themes||[]).forEach(t=>nm[t.id]=t.name);
+  document.getElementById("bprobe-chips").innerHTML = PDATA.themes.map(t=>
+    `<span class="chip${t===PTHEME?' on':''}" data-bptheme="${t}" onclick="setBProbeTheme('${t}')">${esc(nm[t]||t)}</span>`).join("");
+  renderBlockProbe();
+}
+function setBProbeTheme(t){ PTHEME=t;
+  document.querySelectorAll("[data-bptheme]").forEach(c=>c.classList.toggle("on",c.dataset.bptheme===t));
+  renderBlockProbe();
+}
+function renderBlockProbe(){
+  const byBlock={}; PDATA.cells.filter(c=>c.theme===PTHEME).forEach(c=>byBlock[c.block]=c);
+  document.getElementById("bprobe-grid").innerHTML = PDATA.blocks.map(b=>{
+    const c=byBlock[b]; if(!c) return "";
+    const [vlabel,vcol]=PVERDICT[c.verdict]||PVERDICT.pass;
+    const img = c.ready
+      ? `<img loading="lazy" src="/theme-samples/${c.png}" alt="${esc(b)}" onclick="window.open('/theme-samples/${c.png}')">`
+      : `<div class="pending">${esc(b)}<br>not generated</div>`;
+    return `<div class="smcell"><div class="imgwrap">${img}<span class="vbadge" style="background:${vcol};color:#08131f" title="${esc(c.note||'')}">${vlabel}</span></div>`
+         + `<div class="cap"><b style="color:var(--text-primary)">${esc(b)}</b> · <span title="${esc(c.note||'')}">${esc(c.note||'')}</span></div></div>`;
+  }).join("");
+  document.getElementById("bpcount").textContent = `${PDATA.blocks.length} blocks · ${esc(PTHEME)}`;
 }
 async function loadBooks(){
   const r = await (await fetch("/api/themes/books")).json();
