@@ -36,6 +36,7 @@
         "cue": "number — seconds into scene for the sweep",
         "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch) — how the text enters (default rise); see the 'reveals' catalog below. All seek-safe; operative sweep still fires after the text lands.",
         "captionBar": "string? — optional lower caption chip",
+        "capCue": "number? — seconds offset for the optional captionBar chip's fade-in (default 0; only relevant when captionBar is set).",
         "props": "array of prop_cutout specs (optional)",
         "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): editorial-left|centered|framed-card|banner-top|rail-accent. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
@@ -77,6 +78,11 @@
         "titleHi": "string? — substring of title to highlight yellow",
         "focus": "number? — screen x the active node pans to (default 640)",
         "gap": "number? — world spacing between events in px (default 760)",
+        "axis": "enum(horizontal|vertical)? — spine orientation (default horizontal). PREFER `variant` (horizontal|vertical|vertical-up) as the interface; axis/dir are the low-level override that wins if set explicitly.",
+        "dir": "enum(down|up)? — vertical-axis travel direction (default down); only meaningful when axis=vertical.",
+        "solo": "bool? — reveal ONE event's graph at a time (the opposite side stays clear) instead of building all nodes at once — a focused, one-beat-per-event walk.",
+        "solo_side": "enum(up|down)? — which side the solo graph sits on (solo mode only).",
+        "spine": "number? — the spine's screen-x in px (default 960 = screen centre).",
         "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): horizontal|vertical|vertical-up. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
       },
       "constraints": [
@@ -114,6 +120,7 @@
         "title": "string? - the list's heading",
         "titleHi": "string? - a substring of title to highlight with the accent",
         "items": "array of (string | {text, sub?}) - the points; sub is an optional secondary line",
+        "numbered": "bool? — render an ordinal (1,2,3…) before each item (auto-on for the numbered-rail variant).",
         "register": "enum(paper|footage)? - ink-on-paper (default) or light text over a media ground",
         "ground": "object? - a media_ground spec {kind: paper|image|transparent, ...}",
         "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack|centered|two-col|numbered-rail|card-row. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
@@ -480,8 +487,10 @@
       "not_for": "A plain statement with no subject cutout (use statement), a news clipping (newshead), multiple images (collage/gallery), or a subject that must overlap arbitrary custom graphics (go raw).",
       "data_schema": {
         "subject": "string — asset path to a bg-removed cutout, image OR video (assets/x.png|.mp4). REQUIRED.",
+        "src": "string? — alias of `subject` (the bg-removed cutout asset path); `subject` takes precedence.",
         "position": "enum(center|left|right) — where the subject sits; default center.",
         "words": "array[str] (2-part label, one per side) OR a string (auto-split at its midpoint). The label.",
+        "label": "string? — alias of `words` (a 2-part label); `words` takes precedence if both set.",
         "kicker": "string? — a small centered overline above the scene.",
         "behind": "bool? — label behind the subject (default true; the center-subject overlap effect).",
         "motion": "enum(rise|fade)? — subject entrance; default rise (fade+scale+move-up then slow float).",
