@@ -397,6 +397,18 @@ CSS = """
 .vn-set{position:absolute;transform:translate(-50%,-50%);text-align:center;font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.55cqw;line-height:1.14;color:var(--text);max-width:15cqw;opacity:0;}
 .vn-set .sk{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:0.72cqw;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-mute);margin-bottom:0.2cqw;}
 .vn-overlap{position:absolute;transform:translate(-50%,-50%);text-align:center;font-family:"Inter",sans-serif;font-weight:800;font-size:1.0cqw;color:var(--text);background:var(--surface);padding:0.4cqw 0.72cqw;border-radius:8px;box-shadow:0 0.3cqw 1cqw rgba(0,0,0,0.26);opacity:0;max-width:14cqw;line-height:1.22;border:1.5px solid var(--accent);}
+/* sankey: one source -> proportional-width ribbons to targets (swiss-grid archetype) */
+.sk-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.sk-ribbon{fill:color-mix(in srgb, var(--accent) 30%, transparent);}
+.sk-ribbon.hl{fill:color-mix(in srgb, var(--text) 24%, transparent);}
+.sk-src,.sk-node{position:absolute;background:var(--accent);border-radius:3px;}
+.sk-node.hl{background:var(--text);}
+.sk-label{position:absolute;transform:translateY(-50%);white-space:nowrap;}
+.sk-label .v{font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.35cqw;color:var(--text);margin-right:0.4cqw;font-variant-numeric:tabular-nums;}
+.sk-label .n{font-family:"Inter",sans-serif;font-weight:600;font-size:0.95cqw;color:var(--text-mute);}
+.sk-slabel{position:absolute;transform:translate(-100%,-50%);text-align:right;white-space:nowrap;}
+.sk-slabel .v{display:block;font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.7cqw;color:var(--text);font-variant-numeric:tabular-nums;}
+.sk-slabel .n{font-family:"Inter",sans-serif;font-weight:600;font-size:0.95cqw;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute);}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -2317,6 +2329,65 @@ def venn(sid, sc):
     over.append('</div>')
     return frag + over, tl
 
+def sankey(sid, sc):
+    """Reusable BLOCK: a SANKEY flow — one source splits into N targets with PROPORTIONAL-width ribbons (a
+    budget → categories, energy in → uses, a total → its parts). The source bar draws, ribbons fade in
+    weighted by value, target nodes + labels land. Seek-safe (scale/opacity), theme-driven. Archetype:
+    swiss-grid.
+    data: {source:{label, value?}, targets:[{label, value, hl?}], unit?, kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    src = d.get("source", {})
+    targets = d.get("targets") or []
+    total = sum(float(t.get("value", 0)) for t in targets) or 1.0
+    unit = d.get("unit", "")
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 46
+    PY = topPad + 30
+    PH = H - PY - 110
+    SX, TX, NODE = 470, 1330, 26
+    frag = [f'<div class="clip blk-sankey" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    svg = [f'<svg class="sk-svg" viewBox="0 0 {W} {H}" preserveAspectRatio="none">']
+    over.append(f'<div id="{sid}-src" class="sk-src" style="left:{SX}px;top:{PY}px;width:{NODE}px;height:{PH}px;"></div>')
+    tl.append(f'tl.fromTo("#{sid}-src",{{scaleY:0}},{{scaleY:1,duration:0.5,ease:"power2.out",transformOrigin:"top center"}},{start+0.2});')
+    sy = ty = PY
+    for i, t in enumerate(targets):
+        h = float(t.get("value", 0)) / total * PH
+        mx = (SX + NODE + TX) / 2
+        path = (f"M{SX+NODE},{sy:.1f} C{mx:.0f},{sy:.1f} {mx:.0f},{ty:.1f} {TX},{ty:.1f} "
+                f"L{TX},{ty+h:.1f} C{mx:.0f},{ty+h:.1f} {mx:.0f},{sy+h:.1f} {SX+NODE},{sy+h:.1f} Z")
+        hl = " hl" if t.get("hl") else ""
+        svg.append(f'<path id="{sid}-r{i}" d="{path}" class="sk-ribbon{hl}"/>')
+        over.append(f'<div id="{sid}-n{i}" class="sk-node{hl}" style="left:{TX}px;top:{ty:.0f}px;width:{NODE}px;height:{max(3,h):.0f}px;"></div>')
+        vtxt = f'{t.get("value","")}{unit}'
+        over.append(f'<div id="{sid}-tl{i}" class="sk-label" style="left:{TX+NODE+16}px;top:{ty+h/2:.0f}px;">'
+                    f'<span class="v">{esc(str(vtxt))}</span><span class="n">{esc(t.get("label",""))}</span></div>')
+        cue = start + 0.7 + i * 0.28
+        tl.append(f'tl.fromTo("#{sid}-r{i}",{{opacity:0}},{{opacity:1,duration:0.5}},{cue});')
+        tl.append(f'tl.fromTo("#{sid}-n{i}",{{scaleY:0}},{{scaleY:1,duration:0.4,ease:"power2.out",transformOrigin:"top center"}},{cue});')
+        tl.append(f'tl.fromTo("#{sid}-tl{i}",{{opacity:0,x:-6}},{{opacity:1,x:0,duration:0.4}},{cue+0.2});')
+        sy += h; ty += h
+    svg.append('</svg>')
+    if src.get("label") or src.get("value") is not None:
+        sv = f'<span class="v">{esc(str(src.get("value","")))}{esc(unit)}</span>' if src.get("value") is not None else ""
+        over.append(f'<div id="{sid}-sl" class="sk-slabel" style="left:{SX-18}px;top:{PY+PH/2:.0f}px;">'
+                    f'{sv}<span class="n">{esc(src.get("label",""))}</span></div>')
+        tl.append(f'tl.fromTo("#{sid}-sl",{{opacity:0,x:6}},{{opacity:1,x:0,duration:0.45}},{start+0.4});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle" style="text-align:left;padding-left:3.2cqw;">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over = [over[0]] + svg + over[1:]
+    over.append('</div>')
+    return frag + over, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -3093,7 +3164,7 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "diagram": diagram, "comparison": comparison, "juxtaposition": juxtaposition,
           "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
-          "annotate": annotate, "quadrant": quadrant, "venn": venn,
+          "annotate": annotate, "quadrant": quadrant, "venn": venn, "sankey": sankey,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so

@@ -471,6 +471,26 @@
       ],
       "note": "Circles are theme --accent (tinted via color-mix so overlaps darken); the overlap pill is a theme --surface card. Keep labels short. 2 or 3 sets only — more overlaps get illegible."
     },
+    "sankey": {
+      "fn": "sankey",
+      "purpose": "A SANKEY flow: one source splits into N targets with PROPORTIONAL-width ribbons — a total and its parts shown by area. The source bar draws, ribbons fade in weighted by value, target nodes + labels land.",
+      "when_to_use": "A beat that BREAKS A TOTAL into weighted parts as a FLOW: a budget → categories, energy in → uses, revenue → costs, 'where the money/time/energy goes', a whole apportioned by size.",
+      "not_for": "A simple ranked list of values (use `chart` bars or `ledger`). A 2-way contrast (use `comparison`/`juxtaposition`). A hierarchy/network (use `diagram`). Multi-stage flows (this is a single split).",
+      "data_schema": {
+        "source": "object — the total: {label, value?} (the left bar; value is shown if given)",
+        "targets": "array of {label, value (the weight — ribbon width ∝ value), hl?} — the parts, top→bottom",
+        "unit": "string? — appended to each value (e.g. '%', 'B')",
+        "kicker": "string? — eyebrow over the top-left title",
+        "title": "string? — a top-left title",
+        "titleHi": "string? — substring of title to highlight with the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Ribbon widths are proportional to target.value; the source bar spans the full plot height. Ribbons + nodes are theme --accent (color-mix tint); a hl target uses --text. Keep 2-6 targets — more get thin."
+    },
     "lower_third": {
       "fn": "lower_third",
       "purpose": "A lower-third identifier — name + role (+ optional kicker) — the on-screen caption for talking-head / interview / podcast footage. One theme-driven block collapsing the registry's ~12 lt-* variants via a `style` param.",

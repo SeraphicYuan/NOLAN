@@ -100,7 +100,8 @@
         "gallery",
         "collage",
         "carousel",
-        "diagram"
+        "diagram",
+        "sankey"
       ],
       "exemplar": null,
       "zone": {
