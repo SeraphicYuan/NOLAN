@@ -72,6 +72,16 @@
         "vertical":    {"desc": "the spine runs top->bottom, branches alternate left/right", "zone": "sidebar", "fits": [2, 6]},
         "vertical-up": {"desc": "a vertical spine travelled bottom->top (a rising history)", "zone": "sidebar", "fits": [2, 6]}
       }
+    },
+    "comparison": {
+      "default": "split",
+      "auto": {},
+      "variants": {
+        "split":         {"desc": "two panels side-by-side, seamless with a thin divider (the A-vs-B default)", "zone": "split-screen", "fits": [2, 2]},
+        "cards":         {"desc": "two bordered cards side-by-side with a gap over the theme ground", "zone": "split-screen", "fits": [2, 2]},
+        "over-under":    {"desc": "the two panels stacked top/bottom, seamless", "zone": "split-screen", "fits": [2, 2]},
+        "cards-stacked": {"desc": "two bordered cards stacked top/bottom", "zone": "split-screen", "fits": [2, 2]}
+      }
     }
   }
 }

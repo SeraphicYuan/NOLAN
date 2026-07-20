@@ -211,6 +211,10 @@ SEEDS = {
                                            {"title": "Author", "desc": "Scene plan against a chosen theme", "meta": "02 · 4 min"},
                                            {"title": "Acquire", "desc": "Assets per beat: library + stock + gen", "meta": "03 · 6 min"},
                                            {"title": "Render", "desc": "Compose frames, assemble to final", "meta": "04 · 8 min"}]}},
+    "comparison":       {"type": "comparison", "_arch": "split-screen",
+                         "data": {"kicker": "Before / after", "title": "The shift", "titleHi": "shift", "vs": True,
+                                  "left": {"type": "text", "kicker": "2019", "title": ["Manual", "and slow"]},
+                                  "right": {"type": "stat", "value": "3.2x", "label": "faster now"}}},
 }
 
 THEMES = sorted(d.name for d in (REPO / "themes").iterdir()
@@ -226,7 +230,7 @@ _VARIANT_BLOCKS = json.loads(
 # hyphenated 'bullet-list' / the 'editorial-column' statement specimen would split into a second cell).
 _BLOCK_TO_SPECIMEN = {"stat": "stat", "statement": "editorial-column", "bullet_list": "bullet-list",
                       "pull_quote": "pull-quote", "ledger": "ledger",
-                      "comparison_table": "comparison-table", "timeline": "timeline"}
+                      "comparison_table": "comparison-table", "timeline": "timeline", "comparison": "comparison"}
 _STAT_ITEMS = [{"value": "73%", "label": "of teams shipped faster", "underline": True,
                 "delta": {"dir": "up", "value": "+12 pts"}},
                {"value": "2.4x", "label": "median throughput gain", "delta": {"dir": "down", "value": "-0.3x"}},
@@ -270,6 +274,10 @@ def _variant_content(block, v):
         return {"title": "A short history", "variant": v,
                 "events": [{"year": "1969", "label": "First message"}, {"year": "1983", "label": "TCP / IP"},
                            {"year": "1991", "label": "The web"}, {"year": "2007", "label": "Mobile"}]}
+    if block == "comparison":   # theme-neutral text-vs-stat contrast (no assets needed for the sample)
+        return {"kicker": "Before / after", "title": "The shift", "titleHi": "shift", "vs": True, "variant": v,
+                "left": {"type": "text", "kicker": "2019", "title": ["Manual", "and slow"]},
+                "right": {"type": "stat", "value": "3.2x", "label": "faster now"}}
     return {"variant": v}
 
 
