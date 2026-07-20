@@ -409,6 +409,28 @@
       ],
       "note": "PREFER authoring highlight/underline/label by {find:\"phrase\"} and running `resolve_doc_annotations.py` (locates the phrase on the page and fills the rect + stamps page_size) — no eyeballing coordinates. Explicit fractions stay supported for regions with no matchable text (a chart area, a photo). callouts + caption are screen-fixed. source is a real screenshot/scan/render (or a .pdf, which the resolver rasterises); on-screen text stays short."
     },
+    "annotate": {
+      "fn": "annotate",
+      "purpose": "An ANNOTATED FIGURE: a photo/still fills the frame (optional Ken-Burns) and leader-line CALLOUTS label points on it — a marker drops on a region, a thin line draws out to a labelled pill, staggered. The explainer 'here's what's in this image' device.",
+      "when_to_use": "A beat that POINTS OUT parts of a REAL image: labelling a photo/scene, the parts of an object or map region, an anatomy, 'notice X here and Y there' over a picture.",
+      "not_for": "An abstract node/flow with no image (use `diagram`). A full-bleed image with no labels (put a `statement` over a `media_ground`). A data chart (use `chart`). A two-image contrast (use `comparison`).",
+      "data_schema": {
+        "src": "string — the image asset to annotate (a real path in the project)",
+        "callouts": "array of {x, y (0..1 the point ON the image), text, lx?, ly? (0..1 label position; else auto to the nearer side)} — the labelled markers, revealed in order. Keep points above the 83% caption keep-out.",
+        "fit": "enum(cover|contain)? — cover (default, fills) or contain (whole image, letterboxed)",
+        "kb": "[from,to] | bool? — Ken-Burns scale on the image (default a gentle push)",
+        "scrim": "bool? — a soft vignette for label legibility (default true)",
+        "kicker": "string? — eyebrow over the top title",
+        "title": "string? — a top title over the image",
+        "titleHi": "string? — substring of title to highlight with the accent"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Callout markers/lines/labels use the theme --accent; labels are theme --surface pills. Leader lines draw via strokeDashoffset (seek-safe). src must be a real asset; on-screen label text stays short."
+    },
     "lower_third": {
       "fn": "lower_third",
       "purpose": "A lower-third identifier — name + role (+ optional kicker) — the on-screen caption for talking-head / interview / podcast footage. One theme-driven block collapsing the registry's ~12 lt-* variants via a `style` param.",

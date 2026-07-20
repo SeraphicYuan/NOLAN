@@ -358,6 +358,18 @@ CSS = """
 .cmp-panel.jx .cmp-txt .k{color:var(--text-mute);}
 .cmp-panel.jx.framed{border:2px solid var(--rule,rgba(0,0,0,0.14));box-shadow:0 0.8cqw 2.4cqw rgba(0,0,0,0.22);}
 .cmp-vhole{background:transparent;}
+/* annotate: an image with leader-line callouts (full-bleed-overlay archetype) */
+.an-img{position:absolute;inset:-4%;background-repeat:no-repeat;background-position:center;transform-origin:center;will-change:transform;}
+.an-scrim{position:absolute;inset:0;background:radial-gradient(120% 92% at 50% 45%, transparent 44%, rgba(0,0,0,0.42));}
+.an-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.an-line{stroke:var(--accent);stroke-width:2.4;fill:none;stroke-linecap:round;}
+.an-dot{fill:var(--accent);stroke:#fff;stroke-width:2.5;}
+.an-label{position:absolute;transform:translateY(-50%);background:var(--surface);color:var(--text);font-family:"Inter",sans-serif;font-weight:600;font-size:1.15cqw;padding:0.44cqw 0.72cqw;border-radius:7px;box-shadow:0 0.35cqw 1.1cqw rgba(0,0,0,0.34);white-space:nowrap;opacity:0;border-left:3px solid var(--accent);max-width:26cqw;}
+.an-label.left{transform:translate(-100%,-50%);border-left:none;border-right:3px solid var(--accent);}
+.an-htitle{position:absolute;left:0;right:0;top:0;padding:2.4cqw 3cqw 3.2cqw;background:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0));}
+.an-htitle .k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.82);opacity:0;margin-bottom:0.4cqw;}
+.an-htitle .t{font-weight:900;font-size:1.9cqw;letter-spacing:-0.015em;color:#F6F7F6;opacity:0;}
+.an-htitle .t .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -2105,6 +2117,64 @@ def juxtaposition(sid, sc):
     frag.append('</div>')
     return frag, tl
 
+def annotate(sid, sc):
+    """Reusable BLOCK: an ANNOTATED FIGURE — a photo/still with leader-line CALLOUTS labelling regions
+    (the Vox/explainer 'here's what's in this image' device). The image fills the frame (optional Ken-Burns);
+    each callout drops a marker on a point, draws a thin leader line out to a label, and fades the label in —
+    staggered. Seek-safe (scale/opacity/strokeDashoffset), theme-driven (--accent marks), one timeline.
+    Archetype: full-bleed-overlay.
+    data: {src, callouts:[{x,y (0..1 on the image), text, lx?,ly? (0..1 label position; else auto to the
+           nearer side)}], fit?:cover|contain, kb?:[from,to]|bool, scrim?, kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    src, fit = d.get("src", ""), d.get("fit", "cover")
+    callouts = d.get("callouts") or []
+    frag, tl = [], []
+    frag.append(f'<div class="clip blk-annotate" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+                f'style="position:absolute;inset:0;background:{esc(_page_bg())};overflow:hidden;">'
+                f'<div class="an-img" id="{sid}-img" style="background-image:url(\'{esc(src)}\');background-size:{esc(fit)};"></div>')
+    if d.get("scrim", True):
+        frag.append('<div class="an-scrim"></div>')
+    frag.append('</div>')
+    kb = d.get("kb", True)
+    if kb:
+        f0, f1 = kb if isinstance(kb, list) else [1.04, 1.12]
+        tl.append(f'tl.fromTo("#{sid}-img",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
+    svg = [f'<svg class="an-svg" viewBox="0 0 {W} {H}" preserveAspectRatio="none">']
+    labels = []
+    for i, co in enumerate(callouts):
+        cx, cy = float(co.get("x", 0.5)), float(co.get("y", 0.4))
+        px, py = cx * W, cy * H
+        right = cx < 0.5                                    # label goes toward the nearer edge
+        lxf = float(co["lx"]) if co.get("lx") is not None else min(0.9, max(0.1, cx + (0.16 if right else -0.16)))
+        lyf = float(co["ly"]) if co.get("ly") is not None else cy
+        lxp, lyp = lxf * W, lyf * H
+        cid = f"{sid}-c{i}"
+        cue = start + 0.9 + i * 0.55
+        svg.append(f'<line id="{cid}-ln" x1="{px:.0f}" y1="{py:.0f}" x2="{lxp:.0f}" y2="{lyp:.0f}" class="an-line"/>')
+        svg.append(f'<circle id="{cid}-dot" cx="{px:.0f}" cy="{py:.0f}" r="9" class="an-dot"/>')
+        labels.append(f'<div id="{cid}-lbl" class="an-label {"right" if right else "left"}" '
+                      f'style="left:{lxp:.0f}px;top:{lyp:.0f}px;">{esc(co.get("text", ""))}</div>')
+        tl.append(f'(function(){{var ln=document.getElementById("{cid}-ln"),L=ln.getTotalLength();'
+                  f'ln.style.strokeDasharray=L;ln.style.strokeDashoffset=L;'
+                  f'tl.to(ln,{{strokeDashoffset:0,duration:0.5,ease:"power2.out"}},{cue});}})();')
+        tl.append(f'tl.fromTo("#{cid}-dot",{{scale:0}},{{scale:1,duration:0.42,ease:"back.out(2)",transformOrigin:"50% 50%"}},{cue});')
+        tl.append(f'tl.fromTo("#{cid}-lbl",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.28});')
+    svg.append('</svg>')
+    frag.append(f'<div class="clip an-over" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;pointer-events:none;">')
+    frag += svg + labels
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        frag.append(f'<div class="an-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    frag.append('</div>')
+    return frag, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -2881,6 +2951,7 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "diagram": diagram, "comparison": comparison, "juxtaposition": juxtaposition,
           "gallery": gallery, "carousel": carousel,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
+          "annotate": annotate,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so

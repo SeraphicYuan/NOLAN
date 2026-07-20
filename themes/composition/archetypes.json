@@ -160,7 +160,8 @@
       "density": "normal",
       "blocks": [
         "geo",
-        "media_ground"
+        "media_ground",
+        "annotate"
       ],
       "exemplar": null,
       "zone": {
