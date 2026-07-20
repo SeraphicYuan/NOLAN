@@ -2,7 +2,11 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-19
+**Last Updated:** 2026-07-20
+
+## Arsenal expansion — 6 new blocks + comparison/juxtaposition split (2026-07-20)
+
+Deepened the block/archetype vocabulary for the authoring stage (on the now-solid wiring). (1) COMPARISON is VISUAL-only: sides must be image|video; a title/kicker and a NEW `stat` overlay ride ON the media; the gate rejects a non-visual side. Its old text/stat panels became a NEW block, `juxtaposition` — the non-visual A-vs-B (text-vs-text / stat-vs-stat / stat-vs-text) as a typographic dialectic (centred display zones, a rule + centre VS/pivot, split-screen archetype, 4 variants). 40 existing comparison scenes with text/stat sides were migrated in-place to juxtaposition (MIXED image+text → the visual side's overlay title becomes its text zone; the CONTRAST is preserved); `_panel_content` keeps a legacy fallback so no old spec hard-crashes. (2) FIVE more blocks: `annotate` (leader-line callouts on an image — full-bleed-overlay), `quadrant` (2×2 matrix + a NEW `quadrant` archetype added to archetypes.json + all 34 themes' composition.allowed + scenes.py PASS2 enum), `venn` (2-3 set overlap, color-mix tinted — centered-hero), `sankey` (proportional-width flow, total→parts — swiss-grid), `scale` (magnitude by circle AREA — centered-hero). All wired per the module contract (BLOCKS + catalog.json parity + archetypes.json blocks[] + author.py REQUIRED/gate), field-parity + composition-coverage honesty-tested, render-verified across 3+ themes each, and shot onto the /themes Blocks tab (918 cells) + juxtaposition variants onto the Samples tab. `lower_third.style` also gained a theme-personality default (Gap 4). Docs: COMPOSITION_ARCHITECTURE.md §4a documents the block↔archetype many-to-many / variant.zone model. 28 blocks total; 174 composition/theme tests green.
 
 ## Composition-quality program P3+ — variant viewer, 3 missing archetypes, variant rollout (2026-07-19)
 
