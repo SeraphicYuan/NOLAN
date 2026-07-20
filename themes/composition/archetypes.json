@@ -106,7 +106,8 @@
         "collage",
         "carousel",
         "diagram",
-        "sankey"
+        "sankey",
+        "connection_board"
       ],
       "exemplar": null,
       "zone": {
@@ -203,7 +204,8 @@
         "document",
         "social_card",
         "prop_cutout",
-        "linedraw"
+        "linedraw",
+        "chat_thread"
       ],
       "exemplar": null,
       "zone": {
@@ -294,7 +296,8 @@
       "balance": "sequential",
       "density": "normal",
       "blocks": [
-        "timeline"
+        "timeline",
+        "spans"
       ],
       "exemplar": null,
       "zone": {

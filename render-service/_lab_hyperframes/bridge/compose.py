@@ -471,6 +471,35 @@ CSS = """
 .hr-txt .hl2 .mark{background:var(--accent);color:var(--accent-ink);padding:0 0.08em;box-decoration-break:clone;}
 .hr-txt .hs{font-family:"Inter",sans-serif;font-weight:500;font-size:1.3cqw;line-height:1.4;color:rgba(255,255,255,0.88);margin-top:0.9cqw;opacity:0;max-width:34cqw;}
 .hr-txt.right .hs{margin-left:auto;}
+/* chat_thread: a DM exchange (focal-card) */
+.cth-head{position:absolute;left:0;right:0;top:0;padding:2.4cqw 3cqw 0;text-align:center;}
+.cth-head .cth-k{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:0.8cqw;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-mute);margin-bottom:0.3cqw;}
+.cth-head .cth-t{font-family:var(--font-display-en,inherit);font-weight:800;font-size:1.9cqw;color:var(--text);}
+.cth-head .cth-t .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;}
+.cth-head .cth-sub{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:0.95cqw;color:var(--text-mute);margin-top:0.3cqw;}
+.cth-col{position:absolute;left:50%;transform:translateX(-50%);width:46cqw;display:flex;flex-direction:column;gap:0.9cqw;}
+.cth-row{display:flex;}
+.cth-row.me{justify-content:flex-end;}
+.cth-row.them{justify-content:flex-start;}
+.cth-bub{max-width:74%;padding:0.9cqw 1.2cqw;border-radius:1.4cqw;font-family:"Inter",sans-serif;font-weight:500;font-size:1.35cqw;line-height:1.32;}
+.cth-row.them .cth-bub{background:var(--surface);color:var(--text);border-bottom-left-radius:0.3cqw;box-shadow:0 0.2cqw 0.8cqw rgba(0,0,0,0.16);}
+.cth-row.me .cth-bub{background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:0.3cqw;}
+.cth-bub .cth-nm{display:block;font-weight:700;font-size:0.85cqw;opacity:0.72;margin-bottom:0.2cqw;}
+.cth-bub .cth-tm{display:block;font-size:0.75cqw;opacity:0.6;margin-top:0.3cqw;text-align:right;}
+/* connection_board: node/link network (swiss-grid) */
+.cb-svg{position:absolute;inset:0;width:100%;height:100%;}
+.cb-link{stroke:var(--accent);stroke-width:2.5;fill:none;}
+.cb-llab{position:absolute;transform:translate(-50%,-50%);font-family:"Inter",sans-serif;font-weight:600;font-size:0.8cqw;color:var(--text-mute);background:var(--surface);padding:0.2cqw 0.5cqw;border-radius:5px;white-space:nowrap;opacity:0;}
+.cb-node{position:absolute;transform:translate(-50%,-50%);text-align:center;background:var(--surface);border:2px solid var(--rule);border-radius:12px;padding:0.7cqw 1.1cqw;max-width:15cqw;box-shadow:0 0.4cqw 1.4cqw rgba(0,0,0,0.24);opacity:0;}
+.cb-node.hl{border-color:var(--accent);}
+.cb-node .cbl{font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.2cqw;line-height:1.1;color:var(--text);}
+.cb-node .cbs{display:block;font-family:"Inter",sans-serif;font-weight:500;font-size:0.82cqw;color:var(--text-mute);}
+/* spans: overlapping era/duration bars (timeline) */
+.spn-grid{position:absolute;width:1px;background:var(--rule);opacity:0.4;}
+.spn-tick{position:absolute;transform:translateX(-50%);font-family:"Inter",sans-serif;font-weight:600;font-size:0.85cqw;color:var(--text-mute);white-space:nowrap;}
+.spn-bar{position:absolute;background:var(--accent);border-radius:6px;opacity:0.5;transform-origin:left center;}
+.spn-bar.hl{opacity:1;}
+.spn-lab{position:absolute;transform:translateY(-50%);font-family:var(--font-display-en,inherit);font-weight:700;font-size:1.2cqw;color:var(--text);white-space:nowrap;opacity:0;text-shadow:0 0 6px var(--surface),0 0 6px var(--surface),0 0 6px var(--surface);}
 /* a root-mounted comparison video element (archetype B): direct child of #root, positioned to a panel rect */
 .cmp-rootvid{position:absolute;object-fit:cover;background:#000;display:block;}
 .cmp-rootvid.framed{border-radius:20px;border:3px solid rgba(255,255,255,0.16);overflow:hidden;box-shadow:0 1.2cqw 3cqw rgba(0,0,0,0.5);}
@@ -2847,6 +2876,151 @@ def hero(sid, sc):
     over.append('</div></div>')
     return frag + over, tl
 
+def chat_thread(sid, sc):
+    """Reusable BLOCK: a message / DM EXCHANGE — chat bubbles alternating by sender, revealed in sequence
+    (modern discourse, receipts, a conversation). Seek-safe (opacity/scale), theme-driven (me = accent
+    bubble, them = surface bubble). Archetype: focal-card.
+    data: {messages:[{from?(them|me | a name), text, time?}], subject?(header name), kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    msgs = d.get("messages") or []
+    topPad = 130 if (d.get("title") or d.get("kicker") or d.get("subject")) else 40
+    frag = [f'<div class="clip blk-chat_thread" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    if d.get("subject") or d.get("kicker") or d.get("title"):
+        sub = f'<span class="cth-sub">{esc(d["subject"])}</span>' if d.get("subject") else ""
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        ttl = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<span class="cth-k">{esc(d["kicker"])}</span>' if d.get("kicker") else ""
+        over.append(f'<div class="cth-head">{kick}<span class="cth-t">{ttl}</span>{sub}</div>')
+    over.append(f'<div class="cth-col" style="top:{topPad+20}px;">')
+    for i, m in enumerate(msgs):
+        who = str(m.get("from", "them")).lower()
+        me = who in ("me", "you", "self")
+        tm = f'<span class="cth-tm">{esc(m["time"])}</span>' if m.get("time") else ""
+        name = "" if me or who == "them" else f'<span class="cth-nm">{esc(m.get("from",""))}</span>'
+        over.append(f'<div class="cth-row {"me" if me else "them"}"><div id="{sid}-m{i}" class="cth-bub">{name}{esc(m.get("text",""))}{tm}</div></div>')
+        tl.append(f'tl.fromTo("#{sid}-m{i}",{{opacity:0,y:14,scale:0.92}},{{opacity:1,y:0,scale:1,duration:0.4,ease:"back.out(1.6)",transformOrigin:"{"right" if me else "left"} bottom"}},{start+0.4+i*0.5:.2f});')
+    over.append('</div>')
+    if d.get("kicker") or d.get("title"):
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo(".cth-k",{{opacity:0}},{{opacity:1,duration:0.4}},{start+0.15});')
+    over.append('</div>')
+    return frag + over, tl
+
+def connection_board(sid, sc):
+    """Reusable BLOCK: a NETWORK / evidence board — nodes (people/events) joined by lines (the 'red-string'
+    web: relationships, who-knew-whom, how things connect). Links draw, nodes pop. Seek-safe, theme-driven.
+    Archetype: swiss-grid.
+    data: {nodes:[{id, label, sub?, x?, y? (0..1; else auto on a ring), hl?}], links:[{from, to, label?}],
+           kicker?, title?, titleHi?}"""
+    import math
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    nodes = d.get("nodes") or []
+    links = d.get("links") or []
+    n = max(1, len(nodes))
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 0
+    cx, cy = W / 2, topPad + (H - topPad) / 2 + 6
+    Rr = 320
+    pos = {}
+    for i, nd in enumerate(nodes):
+        if nd.get("x") is not None and nd.get("y") is not None:
+            pos[nd.get("id", i)] = (float(nd["x"]) * W, float(nd["y"]) * H)
+        else:
+            ang = (-90 + i * 360 / n) * math.pi / 180
+            pos[nd.get("id", i)] = (cx + Rr * math.cos(ang), cy + Rr * math.sin(ang) * 0.82)
+    frag = [f'<div class="clip blk-connection_board" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    svg = [f'<svg class="cb-svg" viewBox="0 0 {W} {H}">']
+    for li, lk in enumerate(links):
+        p0 = pos.get(lk.get("from"))
+        p1 = pos.get(lk.get("to"))
+        if not p0 or not p1:
+            continue
+        svg.append(f'<line id="{sid}-lk{li}" x1="{p0[0]:.0f}" y1="{p0[1]:.0f}" x2="{p1[0]:.0f}" y2="{p1[1]:.0f}" class="cb-link"/>')
+        tl.append(f'(function(){{var p=document.getElementById("{sid}-lk{li}"),L=p.getTotalLength();'
+                  f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
+                  f'tl.to(p,{{strokeDashoffset:0,duration:0.5,ease:"power1.out"}},{start+0.3+li*0.12:.2f});}})();')
+        if lk.get("label"):
+            mx, my = (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2
+            over.append(f'<div id="{sid}-ll{li}" class="cb-llab" style="left:{mx:.0f}px;top:{my:.0f}px;">{esc(lk["label"])}</div>')
+            tl.append(f'tl.fromTo("#{sid}-ll{li}",{{opacity:0}},{{opacity:1,duration:0.3}},{start+0.7+li*0.12:.2f});')
+    svg.append("</svg>")
+    over += svg
+    for i, nd in enumerate(nodes):
+        nx, ny = pos.get(nd.get("id", i))
+        hl = " hl" if nd.get("hl") else ""
+        s = f'<span class="cbs">{esc(nd["sub"])}</span>' if nd.get("sub") else ""
+        over.append(f'<div id="{sid}-n{i}" class="cb-node{hl}" style="left:{nx:.0f}px;top:{ny:.0f}px;"><span class="cbl">{esc(nd.get("label",""))}</span>{s}</div>')
+        tl.append(f'tl.fromTo("#{sid}-n{i}",{{opacity:0,scale:0.6}},{{opacity:1,scale:1,duration:0.42,ease:"back.out(1.8)",transformOrigin:"50% 50%"}},{start+0.4+i*0.14:.2f});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
+def spans(sid, sc):
+    """Reusable BLOCK: a SPAN / ERA timeline — overlapping DURATION bars on a shared time axis (reigns,
+    empires, projects, a Gantt), so 'these overlapped' reads at a glance. Bars grow from their start; axis
+    ticks + labels. Seek-safe (scaleX), theme-driven. Archetype: timeline.
+    data: {spans:[{label, start, end, hl?}], range?:[min,max], ticks?:[..], unit?, kicker?, title?, titleHi?}"""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    W, H = 1920, 1080
+    sp = d.get("spans") or []
+    n = max(1, len(sp))
+    starts = [float(s.get("start", 0)) for s in sp] or [0.0]
+    ends = [float(s.get("end", 0)) for s in sp] or [1.0]
+    rng = d.get("range") or [min(starts), max(ends)]
+    mn, mx = float(rng[0]), float(rng[1])
+    span = (mx - mn) or 1.0
+    unit = d.get("unit", "")
+    topPad = 132 if (d.get("title") or d.get("kicker")) else 40
+    PX, PW = 250, W - 500
+    PY = topPad + 40
+    rowh = min(96, (H - PY - 130) / n)
+    def X(t):
+        return PX + (float(t) - mn) / span * PW
+    frag = [f'<div class="clip blk-spans" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
+    tl = []
+    over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    ticks = d.get("ticks") or [mn + span * f for f in (0, 0.25, 0.5, 0.75, 1.0)]
+    baseY = PY + n * rowh + 18
+    for tk in ticks:
+        tx = X(tk)
+        over.append(f'<div class="spn-grid" style="left:{tx:.0f}px;top:{PY}px;height:{n*rowh:.0f}px;"></div>')
+        over.append(f'<div class="spn-tick" style="left:{tx:.0f}px;top:{baseY:.0f}px;">{esc(str(int(tk) if float(tk)==int(tk) else tk))}{esc(unit)}</div>')
+    for i, s in enumerate(sp):
+        x0, x1 = X(s.get("start", mn)), X(s.get("end", mx))
+        y = PY + i * rowh
+        hl = " hl" if s.get("hl") else ""
+        over.append(f'<div id="{sid}-sp{i}" class="spn-bar{hl}" style="left:{x0:.0f}px;top:{y:.0f}px;width:{max(8,x1-x0):.0f}px;height:{rowh-16:.0f}px;"></div>')
+        over.append(f'<div id="{sid}-sl{i}" class="spn-lab{hl}" style="left:{x0+14:.0f}px;top:{y+ (rowh-16)/2:.0f}px;">{esc(s.get("label",""))}</div>')
+        cue = start + 0.4 + i * 0.2
+        tl.append(f'tl.fromTo("#{sid}-sp{i}",{{scaleX:0}},{{scaleX:1,duration:0.6,ease:"power3.out",transformOrigin:"left center"}},{cue:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-sl{i}",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.3:.2f});')
+    if d.get("title") or d.get("kicker"):
+        t, op = d.get("title", ""), d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
+        kick = f'<div class="k" id="{sid}-hk">{esc(d["kicker"])}</div>' if d.get("kicker") else ""
+        over.append(f'<div class="qd-htitle" style="text-align:left;padding-left:3.2cqw;">{kick}<div class="t" id="{sid}-ht">{html_t}</div></div>')
+        if d.get("kicker"):
+            tl.append(f'tl.fromTo("#{sid}-hk",{{opacity:0,y:-6}},{{opacity:1,y:0,duration:0.45}},{start+0.15});')
+        if d.get("title"):
+            tl.append(f'tl.fromTo("#{sid}-ht",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.55,ease:"power3.out"}},{start+0.3});')
+    over.append('</div>')
+    return frag + over, tl
+
 def _gallery_cells(n, cols, gx, gy, gw, gh, gap, masonry):
     """[(x,y,w,h)] for n items. grid: uniform cells, partial last row centered. masonry:
     round-robin column packing with a deterministic height pattern, vertically fit-scaled."""
@@ -3654,7 +3828,7 @@ BLOCKS = {"stat": stat_lockup, "statement": highlight_statement, "geo": geo_map,
           "linedraw": linedraw, "document": document, "lower_third": lower_third, "chart": chart,
           "annotate": annotate, "quadrant": quadrant, "venn": venn, "sankey": sankey, "scale": scale,
           "pie": pie, "funnel": funnel, "spectrum": spectrum, "cycle": cycle, "detail_zoom": detail_zoom,
-          "hero": hero,
+          "hero": hero, "chat_thread": chat_thread, "connection_board": connection_board, "spans": spans,
           "code": code, "social_card": social_card}
 
 # Tier-2 extension blocks (kept out of this file's core registry; catalog.json documents them, so

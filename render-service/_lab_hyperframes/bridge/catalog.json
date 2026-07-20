@@ -751,6 +751,65 @@
         "transform_opacity_only"
       ],
       "note": "Title is white over a directional scrim (kicker + operative use --accent). Image Ken-Burns + text rise are seek-safe. src must be a real asset; keep the title short (a few words)."
+    },
+    "chat_thread": {
+      "fn": "chat_thread",
+      "purpose": "A message / DM EXCHANGE: chat bubbles alternating by sender, revealed in sequence (modern discourse, receipts, a conversation).",
+      "when_to_use": "A beat that shows a CONVERSATION / exchange: a DM thread, a text argument, receipts of who-said-what, a back-and-forth.",
+      "not_for": "A single quote (use pull_quote). A social post (use social_card). Narration on screen (the caption track carries speech).",
+      "data_schema": {
+        "messages": "array of {from?(them|me | a name), text, time?} — the bubbles, in order (me = accent right, them = surface left)",
+        "subject": "string? — a header name/title for the thread",
+        "kicker": "string? — eyebrow over the header",
+        "title": "string? — a header title",
+        "titleHi": "string? — substring of title to highlight"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Bubbles: me = --accent (right), them = --surface (left). Keep 3-7 short messages; long threads overflow."
+    },
+    "connection_board": {
+      "fn": "connection_board",
+      "purpose": "A NETWORK / evidence board: nodes (people/events) joined by lines (the 'red-string' web — relationships, who-knew-whom, how things connect). Links draw, nodes pop.",
+      "when_to_use": "A beat about how things CONNECT / a web of relationships: follow-the-money, who-knew-whom, an investigation board, a system's parts and their links.",
+      "not_for": "A strict hierarchy/tree (use diagram tree). A directed flow (diagram flow). A cycle (use cycle). Ranked items (bullet_list/ledger).",
+      "data_schema": {
+        "nodes": "array of {id, label, sub?, x?, y? (0..1; else auto on a ring), hl?} — the entities",
+        "links": "array of {from, to (node ids), label?} — the connections (drawn lines, optional mid-label)",
+        "kicker": "string? — eyebrow over the top title",
+        "title": "string? — a top title",
+        "titleHi": "string? — substring to highlight"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Nodes are theme --surface cards (hl = accent border); links are accent lines (strokeDashoffset draw). Give x,y for a deliberate layout, else auto-ring. 3-7 nodes."
+    },
+    "spans": {
+      "fn": "spans",
+      "purpose": "A SPAN / ERA timeline: overlapping DURATION bars on a shared time axis (reigns, empires, projects, a Gantt), so 'these overlapped' reads at a glance. Bars grow from their start.",
+      "when_to_use": "A beat about DURATIONS that overlap or span time: overlapping empires/reigns/movements, project phases, lifespans, 'X ran while Y ran'.",
+      "not_for": "A sequence of point EVENTS (use timeline). A single duration/countdown. Values to compare (chart). One-axis positioning (spectrum).",
+      "data_schema": {
+        "spans": "array of {label, start, end (numbers on the axis), hl?} — the duration bars, one row each",
+        "range": "[min, max]? — the axis extent (else min start → max end)",
+        "ticks": "array of numbers? — axis tick positions (else 5 even)",
+        "unit": "string? — appended to tick labels (e.g. ' AD')",
+        "kicker": "string? — eyebrow",
+        "title": "string? — a top-left title",
+        "titleHi": "string? — substring to highlight"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ],
+      "note": "Bars are theme --accent (0.5 opacity so overlaps read; hl = full); start/end are plain numbers (negative = BC). 2-6 rows read best."
     }
   },
   "components": {

@@ -53,7 +53,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind", "highligh
             "annotate": ["src", "callouts"], "quadrant": ["x", "y"], "venn": ["sets"],
             "sankey": ["source", "targets"], "scale": ["items"], "pie": ["segments"], "funnel": ["stages"],
             "spectrum": ["axis", "items"], "cycle": ["steps"], "detail_zoom": ["src", "stops"],
-            "hero": ["src", "title"],
+            "hero": ["src", "title"], "chat_thread": ["messages"], "connection_board": ["nodes"], "spans": ["spans"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
 
 
