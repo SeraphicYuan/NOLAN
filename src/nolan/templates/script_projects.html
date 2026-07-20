@@ -37,6 +37,25 @@
         pre { white-space: pre-wrap; background: var(--bg-primary); border: 1px solid var(--border); padding: 12px 14px; border-radius: 8px; max-height: 520px; overflow: auto; font-size: 13px; line-height: 1.55; }
         label.fld { font-size: 12px; color: var(--text-secondary); display:block; margin: 8px 0 3px; }
         .hidden { display: none; }
+        .stepper { display:flex; gap:4px; flex-wrap:wrap; margin:10px 0 2px; }
+        .step { font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; background:var(--bg-tertiary); color:var(--text-secondary); }
+        .step.done { background:#064e3b; color:#6ee7b7; }
+        .step.cur { background:var(--accent); color:#fff; }
+        .finding { border:1px solid var(--border); border-radius:8px; padding:9px 11px; margin-bottom:7px; background:var(--bg-primary); }
+        .finding.off { opacity:.45; }
+        .finding .top { display:flex; gap:8px; align-items:center; }
+        .finding .dim { font-size:11px; font-weight:700; color:#93c5fd; }
+        .finding .beat { font-size:12px; color:var(--text-secondary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .finding .body { font-size:12px; margin-top:6px; line-height:1.5; }
+        .finding .fix { color:#86efac; }
+        .finding .q { color:#e2e8f0; }
+        .sev { font-size:10px; font-weight:700; padding:1px 6px; border-radius:5px; text-transform:uppercase; }
+        .sev.high { background:#7f1d1d; color:#fecaca; } .sev.med { background:#78350f; color:#fcd34d; } .sev.low { background:#334155; color:#cbd5e1; }
+        .gatechk { font-size:12px; padding:2px 0; }
+        .g-pass { color:#6ee7b7; } .g-warn { color:#fcd34d; } .g-fail { color:#fca5a5; }
+        .diffv { white-space:pre-wrap; font-size:12px; line-height:1.5; }
+        .diffv .add { background:#052e16; color:#86efac; display:block; }
+        .diffv .del { background:#3b0d0d; color:#fca5a5; display:block; }
         @media (max-width: 768px) {
             .wrap { padding: 14px; }
             .grid { grid-template-columns: 1fr !important; }
@@ -95,6 +114,7 @@
                     </div>
                 </div>
                 <div class="meta" id="dMeta" style="color:var(--text-secondary); font-size:12px; margin-top:6px;"></div>
+                <div class="stepper" id="stepper"></div>
                 <div class="row" id="runControls" style="margin-top:10px; gap:6px; flex-wrap:wrap;">
                     <label style="font-size:12px;color:var(--text-secondary);align-self:center;">Agent:</label>
                     <select id="agentSelect" title="Which tmux Claude agent to dispatch the run to"></select>
@@ -102,15 +122,17 @@
                     <button class="primary" id="btnPrep" onclick="runPhase('prep')">① Prepare (research + angles)</button>
                     <button id="btnDraft" onclick="runPhase('draft')">② Write with angle</button>
                     <button class="primary" id="btnV3" onclick="runPhase('v3')" title="v3: infer spine-type from the guide → resonant angle → beat-map → draft">▶ Run (v3 auto)</button>
-                    <span style="flex:1"></span>
-                    <button id="btnBaseline" onclick="writeScript()" title="legacy one-shot writer — kept for A/B only">⧗ Baseline</button>
                 </div>
-                <div class="row" style="margin-top:8px; gap:6px;">
-                    <label style="font-size:12px;color:var(--text-secondary);align-self:center;">Reference structure:</label>
-                    <select id="decSelect" style="max-width:280px;"><option value="">(none — from a deconstruction)</option></select>
-                    <button onclick="attachDeconstruction()" title="Seed this project's beatmap.md + reference_structure.json with a deconstructed video's beat structure — the v3 writer treats it as the structural constitution; Director tempo/scene steps use it too">📎 Attach</button>
-                    <span id="refBadge" class="badge hidden"></span>
-                </div>
+                <details style="margin-top:8px;">
+                    <summary style="font-size:12px;color:var(--text-secondary);cursor:pointer;">Advanced</summary>
+                    <div class="row" style="margin-top:8px; gap:6px;">
+                        <label style="font-size:12px;color:var(--text-secondary);align-self:center;">Reference structure:</label>
+                        <select id="decSelect" style="max-width:280px;"><option value="">(none — from a deconstruction)</option></select>
+                        <button onclick="attachDeconstruction()" title="Seed this project's beatmap.md + reference_structure.json with a deconstructed video's beat structure">📎 Attach</button>
+                        <span id="refBadge" class="badge hidden"></span>
+                        <button id="btnBaseline" onclick="writeScript()" title="legacy one-shot writer — kept for A/B only">⧗ Baseline writer</button>
+                    </div>
+                </details>
                 <div class="jobstatus" id="jobStatus"></div>
                 <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap;align-items:center;">
                     <span style="font-size:12px;color:var(--text-secondary)">Once the script is ready →</span>
@@ -166,6 +188,24 @@
                 </div>
             </div>
 
+            <div class="panel" id="spinePanel">
+                <div class="section-title" style="margin-top:0;">Spine structure</div>
+                <div id="spineBox">
+                    <label class="fld">A single thread, or a <b>composite</b> bound by a macro-structure (Phase 2) — applies in both semi &amp; auto</label>
+                    <div class="row">
+                        <select id="spineStruct" style="flex:1;" onchange="onSpineStructChange()"></select>
+                        <button class="primary" onclick="setSpine()">Set spine</button>
+                    </div>
+                    <div id="spineThreads" class="hidden">
+                        <label class="fld">Threads (one per line)</label>
+                        <textarea id="spineThreadList" placeholder="the human story&#10;the systemic story" style="min-height:60px;"></textarea>
+                        <label class="fld">Binding — the one felt through-line</label>
+                        <input id="spineBinding" type="text" placeholder="how the threads cohere into one piece" style="width:100%;">
+                    </div>
+                    <div class="empty" id="spineHint" style="font-size:11px; padding:4px 0;"></div>
+                </div>
+            </div>
+
             <div class="panel">
                 <div class="row" style="justify-content:space-between;">
                     <div class="section-title" style="margin-top:0;">Grounding artifacts</div>
@@ -188,6 +228,37 @@
                     <button onclick="loadDrafts()">Refresh</button>
                 </div>
                 <div id="draftList"><div class="empty">No drafts yet.</div></div>
+                <div class="row" id="diffRow" style="margin-top:8px; display:none;">
+                    <label style="font-size:12px;color:var(--text-secondary);align-self:center;">Compare:</label>
+                    <select id="diffA" style="flex:1;"></select><span style="color:var(--text-secondary)">vs</span>
+                    <select id="diffB" style="flex:1;"></select><button onclick="diffDrafts()">Diff</button>
+                </div>
+                <pre id="diffView" class="diffv empty hidden"></pre>
+            </div>
+
+            <div class="panel" id="reviewPanel">
+                <div class="section-title" style="margin-top:0;">Review → Revise</div>
+                <div class="sub" style="margin-bottom:10px;">A fresh-eyes critic scores the current draft against a
+                    <b>typed rubric</b> (diagnose only), you approve the findings, then revise applies only those.</div>
+                <div class="row" style="gap:6px; flex-wrap:wrap;">
+                    <label style="font-size:12px;color:var(--text-secondary);align-self:center;">Rubric:</label>
+                    <select id="revArchetype" style="max-width:230px;" onchange="saveReviewConfig()" title="Which typed rubric the critic uses (inferred by default)"></select>
+                    <button class="primary" id="btnReview" onclick="runPhase('review')" title="Dispatch a fresh-eyes critic on the current draft (routed to a different agent than the drafter)">🔍 Review draft</button>
+                    <button onclick="runGate()">Run gate</button>
+                </div>
+                <label class="fld">Ad-hoc questions for this project (one per line — appended to the rubric)</label>
+                <textarea id="revAdHoc" placeholder="e.g. Are all the metaphors strong and fitting for their purpose?" onchange="saveReviewConfig()"></textarea>
+                <div id="gateBox" style="margin-top:10px;"></div>
+                <div class="row" style="justify-content:space-between; margin-top:12px;">
+                    <div class="section-title" style="margin:0;">Findings <span id="revLabel" style="color:var(--text-secondary);font-weight:400;font-size:12px;"></span></div>
+                    <div class="row" id="findingsActions" style="display:none;">
+                        <button onclick="selectAllFindings(true)">All</button>
+                        <button onclick="selectAllFindings(false)">None</button>
+                        <button onclick="viewReviewMd()">View review.md</button>
+                        <button class="primary" id="btnRevise" onclick="approveAndRevise()">✓ Approve selected → Revise</button>
+                    </div>
+                </div>
+                <div id="findingsBox"><div class="empty">Run a review to see located findings you can approve.</div></div>
             </div>
 
             <div class="panel">
@@ -287,9 +358,171 @@ async function select(slug) {
     else { $('angleHint').textContent = 'Run ① Prepare to generate candidate angles, then pick one (semi-auto).'; $('angleHint').classList.add('empty'); }
     renderSources(p.sources || []);
     renderDrafts(p.drafts || []);
+    renderStepper(p.state);
+    populateDiff(p.drafts || []);
+    loadReviewConfig(p);
+    loadReviewSection(p);
+    $('btnReview').disabled = !((p.drafts && p.drafts.length) || p.has_script);
     loadLibraryVideos();
     loadScript();
     loadProjects();
+}
+
+// ---- Phase 3: state machine, spine picker, gate, review/revise, draft diff ----
+const STATES = ["new", "grounded", "angled", "drafted", "reviewed", "revised", "promoted"];
+function renderStepper(state) {
+    const idx = STATES.indexOf(state || 'new');
+    $('stepper').innerHTML = STATES.map((s, i) =>
+        `<span class="step ${i < idx ? 'done' : ''} ${i === idx ? 'cur' : ''}">${s}</span>`).join('');
+}
+
+let _spineStructures = [];
+async function loadReviewConfig() {
+    try {
+        const cfg = await api('/api/script-projects/' + current + '/review-config');
+        $('revArchetype').innerHTML = cfg.archetypes.map(a =>
+            `<option value="${esc(a.id)}" title="${esc(a.when_to_use)}">${esc(a.title)}</option>`).join('');
+        $('revArchetype').value = cfg.archetype_override || cfg.archetype;
+        $('revAdHoc').value = (cfg.ad_hoc_questions || []).join('\n');
+        _spineStructures = cfg.spine_structures || [];
+        $('spineStruct').innerHTML = _spineStructures.map(s =>
+            `<option value="${esc(s.id)}">${esc(s.title)}</option>`).join('');
+        const sp = cfg.composite_spine || {};
+        $('spineStruct').value = sp.structure || 'single';
+        $('spineThreadList').value = (sp.threads || []).join('\n');
+        $('spineBinding').value = sp.binding || '';
+        onSpineStructChange();
+    } catch (e) { /* project may predate review-config */ }
+}
+function onSpineStructChange() {
+    const s = _spineStructures.find(x => x.id === $('spineStruct').value);
+    $('spineThreads').classList.toggle('hidden', !(s && s.max_threads > 1));
+    $('spineHint').textContent = s ? s.when_to_use : '';
+}
+async function saveReviewConfig() {
+    const archetype = $('revArchetype').value;
+    const ad_hoc_questions = $('revAdHoc').value.split('\n').map(x => x.trim()).filter(Boolean);
+    try {
+        await api('/api/script-projects/' + current + '/review-config', { method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archetype, ad_hoc_questions }) });
+        $('jobStatus').textContent = 'Review rubric config saved.';
+    } catch (e) { alert('config: ' + e.message); }
+}
+async function setSpine() {
+    const structure = $('spineStruct').value;
+    const threads = $('spineThreadList').value.split('\n').map(x => x.trim()).filter(Boolean);
+    const binding = $('spineBinding').value.trim();
+    try {
+        const r = await api('/api/script-projects/' + current + '/spine', { method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ structure, threads, binding }) });
+        const sp = r.composite_spine || {};
+        $('spineHint').textContent = 'Spine set: ' + (sp.structure || 'single') +
+            (sp.threads && sp.threads.length ? ` · ${sp.threads.length} threads` : '');
+    } catch (e) { alert('spine: ' + e.message); }
+}
+
+async function runGate() {
+    $('gateBox').innerHTML = '<div class="empty" style="font-size:12px;">Running gate…</div>';
+    try { renderGate(await api('/api/script-projects/' + current + '/gate')); }
+    catch (e) { $('gateBox').innerHTML = '<div class="g-fail" style="font-size:12px;">gate: ' + esc(e.message) + '</div>'; }
+}
+function renderGate(r) {
+    const head = r.ok ? '<span class="g-pass">GATE OK</span>' : '<span class="g-fail">GATE FAILED</span>';
+    const rows = r.checks.map(c => {
+        const cls = c.level === 'pass' ? 'g-pass' : (c.level === 'warn' ? 'g-warn' : 'g-fail');
+        const m = c.level === 'pass' ? '✓' : (c.level === 'warn' ? '▲' : '✗');
+        return `<div class="gatechk ${cls}"><b>${m}</b> [${esc(c.id)}] ${esc(c.message)}</div>`;
+    }).join('');
+    $('gateBox').innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:4px;">${head}</div>${rows}`;
+}
+
+let _curReviewN = null, _curFindings = [], _approvedIds = new Set();
+async function loadReviewSection(p) {
+    const reviews = p.reviews || [];
+    if (!reviews.length) {
+        $('findingsBox').innerHTML = '<div class="empty">Run a review to see located findings you can approve.</div>';
+        $('findingsActions').style.display = 'none'; $('revLabel').textContent = ''; _curReviewN = null; return;
+    }
+    const latest = reviews[reviews.length - 1];
+    _curReviewN = latest.n;
+    try {
+        const r = await api('/api/script-projects/' + current + '/review/' + latest.n);
+        _curFindings = r.findings || [];
+        _approvedIds = new Set((r.approved_ids && r.approved_ids.length) ? r.approved_ids : _curFindings.map(f => f.id));
+        $('revLabel').textContent = `— review-${String(latest.n).padStart(2, '0')} · ${_curFindings.length} findings` +
+            (latest.has_revision ? ' · revised ✓' : '');
+        renderFindings();
+        $('findingsActions').style.display = '';
+    } catch (e) { $('findingsBox').innerHTML = '<div class="empty">review: ' + esc(e.message) + '</div>'; }
+}
+function renderFindings() {
+    if (!_curFindings.length) { $('findingsBox').innerHTML = '<div class="empty">This review produced no structured findings JSON.</div>'; return; }
+    $('findingsBox').innerHTML = _curFindings.map(f => {
+        const on = _approvedIds.has(f.id);
+        return `<div class="finding ${on ? '' : 'off'}">
+            <div class="top">
+                <input type="checkbox" ${on ? 'checked' : ''} onclick="toggleFinding('${esc(f.id)}')" style="width:auto;">
+                <span class="dim">${esc(f.dim || '')}</span>
+                <span class="sev ${esc(f.severity || 'low')}">${esc(f.severity || '')}</span>
+                <span class="beat">${esc(f.beat || '')}</span>
+            </div>
+            <div class="body">${f.quote ? ('<span class="q">“' + esc(f.quote) + '”</span> — ') : ''}${esc(f.problem || '')}
+                <br><span class="fix">→ ${esc(f.fix || '')}</span></div>
+        </div>`;
+    }).join('');
+}
+function toggleFinding(id) { _approvedIds.has(id) ? _approvedIds.delete(id) : _approvedIds.add(id); renderFindings(); }
+function selectAllFindings(on) { _approvedIds = on ? new Set(_curFindings.map(f => f.id)) : new Set(); renderFindings(); }
+async function viewReviewMd() {
+    if (_curReviewN == null) return;
+    try { const r = await api('/api/script-projects/' + current + '/review/' + _curReviewN);
+        $('artView').textContent = r.md; $('artView').classList.remove('empty'); } catch (e) {}
+}
+async function approveAndRevise() {
+    if (_curReviewN == null) return;
+    const ids = [..._approvedIds];
+    if (!ids.length && !confirm('No findings selected — nothing to apply. Continue anyway?')) return;
+    const session = pickedSession();
+    $('jobStatus').textContent = `Approving ${ids.length} findings + dispatching revise → ${session}…`;
+    try {
+        await api('/api/script-projects/' + current + '/review/' + _curReviewN + '/approve', { method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+        const r = await api('/api/script-projects/' + current + '/run', { method: 'POST',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: 'revise', session }) });
+        pollJob(r.job_id, `Revise dispatched to ${session} — a new draft will appear shortly.`);
+    } catch (e) { $('jobStatus').textContent = 'Revise: ' + e.message; }
+}
+
+function populateDiff(drafts) {
+    if (!drafts || drafts.length < 2) { $('diffRow').style.display = 'none'; return; }
+    $('diffRow').style.display = '';
+    const opts = drafts.map(d => `<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('');
+    $('diffA').innerHTML = opts; $('diffB').innerHTML = opts;
+    $('diffA').value = drafts[drafts.length - 2].name; $('diffB').value = drafts[drafts.length - 1].name;
+}
+async function diffDrafts() {
+    const a = $('diffA').value, b = $('diffB').value;
+    if (a === b) { alert('Pick two different drafts.'); return; }
+    const [ra, rb] = await Promise.all([
+        api('/api/script-projects/' + current + '/draft/' + encodeURIComponent(a)),
+        api('/api/script-projects/' + current + '/draft/' + encodeURIComponent(b))]);
+    $('diffView').innerHTML = simpleDiff(ra.content, rb.content);
+    $('diffView').classList.remove('hidden', 'empty');
+}
+function simpleDiff(a, b) {
+    const A = a.split('\n'), B = b.split('\n'), n = A.length, m = B.length;
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+        dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    let i = 0, j = 0; const out = [];
+    while (i < n && j < m) {
+        if (A[i] === B[j]) { out.push('  ' + esc(A[i])); i++; j++; }
+        else if (dp[i + 1][j] >= dp[i][j + 1]) { out.push('<span class="del">- ' + esc(A[i]) + '</span>'); i++; }
+        else { out.push('<span class="add">+ ' + esc(B[j]) + '</span>'); j++; }
+    }
+    while (i < n) out.push('<span class="del">- ' + esc(A[i++]) + '</span>');
+    while (j < m) out.push('<span class="add">+ ' + esc(B[j++]) + '</span>');
+    return out.join('\n');
 }
 
 function applyMode(mode) {

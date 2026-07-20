@@ -45,6 +45,7 @@
     ]},
     { title: "System", items: [
       { id: "agents", label: "Agents", href: "/agents" },
+      { id: "sessions", label: "Agent Sessions", href: "/sessions" },
       { id: "jobs", label: "Background Jobs", href: "/jobs" },
       { id: "map", label: "NOLAN Map", href: "/map" },
       { id: "taste", label: "Taste", href: "/taste" },

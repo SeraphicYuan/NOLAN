@@ -14,7 +14,9 @@ Reuses, rather than duplicates, the rest of NOLAN:
 """
 
 from .store import ScriptProjectStore
-from .tasks import write_script_task, prep_task, draft_task, v3_task
+from .tasks import (write_script_task, prep_task, draft_task, v3_task,
+                    review_task, revise_task)
 
 __all__ = ["ScriptProjectStore", "write_script_task",
-           "prep_task", "draft_task", "v3_task"]
+           "prep_task", "draft_task", "v3_task",
+           "review_task", "revise_task"]

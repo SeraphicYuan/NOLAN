@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOLAN Agent Sessions</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg-primary); color:var(--text-primary); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:18px; }
+  h1 { font-size:24px; font-weight:700; letter-spacing:-0.02em; margin-bottom:6px; }
+  .sub { color:var(--text-secondary); font-size:13px; line-height:1.5; margin-bottom:18px; }
+  .panel { background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  input, select { background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); padding:9px 12px; font-size:14px; }
+  button { background:var(--bg-tertiary); color:var(--text-primary); border:1px solid var(--border); border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; font-weight:600; }
+  button:hover { background:#475569; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { background:#7f1d1d; border-color:#991b1b; color:#fecaca; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .agent { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:var(--bg-primary); }
+  .agent .name { font-weight:700; font-size:15px; min-width:90px; }
+  .agent .grow { flex:1; color:var(--text-secondary); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .badge { font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; }
+  .b-idle { background:#064e3b; color:#6ee7b7; }
+  .b-busy { background:#78350f; color:#fcd34d; }
+  .b-waiting_permission { background:#7c2d12; color:#fdba74; }
+  .b-booting, .b-spawned { background:#1e3a8a; color:#93c5fd; }
+  .b-disconnected, .b-gone, .b-unknown { background:#334155; color:#94a3b8; }
+  .tag { font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; background:#3730a3; color:#c7d2fe; }
+  .empty { color:var(--text-secondary); font-size:13px; padding:8px; }
+  pre.pane { background:#0b1220; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:11px; line-height:1.4; color:#cbd5e1; white-space:pre-wrap; max-height:280px; overflow:auto; margin-top:8px; }
+  .hint { color:var(--text-secondary); font-size:11px; }
+</style>
+<link rel="stylesheet" href="/static/nolan.css">
+<script src="/static/nav.js" data-active="sessions"></script>
+</head>
+<body>
+<div class="wrap">
+  <h1>Agent Sessions</h1>
+  <div class="sub">Spawn, track, and kill the tmux <b>Claude Code</b> agents the hub dispatches work to
+    (script review/revise, scene edits, effect design). Each is a real <code>claude --dangerously-skip-permissions</code>
+    session in the NOLAN repo. Newly spawned agents take ~15s to boot — wait for <b>idle</b> before dispatching.</div>
+
+  <div class="panel">
+    <div class="row">
+      <input id="spawnName" placeholder="name (optional — auto: nolan&lt;n&gt;)" style="flex:1; min-width:220px;">
+      <label class="row" style="gap:5px;"><input type="checkbox" id="spawnDanger" checked style="width:auto;"> skip permissions</label>
+      <button class="primary" id="spawnBtn" onclick="spawnAgent()">＋ Spawn agent</button>
+      <button onclick="refresh()">⟳ Refresh</button>
+      <span class="hint" id="status"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="list"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let openPane = null;   // agent name whose pane is expanded
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) { let d; try { d = (await r.json()).detail; } catch(e){} throw new Error(d || r.status); }
+  return r.json();
+}
+
+function setStatus(msg, ok=true) { const s=$('status'); s.textContent=msg; s.style.color = ok?'var(--text-secondary)':'#fca5a5'; }
+
+async function refresh() {
+  try {
+    const { agents } = await api('/api/sessions');
+    const el = $('list');
+    if (!agents.length) { el.innerHTML = '<div class="empty">No agent sessions. Spawn one above.</div>'; return; }
+    el.innerHTML = agents.map(a => {
+      const st = a.live_status || 'unknown';
+      const note = a.spawned ? '<span class="tag">hub</span>' : '';
+      const work = a.project ? `${esc(a.project)}${a.note ? ' — '+esc(a.note) : ''}` : (a.message ? esc(a.message) : '');
+      const gone = !a.session_alive;
+      return `<div class="agent">
+        <span class="name">${esc(a.agent)}</span>
+        <span class="badge b-${esc(st)}">${esc(st)}</span>
+        ${note}
+        <span class="grow">${work}</span>
+        <button onclick="peek('${esc(a.agent)}')" ${gone?'disabled':''}>${openPane===a.agent?'Hide':'Peek'}</button>
+        <button class="danger" onclick="killAgent('${esc(a.agent)}')" ${gone?'disabled':''}>Kill</button>
+      </div>` + (openPane===a.agent ? `<pre class="pane" id="pane-${esc(a.agent)}">loading pane…</pre>` : '');
+    }).join('');
+    if (openPane) loadPane(openPane);
+  } catch (e) { setStatus('list: '+e.message, false); }
+}
+
+async function spawnAgent() {
+  const name = $('spawnName').value.trim();
+  const dangerous = $('spawnDanger').checked;
+  $('spawnBtn').disabled = true; setStatus('spawning…');
+  try {
+    const res = await api('/api/sessions/spawn', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, dangerous }) });
+    $('spawnName').value = '';
+    setStatus(`spawned ${res.session} — booting (wait for idle)`);
+    await refresh();
+  } catch (e) { setStatus('spawn: '+e.message, false); }
+  finally { $('spawnBtn').disabled = false; }
+}
+
+async function killAgent(name) {
+  if (!confirm(`Kill agent '${name}'? Any in-flight work is lost.`)) return;
+  try { await api('/api/sessions/'+encodeURIComponent(name)+'/kill', { method:'POST' });
+    if (openPane===name) openPane=null;
+    setStatus(`killed ${name}`); await refresh();
+  } catch (e) { setStatus('kill: '+e.message, false); }
+}
+
+function peek(name) { openPane = (openPane===name) ? null : name; refresh(); }
+async function loadPane(name) {
+  try { const { pane } = await api('/api/sessions/'+encodeURIComponent(name)+'/pane');
+    const el = $('pane-'+name); if (el) el.textContent = pane || '(empty)';
+  } catch (e) { const el=$('pane-'+name); if (el) el.textContent = 'pane: '+e.message; }
+}
+
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>

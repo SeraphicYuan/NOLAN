@@ -8,6 +8,14 @@ the Director-ready ``script.md`` output contract.
 from __future__ import annotations
 
 from .store import ScriptProjectStore
+from .spine_structures import render_structures_menu, render_structure_guidance
+
+# Context-parity contract (docs/SCRIPT_REVIEW_PROGRAM.md §1.1): the critic must judge a
+# draft on the SAME material the writer had, plus the draft itself. The review inputs are a
+# SUPERSET of the draft inputs — pinned by tests/test_script_review.py so a review can never
+# silently drift to less context than drafting.
+_DRAFT_INPUTS = ("brief", "style", "facts", "beatmap")
+_REVIEW_INPUTS = _DRAFT_INPUTS + ("draft", "citations", "factcheck")
 
 
 def write_script_task(slug: str, store: ScriptProjectStore) -> str:
@@ -227,6 +235,8 @@ def draft_task(slug: str, store: "ScriptProjectStore") -> str:
     style_id = meta["style_id"]
     minutes = meta.get("target_minutes", 8)
     tw = int(float(minutes) * 150)
+    from .ledger import draft_priors
+    _priors = draft_priors(store.root, store.resolve_archetype(slug), style_id)
     chosen = meta.get("chosen_angle") or "(none set — use the `**[CHOSEN]**` angle in angles.md)"
     return f"""# NOLAN script DRAFT task: "{meta['name']}"
 
@@ -235,9 +245,9 @@ fact-check and report. Facts are in `{sg}/facts.md`; angles in `{sg}/angles.md`.
 
 **Chosen angle (the spine — write to THIS):** {chosen}
 
-{_cloned_beatmap_block(sg, style_id, meta['cloned_from_deconstruction']) if meta.get('cloned_from_deconstruction') else _beatmap_block(sg, style_id)}
+{_cloned_beatmap_block(sg, style_id, meta['cloned_from_deconstruction']) if meta.get('cloned_from_deconstruction') else _beatmap_block(sg, style_id, meta.get('composite_spine'))}
 
-{_draft_v3_block(base, sg, style_id, tw, minutes)}
+{_draft_v3_block(base, sg, style_id, tw, minutes, _priors)}
 
 {_factcheck_block(sg)}
 
@@ -290,7 +300,9 @@ Score each 1–5 on THREE axes and SHOW the scores:
 **Penalize** angles that are low-resonance OR of a type this guide does NOT use (e.g. a dry
 "is it real / who wrote it" debate when the guide's spine is human-thematic). Such material is
 *grounding* + a possible hook, not the spine. Mark the winner `**[CHOSEN]**` with one sentence
-on why it wins on **resonance + style-fit**."""
+on why it wins on **resonance + style-fit**.
+
+{render_structures_menu()}"""
 
 
 def _cloned_beatmap_block(sg: str, style_id: str, cloned_from: str) -> str:
@@ -308,11 +320,13 @@ never content. If you believe the cloned structure hurts the video, say so in `r
 (one paragraph, with reasons) — but FOLLOW it in the draft."""
 
 
-def _beatmap_block(sg: str, style_id: str) -> str:
+def _beatmap_block(sg: str, style_id: str, spine: dict = None) -> str:
+    guidance = render_structure_guidance(spine or {})
+    spine_block = f"\n{guidance}\n" if guidance else ""
     return f"""## Step — Beat-map the angle onto the guide's structure → `{sg}/beatmap.md`
 Plan the retention curve BEFORE drafting, using `script_styles/{style_id}/style_guide.md` as the
 CONSTITUTION — and read it in FULL, not just its structure.
-
+{spine_block}
 {_STYLE_KERNEL}
 
 Treat the guide's **Hook Patterns**, **Narrative Structure**, **Pacing & Rhythm**, and **DON'T**
@@ -340,8 +354,11 @@ quotes / numbers this beat fires — include any verbatim quote to read aloud an
 comparator>` (accelerate on fact clusters; decelerate for emotion/philosophy, per the guide)."""
 
 
-def _draft_v3_block(base: str, sg: str, style_id: str, target_words: int, minutes) -> str:
+def _draft_v3_block(base: str, sg: str, style_id: str, target_words: int, minutes,
+                    priors: str = "") -> str:
+    priors_block = f"\n{priors}\n" if priors else ""
     return f"""## Step — Draft to the beat-map → `{sg}/drafts/draft-<NN>.md`
+{priors_block}
 Write the voiceover following `{sg}/beatmap.md` and `script_styles/{style_id}/style_guide.md`'s
 **How to Apply** block as your system prompt. The guide governs hook, structure, pacing, sentence
 craft, transitions, and the close — obey it as written. For EACH beat, actually deploy the `devices:`
@@ -364,6 +381,8 @@ def v3_task(slug: str, store: "ScriptProjectStore") -> str:
     style_id = meta["style_id"]
     minutes = meta.get("target_minutes", 8)
     tw = int(float(minutes) * 150)
+    from .ledger import draft_priors
+    _priors = draft_priors(store.root, store.resolve_archetype(slug), style_id)
     pending = [s for s in meta.get("sources", []) if s.get("status") == "pending"]
     pending_lines = "\n".join(f"  - [{s['id']}] {s.get('url') or s.get('title')}"
                               for s in pending) or "  - (none)"
@@ -388,9 +407,9 @@ it must never reorganize the guide's structure.
 
 {_angles_v3_block(sg, style_id, meta.get('angle') or '')}
 
-{_cloned_beatmap_block(sg, style_id, meta['cloned_from_deconstruction']) if meta.get('cloned_from_deconstruction') else _beatmap_block(sg, style_id)}
+{_cloned_beatmap_block(sg, style_id, meta['cloned_from_deconstruction']) if meta.get('cloned_from_deconstruction') else _beatmap_block(sg, style_id, meta.get('composite_spine'))}
 
-{_draft_v3_block(base, sg, style_id, tw, minutes)}
+{_draft_v3_block(base, sg, style_id, tw, minutes, _priors)}
 
 {_factcheck_block(sg)}
 
@@ -401,4 +420,137 @@ it must never reorganize the guide's structure.
 Finally: copy your finished draft to `{base}/script.md` so it's Director-ready.
 
 {_policy()}
+"""
+
+
+# ============================================================================
+# Review → Revise loop (docs/SCRIPT_REVIEW_PROGRAM.md — Phase 1).
+# review = fresh-eyes, diagnose-only critic against a typed rubric.
+# revise = apply the human-approved findings + the final coherence read.
+# ============================================================================
+
+def _context_inputs_block(sg: str, style_id: str, draft_rel: str, draft_num: int) -> str:
+    """The shared 'read the same context as drafting' block. Lists every input token in
+    _REVIEW_INPUTS as a real path so the parity test can verify it — and so the critic
+    genuinely judges the draft on the writer's context, not less."""
+    return f"""## Context — read the SAME material the writer had, plus the draft
+- **Draft under review:** `{draft_rel}`  (draft #{draft_num})
+- **Style guide (voice constitution):** `script_styles/{style_id}/style_guide.md`
+- **Brief:** `{sg}/brief.md`
+- **Grounded facts:** `{sg}/facts.md`
+- **Beat-map (spine + pacing):** `{sg}/beatmap.md`
+- **Citations:** `{sg}/citations.md`   ·   **Fact-check:** `{sg}/factcheck.md`
+Judge the draft on the SAME context that produced it — never on less."""
+
+
+def review_task(slug: str, store: "ScriptProjectStore") -> str:
+    """Diagnose-only critic pass: score the current draft against its typed rubric."""
+    from .rubrics import get_rubric, render_review_md
+
+    meta = store.get(slug)
+    sg = f"projects/{slug}/scriptgen"
+    style_id = meta["style_id"]
+    archetype = store.resolve_archetype(slug)
+    ad_hoc = meta.get("ad_hoc_questions") or []
+    rubric = get_rubric(archetype)
+    rubric_md = render_review_md(rubric, ad_hoc)
+
+    num, path = store.current_draft(slug)
+    if not num:
+        return (f"# NOLAN script REVIEW — \"{meta['name']}\"\n\n"
+                "No draft exists yet. Run the draft/v3 phase first, then review.\n")
+    draft_rel = f"{sg}/drafts/{path.name}"
+    review_rel = f"{sg}/reviews/review-{num:02d}.md"
+    findings_rel = f"{sg}/reviews/review-{num:02d}.findings.json"
+
+    return f"""# NOLAN script REVIEW task (diagnose-only): "{meta['name']}"
+
+You are a **fresh-eyes producer/editor**. You did NOT write this draft. Review it hard against
+the rubric below and record a **located** critique. **Do NOT edit the draft in this pass** —
+diagnosis only; a separate revise pass applies the fixes the producer approves.
+
+{_context_inputs_block(sg, style_id, draft_rel, num)}
+
+{rubric_md}
+
+## Output contract → `{review_rel}` + `{findings_rel}`
+Write `{review_rel}`: a producer-readable critique, grouped by rubric dimension (strongest
+weight first). For each finding, one entry:
+- **[<dim-id> · high|med|low]** beat "<beat name>" — quote: "<the exact phrase at issue>"
+  - **problem:** <one line>
+  - **fix:** <concrete, specific proposed change — not "make it better">
+
+If a dimension is clean, say so in one line. Be specific and quote the draft; a vague critique
+can't be applied.
+
+Also emit `{findings_rel}` — a JSON array (so the human gate + the fix pass can consume it),
+one object per finding:
+`{{"id":"f1","dim":"<dim-id>","severity":"high|med|low","beat":"<name>","quote":"<phrase>","problem":"<...>","fix":"<...>"}}`
+
+At the TOP of `{review_rel}` record provenance:
+`reviewed: draft-{num:02d} · archetype: {archetype} · agent: <your session> · model: <model> · date: <today>`
+
+STOP after writing the review + findings. Do not touch the draft.
+"""
+
+
+def revise_task(slug: str, store: "ScriptProjectStore") -> str:
+    """Apply the approved findings to the current draft → the next numbered draft."""
+    from .rubrics import get_rubric, render_coherence_md
+
+    meta = store.get(slug)
+    base, sg = f"projects/{slug}", f"projects/{slug}/scriptgen"
+    style_id = meta["style_id"]
+    archetype = store.resolve_archetype(slug)
+    rubric = get_rubric(archetype)
+    coherence_md = render_coherence_md(rubric)
+
+    num, path = store.current_draft(slug)
+    if not num:
+        return (f"# NOLAN script REVISE — \"{meta['name']}\"\n\n"
+                "No draft to revise. Draft, then review, then revise.\n")
+    nxt = num + 1
+    draft_rel = f"{sg}/drafts/{path.name}"
+    approved_rel = f"{sg}/reviews/review-{num:02d}.approved.json"
+    findings_rel = f"{sg}/reviews/review-{num:02d}.findings.json"
+    review_rel = f"{sg}/reviews/review-{num:02d}.md"
+    new_draft_rel = f"{sg}/drafts/draft-{nxt:02d}.md"
+    revision_rel = f"{sg}/reviews/revision-{num:02d}.md"
+
+    return f"""# NOLAN script REVISE task: "{meta['name']}"
+
+Apply the **approved** review findings to draft #{num}, producing draft #{nxt}. Change ONLY what
+the approved findings call for — **preserve everything that already works**. This is surgery,
+not a rewrite.
+
+## Inputs
+- **Draft to revise:** `{draft_rel}`
+- **Approved findings:** `{approved_rel}` — if that file is absent, apply ALL of `{findings_rel}`.
+- **Review (the rationale):** `{review_rel}`
+- Same context as before: `script_styles/{style_id}/style_guide.md`, `{sg}/facts.md`,
+  `{sg}/beatmap.md`, `{sg}/citations.md`, `{sg}/factcheck.md`.
+
+## Step 1 — Apply approved findings (targeted edits)
+Make each approved `fix` in place, minimally. Do not rewrite untouched beats. If a fix needs a
+new fact or example, RESEARCH it and add it to `{sg}/facts.md` + `{sg}/citations.md` first, so
+the change stays grounded — never invent a citation.
+
+{coherence_md}
+
+## Step 2 — Update the grounding delta
+Reflect any added/changed claims in `{sg}/factcheck.md` and `{sg}/citations.md`; note style
+touch-ups in `{sg}/stylecheck.md`. Keep `**Total Duration:**` honest (words / 150).
+
+## Output → `{new_draft_rel}` + `{revision_rel}`
+Write the revised script to `{new_draft_rel}` in Director-ready format (`# Video Script` /
+`**Total Duration:** M:SS` / `## <Beat> [t]`). Write `{revision_rel}` — a changelog mapping each
+change to the finding it answers:
+`- <finding-id> (<dim>): <what changed>`
+and list any approved finding you did NOT apply, with why.
+
+At the top of `{revision_rel}` record:
+`revised: draft-{num:02d} → draft-{nxt:02d} · from review-{num:02d} · agent: <your session> · date: <today>`
+
+The producer runs the gate (`nolan scriptgen gate {slug}`) and promotes the winning draft to
+`{base}/script.md`.
 """

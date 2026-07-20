@@ -36,6 +36,39 @@ import yaml
 
 DEFAULT_ROOT = Path("projects")
 
+# Pipeline stages surfaced in the UI state machine (docs/SCRIPT_REVIEW_PROGRAM.md §3).
+PIPELINE_STATES = ["new", "grounded", "angled", "drafted", "reviewed", "revised", "promoted"]
+
+
+def _pipeline_state(m: Dict[str, Any]) -> str:
+    """Derive a project's coarse pipeline stage from its artifact flags (see get())."""
+    reviews = m.get("reviews") or []
+    drafts = m.get("drafts") or []
+    if m.get("has_script") and m.get("promoted_draft"):
+        return "promoted"
+    if reviews:
+        # "revised" as soon as a NEW draft appears past the latest review (i.e. the revise
+        # pass wrote draft-(N+1)) — don't wait on the revision-NN.md changelog, which the
+        # agent writes last. The changelog existing is also sufficient (belt + suspenders).
+        max_draft = max((_num(d.get("name")) for d in drafts), default=0)
+        max_review = max((r.get("n", 0) for r in reviews), default=0)
+        if max_draft > max_review or any(r.get("has_revision") for r in reviews):
+            return "revised"
+        return "reviewed"
+    if drafts or m.get("has_script"):
+        return "drafted"
+    if m.get("has_angles"):
+        return "angled"
+    if m.get("has_facts"):
+        return "grounded"
+    return "new"
+
+
+def _num(name: str) -> int:
+    """First integer in a draft/review filename ('draft-02.md' → 2), else 0."""
+    mt = re.search(r"(\d+)", str(name or ""))
+    return int(mt.group(1)) if mt else 0
+
 
 def slugify(text: str, fallback: str = "project") -> str:
     """URL/file-safe slug from arbitrary text."""
@@ -103,6 +136,21 @@ class ScriptProjectStore:
 
     def drafts_dir(self, slug: str) -> Path:
         return self.scriptgen_dir(slug) / "drafts"
+
+    def reviews_dir(self, slug: str) -> Path:
+        return self.scriptgen_dir(slug) / "reviews"
+
+    def review_path(self, slug: str, n: int) -> Path:
+        return self.reviews_dir(slug) / f"review-{n:02d}.md"
+
+    def review_findings_path(self, slug: str, n: int) -> Path:
+        return self.reviews_dir(slug) / f"review-{n:02d}.findings.json"
+
+    def review_approved_path(self, slug: str, n: int) -> Path:
+        return self.reviews_dir(slug) / f"review-{n:02d}.approved.json"
+
+    def revision_path(self, slug: str, n: int) -> Path:
+        return self.reviews_dir(slug) / f"revision-{n:02d}.md"
 
     def script_path(self, slug: str) -> Path:
         return self.project_dir(slug) / "script.md"
@@ -191,7 +239,13 @@ class ScriptProjectStore:
         m["has_script"] = self._script_written(slug)
         m.setdefault("mode", "semi")
         m.setdefault("chosen_angle", "")
+        m.setdefault("review_archetype", "")
+        m.setdefault("ad_hoc_questions", [])
+        m.setdefault("draft_session", "")
+        m.setdefault("composite_spine", {})
         m["drafts"] = self.list_drafts(slug)
+        m["reviews"] = self.list_reviews(slug)
+        m["state"] = _pipeline_state(m)
         return m
 
     def list(self) -> List[Dict[str, Any]]:
@@ -308,12 +362,49 @@ class ScriptProjectStore:
         self._write_brief(meta)  # brief reflects the picked angle
         return meta
 
+    def set_composite_spine(self, slug: str, structure: str,
+                            threads: List[str], binding: str = "") -> Dict[str, Any]:
+        """Set the project's composite spine (Phase 2). Validated against the structure registry;
+        `structure='single'` (or empty) clears it back to the default single spine."""
+        from nolan.scriptwriter.spine_structures import validate_composite_spine
+        threads = [str(t).strip() for t in (threads or []) if str(t).strip()]
+        spine = {} if (structure or "single") == "single" else {
+            "structure": structure.strip(), "threads": threads, "binding": (binding or "").strip()}
+        ok, err = validate_composite_spine(spine)
+        if not ok:
+            raise ValueError(err)
+        meta = self._load_meta(slug)
+        meta["composite_spine"] = spine
+        self._save_meta(meta)
+        return meta
+
     def set_style(self, slug: str, style_id: str) -> Dict[str, Any]:
         """Change the narrative style (voice guide) on an existing project."""
         meta = self._load_meta(slug)
         meta["style_id"] = (style_id or "").strip() or meta.get("style_id")
         self._save_meta(meta)
         self._write_brief(meta)  # brief shows the style
+        return meta
+
+    def set_review_archetype(self, slug: str, archetype: str) -> Dict[str, Any]:
+        """Override the inferred review archetype (which typed rubric the critic uses)."""
+        meta = self._load_meta(slug)
+        meta["review_archetype"] = (archetype or "").strip()
+        self._save_meta(meta)
+        return meta
+
+    def set_ad_hoc_questions(self, slug: str, questions: List[str]) -> Dict[str, Any]:
+        """Producer-supplied questions appended to the rubric for this project's reviews."""
+        meta = self._load_meta(slug)
+        meta["ad_hoc_questions"] = [q.strip() for q in (questions or []) if q and q.strip()]
+        self._save_meta(meta)
+        return meta
+
+    def set_draft_session(self, slug: str, session: str) -> Dict[str, Any]:
+        """Record which fleet agent drafted, so review can be routed to a different one."""
+        meta = self._load_meta(slug)
+        meta["draft_session"] = (session or "").strip()
+        self._save_meta(meta)
         return meta
 
     def list_drafts(self, slug: str) -> List[Dict[str, Any]]:
@@ -335,6 +426,57 @@ class ScriptProjectStore:
         safe = Path(name).name
         p = self.drafts_dir(slug) / safe
         return p if p.exists() else None
+
+    @staticmethod
+    def _draft_num(name: str) -> int:
+        m = re.search(r"(\d+)", Path(name).stem)
+        return int(m.group(1)) if m else 0
+
+    def current_draft(self, slug: str) -> "tuple[int, Optional[Path]]":
+        """(number, path) of the highest-numbered draft — the one review operates on.
+
+        Falls back to seeding ``drafts/draft-01.md`` from a written ``script.md`` so the
+        review loop always has a numbered base. ``(0, None)`` if nothing is written yet.
+        """
+        drafts = self.list_drafts(slug)
+        if drafts:
+            n, name = max((self._draft_num(d["name"]), d["name"]) for d in drafts)
+            return n, self.drafts_dir(slug) / name
+        if self._script_written(slug):
+            self.drafts_dir(slug).mkdir(parents=True, exist_ok=True)
+            seed = self.drafts_dir(slug) / "draft-01.md"
+            seed.write_text(self.read_script(slug) or "", encoding="utf-8")
+            return 1, seed
+        return 0, None
+
+    def next_draft_number(self, slug: str) -> int:
+        n, _ = self.current_draft(slug)
+        return n + 1 if n else 1
+
+    def list_reviews(self, slug: str) -> List[Dict[str, Any]]:
+        d = self.reviews_dir(slug)
+        if not d.exists():
+            return []
+        out: List[Dict[str, Any]] = []
+        for p in sorted(d.glob("review-*.md")):
+            n = self._draft_num(p.name)
+            out.append({
+                "name": p.name, "n": n,
+                "has_findings": self.review_findings_path(slug, n).exists(),
+                "has_approved": self.review_approved_path(slug, n).exists(),
+                "has_revision": self.revision_path(slug, n).exists(),
+            })
+        return out
+
+    def read_review(self, slug: str, n: int) -> Optional[str]:
+        p = self.review_path(slug, n)
+        return p.read_text(encoding="utf-8") if p.exists() else None
+
+    def resolve_archetype(self, slug: str) -> str:
+        """The review archetype for this project: the human override, else inferred."""
+        from nolan.scriptwriter.rubrics import infer_archetype
+        meta = self._load_meta(slug)
+        return (meta.get("review_archetype") or "").strip() or infer_archetype(meta)
 
     def read_draft(self, slug: str, name: str) -> Optional[str]:
         p = self.draft_path(slug, name)

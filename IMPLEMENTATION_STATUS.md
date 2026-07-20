@@ -4,6 +4,76 @@
 **Status:** Complete
 **Last Updated:** 2026-07-20
 
+## Script review loop — Phase 3 (UI) + Phase 4 (learning ledger) + validation (2026-07-20)
+
+**Phase 3 UI** (script_projects.html + routes/script_projects.py): a 7-step pipeline stepper
+(`store._pipeline_state`), a spine picker (structure/threads/binding), a Review→Revise panel
+(archetype selector + ad-hoc box via `/review-config`; 'Review draft'; per-finding checkbox
+cards from `/review/{n}`; 'Approve selected → Revise' via `/review/{n}/approve` + dispatch),
+gate badges (`/gate`), a client-side LCS draft-diff, and the baseline writer tucked behind an
+Advanced <details>. Playwright-verified in a real browser (stepper/findings/gate/spine render,
+zero console errors). **Phase 4 learning ledger** (scriptwriter/ledger.py): every critique-gate
+approve logs approved-vs-rejected findings (+ad-hoc questions) to `_script_review_ledger.jsonl`;
+`distill` gives per-dimension approval rates + recurring questions; `draft_priors` injects those
+as 'producer priors' into the DRAFT task so first drafts improve. CLI `nolan scriptgen ledger`.
+**Also:** ported `fleet.spawn/kill/detect_status` + a `/sessions` fleet console; tuned the
+voice-ownership rubric to target ZERO non-load-bearing attributions.
+
+**Validation (three-way spine test).** Same grounding + same angle, three spines drafted in
+parallel on nolan7/8/9: single (12 beats, linear), chronological (13 beats, origin-first bubble
+arc — beatmap rode it as RISE→CRACKS→RECKONING), braided (12 beats — draft literally returns via
+'Back to the door' / 'Back to the ground', beatmap names Thread H/Thread S 'fusing at beat 9').
+The composite spine materially reorganizes the script. Review pipeline re-tested on the braided
+variant: 22 located findings; the tuned voice-ownership dim fired at HIGH ('Marcus named ~9x — a
+reliance crutch') using the new 0-2 calibration. **Bug found + fixed:** the gate's per-beat
+grounding false-warned when beatmap↔script titles only partly matched (single 7/12, chrono 10/13
+warned; braid 0 matched → passed via corpus) — now defers to the corpus signal below a ceil(0.8)
+confidence threshold, so all three report consistently. (A separate stale-hub gap — the Phase-4
+approve hook needed a hub restart to go live — was a process miss, not a code bug.) Two unrelated
+honesty failures in the tree (composition archetype/block catalog) belong to concurrent block work.
+
+## Script review loop — Phase 2 (composite spine) + agent spawn/fleet console (2026-07-20)
+
+**Composite spine (Phase 2).** `src/nolan/scriptwriter/spine_structures.py` — a registry of
+spine macro-structures (single/chronological/hierarchical/braided/thesis-antithesis-synthesis/
+parallel-cases/spatial-zoom), each with when_to_use + beat_guidance + thread bounds. A script's
+thesis can now be 1..N threads bound by one structure (`composite_spine` on meta, validated by
+`store.set_composite_spine`). The angle step offers the structures menu; the beatmap step injects
+the chosen structure's arrangement guidance + threads. `ScriptContext` is composite-aware (new
+`spine` field, flat `angle` synthesized for back-compat, structure surfaced in `brief()`); also
+fixed the `**Spine + arc:**` regex drift. `single` == today (additive). API
+`POST /api/script-projects/{slug}/spine` + CLI `nolan scriptgen spine`. Tune: the voice-ownership
+rubric dimension now targets ZERO non-load-bearing attributions (was 'reduce') after the golden
+run showed the machine going 5->4 where the producer went 5->0.
+
+**Agent spawn + fleet console (Phase 5 partial).** `nolan.fleet` gains spawn/kill/detect_status/
+capture_pane/fleet_detailed/next_session_name (ATHENA recipe: `tmux new-session -d -c <repo>` ->
+`claude --dangerously-skip-permissions` -> poll boot). New `/sessions` page + `routes/sessions.py`
+(list/spawn/kill/peek a pane) + nav entry — the hub can now create fresh named agents, not just
+send-keys to pre-existing nolan1-6. Live spawn->idle->kill verified. **Hub restart required** to
+serve `/sessions`. Tests: `tests/test_spine_structures.py` (8), `tests/test_fleet_spawn.py` (4).
+
+## Script review loop — Phase 1: fresh-eyes critic + typed rubric + gate (2026-07-20)
+
+The script pipeline's missing draft→official-level step (a producer review + targeted
+revision) is now a first-class stage. `src/nolan/scriptwriter/rubrics.py` — the
+`review_rubrics` registry: a 7-dimension base rubric (the producer's four hand-questions
+sharpened + through-line / retention / final-coherence) plus archetypes that re-weight and
+extend it (`long-form-argument` adds steelman + number-integrity, weights evidential density
+to 5/5). Archetype is inferred from meta and overridable. `scriptwriter/gate.py` — the
+deterministic `script_gate` (the propose→gate→accept door the script side lacked): format,
+word-count vs target, per-beat grounding (via beatmap `covers:[S#]`, corpus fallback for
+function-grouped facts), needs-check leakage, beat-continuity — measures loudly, never silently
+enforces. `scriptwriter/tasks.py` gains `review_task` (diagnose-only, same context as drafting +
+the draft, emits review-NN.md + findings.json) and `revise_task` (apply approved findings only +
+the closing coherence read → draft-(NN+1) + revision-NN.md). Two gated passes; the critic is
+routed to a DIFFERENT fleet session than the drafter (`_pick_reviewer_session`; NOLAN has no
+auto-spawn). New `nolan scriptgen review|revise|gate|archetype` CLI. Honesty tests
+(`tests/test_script_review.py`, 18): context-parity (review inputs ⊇ draft inputs, every input in
+the brief), gate reports exactly its declared doors, every archetype keeps the four core questions.
+Validated on the-ai-debate golden case (draft-01→draft-02): gate auto-caught the +22% length
+overrun and 5 needs-check flags the producer had found by hand. Plan + phases: `docs/SCRIPT_REVIEW_PROGRAM.md`.
+
 ## Arsenal expansion II — 11 more blocks across every essay genre (2026-07-20)
 
 A second, larger arsenal round (37 blocks total). DATA/business: `chart` gains a `waterfall`

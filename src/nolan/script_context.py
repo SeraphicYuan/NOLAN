@@ -71,7 +71,8 @@ class ScriptBeat:
 class ScriptContext:
     slug: str
     subject: str = ""
-    angle: str = ""                  # the spine (from beatmap header, else meta)
+    angle: str = ""                  # the spine, flat form (from beatmap header, else meta)
+    spine: Dict = field(default_factory=dict)  # composite spine {structure, threads[], binding} (Phase 2)
     style_id: str = ""
     target_minutes: float = 0.0
     theme: str = ""                  # optional; caller may override from the plan
@@ -112,14 +113,20 @@ class ScriptContext:
 
         angle = (meta.get("chosen_angle") or meta.get("angle") or "").strip()
         if not angle and beatmap_md:
-            m = re.search(r"\*\*Angle \(spine\):\*\*\s*(.+)", beatmap_md)
+            m = re.search(r"\*\*(?:Angle \(spine\)|Spine \+ arc):\*\*\s*(.+)", beatmap_md)
             if m:
                 angle = m.group(1).strip()
+
+        spine = meta.get("composite_spine") or {}
+        # back-compat: if a composite spine exists but no flat angle, synthesize one from it
+        if not angle and spine:
+            angle = (spine.get("binding") or " / ".join(spine.get("threads") or [])).strip()
 
         return cls(
             slug=str(meta.get("slug") or pdir.name),
             subject=(meta.get("subject") or "").strip(),
             angle=angle,
+            spine=spine,
             style_id=(meta.get("style_id") or "").strip(),
             target_minutes=float(meta.get("target_minutes") or 0.0),
             theme=theme, period=period, locale=locale,
@@ -137,6 +144,10 @@ class ScriptContext:
             lines.append(f"STYLE: {self.style_id}")
         if self.angle:
             lines.append(f"SPINE/ANGLE: {self.angle}")
+        if self.spine and (self.spine.get("structure") or "single") != "single":
+            threads = "; ".join(self.spine.get("threads") or [])
+            lines.append(f"SPINE STRUCTURE: {self.spine['structure']}"
+                         + (f" — threads: {threads}" if threads else ""))
         if self.beats:
             lines.append("BEAT ARC (in order, with the writer's pace intent):")
             for b in self.beats:

@@ -2050,6 +2050,19 @@ async def write_script(job, *, store_root, slug: str, session: str = "nolan2"):
             "dispatch_error": dispatch_error}
 
 
+def _pick_reviewer_session(requested: str, store, slug: str) -> str:
+    """Fresh-eyes critique: never review with the drafting agent. If the requested session is
+    the one that drafted, swap to another live fleet session; degrade (keep) if none exists."""
+    try:
+        drafted = (store.get(slug).get("draft_session") or "").strip()
+    except Exception:
+        drafted = ""
+    if not drafted or requested != drafted:
+        return requested
+    live = [s for s in list_tmux_sessions() if s.startswith("nolan") and s != drafted]
+    return live[0] if live else requested
+
+
 async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2",
                            phase: str = "v3"):
     """Dispatch a v3 script-pipeline phase to a tmux Claude agent.
@@ -2059,7 +2072,8 @@ async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2
     one pass (Claude picks a resonant, right-type angle). Coexists with
     :func:`write_script` (the one-shot v1 baseline, kept for A/B).
     """
-    from nolan.scriptwriter import ScriptProjectStore, prep_task, draft_task, v3_task
+    from nolan.scriptwriter import (ScriptProjectStore, prep_task, draft_task, v3_task,
+                                     review_task, revise_task)
     from pathlib import Path as _Path
 
     store = ScriptProjectStore(_Path(store_root))
@@ -2070,8 +2084,19 @@ async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2
         "prep": (prep_task, "prep_task.md", "research + propose angles"),
         "draft": (draft_task, "draft_task.md", "beat-map chosen angle + draft + fact-check"),
         "v3": (v3_task, "v3_task.md", "v3 (resonant angle, guide-true retention)"),
+        "review": (review_task, "review_task.md", "fresh-eyes critique against the typed rubric"),
+        "revise": (revise_task, "revise_task.md", "apply approved findings + final coherence read"),
     }
     builder, fname, label = builders.get(phase, builders["v3"])
+
+    # Record the drafting agent so review can be routed to a DIFFERENT one (fresh eyes).
+    if phase in ("draft", "v3"):
+        try:
+            store.set_draft_session(slug, session)
+        except Exception:
+            pass
+    elif phase == "review":
+        session = _pick_reviewer_session(session, store, slug)
 
     job.set_progress(0.2, f"Writing {phase} task brief…")
     task_path = store.scriptgen_dir(slug) / fname

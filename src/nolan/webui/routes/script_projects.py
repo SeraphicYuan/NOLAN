@@ -183,6 +183,106 @@ def register(app, ctx):
         m = script_project_store.set_style(slug, style_id)
         return {"style_id": m.get("style_id")}
 
+    @app.get("/api/script-projects/{slug}/review-config")
+    async def script_projects_review_config(slug: str):
+        """Archetype (resolved + override), ad-hoc questions, composite spine, and the static
+        archetype + spine-structure registries — everything the Review UI needs to render."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        from nolan.scriptwriter.rubrics import ARCHETYPES
+        from nolan.scriptwriter.spine_structures import STRUCTURES
+        meta = script_project_store.get(slug)
+        return {
+            "archetype": script_project_store.resolve_archetype(slug),
+            "archetype_override": meta.get("review_archetype") or "",
+            "ad_hoc_questions": meta.get("ad_hoc_questions") or [],
+            "composite_spine": meta.get("composite_spine") or {},
+            "archetypes": [{"id": a.id, "title": a.title, "when_to_use": a.when_to_use}
+                           for a in ARCHETYPES.values()],
+            "spine_structures": [{"id": s.id, "title": s.title, "when_to_use": s.when_to_use,
+                                  "min_threads": s.min_threads, "max_threads": s.max_threads}
+                                 for s in STRUCTURES.values()],
+        }
+
+    @app.post("/api/script-projects/{slug}/review-config")
+    async def script_projects_set_review_config(slug: str, body: dict = Body(...)):
+        """Set the review archetype override and/or the ad-hoc questions."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        if "archetype" in body:
+            script_project_store.set_review_archetype(slug, (body.get("archetype") or "").strip())
+        if "ad_hoc_questions" in body:
+            script_project_store.set_ad_hoc_questions(slug, body.get("ad_hoc_questions") or [])
+        return {"ok": True, "archetype": script_project_store.resolve_archetype(slug)}
+
+    @app.get("/api/script-projects/{slug}/gate")
+    async def script_projects_gate(slug: str, draft: Optional[str] = None):
+        """Run the deterministic script gate on the current (or named) draft."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        from nolan.scriptwriter.gate import run_gate
+        rep = await asyncio.to_thread(run_gate, slug, script_project_store, draft)
+        return {"ok": rep.ok,
+                "checks": [{"id": c.id, "level": c.level, "message": c.message} for c in rep.checks]}
+
+    @app.get("/api/script-projects/{slug}/review/{n}")
+    async def script_projects_review(slug: str, n: int):
+        """A review's markdown + parsed findings + which finding ids are currently approved."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        md = script_project_store.read_review(slug, n)
+        if md is None:
+            raise HTTPException(status_code=404, detail=f"no review-{n:02d}")
+        findings, approved_ids = [], []
+        fp = script_project_store.review_findings_path(slug, n)
+        if fp.exists():
+            try:
+                findings = json.loads(fp.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                findings = []
+        ap = script_project_store.review_approved_path(slug, n)
+        if ap.exists():
+            try:
+                approved_ids = [f.get("id") for f in json.loads(ap.read_text(encoding="utf-8"))]
+            except (OSError, json.JSONDecodeError):
+                approved_ids = []
+        return {"n": n, "md": md, "findings": findings, "approved_ids": approved_ids}
+
+    @app.post("/api/script-projects/{slug}/review/{n}/approve")
+    async def script_projects_review_approve(slug: str, n: int, body: dict = Body(...)):
+        """Write the approved-findings subset (the critique gate) → review-NN.approved.json."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        fp = script_project_store.review_findings_path(slug, n)
+        if not fp.exists():
+            raise HTTPException(status_code=404, detail="no findings to approve")
+        try:
+            findings = json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            raise HTTPException(status_code=500, detail="findings unreadable")
+        ids = set(body.get("ids") or [])
+        approved = [f for f in findings if f.get("id") in ids]
+        ap = script_project_store.review_approved_path(slug, n)
+        ap.parent.mkdir(parents=True, exist_ok=True)
+        ap.write_text(json.dumps(approved, indent=2, ensure_ascii=False), encoding="utf-8")
+        # Learning loop: record which findings the producer kept vs dropped (best-effort).
+        from nolan.scriptwriter import ledger
+        ledger.record_review_decision(slug, script_project_store, n, list(ids))
+        return {"approved": len(approved), "of": len(findings)}
+
+    @app.post("/api/script-projects/{slug}/spine")
+    async def script_projects_set_spine(slug: str, body: dict = Body(...)):
+        """Set the composite spine (Phase 2): structure + threads + binding."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        try:
+            m = script_project_store.set_composite_spine(
+                slug, (body.get("structure") or "single").strip(),
+                body.get("threads") or [], (body.get("binding") or "").strip())
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"composite_spine": m.get("composite_spine")}
+
     @app.post("/api/script-projects/{slug}/choose-angle")
     async def script_projects_choose_angle(slug: str, body: dict = Body(...)):
         """Semi-auto gate: record the human-picked angle before drafting."""
@@ -198,8 +298,9 @@ def register(app, ctx):
         if not script_project_store.exists(slug):
             raise HTTPException(status_code=404, detail="project not found")
         phase = (body.get("phase") or "v3").strip()   # v3 is the default pipeline
-        if phase not in ("prep", "draft", "v3"):
-            raise HTTPException(status_code=400, detail="phase must be prep/draft/v3")
+        if phase not in ("prep", "draft", "v3", "review", "revise"):
+            raise HTTPException(status_code=400,
+                                detail="phase must be prep/draft/v3/review/revise")
         session = (body.get("session") or "nolan2").strip() or "nolan2"
         job = job_manager.start(
             "script-phase", operations.run_script_phase,

@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shutil
+import subprocess
 import time
 from pathlib import Path
 from typing import List, Optional
@@ -210,6 +213,142 @@ def current_session() -> Optional[str]:
         return r.stdout.strip() or None
     except Exception:
         return None
+
+
+# ============================================================================
+# Agent lifecycle — spawn / kill / status of tmux Claude Code agents.
+# (Ported from the ATHENA/SPARTA tmux.claude pattern. NOLAN previously only
+# send-keys'd to pre-existing sessions; this lets the hub create fresh ones.)
+# tmux runs in WSL; on Windows we route through wsl.exe (matching
+# operations.list_tmux_sessions / _dispatch_to_tmux).
+# ============================================================================
+
+DEFAULT_CLAUDE_ARGS = "--dangerously-skip-permissions"
+
+_IDLE_PATTERNS = [r"bypass permissions", r"shift\+tab to cycle", r"^>\s*$", r"^❯\s*$", r"^\$\s*$"]
+_BUSY_PATTERNS = [r"esc to interrupt", r"⏳", r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]",
+                  r"\b(Running|Reading|Searching|Writing|Editing|Baking|Concocting)\b",
+                  r"tokens\)"]
+_PERMISSION_PATTERNS = [r"Do you want to", r"❯ \d\. Yes", r"\[y/n\]", r"Allow\b.*Deny"]
+
+
+def _tmux(args: List[str], timeout: int = 8) -> subprocess.CompletedProcess:
+    """Run a tmux command, routing through wsl.exe on Windows."""
+    base = ["tmux"] if shutil.which("tmux") else ["wsl.exe", "tmux"]
+    return subprocess.run(base + args, capture_output=True, text=True, timeout=timeout)
+
+
+def _sanitize(name: str) -> str:
+    """tmux forbids '.' and ':' in session names."""
+    return re.sub(r"[.:]", "-", (name or "").strip())
+
+
+def _wsl_repo_dir() -> str:
+    """The repo root as a WSL path (tmux runs in WSL even when the hub is on Windows)."""
+    s = str(_REPO_ROOT)
+    if len(s) >= 2 and s[1] == ":":            # Windows drive path -> /mnt/<drive>/...
+        return f"/mnt/{s[0].lower()}{s[2:].replace(chr(92), '/')}"
+    return s
+
+
+def has_session(name: str) -> bool:
+    try:
+        return _tmux(["has-session", "-t", _sanitize(name)]).returncode == 0
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return False
+
+
+def capture_pane(name: str, lines: int = 16) -> Optional[str]:
+    """Plain-text (no ANSI) snapshot of an agent's pane, or None if unreachable."""
+    try:
+        r = _tmux(["capture-pane", "-t", _sanitize(name), "-p", "-S", f"-{max(1, lines)}"])
+        return r.stdout if r.returncode == 0 else None
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+
+
+def detect_status(name: str) -> str:
+    """Coarse liveness of a Claude agent: booting|idle|busy|waiting_permission|disconnected|unknown."""
+    if not has_session(name):
+        return "disconnected"
+    pane = capture_pane(name, lines=10)
+    if pane is None:
+        return "disconnected"
+    lines = [ln for ln in pane.splitlines() if ln.strip()]
+    if not lines:
+        return "booting"
+    tail = "\n".join(lines[-6:])
+    for pat in _PERMISSION_PATTERNS:
+        if re.search(pat, tail):
+            return "waiting_permission"
+    for pat in _BUSY_PATTERNS:
+        if re.search(pat, tail):
+            return "busy"
+    for pat in _IDLE_PATTERNS:
+        if re.search(pat, tail, re.M):
+            return "idle"
+    return "unknown"
+
+
+def next_session_name(prefix: str = AGENT_PREFIX) -> str:
+    """Lowest unused ``<prefix><n>`` (n≥1) among live sessions."""
+    live = set(_live_sessions())
+    i = 1
+    while f"{prefix}{i}" in live:
+        i += 1
+    return f"{prefix}{i}"
+
+
+def spawn(name: Optional[str] = None, *, dangerous: bool = True,
+          working_dir: Optional[str] = None) -> dict:
+    """Create a detached tmux session in the NOLAN repo and launch Claude Code in it.
+
+    Returns ``{ok, session, error}``. The agent boots asynchronously; poll
+    :func:`detect_status` (or the pane) until it reports ``idle`` before dispatching work.
+    """
+    name = _sanitize(name) if name else next_session_name()
+    if has_session(name):
+        return {"ok": False, "session": name, "error": "session already exists"}
+    wd = working_dir or _wsl_repo_dir()
+    try:
+        r = _tmux(["new-session", "-d", "-s", name, "-c", wd])
+        if r.returncode != 0:
+            return {"ok": False, "session": name,
+                    "error": (r.stderr or "failed to create tmux session").strip()}
+        cli = ("claude " + (DEFAULT_CLAUDE_ARGS if dangerous else "")).strip()
+        _tmux(["send-keys", "-t", name, "-l", cli])
+        time.sleep(0.3)                          # TUI debounces PTY input
+        _tmux(["send-keys", "-t", name, "Enter"])
+    except (FileNotFoundError, subprocess.SubprocessError) as e:
+        return {"ok": False, "session": name, "error": str(e)}
+    write_status(name, state="spawned", spawned=True, working_dir=wd,
+                 message="spawned by hub — booting claude", result=None, error=None,
+                 started_at=time.time())
+    return {"ok": True, "session": name, "error": None}
+
+
+def kill(name: str) -> bool:
+    """Kill a session and clear its status file (so the board doesn't show a ghost)."""
+    safe = _sanitize(name)
+    try:
+        ok = _tmux(["kill-session", "-t", safe]).returncode == 0
+    except (FileNotFoundError, subprocess.SubprocessError):
+        ok = False
+    _status_path(safe).unlink(missing_ok=True)
+    return ok
+
+
+def fleet_detailed(prefix: str = AGENT_PREFIX) -> List[dict]:
+    """:func:`fleet` joined with a live pane-derived status + the hub-spawned flag."""
+    out = fleet(prefix)
+    for a in out:
+        if a.get("session_alive"):
+            a["live_status"] = detect_status(a["agent"])
+            a["spawned"] = bool((read_status(a["agent"]) or {}).get("spawned"))
+        else:
+            a["live_status"] = "gone"
+            a["spawned"] = bool((read_status(a["agent"]) or {}).get("spawned"))
+    return out
 
 
 def dispatch(agent: str, plan_path: str, project: str, scene_ids: List[str], note: str) -> dict:
