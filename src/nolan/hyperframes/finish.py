@@ -85,6 +85,17 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                             "--storyboard", "./STORYBOARD.md"], cwd=pdir, dry=dry_run, soft=True)
     # 2 · word-sync: force-align the VO, place each scene + fire its highlight on the spoken word
     _run("word-sync", py + ["-m", "nolan.hyperframes.sync", str(pdir)], dry=dry_run)
+    # 2a · DATASET binding (A-P2): materialize every dataset-bound data scene from its table (real numbers +
+    #      value_source) BEFORE the number-provenance gate + recompose — so a chart pulls its values from a
+    #      cell instead of the author inventing them.
+    if not dry_run:
+        try:
+            from .datasets import resolve_datasets
+            nres = resolve_datasets(comp)
+            if nres:
+                print(f"▶ datasets\n  resolved {nres} dataset-bound scene(s) → numbers from cells")
+        except Exception as e:
+            raise RuntimeError(f"hf-finish: dataset resolution failed — {type(e).__name__}: {e}") from e
     # 2b · advisory (⑨): the reliever exists but wasn't in the loop — surface long static holds so the
     #      author can `nolan.hyperframes.relieve` them (or accept), instead of finding them post-render.
     if not dry_run:

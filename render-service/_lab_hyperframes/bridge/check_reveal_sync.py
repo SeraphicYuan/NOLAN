@@ -29,8 +29,8 @@ PAT = re.compile(r"start\s*\+\s*[\d.]+\s*\+\s*[a-zA-Z_]\w*\s*\*\s*[\d.]+")
 # whole contract. (Verified 2026-07-20: text-line reveals, gallery/carousel entrance, axis-label cascade,
 # chat dialogue beats.)
 ALLOW = {
-    "highlight_statement": "statement/quote text lines — reading cadence; the operative word is "
-                           "re-timed onto narration by the aligner (word-sync), not by this base stagger",
+    "_line_times":     "text LINE scheduler — VO-syncs each line to data._line_cues (aligner) via "
+                       "_reveal_times; the start+i*step here is only the PRE-SYNC preview fallback",
     "hero":            "hero / asymmetric-hero title lines — text entrance, reading cadence",
     "document":        "document block paragraphs — reading cadence (a page you read down)",
     "code":            "code line cascade (0.045s) — cosmetic typing feel",
@@ -115,6 +115,15 @@ def main():
         sys.exit(1)
     if "_reveal_ease(" not in SRC:
         print("REVEAL-CHARACTER UNUSED — no block calls _reveal_ease(); the character registry is dead.")
+        sys.exit(1)
+
+    # A-P2.5 time-series playhead: a line chart with data.playhead emits a sweeping time-cursor tween.
+    ph = str(_c.BLOCKS["chart"]("ph", {"id": "ph", "type": "chart", "start": 0, "dur": 12,
+             "data": {"type": "line", "playhead": True,
+                      "series": [{"label": "a", "value": 1}, {"label": "b", "value": 3}]}}))
+    if "-ph" not in ph or 'to("#ph-ph"' not in ph:
+        print("PLAYHEAD MISSING — a line chart with data.playhead does not emit the sweeping time-cursor. "
+              "See compose.chart (typ == 'line', d.get('playhead')).")
         sys.exit(1)
 
     used = len(re.findall(r"_reveal_times\(", SRC))

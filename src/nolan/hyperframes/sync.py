@@ -285,6 +285,32 @@ def _retime_reveals(sc: Dict, d: Dict, words) -> int:
     return done
 
 
+def _retime_lines(sc: Dict, d: Dict, words) -> int:
+    """LAYER 2 for TEXT — resolve each on-screen LINE's spoken time → data._line_cues (absolute), so a text
+    block reveals its lines AS the VO reads them (kinetic typography), not on a fixed stagger that front-loads
+    the whole block seconds before the narration reaches it. For any block with `data.lines` (statement,
+    juxtaposition sides, …) whose lines are (usually verbatim) script text. Monotonic; a line that doesn't
+    resolve is left None so the composer spreads it. Idempotent (recomputed each sync)."""
+    lines = d.get("lines")
+    if not isinstance(lines, list) or not lines or not words:
+        return 0
+    start, dur = float(sc.get("start", 0) or 0), float(sc.get("dur", 0) or 0)
+    cues, prev, done = [], start, 0
+    for line in lines:
+        t = None
+        if isinstance(line, str) and line.strip():
+            t = _phrase_time(line, words, after=prev)             # the whole line, verbatim
+            if t is None:                                         # …else its first few content words
+                head = " ".join(w for w in _norm(line) if w not in _STOP and len(w) > 2)
+                t = _phrase_time(head, words, after=prev) if head else None
+        if t is not None and start <= t < start + dur:
+            cues.append(round(t, 3)); prev = t; done += 1
+        else:
+            cues.append(None)
+    d["_line_cues"] = cues
+    return done
+
+
 def _cb_is_tree(nodes, links) -> bool:
     """A connection_board whose links form a TREE/CHAIN/FOREST (every node has ≤1 parent, no cross-links,
     no cycle) — the shape connection_board is NOT for (a web needs cross-links). Detected structurally:
@@ -588,6 +614,46 @@ def _late_anchor_flags(scenes, words):
     return out
 
 
+def _number_provenance_flags(scenes, words, min_values=3):
+    """#3 / A-P1 — a data-viz block whose displayed NUMBERS trace to NOTHING is a fabrication risk: the
+    'benefits spread / costs don't' sankey invented a $100 → 34/24/18/14/10 breakdown the script never gave
+    (the block DEMANDED weights; the author made them up). A number is LEGITIMATE if it traces to any of:
+    (a) spoken in the narration (number-aware — a charted 800 matches spoken '800 billion'), (b) an explicit
+    `value_source` (element-level or scene-level `data.value_source`), or (c) a dataset cell (A-P2). A scene
+    that shows `min_values`+ numbers with NONE traceable is flagged (the hard gate in the finish DAG rejects
+    it). Element/scene-level `value_source` exempts those numbers."""
+    if not words:
+        return []
+    from nolan.aligner import flatten_words
+    spoken = set()
+    for (t, _s, _e) in flatten_words(words):
+        digits = "".join(c for c in t if c.isdigit())
+        if digits:
+            spoken.add(str(int(digits)))
+    out = []
+    for sc in scenes:
+        if sc.get("type") not in _DATAVIZ:
+            continue
+        d = sc.get("data", {}) or {}
+        if d.get("value_source"):                          # (b) scene-level source — every number is sourced
+            continue
+        vals = []
+        for v in d.values():
+            if isinstance(v, list):
+                for el in v:
+                    if isinstance(el, dict) and not el.get("value_source"):   # (b) element-level source exempts it
+                        for k in ("value", "to"):
+                            x = el.get(k)
+                            if isinstance(x, (int, float)) and not isinstance(x, bool):
+                                vals.append(x)
+        if len(vals) < min_values:
+            continue
+        if not any(str(int(round(v))) in spoken for v in vals):     # (a) NONE of the displayed numbers are spoken
+            out.append({"scene": sc.get("id"), "block": sc.get("type"), "n": len(vals),
+                        "values": [round(v, 2) for v in vals[:6]]})
+    return out
+
+
 def place_scenes(comp_dir, write: bool = True) -> Dict:
     """Set scene start/dur from where each scene's anchor/text is spoken. Writes back to the specs
     unless ``write=False`` — the `--report` dry-run computes and returns every scene's implied window
@@ -659,6 +725,8 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                 report.setdefault("visual_lag", []).append({"frame": fr.get("id"), **lf})
             for af in _late_anchor_flags(scenes, words):  # #B anchor-quality: anchored to a late/closing phrase
                 report.setdefault("late_anchors", []).append({"frame": fr.get("id"), **af})
+            for nf in _number_provenance_flags(scenes, words):  # #3 data-viz numbers not spoken → fabrication risk
+                report.setdefault("fabricated_numbers", []).append({"frame": fr.get("id"), **nf})
             cues = revs = 0
             for sc in scenes:                        # fire reveals ON the spoken word (or spread — never clustered)
                 d = sc.get("data", {}) or {}
@@ -669,6 +737,7 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                         d["cue"] = round(t - sc["start"], 2)
                         cues += 1
                 revs += _retime_reveals(sc, d, words)  # spread fixed-offset reveals over the (retimed) window
+                revs += _retime_lines(sc, d, words)    # VO-sync each on-screen text LINE to when it's read
             # anchor-lint: per-scene WINDOW + verdict, so degenerate windows are visible BEFORE a render
             # (a mis-heard anchor silently produces a 0.94s or 27s window — this was ~80% of the rework).
             for sc in scenes:
@@ -765,9 +834,10 @@ def sync_gate_report(comp_dir) -> Dict:
     BEFORE the render spend."""
     try:
         r = report_windows(comp_dir)
-        return {"visual_lag": r.get("visual_lag", []) or [], "late_anchors": r.get("late_anchors", []) or []}
+        return {"visual_lag": r.get("visual_lag", []) or [], "late_anchors": r.get("late_anchors", []) or [],
+                "fabricated_numbers": r.get("fabricated_numbers", []) or []}
     except Exception:
-        return {"visual_lag": [], "late_anchors": []}
+        return {"visual_lag": [], "late_anchors": [], "fabricated_numbers": []}
 
 
 def report_windows(comp_dir) -> Dict:
@@ -854,6 +924,14 @@ def main():
                     print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) topic narrated @{lf['content_at']}s, "
                           f"BEFORE the previous scene's @{lf['prev_content_at']}s — scenes are OUT OF ORDER "
                           f"for the VO; reorder them in the spec.")
+        fab = rep.get("fabricated_numbers") or []
+        if fab:                                           # #3 data-viz numbers absent from the narration
+            print("\n⚠ number provenance — these data blocks show numbers spoken NOWHERE in the narration "
+                  "(a fabrication risk — the block may have invented data the script never gave; source them "
+                  "or use a non-quantitative block):")
+            for nf in fab:
+                print(f"    {nf['frame']}/{nf['scene']} ({nf['block']}) shows {nf['n']} numbers "
+                      f"{nf['values']} — none are spoken in the frame's VO")
         lates = rep.get("late_anchors") or []
         if lates:                                         # #B anchor-quality — anchored to a late/closing phrase
             print("\n◆ anchor-quality — these scenes are anchored to a LATE/closing phrase (placement "

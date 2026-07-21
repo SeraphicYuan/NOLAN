@@ -881,6 +881,19 @@ def _reveal_dur(times, i, start, dur, base=0.5, maxd=1.5, d=None):
     return round(min(maxd, max(base, (nxt - times[i]) * 0.72)) * scale, 2)
 
 
+def _line_times(lines, d, start, dur):
+    """Per-LINE reveal times for a text block — each line lands WHEN THE VO READS IT (data._line_cues, set by
+    the aligner's _retime_lines) and any unresolved line spreads across the window. Shares the data scheduler
+    (_reveal_times) so text and data reveal on one timing contract. Falls back to a gentle reading stagger
+    only pre-sync (no _line_cues yet) so a raw preview still animates."""
+    n = max(1, len(lines))
+    lc = (d or {}).get("_line_cues") or []
+    cues = [float(lc[i]) if (i < len(lc) and lc[i] is not None) else None for i in range(n)]
+    if not any(c is not None for c in cues):            # never synced → gentle stagger (preview only)
+        return [round(start + 0.4 + i * 0.5, 2) for i in range(n)]
+    return _reveal_times(n, start, dur, cues, lead=0.3, frac=0.9, minstep=0.35, tail=0.4)
+
+
 def media_ground(sid, ground, start, dur):
     """Reusable BLOCK: full-bleed ground. image -> dimmed image + scrim + Ken-Burns;
     paper -> flat mist/parchment; transparent -> scrim only (root video shows through).
@@ -1260,8 +1273,10 @@ def highlight_statement(sid, sc):
     fit_origin = {"centered": "center bottom", "framed-card": "center bottom",
                   "banner-top": "left top"}.get(variant, "left bottom")
     frag.append(f'<div class="stmt {tcls}" data-fit data-fit-w="80cqw" data-fit-origin="{fit_origin}">')
+    lt = _line_times(d["lines"], d, start, dur)         # each line reveals WHEN THE VO READS IT (data._line_cues)
+    ce = _reveal_ease(d)                                 # reveal-character ease also applies to text entrance (#2)
     if reveal == "rise":
-        # ── default path (unchanged): the whole line rises, the operative gets a yellow sweep ──
+        # ── default path: the whole line rises AS the VO reaches it; the operative gets a yellow sweep ──
         for li, line in enumerate(d["lines"]):
             lid = f"{sid}-ln{li}"
             if op and op in line:
@@ -1275,13 +1290,13 @@ def highlight_statement(sid, sc):
                 tl.append(f'tl.set("#{sid}-op{li}",{{color:"var(--accent-ink)"}},{cue+0.05});')
             else:
                 frag.append(f'<span class="ln" id="{lid}">{esc(line)}</span>')
-            tl.append(f'tl.fromTo("#{lid}",{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"power3.out"}},{start+0.4+li*0.35});')
+            tl.append(f'tl.fromTo("#{lid}",{{opacity:0,yPercent:60}},{{opacity:1,yPercent:0,duration:0.6,ease:"{ce}"}},{lt[li]:.2f});')
     else:
-        # ── reveal-vocabulary path: delegate each line to reveal_text (the shared entry point) ──
+        # ── reveal-vocabulary path: delegate each line to reveal_text at its VO-synced cue ──
         base = "var(--text)" if reg == "paper" else "#F6F7F6"
         for li, line in enumerate(d["lines"]):
             lid = f"{sid}-ln{li}"
-            inner, cls, attr, tll = reveal_text(lid, line, reveal, start, start + 0.4 + li * 0.55, dur, operative=op, base=base)
+            inner, cls, attr, tll = reveal_text(lid, line, reveal, start, lt[li], dur, operative=op, base=base)
             frag.append(f'<span class="{("ln " + cls).strip()}" id="{lid}"{attr}>{inner}</span>')
             tl += tll
     frag.append('</div>')
@@ -3764,6 +3779,17 @@ def chart(sid, sc):
             cue = times[i]
             tl.append(f'tl.fromTo("#{sid}-dot{i}",{{scale:0}},{{scale:1,duration:0.4,ease:"back.out(2)"}},{cue:.2f});')
             tl.append(f'tl.fromTo("#{sid}-v{i}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.4}},{cue + 0.1:.2f});')
+        # A-P2.5 · TIME-SERIES PLAYHEAD (data.playhead): a vertical time-cursor sweeps left→right IN SYNC with
+        # the line draw, so the beat reads as time ADVANCING (not a static line appearing). Transform-based
+        # (x), seek-safe; the point dots/values reveal as the cursor reaches them (the along_time feel).
+        if d.get("playhead"):
+            x0, x1 = pts[0][0], pts[-1][0]
+            ytop = (1080 - BASE) - PH
+            world.append(f'<div id="{sid}-ph" style="position:absolute;left:{x0:.0f}px;top:{ytop:.0f}px;'
+                         f'width:2px;height:{PH:.0f}px;background:var(--accent);opacity:0;pointer-events:none;"></div>')
+            tl.append(f'tl.to("#{sid}-ph",{{opacity:0.55,duration:0.2}},{times[0]:.2f});')
+            tl.append(f'tl.fromTo("#{sid}-ph",{{x:0}},{{x:{x1 - x0:.0f},duration:{ldur},ease:"power1.inOut"}},{times[0]:.2f});')
+            tl.append(f'tl.to("#{sid}-ph",{{opacity:0,duration:0.4}},{round(times[0] + ldur, 2)});')
     elif typ == "waterfall":   # cumulative +/- bars floating at the running total (a revenue/budget bridge)
         bw = slot * 0.62
         run = 0.0
