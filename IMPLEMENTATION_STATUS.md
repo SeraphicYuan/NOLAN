@@ -2,7 +2,7 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-20
+**Last Updated:** 2026-07-21
 
 ## Script review loop — Batch 2: completion detection, full-auto, iterate, create-presets (2026-07-21)
 
@@ -25,6 +25,31 @@ by `## ` beats (robust to placeholder wording — fixed state/next-step false-po
 dropdown, collapsed sources, Delete + dev controls into Advanced, gated build-video links, draft diff.
 Tests +~15 (test_script_review, test_spine_structures). Validated live end-to-end (homer-auto full-auto,
 ~15min: draft→review→revise, agents stopped cleanly). Docs: docs/SCRIPT_REVIEW_PROGRAM.md.
+
+## Scene-timing robustness — fuzzy content-window matcher + hard scene gate (2026-07-21)
+
+Closed the residual text-lag class (a scene appearing seconds after its narration; the 7:31/07-close
+bug) that exact-phrase (`_phrase_time`) and distinctive-word (`_content_time`) matching were blind to —
+paraphrased on-screen text, rhetorical prefixes, stopword-separated phrases, and editorial kickers that
+echo a LATER VO phrase all defeated them. New in `nolan/hyperframes/sync.py`:
+- `_content_window_time` — a fuzzy bag-of-words matcher that returns where a scene's VISIBLE-text bag
+  (`_scene_bag`) first CORROBORATES in the narration (the topic OPENING), not the densest mention.
+  Earliest-corroborated (not global-max) avoids a nominalized paraphrase matching a later generic
+  cluster; IDF weighting + `min_weight=1.5` needs a distinctive word (two common words can't place a
+  scene); `_shared_bag_tokens` down-weights vocabulary a scene shares with its siblings (so a "Disney,
+  60 years apart" beat isn't pulled onto its neighbour's "Google/Meta shells" narration); `_BAG_STOP`
+  drops function words ("what"/"your") that were forming false clusters.
+- Wired as an earliest placement candidate in `_resolve_scene_starts` (LIS outlier-isolation still
+  contains any spurious pick) and into `_visual_lag_flags`/`_late_anchor_flags` via `_topic_open_time`
+  so placement and the lint never disagree.
+- HARD scene-timing gate in `finish.py` (step 2c, outside the try/except): a ≥6s lag placement could NOT
+  fix, or a mis-order, RAISES before the render — UNLESS the author's own anchor sits at the placement
+  (deliberate late-anchor → soft advisory, the `_ANCHOR_INTENT_TOL` calibration) — escape `HF_ALLOW_LAG=1`.
+- Verified: 07-close/s4 moved 41.4→33.9s (7:31→7:26, matches the VO); 05-voted/s4 regression fixed
+  (shared-vocab pulled it 14s early → corrected back to 41.3); generalized on `the-openai-debate` (a
+  52s false-lag was a function-word cluster → fixed; the surviving f02s10 diagram is a borderline
+  author-anchored call → soft, not blocked). 18 tests in `tests/test_hf_sync.py`; 48 sync-dependent
+  tests green; reveal-sync honesty holds.
 
 ## Ducked SFX post-mix — gap D (2026-07-20)
 

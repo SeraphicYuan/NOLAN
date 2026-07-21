@@ -110,25 +110,30 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                           f"{h.get('dur')}s — {h.get('verdict')}")
         except Exception as e:
             print(f"  (long-hold advisory skipped: {type(e).__name__}: {e})")
-    # 2c · VISUAL-LAG GATE: catch a scene whose visual trails the narration (a late/closing anchor left
+    # 2c · SCENE-TIMING GATE: catch a scene whose visual trails the narration (a late/closing anchor left
     #      the previous scene overrunning) or a MIS-ORDERED scene, BEFORE the render spend — this is the
-    #      drift the eye catches (the 3:13-says-43%-shows-at-3:33 class). Loud, pre-render; not a hard block
-    #      (a mis-order needs a human spec reorder), but impossible to miss.
+    #      drift the eye catches (the 3:13-says-43%-shows-at-3:33 class; the 7:31 text-block-late class).
+    #      Placement (the fuzzy content-window matcher + LIS outlier isolation) fixes what it can FIRST, so a
+    #      surviving HARD lag (≥6s) or a mis-order is something placement could NOT resolve → HARD BLOCK it
+    #      (a human must re-anchor / reorder the spec). Smaller lags stay advisory. Escape: HF_ALLOW_LAG=1.
+    fab, hard_lags = [], []
     if not dry_run:
         try:
             from .sync import sync_gate_report
             gate = sync_gate_report(str(pdir))
-            lags, lates = gate["visual_lag"], gate["late_anchors"]
+            lags, lates, fab = gate["visual_lag"], gate["late_anchors"], gate.get("fabricated_numbers", [])
             mis = [lf for lf in lags if lf.get("kind") == "misorder"]
+            hard_lags = [lf for lf in lags if lf.get("hard")]
             if lags:
-                print(f"\n⚠ VISUAL-LAG GATE — {len(lags)} scene(s) where the VISUAL trails the narration "
-                      f"({len(mis)} MIS-ORDERED). The eye catches this drift; fix before shipping:")
+                print(f"\n⚠ SCENE-TIMING GATE — {len(lags)} scene(s) where the VISUAL trails the narration "
+                      f"({len(mis)} MIS-ORDERED, {len(hard_lags)} HARD). The eye catches this drift:")
                 for lf in lags:
+                    tag = " [HARD]" if lf.get("hard") else ""
                     if lf.get("kind") == "misorder":
-                        print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) — topic narrated @{lf['content_at']}s, "
+                        print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}){tag} — topic narrated @{lf['content_at']}s, "
                               f"BEFORE the previous scene's @{lf['prev_content_at']}s → REORDER these scenes in the spec")
                     else:
-                        print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) — placed @{lf['start']}s but its content "
+                        print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}){tag} — placed @{lf['start']}s but its content "
                               f"is spoken @{lf['content_at']}s (lag {lf['lag']}s) → anchor it to an EARLIER phrase")
             if lates:
                 print(f"  ◆ {len(lates)} scene(s) anchored to a LATE/closing phrase (placement auto-corrects, "
@@ -137,7 +142,34 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
             if lags or lates:
                 print("  (run `python -X utf8 -m nolan.hyperframes.sync <comp> --report` to re-check after fixing)")
         except Exception as e:
-            print(f"  (visual-lag gate skipped: {type(e).__name__}: {e})")
+            print(f"  (scene-timing gate skipped: {type(e).__name__}: {e})")
+        # HARD SCENE-TIMING BLOCK (outside the try/except so it truly blocks): a ≥6s lag placement couldn't
+        # fix, or a mis-ordered scene, is a defect the viewer plainly sees. It does not ship. HF_ALLOW_LAG=1
+        # escapes for a knowing exception (e.g. a deliberate flash-forward the matcher misreads).
+        if hard_lags and not os.environ.get("HF_ALLOW_LAG"):
+            from .sync import _HARD_LAG_S
+            detail = "; ".join(
+                (f"{lf['frame']}/{lf['scene']} ({lf['block']}) MIS-ORDER (topic @{lf.get('content_at')}s < prev @{lf.get('prev_content_at')}s)"
+                 if lf.get("kind") == "misorder"
+                 else f"{lf['frame']}/{lf['scene']} ({lf['block']}) lag {lf.get('lag')}s (placed @{lf.get('start')}s, spoken @{lf.get('content_at')}s)")
+                for lf in hard_lags)
+            raise RuntimeError(
+                f"hf-finish: SCENE-TIMING GATE — {len(hard_lags)} scene(s) whose visual trails the narration by "
+                f"≥{_HARD_LAG_S:.0f}s (or are mis-ordered): {detail}. Placement could not fix these — the topic is "
+                f"spoken well before the scene appears. Fix one of: re-anchor the scene to the phrase where its topic "
+                f"OPENS, reorder the scenes in the spec to match the narration, or split the overrunning previous "
+                f"scene. Knowing exception: set HF_ALLOW_LAG=1.")
+        # A-P1 · NUMBER-PROVENANCE HARD GATE (outside the try/except so it actually blocks): a data block
+        # showing numbers that trace to NOTHING (not spoken, no `value_source`, no dataset) is fabrication —
+        # it does not ship. Escape with HF_ALLOW_UNSOURCED=1 for a knowing exception.
+        if fab and not os.environ.get("HF_ALLOW_UNSOURCED"):
+            detail = "; ".join(f"{n['frame']}/{n['scene']} ({n['block']}) {n['values']}" for n in fab)
+            raise RuntimeError(
+                f"hf-finish: NUMBER-PROVENANCE GATE — {len(fab)} data block(s) show numbers that trace to "
+                f"nothing (not spoken in the VO, no `value_source`, no dataset): {detail}. These are likely "
+                f"FABRICATED (the block demanded data the script never gave). Fix one of: use the real spoken "
+                f"numbers, add `value_source` to each element, bind a dataset (A-P2), or use a non-quantitative "
+                f"block. Knowing exception: set HF_ALLOW_UNSOURCED=1.")
     # 3 · recompose every frame's HTML from its (now retimed) spec, in the comp's theme
     if dry_run:
         print("  [recompose] hfedit.recompose_frame() for each frame (rebuild HTML in-theme)")

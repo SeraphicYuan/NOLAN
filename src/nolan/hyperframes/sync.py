@@ -442,6 +442,123 @@ def _content_time(sc, stream, freq, after, min_words=1):
     return t0 if len(near) >= min_words else None
 
 
+# --- the ROBUST topic-opening matcher (fuzzy content WINDOW, bag-of-words) ---------------------------
+# `_content_time` needs a word that is BOTH distinctive (freq==1) AND long (len≥5); an editorial kicker
+# ("THE WHOLE THING") can supply distinctive words that echo a LATER VO phrase, dragging the scene late,
+# while its actual opening (common, short, or stopword-separated words) is invisible. `_phrase_time`
+# needs a CONTIGUOUS subsequence, which a rhetorical prefix ("Do they hand the bill…") or a dropped
+# stopword ("hand bill" ≠ spoken "hand the bill") breaks. The 7:31 text-lag hit all three at once. The
+# window matcher below is tolerant of all of them: it finds the narration WINDOW that best covers the
+# scene's VISIBLE-text bag and returns where that coverage OPENS.
+_BAG_TEXT_KEYS = ("kicker", "title", "titleHi", "headline", "center", "sub", "quote", "eyebrow", "label")
+
+# len≥4 keeps short CONTENT words ('hand', 'bill', 'vote') but also lets common FUNCTION words through
+# ('what', 'your', 'really') — and a function word said once in a frame gets full inverse-freq weight, so a
+# generic pair like {what, your} spanning two unrelated sentences can falsely corroborate a scene's placement
+# (the openai-debate 'belief is the business' scene matched {your@34, what@38} 52s before its real opening).
+# These carry no topic, so they are dropped from the bag. Keep it to CLEAR function/filler words — a real
+# content word wrongly listed here would silence a legitimate match.
+_BAG_STOP = _STOP | {
+    "what", "your", "really", "which", "when", "where", "would", "could", "should", "into", "about", "very",
+    "just", "some", "more", "even", "only", "than", "that", "this", "they", "them", "their", "there", "here",
+    "been", "being", "does", "will", "with", "from", "over", "under", "again", "once", "most", "much", "many",
+    "such", "both", "each", "other", "another", "these", "those", "then", "thus", "still", "also", "well",
+    "back", "down", "because", "while", "were", "have", "has", "had", "want", "need", "know", "like", "make",
+    "made", "going", "gonna", "thing", "things", "stuff", "kind", "sort", "actually", "maybe", "yourself",
+    "itself", "themselves", "something", "anything", "everything", "someone", "anyone", "everyone",
+}
+
+
+def _scene_bag(sc) -> set:
+    """The set of the scene's VISIBLE-text content tokens (number-collapsed, non-stop, len≥4) — every word
+    the viewer reads on screen: the title/kicker/lines PLUS each element's label/sub (chart series, spans,
+    nodes, pie segments, list items). This is what should be on screen WHEN the VO says it, so it is the
+    right signal to locate the scene's topic in the narration. len≥4 keeps 'hand'/'bill'/'vote' while
+    dropping noise; proper nouns ('Disney','OpenAI') are strong, discriminative hits."""
+    d = sc.get("data", {}) or {}
+    parts: List[str] = []
+
+    def add(v):
+        if isinstance(v, str):
+            parts.append(v)
+        elif isinstance(v, list):
+            for x in v:
+                if isinstance(x, str):
+                    parts.append(x)
+                elif isinstance(x, dict):
+                    for kk in ("label", "sub", "text", "name"):
+                        if isinstance(x.get(kk), str):
+                            parts.append(x[kk])
+
+    for k in _BAG_TEXT_KEYS:
+        add(d.get(k))
+    add(d.get("lines"))
+    for k in ("items", "nodes", "spans", "series", "segments", "sides", "steps", "rows", "points"):
+        add(d.get(k))
+    return {tt for tt in _collapse_nums(_norm(" ".join(parts))) if len(tt) >= 4 and tt not in _BAG_STOP}
+
+
+def _shared_bag_tokens(scenes) -> set:
+    """Tokens that appear in the visible-text bag of ≥2 scenes IN THE SAME FRAME — the vocabulary the scenes
+    SHARE (adjacent beats about the same entities: a shell-ownership web and a 'same move 60 years apart'
+    timeline both name Google/Meta/Jetstream). A shared word does NOT distinguish which scene the VO is on,
+    so it must not corroborate a scene's placement (else a 'Disney, 60 years ago' beat gets pulled 14s early
+    onto its neighbour's 'Google/Meta shells' narration). `_content_window_time` down-weights these."""
+    from collections import Counter
+    c = Counter()
+    for sc in scenes:
+        c.update(_scene_bag(sc))
+    return {tok for tok, n in c.items() if n >= 2}
+
+
+def _content_window_time(sc, stream, freq, after, window=6.0, min_weight=1.5, shared=None):
+    """ROBUST topic-opening time via a fuzzy content-WINDOW. Scans narration in time order and returns the
+    time of the EARLIEST `window`-second span that CORROBORATES the scene's visible-text bag (`_scene_bag`) —
+    i.e. where the scene's topic first SURFACES in the VO.
+
+    Robust where exact/distinctive matching is blind: paraphrase, rhetorical prefixes, stopword-separated
+    phrases, and editorial kickers that echo a later phrase (the 7:31 lag). Earliest-corroborated (NOT
+    globally-densest) is deliberate: a scene's on-screen text is often a NOMINALIZED paraphrase of the VO
+    ('preference'/'prediction' for spoken 'prefer'/'likely'), so its bag can match a LATER coincidental
+    cluster of generic words more densely than its own opening — taking the densest span mislocated a
+    'steelman both sides' beat onto a later 'the honest version' sentence (a false mis-order). The opening
+    is what we want anyway: place the scene WHEN its topic first comes up. Corroboration-gated so a lone
+    common word — a generic pair like {never, people} spanning two sentences — can't place a scene: the span
+    must carry ≥2 DISTINCT bag words whose combined inverse-frequency weight (Σ 1/freq — said once ≈1.0, said
+    5× ≈0.2) ≥ `min_weight` (default 1.5, so it needs ONE distinctive word + a second, or three common words;
+    two common words score 1.0 and are rejected). Words in `shared` (vocabulary this scene shares with a
+    sibling — see `_shared_bag_tokens`) are down-weighted ×0.25 so a scene can't be placed on its neighbour's
+    entities. None when nothing corroborated resolves (caller falls back to anchor/distinctive/aligner signals)."""
+    bag = _scene_bag(sc)
+    if not bag:
+        return None
+    sh = shared or frozenset()
+    hits = sorted((s, tok) for (tok, s) in stream if tok in bag and s >= after)
+    if len(hits) < 2:
+        return None
+    for i, (t0, _tok) in enumerate(hits):
+        seen = {}
+        for (t, tok) in hits[i:]:
+            if t > t0 + window:
+                break
+            w = (1.0 / max(1, freq.get(tok, 1))) * (0.25 if tok in sh else 1.0)
+            seen.setdefault(tok, w)
+        if len(seen) >= 2 and sum(seen.values()) >= min_weight:
+            return round(t0, 3)                              # earliest span that corroborates → topic opening
+    return None
+
+
+def _topic_open_time(sc, stream, freq, after=0.0, shared=None):
+    """The single most-robust estimate of when a scene's topic OPENS in the VO: the earliest of the fuzzy
+    content-window (`_content_window_time`, sibling-discriminated) and the distinctive-word time
+    (`_content_time`, corroborated). Used by BOTH placement and the lag lint so they never disagree
+    (placement can't fix a lag the lint still reports, or vice-versa). None if neither resolves."""
+    cw = _content_window_time(sc, stream, freq, after, shared=shared)
+    cd = _content_time(sc, stream, freq, after, min_words=2)
+    cands = [x for x in (cw, cd) if x is not None]
+    return min(cands) if cands else None
+
+
 def _resolve_scene_starts(scenes, words, frame_dur, aligner_raw):
     """Scene start times — INDEPENDENT per-scene anchoring + OUTLIER ISOLATION so a mis-sync can't cascade.
 
@@ -465,13 +582,18 @@ def _resolve_scene_starts(scenes, words, frame_dur, aligner_raw):
     for tok, _s in stream:
         freq[tok] = freq.get(tok, 0) + 1
     lo, hi = 0.3, frame_dur - 0.3                            # a global window (NOT prev-dependent → no cascade)
+    shared = _shared_bag_tokens(scenes)                      # vocabulary siblings share → can't corroborate placement
     own = [None] * n
     own[0] = 0.0                                             # scene 1 opens the frame
     for j in range(1, n):
         q = _scene_query(scenes[j])
         anc_t = _phrase_time(q, words, after=lo) if (q and words) else None
         con_t = _content_time(scenes[j], stream, freq, lo) if stream else None
-        cands = [x for x in (anc_t, con_t) if x is not None and lo <= x < hi]
+        # ROBUST candidate: the fuzzy content-window topic-opening — beats an exact-but-LATE anchor when the
+        # topic opens earlier than the anchored (often closing) clause (the 7:31 santa-cruz-of-text bug). A
+        # spuriously-early window that breaks scene order is caught by the LIS outlier isolation below.
+        win_t = _content_window_time(scenes[j], stream, freq, lo, shared=shared) if stream else None
+        cands = [x for x in (anc_t, con_t, win_t) if x is not None and lo <= x < hi]
         if cands:
             own[j] = round(min(cands), 3)
         else:
@@ -561,11 +683,14 @@ def _relieve_short_windows(scenes, frame_dur, max_passes=6):
 
 def _visual_lag_flags(scenes, words, min_lag=6.0):
     """Report where a scene's VISUAL lags the VO — the drift the eye catches (the 3:13-says-43%-but-shows-
-    at-3:33 bug). Two kinds, keyed on each scene's distinctive content time (_content_time):
-      - LAG: the scene is placed well AFTER its content is first spoken (a late anchor left the PREVIOUS
-        scene overrunning the segment).
+    at-3:33 bug; the 7:31 text-block-appears-late bug). Two kinds, keyed on each scene's ROBUST topic-open
+    time (`_topic_open_time` = earliest of the fuzzy content-window and the distinctive-word time — the SAME
+    signal placement uses, so the lint can't flag a lag placement already fixed, nor miss one placement can't):
+      - LAG: the scene is placed well AFTER its topic first surfaces (a late/closing anchor left the PREVIOUS
+        scene overrunning; or the topic opens on paraphrased/common words the old distinctive-word check missed).
       - MIS-ORDER: the scene's topic is narrated ENTIRELY before its predecessor's — the scenes are in the
-        wrong order for the narration; placement can't fix this without reordering the spec."""
+        wrong order for the narration; placement can't fix this without reordering the spec.
+    Each lag flag carries `hard` = the lag is bad enough to BLOCK the render (see `_hard_lag_flags`)."""
     if not words:
         return []
     from nolan.aligner import flatten_words
@@ -573,19 +698,39 @@ def _visual_lag_flags(scenes, words, min_lag=6.0):
     freq = {}
     for tok, _s in stream:
         freq[tok] = freq.get(tok, 0) + 1
+    shared = _shared_bag_tokens(scenes)
     flags, prev_ct = [], None
     for sc in scenes:
-        ct = _content_time(sc, stream, freq, 0.0, min_words=2)   # LINT: corroborated (2+ words) to avoid polysemy false-flags
+        ct = _topic_open_time(sc, stream, freq, 0.0, shared=shared)   # robust: fuzzy window ∪ distinctive word (earliest)
         start = float(sc.get("start", 0) or 0)
+        # `authored_here`: the scene carries an explicit anchor that resolves AT ~its placement — the author
+        # DELIBERATELY pinned it late (the late-anchor ◆ advisory covers it). Such a lag is a judgement call,
+        # not a placement failure, so it stays SOFT; only drift NOT justified by the author's own anchor (a
+        # scene LIS-stranded away from where its anchor / content say, or an unanchored over-reach) is HARD.
+        anc = (sc.get("data", {}) or {}).get("anchor") or sc.get("anchor") or (sc.get("data", {}) or {}).get("operative")
+        anc_t = _phrase_time(str(anc), words, after=0.3) if isinstance(anc, str) and anc.strip() else None
+        authored_here = anc_t is not None and abs(anc_t - start) <= _ANCHOR_INTENT_TOL
         if ct is not None:
             if start - ct > min_lag:
                 flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "lag",
-                              "start": round(start, 1), "content_at": round(ct, 1), "lag": round(start - ct, 1)})
+                              "start": round(start, 1), "content_at": round(ct, 1), "lag": round(start - ct, 1),
+                              "hard": (start - ct) >= _HARD_LAG_S and not authored_here})
             if prev_ct is not None and ct < prev_ct - 3.0:
                 flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "misorder",
-                              "content_at": round(ct, 1), "prev_content_at": round(prev_ct, 1)})
+                              "content_at": round(ct, 1), "prev_content_at": round(prev_ct, 1),
+                              "hard": not authored_here})
             prev_ct = ct
     return flags
+
+
+# A scene whose visual trails its narration by ≥ this is a defect the eye plainly catches — the finish DAG
+# hard-blocks it (escape: HF_ALLOW_LAG=1). Placement (window matcher + LIS) fixes what it can first, so this
+# only fires on a lag placement COULDN'T resolve (an interpolated outlier still late) or a genuine mis-order.
+_HARD_LAG_S = 6.0
+# how near an explicit anchor must resolve to a scene's placement to count as "the author put it here on
+# purpose" (→ soft advisory, not a hard block). Wider than a couple of words so a late-clause anchor still reads
+# as intentional; a scene stranded WELL past its anchor is a genuine placement failure and stays hard.
+_ANCHOR_INTENT_TOL = 4.0
 
 
 def _late_anchor_flags(scenes, words):
@@ -601,13 +746,14 @@ def _late_anchor_flags(scenes, words):
     freq = {}
     for tok, _s in stream:
         freq[tok] = freq.get(tok, 0) + 1
+    shared = _shared_bag_tokens(scenes)
     out = []
     for sc in scenes:
         anc = (sc.get("data", {}) or {}).get("anchor") or sc.get("anchor") or (sc.get("data", {}) or {}).get("operative")
         if not isinstance(anc, str) or not anc.strip():
             continue
         at = _phrase_time(anc, words, after=0.3)
-        ct = _content_time(sc, stream, freq, 0.3, min_words=2)
+        ct = _topic_open_time(sc, stream, freq, 0.3, shared=shared)   # robust topic-open (window ∪ distinctive word)
         if at is not None and ct is not None and at - ct > 6.0:
             out.append({"scene": sc.get("id"), "block": sc.get("type"), "anchor": anc[:40],
                         "anchor_at": round(at, 1), "content_at": round(ct, 1)})

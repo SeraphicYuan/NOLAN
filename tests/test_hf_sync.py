@@ -67,6 +67,21 @@ def test_retime_reveals_pins_anchored_elements_and_leaves_rest():
     assert "_cue" not in ser[2] or ser[2]["_cue"] is None
 
 
+def test_retime_lines_vo_syncs_each_text_line():
+    """A text block's LINES reveal WHEN THE VO READS THEM (data._line_cues), not on a fixed stagger — the
+    kinetic-typography sync for a statement showing script text."""
+    from nolan.whisper import WordTimestamp
+    words = [WordTimestamp(w, float(i * 0.6), float(i * 0.6) + 0.5) for i, w in enumerate(
+        "the grid was never built for a world that needs both directions at once".split())]
+    sc = {"type": "statement", "start": 0.0, "dur": 10.0,
+          "data": {"lines": ["The grid was never built", "for a world that needs both directions"]}}
+    n = sync._retime_lines(sc, sc["data"], words)
+    lc = sc["data"]["_line_cues"]
+    assert n == 2
+    assert abs(lc[0] - 0.0) < 0.05 and abs(lc[1] - 3.0) < 0.05          # each line pinned to when it's spoken
+    assert lc[0] < lc[1]                                                # monotonic
+
+
 def test_retime_reveals_idempotent_unpins_removed_anchor():
     """Re-running after an anchor is removed clears the stale `_cue` (un-pins the element)."""
     from nolan.whisper import WordTimestamp
@@ -159,6 +174,25 @@ def test_visual_lag_flags_misordered_scenes():
     assert any(f["kind"] == "misorder" and f["scene"] == "s2" for f in flags)
 
 
+def test_number_provenance_flags_fabricated_breakdown():
+    """A data-viz block whose numbers are spoken NOWHERE in the narration is a fabrication risk (the sankey
+    that invented a $100 breakdown). Numbers that ARE spoken pass (number-aware)."""
+    from nolan.whisper import WordTimestamp
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(
+        "big tech will spend 800 billion then a trillion by 2027".split())]
+    fabricated = {"id": "s1", "type": "sankey", "data": {"source": {"label": "bill", "value": 100},
+                  "targets": [{"label": "a", "value": 34}, {"label": "b", "value": 24}, {"label": "c", "value": 18}]}}
+    grounded = {"id": "s2", "type": "chart", "data": {"series": [{"label": "26", "value": 800},
+                {"label": "27", "value": 1000}, {"label": "x", "value": 2027}]}}   # 800, 2027 spoken
+    ff = sync._number_provenance_flags([fabricated, grounded], words)
+    assert any(f["scene"] == "s1" for f in ff)                         # 34/24/18 spoken nowhere -> flagged
+    assert not any(f["scene"] == "s2" for f in ff)                     # 800 / 2027 are spoken -> fine
+    # A-P1: an explicit value_source exempts the numbers (traceable, not fabricated)
+    sourced = {"id": "s3", "type": "sankey", "data": {"value_source": "EPA 2024 report",
+               "targets": [{"label": "a", "value": 34}, {"label": "b", "value": 24}, {"label": "c", "value": 18}]}}
+    assert not any(f["scene"] == "s3" for f in sync._number_provenance_flags([sourced], words))
+
+
 def test_placement_isolates_a_bad_anchor_outlier_no_cascade():
     """Containment: a scene with a bad LATE anchor (and no matching content) is an OUTLIER — it is isolated
     to its own window, NOT allowed to drag every later scene late (the old sequential-floor cascade)."""
@@ -172,3 +206,86 @@ def test_placement_isolates_a_bad_anchor_outlier_no_cascade():
     starts, resolved = sync._resolve_scene_starts(scenes, words, frame_dur=18.0, aligner_raw=[None] * 4)
     assert "s2" not in resolved and "s3" in resolved and "s4" in resolved       # s2 is the isolated outlier
     assert starts[2] < 6 and starts[3] < 11                                     # s3/s4 stay on their content — no cascade
+
+
+def _stream_freq(words):
+    from nolan.aligner import flatten_words
+    stream = sync._collapse_nums([(t, s) for (t, s, _e) in flatten_words(words)])
+    freq = {}
+    for tok, _s in stream:
+        freq[tok] = freq.get(tok, 0) + 1
+    return stream, freq
+
+
+def test_content_window_finds_topic_opening_for_paraphrased_scene():
+    """The 7:31 text-lag: a scene whose on-screen lines PARAPHRASE the VO, with an editorial kicker ('THE
+    WHOLE THING') that echoes a LATER phrase. Exact-phrase and distinctive-word (`_content_time`) matching
+    both point at the late echo; the fuzzy content-WINDOW finds where the topic OPENS (hand/bill/people early)."""
+    from nolan.whisper import WordTimestamp
+    vo = ("so the people cashing in hand the bill to folks who never voted "     # hand/bill/people @2-7
+          "before we make them ask first that is the whole thing")              # whole/thing (kicker echo) @~20
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(vo.split())]
+    stream, freq = _stream_freq(words)
+    sc = {"id": "s1", "type": "statement", "data": {
+        "kicker": "THE WHOLE THING",
+        "lines": ["Do they hand the bill", "to people who never voted", "or make them ask first"]}}
+    win = sync._content_window_time(sc, stream, freq, 0.0)
+    con = sync._content_time(sc, stream, freq, 0.0, min_words=2)
+    assert win is not None and win < 8.0, f"window should find the early hand/bill opening, got {win}"
+    assert con is None or con > win, f"distinctive-word check should be dragged late by 'whole thing': {con}"
+    # placement takes the earliest signal → the scene lands on its opening, not the late anchor/kicker
+    starts, _ = sync._resolve_scene_starts(
+        [{"id": "s0", "data": {"kicker": "INTRO"}}, sc], words, frame_dur=24.0, aligner_raw=[None, None])
+    assert starts[1] < 8.0
+
+
+def test_content_window_prefers_earliest_opening_not_a_denser_later_echo():
+    """The 02-intro false mis-order: a scene's on-screen text is a NOMINALIZED paraphrase ('preference'/
+    'prediction' for spoken 'prefer'/'likely'), so only generic words match — and a LATER sentence can echo
+    MORE of them densely. Taking the globally-densest span mislocated the scene late and manufactured a false
+    mis-order; the matcher returns the EARLIEST corroborated opening (a distinctive 'sides' at the true open)."""
+    from nolan.whisper import WordTimestamp
+    #        0      1      2      3     4      5..9 filler        15     16       17
+    vo = ("upfront i prefer over likely but cover both sides fairly to be clear and honest "
+          "then much later the honest version revisits both again")
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(vo.split())]
+    stream, freq = _stream_freq(words)
+    # bag = {preference, prediction, both, sides, honest, version}; 'prefer'/'likely' don't match the nominal forms
+    sc = {"id": "s1", "type": "spectrum",
+          "data": {"kicker": "PREFERENCE vs PREDICTION", "title": "both sides", "sub": "the honest version"}}
+    win = sync._content_window_time(sc, stream, freq, 0.0)
+    # 'sides' occurs once at the true opening (~8) → the early span corroborates; the later 'honest version'
+    # echo is denser but must NOT win. (With globally-densest this returned the late echo → a false mis-order.)
+    assert win is not None and win < 12.0, f"should return the early 'both sides' opening, got {win}"
+
+
+def test_visual_lag_hard_flag_marks_an_unfixable_lag():
+    """The SCENE-TIMING GATE: a ≥6s lag placement could not fix (an isolated outlier pinned late) is marked
+    `hard` so the finish DAG blocks it; a mis-order is `hard` too. A well-placed scene is not flagged."""
+    from nolan.whisper import WordTimestamp
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(
+        "intro arizona campus drinks gallons daily then lots more filler talk goes here now".split())]
+    late = {"id": "s1", "type": "scale", "start": 12.0,                          # topic @1-4, pinned @12 → lag ~9
+            "data": {"kicker": "ARIZONA CAMPUS", "title": "drinks gallons"}}
+    flags = sync._visual_lag_flags([late], words)
+    lag = [f for f in flags if f["kind"] == "lag"]
+    assert lag and lag[0]["hard"] is True and lag[0]["lag"] >= sync._HARD_LAG_S
+    # a scene placed ON its topic is not flagged at all
+    ok = {"id": "s1", "type": "scale", "start": 1.0, "data": {"kicker": "ARIZONA CAMPUS", "title": "drinks gallons"}}
+    assert not sync._visual_lag_flags([ok], words)
+
+
+def test_visual_lag_soft_when_author_anchored_the_scene_there():
+    """Author intent overrides the hard gate: if a scene carries an explicit anchor that resolves AT its
+    placement, a lag vs an earlier topic-mention is a judgement call (the late-anchor ◆ advisory), NOT a
+    placement failure — it stays SOFT so the render isn't blocked over a deliberate choice."""
+    from nolan.whisper import WordTimestamp
+    # 'trick … three marks' concept @3-6; the scene's own anchor 'sells belief' @14; scene placed @12 (author-pinned)
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(
+        "intro the confidence trick runs three marks then filler filler filler filler it sells belief later".split())]
+    sc = {"id": "s1", "type": "diagram", "start": 12.0, "anchor": "sells belief",
+          "data": {"kicker": "One trick", "title": "three marks"}}   # bag {trick, three, marks} opens @3-6
+    flags = sync._visual_lag_flags([sc], words)
+    lag = [f for f in flags if f["kind"] == "lag"]
+    assert lag, "the lag should still be REPORTED (advisory)"
+    assert lag[0]["hard"] is False, "author-anchored-here lag must be soft, not a hard block"
