@@ -169,6 +169,72 @@ def test_revise_targets_next_draft(tmp_path):
 # --------------------------------------------------------------------------
 # Gate
 # --------------------------------------------------------------------------
+def test_verify_revision_flags_untouched_findings(tmp_path):
+    store = ScriptProjectStore(tmp_path)
+    slug = store.create("V", subject="x", style_id="s", target_minutes=8)
+    store.drafts_dir(slug).mkdir(parents=True, exist_ok=True)
+    (store.drafts_dir(slug) / "draft-01.md").write_text(
+        "# Video Script\n## A [0:00]\nthe cryptic plough detail here stays or goes now.\n", encoding="utf-8")
+    (store.drafts_dir(slug) / "draft-02.md").write_text(
+        "# Video Script\n## A [0:00]\nclean prose without it now here today friends.\n", encoding="utf-8")
+    store.reviews_dir(slug).mkdir(parents=True, exist_ok=True)
+    approved = [
+        {"id": "f1", "dim": "example-strength", "quote": "the cryptic plough detail here stays"},  # cut
+        {"id": "f2", "dim": "figurative-fitness", "quote": "clean prose without it now here today"},  # present in new
+    ]
+    store.review_approved_path(slug, 1).write_text(json.dumps(approved), encoding="utf-8")
+    from nolan.scriptwriter.gate import verify_revision
+    v = verify_revision(store, slug, 1)
+    assert v["new_draft_exists"] and v["approved"] == 2 and v["checkable"] == 2
+    assert v["changed"] == 1 and v["untouched"] == 1 and "f2" in v["untouched_ids"]
+
+
+def test_create_with_presets(tmp_path):
+    store = ScriptProjectStore(tmp_path)
+    slug = store.create("P", subject="the economy debate", style_id="s", target_minutes=20,
+                        angle="the confidence trick",
+                        composite_spine={"structure": "braided", "threads": ["a", "b"], "binding": "x"},
+                        review_archetype="long-form-argument",
+                        ad_hoc_questions=["are metaphors strong?", "  "])
+    m = store.get(slug)
+    assert m["chosen_angle"] == "the confidence trick"          # a create-time angle IS the chosen one
+    assert m["composite_spine"]["structure"] == "braided"
+    assert m["review_archetype"] == "long-form-argument"
+    assert m["ad_hoc_questions"] == ["are metaphors strong?"]   # blanks filtered
+    assert store.resolve_archetype(slug) == "long-form-argument"
+    # single/auto/empty presets, and invalid spine rejected
+    s2 = store.create("Q", subject="x", style_id="s", composite_spine={"structure": "auto"})
+    assert store.get(s2)["composite_spine"]["structure"] == "auto"
+    with pytest.raises(ValueError):
+        store.create("R", subject="x", style_id="s",
+                     composite_spine={"structure": "braided", "threads": ["only one"]})
+
+
+def test_set_target_minutes(tmp_path):
+    store = ScriptProjectStore(tmp_path)
+    slug = store.create("L", subject="x", style_id="s", target_minutes=8)
+    store.set_target_minutes(slug, 20)
+    assert store.get(slug)["target_minutes"] == 20.0
+    assert store.target_words(slug) == 3000            # 20 * 150, flows into the gate
+    with pytest.raises(ValueError):
+        store.set_target_minutes(slug, 0)
+    with pytest.raises(ValueError):
+        store.set_target_minutes(slug, "abc")
+
+
+def test_angle_candidates_parse(tmp_path):
+    store = ScriptProjectStore(tmp_path)
+    slug = store.create("A", subject="x", style_id="s", target_minutes=8)
+    store.angles_path(slug).write_text(
+        "# Candidate angles\n### Angle 1 — The first thesis **[CHOSEN]**\nbody one\n"
+        "### Angle 2 — The second thesis\nbody two\n", encoding="utf-8")
+    c = store.angle_candidates(slug)
+    assert len(c) == 2
+    assert c[0]["n"] == 1 and c[0]["chosen"] and "first thesis" in c[0]["title"].lower()
+    assert c[1]["n"] == 2 and not c[1]["chosen"]
+    assert "chosen" not in c[0]["title"].lower()          # the [CHOSEN] marker is stripped
+
+
 def test_gate_reports_every_declared_door():
     rep = gate_text(GOOD_SCRIPT, facts_md=FACTS_MD, target_words=30)
     assert {c.id for c in rep.checks} == set(SCRIPT_GATE_CHECKS)

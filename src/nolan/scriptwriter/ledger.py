@@ -14,10 +14,13 @@ render-side ledger→distill→prior pattern without coupling to it.
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 LEDGER_NAME = "_script_review_ledger.jsonl"
 
@@ -59,8 +62,10 @@ def record_review_decision(slug: str, store, review_n: int, approved_ids: List[s
         with p.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(event, ensure_ascii=False) + "\n")
         return event
-    except Exception:
-        return None  # learning must never block the gate
+    except Exception as e:
+        # learning must never block the gate — but don't fail SILENTLY (that hid a real miss once)
+        logger.warning("review-ledger record failed for %s (review-%s): %s", slug, review_n, e)
+        return None
 
 
 def _read_events(root: Path) -> List[dict]:

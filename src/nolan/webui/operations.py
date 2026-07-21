@@ -2050,6 +2050,22 @@ async def write_script(job, *, store_root, slug: str, session: str = "nolan2"):
             "dispatch_error": dispatch_error}
 
 
+def _pick_run_session(requested: str, exclude: str = "") -> str:
+    """Resolve a dispatch session. An explicit ``nolan*`` name is used as-is; ``'auto'``/'' picks
+    an IDLE fleet agent (so a full-auto run never queues behind a busy agent), preferring idle,
+    then any live agent, then ``nolan2``. ``exclude`` skips a session (e.g. the drafter)."""
+    req = (requested or "").strip()
+    if req and req.lower() != "auto":
+        return req
+    try:
+        from nolan import fleet
+        live = [s for s in list_tmux_sessions() if s.startswith("nolan") and s != (exclude or "")]
+        idle = [s for s in live if fleet.detect_status(s) == "idle"]
+        return (idle or live or ["nolan2"])[0]
+    except Exception:
+        return "nolan2"
+
+
 def _pick_reviewer_session(requested: str, store, slug: str) -> str:
     """Fresh-eyes critique: never review with the drafting agent. If the requested session is
     the one that drafted, swap to another live fleet session; degrade (keep) if none exists."""
@@ -2063,60 +2079,204 @@ def _pick_reviewer_session(requested: str, store, slug: str) -> str:
     return live[0] if live else requested
 
 
-async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2",
-                           phase: str = "v3"):
-    """Dispatch a v3 script-pipeline phase to a tmux Claude agent.
+_PHASE_FILE = {"prep": "prep_task.md", "draft": "draft_task.md", "v3": "v3_task.md",
+               "review": "review_task.md", "revise": "revise_task.md"}
+_PHASE_LABEL = {"prep": "research + angles", "draft": "beat-map + draft",
+                "v3": "full first draft", "review": "fresh-eyes review",
+                "revise": "apply approved findings"}
 
-    phase ∈ {prep, draft, v3}: prep = fetch+ground+propose angles (semi-auto gate 1),
-    draft = beat-map chosen angle+draft+fact-check (gate 2), v3 = the whole pipeline in
-    one pass (Claude picks a resonant, right-type angle). Coexists with
-    :func:`write_script` (the one-shot v1 baseline, kept for A/B).
-    """
-    from nolan.scriptwriter import (ScriptProjectStore, prep_task, draft_task, v3_task,
-                                     review_task, revise_task)
-    from pathlib import Path as _Path
 
-    store = ScriptProjectStore(_Path(store_root))
-    if not store.exists(slug):
-        raise RuntimeError(f"script project not found: {slug}")
+def _now_iso() -> str:
+    from datetime import datetime
+    return datetime.now().isoformat(timespec="seconds")
 
-    builders = {
-        "prep": (prep_task, "prep_task.md", "research + propose angles"),
-        "draft": (draft_task, "draft_task.md", "beat-map chosen angle + draft + fact-check"),
-        "v3": (v3_task, "v3_task.md", "v3 (resonant angle, guide-true retention)"),
-        "review": (review_task, "review_task.md", "fresh-eyes critique against the typed rubric"),
-        "revise": (revise_task, "revise_task.md", "apply approved findings + final coherence read"),
-    }
-    builder, fname, label = builders.get(phase, builders["v3"])
 
-    # Record the drafting agent so review can be routed to a DIFFERENT one (fresh eyes).
+def _phase_builder(phase: str):
+    from nolan.scriptwriter import prep_task, draft_task, v3_task, review_task, revise_task
+    return {"prep": prep_task, "draft": draft_task, "v3": v3_task,
+            "review": review_task, "revise": revise_task}[phase]
+
+
+def _script_baseline(store, slug: str) -> dict:
+    """Pre-dispatch snapshot (no side effects) used to detect the new artifact a phase writes."""
+    drafts = store.list_drafts(slug)
+    max_draft = max((store._draft_num(d["name"]) for d in drafts), default=0)
+    return {"max_draft": max_draft, "reviews": {r["n"] for r in store.list_reviews(slug)}}
+
+
+def _completion_artifact(store, slug: str, phase: str, baseline: dict):
+    """The file whose appearance (+ stability) means the phase finished — the sentinel fallback."""
+    if phase in ("draft", "v3", "revise"):
+        return store.drafts_dir(slug) / f"draft-{baseline['max_draft'] + 1:02d}.md"
+    if phase == "review":
+        return store.review_findings_path(slug, baseline["max_draft"] or 1)
+    if phase == "prep":
+        return store.angles_path(slug)
+    return None
+
+
+async def _await_completion(job, store, slug: str, phase: str, baseline: dict,
+                            *, timeout: int = 1800, lo: float = 0.3, hi: float = 0.95) -> dict:
+    """Wait for a dispatched agent to finish: primary = the ``.runs/<phase>.done`` sentinel it
+    writes last; fallback = the expected output artifact appearing and its size going stable."""
+    import time as _t
+    sentinel = store.done_path(slug, phase)
+    art = _completion_artifact(store, slug, phase, baseline)
+    start = _t.monotonic()
+    last_size, stable = -1, 0
+    # The SENTINEL is authoritative (written last, when the agent is truly done incl. its
+    # follow-on grounding files). Artifact-stability is only a failsafe for an agent that
+    # never writes one — and it must be SLOW, because the draft file stabilizes minutes
+    # before the agent finishes factcheck/report/sentinel. ~5 min of no change = compliant
+    # agents' sentinels win; a non-compliant agent still eventually completes.
+    STABLE_POLLS = 50   # × 6s ≈ 300s
+    while _t.monotonic() - start < timeout:
+        if sentinel.exists():
+            return {"done": True, "via": "sentinel"}
+        if art is not None and art.exists():
+            try:
+                sz = art.stat().st_size
+            except OSError:
+                sz = -1
+            if sz > 0 and sz == last_size:
+                stable += 1
+                if stable >= STABLE_POLLS:
+                    return {"done": True, "via": "artifact-stable"}
+            else:
+                last_size, stable = sz, 0
+        secs = int(_t.monotonic() - start)
+        job.set_progress(min(hi, lo + (hi - lo) * (secs / timeout)),
+                         f"{phase}: agent working… ({secs}s)")
+        await asyncio.sleep(6)
+    return {"done": False, "via": "timeout"}
+
+
+async def _dispatch_and_wait(job, store, slug: str, phase: str, session: str,
+                             *, lo: float, hi: float, timeout: int = 1800,
+                             do_gate: bool = False) -> dict:
+    """Write the brief (+ completion sentinel), dispatch to tmux, WAIT for completion, then
+    optionally auto-run the gate. The unit that both run_script_phase and run_full_auto compose."""
+    from nolan.scriptwriter.tasks import sentinel_block
+    from nolan.scriptwriter.gate import run_gate
+
+    sg = f"projects/{slug}/scriptgen"
+    fname = _PHASE_FILE[phase]
+    brief = _phase_builder(phase)(slug, store) + sentinel_block(sg, phase)
+    store.runs_dir(slug).mkdir(parents=True, exist_ok=True)
+    store.clear_done(slug, phase)
+    (store.scriptgen_dir(slug) / fname).write_text(brief, encoding="utf-8")
+    task_posix = f"{sg}/{fname}"
+
     if phase in ("draft", "v3"):
         try:
             store.set_draft_session(slug, session)
         except Exception:
             pass
-    elif phase == "review":
+    baseline = _script_baseline(store, slug)
+    disp_at = _now_iso()
+    store.write_provenance(slug, phase, session=session, dispatched_at=disp_at)
+
+    job.set_progress(lo, f"Dispatching {phase} → {session}…")
+    msg = (f"New NOLAN script task ({_PHASE_LABEL[phase]}) — read and complete "
+           f"{task_posix} now, following it exactly.")
+    await asyncio.to_thread(_dispatch_to_tmux, session, msg)
+
+    res = await _await_completion(job, store, slug, phase, baseline,
+                                  timeout=timeout, lo=lo, hi=hi)
+    store.write_provenance(slug, phase, session=session, dispatched_at=disp_at,
+                           completed_at=_now_iso(), completed=res["done"], via=res["via"])
+    gate = None
+    if do_gate and res["done"] and phase in ("draft", "v3", "revise"):
+        try:
+            rep = await asyncio.to_thread(run_gate, slug, store)
+            gate = {"ok": rep.ok, "checks": [{"id": c.id, "level": c.level, "message": c.message}
+                                             for c in rep.checks]}
+        except Exception as e:
+            gate = {"error": str(e)}
+    return {"phase": phase, "session": session, "completed": res["done"], "via": res["via"],
+            "gate": gate, "task_file": task_posix}
+
+
+async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2",
+                           phase: str = "v3"):
+    """Dispatch ONE script-pipeline phase and WAIT for it to complete (then auto-gate).
+
+    phase ∈ {prep, draft, v3, review, revise}. Unlike the old fire-and-forget dispatch, this
+    now blocks (async) until the agent writes its completion sentinel (or the output artifact
+    stabilizes), so the job status + gate result reflect the real work.
+    """
+    from nolan.scriptwriter import ScriptProjectStore
+    from pathlib import Path as _Path
+
+    store = ScriptProjectStore(_Path(store_root))
+    if not store.exists(slug):
+        raise RuntimeError(f"script project not found: {slug}")
+    if phase not in _PHASE_FILE:
+        raise RuntimeError(f"unknown phase: {phase}")
+    drafter = (store.get(slug).get("draft_session") or "") if phase == "review" else ""
+    session = _pick_run_session(session, exclude=drafter)   # 'auto'/'' → an idle agent
+    if phase == "review":
         session = _pick_reviewer_session(session, store, slug)
 
-    job.set_progress(0.2, f"Writing {phase} task brief…")
-    task_path = store.scriptgen_dir(slug) / fname
-    task_path.write_text(builder(slug, store), encoding="utf-8")
-    task_posix = f"projects/{slug}/scriptgen/{fname}"
+    res = await _dispatch_and_wait(job, store, slug, phase, session,
+                                   lo=0.15, hi=0.92, do_gate=(phase != "prep"))
+    tail = " ✓" if res["completed"] else " (timeout — check artifacts)"
+    job.set_progress(1.0, f"{phase} complete{tail}")
+    return {"slug": slug, **res}
 
-    job.set_progress(0.7, f"Dispatching to {session}…")
-    message = (f"New NOLAN script task ({label}) — please read and complete "
-               f"{task_posix} now, following it exactly.")
-    dispatched, dispatch_error = True, None
+
+def _auto_approve_all(store, slug: str, review_n: int) -> list:
+    """Auto-approve every finding of a review (full-auto gate). Returns the approved list."""
+    import json
+    fp = store.review_findings_path(slug, review_n)
+    findings = json.loads(fp.read_text(encoding="utf-8")) if fp.exists() else []
+    store.review_approved_path(slug, review_n).write_text(
+        json.dumps(findings, indent=2, ensure_ascii=False), encoding="utf-8")
+    return findings
+
+
+async def run_full_auto(job, *, store_root, slug: str, session: str = "nolan2"):
+    """End-to-end unattended run: draft (v3, respecting a preset angle/spine) → gate → fresh-eyes
+    review → auto-approve ALL findings → revise → gate → verify. One review round; the producer
+    can launch further rounds from the UI."""
+    from nolan.scriptwriter import ScriptProjectStore, ledger
+    from nolan.scriptwriter.gate import verify_revision
+    from pathlib import Path as _Path
+
+    store = ScriptProjectStore(_Path(store_root))
+    if not store.exists(slug):
+        raise RuntimeError(f"script project not found: {slug}")
+    session = _pick_run_session(session)                   # 'auto'/'' → an idle agent
+    summary: dict = {"slug": slug, "session": session, "phases": []}
+
+    job.set_progress(0.03, "Full auto ▸ drafting…")
+    r1 = await _dispatch_and_wait(job, store, slug, "v3", session, lo=0.05, hi=0.40, do_gate=True)
+    summary["phases"].append(r1)
+    if not r1["completed"]:
+        return {**summary, "stopped_at": "draft"}
+
+    rsession = _pick_reviewer_session(session, store, slug)
+    job.set_progress(0.42, "Full auto ▸ reviewing…")
+    r2 = await _dispatch_and_wait(job, store, slug, "review", rsession, lo=0.42, hi=0.58)
+    summary["phases"].append(r2)
+    if not r2["completed"]:
+        return {**summary, "stopped_at": "review"}
+
+    n, _ = store.current_draft(slug)                       # the draft that was reviewed
+    approved = _auto_approve_all(store, slug, n)
+    ledger.record_review_decision(slug, store, n, [f.get("id") for f in approved])
+    summary["approved"] = len(approved)
+    job.set_progress(0.60, f"Full auto ▸ approved {len(approved)} findings, revising…")
+
+    r3 = await _dispatch_and_wait(job, store, slug, "revise", session, lo=0.62, hi=0.94, do_gate=True)
+    summary["phases"].append(r3)
     try:
-        await asyncio.get_event_loop().run_in_executor(
-            None, _dispatch_to_tmux, session, message)
-        job.set_progress(1.0, f"Dispatched to {session}")
+        summary["verify"] = verify_revision(store, slug, n)
     except Exception as e:
-        dispatched, dispatch_error = False, str(e)
-        job.set_progress(1.0, f"Dispatch failed: {e}")
-
-    return {"slug": slug, "session": session, "phase": phase, "task_file": task_posix,
-            "dispatched": dispatched, "dispatch_error": dispatch_error}
+        summary["verify"] = {"error": str(e)}
+    ok = r3["completed"]
+    job.set_progress(1.0, "Full auto complete ✓" if ok else "Full auto: revise timed out")
+    return summary
 
 
 # ==================== Video-style analysis (visual style guides) ====================

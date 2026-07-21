@@ -39,6 +39,20 @@ def register(app, ctx):
     async def script_projects_list():
         return {"projects": script_project_store.list()}
 
+    @app.get("/api/script-registries")
+    async def script_registries():
+        """Static rubric + spine-structure registries — for the create-form preset dropdowns
+        (which have no project yet to query per-slug)."""
+        from nolan.scriptwriter.rubrics import ARCHETYPES
+        from nolan.scriptwriter.spine_structures import STRUCTURES
+        return {
+            "archetypes": [{"id": a.id, "title": a.title, "when_to_use": a.when_to_use}
+                           for a in ARCHETYPES.values()],
+            "spine_structures": [{"id": s.id, "title": s.title, "when_to_use": s.when_to_use,
+                                  "min_threads": s.min_threads, "max_threads": s.max_threads}
+                                 for s in STRUCTURES.values()],
+        }
+
     @app.post("/api/script-projects")
     async def script_projects_create(body: dict = Body(...)):
         name = (body.get("name") or "").strip()
@@ -48,14 +62,21 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail="subject and style_id are required")
         if not style_store.exists(style_id):
             raise HTTPException(status_code=400, detail=f"unknown style_id: {style_id}")
-        slug = script_project_store.create(
-            name or subject, subject=subject, style_id=style_id,
-            angle=(body.get("angle") or "").strip(),
-            pivot=(body.get("pivot") or "").strip(),
-            target_minutes=float(body.get("target_minutes") or 8.0),
-            description=(body.get("description") or "").strip(),
-            mode=(body.get("mode") or "semi").strip(),
-        )
+        spine = body.get("composite_spine") or {}
+        try:
+            slug = script_project_store.create(
+                name or subject, subject=subject, style_id=style_id,
+                angle=(body.get("angle") or "").strip(),
+                pivot=(body.get("pivot") or "").strip(),
+                target_minutes=float(body.get("target_minutes") or 8.0),
+                description=(body.get("description") or "").strip(),
+                mode=(body.get("mode") or "semi").strip(),
+                composite_spine=spine if isinstance(spine, dict) else {},
+                review_archetype=(body.get("review_archetype") or "").strip(),
+                ad_hoc_questions=body.get("ad_hoc_questions") or [],
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         # C1: link the new FS project to the library DB so it's one project, not two.
         if db_path and db_path.exists():
             try:
@@ -283,6 +304,17 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail=str(e))
         return {"composite_spine": m.get("composite_spine")}
 
+    @app.post("/api/script-projects/{slug}/length")
+    async def script_projects_set_length(slug: str, body: dict = Body(...)):
+        """Change the target length (minutes) after creation."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        try:
+            m = script_project_store.set_target_minutes(slug, body.get("minutes"))
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"target_minutes": m.get("target_minutes")}
+
     @app.post("/api/script-projects/{slug}/choose-angle")
     async def script_projects_choose_angle(slug: str, body: dict = Body(...)):
         """Semi-auto gate: record the human-picked angle before drafting."""
@@ -308,6 +340,65 @@ def register(app, ctx):
             store_root="projects", slug=slug, session=session, phase=phase,
         )
         return {"job_id": job.id, "type": "script-phase", "phase": phase}
+
+    @app.post("/api/script-projects/{slug}/auto")
+    async def script_projects_auto(slug: str, body: dict = Body(default={})):
+        """Full-auto: draft (v3, respecting any preset angle/spine) → gate → review →
+        auto-approve → revise → gate → verify, in one unattended job."""
+        from nolan.webui import operations
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        job = job_manager.start(
+            "script-auto", operations.run_full_auto,
+            meta={"slug": slug, "session": session},
+            store_root="projects", slug=slug, session=session)
+        return {"job_id": job.id, "type": "script-auto"}
+
+    @app.get("/api/script-projects/{slug}/angle-candidates")
+    async def script_projects_angle_candidates(slug: str):
+        """Parsed candidate angles from angles.md (for the click-to-pick angle cards)."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        return {"candidates": script_project_store.angle_candidates(slug)}
+
+    @app.get("/api/script-projects/{slug}/verify/{n}")
+    async def script_projects_verify(slug: str, n: int):
+        """Heuristic check that the revise (draft-N → draft-(N+1)) actually touched review-N's
+        approved findings."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        from nolan.scriptwriter.gate import verify_revision
+        return await asyncio.to_thread(verify_revision, script_project_store, slug, n)
+
+    @app.post("/api/script-projects/{slug}/review/{n}/add-finding")
+    async def script_projects_add_finding(slug: str, n: int, body: dict = Body(...)):
+        """Append a PRODUCER-authored finding to review-N (the human 'add a critique' at the gate)."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        problem = (body.get("problem") or "").strip()
+        fix = (body.get("fix") or "").strip()
+        if not problem and not fix:
+            raise HTTPException(status_code=400, detail="a finding needs a problem or a fix")
+        fp = script_project_store.review_findings_path(slug, n)
+        findings = []
+        if fp.exists():
+            try:
+                findings = json.loads(fp.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                findings = []
+        ids = {f.get("id") for f in findings}
+        i = 1
+        while f"h{i}" in ids:
+            i += 1
+        nf = {"id": f"h{i}", "dim": (body.get("dim") or "producer-note").strip(),
+              "severity": (body.get("severity") or "med").strip(),
+              "beat": (body.get("beat") or "").strip(), "quote": (body.get("quote") or "").strip(),
+              "problem": problem, "fix": fix, "source": "human"}
+        findings.append(nf)
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        fp.write_text(json.dumps(findings, indent=2, ensure_ascii=False), encoding="utf-8")
+        return {"finding": nf, "total": len(findings)}
 
     @app.get("/api/script-projects/{slug}/drafts")
     async def script_projects_drafts(slug: str):

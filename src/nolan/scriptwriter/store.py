@@ -140,6 +140,25 @@ class ScriptProjectStore:
     def reviews_dir(self, slug: str) -> Path:
         return self.scriptgen_dir(slug) / "reviews"
 
+    # --- completion sentinels + provenance (hub-authored) ----------------------
+    def runs_dir(self, slug: str) -> Path:
+        return self.scriptgen_dir(slug) / ".runs"
+
+    def done_path(self, slug: str, phase: str) -> Path:
+        """The completion sentinel a dispatched agent writes as its LAST action."""
+        return self.runs_dir(slug) / f"{phase}.done"
+
+    def clear_done(self, slug: str, phase: str) -> None:
+        self.done_path(slug, phase).unlink(missing_ok=True)
+
+    def write_provenance(self, slug: str, phase: str, **fields) -> None:
+        """Stamp a hub-authored provenance record for a phase run (not agent-self-reported)."""
+        d = self.scriptgen_dir(slug) / ".prov"
+        d.mkdir(parents=True, exist_ok=True)
+        rec = {"phase": phase, **{k: v for k, v in fields.items() if v is not None}}
+        (d / f"{phase}.json").write_text(json.dumps(rec, indent=2, ensure_ascii=False),
+                                         encoding="utf-8")
+
     def review_path(self, slug: str, n: int) -> Path:
         return self.reviews_dir(slug) / f"review-{n:02d}.md"
 
@@ -176,8 +195,20 @@ class ScriptProjectStore:
     # --- crud ------------------------------------------------------------------
     def create(self, name: str, *, subject: str, style_id: str,
                angle: str = "", pivot: str = "", target_minutes: float = 8.0,
-               description: str = "", mode: str = "semi") -> str:
-        """Scaffold a Director-ready project + scriptgen workspace; return slug."""
+               description: str = "", mode: str = "semi",
+               composite_spine: Optional[Dict[str, Any]] = None,
+               review_archetype: str = "", ad_hoc_questions: Optional[List[str]] = None) -> str:
+        """Scaffold a Director-ready project + scriptgen workspace; return slug.
+
+        The optional ``composite_spine`` / ``review_archetype`` / ``ad_hoc_questions`` let the
+        caller PRESET the spine, rubric, and producer questions at creation (else Auto/default)."""
+        from nolan.scriptwriter.spine_structures import validate_composite_spine
+        spine = composite_spine or {}
+        if spine and (spine.get("structure") or "single") == "single":
+            spine = {}
+        ok, err = validate_composite_spine(spine)
+        if not ok:
+            raise ValueError(err)
         base = slugify(name or subject, "script")
         slug, n = base, 2
         while self.project_dir(slug).exists():
@@ -213,7 +244,10 @@ class ScriptProjectStore:
             "target_minutes": float(target_minutes),
             "description": description or subject,
             "mode": mode if mode in ("auto", "semi") else "semi",
-            "chosen_angle": "",          # set at the semi-auto gate (or by auto)
+            "chosen_angle": angle.strip(),   # a create-time angle IS the chosen one (else auto-picks)
+            "composite_spine": spine,        # {} single · {structure:auto} · preset composite
+            "review_archetype": (review_archetype or "").strip(),   # "" = auto-infer
+            "ad_hoc_questions": [q.strip() for q in (ad_hoc_questions or []) if q and q.strip()],
             "created_at": datetime.now().isoformat(),
             "status": "new",
             "sources": [],
@@ -327,11 +361,16 @@ class ScriptProjectStore:
         return p.read_text(encoding="utf-8") if p.exists() else None
 
     def _script_written(self, slug: str) -> bool:
-        """True once the placeholder has been replaced by a real script."""
+        """True once script.md holds a REAL script — has ≥1 `## ` beat heading, not just a
+        placeholder. (Checking beat headings is robust to any placeholder wording, unlike the
+        old single-sentinel check which false-positived on e.g. '_pending_'.)"""
         p = self.script_path(slug)
         if not p.exists():
             return False
-        return "Script not written yet" not in p.read_text(encoding="utf-8")
+        txt = p.read_text(encoding="utf-8")
+        if "Script not written yet" in txt:
+            return False
+        return bool(re.search(r"(?m)^##\s+\S", txt))
 
     def target_words(self, slug: str) -> int:
         return int(self._load_meta(slug).get("target_minutes", 8.0) * 150)
@@ -376,6 +415,20 @@ class ScriptProjectStore:
         meta = self._load_meta(slug)
         meta["composite_spine"] = spine
         self._save_meta(meta)
+        return meta
+
+    def set_target_minutes(self, slug: str, minutes) -> Dict[str, Any]:
+        """Change the target length (drives target_words for the draft + the gate)."""
+        try:
+            m = float(minutes)
+        except (TypeError, ValueError):
+            raise ValueError("minutes must be a number")
+        if not (0.5 <= m <= 60):
+            raise ValueError("minutes must be between 0.5 and 60")
+        meta = self._load_meta(slug)
+        meta["target_minutes"] = m
+        self._save_meta(meta)
+        self._write_brief(meta)   # brief shows the target length
         return meta
 
     def set_style(self, slug: str, style_id: str) -> Dict[str, Any]:
@@ -499,6 +552,32 @@ class ScriptProjectStore:
         if p is None or not p.exists():
             return None
         return p.read_text(encoding="utf-8")
+
+    def angle_candidates(self, slug: str) -> List[Dict[str, Any]]:
+        """Parse angles.md into selectable cards: `### Angle N — <thesis>` / `**Angle N — …**`,
+        marking the `**[CHOSEN]**` one. Best-effort; empty list if angles.md is absent/odd."""
+        p = self.angles_path(slug)
+        if not p.exists():
+            return []
+        out: List[Dict[str, Any]] = []
+        cur: Optional[Dict[str, Any]] = None
+        head_re = re.compile(r"^\s*(?:#{2,4}\s*|\*\*)\s*Angle\s*(\d+)\s*[—\-:]\s*(.+)$", re.I)
+        for line in p.read_text(encoding="utf-8").splitlines():
+            m = head_re.match(line)
+            if m:
+                if cur:
+                    out.append(cur)
+                chosen = "chosen" in line.lower()
+                title = re.sub(r"\*+", "", m.group(2))
+                title = re.sub(r"\[?\s*chosen\s*\]?", "", title, flags=re.I).strip(" —-*")
+                cur = {"n": int(m.group(1)), "title": title, "chosen": chosen, "body": ""}
+            elif cur is not None:
+                cur["body"] += line + "\n"
+        if cur:
+            out.append(cur)
+        for c in out:
+            c["body"] = c["body"].strip()[:500]
+        return out
 
     def read_source_text(self, slug: str, sid: str) -> Optional[str]:
         """Read the fetched/pasted raw text for one source, if present."""

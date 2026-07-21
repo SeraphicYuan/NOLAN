@@ -203,3 +203,46 @@ def run_gate(slug: str, store=None, draft_name: Optional[str] = None) -> GateRep
 def _draft_num(name: str) -> int:
     m = re.search(r"(\d+)", Path(name).stem)
     return int(m.group(1)) if m else 0
+
+
+def verify_revision(store, slug: str, review_n: int) -> dict:
+    """Heuristic check that a revise actually TOUCHED the findings it approved — closing the
+    propose→gate→accept loop on the revise half (which the agent otherwise self-reports).
+
+    For each approved finding carrying a usable quote, checks whether that exact quote CHANGED
+    between draft-N and draft-(N+1). A cut/replace fix should change it; an *add* fix legitimately
+    may not — so ``untouched`` is a SIGNAL to double-check, not a verdict. Findings without a
+    usable quote are 'unverifiable'.
+    """
+    import json
+    ap = store.review_approved_path(slug, review_n)
+    findings = []
+    if ap.exists():
+        try:
+            findings = json.loads(ap.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            findings = []
+    prev = store.draft_path(slug, f"draft-{review_n:02d}.md")
+    nxt = store.draft_path(slug, f"draft-{review_n + 1:02d}.md")
+    prev_t = prev.read_text(encoding="utf-8") if prev else ""
+    new_t = nxt.read_text(encoding="utf-8") if nxt else ""
+    rows = []
+    for f in findings:
+        q = (f.get("quote") or "").strip()
+        changed = None
+        if q and len(q) >= 12:
+            changed = bool(q in prev_t and q not in new_t)   # flagged text is gone/changed
+        rows.append({"id": f.get("id"), "dim": f.get("dim"),
+                     "severity": f.get("severity"), "changed": changed})
+    checkable = [r for r in rows if r["changed"] is not None]
+    changed = [r for r in checkable if r["changed"]]
+    untouched = [r for r in checkable if not r["changed"]]
+    return {
+        "approved": len(findings),
+        "new_draft_exists": bool(new_t),
+        "checkable": len(checkable),
+        "changed": len(changed),
+        "untouched": len(untouched),
+        "untouched_ids": [r["id"] for r in untouched],
+        "rows": rows,
+    }

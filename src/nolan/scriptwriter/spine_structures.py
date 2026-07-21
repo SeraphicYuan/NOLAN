@@ -99,6 +99,7 @@ STRUCTURES: Dict[str, SpineStructure] = {
 }
 
 DEFAULT_STRUCTURE = "single"
+AUTO = "auto"   # "let Claude pick the best-fit structure" (the spine analogue of angle-auto)
 
 
 def get_structure(structure_id: str) -> SpineStructure:
@@ -106,13 +107,16 @@ def get_structure(structure_id: str) -> SpineStructure:
 
 
 def validate_composite_spine(spine: dict) -> Tuple[bool, str]:
-    """Check a composite_spine dict against its structure's thread bounds. Empty/absent = valid
-    (means 'single', the default)."""
+    """Check a composite_spine dict. Empty/absent = 'single' (default). ``structure:'auto'`` (let
+    Claude pick) is valid with no threads. Named structures must satisfy their thread bounds."""
     if not spine:
         return True, ""
     sid = (spine.get("structure") or "single").strip()
+    if sid == AUTO:
+        return True, ""
     if sid not in STRUCTURES:
-        return False, f"unknown spine structure '{sid}' (choices: {', '.join(STRUCTURES)})"
+        return False, (f"unknown spine structure '{sid}' "
+                       f"(choices: {', '.join(STRUCTURES)}, or 'auto')")
     s = STRUCTURES[sid]
     threads = [t for t in (spine.get("threads") or []) if str(t).strip()]
     n = len(threads) or 1
@@ -121,24 +125,47 @@ def validate_composite_spine(spine: dict) -> Tuple[bool, str]:
     return True, ""
 
 
-def render_structures_menu() -> str:
-    """The menu offered to the angle step: pick single OR a composite structure."""
-    lines = ["**Spine structures** — a spine may be a SINGLE thread or a COMPOSITE of a few "
-             "threads bound by ONE of these macro-structures. Prefer `single` unless the material "
-             "genuinely carries more than one thread that coheres better woven than merged:"]
+def _structures_bullets() -> str:
+    lines = []
     for s in STRUCTURES.values():
         rng = "1 thread" if s.max_threads == 1 else f"{s.min_threads}–{s.max_threads} threads"
         lines.append(f"- **{s.id}** ({rng}) — {s.when_to_use}")
-    lines.append("If you choose a composite, record it as `**[SPINE]** structure:<id> · "
-                 "threads:[t1; t2; …] · binding:<how they cohere into one felt through-line>`.")
     return "\n".join(lines)
 
 
+def render_structures_menu() -> str:
+    """The menu offered to the angle step: pick single OR a composite structure."""
+    return ("**Spine structures** — a spine may be a SINGLE thread or a COMPOSITE of a few threads "
+            "bound by ONE of these macro-structures. Prefer `single` unless the material genuinely "
+            "carries more than one thread that coheres better woven than merged:\n"
+            + _structures_bullets()
+            + "\nIf you choose a composite, record it as `**[SPINE]** structure:<id> · "
+            "threads:[t1; t2; …] · binding:<how they cohere into one felt through-line>`.")
+
+
+def _render_auto_pick() -> str:
+    """Instruction for the agent to CHOOSE the best-fit structure itself (spine-mode = auto)."""
+    return ("### Spine structure — YOU choose it (structure = auto)\n"
+            "Before beat-mapping, decide whether this piece is best told as a SINGLE through-line "
+            "or as a COMPOSITE of a few threads bound by one macro-structure. Weigh the material "
+            "against these options and PICK the best fit — prefer `single` unless the material "
+            "genuinely carries more than one thread that coheres better woven than merged:\n"
+            + _structures_bullets()
+            + "\nAt the TOP of beatmap.md record your choice: `**Spine structure:** <id> · "
+            "threads:[t1; t2; …] · binding:<the one felt through-line>` (or just `single`), then "
+            "arrange the beats to realize it. If composite, do NOT let the threads become isolated "
+            "chapters — the review's through-line dimension checks they actually braid, not merely "
+            "sit adjacent.")
+
+
 def render_structure_guidance(spine: dict) -> str:
-    """The beat-arrangement guidance for a chosen composite spine (empty for single)."""
+    """Beat-arrangement guidance for the beatmap step. '' for single (default); a PICK instruction
+    for 'auto'; the named structure's arrangement + threads for a preset composite."""
     sid = (spine or {}).get("structure") or "single"
     if sid == "single":
         return ""
+    if sid == AUTO:
+        return _render_auto_pick()
     s = get_structure(sid)
     threads = [t for t in (spine.get("threads") or []) if str(t).strip()]
     binding = (spine.get("binding") or "").strip()

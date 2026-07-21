@@ -4,6 +4,28 @@
 **Status:** Complete
 **Last Updated:** 2026-07-20
 
+## Script review loop — Batch 2: completion detection, full-auto, iterate, create-presets (2026-07-21)
+
+The dispatched-agent script pipeline is no longer fire-and-forget. Every brief writes a
+`scriptgen/.runs/<phase>.done` sentinel LAST; `operations._dispatch_and_wait` BLOCKS on it (5-min
+artifact-stability failsafe) then auto-runs the gate — job status + gate now reflect real work.
+New `run_full_auto` chains draft→gate→review→auto-approve→revise→gate→verify in one job.
+`gate.verify_revision` checks each approved finding's flagged text actually changed (signal, not
+verdict). Producers can ADD findings at the gate (`review/{n}/add-finding`, ✍ source:human). Angle
+cards parsed from angles.md (`angle_candidates` + `/angle-candidates`). Ledger logs failures instead
+of swallowing; hub-authored provenance sidecars (`.prov/<phase>.json`). **Agent briefs now STOP
+explicitly** — no self-promote to script.md, no self-iterating extra rounds (fixed a real auto-promote
+bug the homer-braid run exposed). Spine gains an `auto` value (Claude picks the structure). Every
+presettable knob is surfaced with an explicit Auto fallback — no silent defaults: angle (panel now
+visible in auto mode), spine (single/preset/auto), rubric (auto-infer/named), length (editable),
+agent (auto-idle, resolves via `_pick_run_session`). ALL presettable AT CREATE (create-form drawer +
+`/api/script-registries`; `store.create` validates the spine). `_script_written` detects real scripts
+by `## ` beats (robust to placeholder wording — fixed state/next-step false-positives). UI cleanup on
+/script-projects: run-controls clarified (semi ①②· auto ✍️ · Full auto), a 💡 next-step hint, artifact
+dropdown, collapsed sources, Delete + dev controls into Advanced, gated build-video links, draft diff.
+Tests +~15 (test_script_review, test_spine_structures). Validated live end-to-end (homer-auto full-auto,
+~15min: draft→review→revise, agents stopped cleanly). Docs: docs/SCRIPT_REVIEW_PROGRAM.md.
+
 ## Ducked SFX post-mix — gap D (2026-07-20)
 
 The HF render mounts SFX as flat, parallel `<audio>` tracks (no VO-ducking), so a cue over speech

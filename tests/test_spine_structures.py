@@ -54,6 +54,24 @@ def test_menu_lists_all_structures():
         assert sid in menu
 
 
+def test_auto_spine_valid_and_renders_pick_instruction():
+    ok, _ = ss.validate_composite_spine({"structure": "auto"})
+    assert ok
+    g = ss.render_structure_guidance({"structure": "auto"})
+    assert "YOU choose it" in g and "structure = auto" in g
+    assert "Single spine" not in g          # must NOT mis-fall-back to single
+
+
+def test_store_and_brief_carry_auto_spine(tmp_path):
+    from nolan.scriptwriter import v3_task
+    store = ScriptProjectStore(tmp_path)
+    slug = store.create("Au", subject="the economy debate", style_id="s", target_minutes=8)
+    store.set_composite_spine(slug, "auto", [], "")
+    assert store.get(slug)["composite_spine"]["structure"] == "auto"
+    brief = v3_task(slug, store)                         # full-auto uses v3
+    assert "YOU choose it" in brief                      # the agent is told to pick the structure
+
+
 def test_store_composite_spine_roundtrip_and_validation(tmp_path):
     store = ScriptProjectStore(tmp_path)
     slug = store.create("Braid", subject="x", style_id="s", target_minutes=10)

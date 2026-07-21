@@ -18,6 +18,15 @@ _DRAFT_INPUTS = ("brief", "style", "facts", "beatmap")
 _REVIEW_INPUTS = _DRAFT_INPUTS + ("draft", "citations", "factcheck")
 
 
+def sentinel_block(sg: str, phase: str) -> str:
+    """Completion signal appended to every dispatched brief. The pipeline waits on this file
+    to know the agent finished (and to auto-run the gate) — so the agent must write it LAST."""
+    return (f"\n\n## FINAL STEP — signal completion (do NOT skip)\n"
+            f"After EVERY file above is written, create the file `{sg}/.runs/{phase}.done` "
+            f"(make the `.runs/` directory if needed) containing one line naming what you "
+            f"produced. The pipeline waits on this file to know you are finished.")
+
+
 def write_script_task(slug: str, store: ScriptProjectStore) -> str:
     """Build the markdown task brief for writing one project's script."""
     meta = store.get(slug)
@@ -258,7 +267,9 @@ fact-check and report. Facts are in `{sg}/facts.md`; angles in `{sg}/angles.md`.
 {_policy()}
 
 Deliverables: `{sg}/beatmap.md`, a new `{sg}/drafts/draft-<NN>.md`, `{sg}/factcheck.md`,
-`{sg}/citations.md`, `{sg}/stylecheck.md`, `{sg}/report.md`. The producer promotes a draft to `{base}/script.md`.
+`{sg}/citations.md`, `{sg}/stylecheck.md`, `{sg}/report.md`. **STOP after these (and the sentinel
+below)** — do NOT promote to `{base}/script.md` and do NOT review/revise the draft yourself; that's
+the producer's call.
 """
 
 
@@ -405,7 +416,7 @@ it must never reorganize the guide's structure.
 {_ground_block(sg)}
 (A counter-source is *grounding material* + a possible hook — NOT automatically the thesis.)
 
-{_angles_v3_block(sg, style_id, meta.get('angle') or '')}
+{_angles_v3_block(sg, style_id, meta.get('chosen_angle') or meta.get('angle') or '')}
 
 {_cloned_beatmap_block(sg, style_id, meta['cloned_from_deconstruction']) if meta.get('cloned_from_deconstruction') else _beatmap_block(sg, style_id, meta.get('composite_spine'))}
 
@@ -417,7 +428,9 @@ it must never reorganize the guide's structure.
 
 {_report_block(sg, base)}
 
-Finally: copy your finished draft to `{base}/script.md` so it's Director-ready.
+Finally: copy your finished draft to `{base}/script.md` so it's Director-ready. Produce exactly this
+ONE draft — then STOP (write the completion sentinel below). Do NOT review or revise it yourself and
+do NOT start another round; that's the producer's decision.
 
 {_policy()}
 """
@@ -473,19 +486,19 @@ diagnosis only; a separate revise pass applies the fixes the producer approves.
 
 {rubric_md}
 
-## Output contract → `{review_rel}` + `{findings_rel}`
-Write `{review_rel}`: a producer-readable critique, grouped by rubric dimension (strongest
-weight first). For each finding, one entry:
+## Output contract → `{findings_rel}` (FIRST) + `{review_rel}`
+**First** emit `{findings_rel}` — a JSON array (the machine-readable findings the human gate +
+the fix pass consume), one object per finding:
+`{{"id":"f1","dim":"<dim-id>","severity":"high|med|low","beat":"<name>","quote":"<phrase>","problem":"<...>","fix":"<...>"}}`
+
+**Then** write `{review_rel}`: the same findings as a producer-readable critique, grouped by
+rubric dimension (strongest weight first). For each finding, one entry:
 - **[<dim-id> · high|med|low]** beat "<beat name>" — quote: "<the exact phrase at issue>"
   - **problem:** <one line>
   - **fix:** <concrete, specific proposed change — not "make it better">
 
 If a dimension is clean, say so in one line. Be specific and quote the draft; a vague critique
 can't be applied.
-
-Also emit `{findings_rel}` — a JSON array (so the human gate + the fix pass can consume it),
-one object per finding:
-`{{"id":"f1","dim":"<dim-id>","severity":"high|med|low","beat":"<name>","quote":"<phrase>","problem":"<...>","fix":"<...>"}}`
 
 At the TOP of `{review_rel}` record provenance:
 `reviewed: draft-{num:02d} · archetype: {archetype} · agent: <your session> · model: <model> · date: <today>`
@@ -551,6 +564,7 @@ and list any approved finding you did NOT apply, with why.
 At the top of `{revision_rel}` record:
 `revised: draft-{num:02d} → draft-{nxt:02d} · from review-{num:02d} · agent: <your session> · date: <today>`
 
-The producer runs the gate (`nolan scriptgen gate {slug}`) and promotes the winning draft to
-`{base}/script.md`.
+**STOP after writing `{new_draft_rel}` + `{revision_rel}` (and the completion sentinel below).**
+Do NOT promote anything to `{base}/script.md`, do NOT start another review or revise round, and do
+NOT touch any other draft — promotion and further rounds are the PRODUCER's decision, made in the UI.
 """
