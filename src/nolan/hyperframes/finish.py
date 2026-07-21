@@ -90,7 +90,7 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     if not dry_run:
         try:
             from .relieve import long_holds
-            holds = long_holds(comp)
+            holds = long_holds(str(pdir))
             if holds:
                 print(f"⚠ {len(holds)} long static hold(s) — consider "
                       f"`python -X utf8 -m nolan.hyperframes.relieve {comp}`:")
@@ -99,6 +99,34 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                           f"{h.get('dur')}s — {h.get('verdict')}")
         except Exception as e:
             print(f"  (long-hold advisory skipped: {type(e).__name__}: {e})")
+    # 2c · VISUAL-LAG GATE: catch a scene whose visual trails the narration (a late/closing anchor left
+    #      the previous scene overrunning) or a MIS-ORDERED scene, BEFORE the render spend — this is the
+    #      drift the eye catches (the 3:13-says-43%-shows-at-3:33 class). Loud, pre-render; not a hard block
+    #      (a mis-order needs a human spec reorder), but impossible to miss.
+    if not dry_run:
+        try:
+            from .sync import sync_gate_report
+            gate = sync_gate_report(str(pdir))
+            lags, lates = gate["visual_lag"], gate["late_anchors"]
+            mis = [lf for lf in lags if lf.get("kind") == "misorder"]
+            if lags:
+                print(f"\n⚠ VISUAL-LAG GATE — {len(lags)} scene(s) where the VISUAL trails the narration "
+                      f"({len(mis)} MIS-ORDERED). The eye catches this drift; fix before shipping:")
+                for lf in lags:
+                    if lf.get("kind") == "misorder":
+                        print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) — topic narrated @{lf['content_at']}s, "
+                              f"BEFORE the previous scene's @{lf['prev_content_at']}s → REORDER these scenes in the spec")
+                    else:
+                        print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) — placed @{lf['start']}s but its content "
+                              f"is spoken @{lf['content_at']}s (lag {lf['lag']}s) → anchor it to an EARLIER phrase")
+            if lates:
+                print(f"  ◆ {len(lates)} scene(s) anchored to a LATE/closing phrase (placement auto-corrects, "
+                      f"but re-anchor to the OPENING for robustness): "
+                      + ", ".join(f"{a['frame']}/{a['scene']}" for a in lates[:8]))
+            if lags or lates:
+                print("  (run `python -X utf8 -m nolan.hyperframes.sync <comp> --report` to re-check after fixing)")
+        except Exception as e:
+            print(f"  (visual-lag gate skipped: {type(e).__name__}: {e})")
     # 3 · recompose every frame's HTML from its (now retimed) spec, in the comp's theme
     if dry_run:
         print("  [recompose] hfedit.recompose_frame() for each frame (rebuild HTML in-theme)")

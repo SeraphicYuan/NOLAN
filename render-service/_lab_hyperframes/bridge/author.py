@@ -180,6 +180,72 @@ def theme_layout_audit(spec, themes=None):
     return warns
 
 
+def selection_warnings(spec):
+    """#6 — the structural block-selection critic, run at AUTHORING time (not just post-render). The agent
+    hears 'these links form a tree — use diagram' / 'sparse data on a long hold — anchor/ground/split' BEFORE
+    the render spend. SINGLE implementation: nolan.hyperframes.sync._selection_advice — the exact rules the
+    sync report uses (no second dialect to drift). Advisory only; skipped if nolan isn't importable here."""
+    try:
+        from nolan.hyperframes.sync import _selection_advice
+    except Exception:
+        return []
+    out = []
+    for fr in spec.get("frames", []):
+        for sc in fr.get("scenes", []):
+            adv = _selection_advice(sc)
+            if adv:
+                out.append(f"{fr.get('id', '?')}/{sc.get('id', '?')} ({sc.get('type')}): {adv}")
+    return out
+
+
+_DATAVIZ_TYPES = {"chart", "stat", "sankey", "pie", "funnel", "quadrant", "cycle", "spectrum", "scale",
+                  "spans", "venn", "connection_board"}
+
+
+def reveal_char_advice(spec):
+    """Authoring assist for the reveal-CHARACTER pool (reveal_chars module): reject an UNKNOWN
+    `data.reveal_char`, and for a data scene that hasn't set one, SUGGEST a fitting character (meaning →
+    motion) the author can accept or override. Advisory (the composer defaults to 'settle' regardless)."""
+    try:
+        import reveal_chars as rc
+    except Exception:
+        return []
+    out = []
+    for fr in spec.get("frames", []):
+        for sc in fr.get("scenes", []):
+            if sc.get("type") not in _DATAVIZ_TYPES:
+                continue
+            cur = (sc.get("data", {}) or {}).get("reveal_char")
+            if cur is not None and not rc.is_valid(cur):
+                out.append(f"{fr.get('id')}/{sc.get('id')}: reveal_char {cur!r} is not a known character "
+                           f"{rc.ids()} — the composer will fall back to 'settle'")
+            elif cur is None:
+                sug = rc.suggest(sc)
+                if sug != rc.DEFAULT:                        # only surface a MEANINGFUL (non-default) suggestion
+                    out.append(f"{fr.get('id')}/{sc.get('id')} ({sc.get('type')}): consider reveal_char="
+                               f"{sug!r} — {rc.resolve(sug)['purpose']}")
+    return out
+
+
+def anchor_warnings(spec):
+    """#B authoring-time anchor hygiene (STATIC — no VO alignment yet): flag an `anchor` that LEADS with a
+    number. Whisper writes numbers as DIGITS, so a spelled-out number-leading anchor often mis-matches —
+    anchor on the CONTEXT words instead. (The full late/closing-anchor check runs at SYNC time, where the
+    aligned VO exists.)"""
+    try:
+        from nolan.hyperframes.sync import _numberish_anchor
+    except Exception:
+        return []
+    out = []
+    for fr in spec.get("frames", []):
+        for sc in fr.get("scenes", []):
+            anc = (sc.get("data", {}) or {}).get("anchor") or sc.get("anchor")
+            if isinstance(anc, str) and anc.strip() and _numberish_anchor(anc):
+                out.append(f"{fr.get('id')}/{sc.get('id')}: anchor {anc!r} leads with a NUMBER — anchor on the "
+                           f"CONTEXT words beside it (Whisper transcribes numbers as digits, so this may mis-match)")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--spec", required=True)
@@ -213,6 +279,25 @@ def main():
     bespoke = counts.get("raw", 0)
     print(f"OK — spec validates: {len(spec['frames'])} frame(s), {total} scenes "
           f"({total - bespoke} templated, {bespoke} bespoke) — {dict(counts)}")
+
+    sels = selection_warnings(spec)                     # #6: block-selection advice at authoring time
+    if sels:
+        print("  ⚠ block-selection advice (the data suggests a better-fitting block or a fix — "
+              "advisory, not a gate):")
+        for s in sels:
+            print(f"      · {s}")
+
+    rcs = reveal_char_advice(spec)                       # reveal-CHARACTER validation + suggestion
+    if rcs:
+        print("  ◆ reveal-character (data.reveal_char — the reveal's motion personality; advisory):")
+        for s in rcs:
+            print(f"      · {s}")
+
+    ancs = anchor_warnings(spec)                         # #B anchor hygiene (static): number-leading anchors
+    if ancs:
+        print("  ◆ anchor hygiene (anchor the OPENING of a beat's topic, not a number/closing aside):")
+        for s in ancs:
+            print(f"      · {s}")
 
     theme, tsrc, tok = resolve_theme(spec, args.theme, args.out_dir)
     if not tok:

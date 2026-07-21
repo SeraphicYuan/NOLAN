@@ -72,7 +72,12 @@ def _fit_cmd(ff, src, out, p, mt) -> List[str]:
     if target <= 0 or src_dur <= 0:
         raise ValueError("fit needs positive target and source durations")
     speed = src_dur / target
-    cmd = [ff, "-y", "-i", str(src), "-vf", f"setpts={1.0 / speed:.6f}*PTS", "-af", _atempo_chain(speed), *_VENC, str(out)]
+    # `setpts` retimes by rescaling per-frame timestamps → VARIABLE frame rate (the source fps / speed,
+    # often a fractional 61.8/90.7fps). A VFR clip makes the whole-render frame extractor sample 0 frames
+    # (it aborts rather than ship a blank ground). Resample to CONSTANT 30fps (`fps=30` + `-vsync cfr`) so
+    # the fitted ground is extractable on both the incremental and the whole-render paths.
+    cmd = [ff, "-y", "-i", str(src), "-vf", f"setpts={1.0 / speed:.6f}*PTS,fps=30", "-af", _atempo_chain(speed),
+           "-vsync", "cfr", *_VENC, str(out)]
     return cmd
 
 

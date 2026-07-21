@@ -40,6 +40,14 @@ if r_missing:
 if r_extra:
     errs.append(f"catalog['reveals'] documents styles not in compose.REVEALS: {sorted(r_extra)}")
 
+# reveal characters: the catalog's `reveal_chars` keys must exactly match compose.REVEAL_CHARS (minus _doc)
+cat_rc = set(cat.get("reveal_chars", {})) - {"_doc"}
+code_rc = set(getattr(compose, "REVEAL_CHARS", {}))
+if code_rc - cat_rc:
+    errs.append(f"compose.REVEAL_CHARS has characters the catalog does not document: {sorted(code_rc - cat_rc)}")
+if cat_rc - code_rc:
+    errs.append(f"catalog['reveal_chars'] documents characters not in compose.REVEAL_CHARS: {sorted(cat_rc - code_rc)}")
+
 # scene transitions: the catalog's `transitions` keys must exactly match compose.TRANSITIONS (minus _doc)
 cat_trans = set(cat.get("transitions", {})) - {"_doc"}
 code_trans = set(getattr(compose, "TRANSITIONS", {}))

@@ -86,6 +86,30 @@ honesty test doesn't exist.**
    the gate calls exist in each door's body. A new fetch path without a
    manifest entry + gate call is unshippable.
 
+9. **Front-loaded reveals (unspread, narration-blind).** A block whose
+   per-element reveals fire on a hardcoded `cue = start + LEAD + i*STEP`
+   stagger crams all its content into the first ~2 seconds, then holds a
+   frozen frame for the rest of a 10-15s beat — and the numbers pop *before*
+   the voiceover says them, because the stagger knows nothing about
+   narration. *Incident:* every data/chart/stat block (chart, stat, sankey,
+   pie, funnel, quadrant, cycle, spectrum, scale, spans, venn,
+   connection_board, the list blocks) revealed in 2s then read as a static
+   slide for 10s — the ai-datacenter-debate acid test flagged STATIC-HOLD on
+   every one. Statement blocks did NOT have the bug: their operative word is
+   placed on narration time by the aligner. *Rule:* an element reveal is
+   scheduled through the SHARED reveal scheduler in `compose.py`
+   (`_reveal_times` / `_reveal_dur` / `_reveal_cues`), never a hand-rolled
+   `start + i*step`. The scheduler (a) spreads reveals across the block's
+   full window (front-loading is impossible), (b) scales each count-up/draw
+   duration to fill its beat (`_reveal_dur`), and (c) reads each element's
+   `_cue` so the aligner can pull a reveal onto its spoken phrase ("show it
+   as you say it"). *Enforcement:*
+   `render-service/_lab_hyperframes/bridge/check_reveal_sync.py` scans
+   compose.py for the hardcoded-stagger anti-pattern and fails on any new
+   one outside a short, justified allowlist of reading/entrance cadences
+   (text lines, gallery entrance, code cascade, chat beats). A new data
+   block that hand-rolls its stagger is unshippable.
+
 ## The checklist (run it for every new capability)
 
 - [ ] **Registry entry** with `purpose` + `when_to_use` + constraints
@@ -94,6 +118,10 @@ honesty test doesn't exist.**
       validated against the registry, with a `PLAN_FIELD_CONSUMERS` entry.
 - [ ] **Executor** in the render path — and if it introduces a new step
       type, classify it in the contact gate's media/text sets.
+- [ ] **Synced reveals** — a `compose.py` block schedules every per-element
+      reveal through the shared scheduler (`_reveal_times`/`_reveal_dur`/
+      `_reveal_cues`), never a hardcoded `start + i*step` (else it reads
+      stale and pops before the VO). `check_reveal_sync.py` enforces it.
 - [ ] **Umbrella wiring** — new umbrella? Declare authoring surface +
       executor in `UMBRELLA_WIRING`; it appears in `_umbrellas()` with
       `when_to_use` per entry.

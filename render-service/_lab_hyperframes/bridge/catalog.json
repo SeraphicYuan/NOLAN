@@ -1,5 +1,5 @@
 {
-  "_doc": "Composer catalog — the authoring agent reads THIS first. For each beat, try to express it as a scene_template below; only if nothing fits, author a bespoke scene (type 'raw'). Keys under scene_templates MUST equal compose.py BLOCKS (check_catalog.py enforces).",
+  "_doc": "Composer catalog — the authoring agent reads THIS first. For each beat, try to express it as a scene_template below; only if nothing fits, author a bespoke scene (type 'raw'). Keys under scene_templates MUST equal compose.py BLOCKS (check_catalog.py enforces). REVEAL TIMING: you never hand-time per-element reveals — the composer spreads every data block's reveals (bars/items/slices/rows) across its full window (no front-loading). To land a specific element ON the words that describe it, give that element an `at` = the short spoken phrase it illustrates; the aligner syncs the reveal to narration ('show it as you say it'), and un-`at`'d elements are spread. For numbers, anchor `at` on the CONTEXT WORDS beside the number (Whisper writes numbers as digits). A `raw` scene must schedule reveals with the shared helpers (_reveal_times/_reveal_dur/_reveal_cues), never a hardcoded start+i*step (check_reveal_sync.py enforces). AMBIENT GROUND: any data-viz block (chart/pie/sankey/funnel/quadrant/cycle/spectrum/scale/spans/venn/connection_board) accepts an optional `data.ground` — a media_ground spec {kind:image, src, kenburns:[1.0,1.12]} for a slow-drifting photo, or {kind:paper} for a light crumpled-paper stock, or {kind:transparent} over a root video. It renders BEHIND the data as a living backdrop so a long hold isn't a dead flat field; a legibility veil in the theme surface colour keeps lines + numbers readable (soften with ground.dim 0..1, default 0.6). Reach for it on a data block that must hold 8s+; skip it when the data itself carries the motion.",
   "scene_templates": {
     "stat": {
       "fn": "stat_lockup",
@@ -10,7 +10,7 @@
         "kicker": "string — small eyebrow label (design intent, not narration)",
         "register": "enum(paper|footage) — ink-on-mist, or white text for a media ground",
         "ground": "object — a media_ground spec: {kind: paper|image|transparent, parchment?, src?, kb?}",
-        "items": "array of {from,to | value, prefix?, suffix?, label, cue, underline?, delta?} where delta={dir:up|down|flat, value:string} renders a colored metric-change chip (▲/▼/→) below the label",
+        "items": "array of {from,to | value, prefix?, suffix?, label, cue?, at? (spoken phrase to sync this reveal to), underline?, delta?} where delta={dir:up|down|flat, value:string} renders a colored metric-change chip (▲/▼/→) below the label",
         "props": "array of prop_cutout specs (optional evidence overlays)",
         "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch)? — text-entrance style applied to the LABELS (numerals keep their count-up); see the 'reveals' catalog. Seek-safe.",
         "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack-left|centered-row|hero-single|lead-rail|stacked-list. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
@@ -776,7 +776,7 @@
       "fn": "connection_board",
       "purpose": "A NETWORK / evidence board: nodes (people/events) joined by lines (the 'red-string' web — relationships, who-knew-whom, how things connect). Links draw, nodes pop.",
       "when_to_use": "A beat about how things CONNECT / a web of relationships: follow-the-money, who-knew-whom, an investigation board, a system's parts and their links.",
-      "not_for": "A strict hierarchy/tree (use diagram tree). A directed flow (diagram flow). A cycle (use cycle). Ranked items (bullet_list/ledger).",
+      "not_for": "A TREE / hierarchy (each node has ONE parent — org chart, ownership, taxonomy) → use `diagram` (tree). A one-way FLOW A→B→C → `diagram` (flow) or `timeline`. A CHAIN with no cross-links → `timeline`/`cycle`. connection_board earns its keep ONLY when links CROSS — a node connects to several and the web can't be drawn as a single parent-per-node tree. Ranked items → bullet_list/ledger.",
       "data_schema": {
         "nodes": "array of {id, label, sub?, x?, y? (0..1; else auto on a ring), hl?} — the entities",
         "links": "array of {from, to (node ids), label?} — the connections (drawn lines, optional mid-label)",
@@ -794,8 +794,8 @@
     "spans": {
       "fn": "spans",
       "purpose": "A SPAN / ERA timeline: overlapping DURATION bars on a shared time axis (reigns, empires, projects, a Gantt), so 'these overlapped' reads at a glance. Bars grow from their start.",
-      "when_to_use": "A beat about DURATIONS that overlap or span time: overlapping empires/reigns/movements, project phases, lifespans, 'X ran while Y ran'.",
-      "not_for": "A sequence of point EVENTS (use timeline). A single duration/countdown. Values to compare (chart). One-axis positioning (spectrum).",
+      "when_to_use": "A beat about DURATIONS that genuinely OVERLAP in time — empires/reigns/movements that coexisted, project phases that ran concurrently, lifespans, 'X was still going when Y began'. The point is the OVERLAP (who was contemporary with whom). If the bars run one-after-another with no overlap, it's a sequence, NOT spans.",
+      "not_for": "A sequence of point EVENTS or non-overlapping periods (use `timeline` — spans with no overlap is just a timeline drawn wrong). A single duration/countdown. Values to compare (chart). One-axis positioning (spectrum).",
       "data_schema": {
         "spans": "array of {label, start, end (numbers on the axis), hl?} — the duration bars, one row each",
         "range": "[min, max]? — the axis extent (else min start → max end)",
@@ -847,5 +847,33 @@
   },
   "clip_transitions": {
     "_doc": "FRAME-to-frame clip-driven transitions (matte/reveal WIPES between two rendered frame clips). A FRAME-level `transition_out` ({kind, dur?}) on a frame = the wipe INTO the next frame, spliced at the concat seam (nolan.hyperframes.transitions.transition_segment + incremental.splice_transitions). Distinct from a SCENE's `transition_out` above (within-frame GSAP, no pixel compositing). NET-ZERO: dur/2 is trimmed from each side + a dur segment (carrying that exact audio) inserted, so the global timeline / captions / BGM stay in sync (narration-owns-duration safe). Kinds are DATA, not code — they come from projects/_library/transitions/transitions.json (add via `nolan effects add-transition`), so this section is a doc, not a static key list; the live set is `nolan.hyperframes.transitions.transition_kinds()` (author.py gates the frame field against it). Two mechanisms: luma (ink/liquid matte -> maskedmerge) + chroma (green-screen reveal, e.g. fire, keyed foreground screened on top)."
+  },
+  "reveal_chars": {
+    "_doc": "data.reveal_char — the ENTRANCE PERSONALITY of a data block's marks (the ease + how long the motion breathes). The scheduler owns WHEN a reveal fires; the character owns HOW. Meaning picks it: a shock number snaps, a climbing trend builds. Default 'settle'. Distinct from `reveal` (per-letter TEXT style).",
+    "settle": {
+      "purpose": "a confident, lightly-overshooting land — the default voice of a data reveal",
+      "when_to_use": "most reveals; a value arriving with quiet authority",
+      "not_for": "a hard shock (snap) or a slow trend (build)"
+    },
+    "snap": {
+      "purpose": "a hard, fast arrival with no overshoot — it just SLAMS into place",
+      "when_to_use": "a stark or shocking single number the narration hits hard",
+      "not_for": "many elements in sequence or a gentle trend (reads aggressive)"
+    },
+    "build": {
+      "purpose": "a slow, even accumulation that runs the length of its beat",
+      "when_to_use": "a trend climbing, a cumulative total, a value that GROWS as the point develops",
+      "not_for": "a punchy callout (use snap/stamp)"
+    },
+    "drift": {
+      "purpose": "a soft, atmospheric fade — barely-there motion",
+      "when_to_use": "ambient / contextual data sitting under narration; a calm mood",
+      "not_for": "the emphatic number a beat lands on (too weak)"
+    },
+    "stamp": {
+      "purpose": "an emphatic pop with strong overshoot — a visual exclamation mark",
+      "when_to_use": "a punchline figure, a reveal the VO leans on",
+      "not_for": "subtle or many-element reveals (too bouncy)"
+    }
   }
 }

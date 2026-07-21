@@ -18,9 +18,15 @@ from typing import Dict, List
 # from the family. Kept in sync with the catalog by tests/test_style_contract.py (can't go stale).
 BLOCK_FAMILY: Dict[str, str] = {
     "statement": "text", "lower_third": "text", "code": "text", "document": "text",
+    "bullet_list": "text", "ledger": "text", "pull_quote": "text", "chat_thread": "text",
+    "juxtaposition": "text",
     "stat": "dataviz", "chart": "dataviz", "geo": "dataviz", "diagram": "dataviz", "timeline": "dataviz",
+    "pie": "dataviz", "sankey": "dataviz", "funnel": "dataviz", "quadrant": "dataviz", "cycle": "dataviz",
+    "spectrum": "dataviz", "scale": "dataviz", "spans": "dataviz", "venn": "dataviz",
+    "connection_board": "dataviz", "comparison_table": "dataviz",
     "collage": "media", "gallery": "media", "carousel": "media", "linedraw": "media",
     "comparison": "media", "newshead": "media", "social_card": "media", "spotlight": "media",
+    "detail_zoom": "media", "hero": "media", "annotate": "media",
     "raw": "structural",
 }
 # blocks that CAN host a real photo/clip (used to suggest upgrades for text-only beats)
@@ -35,6 +41,10 @@ MIN_READABLE: Dict[str, float] = {
     "gallery": 4.0, "carousel": 4.0, "diagram": 4.0, "chart": 4.0, "geo": 4.0, "code": 4.0,
     "social_card": 3.0, "statement": 2.5, "stat": 2.5, "linedraw": 3.0, "lower_third": 2.0, "raw": 2.5,
     "spotlight": 2.5,
+    "connection_board": 5.0, "quadrant": 5.0, "comparison_table": 5.0, "spans": 5.0, "sankey": 4.5,
+    "cycle": 4.5, "ledger": 4.5, "funnel": 4.0, "venn": 4.0, "spectrum": 4.0, "pie": 4.0,
+    "bullet_list": 4.0, "scale": 3.5, "pull_quote": 3.5, "chat_thread": 4.0, "juxtaposition": 4.0,
+    "detail_zoom": 4.5, "hero": 3.0, "annotate": 4.5,
 }
 DEFAULT_MIN_READABLE = 3.0
 

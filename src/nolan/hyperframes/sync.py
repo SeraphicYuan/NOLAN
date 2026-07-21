@@ -11,8 +11,12 @@ author-typed open-loop (audio_meta.words was empty), so visuals drift ahead of n
                      Monotonic-clamped; if a frame's anchors don't resolve in order, warn + fall back
                      to proportional spacing FOR THAT FRAME ONLY (never silently).
 
-Reveal/cue re-derivation (count-ups/chart-draws firing as spoken) is the follow-up step — placing the
-scene windows is necessary but not sufficient (see COMPOSE_FIRST_UPGRADE_PLAN P0.1 item 4).
+  3. _retime_reveals — LAYER 2: pull each DATA element (chart bar, stat item, sankey ribbon, …) onto
+                     the moment its narration anchor is spoken (`_cue`), so a number reveals AS the VO
+                     says it. The composer's shared scheduler (compose._reveal_times) does the LAYER-1
+                     spread across the window for everything unanchored; this only pins the anchored ones.
+                     Numbers are canonicalized on both sides (`_collapse_nums`) so a spelled-out anchor
+                     lands on Whisper's digits.
 """
 from __future__ import annotations
 
@@ -161,18 +165,80 @@ def _suggest_anchor_span(anchor: str, stream_tokens: List[str]) -> Optional[str]
     return best[1] if best[0] >= max(1, n // 2) else None
 
 
+# --- number-aware matching (subtlety #1: Whisper writes numbers as DIGITS, authors often spell them) ---
+_UNITS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
+          "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+          "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19}
+_TENS = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
+         "eighty": 80, "ninety": 90}
+_SCALES = {"thousand": 1_000, "million": 1_000_000, "billion": 1_000_000_000, "trillion": 1_000_000_000_000}
+_NUMTOK = set(_UNITS) | set(_TENS) | {"hundred"} | set(_SCALES)
+_DROP_NUM = {"percent", "percentage", "point"}          # normalize "sixty percent" ↔ Whisper "60%"→"60"
+
+
+def _is_numtok(t: str) -> bool:
+    return t in _NUMTOK or (t.isdigit()) or t in _DROP_NUM
+
+
+def _parse_num_run(run: List[str]) -> str:
+    """Collapse a run of number tokens (digits AND/OR spelled-out, incl. digit+scale like '900 million')
+    to a single canonical integer string. Whisper and a spelled-out author phrase collapse to the SAME
+    value, so '900 million' == 'nine hundred million'. Best-effort; passes odd runs through joined."""
+    total, current, seen = 0, 0, False
+    for t in run:
+        if t in _DROP_NUM:
+            continue
+        seen = True
+        if t.isdigit():
+            current += int(t)
+        elif t in _UNITS:
+            current += _UNITS[t]
+        elif t in _TENS:
+            current += _TENS[t]
+        elif t == "hundred":
+            current = (current or 1) * 100
+        elif t in _SCALES:
+            total += (current or 1) * _SCALES[t]
+            current = 0
+    return str(total + current) if seen else " ".join(run)
+
+
+def _collapse_nums(seq):
+    """Replace each maximal number run in a token sequence with its canonical integer. `seq` items are
+    either bare tokens (str) or (token, anchor_time) pairs; returns the same shape with runs collapsed
+    (a collapsed run carries its FIRST token's time). Non-number tokens pass through unchanged."""
+    paired = seq and not isinstance(seq[0], str)
+    toks = [x[0] for x in seq] if paired else list(seq)
+    times = [x[1] for x in seq] if paired else [None] * len(seq)
+    out, i = [], 0
+    while i < len(toks):
+        if _is_numtok(toks[i]):
+            j = i
+            while j < len(toks) and _is_numtok(toks[j]):
+                j += 1
+            canon = _parse_num_run(toks[i:j])
+            if canon.strip():
+                out.append((canon, times[i]) if paired else canon)
+            i = j
+        else:
+            out.append((toks[i], times[i]) if paired else toks[i])
+            i += 1
+    return out
+
+
 def _phrase_time(phrase: str, words, after: float = 0.0) -> Optional[float]:
     """First spoken time of `phrase` (a token subsequence) at/after `after` seconds; None if unsaid.
 
     Uses the FLATTENED token stream (aligner.flatten_words) so a hyphenated/possessive spoken word
     contributes all its sub-tokens — the old form kept only the FIRST sub-token of each word
     (`_norm(w.word)[0]`), so 'forty-one'->'forty' and any anchor/operative containing such a word
-    silently missed (holbein POST_MORTEM #5)."""
+    silently missed (holbein POST_MORTEM #5). Numbers are canonicalized on BOTH sides (subtlety #1)
+    so a spelled-out anchor ('nine hundred million') lands on Whisper's digits ('900 million')."""
     from nolan.aligner import flatten_words
-    toks = _norm(phrase)
+    toks = [t for t in _collapse_nums(_norm(phrase)) if t]
     if not toks:
         return None
-    stream = flatten_words(words)                       # [(token, start, end)] — sub-tokens expanded
+    stream = _collapse_nums([(t, s) for (t, s, _e) in flatten_words(words)])   # [(canon_token, start)]
     n = len(toks)
     for i in range(len(stream) - n + 1):
         if stream[i][1] < after:
@@ -182,35 +248,344 @@ def _phrase_time(phrase: str, words, after: float = 0.0) -> Optional[float]:
     return None
 
 
+_ELEMENT_ANCHOR_KEYS = ("at", "anchor")     # per-element spoken-phrase anchor ("show it AS you say it")
+
+
 def _retime_reveals(sc: Dict, d: Dict, words) -> int:
-    """Spread a scene's FIXED-OFFSET reveals across its (possibly stretched) window so they don't all
-    fire in the first ~2s and then hold static — the 'reads like a slide' anti-pattern that bites long
-    ungrounded holds. compose.py already reads a per-item `cue`, so this rewrites those WITHOUT touching
-    the composer: word-anchor an item to its spoken phrase when it carries an `anchor`, else spread the
-    items proportionally over [lead, dur-tail]. Returns how many reveals it retimed. (stat count-ups
-    today; chart bars need an addressable per-bar cue in compose.py — the follow-up.)"""
-    if sc.get("type") != "stat":
-        return 0
-    items = d.get("items")
-    if not isinstance(items, list) or not items:
+    """LAYER 2 — resolve each data element's narration anchor to an ABSOLUTE spoken time (`_cue`).
+
+    The composer's shared reveal scheduler (compose._reveal_times) already SPREADS every data block's
+    reveals across its window (Layer 1) and reads each element's `_cue` first — so this no longer spreads
+    (that would double-schedule); it ONLY pulls anchored elements onto their spoken phrase. An element
+    that carries `at` (or `anchor`) with a resolvable phrase gets `_cue` = the absolute time it's said;
+    unanchored elements are left None so the composer spreads them. Field-name-agnostic: it finds ANY
+    authored list-of-dicts whose elements carry an anchor, so it covers every data block (chart series,
+    stat items, sankey targets, pie/funnel/cycle/…) and any future one without a per-block table.
+
+    Idempotent: pops a stale `_cue` before re-resolving, so removing an anchor un-pins the element.
+    Returns how many elements it pinned to narration time."""
+    if not words:
         return 0
     start, dur = float(sc.get("start", 0) or 0), float(sc.get("dur", 0) or 0)
-    lead, tail = 0.6, 0.8
-    span = max(0.1, dur - lead - tail)
-    n = len(items)
     done = 0
-    for k, it in enumerate(items):
-        if not isinstance(it, dict):
-            continue
-        cue = lead + (span * k / (n - 1) if n > 1 else 0.0)      # proportional across the window
-        anchor = it.get("anchor")
-        if anchor and words:                                    # …or land on the spoken number
-            t = _phrase_time(anchor, words, after=start)
+    for val in (d or {}).values():
+        if not isinstance(val, list) or not any(isinstance(x, dict) for x in val):
+            continue                                            # only lists-of-dicts can be element lists
+        for el in val:
+            if not isinstance(el, dict):
+                continue
+            el.pop("_cue", None)                                # clear a prior sync's placement (un-pin removed anchors)
+            phrase = next((el.get(k) for k in _ELEMENT_ANCHOR_KEYS if el.get(k)), None)
+            if not phrase:
+                continue
+            t = _phrase_time(str(phrase), words, after=start)
             if t is not None and start <= t < start + dur:
-                cue = t - start
-        it["cue"] = round(cue, 2)
-        done += 1
+                el["_cue"] = round(t, 3)                         # ABSOLUTE; composer clamps monotonically
+                done += 1
     return done
+
+
+def _cb_is_tree(nodes, links) -> bool:
+    """A connection_board whose links form a TREE/CHAIN/FOREST (every node has ≤1 parent, no cross-links,
+    no cycle) — the shape connection_board is NOT for (a web needs cross-links). Detected structurally:
+    max in-degree ≤ 1 and no directed cycle."""
+    if not links:
+        return False
+    indeg, adj = {}, {}
+    for lk in links:
+        f, t = lk.get("from"), lk.get("to")
+        if f is None or t is None:
+            continue
+        indeg[t] = indeg.get(t, 0) + 1
+        adj.setdefault(f, []).append(t)
+    if indeg and max(indeg.values()) >= 2:
+        return False                                     # a node with two parents ⇒ genuine cross-link
+    # detect a cycle (a web can loop; a tree/chain can't) via DFS
+    WHITE, GREY, BLACK = 0, 1, 2
+    color = {}
+
+    def has_cycle(u):
+        color[u] = GREY
+        for v in adj.get(u, []):
+            if color.get(v, WHITE) == GREY or (color.get(v, WHITE) == WHITE and has_cycle(v)):
+                return True
+        color[u] = BLACK
+        return False
+
+    for u in list(adj):
+        if color.get(u, WHITE) == WHITE and has_cycle(u):
+            return False
+    return True                                          # ≤1 parent per node + acyclic ⇒ tree/chain/forest
+
+
+def _spans_overlap(spans) -> bool:
+    """True iff at least two duration bars overlap on the axis — the property `spans` exists to show.
+    None overlapping ⇒ it's a sequence (timeline), not spans."""
+    ivals = []
+    for s in spans or []:
+        try:
+            a, b = float(s.get("start")), float(s.get("end"))
+            ivals.append((min(a, b), max(a, b)))
+        except (TypeError, ValueError):
+            return True                                  # can't parse ⇒ don't second-guess the author
+    ivals.sort()
+    for i in range(1, len(ivals)):
+        if ivals[i][0] < ivals[i - 1][1] - 1e-9:         # starts before the previous one ended
+            return True
+    return False
+
+
+_DATAVIZ = {"chart", "stat", "sankey", "pie", "funnel", "quadrant", "cycle", "spectrum", "scale",
+            "spans", "venn", "connection_board", "bullet_list", "ledger"}
+
+
+def _data_element_count(d: Dict) -> int:
+    """The reveal-element count of a data block = the length of its largest authored list-of-dicts
+    (field-name-agnostic: chart series, stat items, sankey targets, pie segments, …)."""
+    best = 0
+    for v in (d or {}).values():
+        if isinstance(v, list) and any(isinstance(x, dict) for x in v):
+            best = max(best, len(v))
+    return best
+
+
+def _has_element_anchor(d: Dict) -> bool:
+    for v in (d or {}).values():
+        if isinstance(v, list):
+            for x in v:
+                if isinstance(x, dict) and (x.get("at") or x.get("anchor")):
+                    return True
+    return False
+
+
+def _selection_advice(sc: Dict) -> Optional[str]:
+    """ADVISORY (never a gate): a STRUCTURAL sign the beat picked the wrong block, OR a sparse data block
+    stranded on a long hold. Editorial judgement stays with the author; this only catches shapes that are
+    provably a mismatch or a guaranteed-stale hold (the acid-test 'poor block choice / reads static' class).
+    Returns a short suggestion or None."""
+    t, d = sc.get("type"), (sc.get("data", {}) or {})
+    if t == "connection_board" and _cb_is_tree(d.get("nodes") or [], d.get("links") or []):
+        return ("links form a TREE/CHAIN (≤1 parent per node, no cross-links) — connection_board is for a "
+                "WEB. Use `diagram` (hierarchy/flow) or `timeline`.")
+    if t == "spans" and len(d.get("spans") or []) >= 2 and not _spans_overlap(d.get("spans")):
+        return "none of the duration bars OVERLAP — `spans` is for coexisting periods; a `timeline` fits a pure sequence."
+    if t == "chart" and len(d.get("series") or []) == 1:
+        return "a chart of ONE value is a `stat`; charts want 3+ comparable bars/points."
+    if t == "pie" and len(d.get("segments") or []) < 2:
+        return "a pie needs ≥2 slices to show parts-of-a-whole; one share is a `stat`."
+    if t == "venn" and len(d.get("sets") or []) < 2:
+        return "a venn needs ≥2 sets to show an overlap; use `stat`/`statement`."
+    # sparse-but-long: even a perfectly spread reveal can't fill a long window with few elements. The
+    # composer caps spread so an un-anchored element never waits absurdly long, so a 2-item block on a 20s
+    # hold reveals in ~3s then reads STATIC. This is editorial, not motion (the acid-test's real lesson):
+    dur = float(sc.get("dur", 0) or 0)
+    n = _data_element_count(d)
+    grounded = ((d.get("ground") or {}).get("kind") if isinstance(d.get("ground"), dict) else None) not in (None, "color", "flat")
+    if t in _DATAVIZ and 0 < n <= 3 and dur >= 9.0 and not grounded and not _has_element_anchor(d):
+        return (f"{n} element(s) on a {dur:.0f}s hold reads STATIC (reveals finish in ~3s, then dead air). "
+                f"Anchor elements to narration with `at`, add a `data.ground` (image+kenburns / paper), or split the beat.")
+    return None
+
+
+def _content_time(sc, stream, freq, after, min_words=1):
+    """Earliest spoken time (after `after`) where the scene's TOPIC first surfaces in the VO — the first
+    spoken DISTINCTIVE content word from the scene's own labels (a word occurring just ONCE in the frame, so
+    a common word can't drag the scene early). More robust than a hand-picked `anchor` that may point at a
+    CLOSING detail (the 'santa cruz' bug — a water scene anchored to its final aside placed 18s late,
+    overrunning the whole segment). `min_words`: require this many DISTINCT content words clustering near the
+    earliest hit before trusting it — 1 for placement (floor + anchor-min already protect it), 2 for the LINT
+    (an editorial kicker like 'SO WHERE I LAND' has one polysemous word that would false-flag). None if
+    nothing (sufficiently corroborated) resolves. len ≥ 5 drops 4-letter homonyms ('land')."""
+    d = sc.get("data", {}) or {}
+    parts = []
+    for k in ("kicker", "title", "titleHi", "center", "headline"):
+        if isinstance(d.get(k), str):
+            parts.append(d[k])
+    for it in (d.get("items") or [])[:5]:                    # element labels carry the topic too
+        if isinstance(it, dict) and isinstance(it.get("label"), str):
+            parts.append(it["label"])
+    toks = {tt for tt in _collapse_nums(_norm(" ".join(parts)))
+            if len(tt) >= 5 and tt not in _STOP and freq.get(tt, 0) == 1}
+    hits = sorted((s, tok) for (tok, s) in stream if tok in toks and s >= after)
+    if not hits:
+        return None
+    if min_words <= 1:
+        return hits[0][0]
+    t0 = hits[0][0]
+    near = {tok for (s, tok) in hits if s <= t0 + 5.0}       # distinct words within 5s of the earliest
+    return t0 if len(near) >= min_words else None
+
+
+def _resolve_scene_starts(scenes, words, frame_dur, aligner_raw):
+    """Scene start times — INDEPENDENT per-scene anchoring + OUTLIER ISOLATION so a mis-sync can't cascade.
+
+    1. OWN time — each scene's start is where its TOPIC first surfaces in the narration: the EARLIER of its
+       explicit `anchor` (number-aware) and its distinctive content (`_content_time`), computed INDEPENDENTLY
+       (NOT chained off the previous scene's placement). This auto-corrects an anchor pointing at a late /
+       closing phrase, and — crucially — a bad anchor on scene N no longer pushes N+1's search past N+1's own
+       content. The aligner's fuzzy time is the fallback when neither exact signal fires.
+    2. TRUST the consensus — the scenes whose own-times form the LONGEST strictly-increasing run (in scene
+       order) are trusted and PINNED to their own time. A scene whose own-time breaks that order is an OUTLIER
+       (a bad anchor or a mis-ordered scene): it is ISOLATED and INTERPOLATED between its trusted neighbours,
+       so its error stays WITHIN ITS OWN WINDOW and never accumulates onto the rest of the frame.
+    Always monotonic. Returns (starts, resolved_scene_ids). (A genuinely mis-ORDERED scene is isolated here so
+    it doesn't drag its neighbours, and separately flagged by `_visual_lag_flags` for a spec reorder.)"""
+    n = len(scenes)
+    if n == 0:
+        return [], set()
+    from nolan.aligner import flatten_words
+    stream = _collapse_nums([(t, s) for (t, s, _e) in flatten_words(words)]) if words else []
+    freq = {}
+    for tok, _s in stream:
+        freq[tok] = freq.get(tok, 0) + 1
+    lo, hi = 0.3, frame_dur - 0.3                            # a global window (NOT prev-dependent → no cascade)
+    own = [None] * n
+    own[0] = 0.0                                             # scene 1 opens the frame
+    for j in range(1, n):
+        q = _scene_query(scenes[j])
+        anc_t = _phrase_time(q, words, after=lo) if (q and words) else None
+        con_t = _content_time(scenes[j], stream, freq, lo) if stream else None
+        cands = [x for x in (anc_t, con_t) if x is not None and lo <= x < hi]
+        if cands:
+            own[j] = round(min(cands), 3)
+        else:
+            a = aligner_raw[j] if (aligner_raw and j < len(aligner_raw)) else None
+            own[j] = round(float(a), 3) if (a is not None and lo < float(a) < hi) else None
+    # trust = the longest strictly-increasing (by ≥0.35s) run of own-times, in scene order (an O(n²) LIS);
+    # outliers (own-time out of order) are dropped → interpolated, isolating their error to their own window.
+    idx = [j for j in range(n) if own[j] is not None]
+    dp = [1] * len(idx)
+    par = [-1] * len(idx)
+    for k in range(len(idx)):
+        for l in range(k):
+            if own[idx[l]] + 0.35 <= own[idx[k]] and dp[l] + 1 > dp[k]:
+                dp[k], par[k] = dp[l] + 1, l
+    trusted = {0}
+    if idx:
+        best = max(range(len(idx)), key=lambda k: dp[k])
+        while best != -1:
+            trusted.add(idx[best])
+            best = par[best]
+    resolved = {scenes[j].get("id", f"s{j}") for j in trusted if own[j] is not None} | {scenes[0].get("id", "s0")}
+    # pin trusted scenes to their own time; interpolate the rest between trusted anchors (+ a virtual end)
+    t = [own[j] if j in trusted else None for j in range(n)]
+    t[0] = 0.0
+    pts = [(j, t[j]) for j in range(n) if t[j] is not None] + [(n, float(frame_dur))]
+    out = [0.0] * n
+    for k in range(len(pts) - 1):
+        (j0, t0), (j1, t1) = pts[k], pts[k + 1]
+        out[j0] = t0
+        span = j1 - j0
+        for m in range(1, span):
+            if j0 + m < n:
+                out[j0 + m] = round(t0 + (t1 - t0) * m / span, 3)
+    for j in range(1, n):                                    # guard against tiny equalities → strictly increasing
+        if out[j] <= out[j - 1]:
+            out[j] = round(out[j - 1] + 0.05, 3)
+    return out, resolved
+
+
+def _relieve_short_windows(scenes, frame_dur, max_passes=6):
+    """#1 — no scene renders below its READABLE minimum. After placement, a scene squeezed under
+    MIN_READABLE (a 0.5s flash the eye can't read — the perceptual gate's 'illegible / layout empty' class)
+    BORROWS time from a neighbour that has slack (its dur above ITS own floor), never pushing that neighbour
+    below its minimum. Greedy boundary relaxation, order-preserving + monotonic (slack-capped moves can't
+    cross boundaries). A resolved scene may drift slightly off its spoken word, but a legible-slightly-early
+    beat beats an unreadable flash. If the frame is genuinely over-packed (no neighbour has slack), it does
+    its best and the residual stays flagged. Mutates sc.start/dur in place; returns {fixed, residual}."""
+    n = len(scenes)
+    if n < 2 or frame_dur <= 0:
+        return {"fixed": 0, "residual": []}
+    mn = [max(0.6, _MIN_READABLE.get(sc.get("type"), 3.0)) for sc in scenes]
+    b = [float(sc.get("start", 0) or 0) for sc in scenes] + [float(frame_dur)]   # boundaries b[0..n]
+    before = [round(b[j + 1] - b[j], 3) for j in range(n)]
+
+    def dur(j):
+        return b[j + 1] - b[j]
+
+    for _ in range(max_passes):
+        moved = False
+        for j in range(n):
+            need = mn[j] - dur(j)
+            if need <= 1e-3:
+                continue
+            if j + 1 < n:                                     # borrow from the NEXT scene's slack (b[j+1] → right)
+                take = min(need, max(0.0, dur(j + 1) - mn[j + 1]))
+                if take > 1e-3:
+                    b[j + 1] += take; need -= take; moved = True
+            if need > 1e-3 and j > 0:                         # borrow the rest from the PREV scene (b[j] → left)
+                take = min(need, max(0.0, dur(j - 1) - mn[j - 1]))
+                if take > 1e-3:
+                    b[j] -= take; moved = True
+        if not moved:
+            break
+
+    fixed, residual = 0, []
+    for j in range(n):
+        nd = round(max(0.1, b[j + 1] - b[j]), 3)
+        if before[j] + 1e-3 < mn[j] <= nd + 1e-3:
+            fixed += 1
+        if nd + 1e-3 < mn[j]:
+            residual.append({"scene": scenes[j].get("id"), "block": scenes[j].get("type"),
+                             "dur": nd, "min": round(mn[j], 1)})
+        scenes[j]["start"] = round(max(0.0, b[j]), 3)
+        scenes[j]["dur"] = nd
+    return {"fixed": fixed, "residual": residual}
+
+
+def _visual_lag_flags(scenes, words, min_lag=6.0):
+    """Report where a scene's VISUAL lags the VO — the drift the eye catches (the 3:13-says-43%-but-shows-
+    at-3:33 bug). Two kinds, keyed on each scene's distinctive content time (_content_time):
+      - LAG: the scene is placed well AFTER its content is first spoken (a late anchor left the PREVIOUS
+        scene overrunning the segment).
+      - MIS-ORDER: the scene's topic is narrated ENTIRELY before its predecessor's — the scenes are in the
+        wrong order for the narration; placement can't fix this without reordering the spec."""
+    if not words:
+        return []
+    from nolan.aligner import flatten_words
+    stream = _collapse_nums([(t, s) for (t, s, _e) in flatten_words(words)])
+    freq = {}
+    for tok, _s in stream:
+        freq[tok] = freq.get(tok, 0) + 1
+    flags, prev_ct = [], None
+    for sc in scenes:
+        ct = _content_time(sc, stream, freq, 0.0, min_words=2)   # LINT: corroborated (2+ words) to avoid polysemy false-flags
+        start = float(sc.get("start", 0) or 0)
+        if ct is not None:
+            if start - ct > min_lag:
+                flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "lag",
+                              "start": round(start, 1), "content_at": round(ct, 1), "lag": round(start - ct, 1)})
+            if prev_ct is not None and ct < prev_ct - 3.0:
+                flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "misorder",
+                              "content_at": round(ct, 1), "prev_content_at": round(prev_ct, 1)})
+            prev_ct = ct
+    return flags
+
+
+def _late_anchor_flags(scenes, words):
+    """ANCHOR-QUALITY (the authoring root fix, #B): a scene whose explicit `anchor` resolves well AFTER its
+    topic opens — a CLOSING/late phrase (the 'santa cruz' anchor on a water scene). Content-time placement
+    now auto-corrects it, but a late anchor is FRAGILE (it fails the moment the scene lacks matching content,
+    and it makes the scene an interpolated outlier). Nudge the author to anchor the OPENING. Reports the
+    anchor time, the content time, and the earlier phrase to use. Requires both to resolve."""
+    if not words:
+        return []
+    from nolan.aligner import flatten_words
+    stream = _collapse_nums([(t, s) for (t, s, _e) in flatten_words(words)])
+    freq = {}
+    for tok, _s in stream:
+        freq[tok] = freq.get(tok, 0) + 1
+    out = []
+    for sc in scenes:
+        anc = (sc.get("data", {}) or {}).get("anchor") or sc.get("anchor") or (sc.get("data", {}) or {}).get("operative")
+        if not isinstance(anc, str) or not anc.strip():
+            continue
+        at = _phrase_time(anc, words, after=0.3)
+        ct = _content_time(sc, stream, freq, 0.3, min_words=2)
+        if at is not None and ct is not None and at - ct > 6.0:
+            out.append({"scene": sc.get("id"), "block": sc.get("type"), "anchor": anc[:40],
+                        "anchor_at": round(at, 1), "content_at": round(ct, 1)})
+    return out
 
 
 def place_scenes(comp_dir, write: bool = True) -> Dict:
@@ -224,7 +599,8 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
     meta = json.loads((comp_dir / "audio_meta.json").read_text(encoding="utf-8"))
     by_frame = {v.get("frame"): v for v in meta.get("voices", [])}
     spec_files = sorted((comp_dir / "compositions" / "frames").glob("*.spec.json"))
-    report = {"frames": [], "fallbacks": 0, "weak_total": 0, "problems": [], "windows": [], "number_anchors": []}
+    report = {"frames": [], "fallbacks": 0, "weak_total": 0, "problems": [], "windows": [],
+              "number_anchors": [], "selection": []}
 
     for i, sf in enumerate(spec_files, start=1):
         spec = json.loads(sf.read_text(encoding="utf-8"))
@@ -248,12 +624,17 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                 by_id = {r.scene_id: r for r in results}
                 raw = [getattr(by_id.get(sc.get("id", f"s{j}")), "start_seconds", None)
                        for j, sc in enumerate(scenes)]
-                starts = _validate_monotonic(raw, frame_dur)
-                if starts is None:                       # anchors missing / out of order → this frame only
-                    starts = _proportional(len(scenes), frame_dur)
-                    fb = "proportional (anchors unmatched/out-of-order)"
+                # the aligner PLACES even a zero-confidence anchor (a garbage fuzzy hit) while flagging it
+                # in `unmatched` — don't trust that as a fallback; null it so the scene interpolates + reports
+                # UNRESOLVED instead. (Number-aware `_phrase_time` is tried first regardless.)
+                lowconf = {u.scene_id for u in (unmatched or []) if float(u.confidence) <= 0.0}
+                raw = [None if scenes[j].get("id", f"s{j}") in lowconf else raw[j] for j in range(len(scenes))]
+                # #2: number-aware placement + interpolation (no all-or-nothing proportional dump)
+                starts, resolved = _resolve_scene_starts(scenes, words, frame_dur, raw)
+                unresolved = {sc.get("id", f"s{j}") for j, sc in enumerate(scenes)} - resolved
+                if len(unresolved) > max(1, len(scenes) // 2):   # majority unplaced → weak frame (report it)
+                    fb = f"interpolated ({len(resolved)}/{len(scenes)} anchors resolved)"
                     report["fallbacks"] += 1
-                unresolved = {u.scene_id for u in (unmatched or []) if float(u.confidence) <= 0.0}
                 # LOUD: the aligner KNOWS which anchors matched weakly (confidence < 0.8), but a
                 # low-confidence-yet-monotonic placement lands silently otherwise — Whisper mis-
                 # transcription ('Jevons'→'Jevin's') mis-places a scene with nothing reported.
@@ -266,6 +647,18 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                 nxt = starts[j + 1] if j + 1 < len(starts) else frame_dur
                 sc["dur"] = round(max(0.1, nxt - starts[j]), 3)
                 drift = max(drift, abs(sc["start"] - old))
+            # #1: relieve any scene squeezed below its readable minimum (borrow slack from roomy neighbours)
+            # BEFORE element cues resolve against the window. Runs on the placed scenes; monotonic + in place.
+            rel = _relieve_short_windows(scenes, frame_dur)
+            report.setdefault("relieved", 0)
+            report["relieved"] += rel["fixed"]
+            if rel["residual"]:
+                report.setdefault("overpacked", []).extend(
+                    {"frame": fr.get("id"), **r} for r in rel["residual"])
+            for lf in _visual_lag_flags(scenes, words):   # visual-lag / mis-order (drift the eye catches)
+                report.setdefault("visual_lag", []).append({"frame": fr.get("id"), **lf})
+            for af in _late_anchor_flags(scenes, words):  # #B anchor-quality: anchored to a late/closing phrase
+                report.setdefault("late_anchors", []).append({"frame": fr.get("id"), **af})
             cues = revs = 0
             for sc in scenes:                        # fire reveals ON the spoken word (or spread — never clustered)
                 d = sc.get("data", {}) or {}
@@ -305,6 +698,10 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                     entry["number_anchor"] = True
                     report["number_anchors"].append({"frame": fr.get("id"), "scene": sid, "anchor": aq[:60],
                                                       "resolved": resolved})
+                sel = _selection_advice(sc)               # ⑦ structural block-choice mismatch (advisory)
+                if sel:
+                    entry["selection"] = sel
+                    report["selection"].append({"frame": fr.get("id"), "scene": sid, "block": block, "advice": sel})
                 report["windows"].append(entry)
                 if v:
                     report["problems"].append({"frame": fr.get("id"), "scene": sid,
@@ -351,6 +748,26 @@ def check_vo_fidelity(comp_dir) -> List[Dict]:
         for d in _dropped_sentences(sections[i - 1].get("body", ""), spoken):
             out.append({"frame": i, **d})
     return out
+
+
+def visual_lag_report(comp_dir) -> List[Dict]:
+    """The visual-lag / mis-order flags for a comp (via the sync dry-run, no write) — the finish DAG's
+    pre-render gate consumes this so drift is caught BEFORE the render, not by a human watching the output."""
+    try:
+        return report_windows(comp_dir).get("visual_lag", []) or []
+    except Exception:
+        return []
+
+
+def sync_gate_report(comp_dir) -> Dict:
+    """One dry-run for the finish DAG's pre-render SYNC GATE: {visual_lag, late_anchors}. Catches the drift
+    class (visual trails the VO / mis-ordered scenes) + anchor-quality (anchored to a late/closing phrase)
+    BEFORE the render spend."""
+    try:
+        r = report_windows(comp_dir)
+        return {"visual_lag": r.get("visual_lag", []) or [], "late_anchors": r.get("late_anchors", []) or []}
+    except Exception:
+        return {"visual_lag": [], "late_anchors": []}
 
 
 def report_windows(comp_dir) -> Dict:
@@ -420,10 +837,41 @@ def main():
                   f"non-numeric span{'; these did NOT resolve:' if unresolved_nums else ' (verify the '+str(len(nums))+'):'}")
             for n in (unresolved_nums or nums):
                 print(f"    {n['frame']}/{n['scene']}: “{n['anchor']}”")
+        sels = rep.get("selection") or []
+        if sels:                                          # ⑦ structural block-choice mismatches (advisory)
+            print("\n⚠ block selection — the data suggests a better-fitting block (advisory, not a gate):")
+            for sdv in sels:
+                print(f"    {sdv['frame']}/{sdv['scene']} ({sdv['block']}): {sdv['advice']}")
+        lags = rep.get("visual_lag") or []
+        if lags:                                          # visual lags the VO (late anchor / mis-ordered scene)
+            print("\n⚠ visual-lag — the VISUAL trails the narration (the eye catches this drift):")
+            for lf in lags:
+                if lf["kind"] == "lag":
+                    print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) placed @{lf['start']}s but its "
+                          f"content is spoken @{lf['content_at']}s — LAG {lf['lag']}s (a late anchor; the "
+                          f"previous scene overruns). Anchor it to an EARLIER phrase.")
+                else:
+                    print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) topic narrated @{lf['content_at']}s, "
+                          f"BEFORE the previous scene's @{lf['prev_content_at']}s — scenes are OUT OF ORDER "
+                          f"for the VO; reorder them in the spec.")
+        lates = rep.get("late_anchors") or []
+        if lates:                                         # #B anchor-quality — anchored to a late/closing phrase
+            print("\n◆ anchor-quality — these scenes are anchored to a LATE/closing phrase (placement "
+                  "auto-corrects via content, but re-anchor to the OPENING for robustness):")
+            for af in lates:
+                print(f"    {af['frame']}/{af['scene']} ({af['block']}): anchor {af['anchor']!r} is spoken "
+                      f"@{af['anchor_at']}s but the topic opens @{af['content_at']}s")
+        over = rep.get("overpacked") or []
+        if over:                                          # #1: frames too packed for the reliever to satisfy
+            print("\n⚠ over-packed windows — the reliever grew them as far as neighbours allowed, but these "
+                  "are still under their readable floor (too many scenes for the frame; cut or merge one):")
+            for o in over:
+                print(f"    {o['frame']}/{o['scene']} ({o['block']}) — {o['dur']}s < {o['min']}s floor")
         probs = rep.get("problems") or []
         print(f"\n— {len(rep['windows'])} scene(s); {len(probs)} degenerate window(s); "
-              f"{rep['fallbacks']} frame(s) on proportional fallback; {rep['weak_total']} weak anchor(s); "
-              f"{len(nums)} number-anchor(s); {len(drops)} VO drop(s)")
+              f"{rep['fallbacks']} frame(s) weak-placed; {rep.get('relieved', 0)} short window(s) relieved; "
+              f"{len(over)} over-packed; {rep['weak_total']} weak anchor(s); "
+              f"{len(nums)} number-anchor(s); {len(sels)} selection advisory(ies); {len(drops)} VO drop(s)")
         print("  (dry-run — specs unchanged. Fix anchors, re-run --report, then `sync` to commit + recompose.)")
         return
 

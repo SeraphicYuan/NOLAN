@@ -34,6 +34,29 @@ single most important rule: **prefer a composer template; only go bespoke when n
 5. **Never** put narration sentences on screen (the caption track shows the spoken words) —
    visible text is short motion-graphics copy (a hero word, a number, an operative phrase).
 
+## Reveal timing — "show it as you say it" (data blocks especially)
+You do **not** hand-time per-element reveals. The composer's shared scheduler spreads every data
+block's reveals (chart bars, stat items, sankey ribbons, pie slices, cycle steps, list rows, …)
+across the block's FULL window, so nothing front-loads in 2s and then holds stale. In a `raw`
+scene you MUST do the same — schedule reveals with the shared helpers (`_reveal_times` /
+`_reveal_dur` / `_reveal_cues`), never a hardcoded `start + i*step` (the honesty test
+`check_reveal_sync.py` rejects that).
+- **To sync an element to the exact moment it's spoken**, give that element an **`at`** field — the
+  short spoken phrase it illustrates (e.g. a chart series `{ "label": "Compute", "value": 40, "at":
+  "spending on compute" }`). The aligner resolves `at` to narration time and the reveal lands there;
+  un-`at`'d elements are spread automatically. Add `at` to the elements whose *timing carries meaning*
+  (a punchline number, a turn); leave the rest for the spread.
+- **Numbers are the hard case:** Whisper transcribes numbers as DIGITS ("nine hundred million" →
+  "900 million", "sixty percent" → "60%"). The matcher canonicalizes both sides, but the robust
+  habit is to anchor `at` on the **context words next to the number** ("trained on", "by the end
+  of"), not the bare number. An `at` that leads with a number is flagged by `sync --report`.
+- **Reveal CHARACTER** — set `data.reveal_char` to pick the entrance *personality* of a data block's
+  marks (the scheduler owns WHEN; this owns HOW). Meaning chooses it: `snap` (a hard, shocking
+  number), `build` (a trend/total that grows across its beat), `stamp` (an emphatic punchline pop),
+  `drift` (soft ambient data under narration), or `settle` (the confident default — omit for this).
+  One per data scene; see `catalog.reveal_chars`. This is a different axis from `data.reveal` (the
+  per-letter TEXT style like char/decode).
+
 ## Output — JSON only
 ```json
 { "id": "<frame_id>", "dur": <seconds>, "scenes": [ <scene>, ... ] }

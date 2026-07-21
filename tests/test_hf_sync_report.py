@@ -52,13 +52,25 @@ def test_report_flags_long_hold_ungrounded(tmp_path):
     assert any(p["issue"].startswith("LONG-HOLD") for p in rep["problems"])
 
 
-def test_report_flags_short_window(tmp_path):
-    # anchors 1s apart -> the first statement gets a ~1s window (< 3s readable floor) -> SHORT
+def test_short_window_is_relieved(tmp_path):
+    # anchors 1s apart -> s1 would get a ~1s window (< readable floor); the reliever (#1) borrows from s2's
+    # slack so no unreadable flash survives.
     scenes = [{"id": "s1", "type": "statement", "start": 0, "dur": 2, "data": {"anchor": "w0"}},
               {"id": "s2", "type": "statement", "start": 2, "dur": 2, "data": {"anchor": "w1"}}]
     comp, _ = _comp(tmp_path, _words(8), scenes, 8.0)
     rep = sync.place_scenes(comp, write=False)
-    assert any("SHORT" in w["verdict"] for w in rep["windows"])
+    assert rep.get("relieved", 0) >= 1                        # the squeezed scene was grown to its minimum
+    assert not any("SHORT" in w["verdict"] for w in rep["windows"])   # no illegible flash left
+
+
+def test_overpacked_frame_reports_residual(tmp_path):
+    # 3 newshead (5s floor each = 15s) in an 8s frame can't all be satisfied -> reliever does its best,
+    # residual stays flagged (an authoring over-pack the reliever surfaces rather than hides).
+    scenes = [{"id": f"s{k}", "type": "newshead", "start": k * 2.5, "dur": 2.5, "data": {"anchor": f"w{k}"}}
+              for k in range(3)]
+    comp, _ = _comp(tmp_path, _words(12), scenes, 8.0)
+    rep = sync.place_scenes(comp, write=False)
+    assert rep.get("overpacked")                              # residual reported, not silently squeezed
 
 
 def test_unresolved_anchor_is_flagged(tmp_path):

@@ -818,6 +818,67 @@ def _page_bg():
     return "var(--shell)" if _SHELL_TEXTSAFE else "var(--surface)"
 
 
+# ── narration-driven reveal scheduling (2026-07 · the data-block staleness fix) ──────────────────────────
+# THE SHARED CONTRACT every data / list / multi-element block MUST use for its staggered reveals. Hardcoding
+# `start + LEAD + i*STEP` front-loads the whole reveal into the first ~2s of a long VO hold and leaves the
+# rest stale (the number pops before the voice says it). Instead: reveal each element WHEN its phrase is
+# spoken (cues resolved by the aligner from an element `at` anchor), else SPREAD across the scene so N
+# elements fill the hold. Consumed via `_reveal_cues(items)` → `_reveal_times(...)` → `_reveal_dur(...)`.
+def _reveal_cues(items, start=0.0):
+    """Per-element absolute cue times for the scheduler. Precedence: `_cue` (aligner-resolved absolute time
+    from the element's `at` narration anchor) > `cue` (an explicit author offset from scene start) > None
+    ('not anchored — spread me'). items = the block's element list."""
+    out = []
+    for it in (items or []):
+        if isinstance(it, dict) and it.get("_cue") is not None:
+            out.append(float(it["_cue"]))
+        elif isinstance(it, dict) and it.get("cue") is not None:
+            out.append(start + float(it["cue"]))
+        else:
+            out.append(None)
+    return out
+
+
+def _reveal_times(n, start, dur, cues=None, lead=0.6, frac=0.62, minstep=0.5, tail=0.5):
+    """n absolute reveal times. cues[i] (aligner-resolved) WINS — reveal on the spoken word; else spread the
+    reveal across ~`frac` of the scene (≥minstep apart) so it fills the hold instead of dumping. Monotonic,
+    clamped to [start+lead, start+dur-tail]. Never hardcode a fixed stagger — call this."""
+    n = max(1, int(n))
+    hi = start + max(lead, dur - tail)
+    span = min(max(dur * frac - lead, (n - 1) * minstep), (n - 1) * 2.4) if n > 1 else 0.0
+    base = [start + lead + (span * i / (n - 1) if n > 1 else 0.0) for i in range(n)]
+    out, prev = [], start - 1
+    for i in range(n):
+        c = cues[i] if (cues and i < len(cues) and cues[i] is not None) else base[i]
+        c = min(max(c, prev + minstep if out else start + lead * 0.4), hi)
+        out.append(round(c, 2)); prev = c
+    return out
+
+
+# ── reveal CHARACTER: the small pool of entrance personalities a data reveal can take. The scheduler
+# (_reveal_times) owns WHEN a reveal fires; a character owns HOW — the ease + how long the motion breathes.
+# Meaning picks the character: a shock number SNAPS, a climbing trend BUILDs, ambient data DRIFTs in.
+# Authored per data scene as `data.reveal_char`; default "settle". (Distinct from `data.reveal`, the
+# per-TEXT letter style — char/decode/typewriter — which is a different axis.) Registry is the source of
+# truth (catalog + check_reveal_sync enforce parity). A block applies it via _reveal_ease(d)/_reveal_dur(d=d).
+import reveal_chars as _rc                                 # the reveal-CHARACTER module (source of truth)
+REVEAL_CHARS = _rc.REVEAL_CHARS                             # re-exported so catalog + honesty tests read it here
+
+
+def _reveal_ease(d):
+    """The GSAP ease string for this scene's reveal character (data.reveal_char) — into a tween's `ease:`."""
+    return _rc.ease((d or {}).get("reveal_char"))
+
+
+def _reveal_dur(times, i, start, dur, base=0.5, maxd=1.5, d=None):
+    """Reveal ANIMATION duration for element i — scaled to the gap before the next reveal so a count-up /
+    draw-on runs THROUGH its beat (tracks the sentence) instead of a fixed 0.5s pop that then goes stale.
+    `d` (the scene data) applies the reveal character's dur_scale — a `snap` runs shorter, a `build` longer."""
+    nxt = times[i + 1] if i + 1 < len(times) else (start + dur)
+    scale = _rc.dur_scale((d or {}).get("reveal_char")) if d is not None else 1.0
+    return round(min(maxd, max(base, (nxt - times[i]) * 0.72)) * scale, 2)
+
+
 def media_ground(sid, ground, start, dur):
     """Reusable BLOCK: full-bleed ground. image -> dimmed image + scrim + Ken-Burns;
     paper -> flat mist/parchment; transparent -> scrim only (root video shows through).
@@ -861,6 +922,57 @@ def media_ground(sid, ground, start, dur):
                     f'style="background:{col};"></div>')
     return frag, tl
 
+def _data_ground(sid, d, start, dur, blk):
+    """Ground layer for a DATA-VIZ block (chart/pie/sankey/funnel/quadrant/cycle/spectrum/scale/spans/
+    venn/connection_board). Default (no `data.ground`): the flat theme page-bg — unchanged behaviour.
+
+    LAYER 3 (ambient ground): when the author gives `data.ground` (a media_ground spec — an image with
+    Ken-Burns, a paper/parchment stock, or transparent-over-root-video), render that living ground BEHIND
+    the data so a long hold isn't a dead flat field. A media ground behind thin lines + numbers WILL wash
+    them out (the @207 vanish bug), so this ALWAYS lays a legibility VEIL in the theme's own surface colour
+    over the media — polarity-correct on any footage (dark themes darken, light themes lighten), because
+    the veil is the same colour the data ink already contrasts with. Author softens it with `ground.dim`
+    (0..1, default 0.6). Returns (frag_list, tl_list) so the caller does `frag, tl = _data_ground(...)`."""
+    g = d.get("ground") if isinstance(d, dict) else None
+    kind = (g or {}).get("kind") if isinstance(g, dict) else None
+    if not g or kind in (None, "color", "flat"):
+        return ([f'<div class="clip blk-{blk}" data-start="{start}" data-duration="{dur}" data-track-index="0" '
+                 f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>'], [])
+    if kind == "image":
+        # built INLINE (not via media_ground) so there is exactly ONE track-1 clip: image on track 0 +
+        # a single legibility VEIL on track 1 in the theme surface colour (polarity-correct — a dark theme
+        # darkens, a light theme lightens — so thin lines/numbers hold on ANY photo). Ken-Burns drifts it.
+        dim = g.get("dim") if g.get("dim") is not None else 0.6
+        try:
+            dim = max(0.0, min(0.92, float(dim)))
+        except (TypeError, ValueError):
+            dim = 0.6
+        f0, f1 = g.get("kenburns") or g.get("kb") or [1.03, 1.10]
+        if f0 in (True, False):                              # kenburns:true → a default drift
+            f0, f1 = (1.03, 1.10)
+        # LEGIBILITY-AWARE VEIL: not a flat wash. Shape it so it's STRONGEST where data marks cluster —
+        # the centre + baseline band (bars rise from the bottom, x-labels + hero numbers sit centre-low) —
+        # and LIGHTEST at the top, so the photo breathes there instead of being uniformly muddied. The floor
+        # `c1` keeps even the edges legible (no un-veiled corner where a far bar/label washes out). Colour is
+        # the theme surface via color-mix (polarity-correct: dark themes darken, light themes lighten).
+        surf = _page_bg()
+        c0 = round(dim * 100)                                # centre/baseline: full requested strength
+        c1 = round(max(0.30, dim * 0.60) * 100)             # top/edges: a legibility floor, image still reads
+        veil = (f"radial-gradient(150% 135% at 50% 68%,"
+                f"color-mix(in srgb, {surf} {c0}%, transparent) 42%,"
+                f"color-mix(in srgb, {surf} {c1}%, transparent) 100%)")
+        frag = [f'<div id="{sid}-dgnd" class="clip blk-{blk} gnd" data-start="{start}" data-duration="{dur}" '
+                f'data-track-index="0" data-layout-allow-overflow '
+                f'style="position:absolute;inset:0;background-image:url(\'{esc(g["src"])}\');"></div>',
+                f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+                f'style="position:absolute;inset:0;background:{veil};pointer-events:none;"></div>']
+        tl = [f'tl.fromTo("#{sid}-dgnd",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});']
+        return frag, tl
+    # paper / parchment / transparent / video: media_ground's own single track-1 layer IS the legibility
+    # ground (an opaque surface for paper, a scrim over the root video for transparent) — no extra veil.
+    return media_ground(sid, g, start, dur)
+
+
 def _register(sid): return "paper" if False else ""
 
 def _grounded(d):
@@ -885,13 +997,15 @@ def stat_lockup(sid, sc):
     if variant != "lead-rail":                      # lead-rail carries the kicker in its body (below)
         frag.append(kicker_html)
     reveal = d.get("reveal")
+    ce = _reveal_ease(d)                                 # reveal CHARACTER ease (data.reveal) — snap/build/…
     lbase = "var(--text)" if reg == "paper" else "#F6F7F6"   # paper ink follows the theme (was cold #2B2D2C)
 
     def _item(i, it):
         """One stat item (number + label + optional delta/underline) -> HTML; its timeline is appended to tl."""
         nid, uid, lid = f"{sid}-n{i}", f"{sid}-u{i}", f"{sid}-l{i}"
         ul = f'<span class="slul" id="{uid}"></span>' if it.get("underline") else ""
-        cue = start + float(it.get("cue", 0.6 + i*0.4))
+        cue = times[i]                                  # narration-synced reveal (spread across the hold; see _reveal_times)
+        cdur = _reveal_dur(times, i, start, dur, base=1.0, maxd=1.8, d=d)   # count-up runs THROUGH its beat (char-scaled)
         # numerals keep their count-up; a reveal style (if set) applies to the LABEL text
         if reveal in REVEALS and reveal != "rise":
             linner, lcls, lattr, ltl = reveal_text(lid, it.get("label", ""), reveal, start, cue + 0.15, dur, base=lbase)
@@ -910,13 +1024,13 @@ def stat_lockup(sid, sc):
         html = f'<div class="slitem"><div class="slnumwrap"><span class="slnum" id="{nid}"></span>{ul}</div>{label_div}{delta_div}</div>'
         if it.get("value") is not None and it.get("from") is None:
             tl.append(f'document.getElementById("{nid}").textContent={json.dumps(str(it["value"]))};')
-            tl.append(f'tl.fromTo("#{nid}",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:0.5,ease:"power4.out"}},{cue});')
+            tl.append(f'tl.fromTo("#{nid}",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:{_reveal_dur(times,i,start,dur,base=0.4,maxd=0.7,d=d)},ease:"{ce}"}},{cue});')
         else:
             pre, suf = json.dumps(it.get("prefix","")), json.dumps(it.get("suffix",""))
             frm, to = float(it.get("from",0)), float(it.get("to",0))
             tl.append(f'(function(){{var el=document.getElementById("{nid}"),st={{v:{frm}}},f=function(n){{return {pre}+Math.round(n)+{suf};}};'
                       f'el.textContent=f({frm});tl.set(el,{{opacity:1}},{cue});'
-                      f'tl.fromTo(st,{{v:{frm}}},{{v:{to},duration:1.4,ease:"power3.out",onUpdate:function(){{el.textContent=f(st.v);}}}},{cue});}})();')
+                      f'tl.fromTo(st,{{v:{frm}}},{{v:{to},duration:{cdur},ease:"{ce}",onUpdate:function(){{el.textContent=f(st.v);}}}},{cue});}})();')
         tl.extend(ltl)
         if delta_div:
             tl.append(f'tl.fromTo("#{did}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.45}},{cue+0.45});')
@@ -925,6 +1039,7 @@ def stat_lockup(sid, sc):
         return html
 
     items = d["items"]
+    times = _reveal_times(len(items), start, dur, _reveal_cues(items, start))   # spread/sync — NOT front-loaded
     if variant == "lead-rail" and items:
         # the lead figure on an accent rail; the kicker (repositioned via CSS) + any further figures beside it
         rail = _item(0, items[0])
@@ -1200,7 +1315,9 @@ def bullet_list(sid, sc):
         tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.3});')
     numbered = bool(d.get("numbered")) or variant == "numbered-rail"   # the rail variant is ordinal by design
     frag.append('<div class="bl-wrap">')
-    for i, it in enumerate(d.get("items", [])):
+    _items = d.get("items", [])
+    times = _reveal_times(len(_items), start, dur, _reveal_cues(_items, start))
+    for i, it in enumerate(_items):
         text = it if isinstance(it, str) else it.get("text", "")
         sub = "" if isinstance(it, str) else it.get("sub", "")
         iid = f"{sid}-i{i}"
@@ -1208,7 +1325,7 @@ def bullet_list(sid, sc):
         mark = f'<span class="bl-num">{i+1:02d}</span>' if numbered else '<span class="bl-mark"></span>'
         frag.append(f'<div class="bl-item" id="{iid}">{mark}'
                     f'<span class="bl-text">{esc(text)}{subhtml}</span></div>')
-        tl.append(f'tl.fromTo("#{iid}",{{opacity:0,x:-14}},{{opacity:1,x:0,duration:0.5,ease:"power2.out"}},{start+0.6+i*0.32});')
+        tl.append(f'tl.fromTo("#{iid}",{{opacity:0,x:-14}},{{opacity:1,x:0,duration:0.5,ease:"power2.out"}},{times[i]:.2f});')
     frag.append('</div></section>')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
@@ -1296,7 +1413,9 @@ def ledger_list(sid, sc):
         frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
     frag.append('<div class="lg-wrap">')
-    for i, row in enumerate(d.get("rows", [])):
+    _rows = d.get("rows", [])
+    times = _reveal_times(len(_rows), start, dur, _reveal_cues(_rows, start))
+    for i, row in enumerate(_rows):
         rid = f"{sid}-r{i}"
         num = row.get("num", f"{i+1:02d}")
         first = " first" if i == 0 else ""
@@ -1304,7 +1423,7 @@ def ledger_list(sid, sc):
                     f'<div class="lg-title">{esc(row.get("title", ""))}</div>'
                     f'<div class="lg-desc">{esc(row.get("desc", ""))}</div>'
                     f'<div class="lg-meta">{esc(row.get("meta", ""))}</div></div>')
-        tl.append(f'tl.fromTo("#{rid}",{{opacity:0,x:-12}},{{opacity:1,x:0,duration:0.5,ease:"power2.out"}},{start+0.5+i*0.18});')
+        tl.append(f'tl.fromTo("#{rid}",{{opacity:0,x:-12}},{{opacity:1,x:0,duration:0.5,ease:"power2.out"}},{times[i]:.2f});')
     frag.append('</div></section>')
     pf, pt = _props_of(sid, sc)
     return g + frag + pf, tl + pt
@@ -1349,8 +1468,9 @@ def geo_map(sid, sc):
         f'tl.fromTo("#{sid}-s",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.6}},{start+2.3});',
     ]
     if routes:   # animate each route arc drawing (strokeDashoffset) + its endpoints/label, staggered
+        rtimes = _reveal_times(len(routes), start, dur, _reveal_cues(routes, start))
         for i in range(len(routes)):
-            cue = start + 1.0 + i * 0.55
+            cue = rtimes[i]
             tl.append(f'(function(){{var p=document.getElementById("{sid}-rt{i}");if(!p)return;var L=p.getTotalLength();'
                       f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
                       f'tl.to(p,{{strokeDashoffset:0,duration:0.9,ease:"power1.inOut"}},{cue:.2f});}})();')
@@ -2320,6 +2440,7 @@ def annotate(sid, sc):
         tl.append(f'tl.fromTo("#{sid}-img",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});')
     svg = [f'<svg class="an-svg" viewBox="0 0 {W} {H}" preserveAspectRatio="none">']
     labels = []
+    times = _reveal_times(len(callouts), start, dur, _reveal_cues(callouts, start))
     for i, co in enumerate(callouts):
         cx, cy = float(co.get("x", 0.5)), float(co.get("y", 0.4))
         px, py = cx * W, cy * H
@@ -2328,7 +2449,7 @@ def annotate(sid, sc):
         lyf = float(co["ly"]) if co.get("ly") is not None else cy
         lxp, lyp = lxf * W, lyf * H
         cid = f"{sid}-c{i}"
-        cue = start + 0.9 + i * 0.55
+        cue = times[i]
         svg.append(f'<line id="{cid}-ln" x1="{px:.0f}" y1="{py:.0f}" x2="{lxp:.0f}" y2="{lyp:.0f}" class="an-line"/>')
         svg.append(f'<circle id="{cid}-dot" cx="{px:.0f}" cy="{py:.0f}" r="9" class="an-dot"/>')
         labels.append(f'<div id="{cid}-lbl" class="an-label {"right" if right else "left"}" '
@@ -2370,9 +2491,7 @@ def quadrant(sid, sc):
     PY = topPad + 40
     PH = H - PY - 132
     cx, cy = PX + PW / 2, PY + PH / 2
-    frag = [f'<div class="clip blk-quadrant" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "quadrant")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     # optional quadrant corner labels (tl/tr/bl/br)
     corners = {"tl": (PX + 24, PY + 20, "l"), "tr": (PX + PW - 24, PY + 20, "r"),
@@ -2406,8 +2525,8 @@ def quadrant(sid, sc):
         hl = " hl" if it.get("hl") else ""
         over.append(f'<div id="{cid}-d" class="qd-item{hl}" style="left:{ix:.0f}px;top:{iy:.0f}px;"></div>')
         over.append(f'<div id="{cid}-l" class="qd-ilabel{hl}" style="left:{ix:.0f}px;top:{iy-26:.0f}px;">{esc(it.get("label",""))}</div>')
-        cue = start + 1.0 + i * 0.32
-        tl.append(f'tl.fromTo("#{cid}-d",{{scale:0}},{{scale:1,duration:0.4,ease:"back.out(2.4)",transformOrigin:"50% 50%"}},{cue});')
+        cue = _reveal_times(len(items), start, dur, _reveal_cues(items, start))[i]
+        tl.append(f'tl.fromTo("#{cid}-d",{{scale:0}},{{scale:1,duration:0.4,ease:"{_reveal_ease(d)}",transformOrigin:"50% 50%"}},{cue});')
         tl.append(f'tl.fromTo("#{cid}-l",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.4}},{cue+0.18});')
     if d.get("title") or d.get("kicker"):
         t, op = d.get("title", ""), d.get("titleHi", "")
@@ -2439,23 +2558,22 @@ def venn(sid, sc):
     else:
         centers = [(cx, cy - R * 0.5), (cx - R * 0.54, cy + R * 0.44), (cx + R * 0.54, cy + R * 0.44)]
         setpos = [(cx, cy - R * 1.05), (cx - R * 0.98, cy + R * 0.86), (cx + R * 0.98, cy + R * 0.86)]
-    frag = [f'<div class="clip blk-venn" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "venn")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
+    times = _reveal_times(len(sets), start, dur, _reveal_cues(sets, start))
     for i in range(n):
         scx, scy = centers[i]
         over.append(f'<div id="{sid}-c{i}" class="vn-circle" style="left:{scx:.0f}px;top:{scy:.0f}px;width:{2*R}px;height:{2*R}px;"></div>')
-        tl.append(f'tl.fromTo("#{sid}-c{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.6,ease:"back.out(1.5)",transformOrigin:"50% 50%"}},{start+0.25+i*0.18});')
+        tl.append(f'tl.fromTo("#{sid}-c{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.6,ease:"{_reveal_ease(d)}",transformOrigin:"50% 50%"}},{times[i]:.2f});')
     for i, s in enumerate(sets):
         lx, ly = setpos[i]
         sub = f'<span class="sk">{esc(s["sub"])}</span>' if s.get("sub") else ""
         over.append(f'<div id="{sid}-l{i}" class="vn-set" style="left:{lx:.0f}px;top:{ly:.0f}px;">{sub}{esc(s.get("label",""))}</div>')
-        tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.45}},{start+0.7+i*0.18});')
+        tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.45}},{min(times[i]+0.35, start+dur-0.3):.2f});')
     if d.get("overlap"):
         oy = cy if n <= 2 else cy + R * 0.12
         over.append(f'<div id="{sid}-ov" class="vn-overlap" style="left:{cx:.0f}px;top:{oy:.0f}px;">{esc(d["overlap"])}</div>')
-        tl.append(f'tl.fromTo("#{sid}-ov",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:0.5,ease:"back.out(2)",transformOrigin:"50% 50%"}},{start+0.7+n*0.18+0.2});')
+        tl.append(f'tl.fromTo("#{sid}-ov",{{opacity:0,scale:0.8}},{{opacity:1,scale:1,duration:0.5,ease:"back.out(2)",transformOrigin:"50% 50%"}},{min(times[-1]+0.6, start+dur-0.2):.2f});')
     if d.get("title") or d.get("kicker"):
         t, op = d.get("title", ""), d.get("titleHi", "")
         html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
@@ -2484,9 +2602,7 @@ def sankey(sid, sc):
     PY = topPad + 30
     PH = H - PY - 110
     SX, TX, NODE = 470, 1330, 26
-    frag = [f'<div class="clip blk-sankey" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "sankey")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     svg = [f'<svg class="sk-svg" viewBox="0 0 {W} {H}" preserveAspectRatio="none">']
     over.append(f'<div id="{sid}-src" class="sk-src" style="left:{SX}px;top:{PY}px;width:{NODE}px;height:{PH}px;"></div>')
@@ -2503,9 +2619,9 @@ def sankey(sid, sc):
         vtxt = f'{t.get("value","")}{unit}'
         over.append(f'<div id="{sid}-tl{i}" class="sk-label" style="left:{TX+NODE+16}px;top:{ty+h/2:.0f}px;">'
                     f'<span class="v">{esc(str(vtxt))}</span><span class="n">{esc(t.get("label",""))}</span></div>')
-        cue = start + 0.7 + i * 0.28
+        cue = _reveal_times(len(targets), start, dur, _reveal_cues(targets, start))[i]
         tl.append(f'tl.fromTo("#{sid}-r{i}",{{opacity:0}},{{opacity:1,duration:0.5}},{cue});')
-        tl.append(f'tl.fromTo("#{sid}-n{i}",{{scaleY:0}},{{scaleY:1,duration:0.4,ease:"power2.out",transformOrigin:"top center"}},{cue});')
+        tl.append(f'tl.fromTo("#{sid}-n{i}",{{scaleY:0}},{{scaleY:1,duration:0.4,ease:"{_reveal_ease(d)}",transformOrigin:"top center"}},{cue});')
         tl.append(f'tl.fromTo("#{sid}-tl{i}",{{opacity:0,x:-6}},{{opacity:1,x:0,duration:0.4}},{cue+0.2});')
         sy += h; ty += h
     svg.append('</svg>')
@@ -2548,9 +2664,7 @@ def scale(sid, sc):
     gap = 90
     tot = sum(2 * r for r in radii) + gap * (len(radii) - 1 if radii else 0)
     x = (W - tot) / 2
-    frag = [f'<div class="clip blk-scale" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "scale")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     centers = []
     for i, it in enumerate(items):
@@ -2562,8 +2676,8 @@ def scale(sid, sc):
         vtxt = f'{it.get("value","")}{unit}'
         over.append(f'<div id="{sid}-l{i}" class="scl-label" style="left:{ccx:.0f}px;top:{baseY+18:.0f}px;">'
                     f'<span class="v">{esc(str(vtxt))}</span><span class="n">{esc(it.get("label",""))}</span></div>')
-        cue = start + 0.5 + i * 0.4
-        tl.append(f'tl.fromTo("#{sid}-c{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.6,ease:"back.out(1.6)",transformOrigin:"50% 100%"}},{cue});')
+        cue = _reveal_times(len(items), start, dur, _reveal_cues(items, start))[i]
+        tl.append(f'tl.fromTo("#{sid}-c{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.6,ease:"{_reveal_ease(d)}",transformOrigin:"50% 100%"}},{cue});')
         tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.3});')
         x += 2 * r + gap
     if d.get("ratio") and radii:
@@ -2602,13 +2716,12 @@ def pie(sid, sc):
     cx, cy = W / 2 - 120, topPad + (H - topPad) / 2 + 6
     R = 296
     r = hole * R
-    frag = [f'<div class="clip blk-pie" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "pie")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     svg = [f'<svg class="pie-svg" viewBox="0 0 {W} {H}">']
     a = -math.pi / 2
     legend = []
+    times = _reveal_times(len(segs), start, dur, _reveal_cues(segs, start))
     for i, s in enumerate(segs):
         f = float(s.get("value", 0)) / total
         a1 = a + f * 2 * math.pi
@@ -2623,21 +2736,21 @@ def pie(sid, sc):
             path = f"M{cx:.1f} {cy:.1f} L{x0:.1f} {y0:.1f} A{R} {R} 0 {large} 1 {x1:.1f} {y1:.1f} Z"
         op = 1.0 if s.get("hl") else max(0.30, 0.88 - i * 0.15)
         svg.append(f'<path id="{sid}-s{i}" d="{path}" fill="var(--accent)" stroke="var(--surface)" stroke-width="3" style="opacity:0;"/>')
-        tl.append(f'tl.fromTo("#{sid}-s{i}",{{opacity:0}},{{opacity:{op:.2f},duration:0.45}},{start+0.35+i*0.16});')
+        tl.append(f'tl.fromTo("#{sid}-s{i}",{{opacity:0}},{{opacity:{op:.2f},duration:0.45,ease:"{_reveal_ease(d)}"}},{times[i]:.2f});')
         legend.append((i, s.get("label", ""), round(f * 100), s.get("hl")))
         a = a1
     svg.append("</svg>")
     over += svg
     if hole and d.get("center"):
         over.append(f'<div id="{sid}-ctr" class="pie-center" style="left:{cx:.0f}px;top:{cy:.0f}px;">{esc(d["center"])}</div>')
-        tl.append(f'tl.fromTo("#{sid}-ctr",{{opacity:0}},{{opacity:1,duration:0.5}},{start+0.35+len(segs)*0.16});')
+        tl.append(f'tl.fromTo("#{sid}-ctr",{{opacity:0}},{{opacity:1,duration:0.5}},{min(times[-1]+0.5, start+dur-0.3):.2f});')
     lx = cx + R + 90
     ly0 = cy - (len(legend) - 1) * 32
     for i, lab, pct, is_hl in legend:
         over.append(f'<div id="{sid}-l{i}" class="pie-leg{" hl" if is_hl else ""}" style="left:{lx:.0f}px;top:{ly0 + i*64:.0f}px;">'
                     f'<span class="sw" style="opacity:{1.0 if is_hl else max(0.30,0.88-i*0.15):.2f};"></span>'
                     f'<span class="pv">{pct}{esc(unit) or "%"}</span><span class="pl">{esc(lab)}</span></div>')
-        tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0,x:-6}},{{opacity:1,x:0,duration:0.4}},{start+0.5+i*0.16});')
+        tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0,x:-6}},{{opacity:1,x:0,duration:0.4}},{times[i]:.2f});')
     if d.get("title") or d.get("kicker"):
         t, op = d.get("title", ""), d.get("titleHi", "")
         html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
@@ -2668,9 +2781,7 @@ def funnel(sid, sc):
     PH = H - PY - 90
     sh = PH / n
     cx = W / 2 - 40
-    frag = [f'<div class="clip blk-funnel" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "funnel")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     svg = [f'<svg class="fn-svg" viewBox="0 0 {W} {H}">']
     for i, s in enumerate(stages):
@@ -2683,8 +2794,8 @@ def funnel(sid, sc):
         svg.append(f'<polygon id="{sid}-p{i}" points="{poly}" fill="var(--accent)" stroke="var(--surface)" stroke-width="3" style="opacity:0;"/>')
         over.append(f'<div id="{sid}-in{i}" class="fn-in" style="left:{cx:.0f}px;top:{(y0+y1)/2:.0f}px;">'
                     f'<span class="fv">{esc(str(stages[i].get("value","")))}{esc(unit)}</span><span class="fl">{esc(s.get("label",""))}</span></div>')
-        cue = start + 0.4 + i * 0.28
-        tl.append(f'tl.fromTo("#{sid}-p{i}",{{opacity:0,y:-14}},{{opacity:{op:.2f},y:0,duration:0.5,ease:"power2.out"}},{cue:.2f});')
+        cue = _reveal_times(len(stages), start, dur, _reveal_cues(stages, start))[i]
+        tl.append(f'tl.fromTo("#{sid}-p{i}",{{opacity:0,y:-14}},{{opacity:{op:.2f},y:0,duration:0.5,ease:"{_reveal_ease(d)}"}},{cue:.2f});')
         tl.append(f'tl.fromTo("#{sid}-in{i}",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.2:.2f});')
     svg.append("</svg>")
     over = [over[0]] + svg + over[1:]
@@ -2715,9 +2826,7 @@ def spectrum(sid, sc):
     topPad = 132 if (d.get("title") or d.get("kicker")) else 0
     PX, PW = 300, W - 600
     cy = topPad + (H - topPad) / 2 + 10
-    frag = [f'<div class="clip blk-spectrum" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "spectrum")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     for zi, z in enumerate(zones):
         zx = PX + float(z.get("x0", 0)) * PW
@@ -2742,8 +2851,8 @@ def spectrum(sid, sc):
         sub = f'<span class="ss">{esc(it["sub"])}</span>' if it.get("sub") else ""
         ly = cy - 128 if up else cy + 60
         over.append(f'<div id="{sid}-l{i}" class="sp-lab{hl}" style="left:{ix:.0f}px;top:{ly:.0f}px;">{esc(it.get("label",""))}{sub}</div>')
-        cue = start + 0.9 + i * 0.3
-        tl.append(f'tl.fromTo("#{sid}-d{i}",{{scale:0}},{{scale:1,duration:0.42,ease:"back.out(2.4)",transformOrigin:"50% 50%"}},{cue:.2f});')
+        cue = _reveal_times(len(items), start, dur, _reveal_cues(items, start))[i]
+        tl.append(f'tl.fromTo("#{sid}-d{i}",{{scale:0}},{{scale:1,duration:0.42,ease:"{_reveal_ease(d)}",transformOrigin:"50% 50%"}},{cue:.2f});')
         tl.append(f'tl.fromTo("#{sid}-st{i}",{{scaleY:0}},{{scaleY:1,duration:0.3,transformOrigin:"{"bottom" if up else "top"} center"}},{cue:.2f});')
         tl.append(f'tl.fromTo("#{sid}-l{i}",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.18:.2f});')
     if d.get("title") or d.get("kicker"):
@@ -2772,9 +2881,7 @@ def cycle(sid, sc):
     topPad = 132 if (d.get("title") or d.get("kicker")) else 0
     cx, cy = W / 2, topPad + (H - topPad) / 2 + 6
     Rr = 300
-    frag = [f'<div class="clip blk-cycle" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "cycle")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     svg = [f'<svg class="cy-svg" viewBox="0 0 {W} {H}"><defs><marker id="{sid}-arw" markerWidth="9" markerHeight="9" '
            f'refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/></marker></defs>']
@@ -2790,9 +2897,13 @@ def cycle(sid, sc):
         x1, y1 = cx + Ra * math.cos(s1), cy + Ra * math.sin(s1)
         svg.append(f'<path id="{sid}-arc{i}" d="M{x0:.1f} {y0:.1f} A{Ra:.0f} {Ra:.0f} 0 0 1 {x1:.1f} {y1:.1f}" '
                    f'class="cy-arc" marker-end="url(#{sid}-arw)"/>')
-        cue = start + 0.6 + i * 0.42
+        cue = _reveal_times(len(steps), start, dur, _reveal_cues(steps, start))[i]
+        # the arrowhead is an SVG marker-end — it paints at the path endpoint even while strokeDashoffset
+        # hides the LINE, so gate the whole path on opacity (0 until its cue) or the markers float alone on
+        # a blank field before their arcs draw (exposed once reveals spread across the window).
         tl.append(f'(function(){{var p=document.getElementById("{sid}-arc{i}"),L=p.getTotalLength();'
-                  f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
+                  f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;p.style.opacity=0;'
+                  f'tl.to(p,{{opacity:1,duration:0.15,ease:"none"}},{cue+0.2:.2f});'
                   f'tl.to(p,{{strokeDashoffset:0,duration:0.4,ease:"power1.out"}},{cue+0.2:.2f});}})();')
     svg.append("</svg>")
     over += svg
@@ -2802,8 +2913,8 @@ def cycle(sid, sc):
         sub = f'<span class="cs">{esc(s["sub"])}</span>' if s.get("sub") else ""
         over.append(f'<div id="{sid}-n{i}" class="cy-node{hl}" style="left:{nx:.0f}px;top:{ny:.0f}px;">'
                     f'<span class="cn">{i+1}</span><span class="cl">{esc(s.get("label",""))}</span>{sub}</div>')
-        cue = start + 0.5 + i * 0.42
-        tl.append(f'tl.fromTo("#{sid}-n{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.45,ease:"back.out(1.8)",transformOrigin:"50% 50%"}},{cue:.2f});')
+        cue = _reveal_times(len(steps), start, dur, _reveal_cues(steps, start))[i]
+        tl.append(f'tl.fromTo("#{sid}-n{i}",{{scale:0,opacity:0}},{{scale:1,opacity:1,duration:0.45,ease:"{_reveal_ease(d)}",transformOrigin:"50% 50%"}},{cue:.2f});')
     if d.get("center"):
         over.append(f'<div id="{sid}-ctr" class="cy-center" style="left:{cx:.0f}px;top:{cy:.0f}px;">{esc(d["center"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-ctr",{{opacity:0,scale:0.85}},{{opacity:1,scale:1,duration:0.5,transformOrigin:"50% 50%"}},{start+0.4});')
@@ -2967,24 +3078,25 @@ def connection_board(sid, sc):
         else:
             ang = (-90 + i * 360 / n) * math.pi / 180
             pos[nd.get("id", i)] = (cx + Rr * math.cos(ang), cy + Rr * math.sin(ang) * 0.82)
-    frag = [f'<div class="clip blk-connection_board" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "connection_board")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     svg = [f'<svg class="cb-svg" viewBox="0 0 {W} {H}">']
+    ntimes = _reveal_times(len(nodes), start, dur, _reveal_cues(nodes, start))
+    nidx = {nd.get("id", i): i for i, nd in enumerate(nodes)}
     for li, lk in enumerate(links):
         p0 = pos.get(lk.get("from"))
         p1 = pos.get(lk.get("to"))
         if not p0 or not p1:
             continue
+        lt = round(max(ntimes[nidx.get(lk.get("from"), 0)], ntimes[nidx.get(lk.get("to"), 0)]) + 0.2, 2)
         svg.append(f'<line id="{sid}-lk{li}" x1="{p0[0]:.0f}" y1="{p0[1]:.0f}" x2="{p1[0]:.0f}" y2="{p1[1]:.0f}" class="cb-link"/>')
         tl.append(f'(function(){{var p=document.getElementById("{sid}-lk{li}"),L=p.getTotalLength();'
                   f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
-                  f'tl.to(p,{{strokeDashoffset:0,duration:0.5,ease:"power1.out"}},{start+0.3+li*0.12:.2f});}})();')
+                  f'tl.to(p,{{strokeDashoffset:0,duration:0.5,ease:"power1.out"}},{lt:.2f});}})();')
         if lk.get("label"):
             mx, my = (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2
             over.append(f'<div id="{sid}-ll{li}" class="cb-llab" style="left:{mx:.0f}px;top:{my:.0f}px;">{esc(lk["label"])}</div>')
-            tl.append(f'tl.fromTo("#{sid}-ll{li}",{{opacity:0}},{{opacity:1,duration:0.3}},{start+0.7+li*0.12:.2f});')
+            tl.append(f'tl.fromTo("#{sid}-ll{li}",{{opacity:0}},{{opacity:1,duration:0.3}},{min(lt+0.3, start+dur-0.2):.2f});')
     svg.append("</svg>")
     over += svg
     for i, nd in enumerate(nodes):
@@ -2992,7 +3104,7 @@ def connection_board(sid, sc):
         hl = " hl" if nd.get("hl") else ""
         s = f'<span class="cbs">{esc(nd["sub"])}</span>' if nd.get("sub") else ""
         over.append(f'<div id="{sid}-n{i}" class="cb-node{hl}" style="left:{nx:.0f}px;top:{ny:.0f}px;"><span class="cbl">{esc(nd.get("label",""))}</span>{s}</div>')
-        tl.append(f'tl.fromTo("#{sid}-n{i}",{{opacity:0,scale:0.6}},{{opacity:1,scale:1,duration:0.42,ease:"back.out(1.8)",transformOrigin:"50% 50%"}},{start+0.4+i*0.14:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-n{i}",{{opacity:0,scale:0.6}},{{opacity:1,scale:1,duration:0.42,ease:"{_reveal_ease(d)}",transformOrigin:"50% 50%"}},{ntimes[i]:.2f});')
     if d.get("title") or d.get("kicker"):
         t, op = d.get("title", ""), d.get("titleHi", "")
         html_t = (f'{esc(t.split(op,1)[0])}<span class="hl">{esc(op)}</span>{esc(t.split(op,1)[1])}' if op and op in t else esc(t))
@@ -3026,9 +3138,7 @@ def spans(sid, sc):
     rowh = min(96, (H - PY - 130) / n)
     def X(t):
         return PX + (float(t) - mn) / span * PW
-    frag = [f'<div class="clip blk-spans" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{esc(_page_bg())};"></div>']
-    tl = []
+    frag, tl = _data_ground(sid, d, start, dur, "spans")
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" style="position:absolute;inset:0;">']
     ticks = d.get("ticks") or [mn + span * f for f in (0, 0.25, 0.5, 0.75, 1.0)]
     baseY = PY + n * rowh + 18
@@ -3042,8 +3152,8 @@ def spans(sid, sc):
         hl = " hl" if s.get("hl") else ""
         over.append(f'<div id="{sid}-sp{i}" class="spn-bar{hl}" style="left:{x0:.0f}px;top:{y:.0f}px;width:{max(8,x1-x0):.0f}px;height:{rowh-16:.0f}px;"></div>')
         over.append(f'<div id="{sid}-sl{i}" class="spn-lab{hl}" style="left:{x0+14:.0f}px;top:{y+ (rowh-16)/2:.0f}px;">{esc(s.get("label",""))}</div>')
-        cue = start + 0.4 + i * 0.2
-        tl.append(f'tl.fromTo("#{sid}-sp{i}",{{scaleX:0}},{{scaleX:1,duration:0.6,ease:"power3.out",transformOrigin:"left center"}},{cue:.2f});')
+        cue = _reveal_times(len(sp), start, dur, _reveal_cues(sp, start))[i]
+        tl.append(f'tl.fromTo("#{sid}-sp{i}",{{scaleX:0}},{{scaleX:1,duration:0.6,ease:"{_reveal_ease(d)}",transformOrigin:"left center"}},{cue:.2f});')
         tl.append(f'tl.fromTo("#{sid}-sl{i}",{{opacity:0}},{{opacity:1,duration:0.4}},{cue+0.3:.2f});')
     if d.get("title") or d.get("kicker"):
         t, op = d.get("title", ""), d.get("titleHi", "")
@@ -3607,6 +3717,7 @@ def chart(sid, sc):
     data: {type?(bar|line|waterfall), series:[{label, value, total?(waterfall: a full bar from 0)}],
            title?, titleHi?, kicker?, prefix?, suffix?, ymax?, highlight?(bar/line: int index to emphasise)}."""
     d, start, dur = sc["data"], sc["start"], sc["dur"]
+    ce = _reveal_ease(d)                                 # reveal CHARACTER ease (data.reveal_char)
     series = d.get("series", [])
     n = max(1, len(series))
     typ = d.get("type", "bar")
@@ -3616,11 +3727,9 @@ def chart(sid, sc):
     hl = d.get("highlight")
     hl = int(hl) if isinstance(hl, (int, float)) and 0 <= int(hl) < n else None
     PX, PW, BASE, PH = 210, 1500, 190, 600         # plot left, width, baseline (from bottom), max height
-    frag = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="0" '
-            f'style="position:absolute;inset:0;background:{_page_bg()};"></div>']
+    frag, tl = _data_ground(sid, d, start, dur, "chart")
     world = [f'<section class="clip chart" data-start="{start}" data-duration="{dur}" data-track-index="2" '
              f'style="position:absolute;inset:0;">']
-    tl = []
     if d.get("kicker"):
         world.append(f'<div id="{sid}-k" class="ch-kicker">{esc(d["kicker"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start + 0.1});')
@@ -3634,6 +3743,7 @@ def chart(sid, sc):
     for g in range(1, 4):
         world.append(f'<div class="ch-grid" style="left:{PX - 20}px;bottom:{BASE + PH * g / 3:.0f}px;width:{PW + 40}px;"></div>')
     slot = PW / n
+    times = _reveal_times(n, start, dur, _reveal_cues(series, start))   # spread/sync — NOT front-loaded in 1.3s
 
     if typ == "line":
         step = PW / max(1, n - 1)
@@ -3641,14 +3751,15 @@ def chart(sid, sc):
         dpath = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in pts)
         world.append(f'<svg id="{sid}-svg" class="ch-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none">'
                      f'<path id="{sid}-line" d="{dpath}" fill="none"/></svg>')
+        ldur = round(max(1.2, times[-1] - times[0] + 0.5), 2)   # the line draws ACROSS the reveal window (tracks the points)
         tl.append(f'(function(){{var p=document.getElementById("{sid}-line"),L=p.getTotalLength();'
                   f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
-                  f'tl.fromTo(p,{{strokeDashoffset:L}},{{strokeDashoffset:0,duration:1.5,ease:"power2.inOut"}},{start + 0.5});}})();')
+                  f'tl.fromTo(p,{{strokeDashoffset:L}},{{strokeDashoffset:0,duration:{ldur},ease:"power1.inOut"}},{times[0]:.2f});}})();')
         for i, (x, y) in enumerate(pts):
             world.append(f'<div id="{sid}-dot{i}" class="ch-dot" style="left:{x:.0f}px;top:{y:.0f}px;"></div>')
             world.append(f'<div id="{sid}-v{i}" class="ch-val" style="left:{x - slot / 2:.0f}px;top:{y - 60:.0f}px;width:{slot:.0f}px;">{esc(pre)}{_num(vals[i])}{esc(suf)}</div>')
             world.append(f'<div class="ch-xlab" style="left:{x - slot / 2:.0f}px;bottom:{BASE - 58:.0f}px;width:{slot:.0f}px;">{esc(series[i].get("label", ""))}</div>')
-            cue = start + 0.6 + i * (1.3 / max(1, n - 1))
+            cue = times[i]
             tl.append(f'tl.fromTo("#{sid}-dot{i}",{{scale:0}},{{scale:1,duration:0.4,ease:"back.out(2)"}},{cue:.2f});')
             tl.append(f'tl.fromTo("#{sid}-v{i}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.4}},{cue + 0.1:.2f});')
     elif typ == "waterfall":   # cumulative +/- bars floating at the running total (a revenue/budget bridge)
@@ -3675,8 +3786,8 @@ def chart(sid, sc):
             sign = "" if istotal else ("+" if v >= 0 else "−")
             world.append(f'<div id="{sid}-v{i}" class="ch-val" style="left:{x:.0f}px;bottom:{BASE + hi/wymax*PH + 14:.0f}px;width:{bw:.0f}px;">{sign}{esc(pre)}{_num(abs(v))}{esc(suf)}</div>')
             world.append(f'<div class="ch-xlab" style="left:{x:.0f}px;bottom:{BASE - 58:.0f}px;width:{bw:.0f}px;">{esc(series[i].get("label", ""))}</div>')
-            cue = start + 0.5 + i * (1.3 / n)
-            tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:0.55,ease:"power3.out"}},{cue:.2f});')
+            cue = times[i]
+            tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:{_reveal_dur(times,i,start,dur,base=0.5,maxd=0.9,d=d)},ease:"{ce}"}},{cue:.2f});')
             tl.append(f'tl.fromTo("#{sid}-v{i}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.4}},{cue + 0.3:.2f});')
             prev_top = (hi if v >= 0 else lo) / wymax * PH if not istotal else None
     else:  # bar
@@ -3688,8 +3799,8 @@ def chart(sid, sc):
             world.append(f'<div id="{sid}-b{i}" class="ch-bar" style="left:{x:.0f}px;bottom:{BASE}px;width:{bw:.0f}px;height:{h:.0f}px;background:{fill};"></div>')
             world.append(f'<div id="{sid}-v{i}" class="ch-val" style="left:{x:.0f}px;bottom:{BASE + h + 14:.0f}px;width:{bw:.0f}px;">{esc(pre)}{_num(vals[i])}{esc(suf)}</div>')
             world.append(f'<div class="ch-xlab" style="left:{x:.0f}px;bottom:{BASE - 58:.0f}px;width:{bw:.0f}px;">{esc(s.get("label", ""))}</div>')
-            cue = start + 0.5 + i * (1.3 / n)
-            tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:0.6,ease:"power3.out"}},{cue:.2f});')
+            cue = times[i]
+            tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:{_reveal_dur(times,i,start,dur,base=0.55,maxd=0.95,d=d)},ease:"{ce}"}},{cue:.2f});')
             tl.append(f'tl.fromTo("#{sid}-v{i}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.4}},{cue + 0.35:.2f});')
     world.append('</section>')
     return frag + world, tl

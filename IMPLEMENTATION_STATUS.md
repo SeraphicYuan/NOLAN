@@ -29,6 +29,44 @@ stinger radio-cuba->Stingers-and-Stabs, tension-drone ScaryViolins->Dark-Piano, 
 ambience, machine-hum lights-flicker->Electricity; removed a scream mis-filed as a bed). 120 curated.
 See `docs/SOUND_DESIGN.md` (roadmap: ducking ✅).
 
+## Visual-lag fix + reveal-character module (2026-07-20)
+
+**Visual drift** (user: "3:13 VO says 43% but it shows at 3:33"): the video total matched the VO, so no
+global drift — the lag was WITHIN a frame. Root cause: a scene anchored to a CLOSING phrase (04-bill s3
+"It drinks a city" anchored to "santa cruz", spoken 18s after its topic opened) placed late, so the
+PREVIOUS scene overran the whole water segment; and s3/s4 were mis-ORDERED vs narration. Two fixes:
+- **Content-time placement** (`sync._content_time` + `_resolve_scene_starts`): a scene is placed at the
+  EARLIER of its explicit anchor and where its DISTINCTIVE content (a word occurring once in the frame,
+  len≥5, number-aware) first surfaces — auto-correcting a late/closing anchor. Floor + anchor-min protect
+  it. On the essay, s3 auto-corrected 44.4s→35.1s; 0 visual-lag flags after.
+- **Visual-lag lint** (`sync._visual_lag_flags`, in `sync --report`): flags LAG (scene placed ≫ its
+  content) and MIS-ORDER (a scene's topic narrated entirely before its predecessor's — placement can't fix
+  without a spec reorder). Requires 2-word corroboration to avoid polysemy false-flags ('land').
+- Essay fix: reordered 04-bill so the 43% water-stress scene precedes the Arizona campus + corrected both
+  anchors. The 43% visual now lands at local 30.3s (= 3:13 absolute), on the word.
+
+**Sync HARDENING (A/B/C — so this class of drift can't ship):**
+- **C — per-scene containment (`_resolve_scene_starts` rewrite):** placement was SEQUENTIAL (each scene's
+  search floored at the previous scene's placement), so one bad anchor cascaded onto every later scene.
+  Now each scene's OWN time is computed INDEPENDENTLY (earlier of anchor / distinctive content), and the
+  scenes whose times form the longest strictly-increasing run (an O(n²) LIS) are TRUSTED; a scene whose
+  time breaks that order is an OUTLIER — isolated + interpolated to its own window, never dragging its
+  neighbours. A mis-sync now stays one scene wide (worst case) instead of accumulating. (User's suggestion.)
+- **A — pre-render VISUAL-LAG GATE in the finish DAG (step 2c):** `sync.sync_gate_report` surfaces the
+  visual-lag/mis-order + late-anchor flags right after word-sync, BEFORE the render — so drift is caught by
+  the pipeline, not by a human watching the output (which is how the 43% bug was found).
+- **B — anchor gate:** sync-time `_late_anchor_flags` warns when a scene's anchor resolves ≫ its content
+  (a late/closing phrase → re-anchor the opening); author-time `anchor_warnings` flags number-leading
+  anchors statically. Both surfaced in `sync --report` + the DAG gate + `author.py --validate-only`.
+
+**Reveal-character MODULE** (user: make it a proper small module wired into authoring): extracted the pool
+from an inline dict in compose.py to `bridge/reveal_chars.py` — the SINGLE SOURCE OF TRUTH (registry +
+`ease`/`dur_scale`/`resolve`/`is_valid`/`suggest`). compose.py imports it (consumes in all 12 blocks);
+catalog `reveal_chars` mirrors it (check_catalog parity); `author.py` validates `data.reveal_char` AND
+suggests a fitting character at authoring time via `suggest()` (meaning→motion: line/waterfall→build,
+single stark number→snap, hl punchline→stamp, crowd→drift, else settle). Adding a character = one entry
+in the module → auto-appears in the catalog + guarded by the parity test.
+
 ## Reveal-sync program — 6 craft/structure improvements (2026-07-20)
 
 Follow-on to the reveal-sync fix below; six high-conviction gaps closed, tested each step:

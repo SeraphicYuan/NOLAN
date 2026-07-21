@@ -104,6 +104,61 @@ A self-contained artefact presented cleanly within a margin frame.
 - **Balance / density**: symmetric · generous
 - **Blocks**: chart, code, diagram, document
 
+## timeline
+
+A sequence of events or steps connected along a spine, with directional flow.
+
+- **When**: the beat walks a SEQUENCE — a chronology, a history, a process, milestones, 'then… then… then', how-it-works steps.
+- **Not for**: unordered items (use swiss-grid), a two-way comparison (use split-screen), or a single moment (use centered-hero).
+- **Serves beats**: chronology, history, process, milestones, sequence, how-it-works, steps
+- **Layout**: a spine (horizontal left→right or vertical top→bottom) with a node at each event; year/label callouts sit off the spine, reveals walking the spine in order.
+- **Balance / density**: sequential · normal
+- **Blocks**: timeline, spans
+
+## ledger
+
+A dense hairline-separated row-list — ordinal, title, description, meta per row.
+
+- **When**: a table of contents, an index, an agenda, a catalogue, a chaptered list of items.
+- **Not for**: a short bulleted list (use bullet_list / editorial-column) or 2D item cards (use swiss-grid).
+- **Serves beats**: index, toc, agenda, catalogue, ledger, chapters
+- **Layout**: rows stacked full-width, each a numeral + title + description + meta, separated by hairlines under a heavier top rule.
+- **Balance / density**: asymmetric · tight
+- **Blocks**: ledger
+
+## comparison-table
+
+A tabular matrix — options across the top, criteria down the side, cells comparing them.
+
+- **When**: a structured many-way comparison: options × features, a spec table, a yes/partial/no matrix.
+- **Not for**: a two-way this-vs-that (use split-screen) or a uniform item grid (use swiss-grid).
+- **Serves beats**: comparison, matrix, spec-table, feature-grid
+- **Layout**: a header row of column labels over a heavier rule, row-labels down the left, cells (chips/values) on the grid; one column may be highlighted as 'ours'.
+- **Balance / density**: symmetric · tight
+- **Blocks**: comparison_table
+
+## quadrant
+
+A two-axis positioning plot — two labelled dimensions cross into four quadrants; items sit by their (x,y) values.
+
+- **When**: positioning things on TWO dimensions at once — effort vs impact, cost vs quality, risk vs reward, a 2×2 matrix, mapping trade-offs.
+- **Not for**: a single ranking or list (use ledger/bullet_list), a time sequence (timeline), a tabular matrix of discrete options+criteria (comparison-table), a one-axis scale (stat).
+- **Serves beats**: matrix, positioning, trade-off, two-by-two, landscape
+- **Layout**: a centred plot box; two axes crossing at the middle (x horizontal, y vertical) with end labels; items placed by (x,y), corner labels naming each quadrant.
+- **Balance / density**: symmetric · normal
+- **Blocks**: quadrant
+
+## asymmetric-hero
+
+A rule-of-thirds hero — the subject fills two thirds, the title breathes in the opposite negative space (the cinematic opening / chapter card).
+
+- **When**: a filmic opening, a chapter/section card, a portrait or establishing shot where one subject and a short title share the frame asymmetrically.
+- **Not for**: a symmetric centred idea (use centered-hero), a running reading column (editorial-column), a two-item contrast (split-screen), a data device.
+- **Serves beats**: opening, chapter, portrait, establishing, hero
+- **Layout**: the subject occupies ~two thirds of the frame; the title sits in the lower third of the OPPOSITE side over a directional scrim.
+- **Balance / density**: asymmetric · airy
+- **Blocks**: hero
+
 ## Growing this umbrella
 
 Add an archetype ONLY when a real beat can't be expressed by the existing set (keep it small + orthogonal). A new archetype needs: a registry entry (intent/when_to_use/serves_beats/anchor/blocks), a `## <id>` heading here, and — ideally — a promoted exemplar. `validate_themes.py` enforces theme↔registry parity; `tests/test_composition.py` + `tests/test_umbrella_skills.py` enforce the rest.
