@@ -26,6 +26,26 @@ dropdown, collapsed sources, Delete + dev controls into Advanced, gated build-vi
 Tests +~15 (test_script_review, test_spine_structures). Validated live end-to-end (homer-auto full-auto,
 ~15min: draft→review→revise, agents stopped cleanly). Docs: docs/SCRIPT_REVIEW_PROGRAM.md.
 
+## Block-choice gate — provably-wrong blocks rejected at authoring (2026-07-21)
+
+Turned the block-SELECTION critic from a printed advisory into a real gate, and fixed the structural
+rule that let a flow masquerade as a web (the "Ownership hides" / "Nothing new" exhibits — a
+connection_board that was two chains converging, and a `spans` block of dated events 60 years apart).
+- `sync._cb_is_tree` now tests the UNDIRECTED graph (union-find): a connection_board is a genuine WEB
+  only if it has an undirected CYCLE (a mutual/back-reference); a tree/chain/CONVERGENCE (in-degree ≥2
+  but acyclic undirected — the old directed-in-degree test mis-passed it) is a FLOW → `diagram`.
+- `sync._selection_mismatch` — the PROVABLE, gate-worthy subset (flow-board, non-overlapping spans,
+  1-value chart, <2-slice pie, <2-set venn), split out from `_selection_advice` (which keeps the soft
+  sparse-hold pacing advisory). Single source of truth: the sync report, the authoring advisory, and
+  the gate all read these same rules.
+- `author.py` validate_spec REJECTS a mismatch at authoring (propose→gate→accept), overridable per-scene
+  with `data.block_ok: true`. `AUTHOR_PROMPT.md` gained a structure-based decision guide (web vs flow,
+  spans vs timeline, chart vs stat, pie/venn/funnel/sankey) with the anti-patterns, noting the gate.
+- Re-authored the two exhibits with the gate clean: 05-voted/s3 → `diagram` (converging ownership flow),
+  s4 → `timeline` (Disney→Google→Meta→OpenAI). Verified across both essays: catches EXACTLY the two
+  datacenter exhibits, 0 false-flags across ~156 scenes, sparse-holds stay soft; a genuine cyclic web /
+  overlapping spans / 3-bar chart pass. Tests: `tests/test_block_choice_gate.py` (4); 60 author/sync green.
+
 ## Scene-timing robustness — fuzzy content-window matcher + hard scene gate (2026-07-21)
 
 Closed the residual text-lag class (a scene appearing seconds after its narration; the 7:31/07-close

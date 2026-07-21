@@ -16,6 +16,23 @@ single most important rule: **prefer a composer template; only go bespoke when n
      each template's `when_to_use`).
    - object-as-evidence → attach a `prop_cutout` (`data.props`);  a full-bleed ground (image /
      paper / transparent-over-root-video) → set `data.ground`.
+2b. **Relational & data-viz blocks — pick by the data's STRUCTURE, not its vibe. These are GATED**
+    (`author.py` REJECTS a provably-wrong choice — an "empty comparison"): a block whose data can't be
+    what the block is *for* fails the build. Override a deliberate exception with `data.block_ok: true`
+    (and say why in the beat). The distinctions the gate enforces — get them right up front:
+    - **`connection_board` = a mutual WEB** — entities with cross-links / back-references / a cycle (A
+      cites B, B cites A; a citation graph). A **flow / hierarchy / convergence** (parent→child; two
+      chains meeting one sink: Google→shell→land, Meta→shell→land) is **`diagram`**, NOT a board — a
+      board with no undirected cycle is rejected. A dated chain of events → **`timeline`**.
+    - **`spans` = COEXISTING periods that OVERLAP on the axis** (things running at the same time). Dated
+      events that DON'T overlap (Disney 1965 · Google 2018 · OpenAI 2024) are a **`timeline`** — spans
+      with zero overlap is rejected.
+    - **`chart` = 3+ comparable bars/points.** ONE value is a **`stat`** (rejected as a chart).
+    - **`pie` = parts of ONE whole, ≥2 slices.** One share is a **`stat`**.
+    - **`venn` = ≥2 sets with a real overlap.** Fewer is a **`stat`/`statement`**.
+    - **`funnel`** = monotonically shrinking stages;  **`sankey`** = a quantified flow that SPLITS
+      (needs real per-branch weights — invented weights fail the number-provenance gate; source them
+      or use `bullet_list`);  **`cycle`** = a closed loop of steps.
 3. **Choose the layout `variant` (this is where variety + theme-coherence come from).** The theme
    declares a COMPOSITION DIALECT and each variant-capable block (`stat`, `statement`, `bullet_list`,
    `pull_quote`, `ledger`, `comparison_table`, `timeline`, `comparison`) offers arrangement variants

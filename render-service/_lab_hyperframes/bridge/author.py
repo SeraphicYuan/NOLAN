@@ -149,6 +149,20 @@ def validate_spec(spec):
                     if st not in ("text", "stat"):
                         errs.append(f"{fid}/{sid} (juxtaposition): {sk}.type {st!r} — sides must be text|stat. "
                                     f"For an image/video contrast use `comparison`.")
+            # BLOCK-CHOICE GATE (#Track2): reject a PROVABLY-wrong block — an 'empty comparison' whose data
+            # structurally can't be what the block is for (a pie with one slice, non-overlapping spans, a
+            # connection_board that is a flow not a web). Deterministic; the author overrides a knowing
+            # exception per-scene with data.block_ok=true. SINGLE source of truth (same rules as the sync
+            # report + the authoring advisory): nolan.hyperframes.sync._selection_mismatch.
+            if not d.get("block_ok"):
+                try:
+                    from nolan.hyperframes.sync import _selection_mismatch
+                    mm = _selection_mismatch(sc)
+                    if mm:
+                        errs.append(f"{fid}/{sid} ({t}): BLOCK MISMATCH — {mm} "
+                                    f"Switch the block, or set data.block_ok=true to override with a reason.")
+                except ImportError:
+                    pass                                        # bare bridge (no nolan) — the sync report catches it downstream
     return errs
 
 

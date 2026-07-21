@@ -312,36 +312,36 @@ def _retime_lines(sc: Dict, d: Dict, words) -> int:
 
 
 def _cb_is_tree(nodes, links) -> bool:
-    """A connection_board whose links form a TREE/CHAIN/FOREST (every node has ≤1 parent, no cross-links,
-    no cycle) — the shape connection_board is NOT for (a web needs cross-links). Detected structurally:
-    max in-degree ≤ 1 and no directed cycle."""
-    if not links:
+    """A connection_board whose links form a FOREST when UNDIRECTED (a tree / chain / convergence — no
+    undirected cycle) — NOT the shape connection_board is for. A genuine relationship WEB has at least one
+    undirected cycle: a mutual/back-reference (a↔b) or two paths meeting (a→b, a→c, b→c). The OLD test keyed
+    on directed IN-degree ('two parents ⇒ a web'), which mis-passed a DAG where two chains converge on one
+    sink (Google→shell→land, Meta→shell→land: land has in-degree 2 but the graph is undirected-acyclic — a
+    FLOW, not a web) — the 'Ownership hides' exhibit. Union-find: an edge joining two already-connected nodes
+    closes an undirected cycle ⇒ web (False); no cycle ⇒ forest/flow ⇒ True (connection_board is wrong)."""
+    edges = [(lk.get("from"), lk.get("to")) for lk in (links or [])
+             if lk.get("from") is not None and lk.get("to") is not None]
+    if not edges:
         return False
-    indeg, adj = {}, {}
-    for lk in links:
-        f, t = lk.get("from"), lk.get("to")
-        if f is None or t is None:
-            continue
-        indeg[t] = indeg.get(t, 0) + 1
-        adj.setdefault(f, []).append(t)
-    if indeg and max(indeg.values()) >= 2:
-        return False                                     # a node with two parents ⇒ genuine cross-link
-    # detect a cycle (a web can loop; a tree/chain can't) via DFS
-    WHITE, GREY, BLACK = 0, 1, 2
-    color = {}
+    parent = {}
 
-    def has_cycle(u):
-        color[u] = GREY
-        for v in adj.get(u, []):
-            if color.get(v, WHITE) == GREY or (color.get(v, WHITE) == WHITE and has_cycle(v)):
-                return True
-        color[u] = BLACK
-        return False
+    def find(x):
+        parent.setdefault(x, x)
+        root = x
+        while parent[root] != root:
+            root = parent[root]
+        while parent[x] != root:                          # path-compress
+            parent[x], x = root, parent[x]
+        return root
 
-    for u in list(adj):
-        if color.get(u, WHITE) == WHITE and has_cycle(u):
-            return False
-    return True                                          # ≤1 parent per node + acyclic ⇒ tree/chain/forest
+    for a, b in edges:
+        if a == b:
+            return False                                  # a self-loop is a (degenerate) cycle ⇒ don't reclassify
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return False                                  # this edge closes an undirected cycle ⇒ a genuine web
+        parent[ra] = rb
+    return True                                           # no undirected cycle ⇒ tree/chain/convergence ⇒ not a web
 
 
 def _spans_overlap(spans) -> bool:
@@ -384,23 +384,40 @@ def _has_element_anchor(d: Dict) -> bool:
     return False
 
 
-def _selection_advice(sc: Dict) -> Optional[str]:
-    """ADVISORY (never a gate): a STRUCTURAL sign the beat picked the wrong block, OR a sparse data block
-    stranded on a long hold. Editorial judgement stays with the author; this only catches shapes that are
-    provably a mismatch or a guaranteed-stale hold (the acid-test 'poor block choice / reads static' class).
-    Returns a short suggestion or None."""
+def _selection_mismatch(sc: Dict) -> Optional[str]:
+    """The PROVABLE block-choice mismatches — a block whose data structurally CANNOT be what the block is
+    FOR (an 'empty comparison': a pie with one slice, a spans with no overlap, a connection_board that is a
+    flow not a web). These are deterministic and gate-worthy — `author.py`'s validate_spec REJECTS them at
+    authoring (override per-scene with `data.block_ok: true` + a reason). Kept DISTINCT from the SOFT
+    advisories in `_selection_advice` (a sparse block on a long hold), which are pacing judgement calls, not
+    wrong-block facts. Single source of truth — the sync report, the authoring advisory, and the gate all
+    read these same rules. Returns the mismatch reason (with the block to use instead) or None."""
     t, d = sc.get("type"), (sc.get("data", {}) or {})
     if t == "connection_board" and _cb_is_tree(d.get("nodes") or [], d.get("links") or []):
-        return ("links form a TREE/CHAIN (≤1 parent per node, no cross-links) — connection_board is for a "
-                "WEB. Use `diagram` (hierarchy/flow) or `timeline`.")
+        return ("its links form a TREE/CHAIN/CONVERGENCE (no undirected cycle) — connection_board is for a "
+                "mutual WEB. Use `diagram` (flow / hierarchy) or `timeline`.")
     if t == "spans" and len(d.get("spans") or []) >= 2 and not _spans_overlap(d.get("spans")):
-        return "none of the duration bars OVERLAP — `spans` is for coexisting periods; a `timeline` fits a pure sequence."
+        return ("none of the duration bars OVERLAP — `spans` shows COEXISTING periods; a dated sequence is a "
+                "`timeline`.")
     if t == "chart" and len(d.get("series") or []) == 1:
         return "a chart of ONE value is a `stat`; charts want 3+ comparable bars/points."
     if t == "pie" and len(d.get("segments") or []) < 2:
         return "a pie needs ≥2 slices to show parts-of-a-whole; one share is a `stat`."
     if t == "venn" and len(d.get("sets") or []) < 2:
         return "a venn needs ≥2 sets to show an overlap; use `stat`/`statement`."
+    return None
+
+
+def _selection_advice(sc: Dict) -> Optional[str]:
+    """ADVISORY (never a gate): a STRUCTURAL sign the beat picked the wrong block, OR a sparse data block
+    stranded on a long hold. Editorial judgement stays with the author; this only catches shapes that are
+    provably a mismatch or a guaranteed-stale hold (the acid-test 'poor block choice / reads static' class).
+    Returns a short suggestion or None. Superset of `_selection_mismatch` (the gate-worthy subset) + the
+    soft sparse-hold pacing advisory."""
+    mm = _selection_mismatch(sc)                             # the provable, gate-worthy mismatches first
+    if mm:
+        return mm
+    t, d = sc.get("type"), (sc.get("data", {}) or {})
     # sparse-but-long: even a perfectly spread reveal can't fill a long window with few elements. The
     # composer caps spread so an un-anchored element never waits absurdly long, so a 2-item block on a 20s
     # hold reveals in ~3s then reads STATIC. This is editorial, not motion (the acid-test's real lesson):
