@@ -51,6 +51,20 @@ def test_stacked_kinetic_words_flagged_as_overlap():
     assert any(x.kind == "overlap" for x in v)
 
 
+def test_full_height_wrapper_is_not_a_phantom_caption_collision():
+    # a `left:x;top:0;bottom:0` flex column WRAPS its text (children carry it, vertically centered);
+    # its box bottom reads y=1.0 but that's the CONTAINER edge, not content dipping into the caption
+    # band. The linter must skip the wrapper (measure its children) — else every such column is a
+    # phantom collision (the homer regression). The safely-placed inner text must NOT flag.
+    v = L.lint_raw_scene([
+        '<div style="position:absolute;left:2cqw;top:0;bottom:0;display:flex;align-items:center">'
+        '<div style="position:absolute;left:0;top:40cqh;width:30cqw;height:8cqh">Essay title</div>'
+        '</div>'],
+        "editorial-column", captions_on=True)
+    assert not any(x.kind == "caption_collision" for x in v), \
+        "full-height wrapper column is a phantom, not a caption collision"
+
+
 def test_caption_collision_gated_on_captions_flag():
     low = ['<div style="position:absolute;left:8cqw;bottom:8cqh;width:30cqw;height:12cqh">low text</div>']
     on = L.lint_raw_scene(low, "editorial-column", captions_on=True)

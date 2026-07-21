@@ -427,6 +427,13 @@ def _measure(root: El, class_rules: Optional[Dict[str, Dict[str, str]]] = None) 
             continue
         if b.covers_axis(_FULLSPAN):          # a full-span wrapper — its children carry the content
             continue
+        # a full-HEIGHT column that WRAPS text-bearing children is a flex/flow WRAPPER too — its box
+        # edges are the CONTAINER's, not where the text sits (a `left:x;top:0;bottom:0` column reports
+        # bottom y=1.0 while its text is vertically centered), so measuring it yields PHANTOM caption
+        # hits. Skip it — its children are measured on their own. Gated on child-text so a genuine
+        # placed label is never skipped (a real bottom label is SHORT, not full-height — e.g. `.cmp-txt`).
+        if b.h >= _FULLSPAN and any(_own_text(c) for c in el.children):
+            continue
         if _inside_artifact(el):              # chart/diagram/svg internals own their own layout
             continue
         # a large positioned ZONE that wraps text-bearing children (a split-screen half, a full
