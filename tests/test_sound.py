@@ -182,6 +182,16 @@ def test_finish_duck_mode_post_mixes_via_sfx_mix():
     assert "deferred" in src, "duck mode must SKIP the flat mount (defer SFX to the post-mix)"
 
 
+def test_finish_restores_node_wiped_voices():
+    """The skill's node bgm/sfx engine clobbers the bridged voices[] (caught on the first full
+    pipeline run). finish must snapshot + restore them so sound-on isn't a silent render; the
+    loud guard stays as the safety net."""
+    from pathlib import Path as _P
+    src = _P("src/nolan/hyperframes/finish.py").read_text(encoding="utf-8")
+    assert "_snap" in src and "restored" in src, "finish must restore node-wiped bridged voices"
+    assert "wiped narration" in src, "the loud narration guard must remain as the net"
+
+
 def test_sfx_design_reads_both_signals(tmp_path, monkeypatch):
     """The pairing operator places from the VISUAL (spec) AND VERBAL (transcript)."""
     from nolan.hyperframes import edit as _edit

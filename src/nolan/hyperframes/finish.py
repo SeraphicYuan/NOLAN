@@ -115,11 +115,22 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     if sound:
         import json as _json
         am = pdir / "audio_meta.json"
-        before = len(_json.loads(am.read_text(encoding="utf-8")).get("voices", [])) if (am.exists() and not dry_run) else 0
+        _snap = _json.loads(am.read_text(encoding="utf-8")).get("voices", []) if (am.exists() and not dry_run) else []
+        before = len(_snap)
         _run("bgm", ["node", audio, "fetch-bgm", "--storyboard", "./STORYBOARD.md", "--hyperframes", "."],
              cwd=pdir, dry=dry_run, soft=True)
         _run("sfx", ["node", audio, "fetch-sfx", "--storyboard", "./STORYBOARD.md", "--hyperframes", "."],
              cwd=pdir, dry=dry_run, soft=True)
+        # The skill's node bgm/sfx engine serializes its OWN (compose-first-unaware, empty) audio model back
+        # over audio_meta.json, clobbering the bridged voices[] → a silent render (the guard below caught this
+        # on the first full-pipeline run). RESTORE the bridged voices if the node steps dropped them, keeping
+        # anything they legitimately added (e.g. a bgm field). Makes `hf-finish` usable with sound ON.
+        if before and not dry_run and am.exists():
+            _cur = _json.loads(am.read_text(encoding="utf-8"))
+            if len(_cur.get("voices", [])) < before:
+                _cur["voices"] = _snap
+                am.write_text(_json.dumps(_cur, indent=2, ensure_ascii=False), encoding="utf-8")
+                print(f"  ↺ restored {before} bridged voice(s) the node sound step dropped (kept bgm/sfx)")
         # 4b · SCENE-level SFX (compose-first): read scene.data.sfx off the ALIGNED specs →
         #      resolve from the curated bank (nolan.sound) → stage into assets/sfx/ → merge into
         #      audio_meta.sfx (assemble-index mounts them on track 20+i). Preserves voices[].
