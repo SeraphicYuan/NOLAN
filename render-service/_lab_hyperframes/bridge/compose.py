@@ -327,10 +327,12 @@ CSS = """
 .cmp-paper{position:absolute;inset:0;}
 .cmp-label{position:absolute;left:1.6cqw;top:1.4cqw;background:var(--accent);color:var(--accent-ink);font-family:"Inter",sans-serif;
   font-weight:700;font-size:0.8cqw;letter-spacing:0.1em;text-transform:uppercase;padding:0.4cqw 0.9cqw;border-radius:6px;opacity:0;z-index:4;}
-.cmp-txt{position:absolute;left:2.4cqw;right:2.4cqw;bottom:6.5cqh;z-index:3;}
+/* bottom title sits ABOVE the caption keep-out (bottom 15% is reserved for VO captions — layout_lint's
+   y>0.85 band). 16cqh clears it with margin; the ::before scrim still extends to the panel bottom so the
+   gradient (and any caption over it) reads on ANY footage. */
+.cmp-txt{position:absolute;left:2.4cqw;right:2.4cqw;bottom:16cqh;z-index:3;}
 .cmp-txt.mid{top:50%;bottom:auto;transform:translateY(-50%);}
-/* bottom title over media = a localized lower-third scrim (bound to the panel) so the overlay reads on ANY footage */
-.cmp-txt:not(.mid)::before{content:"";position:absolute;left:-2.4cqw;right:-2.4cqw;top:-1.8cqh;bottom:-6.5cqh;
+.cmp-txt:not(.mid)::before{content:"";position:absolute;left:-2.4cqw;right:-2.4cqw;top:-1.8cqh;bottom:-16cqh;
   background:linear-gradient(transparent,rgba(8,9,10,0.88));z-index:-1;pointer-events:none;}
 .cmp-txt .k{font-family:"Inter",sans-serif;font-weight:600;font-size:0.82cqw;letter-spacing:0.13em;text-transform:uppercase;opacity:0;margin-bottom:0.5cqw;}
 .cmp-txt .t{font-weight:800;font-size:2.1cqw;line-height:1.1;letter-spacing:-0.012em;}
