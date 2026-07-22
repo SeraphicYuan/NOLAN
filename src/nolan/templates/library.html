@@ -1360,12 +1360,40 @@
                         <span class="segment-time">${s.timestamp_formatted}</span>
                         <span class="segment-duration">${s.duration.toFixed(1)}s</span>
                         ${s.sample_reason ? `<span class="segment-reason">${escapeHtml(s.sample_reason)}</span>` : ''}
+                        <button style="margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid var(--border,#333);border-radius:5px;background:transparent;color:inherit;cursor:pointer"
+                                title="Promote this segment into a HyperFrames project's pool (skips acquisition ranking)"
+                                onclick="event.stopPropagation(); promoteSegment(${i})">→ pool</button>
                     </div>
                     <div class="segment-description">${escapeHtml(s.combined_summary || s.frame_description)}</div>
                     ${s.transcript ? `<div class="segment-transcript">"${escapeHtml(s.transcript)}"</div>` : ''}
                     ${renderContextTags(s.inferred_context)}
                 </div>
             `).join('');
+        }
+
+        // Promote a segment's [start,end] range into a HyperFrames project's pool (manual pick).
+        let PROMOTE_COMPS = null;
+        async function promoteSegment(i) {
+            const s = currentSegments[i];
+            if (PROMOTE_COMPS === null) {
+                try { PROMOTE_COMPS = (await (await fetch('/api/clipper/targets')).json()).comps || []; }
+                catch (e) { PROMOTE_COMPS = []; }
+            }
+            if (!PROMOTE_COMPS.length) { alert('No HyperFrames projects found to promote into.'); return; }
+            const list = PROMOTE_COMPS.map((c, n) => `${n + 1}. ${c}`).join('\n');
+            const pick = prompt(`Promote this ${s.duration.toFixed(1)}s segment into which project?\n\n${list}\n\nEnter a number:`);
+            const idx = parseInt(pick, 10) - 1;
+            if (isNaN(idx) || !PROMOTE_COMPS[idx]) return;
+            const comp = PROMOTE_COMPS[idx];
+            try {
+                const r = await fetch('/api/library/promote-to-pool', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comp, video_path: s.video_path, start: s.timestamp_start, end: s.timestamp_end })
+                });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.detail || r.status);
+                alert(`Promoting → ${comp} pool (trimming + registering as a background job — see Background Jobs).`);
+            } catch (e) { alert('Promote failed: ' + e.message); }
         }
 
         // Render clusters
