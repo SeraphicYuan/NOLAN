@@ -381,8 +381,10 @@ async function loadIndex(){
   </div>`).join('') || '<div class="empty">No voiceovers yet.</div>';
 }
 
-// init
-loadProjects(); loadVoiceOptions();
+// init (B4: accept ?project=<slug> deep-link from /script-projects "Generate voiceover")
+const _qp=new URLSearchParams(location.search).get('project');
+loadProjects().then(()=>{ if(_qp){ $('#np').value=_qp; loadBeats(); } });
+loadVoiceOptions();
 document.addEventListener('click',e=>{ if(!e.target.closest('.takes')) $('#takemenu')?.classList.remove('open'); });
 </script>
 <script src="/static/nav.js" data-active="voices"></script>

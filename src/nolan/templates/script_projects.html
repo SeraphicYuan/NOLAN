@@ -110,6 +110,8 @@
                     </div>
                     <label class="fld">Review rubric</label>
                     <select id="newArchetype" style="width:100%;"></select>
+                    <label class="fld">Voiceover voice</label>
+                    <select id="newVoice" style="width:100%;"></select>
                     <label class="fld">Hidden-detail pivot</label>
                     <input id="newPivot" type="text" placeholder="a surprising detail to pivot on" style="width:100%;">
                     <label class="fld">Ad-hoc review questions (one per line)</label>
@@ -375,12 +377,20 @@ async function loadProjects() {
     const data = await api('/api/script-projects');
     const list = $('projList');
     if (!data.projects.length) { list.innerHTML = '<div class="empty">No projects yet.</div>'; return; }
-    list.innerHTML = data.projects.map(p => `
+    const vomm = s => s==null ? '' : (Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0'));
+    list.innerHTML = data.projects.map(p => {
+        const vo = p.vo || {};
+        // B4: VO status chip + a "Generate voiceover" deep-link into the /voices Narrate tab
+        const voBadge = vo.has_mp3
+            ? `<span class="badge" style="background:rgba(53,192,127,.16);color:#35c07f">🎙 ${vomm(vo.total_s)||'VO'}${vo.gate_ok===false?' ⚠':''}</span>`
+            : (p.has_script ? `<a class="badge" style="text-decoration:none" href="/voices?project=${encodeURIComponent(p.slug)}" onclick="event.stopPropagation()">🎙 Generate →</a>` : '');
+        return `
         <div class="card ${current === p.slug ? 'active' : ''}" onclick="select('${esc(p.slug)}')">
             <div class="name">${esc(p.name)}</div>
             <div class="meta">style: ${esc(p.style_id)} · ${esc(p.source_count)} sources ·
-              <span class="badge ${p.has_script ? '' : 'no'}">${p.has_script ? 'script ✓' : 'no script'}</span></div>
-        </div>`).join('');
+              <span class="badge ${p.has_script ? '' : 'no'}">${p.has_script ? 'script ✓' : 'no script'}</span>
+              ${voBadge}</div>
+        </div>`; }).join('');
 }
 
 async function loadRegistries() {
@@ -392,6 +402,11 @@ async function loadRegistries() {
         $('newArchetype').innerHTML = '<option value="">🤖 Auto — infer from subject + length</option>'
             + (r.archetypes || []).map(a => `<option value="${esc(a.id)}" title="${esc(a.when_to_use)}">${esc(a.title)}</option>`).join('');
     } catch (e) { /* registries optional */ }
+    try {
+        const v = await api('/api/voices');   // B5: voice preset (Auto = default at VO time)
+        $('newVoice').innerHTML = '<option value="">🤖 Auto — default voice</option>'
+            + (v.voices || []).map(x => `<option value="${esc(x.id)}">${esc(x.name || x.id)}</option>`).join('');
+    } catch (e) { /* voices optional */ }
 }
 function onNewSpineChange() {
     const v = $('newSpine').value;
@@ -414,6 +429,7 @@ async function createProject() {
                    pivot: $('newPivot').value.trim(), target_minutes: parseFloat($('newMinutes').value) || 8,
                    mode: $('newMode').value, composite_spine: newCompositeSpine(),
                    review_archetype: $('newArchetype').value,
+                   voice_id: $('newVoice').value,
                    ad_hoc_questions: $('newAdHoc').value.split('\n').map(x => x.trim()).filter(Boolean) };
     try {
         const data = await api('/api/script-projects', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });

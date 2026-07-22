@@ -22,3 +22,18 @@ def test_vo_readiness_transitions(tmp_path):
     # scaffold placeholder → not ready (no beats)
     st.script_path(slug).write_text("# Video Script\n\nScript not written yet\n", encoding="utf-8")
     assert st.vo_readiness(slug)["written"] is False
+
+
+def test_create_voice_preset(tmp_path):
+    """B5: a create-time voice_id lands in project.yaml (resolve_voice_ref reads it) + meta."""
+    import json
+    import yaml
+    st = ScriptProjectStore(tmp_path)
+    slug = st.create("P", subject="x", style_id="s", voice_id="narrator-a")
+    y = yaml.safe_load(st.project_yaml_path(slug).read_text(encoding="utf-8"))
+    m = json.loads(st.meta_path(slug).read_text(encoding="utf-8"))
+    assert y["voice_id"] == "narrator-a" and m["voice_id"] == "narrator-a"
+    # empty → Auto: no voice_id key in project.yaml
+    slug2 = st.create("Q", subject="y", style_id="s")
+    y2 = yaml.safe_load(st.project_yaml_path(slug2).read_text(encoding="utf-8"))
+    assert "voice_id" not in y2

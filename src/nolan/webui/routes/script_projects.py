@@ -37,7 +37,21 @@ def register(app, ctx):
 
     @app.get("/api/script-projects")
     async def script_projects_list():
-        return {"projects": script_project_store.list()}
+        """List projects, each enriched with a cheap VO status (B4 reverse link)."""
+        import json as _json
+        projects = script_project_store.list()
+        for p in projects:
+            vo = Path("projects") / p.get("slug", "") / "assets" / "voiceover"
+            status = {"has_mp3": (vo / "voiceover.mp3").exists()}
+            m = vo / "voiceover.measure.json"
+            if m.exists():
+                try:
+                    d = _json.loads(m.read_text(encoding="utf-8"))
+                    status.update(total_s=d.get("total_s"), gate_ok=d.get("ok"))
+                except (OSError, ValueError):
+                    pass
+            p["vo"] = status
+        return {"projects": projects}
 
     @app.get("/api/script-registries")
     async def script_registries():
@@ -74,6 +88,7 @@ def register(app, ctx):
                 composite_spine=spine if isinstance(spine, dict) else {},
                 review_archetype=(body.get("review_archetype") or "").strip(),
                 ad_hoc_questions=body.get("ad_hoc_questions") or [],
+                voice_id=(body.get("voice_id") or "").strip(),   # B5 create-time voice preset
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))

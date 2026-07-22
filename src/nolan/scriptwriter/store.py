@@ -197,7 +197,8 @@ class ScriptProjectStore:
                angle: str = "", pivot: str = "", target_minutes: float = 8.0,
                description: str = "", mode: str = "semi",
                composite_spine: Optional[Dict[str, Any]] = None,
-               review_archetype: str = "", ad_hoc_questions: Optional[List[str]] = None) -> str:
+               review_archetype: str = "", ad_hoc_questions: Optional[List[str]] = None,
+               voice_id: str = "") -> str:
         """Scaffold a Director-ready project + scriptgen workspace; return slug.
 
         The optional ``composite_spine`` / ``review_archetype`` / ``ad_hoc_questions`` let the
@@ -222,17 +223,18 @@ class ScriptProjectStore:
 
         display_name = name or subject
         # Director-ready project.yaml (same shape as `nolan projects init`).
+        yaml_doc = {
+            "name": display_name,
+            "slug": slug,
+            "description": description or subject,
+            "source_videos": ["source/"],
+            "output_dir": "output/",
+            "assets_dir": "assets/",
+        }
+        if (voice_id or "").strip():   # B5: preset voice → resolve_voice_ref reads project.yaml
+            yaml_doc["voice_id"] = voice_id.strip()
         self.project_yaml_path(slug).write_text(
-            yaml.safe_dump({
-                "name": display_name,
-                "slug": slug,
-                "description": description or subject,
-                "source_videos": ["source/"],
-                "output_dir": "output/",
-                "assets_dir": "assets/",
-            }, sort_keys=False, allow_unicode=True),
-            encoding="utf-8",
-        )
+            yaml.safe_dump(yaml_doc, sort_keys=False, allow_unicode=True), encoding="utf-8")
 
         meta = {
             "slug": slug,
@@ -248,6 +250,7 @@ class ScriptProjectStore:
             "composite_spine": spine,        # {} single · {structure:auto} · preset composite
             "review_archetype": (review_archetype or "").strip(),   # "" = auto-infer
             "ad_hoc_questions": [q.strip() for q in (ad_hoc_questions or []) if q and q.strip()],
+            "voice_id": (voice_id or "").strip(),   # "" = Auto (default voice at VO time)
             "created_at": datetime.now().isoformat(),
             "status": "new",
             "sources": [],
