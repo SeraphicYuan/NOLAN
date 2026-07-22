@@ -190,6 +190,11 @@ BLOCKS = {
                 "highlight": {"row": 0}},
  "split_view": {"kicker": "READ ALONGSIDE", "paper": {"source": IMG(1), "page_size": [1000, 1294]}, "paper_side": "left", "split": 0.5,
                 "right": {"kind": "stat", "kicker": "Folio 12r", "value": "1200s", "label": "vellum, ink, gold leaf"}},
+ "gauge": {"kicker": "HOW MUCH SURVIVES", "title": "Condition on arrival", "titleHi": "Condition", "max": 100, "target": 75, "suffix": "%",
+           "items": [{"label": "Manuscripts", "value": 68}, {"label": "Objects", "value": 84}, {"label": "Prints", "value": 41}]},
+ "process": {"kicker": "CONSERVATION", "title": "From find to display", "titleHi": "display",
+             "steps": [{"label": "Recover", "sub": "from the site"}, {"label": "Clean", "sub": "stabilise"},
+                       {"label": "Catalogue", "sub": "provenance"}, {"label": "Display", "sub": "the gallery"}]},
 }
 # route-map demo on geo (adds arcs to the world map)
 BLOCKS["geo"] = {**BLOCKS["geo"], "routes": [
@@ -243,6 +248,8 @@ VERDICTS = {
  "bar_race": ("pass", "Ranked accent bars + a period ticker; themed."),
  "data_table": ("pass", "Column headers, cells, highlighted row — surface + accent themed."),
  "split_view": ("pass", "Paper (aspect-preserving fit) + right panel; both slide in, themed."),
+ "gauge": ("pass", "Accent radial arcs sweep to value; centre number + target tick themed."),
+ "process": ("pass", "Accent step cards + numbered badges + drawn connectors; themed."),
 }
 VERDICTS["geo"] = ("pass", "Map ground + accent regions/leader; ROUTE ARCS (arrowheads, dash-draw) themed.")
 
