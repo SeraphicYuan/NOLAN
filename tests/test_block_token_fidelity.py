@@ -84,3 +84,28 @@ def test_page_bg_keeps_text_legible_for_every_theme():
         if c < 3.0:
             bad.append(f"{t}: --text on page-bg {page_bg} = {c:.1f}:1")
     assert not bad, "page-bg illegible (a block full-bleed ground would be unreadable): " + "; ".join(bad)
+
+
+# Text that renders DIRECTLY over the page GROUND (_page_bg) — NOT inside a card/pill (own background) or
+# behind a scrim — must take its COLOUR and FONT from theme tokens. A hardcoded near-white (#fff) or
+# near-black goes invisible the moment a theme flips the ground polarity (the .doc-title #fff-on-a-light-
+# theme bug). ADD your class here when a NEW compose.py block paints text straight onto the page ground.
+ON_GROUND_TEXT = ["doc-title", "doc-kick"]
+
+
+def test_on_ground_text_uses_theme_tokens():
+    """On-ground text must use var(--text*) colour + var(--font-*) family — else it breaks on a theme whose
+    ground is the opposite polarity (the light-theme document-title invisibility bug). Guards the regression
+    and documents the rule for future blocks (extend ON_GROUND_TEXT)."""
+    bad = []
+    for cls in ON_GROUND_TEXT:
+        m = re.search(rf"\.{re.escape(cls)}\s*\{{([^}}]*)\}}", COMPOSE_SRC)
+        assert m, f".{cls} not found in compose.py CSS"
+        body = m.group(1)
+        cm = re.search(r"(?<![-\w])color:\s*([^;]+)", body)
+        if not cm or "var(--" not in cm.group(1):
+            bad.append(f".{cls} colour = {cm.group(1).strip() if cm else '(none)'} — must be var(--text*)")
+        fm = re.search(r"font-family:\s*([^;]+)", body)
+        if fm and "var(--" not in fm.group(1):
+            bad.append(f".{cls} font = {fm.group(1).strip()} — must be var(--font-*)")
+    assert not bad, "on-ground text hardcodes a polarity-specific token: " + "; ".join(bad)

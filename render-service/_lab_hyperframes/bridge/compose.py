@@ -574,21 +574,21 @@ CSS = """
 .doc-grain{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(20,18,12,0.05) 1px,transparent 1.4px);background-size:16px 16px;}
 .doc-hl{position:absolute;background:#FFF23B;mix-blend-mode:multiply;transform:scaleX(0);transform-origin:left center;border-radius:2px;pointer-events:none;}
 .doc-underline{position:absolute;height:0.42cqh;background:#C8232C;transform:scaleX(0);transform-origin:left center;border-radius:2px;pointer-events:none;}
-.doc-label{position:absolute;transform:translate(-50%,-50%) scale(0);background:#C8232C;color:#F7F3EA;font-family:"Inter",sans-serif;
+.doc-label{position:absolute;transform:translate(-50%,-50%) scale(0);background:#C8232C;color:#F7F3EA;font-family:var(--font-body);
   font-weight:700;font-size:1.0cqw;letter-spacing:0.02em;padding:0.3cqw 0.72cqw;border-radius:6px;white-space:nowrap;
   box-shadow:0 0.3cqw 0.9cqw rgba(0,0,0,0.35);transform-origin:center;}
 .doc-callout{position:absolute;background:#fff;box-shadow:0 1cqw 2.6cqw rgba(0,0,0,0.3);border-radius:var(--r-card,12px);padding:1.1cqw 1.4cqw;
   opacity:0;max-width:27cqw;border-left:0.4cqw solid var(--accent);}
-.doc-callout .ck{font-family:"Inter",sans-serif;font-weight:600;font-size:0.78cqw;letter-spacing:0.1em;text-transform:uppercase;color:#8a8a80;margin-bottom:0.4cqw;}
-.doc-callout .ct{font-weight:800;font-size:1.35cqw;line-height:1.22;letter-spacing:-0.01em;color:#1c1c19;}
+.doc-callout .ck{font-family:var(--font-body);font-weight:600;font-size:0.78cqw;letter-spacing:0.1em;text-transform:uppercase;color:#8a8a80;margin-bottom:0.4cqw;}
+.doc-callout .ct{font-family:var(--font-display);font-weight:800;font-size:1.35cqw;line-height:1.22;letter-spacing:-0.01em;color:#1c1c19;}
 .doc-callout .ct .ln{display:block;}
 .doc-caption{position:absolute;left:6cqw;right:6cqw;bottom:6cqh;text-align:center;font-family:"Lora",serif;font-style:italic;
   font-size:1.7cqw;line-height:1.3;color:#F3ECDD;opacity:0;text-shadow:0 2px 14px rgba(0,0,0,0.55);}
 .doc-caption .uw{position:relative;white-space:nowrap;}
 .doc-caption .ul{position:absolute;left:0;right:0;bottom:-0.05em;height:2px;background:#C8232C;transform:scaleX(0);transform-origin:left center;}
 .doc-caption::before{content:"";position:absolute;left:-6cqw;right:-6cqw;top:-1.4cqh;bottom:-2.4cqh;z-index:-1;pointer-events:none;background:radial-gradient(62% 150% at 50% 55%,rgba(8,7,5,0.62),transparent 72%);}
-.doc-kick{position:absolute;top:5.4cqw;left:5.5cqw;font-family:"Inter",sans-serif;font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:#F1EFE9;opacity:0;text-shadow:0 2px 10px rgba(0,0,0,0.5);}
-.doc-title{position:absolute;top:6.9cqw;left:5.5cqw;max-width:72cqw;font-weight:900;font-size:2.4cqw;line-height:1.05;letter-spacing:-0.015em;color:#fff;opacity:0;text-shadow:0 2px 16px rgba(0,0,0,0.5);}
+.doc-kick{position:absolute;top:5.4cqw;left:5.5cqw;font-family:var(--font-body);font-weight:600;font-size:0.9cqw;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-2);opacity:0;text-shadow:0 2px 10px rgba(0,0,0,0.28);}
+.doc-title{position:absolute;top:6.9cqw;left:5.5cqw;max-width:72cqw;font-family:var(--font-display);font-weight:900;font-size:2.4cqw;line-height:1.05;letter-spacing:-0.015em;color:var(--text);opacity:0;text-shadow:0 2px 16px rgba(0,0,0,0.28);}
 .doc-title .hl{background:var(--accent);color:var(--accent-ink);padding:0 0.1em;box-decoration-break:clone;text-shadow:none;}
 /* diagram space:"3d" — the 2D network laid on a tilted, receding grid plane; cards stand up (billboard); camera glides. CSS-3D + GSAP, seek-safe. */
 .dg3-bg{position:absolute;inset:0;background:radial-gradient(130% 120% at 50% 30%,#141922,#05070c);}
