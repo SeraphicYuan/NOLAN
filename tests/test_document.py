@@ -160,3 +160,18 @@ def test_bp3_wave2_evidence_annotations():
     assert "ev-st2" in h and "CLASSIFIED" in h and "scale:1.55" in j   # stamp slam
     assert "ev-sk3" in h and "ev-ins3" in h                # strike + insertion
     assert "ev-tm4" in h and "ev-gl4" in h and "the model" in h        # term + gloss
+
+
+def test_bp3_wave3_marginalia_and_pullquote():
+    """B-P3 Wave 3 (polish): marginalia note + leader line; pull-quote lifts off the page (page dims)."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import compose
+    sc = {"id": "w3", "type": "document", "start": 0, "dur": 10, "data": {"source": "x.png", "page_size": [600, 800],
+          "annotations": [
+              {"type": "margin", "rect": [0.1, 0.2, 0.3, 0.03], "text": "← key", "cue": 2},
+              {"type": "pullquote", "rect": [0.1, 0.4, 0.8, 0.1], "text": "The whole thesis.", "cue": 4}]}}
+    frag, tl = compose.BLOCKS["document"]("w3", sc)
+    h, j = "".join(frag), "\n".join(tl)
+    assert "w3-mg1" in h and "w3-mg1-ln" in h                     # marginalia note + leader line
+    assert "w3-pq2" in h and "The whole thesis." in h and "opacity:0.32" in j   # pull-quote + page dim

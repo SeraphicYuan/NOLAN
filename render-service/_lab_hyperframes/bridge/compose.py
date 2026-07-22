@@ -3601,7 +3601,7 @@ def document(sid, sc):
         # continue instead of KeyError'ing the whole compose (holbein POST_MORTEM #6).
         _need = {"highlight": ("rect",), "underline": ("rect",), "label": ("at", "text"),
                  "redaction": ("rect",), "stamp": ("at", "text"), "strike": ("rect",),
-                 "term": ("rect",)}.get(t, ())
+                 "term": ("rect",), "margin": ("rect", "text"), "pullquote": ("rect",)}.get(t, ())
         _missing = [k for k in _need if k not in an]
         if _missing:
             print(f"  ⚠ document {sid}: {t} annotation missing {_missing} "
@@ -3659,6 +3659,21 @@ def document(sid, sc):
                             f'background:var(--surface,#fff);padding:3px 12px;border-radius:6px;'
                             f'box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;opacity:0;">{esc(an["gloss"])}</div>')
                 tl.append(f'tl.fromTo("#{gid}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.35}},{cue+0.15:.2f});')
+        elif t == "margin":        # B-P3 W3 · MARGINALIA: a handwritten margin note + a leader line to the region
+            x, y, w, h = an["rect"]; mid = f"{sid}-mg{ai}"; col = esc(an.get("color", "#C8232C"))
+            cxr = x + w / 2
+            nx = 0.845 if cxr < 0.5 else 0.015                # opposite margin from the region
+            tx, ty = fx(nx), fy(y); rxp, ryp = fx(cxr), fy(y + h / 2)
+            frag.append(f'<svg style="position:absolute;left:0;top:0;width:{W}px;height:{H}px;overflow:visible;pointer-events:none;">'
+                        f'<line id="{mid}-ln" x1="{tx:.0f}" y1="{ty+10:.0f}" x2="{rxp:.0f}" y2="{ryp:.0f}" stroke="{col}" '
+                        f'stroke-width="2" stroke-dasharray="5 4" opacity="0"/></svg>')
+            frag.append(f'<div id="{mid}" style="position:absolute;left:{tx:.0f}px;top:{ty:.0f}px;max-width:{0.15*prw:.0f}px;'
+                        f'transform:rotate(-3deg);font-family:var(--font-hand,cursive);font-size:23px;line-height:1.2;'
+                        f'color:{col};opacity:0;">{esc(an["text"])}</div>')
+            tl.append(f'tl.fromTo("#{mid}",{{opacity:0,scale:0.85}},{{opacity:1,scale:1,duration:0.4,ease:"back.out(2)"}},{cue:.2f});')
+            tl.append(f'tl.to("#{mid}-ln",{{opacity:0.85,duration:0.4}},{cue:.2f});')
+        elif t == "pullquote":     # B-P3 W3 · a sentence LIFTS off the page into a big pull-quote (page dims)
+            overlay.append((t, an, cue, ai))
         elif t in ("callout", "caption"):
             overlay.append((t, an, cue, ai))
     frag.append('</div>')  # close world
@@ -3706,6 +3721,16 @@ def document(sid, sc):
             pos = "right:4.5cqw;" if side == "right" else "left:4.5cqw;"
             frag.append(f'<div id="{cid}" class="doc-callout" style="{pos}top:{yy*100:.0f}%;transform:translateY(-50%);">{kick}<div class="ct">{body}</div></div>')
             tl.append(f'tl.fromTo("#{cid}",{{opacity:0,x:{60 if side=="right" else -60}}},{{opacity:1,x:0,duration:0.55,ease:"power3.out"}},{cue:.2f});')
+        elif t == "pullquote":     # B-P3 W3 · a big pull-quote lifts out (from the region's text) as the page dims
+            txt = an.get("text") or an.get("sync") or ""
+            side = an.get("side", "center"); qid = f"{sid}-pq{ai}"
+            pos = ("left:12cqw;right:12cqw;text-align:center;" if side == "center"
+                   else (f'right:6cqw;max-width:36cqw;' if side == "right" else 'left:6cqw;max-width:36cqw;'))
+            frag.append(f'<div id="{qid}" style="position:absolute;top:50%;{pos}transform:translateY(-50%);'
+                        f'font-family:var(--font-display);font-weight:800;font-size:4cqw;line-height:1.16;'
+                        f'color:var(--text,#1c1c19);opacity:0;">“{esc(txt)}”</div>')
+            tl.append(f'tl.to("#{sid}-world",{{opacity:0.32,duration:0.5}},{cue:.2f});')   # dim the page
+            tl.append(f'tl.fromTo("#{qid}",{{opacity:0,scale:0.92,y:22}},{{opacity:1,scale:1,y:0,duration:0.6,ease:"power3.out"}},{cue+0.1:.2f});')
         else:  # caption
             txt = an["text"]; u = an.get("underline", ""); cid = f"{sid}-cap{ai}"
             if u and u in txt:

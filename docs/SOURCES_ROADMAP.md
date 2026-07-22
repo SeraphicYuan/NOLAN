@@ -93,7 +93,10 @@ Wave 1 (core paper-explainer kit) — all rendered on the Attention paper:
 Wave 2 (document-as-EVIDENCE) — all rendered on the Attention paper:
 - [x] redaction (a black bar over text that LIFTS to reveal) · stamp (APPROVED/CLASSIFIED slams on)
 - [x] strike (TRACK-CHANGES strikethrough + green insertion) · term (EQUATION term-by-term: highlight+gloss)
-Wave 3 next:
+Wave 3 (polish) — rendered on the Attention paper:
+- [x] marginalia (a handwritten margin note + a dashed LEADER LINE to the region)
+- [x] pull-quote LIFT (a sentence lifts off the page into a big pull-quote as the page dims)
+B-P3 COMPLETE. (follow-ups: auto equation-term geometry from word boxes; a `document` POOL surface in /pool)
 - [x] Wave 1 above; figure extraction done (B-P1/B-P2)
 - [ ] citation web → reuse `connection_board`; side-by-side → `comparison`; title hero → `hero` (blocks EXIST;
       the paper-specific MOTION/pacing needs the reference clips to pin)
@@ -104,4 +107,4 @@ Wave 3 next:
       system_map wiring/consumer manifests, honesty-tested) — every source is provenance-gated
 
 ## Order
-A-P1 ✓ → A-P2 ✓ → A-P2.5 ✓ → B-P1 ✓ → B-P2 ✓ → A-P3 ✓ → A-P4 ✓ → cross-cutting ✓ → **B-P3 remains, gated on B-P0 reference clips**.
+A-P1 ✓ → A-P2 ✓ → A-P2.5 ✓ → B-P1 ✓ → B-P2 ✓ → A-P3 ✓ → A-P4 ✓ → cross-cutting ✓ → B-P3 ✓ (all 3 waves, B-P0 received). **Roadmap complete.**
