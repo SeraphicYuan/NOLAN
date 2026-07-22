@@ -3608,8 +3608,12 @@ def document(sid, sc):
         if t == "highlight":
             x, y, w, h = an["rect"]; hid = f"{sid}-hl{ai}"
             frag.append(f'<div id="{hid}" class="doc-hl" style="left:{fx(x):.0f}px;top:{fy(y):.0f}px;width:{w*prw:.0f}px;'
-                        f'height:{h*prh:.0f}px;background:{esc(an.get("color","#FFF23B"))};"></div>')
-            tl.append(f'tl.fromTo("#{hid}",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{cue:.2f});')
+                        f'height:{h*prh:.0f}px;background:{esc(an.get("color","#FFF23B"))};transform-origin:left center;"></div>')
+            if an.get("read"):        # READ-ALONG: the highlighter sweeps across the region at reading pace
+                rdur = float(an.get("read_dur", max(1.5, (start + dur - cue) * 0.85)))
+                tl.append(f'tl.fromTo("#{hid}",{{scaleX:0}},{{scaleX:1,duration:{rdur:.2f},ease:"none"}},{cue:.2f});')
+            else:
+                tl.append(f'tl.fromTo("#{hid}",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{cue:.2f});')
         elif t == "underline":
             r = list(an["rect"]) + [0, 0, 0]; x, y, w = r[0], r[1], r[2]; uid = f"{sid}-ul{ai}"
             frag.append(f'<div id="{uid}" class="doc-underline" style="left:{fx(x):.0f}px;top:{fy(y):.0f}px;width:{w*prw:.0f}px;'
@@ -3622,11 +3626,40 @@ def document(sid, sc):
         elif t in ("callout", "caption"):
             overlay.append((t, an, cue, ai))
     frag.append('</div>')  # close world
+    # B-P3 · REGION LIFT (focus_mode:"lift"): clone the focus region, blow it up centre-screen and BLUR+DIM
+    # the full page behind it — the "crop → zoom → page recedes" move. focus_rect = [fx0,fy0,fw,fh] of the page.
+    # The lift clones ride ABOVE the world (own tracks) so the world's blur doesn't touch them.
+    foc = d.get("focus_rect")
+    if d.get("focus_mode") == "lift" and foc:
+        fx0, fy0, fw, fh = [float(v) for v in foc]
+        reg_asp = (fw * prw) / max(1.0, fh * prh)
+        boxh = min(760.0, 1080 * 0.72); boxw = boxh * reg_asp
+        if boxw > W * 0.8:
+            boxw = W * 0.8; boxh = boxw / max(0.01, reg_asp)
+        bx, by = (W - boxw) / 2, (H - boxh) / 2
+        bg_w = boxw / max(1e-3, fw); bg_h = boxh / max(1e-3, fh)     # page scaled so the region fills the box
+        lid = f"{sid}-lift"
+        frag.append(f'<div id="{sid}-liftdim" class="clip" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="3" style="position:absolute;inset:0;background:rgba(0,0,0,0);pointer-events:none;"></div>')
+        frag.append(f'<div id="{lid}" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="4" '
+                    f'style="position:absolute;left:{bx:.0f}px;top:{by:.0f}px;width:{boxw:.0f}px;height:{boxh:.0f}px;'
+                    f'background-image:url(\'{esc(pages[0])}\');background-repeat:no-repeat;'
+                    f'background-size:{bg_w:.0f}px {bg_h:.0f}px;background-position:-{fx0*bg_w:.0f}px -{fy0*bg_h:.0f}px;'
+                    f'border-radius:10px;box-shadow:0 30px 90px rgba(0,0,0,.55);opacity:0;"></div>')
+        tl.append(f'tl.to("#{sid}-world",{{filter:"blur(7px)",scale:1.04,opacity:0.55,duration:0.9,ease:"power2.inOut"}},{start+0.5:.2f});')
+        tl.append(f'tl.to("#{sid}-liftdim",{{background:"rgba(0,0,0,0.34)",duration:0.9}},{start+0.5:.2f});')
+        tl.append(f'tl.fromTo("#{lid}",{{opacity:0,scale:0.9,y:20}},{{opacity:1,scale:1,y:0,duration:0.7,ease:"power3.out"}},{start+0.7:.2f});')
     cam = d.get("camera", "static")
     if cam == "push":
         tl.append(f'tl.fromTo("#{sid}-world",{{scale:1}},{{scale:1.07,duration:{dur},ease:"none"}},{start});')
     elif cam == "scroll":
         tl.append(f'tl.fromTo("#{sid}-world",{{yPercent:0}},{{yPercent:-9,duration:{dur},ease:"none"}},{start});')
+    elif cam == "region" and foc:                                   # B-P3 · ZOOM TO REGION (frame focus_rect)
+        fx0, fy0, fw, fh = [float(v) for v in foc]
+        cx, cy = fx(fx0) + fw * prw / 2, fy(fy0) + fh * prh / 2
+        S = max(1.0, min(4.0, min(W / max(1.0, fw * prw), H / max(1.0, fh * prh)) * 0.82))
+        tl.append(f'tl.fromTo("#{sid}-world",{{scale:1,x:0,y:0}},{{scale:{S:.3f},x:{W/2 - cx*S:.0f},y:{H/2 - cy*S:.0f},'
+                  f'transformOrigin:"0px 0px",duration:1.4,ease:"power2.inOut"}},{start+0.6:.2f});')
     frag.append(f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" style="position:absolute;inset:0;pointer-events:none;">')
     for (t, an, cue, ai) in overlay:
         if t == "callout":

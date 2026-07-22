@@ -593,5 +593,66 @@ def bar_race(sid, sc):
     return frag, tl
 
 
+def split_view(sid, sc):
+    """B-P3 — SPLIT SCREEN: one side a document page (cropped to a region so it tracks the narrative), the
+    other any content — a video clip, a still, a text block, or a stat. `paper:{source,page_size,focus_rect}`
+    (bind via data.document/page/focus, resolved upstream) + `right:{kind:image|video|text|stat, ...}` +
+    `split` (left fraction, default 0.5) + `paper_side` (left|right). The two halves slide in from their edges."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc = compose.esc
+    paper = d.get("paper") or {}
+    right = d.get("right") or {}
+    W, H = 1920, 1080
+    ps = min(0.75, max(0.25, float(d.get("split", 0.5))))
+    paper_left = str(d.get("paper_side", "left")) == "left"
+    pw = int(W * ps)
+    px, cx, cw = (0, pw, W - pw) if paper_left else (W - pw, 0, W - pw)
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+
+    fr = paper.get("focus_rect")
+    if fr:
+        fx0, fy0, fw, fh = [float(v) for v in fr]
+        bgw, bgh = pw / max(1e-3, fw), H / max(1e-3, fh)
+        bg = f'background-size:{bgw:.0f}px {bgh:.0f}px;background-position:-{fx0*bgw:.0f}px -{fy0*bgh:.0f}px;'
+    else:
+        bg = 'background-size:cover;background-position:center top;'
+    frag = [f'<div id="{sid}-paper" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+            f'style="position:absolute;left:{px}px;top:0;width:{pw}px;height:{H}px;background-color:#fff;'
+            f'background-image:url(\'{esc(paper.get("source",""))}\');background-repeat:no-repeat;{bg}opacity:0;"></div>']
+    # content panel
+    kind = str(right.get("kind", "text"))
+    inner = ""
+    if kind in ("image", "video"):
+        src = esc(right.get("src", ""))
+        inner = (f'<video src="{src}" muted playsinline autoplay loop style="width:100%;height:100%;object-fit:cover"></video>'
+                 if kind == "video" else
+                 f'<img src="{src}" alt="" style="width:100%;height:100%;object-fit:cover">')
+        cbg = "#000"
+    else:
+        cbg = ("#17130f" if dark else "#f4eee2")
+        if kind == "stat":
+            inner = (f'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%">'
+                     f'<div style="font-family:var(--font-display);font-weight:800;font-size:9cqw;color:var(--accent)">{esc(str(right.get("value","")))}</div>'
+                     f'<div style="font-size:1.8cqw;font-weight:700;color:{ink};margin-top:1cqw">{esc(str(right.get("label","")))}</div></div>')
+        else:   # text
+            lines = right.get("lines") or ([right.get("text")] if right.get("text") else [])
+            ttl = f'<div style="font-family:var(--font-display);font-weight:800;font-size:3.2cqw;color:{ink};margin-bottom:1.4cqw">{esc(str(right.get("title","")))}</div>' if right.get("title") else ""
+            body = "".join(f'<div style="font-size:2cqw;line-height:1.35;color:{ink};margin:0.5cqw 0">{esc(str(x))}</div>' for x in lines)
+            inner = (f'<div style="display:flex;flex-direction:column;justify-content:center;height:100%;padding:0 5cqw;'
+                     f'container-type:size">{ttl}{body}</div>')
+    frag.append(f'<div id="{sid}-content" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
+                f'style="position:absolute;left:{cx}px;top:0;width:{cw}px;height:{H}px;background:{cbg};'
+                f'container-type:size;overflow:hidden;opacity:0;">{inner}</div>')
+    frag.append(f'<div id="{sid}-div" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" '
+                f'style="position:absolute;left:{(px+pw) if paper_left else cx+cw}px;top:0;width:4px;height:{H}px;'
+                f'background:var(--accent);opacity:0;"></div>')
+    tl = [f'tl.fromTo("#{sid}-paper",{{opacity:0,x:{-60 if paper_left else 60}}},{{opacity:1,x:0,duration:0.6,ease:"power3.out"}},{start+0.2:.2f});',
+          f'tl.fromTo("#{sid}-content",{{opacity:0,x:{60 if paper_left else -60}}},{{opacity:1,x:0,duration:0.6,ease:"power3.out"}},{start+0.35:.2f});',
+          f'tl.to("#{sid}-div",{{opacity:0.9,duration:0.4}},{start+0.5:.2f});']
+    return frag, tl
+
+
 EXT_BLOCKS = {"spotlight": spotlight, "data_table": data_table,
-              "trajectory": trajectory, "stream": stream, "bar_race": bar_race}
+              "trajectory": trajectory, "stream": stream, "bar_race": bar_race,
+              "split_view": split_view}

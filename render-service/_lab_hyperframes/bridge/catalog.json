@@ -396,14 +396,16 @@
         "vignette": "number? — edge darkening 0..1 (default 0.42 for artifact)",
         "aged": "bool? — sepia/parchment tint for old paper",
         "tilt": "number? — sheet rotation in degrees",
-        "camera": "enum(push|scroll|static) — push = slow Ken-Burns; scroll = gentle vertical drift; static (default)",
+        "camera": "enum(push|scroll|static|region) — push=Ken-Burns, scroll=vertical drift, region=ZOOM into data.focus's region (B-P3), static(default)",
         "kicker": "string?",
         "title": "string?",
         "titleHi": "string? — substring of title to highlight",
-        "annotations": "array of {type, ...}. Position by REGION id (B-P2: {region:\"p3-fig0\"} — a layout-map region/word/figure id from the bound `document`; the only way to target a FIGURE), OR by text — {find:\"phrase on the page\"} — resolved to a rect by bridge/resolve_doc_annotations.py (PREFERRED; OCR for images, PyMuPDF text-layer for PDFs), OR by explicit fraction (the escape hatch). highlight {find|rect:[fx,fy,fw,fh], color?, cue?}; underline {find|rect:[fx,fy,fw], color?, cue?}; label {find|at:[fx,fy], text, color?, cue?} (pinned, rides the camera); callout {text:str|[lines], title?, side?:right|left, y?:0..1, cue?} (screen-fixed card); caption {text, underline?:substr, cue?} (bottom italic, red underline draw)",
+        "annotations": "array of {type, ...}. Position by REGION id (B-P2: {region:\"p3-fig0\"} — a layout-map region/word/figure id from the bound `document`; the only way to target a FIGURE), OR by text — {find:\"phrase on the page\"} — resolved to a rect by bridge/resolve_doc_annotations.py (PREFERRED; OCR for images, PyMuPDF text-layer for PDFs), OR by explicit fraction (the escape hatch). highlight {find|rect:[fx,fy,fw,fh], color?, cue?}; underline {find|rect:[fx,fy,fw], color?, cue?}; label {find|at:[fx,fy], text, color?, cue?} (pinned, rides the camera); callout {text:str|[lines], title?, side?:right|left, y?:0..1, cue?} (screen-fixed card); caption {text, underline?:substr, cue?} (bottom italic, red underline draw) READ-ALONG: add `read:true` (+ optional `read_dur`) to a highlight so it sweeps across the region at reading pace. VO-SYNC: `sync:\"spoken phrase\"` (auto-filled from a region's text) pins the annotation's cue to when that text is READ.",
         "page_size": "[w,h]? — set by resolve_doc_annotations.py; sizes the sheet to the page aspect so annotation fractions map 1:1 (no crop). Omit for full-bleed cover.",
         "document": "string? — an INGESTED document id (nolan/document, B-P1): binds its rendered page as `source` + page_size + provenance, and resolves `region` annotations from the layout map. Pair with `page`.",
-        "page": "number? — 1-based page of the bound `document` (default 1)."
+        "page": "number? — 1-based page of the bound `document` (default 1).",
+        "focus": "string? — a region id (from the bound document's layout map) the camera FRAMES or the lift crops. Pair with camera:'region' or focus_mode:'lift'.",
+        "focus_mode": "enum(lift)? — 'lift' clones the focus region, blows it up centre-screen and BLUR+DIMs the full page behind it (the crop→zoom→recede move). Omit for a normal in-page camera."
       },
       "constraints": [
         "duration_preserving",
@@ -878,6 +880,19 @@
         "dataset": "string?",
         "query": "object?",
         "encode": "object?",
+        "ground": "object?"
+      }
+    },
+    "split_view": {
+      "fn": "split_view",
+      "purpose": "SPLIT SCREEN — one side a document page (cropped to a region so it tracks the narrative), the other any content (a video clip, a still, a text block, or a stat).",
+      "when_to_use": "A beat that plays the PAPER against something else: the source region beside your explanation / a clip / a headline number. 'Here's what it says ∥ here's what it means.'",
+      "not_for": "A full-frame page (use document). A visual A-vs-B of two images (use comparison).",
+      "data_schema": {
+        "paper": "object {document, page?, focus?} — the paper side; the resolver fills source/page_size/focus_rect from the ingested document (B-P1). focus = a region id to crop to.",
+        "right": "object {kind:image|video|text|stat, src?|text?|lines?|title?|value?|label?} — the OTHER side's content",
+        "split": "number? — the paper side's width fraction (0.25..0.75, default 0.5)",
+        "paper_side": "enum(left|right)? — which side the paper is on (default left)",
         "ground": "object?"
       }
     }

@@ -126,9 +126,24 @@ def _bind_document(data, project_dir):
         except Exception:
             pass
     data["_document"] = {"id": doc_id, "page": page_no, "provenance": doc.provenance}
+    # B-P3 · a region the CAMERA frames or LIFTS (data.focus = a region id → focus_rect [x0,y0,w,h])
+    foc = data.get("focus")
+    if isinstance(foc, str) and "focus_rect" not in data:
+        fb = region_bbox(doc, page_no, foc)
+        if fb:
+            data["focus_rect"] = [round(fb[0], 4), round(fb[1], 4), round(fb[2] - fb[0], 4), round(fb[3] - fb[1], 4)]
+        else:
+            print(f"  ! focus region {foc!r} not on page {page_no} of {doc_id!r}")
+    reg_text = {r.get("id"): r.get("text", "") for r in (doc.page(page_no) or {}).get("regions", [])}
     for a in data.get("annotations", []):
         rid = a.get("region")
-        if not rid or "rect" in a or "at" in a:
+        if not rid:
+            continue
+        # VO-SYNC SPINE (B-P3): auto-fill `sync` from the region's TEXT so the annotation fires WHEN that text
+        # is read (the sync layer resolves `sync` → cue). The author can override with an explicit `sync`.
+        if reg_text.get(rid) and "sync" not in a and "cue" not in a:
+            a["sync"] = " ".join(reg_text[rid].split()[:12])
+        if "rect" in a or "at" in a:                          # position already resolved (or authored)
             continue
         bb = region_bbox(doc, page_no, rid)
         if not bb:
@@ -205,6 +220,9 @@ def main():
             if sc.get("type") == "document":
                 print(f"[{fr.get('id')}/{sc.get('id')}] resolving...")
                 sc["data"] = resolve_scene(sc.get("data", {}), proj)
+            elif sc.get("type") == "split_view" and isinstance(sc.get("data", {}).get("paper"), dict):
+                print(f"[{fr.get('id')}/{sc.get('id')}] resolving split_view paper...")
+                _bind_document(sc["data"]["paper"], proj)   # {document,page,focus} → {source,page_size,focus_rect}
     out = args.out or args.spec
     json.dump(spec, open(out, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
     print("wrote", out)

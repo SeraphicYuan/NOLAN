@@ -82,8 +82,16 @@ paper-deep-dive essays stop hallucinating numbers and can present real data in c
 - [x] reuses the existing `document` block's highlight/underline/label/callout/caption + camera(push/scroll)
 - [ ] (follow-up) a dedicated zoom-TO-region camera; equation regions; a `document` POOL surface in /pool
 
-### B-P3 · Full motion set — SAMPLE-GATED (needs B-P0 reference clips)
-- [x] figure extraction — DONE via B-P1/B-P2 (vector + raster figures are layout-map regions, targetable by id)
+### B-P3 · Full motion set — WAVE 1 DONE (2026-07-21; B-P0 clips received)
+Wave 1 (core paper-explainer kit) — all rendered on the Attention paper:
+- [x] highlight a sentence (region-id) + **VO-SYNC spine** (`_retime_doc_annotations`: a region's text →
+      `sync` → cue, so annotations fire ON the spoken word — the 'read to you' feel)
+- [x] `camera:"region"` + `focus:<region-id>` (zoom into a region) · `focus_mode:"lift"` (crop → enlarge
+      centre-screen → BLUR+DIM the page behind — the "portion lifts out" move)
+- [x] read-along (a highlight sweeps across a paragraph at reading pace) · `split_view` block (a document
+      region ∥ any content — clip/text/stat, the paper scrolls to its region)
+Waves 2-3 next:
+- [x] Wave 1 above; figure extraction done (B-P1/B-P2)
 - [ ] citation web → reuse `connection_board`; side-by-side → `comparison`; title hero → `hero` (blocks EXIST;
       the paper-specific MOTION/pacing needs the reference clips to pin)
 - [ ] equation term-by-term · redaction · track-changes — new motion, BLOCKED on B-P0 samples

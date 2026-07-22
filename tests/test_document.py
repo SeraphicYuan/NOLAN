@@ -91,3 +91,53 @@ def test_region_id_annotation_resolves_to_bbox(tmp_path):
     assert "rect" in a and "region" not in a, "region id should resolve to a rect and be consumed"
     x0, y0, x1, y1 = fig["bbox"]
     assert abs(a["rect"][0] - x0) < 1e-3 and abs(a["rect"][2] - (x1 - x0)) < 1e-3   # rect = [x0,y0,w,h]
+
+
+def test_bp3_wave1_vo_sync_and_motions(tmp_path):
+    """B-P3 Wave 1: VO-sync spine (region text → `sync` → cue), camera:region + focus_mode:lift transforms,
+    read-along sweep, split_view panels. Self-contained fitz PDF + a synthetic word stream."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import resolve_doc_annotations as R
+    import compose
+    from nolan.hyperframes import sync
+    from nolan.whisper import WordTimestamp
+    pdf = tmp_path / "d.pdf"
+    _make_pdf_with_figure(pdf)   # has a heading + a figure
+    ingest_pdf(str(pdf), str(tmp_path / "documents"), doc_id="d")
+    # find a text region to sync/highlight
+    from nolan.document import load_document
+    doc = load_document(str(tmp_path), "d")
+    reg = next(r for r in doc.page(1)["regions"] if r.get("text"))
+    fig = next(r for r in doc.page(1)["regions"] if r["kind"] == "figure")
+
+    # VO-SYNC: bind auto-fills `sync` from the region text; the sync layer resolves it to a cue
+    data = {"document": "d", "page": 1, "focus": fig["id"], "camera": "region",
+            "annotations": [{"type": "highlight", "region": reg["id"], "read": True}]}
+    R._bind_document(data, str(tmp_path))
+    a = data["annotations"][0]
+    assert a.get("sync"), "bind should auto-fill `sync` from the region text"
+    assert data.get("focus_rect"), "focus region should resolve to a rect"
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(("z z z " + a["sync"]).split())]
+    sc = {"id": "s1", "type": "document", "start": 0.0, "dur": 30.0, "data": data}
+    assert sync._retime_doc_annotations(sc, data, words) == 1 and a["cue"] == 3.0   # fires when the text is read
+
+    # camera:region + read-along emit their transforms
+    frag, tl = compose.BLOCKS["document"]("dc", {**sc, "id": "dc"})
+    joined = "\n".join(tl)
+    assert 'scale:' in joined and 'transformOrigin:"0px 0px"' in joined      # region zoom
+    assert any('ease:"none"' in x for x in tl)                                # read-along linear sweep
+
+    # focus_mode:lift emits the blur + the lifted clone
+    data2 = {"document": "d", "page": 1, "focus": fig["id"], "focus_mode": "lift"}
+    R._bind_document(data2, str(tmp_path))
+    f2, t2 = compose.BLOCKS["document"]("dl", {"id": "dl", "type": "document", "start": 0, "dur": 8, "data": data2})
+    assert "dl-lift" in "".join(f2) and any("blur(" in x for x in t2)
+
+    # split_view: paper panel + content panel
+    R._bind_document(data2, str(tmp_path))   # reuse as the paper side
+    sv = {"id": "sv", "type": "split_view", "start": 0, "dur": 8,
+          "data": {"paper": data2, "right": {"kind": "text", "title": "T", "lines": ["a", "b"]}}}
+    fsv, tsv = compose.BLOCKS["split_view"]("sv", sv)
+    h = "".join(fsv)
+    assert "sv-paper" in h and "sv-content" in h and "sv-div" in h

@@ -311,6 +311,29 @@ def _retime_lines(sc: Dict, d: Dict, words) -> int:
     return done
 
 
+def _retime_doc_annotations(sc: Dict, d: Dict, words) -> int:
+    """B-P3 VO-SYNC SPINE — resolve each DOCUMENT annotation's `sync` phrase (its region's text, auto-filled by
+    resolve_doc_annotations, or an explicit spoken phrase) to a scene-relative `cue`, so a highlight / underline
+    / label / callout fires ON the word the narration reaches — the 'read to you' feel a paper explainer lives
+    on, not a fixed offset. Document scenes only; an annotation with no `sync` keeps its authored cue."""
+    if sc.get("type") != "document" or not words:
+        return 0
+    start, dur = float(sc.get("start", 0) or 0), float(sc.get("dur", 0) or 0)
+    done = 0
+    for a in d.get("annotations", []) or []:
+        phrase = a.get("sync")
+        if not isinstance(phrase, str) or not phrase.strip():
+            continue
+        t = _phrase_time(phrase, words, after=start)
+        if t is None:                                          # …else the phrase's first content words
+            head = " ".join(w for w in _norm(phrase) if w not in _STOP and len(w) > 2)
+            t = _phrase_time(head, words, after=start) if head else None
+        if t is not None and start <= t < start + dur:
+            a["cue"] = round(t - start, 2)
+            done += 1
+    return done
+
+
 def _cb_is_tree(nodes, links) -> bool:
     """A connection_board whose links form a FOREST when UNDIRECTED (a tree / chain / convergence — no
     undirected cycle) — NOT the shape connection_board is for. A genuine relationship WEB has at least one
@@ -902,6 +925,7 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                         cues += 1
                 revs += _retime_reveals(sc, d, words)  # spread fixed-offset reveals over the (retimed) window
                 revs += _retime_lines(sc, d, words)    # VO-sync each on-screen text LINE to when it's read
+                revs += _retime_doc_annotations(sc, d, words)  # VO-sync document annotations to the spoken word
             # anchor-lint: per-scene WINDOW + verdict, so degenerate windows are visible BEFORE a render
             # (a mis-heard anchor silently produces a 0.94s or 27s window — this was ~80% of the rework).
             for sc in scenes:
