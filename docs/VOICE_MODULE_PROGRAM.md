@@ -371,7 +371,19 @@ baseline `neutral_instruct` ("calm, measured"). Wired as a `TtsProvider`:
 With CosyVoice3 selected, `supports_instruct` is effectively True → **A6 delivery notes + the P6
 emotion arc below are now buildable for real** (no longer engine-blocked).
 
-## P6 (EXPERIMENTAL) — tone / emotion arc
+## P6 — tone / emotion arc (P6.1 SHIPPED 2026-07-22, now that CosyVoice unblocks it)
+
+**P6.1 — arc assignment.** `emotion_arc.py`: a small `TONE_REGISTRY` (calm/grave/wry/urgent/
+warm/triumphant/tense) + an LLM pass (`assign_arc`) that marks ONLY the pivot beats (a hard
+`pivot_budget` ~n/3 cap — restraint is the craft), gated to registry-only + capped
+(`parse_arc_response`), then `apply_arc_to_script` writes idempotent `[delivery: <tone>]` markers
+under those headings — the same markers A6 parses → per-beat CosyVoice `instruct`. CLI
+`nolan voiceover arc <slug> [--apply]` (dry-run default). Live-validated on De Beers: the LLM
+tastefully marked 3/9 beats (wry reveal, urgent hinge, calm close). Tests: test_emotion_arc (6).
+Remaining P6: a Narrate-tab "Author emotion arc" button, and a listen-test of the emotional VO
+(the one thing with no objective gate — emotion needs an ear).
+
+### Original P6 notes (engine study)
 
 Highly experimental; gated behind a hard engine constraint. Two halves:
 - **Can OmniVoice act on emotion? NO (emotion probe, 2026-07-22).** Its only nominal per-utterance

@@ -97,6 +97,40 @@ def vo_restore(slug: str, take_id: str) -> None:
     click.echo(f"restored {take_id}" if ok else f"take not found: {take_id}")
 
 
+@voiceover.command("arc")
+@click.argument("slug")
+@click.option("--apply", "do_apply", is_flag=True,
+              help="write the [delivery] markers into script.md (default: dry-run)")
+@click.option("--max", "max_marked", type=int, default=None, help="cap on marked beats (~n/3)")
+def vo_arc(slug: str, do_apply: bool, max_marked) -> None:
+    """P6: assign an emotion arc — the LLM marks the few pivot beats with delivery notes
+    (→ CosyVoice instruct). Dry-run by default; --apply writes [delivery: …] into script.md."""
+    from nolan.config import load_config
+    from nolan.llm import create_text_llm
+    from nolan.script import parse_script_sections
+    from nolan.emotion_arc import assign_arc, apply_arc_to_script, TONE_REGISTRY
+    md_path = Path("projects") / slug / "script.md"
+    if not md_path.exists():
+        click.echo(f"no script.md for {slug}")
+        return
+    md = md_path.read_text(encoding="utf-8")
+    sections = parse_script_sections(md)
+    llm = create_text_llm(load_config())
+    deliveries = asyncio.run(assign_arc(sections, generate=llm.generate, max_marked=max_marked))
+    marked = [(i, d) for i, d in enumerate(deliveries) if d]
+    if not marked:
+        click.echo("no pivot beats marked (arc left neutral)")
+        return
+    for i, d in marked:
+        click.echo(f"  beat {i} [{sections[i].get('title')}] → {d}: "
+                   f"{TONE_REGISTRY[d].split('—')[0].strip()}")
+    if do_apply:
+        md_path.write_text(apply_arc_to_script(md, deliveries), encoding="utf-8")
+        click.echo(f"✓ wrote {len(marked)} delivery markers to {md_path}")
+    else:
+        click.echo("(dry-run — re-run with --apply to write the markers)")
+
+
 @voiceover.command("measure")
 @click.argument("slug")
 def vo_measure(slug: str) -> None:
