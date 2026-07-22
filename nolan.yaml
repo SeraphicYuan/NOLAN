@@ -11,6 +11,13 @@ tts:
     model: k2-fsa/OmniVoice
     num_step: 32
     free_comfyui_vram: false
+  # CosyVoice 3.0 (Apache-2.0): comparable quality + real clone+emotion control.
+  # Switch by setting provider: cosyvoice3 above. Keeps OmniVoice as the fallback.
+  cosyvoice:
+    env_python: D:\env\cosyvoice\python.exe
+    repo_dir: D:\env\CosyVoice-src
+    model_dir: pretrained_models/Fun-CosyVoice3-0.5B
+    neutral_instruct: "calm, measured"
 llm:
   # Default text LLM for authoring tasks (script, scene design, clustering,
   # inference). qwen/qwen3.7-plus via OpenRouter — cheaper than Gemini.

@@ -126,9 +126,56 @@ class OmniVoiceTTS(TtsProvider):
         return produced
 
 
+class CosyVoiceTTS(TtsProvider):
+    """CosyVoice 3.0 in its own conda env, invoked via the standalone
+    ``tts_cosyvoice_runner.py`` (which handles 16 kHz refs, the ``<|endofprompt|>`` prompt
+    structure, instruct2 clone+emotion, and float32→PCM16 output). Same item schema as
+    OmniVoiceTTS, so the pipeline is engine-agnostic."""
+
+    sample_rate = 24000
+
+    def __init__(self, cfg):
+        self.cfg = cfg   # CosyVoiceConfig
+
+    def synthesize_batch(self, items: List[dict], out_dir: Path,
+                         num_step: Optional[int] = None) -> Dict[str, Path]:
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        if not items:
+            return {}
+        jsonl = out_dir / "_cv_batch.jsonl"
+        with jsonl.open("w", encoding="utf-8") as f:
+            for it in items:
+                line = {"id": it["id"], "text": it["text"]}
+                for k in ("ref_audio", "ref_text", "instruct", "speed"):
+                    if it.get(k) is not None:
+                        line[k] = it[k]
+                f.write(json.dumps(line, ensure_ascii=False) + "\n")
+
+        env_python = self.cfg.env_python or "python"
+        runner = str(Path(__file__).with_name("tts_cosyvoice_runner.py"))
+        cmd = [env_python, runner, "--test_list", str(jsonl), "--res_dir", str(out_dir),
+               "--model_dir", self.cfg.model_dir, "--repo", self.cfg.repo_dir]
+        if self.cfg.neutral_instruct:
+            cmd += ["--neutral_instruct", self.cfg.neutral_instruct]
+        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=self.cfg.repo_dir or None)
+        if proc.returncode != 0:
+            err = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(f"cosyvoice runner failed: {err[:800] or 'unknown error'}")
+
+        produced: Dict[str, Path] = {}
+        for it in items:
+            wav = out_dir / f"{it['id']}.wav"
+            if wav.exists():
+                produced[it["id"]] = wav
+        return produced
+
+
 def create_tts_provider(tts_cfg) -> TtsProvider:
     """Factory: build a TtsProvider from config.tts (mirrors create_text_llm)."""
     provider = (getattr(tts_cfg, "provider", None) or "omnivoice").lower()
     if provider == "omnivoice":
         return OmniVoiceTTS(tts_cfg.omnivoice)
+    if provider == "cosyvoice3":
+        return CosyVoiceTTS(tts_cfg.cosyvoice)
     raise ValueError(f"unknown tts provider: {provider!r}")

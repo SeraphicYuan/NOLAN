@@ -85,12 +85,31 @@ class OmniVoiceConfig:
 
 
 @dataclass
+class CosyVoiceConfig:
+    """CosyVoice 3.0 TTS engine (dedicated CUDA env via subprocess). Unlike OmniVoice it
+    supports clone + emotion `instruct` together (verified) — Apache-2.0."""
+    env_python: str = ""    # D:\env\cosyvoice\python.exe
+    repo_dir: str = ""      # D:\env\CosyVoice-src (holds the code + third_party/Matcha-TTS)
+    model_dir: str = "pretrained_models/Fun-CosyVoice3-0.5B"   # relative to repo_dir
+    neutral_instruct: str = "calm, measured"   # baseline tone for un-instructed beats ("" = none)
+
+
+@dataclass
 class TtsConfig:
-    """Text-to-speech / voice cloning. Off by default (needs the omnivoice env)."""
+    """Text-to-speech / voice cloning. Off by default (needs a TTS engine env)."""
     enabled: bool = False
-    provider: str = "omnivoice"     # omnivoice (local) — extensible to others
+    provider: str = "omnivoice"     # omnivoice | cosyvoice3
     default_voice: str = ""         # fallback voice_id for automated builds
     omnivoice: OmniVoiceConfig = field(default_factory=OmniVoiceConfig)
+    cosyvoice: CosyVoiceConfig = field(default_factory=CosyVoiceConfig)
+
+    def instruct_capable(self) -> bool:
+        """Does the ACTIVE engine honor a per-section `instruct` (A6 delivery / emotion)?
+        CosyVoice3 does; the local OmniVoice build does not."""
+        p = (self.provider or "omnivoice").lower()
+        if p == "cosyvoice3":
+            return True
+        return bool(getattr(self.omnivoice, "supports_instruct", False))
 
 
 @dataclass
@@ -278,6 +297,10 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
                     for k2, v2 in value.items():
                         if hasattr(config.tts.omnivoice, k2):
                             setattr(config.tts.omnivoice, k2, v2)
+                elif key == "cosyvoice" and isinstance(value, dict):
+                    for k2, v2 in value.items():
+                        if hasattr(config.tts.cosyvoice, k2):
+                            setattr(config.tts.cosyvoice, k2, v2)
                 elif hasattr(config.tts, key):
                     setattr(config.tts, key, value)
 

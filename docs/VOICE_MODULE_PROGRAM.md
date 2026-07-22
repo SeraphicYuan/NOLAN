@@ -349,6 +349,28 @@ the loop the retake actuator (B2) + take-preservation (B3) were built for.
   best-of-N selection genuinely improves a weak beat. Mirrors the script-review loop; Narrate
   gets a "Polish weak beats" button.
 
+## Engine option — CosyVoice 3.0 provider (SHIPPED 2026-07-22, unblocks P6)
+
+The P6 blocker was OmniVoice, not the idea. **CosyVoice 3.0** (Apache-2.0) does what OmniVoice
+can't: `inference_instruct2(text, "…tone.<|endofprompt|>", ref_wav)` = **clone + natural-language
+emotion in one call** (probe-verified: grave/happy/angry all land while keeping the voice).
+Quality A/B on the full De Beers script (same narrator clone): **comparable — CosyVoice mean WER
+0.031 vs OmniVoice 0.043**, 2× realtime; user note: neutral runs a touch tense, fixable with a
+baseline `neutral_instruct` ("calm, measured"). Wired as a `TtsProvider`:
+- `CosyVoiceConfig` + `TtsConfig.instruct_capable()` (True for cosyvoice3); `config.tts.provider =
+  "cosyvoice3"` switches, OmniVoice stays the fallback.
+- `CosyVoiceTTS` (tts.py) subprocesses into `D:\env\cosyvoice` via the standalone
+  `tts_cosyvoice_runner.py`, which handles the three CosyVoice3 rules (16 kHz ref, `<|endofprompt|>`,
+  float32→PCM16) so the pipeline stays engine-agnostic. `synthesize_sections` now sends the delivery
+  as `instruct` whenever the engine is instruct-capable (no longer dropped on clone).
+- Env: separate CUDA conda env (nolan runs CPU torch) — `D:\env\cosyvoice` + the ~10 GB
+  `Fun-CosyVoice3-0.5B` model. Standing this up cost several install cycles (setuptools/pkg_resources,
+  openai-whisper build isolation, sys.path shadowing `packaging.py`, 16 kHz/`<|endofprompt|>` inputs)
+  — all captured in [[reference-omnivoice-engine-limits]]-style notes.
+
+With CosyVoice3 selected, `supports_instruct` is effectively True → **A6 delivery notes + the P6
+emotion arc below are now buildable for real** (no longer engine-blocked).
+
 ## P6 (EXPERIMENTAL) — tone / emotion arc
 
 Highly experimental; gated behind a hard engine constraint. Two halves:

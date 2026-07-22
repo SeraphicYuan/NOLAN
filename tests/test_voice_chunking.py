@@ -101,12 +101,13 @@ def test_delivery_dropped_by_default_engine_unsupported(tmp_path):
     assert "instruct" not in fake.items[0]
 
 
-def test_delivery_dropped_when_cloning(tmp_path):
-    """Even on an instruct-capable build, a clone drops the instruct (can't combine)."""
+def test_delivery_sent_with_clone_on_capable_engine(tmp_path):
+    """On an instruct-capable engine (CosyVoice3), a delivery IS sent alongside the clone —
+    clone + emotion in one call (OmniVoice couldn't, but it reports allow_instruct=False)."""
     fake = _Fake()
     vp.synthesize_sections(fake, ["a body"], tmp_path, ref_audio="voice.wav",
                            deliveries=["somber"], sub_chunk_words=0, allow_instruct=True)
-    assert "instruct" not in fake.items[0] and fake.items[0].get("ref_audio") == "voice.wav"
+    assert fake.items[0].get("instruct") == "somber" and fake.items[0].get("ref_audio") == "voice.wav"
 
 
 def test_parse_delivery_marker():

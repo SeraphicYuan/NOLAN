@@ -48,7 +48,7 @@ class _FakeProvider:
 
 def _cfg():
     return SimpleNamespace(
-        tts=SimpleNamespace(enabled=True,
+        tts=SimpleNamespace(enabled=True, instruct_capable=lambda: False,
                             omnivoice=SimpleNamespace(free_comfyui_vram=False)),
         comfyui=SimpleNamespace(host="127.0.0.1", port=8188))
 
