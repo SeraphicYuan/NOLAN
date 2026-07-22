@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transcript Library · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 20px; }
+    h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 2px; }
+    .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input[type=text], input[type=number] { background: var(--bg-primary); border: 1px solid var(--border);
+           border-radius: 6px; color: var(--text-primary); padding: 8px 10px; font-size: 13px; }
+    #channel, #q { flex: 1; min-width: 240px; }
+    .btn { background: var(--accent, #4f7cff); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn.ghost { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); }
+    .dim { color: var(--text-secondary); font-size: 12px; }
+    .warn { color: #e0a83a; font-size: 12px; }
+    .hit { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .hit:last-child { border-bottom: none; }
+    .hit-title { font-weight: 600; }
+    .hit-title a { color: var(--accent, #4f7cff); text-decoration: none; }
+    .hit-meta { color: var(--text-secondary); font-size: 12px; margin: 2px 0; }
+    .hit-snip { font-size: 13px; color: var(--text-primary); opacity: .92; }
+    .score { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-secondary); }
+    .chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(79,124,255,.14); color: var(--accent,#4f7cff); margin-left: 6px; }
+    .log { font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; color: var(--text-secondary);
+           background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 8px; max-height: 180px; overflow: auto; display: none; }
+    .vid-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+    .vid-row:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Transcript Library</h1>
+    <div class="sub">Index a whole YouTube channel's <b>transcripts</b> — captions only, no video downloaded — then search
+      <i>which video, and roughly when</i>, a topic is discussed. A cheap discovery layer; when you want the footage, clip &amp; ingest that range.</div>
+
+    <div class="card">
+      <div class="row">
+        <input type="text" id="channel" placeholder="channel URL / @handle / id  (e.g. https://www.youtube.com/bloomberg)">
+        <label class="dim">videos <input type="number" id="limit" value="10" min="1" max="100" style="width:64px"></label>
+        <button class="btn" id="addBtn" onclick="addChannel()">Index channel</button>
+      </div>
+      <span id="add-status" class="dim"></span>
+      <div class="log" id="add-log"></div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <input type="text" id="q" placeholder="Search the transcript library — e.g. “effect of tariffs on supply chains”" onkeydown="if(event.key==='Enter')doSearch()">
+        <button class="btn" onclick="doSearch()">Search</button>
+      </div>
+      <div id="results" style="margin-top:10px"><div class="dim">Search once a channel is indexed…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <b style="font-size:13px">Indexed transcripts</b>
+        <span id="lib-stats" class="dim"></span>
+      </div>
+      <div id="videos" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <script src="/static/nav.js" data-active="transcripts"></script>
+  <script>
+    const $ = s => document.querySelector(s);
+    function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    async function jget(u){ const r = await fetch(u); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail||r.status); return r.json(); }
+    async function jpost(u,b){ const r = await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}); const d = await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||r.status); return d; }
+
+    async function addChannel(){
+      const channel = $("#channel").value.trim(); if(!channel){ return; }
+      const st = $("#add-status"), log = $("#add-log");
+      st.textContent = "starting…"; log.style.display="block"; log.textContent="";
+      $("#addBtn").disabled = true;
+      try {
+        const d = await jpost("/api/transcripts/add-channel", {channel, limit: parseInt($("#limit").value,10)||10});
+        pollJob(d.job_id, st, log);
+      } catch(e){ st.innerHTML = `<span class="warn">✗ ${esc(e.message)}</span>`; $("#addBtn").disabled=false; }
+    }
+    function pollJob(jobId, st, log){
+      fetch("/api/jobs/"+jobId).then(r=>r.json()).then(j=>{
+        if (j.logs) log.textContent = j.logs.slice(-40).join("\n");
+        st.textContent = j.message || j.status;
+        if (j.status === "done"){ st.innerHTML = "✓ "+esc(j.message||"done"); $("#addBtn").disabled=false; loadVideos(); return; }
+        if (j.status === "error"){ st.innerHTML = `<span class="warn">✗ ${esc(j.error||"error")}</span>`; $("#addBtn").disabled=false; return; }
+        setTimeout(()=>pollJob(jobId, st, log), 1200);
+      }).catch(e=>{ st.innerHTML = `<span class="warn">poll error: ${esc(e.message)}</span>`; $("#addBtn").disabled=false; });
+    }
+
+    async function doSearch(){
+      const q = $("#q").value.trim(); if(!q){ return; }
+      $("#results").innerHTML = '<div class="dim">Searching…</div>';
+      try {
+        const d = await jget(`/api/transcripts/search?q=${encodeURIComponent(q)}`);
+        if(!d.results.length){ $("#results").innerHTML = '<div class="dim">No hits. Index a channel first, or try different words.</div>'; return; }
+        $("#results").innerHTML = d.results.map(hit).join("");
+      } catch(e){ $("#results").innerHTML = `<span class="warn">search failed: ${esc(e.message)}</span>`; }
+    }
+    function fmt(s){ s=Math.round(s); const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
+    function hit(h){
+      return `<div class="hit">
+        <div class="hit-title"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">${esc(h.title)}</a>
+          <span class="chip">@ ${fmt(h.start)}</span> <span class="score">${h.score}</span></div>
+        <div class="hit-meta">${esc(h.channel||"")}</div>
+        <div class="hit-snip">${esc(h.snippet)}…</div>
+      </div>`;
+    }
+
+    async function loadVideos(){
+      try {
+        const d = await jget("/api/transcripts/videos");
+        $("#lib-stats").textContent = `${d.count} videos · ${d.channels.length} channel(s)`;
+        $("#videos").innerHTML = d.videos.length
+          ? d.videos.map(v=>`<div class="vid-row"><span><a href="${esc(v.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(v.title||v.video_id)}</a>
+              <span class="dim">· ${esc(v.channel||"")}</span></span><span class="dim">${v.windows} windows</span></div>`).join("")
+          : '<div class="dim">Nothing indexed yet. Add a channel above.</div>';
+      } catch(e){ $("#videos").innerHTML = `<span class="warn">${esc(e.message)}</span>`; }
+    }
+
+    loadVideos();
+  </script>
+</body>
+</html>

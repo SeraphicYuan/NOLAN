@@ -13,9 +13,83 @@ transcript joins the unified semantic search.
 """
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+REPO = Path(__file__).resolve().parents[2]                    # src/nolan/transcript_lib.py -> repo root
+TRANSCRIPT_DIR = REPO / "projects" / "_library" / "transcripts"
+
+
+def _catalog_file(catalog_dir: Optional[Path] = None) -> Path:
+    return (Path(catalog_dir) if catalog_dir else TRANSCRIPT_DIR) / "catalog.json"
+
+
+def load_catalog(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """The transcript library's DISPLAY sidecar {youtube_video_id: {title, channel, url, windows, …}}.
+    The searchable segments live in VideoIndex; this holds what the browse/search UI shows (the videos
+    table has no title/channel columns). Repo-anchored, NOT cwd."""
+    p = _catalog_file(catalog_dir)
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {}
+
+
+def record_transcript(video_id: str, meta: Dict[str, Any], windows_n: int, channel: Optional[str],
+                      *, added: str = "", catalog_dir: Optional[Path] = None) -> None:
+    """Upsert one transcript video's display metadata into the sidecar (keyed by the YouTube video id)."""
+    cat = load_catalog(catalog_dir)
+    cat[str(video_id)] = {
+        "video_id": str(video_id), "title": meta.get("title"),
+        "channel": channel or meta.get("channel"), "url": meta.get("url"),
+        "upload_date": meta.get("upload_date"), "language": meta.get("language"),
+        "windows": int(windows_n), "added": added,
+    }
+    p = _catalog_file(catalog_dir)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(cat, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def search_transcripts(query: str, index, vs, n: int = 20,
+                       catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """Semantic search SCOPED to the transcript tier → timestamped, titled results for the UI:
+    [{title, channel, url, watch_url, start, snippet, score}]. Joins each hit's video (by YouTube id
+    parsed from the URL) to the display sidecar; a watch_url deep-links to the timestamp on YouTube."""
+    from nolan.youtube import extract_video_id
+    cat = load_catalog(catalog_dir)
+    t_ids = index.transcript_video_ids()
+    if not t_ids:
+        return []
+    # Over-fetch: vs.search ranks across the WHOLE library (footage + transcripts), then we keep only the
+    # transcript tier — so pull a wide candidate pool or footage hits can crowd transcript hits out before
+    # the filter. (A Chroma where-filter scoped to transcript ids would be the tighter fix — follow-up.)
+    hits = vs.search(query=query, limit=max(n * 8, 200), search_level="segments") or []
+    out: List[Dict[str, Any]] = []
+    seen = set()
+    for h in hits:
+        if getattr(h, "video_id", None) not in t_ids:
+            continue
+        url = getattr(h, "video_path", "") or ""
+        yid = extract_video_id(url) or ""
+        m = cat.get(yid, {})
+        start = float(getattr(h, "timestamp_start", 0) or 0)
+        key = (yid, round(start, 0))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            "title": m.get("title") or yid or url, "channel": m.get("channel"),
+            "url": url, "watch_url": (f"{url}&t={int(start)}s" if "watch?v=" in url else url),
+            "start": round(start, 1), "score": round(float(getattr(h, "score", 0) or 0), 3),
+            "snippet": (getattr(h, "description", "") or getattr(h, "transcript", "") or "")[:220],
+        })
+        if len(out) >= n:
+            break
+    return out
 
 
 def list_channel(channel: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:

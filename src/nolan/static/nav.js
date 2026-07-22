@@ -24,6 +24,7 @@
     { title: "Assets", items: [
       { id: "library", label: "Library", href: "/library" },
       { id: "ingest", label: "Add to Library", href: "/library/add" },
+      { id: "transcripts", label: "Transcript Library", href: "/transcripts" },
       { id: "clips", label: "Clips", href: "/clips" },
       { id: "clipper", label: "Clip from URL", href: "/clipper" },
       { id: "images", label: "Picture Library", href: "/images" },

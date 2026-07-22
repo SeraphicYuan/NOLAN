@@ -326,6 +326,49 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
     return {"ok": True, "path": str(saved), "name": Path(saved).name, "comp": comp}
 
 
+async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,
+                                     window_s: float = 45.0, overlap_s: float = 10.0):
+    """Build/refresh a TRANSCRIPT library from a YouTube channel: list its videos, fetch each transcript
+    (captions only — NO video download), chunk into overlapping timestamped windows, ingest as a
+    transcript-tier VideoIndex row (has_footage=0) + embed into the unified semantic store. Per-video
+    progress; soft-skips videos without captions. A cheap DISCOVERY index — searchable, never footage."""
+    import datetime as _dt
+
+    from nolan import transcript_lib as tl
+    from nolan.indexer import VideoIndex
+    from nolan.vector_search import VectorSearch
+
+    index = VideoIndex(db_path)
+    vs = VectorSearch(db_path.parent / "vectors", index=index)
+    job.set_progress(0.03, f"Listing {channel} …")
+    vids = await asyncio.to_thread(tl.list_channel, channel, int(limit))
+    if not vids:
+        raise RuntimeError(f"no videos found for channel {channel!r} (check the URL / @handle)")
+    now = _dt.datetime.now().isoformat(timespec="seconds")
+    got = skipped = windows_total = 0
+    for i, v in enumerate(vids):
+        title = (v.get("title") or v.get("video_id") or "?")[:60]
+        job.set_progress(0.05 + 0.9 * (i / len(vids)), f"[{i + 1}/{len(vids)}] {title}")
+        try:
+            meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, v["url"])
+        except Exception as e:                                # a bad single video must not kill the channel run
+            job.log(f"  ✗ {title}: {type(e).__name__}: {e}"); skipped += 1; continue
+        if not tr or not getattr(tr, "chunks", None):
+            job.log(f"  · {title}: no captions — skipped"); skipped += 1; continue
+        windows = tl.chunk_transcript(tr, window_s=float(window_s), overlap_s=float(overlap_s))
+        vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": v["url"]}, windows, channel)
+        if not vid:
+            skipped += 1; continue
+        await asyncio.to_thread(vs.sync_video, vid)          # embed → unified semantic search
+        tl.record_transcript(meta.get("video_id") or v["video_id"], {**meta, "url": v["url"]},
+                             len(windows), channel, added=now)
+        got += 1
+        windows_total += len(windows)
+        job.log(f"  ✓ {title} ({len(windows)} windows)")
+    job.set_progress(1.0, f"{got} transcripts ingested ({windows_total} windows), {skipped} skipped")
+    return {"channel": channel, "found": len(vids), "ingested": got, "skipped": skipped, "windows": windows_total}
+
+
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",
                       period: str = "", locale: str = "", literalness: float = 0.25,
                       mood: Optional[str] = None, sources: Optional[list] = None,

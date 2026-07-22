@@ -543,6 +543,13 @@ class VideoIndex:
             rows = conn.execute("SELECT id FROM videos WHERE COALESCE(has_footage, 1) = 1").fetchall()
         return {r[0] for r in rows}
 
+    def transcript_video_ids(self) -> set:
+        """The set of transcript-tier video ids (source_kind='transcript') — used to SCOPE a search to
+        the transcript library (the discovery surface), the inverse of the footage set."""
+        with _connect(self.db_path) as conn:
+            rows = conn.execute("SELECT id FROM videos WHERE source_kind = 'transcript'").fetchall()
+        return {r[0] for r in rows}
+
     def clear_segments(self, video_id: int, conn: Optional[sqlite3.Connection] = None) -> int:
         """Delete all segments for a video (used before re-inserting — e.g. a transcript re-index — so
         the operation is idempotent instead of duplicating rows). Returns the number deleted."""
