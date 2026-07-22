@@ -52,6 +52,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
             "carousel": ["images"], "document": ["source"], "lower_third": ["name"],
             "annotate": ["src", "callouts"], "quadrant": ["x", "y"], "venn": ["sets"],
             "sankey": ["source", "targets"], "scale": ["items"], "pie": ["segments"], "funnel": ["stages"],
+            "data_table": ["rows"], "trajectory": ["points"], "stream": ["series"], "bar_race": ["series"],
             "spectrum": ["axis", "items"], "cycle": ["steps"], "detail_zoom": ["src", "stops"],
             "hero": ["src", "title"], "chat_thread": ["messages"], "connection_board": ["nodes"], "spans": ["spans"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}

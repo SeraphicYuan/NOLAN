@@ -373,4 +373,225 @@ def spotlight(sid, sc):
     return frag, tl
 
 
-EXT_BLOCKS = {"spotlight": spotlight}
+def data_table(sid, sc):
+    """A-P3 — a dataset as a full TABLE with ONE cell SPOTLIGHTED: a beat that names a single number shows
+    the ENTIRE series, that cell highlighted, so the value reads IN CONTEXT (not a bare stat). Bind a dataset
+    (`data.dataset`+`query`+`encode`) and the resolver fills `columns`/`rows` from real cells + resolves a
+    `highlight:{where:{col:val}}` to a row/col; numbers therefore carry provenance. Rows reveal across the
+    window; the spotlighted row lifts and its cell pulses at its cue."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc = compose.esc
+    cols = [str(c) for c in (d.get("columns") or [])]
+    rows = d.get("rows") or []
+    hl = d.get("highlight") or {}
+    hr = hl.get("row")
+    hc = hl.get("col", 0) if hl else None
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    faint = "rgba(243,239,230,0.16)" if dark else "rgba(28,28,25,0.12)"
+    n = len(rows)
+    times = compose._reveal_times(n, start, dur, [None] * n) if n else []
+
+    def _cell(txt, i, j, head=False):
+        tag = "th" if head else "td"
+        hit = (not head and i == hr and (hc is None or j == hc))
+        idp = f' id="{sid}-c{i}-{j}"' if hit else ""
+        style = ("padding:0.7cqw 1.4cqw;text-align:%s;font-variant-numeric:tabular-nums;"
+                 "white-space:nowrap;border-bottom:1px solid %s;" % ("left" if j == 0 else "right", faint))
+        if head:
+            style += "font-weight:800;letter-spacing:0.02em;opacity:0.72;font-size:1.05cqw;text-transform:uppercase;"
+        else:
+            style += "font-size:1.55cqw;font-weight:%s;" % ("800" if hit else "500")
+        if hit:
+            style += "color:var(--accent-ink,%s);background:var(--accent);border-radius:8px;" % ink
+        return f'<{tag}{idp} style="{style}">{esc(str(txt))}</{tag}>'
+
+    head = "".join(_cell(c, -1, j, head=True) for j, c in enumerate(cols))
+    body_rows = []
+    for i, r in enumerate(rows):
+        cells = r if isinstance(r, list) else [r.get(c, "") for c in cols]
+        tds = "".join(_cell(v, i, j) for j, v in enumerate(cells))
+        body_rows.append(f'<tr id="{sid}-r{i}" style="opacity:0">{tds}</tr>')
+    kick = (f'<div style="font-family:var(--font-body);font-weight:600;font-size:0.95cqw;letter-spacing:0.28em;'
+            f'text-transform:uppercase;color:var(--text-2,#8a8a80);margin-bottom:0.6cqw">{esc(d["kicker"])}</div>'
+            if d.get("kicker") else "")
+    title = ""
+    if d.get("title"):
+        t = esc(d["title"])
+        if d.get("titleHi"):
+            t = t.replace(esc(d["titleHi"]), f'<span style="color:var(--accent)">{esc(d["titleHi"])}</span>')
+        title = (f'<div data-fit data-fit-w="52cqw" style="font-family:var(--font-display);font-weight:800;'
+                 f'font-size:3cqw;letter-spacing:-0.01em;line-height:1.05;color:{ink};margin-bottom:1.6cqw">{t}</div>')
+    frag = [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+            f'style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;'
+            f'align-items:center;container-type:size;padding:0 8cqw;color:{ink}">'
+            f'{kick}{title}<table style="border-collapse:collapse;color:{ink}">'
+            f'<thead><tr>{head}</tr></thead><tbody>{"".join(body_rows)}</tbody></table></div>']
+    tl = []
+    for i in range(n):
+        tl.append(f'tl.fromTo("#{sid}-r{i}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.4,ease:"power2.out"}},{times[i]:.2f});')
+    if hr is not None and 0 <= hr < n:                              # spotlight pulse at the highlighted row's cue
+        cue = times[hr] if hr < len(times) else start
+        tl.append(f'tl.fromTo("#{sid}-r{hr}",{{scale:1}},{{scale:1.04,duration:0.3,ease:"back.out(2)",'
+                  f'transformOrigin:"center"}},{cue + 0.15:.2f});')
+        tl.append(f'tl.to("#{sid}-r{hr}",{{scale:1,duration:0.3}},{cue + 0.55:.2f});')
+    return frag, tl
+
+
+def _plot_box():
+    """The shared plot rectangle (px) for the A-P4 marks — matches the chart block's margins."""
+    return 300, 1620, 220, 900          # PX0, PX1 (x span), PY0(top), PY1(bottom)
+
+
+def trajectory(sid, sc):
+    """A-P4 — a CONNECTED SCATTER: points in 2-D (x,y) joined by a path, revealed IN ORDER — a trajectory
+    THROUGH a space over time (inflation vs unemployment by year; loss vs step). The line draws point→point;
+    each dot pops with its label as the draw reaches it. Bind a dataset (encode x/y/label)."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc = compose.esc
+    pts = d.get("points") or []
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    PX0, PX1, PY0, PY1 = _plot_box()
+    xs = [float(p.get("x", 0)) for p in pts] or [0.0]
+    ys = [float(p.get("y", 0)) for p in pts] or [0.0]
+    xlo, xhi = min(xs), max(xs) or 1.0
+    ylo, yhi = min(ys), max(ys) or 1.0
+    sx = lambda v: PX0 + (PX1 - PX0) * ((v - xlo) / ((xhi - xlo) or 1))
+    sy = lambda v: PY1 - (PY1 - PY0) * ((v - ylo) / ((yhi - ylo) or 1))
+    XY = [(sx(float(p.get("x", 0))), sy(float(p.get("y", 0)))) for p in pts]
+    n = len(XY)
+    times = compose._reveal_times(n, start, dur, compose._reveal_cues(pts, start)) if n else []
+    frag = [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+            f'style="position:absolute;inset:0;color:{ink}">']
+    if d.get("title"):
+        frag.append(f'<div style="position:absolute;left:300px;top:110px;font-family:var(--font-display);'
+                    f'font-weight:800;font-size:44px;color:{ink}">{esc(d["title"])}</div>')
+    if d.get("xlabel"):
+        frag.append(f'<div style="position:absolute;left:{PX1-260}px;top:{PY1+18}px;font-size:22px;'
+                    f'opacity:0.6">{esc(d["xlabel"])} →</div>')
+    if d.get("ylabel"):
+        frag.append(f'<div style="position:absolute;left:{PX0-60}px;top:{PY0-40}px;font-size:22px;'
+                    f'opacity:0.6">↑ {esc(d["ylabel"])}</div>')
+    path = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in XY)
+    frag.append(f'<svg viewBox="0 0 1920 1080" preserveAspectRatio="none" style="position:absolute;inset:0;'
+                f'width:100%;height:100%"><path id="{sid}-path" d="{path}" fill="none" stroke="var(--accent)" '
+                f'stroke-width="4" stroke-linejoin="round"/></svg>')
+    for i, (x, y) in enumerate(XY):
+        frag.append(f'<div id="{sid}-d{i}" style="position:absolute;left:{x-9:.0f}px;top:{y-9:.0f}px;width:18px;'
+                    f'height:18px;border-radius:50%;background:var(--accent);opacity:0"></div>')
+        lab = esc(str(pts[i].get("label", "")))
+        if lab:
+            frag.append(f'<div id="{sid}-l{i}" style="position:absolute;left:{x+14:.0f}px;top:{y-14:.0f}px;'
+                        f'font-size:22px;font-weight:700;opacity:0;color:{ink}">{lab}</div>')
+    frag.append('</div>')
+    ldur = round(max(1.2, (times[-1] - times[0] + 0.5) if n else dur), 2)
+    tl = [f'(function(){{var p=document.getElementById("{sid}-path"),L=p.getTotalLength();'
+          f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
+          f'tl.fromTo(p,{{strokeDashoffset:L}},{{strokeDashoffset:0,duration:{ldur},ease:"power1.inOut"}},{times[0] if n else start:.2f});}})();']
+    for i in range(n):
+        tl.append(f'tl.fromTo("#{sid}-d{i}",{{scale:0}},{{scale:1,opacity:1,duration:0.35,ease:"back.out(2)"}},{times[i]:.2f});')
+        tl.append(f'tl.to("#{sid}-l{i}",{{opacity:1,duration:0.3}},{times[i]+0.1:.2f});')
+    return frag, tl
+
+
+def stream(sid, sc):
+    """A-P4 — a STACKED AREA / streamgraph: several series stacked into bands over an x axis, each a filled
+    area, revealed by a left→right sweep — shows a COMPOSITION changing over time. `series:[{label,values:[]}]`
+    + `x:[labels]`; provide value_source or bind a dataset for the gate."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc = compose.esc
+    series = d.get("series") or []
+    xlabs = d.get("x") or []
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    PX0, PX1, PY0, PY1 = _plot_box()
+    nx = max((len(s.get("values", [])) for s in series), default=0)
+    totals = [sum(float(s.get("values", [0] * nx)[i]) for s in series) for i in range(nx)]
+    ymax = max(totals) or 1.0
+    step = (PX1 - PX0) / max(1, nx - 1)
+    xat = lambda i: PX0 + i * step
+    yat = lambda v: PY1 - (PY1 - PY0) * (v / ymax)
+    frag = [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+            f'style="position:absolute;inset:0;color:{ink}">']
+    if d.get("title"):
+        frag.append(f'<div style="position:absolute;left:300px;top:110px;font-family:var(--font-display);'
+                    f'font-weight:800;font-size:44px;color:{ink}">{esc(d["title"])}</div>')
+    cum = [0.0] * nx
+    bands = []
+    for s in series:
+        vals = [float(v) for v in s.get("values", [0] * nx)]
+        top = [cum[i] + vals[i] for i in range(nx)]
+        up = " L ".join(f"{xat(i):.1f} {yat(top[i]):.1f}" for i in range(nx))
+        down = " L ".join(f"{xat(i):.1f} {yat(cum[i]):.1f}" for i in range(nx - 1, -1, -1))
+        bands.append((s.get("label", ""), f"M {up} L {down} Z"))
+        cum = top
+    op = ["0.9", "0.72", "0.56", "0.42", "0.3", "0.22"]
+    svg = [f'<svg viewBox="0 0 1920 1080" preserveAspectRatio="none" style="position:absolute;inset:0;'
+           f'width:100%;height:100%"><clipPath id="{sid}-clip"><rect id="{sid}-wipe" x="{PX0}" y="0" '
+           f'width="0" height="1080"/></clipPath><g clip-path="url(#{sid}-clip)">']
+    for bi, (lab, path) in enumerate(bands):
+        svg.append(f'<path d="{path}" fill="var(--accent)" fill-opacity="{op[bi % len(op)]}"/>')
+    svg.append('</g></svg>')
+    frag += svg
+    for bi, (lab, _p) in enumerate(bands):                              # legend
+        if lab:
+            frag.append(f'<div style="position:absolute;left:{PX1+20}px;top:{PY0+bi*34}px;font-size:22px;'
+                        f'font-weight:700;opacity:{op[bi%len(op)]}">■ {esc(str(lab))}</div>')
+    frag.append('</div>')
+    tl = [f'tl.fromTo("#{sid}-wipe",{{attr:{{width:0}}}},{{attr:{{width:{PX1-PX0+4:.0f}}},duration:{round(max(1.4,dur*0.7),2)},ease:"power1.inOut"}},{start+0.2:.2f});']
+    return frag, tl
+
+
+def bar_race(sid, sc):
+    """A-P4 — a BAR RACE: horizontal bars for categories that GROW and REORDER across time steps, with a big
+    period ticker — the classic 'who's ahead over time'. `series:[{label,values:[v per step]}]` + `steps:[..]`.
+    Each bar tweens its width AND its y (rank slot) between consecutive steps; provenance via value_source/dataset."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc = compose.esc
+    series = d.get("series") or []
+    steps = d.get("steps") or []
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    ns = max((len(s.get("values", [])) for s in series), default=0)
+    if not steps:
+        steps = [str(i + 1) for i in range(ns)]
+    ns = min(ns, len(steps))
+    rows = min(len(series), 8)                                          # top-N bars visible
+    X0, W, TOP, RH = 360, 1160, 300, 78
+    gmax = max((float(v) for s in series for v in s.get("values", [0])[:ns]), default=1.0) or 1.0
+    st = round((dur - 0.6) / max(1, ns), 2)                            # seconds per step
+    frag = [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+            f'style="position:absolute;inset:0;color:{ink}">']
+    if d.get("title"):
+        frag.append(f'<div style="position:absolute;left:{X0}px;top:150px;font-family:var(--font-display);'
+                    f'font-weight:800;font-size:44px;color:{ink}">{esc(d["title"])}</div>')
+    frag.append(f'<div id="{sid}-period" style="position:absolute;right:200px;bottom:160px;'
+                f'font-family:var(--font-display);font-weight:800;font-size:120px;opacity:0.16;color:{ink}">'
+                f'{esc(str(steps[0]))}</div>')
+    for si, s in enumerate(series):
+        frag.append(f'<div id="{sid}-b{si}" style="position:absolute;left:{X0}px;top:{TOP}px;height:{RH-14}px;'
+                    f'width:8px;background:var(--accent);border-radius:8px;opacity:0.92;transform-origin:left center">'
+                    f'<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:800;'
+                    f'font-size:26px;color:var(--accent-ink,{ink});white-space:nowrap">{esc(str(s.get("label","")))}</span>'
+                    f'<span id="{sid}-v{si}" style="position:absolute;right:-70px;top:50%;transform:translateY(-50%);'
+                    f'font-weight:800;font-size:24px;color:{ink}">0</span></div>')
+    frag.append('</div>')
+    tl = []
+    for k in range(ns):
+        t = round(start + 0.3 + k * st, 2)
+        ranked = sorted(range(len(series)), key=lambda i: -float(series[i].get("values", [0])[k] if k < len(series[i].get("values", [])) else 0))
+        rank = {si: r for r, si in enumerate(ranked)}
+        tl.append(f'tl.set("#{sid}-period",{{textContent:{compose.json.dumps(str(steps[k]))}}},{t:.2f});')
+        for si, s in enumerate(series):
+            v = float(s.get("values", [0])[k]) if k < len(s.get("values", [])) else 0.0
+            w = max(8.0, W * (v / gmax))
+            y = TOP + rank[si] * RH
+            vis = 1 if rank[si] < rows else 0
+            tl.append(f'tl.to("#{sid}-b{si}",{{width:{w:.0f},y:{y-TOP:.0f},opacity:{0.92*vis:.2f},duration:{min(1.1,st*0.5):.2f},ease:"power2.inOut"}},{t:.2f});')
+            tl.append(f'tl.set("#{sid}-v{si}",{{textContent:{compose.json.dumps(compose._num(v) if isinstance(v,float) else v)}}},{t:.2f});')
+    return frag, tl
+
+
+EXT_BLOCKS = {"spotlight": spotlight, "data_table": data_table,
+              "trajectory": trajectory, "stream": stream, "bar_race": bar_race}

@@ -100,3 +100,87 @@ def test_resolve_datasets_in_spec_end_to_end(tmp_path):
     n = resolve.resolve_datasets_in_spec(spec, comp)
     assert n == 1                                                    # only the bound scene resolved
     assert spec["frames"][0]["scenes"][0]["data"]["series"][0]["value"] == 4.4
+
+
+# --- A-P2 follow-ups: resolver↔shape parity + A-P2.5 auto-playhead -----------------------------------
+
+def test_resolver_shape_parity_no_drift():
+    """Every field the resolver MATERIALIZES for a block must be a key the block's catalog data_schema
+    declares (no phantom the block won't read — the ledger `items` vs `rows` drift this test caught), and
+    the block's resolver-owned data field is produced. Guards the resolver↔block contract from silent drift."""
+    cat = json.loads((Path(__file__).resolve().parents[1] /
+                      "render-service/_lab_hyperframes/bridge/catalog.json").read_text(encoding="utf-8"))
+    schema = cat["scene_templates"]
+    RESOLVER_FIELD = {"chart": "series", "pie": "segments", "stat": "items", "scale": "items",
+                      "spectrum": "items", "sankey": "targets", "funnel": "stages", "spans": "spans",
+                      "bullet_list": "items", "ledger": "rows", "trajectory": "points"}
+    rows = [{"x": "2020", "y": 10, "lo": 2000, "hi": 2002}, {"x": "2021", "y": 20, "lo": 2003, "hi": 2005},
+            {"x": "2022", "y": 30, "lo": 2006, "hi": 2008}]
+    enc = {"x": "x", "y": "y", "label": "x", "value": "y", "start": "lo", "end": "hi", "text": "x"}
+    for bt, field in RESOLVER_FIELD.items():
+        out = resolve._materialize(bt, rows, enc)
+        assert field in out, f"{bt}: resolver did not produce its data field {field!r}"
+        ds = schema.get(bt, {}).get("data_schema", {})
+        ds_keys = set(ds.keys()) if isinstance(ds, dict) else set()
+        for k in out:
+            assert k in ds_keys, f"{bt}: resolver emits phantom key {k!r} not in catalog data_schema {sorted(ds_keys)}"
+
+
+def test_line_chart_over_temporal_x_auto_enables_playhead():
+    """A-P2.5: a line chart bound to a TEMPORAL x gets the sweeping time-cursor automatically; a non-temporal
+    x does not; an explicit playhead:false is respected."""
+    ds = Dataset(id="t", rows=[{"year": 2020, "pct": 4.0}, {"year": 2021, "pct": 6.0}, {"year": 2022, "pct": 9.0}],
+                 meta={"provenance": "fake", "columns": [{"name": "year", "dtype": "int"}, {"name": "pct", "unit": "%"}]})
+    sc = {"type": "chart", "data": {"type": "line", "encode": {"x": "year", "y": "pct"}}}
+    resolve.resolve_scene(sc, ds)
+    assert sc["data"].get("playhead") is True, "temporal-x line chart should auto-enable the playhead"
+    # non-temporal x → no playhead
+    ds2 = Dataset(id="c", rows=[{"co": "A", "n": 1}, {"co": "B", "n": 2}], meta={"provenance": "f"})
+    sc2 = {"type": "chart", "data": {"type": "line", "encode": {"x": "co", "y": "n"}}}
+    resolve.resolve_scene(sc2, ds2)
+    assert "playhead" not in sc2["data"]
+    # explicit off wins
+    sc3 = {"type": "chart", "data": {"type": "line", "playhead": False, "encode": {"x": "year", "y": "pct"}}}
+    resolve.resolve_scene(sc3, ds)
+    assert sc3["data"]["playhead"] is False
+
+
+def test_data_table_materializes_and_resolves_where_highlight():
+    """A-P3: a dataset → a full table (columns × rows from real cells), and highlight:{where:{col:val}} maps
+    to the matching row + value column, so a one-line beat spotlights the exact number IN CONTEXT."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import compose
+    ds = Dataset(id="e", rows=[{"year": 2020, "pct": 2.0}, {"year": 2023, "pct": 4.4}, {"year": 2028, "pct": 13.0}],
+                 meta={"provenance": "fake", "columns": [{"name": "year"}, {"name": "pct", "unit": "%"}]})
+    sc = {"type": "data_table", "data": {"dataset": "e",
+          "encode": {"columns": ["year", "pct"], "value": "pct", "suffix": "%"},
+          "highlight": {"where": {"year": 2023}}}}
+    resolve.resolve_scene(sc, ds)
+    d = sc["data"]
+    assert d["columns"] == ["year", "pct"]
+    assert d["rows"] == [["2020", "2.0%"], ["2023", "4.4%"], ["2028", "13.0%"]]     # cells from real data, % suffix
+    assert d["highlight"]["row"] == 1 and d["highlight"]["col"] == 1               # where→ the 2023/4.4% cell
+    assert d["value_source"] == "fake"                                             # provenance (A-P1 passes)
+    # the composer emits the highlighted cell id + a pulse on that row
+    frag, tl = compose.BLOCKS["data_table"]("dt", {"id": "dt", "type": "data_table", "start": 0, "dur": 8, "data": d})
+    assert "dt-c1-1" in "".join(frag) and any("dt-r1" in x and "scale" in x for x in tl)
+
+
+def test_a_p4_marks_compose_and_emit():
+    """A-P4: the three time-series marks compose and emit their signature elements (a drawing line, a stacked
+    band sweep, ranked bars + a period ticker). Structural smoke — the render QA verifies the visual."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import compose
+    traj = compose.BLOCKS["trajectory"]("tj", {"id": "tj", "type": "trajectory", "start": 0, "dur": 10,
+           "data": {"points": [{"x": 1, "y": 2, "label": "a"}, {"x": 3, "y": 1, "label": "b"}, {"x": 2, "y": 4, "label": "c"}]}})
+    assert "tj-path" in "".join(traj[0]) and any("strokeDashoffset" in x for x in traj[1])   # a drawn path
+    strm = compose.BLOCKS["stream"]("sm", {"id": "sm", "type": "stream", "start": 0, "dur": 10,
+           "data": {"series": [{"label": "A", "values": [1, 2, 3]}, {"label": "B", "values": [2, 1, 2]}], "x": ["1", "2", "3"]}})
+    assert "sm-wipe" in "".join(strm[0]) and any("sm-wipe" in x for x in strm[1])             # left→right sweep
+    race = compose.BLOCKS["bar_race"]("br", {"id": "br", "type": "bar_race", "start": 0, "dur": 12,
+           "data": {"series": [{"label": "X", "values": [1, 5]}, {"label": "Y", "values": [3, 2]}], "steps": ["t1", "t2"]}})
+    assert "br-period" in "".join(race[0]) and any("br-b0" in x and "width" in x for x in race[1])  # ranked bars + ticker

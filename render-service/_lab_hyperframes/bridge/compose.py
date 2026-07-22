@@ -3790,6 +3790,18 @@ def chart(sid, sc):
             tl.append(f'tl.to("#{sid}-ph",{{opacity:0.55,duration:0.2}},{times[0]:.2f});')
             tl.append(f'tl.fromTo("#{sid}-ph",{{x:0}},{{x:{x1 - x0:.0f},duration:{ldur},ease:"power1.inOut"}},{times[0]:.2f});')
             tl.append(f'tl.to("#{sid}-ph",{{opacity:0,duration:0.4}},{round(times[0] + ldur, 2)});')
+            # value TICKER (A-P2.5 follow-up): a bold readout riding the cursor head, its text SNAPPING to
+            # each point's value as the sweep reaches it — the running "current value" that makes the beat read
+            # as time advancing (the small per-point labels still reveal beneath each dot). textContent set()s
+            # are seek-safe (the last one at/before the seek time wins).
+            world.append(f'<div id="{sid}-phv" style="position:absolute;left:{x0 - 44:.0f}px;top:{ytop - 52:.0f}px;'
+                         f'width:88px;text-align:center;font-weight:800;font-size:30px;color:var(--accent);'
+                         f'opacity:0;pointer-events:none;">{esc(pre)}{_num(vals[0])}{esc(suf)}</div>')
+            tl.append(f'tl.to("#{sid}-phv",{{opacity:1,duration:0.2}},{times[0]:.2f});')
+            tl.append(f'tl.fromTo("#{sid}-phv",{{x:0}},{{x:{x1 - x0:.0f},duration:{ldur},ease:"power1.inOut"}},{times[0]:.2f});')
+            for i in range(n):
+                tl.append(f'tl.set("#{sid}-phv",{{textContent:{json.dumps(f"{pre}{_num(vals[i])}{suf}")}}},{times[i]:.2f});')
+            tl.append(f'tl.to("#{sid}-phv",{{opacity:0,duration:0.4}},{round(times[0] + ldur, 2)});')
     elif typ == "waterfall":   # cumulative +/- bars floating at the running total (a revenue/budget bridge)
         bw = slot * 0.62
         run = 0.0

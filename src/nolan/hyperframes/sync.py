@@ -362,7 +362,8 @@ def _spans_overlap(spans) -> bool:
 
 
 _DATAVIZ = {"chart", "stat", "sankey", "pie", "funnel", "quadrant", "cycle", "spectrum", "scale",
-            "spans", "venn", "connection_board", "bullet_list", "ledger"}
+            "spans", "venn", "connection_board", "bullet_list", "ledger", "data_table",
+            "trajectory", "stream", "bar_race"}
 
 
 def _data_element_count(d: Dict) -> int:

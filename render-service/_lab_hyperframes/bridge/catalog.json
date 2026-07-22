@@ -812,6 +812,72 @@
         "transform_opacity_only"
       ],
       "note": "Bars are theme --accent (0.5 opacity so overlaps read; hl = full); start/end are plain numbers (negative = BC). 2-6 rows read best."
+    },
+    "data_table": {
+      "purpose": "A dataset as a full TABLE (columns × rows) with ONE cell SPOTLIGHTED — the number IN CONTEXT of its whole series. Rows reveal across the window; the highlighted row lifts and pulses at its cue.",
+      "when_to_use": "A one-line beat that NAMES a single value ('4.4% in 2023') but you want to show it inside the full series/table so the viewer sees the trend and neighbours, not a bare stat. A small reference table (≤~10 rows) where one row is the point.",
+      "not_for": "A single headline number with no context (use stat). A big comparison matrix of labels (use comparison_table). >~12 rows (too dense to read — filter the dataset first).",
+      "data_schema": {
+        "columns": "array of strings — column headers (auto-filled from a bound dataset's encode.columns)",
+        "rows": "array of rows, each an array of cell strings (auto-filled from a bound dataset's cells — provenance)",
+        "highlight": "object? — the spotlighted cell: {row, col} (0-based) OR {where:{col:value}} which the resolver maps to the matching row + the value column, so a one-line beat spotlights the exact number it names",
+        "dataset": "string? — bind a dataset id; with `query`+`encode` the resolver fills columns/rows from real cells + stamps value_source (A-P1 gate passes)",
+        "query": "object? — dataset filter/sort/derive/top_n (see data verbs)",
+        "encode": "object? — {columns:[...], value:'col'} — which columns to show + which is the value column (for suffix + highlight default)",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string? — substring of title to accent",
+        "ground": "object? — optional media/paper ground"
+      },
+      "fn": "data_table"
+    },
+    "trajectory": {
+      "fn": "trajectory",
+      "purpose": "A CONNECTED SCATTER — points in 2-D (x,y) joined by a path, revealed in order: a trajectory THROUGH a space over time.",
+      "when_to_use": "Two quantities moving together over time (inflation vs unemployment by year; a Phillips curve; loss vs step). A path that loops/reverses (a line chart can't show that).",
+      "not_for": "A single series vs time (use chart line + playhead). Categorical comparison (chart bar).",
+      "data_schema": {
+        "points": "array of {x, y, label?, cue?} — the ordered points (auto-filled from a dataset via encode x/y/label)",
+        "title": "string?",
+        "xlabel": "string?",
+        "ylabel": "string?",
+        "dataset": "string?",
+        "query": "object?",
+        "encode": "object? {x,y,label}",
+        "ground": "object?"
+      }
+    },
+    "stream": {
+      "fn": "stream",
+      "purpose": "A STACKED AREA / streamgraph — several series stacked into bands over an x axis, revealed by a left→right sweep: a COMPOSITION changing over time.",
+      "when_to_use": "How a whole splits into parts ACROSS time (energy mix by year, market share over time, budget composition).",
+      "not_for": "A single total over time (chart line). Parts of ONE moment (pie).",
+      "data_schema": {
+        "series": "array of {label, values:[numbers]} — the stacked bands (bottom→top)",
+        "x": "array of strings — the x-axis step labels",
+        "title": "string?",
+        "value_source": "string? — provenance if not dataset-bound",
+        "dataset": "string?",
+        "query": "object?",
+        "encode": "object?",
+        "ground": "object?"
+      }
+    },
+    "bar_race": {
+      "fn": "bar_race",
+      "purpose": "A BAR RACE — horizontal bars for categories that GROW and REORDER across time steps, with a big period ticker: 'who's ahead over time'.",
+      "when_to_use": "A ranking that CHANGES over time (spend by company per year, cumulative counts, leaderboard evolution). The reordering IS the story.",
+      "not_for": "A static ranking at one moment (chart bar). A single series (chart line).",
+      "data_schema": {
+        "series": "array of {label, values:[v per step]} — each category's value at each step",
+        "steps": "array of strings — the time-step labels (drives the period ticker)",
+        "title": "string?",
+        "value_source": "string?",
+        "dataset": "string?",
+        "query": "object?",
+        "encode": "object?",
+        "ground": "object?"
+      }
     }
   },
   "components": {

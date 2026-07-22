@@ -13,9 +13,26 @@ many blocks — each block type declares how rows+encode become its canonical fi
 """
 from __future__ import annotations
 
+import re
 from typing import Dict, List
 
 from .verbs import apply_query
+
+# a column is TEMPORAL if its name (or declared unit) reads as time — a line chart over such an x auto-gets
+# the sweeping time-cursor (A-P2.5), so a time series reads as time advancing without the author toggling it.
+_TEMPORAL = re.compile(r"(?:^|[_\s])(year|date|time|month|quarter|day|week|decade|yr|period|era)s?(?:$|[_\s])", re.I)
+
+
+def _is_temporal(col, dataset) -> bool:
+    if not col:
+        return False
+    if _TEMPORAL.search(str(col)):
+        return True
+    for c in getattr(dataset, "columns", []) or []:        # dataset column metadata: a temporal dtype/unit
+        if c.get("name") == col and (str(c.get("dtype", "")).lower() in ("date", "datetime", "year")
+                                     or _TEMPORAL.search(str(c.get("unit", "")))):
+            return True
+    return False
 
 
 def _num(x):
@@ -59,9 +76,32 @@ def _materialize(block_type: str, rows: List[Dict], enc: Dict) -> Dict:
         return {"spans": [{"label": str(_rowval(r, lab)),
                            "start": _num(_rowval(r, enc.get("start"), 0)),
                            "end": _num(_rowval(r, enc.get("end"), 0))} for r in rows]}
-    if block_type in ("bullet_list", "ledger"):
+    if block_type == "trajectory":                          # A-P4: dataset → ordered (x,y) points
+        return {"points": [{"x": _num(_rowval(r, x, 0)), "y": _num(_rowval(r, y, 0)),
+                            "label": str(_rowval(r, lab))} for r in rows]}
+    if block_type == "data_table":                          # A-P3: dataset → a full table (columns × rows)
+        cols = enc.get("columns") or (list(rows[0].keys()) if rows and isinstance(rows[0], dict) else [])
+        cols = [c for c in cols if not str(c).startswith("_")]
+
+        def _cell(r, c):
+            v = r.get(c)
+            if isinstance(v, float) and not isinstance(v, bool):
+                v = _num(v)
+            s = str(v)
+            return (s + suf) if (c == val and suf) else ((pre + s) if (c == val and pre) else s)
+        return {"columns": [str(c) for c in cols], "rows": [[_cell(r, c) for c in cols] for r in rows]}
+    if block_type == "bullet_list":
         text_col = enc.get("text") or lab
         return {"items": [str(_rowval(r, text_col)) for r in rows]}
+    if block_type == "ledger":                              # the ledger block reads `rows` [{title, desc?, meta?}]
+        title_col = enc.get("text") or lab
+        out = []
+        for r in rows:
+            row = {"title": str(_rowval(r, title_col))}
+            if val and _rowval(r, val, None) is not None:
+                row["meta"] = f"{pre}{_num(_rowval(r, val))}{suf}"
+            out.append(row)
+        return {"rows": out}
     # generic fallback: a value/label list under `items`
     return {"items": [{"value": _num(_rowval(r, val, 0)), "label": str(_rowval(r, lab))} for r in rows]}
 
@@ -70,10 +110,32 @@ def resolve_scene(scene: Dict, dataset) -> Dict:
     """Fill `scene.data` from `dataset` per its query+encode; stamp `value_source` (provenance) so the number
     gate passes. Mutates + returns the scene. Keeps `_dataset` for re-resolution/provenance."""
     d = scene.setdefault("data", {})
+    enc = d.get("encode", {})
     rows = apply_query(dataset.rows, d.get("query", {}))
-    d.update(_materialize(scene.get("type", ""), rows, d.get("encode", {})))
+    d.update(_materialize(scene.get("type", ""), rows, enc))
     d["value_source"] = dataset.meta.get("provenance") or f"dataset:{dataset.id}"
-    d["_dataset"] = {"id": dataset.id, "query": d.get("query", {}), "encode": d.get("encode", {})}
+    d["_dataset"] = {"id": dataset.id, "query": d.get("query", {}), "encode": enc}
+    # A-P2.5: a LINE chart over a TEMPORAL x auto-gets the time-cursor playhead (author forces it off with
+    # `data.playhead: false`, which stays present and wins here).
+    if scene.get("type") == "chart" and d.get("type") == "line" and "playhead" not in d \
+            and _is_temporal(enc.get("x") or enc.get("label"), dataset):
+        d["playhead"] = True
+    # A-P3: resolve a data_table's `highlight:{where:{col:val}}` → the matching row index + the value column,
+    # so a one-line beat spotlights the exact cell it names IN CONTEXT of the whole table.
+    if scene.get("type") == "data_table":
+        hl = d.get("highlight") or {}
+        where = hl.get("where")
+        if where and "row" not in hl:
+            cols = d.get("columns", [])
+            for idx, r in enumerate(rows):
+                if all(str(r.get(k)) == str(v) for k, v in where.items()):
+                    hl["row"] = idx
+                    vc = enc.get("value") or enc.get("y")
+                    col = vc if vc in cols else next(iter(where))
+                    if col in cols:
+                        hl["col"] = cols.index(col)
+                    break
+            d["highlight"] = hl
     return scene
 
 
