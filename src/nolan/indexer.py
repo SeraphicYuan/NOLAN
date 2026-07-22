@@ -37,7 +37,7 @@ class VideoIndex:
     """SQLite-backed video index with content-based fingerprints."""
 
     # Schema version for migrations
-    SCHEMA_VERSION = 8
+    SCHEMA_VERSION = 9
 
     def __init__(self, db_path: Path):
         """Initialize the index.
@@ -97,6 +97,12 @@ class VideoIndex:
 
             if current_version < 8:
                 self._migrate_to_v8(conn)
+                cursor = conn.execute("SELECT version FROM schema_version LIMIT 1")
+                row = cursor.fetchone()
+                current_version = row[0] if row else 0
+
+            if current_version < 9:
+                self._migrate_to_v9(conn)
 
             # Create tables with new schema
             conn.execute("""
@@ -108,7 +114,9 @@ class VideoIndex:
                     checksum TEXT,
                     indexed_at TEXT,
                     has_transcript INTEGER DEFAULT 0,
-                    project_id TEXT
+                    project_id TEXT,
+                    source_kind TEXT DEFAULT 'full',
+                    has_footage INTEGER DEFAULT 1
                 )
             """)
             conn.execute("""
@@ -485,6 +493,69 @@ class VideoIndex:
         conn.execute("DELETE FROM schema_version")
         conn.execute("INSERT INTO schema_version (version) VALUES (?)", (self.SCHEMA_VERSION,))
         conn.commit()
+
+    def _migrate_to_v9(self, conn: sqlite3.Connection) -> None:
+        """Migrate to v9 (source-tier columns on videos).
+
+        Adds ``source_kind`` ('full' | 'clip' | 'transcript') and ``has_footage``
+        (1 = real footage, 0 = a transcript-only row indexed from captions with NO
+        video downloaded). The transcript library is a DISCOVERY tier: searchable
+        alongside footage, but excluded from clips_library acquisition via
+        has_footage. Additive + defaulted, so every existing video becomes
+        source_kind='full', has_footage=1 — unchanged behavior.
+        """
+        # Only ALTER an existing table (the real v8->v9 upgrade path). On a brand-new DB the migration
+        # ladder runs BEFORE the canonical CREATE TABLE below, so `videos` may not exist yet — skip the
+        # ALTER and let the CREATE (which now includes both columns) build it. Either way both land.
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='videos'").fetchone()
+        if exists:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(videos)").fetchall()}
+            if "source_kind" not in columns:
+                conn.execute("ALTER TABLE videos ADD COLUMN source_kind TEXT DEFAULT 'full'")
+            if "has_footage" not in columns:
+                conn.execute("ALTER TABLE videos ADD COLUMN has_footage INTEGER DEFAULT 1")
+        conn.execute("DELETE FROM schema_version")
+        conn.execute("INSERT INTO schema_version (version) VALUES (?)", (self.SCHEMA_VERSION,))
+        conn.commit()
+
+    def mark_source_tier(self, video_id: int, source_kind: str = "full",
+                         has_footage: int = 1, conn: Optional[sqlite3.Connection] = None) -> None:
+        """Set a video's tier: 'full'/'clip' (has_footage=1) vs 'transcript' (has_footage=0 — indexed
+        from captions only, a discovery row with no downloadable footage). Used by the transcript library
+        after add_video (which defaults every row to the 'full' footage tier)."""
+        managed = _connect(self.db_path) if conn is None else None
+        active = conn or managed
+        try:
+            active.execute("UPDATE videos SET source_kind = ?, has_footage = ? WHERE id = ?",
+                           (source_kind, int(has_footage), video_id))
+            if conn is None:
+                active.commit()
+        finally:
+            if managed is not None:
+                managed.close()
+
+    def footage_video_ids(self) -> set:
+        """The set of video ids that carry real FOOTAGE (has_footage=1) — the acquisition-eligible set.
+        Transcript-only rows (has_footage=0) are excluded so they stay a discovery surface and never
+        become a clips_library acquisition source (a transcript row has no video to trim anyway)."""
+        with _connect(self.db_path) as conn:
+            rows = conn.execute("SELECT id FROM videos WHERE COALESCE(has_footage, 1) = 1").fetchall()
+        return {r[0] for r in rows}
+
+    def clear_segments(self, video_id: int, conn: Optional[sqlite3.Connection] = None) -> int:
+        """Delete all segments for a video (used before re-inserting — e.g. a transcript re-index — so
+        the operation is idempotent instead of duplicating rows). Returns the number deleted."""
+        managed = _connect(self.db_path) if conn is None else None
+        active = conn or managed
+        try:
+            cur = active.execute("DELETE FROM segments WHERE video_id = ?", (video_id,))
+            if conn is None:
+                active.commit()
+            return cur.rowcount
+        finally:
+            if managed is not None:
+                managed.close()
 
     def add_video(
         self,
