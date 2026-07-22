@@ -1816,6 +1816,8 @@ async def tts_synthesize(job, *, config, text: str, ref_audio: str = None,
     text = (text or "").strip()
     if not text:
         raise RuntimeError("no text to synthesize")
+    from nolan.tts_normalize import normalize_for_speech
+    text = normalize_for_speech(text)   # A1: speak numbers/currency/percent/years
     if not ref_audio and not instruct:
         job.log("No voice reference or instruct given — using OmniVoice's default voice")
 

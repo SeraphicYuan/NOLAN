@@ -122,6 +122,18 @@ def register(app, ctx):
         script_project = (body.get("script_project") or "").strip() or None
         if not project and not script_project:
             raise HTTPException(status_code=400, detail="project or script_project is required")
+        if script_project:                       # B1: never voice a scaffold placeholder
+            from pathlib import Path as _P
+            from nolan.scriptwriter import ScriptProjectStore
+            _st = ScriptProjectStore(_P("projects"))
+            if not _st.exists(script_project):
+                raise HTTPException(status_code=404,
+                                    detail=f"script project not found: {script_project}")
+            if not _st.vo_readiness(script_project)["written"]:
+                raise HTTPException(
+                    status_code=409,
+                    detail="script not written yet — promote a draft to script.md "
+                           "before generating a voiceover")
         mode = (body.get("mode") or "full").strip()
         if mode not in ("full", "segments"):
             raise HTTPException(status_code=400, detail="mode must be 'full' or 'segments'")

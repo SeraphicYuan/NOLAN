@@ -61,16 +61,21 @@ async def _free_comfyui_vram(config) -> None:
 
 
 def build_tts_items(bodies, *, ref_audio=None, ref_text=None, instruct=None,
-                    speed=None, language_id=None) -> list:
+                    speed=None, language_id=None, normalize: bool = True) -> list:
     """The per-section synthesis batch, one consistent voice across sections.
 
     Shared by the async project core (synthesize_voiceover) and the sync
     segment-builder core (nolan.voiceover.produce_voiceover) — the SAME item
     schema OmniVoice's synthesize_batch consumes (ids sec_0000…).
+
+    ``normalize`` (A1) expands numbers/currency/percent/years to spoken words in
+    the SYNTHESIS text only — the caller's stored section bodies are untouched.
     """
+    from nolan.tts_normalize import normalize_for_speech
     items = []
     for i, body in enumerate(bodies):
-        it = {"id": f"sec_{i:04d}", "text": body}
+        text = normalize_for_speech(body) if normalize else body
+        it = {"id": f"sec_{i:04d}", "text": text}
         if ref_audio:
             it["ref_audio"] = ref_audio
         if ref_text:
@@ -85,21 +90,62 @@ def build_tts_items(bodies, *, ref_audio=None, ref_text=None, instruct=None,
     return items
 
 
-def concat_wavs_to_mp3(ordered, list_file, out_mp3, *, tempo: float = 1.0) -> None:
-    """ffmpeg concat of section wavs -> voiceover.mp3 (optional atempo). Sync."""
+def _audio_filter(tempo: float, loudnorm: bool) -> Optional[str]:
+    """Compose the ffmpeg -filter:a chain: optional atempo (pace) + optional
+    loudnorm (A3, EBU R128 to -16 LUFS so the /voices preview matches the mix)."""
+    parts = []
+    if _tempo_on(tempo):
+        parts.append(f"atempo={float(tempo):.3f}")
+    if loudnorm:
+        parts.append("loudnorm=I=-16:TP=-2:LRA=11")
+    return ",".join(parts) if parts else None
+
+
+def concat_wavs_to_mp3(ordered, list_file, out_mp3, *, tempo: float = 1.0,
+                       loudnorm: bool = True) -> None:
+    """ffmpeg concat of section wavs -> voiceover.mp3 (optional atempo + loudnorm). Sync."""
     import subprocess
     Path(list_file).write_text(
         "".join(f"file '{Path(p).resolve().as_posix()}'\n" for p in ordered),
         encoding="utf-8")
     cmd = [_ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error", "-f", "concat",
            "-safe", "0", "-i", str(list_file)]
-    if _tempo_on(tempo):
-        cmd += ["-filter:a", f"atempo={float(tempo):.3f}"]
+    filt = _audio_filter(tempo, loudnorm)
+    if filt:
+        cmd += ["-filter:a", filt]
     cmd += ["-ar", "44100", str(out_mp3)]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         raise RuntimeError(
             f"voiceover concat failed: {(r.stderr or r.stdout or '')[:400]}")
+
+
+def finalize_sections(vo_dir, sections, wavs, *, wpm: float = 150.0, trim: bool = True):
+    """A3 trim + A2 gate + measure sidecar. Trims each section wav IN PLACE (so the
+    beat-anchor durations are honest), gates the result, writes
+    ``<vo_dir>/voiceover.measure.json``, and returns the VoiceReport. The caller
+    raises on ``not report.ok`` so a broken VO fails loudly (never ships silently)."""
+    import json as _json
+    from nolan.voice_audio import trim_silence
+    from nolan.voice_gate import gate_voiceover
+    if trim:
+        for w in wavs:
+            if w and Path(w).exists():
+                try:
+                    trim_silence(w)
+                except Exception:  # noqa: BLE001 - a trim failure must not lose the take
+                    pass
+    report = gate_voiceover(sections, wavs, wpm=wpm)
+    d = report.to_dict()
+    d["total_s"] = round(sum(s.get("duration_s", 0.0) for s in d["sections"]
+                            if s.get("present")), 2)
+    try:
+        Path(vo_dir).mkdir(parents=True, exist_ok=True)
+        (Path(vo_dir) / "voiceover.measure.json").write_text(
+            _json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+    return report
 
 
 async def synthesize_voiceover(*, config, project: str = None, script_project: str = None,
@@ -202,6 +248,13 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
     if missing:
         log(f"warning: {len(missing)} sections produced no audio: {missing[:5]}")
 
+    # A3 trim + A2 gate + measure sidecar (BEFORE packaging → honest beat durations).
+    sec_wavs = [produced.get(f"sec_{i:04d}") for i in range(len(sections))]
+    report = finalize_sections(vo_dir, sections, sec_wavs)
+    gate = report.to_dict()
+    if report.checks:
+        log(report.summary())
+
     import json as _json
     import shutil as _shutil
     from nolan.script_style import slugify
@@ -231,9 +284,11 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
                         indent=2, ensure_ascii=False), encoding="utf-8")
         _shutil.rmtree(work, ignore_errors=True)
         total = round(sum(m["duration"] for m in manifest), 1)
+        if not report.ok:
+            raise RuntimeError("voiceover failed the quality gate — " + report.summary())
         progress(1.0, f"{len(manifest)} segments ({total}s) → {seg_dir}")
         return {"mode": "segments", "project": label, "segments": manifest,
-                "count": len(manifest), "dir": str(seg_dir), "missing": missing}
+                "count": len(manifest), "dir": str(seg_dir), "missing": missing, "gate": gate}
 
     # full mode: concat -> voiceover.mp3
     progress(0.9, "Concatenating voiceover…")
@@ -242,7 +297,9 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
     await asyncio.to_thread(concat_wavs_to_mp3, ordered, work / "_concat.txt",
                             out_mp3, tempo=tempo)
 
+    if not report.ok:
+        raise RuntimeError("voiceover failed the quality gate — " + report.summary())
     progress(1.0, f"Voiceover ready ({len(ordered)} sections) → {out_mp3}")
     return {"mode": "full", "project": label, "voiceover": str(out_mp3),
-            "sections": len(ordered), "missing": missing,
+            "sections": len(ordered), "missing": missing, "gate": gate,
             "next": "run `nolan align` to set audio-accurate scene timings"}

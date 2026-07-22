@@ -362,6 +362,14 @@ def register(app, ctx):
             raise HTTPException(status_code=404, detail="project not found")
         return {"candidates": script_project_store.angle_candidates(slug)}
 
+    @app.get("/api/script-projects/{slug}/vo-readiness")
+    async def script_projects_vo_readiness(slug: str):
+        """Is script.md ready to voice (a promoted script, not the scaffold)? Drives the
+        /voices written-state badge + generate guard (B1)."""
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        return script_project_store.vo_readiness(slug)
+
     @app.get("/api/script-projects/{slug}/verify/{n}")
     async def script_projects_verify(slug: str, n: int):
         """Heuristic check that the revise (draft-N → draft-(N+1)) actually touched review-N's

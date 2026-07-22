@@ -25,6 +25,7 @@ from nolan.voice_pipeline import (  # noqa: E402
     _wav_duration,
     build_tts_items,
     concat_wavs_to_mp3,
+    finalize_sections,
 )
 
 
@@ -109,8 +110,8 @@ def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
         raise RuntimeError("TTS produced no audio")
 
     apply_tempo = abs(float(tempo) - 1.0) > 0.01
-    out_sections, ordered = [], []
-    for i, (title, body) in enumerate(bodies):
+    sec_wavs = [None] * len(bodies)                 # aligned to bodies (None = missing)
+    for i, (_title, _body) in enumerate(bodies):
         src = produced.get(f"sec_{i:04d}")
         if not src:
             continue
@@ -122,9 +123,19 @@ def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
             paced.replace(wav)
         elif Path(src) != wav:
             Path(src).replace(wav)
-        dur = _wav_duration(wav)
+        sec_wavs[i] = wav
+
+    # A3 trim + A2 gate + measure sidecar (trims sec wavs IN PLACE → honest durations).
+    report = finalize_sections(
+        vo_dir, [{"title": t, "body": b} for t, b in bodies], sec_wavs)
+
+    out_sections, ordered = [], []
+    for i, (title, body) in enumerate(bodies):
+        wav = sec_wavs[i]
+        if not wav:
+            continue
         out_sections.append({"index": i, "title": title, "body": body,
-                             "wav": str(wav), "duration": dur})
+                             "wav": str(wav), "duration": _wav_duration(wav)})
         ordered.append(wav)
 
     if progress:
@@ -133,8 +144,11 @@ def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
     # tempo=1.0: per-section wavs were already paced above (captions align to them)
     concat_wavs_to_mp3(ordered, work / "_concat.txt", mp3, tempo=1.0)
 
+    if not report.ok:
+        raise RuntimeError("voiceover failed the quality gate — " + report.summary())
     return {"voiceover": str(mp3), "sections": out_sections,
-            "total": round(sum(s["duration"] for s in out_sections), 3)}
+            "total": round(sum(s["duration"] for s in out_sections), 3),
+            "gate": report.to_dict()}
 
 
 def build_captions(out_dir: Path, vo_sections: List[Dict[str, Any]], *,

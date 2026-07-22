@@ -375,6 +375,16 @@ class ScriptProjectStore:
     def target_words(self, slug: str) -> int:
         return int(self._load_meta(slug).get("target_minutes", 8.0) * 150)
 
+    def vo_readiness(self, slug: str) -> Dict[str, Any]:
+        """Is this project's script.md ready to voice — a REAL script (≥1 ``## `` beat),
+        not the scaffold placeholder? Side-effect free (unlike ``current_draft`` it does
+        NOT seed a draft). Consumed by /voices to guard/surface the handoff (B1)."""
+        written = self._script_written(slug)
+        words = len((self.read_script(slug) or "").split()) if written else 0
+        drafts = self.list_drafts(slug)
+        promoted = max((self._draft_num(d["name"]) for d in drafts), default=0)
+        return {"written": written, "words": words, "promoted_draft": promoted}
+
     def artifact_path(self, slug: str, name: str) -> Optional[Path]:
         return {
             "brief": self.brief_path(slug),

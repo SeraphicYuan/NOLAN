@@ -516,10 +516,23 @@ async function loadVOInfo(){
     const slug = document.getElementById('voProject').value;
     const box = document.getElementById('voResult');
     if(!slug){ box.innerHTML=''; return; }
+    // B1: surface written-state + guard the Generate button against a scaffold.
+    let ready = {written:true};
+    try { ready = await (await fetch('/api/script-projects/'+encodeURIComponent(slug)+'/vo-readiness')).json(); }
+    catch(e){ ready = {written:true}; }
+    const genBtn = document.querySelector('button[onclick="genProjectVO()"]');
+    let readyHtml = '';
+    if(ready.written){
+        readyHtml = `<div class="sub" style="color:#30a46c;">✓ script ready · ${ready.words||0} words${ready.promoted_draft?(' · draft-'+String(ready.promoted_draft).padStart(2,'0')):''}</div>`;
+        if(genBtn){ genBtn.disabled=false; genBtn.style.opacity=''; }
+    } else {
+        readyHtml = `<div class="sub" style="color:#e5484d;">⚠ script not written — promote a draft in <a href="/script-projects" style="color:#7fd3e0;">Script Projects</a> before generating VO.</div>`;
+        if(genBtn){ genBtn.disabled=true; genBtn.style.opacity='.5'; }
+    }
     let info;
     try { info = await (await fetch('/api/voiceover-info/'+encodeURIComponent(slug))).json(); }
-    catch(e){ box.innerHTML=''; return; }
-    let html = '';
+    catch(e){ box.innerHTML=readyHtml; return; }
+    let html = readyHtml;
     if(info.full){
         html += `<div class="sub" style="margin-top:6px;"><b>Full voiceover</b></div>
             <audio controls src="/api/voiceover/${encodeURIComponent(slug)}/voiceover.mp3"></audio>
