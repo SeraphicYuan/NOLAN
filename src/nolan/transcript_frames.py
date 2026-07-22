@@ -56,17 +56,39 @@ def _resolve_stream(watch_url: str) -> Optional[str]:
 
 
 def _extract_caption(content: str) -> str:
-    """Pull the searchable caption out of the VLM's JSON reply (prefers combined_summary → frame_
-    description); falls back to the raw text if it isn't valid JSON."""
+    """Fuse the VLM's JSON reply into ONE rich, searchable caption — the summary PLUS the structured
+    inferred_context (people / location / objects / story) folded in the SAME way the video library builds
+    its embed text (`vector_search._build_segment_text`), so a query for a named person, place, or object
+    hits the entity even when the summary sentence doesn't spell it out. Falls back to raw text if the
+    reply isn't valid JSON. This string is what gets BGE-embedded (add_file description) AND displayed."""
     import json
     import re
     try:
         m = re.search(r"\{.*\}", content, re.DOTALL)
         d = json.loads(m.group(0)) if m else {}
-        cap = (d.get("combined_summary") or d.get("frame_description") or "").strip()
-        return cap or (content or "").strip()[:400]
     except Exception:
+        d = {}
+    if not isinstance(d, dict) or not d:
         return (content or "").strip()[:400]
+    parts: List[str] = []
+    summary = (d.get("combined_summary") or d.get("frame_description") or "").strip()
+    if summary:
+        parts.append(summary)
+    ctx = d.get("inferred_context") or {}
+    if isinstance(ctx, dict):
+        people = [str(p).strip() for p in (ctx.get("people") or []) if str(p).strip()]
+        objects = [str(o).strip() for o in (ctx.get("objects") or []) if str(o).strip()]
+        loc = str(ctx.get("location") or "").strip()
+        story = str(ctx.get("story_context") or "").strip()
+        if people:
+            parts.append("People: " + ", ".join(people))
+        if loc:
+            parts.append("Location: " + loc)
+        if objects:
+            parts.append("Objects: " + ", ".join(objects))
+        if story:
+            parts.append("Context: " + story)
+    return " | ".join(parts) if parts else (content or "").strip()[:400]
 
 
 def caption_frame(image_path, transcript: Optional[str] = None, timestamp: Optional[float] = None,
@@ -101,53 +123,69 @@ def caption_frame(image_path, transcript: Optional[str] = None, timestamp: Optio
 
 
 def ranged_keyframes(url: str, timestamps: List[float], out_dir: Path,
-                     is_youtube: bool = True) -> List[Tuple[float, Path]]:
+                     is_youtube: bool = True, concurrency: int = 6) -> List[Tuple[float, Path]]:
     """Grab ONE full-res frame at each timestamp via ffmpeg input-seek over the remote stream (reuses the
     clipper -ss-before-i pattern; bundled ffmpeg; no ffprobe). For a YouTube watch URL, resolves a direct
-    stream once + reuses it. Returns [(timestamp, jpg_path)] for frames produced (misses are skipped)."""
+    stream once + reuses it. Seeks run in PARALLEL (bounded thread pool) — the stream URL is signed once and
+    each grab is independent, so N frames cost ~one grab of wall-clock. Returns [(timestamp, jpg_path)]
+    sorted by time, misses skipped."""
+    from concurrent.futures import ThreadPoolExecutor
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     src = _resolve_stream(url) if is_youtube else url
     if not src:
         return []
     ff = _ffmpeg()
-    out: List[Tuple[float, Path]] = []
-    for t in timestamps:
+
+    def _grab(t: float) -> Optional[Tuple[float, Path]]:
         fp = out_dir / f"kf_{int(float(t))}.jpg"
         subprocess.run([ff, "-y", "-ss", f"{float(t):.3f}", "-i", src, "-frames:v", "1",
                         "-q:v", "3", "-vf", "scale=640:-2", str(fp)], capture_output=True)
-        if fp.exists() and fp.stat().st_size > 0:
-            out.append((float(t), fp))
+        return (float(t), fp) if fp.exists() and fp.stat().st_size > 0 else None
+
+    with ThreadPoolExecutor(max_workers=max(1, int(concurrency))) as ex:
+        out = [r for r in ex.map(_grab, [float(t) for t in timestamps]) if r]
+    out.sort(key=lambda x: x[0])
     return out
 
 
-def storyboard_tiles(watch_url: str, out_dir: Path, every_s: float = 12.0,
-                     max_tiles: int = 60) -> List[Tuple[float, Path]]:
-    """Fetch YouTube storyboard spritesheets (NO video download) and split into (timestamp, tile jpg),
-    sampled to ~every_s apart and capped at max_tiles. Low-res but free. Returns [] when a video has no
-    storyboards. Gotchas handled: tile size derived from the SHEET, t0 accumulated across fragments,
-    all-black trailing tiles dropped."""
+async def caption_frames_async(items: List[Tuple[Path, Optional[str], Optional[float]]],
+                               model: Optional[str] = None, concurrency: int = 8) -> List[str]:
+    """Caption many frames CONCURRENTLY (bounded), preserving input order. `items` = [(image_path,
+    transcript_window, timestamp)]. Each caption is an independent OpenRouter call, so a video's frames
+    caption in ~one call of wall-clock instead of N serial ones. Returns captions parallel to `items`."""
+    import asyncio
+    sem = asyncio.Semaphore(max(1, int(concurrency)))
+
+    async def _one(fp, tr, ts):
+        async with sem:
+            return await asyncio.to_thread(caption_frame, fp, tr, ts, model)
+
+    return list(await asyncio.gather(*(_one(fp, tr, ts) for fp, tr, ts in items)))
+
+
+def _iter_storyboard(watch_url: str):
+    """Yield (timestamp, PIL.RGB tile) for EVERY storyboard cell at native density (no video download).
+    The one place the spritesheet fetch + split lives — shared by `storyboard_tiles` (thins + saves) and
+    `storyboard_change_points` (diffs in memory). Gotchas handled: tile size from the SHEET, t0 accumulated
+    across fragments, all-black trailing tiles dropped."""
     import urllib.request
 
     from PIL import Image
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
     import yt_dlp
     opts = {"quiet": True, "no_warnings": True, "skip_download": True, "noplaylist": True}
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(watch_url, download=False)
     sbs = [f for f in (info.get("formats") or []) if (f.get("format_id") or "").startswith("sb")]
     if not sbs:
-        return []
+        return
     sb = max(sbs, key=lambda f: (f.get("width", 0) or 0) * (f.get("height", 0) or 0)
              * (f.get("rows", 1) or 1) * (f.get("columns", 1) or 1))
     rows, cols = int(sb.get("rows", 0) or 0), int(sb.get("columns", 0) or 0)
     frags = sb.get("fragments") or []
     if not (rows and cols and frags):
-        return []
-    out: List[Tuple[float, Path]] = []
+        return
     t0 = 0.0
-    last_kept = -1e9
     for frag in frags:
         dur = float(frag.get("duration", 0) or 0)
         per = dur / (rows * cols) if dur else 0.0
@@ -160,21 +198,109 @@ def storyboard_tiles(watch_url: str, out_dir: Path, every_s: float = 12.0,
         tw, th = sheet.width // cols, sheet.height // rows
         for idx in range(rows * cols):
             ts = t0 + idx * per
-            if ts - last_kept < every_s:
-                continue
             r, c = divmod(idx, cols)
             if (c + 1) * tw > sheet.width or (r + 1) * th > sheet.height:
                 continue
             tile = sheet.crop((c * tw, r * th, (c + 1) * tw, (r + 1) * th))
             if tile.getbbox() is None:                        # all-black trailing tile
                 continue
-            fp = out_dir / f"sb_{int(ts)}.jpg"
-            tile.save(fp, quality=85)
-            out.append((round(ts, 1), fp))
-            last_kept = ts
-            if len(out) >= max_tiles:
-                return out
+            yield round(ts, 1), tile
         t0 += dur
+
+
+def storyboard_tiles(watch_url: str, out_dir: Path, every_s: float = 12.0,
+                     max_tiles: int = 60) -> List[Tuple[float, Path]]:
+    """Fetch YouTube storyboard spritesheets (NO video download) and split into (timestamp, tile jpg),
+    sampled to ~every_s apart and capped at max_tiles. Low-res but free. Returns [] when a video has no
+    storyboards."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out: List[Tuple[float, Path]] = []
+    last_kept = -1e9
+    for ts, tile in _iter_storyboard(watch_url):
+        if ts - last_kept < every_s:
+            continue
+        fp = out_dir / f"sb_{int(ts)}.jpg"
+        tile.save(fp, quality=85)
+        out.append((round(ts, 1), fp))
+        last_kept = ts
+        if len(out) >= max_tiles:
+            break
+    return out
+
+
+def storyboard_change_points(watch_url: str, sigma: float = 2.0) -> Tuple[List[float], float]:
+    """Detect visual CHANGE timestamps from the free storyboard tiles (no video download): consecutive-tile
+    grayscale mean-abs diff, adaptive threshold (mean + sigma·std) so a fast-cut video and a static
+    talking-head each get a sensible cut set. Returns (change_timestamps, duration_estimate). The duration
+    estimate = the last tile's timestamp (storyboards span the whole video) — used to fill the tail."""
+    from PIL import ImageChops, ImageStat
+    prev = None
+    diffs: List[Tuple[float, float]] = []
+    last_ts = 0.0
+    for ts, tile in _iter_storyboard(watch_url):
+        g = tile.convert("L").resize((32, 18))
+        if prev is not None:
+            diffs.append((ts, ImageStat.Stat(ImageChops.difference(g, prev)).mean[0]))
+        prev = g
+        last_ts = ts
+    if not diffs:
+        return [], last_ts
+    vals = [d for _, d in diffs]
+    mean = sum(vals) / len(vals)
+    std = (sum((v - mean) ** 2 for v in vals) / len(vals)) ** 0.5
+    thr = mean + float(sigma) * std
+    return [ts for ts, d in diffs if d > thr], last_ts
+
+
+def _fill_gap(prev: float, cur: float, min_gap: float, max_gap: float) -> List[float]:
+    """Evenly-spaced interior points so no sub-gap exceeds max_gap — but never create a sub-gap below
+    min_gap (min_gap WINS the tension: a 55s gap with min=30/max=50 stays un-filled rather than split into
+    two 27.5s gaps)."""
+    import math
+    gap = cur - prev
+    if gap <= max_gap:
+        return []
+    n = math.ceil(gap / max_gap)                 # enough intervals to keep each <= max_gap
+    if gap / n < min_gap:                         # …unless that drops a sub-gap below the floor
+        n = max(1, math.floor(gap / min_gap))
+    step = gap / n
+    return [prev + k * step for k in range(1, n)]
+
+
+def plan_snapshot_times(changes: List[float], duration: float,
+                        min_gap: float = 30.0, max_gap: float = 50.0, lag: float = 1.0) -> List[float]:
+    """Turn scene-change points into the final snapshot schedule (the hybrid density rule):
+      • anchor a snapshot just AFTER each change (`lag`s in — firmly into the new shot), so each distinct
+        visual segment is sampled;
+      • thin anchors closer than `min_gap` (don't over-sample rapid cuts);
+      • fill any gap wider than `max_gap` (including head 0→first and tail last→duration) with evenly-spaced
+        points, but never below `min_gap`.
+    Result: snapshots land at real cuts, spaced within roughly [min_gap, max_gap]. A static video (no
+    changes) still gets an even ~max_gap grid from the tail fill."""
+    duration = float(duration or 0.0)
+    anchors: List[float] = []
+    for c in sorted({0.0} | {float(x) for x in changes}):        # always anchor the opening shot (t=0)
+        t = c + lag
+        if duration:
+            t = min(t, duration - 0.5)
+        t = max(t, 0.5)
+        if not anchors or t - anchors[-1] >= min_gap:
+            anchors.append(round(t, 1))
+    times: List[float] = []
+    prev = 0.0
+    for a in anchors:
+        times.extend(_fill_gap(prev, a, min_gap, max_gap))
+        times.append(a)
+        prev = a
+    if duration:
+        times.extend(_fill_gap(prev, duration, min_gap, max_gap))
+    ceil = duration or (times[-1] if times else 0) + 1
+    times = sorted({round(t, 1) for t in times if 0 <= t <= ceil})
+    out: List[float] = []
+    for t in times:                                # final min-gap guard
+        if not out or t - out[-1] >= min_gap - 0.01:
+            out.append(t)
     return out
 
 

@@ -43,7 +43,7 @@ def register(app, ctx):
             overlap_s=float(body.get("overlap_s", 10) or 10),
             # visual tier: "keyframe" (full-res + gemma caption, default) | "storyboard" (free/coarse) | "off"
             visual=(body.get("visual") or ("off" if body.get("no_visual") else "keyframe")),
-            max_frames=int(body.get("max_frames", 16) or 16),
+            max_frames=int(body.get("max_frames", 0) or 0),   # 0 = uncapped; adaptive 30–50s density governs
             refresh=bool(body.get("refresh", False)),          # force re-process vs dedup-skip already-indexed
         )
         return {"job_id": job.id, "type": "transcript-channel"}
@@ -154,5 +154,5 @@ def register(app, ctx):
             "transcript-refresh", operations.refresh_transcript_video, meta={"video": yid},
             config=cfg, db_path=ctx.db_path or Path(cfg.indexing.database).expanduser(),
             url=url, channel=entry.get("channel", ""),
-            visual=(body.get("visual") or "keyframe"), max_frames=int(body.get("max_frames", 16) or 16))
+            visual=(body.get("visual") or "keyframe"), max_frames=int(body.get("max_frames", 0) or 0))
         return {"job_id": job.id, "type": "transcript-refresh"}

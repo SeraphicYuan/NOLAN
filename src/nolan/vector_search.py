@@ -127,6 +127,8 @@ class VectorSearch:
                 parts.append(f"People: {', '.join(ctx.people)}")
             if ctx.location:
                 parts.append(f"Location: {ctx.location}")
+            if getattr(ctx, "objects", None):
+                parts.append(f"Objects: {', '.join(ctx.objects)}")
             if ctx.story_context:
                 parts.append(f"Context: {ctx.story_context}")
 

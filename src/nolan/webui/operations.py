@@ -326,9 +326,47 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
     return {"ok": True, "path": str(saved), "name": Path(saved).name, "comp": comp}
 
 
+async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
+                               visual: str = "keyframe", max_frames: int = 0, job=None) -> int:
+    """Capture + embed the visual tier for ONE transcript video — shared by the channel crawl and the
+    single-video refresh so both get the SAME behaviour. `keyframe` = HYBRID ADAPTIVE DENSITY: a free
+    storyboard scene-diff finds visual changes, `plan_snapshot_times` anchors a snapshot just after each
+    change and fills any >max_gap gap (min 30s / max 50s), then full-res frames are grabbed in PARALLEL and
+    captioned in PARALLEL (gemma, structured entities fused into the searchable text). `storyboard` = the
+    free CLIP-only coarse tier. `max_frames` > 0 is an optional safety CAP (0 = uncapped; the density rule
+    governs, so long videos are no longer under-sampled by a flat 16). Returns the frame count."""
+    import tempfile
+
+    from nolan import transcript_frames as tfr
+    tmpd = Path(tempfile.mkdtemp())
+    if visual == "storyboard":                                    # FREE, coarse, no video download (CLIP-only)
+        tiles = await asyncio.to_thread(tfr.storyboard_tiles, url, tmpd, 12.0, 60)
+        return await asyncio.to_thread(tfr.embed_frames, tiles, yid, url, "storyboard", title)
+    # keyframe: scene-anchored adaptive density
+    changes, dur = await asyncio.to_thread(tfr.storyboard_change_points, url)
+    if not dur and windows:
+        dur = float(windows[-1]["end"])
+    times = tfr.plan_snapshot_times(changes, dur)
+    if not times and windows:                                     # storyboards absent → window-midpoint fallback
+        times = [round((w["start"] + w["end"]) / 2, 1) for w in windows]
+    if max_frames and len(times) > int(max_frames):               # optional safety cap
+        times = [times[int(k * len(times) / int(max_frames))] for k in range(int(max_frames))]
+    if job:
+        job.log(f"    · {len(changes)} scene changes → {len(times)} snapshots (adaptive 30–50s)")
+    kfs = await asyncio.to_thread(tfr.ranged_keyframes, url, times, tmpd)
+
+    def _wtext(ts):                                               # the transcript window covering this frame
+        for w in windows:
+            if w["start"] <= ts <= w["end"]:
+                return w["text"]
+        return ""
+    caps = await tfr.caption_frames_async([(fp, _wtext(ts), ts) for ts, fp in kfs])
+    return await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe", title, None, None, caps)
+
+
 async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,
                                      window_s: float = 45.0, overlap_s: float = 10.0,
-                                     visual: str = "keyframe", max_frames: int = 16, refresh: bool = False):
+                                     visual: str = "keyframe", max_frames: int = 0, refresh: bool = False):
     """Build/refresh a TRANSCRIPT library from a YouTube channel: list its videos, fetch each transcript
     (captions only — NO video download), chunk into overlapping timestamped windows, ingest as a
     transcript-tier VideoIndex row (has_footage=0) + embed into the unified semantic store. Per-video
@@ -369,27 +407,9 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
         nframes = 0
         if visual and visual != "off":                       # bonus VISUAL tier — never fails the transcript run
             try:
-                import tempfile
-                from nolan import transcript_frames as tfr
                 yid = meta.get("video_id") or v["video_id"]
-                tmpd = Path(tempfile.mkdtemp())
-                if visual == "storyboard":                   # FREE, coarse, no video download (CLIP-only)
-                    tiles = await asyncio.to_thread(tfr.storyboard_tiles, v["url"], tmpd, 12.0, 40)
-                    nframes = await asyncio.to_thread(tfr.embed_frames, tiles, yid, v["url"], "storyboard", title)
-                else:                                        # "keyframe": full-res frame/window + gemma caption
-                    mids = [round((w["start"] + w["end"]) / 2, 1) for w in windows]
-                    if len(mids) > max_frames:               # evenly sample to bound cost/time
-                        mids = [mids[int(k * len(mids) / max_frames)] for k in range(max_frames)]
-                    kfs = await asyncio.to_thread(tfr.ranged_keyframes, v["url"], mids, tmpd)
-
-                    def _wtext(ts):                          # the transcript window covering this frame (visual+audio fuse)
-                        for w in windows:
-                            if w["start"] <= ts <= w["end"]:
-                                return w["text"]
-                        return ""
-                    caps = [await asyncio.to_thread(tfr.caption_frame, fp, _wtext(ts), ts) for ts, fp in kfs]
-                    nframes = await asyncio.to_thread(tfr.embed_frames, kfs, yid, v["url"],
-                                                      "keyframe", title, None, None, caps)
+                nframes = await _capture_visual_tier(v["url"], windows, yid, title,
+                                                     visual=visual, max_frames=max_frames, job=job)
                 frames_total += nframes
             except Exception as e:
                 job.log(f"    (visual '{visual}' skipped: {type(e).__name__}: {e})")
@@ -406,11 +426,10 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
 
 async def refresh_transcript_video(job, *, config, db_path: Path, url: str, channel: str = "",
                                    window_s: float = 45.0, overlap_s: float = 10.0,
-                                   visual: str = "keyframe", max_frames: int = 16):
+                                   visual: str = "keyframe", max_frames: int = 0):
     """Re-index ONE transcript video (force): re-fetch captions, re-chunk, replace its segments + frames,
     re-embed + re-caption. Powers the per-video Refresh action."""
     import datetime as _dt
-    import tempfile
 
     from nolan import transcript_frames as tfr
     from nolan import transcript_lib as tl
@@ -432,25 +451,9 @@ async def refresh_transcript_video(job, *, config, db_path: Path, url: str, chan
     nframes = 0
     if visual and visual != "off":
         try:
-            tmpd = Path(tempfile.mkdtemp())
             job.set_progress(0.6, "Re-capturing frames…")
-            if visual == "storyboard":
-                tiles = await asyncio.to_thread(tfr.storyboard_tiles, url, tmpd, 12.0, 40)
-                nframes = await asyncio.to_thread(tfr.embed_frames, tiles, yid, url, "storyboard", meta.get("title", ""))
-            else:
-                mids = [round((w["start"] + w["end"]) / 2, 1) for w in windows]
-                if len(mids) > max_frames:
-                    mids = [mids[int(k * len(mids) / max_frames)] for k in range(max_frames)]
-                kfs = await asyncio.to_thread(tfr.ranged_keyframes, url, mids, tmpd)
-
-                def _wtext(ts):
-                    for w in windows:
-                        if w["start"] <= ts <= w["end"]:
-                            return w["text"]
-                    return ""
-                caps = [await asyncio.to_thread(tfr.caption_frame, fp, _wtext(ts), ts) for ts, fp in kfs]
-                nframes = await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe",
-                                                  meta.get("title", ""), None, None, caps)
+            nframes = await _capture_visual_tier(url, windows, yid, meta.get("title", ""),
+                                                 visual=visual, max_frames=max_frames, job=job)
         except Exception as e:
             job.log(f"  (visual refresh skipped: {type(e).__name__}: {e})")
     tl.record_transcript(yid, {**meta, "url": url}, len(windows), channel, frames=nframes, added=now)
