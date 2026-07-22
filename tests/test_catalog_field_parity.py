@@ -53,6 +53,8 @@ def _consumed(fn: str, bodies) -> set:
 # keys a block reads that are legitimately NOT author-facing catalog fields, with justification:
 IGNORE = {
     "parchment",   # a media_ground passthrough default (stat/others forward d.get("parchment") into ground)
+    "focus_rect",  # document: resolver-derived (resolve_doc_annotations sets it from the advertised `focus`
+                   # region id via region_bbox) — internal handoff, never author-set (like page_size).
 }
 
 BODIES = _bodies(_all_source())

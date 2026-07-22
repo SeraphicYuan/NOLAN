@@ -59,6 +59,14 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
 
 
+# A4: fields the dataset resolver (nolan.data) fills from a bound `data.dataset` at finish/accept time. When a
+# scene BINDS a dataset, these are DEFERRED — required at resolve time, not up-front — so a legal dataset-only
+# scene (the whole point: don't hand-type numbers) passes the gate in BOTH the finish and incremental-accept
+# routes instead of only finish.
+_DATASET_FILLED = {"series", "segments", "items", "source", "targets", "stages", "spans", "points",
+                   "columns", "rows"}
+
+
 # Seek-safety lint for `raw` (bespoke) scenes: author.py otherwise gates STRUCTURE only, so a hand-authored
 # scene with a non-deterministic / time-based / repeating tween would pass the composer gate and only break
 # later at assembly. These patterns unambiguously break the ONE-paused-timeline seek model, so reject them here
@@ -83,6 +91,45 @@ def _raw_seek_errors(fid, sid, data):
     blob = " ".join(str(x) for x in frag) + " " + " ".join(str(x) for x in (data.get("tl") or []))
     return [f"{fid}/{sid} (raw): {why} — not seek-safe (the frame is ONE paused, seeked timeline)"
             for needle, why in _RAW_SEEK_FORBIDDEN if needle in blob]
+
+
+# document annotation vocabulary (author-facing). The gate validates the authored annotation SHAPE so a
+# misspelled type or a target-less / text-less annotation is REJECTED here, not silently warn-skipped at
+# compose (compose's _need map drops an un-renderable annotation). The concrete geometry (rect/at) is filled
+# by resolve_doc_annotations from `region`/`find`, so the gate requires a TARGETING KEY, never the resolved rect.
+_DOC_ANN_TYPES = {"highlight", "underline", "label", "redaction", "stamp", "strike", "term",
+                  "margin", "pullquote", "callout", "caption"}
+_DOC_ANN_TARGETED = {"highlight", "underline", "label", "redaction", "stamp", "strike", "term",
+                     "margin", "pullquote"}          # page-anchored (callout/caption are screen-fixed)
+_DOC_ANN_TEXT = {"label", "stamp", "margin", "callout", "caption"}   # must carry `text`
+_DOC_ANN_TARGET_KEYS = ("region", "find", "rect", "at")
+
+
+def _document_annotation_errors(fid, sid, d):
+    """Validate a document scene's annotations against the vocabulary compose.py actually renders."""
+    anns = d.get("annotations")
+    if anns is None:
+        return []
+    if not isinstance(anns, list):
+        return [f"{fid}/{sid} (document): annotations must be a list"]
+    errs = []
+    for i, an in enumerate(anns):
+        if not isinstance(an, dict):
+            errs.append(f"{fid}/{sid} (document): annotation[{i}] must be an object")
+            continue
+        t = an.get("type")
+        if t not in _DOC_ANN_TYPES:
+            errs.append(f"{fid}/{sid} (document): annotation[{i}] type {t!r} unknown — expected one of "
+                        f"{sorted(_DOC_ANN_TYPES)}")
+            continue
+        if t in _DOC_ANN_TARGETED and not any(an.get(k) for k in _DOC_ANN_TARGET_KEYS):
+            errs.append(f"{fid}/{sid} (document): {t} annotation[{i}] has no target — give it a `region` id, a "
+                        f"`find` phrase, or an explicit `rect`/`at` (else it can't be placed and is dropped)")
+        txt = an.get("text")
+        has_text = bool(txt.strip()) if isinstance(txt, str) else bool(txt)
+        if t in _DOC_ANN_TEXT and not has_text:
+            errs.append(f"{fid}/{sid} (document): {t} annotation[{i}] needs `text`")
+    return errs
 
 
 def validate_spec(spec):
@@ -113,6 +160,8 @@ def validate_spec(spec):
                     errs.append(f"{fid}/{sid}: missing {k}")
             d = sc.get("data", {})
             for req in REQUIRED.get(t, []):
+                if d.get("dataset") and req in _DATASET_FILLED:
+                    continue                                        # A4: resolver fills it from the dataset
                 v = d.get(req)
                 if v is None or (isinstance(v, (list, str)) and len(v) == 0):
                     errs.append(f"{fid}/{sid} ({t}): data.{req} required and non-empty")
@@ -137,9 +186,11 @@ def validate_spec(spec):
                 errs.append(f"{fid}/{sid} (geo): needs `highlight` (regions) or `routes` (arcs) — an empty map shows nothing")
             # document: a page image (`source`) OR an INGESTED doc id (`document`, B-P2 — resolve_doc_annotations
             # fills source/page_size/rects from the layout map). Either satisfies the gate; neither is an empty page.
-            if t == "document" and not d.get("source") and not d.get("document"):
-                errs.append(f"{fid}/{sid} (document): needs data.source (a page image/scan) or data.document "
-                            f"(an ingested document id — nolan.document; the resolver fills source + region rects)")
+            if t == "document":
+                if not d.get("source") and not d.get("document"):
+                    errs.append(f"{fid}/{sid} (document): needs data.source (a page image/scan) or data.document "
+                                f"(an ingested document id — nolan.document; the resolver fills source + region rects)")
+                errs.extend(_document_annotation_errors(fid, sid, d))
             if t == "statement" and d.get("operative") and not any(d["operative"] in ln for ln in d.get("lines", [])):
                 errs.append(f"{fid}/{sid} (statement): operative {d['operative']!r} not found in any line")
             if t == "comparison":                               # comparison is a VISUAL contrast — sides are image|video

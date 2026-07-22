@@ -184,3 +184,26 @@ def test_a_p4_marks_compose_and_emit():
     race = compose.BLOCKS["bar_race"]("br", {"id": "br", "type": "bar_race", "start": 0, "dur": 12,
            "data": {"series": [{"label": "X", "values": [1, 5]}, {"label": "Y", "values": [3, 2]}], "steps": ["t1", "t2"]}})
     assert "br-period" in "".join(race[0]) and any("br-b0" in x and "width" in x for x in race[1])  # ranked bars + ticker
+
+
+# --- A4: the gate accepts a dataset-only scene in BOTH routes (finish + incremental accept) ---
+
+def _gate_errs(scene):
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import author
+    spec = {"frames": [{"id": "f1", "dur": 8, "scenes": [{"id": "s1", "start": 0, "dur": 8, **scene}]}]}
+    return [e for e in author.validate_spec(spec) if "s1" in e]
+
+
+def test_gate_accepts_dataset_only_chart_without_materialized_series():
+    # binding a dataset IS the data; series is filled by resolve_datasets before recompose. The accept path
+    # (which recomposes before resolution) must not reject the legal scene the finish path accepts.
+    assert not _gate_errs({"type": "chart", "data": {"dataset": "gpu_cost", "encode": {"x": "year", "y": "v"}}})
+    assert not _gate_errs({"type": "data_table", "data": {"dataset": "gpu_cost", "encode": {"columns": ["year"]}}})
+
+
+def test_gate_still_rejects_a_bare_chart_with_neither_series_nor_dataset():
+    assert _gate_errs({"type": "chart", "data": {"kicker": "x"}}), \
+        "a chart with no series and no dataset binding is genuinely empty and must still be rejected"

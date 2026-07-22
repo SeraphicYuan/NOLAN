@@ -704,7 +704,26 @@ def _apply_patch(scene: Dict[str, Any], patch: Dict[str, Any], deletes: Optional
 # ------------------------------------------------------------------ gate + build
 
 def _gate_and_build(comp: str, spec_file: Path) -> Tuple[bool, str]:
-    """Run the author.py gate on a spec file: validate + (re)build the frame HTML(s). Loud on drift."""
+    """Run the author.py gate on a spec file: validate + (re)build the frame HTML(s). Loud on drift.
+
+    A4: if a scene BINDS a dataset, materialize it first (mirror the finish DAG's resolve_datasets step) so
+    the accepted/recomposed preview shows real numbers instead of an empty block — the finish path resolves
+    before recompose, and this makes the incremental accept path agree. Cheap: only fires when a
+    `data.dataset` is present, so non-data frames pay nothing beyond a spec read.
+    """
+    raw = spec_file.read_bytes()
+    spec = json.loads(raw.decode("utf-8"))
+    if any((sc.get("data") or {}).get("dataset")
+           for fr in spec.get("frames", []) for sc in fr.get("scenes", [])):
+        try:
+            from nolan.data import resolve_datasets_in_spec
+            if resolve_datasets_in_spec(spec, str(_project_dir(comp))):
+                out = (json.dumps(spec, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+                if b"\r\n" in raw:
+                    out = out.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+                spec_file.write_bytes(out)
+        except Exception as e:                                    # a bad binding fails loud, as a gate error
+            return False, f"dataset resolution failed: {type(e).__name__}: {e}"
     r = subprocess.run(
         [sys.executable, "-X", "utf8", str(AUTHOR), "--spec", str(spec_file),
          "--out-dir", str(_frames_dir(comp))],

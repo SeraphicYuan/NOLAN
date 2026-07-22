@@ -46,6 +46,59 @@ def _rowval(r, key, default=""):
     return r.get(key, default) if key else default
 
 
+# encode keys whose VALUE names a table column (vs. literal options like prefix/suffix/source_label)
+_ENCODE_COL_KEYS = ("x", "y", "label", "value", "start", "end", "text")
+
+
+def _available_columns(dataset, query: Dict) -> set:
+    """The column names an encode/query may legally reference: the base table columns, plus any produced
+    by the query (derive adds new names; aggregate keeps group_by + the aggregated columns)."""
+    rows = getattr(dataset, "rows", None) or []
+    base = set(rows[0].keys()) if rows else {c.get("name") for c in (getattr(dataset, "columns", []) or [])}
+    base.discard(None)
+    cols = set(base)
+    q = query or {}
+    cols |= set((q.get("derive") or {}).keys())
+    agg = q.get("aggregate") or {}
+    if agg.get("group_by"):
+        cols.add(agg["group_by"])
+    cols |= set((agg.get("agg") or {}).keys())
+    return cols
+
+
+def _validate_binding(block_type: str, enc: Dict, query: Dict, dataset) -> None:
+    """Fail LOUD if an encode/query references a column the dataset doesn't have — else a typo'd column
+    (`yr` for `year`) silently materializes zeros/empty labels and renders a wrong-but-plausible chart
+    (the 'failures are loud' invariant). No-op when we can't determine the columns (empty table)."""
+    avail = _available_columns(dataset, query)
+    if not avail:
+        return
+    refs = {}  # column-name -> where it was referenced (for the message)
+    for k in _ENCODE_COL_KEYS:
+        v = (enc or {}).get(k)
+        if isinstance(v, str) and v:
+            refs.setdefault(v, f"encode.{k}")
+    for c in (enc or {}).get("columns", []) or []:      # data_table explicit column list
+        if isinstance(c, str) and c:
+            refs.setdefault(c, "encode.columns")
+    q = query or {}
+    for c in (q.get("filter") or {}):
+        refs.setdefault(c, "query.filter")
+    if isinstance(q.get("sort"), dict) and q["sort"].get("by"):
+        refs.setdefault(q["sort"]["by"], "query.sort.by")
+    if isinstance(q.get("top_n"), dict) and q["top_n"].get("by"):
+        refs.setdefault(q["top_n"]["by"], "query.top_n.by")
+    for c in (q.get("select") or []):
+        if isinstance(c, str):
+            refs.setdefault(c, "query.select")
+    unknown = {c: w for c, w in refs.items() if c not in avail}
+    if unknown:
+        detail = ", ".join(f"{c!r} ({w})" for c, w in sorted(unknown.items()))
+        raise ValueError(
+            f"dataset {getattr(dataset, 'id', '?')!r}: {block_type} binding references unknown column(s): "
+            f"{detail}. Available: {sorted(avail)}. Fix the encode/query column name in the spec.")
+
+
 def _materialize(block_type: str, rows: List[Dict], enc: Dict) -> Dict:
     """rows + encoding → the block's canonical data fields (only the DATA fields; kicker/title etc. are
     preserved by the caller). Encoding keys per block are documented in the catalog `data_shape`."""
@@ -111,6 +164,7 @@ def resolve_scene(scene: Dict, dataset) -> Dict:
     gate passes. Mutates + returns the scene. Keeps `_dataset` for re-resolution/provenance."""
     d = scene.setdefault("data", {})
     enc = d.get("encode", {})
+    _validate_binding(scene.get("type", ""), enc, d.get("query", {}), dataset)
     rows = apply_query(dataset.rows, d.get("query", {}))
     d.update(_materialize(scene.get("type", ""), rows, enc))
     d["value_source"] = dataset.meta.get("provenance") or f"dataset:{dataset.id}"

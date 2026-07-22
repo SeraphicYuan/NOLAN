@@ -13,7 +13,10 @@
         "items": "array of {from,to | value, prefix?, suffix?, label, cue?, at? (spoken phrase to sync this reveal to), underline?, delta?} where delta={dir:up|down|flat, value:string} renders a colored metric-change chip (▲/▼/→) below the label",
         "props": "array of prop_cutout specs (optional evidence overlays)",
         "reveal": "enum(rise|char|word|flip|typewriter|scramble|decode|gradient|glitch)? — text-entrance style applied to the LABELS (numerals keep their count-up); see the 'reveals' catalog. Seek-safe.",
-        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack-left|centered-row|hero-single|lead-rail|stacked-list. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack-left|centered-row|hero-single|lead-rail|stacked-list. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json.",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills items from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {value:'col', label:'col', prefix?, suffix?} — column → each stat's number/label"
       },
       "constraints": [
         "duration_preserving",
@@ -124,7 +127,10 @@
         "numbered": "bool? — render an ordinal (1,2,3…) before each item (auto-on for the numbered-rail variant).",
         "register": "enum(paper|footage)? - ink-on-paper (default) or light text over a media ground",
         "ground": "object? - a media_ground spec {kind: paper|image|transparent, ...}",
-        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack|centered|two-col|numbered-rail|card-row. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): stack|centered|two-col|numbered-rail|card-row. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json.",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills items from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {text:'col'} — column → each bullet's text"
       },
       "theme_notes": "marker glyph = --bullet-marker (square/em-dash/chevron/dot per theme); text uses the display type role + type-scale."
     },
@@ -170,7 +176,10 @@
         "rows": "array of {title, desc?, meta?, num?} - num defaults to a 01/02 ordinal",
         "register": "enum(paper|footage)?",
         "ground": "object?",
-        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): rows|two-col|centered|boxed. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json."
+        "variant": "optional layout arrangement (omit to auto-pick by content + avoid repeating the previous beat's): rows|two-col|centered|boxed. Vary it across beats so the video doesn't render the same shape twice; see themes/composition/layout_variants.json.",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills rows from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {text:'col', value?:'col'} — column → each row's title (+ optional meta value)"
       },
       "theme_notes": "ordinal = --accent + --hero-num style; title = display type; meta = mono; hairline rows = --rule under a heavier --accent top rule."
     },
@@ -487,7 +496,10 @@
         "unit": "string? — appended to each value (e.g. '%', 'B')",
         "kicker": "string? — eyebrow over the top-left title",
         "title": "string? — a top-left title",
-        "titleHi": "string? — substring of title to highlight with the accent"
+        "titleHi": "string? — substring of title to highlight with the accent",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills targets from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {label:'col', value:'col', source_label?} — column → each target's label/value; source is their sum"
       },
       "constraints": [
         "duration_preserving",
@@ -507,7 +519,10 @@
         "ratio": "string? — a called-out ratio placed above the tallest circle (e.g. '400x')",
         "kicker": "string? — eyebrow over the top title",
         "title": "string? — a centered top title",
-        "titleHi": "string? — substring of title to highlight with the accent"
+        "titleHi": "string? — substring of title to highlight with the accent",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills items from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {value:'col', label:'col', suffix?} — column → each item's value/label"
       },
       "constraints": [
         "duration_preserving",
@@ -528,7 +543,10 @@
         "unit": "string? — legend value unit (default '%')",
         "kicker": "string? — eyebrow over the top title",
         "title": "string? — a top title",
-        "titleHi": "string? — substring of title to highlight with the accent"
+        "titleHi": "string? — substring of title to highlight with the accent",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills segments from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {label:'col', value:'col'} — column → each segment's label/value"
       },
       "constraints": [
         "duration_preserving",
@@ -547,7 +565,10 @@
         "unit": "string? — appended to each value",
         "kicker": "string? — eyebrow over the top title",
         "title": "string? — a top title",
-        "titleHi": "string? — substring of title to highlight with the accent"
+        "titleHi": "string? — substring of title to highlight with the accent",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills stages from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {label:'col', value:'col'} — column → each stage's label/value"
       },
       "constraints": [
         "duration_preserving",
@@ -567,7 +588,10 @@
         "zones": "array of {x0, x1 (0..1), label?}? — tinted bands segmenting the axis (e.g. left/centre/right)",
         "kicker": "string? — eyebrow over the top title",
         "title": "string? — a top title",
-        "titleHi": "string? — substring of title to highlight with the accent"
+        "titleHi": "string? — substring of title to highlight with the accent",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills items from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {value:'col', label:'col'} — column → each item's value/label"
       },
       "constraints": [
         "duration_preserving",
@@ -649,7 +673,10 @@
         "kicker": "string? — small accent eyebrow",
         "title": "string? — a title above the plot",
         "titleHi": "string? — substring of title to highlight in the accent",
-        "playhead": "bool? — LINE type only: a vertical TIME-CURSOR sweeps left→right in sync with the draw so the beat reads as time advancing; points/values reveal as it reaches them (time-series)."
+        "playhead": "bool? — LINE type only: a vertical TIME-CURSOR sweeps left→right in sync with the draw so the beat reads as time advancing; points/values reveal as it reaches them (time-series).",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills series from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {x:'col', y:'col', prefix?, suffix?} — which columns become each point's label/value"
       },
       "constraints": [
         "duration_preserving",
@@ -808,7 +835,10 @@
         "unit": "string? — appended to tick labels (e.g. ' AD')",
         "kicker": "string? — eyebrow",
         "title": "string? — a top-left title",
-        "titleHi": "string? — substring to highlight"
+        "titleHi": "string? — substring to highlight",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills spans from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {label:'col', start:'col', end:'col'} — columns → each span's label + start/end"
       },
       "constraints": [
         "duration_preserving",
@@ -861,9 +891,6 @@
         "x": "array of strings — the x-axis step labels",
         "title": "string?",
         "value_source": "string? — provenance if not dataset-bound",
-        "dataset": "string?",
-        "query": "object?",
-        "encode": "object?",
         "ground": "object?"
       }
     },
@@ -877,9 +904,6 @@
         "steps": "array of strings — the time-step labels (drives the period ticker)",
         "title": "string?",
         "value_source": "string?",
-        "dataset": "string?",
-        "query": "object?",
-        "encode": "object?",
         "ground": "object?"
       }
     },
