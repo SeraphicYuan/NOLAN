@@ -77,6 +77,8 @@ def test_gate_pass(tmp_path):
     rep = gate_voiceover(_sections(3, 3), [a, b])
     assert rep.ok and not [c for c in rep.checks if c.level == "error"]
     assert len(rep.sections) == 2 and rep.sections[0]["present"]
+    d = rep.to_dict()
+    assert d["total_s"] == round(sum(s["duration_s"] for s in rep.sections), 2) > 0
 
 
 def test_gate_missing_section(tmp_path):

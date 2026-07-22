@@ -50,6 +50,8 @@ class VoiceReport:
             "sections": self.sections,
             "errors": sum(1 for c in self.checks if c.level == "error"),
             "warnings": sum(1 for c in self.checks if c.level == "warn"),
+            "total_s": round(sum(s.get("duration_s", 0.0) for s in self.sections
+                                 if s.get("present")), 2),
         }
 
     def summary(self) -> str:

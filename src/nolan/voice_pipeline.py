@@ -136,9 +136,7 @@ def finalize_sections(vo_dir, sections, wavs, *, wpm: float = 150.0, trim: bool 
                 except Exception:  # noqa: BLE001 - a trim failure must not lose the take
                     pass
     report = gate_voiceover(sections, wavs, wpm=wpm)
-    d = report.to_dict()
-    d["total_s"] = round(sum(s.get("duration_s", 0.0) for s in d["sections"]
-                            if s.get("present")), 2)
+    d = report.to_dict()   # includes total_s
     try:
         Path(vo_dir).mkdir(parents=True, exist_ok=True)
         (Path(vo_dir) / "voiceover.measure.json").write_text(
