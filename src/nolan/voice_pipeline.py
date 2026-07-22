@@ -161,13 +161,13 @@ def _audio_filter(tempo: float, loudnorm: bool) -> Optional[str]:
 def synthesize_sections(provider, bodies, work, *, ref_audio=None, ref_text=None,
                         deliveries=None, speed=None, language_id=None, num_step=None,
                         sub_chunk_words: int = 0, normalize: bool = True,
-                        base_index: int = 0) -> dict:
+                        allow_instruct: bool = False, base_index: int = 0) -> dict:
     """Synthesize exactly one wav per section (id ``sec_{i:04d}``) — the contract the rest of the
     pipeline depends on. A5: if ``sub_chunk_words`` > 0, a section longer than that is split into
     sentence-chunks synthesized separately and concatenated (the beat boundary is preserved). A6:
-    ``deliveries[i]`` becomes that section's ``instruct`` — but ONLY when not cloning a voice:
-    OmniVoice cannot take both a ``ref_audio`` clone AND a voice-design ``instruct`` (it yields
-    no audio), so the clone wins and the delivery is dropped. Returns {sec_id: Path}."""
+    ``deliveries[i]`` becomes that section's ``instruct`` ONLY when ``allow_instruct`` and not
+    cloning — the OmniVoice build in use yields NO audio for any item carrying an instruct
+    (verified), so it stays off by default. Returns {sec_id: Path}."""
     from nolan.tts_normalize import normalize_for_speech
     deliveries = deliveries or [None] * len(bodies)
     items, plan = [], []   # plan: (sec_id, [sub_ids])
@@ -176,8 +176,10 @@ def synthesize_sections(provider, bodies, work, *, ref_audio=None, ref_text=None
         sec_id = f"sec_{i:04d}"
         text = normalize_for_speech(body) if normalize else body
         chunks = _split_to_chunks(text, sub_chunk_words) if sub_chunk_words > 0 else [text]
-        # OmniVoice can't clone AND take an instruct → the cloned voice wins.
-        instruct = None if ref_audio else (deliveries[k] or None)
+        # A6 engine limit (verified): OmniVoice yields NO audio for any item carrying an
+        # `instruct` — with OR without a clone. So instruct is sent ONLY when the build is
+        # flagged instruct-capable AND we're not cloning; otherwise the delivery is dropped.
+        instruct = (deliveries[k] or None) if (allow_instruct and not ref_audio) else None
         if len(chunks) <= 1:
             items.append(_tts_item(sec_id, chunks[0] if chunks else text,
                                    ref_audio, ref_text, instruct, speed, language_id))
@@ -444,7 +446,8 @@ async def retake_section(*, config, index: int, project: str = None, script_proj
             None, lambda: synthesize_sections(
                 provider, [body], tmp, ref_audio=ref_audio, ref_text=ref_text,
                 deliveries=[eff_delivery], speed=speed, language_id=language_id,
-                num_step=num_step, sub_chunk_words=sub_words))
+                num_step=num_step, sub_chunk_words=sub_words,
+                allow_instruct=getattr(config.tts.omnivoice, "supports_instruct", False)))
     produced = {"retake": produced["sec_0000"]} if "sec_0000" in produced else {}
     new_wav = produced.get("retake")
     if not new_wav or not Path(new_wav).exists():
@@ -579,7 +582,8 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
                 provider, [s["body"] for s in sections], work,
                 ref_audio=ref_audio, ref_text=ref_text, deliveries=deliveries,
                 speed=speed, language_id=language_id, num_step=num_step,
-                sub_chunk_words=sub_words))
+                sub_chunk_words=sub_words,
+                allow_instruct=getattr(config.tts.omnivoice, "supports_instruct", False)))
 
     if not produced:
         raise RuntimeError("TTS produced no audio (check the omnivoice env / logs)")

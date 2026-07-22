@@ -84,7 +84,8 @@ def resolve_voice_ref(project_dir: Path, config, voice_id_override: Optional[str
 def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
                       ref_audio: Optional[str] = None, ref_text: Optional[str] = None,
                       instruct: Optional[str] = None, num_step: Optional[int] = None,
-                      tempo: float = 1.0, sub_chunk_words: int = 60, progress=None) -> Dict[str, Any]:
+                      tempo: float = 1.0, sub_chunk_words: int = 60,
+                      allow_instruct: bool = False, progress=None) -> Dict[str, Any]:
     """Synthesize per-section audio (one consistent voice), pace, and concat to mp3.
 
     Returns {voiceover, sections:[{index,title,body,wav,duration}], total}.
@@ -104,7 +105,8 @@ def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
         progress(0.2, f"Synthesizing {len(bodies)} sections")
     produced = synthesize_sections(
         provider, [b for _t, b in bodies], work, ref_audio=ref_audio, ref_text=ref_text,
-        deliveries=[instruct] * len(bodies), num_step=num_step, sub_chunk_words=sub_chunk_words)
+        deliveries=[instruct] * len(bodies), num_step=num_step, sub_chunk_words=sub_chunk_words,
+        allow_instruct=allow_instruct)
     if not produced:
         raise RuntimeError("TTS produced no audio")
 

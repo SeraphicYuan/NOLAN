@@ -86,19 +86,26 @@ def test_synthesize_sections_long_is_chunked_and_concatenated(tmp_path):
     assert not list(tmp_path.glob("sec_0000__*.wav"))
 
 
-def test_synthesize_sections_delivery_becomes_instruct(tmp_path):
-    fake = _Fake()
+def test_delivery_instruct_only_when_allowed_and_not_cloning(tmp_path):
+    fake = _Fake()   # instruct-capable build (allow_instruct) + no clone → instruct applied
     vp.synthesize_sections(fake, ["a body", "b body"], tmp_path,
-                           deliveries=["somber", None], sub_chunk_words=0)   # no clone
+                           deliveries=["somber", None], sub_chunk_words=0, allow_instruct=True)
     assert fake.items[0].get("instruct") == "somber"
     assert "instruct" not in fake.items[1]
 
 
+def test_delivery_dropped_by_default_engine_unsupported(tmp_path):
+    """Default: OmniVoice yields no audio for `instruct`, so it is NOT sent even without a clone."""
+    fake = _Fake()
+    vp.synthesize_sections(fake, ["a body"], tmp_path, deliveries=["somber"], sub_chunk_words=0)
+    assert "instruct" not in fake.items[0]
+
+
 def test_delivery_dropped_when_cloning(tmp_path):
-    """OmniVoice can't clone AND take an instruct → the cloned voice wins, delivery dropped."""
+    """Even on an instruct-capable build, a clone drops the instruct (can't combine)."""
     fake = _Fake()
     vp.synthesize_sections(fake, ["a body"], tmp_path, ref_audio="voice.wav",
-                           deliveries=["somber"], sub_chunk_words=0)
+                           deliveries=["somber"], sub_chunk_words=0, allow_instruct=True)
     assert "instruct" not in fake.items[0] and fake.items[0].get("ref_audio") == "voice.wav"
 
 

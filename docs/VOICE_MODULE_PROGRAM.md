@@ -320,9 +320,12 @@ voiceovers"), with filters + players. Provenance + measure summary per item.
   gate ok. Routed through synthesize_voiceover + produce_voiceover + retake_section.
   **A6** delivery notes: a `[delivery: <note>]` line per beat (parsed by parse_script_sections,
   stripped from speech, authorable via the draft prompt) → per-section `instruct`; surfaced on
-  the beats endpoint + `retake --delivery`. ENGINE LIMIT (verified): OmniVoice can't clone a
-  voice AND take an instruct (yields no audio), so when cloning the clone wins and delivery is
-  dropped — delivery only takes effect in voice-design (no-clone) mode.
+  the beats endpoint + `retake --delivery`. ENGINE LIMIT (emotion-probe, 2026-07-22): this
+  OmniVoice build yields **NO audio for ANY item carrying an `instruct`** — with OR without a
+  clone (instruct-alone → nothing; clone+instruct → nothing; no-ref *neutral* alone → works).
+  So the delivery field is parsed/surfaced/authorable but `instruct` is gated behind
+  `tts.omnivoice.supports_instruct` (default OFF) — sending it would silently break synthesis.
+  Delivery is captured metadata, ready for an instruct-capable engine; today it is inert.
 
 ## P5 — VO quality validation + the polish loop (NEW 2026-07-22)
 
@@ -349,13 +352,16 @@ the loop the retake actuator (B2) + take-preservation (B3) were built for.
 ## P6 (EXPERIMENTAL) — tone / emotion arc
 
 Highly experimental; gated behind a hard engine constraint. Two halves:
-- **Can OmniVoice act on emotion?** Its only per-utterance emotion lever is the voice-design
-  `instruct` (A6) — but that CANNOT combine with a cloned voice (verified: yields no audio). So
-  with a consistent narrator clone (the normal essay case) the only working knobs are pace
-  (`speed`/atempo) and the emotion baked into the *reference clip*. Emotion-per-beat therefore
-  needs one of: (a) voice-design mode (give up the clone), or (b) EXPERIMENT: a small set of
-  same-narrator reference clips in different registers (calm / intense / wry) and switch the ref
-  per beat — emotion while staying "the same voice-ish". Both need listening tests (subjective).
+- **Can OmniVoice act on emotion? NO (emotion probe, 2026-07-22).** Its only nominal per-utterance
+  emotion lever is the voice-design `instruct` field — and the probe proved `instruct` yields NO
+  audio in EVERY combination (with/without clone). Voice-design *neutral* (no ref, no instruct)
+  works, but the moment you add `instruct` OmniVoice produces nothing. So emotion-via-instruct is
+  dead on this build. The ONLY working knobs with a consistent narrator clone are **pace**
+  (`speed`/atempo) and the **emotion baked into the reference clip**. The one clone-compatible
+  emotion experiment worth trying: a small set of same-narrator reference clips in different
+  registers (calm / intense / wry), switched per pivot beat — each is a valid clone, so it should
+  synthesize, and it stays "the same voice-ish." Needs a listening test. The real unlock is a
+  higher-tier `TtsProvider` with native emotion (the abstraction is already there).
 - **How to ASSIGN the arc (the judgment):** an LLM/agent reads the script and labels the
   emotional register of each beat, but crucially identifies the FEW pivot beats that carry the
   arc (hook, reveal, turn, close) — over-emoting every beat sounds fake. This is the A6 authoring
