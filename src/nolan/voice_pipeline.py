@@ -120,6 +120,22 @@ def concat_wavs_to_mp3(ordered, list_file, out_mp3, *, tempo: float = 1.0,
             f"voiceover concat failed: {(r.stderr or r.stdout or '')[:400]}")
 
 
+def _write_provenance(vo_dir, *, source=None, voice_id=None, mode=None, total_s=None,
+                      sections=None) -> None:
+    """B4: stamp voiceover.prov.json (who/what/when) so /voices can show 'built from …'
+    and /script-projects can surface VO status. Best-effort."""
+    import json as _pj
+    import datetime as _dt
+    try:
+        (Path(vo_dir) / "voiceover.prov.json").write_text(_pj.dumps({
+            "source": source, "voice_id": voice_id, "mode": mode, "total_s": total_s,
+            "sections": sections,
+            "generated_at": _dt.datetime.now().isoformat(timespec="seconds"),
+        }, indent=2, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+
+
 def finalize_sections(vo_dir, sections, wavs, *, wpm: float = 150.0, trim: bool = True):
     """A3 trim + A2 gate + measure sidecar. Trims each section wav IN PLACE (so the
     beat-anchor durations are honest), gates the result, writes
@@ -447,6 +463,8 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
     gate = report.to_dict()
     if report.checks:
         log(report.summary())
+    _write_provenance(vo_dir, source=script_project or project, voice_id=voice_id,
+                      mode=mode, total_s=gate.get("total_s"), sections=len(sections))
 
     import json as _json
     import shutil as _shutil

@@ -303,9 +303,14 @@ voiceovers"), with filters + players. Provenance + measure summary per item.
   reproducibility = take-PRESERVATION (B3), and a retake is intentionally a fresh attempt you
   keep-or-discard. · B2 per-section retake · B3 versioning (archive full-VO takes + snapshot a
   section before a retake) · the `nolan voiceover` CLI family.
-- **P3 — Redesign + wiring surfaced:**
-  C tabs + Narrate workspace (surfaces A2/A3/B2) · B4 closed loop · B5 voice preset
-  · B6 hygiene (folds in).
+- **P3 — Redesign + wiring surfaced:** IN PROGRESS 2026-07-22.
+  ✅ **C tabs + Narrate workspace** (Narrate·Voices·Library; `/api/voiceover-beats/{slug}`
+  merges script sections + measure + provenance; per-beat play + ⟳ retake + gate pills;
+  takes dropdown; shared job poller) — browser-verified live on the-diamond-illusion.
+  ✅ **B4 (part)** provenance sidecar (`voiceover.prov.json`) + Narrate provenance line.
+  ✅ **B6 (part)** dead `/api/project/{project}/script` removed; single poller; tokenized CSS.
+  TODO: B4 the /script-projects status-chip + "Generate VO" CTA (reverse link);
+  B5 voice as a create-time preset.
 - **P4 — Advanced quality:**
   A5 sub-chunking · A6 per-section/authored delivery notes.
 

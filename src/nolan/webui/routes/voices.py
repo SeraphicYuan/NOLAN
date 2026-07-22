@@ -236,6 +236,78 @@ def register(app, ctx):
         captions = (vo / "voiceover.srt").exists()
         return {"project": project, "full": full, "segments": segs, "captions": captions}
 
+    @app.get("/api/voiceover-beats/{slug}")
+    async def api_voiceover_beats(slug: str):
+        """Per-beat view for the Narrate tab: merge script.md sections + the A2/A3 measure
+        sidecar + provenance + readiness into one payload (P3)."""
+        from nolan.script import parse_script_sections
+        base = Path("projects") / slug
+        vo = base / "assets" / "voiceover"
+        secs = (parse_script_sections((base / "script.md").read_text(encoding="utf-8"))
+                if (base / "script.md").exists() else [])
+
+        measure = {}
+        mp = vo / "voiceover.measure.json"
+        if mp.exists():
+            try:
+                measure = json.loads(mp.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                measure = {}
+        stats = {s.get("index"): s for s in measure.get("sections", [])}
+        checks: Dict[int, list] = {}
+        for c in measure.get("checks", []):
+            if c.get("index") is not None:
+                checks.setdefault(c["index"], []).append(c)
+
+        beats = []
+        for i, s in enumerate(secs):
+            st = stats.get(i, {})
+            ck = checks.get(i, [])
+            status = "none"
+            if st.get("present"):
+                status = ("error" if any(c["level"] == "error" for c in ck)
+                          else "warn" if any(c["level"] == "warn" for c in ck) else "ok")
+            body = s.get("body") or ""
+            wav = vo / "_work" / f"sec_{i:04d}.wav"
+            beats.append({
+                "index": i, "title": s.get("title"), "timecode": s.get("timecode"),
+                "preview": (body[:140] + "…") if len(body) > 140 else body,
+                "words": len(body.split()),
+                "duration_s": st.get("duration_s"), "expected_s": st.get("expected_s"),
+                "delta_s": st.get("delta_s"), "rms_dbfs": st.get("rms_dbfs"),
+                "status": status, "issues": [c["message"] for c in ck],
+                "play_url": (f"/api/voiceover/{quote(slug)}/_work/sec_{i:04d}.wav"
+                             if wav.exists() else None),
+            })
+
+        prov = {}
+        pj = vo / "voiceover.prov.json"
+        if pj.exists():
+            try:
+                prov = json.loads(pj.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                prov = {}
+
+        from nolan.scriptwriter import ScriptProjectStore
+        store = ScriptProjectStore(Path("projects"))
+        ready = store.vo_readiness(slug) if store.exists(slug) else {"written": False}
+        target_s = None
+        try:
+            tm = store._load_meta(slug).get("target_minutes")
+            target_s = round(float(tm) * 60) if tm else None
+        except Exception:
+            pass
+
+        return {
+            "slug": slug, "beats": beats, "readiness": ready, "provenance": prov,
+            "summary": {"total_s": measure.get("total_s"), "target_s": target_s,
+                        "gate_ok": measure.get("ok"), "sections": len(beats),
+                        "has_mp3": (vo / "voiceover.mp3").exists(),
+                        "captions": (vo / "voiceover.srt").exists()},
+            "mp3_url": (f"/api/voiceover/{quote(slug)}/voiceover.mp3"
+                        if (vo / "voiceover.mp3").exists() else None),
+        }
+
     @app.get("/api/voiceover/{project}/{path:path}")
     async def api_voiceover_file(project: str, path: str):
         """Serve a project's voiceover output (audio, or .srt/.vtt/.json captions)."""
@@ -419,17 +491,3 @@ def register(app, ctx):
         if not p.exists():
             raise HTTPException(status_code=404, detail="output not found")
         return FileResponse(p, media_type="audio/wav")
-
-    @app.get("/api/project/{project}/script")
-    async def api_project_script(project: str):
-        """Return a project's narration text (for the TTS Studio text source)."""
-        base = Path("projects") / project
-        md = base / "script.md"
-        if md.exists():
-            return {"project": project, "script": md.read_text(encoding="utf-8")}
-        js = base / "script.json"
-        if js.exists():
-            from nolan.script import Script
-            s = Script.load_json(str(js))
-            return {"project": project, "script": "\n\n".join(x.narration for x in s.sections)}
-        raise HTTPException(status_code=404, detail="no script for project")

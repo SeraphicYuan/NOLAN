@@ -1,609 +1,390 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOLAN Voices</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg-primary); color: var(--text-primary); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-size: 14px; line-height: 1.5; }
-        .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
-        h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; color: var(--text-primary); margin-bottom: 4px; }
-        .sub { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
-        .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
-        .panel h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 12px; }
-        .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        input, textarea, select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); padding: 8px 10px; font-size: 14px; font-family: inherit; }
-        textarea { width: 100%; min-height: 120px; resize: vertical; line-height: 1.5; }
-        button { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 600; }
-        button:hover { background: var(--bg-tertiary); border-color: var(--text-secondary); }
-        button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-        button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-        button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
-        button.danger:hover { filter: brightness(1.08); }
-        .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-        .tab { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
-        .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-        .mode { display: none; }
-        .mode.active { display: block; }
-        label.fld { font-size: 12px; color: var(--text-secondary); display:block; margin: 12px 0 4px; }
-        .warn { background: #3a2f12; border: 1px solid #5a4a20; color: #e8d59a; padding: 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
-        .snip { font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; }
-        .snip:hover { background: var(--bg-tertiary); }
-        .snip-list { max-height: 180px; overflow:auto; border:1px solid var(--border); border-radius:8px; margin-top:8px; }
-        video { width: 100%; max-height: 220px; border-radius: 10px; background:#000; }
-        audio { width: 100%; height: 34px; margin-top: 8px; }
-        .status { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
-        code { background:var(--bg-primary); padding:1px 5px; border-radius:4px; font-size:12px; }
-        .hidden { display:none; }
-        .pill { font-size:11px; color:#7fd3e0; }
-        #voiceList .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 8px; }
-        .card .name { font-weight: 600; }
-        .card .meta { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }
-        .card audio { width: auto; height: 30px; margin-top: 0; vertical-align: middle; }
-        .empty { color: var(--text-secondary); font-size: 13px; padding: 8px 0; }
-        @media (max-width: 768px) {
-            .wrap { padding: 14px; }
-            .cols { grid-template-columns: 1fr !important; }
-            input, textarea, select { font-size: 16px; }
-            .row { flex-direction: column; align-items: stretch; }
-            .row > * { width: 100% !important; max-width: 100%; }
-            audio { width: 100%; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voices · NOLAN</title>
+<link rel="stylesheet" href="/static/nolan.css">
+<style>
+  :root{
+    --vb:var(--bg-primary,#0d0e12); --vp:var(--bg-secondary,#15171e); --vp2:#1b1e26; --vr:#20232c;
+    --vbd:var(--border,#272b35); --vbs:#1f222a;
+    --vt:var(--text-primary,#e8eaf0); --vd:var(--text-secondary,#969cab); --vf:#6b7180;
+    --va:var(--accent,#5b8cff); --vad:rgba(91,140,255,.15);
+    --vg:#35c07f; --vgd:rgba(53,192,127,.14); --vw:#e6a94b; --vwd:rgba(230,169,75,.14); --ve:#e5484d;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  body{margin:0;background:var(--vb);color:var(--vt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.45}
+  a{color:var(--va);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
+  h1{font-size:22px;font-weight:680;letter-spacing:-.02em;margin:0 0 2px}
+  .sub{color:var(--vd);font-size:13px;margin-bottom:16px}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--vbs);margin-bottom:18px}
+  .tab{padding:9px 16px;color:var(--vd);font-weight:560;font-size:14px;cursor:pointer;
+    border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab:hover{color:var(--vt)}
+  .tab.on{color:var(--vt);border-bottom-color:var(--va)}
+  .panel{display:none} .panel.on{display:block}
+
+  /* ---- Narrate ---- */
+  .work{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+  .setup{display:flex;flex-direction:column;gap:16px;position:sticky;top:12px}
+  .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--vf);font-weight:650;margin-bottom:7px}
+  .field{background:var(--vp);border:1px solid var(--vbd);border-radius:10px;padding:10px 12px;width:100%;
+    color:var(--vt);font:inherit}
+  select.field{cursor:pointer}
+  .ready{margin-top:8px;font-size:12.5px;display:flex;align-items:center;gap:6px}
+  .ready.ok{color:var(--vg)} .ready.no{color:var(--ve)}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+  .seg{display:flex;background:var(--vp);border:1px solid var(--vbd);border-radius:9px;padding:3px;gap:2px}
+  .seg button{flex:1;border:0;background:transparent;color:var(--vd);font:inherit;font-size:12.5px;
+    padding:6px;border-radius:6px;cursor:pointer}
+  .seg button.on{background:var(--vr);color:var(--vt);font-weight:600}
+  .rowline{display:flex;justify-content:space-between;gap:8px;margin-top:9px;font-size:12.5px}
+  .rowline .k{color:var(--vf)} .rowline .v{color:var(--vd)}
+  .gen{margin-top:10px;width:100%;border:0;border-radius:10px;padding:12px;background:var(--va);color:#fff;
+    font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+  .gen:hover{filter:brightness(1.08)} .gen:disabled{opacity:.5;cursor:not-allowed;filter:none}
+  .hint{color:var(--vf);font-size:11.5px;margin-top:8px}
+
+  .sh{display:flex;align-items:center;gap:14px;background:var(--vp);border:1px solid var(--vbs);
+    border-radius:12px;padding:13px 16px;flex-wrap:wrap}
+  .sh .big{font-size:20px;font-weight:700;font-family:var(--mono)}
+  .sh .tgt{color:var(--vf);font-family:var(--mono);font-size:13px}
+  .sh .meta{color:var(--vd);font-size:12.5px}
+  .chip{border:1px solid var(--vbd);border-radius:20px;padding:5px 11px;color:var(--vd);font-size:12px;
+    cursor:pointer;background:transparent}
+  .chip:hover{border-color:var(--va);color:var(--va)}
+  .prov{color:var(--vf);font-size:11.5px;margin:8px 2px 4px}
+  .beats{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+  .beat{display:grid;grid-template-columns:26px 1fr 60px 62px 90px auto;align-items:center;gap:12px;
+    background:var(--vp);border:1px solid var(--vbs);border-radius:10px;padding:10px 13px}
+  .beat:hover{border-color:var(--vbd);background:var(--vp2)}
+  .beat.warn{border-color:rgba(230,169,75,.4)} .beat.error{border-color:rgba(229,72,77,.45)}
+  .beat.busy{border-color:rgba(91,140,255,.5)}
+  .idx{font-family:var(--mono);color:var(--vf);font-size:13px;text-align:center}
+  .ttl{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prev{color:var(--vf);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .words{font-family:var(--mono);color:var(--vf);font-size:12px;text-align:right}
+  .dur{font-family:var(--mono);color:var(--vd);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+  .pill{font-size:11.5px;font-weight:600;border-radius:20px;padding:4px 10px;justify-self:start;white-space:nowrap}
+  .pill.ok{background:var(--vgd);color:var(--vg)} .pill.warn{background:var(--vwd);color:var(--vw)}
+  .pill.error{background:rgba(229,72,77,.15);color:var(--ve)} .pill.none{background:var(--vp2);color:var(--vf)}
+  .pill.run{background:var(--vad);color:var(--va)}
+  .acts{display:flex;gap:6px;justify-self:end}
+  .ico{width:32px;height:32px;border-radius:8px;border:1px solid var(--vbd);background:transparent;
+    color:var(--vd);cursor:pointer;display:grid;place-items:center;font-size:14px;padding:0}
+  .ico:hover{border-color:var(--va);color:var(--va)} .ico.rt:hover{border-color:var(--vg);color:var(--vg)}
+  .foot{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  .btn{border:1px solid var(--vbd);background:var(--vp);color:var(--vt);border-radius:9px;padding:9px 14px;
+    font:inherit;font-size:13px;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+  .btn:hover{border-color:var(--va);color:var(--va)} .btn.warn{border-color:rgba(230,169,75,.5);color:var(--vw)}
+  .empty{color:var(--vd);text-align:center;padding:44px;border:1px dashed var(--vbd);border-radius:12px}
+  .status{color:var(--vd);font-size:12.5px;min-height:16px;margin-top:6px}
+
+  /* ---- Voices library / Library grid ---- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .card{background:var(--vp);border:1px solid var(--vbd);border-radius:10px;padding:12px}
+  .card .nm{font-weight:640}.card .cs{color:var(--vf);font-size:12px;margin:2px 0 8px}
+  audio{width:100%;height:34px}
+  .addbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;align-items:center}
+  .addbar input{background:var(--vp);border:1px solid var(--vbd);border-radius:8px;color:var(--vt);
+    font:inherit;padding:8px 10px}
+  .takes{position:relative;display:inline-block}
+  .takemenu{position:absolute;right:0;top:34px;background:var(--vp);border:1px solid var(--vbd);
+    border-radius:10px;padding:6px;min-width:230px;z-index:5;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .takemenu.open{display:block}
+  .takemenu .ti{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 8px;
+    border-radius:7px;font-size:12.5px}
+  .takemenu .ti:hover{background:var(--vp2)}
+  @media (prefers-reduced-motion:no-preference){.busy{animation:pulse 1.4s ease-in-out infinite}}
+  @keyframes pulse{50%{border-color:rgba(91,140,255,.25)}}
+  @media (max-width:860px){.work{grid-template-columns:1fr}.setup{position:static}
+    .beat{grid-template-columns:22px 1fr 84px auto}.prev,.words{display:none}}
+</style>
 </head>
 <body>
-<link rel="stylesheet" href="/static/nolan.css">
-<script src="/static/nav.js" data-active="voices"></script>
-
 <div class="wrap">
-    <h1>🎙 Voices</h1>
-    <div class="sub">One place for voice work: manage cloned voices, synthesize any text (TTS studio), and generate project voiceovers with local TTS (OmniVoice).</div>
-    <div id="ttsWarn"></div>
+  <h1>Voices</h1>
+  <div class="sub">Narrate a script → voiceover, manage cloned voices, and browse everything you've made.</div>
+  <div class="tabs">
+    <div class="tab on" data-t="narrate">Narrate</div>
+    <div class="tab" data-t="voices">Voices</div>
+    <div class="tab" data-t="library">Library</div>
+  </div>
 
-    <!-- ===== VOICE LIBRARY ===== -->
-    <div class="panel">
-        <h2>Voice library <span class="sub" id="voiceCount" style="display:inline;"></span></h2>
-        <div id="voiceList"><div class="empty">Loading…</div></div>
-        <label class="fld" style="margin-top:14px;">Add from an audio file (3–10s of clean speech)</label>
-        <div class="row">
-            <input id="addName" type="text" placeholder="voice name" style="flex:1;min-width:140px;">
-            <input id="addFile" type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg">
-            <button class="primary" onclick="addVoice()">Add</button>
-            <span class="status" id="addStatus"></span>
+  <!-- ================= NARRATE ================= -->
+  <section class="panel on" id="p-narrate">
+    <div class="work">
+      <aside class="setup">
+        <div>
+          <div class="lbl">Script project</div>
+          <select class="field" id="np" onchange="loadBeats()"><option value="">— select —</option></select>
+          <div class="ready" id="nready"></div>
         </div>
-        <label class="fld">Optional reference transcript (auto-transcribed if blank)</label>
-        <input id="addRefText" type="text" placeholder="what is said in the clip" style="width:100%;">
-        <label class="fld" style="margin-top:14px;">…or clone from a saved Clip's audio</label>
-        <div class="row">
-            <input id="clipName" type="text" placeholder="voice name" style="min-width:140px;">
-            <input id="clipId" type="text" placeholder="clip id (clip_xxxx) — from the Clips page" style="flex:1;min-width:200px;">
-            <button onclick="fromClip()">Clone from clip</button>
-            <span class="status" id="clipStatus"></span>
+        <div>
+          <div class="lbl">Voice</div>
+          <div class="seg" id="vseg">
+            <button class="on" data-m="saved">Saved</button>
+            <button data-m="instruct">Design</button>
+          </div>
+          <select class="field" id="nvoice" style="margin-top:9px"></select>
+          <input class="field" id="ninstruct" style="margin-top:9px;display:none"
+                 placeholder="describe the voice (e.g. warm, measured documentary narrator)">
+          <div class="hint">Add or clone voices in the <a onclick="showTab('voices')">Voices</a> tab.</div>
         </div>
+        <div>
+          <div class="lbl">Output</div>
+          <div class="seg" id="nmode"><button class="on" data-v="full">Full</button><button data-v="segments">Segments</button></div>
+          <div class="rowline"><span class="k">Diffusion steps</span><input class="v" id="nstep" value="32"
+              style="width:52px;background:var(--vp);border:1px solid var(--vbd);border-radius:6px;color:var(--vt);text-align:right"></div>
+          <button class="gen" id="ngen" onclick="genVO()">Generate voiceover</button>
+          <div class="hint">Regenerating archives the current take first.</div>
+          <div class="status" id="nstatus"></div>
+        </div>
+      </aside>
+
+      <main>
+        <div id="nworkspace"><div class="empty">Pick a script project to narrate.</div></div>
+      </main>
     </div>
+  </section>
 
-    <!-- ===== ALL VOICEOVERS (browse existing) ===== -->
-    <div class="panel">
-        <h2>All voiceovers <span class="sub" id="voIdxCount" style="display:inline;"></span></h2>
-        <div class="sub">Every voiceover already on disk — pipeline <b>projects</b> and hybrid HyperFrames <b>comps</b>. Play them here; nothing is re-generated.</div>
-        <div class="row" style="margin-top:8px;">
-            <input id="voIdxFilter" placeholder="filter by name…" oninput="renderVOIndex()" style="flex:1;min-width:160px;">
-            <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="voIdxProj" checked onchange="renderVOIndex()"> projects</label>
-            <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="voIdxHF" checked onchange="renderVOIndex()"> HF comps</label>
-            <button onclick="loadVOIndex()">↻ Refresh</button>
-        </div>
-        <div id="voIndex" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+  <!-- ================= VOICES (library) ================= -->
+  <section class="panel" id="p-voices">
+    <div class="addbar">
+      <input id="avName" placeholder="voice name">
+      <input type="file" id="avFile" accept="audio/*,video/*">
+      <input id="avRef" placeholder="reference transcript (optional)" style="min-width:240px">
+      <button class="btn" onclick="addVoice()">Add voice</button>
+      <span id="vstatus" class="hint"></span>
     </div>
-
-    <!-- ===== TTS STUDIO ===== -->
-    <div class="cols">
-        <div class="panel">
-            <h2>1 · Voice</h2>
-            <div class="tabs">
-                <div class="tab active" data-mode="saved" onclick="setMode('saved')">Saved voice</div>
-                <div class="tab" data-mode="upload" onclick="setMode('upload')">Upload</div>
-                <div class="tab" data-mode="library" onclick="setMode('library')">From library</div>
-                <div class="tab" data-mode="instruct" onclick="setMode('instruct')">Design</div>
-            </div>
-
-            <div class="mode active" id="mode-saved">
-                <select id="savedVoice" style="width:100%;"></select>
-            </div>
-
-            <div class="mode" id="mode-upload">
-                <label class="fld">Audio file (3–10s clean speech)</label>
-                <input id="upFile" type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg" onchange="uploadSample()">
-                <div class="status" id="upStatus"></div>
-            </div>
-
-            <div class="mode" id="mode-library">
-                <select id="libVideo" style="width:100%;" onchange="loadLibVideo()"><option value="">— pick a library video —</option></select>
-                <video id="libPlayer" controls class="hidden"></video>
-                <div class="row" id="libCutRow" style="margin-top:6px;display:none;">
-                    <button onclick="setIn()">Set In</button>
-                    <span>In <span id="inLbl" class="pill">--:--</span></span>
-                    <button onclick="setOut()">Set Out</button>
-                    <span>Out <span id="outLbl" class="pill">--:--</span></span>
-                    <button class="primary" onclick="useLibrarySample()">Use as voice ✂</button>
-                </div>
-                <div class="snip-list hidden" id="snipList"></div>
-            </div>
-
-            <div class="mode" id="mode-instruct">
-                <label class="fld">Describe the voice (no cloning)</label>
-                <input id="instruct" type="text" placeholder="e.g. female, british, warm, measured" style="width:100%;" oninput="onInstruct()">
-            </div>
-
-            <div id="samplePreview" style="margin-top:10px;"></div>
-        </div>
-
-        <div class="panel">
-            <h2>2 · Text</h2>
-            <div class="row">
-                <select id="scriptProject"><option value="">— load from project script —</option></select>
-                <button onclick="loadScript()">Load</button>
-            </div>
-            <label class="fld">What to say</label>
-            <textarea id="ttsText" placeholder="Write or paste text, or load a project's script above…"></textarea>
-        </div>
+    <div class="grid" id="vlist"><div class="empty">Loading…</div></div>
+    <h1 style="font-size:16px;margin:22px 0 8px">Audition</h1>
+    <div class="sub">Hear a voice speak any line (numbers are spoken correctly).</div>
+    <div class="addbar">
+      <select class="field" id="auVoice" style="max-width:220px"></select>
+      <input id="auText" placeholder="Type a line — e.g. In 1888, prices rose 90%." style="min-width:320px">
+      <button class="btn" onclick="audition()">▷ Speak</button>
+      <span id="austatus" class="hint"></span>
     </div>
+    <div id="auOut"></div>
+  </section>
 
-    <div class="panel">
-        <h2>3 · Parameters &amp; generate</h2>
-        <div class="row">
-            <label>Quality (num_step)
-                <select id="numStep"><option value="16">16 (fast)</option><option value="24">24</option><option value="32" selected>32 (best)</option></select>
-            </label>
-            <label title="Reliable pace control: time-stretch, pitch-preserving. 1.15 ≈ 15% faster.">Pace × <input id="tempo" type="number" value="1.0" step="0.05" min="0.5" max="1.6" style="width:75px;"></label>
-            <label title="OmniVoice's native speed (subtle effect — use Pace for real changes)">Speed <input id="speed" type="number" value="1.0" step="0.05" min="0.5" max="2.0" style="width:75px;"></label>
-            <label>Language <input id="lang" type="text" placeholder="auto (e.g. en, zh)" style="width:110px;"></label>
-            <button class="primary" onclick="synth()">▶ Generate</button>
-            <span class="status" id="genStatus"></span>
-        </div>
-        <div class="sub" id="paceHint" style="margin-top:6px;"></div>
-        <div id="result" style="margin-top:10px;"></div>
-    </div>
-
-    <!-- ===== PROJECT VOICEOVER (multi-section) ===== -->
-    <div class="panel">
-        <h2>Project Voiceover (multi-section)</h2>
-        <div class="sub">From a Script Project's <code>script.md</code> (split on <code>##</code>). Headings are never spoken. <b>Full</b> → one voiceover.mp3 (then run <code>nolan align</code>). <b>Segments</b> → per-section wavs + manifest for the segment pipeline.</div>
-        <div class="row" style="margin-top:8px;">
-            <select id="voProject" onchange="loadVOInfo()"><option value="">— Script Project —</option></select>
-            <label>Mode <select id="voMode"><option value="full">Full (one mp3)</option><option value="segments">Segments (per ## section)</option></select></label>
-            <button class="primary" onclick="genProjectVO()">Generate</button>
-            <button onclick="genCaptions()" title="SRT/VTT captions + word-level JSON for the existing voiceover">Captions (SRT)</button>
-            <span class="status" id="voStatus"></span>
-        </div>
-        <div class="sub" id="voVoiceHint" style="margin-top:6px;"></div>
-        <div id="voResult" style="margin-top:10px;"></div>
-
-        <label class="fld" style="margin-top:14px;">…or a render project's <code>script.json</code></label>
-        <div class="row">
-            <select id="projSelect"><option value="">— pick a project —</option></select>
-            <select id="voiceSelect"><option value="">default voice (no cloning)</option></select>
-            <button class="primary" onclick="genRenderVO()">Generate voiceover</button>
-            <span class="status" id="rpStatus"></span>
-        </div>
-    </div>
+  <!-- ================= LIBRARY (browse) ================= -->
+  <section class="panel" id="p-library">
+    <div class="sub">Every voiceover on disk — pipeline projects and HyperFrames comps.</div>
+    <div class="grid" id="voidx"><div class="empty">Loading…</div></div>
+  </section>
 </div>
 
 <script>
-let voices = [];
-let ref = { mode: 'saved', voice_id: '', sample_token: '', instruct: '' };
-let cutIn = null, cutOut = null, libPath = '';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const mmss=s=>{if(s==null)return '—';s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+let ref={mode:'saved'}, curSlug=null;
 
-function esc(t){ const d=document.createElement('div'); d.textContent=t==null?'':t; return d.innerHTML; }
-function fmt(s){ if(s==null) return '--:--'; s=Math.floor(s); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
-
-function setMode(m){
-    ref.mode = m;
-    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.mode===m));
-    document.querySelectorAll('.mode').forEach(el=>el.classList.remove('active'));
-    document.getElementById('mode-'+m).classList.add('active');
-    updateSamplePreview();
+// ---- shared job poller (B6: one, not three) ----
+async function pollJob(id, {onDone, onProgress, statusEl}){
+  try{
+    const j=await (await fetch('/api/jobs/'+id)).json();
+    if(statusEl) statusEl.textContent = j.message || j.status;
+    if(onProgress) onProgress(j);
+    if(j.status==='done'){ onDone&&onDone(j); return; }
+    if(j.status==='error'){ if(statusEl) statusEl.textContent='failed: '+(j.error||''); return; }
+  }catch(e){}
+  setTimeout(()=>pollJob(id,{onDone,onProgress,statusEl}), 1500);
 }
 
+// ---- tabs ----
+function showTab(t){
+  $$('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
+  $$('.panel').forEach(x=>x.classList.toggle('on',x.id==='p-'+t));
+  if(t==='voices'){loadVoices();} if(t==='library'){loadIndex();}
+}
+$$('.tab').forEach(x=>x.onclick=()=>showTab(x.dataset.t));
+$$('#vseg button').forEach(b=>b.onclick=()=>{ref.mode=b.dataset.m;
+  $$('#vseg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#nvoice').style.display=ref.mode==='saved'?'':'none';
+  $('#ninstruct').style.display=ref.mode==='instruct'?'':'none';});
+$$('#nmode button').forEach(b=>b.onclick=()=>$$('#nmode button').forEach(x=>x.classList.toggle('on',x===b)));
+
+// ---- populate pickers ----
+async function loadProjects(){
+  const j=await (await fetch('/api/script-projects')).json();
+  const opts=(j.projects||[]).map(p=>`<option value="${esc(p.slug)}">${esc(p.name||p.slug)}</option>`).join('');
+  $('#np').innerHTML='<option value="">— select —</option>'+opts;
+}
+async function loadVoiceOptions(){
+  const j=await (await fetch('/api/voices')).json();
+  const opts=(j.voices||[]).map(v=>`<option value="${esc(v.id)}">${esc(v.name||v.id)}</option>`).join('')
+    || '<option value="">(no saved voices — add one in Voices)</option>';
+  $('#nvoice').innerHTML=opts; $('#auVoice').innerHTML=opts;
+}
+function voiceBody(b){
+  if(ref.mode==='instruct'){ b.instruct=$('#ninstruct').value.trim()||null; }
+  else { b.voice_id=$('#nvoice').value||null; }
+  return b;
+}
+
+// ---- Narrate: load per-beat view ----
+async function loadBeats(){
+  const slug=$('#np').value; curSlug=slug;
+  const ws=$('#nworkspace'), rd=$('#nready'), gen=$('#ngen');
+  if(!slug){ ws.innerHTML='<div class="empty">Pick a script project to narrate.</div>'; rd.textContent=''; return; }
+  let j;
+  try{ j=await (await fetch('/api/voiceover-beats/'+encodeURIComponent(slug))).json(); }
+  catch(e){ ws.innerHTML='<div class="empty">Could not load.</div>'; return; }
+  // B1 readiness
+  const r=j.readiness||{};
+  if(r.written){ rd.className='ready ok';
+    rd.innerHTML=`<span class="dot"></span> Ready · ${r.words||0} words${r.promoted_draft?(' · draft-'+String(r.promoted_draft).padStart(2,'0')):''}`;
+    gen.disabled=false; }
+  else { rd.className='ready no';
+    rd.innerHTML=`<span class="dot"></span> Not written — promote a draft in <a href="/script-projects">Script Projects</a> first`;
+    gen.disabled=true; }
+  renderWorkspace(j);
+}
+function renderWorkspace(j){
+  const s=j.summary||{}, ws=$('#nworkspace');
+  if(!s.has_mp3 && !(j.beats||[]).some(b=>b.play_url)){
+    ws.innerHTML=`<div class="empty">No voiceover yet — pick a voice and click <b>Generate</b>.<br>
+      <span class="hint">${(j.beats||[]).length} beats ready from the script.</span></div>`;
+    return;
+  }
+  const gate = s.gate_ok===true?'<span style="color:var(--vg);font-weight:600">clean</span>'
+             : s.gate_ok===false?'<span style="color:var(--ve);font-weight:600">issues</span>':'—';
+  const prov=j.provenance||{};
+  const provline = (prov.generated_at||prov.voice_id)
+    ? `Built ${prov.generated_at?('· '+prov.generated_at.replace('T',' ')):''} ${prov.voice_id?('· '+esc(prov.voice_id)):''}` : '';
+  const pill=(b)=>{const m={ok:'✓ clean',warn:'⚠ '+(b.issues[0]?b.issues[0].split(' ')[0]:'warn'),
+    error:'✕ '+(b.issues[0]||'error'),none:'—'}; return `<span class="pill ${b.status}">${m[b.status]||'—'}</span>`;};
+  const rows=(j.beats||[]).map(b=>{
+    const cls=b.status==='warn'?' warn':b.status==='error'?' error':'';
+    const tip=b.rms_dbfs!=null?`title="rms ${b.rms_dbfs} dBFS · exp ${mmss(b.expected_s)} · Δ${b.delta_s}s${b.issues.length?' · '+esc(b.issues.join('; ')):''}"`:'';
+    const acts=b.play_url
+      ? `<button class="ico" title="Play" onclick="playBeat('${b.play_url}')">▷</button>
+         <button class="ico rt" title="Retake this beat" onclick="retake(${b.index})">⟳</button>`
+      : `<button class="ico rt" title="Generate this beat" onclick="retake(${b.index})">⟳</button>`;
+    return `<div class="beat${cls}" id="beat-${b.index}" ${tip}>
+      <div class="idx">${b.index+1}</div>
+      <div style="min-width:0"><div class="ttl">${esc(b.title||'')}</div><div class="prev">${esc(b.preview||'')}</div></div>
+      <div class="words">${b.words} w</div>
+      <div class="dur">${mmss(b.duration_s)}</div>
+      ${pill(b)}<div class="acts">${acts}</div></div>`;
+  }).join('');
+  ws.innerHTML=`
+    <div class="sh">
+      <div><span class="big">${mmss(s.total_s)}</span> <span class="tgt">${s.target_s?('/ '+mmss(s.target_s)+' target'):''}</span></div>
+      <div class="meta">${s.sections} beats · gate ${gate}</div>
+      <div style="flex:1"></div>
+      <div class="takes"><button class="chip" onclick="toggleTakes()">◷ takes ▾</button>
+        <div class="takemenu" id="takemenu"></div></div>
+    </div>
+    ${provline?`<div class="prov">${provline}</div>`:''}
+    <div class="beats">${rows}</div>
+    <div class="foot">
+      ${s.captions?'':'<button class="btn warn" onclick="rebuildCaptions()">⚠ No captions — Build</button>'}
+      ${s.has_mp3?`<a class="btn" href="${j.mp3_url}" download>⬇ Download mp3</a>`:''}
+      <div style="flex:1"></div>
+      <a class="btn" href="/pool">Open in Timeline →</a>
+    </div>`;
+  window._audio=window._audio||new Audio();
+}
+function playBeat(url){ window._audio.pause(); window._audio=new Audio(url); window._audio.play(); }
+
+async function genVO(){
+  const slug=$('#np').value; const st=$('#nstatus');
+  if(!slug){st.textContent='pick a project';return;}
+  const mode=$('#nmode button.on').dataset.v;
+  const body=voiceBody({script_project:slug, mode, num_step:$('#nstep').value||null});
+  st.textContent='Starting…'; $('#ngen').disabled=true;
+  const r=await fetch('/api/generate-voiceover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.json().catch(()=>({}));st.textContent='failed: '+(e.detail||r.statusText);$('#ngen').disabled=false;return;}
+  const {job_id}=await r.json();
+  pollJob(job_id,{statusEl:st,onDone:()=>{st.textContent='✓ done';$('#ngen').disabled=false;loadBeats();}});
+}
+async function retake(i){
+  const slug=curSlug; const row=$('#beat-'+i); const st=$('#nstatus');
+  if(row){row.classList.add('busy'); row.querySelector('.acts').innerHTML='<span class="pill run">retaking…</span>';}
+  const body=voiceBody({});
+  const r=await fetch(`/api/generate-voiceover/${encodeURIComponent(slug)}/retake/${i}`,
+    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.json().catch(()=>({}));st.textContent='retake failed: '+(e.detail||r.statusText);loadBeats();return;}
+  const {job_id}=await r.json();
+  pollJob(job_id,{statusEl:st,onDone:(j)=>{
+    const res=j.result||{}; st.textContent = res.accepted? `✓ beat ${i+1} retaken`:`beat ${i+1} rejected — kept old audio`;
+    loadBeats();}});
+}
+async function toggleTakes(){
+  const m=$('#takemenu'); if(m.classList.contains('open')){m.classList.remove('open');return;}
+  const j=await (await fetch('/api/voiceover-takes/'+encodeURIComponent(curSlug))).json();
+  const takes=j.takes||[];
+  m.innerHTML = takes.length? takes.map(t=>`<div class="ti"><span>${esc(t.id)} · ${mmss(t.total_s)}</span>
+    <button class="ico" title="Restore" onclick="restoreTake('${esc(t.id)}')" style="width:26px;height:26px">↺</button></div>`).join('')
+    : '<div class="ti" style="color:var(--vf)">no archived takes yet</div>';
+  m.classList.add('open');
+}
+async function restoreTake(id){
+  await fetch('/api/voiceover-takes/'+encodeURIComponent(curSlug)+'/restore',
+    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({take_id:id})});
+  $('#takemenu').classList.remove('open'); loadBeats();
+}
+async function rebuildCaptions(){
+  const st=$('#nstatus'); st.textContent='Building captions…';
+  const r=await fetch('/api/generate-captions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project:curSlug})});
+  const {job_id}=await r.json();
+  pollJob(job_id,{statusEl:st,onDone:()=>{st.textContent='✓ captions built';loadBeats();}});
+}
+
+// ---- Voices tab ----
 async function loadVoices(){
-    const r = await fetch('/api/voices'); const d = await r.json();
-    voices = d.voices || [];
-    document.getElementById('ttsWarn').innerHTML = d.tts_enabled ? '' :
-        '<div class="warn">⚠ TTS is disabled. Install OmniVoice (docs/OMNIVOICE_SETUP.md) and set <code>tts.enabled: true</code> in nolan.yaml, then restart the hub. You can still prepare voices &amp; text now.</div>';
-    // library cards
-    document.getElementById('voiceCount').textContent = `(${voices.length})`;
-    document.getElementById('voiceList').innerHTML = voices.length ? voices.map(v => `
-        <div class="card">
-            <div class="name">${esc(v.name)} <span class="sub" style="display:inline;">(${esc(v.id)})</span></div>
-            <div class="meta">source: ${esc(v.source||'?')}${v.has_ref_text?' · has transcript':''}</div>
-            <div class="row">
-                <audio controls preload="none" src="/api/voices/${encodeURIComponent(v.id)}/sample"></audio>
-                <button class="danger" onclick="delVoice('${esc(v.id)}')">Delete</button>
-            </div>
-        </div>`).join('') : '<div class="empty">No voices yet. Add one below.</div>';
-    // studio picker
-    const sel = document.getElementById('savedVoice');
-    sel.innerHTML = voices.length ? voices.map(v=>`<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('')
-                                  : '<option value="">(no saved voices yet)</option>';
-    if (voices.length) ref.voice_id = voices[0].id;
-    sel.onchange = ()=>{ ref.voice_id = sel.value; updateVoHint(); };
-    // render-project voice picker
-    document.getElementById('voiceSelect').innerHTML = '<option value="">default voice (no cloning)</option>' +
-        voices.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
+  const j=await (await fetch('/api/voices')).json();
+  loadVoiceOptions();
+  const box=$('#vlist');
+  box.innerHTML=(j.voices||[]).map(v=>`<div class="card">
+    <div class="nm">${esc(v.name||v.id)}</div><div class="cs">${esc(v.source||'')} · ${v.ref_text?'has ref':'no ref'}</div>
+    <audio controls preload="none" src="/api/voices/${encodeURIComponent(v.id)}/sample"></audio>
+    <div style="margin-top:8px"><button class="ico" title="Delete" onclick="delVoice('${esc(v.id)}')" style="width:auto;padding:0 10px">Delete</button></div>
+  </div>`).join('') || '<div class="empty">No voices yet. Add one above.</div>';
+  if(!j.tts_enabled) $('#vstatus').textContent='(TTS disabled — set tts.enabled in nolan.yaml)';
+}
+async function addVoice(){
+  const f=$('#avFile').files[0], name=$('#avName').value.trim();
+  if(!f||!name){$('#vstatus').textContent='name + file required';return;}
+  const fd=new FormData(); fd.append('file',f); fd.append('name',name);
+  if($('#avRef').value.trim()) fd.append('ref_text',$('#avRef').value.trim());
+  $('#vstatus').textContent='Uploading…';
+  const r=await fetch('/api/voices/upload',{method:'POST',body:fd});
+  $('#vstatus').textContent=r.ok?'✓ added':'failed'; if(r.ok){$('#avName').value='';loadVoices();}
+}
+async function delVoice(id){ await fetch('/api/voices/'+encodeURIComponent(id),{method:'DELETE'}); loadVoices(); }
+async function audition(){
+  const st=$('#austatus'), text=$('#auText').value.trim(), vid=$('#auVoice').value;
+  if(!text){st.textContent='type a line';return;}
+  st.textContent='Synthesizing…';
+  const r=await fetch('/api/tts/synthesize',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text, voice_id:vid||null})});
+  const {job_id}=await r.json();
+  pollJob(job_id,{statusEl:st,onDone:(j)=>{st.textContent='✓';
+    $('#auOut').innerHTML=`<audio controls autoplay src="/api/tts/output/${job_id}"></audio>`;}});
 }
 
-async function loadScriptProjects(){
-    try {
-        const r = await fetch('/api/script-projects'); const d = await r.json();
-        const projs = d.projects||[];
-        const opts = projs.map(p=>`<option value="${esc(p.slug)}">${esc(p.name||p.slug)}</option>`).join('');
-        document.getElementById('scriptProject').innerHTML = '<option value="">— Script Project —</option>' + opts;
-        document.getElementById('voProject').innerHTML = '<option value="">— Script Project —</option>' + opts;
-    } catch(e){}
-}
-async function loadRenderProjects() {
-    try {
-        const r = await fetch('/api/status');
-        const data = await r.json();
-        const projs = (data.projects || []).map(p => p.name);
-        document.getElementById('projSelect').innerHTML = '<option value="">— pick a project —</option>' +
-            projs.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
-    } catch(e){}
-}
-async function loadLibVideos(){
-    try {
-        const r = await fetch('/api/library/videos'); const d = await r.json();
-        document.getElementById('libVideo').innerHTML = '<option value="">— pick a library video —</option>' +
-            (d.videos||[]).map(v=>`<option value="${esc(v.path)}">${esc(v.name)}</option>`).join('');
-    } catch(e){ /* no library DB */ }
+// ---- Library tab ----
+async function loadIndex(){
+  const j=await (await fetch('/api/voiceover-index')).json();
+  const box=$('#voidx');
+  box.innerHTML=(j.items||[]).map(it=>`<div class="card">
+    <div class="nm">${esc(it.name)}</div><div class="cs">${esc(it.kind)} · ${it.sections||0} beats${it.captions?' · captions':''}</div>
+    ${it.mp3_url?`<audio controls preload="none" src="${it.mp3_url}"></audio>`:'<div class="hint">segments only</div>'}
+  </div>`).join('') || '<div class="empty">No voiceovers yet.</div>';
 }
 
-// ---- voice library management ----
-async function addVoice() {
-    const name = document.getElementById('addName').value.trim();
-    const f = document.getElementById('addFile').files[0];
-    const status = document.getElementById('addStatus');
-    if (!name || !f) { status.textContent = 'name + file required'; return; }
-    status.textContent = 'Uploading…';
-    const fd = new FormData();
-    fd.append('file', f); fd.append('name', name);
-    const rt = document.getElementById('addRefText').value.trim();
-    if (rt) fd.append('ref_text', rt);
-    const r = await fetch('/api/voices/upload', { method:'POST', body: fd });
-    status.textContent = r.ok ? '✓ added' : 'failed';
-    if (r.ok) { document.getElementById('addName').value=''; document.getElementById('addRefText').value=''; loadVoices(); }
-}
-
-async function fromClip() {
-    const name = document.getElementById('clipName').value.trim();
-    const clip_id = document.getElementById('clipId').value.trim();
-    const status = document.getElementById('clipStatus');
-    if (!name || !clip_id) { status.textContent = 'name + clip id required'; return; }
-    status.textContent = 'Extracting…';
-    const r = await fetch('/api/voices/from-clip', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, clip_id}),
-    });
-    if (!r.ok) { const e = await r.json().catch(()=>({})); status.textContent = 'failed: ' + (e.detail||r.statusText); return; }
-    status.textContent = '✓ added'; document.getElementById('clipName').value=''; document.getElementById('clipId').value=''; loadVoices();
-}
-
-async function delVoice(id) {
-    if (!confirm('Delete voice ' + id + '?')) return;
-    await fetch('/api/voices/' + encodeURIComponent(id), { method:'DELETE' });
-    loadVoices();
-}
-
-async function loadScript(){
-    const slug = document.getElementById('scriptProject').value;
-    if(!slug) return;
-    const r = await fetch('/api/script-projects/'+encodeURIComponent(slug)+'/script');
-    if(!r.ok){ alert('No script for that project yet'); return; }
-    const d = await r.json();
-    // strip markdown headings / metadata so we don't speak titles
-    const stripped = (d.content||'').split('\n')
-        .filter(l=>!/^\s*#/.test(l) && !/^\s*\*\*Total Duration/i.test(l) && !/^\s*---\s*$/.test(l))
-        .join('\n').replace(/\*\*/g,'').replace(/\*/g,'').trim();
-    document.getElementById('ttsText').value = stripped;
-}
-
-// ---- upload sample (studio voice) ----
-async function uploadSample(){
-    const f = document.getElementById('upFile').files[0]; if(!f) return;
-    const st = document.getElementById('upStatus'); st.textContent = 'Uploading…';
-    const fd = new FormData(); fd.append('file', f);
-    const r = await fetch('/api/tts/sample', {method:'POST', body:fd});
-    if(!r.ok){ st.textContent='failed'; return; }
-    const d = await r.json(); ref.sample_token = d.token; ref.voice_id=''; ref.instruct='';
-    st.textContent = '✓ sample ready'; updateSamplePreview(d.sample_url);
-}
-
-// ---- library crop ----
-async function loadLibVideo(){
-    libPath = document.getElementById('libVideo').value;
-    const pl = document.getElementById('libPlayer');
-    if(!libPath){ pl.classList.add('hidden'); document.getElementById('libCutRow').style.display='none'; return; }
-    pl.src = '/library/video/' + encodeURIComponent(libPath);
-    pl.classList.remove('hidden');
-    document.getElementById('libCutRow').style.display='flex';
-    cutIn=cutOut=null; document.getElementById('inLbl').textContent='--:--'; document.getElementById('outLbl').textContent='--:--';
-    // segments + clusters as clickable snippets
-    let snips = [];
-    for (const kind of ['segments','clusters']) {
-        try {
-            const r = await fetch('/api/library/videos/'+encodeURIComponent(libPath)+'/'+kind);
-            if(r.ok){ const d = await r.json(); (d[kind]||[]).forEach(s=>snips.push({kind, start:s.timestamp_start, end:s.timestamp_end, label:(s.combined_summary||s.cluster_summary||s.frame_description||'').slice(0,60)})); }
-        } catch(e){}
-    }
-    const box = document.getElementById('snipList');
-    if(snips.length){
-        box.classList.remove('hidden');
-        box.innerHTML = snips.map((s,i)=>`<div class="snip" onclick="pickSnip(${i})">${fmt(s.start)}–${fmt(s.end)} · ${esc(s.label)}</div>`).join('');
-        window._snips = snips;
-    } else { box.classList.add('hidden'); box.innerHTML=''; }
-}
-function pickSnip(i){
-    const s = window._snips[i]; cutIn=s.start; cutOut=s.end;
-    document.getElementById('inLbl').textContent=fmt(cutIn); document.getElementById('outLbl').textContent=fmt(cutOut);
-    const pl=document.getElementById('libPlayer'); pl.currentTime=s.start; pl.play().catch(()=>{});
-}
-function setIn(){ cutIn=document.getElementById('libPlayer').currentTime; document.getElementById('inLbl').textContent=fmt(cutIn); }
-function setOut(){ const t=document.getElementById('libPlayer').currentTime; if(cutIn!=null&&t<=cutIn){alert('Out must be after In');return;} cutOut=t; document.getElementById('outLbl').textContent=fmt(cutOut); }
-async function useLibrarySample(){
-    if(cutIn==null||cutOut==null){ alert('Set In and Out (3–10s recommended)'); return; }
-    const r = await fetch('/api/tts/sample-from-library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({video_path:libPath,start:cutIn,end:cutOut})});
-    if(!r.ok){ const e=await r.json().catch(()=>({})); alert('failed: '+(e.detail||r.statusText)); return; }
-    const d = await r.json(); ref.sample_token=d.token; ref.voice_id=''; ref.instruct='';
-    updateSamplePreview(d.sample_url);
-}
-function onInstruct(){ ref.instruct = document.getElementById('instruct').value.trim(); ref.voice_id=''; ref.sample_token=''; updateSamplePreview(); }
-
-function updateSamplePreview(url){
-    const box = document.getElementById('samplePreview');
-    if(ref.mode==='instruct'){ box.innerHTML = ref.instruct ? `<div class="status">Voice design: <code>${esc(ref.instruct)}</code></div>` : ''; return; }
-    if(ref.mode==='saved'){ box.innerHTML = ''; return; }
-    if((ref.mode==='upload'||ref.mode==='library') && ref.sample_token){
-        const u = url || ('/api/tts/sample/'+ref.sample_token);
-        box.innerHTML = `<audio controls src="${u}"></audio>
-            <div class="row" style="margin-top:6px;"><input id="saveName" placeholder="name to save (optional)" style="flex:1;">
-            <button onclick="saveSample()">Save as voice</button><span class="status" id="saveStatus"></span></div>`;
-    } else box.innerHTML='';
-    updateVoHint();
-}
-async function saveSample(){
-    const name=document.getElementById('saveName').value.trim();
-    if(!name){ document.getElementById('saveStatus').textContent='name required'; return; }
-    const r = await fetch('/api/voices/save-sample',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:ref.sample_token,name})});
-    document.getElementById('saveStatus').textContent = r.ok ? '✓ saved' : 'failed';
-    if(r.ok) loadVoices();
-}
-
-// ---- synthesize ----
-async function synth(){
-    const text = document.getElementById('ttsText').value.trim();
-    const st = document.getElementById('genStatus');
-    if(!text){ st.textContent='enter text'; return; }
-    const body = { text,
-        num_step: document.getElementById('numStep').value,
-        speed: document.getElementById('speed').value,
-        tempo: document.getElementById('tempo').value,
-        language_id: document.getElementById('lang').value.trim() || null };
-    if(ref.mode==='saved') body.voice_id = document.getElementById('savedVoice').value;
-    else if(ref.mode==='instruct') body.instruct = ref.instruct;
-    else if(ref.sample_token) body.sample_token = ref.sample_token;
-    st.textContent='Starting…';
-    const r = await fetch('/api/tts/synthesize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok){ const e=await r.json().catch(()=>({})); st.textContent='failed: '+(e.detail||r.statusText); return; }
-    const { job_id } = await r.json(); pollJob(job_id, st);
-}
-async function pollJob(id, st){
-    try {
-        const r = await fetch('/api/jobs/'+id); const j = await r.json();
-        if(j.status!=='done'&&j.status!=='error') st.textContent = `${j.status}: ${j.message||''}`;
-        if(j.status==='done'){
-            const tok = (j.result||{}).token; st.textContent='✓ done';
-            document.getElementById('result').innerHTML =
-                `<audio controls autoplay src="/api/tts/output/${tok}"></audio>
-                 <div class="status"><a href="/api/tts/output/${tok}" download="tts.wav" style="color:#7fd3e0;">⬇ download wav</a></div>`;
-            return;
-        }
-        if(j.status==='error'){ st.textContent='✗ '+(j.error||'error'); return; }
-        setTimeout(()=>pollJob(id, st), 1500);
-    } catch(e){ st.textContent='poll error: '+e.message; }
-}
-
-// Reflect which voice the Project Voiceover will use (same active voice as the studio).
-function updateVoHint(){
-    const el = document.getElementById('voVoiceHint'); if(!el) return;
-    let msg;
-    if(ref.mode==='saved'){
-        const sel = document.getElementById('savedVoice');
-        msg = (sel && sel.value) ? '🎙 Voice: ' + (sel.options[sel.selectedIndex]||{}).text
-                                 : '⚠ No saved voice — sections will use different auto voices. Clone/select a voice above.';
-    } else if(ref.mode==='instruct'){
-        msg = ref.instruct ? '🗣 Voice design: ' + ref.instruct : '⚠ Enter a voice description above (or sections will vary).';
-    } else if(ref.sample_token){
-        msg = '🎙 Voice: your ' + (ref.mode==='library'?'cropped':'uploaded') + ' sample';
-    } else {
-        msg = '⚠ No voice selected — every section would use a DIFFERENT auto voice. Pick/clone a voice in step 1 for a consistent narrator.';
-    }
-    el.textContent = msg + '  ·  uses the parameters in step 3';
-    detectPace();
-}
-
-// Detect the selected reference voice's WPM and suggest a Pace to match it.
-let _lastPaceKey = '';
-async function detectPace(){
-    const hint = document.getElementById('paceHint'); if(!hint) return;
-    let q='', key='';
-    if(ref.mode==='saved'){ const id=document.getElementById('savedVoice').value; if(id){ q='voice_id='+encodeURIComponent(id); key='v:'+id; } }
-    else if(ref.sample_token){ q='sample_token='+encodeURIComponent(ref.sample_token); key='s:'+ref.sample_token; }
-    if(!q){ hint.textContent=''; _lastPaceKey=''; return; }
-    if(key===_lastPaceKey) return; _lastPaceKey=key;
-    hint.textContent='⏳ detecting reference pace…';
-    try{
-        const d = await (await fetch('/api/voices/wpm?'+q)).json();
-        if(_lastPaceKey!==key) return;  // selection changed while detecting
-        if(d.ok){
-            hint.innerHTML = `Reference ≈ <b>${d.wpm} wpm</b> · OmniVoice output ≈ ${d.output_wpm} wpm · `+
-                `<button type="button" onclick="document.getElementById('tempo').value=${d.suggested_pace}">Match pace ×${d.suggested_pace}</button>`;
-        } else {
-            hint.textContent = 'pace: ' + (d.reason || 'unknown');
-        }
-    }catch(e){ hint.textContent=''; }
-}
-
-async function genProjectVO(){
-    const slug = document.getElementById('voProject').value;
-    const st = document.getElementById('voStatus');
-    if(!slug){ st.textContent='pick a Script Project'; return; }
-    // Use the SAME active voice as the studio (saved / cropped / uploaded / design)
-    // and the step-3 parameters, so every section sounds the same.
-    const body = { script_project: slug, mode: document.getElementById('voMode').value,
-                   num_step: document.getElementById('numStep').value,
-                   speed: document.getElementById('speed').value,
-                   tempo: document.getElementById('tempo').value,
-                   language_id: document.getElementById('lang').value.trim() || null };
-    if(ref.mode==='saved') body.voice_id = document.getElementById('savedVoice').value || null;
-    else if(ref.mode==='instruct') body.instruct = ref.instruct;
-    else if(ref.sample_token) body.sample_token = ref.sample_token;
-    st.textContent='Starting…';
-    const r = await fetch('/api/generate-voiceover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok){ const e=await r.json().catch(()=>({})); st.textContent='failed: '+(e.detail||r.statusText); return; }
-    const { job_id } = await r.json(); pollVO(job_id, st, slug);
-}
-
-// Render-project voiceover (script.json), with an explicit voice pick.
-async function genRenderVO(){
-    const project = document.getElementById('projSelect').value;
-    const voice_id = document.getElementById('voiceSelect').value || null;
-    const st = document.getElementById('rpStatus');
-    if (!project) { st.textContent = 'pick a project'; return; }
-    st.textContent = 'Starting…';
-    const r = await fetch('/api/generate-voiceover', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({project, voice_id}),
-    });
-    if (!r.ok) { const e = await r.json().catch(()=>({})); st.textContent = 'failed: ' + (e.detail||r.statusText); return; }
-    const { job_id } = await r.json();
-    pollRenderVO(job_id, st);
-}
-async function pollRenderVO(id, st){
-    try {
-        const r = await fetch('/api/jobs/'+id); const j = await r.json();
-        if(j.status!=='done'&&j.status!=='error') st.textContent = `${j.status}: ${j.message||''}`;
-        if(j.status==='done'){
-            const res = j.result || {};
-            st.innerHTML = `✓ ${res.sections} sections → <code>${esc(res.voiceover||'')}</code>. Then run <code>nolan align</code>.`;
-            return;
-        }
-        if(j.status==='error'){ st.textContent='✗ '+(j.error||'error'); return; }
-        setTimeout(()=>pollRenderVO(id, st), 2000);
-    } catch(e){ st.textContent='poll error: '+e.message; }
-}
-
-async function pollVO(id, st, slug){
-    try {
-        const r = await fetch('/api/jobs/'+id); const j = await r.json();
-        if(j.status!=='done'&&j.status!=='error') st.textContent = `${j.status}: ${j.message||''}`;
-        if(j.status==='done'){ st.textContent='✓ done'; loadVOInfo(); return; }
-        if(j.status==='error'){ st.textContent='✗ '+(j.error||'error'); return; }
-        setTimeout(()=>pollVO(id, st, slug), 2000);
-    } catch(e){ st.textContent='poll error: '+e.message; }
-}
-
-// Show a Script Project's existing voiceover outputs (persists across refreshes).
-async function loadVOInfo(){
-    const slug = document.getElementById('voProject').value;
-    const box = document.getElementById('voResult');
-    if(!slug){ box.innerHTML=''; return; }
-    // B1: surface written-state + guard the Generate button against a scaffold.
-    let ready = {written:true};
-    try { ready = await (await fetch('/api/script-projects/'+encodeURIComponent(slug)+'/vo-readiness')).json(); }
-    catch(e){ ready = {written:true}; }
-    const genBtn = document.querySelector('button[onclick="genProjectVO()"]');
-    let readyHtml = '';
-    if(ready.written){
-        readyHtml = `<div class="sub" style="color:#30a46c;">✓ script ready · ${ready.words||0} words${ready.promoted_draft?(' · draft-'+String(ready.promoted_draft).padStart(2,'0')):''}</div>`;
-        if(genBtn){ genBtn.disabled=false; genBtn.style.opacity=''; }
-    } else {
-        readyHtml = `<div class="sub" style="color:#e5484d;">⚠ script not written — promote a draft in <a href="/script-projects" style="color:#7fd3e0;">Script Projects</a> before generating VO.</div>`;
-        if(genBtn){ genBtn.disabled=true; genBtn.style.opacity='.5'; }
-    }
-    let info;
-    try { info = await (await fetch('/api/voiceover-info/'+encodeURIComponent(slug))).json(); }
-    catch(e){ box.innerHTML=readyHtml; return; }
-    let html = readyHtml;
-    if(info.full){
-        html += `<div class="sub" style="margin-top:6px;"><b>Full voiceover</b></div>
-            <audio controls src="/api/voiceover/${encodeURIComponent(slug)}/voiceover.mp3"></audio>
-            <div class="sub"><a href="/api/voiceover/${encodeURIComponent(slug)}/voiceover.mp3" download style="color:#7fd3e0;">⬇ download</a></div>`;
-    }
-    if((info.segments||[]).length){
-        html += `<div class="sub" style="margin-top:8px;"><b>${info.segments.length} segments</b></div>` +
-            info.segments.map(s=>`<div style="margin:6px 0;">
-                <div class="sub" style="margin:0;">${String(s.index+1).padStart(2,'0')} · ${esc(s.title||'')} ${s.timecode?('['+esc(s.timecode)+']'):''} · ${s.duration}s</div>
-                <audio controls preload="none" src="/api/voiceover/${encodeURIComponent(slug)}/segments/${encodeURIComponent(s.file)}"></audio></div>`).join('');
-    }
-    if(info.captions){
-        const b = '/api/voiceover/'+encodeURIComponent(slug)+'/';
-        html += `<div class="sub" style="margin-top:8px;"><b>Captions</b> · `+
-            `<a href="${b}voiceover.srt" download style="color:#7fd3e0;">SRT</a> · `+
-            `<a href="${b}voiceover.vtt" download style="color:#7fd3e0;">VTT</a> · `+
-            `<a href="${b}voiceover.words.json" download style="color:#7fd3e0;">word JSON</a></div>`;
-    }
-    if(!html) html = '<div class="sub">No voiceover yet — choose a mode and click Generate.</div>';
-    box.innerHTML = html;
-}
-
-async function genCaptions(){
-    const slug = document.getElementById('voProject').value;
-    const st = document.getElementById('voStatus');
-    if(!slug){ st.textContent='pick a Script Project'; return; }
-    st.textContent='Captioning (CPU Whisper)…';
-    const r = await fetch('/api/generate-captions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({project:slug})});
-    if(!r.ok){ const e=await r.json().catch(()=>({})); st.textContent='failed: '+(e.detail||r.statusText); return; }
-    const { job_id } = await r.json();
-    pollVO(job_id, st, slug);  // reuse poller -> refreshes loadVOInfo on done
-}
-
-// ===== All voiceovers (browse existing project + HF-comp VO) =====
-let VO_INDEX = [];
-async function loadVOIndex(){
-  const el = document.getElementById('voIndex');
-  el.innerHTML = '<div class="empty">Loading…</div>';
-  try { VO_INDEX = ((await (await fetch('/api/voiceover-index')).json()).items) || []; }
-  catch { el.innerHTML = '<div class="empty">failed to load</div>'; return; }
-  renderVOIndex();
-}
-function renderVOIndex(){
-  const f = (document.getElementById('voIdxFilter').value||'').toLowerCase();
-  const showP = document.getElementById('voIdxProj').checked, showH = document.getElementById('voIdxHF').checked;
-  const items = VO_INDEX.filter(it => (it.kind==='project'?showP:showH) && it.name.toLowerCase().includes(f));
-  document.getElementById('voIdxCount').textContent = `${items.length} / ${VO_INDEX.length}`;
-  const el = document.getElementById('voIndex');
-  el.innerHTML = items.length ? items.map(voIdxCard).join('') : '<div class="empty">No voiceovers match.</div>';
-}
-function voIdxCard(it){
-  const badge = it.kind==='hf'
-    ? '<span class="pill" style="background:#7c3aed;color:#fff">HF</span>'
-    : '<span class="pill" style="background:#0e7490;color:#fff">project</span>';
-  const dur = it.total_s ? ` · ${Math.round(it.total_s)}s` : '';
-  let player = '';
-  if (it.kind==='project' && it.mp3_url)
-    player = `<audio controls preload="none" src="${it.mp3_url}" style="width:100%;margin-top:6px"></audio>`;
-  else if (it.kind==='project')
-    player = `<div class="sub" style="margin-top:6px">${it.sections} per-section wav(s) — no concatenated mp3 yet</div>`;
-  else if (it.kind==='hf' && (it.voices||[]).length)
-    player = `<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--text-secondary)">▸ ${it.voices.length} sections</summary>`
-      + it.voices.map((v,i)=>`<div style="margin-top:6px"><div class="sub" style="font-size:11px">${i+1}. ${esc(v.title||('section '+(i+1)))}${v.duration_s?` · ${Math.round(v.duration_s)}s`:''}</div><audio controls preload="none" src="${v.url}" style="width:100%"></audio></div>`).join('')
-      + `</details>`;
-  const meta = `${it.sections||0} section(s)${dur}${it.captions?' · captions':''}`;
-  return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">
-    <div style="display:flex;align-items:center;gap:8px"><b>${esc(it.name)}</b> ${badge}<span class="sub" style="margin-left:auto">${meta}</span></div>
-    ${player}</div>`;
-}
-
-document.addEventListener('DOMContentLoaded', ()=>{ loadVoices().then(updateVoHint); loadScriptProjects(); loadRenderProjects(); loadLibVideos(); loadVOIndex(); });
+// init
+loadProjects(); loadVoiceOptions();
+document.addEventListener('click',e=>{ if(!e.target.closest('.takes')) $('#takemenu')?.classList.remove('open'); });
 </script>
+<script src="/static/nav.js" data-active="voices"></script>
 </body>
 </html>
