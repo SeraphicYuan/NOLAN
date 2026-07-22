@@ -57,6 +57,7 @@ from nolan.cli import (  # noqa: E402,F401
     kb,
     effects,
     scriptgen,
+    voiceover,
 )
 
 # The main group is the entry point

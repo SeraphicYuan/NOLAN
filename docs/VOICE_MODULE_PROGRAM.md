@@ -296,8 +296,13 @@ voiceovers"), with filters + players. Provenance + measure summary per item.
   Tests: test_tts_normalize (50), test_voice_quality (10), test_voice_pipeline_integration
   (3, fake provider e2e), test_vo_readiness (1) — all green; 225-test voice/script/hub
   regression green. Live golden test on the-diamond-illusion still TODO (needs GPU).
-- **P2 — Workflow (iteration + reproducibility):**
-  A4 seed · B2 per-section retake · B3 versioning · the `nolan voiceover` CLI family.
+- **P2 — Workflow (iteration + reproducibility): ✅ SHIPPED 2026-07-22.**
+  A4 seed — **NOT ACHIEVABLE with the current OmniVoice build**: `omnivoice.cli.infer_batch`
+  exposes no `--seed`/per-item seed and never calls `fix_random_seed`, so synthesis is
+  inherently non-deterministic (verified in the env). We do NOT fake seed plumbing; instead
+  reproducibility = take-PRESERVATION (B3), and a retake is intentionally a fresh attempt you
+  keep-or-discard. · B2 per-section retake · B3 versioning (archive full-VO takes + snapshot a
+  section before a retake) · the `nolan voiceover` CLI family.
 - **P3 — Redesign + wiring surfaced:**
   C tabs + Narrate workspace (surfaces A2/A3/B2) · B4 closed loop · B5 voice preset
   · B6 hygiene (folds in).

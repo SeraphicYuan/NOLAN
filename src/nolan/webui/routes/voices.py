@@ -162,6 +162,52 @@ def register(app, ctx):
         )
         return {"job_id": job.id, "type": "generate-voiceover"}
 
+    @app.post("/api/generate-voiceover/{slug}/retake/{index}")
+    async def api_voiceover_retake(slug: str, index: int, body: dict = Body(default={})):
+        """B2: re-synthesize ONE section of a Script Project's voiceover (fresh take,
+        gated + spliced). Runs as a background job."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        ref_audio = None
+        voice_id = (body.get("voice_id") or "").strip() or None
+        sample_token = (body.get("sample_token") or "").strip()
+        ref_text = None
+        if sample_token:
+            sp = voice_lib.temp_sample_path(sample_token)
+            if not sp.exists():
+                raise HTTPException(status_code=404, detail="sample not found")
+            ref_audio = str(sp)
+            ref_text = body.get("ref_text") or None
+            voice_id = None
+        job = job_manager.start(
+            "voiceover-retake", operations.generate_voiceover_retake,
+            meta={"slug": slug, "index": index},
+            config=load_config(), script_project=slug, index=int(index),
+            voice_id=voice_id, ref_audio=ref_audio, ref_text=ref_text,
+            text=(body.get("text") or None),
+            num_step=(int(body["num_step"]) if body.get("num_step") else None))
+        return {"job_id": job.id, "type": "voiceover-retake"}
+
+    @app.get("/api/voiceover-takes/{slug}")
+    async def api_voiceover_takes(slug: str):
+        """List archived full-VO takes for a Script Project (B3)."""
+        from nolan.voice_pipeline import list_takes
+        from pathlib import Path as _P
+        return {"takes": list_takes(_P("projects") / slug / "assets" / "voiceover")}
+
+    @app.post("/api/voiceover-takes/{slug}/restore")
+    async def api_voiceover_restore(slug: str, body: dict = Body(...)):
+        """Restore a previously-archived take (B3)."""
+        from nolan.voice_pipeline import restore_take
+        from pathlib import Path as _P
+        take_id = (body.get("take_id") or "").strip()
+        if not take_id:
+            raise HTTPException(status_code=400, detail="take_id is required")
+        ok = restore_take(_P("projects") / slug / "assets" / "voiceover", take_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail=f"take not found: {take_id}")
+        return {"restored": take_id}
+
     @app.post("/api/generate-captions")
     async def api_generate_captions(body: dict = Body(...)):
         from nolan.config import load_config
