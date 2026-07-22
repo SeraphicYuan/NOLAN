@@ -182,7 +182,9 @@ def resolve_scene(data, project_dir):
             return data
     else:
         iw, ih = Image.open(p).size
-        words = ocr_words(p)
+        # only OCR when there's a `find` phrase to locate — a region/focus binding needs no text search
+        # (and Tesseract may be absent). page_size still comes from the image (cheap, no OCR).
+        words = ocr_words(p) if any(isinstance(a, dict) and "find" in a for a in data.get("annotations", [])) else []
     data["page_size"] = [iw, ih]
     out = []
     for a in data.get("annotations", []):

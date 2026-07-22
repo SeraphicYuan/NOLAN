@@ -96,6 +96,16 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                 print(f"▶ datasets\n  resolved {nres} dataset-bound scene(s) → numbers from cells")
         except Exception as e:
             raise RuntimeError(f"hf-finish: dataset resolution failed — {type(e).__name__}: {e}") from e
+        # DOCUMENT binding (B-P1/B-P2/B-P3): resolve document/split_view scenes bound to an ingested paper —
+        # page source + region/focus rects + provenance — BEFORE recompose, so the paper blocks aren't left
+        # with an unresolved source (the analogue of dataset binding for the document source).
+        try:
+            from .documents import resolve_documents
+            ndoc = resolve_documents(comp)
+            if ndoc:
+                print(f"▶ documents\n  resolved {ndoc} document/split_view scene(s) → page source + region rects")
+        except Exception as e:
+            raise RuntimeError(f"hf-finish: document resolution failed — {type(e).__name__}: {e}") from e
     # 2b · advisory (⑨): the reliever exists but wasn't in the loop — surface long static holds so the
     #      author can `nolan.hyperframes.relieve` them (or accept), instead of finding them post-render.
     if not dry_run:

@@ -175,3 +175,33 @@ def test_bp3_wave3_marginalia_and_pullquote():
     h, j = "".join(frag), "\n".join(tl)
     assert "w3-mg1" in h and "w3-mg1-ln" in h                     # marginalia note + leader line
     assert "w3-pq2" in h and "The whole thesis." in h and "opacity:0.32" in j   # pull-quote + page dim
+
+
+def test_resolve_documents_wires_bindings_in_the_finish_dag(tmp_path, monkeypatch):
+    """The finish-DAG wrapper (nolan.hyperframes.documents.resolve_documents) resolves document + split_view
+    bindings across a comp's frame specs — source + region/focus rects + provenance — so the paper blocks
+    aren't left unresolved at render (the analogue of resolve_datasets for the document source)."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    pdf = tmp_path / "p.pdf"
+    _make_pdf_with_figure(pdf)
+    ingest_pdf(str(pdf), str(tmp_path / "documents"), doc_id="d")
+    fig = next(r for r in load_document(str(tmp_path), "d").page(1)["regions"] if r["kind"] == "figure")
+    frames = tmp_path / "compositions" / "frames"
+    frames.mkdir(parents=True)
+    spec = {"frames": [{"id": "01", "dur": 8, "scenes": [
+        {"id": "s1", "type": "document", "start": 0, "dur": 4,
+         "data": {"document": "d", "page": 1, "focus": fig["id"], "annotations": [{"type": "highlight", "region": fig["id"]}]}},
+        {"id": "s2", "type": "split_view", "start": 4, "dur": 4,
+         "data": {"paper": {"document": "d", "page": 1, "focus": fig["id"]}, "right": {"kind": "text", "lines": ["x"]}}}]}]}
+    (frames / "01.spec.json").write_text(json.dumps(spec), encoding="utf-8")
+
+    import nolan.hyperframes.edit as E
+    monkeypatch.setattr(E, "_project_dir", lambda comp: tmp_path)   # point the resolver at the tmp comp
+    from nolan.hyperframes.documents import resolve_documents
+    assert resolve_documents("x") == 2
+    out = json.loads((frames / "01.spec.json").read_text(encoding="utf-8"))
+    d1, d2 = (out["frames"][0]["scenes"][i]["data"] for i in (0, 1))
+    assert d1["source"].endswith("p001.png") and d1.get("focus_rect") and "rect" in d1["annotations"][0]
+    assert d1["_document"]["provenance"].startswith("pdf:")
+    assert d2["paper"].get("source", "").endswith("p001.png") and d2["paper"].get("focus_rect")
