@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-21
 
+## Durable background jobs — survive a hub restart, tracked on /jobs (2026-07-21)
+
+The script pipeline's long jobs (script-auto / script-phase) are now DURABLE: `JobManager` journals each durable job to `projects/_jobs/<id>.json` (atomic tmp+replace) on create + every status change + throttled progress. On hub startup a new `@app.on_event("startup")` hook (`_reattach_durable_jobs`, core.py) calls `job_manager.reattach(operations.resume_worker_for)`: finished jobs reload as /jobs history; an in-flight durable job (age < 3h) is RESUMED. Resume leverages the breadcrumbs the pipeline already leaves — `_phase_step(resume=True)` FINALIZES a phase whose `.runs/<phase>.done` sentinel already landed (agent finished during the outage), RE-ATTACHES to a still-live ephemeral/persistent agent via `_await_completion` (no re-dispatch), or falls through to a fresh idempotent dispatch if the work was lost. run_full_auto/run_script_phase gained a `resume` flag routing all phases through `_phase_step`; the normal path is unchanged (resume defaults False). Only durable jobs are journaled (ordinary renders can't resume). Stale (>3h) in-flight jobs are marked error, not resurrected. /jobs surfaces slug·phase, a `⟳ resumed` pill, and elapsed time. Verified live: start→journal→hard-crash snapshot (status=running)→fresh JobManager→reattach→resume→done, journal reflecting each transition. Tests: `test_jobs_durable.py` (record round-trip, durable-only persistence, load_journal, reattach resumes-fresh/fails-stale/keeps-history).
+
 ## Script review loop — auto trims + per-substep timing + robust dispatch/reaper (2026-07-21)
 
 Unattended full-auto now TRIMS the four documentation-only artifacts a human isn't reading:

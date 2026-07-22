@@ -78,6 +78,21 @@ def register(app, ctx):
         return {"sessions": sessions}
 
     @app.on_event("startup")
+    async def _reattach_durable_jobs():
+        """Reattach + resume any durable jobs (script pipeline) left in-flight by a hub restart.
+        The ephemeral agents survive the restart; this re-drives the pipeline so the job on /jobs
+        finishes on its own instead of being silently lost."""
+        try:
+            from nolan.webui import operations
+            resumed = job_manager.reattach(operations.resume_worker_for)
+            if resumed:
+                import logging
+                logging.getLogger("nolan.hub").info(
+                    "reattached %d durable job(s): %s", len(resumed), resumed)
+        except Exception:
+            pass  # never block hub startup on reattach
+
+    @app.on_event("startup")
     async def _auto_reconcile_vectors():
         """On boot, embed any indexed-but-unsearchable videos (incremental → cheap if
         nothing to do). Non-blocking: runs as a background job so the hub stays responsive."""

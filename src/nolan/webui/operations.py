@@ -2473,13 +2473,90 @@ async def _dispatch_and_wait(job, store, slug: str, phase: str, session: str,
             "timing": res.get("timing"), "gate": gate, "task_file": task_posix}
 
 
+def _gate_result(slug: str, store, phase: str, do_gate: bool):
+    """Run the script gate for a completed phase (draft/v3/revise) → the UI gate dict, or None."""
+    from nolan.scriptwriter.gate import run_gate
+    if not (do_gate and phase in ("draft", "v3", "revise")):
+        return None
+    try:
+        rep = run_gate(slug, store)
+        return {"ok": rep.ok, "checks": [{"id": c.id, "level": c.level, "message": c.message}
+                                         for c in rep.checks]}
+    except Exception as e:  # noqa: BLE001
+        return {"error": str(e)}
+
+
+async def _finalize_completed_phase(job, store, slug: str, phase: str, session: str,
+                                    jobid: str, do_gate: bool, lo: float, hi: float) -> dict:
+    """Resume path: the phase's ``.done`` sentinel is already present (agent finished during the
+    outage) — reap its ephemeral agent, gate the existing artifact, stamp provenance, done."""
+    from nolan import fleet
+    if _is_auto_session(session):
+        name = f"nolan-run-{(jobid or 'x')[:12]}-{phase}"
+        await asyncio.to_thread(fleet.kill, name)
+        await asyncio.to_thread(fleet.unregister_run_agent, name)
+    gate = await asyncio.to_thread(_gate_result, slug, store, phase, do_gate)
+    store.write_provenance(slug, phase, session=session, completed=True,
+                           via="sentinel(resumed)", resumed=True)
+    job.set_progress(hi, f"{phase} already complete (resumed) ✓")
+    return {"phase": phase, "session": session, "completed": True, "via": "sentinel(resumed)",
+            "timing": None, "gate": gate, "task_file": None, "resumed": True}
+
+
+async def _attach_and_wait(job, store, slug: str, phase: str, session: str, *,
+                           lo: float, hi: float, do_gate: bool, ephemeral: bool) -> dict:
+    """Resume path: the agent is still alive and mid-task — re-enter the completion wait WITHOUT
+    re-dispatching (the brief is already in the agent's input), then gate. Reaps an ephemeral
+    agent when it finishes."""
+    from nolan import fleet
+    baseline = _script_baseline(store, slug)
+    job.set_progress(lo, f"Re-attaching to {session} for {phase} (resumed)…")
+    try:
+        res = await _await_completion(job, store, slug, phase, baseline, lo=lo, hi=hi)
+    finally:
+        if ephemeral:
+            await asyncio.to_thread(fleet.kill, session)
+            await asyncio.to_thread(fleet.unregister_run_agent, session)
+    store.write_provenance(slug, phase, session=session, completed_at=_now_iso(),
+                           completed=res["done"], via=res["via"], resumed=True)
+    gate = await asyncio.to_thread(_gate_result, slug, store, phase, do_gate) if res["done"] else None
+    return {"phase": phase, "session": session, "completed": res["done"], "via": res["via"],
+            "timing": res.get("timing"), "gate": gate, "task_file": None, "resumed": True}
+
+
+async def _phase_step(job, store, slug: str, phase: str, session: str, *, lo: float, hi: float,
+                      do_gate: bool, jobid: str, unattended: bool, resume: bool) -> dict:
+    """Run a phase. On ``resume`` (hub restarted mid-run) first try to salvage in-flight work:
+    finalize if the sentinel already landed, or re-attach to the still-live agent — else fall
+    through to a fresh dispatch (idempotent)."""
+    if resume:
+        from nolan import fleet
+        if store.done_path(slug, phase).exists():
+            return await _finalize_completed_phase(job, store, slug, phase, session,
+                                                   jobid, do_gate, lo, hi)
+        ephemeral = _is_auto_session(session)
+        cand = f"nolan-run-{(jobid or 'x')[:12]}-{phase}" if ephemeral else session
+        alive = False
+        try:
+            alive = bool(cand) and await asyncio.to_thread(fleet.has_session, cand)
+        except Exception:  # noqa: BLE001
+            alive = False
+        if alive:
+            return await _attach_and_wait(job, store, slug, phase, cand,
+                                          lo=lo, hi=hi, do_gate=do_gate, ephemeral=ephemeral)
+        # no sentinel and no live agent → the work was lost across the restart → run it fresh
+    return await _run_on_agent(job, store, slug, phase, session, lo=lo, hi=hi,
+                               do_gate=do_gate, jobid=jobid, unattended=unattended)
+
+
 async def run_script_phase(job, *, store_root, slug: str, session: str = "auto",
-                           phase: str = "v3"):
+                           phase: str = "v3", resume: bool = False):
     """Dispatch ONE script-pipeline phase and WAIT for it to complete (then auto-gate).
 
     phase ∈ {prep, draft, v3, review, revise}. ``session='auto'`` spawns a DEDICATED ephemeral
     agent and kills it when the phase finishes; an explicit ``nolanN`` uses that persistent one.
     Blocks (async) until the agent writes its completion sentinel, so status + gate reflect real work.
+    ``resume=True`` (set only by the durable-job reattach on startup) salvages an interrupted run.
     """
     from nolan.scriptwriter import ScriptProjectStore
     from pathlib import Path as _Path
@@ -2489,8 +2566,8 @@ async def run_script_phase(job, *, store_root, slug: str, session: str = "auto",
         raise RuntimeError(f"script project not found: {slug}")
     if phase not in _PHASE_FILE:
         raise RuntimeError(f"unknown phase: {phase}")
-    res = await _run_on_agent(job, store, slug, phase, session,
-                              lo=0.15, hi=0.92, do_gate=(phase != "prep"), jobid=job.id)
+    res = await _phase_step(job, store, slug, phase, session, lo=0.15, hi=0.92,
+                            do_gate=(phase != "prep"), jobid=job.id, unattended=False, resume=resume)
     tail = " ✓" if res["completed"] else " (timeout — check artifacts)"
     job.set_progress(1.0, f"{phase} complete{tail}")
     return {"slug": slug, **res}
@@ -2506,10 +2583,15 @@ def _auto_approve_all(store, slug: str, review_n: int) -> list:
     return findings
 
 
-async def run_full_auto(job, *, store_root, slug: str, session: str = "auto"):
+async def run_full_auto(job, *, store_root, slug: str, session: str = "auto",
+                        resume: bool = False):
     """End-to-end unattended run: draft (v3) → gate → fresh-eyes review → auto-approve → revise →
     gate → verify. With ``session='auto'`` each phase runs on its own DEDICATED ephemeral agent,
-    killed when the phase completes (fresh-eyes automatic; no lingering sessions). One review round."""
+    killed when the phase completes (fresh-eyes automatic; no lingering sessions). One review round.
+
+    ``resume=True`` (set only by the durable-job reattach on startup) re-drives the run from wherever
+    it was interrupted: already-finished phases finalize instantly (their ``.done`` sentinel), an
+    in-flight phase re-attaches to its still-live agent, and remaining phases run fresh."""
     from nolan.scriptwriter import ScriptProjectStore, ledger
     from nolan.scriptwriter.gate import verify_revision
     from nolan import fleet
@@ -2519,19 +2601,19 @@ async def run_full_auto(job, *, store_root, slug: str, session: str = "auto"):
     if not store.exists(slug):
         raise RuntimeError(f"script project not found: {slug}")
     jobid = job.id
-    summary: dict = {"slug": slug, "session": session, "phases": []}
+    summary: dict = {"slug": slug, "session": session, "phases": [], "resumed": resume}
     run_prefix = f"nolan-run-{jobid[:12]}-"
     try:
-        job.set_progress(0.03, "Full auto ▸ drafting…")
-        r1 = await _run_on_agent(job, store, slug, "v3", session, lo=0.05, hi=0.40,
-                                 do_gate=True, jobid=jobid, unattended=True)
+        job.set_progress(0.03, f"Full auto ▸ {'resuming ▸ ' if resume else ''}drafting…")
+        r1 = await _phase_step(job, store, slug, "v3", session, lo=0.05, hi=0.40,
+                               do_gate=True, jobid=jobid, unattended=True, resume=resume)
         summary["phases"].append(r1)
         if not r1["completed"]:
             return {**summary, "stopped_at": "draft"}
 
         job.set_progress(0.42, "Full auto ▸ reviewing…")
-        r2 = await _run_on_agent(job, store, slug, "review", session, lo=0.42, hi=0.58,
-                                 do_gate=False, jobid=jobid, unattended=True)
+        r2 = await _phase_step(job, store, slug, "review", session, lo=0.42, hi=0.58,
+                               do_gate=False, jobid=jobid, unattended=True, resume=resume)
         summary["phases"].append(r2)
         if not r2["completed"]:
             return {**summary, "stopped_at": "review"}
@@ -2542,8 +2624,8 @@ async def run_full_auto(job, *, store_root, slug: str, session: str = "auto"):
         summary["approved"] = len(approved)
         job.set_progress(0.60, f"Full auto ▸ approved {len(approved)} findings, revising…")
 
-        r3 = await _run_on_agent(job, store, slug, "revise", session, lo=0.62, hi=0.94,
-                                 do_gate=True, jobid=jobid, unattended=True)
+        r3 = await _phase_step(job, store, slug, "revise", session, lo=0.62, hi=0.94,
+                               do_gate=True, jobid=jobid, unattended=True, resume=resume)
         summary["phases"].append(r3)
         try:
             summary["verify"] = verify_revision(store, slug, n)
@@ -2559,6 +2641,25 @@ async def run_full_auto(job, *, store_root, slug: str, session: str = "auto"):
                     await asyncio.to_thread(fleet.kill, s)
         except Exception:
             pass
+
+
+def resume_worker_for(job):
+    """Map a journaled durable job → a bound, resumable worker (invoked as ``worker(job=job)``),
+    or ``None`` if it can't be resumed. Used by the hub's startup reattach (see jobs.reattach)."""
+    import functools
+    m = job.meta or {}
+    slug = m.get("slug")
+    if not slug:
+        return None
+    store_root = m.get("store_root", "projects")
+    session = m.get("session", "auto")
+    if job.type == "script-auto":
+        return functools.partial(run_full_auto, store_root=store_root, slug=slug,
+                                 session=session, resume=True)
+    if job.type == "script-phase":
+        return functools.partial(run_script_phase, store_root=store_root, slug=slug,
+                                 session=session, phase=m.get("phase", "v3"), resume=True)
+    return None
 
 
 # ==================== Video-style analysis (visual style guides) ====================

@@ -335,8 +335,8 @@ def register(app, ctx):
                                 detail="phase must be prep/draft/v3/review/revise")
         session = (body.get("session") or "auto").strip() or "auto"
         job = job_manager.start(
-            "script-phase", operations.run_script_phase,
-            meta={"slug": slug, "phase": phase, "session": session},
+            "script-phase", operations.run_script_phase, durable=True,
+            meta={"slug": slug, "phase": phase, "session": session, "store_root": "projects"},
             store_root="projects", slug=slug, session=session, phase=phase,
         )
         return {"job_id": job.id, "type": "script-phase", "phase": phase}
@@ -350,8 +350,8 @@ def register(app, ctx):
             raise HTTPException(status_code=404, detail="project not found")
         session = (body.get("session") or "auto").strip() or "auto"
         job = job_manager.start(
-            "script-auto", operations.run_full_auto,
-            meta={"slug": slug, "session": session},
+            "script-auto", operations.run_full_auto, durable=True,
+            meta={"slug": slug, "session": session, "store_root": "projects"},
             store_root="projects", slug=slug, session=session)
         return {"job_id": job.id, "type": "script-auto"}
 

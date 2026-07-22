@@ -20,6 +20,9 @@
     .badge.error { background: rgba(229,72,77,.18); color: #e5484d; }
     .badge.pending { background: var(--bg-primary); color: var(--text-secondary); }
     .badge.cancelled { background: var(--bg-primary); color: var(--text-secondary); }
+    .jctx { font-size: 11px; color: var(--text-secondary); }
+    .pill { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: rgba(139,92,246,.18); color: #8b5cf6; }
+    .jage { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
     .jmsg { color: var(--text-secondary); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bar { height: 5px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; margin-top: 8px; }
     .bar > div { height: 100%; background: var(--accent, #4f7cff); transition: width .3s; }
@@ -41,6 +44,8 @@
     const openLogs = new Set();
     const logsCache = {};   // id -> logs[]; the /api/jobs LIST omits logs (include_logs=False), so fetch per-job
     function esc(s){ return String(s == null ? '' : s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+    function ago(ts){ if(!ts) return ''; const s = Math.max(0, Date.now()/1000 - ts);
+      if(s<60) return Math.round(s)+'s'; if(s<3600) return Math.round(s/60)+'m'; return (s/3600).toFixed(1)+'h'; }
     async function fetchLogs(id) { try { const j = await (await fetch('/api/jobs/' + id)).json(); logsCache[id] = j.logs || []; } catch {} }
 
     async function refresh() {
@@ -54,14 +59,21 @@
         const pct = Math.round((j.progress || 0) * 100);
         const cancel = (j.status === 'running' || j.status === 'pending')
           ? `<button class="jx" onclick="cancelJob('${j.id}')">cancel</button>` : '';
-        const meta = j.meta && (j.meta.comp || j.meta.path) ? `<span style="font-size:11px;color:var(--text-secondary)">${esc(j.meta.comp || '')} ${esc((j.meta.path || '').split('/').pop() || '')}</span>` : '';
+        const m = j.meta || {};
+        const ctx = [m.slug, m.phase].filter(Boolean).join(' · ')
+                    || [m.comp, (m.path || '').split('/').pop()].filter(Boolean).join(' ');
+        const meta = ctx ? `<span class="jctx">${esc(ctx)}</span>` : '';
+        const resumed = m.resumed ? `<span class="pill" title="resumed after a hub restart">⟳ resumed</span>` : '';
+        const active = j.status === 'running' || j.status === 'pending';
+        const age = j.created_at ? `<span class="jage">${ago(active ? j.created_at : j.updated_at)}${active ? '' : ' ago'}</span>` : '';
         const ll = logsCache[j.id] || [];
         const logs = openLogs.has(j.id)
           ? `<div class="logs">${ll.length ? esc(ll.slice(-60).join('\n')) : '(no log output for this job)'}</div>` : '';
         return `<div class="job">
           <div class="jrow"><span class="badge ${j.status}">${j.status}</span>
-            <span class="jtype">${esc(j.type || 'job')}</span> ${meta}
+            <span class="jtype">${esc(j.type || 'job')}</span> ${meta} ${resumed}
             <span class="jmsg">${esc(j.message || j.error || '')}</span>
+            ${age}
             <button class="jx" onclick="toggleLogs('${j.id}')">${openLogs.has(j.id) ? 'hide' : 'logs'}</button>${cancel}</div>
           <div class="bar"><div style="width:${pct}%"></div></div>${logs}</div>`;
       }).join('');
