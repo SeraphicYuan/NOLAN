@@ -232,6 +232,12 @@ UMBRELLA_WIRING: Dict[str, Dict[str, Any]] = {
                         ("src/nolan/hyperframes/sound.py", "apply_scene_sfx"),
                         ("src/nolan/hyperframes/sfx_mix.py", "def sfx_mix")],
     },
+    "sources": {   # typed inputs a scene is BUILT FROM: media / data / document (all provenance-gated)
+        "authored_by": [("src/nolan/data/resolve.py", "resolve_datasets_in_spec"),
+                        ("render-service/_lab_hyperframes/bridge/resolve_doc_annotations.py", "_bind_document")],
+        "executed_by": [("src/nolan/data/registry.py", "def load_dataset"),
+                        ("src/nolan/document/registry.py", "def load_document")],
+    },
 }
 
 
@@ -300,6 +306,14 @@ CATALOG_CONSUMERS: Dict[str, List[tuple]] = {
         ("skills/common/sound-craft.md", "whoosh",
          "craft skill (registry-synced by tests/test_sound.py)"),
     ],
+    "sources": [
+        ("src/nolan/hyperframes/datasets.py", "resolve_datasets",
+         "the finish DAG materializes every dataset-bound scene from real cells (+ value_source) "
+         "BEFORE the number-provenance gate + recompose"),
+        ("src/nolan/document/registry.py", "load_document",
+         "the document source is provenance-gated: an un-ingested / un-sourced reference raises, so a "
+         "region a block targets always traces to a real page (the B-P1 analogue of the number gate)"),
+    ],
     # style packs: cross-umbrella curation (quality program step 6) — every
     # pack field must reach a decision point or it's curation rot
     "packs": [
@@ -358,6 +372,11 @@ def _umbrellas() -> Dict[str, Any]:
         out["pairing"] = [{"id": k, **v} for k, v in OPERATORS.items()]
     except Exception as exc:
         out["pairing"] = {"error": str(exc)}
+    try:
+        from nolan.sources import SOURCES
+        out["sources"] = [dict(s) for s in SOURCES]     # media / data / document — typed inputs, provenance-gated
+    except Exception as exc:
+        out["sources"] = {"error": str(exc)}
     try:
         from nolan.layout_blocks import ADAPTERS, TEMPLATES
         out["blocks"] = [

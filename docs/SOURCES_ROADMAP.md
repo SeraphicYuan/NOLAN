@@ -33,7 +33,7 @@ paper-deep-dive essays stop hallucinating numbers and can present real data in c
 - [x] A-P1 gate reads dataset-sourced numbers as legit (option c); documented in catalog `_doc`
 - [x] tests (`tests/test_data_source.py`, fake data) + live essay demo: bound 03-boom/s4 electricity chart to
       an `electricity_share` dataset → numbers from cells, gate passes
-- [ ] (follow-up) formal per-block `data_shape` field in the catalog + a resolver↔shape parity honesty test
+- [x] (follow-up) resolver↔shape parity honesty test (caught+fixed a real ledger `items`→`rows` drift)
 
 ### A-P2.5 · Time-series motion floor — M — **CORE DONE (2026-07-21)**
 - [x] the line chart already reveals points along time (`times[i]` = VO-synced `_cue` or auto-spread) — that
@@ -43,35 +43,54 @@ paper-deep-dive essays stop hallucinating numbers and can present real data in c
 - [x] documented on `chart.type` in the catalog; playhead honesty check in `check_reveal_sync`; provenance
       gate applies (a dataset-bound line passes) · live demo: essay 03-boom/s4 electricity chart → a 9-point
       line from the `electricity_share` dataset (2020–2028) with a sweeping playhead
-- [ ] (follow-up) value TICKER at the head; auto-enable playhead for line charts bound to a time dataset
+- [x] (follow-up) value TICKER rides the cursor head (snaps to each point); playhead auto-enables for a line chart over a temporal x
 
-### A-P3 · One-line → whole-table operator + authoring — M
-- [ ] pairing operator: narration line → the dataset table (present the row IN CONTEXT, cell highlighted)
-- [ ] authoring flow to attach a dataset to a beat · verify: one-number beat renders the full table
+### A-P3 · One-line → whole-table operator — DONE (2026-07-21)
+- [x] `data_table` block: a dataset as a full table (columns × rows from real cells) with ONE cell SPOTLIGHTED
+- [x] `highlight:{where:{col:val}}` → the matching row + value column (resolver); a one-line beat names a
+      number, the whole series shows with that cell lit. Rendered + tests (`test_data_table_*`).
 
-### A-P4 · New time-series marks — L
-- [ ] `bar_race` · `trajectory` (connected scatter) · `stream` (stacked area) [opt: streamgraph, small-multiples, milestones]
-- [ ] each: registry + data_shape + executor + honesty test + provenance gate (reuse ticker/detail_zoom/annotate/build)
+### A-P4 · New time-series marks — DONE (2026-07-21)
+- [x] `trajectory` (connected scatter — path through 2-D over time; dataset-bound via encode x/y/label),
+      `stream` (stacked area / streamgraph — composition over time, left→right sweep), `bar_race` (ranked
+      bars that grow + REORDER across steps with a period ticker) — all in compose_extension.py
+- [x] each: catalog entry (+fn) + REQUIRED + _DATAVIZ provenance gate + honesty test; all rendered + looked at
+- [ ] (follow-up) dataset-pivot binding for stream/bar_race (category × step); milestones/small-multiples
 
 ## TRACK B — Paper / document as a source
 
 ### B-P0 · Sample videos (user) → pin the motion set — GATE
 - [ ] user sends 2–3 reference clips → lock the block/motion list
 
-### B-P1 · Document source — L
-- [ ] `document` pool type: PDF → page images + LAYOUT MAP (bboxes for paragraph/figure/equation/word)
-- [ ] registry + provenance
+### B-P1 · Document source — CORE DONE (2026-07-21)
+- [x] `nolan/document/ingest.py` (PyMuPDF/fitz): PDF → a rendered PNG per page + a LAYOUT MAP of regions
+      (heading / paragraph / figure(raster) / word) with NORMALIZED bboxes (0..1, resolution-independent)
+- [x] `nolan/document/registry.py`: provenance-gated registry (raises on an un-sourced document — the paper
+      analogue of the A-P1 number gate), `list_documents`, `region_bbox` lookup (the B-P2 targeting hook)
+- [x] honesty test (`tests/test_document.py`, self-contained fitz PDF) + live verify on the Attention paper
+      (15 pages, 538 regions, 6069 words; bbox overlay confirmed the map aligns to the render)
+- [ ] (B-P2) VECTOR-drawn figures aren't segmented yet (only raster image blocks); equation regions deferred
+- [ ] (follow-up) `nolan document ingest` CLI command in cli_legacy; a `document` POOL type surfaced in /pool
 
-### B-P2 · Region targeting + paper block family — L
-- [ ] region targeting (reference paragraph/figure/word by id → pan/zoom/highlight)
-- [ ] `document`/`paper` block: page-as-ground + scroll/page-turn/zoom-to-region + VO-synced highlight (reuse `_line_cues`)
-- [ ] reuse detail_zoom / annotate / spotlight / pull_quote
+### B-P2 · Region targeting + paper block family — CORE DONE (2026-07-21)
+- [x] REGION-ID targeting: `{region:"p3-fig0"}` on a document annotation → rect from the B-P1 layout map
+      (`resolve_doc_annotations._bind_document`); the stable-id path (robust vs an ambiguous `find`, and the
+      ONLY way to target a FIGURE) — complements the existing text-`find` resolution
+- [x] VECTOR-figure segmentation in ingest (cluster drawings) — verified it bounds Figure 1 (the Transformer)
+- [x] `data.document`+`data.page` bind the rendered page as `source` + page_size + provenance; catalog fields
+      + honesty tests (`tests/test_document.py`)
+- [x] reuses the existing `document` block's highlight/underline/label/callout/caption + camera(push/scroll)
+- [ ] (follow-up) a dedicated zoom-TO-region camera; equation regions; a `document` POOL surface in /pool
 
-### B-P3 · Full motion set — M–L (from samples)
-- [ ] figure extraction · equation term-by-term · citation web (connection_board) · side-by-side · redaction · track-changes · title hero
+### B-P3 · Full motion set — SAMPLE-GATED (needs B-P0 reference clips)
+- [x] figure extraction — DONE via B-P1/B-P2 (vector + raster figures are layout-map regions, targetable by id)
+- [ ] citation web → reuse `connection_board`; side-by-side → `comparison`; title hero → `hero` (blocks EXIST;
+      the paper-specific MOTION/pacing needs the reference clips to pin)
+- [ ] equation term-by-term · redaction · track-changes — new motion, BLOCKED on B-P0 samples
 
 ## Cross-cutting
-- [ ] unify media/data/document under a "sources" umbrella in `/map`; blocks become source-aware
+- [x] unified media/data/document under a "sources" umbrella in `/map` (`nolan/sources.py` SOURCES registry +
+      system_map wiring/consumer manifests, honesty-tested) — every source is provenance-gated
 
 ## Order
-A-P1 → A-P2 → A-P2.5 → B-P1 → B-P2 → A-P3 → A-P4 → B-P3 (interleave Track B once samples arrive).
+A-P1 ✓ → A-P2 ✓ → A-P2.5 ✓ → B-P1 ✓ → B-P2 ✓ → A-P3 ✓ → A-P4 ✓ → cross-cutting ✓ → **B-P3 remains, gated on B-P0 reference clips**.
