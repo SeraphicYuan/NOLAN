@@ -610,16 +610,27 @@ def split_view(sid, sc):
     dark = getattr(compose, "_POLARITY", "light") == "dark"
     ink = "#f3efe6" if dark else "#1c1c19"
 
+    # FIT the paper (or its focus region) into a box that PRESERVES ITS ASPECT RATIO — never stretch it to
+    # fill the panel. Centre the box in the panel with a margin (a sheet on a ground), so it keeps its shape.
     fr = paper.get("focus_rect")
+    psz = paper.get("page_size") or [1000.0, 1294.0]
+    pageW, pageH = (float(psz[0]) or 1.0), (float(psz[1]) or 1.0)
     if fr:
         fx0, fy0, fw, fh = [float(v) for v in fr]
-        bgw, bgh = pw / max(1e-3, fw), H / max(1e-3, fh)
-        bg = f'background-size:{bgw:.0f}px {bgh:.0f}px;background-position:-{fx0*bgw:.0f}px -{fy0*bgh:.0f}px;'
+        reg_asp = (fw * pageW) / max(1e-6, fh * pageH)
     else:
-        bg = 'background-size:cover;background-position:center top;'
+        fx0, fy0, fw, fh = 0.0, 0.0, 1.0, 1.0
+        reg_asp = pageW / max(1e-6, pageH)
+    marg = 0.9
+    aw, ah = pw * marg, H * marg
+    bw, bh = (ah * reg_asp, ah) if (aw / ah > reg_asp) else (aw, aw / reg_asp)
+    bx, by = px + (pw - bw) / 2, (H - bh) / 2
+    bgw, bgh = bw / max(1e-6, fw), bh / max(1e-6, fh)      # box aspect == region aspect ⇒ page scales uniformly
     frag = [f'<div id="{sid}-paper" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
-            f'style="position:absolute;left:{px}px;top:0;width:{pw}px;height:{H}px;background-color:#fff;'
-            f'background-image:url(\'{esc(paper.get("source",""))}\');background-repeat:no-repeat;{bg}opacity:0;"></div>']
+            f'style="position:absolute;left:{bx:.0f}px;top:{by:.0f}px;width:{bw:.0f}px;height:{bh:.0f}px;background-color:#fff;'
+            f'background-image:url(\'{esc(paper.get("source",""))}\');background-repeat:no-repeat;'
+            f'background-size:{bgw:.0f}px {bgh:.0f}px;background-position:-{fx0*bgw:.0f}px -{fy0*bgh:.0f}px;'
+            f'border-radius:8px;box-shadow:0 14px 44px rgba(0,0,0,.30);opacity:0;"></div>']
     # content panel
     kind = str(right.get("kind", "text"))
     inner = ""
