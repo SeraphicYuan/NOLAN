@@ -90,7 +90,64 @@ def locate(words, phrase, iw, ih):
     return []
 
 
+def _bind_document(data, project_dir):
+    """B-P2 — bind an INGESTED document (`data.document` = a layout-map id) to the scene: use its rendered
+    page as `source` (+ page_size + provenance), and resolve any `{region:"p3-fig0"}` annotation to a rect
+    from the layout map — the STABLE-ID path (robust vs an ambiguous `find` phrase, and the only way to
+    target a FIGURE, which has no text to find). Region bboxes are normalized (0..1); annotations use
+    rect=[fx,fy,fw,fh]. Complements the `find` path below (both run). No-op if nolan.document is absent."""
+    doc_id = data.get("document")
+    if not doc_id:
+        return
+    try:
+        import sys as _sys
+        _src = str(Path(__file__).resolve().parents[3] / "src")
+        if _src not in _sys.path:
+            _sys.path.insert(0, _src)
+        from nolan.document.registry import load_document, region_bbox
+    except Exception as e:
+        print(f"  ! nolan.document unavailable — cannot resolve document {doc_id!r} ({e})")
+        return
+    doc = load_document(project_dir, doc_id)
+    if doc is None:
+        print(f"  ! document {doc_id!r} is not ingested — run `python -m nolan.document.ingest`")
+        return
+    page_no = int(data.get("page", 1))
+    img = doc.image_path(page_no)
+    if img and img.exists():
+        try:
+            rel = str(img.relative_to(Path(project_dir))).replace("\\", "/")
+        except ValueError:
+            rel = str(img)
+        data.setdefault("source", rel)
+        try:
+            from PIL import Image
+            data["page_size"] = list(Image.open(img).size)
+        except Exception:
+            pass
+    data["_document"] = {"id": doc_id, "page": page_no, "provenance": doc.provenance}
+    for a in data.get("annotations", []):
+        rid = a.get("region")
+        if not rid or "rect" in a or "at" in a:
+            continue
+        bb = region_bbox(doc, page_no, rid)
+        if not bb:
+            print(f"  ! region {rid!r} not on page {page_no} of {doc_id!r} — leaving unresolved")
+            continue
+        x0, y0, x1, y1 = bb
+        t = a.get("type", "highlight")
+        if t == "label":
+            a["at"] = [round((x0 + x1) / 2, 4), round((y0 + y1) / 2, 4)]
+        elif t == "underline":
+            a["rect"] = [round(x0, 4), round(y1, 4), round(x1 - x0, 4)]
+        else:
+            a["rect"] = [round(x0, 4), round(y0, 4), round(x1 - x0, 4), round(y1 - y0, 4)]
+        a.pop("region", None)
+        print(f"  OK {t}: region {rid} -> rect")
+
+
 def resolve_scene(data, project_dir):
+    _bind_document(data, project_dir)                    # B-P2: ingested-document binding (region-id + page source)
     src = data.get("source")
     src0 = src[0] if isinstance(src, list) else src
     if not src0:

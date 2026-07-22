@@ -400,8 +400,10 @@
         "kicker": "string?",
         "title": "string?",
         "titleHi": "string? — substring of title to highlight",
-        "annotations": "array of {type, ...}. Position EITHER by text — {find:\"phrase on the page\"} — resolved to a rect by bridge/resolve_doc_annotations.py (PREFERRED; OCR for images, PyMuPDF text-layer for PDFs), OR by explicit fraction (the escape hatch). highlight {find|rect:[fx,fy,fw,fh], color?, cue?}; underline {find|rect:[fx,fy,fw], color?, cue?}; label {find|at:[fx,fy], text, color?, cue?} (pinned, rides the camera); callout {text:str|[lines], title?, side?:right|left, y?:0..1, cue?} (screen-fixed card); caption {text, underline?:substr, cue?} (bottom italic, red underline draw)",
-        "page_size": "[w,h]? — set by resolve_doc_annotations.py; sizes the sheet to the page aspect so annotation fractions map 1:1 (no crop). Omit for full-bleed cover."
+        "annotations": "array of {type, ...}. Position by REGION id (B-P2: {region:\"p3-fig0\"} — a layout-map region/word/figure id from the bound `document`; the only way to target a FIGURE), OR by text — {find:\"phrase on the page\"} — resolved to a rect by bridge/resolve_doc_annotations.py (PREFERRED; OCR for images, PyMuPDF text-layer for PDFs), OR by explicit fraction (the escape hatch). highlight {find|rect:[fx,fy,fw,fh], color?, cue?}; underline {find|rect:[fx,fy,fw], color?, cue?}; label {find|at:[fx,fy], text, color?, cue?} (pinned, rides the camera); callout {text:str|[lines], title?, side?:right|left, y?:0..1, cue?} (screen-fixed card); caption {text, underline?:substr, cue?} (bottom italic, red underline draw)",
+        "page_size": "[w,h]? — set by resolve_doc_annotations.py; sizes the sheet to the page aspect so annotation fractions map 1:1 (no crop). Omit for full-bleed cover.",
+        "document": "string? — an INGESTED document id (nolan/document, B-P1): binds its rendered page as `source` + page_size + provenance, and resolves `region` annotations from the layout map. Pair with `page`.",
+        "page": "number? — 1-based page of the bound `document` (default 1)."
       },
       "constraints": [
         "duration_preserving",
