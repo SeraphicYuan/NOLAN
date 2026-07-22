@@ -211,13 +211,13 @@ def create_hub_app(
     # (route modules import helpers from nolan.hub).
     from nolan.webui.routes import (
         core, ingest_process, broll, images_extract, lottie, settings,
-        match_generate, render_assemble, studio_landing, library,
+        match_generate, render_assemble, studio_landing, library, sfx,
         script_styles, script_projects, voices, video_styles,
         deconstruct, showcase, scenes, hf_scenes, agents, shortlist, system_map, taste,
         pool, kb, clipper, themes, sessions,
     )
     for module in (core, ingest_process, broll, images_extract, lottie, settings,
-                   match_generate, render_assemble, studio_landing, library,
+                   match_generate, render_assemble, studio_landing, library, sfx,
                    script_styles, script_projects, voices, video_styles,
                    deconstruct, showcase, scenes, hf_scenes, agents, shortlist, system_map, taste,
                    pool, kb, clipper, themes, sessions):

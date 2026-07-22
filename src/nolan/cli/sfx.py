@@ -78,78 +78,15 @@ def sfx_crawl(pages, page_size, min_downloads, max_duration):
               help="Keep leading silence (for a bed/riser whose quiet lead-in is intentional).")
 def sfx_add(sound_id, kind, rating, tags, desc, no_trim):
     """Fetch Freesound SOUND_ID, gate its license, normalize, curate it."""
-    meta = fetch_sound(str(sound_id))
-    attribution = (f'"{meta["name"]}" by {meta["username"]} — '
-                   f'{meta["license"]} (Freesound)')
-    record = {"source": "freesound", "license": meta["license"],
-              "attribution": attribution}
-
-    # --- the acquisition gate (audio door) --------------------------------
-    verdict = asset_gate.check_sound(record, source="freesound")
-    if not verdict.ok:
-        click.echo(f"REJECTED sfx {sound_id}: {'; '.join(verdict.reasons)}", err=True)
-        raise SystemExit(1)
-    for flag in verdict.flags:
-        click.echo(f"  note: {flag}")
-
-    # --- download the HQ preview → measure silence → normalize 48k stereo -
-    from nolan.sound import probe
-    lib = library_dir()
-    lib.mkdir(parents=True, exist_ok=True)
-    fname = f"freesound-{_slug(meta['name'] or kind)[:40]}-{sound_id}.wav"
-    dest = lib / fname
-    headers = FreesoundProvider().download_headers()
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tf:
-        tf.write(_get(meta["preview_hq_mp3"], headers=headers))
-        tmp = tf.name
+    from nolan.sound.curate import CurateError, add_sound
     try:
-        pre = probe.analyze_silence(tmp)
-        if pre["is_silent"]:
-            click.echo(f"REJECTED sfx {sound_id}: file is silent", err=True)
-            raise SystemExit(1)
-        r = subprocess.run(probe.normalize_cmd(tmp, str(dest), trim_lead=not no_trim),
-                           capture_output=True, text=True)
-    finally:
-        Path(tmp).unlink(missing_ok=True)
-    if r.returncode != 0 or not dest.exists():
-        click.echo(f"normalize failed: {(r.stderr or '')[:300]}", err=True)
+        res = add_sound(sound_id, kind, rating=rating, tags=tags, desc=desc, no_trim=no_trim)
+    except CurateError as e:
+        click.echo(f"REJECTED sfx {e}", err=True)
         raise SystemExit(1)
-    post = probe.analyze_silence(dest)          # verify the onset is now ~0
-    if pre["lead_silence_s"] >= 0.05:
-        click.echo(f"  lead silence {pre['lead_silence_s']:.2f}s "
-                   f"{'trimmed → onset ' + format(post['lead_silence_s'], '.2f') + 's' if not no_trim else 'KEPT (--no-trim)'}")
-    if not no_trim and post["lead_silence_s"] >= 0.05:
-        click.echo(f"  ⚠ onset still {post['lead_silence_s']:.2f}s after trim — "
-                   f"check this file (soft attack below threshold?)")
-
-    # --- record in the curated manifest (dedupe by source+id) -------------
-    manifest = [e for e in _load_manifest(lib)
-                if not (e.get("source") == "freesound" and str(e.get("id")) == str(sound_id))]
-    manifest.append({
-        "source": "freesound", "provider": "freesound", "id": str(sound_id),
-        "file": fname, "kind": kind, "title": meta["name"],
-        "description": desc or meta["description"],
-        "tags": sorted(set(meta["tags"] + [t.strip() for t in tags.split(",") if t.strip()])),
-        "duration": post["duration"], "rating": int(rating),
-        "lead_silence_s": pre["lead_silence_s"], "onset_s": post["lead_silence_s"],
-        "trimmed": not no_trim, "num_downloads": meta["num_downloads"],
-        "license": meta["license"], "attribution": attribution,
-        "page_url": meta["page_url"], "curated": True,
-    })
-    (lib / _MANIFEST).write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-                                 encoding="utf-8")
-
-    # track curation in the catalog (upsert first, so a not-yet-crawled id is
-    # catalogued too, then flag it as in-library)
-    from nolan.sound.catalog import SoundCatalog
-    cat = SoundCatalog()
-    cat.upsert_many([meta])
-    cat.mark_in_library(str(sound_id), kind, fname, int(rating),
-                        lead_silence_s=pre["lead_silence_s"])
-    cat.close()
-
-    click.echo(f"added [{kind}] {fname}  (rating {rating}, {post['duration']:.1f}s, "
-               f"{meta['num_downloads']:,}↓, {meta['license'].split('/')[-2] if '/' in meta['license'] else meta['license']})")
+    for note in res["notes"]:
+        click.echo(f"  {note}")
+    click.echo(f"added [{res['kind']}] {res['file']}  (rating {res['rating']}, {res['duration']:.1f}s)")
 
 
 @sfx.command("doctor")
@@ -180,24 +117,12 @@ def sfx_doctor():
 @click.argument("sound_id")
 def sfx_remove(sound_id):
     """Remove a curated sound from the bank (file + manifest + catalog flag)."""
-    lib = library_dir()
-    manifest = _load_manifest(lib)
-    removed = [e for e in manifest if str(e.get("id")) == str(sound_id)]
-    if not removed:
+    from nolan.sound.curate import remove_sound
+    res = remove_sound(sound_id)
+    if res["removed"]:
+        click.echo(f"removed {sound_id} ({res.get('file')})")
+    else:
         click.echo(f"not in bank: {sound_id}")
-        return
-    for e in removed:
-        f = lib / e.get("file", "")
-        if f.exists():
-            f.unlink()
-    keep = [e for e in manifest if str(e.get("id")) != str(sound_id)]
-    (lib / _MANIFEST).write_text(json.dumps(keep, indent=2, ensure_ascii=False) + "\n",
-                                 encoding="utf-8")
-    from nolan.sound.catalog import SoundCatalog
-    cat = SoundCatalog()
-    cat.unmark(str(sound_id))
-    cat.close()
-    click.echo(f"removed {sound_id} ({removed[0].get('file')})")
 
 
 @sfx.command("search")

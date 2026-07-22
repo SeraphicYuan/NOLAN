@@ -31,6 +31,7 @@
       { id: "broll", label: "Evocative B-roll", href: "/broll" },
       { id: "tonal-broll", label: "Tonal B-roll (gallery)", href: "/tonal-broll/" },
       { id: "voices", label: "Voices", href: "/voices" },
+      { id: "sfx", label: "SFX Library", href: "/sfx" },
     ]},
     { title: "Produce", items: [
       { id: "scenes", label: "Scenes", href: "/scenes" },

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SFX Library · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 20px; }
+    h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 2px; }
+    .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+    .tab { padding: 9px 16px; cursor: pointer; font-weight: 600; color: var(--text-secondary);
+           border-bottom: 2px solid transparent; }
+    .tab.on { color: var(--text-primary); border-bottom-color: var(--accent, #4f7cff); }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input[type=text], input[type=number], select { background: var(--bg-primary); border: 1px solid var(--border);
+           border-radius: 6px; color: var(--text-primary); padding: 8px 10px; font-size: 13px; }
+    #q { flex: 1; min-width: 220px; }
+    .btn { background: var(--accent, #4f7cff); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn.ghost { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn.mini { padding: 4px 9px; font-size: 12px; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .seg button { background: var(--bg-primary); border: none; color: var(--text-secondary); padding: 7px 12px; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .seg button.on { background: var(--accent, #4f7cff); color: #fff; }
+    .sfx-row { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center;
+               padding: 9px 10px; border-bottom: 1px solid var(--border); }
+    .sfx-row:last-child { border-bottom: none; }
+    .sfx-name { font-weight: 600; }
+    .sfx-meta { color: var(--text-secondary); font-size: 12px; }
+    .badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+             background: rgba(79,124,255,.16); color: var(--accent, #4f7cff); margin-left: 6px; }
+    .badge.lib { background: rgba(52,199,89,.16); color: #34c759; }
+    .play { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border);
+            background: var(--bg-primary); cursor: pointer; color: var(--text-primary); }
+    .play[disabled] { opacity: .3; cursor: default; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 12px 0; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+    .field .help { font-size: 11px; color: var(--text-secondary); opacity: .8; }
+    .op-title { font-weight: 650; margin-bottom: 2px; }
+    .op-help { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+    .log { font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; color: var(--text-secondary);
+           background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 8px; max-height: 160px; overflow: auto; display: none; }
+    .dim { color: var(--text-secondary); font-size: 12px; }
+    .warn { color: #e0a83a; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>SFX Library</h1>
+    <div class="sub" id="stats">Curated sound bank + the crawled candidate catalog. Sources are pluggable.</div>
+
+    <div class="tabs">
+      <div class="tab on" data-tab="viewer" onclick="showTab('viewer')">Viewer</div>
+      <div class="tab" data-tab="control" onclick="showTab('control')">Control</div>
+    </div>
+
+    <!-- ============ VIEWER ============ -->
+    <div id="tab-viewer">
+      <div class="card">
+        <div class="row">
+          <input type="text" id="q" placeholder="Search name / description / tags…" onkeydown="if(event.key==='Enter')doSearch()">
+          <div class="seg" id="scope">
+            <button data-v="all" class="on" onclick="setScope('all')">All</button>
+            <button data-v="curated" onclick="setScope('curated')">Curated ★</button>
+            <button data-v="available" onclick="setScope('available')">Candidates</button>
+          </div>
+          <select id="kind"><option value="">any kind</option></select>
+          <button class="btn" onclick="doSearch()">Search</button>
+        </div>
+      </div>
+      <div class="card" id="results"><div class="dim">Search to browse the catalog…</div></div>
+    </div>
+
+    <!-- ============ CONTROL ============ -->
+    <div id="tab-control" style="display:none">
+      <div class="card">
+        <div class="row">
+          <label class="dim" for="src">Source</label>
+          <select id="src" onchange="renderControls()"></select>
+          <span id="src-status" class="dim"></span>
+        </div>
+      </div>
+      <div id="controls"></div>
+    </div>
+  </div>
+
+  <audio id="player"></audio>
+  <script src="/static/nav.js" data-active="sfx"></script>
+  <script>
+    const $ = s => document.querySelector(s);
+    async function jget(u){ const r = await fetch(u); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status); return r.json(); }
+    async function jpost(u, b){ const r = await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}); const d = await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail || r.status); return d; }
+
+    let SCOPE = "all", SOURCES = [];
+
+    function showTab(t){
+      document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on", x.dataset.tab===t));
+      $("#tab-viewer").style.display = t==="viewer"?"block":"none";
+      $("#tab-control").style.display = t==="control"?"block":"none";
+    }
+    function setScope(v){ SCOPE=v; document.querySelectorAll("#scope button").forEach(b=>b.classList.toggle("on", b.dataset.v===v)); doSearch(); }
+
+    async function loadStats(){
+      try { const s = await jget("/api/sfx/stats");
+        $("#stats").textContent = `${s.in_library} curated · ${s.total.toLocaleString()} candidates in the catalog.`;
+      } catch(e){}
+    }
+    async function loadKinds(){
+      try { const d = await jget("/api/sfx/kinds");
+        $("#kind").innerHTML = '<option value="">any kind</option>' + d.kinds.map(k=>`<option value="${k.id}" title="${esc(k.purpose)}">${k.id}</option>`).join("");
+      } catch(e){}
+    }
+    function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    async function doSearch(){
+      const q = $("#q").value.trim(), kind = $("#kind").value;
+      $("#results").innerHTML = '<div class="dim">Searching…</div>';
+      try {
+        const d = await jget(`/api/sfx/search?q=${encodeURIComponent(q)}&scope=${SCOPE}&kind=${encodeURIComponent(kind)}`);
+        if (!d.results.length){ $("#results").innerHTML = '<div class="dim">No matches. Crawl candidates in the Control tab, or widen the scope.</div>'; return; }
+        $("#results").innerHTML = d.results.map(rowHtml).join("");
+      } catch(e){ $("#results").innerHTML = `<div class="warn">search failed: ${esc(e.message)}</div>`; }
+    }
+    function rowHtml(r){
+      const dur = r.duration ? `${(+r.duration).toFixed(1)}s` : "";
+      const dl = r.downloads ? `${(+r.downloads).toLocaleString()}↓` : "";
+      const kindBadge = r.cue_kind ? `<span class="badge lib">${esc(r.cue_kind)}${r.rating?` ★${r.rating}`:""}</span>` : "";
+      const libBadge = r.in_library ? `<span class="badge lib">in library</span>` : "";
+      const play = r.file
+        ? `<button class="play" title="Play" onclick="play('${encodeURIComponent(r.file)}')">▶</button>`
+        : `<button class="play" disabled title="Candidate — listen on Freesound">▶</button>`;
+      const link = r.page_url ? `<a class="btn ghost mini" href="${esc(r.page_url)}" target="_blank" rel="noopener">Freesound ↗</a>` : "";
+      return `<div class="sfx-row">
+        ${play}
+        <div><div class="sfx-name">${esc(r.name)||("#"+esc(r.id))}${kindBadge}${libBadge}</div>
+             <div class="sfx-meta">${[dur,dl,esc((r.license||'').split('/').slice(-2,-1)[0]||r.license||''),esc(r.tags||'')].filter(Boolean).join(" · ")}</div></div>
+        <div class="row">${link}</div>
+      </div>`;
+    }
+    function play(fileEnc){ const p = $("#player"); p.src = `/api/sfx/file?file=${fileEnc}`; p.play(); }
+
+    // ---- Control tab: render whatever adapters register ----
+    async function loadSources(){
+      const d = await jget("/api/sfx/sources"); SOURCES = d.sources;
+      $("#src").innerHTML = SOURCES.map(s=>`<option value="${s.id}">${esc(s.label)}</option>`).join("");
+      renderControls();
+    }
+    function renderControls(){
+      const s = SOURCES.find(x=>x.id === $("#src").value) || SOURCES[0];
+      if (!s){ $("#controls").innerHTML = '<div class="dim">No sources registered.</div>'; return; }
+      $("#src-status").innerHTML = s.available ? "" : '<span class="warn">⚠ not configured (missing API key)</span>';
+      $("#controls").innerHTML = s.controls.map(c=>controlCard(s, c)).join("");
+    }
+    function controlCard(s, c){
+      const fields = c.fields.map(f=>fieldHtml(s.id, c.op, f)).join("");
+      const fid = `${s.id}-${c.op}`;
+      return `<div class="card">
+        <div class="op-title">${esc(c.label)}</div>
+        ${c.help?`<div class="op-help">${esc(c.help)}</div>`:""}
+        <div class="fields">${fields}</div>
+        <button class="btn" onclick="runOp('${s.id}','${c.op}')">Run</button>
+        <span id="st-${fid}" class="dim" style="margin-left:8px"></span>
+        <div class="log" id="log-${fid}"></div>
+      </div>`;
+    }
+    function fieldHtml(sid, op, f){
+      const id = `f-${sid}-${op}-${f.name}`;
+      const req = f.required ? " *" : "";
+      let ctrl;
+      if (f.type === "bool") ctrl = `<label class="row" style="gap:6px"><input type="checkbox" id="${id}"> <span class="dim">${esc(f.help||"")}</span></label>`;
+      else if (f.type === "choice") ctrl = `<select id="${id}">${(f.choices||[]).map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}</select>`;
+      else ctrl = `<input type="${f.type==='int'||f.type==='number'?'number':'text'}" id="${id}" value="${f.default!=null?esc(f.default):''}" placeholder="${esc(f.help||'')}">`;
+      return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label>${ctrl}${f.type!=='bool'&&f.help?`<span class="help">${esc(f.help)}</span>`:""}</div>`;
+    }
+    function collect(sid, op){
+      const s = SOURCES.find(x=>x.id===sid); const c = s.controls.find(x=>x.op===op); const params = {};
+      for (const f of c.fields){
+        const el = document.getElementById(`f-${sid}-${op}-${f.name}`); if(!el) continue;
+        if (f.type === "bool") params[f.name] = el.checked;
+        else if (el.value !== "") params[f.name] = el.value;
+      }
+      return params;
+    }
+    async function runOp(sid, op){
+      const fid = `${sid}-${op}`, st = $(`#st-${fid}`), log = $(`#log-${fid}`);
+      st.textContent = "starting…"; log.style.display="block"; log.textContent="";
+      try {
+        const d = await jpost("/api/sfx/run", {source: sid, op, params: collect(sid, op)});
+        pollJob(d.job_id, st, log);
+      } catch(e){ st.innerHTML = `<span class="warn">✗ ${esc(e.message)}</span>`; }
+    }
+    function pollJob(jobId, st, log){
+      fetch("/api/jobs/"+jobId).then(r=>r.json()).then(j=>{
+        if (j.logs) log.textContent = j.logs.slice(-40).join("\n");
+        st.textContent = j.message || j.status;
+        if (j.status === "done"){ st.innerHTML = "✓ done"; loadStats(); doSearch(); return; }
+        if (j.status === "error"){ st.innerHTML = `<span class="warn">✗ ${esc(j.error||"error")}</span>`; return; }
+        setTimeout(()=>pollJob(jobId, st, log), 900);
+      }).catch(e=>{ st.innerHTML = `<span class="warn">poll error: ${esc(e.message)}</span>`; });
+    }
+
+    loadStats(); loadKinds(); loadSources();
+  </script>
+</body>
+</html>
