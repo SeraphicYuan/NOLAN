@@ -263,6 +263,38 @@ def register(app, ctx):
             )
             return {"job_id": job.id, "type": "sync-vectors"}
 
+        @app.post("/api/library/promote-to-pool")
+        async def library_promote_to_pool(body: dict = Body(...)):
+            """Promote a library SEGMENT ({video_path, start, end}) or a SAVED CLIP ({clip_id}) directly
+            into a HyperFrames project's pool — a MANUAL pick that skips acquisition ranking. Trims the
+            range and registers it in pool.json (source 'manual'), the same landing clip-from-url uses."""
+            from nolan.webui import operations
+            comp = (body.get("comp") or "").strip()
+            if not comp:
+                raise HTTPException(status_code=400, detail="comp (target project) required")
+            video_path, start, end = body.get("video_path"), body.get("start"), body.get("end")
+            clip_id = body.get("clip_id")
+            if clip_id:                                          # resolve a saved clip → source + range
+                clip = index.get_saved_clip(clip_id)
+                if not clip:
+                    raise HTTPException(status_code=404, detail=f"no saved clip {clip_id}")
+                video_path = clip.get("source_video_path")
+                start, end = clip.get("clip_start"), clip.get("clip_end")
+            if not video_path or start is None or end is None:
+                raise HTTPException(status_code=400, detail="video_path + start + end (or clip_id) required")
+            try:
+                s, e = float(start), float(end)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="start/end must be numbers")
+            if e <= s:
+                raise HTTPException(status_code=400, detail="end must be after start")
+            job = job_manager.start(
+                "promote-to-pool", operations.promote_to_pool,
+                meta={"comp": comp, "video": Path(video_path).name},
+                comp=comp, video_path=video_path, start=s, end=e, name=body.get("name"),
+            )
+            return {"job_id": job.id, "type": "promote-to-pool"}
+
         @app.get("/api/library/stats")
         async def library_stats():
             """Get library statistics."""

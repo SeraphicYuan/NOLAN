@@ -301,6 +301,31 @@ async def embed_video(job, *, db_path: Path, video_id: int):
     return result
 
 
+async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end: float, name=None):
+    """MANUAL promotion: trim [start,end] from a LIBRARY source video and drop it straight into a
+    HyperFrames project's pool.json — bypassing acquisition ranking (the human already chose it). Reuses
+    the clipper trim engine (local range → mp4) + hfedit pool registration, so a promoted segment and a
+    URL clip land in the pool identically (source 'manual')."""
+    import re
+
+    from nolan import clipper
+    from nolan.hyperframes import edit as hfedit
+
+    src = Path(video_path)
+    if not src.exists():
+        raise RuntimeError(f"source video not found: {video_path}")
+    nm = re.sub(r"[^\w.-]+", "_", (name or f"{src.stem}_{int(start)}_{int(end)}")).strip("._") or "clip"
+    out = hfedit.comp_dir(comp) / "assets" / f"{nm}.mp4"
+    job.set_progress(0.1, f"Trimming {start:.1f}–{end:.1f}s from {src.name}…")
+    saved = await asyncio.to_thread(clipper.clip, str(src), float(start), float(end), out, kind="local")
+    if not saved:
+        raise RuntimeError("trim produced no file")
+    job.set_progress(0.8, "Registering in the project pool…")
+    await asyncio.to_thread(hfedit.resolve_asset, comp, str(saved))
+    job.set_progress(1.0, f"Promoted → {comp} pool")
+    return {"ok": True, "path": str(saved), "name": Path(saved).name, "comp": comp}
+
+
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",
                       period: str = "", locale: str = "", literalness: float = 0.25,
                       mood: Optional[str] = None, sources: Optional[list] = None,
