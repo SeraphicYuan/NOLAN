@@ -339,17 +339,68 @@ def kill(name: str) -> bool:
 
 
 # Ephemeral per-run agents the hub spawns for 'auto' script runs: `nolan-run-<jobid>-<phase>`.
-# Each is killed the moment its phase finishes; this reaper is the crash-safety net.
+# Each is killed the moment its phase finishes; the reaper is the crash-safety net. A small
+# on-disk registry lets the reaper tell an IN-FLIGHT agent (preserve) from a finished/stale/
+# orphaned one (kill) — so a benign hub restart doesn't nuke a run's current phase.
 RUN_AGENT_PREFIX = "nolan-run-"
+_RUN_MAX_AGE_S = 2700   # 45 min — longer than any single phase; older ⇒ stuck ⇒ reapable
+
+
+def _run_registry_path() -> Path:
+    return _REPO_ROOT / "projects" / "_run_agents.json"
+
+
+def _read_run_registry() -> dict:
+    p = _run_registry_path()
+    try:
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _write_run_registry(reg: dict) -> None:
+    try:
+        _run_registry_path().parent.mkdir(parents=True, exist_ok=True)
+        _run_registry_path().write_text(json.dumps(reg, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def register_run_agent(name: str, slug: str, phase: str) -> None:
+    """Record a spawned ephemeral agent so the reaper can tell in-flight from orphaned."""
+    reg = _read_run_registry()
+    reg[name] = {"slug": slug, "phase": phase, "started": time.time()}
+    _write_run_registry(reg)
+
+
+def unregister_run_agent(name: str) -> None:
+    reg = _read_run_registry()
+    if reg.pop(name, None) is not None:
+        _write_run_registry(reg)
 
 
 def reap_run_agents() -> List[str]:
-    """Kill any lingering ephemeral run-agents (``nolan-run-*``) — e.g. orphaned by a hub crash.
-    Never touches the persistent ``nolan<N>`` fleet. Returns the names killed."""
+    """Reap lingering ephemeral run-agents. PRESERVES a young, unfinished, registered agent (its
+    run's current phase is still in progress — a benign restart must not kill it); reaps one that
+    is finished (its ``.runs/<phase>.done`` sentinel exists), stale (older than 45 min), or
+    unregistered (a true orphan). Never touches the persistent ``nolan<N>`` fleet."""
+    reg = _read_run_registry()
     killed = []
     for name in _live_sessions():
-        if name.startswith(RUN_AGENT_PREFIX) and kill(name):
-            killed.append(name)
+        if not name.startswith(RUN_AGENT_PREFIX):
+            continue
+        e = reg.get(name)
+        preserve = False
+        if e:
+            done = (_REPO_ROOT / "projects" / str(e.get("slug", "")) / "scriptgen" / ".runs"
+                    / f"{e.get('phase', '')}.done").exists()
+            young = (time.time() - float(e.get("started", 0))) < _RUN_MAX_AGE_S
+            preserve = young and not done          # in-flight → keep across a restart
+        if not preserve:
+            if kill(name):
+                killed.append(name)
+            reg.pop(name, None)
+    _write_run_registry(reg)
     return killed
 
 

@@ -4,6 +4,23 @@
 **Status:** Complete
 **Last Updated:** 2026-07-21
 
+## Script review loop — auto trims + per-substep timing + robust dispatch/reaper (2026-07-21)
+
+Unattended full-auto now TRIMS the four documentation-only artifacts a human isn't reading:
+stylecheck.md + report.md (v3), the prose review.md (findings.json is the deliverable; list_reviews
+keys off findings.json), and the full revision.md changelog (→ 3-line summary); semi/manual keeps
+them all. Mode-aware task briefs via an `unattended` flag (run_full_auto True / run_script_phase
+False). ~5-8 min/round saved, zero quality loss. Per-sub-step TIMING: the hub watches when each
+phase artifact is (re)written and records `.runs/<phase>.timing.json` (step→seconds) into the job
+result — no agent cooperation. ROBUST fixes (not ad-hoc): (1) `_dispatch_confirmed` verifies the
+agent actually went busy, retrying with a cleared input (Escape, no dup) and failing loudly if it
+never starts (fresh agents sometimes leave the task queued). (2) run-agent registry
+(`projects/_run_agents.json`) + smart `reap_run_agents`: PRESERVES a young/unfinished/registered
+in-flight agent across a benign hub restart; reaps finished(sentinel)/stale(>45m)/orphan ones.
+Validated on the cold-start De Beers run: converged 3 rounds (15→10 findings, 1→0 high) to a
+gate-clean 2424-word script. Known limit: full-auto CHAIN doesn't auto-resume across a hub restart
+(current phase's artifacts preserved; would need durable jobs).
+
 ## Script review loop — ephemeral 'auto' agents + attached-safe pickers (2026-07-21)
 
 `auto` agent selection now SPAWNS a dedicated ephemeral agent PER PHASE (`nolan-run-<jobid>-<phase>`,

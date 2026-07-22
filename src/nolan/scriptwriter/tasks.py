@@ -206,7 +206,7 @@ drama invent facts. Model-knowledge is allowed only if flagged `[needs-check]`. 
 everything (facts, angles, drafts, report) — never clobber a prior artifact."""
 
 
-def prep_task(slug: str, store: "ScriptProjectStore") -> str:
+def prep_task(slug: str, store: "ScriptProjectStore", unattended: bool = False) -> str:
     """Semi-auto STEP 1 (and the front half of auto): fetch → ground → propose angles."""
     meta = store.get(slug)
     base, sg = f"projects/{slug}", f"projects/{slug}/scriptgen"
@@ -237,7 +237,7 @@ When done, `{sg}/facts.md` and `{sg}/angles.md` exist and you STOP. Do not draft
 """
 
 
-def draft_task(slug: str, store: "ScriptProjectStore") -> str:
+def draft_task(slug: str, store: "ScriptProjectStore", unattended: bool = False) -> str:
     """Semi-auto STEP 2 (v3): beat-map the chosen angle onto the guide → draft → fact-check → report."""
     meta = store.get(slug)
     base, sg = f"projects/{slug}", f"projects/{slug}/scriptgen"
@@ -385,8 +385,13 @@ words** ({minutes} min) — stay within ~10%. Director-ready format (`# Video Sc
 `facts.md`; save to `{sg}/drafts/draft-<NN>.md` (next unused number)."""
 
 
-def v3_task(slug: str, store: "ScriptProjectStore") -> str:
-    """v3 (auto): grounded + resonant, right-type angle + retention true to the style guide."""
+def v3_task(slug: str, store: "ScriptProjectStore", unattended: bool = False) -> str:
+    """v3 (auto): grounded + resonant, right-type angle + retention true to the style guide.
+
+    ``unattended`` (full-auto) trims the documentation-only steps a human isn't reading — the
+    style self-check (stylecheck.md, made redundant by the real review pass) and the producer
+    report (report.md). Semi/manual runs keep them.
+    """
     meta = store.get(slug)
     base, sg = f"projects/{slug}", f"projects/{slug}/scriptgen"
     style_id = meta["style_id"]
@@ -394,6 +399,8 @@ def v3_task(slug: str, store: "ScriptProjectStore") -> str:
     tw = int(float(minutes) * 150)
     from .ledger import draft_priors
     _priors = draft_priors(store.root, store.resolve_archetype(slug), style_id)
+    _voice = "" if unattended else _voicepass_block(sg)
+    _report = "" if unattended else _report_block(sg, base)
     pending = [s for s in meta.get("sources", []) if s.get("status") == "pending"]
     pending_lines = "\n".join(f"  - [{s['id']}] {s.get('url') or s.get('title')}"
                               for s in pending) or "  - (none)"
@@ -424,9 +431,9 @@ it must never reorganize the guide's structure.
 
 {_factcheck_block(sg)}
 
-{_voicepass_block(sg)}
+{_voice}
 
-{_report_block(sg, base)}
+{_report}
 
 Finally: copy your finished draft to `{base}/script.md` so it's Director-ready. Produce exactly this
 ONE draft — then STOP (write the completion sentinel below). Do NOT review or revise it yourself and
@@ -456,8 +463,12 @@ def _context_inputs_block(sg: str, style_id: str, draft_rel: str, draft_num: int
 Judge the draft on the SAME context that produced it — never on less."""
 
 
-def review_task(slug: str, store: "ScriptProjectStore") -> str:
-    """Diagnose-only critic pass: score the current draft against its typed rubric."""
+def review_task(slug: str, store: "ScriptProjectStore", unattended: bool = False) -> str:
+    """Diagnose-only critic pass: score the current draft against its typed rubric.
+
+    ``unattended`` (full-auto) skips the human-readable prose ``review.md`` — the machine
+    ``findings.json`` is the deliverable that drives the pipeline. Semi/manual keeps the prose.
+    """
     from .rubrics import get_rubric, render_review_md
 
     meta = store.get(slug)
@@ -476,6 +487,29 @@ def review_task(slug: str, store: "ScriptProjectStore") -> str:
     review_rel = f"{sg}/reviews/review-{num:02d}.md"
     findings_rel = f"{sg}/reviews/review-{num:02d}.findings.json"
 
+    if unattended:
+        output = (f"## Output → `{findings_rel}` (machine-readable findings — this is the deliverable)\n"
+                  f"Emit `{findings_rel}` — a JSON array, one object per finding:\n"
+                  f'`{{"id":"f1","dim":"<dim-id>","severity":"high|med|low","beat":"<name>",'
+                  f'"quote":"<phrase>","problem":"<...>","fix":"<...>"}}`\n'
+                  "Be specific and quote the draft; a vague critique can't be applied. "
+                  "(Unattended run — the prose write-up is skipped.)\n\n"
+                  "STOP after writing the findings. Do not touch the draft.")
+    else:
+        output = (f"## Output contract → `{findings_rel}` (FIRST) + `{review_rel}`\n"
+                  f"**First** emit `{findings_rel}` — a JSON array (the machine-readable findings the "
+                  "human gate + the fix pass consume), one object per finding:\n"
+                  f'`{{"id":"f1","dim":"<dim-id>","severity":"high|med|low","beat":"<name>",'
+                  f'"quote":"<phrase>","problem":"<...>","fix":"<...>"}}`\n\n'
+                  f"**Then** write `{review_rel}`: the same findings as a producer-readable critique, "
+                  "grouped by rubric dimension (strongest weight first). For each finding, one entry:\n"
+                  '- **[<dim-id> · high|med|low]** beat "<beat name>" — quote: "<the exact phrase>"\n'
+                  "  - **problem:** <one line>\n  - **fix:** <concrete, specific proposed change>\n\n"
+                  "If a dimension is clean, say so in one line. Be specific and quote the draft.\n\n"
+                  f"At the TOP of `{review_rel}` record provenance: `reviewed: draft-{num:02d} · "
+                  f"archetype: {archetype} · agent: <your session> · date: <today>`\n\n"
+                  "STOP after writing the review + findings. Do not touch the draft.")
+
     return f"""# NOLAN script REVIEW task (diagnose-only): "{meta['name']}"
 
 You are a **fresh-eyes producer/editor**. You did NOT write this draft. Review it hard against
@@ -486,29 +520,17 @@ diagnosis only; a separate revise pass applies the fixes the producer approves.
 
 {rubric_md}
 
-## Output contract → `{findings_rel}` (FIRST) + `{review_rel}`
-**First** emit `{findings_rel}` — a JSON array (the machine-readable findings the human gate +
-the fix pass consume), one object per finding:
-`{{"id":"f1","dim":"<dim-id>","severity":"high|med|low","beat":"<name>","quote":"<phrase>","problem":"<...>","fix":"<...>"}}`
-
-**Then** write `{review_rel}`: the same findings as a producer-readable critique, grouped by
-rubric dimension (strongest weight first). For each finding, one entry:
-- **[<dim-id> · high|med|low]** beat "<beat name>" — quote: "<the exact phrase at issue>"
-  - **problem:** <one line>
-  - **fix:** <concrete, specific proposed change — not "make it better">
-
-If a dimension is clean, say so in one line. Be specific and quote the draft; a vague critique
-can't be applied.
-
-At the TOP of `{review_rel}` record provenance:
-`reviewed: draft-{num:02d} · archetype: {archetype} · agent: <your session> · model: <model> · date: <today>`
-
-STOP after writing the review + findings. Do not touch the draft.
+{output}
 """
 
 
-def revise_task(slug: str, store: "ScriptProjectStore") -> str:
-    """Apply the approved findings to the current draft → the next numbered draft."""
+def revise_task(slug: str, store: "ScriptProjectStore", unattended: bool = False) -> str:
+    """Apply the approved findings to the current draft → the next numbered draft.
+
+    ``unattended`` (full-auto) skips the stylecheck.md touch-up (a doc redundant with the review)
+    and asks for a 3-line changelog instead of a full one. Grounding (facts/citations/factcheck)
+    is always updated. Semi/manual keeps the full changelog + stylecheck.
+    """
     from .rubrics import get_rubric, render_coherence_md
 
     meta = store.get(slug)
@@ -529,6 +551,18 @@ def revise_task(slug: str, store: "ScriptProjectStore") -> str:
     review_rel = f"{sg}/reviews/review-{num:02d}.md"
     new_draft_rel = f"{sg}/drafts/draft-{nxt:02d}.md"
     revision_rel = f"{sg}/reviews/revision-{num:02d}.md"
+    _delta = (f"Reflect any added/changed claims in `{sg}/factcheck.md` and `{sg}/citations.md`."
+              if unattended else
+              f"Reflect any added/changed claims in `{sg}/factcheck.md` and `{sg}/citations.md`; "
+              f"note style touch-ups in `{sg}/stylecheck.md`.")
+    _changelog = (f"Write `{revision_rel}` — a 3-line summary: `revised: draft-{num:02d} → "
+                  f"draft-{nxt:02d} · from review-{num:02d}` + the count applied + any finding NOT "
+                  "applied (with why)."
+                  if unattended else
+                  f"Write `{revision_rel}` — a changelog mapping each change to the finding it "
+                  "answers: `- <finding-id> (<dim>): <what changed>`, and list any approved finding "
+                  f"you did NOT apply, with why. At the top record: `revised: draft-{num:02d} → "
+                  f"draft-{nxt:02d} · from review-{num:02d} · agent: <your session> · date: <today>`.")
 
     return f"""# NOLAN script REVISE task: "{meta['name']}"
 
@@ -551,18 +585,11 @@ the change stays grounded — never invent a citation.
 {coherence_md}
 
 ## Step 2 — Update the grounding delta
-Reflect any added/changed claims in `{sg}/factcheck.md` and `{sg}/citations.md`; note style
-touch-ups in `{sg}/stylecheck.md`. Keep `**Total Duration:**` honest (words / 150).
+{_delta} Keep `**Total Duration:**` honest (words / 150).
 
 ## Output → `{new_draft_rel}` + `{revision_rel}`
 Write the revised script to `{new_draft_rel}` in Director-ready format (`# Video Script` /
-`**Total Duration:** M:SS` / `## <Beat> [t]`). Write `{revision_rel}` — a changelog mapping each
-change to the finding it answers:
-`- <finding-id> (<dim>): <what changed>`
-and list any approved finding you did NOT apply, with why.
-
-At the top of `{revision_rel}` record:
-`revised: draft-{num:02d} → draft-{nxt:02d} · from review-{num:02d} · agent: <your session> · date: <today>`
+`**Total Duration:** M:SS` / `## <Beat> [t]`). {_changelog}
 
 **STOP after writing `{new_draft_rel}` + `{revision_rel}` (and the completion sentinel below).**
 Do NOT promote anything to `{base}/script.md`, do NOT start another review or revise round, and do

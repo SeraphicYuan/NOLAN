@@ -327,7 +327,7 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
 
 
 async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,
-                                     window_s: float = 45.0, overlap_s: float = 10.0):
+                                     window_s: float = 45.0, overlap_s: float = 10.0, visual: bool = True):
     """Build/refresh a TRANSCRIPT library from a YouTube channel: list its videos, fetch each transcript
     (captions only — NO video download), chunk into overlapping timestamped windows, ingest as a
     transcript-tier VideoIndex row (has_footage=0) + embed into the unified semantic store. Per-video
@@ -345,7 +345,7 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
     if not vids:
         raise RuntimeError(f"no videos found for channel {channel!r} (check the URL / @handle)")
     now = _dt.datetime.now().isoformat(timespec="seconds")
-    got = skipped = windows_total = 0
+    got = skipped = windows_total = frames_total = 0
     for i, v in enumerate(vids):
         title = (v.get("title") or v.get("video_id") or "?")[:60]
         job.set_progress(0.05 + 0.9 * (i / len(vids)), f"[{i + 1}/{len(vids)}] {title}")
@@ -364,9 +364,21 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
                              len(windows), channel, added=now)
         got += 1
         windows_total += len(windows)
-        job.log(f"  ✓ {title} ({len(windows)} windows)")
-    job.set_progress(1.0, f"{got} transcripts ingested ({windows_total} windows), {skipped} skipped")
-    return {"channel": channel, "found": len(vids), "ingested": got, "skipped": skipped, "windows": windows_total}
+        nframes = 0
+        if visual:                                           # eager FREE visual tier: storyboard frames (no video dl)
+            try:
+                import tempfile
+                from nolan import transcript_frames as tfr
+                yid = meta.get("video_id") or v["video_id"]
+                tiles = await asyncio.to_thread(tfr.storyboard_tiles, v["url"], Path(tempfile.mkdtemp()), 12.0, 40)
+                nframes = await asyncio.to_thread(tfr.embed_frames, tiles, yid, v["url"], "storyboard", title)
+                frames_total += nframes
+            except Exception as e:                           # visual is a bonus tier — never fail the transcript run
+                job.log(f"    (storyboard visual skipped: {type(e).__name__}: {e})")
+        job.log(f"  ✓ {title} ({len(windows)} windows" + (f", +{nframes} frames" if nframes else "") + ")")
+    job.set_progress(1.0, f"{got} transcripts ({windows_total} windows, {frames_total} frames), {skipped} skipped")
+    return {"channel": channel, "found": len(vids), "ingested": got, "skipped": skipped,
+            "windows": windows_total, "frames": frames_total}
 
 
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",
@@ -2239,24 +2251,74 @@ def _completion_artifact(store, slug: str, phase: str, baseline: dict):
     return None
 
 
+def _phase_milestones(store, slug: str, phase: str, baseline: dict):
+    """Ordered (step, Path) the hub watches during a phase — it times each sub-step by when the
+    artifact is (re)written, needing no agent cooperation. Pre-existing files count only if
+    modified during THIS phase (see _await_completion's mtime baseline)."""
+    sg = store.scriptgen_dir(slug)
+    nd = baseline["max_draft"] + 1          # the draft a draft/v3/revise phase produces
+    rn = baseline["max_draft"] or 1         # the review a review phase produces
+    M = []
+    if phase in ("v3", "prep"):
+        M += [("facts", sg / "facts.md"), ("angles", sg / "angles.md")]
+    if phase in ("v3", "draft"):
+        M += [("beatmap", sg / "beatmap.md"),
+              ("draft", store.drafts_dir(slug) / f"draft-{nd:02d}.md"),
+              ("factcheck", sg / "factcheck.md"), ("stylecheck", sg / "stylecheck.md"),
+              ("report", sg / "report.md")]
+    if phase == "review":
+        M += [("findings", store.review_findings_path(slug, rn)),
+              ("review_md", store.review_path(slug, rn))]
+    if phase == "revise":
+        M += [("draft", store.drafts_dir(slug) / f"draft-{nd:02d}.md"),
+              ("citations", sg / "citations.md"), ("factcheck", sg / "factcheck.md"),
+              ("stylecheck", sg / "stylecheck.md"), ("changelog", store.revision_path(slug, rn))]
+    return M
+
+
 async def _await_completion(job, store, slug: str, phase: str, baseline: dict,
                             *, timeout: int = 1800, lo: float = 0.3, hi: float = 0.95) -> dict:
     """Wait for a dispatched agent to finish: primary = the ``.runs/<phase>.done`` sentinel it
-    writes last; fallback = the expected output artifact appearing and its size going stable."""
+    writes last; fallback = the expected output artifact appearing and its size going stable.
+    Also records per-sub-step timing (`.runs/<phase>.timing.json`) by watching milestone artifacts."""
+    import json as _json
     import time as _t
     sentinel = store.done_path(slug, phase)
     art = _completion_artifact(store, slug, phase, baseline)
+    milestones = _phase_milestones(store, slug, phase, baseline)
+    base_mtime = {}
+    for name, path in milestones:
+        try:
+            base_mtime[name] = path.stat().st_mtime if path.exists() else 0.0
+        except OSError:
+            base_mtime[name] = 0.0
+    seen: dict = {}
     start = _t.monotonic()
     last_size, stable = -1, 0
-    # The SENTINEL is authoritative (written last, when the agent is truly done incl. its
-    # follow-on grounding files). Artifact-stability is only a failsafe for an agent that
-    # never writes one — and it must be SLOW, because the draft file stabilizes minutes
-    # before the agent finishes factcheck/report/sentinel. ~5 min of no change = compliant
-    # agents' sentinels win; a non-compliant agent still eventually completes.
-    STABLE_POLLS = 50   # × 6s ≈ 300s
+    STABLE_POLLS = 50   # × 6s ≈ 300s — the sentinel (authoritative, written last) wins in practice
+
+    def _finish(done: bool, via: str) -> dict:
+        timing = {"phase": phase, "total_s": round(_t.monotonic() - start, 1), "via": via,
+                  "milestones": [{"step": n, "at_s": seen[n]} for n, _ in milestones if n in seen]}
+        try:
+            store.runs_dir(slug).mkdir(parents=True, exist_ok=True)
+            (store.runs_dir(slug) / f"{phase}.timing.json").write_text(
+                _json.dumps(timing, indent=2), encoding="utf-8")
+        except OSError:
+            pass
+        return {"done": done, "via": via, "timing": timing}
+
     while _t.monotonic() - start < timeout:
+        now = round(_t.monotonic() - start, 1)
+        for name, path in milestones:            # record each sub-step's first write this phase
+            if name not in seen:
+                try:
+                    if path.exists() and path.stat().st_mtime > base_mtime[name] + 0.5:
+                        seen[name] = now
+                except OSError:
+                    pass
         if sentinel.exists():
-            return {"done": True, "via": "sentinel"}
+            return _finish(True, "sentinel")
         if art is not None and art.exists():
             try:
                 sz = art.stat().st_size
@@ -2265,14 +2327,14 @@ async def _await_completion(job, store, slug: str, phase: str, baseline: dict,
             if sz > 0 and sz == last_size:
                 stable += 1
                 if stable >= STABLE_POLLS:
-                    return {"done": True, "via": "artifact-stable"}
+                    return _finish(True, "artifact-stable")
             else:
                 last_size, stable = sz, 0
         secs = int(_t.monotonic() - start)
         job.set_progress(min(hi, lo + (hi - lo) * (secs / timeout)),
                          f"{phase}: agent working… ({secs}s)")
         await asyncio.sleep(6)
-    return {"done": False, "via": "timeout"}
+    return _finish(False, "timeout")
 
 
 def _is_auto_session(requested: str) -> bool:
@@ -2298,39 +2360,81 @@ async def _spawn_and_boot(job, name: str, *, timeout: int = 90) -> str:
     raise RuntimeError(f"agent {name} did not boot within {timeout}s")
 
 
+def _tmux_keys(session: str, keys: list) -> None:
+    """Send raw tmux keys (e.g. ['Enter'], ['Escape']) to a session — best-effort."""
+    import shutil
+    import subprocess
+    base = ["tmux"] if shutil.which("tmux") else ["wsl.exe", "tmux"]
+    try:
+        subprocess.run(base + ["send-keys", "-t", session] + list(keys),
+                       capture_output=True, timeout=5)
+    except (FileNotFoundError, subprocess.SubprocessError):
+        pass
+
+
+async def _dispatch_confirmed(session: str, msg: str, *, tries: int = 4, grace_polls: int = 6) -> bool:
+    """Dispatch a task and CONFIRM the agent actually started it (transitioned to busy). A
+    freshly-spawned agent sometimes leaves the task queued in the input (the submit-Enter races
+    the TUI); this retries with a cleared input until the agent is working, or returns False so
+    the caller fails loudly instead of hanging until the phase timeout."""
+    from nolan import fleet
+    for attempt in range(tries):
+        if attempt > 0:                       # clear any queued/partial input before re-sending
+            await asyncio.to_thread(_tmux_keys, session, ["Escape"])
+            await asyncio.sleep(0.5)
+        await asyncio.to_thread(_dispatch_to_tmux, session, msg)
+        for _ in range(grace_polls):
+            await asyncio.sleep(2)
+            try:
+                st = await asyncio.to_thread(fleet.detect_status, session)
+            except Exception:
+                st = "unknown"
+            if st == "busy":
+                return True                   # confirmed: the agent picked up the task
+            if st == "waiting_permission":
+                await asyncio.to_thread(_tmux_keys, session, ["Enter"])
+    return False
+
+
 async def _run_on_agent(job, store, slug: str, phase: str, requested: str, *,
-                        lo: float, hi: float, do_gate: bool, jobid: str) -> dict:
+                        lo: float, hi: float, do_gate: bool, jobid: str,
+                        unattended: bool = False) -> dict:
     """Run one phase on an agent. ``auto``/'' → spawn a DEDICATED ephemeral agent
     (``nolan-run-<jobid>-<phase>``), run, and kill it the instant the phase completes (fresh-eyes
     is automatic since every phase is a new agent). An explicit ``nolanN`` uses that persistent
-    session, routing review to a different one for fresh eyes."""
+    session, routing review to a different one for fresh eyes. ``unattended`` trims the
+    documentation-only steps (stylecheck/report/prose review/full changelog)."""
     from nolan import fleet
     if _is_auto_session(requested):
         name = f"nolan-run-{(jobid or 'x')[:12]}-{phase}"
         job.set_progress(lo, f"Spawning dedicated agent {name}…")
         sess = await _spawn_and_boot(job, name)
+        await asyncio.to_thread(fleet.register_run_agent, name, slug, phase)  # for the reaper
         try:
             return await _dispatch_and_wait(job, store, slug, phase, sess,
-                                            lo=lo, hi=hi, do_gate=do_gate)
+                                            lo=lo, hi=hi, do_gate=do_gate, unattended=unattended)
         finally:
             await asyncio.to_thread(fleet.kill, sess)   # clean up the moment the phase is done
+            await asyncio.to_thread(fleet.unregister_run_agent, name)
     sess = requested
     if phase == "review":
         sess = _pick_reviewer_session(sess, store, slug)
-    return await _dispatch_and_wait(job, store, slug, phase, sess, lo=lo, hi=hi, do_gate=do_gate)
+    return await _dispatch_and_wait(job, store, slug, phase, sess, lo=lo, hi=hi,
+                                    do_gate=do_gate, unattended=unattended)
 
 
 async def _dispatch_and_wait(job, store, slug: str, phase: str, session: str,
                              *, lo: float, hi: float, timeout: int = 1800,
-                             do_gate: bool = False) -> dict:
+                             do_gate: bool = False, unattended: bool = False) -> dict:
     """Write the brief (+ completion sentinel), dispatch to tmux, WAIT for completion, then
-    optionally auto-run the gate. The unit that both run_script_phase and run_full_auto compose."""
+    optionally auto-run the gate. The unit that both run_script_phase and run_full_auto compose.
+    ``unattended`` trims documentation-only steps from the brief (full-auto)."""
     from nolan.scriptwriter.tasks import sentinel_block
     from nolan.scriptwriter.gate import run_gate
 
     sg = f"projects/{slug}/scriptgen"
     fname = _PHASE_FILE[phase]
-    brief = _phase_builder(phase)(slug, store) + sentinel_block(sg, phase)
+    brief = _phase_builder(phase)(slug, store, unattended=unattended) + sentinel_block(sg, phase)
     store.runs_dir(slug).mkdir(parents=True, exist_ok=True)
     store.clear_done(slug, phase)
     (store.scriptgen_dir(slug) / fname).write_text(brief, encoding="utf-8")
@@ -2348,7 +2452,10 @@ async def _dispatch_and_wait(job, store, slug: str, phase: str, session: str,
     job.set_progress(lo, f"Dispatching {phase} → {session}…")
     msg = (f"New NOLAN script task ({_PHASE_LABEL[phase]}) — read and complete "
            f"{task_posix} now, following it exactly.")
-    await asyncio.to_thread(_dispatch_to_tmux, session, msg)
+    if not await _dispatch_confirmed(session, msg):
+        raise RuntimeError(
+            f"agent {session} did not start the {phase} task — dispatch never confirmed "
+            "(the agent stayed idle after repeated submits).")
 
     res = await _await_completion(job, store, slug, phase, baseline,
                                   timeout=timeout, lo=lo, hi=hi)
@@ -2363,7 +2470,7 @@ async def _dispatch_and_wait(job, store, slug: str, phase: str, session: str,
         except Exception as e:
             gate = {"error": str(e)}
     return {"phase": phase, "session": session, "completed": res["done"], "via": res["via"],
-            "gate": gate, "task_file": task_posix}
+            "timing": res.get("timing"), "gate": gate, "task_file": task_posix}
 
 
 async def run_script_phase(job, *, store_root, slug: str, session: str = "auto",
@@ -2417,14 +2524,14 @@ async def run_full_auto(job, *, store_root, slug: str, session: str = "auto"):
     try:
         job.set_progress(0.03, "Full auto ▸ drafting…")
         r1 = await _run_on_agent(job, store, slug, "v3", session, lo=0.05, hi=0.40,
-                                 do_gate=True, jobid=jobid)
+                                 do_gate=True, jobid=jobid, unattended=True)
         summary["phases"].append(r1)
         if not r1["completed"]:
             return {**summary, "stopped_at": "draft"}
 
         job.set_progress(0.42, "Full auto ▸ reviewing…")
         r2 = await _run_on_agent(job, store, slug, "review", session, lo=0.42, hi=0.58,
-                                 do_gate=False, jobid=jobid)
+                                 do_gate=False, jobid=jobid, unattended=True)
         summary["phases"].append(r2)
         if not r2["completed"]:
             return {**summary, "stopped_at": "review"}
@@ -2436,7 +2543,7 @@ async def run_full_auto(job, *, store_root, slug: str, session: str = "auto"):
         job.set_progress(0.60, f"Full auto ▸ approved {len(approved)} findings, revising…")
 
         r3 = await _run_on_agent(job, store, slug, "revise", session, lo=0.62, hi=0.94,
-                                 do_gate=True, jobid=jobid)
+                                 do_gate=True, jobid=jobid, unattended=True)
         summary["phases"].append(r3)
         try:
             summary["verify"] = verify_revision(store, slug, n)

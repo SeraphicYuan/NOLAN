@@ -510,12 +510,16 @@ class ScriptProjectStore:
         d = self.reviews_dir(slug)
         if not d.exists():
             return []
+        # A review exists if its machine deliverable (findings.json) OR the prose review.md is
+        # present — so unattended auto (which skips the prose write-up) still registers.
+        ns = {self._draft_num(p.name) for p in d.glob("review-*.findings.json")}
+        ns |= {self._draft_num(p.name) for p in d.glob("review-*.md")}
         out: List[Dict[str, Any]] = []
-        for p in sorted(d.glob("review-*.md")):
-            n = self._draft_num(p.name)
+        for n in sorted(x for x in ns if x):
             out.append({
-                "name": p.name, "n": n,
+                "name": f"review-{n:02d}.md", "n": n,
                 "has_findings": self.review_findings_path(slug, n).exists(),
+                "has_md": self.review_path(slug, n).exists(),
                 "has_approved": self.review_approved_path(slug, n).exists(),
                 "has_revision": self.revision_path(slug, n).exists(),
             })
