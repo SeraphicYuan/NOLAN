@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Key Assets — NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px 80px; }
+    h1 { margin: 0 0 2px; font-size: 22px; }
+    .sub { color: var(--text-muted, #8a8a90); font-size: 13px; margin-bottom: 18px; }
+    .bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
+    select { background: var(--bg-elev, #1b1b1f); color: inherit; border:1px solid var(--border,#33333a);
+             border-radius:8px; padding:7px 10px; font-size:13px; }
+    .stats { display:flex; gap:18px; flex-wrap:wrap; margin:6px 0 22px; }
+    .stat { font-size:13px; color: var(--text-muted,#8a8a90); }
+    .stat b { color: var(--text,#e8e8ea); font-size:16px; font-weight:600; }
+    .dir { border:1px solid var(--border,#2a2a30); border-radius:14px; padding:16px 18px; margin-bottom:16px;
+           background: var(--bg-elev,#161619); }
+    .dir > h2 { margin:0 0 3px; font-size:16px; }
+    .dir .rat { color: var(--text-muted,#8a8a90); font-size:12.5px; margin-bottom:8px; }
+    .queries { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+    .q { font-size:11px; color: var(--text-muted,#9a9aa2); background: var(--bg,#0e0e11);
+         border:1px solid var(--border,#2a2a30); border-radius:20px; padding:3px 9px; }
+    .ent { border-top:1px solid var(--border,#26262c); padding:11px 0; }
+    .ent:first-of-type { border-top:none; }
+    .ent .top { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+    .name { font-weight:600; font-size:14px; }
+    .kind { font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color: var(--text-muted,#8a8a90);
+            border:1px solid var(--border,#33333a); border-radius:5px; padding:1px 6px; }
+    .hero { color:#f2c14e; }
+    .role { color: var(--text-muted,#9a9aa2); font-size:12.5px; margin:3px 0 7px; }
+    .chips { display:flex; gap:6px; flex-wrap:wrap; }
+    .chip { font-size:11px; border-radius:6px; padding:2px 8px; border:1px solid var(--border,#33333a);
+            background: var(--bg,#0e0e11); }
+    .chip.cut { border-color:#3a6ea5; }
+    .chip.rel { border-style:dashed; opacity:.85; }
+    .chip .t { font-weight:600; }
+    .chip .n { color: var(--text-muted,#8a8a90); }
+    .anchors { margin-top:6px; font-size:11.5px; color: var(--text-muted,#7d7d85); font-style:italic; }
+    .gallery { display:flex; gap:8px; flex-wrap:wrap; margin-top:9px; }
+    .gallery img, .gallery video { height:74px; border-radius:7px; border:1px solid var(--border,#33333a);
+                                   object-fit:cover; background:#000; }
+    .empty { color: var(--text-muted,#8a8a90); font-size:13.5px; padding:40px 0; }
+    .legend { color: var(--text-muted,#7d7d85); font-size:11.5px; margin-top:20px; }
+    .badge { display:inline-block; font-size:10.5px; padding:2px 8px; border-radius:20px; margin-left:8px;
+             border:1px solid var(--border,#33333a); color: var(--text-muted,#9a9aa2); }
+    .badge.plan { border-color:#7a6a3a; color:#e0c878; }
+    .badge.done { border-color:#3a7a4a; color:#7fd89a; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Key Assets <span id="mode" class="badge"></span></h1>
+    <div class="sub">The anchored (hero) pool — the specific, named things the video is <i>about</i>,
+      researched globally before acquisition. Kept separate from the <a href="/pool">Asset Pool</a>;
+      both feed authoring.</div>
+    <div class="bar">
+      <label>Project <select id="projectSel"></select></label>
+      <span id="gen" class="stat"></span>
+    </div>
+    <div id="stats" class="stats"></div>
+    <div id="body"></div>
+    <div class="legend">★ = hero · ✂ = collage cutout (bg-removed) · dashed = directionally related
+      (not exact) · italic = spoken anchors to sync to</div>
+  </div>
+
+  <script src="/static/nav.js" data-active="keyassets"></script>
+  <script>
+    var $ = function (s) { return document.querySelector(s); };
+    var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"]/g,
+      function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); };
+    var curProject = "";
+
+    function fileUrl(path) {
+      return "/api/keyassets/file?project=" + encodeURIComponent(curProject) + "&path=" + encodeURIComponent(path);
+    }
+
+    function chip(a) {
+      var cls = "chip" + (a.collage_ready ? " cut" : "") + (a.relevance === "related" ? " rel" : "");
+      var label = esc(a.type) + (a.collage_ready ? " ✂" : "");
+      var note = a.note ? ' <span class="n">' + esc(a.note) + "</span>" : "";
+      return '<span class="' + cls + '"><span class="t">' + label + "</span>" + note + "</span>";
+    }
+
+    function thumb(path) {
+      var v = /\.(mp4|mov|webm)$/i.test(path);
+      var u = fileUrl(path);
+      return v ? '<video src="' + u + '" muted></video>' : '<img loading="lazy" src="' + u + '">';
+    }
+
+    function entHtml(e) {
+      var star = e.priority === "hero" ? '<span class="hero">★</span> ' : "";
+      var chips = (e.assets || []).map(chip).join("");
+      var anchors = (e.mentions && e.mentions.length)
+        ? '<div class="anchors">“' + e.mentions.map(esc).join("” · “") + "”</div>" : "";
+      var gal = (e.collected && e.collected.length)
+        ? '<div class="gallery">' + e.collected.map(thumb).join("") + "</div>" : "";
+      return '<div class="ent"><div class="top">' + star +
+        '<span class="name">' + esc(e.name) + '</span>' +
+        '<span class="kind">' + esc(e.kind) + "</span></div>" +
+        '<div class="role">' + esc(e.narrative_role) + "</div>" +
+        '<div class="chips">' + chips + "</div>" + anchors + gal + "</div>";
+    }
+
+    function render(d) {
+      $("#mode").className = "badge " + (d.canonical ? "done" : "plan");
+      $("#mode").textContent = d.canonical ? "collected" : "plan";
+      $("#gen").textContent = d.generated ? "generated " + d.generated : "";
+      if (!d.has_proposal) {
+        $("#stats").innerHTML = "";
+        $("#body").innerHTML = '<div class="empty">No key-assets plan for this project yet. '
+          + 'Run <code>python -X utf8 -m nolan.keyassets --comp &lt;slug&gt;</code> (or --script) to build one.</div>';
+        return;
+      }
+      var s = d.stats;
+      $("#stats").innerHTML =
+        stat(s.entities, "entities") + stat(s.hero, "hero") + stat(s.directions, "directions") +
+        stat(s.footage, "footage / clips") + stat(s.related, "related (~)") + stat(s.collected, "collected");
+      $("#body").innerHTML = (d.directions || []).map(function (dir) {
+        var q = (dir.queries || []).map(function (x) { return '<span class="q">' + esc(x) + "</span>"; }).join("");
+        return '<div class="dir"><h2>▸ ' + esc(dir.title) + "</h2>" +
+          (dir.rationale ? '<div class="rat">' + esc(dir.rationale) + "</div>" : "") +
+          '<div class="queries">' + q + "</div>" +
+          (dir.entities || []).map(entHtml).join("") + "</div>";
+      }).join("");
+    }
+    function stat(n, label) { return '<span class="stat"><b>' + n + "</b> " + label + "</span>"; }
+
+    function load(project) {
+      curProject = project;
+      fetch("/api/keyassets?project=" + encodeURIComponent(project))
+        .then(function (r) { return r.json(); }).then(render)
+        .catch(function () { $("#body").innerHTML = '<div class="empty">Failed to load.</div>'; });
+    }
+
+    function pickName(p) { return typeof p === "string" ? p : (p.slug || p.name || p.id || ""); }
+
+    function loadProjects() {
+      fetch("/api/scenes/projects").then(function (r) { return r.json(); }).then(function (data) {
+        var list = Array.isArray(data) ? data : (data.projects || []);
+        var names = list.map(pickName).filter(Boolean);
+        var sel = $("#projectSel");
+        sel.innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("");
+        var want = new URLSearchParams(location.search).get("project");
+        if (want && names.indexOf(want) >= 0) sel.value = want;
+        sel.onchange = function () { load(sel.value); history.replaceState(null, "", "?project=" + encodeURIComponent(sel.value)); };
+        if (sel.value) load(sel.value);
+      });
+    }
+    loadProjects();
+  </script>
+</body>
+</html>
