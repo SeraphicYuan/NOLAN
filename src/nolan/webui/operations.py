@@ -1946,13 +1946,13 @@ async def generate_voiceover(job, *, config, project: str = None, script_project
 async def generate_voiceover_retake(job, *, config, script_project: str, index: int,
                                     voice_id: str = None, ref_audio: str = None,
                                     ref_text: str = None, text: str = None,
-                                    num_step: int = None):
+                                    delivery: str = None, num_step: int = None):
     """Job adapter over voice_pipeline.retake_section (B2): re-synthesize one section."""
     from nolan.voice_pipeline import retake_section
     return await retake_section(
         config=config, script_project=script_project, index=index, text=text,
-        voice_id=voice_id, ref_audio=ref_audio, ref_text=ref_text, num_step=num_step,
-        log=job.log, progress=job.set_progress)
+        delivery=delivery, voice_id=voice_id, ref_audio=ref_audio, ref_text=ref_text,
+        num_step=num_step, log=job.log, progress=job.set_progress)
 
 
 async def generate_captions(job, *, config, project: str):

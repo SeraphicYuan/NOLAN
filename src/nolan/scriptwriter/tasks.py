@@ -95,6 +95,9 @@ Rules:
 - Target **~{target_words} words** ({meta.get('target_minutes', 8)} min at 150 wpm).
   Set `**Total Duration:**` to `words / 150` rounded to M:SS.
 - Bracketed timecodes are estimates; allocate them by section word count.
+- OPTIONAL delivery: if a beat clearly wants a specific vocal tone, put one
+  `[delivery: <note>]` line right under the heading (e.g. `[delivery: somber, unhurried]`).
+  It steers the voiceover and is never spoken. Omit it unless it earns its place.
 - Every factual claim in the script must trace to a line in `facts.md`.
 
 ## Step 4 — Fact-check → `{sg}/factcheck.md`

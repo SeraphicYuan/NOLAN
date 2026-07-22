@@ -78,6 +78,7 @@ class OmniVoiceConfig:
     model: str = "k2-fsa/OmniVoice"
     num_step: int = 32              # diffusion steps; 16 faster, 32 higher quality
     free_comfyui_vram: bool = True  # ask ComfyUI to unload models before a TTS job
+    sub_chunk_words: int = 60       # A5: sentence-sub-chunk a beat longer than this (0 = off)
 
 
 @dataclass

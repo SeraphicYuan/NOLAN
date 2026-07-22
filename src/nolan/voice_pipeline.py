@@ -60,6 +60,63 @@ async def _free_comfyui_vram(config) -> None:
         pass  # ComfyUI not running / no /free — fine, we proceed anyway
 
 
+_ABBR = ("mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "vs", "etc", "inc",
+         "ltd", "co", "no", "fig", "e.g", "i.e", "u.s", "u.k")
+
+
+def _split_sentences(text: str) -> list:
+    """Sentence-split (abbreviation-aware) for A5 sub-chunking. Pure-python, no NLTK/spaCy."""
+    import re
+    t = re.sub(r"\s+", " ", (text or "").strip())
+    if not t:
+        return []
+    parts = re.split(r'(?<=[.!?])\s+(?=[“"\'(A-Z0-9])', t)
+    out = []
+    abbr_re = re.compile(r"\b(?:" + "|".join(_ABBR) + r")\.$", re.I)
+    for p in parts:
+        if out and abbr_re.search(out[-1]):        # false split after an abbreviation → re-join
+            out[-1] = out[-1] + " " + p
+        else:
+            out.append(p)
+    return out
+
+
+def _split_to_chunks(text: str, max_words: int) -> list:
+    """Greedily pack sentences into ≤``max_words`` chunks (A5). Diffusion TTS quality degrades
+    with length, so a long beat synthesizes better as a few sentence-chunks concatenated."""
+    if max_words <= 0:
+        return [text]
+    sents = _split_sentences(text)
+    chunks, cur, n = [], [], 0
+    for s in sents:
+        w = len(s.split())
+        if cur and n + w > max_words:
+            chunks.append(" ".join(cur))
+            cur, n = [], 0
+        cur.append(s)
+        n += w
+    if cur:
+        chunks.append(" ".join(cur))
+    return chunks or [text]
+
+
+def _concat_section_wavs(wavs, dst, *, gap_ms: int = 90) -> None:
+    """Concatenate sub-chunk wavs into one section wav with a small silence gap between them
+    (natural sentence pause + avoids join clicks). Same-format PCM frames, byte-level splice."""
+    import wave
+    blocks, fr, sw, nch = [], 24000, 2, 1
+    for w in wavs:
+        with wave.open(str(w), "rb") as r:
+            fr, sw, nch = r.getframerate(), r.getsampwidth(), r.getnchannels()
+            blocks.append(r.readframes(r.getnframes()))
+    silence = b"\x00" * (int(gap_ms / 1000.0 * fr) * nch * sw)
+    with wave.open(str(dst), "wb") as w:
+        w.setnchannels(nch)
+        w.setsampwidth(sw)
+        w.setframerate(fr)
+        w.writeframes(silence.join(blocks))
+
+
 def build_tts_items(bodies, *, ref_audio=None, ref_text=None, instruct=None,
                     speed=None, language_id=None, normalize: bool = True) -> list:
     """The per-section synthesis batch, one consistent voice across sections.
@@ -99,6 +156,72 @@ def _audio_filter(tempo: float, loudnorm: bool) -> Optional[str]:
     if loudnorm:
         parts.append("loudnorm=I=-16:TP=-2:LRA=11")
     return ",".join(parts) if parts else None
+
+
+def synthesize_sections(provider, bodies, work, *, ref_audio=None, ref_text=None,
+                        deliveries=None, speed=None, language_id=None, num_step=None,
+                        sub_chunk_words: int = 0, normalize: bool = True,
+                        base_index: int = 0) -> dict:
+    """Synthesize exactly one wav per section (id ``sec_{i:04d}``) — the contract the rest of the
+    pipeline depends on. A5: if ``sub_chunk_words`` > 0, a section longer than that is split into
+    sentence-chunks synthesized separately and concatenated (the beat boundary is preserved). A6:
+    ``deliveries[i]`` becomes that section's ``instruct`` — but ONLY when not cloning a voice:
+    OmniVoice cannot take both a ``ref_audio`` clone AND a voice-design ``instruct`` (it yields
+    no audio), so the clone wins and the delivery is dropped. Returns {sec_id: Path}."""
+    from nolan.tts_normalize import normalize_for_speech
+    deliveries = deliveries or [None] * len(bodies)
+    items, plan = [], []   # plan: (sec_id, [sub_ids])
+    for k, body in enumerate(bodies):
+        i = base_index + k
+        sec_id = f"sec_{i:04d}"
+        text = normalize_for_speech(body) if normalize else body
+        chunks = _split_to_chunks(text, sub_chunk_words) if sub_chunk_words > 0 else [text]
+        # OmniVoice can't clone AND take an instruct → the cloned voice wins.
+        instruct = None if ref_audio else (deliveries[k] or None)
+        if len(chunks) <= 1:
+            items.append(_tts_item(sec_id, chunks[0] if chunks else text,
+                                   ref_audio, ref_text, instruct, speed, language_id))
+            plan.append((sec_id, [sec_id]))
+        else:
+            subs = []
+            for j, ch in enumerate(chunks):
+                sid = f"{sec_id}__{j:02d}"
+                items.append(_tts_item(sid, ch, ref_audio, ref_text, instruct, speed, language_id))
+                subs.append(sid)
+            plan.append((sec_id, subs))
+
+    produced = provider.synthesize_batch(items, work, num_step=num_step)
+    out = {}
+    for sec_id, subs in plan:
+        wavs = [produced[s] for s in subs if s in produced]
+        if not wavs:
+            continue
+        if len(subs) == 1:
+            out[sec_id] = wavs[0]
+        else:
+            dst = Path(work) / f"{sec_id}.wav"
+            _concat_section_wavs(wavs, dst)
+            for s in subs:                          # tidy the sub-chunk wavs
+                p = produced.get(s)
+                if p and Path(p) != dst:
+                    Path(p).unlink(missing_ok=True)
+            out[sec_id] = dst
+    return out
+
+
+def _tts_item(sid, text, ref_audio, ref_text, instruct, speed, language_id) -> dict:
+    it = {"id": sid, "text": text}
+    if ref_audio:
+        it["ref_audio"] = ref_audio
+    if ref_text:
+        it["ref_text"] = ref_text
+    if instruct:
+        it["instruct"] = instruct
+    if speed is not None:
+        it["speed"] = speed
+    if language_id:
+        it["language_id"] = language_id
+    return it
 
 
 def concat_wavs_to_mp3(ordered, list_file, out_mp3, *, tempo: float = 1.0,
@@ -249,8 +372,8 @@ def restore_take(vo_dir, take_id: str) -> bool:
 async def retake_section(*, config, index: int, project: str = None, script_project: str = None,
                          project_dir: Path = None, text: str = None, voice_id: str = None,
                          store_root: str = "voices", ref_audio: str = None, ref_text: str = None,
-                         instruct: str = None, num_step: int = None, speed: float = None,
-                         language_id: str = None,
+                         instruct: str = None, delivery: str = None, num_step: int = None,
+                         speed: float = None, language_id: str = None,
                          log: Optional[Callable[[str], None]] = None,
                          progress: Optional[Callable[[float, str], None]] = None) -> dict:
     """B2: re-synthesize ONE section (a fresh, non-deterministic take), gate it, and splice it
@@ -309,9 +432,8 @@ async def retake_section(*, config, index: int, project: str = None, script_proj
             stamp = f"{_now_stamp()}-{k}"
         shutil.copy2(sec_path, snap / f"{stamp}.wav")
 
-    items = build_tts_items([body], ref_audio=ref_audio, ref_text=ref_text,
-                            instruct=instruct, speed=speed, language_id=language_id)
-    items[0]["id"] = "retake"
+    eff_delivery = delivery if delivery is not None else (sections[index].get("delivery") or instruct)
+    sub_words = int(getattr(config.tts.omnivoice, "sub_chunk_words", 60) or 0)
     provider = create_tts_provider(config.tts)
     loop = asyncio.get_event_loop()
     tmp = work / "_retake"
@@ -319,7 +441,11 @@ async def retake_section(*, config, index: int, project: str = None, script_proj
     progress(0.2, f"Re-synthesizing section {index} (waiting for GPU)…")
     async with get_gpu_lock():
         produced = await loop.run_in_executor(
-            None, lambda: provider.synthesize_batch(items, tmp, num_step=num_step))
+            None, lambda: synthesize_sections(
+                provider, [body], tmp, ref_audio=ref_audio, ref_text=ref_text,
+                deliveries=[eff_delivery], speed=speed, language_id=language_id,
+                num_step=num_step, sub_chunk_words=sub_words))
+    produced = {"retake": produced["sec_0000"]} if "sec_0000" in produced else {}
     new_wav = produced.get("retake")
     if not new_wav or not Path(new_wav).exists():
         raise RuntimeError(f"retake of section {index} produced no audio")
@@ -429,9 +555,9 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
         log("No voice reference/instruct — OmniVoice will auto-pick a voice "
             "PER SECTION, so sections may not match. Pick/clone a voice for consistency.")
 
-    items = build_tts_items(
-        [s["body"] for s in sections], ref_audio=ref_audio, ref_text=ref_text,
-        instruct=instruct, speed=speed, language_id=language_id)
+    # A5 sub-chunking threshold + A6 per-section delivery (falls back to the global instruct).
+    sub_words = int(getattr(config.tts.omnivoice, "sub_chunk_words", 60) or 0)
+    deliveries = [(s.get("delivery") or instruct) for s in sections]
 
     vo_dir = base / "assets" / "voiceover"
     prior = archive_current_take(vo_dir)             # B3: never clobber a good take silently
@@ -442,18 +568,22 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
     provider = create_tts_provider(config.tts)
     loop = asyncio.get_event_loop()
 
-    progress(0.1, f"Synthesizing {len(items)} sections (waiting for GPU)…")
+    progress(0.1, f"Synthesizing {len(sections)} sections (waiting for GPU)…")
     async with get_gpu_lock():
         if config.tts.omnivoice.free_comfyui_vram:
             progress(0.15, "Freeing ComfyUI VRAM…")
             await _free_comfyui_vram(config)
-        progress(0.25, f"Running OmniVoice on {len(items)} sections…")
+        progress(0.25, f"Running OmniVoice on {len(sections)} sections…")
         produced = await loop.run_in_executor(
-            None, lambda: provider.synthesize_batch(items, work, num_step=num_step))
+            None, lambda: synthesize_sections(
+                provider, [s["body"] for s in sections], work,
+                ref_audio=ref_audio, ref_text=ref_text, deliveries=deliveries,
+                speed=speed, language_id=language_id, num_step=num_step,
+                sub_chunk_words=sub_words))
 
     if not produced:
         raise RuntimeError("TTS produced no audio (check the omnivoice env / logs)")
-    missing = [it["id"] for it in items if it["id"] not in produced]
+    missing = [f"sec_{i:04d}" for i in range(len(sections)) if f"sec_{i:04d}" not in produced]
     if missing:
         log(f"warning: {len(missing)} sections produced no audio: {missing[:5]}")
 
@@ -503,7 +633,7 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
 
     # full mode: concat -> voiceover.mp3
     progress(0.9, "Concatenating voiceover…")
-    ordered = [produced[it["id"]] for it in items if it["id"] in produced]
+    ordered = [produced[f"sec_{i:04d}"] for i in range(len(sections)) if f"sec_{i:04d}" in produced]
     out_mp3 = vo_dir / "voiceover.mp3"
     await asyncio.to_thread(concat_wavs_to_mp3, ordered, work / "_concat.txt",
                             out_mp3, tempo=tempo)

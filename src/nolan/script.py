@@ -85,7 +85,14 @@ def parse_script_sections(md: str) -> List[Dict[str, Any]]:
             cur["body"] += line + "\n"
     if cur:
         sections.append(cur)
+    # A6: an optional `[delivery: ...]` marker line sets that beat's spoken delivery
+    # (per-section instruct) and is stripped from the spoken text.
+    dre = re.compile(r"^[ \t]*\[delivery:\s*(.+?)\]\s*$", re.IGNORECASE | re.MULTILINE)
     for s in sections:
+        m = dre.search(s["body"])
+        if m:
+            s["delivery"] = m.group(1).strip()
+            s["body"] = dre.sub("", s["body"])
         s["body"] = clean_tts_text(s["body"])
     return [s for s in sections if s["body"]]
 

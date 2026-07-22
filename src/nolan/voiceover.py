@@ -23,9 +23,9 @@ from typing import Any, Dict, List, Optional
 from nolan.voice_pipeline import (  # noqa: E402
     _ffmpeg_exe as _ffmpeg,
     _wav_duration,
-    build_tts_items,
     concat_wavs_to_mp3,
     finalize_sections,
+    synthesize_sections,
 )
 
 
@@ -84,7 +84,7 @@ def resolve_voice_ref(project_dir: Path, config, voice_id_override: Optional[str
 def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
                       ref_audio: Optional[str] = None, ref_text: Optional[str] = None,
                       instruct: Optional[str] = None, num_step: Optional[int] = None,
-                      tempo: float = 1.0, progress=None) -> Dict[str, Any]:
+                      tempo: float = 1.0, sub_chunk_words: int = 60, progress=None) -> Dict[str, Any]:
     """Synthesize per-section audio (one consistent voice), pace, and concat to mp3.
 
     Returns {voiceover, sections:[{index,title,body,wav,duration}], total}.
@@ -100,12 +100,11 @@ def produce_voiceover(out_dir: Path, sections: List[Any], provider, *,
     if not bodies:
         raise RuntimeError("no narration to synthesize")
 
-    items = build_tts_items([b for _t, b in bodies], ref_audio=ref_audio,
-                            ref_text=ref_text, instruct=instruct)
-
     if progress:
-        progress(0.2, f"Synthesizing {len(items)} sections")
-    produced = provider.synthesize_batch(items, work, num_step=num_step)
+        progress(0.2, f"Synthesizing {len(bodies)} sections")
+    produced = synthesize_sections(
+        provider, [b for _t, b in bodies], work, ref_audio=ref_audio, ref_text=ref_text,
+        deliveries=[instruct] * len(bodies), num_step=num_step, sub_chunk_words=sub_chunk_words)
     if not produced:
         raise RuntimeError("TTS produced no audio")
 

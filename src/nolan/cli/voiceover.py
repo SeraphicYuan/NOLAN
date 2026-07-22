@@ -55,15 +55,17 @@ def vo_generate(slug: str, voice: str | None, mode: str) -> None:
 @click.argument("index", type=int)
 @click.option("--voice", default=None, help="voice_id (else project.yaml / default)")
 @click.option("--text", default=None, help="override the section's text for this take")
-def vo_retake(slug: str, index: int, voice: str | None, text: str | None) -> None:
+@click.option("--delivery", default=None, help="delivery note for this take (e.g. 'somber')")
+def vo_retake(slug: str, index: int, voice: str | None, text: str | None,
+              delivery: str | None) -> None:
     """Re-synthesize ONE section (a fresh take) and splice it back if it passes the gate."""
     from nolan.config import load_config
     from nolan.voice_pipeline import retake_section
     cfg = load_config()
     ref_audio, ref_text, vid = _resolve_voice(Path("projects") / slug, cfg, voice)
     res = asyncio.run(retake_section(
-        config=cfg, script_project=slug, index=index, text=text, voice_id=vid,
-        ref_audio=ref_audio, ref_text=ref_text,
+        config=cfg, script_project=slug, index=index, text=text, delivery=delivery,
+        voice_id=vid, ref_audio=ref_audio, ref_text=ref_text,
         log=click.echo, progress=lambda p, m: click.echo(f"[{p:.0%}] {m}")))
     if res.get("accepted"):
         click.echo(f"section {index} retaken ✓ dur={res.get('duration_s')}s "

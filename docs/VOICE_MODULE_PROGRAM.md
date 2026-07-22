@@ -312,8 +312,17 @@ voiceovers"), with filters + players. Provenance + measure summary per item.
   `/voices?project=` (reverse link). **B5** voice as a create-time preset (create form
   dropdown → `project.yaml voice_id` → `resolve_voice_ref`). **B6** dead
   `/api/project/{project}/script` removed; 3 pollers → one; tokenized CSS. Browser-verified.
-- **P4 — Advanced quality:**
-  A5 sub-chunking · A6 per-section/authored delivery notes.
+- **P4 — Advanced quality: ✅ SHIPPED 2026-07-22.**
+  **A5** sentence sub-chunking: `synthesize_sections` splits a beat longer than
+  `tts.omnivoice.sub_chunk_words` (default 60) into greedily-packed sentence chunks,
+  synthesizes each, and concatenates them (small silence gap) into the one `sec_NNNN.wav`
+  — beat boundary preserved. Live-verified: De Beers sec 8 (222w → 5 chunks) retook clean,
+  gate ok. Routed through synthesize_voiceover + produce_voiceover + retake_section.
+  **A6** delivery notes: a `[delivery: <note>]` line per beat (parsed by parse_script_sections,
+  stripped from speech, authorable via the draft prompt) → per-section `instruct`; surfaced on
+  the beats endpoint + `retake --delivery`. ENGINE LIMIT (verified): OmniVoice can't clone a
+  voice AND take an instruct (yields no audio), so when cloning the clone wins and delivery is
+  dropped — delivery only takes effect in voice-design (no-clone) mode.
 
 ## Sequencing notes
 - P1 is backend-only and de-risks everything (loud failures, honest durations)

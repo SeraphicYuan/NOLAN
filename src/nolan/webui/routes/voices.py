@@ -184,7 +184,7 @@ def register(app, ctx):
             meta={"slug": slug, "index": index},
             config=load_config(), script_project=slug, index=int(index),
             voice_id=voice_id, ref_audio=ref_audio, ref_text=ref_text,
-            text=(body.get("text") or None),
+            text=(body.get("text") or None), delivery=(body.get("delivery") or None),
             num_step=(int(body["num_step"]) if body.get("num_step") else None))
         return {"job_id": job.id, "type": "voiceover-retake"}
 
@@ -275,6 +275,7 @@ def register(app, ctx):
                 "words": len(body.split()),
                 "duration_s": st.get("duration_s"), "expected_s": st.get("expected_s"),
                 "delta_s": st.get("delta_s"), "rms_dbfs": st.get("rms_dbfs"),
+                "delivery": s.get("delivery"),
                 "status": status, "issues": [c["message"] for c in ck],
                 "play_url": (f"/api/voiceover/{quote(slug)}/_work/sec_{i:04d}.wav"
                              if wav.exists() else None),
