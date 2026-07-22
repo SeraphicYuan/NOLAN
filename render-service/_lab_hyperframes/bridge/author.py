@@ -56,7 +56,8 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
             "split_view": ["paper", "right"],
             "spectrum": ["axis", "items"], "cycle": ["steps"], "detail_zoom": ["src", "stops"],
             "hero": ["src", "title"], "chat_thread": ["messages"], "connection_board": ["nodes"], "spans": ["spans"],
-            "chart": ["series"], "code": ["code"], "social_card": ["platform"]}
+            "chart": ["series"], "code": ["code"], "social_card": ["platform"],
+            "slope": ["series"]}
 
 
 # A4: fields the dataset resolver (nolan.data) fills from a bound `data.dataset` at finish/accept time. When a

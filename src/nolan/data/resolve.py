@@ -129,6 +129,10 @@ def _materialize(block_type: str, rows: List[Dict], enc: Dict) -> Dict:
         return {"spans": [{"label": str(_rowval(r, lab)),
                            "start": _num(_rowval(r, enc.get("start"), 0)),
                            "end": _num(_rowval(r, enc.get("end"), 0))} for r in rows]}
+    if block_type == "slope":                               # 2-point slope: a start + end value per series
+        return {"series": [{"label": str(_rowval(r, lab)),
+                            "start": _num(_rowval(r, enc.get("start"), 0)),
+                            "end": _num(_rowval(r, enc.get("end"), 0))} for r in rows]}
     if block_type == "trajectory":                          # A-P4: dataset → ordered (x,y) points
         return {"points": [{"x": _num(_rowval(r, x, 0)), "y": _num(_rowval(r, y, 0)),
                             "label": str(_rowval(r, lab))} for r in rows]}

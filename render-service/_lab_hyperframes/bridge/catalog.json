@@ -919,6 +919,31 @@
         "paper_side": "enum(left|right)? — which side the paper is on (default left)",
         "ground": "object?"
       }
+    },
+    "slope": {
+      "fn": "slope",
+      "purpose": "A SLOPE chart — each series is a line from its START value (left axis) to its END value (right axis); rank reversals/crossings are the reveal.",
+      "when_to_use": "Who overtook whom between TWO moments (2016 vs 2024; before vs after; forecast vs actual) — a ranking change across many series where the crossing IS the point.",
+      "not_for": "A single trend over many points (chart line + playhead). A magnitude gap at one moment (dumbbell). Time-series bands (stream).",
+      "data_schema": {
+        "series": "array of {label, start, end} — each series' value at the two moments (auto-filled from a dataset via encode {label,start,end})",
+        "cols": "array [leftLabel, rightLabel]? — the two moment headers over the axes",
+        "prefix": "string? — value prefix (e.g. $)",
+        "suffix": "string? — value suffix (e.g. %)",
+        "highlight": "int? — index of the series to ACCENT; the rest recede (the overtake you're narrating)",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string? — substring of title to accent",
+        "ground": "object? — ambient media ground (media_ground spec)",
+        "dataset": "string? — bind a dataset id (project datasets/index.json); with `query`+`encode` the resolver fills series from real cells + stamps value_source (the A-P1 number gate passes). Prefer this over hand-typed numbers.",
+        "query": "object? — shape the table before encoding: filter/aggregate/sort/derive/top_n/select (see data verbs). Deterministic.",
+        "encode": "object? — {label:'col', start:'col', end:'col'} — column → each series' name + its start/end value"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ]
     }
   },
   "components": {

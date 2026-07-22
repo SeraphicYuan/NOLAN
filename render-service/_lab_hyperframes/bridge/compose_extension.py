@@ -664,6 +664,104 @@ def split_view(sid, sc):
     return frag, tl
 
 
+def _dataviz_head(sid, sc, ink):
+    """Shared kicker+title fragment/timeline for a data-viz block (matches the chart block's head)."""
+    d, start = sc["data"], sc["start"]
+    esc = compose.esc
+    frag, tl = [], []
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" style="position:absolute;left:300px;top:96px;font-family:var(--font-mono,monospace);'
+                    f'font-size:20px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);opacity:0">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.1:.2f});')
+    if d.get("title"):
+        t, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span style="color:var(--accent)">{esc(op)}</span>{esc(t.split(op,1)[1])}'
+                  if op and op in t else esc(t))
+        frag.append(f'<div id="{sid}-t" style="position:absolute;left:300px;top:128px;font-family:var(--font-display);'
+                    f'font-weight:800;font-size:46px;letter-spacing:-.01em;color:{ink};opacity:0">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.2:.2f});')
+    return frag, tl
+
+
+def slope(sid, sc):
+    """A SLOPE chart — each series is a line from its START value (left axis) to its END value (right axis).
+    Rank REVERSALS / crossings are the reveal: who overtook whom between two moments (2016 vs 2024, before
+    vs after). The classic two-point form. Lines DRAW left→right, staggered; the emphasised series is the
+    accent, the rest recede. Bind a dataset (encode {label, start, end}).
+    data: {series:[{label, start, end}], cols?:[leftLabel, rightLabel], prefix?, suffix?,
+           highlight?(int index → accent, others muted), kicker?, title?, titleHi?, ground?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc, num = compose.esc, compose._num
+    series = d.get("series") or []
+    n = len(series)
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    muted = "rgba(243,239,230,0.40)" if dark else "rgba(28,28,25,0.34)"
+    pre, suf = d.get("prefix", ""), d.get("suffix", "")
+    cols = (d.get("cols") or ["", ""])[:2] + [""] * (2 - len(d.get("cols") or []))
+    hl = d.get("highlight")
+    hl = int(hl) if isinstance(hl, (int, float)) and 0 <= int(hl) < n else None
+    starts = [float(s.get("start", 0)) for s in series] or [0.0]
+    ends = [float(s.get("end", 0)) for s in series] or [0.0]
+    allv = starts + ends
+    vlo, vhi = min(allv), max(allv)
+    span = (vhi - vlo) or 1.0
+    LX, RX, TY, BY = 640, 1280, 250, 900                 # left axis x, right axis x, top y, bottom y
+    yof = lambda v: BY - (v - vlo) / span * (BY - TY)
+    frag = [f'<div id="{sid}-wrap" class="clip blk-slope" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
+    hf, ht = _dataviz_head(sid, sc, ink)
+    frag += hf
+    # column headers + the two vertical axes
+    for cx, cl, al in ((LX, cols[0], "right"), (RX, cols[1], "left")):
+        if cl:
+            off = -420 if al == "right" else 20
+            frag.append(f'<div style="position:absolute;left:{cx+off:.0f}px;top:{TY-64:.0f}px;width:400px;'
+                        f'text-align:{al};font-weight:700;font-size:24px;color:{muted}">{esc(cl)}</div>')
+        frag.append(f'<div style="position:absolute;left:{cx:.0f}px;top:{TY}px;width:2px;height:{BY-TY}px;background:{muted}"></div>')
+    times = compose._reveal_times(n, start, dur, compose._reveal_cues(series, start)) if n else []
+    # the slope lines (SVG, drawn)
+    svg = ['<svg viewBox="0 0 1920 1080" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">']
+    for i in range(n):
+        y0, y1 = yof(starts[i]), yof(ends[i])
+        on = hl is None or i == hl
+        col = "var(--accent)" if on else muted
+        sw = 6 if (hl is not None and i == hl) else 3
+        svg.append(f'<path id="{sid}-ln{i}" d="M {LX} {y0:.1f} L {RX} {y1:.1f}" fill="none" stroke="{col}" '
+                   f'stroke-width="{sw}" stroke-linecap="round"/>')
+    svg.append('</svg>')
+    frag += svg
+    # end dots + name/value labels (left: right-aligned before LX; right: left-aligned after RX)
+    for i, s in enumerate(series):
+        y0, y1 = yof(starts[i]), yof(ends[i])
+        on = hl is None or i == hl
+        col = "var(--accent)" if on else muted
+        lc = ink if on else muted
+        lab = esc(str(s.get("label", "")))
+        frag.append(f'<div id="{sid}-ld{i}" style="position:absolute;left:{LX-8:.0f}px;top:{y0-8:.0f}px;width:16px;'
+                    f'height:16px;border-radius:50%;background:{col};opacity:0"></div>')
+        frag.append(f'<div id="{sid}-ll{i}" style="position:absolute;left:{LX-440:.0f}px;top:{y0-19:.0f}px;width:400px;'
+                    f'text-align:right;font-size:26px;font-weight:{800 if on else 600};color:{lc};opacity:0">'
+                    f'{lab} <span style="opacity:.62">{esc(pre)}{num(starts[i])}{esc(suf)}</span></div>')
+        frag.append(f'<div id="{sid}-rd{i}" style="position:absolute;left:{RX-8:.0f}px;top:{y1-8:.0f}px;width:16px;'
+                    f'height:16px;border-radius:50%;background:{col};opacity:0"></div>')
+        frag.append(f'<div id="{sid}-rl{i}" style="position:absolute;left:{RX+24:.0f}px;top:{y1-19:.0f}px;width:400px;'
+                    f'text-align:left;font-size:26px;font-weight:{800 if on else 600};color:{lc};opacity:0">'
+                    f'<span style="opacity:.62">{esc(pre)}{num(ends[i])}{esc(suf)}</span> {lab}</div>')
+    frag.append('</div>')
+    tl = list(ht)
+    for i in range(n):
+        t = times[i]
+        tl.append(f'(function(){{var p=document.getElementById("{sid}-ln{i}"),L=p.getTotalLength();'
+                  f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
+                  f'tl.fromTo(p,{{strokeDashoffset:L}},{{strokeDashoffset:0,duration:0.7,ease:"power1.inOut"}},{t:.2f});}})();')
+        tl.append(f'tl.fromTo("#{sid}-ld{i}",{{scale:0}},{{scale:1,opacity:1,duration:0.3,ease:"back.out(2)"}},{t:.2f});')
+        tl.append(f'tl.to("#{sid}-ll{i}",{{opacity:1,duration:0.3}},{t+0.05:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-rd{i}",{{scale:0}},{{scale:1,opacity:1,duration:0.3,ease:"back.out(2)"}},{t+0.55:.2f});')
+        tl.append(f'tl.to("#{sid}-rl{i}",{{opacity:1,duration:0.3}},{t+0.6:.2f});')
+    return frag, tl
+
+
 EXT_BLOCKS = {"spotlight": spotlight, "data_table": data_table,
               "trajectory": trajectory, "stream": stream, "bar_race": bar_race,
-              "split_view": split_view}
+              "split_view": split_view, "slope": slope}
