@@ -1,0 +1,17 @@
+# NOLAN SearXNG — self-hosted metasearch backing the web-search provider (nolan.web_search).
+# Keyless; aggregates 70+ engines (Google/Bing/DuckDuckGo/…) behind a single format=json endpoint.
+# Public instances block the JSON API (403/429), so we self-host.
+#
+#   Start:  docker compose -f infra/searxng/docker-compose.yml up -d
+#   Verify: curl -s 'http://localhost:8888/search?q=test&format=json' | head -c 200
+#   Use:    add  SEARXNG_URL=http://localhost:8888  to .env  (load_config picks it up)
+#   Stop:   docker compose -f infra/searxng/docker-compose.yml down
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: nolan-searxng
+    ports:
+      - "127.0.0.1:8888:8080"        # localhost-only
+    volumes:
+      - ./settings.yml:/etc/searxng/settings.yml:ro
+    restart: unless-stopped

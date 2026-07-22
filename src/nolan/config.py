@@ -145,6 +145,25 @@ class ImageSourcesConfig:
 
 
 @dataclass
+class WebSearchConfig:
+    """General web (TEXT) search backends for the research stage (key-assets decompose →
+    consolidate → greedy harvest). All optional: with no keys, NOLAN uses the keyless
+    DuckDuckGo baseline (`ddgs`, already a dependency). Keyed backends are higher-quality
+    upgrades behind the SAME interface (web_search.WebSearchClient)."""
+    tavily_api_key: str = ""       # https://tavily.com (research-grade, LLM-friendly)
+    brave_api_key: str = ""        # https://brave.com/search/api/
+    serpapi_api_key: str = ""      # https://serpapi.com (Google organic results)
+    searxng_url: str = ""          # self-hosted/public SearXNG instance base URL (keyless, format=json) —
+                                   # the primary free option: aggregates 70+ engines, no key, no quota
+    provider: str = "auto"         # "auto" = best available; or a specific provider name
+
+    def keys(self) -> dict:
+        """Map for WebSearchClient(keys=...) — single source of truth, no hand-maintained subset."""
+        return {"tavily": self.tavily_api_key, "brave": self.brave_api_key,
+                "serpapi": self.serpapi_api_key}
+
+
+@dataclass
 class ClipMatchingConfig:
     """Clip matching configuration for matching scenes to video library."""
     candidates_per_scene: int = 3     # Top N candidates from vector search
@@ -169,6 +188,7 @@ class NolanConfig:
     defaults: DefaultsConfig = field(default_factory=DefaultsConfig)
     image_sources: ImageSourcesConfig = field(default_factory=ImageSourcesConfig)
     clip_matching: ClipMatchingConfig = field(default_factory=ClipMatchingConfig)
+    web_search: WebSearchConfig = field(default_factory=WebSearchConfig)
 
 
 def load_config(config_path: Optional[Path] = None) -> NolanConfig:
@@ -199,6 +219,10 @@ def load_config(config_path: Optional[Path] = None) -> NolanConfig:
     config.image_sources.harvard_art_api_key = os.getenv("HARVARD_ART_API_KEY", "")
     config.image_sources.coverr_api_key = os.getenv("COVERR_API_KEY", "")
     config.image_sources.freesound_api_key = os.getenv("FREESOUND_API_KEY", "")
+    config.web_search.tavily_api_key = os.getenv("TAVILY_API_KEY", "")
+    config.web_search.brave_api_key = os.getenv("BRAVE_API_KEY", "")
+    config.web_search.serpapi_api_key = os.getenv("SERPAPI_API_KEY", "")
+    config.web_search.searxng_url = os.getenv("SEARXNG_URL", "")
 
     # Auto-detect config file if not provided. Search the CWD, its ANCESTORS, then the repo root
     # (derived from this module) — so the SAME config resolves whether nolan runs from the repo root

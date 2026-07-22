@@ -1,0 +1,10 @@
+use_default_settings: true
+server:
+  # Local-only dev instance (bound to localhost, not internet-exposed). Rotate if you expose it.
+  secret_key: "nolan-searxng-local-dev"
+  limiter: false          # off so our own automated queries aren't rate-limited as bots
+  image_proxy: false
+search:
+  formats:
+    - html
+    - json                # REQUIRED: nolan.web_search.SearXNGProvider hits ?format=json

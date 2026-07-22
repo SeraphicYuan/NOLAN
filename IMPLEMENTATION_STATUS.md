@@ -2,7 +2,11 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-21
+**Last Updated:** 2026-07-22
+
+## Web-search provider + self-hosted SearXNG — research substrate for the key-assets pool (2026-07-22)
+
+First brick of docs/KEY_ASSETS_ANCHORED_POOL.md (the new GLOBAL pre-acquisition hero-asset stage). `src/nolan/web_search.py`: a first-class general web (TEXT) search provider (NONE existed — `ddgs` was image-only). `WebSearchProvider` ABC + keyless DuckDuckGo baseline + self-hosted **SearXNG** (keyless metasearch over 70+ engines, `format=json`, leads the priority order) + keyed upgrades (Tavily/Brave/SerpAPI), all registered from `config.WebSearchConfig` (env `SEARXNG_URL`/`TAVILY_`/`BRAVE_`/`SERPAPI_API_KEY`). `WebSearchClient.search` (preferred-first, one call) / `.search_all` (greedy, dedup-by-URL); client-level error containment → degrades to []. Public SearXNG instances block the JSON API (403/429), so `infra/searxng/` self-hosts one (localhost-only, limiter off); verified live aggregating Google+DDG → Wikipedia hero sources (Oppenheimer). `tests/test_web_search.py` 13 green. NEXT: P1 (decompose+consolidate the diamond-illusion script into the hero pull-list).
 
 ## Shot classifier (b-roll / talking-head / graphics) + storyboard overview + structured column (2026-07-22)
 
