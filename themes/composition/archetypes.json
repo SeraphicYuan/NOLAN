@@ -40,7 +40,8 @@
         "pie",
         "funnel",
         "spectrum",
-        "cycle"
+        "cycle",
+        "isotype"
       ],
       "exemplar": "exemplars/centered-hero.json",
       "zone": {
@@ -107,7 +108,8 @@
         "carousel",
         "diagram",
         "sankey",
-        "connection_board"
+        "connection_board",
+        "small_multiples"
       ],
       "exemplar": null,
       "zone": {
@@ -266,7 +268,9 @@
         "code",
         "diagram",
         "document",
-        "slope"
+        "slope",
+        "dumbbell",
+        "histogram"
       ],
       "exemplar": null,
       "zone": {

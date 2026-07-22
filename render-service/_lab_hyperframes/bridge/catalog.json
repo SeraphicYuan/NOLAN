@@ -944,6 +944,106 @@
         "seek_safe",
         "transform_opacity_only"
       ]
+    },
+    "isotype": {
+      "fn": "isotype",
+      "purpose": "A PICTOGRAM / UNIT chart — a quantity as a grid of unit icons (each = N), so a big number becomes tangible and countable.",
+      "when_to_use": "Making a large or abstract number FELT (each icon = 1M people; 8 GPUs; 73 of 100), or a countable comparison between a few categories. The Isotype/Neurath move.",
+      "not_for": "A precise trend (chart). Many categories (bar chart). A part-of-whole percentage where one shape suffices (pie/stat).",
+      "data_schema": {
+        "items": "array of {label, value} — each category + its magnitude (auto-filled from a dataset via encode {value,label})",
+        "per": "number? — units ONE icon represents (auto-scaled to ~44/row if omitted)",
+        "unit": "string? — what one icon is (people, GPUs) — shown in the legend",
+        "icon": "enum(square|circle|dot)? — icon shape (default square)",
+        "prefix": "string?",
+        "suffix": "string?",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string?",
+        "ground": "object?",
+        "dataset": "string? — bind a dataset id; with `query`+`encode` the resolver fills items from real cells + stamps value_source (the A-P1 number gate passes).",
+        "query": "object? — filter/aggregate/sort/derive/top_n/select (see data verbs).",
+        "encode": "object? — {value:'col', label:'col'} — column → each item's magnitude + label"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ]
+    },
+    "dumbbell": {
+      "fn": "dumbbell",
+      "purpose": "A DUMBBELL / dot-plot — two values per category joined by a bar; the GAP between the dots is the point.",
+      "when_to_use": "A gap between two conditions across categories (rich vs poor, promise vs reality, before vs after, men vs women) where the DISTANCE is the story.",
+      "not_for": "A ranking reversal across two moments (slope). One value per category (chart bar). A magnitude as tangible units (isotype).",
+      "data_schema": {
+        "items": "array of {label, start, end} — each category + its two values (auto-filled from a dataset via encode {label,start,end})",
+        "cols": "array [startLabel, endLabel]? — the two conditions",
+        "sort": "bool? — order rows by the size of the gap (biggest first)",
+        "prefix": "string?",
+        "suffix": "string?",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string?",
+        "ground": "object?",
+        "dataset": "string? — bind a dataset id; the resolver fills items from real cells + stamps value_source (A-P1 gate).",
+        "query": "object? — filter/aggregate/sort/derive/top_n/select (see data verbs).",
+        "encode": "object? — {label:'col', start:'col', end:'col'} — column → each row's label + its two values"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ]
+    },
+    "small_multiples": {
+      "fn": "small_multiples",
+      "purpose": "SMALL MULTIPLES — a grid of tiny same-scale mini bar charts, one per panel, comparing the SHAPE across many categories at once.",
+      "when_to_use": "'The same pattern everywhere' (or 'everywhere but one'): a repeated small chart across countries/years/segments where the comparison of shapes IS the point. A shared y-scale.",
+      "not_for": "A single series (chart). Two values per category (dumbbell). A ranking reversal (slope).",
+      "data_schema": {
+        "panels": "array of {label, series:[{label, value}]} — one mini chart per panel (auto-filled from a dataset via encode {panel,x,y}: rows GROUPED by the panel column)",
+        "prefix": "string?",
+        "suffix": "string?",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string?",
+        "ground": "object?",
+        "dataset": "string? — bind a dataset id; the resolver groups rows into panels + stamps value_source (A-P1 gate).",
+        "query": "object? — filter/aggregate/sort/derive/top_n/select (see data verbs).",
+        "encode": "object? — {panel:'col', x:'col', y:'col'} — the column to SPLIT panels by + each mini bar's label/value"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ]
+    },
+    "histogram": {
+      "fn": "histogram",
+      "purpose": "A HISTOGRAM / distribution — the SHAPE of a spread (bars touching), with an optional marker for 'where you fall'.",
+      "when_to_use": "Showing a distribution — where the mass sits, how skewed/spread it is, and where one value falls on it ('most are here; you are there').",
+      "not_for": "A few labelled categories (chart bar). A trend over time (chart line). A part-of-whole (pie).",
+      "data_schema": {
+        "bins": "array of {x0, x1, count} or {label, count} — the distribution (auto-filled from a dataset via encode {value}: the resolver BINS the raw column)",
+        "marker": "number? — a value on the axis to mark (where you fall / the mean)",
+        "marker_label": "string? — label for the marker (defaults to the value)",
+        "unit": "string? — axis unit",
+        "prefix": "string?",
+        "suffix": "string?",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string?",
+        "ground": "object?",
+        "dataset": "string? — bind a dataset id; the resolver bins the raw `value` column + stamps value_source (A-P1 gate).",
+        "query": "object? — filter/aggregate/sort/derive/top_n/select (see data verbs).",
+        "encode": "object? — {value:'col', bins?:N} — the raw column to bin (+ optional bin count, default 12)"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ]
     }
   },
   "components": {

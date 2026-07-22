@@ -47,7 +47,7 @@ def _rowval(r, key, default=""):
 
 
 # encode keys whose VALUE names a table column (vs. literal options like prefix/suffix/source_label)
-_ENCODE_COL_KEYS = ("x", "y", "label", "value", "start", "end", "text")
+_ENCODE_COL_KEYS = ("x", "y", "label", "value", "start", "end", "text", "panel", "group")
 
 
 def _available_columns(dataset, query: Dict) -> set:
@@ -111,7 +111,7 @@ def _materialize(block_type: str, rows: List[Dict], enc: Dict) -> Dict:
         return {"series": [{"label": str(_rowval(r, x)), "value": _num(_rowval(r, y, 0))} for r in rows]}
     if block_type in ("pie",):
         return {"segments": [{"label": str(_rowval(r, lab)), "value": _num(_rowval(r, val, 0))} for r in rows]}
-    if block_type in ("stat", "scale", "spectrum"):
+    if block_type in ("stat", "scale", "spectrum", "isotype"):
         items = [{"value": _num(_rowval(r, val, 0)), "label": str(_rowval(r, lab))} for r in rows]
         if pre:
             items and items[0].__setitem__("prefix", pre)
@@ -133,6 +133,44 @@ def _materialize(block_type: str, rows: List[Dict], enc: Dict) -> Dict:
         return {"series": [{"label": str(_rowval(r, lab)),
                             "start": _num(_rowval(r, enc.get("start"), 0)),
                             "end": _num(_rowval(r, enc.get("end"), 0))} for r in rows]}
+    if block_type == "dumbbell":                            # two values per category; the GAP is the point
+        return {"items": [{"label": str(_rowval(r, lab)),
+                           "start": _num(_rowval(r, enc.get("start"), 0)),
+                           "end": _num(_rowval(r, enc.get("end"), 0))} for r in rows]}
+    if block_type == "small_multiples":                     # group rows by `panel` → one mini series each
+        pcol = enc.get("panel") or enc.get("group")
+        xcol = enc.get("x") or enc.get("label")
+        ycol = enc.get("y") or enc.get("value")
+        groups: Dict[str, List[Dict]] = {}
+        order: List[str] = []
+        for r in rows:
+            pk = str(_rowval(r, pcol))
+            if pk not in groups:
+                groups[pk] = []
+                order.append(pk)
+            groups[pk].append({"label": str(_rowval(r, xcol)), "value": _num(_rowval(r, ycol, 0))})
+        return {"panels": [{"label": k, "series": groups[k]} for k in order]}
+    if block_type == "histogram":                           # bin a raw value column into a distribution
+        vcol = enc.get("value") or enc.get("x")
+        vals = []
+        for r in rows:
+            v = _rowval(r, vcol, None)
+            if v is None or str(v).strip() == "":
+                continue
+            try:
+                vals.append(float(v))
+            except (TypeError, ValueError):
+                continue
+        nb = int(enc.get("bins", 12) or 12)
+        if not vals:
+            return {"bins": []}
+        lo, hi = min(vals), max(vals)
+        w = (hi - lo) / nb or 1.0
+        counts = [0] * nb
+        for v in vals:
+            counts[min(nb - 1, int((v - lo) / w))] += 1
+        return {"bins": [{"x0": round(lo + i * w, 4), "x1": round(lo + (i + 1) * w, 4),
+                          "count": counts[i]} for i in range(nb)]}
     if block_type == "trajectory":                          # A-P4: dataset → ordered (x,y) points
         return {"points": [{"x": _num(_rowval(r, x, 0)), "y": _num(_rowval(r, y, 0)),
                             "label": str(_rowval(r, lab))} for r in rows]}

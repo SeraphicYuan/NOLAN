@@ -762,6 +762,254 @@ def slope(sid, sc):
     return frag, tl
 
 
+def isotype(sid, sc):
+    """A PICTOGRAM / UNIT chart — a quantity drawn as a grid of unit icons (each icon = N units), so a big
+    number becomes TANGIBLE and a comparison is countable. Icons fill in, staggered (the count-up). The
+    Isotype/Neurath tradition. data: {items:[{label, value}], per?(units per icon; auto if omitted),
+    unit?(what one icon represents), icon?("square"|"circle"), prefix?, suffix?, kicker?, title?, titleHi?,
+    ground?}. Bind a dataset (encode {value, label})."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc, num = compose.esc, compose._num
+    items = d.get("items") or []
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    pre, suf, unit = d.get("prefix", ""), d.get("suffix", ""), d.get("unit", "")
+    vals = [float(it.get("value", 0)) for it in items] or [0.0]
+    vmax = max(vals) or 1.0
+    per = float(d.get("per") or max(1.0, round(vmax / 44.0)))
+    br = {"square": "5px", "circle": "50%", "dot": "50%"}.get(d.get("icon", "square"), "5px")
+    ISZ, GAP, PERROW, X0 = 26, 8, 40, 300
+    frag = [f'<div id="{sid}-wrap" class="clip blk-isotype" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
+    hf, ht = _dataviz_head(sid, sc, ink)
+    frag += hf
+    if unit or per != 1:
+        frag.append(f'<div style="position:absolute;left:{X0}px;top:196px;font-size:22px;opacity:0.72">each '
+                    f'<span style="display:inline-block;width:18px;height:18px;background:var(--accent);'
+                    f'border-radius:{br};vertical-align:-3px"></span> = {num(per)}{esc((" " + unit) if unit else "")}</div>')
+    y = 250
+    plan = []                                            # (item_index, n_icons, grid_y)
+    for i, it in enumerate(items):
+        v = float(it.get("value", 0))
+        nic = min(max(0, round(v / per)), PERROW * 4)    # cap at 4 rows/item
+        lab = esc(str(it.get("label", "")))
+        frag.append(f'<div style="position:absolute;left:{X0}px;top:{y}px;font-size:24px;font-weight:700">'
+                    f'{lab} <span style="opacity:.6">{esc(pre)}{num(v)}{esc(suf)}</span></div>')
+        gy = y + 40
+        for k in range(nic):
+            ix = X0 + (k % PERROW) * (ISZ + GAP)
+            iy = gy + (k // PERROW) * (ISZ + GAP)
+            frag.append(f'<div id="{sid}-i{i}-{k}" style="position:absolute;left:{ix}px;top:{iy}px;'
+                        f'width:{ISZ}px;height:{ISZ}px;background:var(--accent);border-radius:{br};opacity:0"></div>')
+        nlines = max(1, (nic + PERROW - 1) // PERROW)
+        y = gy + nlines * (ISZ + GAP) + 34
+        plan.append((i, nic))
+    frag.append('</div>')
+    tl = list(ht)
+    total = sum(p[1] for p in plan) or 1
+    win0, win, done = start + 0.6, max(0.5, dur - 1.2), 0
+    for i, nic in plan:
+        for k in range(nic):
+            cue = win0 + win * (done / total)
+            done += 1
+            tl.append(f'tl.to("#{sid}-i{i}-{k}",{{opacity:1,duration:0.22,ease:"power1.out"}},{cue:.2f});')
+    return frag, tl
+
+
+def dumbbell(sid, sc):
+    """A DUMBBELL / dot-plot — two values per category joined by a bar; the GAP between them is the point
+    (rich vs poor, promise vs reality, before vs after, men vs women). Horizontal rows, each with a start
+    dot and an end dot; the connecting bar GROWS from start→end (the gap opening). Bind a dataset
+    (encode {label, start, end}). data: {items:[{label, start, end}], cols?:[startLabel, endLabel],
+    prefix?, suffix?, sort?(bool: by gap), kicker?, title?, titleHi?, ground?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc, num = compose.esc, compose._num
+    items = list(d.get("items") or [])
+    if d.get("sort"):
+        items.sort(key=lambda it: abs(float(it.get("end", 0)) - float(it.get("start", 0))), reverse=True)
+    n = len(items)
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    muted = "rgba(243,239,230,0.5)" if dark else "rgba(28,28,25,0.42)"
+    pre, suf = d.get("prefix", ""), d.get("suffix", "")
+    cols = (d.get("cols") or ["", ""])[:2] + [""] * (2 - len(d.get("cols") or []))
+    starts = [float(it.get("start", 0)) for it in items] or [0.0]
+    ends = [float(it.get("end", 0)) for it in items] or [0.0]
+    allv = starts + ends
+    vlo, vhi = min(allv), max(allv)
+    span = (vhi - vlo) or 1.0
+    X0, X1, TY, ROWH = 620, 1620, 300, 0
+    xof = lambda v: X0 + (v - vlo) / span * (X1 - X0)
+    rowh = min(120, max(56, int((900 - TY) / max(1, n))))
+    frag = [f'<div id="{sid}-wrap" class="clip blk-dumbbell" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
+    hf, ht = _dataviz_head(sid, sc, ink)
+    frag += hf
+    if cols[0] or cols[1]:                                   # a color LEGEND (dots are placed by value, so a
+        dot = 'display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:-2px'
+        frag.append(f'<div style="position:absolute;left:300px;top:200px;font-size:21px;color:{ink}">'  # positional header would mislabel)
+                    f'<span style="{dot};background:{muted}"></span> {esc(cols[0])}'
+                    f'<span style="display:inline-block;width:34px"></span>'
+                    f'<span style="{dot};background:var(--accent)"></span> {esc(cols[1])}</div>')
+    times = compose._reveal_times(n, start, dur, compose._reveal_cues(items, start)) if n else []
+    for i, it in enumerate(items):
+        y = TY + i * rowh
+        xs, xe = xof(starts[i]), xof(ends[i])
+        lo, hi = min(xs, xe), max(xs, xe)
+        lab = esc(str(it.get("label", "")))
+        frag.append(f'<div style="position:absolute;left:{X0-440:.0f}px;top:{y-17:.0f}px;width:410px;'
+                    f'text-align:right;font-size:25px;font-weight:700;color:{ink}">{lab}</div>')
+        # connecting bar (grows from the start dot toward the end dot)
+        frag.append(f'<div id="{sid}-bar{i}" style="position:absolute;left:{lo:.0f}px;top:{y-4:.0f}px;'
+                    f'width:{hi-lo:.0f}px;height:8px;border-radius:4px;background:var(--accent);'
+                    f'transform-origin:{"left" if xe>=xs else "right"} center;opacity:0.9"></div>')
+        # start dot (muted) + end dot (accent)
+        frag.append(f'<div id="{sid}-s{i}" style="position:absolute;left:{xs-11:.0f}px;top:{y-11:.0f}px;width:22px;'
+                    f'height:22px;border-radius:50%;background:{muted};opacity:0"></div>')
+        frag.append(f'<div id="{sid}-e{i}" style="position:absolute;left:{xe-13:.0f}px;top:{y-13:.0f}px;width:26px;'
+                    f'height:26px;border-radius:50%;background:var(--accent);opacity:0"></div>')
+        frag.append(f'<div id="{sid}-sv{i}" style="position:absolute;left:{xs-70:.0f}px;top:{y-52:.0f}px;width:140px;'
+                    f'text-align:center;font-size:21px;color:{muted};opacity:0">{esc(pre)}{num(starts[i])}{esc(suf)}</div>')
+        frag.append(f'<div id="{sid}-ev{i}" style="position:absolute;left:{xe-70:.0f}px;top:{y+16:.0f}px;width:140px;'
+                    f'text-align:center;font-size:23px;font-weight:800;color:var(--accent);opacity:0">{esc(pre)}{num(ends[i])}{esc(suf)}</div>')
+    frag.append('</div>')
+    tl = list(ht)
+    for i in range(n):
+        t = times[i]
+        tl.append(f'tl.fromTo("#{sid}-s{i}",{{scale:0}},{{scale:1,opacity:1,duration:0.3,ease:"back.out(2)"}},{t:.2f});')
+        tl.append(f'tl.to("#{sid}-sv{i}",{{opacity:1,duration:0.25}},{t+0.05:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-bar{i}",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{t+0.2:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-e{i}",{{scale:0}},{{scale:1,opacity:1,duration:0.35,ease:"back.out(2.4)"}},{t+0.55:.2f});')
+        tl.append(f'tl.to("#{sid}-ev{i}",{{opacity:1,duration:0.25}},{t+0.6:.2f});')
+    return frag, tl
+
+
+def small_multiples(sid, sc):
+    """SMALL MULTIPLES — a grid of tiny same-scale mini bar charts, one per panel, so the eye compares the
+    SHAPE across many categories at once ("the same pattern everywhere / everywhere but here"). All panels
+    share ONE y-scale (the whole point). Panels reveal staggered; bars grow. Bind a dataset (encode
+    {panel, x, y} — the resolver groups rows into panels). data: {panels:[{label, series:[{label,value}]}],
+    prefix?, suffix?, kicker?, title?, titleHi?, ground?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc, num = compose.esc, compose._num
+    panels = d.get("panels") or []
+    n = len(panels)
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    rule = "rgba(243,239,230,0.22)" if dark else "rgba(28,28,25,0.16)"
+    pre, suf = d.get("prefix", ""), d.get("suffix", "")
+    allvals = [float(pt.get("value", 0)) for p in panels for pt in (p.get("series") or [])] or [0.0]
+    ymax = max(allvals) * 1.1 or 1.0
+    cols = min(3, max(1, n))
+    rowsn = (n + cols - 1) // cols
+    AX0, AY0, AW, AH = 300, 268, 1320, 620
+    cw, ch = AW / cols, AH / max(1, rowsn)
+    frag = [f'<div id="{sid}-wrap" class="clip blk-small_multiples" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
+    hf, ht = _dataviz_head(sid, sc, ink)
+    frag += hf
+    times = compose._reveal_times(n, start, dur, [None] * n) if n else []
+    tl = list(ht)
+    for pi, p in enumerate(panels):
+        cx = AX0 + (pi % cols) * cw
+        cy = AY0 + (pi // cols) * ch
+        pad, titleh = 26, 46
+        chx, chy = cx + pad, cy + titleh
+        chw, chh = cw - pad * 2, ch - titleh - 30
+        pid = f"{sid}-p{pi}"
+        frag.append(f'<div id="{pid}" style="position:absolute;left:{cx:.0f}px;top:{cy:.0f}px;width:{cw:.0f}px;'
+                    f'height:{ch:.0f}px;opacity:0">')
+        frag.append(f'<div style="position:absolute;left:{pad}px;top:8px;font-size:23px;font-weight:800;'
+                    f'color:{ink}">{esc(str(p.get("label", "")))}</div>')
+        frag.append(f'<div style="position:absolute;left:{pad}px;top:{titleh+chh:.0f}px;width:{chw:.0f}px;'
+                    f'height:2px;background:{rule}"></div>')                       # baseline
+        series = p.get("series") or []
+        m = max(1, len(series))
+        bw = chw / m * 0.66
+        for bi, pt in enumerate(series):
+            v = float(pt.get("value", 0))
+            bh = max(2.0, v / ymax * chh)
+            bx = pad + bi * (chw / m) + (chw / m - bw) / 2
+            by = titleh + chh - bh
+            frag.append(f'<div id="{pid}-b{bi}" style="position:absolute;left:{bx:.0f}px;top:{by:.0f}px;'
+                        f'width:{bw:.0f}px;height:{bh:.0f}px;background:var(--accent);transform-origin:bottom center;'
+                        f'transform:scaleY(0)"></div>')
+            frag.append(f'<div style="position:absolute;left:{bx-(chw/m-bw)/2:.0f}px;top:{titleh+chh+6:.0f}px;'
+                        f'width:{chw/m:.0f}px;text-align:center;font-size:15px;color:{ink};opacity:.55">'
+                        f'{esc(str(pt.get("label", "")))}</div>')
+        frag.append('</div>')
+        t = times[pi]
+        tl.append(f'tl.to("#{pid}",{{opacity:1,duration:0.35}},{t:.2f});')
+        for bi in range(len(series)):
+            tl.append(f'tl.fromTo("#{pid}-b{bi}",{{scaleY:0}},{{scaleY:1,duration:0.5,ease:"power2.out"}},{t+0.1+bi*0.04:.2f});')
+    frag.append('</div>')
+    return frag, tl
+
+
+def histogram(sid, sc):
+    """A HISTOGRAM / distribution — the SHAPE of a spread (bars touching, no gaps), with an optional
+    `marker` value ("where you fall / where the average sits"). Bars rise left→right (the distribution
+    builds), then the marker drops in. Bind a dataset (encode {value} — the resolver bins the raw column).
+    data: {bins:[{x0, x1, count}] | [{label, count}], marker?(a value on the axis), marker_label?,
+    unit?, prefix?, suffix?, kicker?, title?, titleHi?, ground?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc, num = compose.esc, compose._num
+    bins = d.get("bins") or []
+    n = len(bins)
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    rule = "rgba(243,239,230,0.30)" if dark else "rgba(28,28,25,0.22)"
+    pre, suf, unit = d.get("prefix", ""), d.get("suffix", ""), d.get("unit", "")
+    counts = [float(b.get("count", 0)) for b in bins] or [0.0]
+    cmax = max(counts) * 1.12 or 1.0
+    edges = [b.get("x0") for b in bins if b.get("x0") is not None]
+    x0v = bins[0].get("x0") if bins and bins[0].get("x0") is not None else 0
+    x1v = bins[-1].get("x1") if bins and bins[-1].get("x1") is not None else n
+    dom = (x1v - x0v) or 1
+    PX0, PX1, PY0, PY1 = 320, 1600, 300, 860
+    pw = PX1 - PX0
+    frag = [f'<div id="{sid}-wrap" class="clip blk-histogram" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
+    hf, ht = _dataviz_head(sid, sc, ink)
+    frag += hf
+    frag.append(f'<div style="position:absolute;left:{PX0}px;top:{PY1}px;width:{pw}px;height:2px;background:{rule}"></div>')
+    bw = pw / max(1, n)
+    for i, b in enumerate(bins):
+        c = float(b.get("count", 0))
+        bh = max(2.0, c / cmax * (PY1 - PY0))
+        bx = PX0 + i * bw
+        frag.append(f'<div id="{sid}-b{i}" style="position:absolute;left:{bx+1:.0f}px;top:{PY1-bh:.0f}px;'
+                    f'width:{bw-2:.0f}px;height:{bh:.0f}px;background:var(--accent);transform-origin:bottom center;'
+                    f'transform:scaleY(0)"></div>')
+    # x-axis endpoints + midpoint labels
+    for frac, val in ((0.0, x0v), (0.5, (x0v + x1v) / 2), (1.0, x1v)):
+        lx = PX0 + frac * pw
+        frag.append(f'<div style="position:absolute;left:{lx-80:.0f}px;top:{PY1+12:.0f}px;width:160px;'
+                    f'text-align:center;font-size:20px;color:{ink};opacity:.6">{esc(pre)}{num(val)}{esc(suf)}</div>')
+    if unit:
+        frag.append(f'<div style="position:absolute;left:{PX1-260:.0f}px;top:{PY1+48:.0f}px;font-size:20px;'
+                    f'opacity:.5">{esc(unit)} →</div>')
+    tl = list(ht)
+    times = compose._reveal_times(n, start, dur, [None] * n) if n else []
+    for i in range(n):
+        tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:0.4,ease:"power2.out"}},{times[i]:.2f});')
+    # optional marker ("where you fall") — a vertical line + label that drops in after the bars
+    mk = d.get("marker")
+    if mk is not None:
+        mx = PX0 + max(0.0, min(1.0, (float(mk) - x0v) / dom)) * pw
+        mt = round((times[-1] if n else start) + 0.4, 2)
+        frag.append(f'<div id="{sid}-mk" style="position:absolute;left:{mx:.0f}px;top:{PY0-30:.0f}px;width:3px;'
+                    f'height:{PY1-PY0+30:.0f}px;background:{ink};opacity:0"></div>')
+        frag.append(f'<div id="{sid}-mkl" style="position:absolute;left:{mx-140:.0f}px;top:{PY0-64:.0f}px;width:280px;'
+                    f'text-align:center;font-size:23px;font-weight:800;color:{ink};opacity:0">'
+                    f'{esc(d.get("marker_label") or (str(pre)+num(float(mk))+str(suf)))}</div>')
+        tl.append(f'tl.fromTo("#{sid}-mk",{{scaleY:0,transformOrigin:"top center"}},{{scaleY:1,opacity:1,duration:0.4,ease:"power3.out"}},{mt});')
+        tl.append(f'tl.fromTo("#{sid}-mkl",{{opacity:0,y:-8}},{{opacity:1,y:0,duration:0.35}},{mt+0.1:.2f});')
+    frag.append('</div>')
+    return frag, tl
+
+
 EXT_BLOCKS = {"spotlight": spotlight, "data_table": data_table,
               "trajectory": trajectory, "stream": stream, "bar_race": bar_race,
-              "split_view": split_view, "slope": slope}
+              "split_view": split_view, "slope": slope, "isotype": isotype, "dumbbell": dumbbell,
+              "small_multiples": small_multiples, "histogram": histogram}
