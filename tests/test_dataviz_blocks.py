@@ -117,3 +117,32 @@ def test_histogram_bins_a_raw_column():
     assert "hg-b0" in html and "hg-mk" in html                       # bars + the marker line
     assert any("scaleY" in x for x in t)
     assert _classified("histogram") == ("dataviz", True)
+
+
+# --- gauge ---
+
+def test_gauge_resolves_items_and_composes_arc():
+    from nolan.data.resolve import resolve_scene
+    import compose
+    ds = _DS([{"t": "A", "s": 71}, {"t": "B", "s": 92}], ["t", "s"])
+    out = resolve_scene({"type": "gauge", "data": {"encode": {"label": "t", "value": "s"}}}, ds)
+    assert out["data"]["items"] == [{"value": 71, "label": "A"}, {"value": 92, "label": "B"}]
+    f, t = compose.BLOCKS["gauge"]("g", {"id": "g", "type": "gauge", "start": 0, "dur": 8,
+        "data": {"items": [{"value": 71, "label": "A"}], "max": 100, "target": 80}})
+    assert "g-arc0" in "".join(f) and any("strokeDashoffset" in x for x in t)   # a swept radial arc
+    assert _classified("gauge") == ("dataviz", True)
+
+
+# --- process ---
+
+def test_process_resolves_steps_and_composes_nodes():
+    from nolan.data.resolve import resolve_scene
+    import compose
+    ds = _DS([{"n": "Embed", "d": "x"}, {"n": "Attend", "d": "y"}], ["n", "d"])
+    out = resolve_scene({"type": "process", "data": {"encode": {"label": "n", "sub": "d"}}}, ds)
+    assert out["data"]["steps"] == [{"label": "Embed", "sub": "x"}, {"label": "Attend", "sub": "y"}]
+    f, t = compose.BLOCKS["process"]("p", {"id": "p", "type": "process", "start": 0, "dur": 8,
+        "data": {"steps": [{"label": "A"}, {"label": "B"}, {"label": "C"}]}})
+    html = "".join(f)
+    assert "p-n0" in html and "p-n2" in html and "p-a0" in html   # step nodes + a connector
+    assert _classified("process") == ("dataviz", True)

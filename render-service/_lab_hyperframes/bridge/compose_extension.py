@@ -1009,7 +1009,142 @@ def histogram(sid, sc):
     return frag, tl
 
 
+def gauge(sid, sc):
+    """A GAUGE / progress ring — one (or a few) value(s) against a max, drawn as a SWEEPING radial arc with
+    the number in the centre + an optional target tick. 'We're 73% of the way / used 40 of 50 / the clock at
+    90 seconds'. Bind a dataset (encode {value, label}). data: {items:[{value, label}] | value+label,
+    max?(default 100), target?, unit?, prefix?, suffix?, kicker?, title?, titleHi?, ground?}."""
+    import math
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc, num = compose.esc, compose._num
+    items = d.get("items") or ([{"value": d.get("value", 0), "label": d.get("label", "")}]
+                               if d.get("value") is not None else [])
+    n = max(1, len(items))
+    mx = float(d.get("max", 100) or 100)
+    tgt = d.get("target")
+    pre, suf = d.get("prefix", ""), d.get("suffix", "")
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    track = "rgba(243,239,230,0.16)" if dark else "rgba(28,28,25,0.12)"
+    R = 168 if n == 1 else (132 if n == 2 else 106)
+    SW = 26 if n == 1 else (20 if n == 2 else 16)
+    C = 2 * math.pi * R
+    cy = 580
+    xs = [960] if n == 1 else [960 - 620 + i * (1240 / (n - 1)) for i in range(n)]
+    frag = [f'<div id="{sid}-wrap" class="clip blk-gauge" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
+    hf, ht = _dataviz_head(sid, sc, ink)
+    frag += hf
+    svg = ['<svg viewBox="0 0 1920 1080" style="position:absolute;inset:0;width:100%;height:100%">']
+    tl = list(ht)
+    for i, it in enumerate(items):
+        v = float(it.get("value", 0))
+        fill = max(0.0, min(1.0, v / mx))
+        cx = xs[i]
+        svg.append(f'<circle cx="{cx:.0f}" cy="{cy}" r="{R}" fill="none" stroke="{track}" stroke-width="{SW}"/>')
+        svg.append(f'<circle id="{sid}-arc{i}" cx="{cx:.0f}" cy="{cy}" r="{R}" fill="none" stroke="var(--accent)" '
+                   f'stroke-width="{SW}" stroke-linecap="round" transform="rotate(-90 {cx:.0f} {cy})" '
+                   f'style="stroke-dasharray:{C:.1f};stroke-dashoffset:{C:.1f}"/>')
+        if tgt is not None:
+            ang = -math.pi / 2 + (float(tgt) / mx) * 2 * math.pi
+            tx, ty = cx + R * math.cos(ang), cy + R * math.sin(ang)
+            svg.append(f'<circle cx="{tx:.0f}" cy="{ty:.0f}" r="{SW*0.42:.0f}" fill="{ink}"/>')
+        frag.append(f'<div id="{sid}-v{i}" style="position:absolute;left:{cx-180:.0f}px;top:{cy-46:.0f}px;width:360px;'
+                    f'text-align:center;font-family:var(--font-display);font-weight:800;font-size:{72 if n<=2 else 52}px;'
+                    f'color:{ink};opacity:0">{esc(pre)}{num(v)}{esc(suf)}</div>')
+        frag.append(f'<div style="position:absolute;left:{cx-200:.0f}px;top:{cy+R+18:.0f}px;width:400px;'
+                    f'text-align:center;font-size:26px;font-weight:700;color:{ink};opacity:.72">{esc(str(it.get("label","")))}</div>')
+        off = C * (1 - fill)
+        t = start + 0.4 + i * 0.25
+        tl.append(f'tl.fromTo("#{sid}-arc{i}",{{strokeDashoffset:{C:.1f}}},{{strokeDashoffset:{off:.1f},'
+                  f'duration:1.1,ease:"power2.out"}},{t:.2f});')
+        tl.append(f'tl.to("#{sid}-v{i}",{{opacity:1,duration:0.4}},{t+0.2:.2f});')
+    svg.append('</svg>')
+    frag += svg
+    frag.append('</div>')
+    return frag, tl
+
+
+def process(sid, sc):
+    """A PROCESS FLOW — linear STEPS connected by arrows, revealed in order (step 1 → 2 → 3): an OPEN chain
+    (a pipeline / how-it-works), distinct from cycle (a closed loop), diagram (a tree) or sankey (magnitude).
+    Bind a dataset (encode {label, sub?}). data: {steps:[{label, sub?}], direction?(horizontal|vertical),
+    kicker?, title?, titleHi?, ground?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc = compose.esc
+    steps = d.get("steps") or []
+    n = len(steps)
+    horizontal = str(d.get("direction", "horizontal")) != "vertical"
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    card = "rgba(243,239,230,0.07)" if dark else "rgba(28,28,25,0.05)"
+    frag = [f'<div id="{sid}-wrap" class="clip blk-process" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
+    hf, ht = _dataviz_head(sid, sc, ink)
+    frag += hf
+    times = compose._reveal_times(n, start, dur, [None] * n) if n else []
+    tl = list(ht)
+    if horizontal:
+        AX0, AX1, cy = 200, 1720, 560
+        gap = (AX1 - AX0) / max(1, n)
+        bw = min(300, gap * 0.72)
+        bh = 150
+        for i, s in enumerate(steps):
+            cx = AX0 + gap * (i + 0.5)
+            bx = cx - bw / 2
+            nid = f"{sid}-n{i}"
+            frag.append(f'<div id="{nid}" style="position:absolute;left:{bx:.0f}px;top:{cy-bh/2:.0f}px;width:{bw:.0f}px;'
+                        f'height:{bh}px;background:{card};border:2px solid var(--accent);border-radius:14px;'
+                        f'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;opacity:0">'
+                        f'<div style="position:absolute;left:-16px;top:-16px;width:44px;height:44px;border-radius:50%;'
+                        f'background:var(--accent);color:var(--surface,#fff);font-weight:800;font-size:22px;'
+                        f'display:flex;align-items:center;justify-content:center">{i+1}</div>'
+                        f'<div style="font-size:27px;font-weight:800;text-align:center;padding:0 14px">{esc(str(s.get("label","")))}</div>'
+                        + (f'<div style="font-size:19px;opacity:.62;text-align:center;padding:0 14px">{esc(str(s.get("sub","")))}</div>' if s.get("sub") else "")
+                        + '</div>')
+            if i < n - 1:
+                ax = cx + bw / 2
+                aw = gap - bw
+                frag.append(f'<div id="{sid}-a{i}" style="position:absolute;left:{ax:.0f}px;top:{cy-3:.0f}px;'
+                            f'width:{aw:.0f}px;height:6px;background:var(--accent);transform-origin:left center;'
+                            f'transform:scaleX(0)"></div>')
+                frag.append(f'<div id="{sid}-ah{i}" style="position:absolute;left:{ax+aw-6:.0f}px;top:{cy-13:.0f}px;'
+                            f'width:0;height:0;border-left:16px solid var(--accent);border-top:10px solid transparent;'
+                            f'border-bottom:10px solid transparent;opacity:0"></div>')
+            t = times[i]
+            tl.append(f'tl.fromTo("#{nid}",{{opacity:0,y:18}},{{opacity:1,y:0,duration:0.45,ease:"back.out(1.6)"}},{t:.2f});')
+            if i < n - 1:
+                tl.append(f'tl.fromTo("#{sid}-a{i}",{{scaleX:0}},{{scaleX:1,duration:0.3,ease:"power2.out"}},{t+0.35:.2f});')
+                tl.append(f'tl.to("#{sid}-ah{i}",{{opacity:1,duration:0.15}},{t+0.6:.2f});')
+    else:
+        AY0, cx = 250, 560
+        rh = min(150, (860 - AY0) / max(1, n))
+        bw, bh = 620, min(112, rh - 34)
+        for i, s in enumerate(steps):
+            cy = AY0 + rh * i
+            nid = f"{sid}-n{i}"
+            frag.append(f'<div id="{nid}" style="position:absolute;left:{cx:.0f}px;top:{cy:.0f}px;width:{bw}px;'
+                        f'height:{bh:.0f}px;background:{card};border:2px solid var(--accent);border-radius:14px;'
+                        f'display:flex;align-items:center;gap:18px;padding:0 22px;opacity:0">'
+                        f'<div style="width:44px;height:44px;flex:none;border-radius:50%;background:var(--accent);'
+                        f'color:var(--surface,#fff);font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center">{i+1}</div>'
+                        f'<div><div style="font-size:27px;font-weight:800">{esc(str(s.get("label","")))}</div>'
+                        + (f'<div style="font-size:19px;opacity:.62">{esc(str(s.get("sub","")))}</div>' if s.get("sub") else "")
+                        + '</div></div>')
+            if i < n - 1:
+                frag.append(f'<div id="{sid}-a{i}" style="position:absolute;left:{cx+30:.0f}px;top:{cy+bh:.0f}px;'
+                            f'width:4px;height:{rh-bh:.0f}px;background:var(--accent);transform-origin:top center;'
+                            f'transform:scaleY(0)"></div>')
+            t = times[i]
+            tl.append(f'tl.fromTo("#{nid}",{{opacity:0,x:-18}},{{opacity:1,x:0,duration:0.45,ease:"back.out(1.6)"}},{t:.2f});')
+            if i < n - 1:
+                tl.append(f'tl.fromTo("#{sid}-a{i}",{{scaleY:0}},{{scaleY:1,duration:0.25,ease:"power2.out"}},{t+0.35:.2f});')
+    frag.append('</div>')
+    return frag, tl
+
+
 EXT_BLOCKS = {"spotlight": spotlight, "data_table": data_table,
               "trajectory": trajectory, "stream": stream, "bar_race": bar_race,
               "split_view": split_view, "slope": slope, "isotype": isotype, "dumbbell": dumbbell,
-              "small_multiples": small_multiples, "histogram": histogram}
+              "small_multiples": small_multiples, "histogram": histogram,
+              "gauge": gauge, "process": process}

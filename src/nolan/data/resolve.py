@@ -47,7 +47,7 @@ def _rowval(r, key, default=""):
 
 
 # encode keys whose VALUE names a table column (vs. literal options like prefix/suffix/source_label)
-_ENCODE_COL_KEYS = ("x", "y", "label", "value", "start", "end", "text", "panel", "group")
+_ENCODE_COL_KEYS = ("x", "y", "label", "value", "start", "end", "text", "panel", "group", "sub")
 
 
 def _available_columns(dataset, query: Dict) -> set:
@@ -111,7 +111,7 @@ def _materialize(block_type: str, rows: List[Dict], enc: Dict) -> Dict:
         return {"series": [{"label": str(_rowval(r, x)), "value": _num(_rowval(r, y, 0))} for r in rows]}
     if block_type in ("pie",):
         return {"segments": [{"label": str(_rowval(r, lab)), "value": _num(_rowval(r, val, 0))} for r in rows]}
-    if block_type in ("stat", "scale", "spectrum", "isotype"):
+    if block_type in ("stat", "scale", "spectrum", "isotype", "gauge"):
         items = [{"value": _num(_rowval(r, val, 0)), "label": str(_rowval(r, lab))} for r in rows]
         if pre:
             items and items[0].__setitem__("prefix", pre)
@@ -188,6 +188,16 @@ def _materialize(block_type: str, rows: List[Dict], enc: Dict) -> Dict:
     if block_type == "bullet_list":
         text_col = enc.get("text") or lab
         return {"items": [str(_rowval(r, text_col)) for r in rows]}
+    if block_type == "process":                             # ordered steps (encode {label, sub?})
+        text_col = enc.get("text") or lab
+        sub_col = enc.get("sub")
+        out = []
+        for r in rows:
+            step = {"label": str(_rowval(r, text_col))}
+            if sub_col and _rowval(r, sub_col, None) not in (None, ""):
+                step["sub"] = str(_rowval(r, sub_col))
+            out.append(step)
+        return {"steps": out}
     if block_type == "ledger":                              # the ledger block reads `rows` [{title, desc?, meta?}]
         title_col = enc.get("text") or lab
         out = []

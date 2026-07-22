@@ -41,7 +41,8 @@
         "funnel",
         "spectrum",
         "cycle",
-        "isotype"
+        "isotype",
+        "gauge"
       ],
       "exemplar": "exemplars/centered-hero.json",
       "zone": {
@@ -109,7 +110,8 @@
         "diagram",
         "sankey",
         "connection_board",
-        "small_multiples"
+        "small_multiples",
+        "process"
       ],
       "exemplar": null,
       "zone": {

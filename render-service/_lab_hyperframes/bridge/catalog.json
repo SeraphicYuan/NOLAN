@@ -1044,6 +1044,56 @@
         "seek_safe",
         "transform_opacity_only"
       ]
+    },
+    "gauge": {
+      "fn": "gauge",
+      "purpose": "A GAUGE / progress ring — a value against a max as a sweeping radial arc with the number in the centre.",
+      "when_to_use": "One (or a few) metric against a target/ceiling: progress to a goal, capacity used, a countdown, 'we're 73% there'. A punchy single-metric beat.",
+      "not_for": "A precise trend (chart). Many categories (chart bar / isotype). A part-of-whole across categories (pie).",
+      "data_schema": {
+        "items": "array of {value, label} — one ring each (auto-filled from a dataset via encode {value,label}). Or give a single `value`+`label`.",
+        "value": "number? — shorthand for a single-ring gauge",
+        "label": "string? — single-ring label",
+        "max": "number? — the ceiling the arc fills toward (default 100)",
+        "target": "number? — a value to mark with a tick on the ring",
+        "unit": "string?",
+        "prefix": "string?",
+        "suffix": "string?",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string?",
+        "ground": "object?",
+        "dataset": "string? — bind a dataset id; the resolver fills items + stamps value_source (A-P1 gate).",
+        "query": "object? — filter/aggregate/sort/derive/top_n/select (see data verbs).",
+        "encode": "object? — {value:'col', label:'col'} — column → each ring's value + label"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ]
+    },
+    "process": {
+      "fn": "process",
+      "purpose": "A PROCESS FLOW — linear steps connected by arrows, revealed in order (step 1 → 2 → 3): a pipeline / how-it-works.",
+      "when_to_use": "An ordered PROCESS or how-it-works ('input → encode → attend → decode → output'; a 3-5 step method). An OPEN chain.",
+      "not_for": "A repeating loop (cycle). A branching hierarchy (diagram). A flow whose WIDTH carries magnitude (sankey).",
+      "data_schema": {
+        "steps": "array of {label, sub?} — the ordered steps (auto-filled from a dataset via encode {label, sub?})",
+        "direction": "enum(horizontal|vertical)? — layout (default horizontal)",
+        "kicker": "string?",
+        "title": "string?",
+        "titleHi": "string?",
+        "ground": "object?",
+        "dataset": "string? — bind a dataset id; the resolver fills steps + stamps value_source (A-P1 gate).",
+        "query": "object? — filter/aggregate/sort/derive/top_n/select (see data verbs).",
+        "encode": "object? — {label:'col', sub?:'col'} — column → each step's label (+ optional sub-label)"
+      },
+      "constraints": [
+        "duration_preserving",
+        "seek_safe",
+        "transform_opacity_only"
+      ]
     }
   },
   "components": {

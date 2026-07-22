@@ -58,7 +58,8 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
             "hero": ["src", "title"], "chat_thread": ["messages"], "connection_board": ["nodes"], "spans": ["spans"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"],
             "slope": ["series"], "isotype": ["items"], "dumbbell": ["items"],
-            "small_multiples": ["panels"], "histogram": ["bins"]}
+            "small_multiples": ["panels"], "histogram": ["bins"],
+            "gauge": ["items"], "process": ["steps"]}
 
 
 # A4: fields the dataset resolver (nolan.data) fills from a bound `data.dataset` at finish/accept time. When a
@@ -66,7 +67,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
 # scene (the whole point: don't hand-type numbers) passes the gate in BOTH the finish and incremental-accept
 # routes instead of only finish.
 _DATASET_FILLED = {"series", "segments", "items", "source", "targets", "stages", "spans", "points",
-                   "columns", "rows", "panels", "bins"}
+                   "columns", "rows", "panels", "bins", "steps"}
 
 
 # Seek-safety lint for `raw` (bespoke) scenes: author.py otherwise gates STRUCTURE only, so a hand-authored
