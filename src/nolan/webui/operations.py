@@ -327,7 +327,8 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
 
 
 async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,
-                                     window_s: float = 45.0, overlap_s: float = 10.0, visual: bool = True):
+                                     window_s: float = 45.0, overlap_s: float = 10.0,
+                                     visual: str = "keyframe", max_frames: int = 16):
     """Build/refresh a TRANSCRIPT library from a YouTube channel: list its videos, fetch each transcript
     (captions only — NO video download), chunk into overlapping timestamped windows, ingest as a
     transcript-tier VideoIndex row (has_footage=0) + embed into the unified semantic store. Per-video
@@ -365,16 +366,32 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
         got += 1
         windows_total += len(windows)
         nframes = 0
-        if visual:                                           # eager FREE visual tier: storyboard frames (no video dl)
+        if visual and visual != "off":                       # bonus VISUAL tier — never fails the transcript run
             try:
                 import tempfile
                 from nolan import transcript_frames as tfr
                 yid = meta.get("video_id") or v["video_id"]
-                tiles = await asyncio.to_thread(tfr.storyboard_tiles, v["url"], Path(tempfile.mkdtemp()), 12.0, 40)
-                nframes = await asyncio.to_thread(tfr.embed_frames, tiles, yid, v["url"], "storyboard", title)
+                tmpd = Path(tempfile.mkdtemp())
+                if visual == "storyboard":                   # FREE, coarse, no video download (CLIP-only)
+                    tiles = await asyncio.to_thread(tfr.storyboard_tiles, v["url"], tmpd, 12.0, 40)
+                    nframes = await asyncio.to_thread(tfr.embed_frames, tiles, yid, v["url"], "storyboard", title)
+                else:                                        # "keyframe": full-res frame/window + gemma caption
+                    mids = [round((w["start"] + w["end"]) / 2, 1) for w in windows]
+                    if len(mids) > max_frames:               # evenly sample to bound cost/time
+                        mids = [mids[int(k * len(mids) / max_frames)] for k in range(max_frames)]
+                    kfs = await asyncio.to_thread(tfr.ranged_keyframes, v["url"], mids, tmpd)
+
+                    def _wtext(ts):                          # the transcript window covering this frame (visual+audio fuse)
+                        for w in windows:
+                            if w["start"] <= ts <= w["end"]:
+                                return w["text"]
+                        return ""
+                    caps = [await asyncio.to_thread(tfr.caption_frame, fp, _wtext(ts), ts) for ts, fp in kfs]
+                    nframes = await asyncio.to_thread(tfr.embed_frames, kfs, yid, v["url"],
+                                                      "keyframe", title, None, None, caps)
                 frames_total += nframes
-            except Exception as e:                           # visual is a bonus tier — never fail the transcript run
-                job.log(f"    (storyboard visual skipped: {type(e).__name__}: {e})")
+            except Exception as e:
+                job.log(f"    (visual '{visual}' skipped: {type(e).__name__}: {e})")
         job.log(f"  ✓ {title} ({len(windows)} windows" + (f", +{nframes} frames" if nframes else "") + ")")
     job.set_progress(1.0, f"{got} transcripts ({windows_total} windows, {frames_total} frames), {skipped} skipped")
     return {"channel": channel, "found": len(vids), "ingested": got, "skipped": skipped,

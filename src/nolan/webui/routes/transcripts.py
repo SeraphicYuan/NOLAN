@@ -9,7 +9,7 @@ DISCOVERY tier of the library, then search "which video / roughly when" a topic 
 from pathlib import Path
 
 from fastapi import Body, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 
 def register(app, ctx):
@@ -41,6 +41,9 @@ def register(app, ctx):
             limit=int(body.get("limit", 10) or 10),
             window_s=float(body.get("window_s", 45) or 45),
             overlap_s=float(body.get("overlap_s", 10) or 10),
+            # visual tier: "keyframe" (full-res + gemma caption, default) | "storyboard" (free/coarse) | "off"
+            visual=(body.get("visual") or ("off" if body.get("no_visual") else "keyframe")),
+            max_frames=int(body.get("max_frames", 16) or 16),
         )
         return {"job_id": job.id, "type": "transcript-channel"}
 
@@ -66,3 +69,21 @@ def register(app, ctx):
         vs = VectorSearch(Path(idb).parent / "vectors", index=index)
         results = await asyncio.to_thread(tl.search_transcripts, q, index, vs, int(n))
         return {"results": results, "count": len(results)}
+
+    @app.get("/api/transcripts/visual-search")
+    async def transcripts_visual_search(q: str = Query(...), n: int = Query(default=24)):
+        """CLIP text→image over the transcript-frame visual tier — retrieve by APPEARANCE, timestamped."""
+        import asyncio
+        from nolan import transcript_frames as tf
+        results = await asyncio.to_thread(tf.visual_search, q, int(n))
+        return {"results": results, "count": len(results)}
+
+    @app.get("/api/transcripts/frame")
+    async def transcripts_frame(path: str = Query(...)):
+        """Serve a stored frame thumbnail (contained to the transcript-frame store — no traversal)."""
+        from nolan.transcript_frames import FRAMES_DIR
+        base = FRAMES_DIR.resolve()
+        fp = Path(path).resolve()
+        if base not in fp.parents or not fp.is_file():
+            raise HTTPException(status_code=404, detail="frame not found")
+        return FileResponse(fp, media_type="image/jpeg")

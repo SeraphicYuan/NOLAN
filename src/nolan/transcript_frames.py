@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 REPO = Path(__file__).resolve().parents[2]                    # src/nolan/transcript_frames.py -> repo
 FRAMES_DIR = REPO / "projects" / "_library" / "transcript-frames"
+CAPTION_MODEL = "google/gemma-4-26b-a4b-it"                    # cheap, fast, conservative VLM (benchmarked winner)
 
 
 def frame_lib(embedder=None, base_dir=None):
@@ -52,6 +53,51 @@ def _resolve_stream(watch_url: str) -> Optional[str]:
         if f.get("vcodec") not in (None, "none") and f.get("url"):
             return f["url"]
     return None
+
+
+def _extract_caption(content: str) -> str:
+    """Pull the searchable caption out of the VLM's JSON reply (prefers combined_summary → frame_
+    description); falls back to the raw text if it isn't valid JSON."""
+    import json
+    import re
+    try:
+        m = re.search(r"\{.*\}", content, re.DOTALL)
+        d = json.loads(m.group(0)) if m else {}
+        cap = (d.get("combined_summary") or d.get("frame_description") or "").strip()
+        return cap or (content or "").strip()[:400]
+    except Exception:
+        return (content or "").strip()[:400]
+
+
+def caption_frame(image_path, transcript: Optional[str] = None, timestamp: Optional[float] = None,
+                  model: Optional[str] = None) -> str:
+    """Caption a full-res frame with a cheap VLM (gemma-4-26b default), thinking OFF, using the SAME
+    visual+audio prompt as video ingest — so the transcript window fuses with the pixels into a rich,
+    OCR-aware, entity-aware, searchable description. Returns "" on any failure (a caption-less frame is
+    still CLIP-embedded, so this never blocks the visual tier)."""
+    import base64
+
+    import httpx
+
+    from nolan.config import load_config
+    from nolan.vision import build_frame_analysis_prompt
+    key = load_config().vision.openrouter_api_key
+    if not key:
+        return ""
+    prompt = build_frame_analysis_prompt(transcript, timestamp)
+    b64 = base64.b64encode(Path(image_path).read_bytes()).decode()
+    body = {"model": model or CAPTION_MODEL, "reasoning": {"enabled": False},   # thinking OFF (production)
+            "messages": [{"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}]}
+    try:
+        r = httpx.post("https://openrouter.ai/api/v1/chat/completions",
+                       headers={"Authorization": f"Bearer {key}"}, json=body, timeout=90)
+        if r.status_code != 200:
+            return ""
+        return _extract_caption(r.json()["choices"][0]["message"]["content"])
+    except Exception:
+        return ""
 
 
 def ranged_keyframes(url: str, timestamps: List[float], out_dir: Path,
@@ -133,15 +179,19 @@ def storyboard_tiles(watch_url: str, out_dir: Path, every_s: float = 12.0,
 
 
 def embed_frames(frames: List[Tuple[float, Path]], video_id: str, watch_url: str,
-                 kind: str = "keyframe", title: str = "", embedder=None, base_dir=None) -> int:
+                 kind: str = "keyframe", title: str = "", embedder=None, base_dir=None,
+                 captions: Optional[List[str]] = None) -> int:
     """CLIP-embed frames into the transcript-frame library, each tagged with {video_id, t, kind} so a
-    search hit resolves back to a video + timestamp. Returns the number embedded."""
+    search hit resolves to a video + timestamp. If `captions` (parallel to `frames`) is given, each is
+    stored as the frame's description → BGE-embedded too, so visual_search retrieves by the rich VLM
+    caption (text/OCR/entities) as well as by appearance (CLIP). Returns the number embedded."""
     lib = frame_lib(embedder=embedder, base_dir=base_dir)
     n = 0
-    for ts, fp in frames:
+    for i, (ts, fp) in enumerate(frames):
+        cap = (captions[i] if captions and i < len(captions) else None) or None
         try:
             lib.add_file(str(fp), source=f"youtube-{kind}", source_url=watch_url,
-                         title=title or video_id,
+                         title=title or video_id, description=cap,
                          tags=f"video_id={video_id};t={float(ts):.1f};kind={kind}",
                          query=f"{float(ts):.1f}")
             n += 1
@@ -155,11 +205,17 @@ def _parse_tags(tags: str) -> Dict[str, str]:
 
 
 def visual_search(query: str, n: int = 24, embedder=None, base_dir=None) -> List[Dict[str, Any]]:
-    """CLIP text→image over the transcript-frame library → [{video_id, start, watch_url, kind, title,
-    score, thumb}] — the visual counterpart of the transcript TEXT search."""
+    """Search the transcript-frame library → [{video_id, start, watch_url, kind, title, caption, score,
+    thumb}]. HYBRID retrieval (CLIP appearance + the gemma caption's BGE text, when captions exist) so a
+    query matches both what a frame LOOKS like and what the VLM described (OCR/entities); falls back to
+    pure CLIP if hybrid is unavailable."""
     lib = frame_lib(embedder=embedder, base_dir=base_dir)
+    try:
+        hits = lib.search_hybrid(query, k=int(n))
+    except Exception:
+        hits = lib.search(query, k=int(n))
     out: List[Dict[str, Any]] = []
-    for h in lib.search(query, k=int(n)):
+    for h in hits:
         a = h.asset
         tg = _parse_tags(getattr(a, "tags", "") or "")
         ts = float(tg.get("t", 0) or 0)
@@ -168,6 +224,7 @@ def visual_search(query: str, n: int = 24, embedder=None, base_dir=None) -> List
             "video_id": tg.get("video_id", ""), "start": round(ts, 1),
             "watch_url": (f"{url}&t={int(ts)}s" if "watch?v=" in url else url),
             "kind": tg.get("kind", ""), "title": getattr(a, "title", "") or "",
+            "caption": getattr(a, "description", "") or "",
             "score": round(float(h.score), 3), "thumb": str(lib.abs_path(a)),
         })
     return out
