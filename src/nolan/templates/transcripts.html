@@ -8,79 +8,130 @@
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
            background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
-    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 20px; }
+    .wrap { max-width: 1040px; margin: 24px auto; padding: 0 20px; }
     h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 2px; }
-    .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+    .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+    .tab { padding: 9px 16px; cursor: pointer; font-weight: 600; color: var(--text-secondary); border-bottom: 2px solid transparent; }
+    .tab.on { color: var(--text-primary); border-bottom-color: var(--accent, #4f7cff); }
     .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    input[type=text], input[type=number] { background: var(--bg-primary); border: 1px solid var(--border);
-           border-radius: 6px; color: var(--text-primary); padding: 8px 10px; font-size: 13px; }
+    input[type=text], input[type=number], select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); padding: 8px 10px; font-size: 13px; }
     #channel, #q { flex: 1; min-width: 240px; }
     .btn { background: var(--accent, #4f7cff); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .btn.ghost { background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); }
+    .btn.mini { padding: 4px 9px; font-size: 12px; }
+    .btn.danger { color: #e5484d; border-color: #e5484d; }
     .dim { color: var(--text-secondary); font-size: 12px; }
     .warn { color: #e0a83a; font-size: 12px; }
-    .hit { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-    .hit:last-child { border-bottom: none; }
-    .hit-title { font-weight: 600; }
-    .hit-title a { color: var(--accent, #4f7cff); text-decoration: none; }
-    .hit-meta { color: var(--text-secondary); font-size: 12px; margin: 2px 0; }
-    .hit-snip { font-size: 13px; color: var(--text-primary); opacity: .92; }
-    .score { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-secondary); }
-    .chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(79,124,255,.14); color: var(--accent,#4f7cff); margin-left: 6px; }
-    .log { font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; color: var(--text-secondary);
-           background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 8px; max-height: 180px; overflow: auto; display: none; }
-    .vid-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
-    .vid-row:last-child { border-bottom: none; }
     .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
     .seg button { background: var(--bg-primary); border: none; color: var(--text-secondary); padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600; }
     .seg button.on { background: var(--accent, #4f7cff); color: #fff; }
+    .log { font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; color: var(--text-secondary); background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 8px; max-height: 180px; overflow: auto; display: none; }
+    /* search hits */
+    .hit { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .hit:last-child { border-bottom: none; }
+    .hit-title a { color: var(--accent, #4f7cff); text-decoration: none; font-weight: 600; }
+    .hit-meta { color: var(--text-secondary); font-size: 12px; margin: 2px 0; }
+    .hit-snip { font-size: 13px; opacity: .92; }
+    .score { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-secondary); }
+    .chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: rgba(79,124,255,.14); color: var(--accent,#4f7cff); margin-left: 6px; }
+    .chip.frames { background: rgba(52,199,89,.16); color: #34c759; }
+    .chip.txt { background: rgba(150,150,150,.16); color: var(--text-secondary); }
     .vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
     .vcard { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-secondary); }
-    .vcard a.thumb { display: block; }
     .vcard img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #000; }
     .vcard .cap { padding: 7px 9px; }
-    .vcard .cap .t { font-size: 12px; font-weight: 600; line-height: 1.25; }
+    .vcard .cap .t { font-size: 12px; font-weight: 600; }
     .vcard .cap .m { font-size: 11px; color: var(--text-secondary); margin-top: 2px; display: flex; justify-content: space-between; }
+    /* sources + videos rows */
+    .src-tile { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+    .vid-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px dashed var(--border); }
+    .vid-row:last-child { border-bottom: none; }
+    .vid-row .name { cursor: pointer; }
+    .vid-row .name:hover { color: var(--accent, #4f7cff); }
+    /* modal */
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 500; }
+    .modal-bg.on { display: flex; align-items: flex-start; justify-content: center; }
+    .modal { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 12px; margin: 34px 16px; width: 820px; max-width: calc(100% - 32px); max-height: calc(100vh - 68px); overflow: auto; padding: 18px; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px; }
+    .win { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .win:last-child { border-bottom: none; }
+    .win img { width: 150px; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; background: #000; display: block; }
+    .win .noimg { width: 150px; aspect-ratio: 16/9; border: 1px dashed var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 11px; }
+    .win .ts { font-size: 11px; color: var(--text-secondary); font-family: ui-monospace, monospace; margin-bottom: 3px; }
+    .win .tr { font-size: 13px; }
+    .win .capn { font-size: 12px; color: var(--text-secondary); margin-top: 4px; font-style: italic; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Transcript Library</h1>
-    <div class="sub">Index a whole YouTube channel's <b>transcripts</b> — captions only, no video downloaded — then search
-      <i>which video, and roughly when</i>, a topic is discussed. A cheap discovery layer; when you want the footage, clip &amp; ingest that range.</div>
+    <div class="sub">Index whole YouTube channels' <b>transcripts</b> (captions only, no video) — then search
+      <i>what's said</i> or (visual tier) <i>what's shown</i>, drill into any video, and clip the moments you want.</div>
 
-    <div class="card">
-      <div class="row">
-        <input type="text" id="channel" placeholder="channel URL / @handle / id  (e.g. https://www.youtube.com/bloomberg)">
-        <label class="dim">videos <input type="number" id="limit" value="10" min="1" max="100" style="width:64px"></label>
-        <button class="btn" id="addBtn" onclick="addChannel()">Index channel</button>
-      </div>
-      <span id="add-status" class="dim"></span>
-      <div class="log" id="add-log"></div>
+    <div class="tabs">
+      <div class="tab on" data-tab="search" onclick="showTab('search')">Search</div>
+      <div class="tab" data-tab="sources" onclick="showTab('sources')">Sources</div>
     </div>
 
-    <div class="card">
-      <div class="row" style="margin-bottom:8px">
-        <div class="seg" id="mode">
-          <button data-m="text" class="on" onclick="setMode('text')">📝 Text</button>
-          <button data-m="visual" onclick="setMode('visual')">🖼 Visual</button>
+    <!-- ===== SEARCH ===== -->
+    <div id="tab-search">
+      <div class="card">
+        <div class="row" style="margin-bottom:8px">
+          <div class="seg" id="mode">
+            <button data-m="text" class="on" onclick="setMode('text')">📝 Text</button>
+            <button data-m="visual" onclick="setMode('visual')">🖼 Visual</button>
+          </div>
+          <span class="dim" id="mode-hint">semantic search over what's <b>said</b></span>
         </div>
-        <span class="dim" id="mode-hint">semantic search over what's <b>said</b></span>
+        <div class="row">
+          <input type="text" id="q" placeholder="Search the transcript library…" onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="btn" onclick="doSearch()">Search</button>
+        </div>
+        <div id="results" style="margin-top:10px"><div class="dim">Index a channel in the Sources tab, then search.</div></div>
       </div>
-      <div class="row">
-        <input type="text" id="q" placeholder="Search the transcript library — e.g. “effect of tariffs on supply chains”" onkeydown="if(event.key==='Enter')doSearch()">
-        <button class="btn" onclick="doSearch()">Search</button>
-      </div>
-      <div id="results" style="margin-top:10px"><div class="dim">Search once a channel is indexed…</div></div>
     </div>
 
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <b style="font-size:13px">Indexed transcripts</b>
-        <span id="lib-stats" class="dim"></span>
+    <!-- ===== SOURCES ===== -->
+    <div id="tab-sources" style="display:none">
+      <div class="card">
+        <div class="row">
+          <input type="text" id="channel" placeholder="channel URL / @handle / id (e.g. https://www.youtube.com/bloomberg)">
+          <label class="dim">videos <input type="number" id="limit" value="10" min="1" max="200" style="width:60px"></label>
+          <select id="vmode" title="Visual tier"><option value="keyframe">keyframe + caption</option><option value="storyboard">storyboard (free)</option><option value="off">no visual</option></select>
+          <label class="dim" title="Re-process videos already indexed"><input type="checkbox" id="refresh"> force</label>
+          <button class="btn" id="addBtn" onclick="addChannel()">Index channel</button>
+        </div>
+        <span id="add-status" class="dim"></span>
+        <div class="log" id="add-log"></div>
       </div>
-      <div id="videos" style="margin-top:8px"></div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><b style="font-size:13px">Sources</b><span id="src-stat" class="dim"></span></div>
+        <div id="sources" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><b style="font-size:13px">Indexed videos</b><span id="lib-stat" class="dim"></span></div>
+        <div id="videos" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- video detail drill-down -->
+  <div id="detail-modal" class="modal-bg" onclick="if(event.target===this)closeDetail()">
+    <div class="modal">
+      <div class="modal-head">
+        <span id="d-title" style="font-weight:650"></span>
+        <span class="row">
+          <button class="btn ghost mini" id="d-refresh">↻ Refresh</button>
+          <button class="btn ghost mini danger" id="d-delete">🗑 Delete</button>
+          <button class="btn ghost mini" onclick="closeDetail()">✕</button>
+        </span>
+      </div>
+      <div id="d-meta" class="dim" style="margin-bottom:8px"></div>
+      <div id="d-body"></div>
     </div>
   </div>
 
@@ -88,89 +139,159 @@
   <script>
     const $ = s => document.querySelector(s);
     function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-    async function jget(u){ const r = await fetch(u); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail||r.status); return r.json(); }
-    async function jpost(u,b){ const r = await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}); const d = await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||r.status); return d; }
+    function fmt(s){ s=Math.round(s||0); const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
+    async function jget(u){ const r=await fetch(u); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail||r.status); return r.json(); }
+    async function jpost(u,b){ const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||r.status); return d; }
+    async function jdel(u){ const r=await fetch(u,{method:"DELETE"}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||r.status); return d; }
+    let COMPS = null;
+    async function comps(){ if(COMPS===null){ try{ COMPS=(await jget("/api/clipper/targets")).comps||[]; }catch(e){ COMPS=[]; } } return COMPS; }
 
-    async function addChannel(){
-      const channel = $("#channel").value.trim(); if(!channel){ return; }
-      const st = $("#add-status"), log = $("#add-log");
-      st.textContent = "starting…"; log.style.display="block"; log.textContent="";
-      $("#addBtn").disabled = true;
-      try {
-        const d = await jpost("/api/transcripts/add-channel", {channel, limit: parseInt($("#limit").value,10)||10});
-        pollJob(d.job_id, st, log);
-      } catch(e){ st.innerHTML = `<span class="warn">✗ ${esc(e.message)}</span>`; $("#addBtn").disabled=false; }
-    }
-    function pollJob(jobId, st, log){
-      fetch("/api/jobs/"+jobId).then(r=>r.json()).then(j=>{
-        if (j.logs) log.textContent = j.logs.slice(-40).join("\n");
-        st.textContent = j.message || j.status;
-        if (j.status === "done"){ st.innerHTML = "✓ "+esc(j.message||"done"); $("#addBtn").disabled=false; loadVideos(); return; }
-        if (j.status === "error"){ st.innerHTML = `<span class="warn">✗ ${esc(j.error||"error")}</span>`; $("#addBtn").disabled=false; return; }
-        setTimeout(()=>pollJob(jobId, st, log), 1200);
-      }).catch(e=>{ st.innerHTML = `<span class="warn">poll error: ${esc(e.message)}</span>`; $("#addBtn").disabled=false; });
+    function showTab(t){
+      document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on", x.dataset.tab===t));
+      $("#tab-search").style.display = t==="search"?"block":"none";
+      $("#tab-sources").style.display = t==="sources"?"block":"none";
+      if(t==="sources"){ loadSources(); loadVideos(); }
     }
 
-    let MODE = "text";
+    /* ---------- search ---------- */
+    let MODE="text";
     function setMode(m){
-      MODE = m;
-      document.querySelectorAll("#mode button").forEach(b=>b.classList.toggle("on", b.dataset.m===m));
-      $("#mode-hint").innerHTML = m==="visual"
-        ? "search frames by <b>appearance + gemma caption</b> (CLIP + text)"
-        : "semantic search over what's <b>said</b>";
-      $("#q").placeholder = m==="visual"
-        ? "Search frames by look — e.g. “a trading floor with red screens”"
-        : "Search the transcript library — e.g. “effect of tariffs on supply chains”";
-      if ($("#q").value.trim()) doSearch();
+      MODE=m; document.querySelectorAll("#mode button").forEach(b=>b.classList.toggle("on", b.dataset.m===m));
+      $("#mode-hint").innerHTML = m==="visual" ? "search frames by <b>appearance + gemma caption</b>" : "semantic search over what's <b>said</b>";
+      $("#q").placeholder = m==="visual" ? "Search frames by look — e.g. “a trading floor with red screens”" : "Search the transcript library…";
+      if($("#q").value.trim()) doSearch();
     }
     async function doSearch(){
-      const q = $("#q").value.trim(); if(!q){ return; }
-      $("#results").innerHTML = '<div class="dim">Searching…</div>';
-      try {
-        if (MODE === "visual"){
-          const d = await jget(`/api/transcripts/visual-search?q=${encodeURIComponent(q)}`);
-          if(!d.results.length){ $("#results").innerHTML = '<div class="dim">No frames yet. Index a channel with the visual tier on, then search by look.</div>'; return; }
-          $("#results").innerHTML = `<div class="vgrid">${d.results.map(visualHit).join("")}</div>`;
+      const q=$("#q").value.trim(); if(!q) return;
+      $("#results").innerHTML='<div class="dim">Searching…</div>';
+      try{
+        if(MODE==="visual"){
+          const d=await jget(`/api/transcripts/visual-search?q=${encodeURIComponent(q)}`);
+          $("#results").innerHTML = d.results.length ? `<div class="vgrid">${d.results.map(visualHit).join("")}</div>` : '<div class="dim">No frames. Index a channel with the visual tier on.</div>';
         } else {
-          const d = await jget(`/api/transcripts/search?q=${encodeURIComponent(q)}`);
-          if(!d.results.length){ $("#results").innerHTML = '<div class="dim">No hits. Index a channel first, or try different words.</div>'; return; }
-          $("#results").innerHTML = d.results.map(hit).join("");
+          const d=await jget(`/api/transcripts/search?q=${encodeURIComponent(q)}`);
+          $("#results").innerHTML = d.results.length ? d.results.map(hit).join("") : '<div class="dim">No hits. Index a channel first.</div>';
         }
-      } catch(e){ $("#results").innerHTML = `<span class="warn">search failed: ${esc(e.message)}</span>`; }
+      }catch(e){ $("#results").innerHTML=`<span class="warn">search failed: ${esc(e.message)}</span>`; }
     }
-    function visualHit(h){
-      return `<div class="vcard">
-        <a class="thumb" href="${esc(h.watch_url)}" target="_blank" rel="noopener">
-          <img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}"></a>
-        <div class="cap">
-          <div class="t">${esc(h.title)||"frame"}</div>
-          <div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>
-          ${h.caption ? `<div class="hit-snip" style="font-size:11px;margin-top:3px">${esc((h.caption||"").slice(0,110))}…</div>` : ""}
-        </div>
-      </div>`;
+    function hit(h){ return `<div class="hit"><div class="hit-title"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">${esc(h.title)}</a>
+      <span class="chip">@ ${fmt(h.start)}</span> <span class="score">${h.score}</span></div>
+      <div class="hit-meta">${esc(h.channel||"")}</div><div class="hit-snip">${esc(h.snippet)}…</div></div>`; }
+    function visualHit(h){ return `<div class="vcard"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">
+      <img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}"></a>
+      <div class="cap"><div class="t">${esc(h.title)||"frame"}</div><div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>
+      ${h.caption?`<div class="hit-snip" style="font-size:11px;margin-top:3px">${esc((h.caption||"").slice(0,110))}…</div>`:""}</div></div>`; }
+
+    /* ---------- add / sources ---------- */
+    async function addChannel(){
+      const channel=$("#channel").value.trim(); if(!channel) return;
+      const st=$("#add-status"), log=$("#add-log"); st.textContent="starting…"; log.style.display="block"; log.textContent=""; $("#addBtn").disabled=true;
+      try{
+        const d=await jpost("/api/transcripts/add-channel",{channel, limit:parseInt($("#limit").value,10)||10, visual:$("#vmode").value, refresh:$("#refresh").checked});
+        pollJob(d.job_id, st, log, ()=>{ $("#addBtn").disabled=false; loadSources(); loadVideos(); });
+      }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; $("#addBtn").disabled=false; }
     }
-    function fmt(s){ s=Math.round(s); const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
-    function hit(h){
-      return `<div class="hit">
-        <div class="hit-title"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">${esc(h.title)}</a>
-          <span class="chip">@ ${fmt(h.start)}</span> <span class="score">${h.score}</span></div>
-        <div class="hit-meta">${esc(h.channel||"")}</div>
-        <div class="hit-snip">${esc(h.snippet)}…</div>
-      </div>`;
+    function pollJob(jobId, st, log, done){
+      fetch("/api/jobs/"+jobId).then(r=>r.json()).then(j=>{
+        if(j.logs&&log) log.textContent=j.logs.slice(-40).join("\n");
+        st.textContent=j.message||j.status;
+        if(j.status==="done"){ st.innerHTML="✓ "+esc(j.message||"done"); done&&done(); return; }
+        if(j.status==="error"){ st.innerHTML=`<span class="warn">✗ ${esc(j.error||"error")}</span>`; done&&done(); return; }
+        setTimeout(()=>pollJob(jobId,st,log,done),1200);
+      }).catch(e=>{ st.innerHTML=`<span class="warn">poll error: ${esc(e.message)}</span>`; done&&done(); });
+    }
+    async function loadSources(){
+      try{
+        const d=await jget("/api/transcripts/sources");
+        $("#src-stat").textContent=`${d.count} source(s)`;
+        $("#sources").innerHTML = d.sources.length ? d.sources.map(srcTile).join("") : '<div class="dim">No sources yet — add a channel above.</div>';
+      }catch(e){ $("#sources").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    function srcTile(s){
+      const last = s.last_crawled ? `· last crawled ${esc(s.last_crawled.slice(0,10))}` : "· not yet synced";
+      const tag = s.managed===false ? ` <span class="chip txt">auto</span>` : "";
+      const rm = s.managed===false ? "" : `<button class="btn ghost mini danger" onclick="removeSource('${esc(s.channel)}')">Remove</button>`;
+      return `<div class="src-tile"><div><b>${esc(s.label||s.channel)}</b>${tag} <span class="dim">${s.video_count||0} videos ${last}</span><div class="dim" style="font-size:11px">${esc(s.channel)}</div></div>
+        <span class="row"><button class="btn ghost mini" onclick="syncSource('${esc(s.channel)}')" title="Fetch only NEW uploads (dedup skips indexed)">↻ Sync</button>${rm}</span></div>`;
+    }
+    async function syncSource(channel){
+      const st=$("#add-status"), log=$("#add-log"); st.textContent="syncing…"; log.style.display="block"; log.textContent="";
+      try{ const d=await jpost("/api/transcripts/add-channel",{channel, limit:50, visual:$("#vmode").value, refresh:false});
+        pollJob(d.job_id, st, log, ()=>{ loadSources(); loadVideos(); }); }
+      catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
+    }
+    async function removeSource(channel){
+      if(!confirm("Remove this source from the managed list? (its indexed videos stay searchable)")) return;
+      try{ await jdel(`/api/transcripts/sources?channel=${encodeURIComponent(channel)}`); loadSources(); }catch(e){ alert(e.message); }
     }
 
+    /* ---------- videos list ---------- */
     async function loadVideos(){
-      try {
-        const d = await jget("/api/transcripts/videos");
-        $("#lib-stats").textContent = `${d.count} videos · ${d.channels.length} channel(s)`;
-        $("#videos").innerHTML = d.videos.length
-          ? d.videos.map(v=>`<div class="vid-row"><span><a href="${esc(v.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(v.title||v.video_id)}</a>
-              <span class="dim">· ${esc(v.channel||"")}</span></span><span class="dim">${v.windows} windows</span></div>`).join("")
-          : '<div class="dim">Nothing indexed yet. Add a channel above.</div>';
-      } catch(e){ $("#videos").innerHTML = `<span class="warn">${esc(e.message)}</span>`; }
+      try{
+        const d=await jget("/api/transcripts/videos");
+        $("#lib-stat").textContent=`${d.count} videos`;
+        $("#videos").innerHTML = d.videos.length ? d.videos.map(vidRow).join("") : '<div class="dim">Nothing indexed yet.</div>';
+      }catch(e){ $("#videos").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    function vidRow(v){
+      const badge = v.frames ? `<span class="chip frames">🖼 ${v.frames}</span>` : `<span class="chip txt">transcript-only</span>`;
+      return `<div class="vid-row"><span class="name" onclick="openDetail('${esc(v.video_id)}')">${esc(v.title||v.video_id)} ${badge}
+        <span class="dim">· ${esc(v.channel||"")} · ${v.windows} windows</span></span>
+        <span class="row"><button class="btn ghost mini" onclick="openDetail('${esc(v.video_id)}')">Detail →</button></span></div>`;
     }
 
-    loadVideos();
-  </script>
+    /* ---------- detail drill-down ---------- */
+    let DCUR = null;
+    async function openDetail(id){
+      DCUR=id; $("#d-title").textContent="Loading…"; $("#d-meta").textContent=""; $("#d-body").innerHTML=""; $("#detail-modal").classList.add("on");
+      try{
+        const d=await jget(`/api/transcripts/video?id=${encodeURIComponent(id)}`);
+        const m=d.meta||{};
+        $("#d-title").innerHTML = `<a href="${esc(m.url||'')}" target="_blank" rel="noopener" style="color:inherit">${esc(m.title||id)}</a>`;
+        $("#d-meta").textContent = `${esc(m.channel||"")} · ${d.windows.length} windows · ${d.frames.length} frames`;
+        $("#d-refresh").onclick = ()=>refreshVideo(id, m.url);
+        $("#d-delete").onclick = ()=>deleteVideo(id);
+        // pair each frame to the window covering it
+        const byWin = t => d.frames.find(f => f.t>=t.start && f.t<=t.end);
+        $("#d-body").innerHTML = d.windows.map(w=>{
+          const f=byWin(w);
+          const img = f ? `<img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(f.thumb)}">` : `<div class="noimg">no frame</div>`;
+          return `<div class="win"><div>${img}
+            <button class="btn ghost mini" style="margin-top:5px;width:100%" onclick="clipMoment('${esc(m.url||'')}',${w.start},${w.end})">✂ clip this moment</button></div>
+            <div><div class="ts">${fmt(w.start)} – ${fmt(w.end)}</div><div class="tr">${esc(w.text)}</div>
+            ${f&&f.caption?`<div class="capn">🖼 ${esc(f.caption)}</div>`:""}</div></div>`;
+        }).join("") || '<div class="dim">No transcript windows.</div>';
+      }catch(e){ $("#d-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    function closeDetail(){ $("#detail-modal").classList.remove("on"); }
+    async function deleteVideo(id){
+      if(!confirm("Delete this transcript video everywhere (DB, embeddings, frames)?")) return;
+      try{ await jdel(`/api/transcripts/video?id=${encodeURIComponent(id)}`); closeDetail(); loadVideos(); loadSources(); }catch(e){ alert(e.message); }
+    }
+    async function refreshVideo(id, url){
+      const el=$("#d-meta"); el.textContent="re-indexing…";
+      const st={ set textContent(v){ el.textContent=v; }, set innerHTML(v){ el.innerHTML=v; } };
+      try{ const d=await jpost("/api/transcripts/refresh-video",{id, url, visual:$("#vmode").value});
+        pollJob(d.job_id, st, null, ()=>openDetail(id)); }
+      catch(e){ el.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+
+    /* ---------- clip this moment → project pool (feedback-2 bridge) ---------- */
+    async function clipMoment(url, start, end){
+      if(!url){ alert("no source URL for this video"); return; }
+      const cs=await comps();
+      if(!cs.length){ alert("No HyperFrames projects to clip into."); return; }
+      const pick=prompt(`Clip ${fmt(start)}–${fmt(end)} into which project?\n\n`+cs.map((c,i)=>`${i+1}. ${c}`).join("\n")+"\n\nEnter a number:");
+      const idx=parseInt(pick,10)-1; if(isNaN(idx)||!cs[idx]) return;
+      const el=$("#d-meta"), prev=el.textContent; el.textContent=`clipping ${fmt(start)}–${fmt(end)} → ${cs[idx]}…`;
+      try{
+        const r=await jpost("/api/clipper/clip",{url, kind:"youtube", start, end, name:`clip_${Math.round(start)}_${Math.round(end)}`, comp:cs[idx], ingest:false});
+        el.textContent=prev;
+        alert(r.pooled ? `✓ Clipped ${fmt(start)}–${fmt(end)} → ${cs[idx]} pool` : `Clipped to ${esc(r.path||"disk")} (not pooled)`);
+      }catch(e){ el.textContent=prev; alert("clip failed: "+e.message); }
+    }
+
+    // init: land on the Search tab; Sources + videos load lazily when that tab opens
+</script>
 </body>
 </html>

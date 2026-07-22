@@ -204,6 +204,39 @@ def _parse_tags(tags: str) -> Dict[str, str]:
     return dict(kv.split("=", 1) for kv in (tags or "").split(";") if "=" in kv)
 
 
+def frames_for_video(video_id: str, base_dir=None) -> List[Dict[str, Any]]:
+    """All stored frames for a transcript video (matched on the video_id tag) → [{asset_id, t, kind,
+    thumb, caption}] sorted by timestamp — the visual-tier detail for a video's drill-down."""
+    lib = frame_lib(base_dir=base_dir)
+    needle = f"video_id={video_id};"
+    out: List[Dict[str, Any]] = []
+    for a in lib.catalog.list(status="active"):
+        tags = getattr(a, "tags", "") or ""
+        if needle not in tags:
+            continue
+        tg = _parse_tags(tags)
+        out.append({"asset_id": a.id, "t": float(tg.get("t", 0) or 0), "kind": tg.get("kind", ""),
+                    "thumb": str(lib.abs_path(a)), "caption": getattr(a, "description", "") or ""})
+    out.sort(key=lambda x: x["t"])
+    return out
+
+
+def delete_frames_for_video(video_id: str, base_dir=None) -> int:
+    """Remove a transcript video's frames from the visual tier (status→deleted drops them from the CLIP +
+    BGE collections and from search). Returns the count removed. Files stay (content-addressed, harmless)."""
+    lib = frame_lib(base_dir=base_dir)
+    needle = f"video_id={video_id};"
+    n = 0
+    for a in lib.catalog.list(status="active"):
+        if needle in (getattr(a, "tags", "") or ""):
+            try:
+                lib.set_status(a.id, "deleted")
+                n += 1
+            except Exception:
+                continue
+    return n
+
+
 def visual_search(query: str, n: int = 24, embedder=None, base_dir=None) -> List[Dict[str, Any]]:
     """Search the transcript-frame library → [{video_id, start, watch_url, kind, title, caption, score,
     thumb}]. HYBRID retrieval (CLIP appearance + the gemma caption's BGE text, when captions exist) so a

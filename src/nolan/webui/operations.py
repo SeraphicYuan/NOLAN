@@ -328,7 +328,7 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
 
 async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,
                                      window_s: float = 45.0, overlap_s: float = 10.0,
-                                     visual: str = "keyframe", max_frames: int = 16):
+                                     visual: str = "keyframe", max_frames: int = 16, refresh: bool = False):
     """Build/refresh a TRANSCRIPT library from a YouTube channel: list its videos, fetch each transcript
     (captions only — NO video download), chunk into overlapping timestamped windows, ingest as a
     transcript-tier VideoIndex row (has_footage=0) + embed into the unified semantic store. Per-video
@@ -346,10 +346,13 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
     if not vids:
         raise RuntimeError(f"no videos found for channel {channel!r} (check the URL / @handle)")
     now = _dt.datetime.now().isoformat(timespec="seconds")
-    got = skipped = windows_total = frames_total = 0
+    got = skipped = already = windows_total = frames_total = 0
     for i, v in enumerate(vids):
         title = (v.get("title") or v.get("video_id") or "?")[:60]
         job.set_progress(0.05 + 0.9 * (i / len(vids)), f"[{i + 1}/{len(vids)}] {title}")
+        yid0 = v.get("video_id") or ""
+        if not refresh and yid0 and index.get_video_id(f"yt:{yid0}"):   # DEDUP: skip already-indexed → cheap re-crawl
+            job.log(f"  = {title}: already indexed — skipped"); already += 1; continue
         try:
             meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, v["url"])
         except Exception as e:                                # a bad single video must not kill the channel run
@@ -361,8 +364,6 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
         if not vid:
             skipped += 1; continue
         await asyncio.to_thread(vs.sync_video, vid)          # embed → unified semantic search
-        tl.record_transcript(meta.get("video_id") or v["video_id"], {**meta, "url": v["url"]},
-                             len(windows), channel, added=now)
         got += 1
         windows_total += len(windows)
         nframes = 0
@@ -392,10 +393,69 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
                 frames_total += nframes
             except Exception as e:
                 job.log(f"    (visual '{visual}' skipped: {type(e).__name__}: {e})")
+        tl.record_transcript(meta.get("video_id") or v["video_id"], {**meta, "url": v["url"]},
+                             len(windows), channel, frames=nframes, added=now)
         job.log(f"  ✓ {title} ({len(windows)} windows" + (f", +{nframes} frames" if nframes else "") + ")")
-    job.set_progress(1.0, f"{got} transcripts ({windows_total} windows, {frames_total} frames), {skipped} skipped")
-    return {"channel": channel, "found": len(vids), "ingested": got, "skipped": skipped,
-            "windows": windows_total, "frames": frames_total}
+    n_for_channel = sum(1 for e in tl.load_catalog().values() if e.get("channel") == channel)
+    tl.upsert_source(channel, last_crawled=now, video_count=n_for_channel, added=now)   # first-class source
+    job.set_progress(1.0, f"{got} new ({windows_total} windows, {frames_total} frames), "
+                     f"{already} already indexed, {skipped} skipped")
+    return {"channel": channel, "found": len(vids), "ingested": got, "already": already,
+            "skipped": skipped, "windows": windows_total, "frames": frames_total}
+
+
+async def refresh_transcript_video(job, *, config, db_path: Path, url: str, channel: str = "",
+                                   window_s: float = 45.0, overlap_s: float = 10.0,
+                                   visual: str = "keyframe", max_frames: int = 16):
+    """Re-index ONE transcript video (force): re-fetch captions, re-chunk, replace its segments + frames,
+    re-embed + re-caption. Powers the per-video Refresh action."""
+    import datetime as _dt
+    import tempfile
+
+    from nolan import transcript_frames as tfr
+    from nolan import transcript_lib as tl
+    from nolan.indexer import VideoIndex
+    from nolan.vector_search import VectorSearch
+    index = VideoIndex(db_path)
+    vs = VectorSearch(db_path.parent / "vectors", index=index)
+    now = _dt.datetime.now().isoformat(timespec="seconds")
+    job.set_progress(0.1, "Fetching transcript…")
+    meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, url)
+    if not tr or not getattr(tr, "chunks", None):
+        raise RuntimeError("no captions available for this video")
+    yid = meta.get("video_id") or ""
+    await asyncio.to_thread(tfr.delete_frames_for_video, yid)         # clear old frames before re-capture
+    windows = tl.chunk_transcript(tr, window_s=float(window_s), overlap_s=float(overlap_s))
+    job.set_progress(0.4, f"Ingesting {len(windows)} windows…")
+    vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": url}, windows, channel)
+    await asyncio.to_thread(vs.sync_video, vid)
+    nframes = 0
+    if visual and visual != "off":
+        try:
+            tmpd = Path(tempfile.mkdtemp())
+            job.set_progress(0.6, "Re-capturing frames…")
+            if visual == "storyboard":
+                tiles = await asyncio.to_thread(tfr.storyboard_tiles, url, tmpd, 12.0, 40)
+                nframes = await asyncio.to_thread(tfr.embed_frames, tiles, yid, url, "storyboard", meta.get("title", ""))
+            else:
+                mids = [round((w["start"] + w["end"]) / 2, 1) for w in windows]
+                if len(mids) > max_frames:
+                    mids = [mids[int(k * len(mids) / max_frames)] for k in range(max_frames)]
+                kfs = await asyncio.to_thread(tfr.ranged_keyframes, url, mids, tmpd)
+
+                def _wtext(ts):
+                    for w in windows:
+                        if w["start"] <= ts <= w["end"]:
+                            return w["text"]
+                    return ""
+                caps = [await asyncio.to_thread(tfr.caption_frame, fp, _wtext(ts), ts) for ts, fp in kfs]
+                nframes = await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe",
+                                                  meta.get("title", ""), None, None, caps)
+        except Exception as e:
+            job.log(f"  (visual refresh skipped: {type(e).__name__}: {e})")
+    tl.record_transcript(yid, {**meta, "url": url}, len(windows), channel, frames=nframes, added=now)
+    job.set_progress(1.0, f"Re-indexed {len(windows)} windows, {nframes} frames")
+    return {"video_id": yid, "windows": len(windows), "frames": nframes}
 
 
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",

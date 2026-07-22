@@ -44,6 +44,7 @@ def register(app, ctx):
             # visual tier: "keyframe" (full-res + gemma caption, default) | "storyboard" (free/coarse) | "off"
             visual=(body.get("visual") or ("off" if body.get("no_visual") else "keyframe")),
             max_frames=int(body.get("max_frames", 16) or 16),
+            refresh=bool(body.get("refresh", False)),          # force re-process vs dedup-skip already-indexed
         )
         return {"job_id": job.id, "type": "transcript-channel"}
 
@@ -87,3 +88,71 @@ def register(app, ctx):
         if base not in fp.parents or not fp.is_file():
             raise HTTPException(status_code=404, detail="frame not found")
         return FileResponse(fp, media_type="image/jpeg")
+
+    # ---- Sources (managed channels) --------------------------------------------------------------
+    @app.get("/api/transcripts/sources")
+    async def transcripts_sources():
+        """The managed source channels + a live video count per source (recomputed from the catalog).
+        Channels that have indexed videos but were never formally added (e.g. pre-sidecar crawls) are
+        surfaced as `managed:false` derived tiles so the tab reflects reality and can't hide indexed work."""
+        from nolan import transcript_lib as tl
+        srcs = tl.load_sources()
+        counts: dict = {}
+        for e in tl.load_catalog().values():
+            ch = e.get("channel")
+            if ch:
+                counts[ch] = counts.get(ch, 0) + 1
+        out = [{**s, "managed": True, "video_count": counts.get(ch, s.get("video_count", 0))}
+               for ch, s in srcs.items()]
+        for ch, n in counts.items():                                   # derive tiles for un-managed channels
+            if ch not in srcs:
+                out.append({"channel": ch, "label": ch, "managed": False,
+                            "last_crawled": None, "video_count": n})
+        out.sort(key=lambda s: (s.get("managed") is False, -(s.get("video_count") or 0)))
+        return {"sources": out, "count": len(out)}
+
+    @app.delete("/api/transcripts/sources")
+    async def transcripts_remove_source(channel: str = Query(...)):
+        """Drop a channel from the managed list (its already-indexed videos stay searchable)."""
+        from nolan import transcript_lib as tl
+        return {"removed": tl.remove_source(channel)}
+
+    # ---- Per-video: detail drill-down, delete, refresh -------------------------------------------
+    @app.get("/api/transcripts/video")
+    async def transcripts_video_detail(id: str = Query(...)):
+        """A video's drill-down: transcript windows joined to their keyframe snapshots + gemma captions."""
+        import asyncio
+        from nolan import transcript_lib as tl
+        from nolan.indexer import VideoIndex
+        idb = _db()
+        if not Path(idb).exists():
+            raise HTTPException(status_code=404, detail="library not found")
+        return await asyncio.to_thread(tl.video_detail, VideoIndex(idb), id)
+
+    @app.delete("/api/transcripts/video")
+    async def transcripts_delete_video(id: str = Query(...)):
+        """Delete a transcript video everywhere (DB rows + vectors + visual frames + catalog entry)."""
+        import asyncio
+        from nolan import transcript_lib as tl
+        from nolan.indexer import VideoIndex
+        return await asyncio.to_thread(tl.delete_transcript, VideoIndex(_db()), id)
+
+    @app.post("/api/transcripts/refresh-video")
+    async def transcripts_refresh_video(body: dict = Body(...)):
+        """Re-index ONE transcript video (background job) — re-fetch, re-chunk, re-caption."""
+        from nolan.config import load_config
+        from nolan import transcript_lib as tl
+        from nolan.webui import operations
+        yid = (body.get("id") or "").strip()
+        entry = tl.load_catalog().get(yid, {})
+        url = (body.get("url") or entry.get("url")
+               or (f"https://www.youtube.com/watch?v={yid}" if yid else "")).strip()
+        if not url:
+            raise HTTPException(status_code=400, detail="id or url required")
+        cfg = load_config()
+        job = job_manager.start(
+            "transcript-refresh", operations.refresh_transcript_video, meta={"video": yid},
+            config=cfg, db_path=ctx.db_path or Path(cfg.indexing.database).expanduser(),
+            url=url, channel=entry.get("channel", ""),
+            visual=(body.get("visual") or "keyframe"), max_frames=int(body.get("max_frames", 16) or 16))
+        return {"job_id": job.id, "type": "transcript-refresh"}
