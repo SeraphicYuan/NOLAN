@@ -76,17 +76,17 @@ def test_caption_plain_text_fallback():
     assert tf._extract_caption("") == ""
 
 
-def test_analysis_extracts_content_kind():
-    """The shot classification (content_kind / broll_kind) is parsed out of the reply."""
+def test_analysis_extracts_asset_type_and_derives_content_kind():
+    """gemma's rich 11-value asset_type is parsed, and the coarse content_kind is DERIVED from it."""
     import json
     a = tf._extract_analysis(json.dumps({
-        "frame_description": "a harbour at dawn", "content_kind": "BROLL", "broll_kind": "Scenic",
+        "frame_description": "a harbour at dawn", "asset_type": "Live-Footage",
         "inferred_context": {"location": "harbour"}}))
-    assert a["content_kind"] == "broll" and a["broll_kind"] == "scenic"     # normalized lower
+    assert a["asset_type"] == "live-footage" and a["content_kind"] == "broll"   # normalized + rolled up
     assert a["location"] == "harbour"
-    # a talking head
-    b = tf._extract_analysis(json.dumps({"frame_description": "man at desk", "content_kind": "talking_head"}))
-    assert b["content_kind"] == "talking_head"
+    # a talking head + a chart roll up correctly
+    assert tf._extract_analysis(json.dumps({"asset_type": "talking-head"}))["content_kind"] == "talking_head"
+    assert tf._extract_analysis(json.dumps({"asset_type": "chart-graphic"}))["content_kind"] == "graphics"
 
 
 def test_split_caption_roundtrips_fusion():

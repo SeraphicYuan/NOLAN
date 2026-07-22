@@ -1342,11 +1342,12 @@
 
         // Coarse content-kind badge (b-roll / talking-head / graphics) — derived from the shot asset_type.
         let brollOnly = false;
-        function ckBadgeLib(ck) {
+        function ckBadgeLib(ck, at) {
             const L = { broll: ['b-roll', '#34c759'], talking_head: ['talking head', '#ff9f0a'],
                         graphics: ['graphics', '#6c94ff'], mixed: ['mixed', '#b088ff'] };
-            const e = L[ck]; if (!e) return '';
-            return `<span title="asset type" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:4px;background:${e[1]}22;color:${e[1]}">${e[0]}</span>`;
+            const e = L[ck] || ['', '#8a8f98'];
+            const label = at || e[0]; if (!label) return '';    // show the rich asset_type, colored by content_kind
+            return `<span title="asset type: ${label}" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:4px;background:${e[1]}22;color:${e[1]}">${label}</span>`;
         }
 
         // Render segments
@@ -1375,7 +1376,7 @@
                     <div class="segment-header">
                         <span class="segment-time">${s.timestamp_formatted}</span>
                         <span class="segment-duration">${s.duration.toFixed(1)}s</span>
-                        ${ckBadgeLib(s.content_kind)}
+                        ${ckBadgeLib(s.content_kind, s.asset_type)}
                         ${s.sample_reason ? `<span class="segment-reason">${escapeHtml(s.sample_reason)}</span>` : ''}
                         <button style="margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid var(--border,#333);border-radius:5px;background:transparent;color:inherit;cursor:pointer"
                                 title="Promote this segment into a HyperFrames project's pool (skips acquisition ranking)"

@@ -365,12 +365,12 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
         return ""
     analyses = await tfr.caption_frames_async([(fp, _wtext(ts), ts) for ts, fp in kfs])
     caps = [a.get("caption", "") for a in analyses]               # rich searchable text (entities fused)
-    kinds = [a.get("content_kind", "") for a in analyses]         # broll / talking_head / graphics
-    if job and kinds:
+    ats = [a.get("asset_type", "") for a in analyses]             # gemma's 11-value shot type
+    if job and ats:
         from collections import Counter
-        tally = ", ".join(f"{k or '?'}:{c}" for k, c in Counter(kinds).most_common())
-        job.log(f"    · shot kinds — {tally}")
-    return await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe", title, None, None, caps, kinds)
+        tally = ", ".join(f"{k or '?'}:{c}" for k, c in Counter(ats).most_common())
+        job.log(f"    · asset types — {tally}")
+    return await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe", title, None, None, caps, ats)
 
 
 async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,

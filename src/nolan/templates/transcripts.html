@@ -202,7 +202,7 @@
       <div class="hit-meta">${esc(h.channel||"")}</div><div class="hit-snip">${esc(h.snippet)}…</div></div>`; }
     function visualHit(h){ return `<div class="vcard"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">
       <img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}"></a>
-      <div class="cap"><div class="t">${esc(h.title)||"frame"} ${ckBadge(h.content_kind)}</div><div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>
+      <div class="cap"><div class="t">${esc(h.title)||"frame"} ${ckBadge(h.content_kind, h.asset_type)}</div><div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>
       ${h.caption?`<div class="hit-snip" style="font-size:11px;margin-top:3px">${esc((h.caption||"").slice(0,110))}…</div>`:""}</div></div>`; }
 
     /* ---------- add / sources ---------- */
@@ -265,7 +265,12 @@
 
     /* ---------- content-kind badge + structured gemma column ---------- */
     const CK_LABEL = {broll:"b-roll", talking_head:"talking head", graphics:"graphics", mixed:"mixed"};
-    function ckBadge(ck){ if(!ck||!CK_LABEL[ck]) return ""; return `<span class="ck ck-${ck}">${CK_LABEL[ck]}</span>`; }
+    // badge shows the RICH 11-value asset_type, colored by its coarse content_kind roll-up
+    function ckBadge(ck, at){
+      const label = at || CK_LABEL[ck] || ""; if(!label) return "";
+      const cls = (ck && CK_LABEL[ck]) ? `ck-${ck}` : "ck-mixed";
+      return `<span class="ck ${cls}" title="asset type: ${esc(at||label)}">${esc(label)}</span>`;
+    }
     function structCol(f){
       const chips=[];
       (f.people||[]).slice(0,4).forEach(p=>chips.push(`<span class="tag people">${esc(p)}</span>`));
@@ -300,7 +305,7 @@
           const img = f ? `<img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(f.thumb)}">` : `<div class="noimg">no frame</div>`;
           return `<div class="win3">
             <div>${img}<button class="btn ghost mini" style="margin-top:5px;width:100%" onclick="clipMoment('${esc(m.url||'')}',${w.start},${w.end})">✂ clip</button></div>
-            <div><div class="ts">${fmt(w.start)} – ${fmt(w.end)} ${f?ckBadge(f.content_kind):""}</div><div class="tr">${esc(w.text)}</div></div>
+            <div><div class="ts">${fmt(w.start)} – ${fmt(w.end)} ${f?ckBadge(f.content_kind, f.asset_type):""}</div><div class="tr">${esc(w.text)}</div></div>
             <div>${f?structCol(f):'<span class="dim" style="font-size:11px">no snapshot</span>'}</div></div>`;
         }).join("");
         $("#d-body").innerHTML = strip + (rows || '<div class="dim">No transcript windows.</div>');

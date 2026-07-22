@@ -20,10 +20,11 @@ class FrameAnalysisResult:
     story_context: Optional[str] = None
     objects: List[str] = field(default_factory=list)
     confidence: str = "low"
-    # Shot classification for asset finding (video-essay editors mostly want b-roll):
-    #   content_kind ∈ {broll, talking_head, graphics, mixed, ""}  ·  broll_kind = a b-roll subtype (only when broll)
+    # Shot classification for asset finding — the SAME 11-value vocab as the video library's shot
+    # `asset_type` (visual_facts.ASSET_TYPES). `content_kind` is the coarse editorial roll-up
+    # (broll / talking_head / graphics), derived from asset_type — the "b-roll only" filter both libraries share.
+    asset_type: str = ""
     content_kind: str = ""
-    broll_kind: str = ""
 
     def to_inferred_context(self):
         """Convert to InferredContext object."""
@@ -91,19 +92,24 @@ Respond with a JSON object containing:
    - "objects": Notable objects relevant to the content.
    - "confidence": "high" (explicit mention/clear visual), "medium" (strong implication), or "low" (educated guess).
 
-4. "content_kind": Classify the SHOT into exactly one of these (this decides how an editor can reuse it):
-   - "broll": footage or imagery OF THE WORLD (scenery, action, objects, archival, stills) with NO person addressing the camera — the kind of shot you lay UNDER narration.
-   - "talking_head": a person speaking to camera — interview, presenter, anchor, or speech. Their own words are the point.
-   - "graphics": on-screen text, charts, maps, tables, a UI or screen recording, or a title card.
-   - "mixed": a talking head with a significant b-roll or graphic insert (e.g. picture-in-picture, over-the-shoulder graphic).
-
-5. "broll_kind": ONLY when content_kind is "broll", the subject type — one of "archival", "scenic", "urban", "nature", "action", "detail", "crowd", "other". Omit otherwise.
+4. "asset_type": Classify the SHOT as EXACTLY one of these (how an editor reuses it):
+   - "live-footage": modern real-world video footage (the b-roll workhorse).
+   - "archival-footage": old / historical film or video footage.
+   - "photo": a still photograph.
+   - "painting": a painting or fine-art artwork.
+   - "illustration": a drawing, diagram, or illustrated / vector graphic.
+   - "map": a map.
+   - "chart-graphic": a chart, graph, data-viz, or infographic.
+   - "text-card": a full-screen title, quote, or text card.
+   - "talking-head": a person speaking to camera — interview, presenter, anchor. Their own words are the point.
+   - "animation": animated or motion-graphic content.
+   - "other": none of the above.
 
 IMPORTANT:
 - For "people", try to identify who they are from visual appearance (face recognition) or name mentions in transcript.
 - Only include inferred_context fields you have actual evidence for.
 - The combined_summary should fuse visual and audio information.
-- Always include "content_kind".
+- Always include "asset_type".
 
 Respond ONLY with valid JSON, no other text."""
 
@@ -121,9 +127,7 @@ Respond with a JSON object containing:
    - "objects": Notable objects in the frame.
    - "confidence": "high", "medium", or "low" based on visual clarity.
 
-3. "content_kind": exactly one of "broll" (footage/imagery of the world, no one addressing camera — layable under narration), "talking_head" (a person speaking to camera / interview / presenter), "graphics" (on-screen text, charts, maps, UI, title cards), or "mixed" (talking head with a b-roll/graphic insert). Always include this.
-
-4. "broll_kind": ONLY when content_kind is "broll", one of "archival", "scenic", "urban", "nature", "action", "detail", "crowd", "other".
+3. "asset_type": EXACTLY one of "live-footage" (modern real-world video — the b-roll workhorse), "archival-footage" (old/historical film), "photo" (still photograph), "painting", "illustration" (drawing/diagram/vector art), "map", "chart-graphic" (chart/graph/data-viz/infographic), "text-card" (full-screen title/quote/text), "talking-head" (a person speaking to camera), "animation" (animated/motion-graphic), or "other". Always include this.
 
 IMPORTANT: Only include inferred_context fields you have actual evidence for from the image.
 
@@ -153,9 +157,11 @@ def parse_frame_analysis_response(
             json_str = response[start:end]
             data = json.loads(json_str)
 
+            from nolan.visual_facts import content_kind_of
             frame_desc = data.get("frame_description", "")
             combined_summary = data.get("combined_summary")
             context = data.get("inferred_context", {}) or {}
+            at = (data.get("asset_type") or "").strip().lower()
 
             if not combined_summary and transcript:
                 combined_summary = f"{frame_desc} | Audio: {transcript[:100]}..."
@@ -168,8 +174,8 @@ def parse_frame_analysis_response(
                 story_context=context.get("story_context"),
                 objects=context.get("objects", []),
                 confidence=context.get("confidence", "low"),
-                content_kind=(data.get("content_kind") or "").strip().lower(),
-                broll_kind=(data.get("broll_kind") or "").strip().lower(),
+                asset_type=at,
+                content_kind=content_kind_of(at),
             )
     except (json.JSONDecodeError, KeyError, TypeError):
         pass

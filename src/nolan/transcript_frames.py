@@ -61,12 +61,15 @@ def _extract_analysis(content: str) -> Dict[str, Any]:
         (people / location / objects / story) folded in the SAME way the video library builds its embed
         text (`vector_search._build_segment_text`), so a query for a named person/place/object hits even
         when the summary omits it. BGE-embedded AND the raw material for the detail column.
-      • `content_kind` / `broll_kind` — the shot classification (b-roll vs talking-head vs graphics) an
-        editor filters on; stored as a frame tag.
+      • `asset_type` (the rich 11-value shot type, SAME vocab as the video library's shots) + its coarse
+        `content_kind` roll-up (broll / talking_head / graphics) — the shot classification an editor filters
+        on; both stored as frame tags.
       • the split-out `people / location / objects / story` — for the structured detail column.
     Falls back to raw text (no structure) if the reply isn't valid JSON."""
     import json
     import re
+
+    from nolan.visual_facts import content_kind_of
     try:
         m = re.search(r"\{.*\}", content, re.DOTALL)
         d = json.loads(m.group(0)) if m else {}
@@ -93,9 +96,9 @@ def _extract_analysis(content: str) -> Dict[str, Any]:
     if story:
         parts.append("Context: " + story)
     caption = " | ".join(parts) if parts else (content or "").strip()[:400]
+    at = (d.get("asset_type") or "").strip().lower()
     return {"caption": caption,
-            "content_kind": (d.get("content_kind") or "").strip().lower(),
-            "broll_kind": (d.get("broll_kind") or "").strip().lower(),
+            "asset_type": at, "content_kind": content_kind_of(at),
             "people": people, "location": location, "objects": objects, "story": story}
 
 
@@ -104,7 +107,7 @@ def _extract_caption(content: str) -> str:
     return _extract_analysis(content)["caption"]
 
 
-_EMPTY_ANALYSIS = {"caption": "", "content_kind": "", "broll_kind": "",
+_EMPTY_ANALYSIS = {"caption": "", "asset_type": "", "content_kind": "",
                    "people": [], "location": "", "objects": [], "story": ""}
 
 
@@ -113,7 +116,7 @@ def caption_frame(image_path, transcript: Optional[str] = None, timestamp: Optio
     """Analyze a full-res frame with a cheap VLM (gemma-4-26b default), thinking OFF, using the SAME
     visual+audio prompt as video ingest — so the transcript window fuses with the pixels into a rich,
     OCR-/entity-aware description AND a shot classification. Returns the `_extract_analysis` dict
-    ({caption, content_kind, broll_kind, people, location, objects, story}); an empty-caption dict on any
+    ({caption, asset_type, content_kind, people, location, objects, story}); an empty-caption dict on any
     failure (a caption-less frame is still CLIP-embedded, so this never blocks the visual tier)."""
     import base64
 
@@ -361,18 +364,22 @@ def plan_snapshot_times(changes: List[float], duration: float,
 
 def embed_frames(frames: List[Tuple[float, Path]], video_id: str, watch_url: str,
                  kind: str = "keyframe", title: str = "", embedder=None, base_dir=None,
-                 captions: Optional[List[str]] = None, kinds: Optional[List[str]] = None) -> int:
+                 captions: Optional[List[str]] = None, asset_types: Optional[List[str]] = None) -> int:
     """CLIP-embed frames into the transcript-frame library, each tagged with {video_id, t, kind} so a
     search hit resolves to a video + timestamp. If `captions` (parallel to `frames`) is given, each is
-    stored as the frame's description → BGE-embedded too. If `kinds` (parallel, the shot content_kind) is
-    given, each frame carries a `ck=<broll|talking_head|graphics>` tag so search can filter to b-roll.
-    Returns the number embedded."""
+    stored as the frame's description → BGE-embedded too. If `asset_types` (parallel, gemma's 11-value shot
+    type) is given, each frame carries an `at=<asset_type>` tag AND its derived `ck=<broll|talking_head|
+    graphics>` roll-up so search can filter by either. Returns the number embedded."""
+    from nolan.visual_facts import content_kind_of
     lib = frame_lib(embedder=embedder, base_dir=base_dir)
     n = 0
     for i, (ts, fp) in enumerate(frames):
         cap = (captions[i] if captions and i < len(captions) else None) or None
-        ck = (kinds[i] if kinds and i < len(kinds) else "") or ""
+        at = (asset_types[i] if asset_types and i < len(asset_types) else "") or ""
+        ck = content_kind_of(at)
         tags = f"video_id={video_id};t={float(ts):.1f};kind={kind}"
+        if at:
+            tags += f";at={at}"
         if ck:
             tags += f";ck={ck}"
         try:
@@ -419,7 +426,7 @@ def frames_for_video(video_id: str, base_dir=None) -> List[Dict[str, Any]]:
             continue
         tg = _parse_tags(tags)
         out.append({"asset_id": a.id, "t": float(tg.get("t", 0) or 0), "kind": tg.get("kind", ""),
-                    "content_kind": tg.get("ck", ""),
+                    "asset_type": tg.get("at", ""), "content_kind": tg.get("ck", ""),
                     "thumb": str(lib.abs_path(a)), "caption": getattr(a, "description", "") or ""})
     out.sort(key=lambda x: x["t"])
     return out
@@ -474,7 +481,7 @@ def visual_search(query: str, n: int = 24, embedder=None, base_dir=None,
         out.append({
             "video_id": tg.get("video_id", ""), "start": round(ts, 1),
             "watch_url": (f"{url}&t={int(ts)}s" if "watch?v=" in url else url),
-            "kind": tg.get("kind", ""), "content_kind": tg.get("ck", ""),
+            "kind": tg.get("kind", ""), "content_kind": tg.get("ck", ""), "asset_type": tg.get("at", ""),
             "title": getattr(a, "title", "") or "",
             "caption": getattr(a, "description", "") or "",
             "score": round(float(h.score), 3), "thumb": str(lib.abs_path(a)),
