@@ -48,7 +48,8 @@ async def ingest(job, *, config, db_path: Path, source_type: str, target: str,
                  provider: str = "openrouter", model: Optional[str] = None,
                  reasoning_enabled: Optional[bool] = None, reasoning_max_tokens: Optional[int] = None,
                  project_dir: Optional[str] = None, force: bool = False,
-                 whisper_fallback: bool = True, whisper_model: str = "base"):
+                 whisper_fallback: bool = True, whisper_model: str = "base",
+                 embed: bool = True):
     """Download (if YouTube) and index a single video into the library.
 
     Args:
@@ -141,13 +142,42 @@ async def ingest(job, *, config, db_path: Path, source_type: str, target: str,
     job.set_progress(0.15, "Indexing frames…")
     segments = await indexer.index_video(video_path, progress_callback=progress)
 
-    job.set_progress(1.0, f"Indexed {segments} segments from {video_path.name}")
+    job.set_progress(0.97, f"Indexed {segments} segments from {video_path.name}")
+    # Auto-embed by default: chain a SEPARATE background embed job so the index result is available
+    # immediately and an embed failure is isolated + independently re-runnable (via the /embed route
+    # or reconcile-vectors). This gives the hub /library ingest the same "ingested => searchable"
+    # default the CLI `nolan index` already has (cli/index.py auto-syncs). Never silent-empty.
+    embed_job_id = _queue_embed(index, db_path, video_path, job) if embed else None
+    job.set_progress(1.0, f"Indexed {segments} segments from {video_path.name}"
+                     + (" · embedding…" if embed_job_id else ""))
     return {
         "video_path": str(video_path),
         "segments": segments,
         "provider": provider,
         "model": vision_config.model,
+        "embed_job_id": embed_job_id,
     }
+
+
+def _queue_embed(index, db_path, video_path, job):
+    """Chain a background embed job for a freshly-indexed video (the auto-embed default). Returns the
+    embed job id, or None if it couldn't be queued — logged LOUDLY either way. Never raises: an
+    embed-enqueue failure must not lose the completed index. The embed job lands in the same
+    process-wide JobManager the routes use (visible in /jobs; failures surface there + in the
+    /library embedding-status)."""
+    try:
+        vid = index.get_video_id_by_path(str(video_path))
+    except Exception as e:                                    # id lookup blew up — keep the index, flag it loudly
+        job.log(f"⚠ embed enqueue failed (id lookup): {type(e).__name__}: {e} — run reconcile-vectors")
+        return None
+    if vid is None:
+        job.log("⚠ indexed video not found for embedding — run reconcile-vectors to make it searchable")
+        return None
+    from nolan.webui.jobs import get_job_manager
+    ej = get_job_manager().start("embed-video", embed_video, meta={"video": Path(video_path).name},
+                                 db_path=db_path, video_id=vid)
+    job.log(f"→ embedding queued (job {ej.id}) — searchable when it finishes")
+    return ej.id
 
 
 async def process_essay(job, *, config, essay_text: str, project_name: str,

@@ -52,6 +52,7 @@ def register(app, ctx):
             project_dir=(body.get("project") or None),
             force=bool(body.get("force", False)),
             whisper_fallback=bool(body.get("whisper_fallback", True)),
+            embed=not bool(body.get("no_embed", False)),
         )
         return {"job_id": job.id, "type": "ingest"}
 
