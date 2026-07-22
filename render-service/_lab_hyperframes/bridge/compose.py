@@ -3599,7 +3599,9 @@ def document(sid, sc):
         # Skip an annotation missing the geometry its type needs — e.g. a `find`-annotation that
         # resolve_doc_annotations.py never resolved to a `rect` (no text layer / no match). Warn and
         # continue instead of KeyError'ing the whole compose (holbein POST_MORTEM #6).
-        _need = {"highlight": ("rect",), "underline": ("rect",), "label": ("at", "text")}.get(t, ())
+        _need = {"highlight": ("rect",), "underline": ("rect",), "label": ("at", "text"),
+                 "redaction": ("rect",), "stamp": ("at", "text"), "strike": ("rect",),
+                 "term": ("rect",)}.get(t, ())
         _missing = [k for k in _need if k not in an]
         if _missing:
             print(f"  ⚠ document {sid}: {t} annotation missing {_missing} "
@@ -3623,6 +3625,40 @@ def document(sid, sc):
             x, y = an["at"]; lid = f"{sid}-lb{ai}"
             frag.append(f'<div id="{lid}" class="doc-label" style="left:{fx(x):.0f}px;top:{fy(y):.0f}px;background:{esc(an.get("color","#C8232C"))};">{esc(an["text"])}</div>')
             tl.append(f'tl.fromTo("#{lid}",{{scale:0}},{{scale:1,duration:0.45,ease:"back.out(2.2)"}},{cue:.2f});')
+        elif t == "redaction":     # B-P3 W2 · a black bar over text that LIFTS to reveal ("the part they buried")
+            x, y, w, h = an["rect"]; rid = f"{sid}-rd{ai}"
+            frag.append(f'<div id="{rid}" style="position:absolute;left:{fx(x):.0f}px;top:{fy(y):.0f}px;width:{w*prw:.0f}px;'
+                        f'height:{h*prh:.0f}px;background:#111;border-radius:3px;"></div>')
+            tl.append(f'tl.to("#{rid}",{{y:-16,opacity:0,duration:0.5,ease:"power2.in"}},{cue:.2f});')
+        elif t == "stamp":         # B-P3 W2 · a rubber-stamp (APPROVED / CLASSIFIED / REJECTED) slams on
+            x, y = an["at"]; stid = f"{sid}-st{ai}"; ang = float(an.get("angle", -12)); col = esc(an.get("color", "#C8232C"))
+            frag.append(f'<div id="{stid}" style="position:absolute;left:{fx(x):.0f}px;top:{fy(y):.0f}px;'
+                        f'transform:translate(-50%,-50%) rotate({ang:.0f}deg);border:5px solid {col};color:{col};'
+                        f'font-family:var(--font-display);font-weight:800;font-size:44px;letter-spacing:0.06em;'
+                        f'text-transform:uppercase;padding:6px 22px;border-radius:8px;opacity:0;">{esc(an["text"])}</div>')
+            tl.append(f'tl.fromTo("#{stid}",{{scale:1.55,opacity:0}},{{scale:1,opacity:0.92,duration:0.32,ease:"back.out(3)"}},{cue:.2f});')
+        elif t == "strike":        # B-P3 W2 · TRACK-CHANGES: strike a region + (optional) the green insertion
+            x, y, w, h = an["rect"]; skid = f"{sid}-sk{ai}"
+            frag.append(f'<div id="{skid}" style="position:absolute;left:{fx(x):.0f}px;top:{fy(y+h/2):.0f}px;width:{w*prw:.0f}px;'
+                        f'height:3px;background:{esc(an.get("color","#C8232C"))};transform-origin:left center;"></div>')
+            tl.append(f'tl.fromTo("#{skid}",{{scaleX:0}},{{scaleX:1,duration:0.4,ease:"power2.out"}},{cue:.2f});')
+            if an.get("text"):
+                insid = f"{sid}-ins{ai}"
+                frag.append(f'<div id="{insid}" style="position:absolute;left:{fx(x):.0f}px;top:{fy(y)-28:.0f}px;'
+                            f'color:#1a8a3a;font-weight:700;font-size:22px;white-space:nowrap;opacity:0;">{esc(an["text"])}</div>')
+                tl.append(f'tl.fromTo("#{insid}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.4}},{cue+0.3:.2f});')
+        elif t == "term":          # B-P3 W2 · EQUATION term-by-term: highlight a term + a gloss, in sequence
+            x, y, w, h = an["rect"]; tid = f"{sid}-tm{ai}"
+            frag.append(f'<div id="{tid}" class="doc-hl" style="left:{fx(x):.0f}px;top:{fy(y):.0f}px;width:{w*prw:.0f}px;'
+                        f'height:{h*prh:.0f}px;background:{esc(an.get("color","#FFF23B"))};transform-origin:left center;opacity:0.85;"></div>')
+            tl.append(f'tl.fromTo("#{tid}",{{scaleX:0}},{{scaleX:1,duration:0.35,ease:"power2.out"}},{cue:.2f});')
+            if an.get("gloss"):
+                gid = f"{sid}-gl{ai}"
+                frag.append(f'<div id="{gid}" style="position:absolute;left:{fx(x)+w*prw/2:.0f}px;top:{fy(y)-42:.0f}px;'
+                            f'transform:translateX(-50%);color:var(--text,#1c1c19);font-weight:700;font-size:24px;'
+                            f'background:var(--surface,#fff);padding:3px 12px;border-radius:6px;'
+                            f'box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;opacity:0;">{esc(an["gloss"])}</div>')
+                tl.append(f'tl.fromTo("#{gid}",{{opacity:0,y:6}},{{opacity:1,y:0,duration:0.35}},{cue+0.15:.2f});')
         elif t in ("callout", "caption"):
             overlay.append((t, an, cue, ai))
     frag.append('</div>')  # close world

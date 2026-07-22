@@ -151,7 +151,7 @@ def _bind_document(data, project_dir):
             continue
         x0, y0, x1, y1 = bb
         t = a.get("type", "highlight")
-        if t == "label":
+        if t in ("label", "stamp"):
             a["at"] = [round((x0 + x1) / 2, 4), round((y0 + y1) / 2, 4)]
         elif t == "underline":
             a["rect"] = [round(x0, 4), round(y1, 4), round(x1 - x0, 4)]

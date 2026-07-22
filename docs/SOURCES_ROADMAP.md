@@ -90,7 +90,10 @@ Wave 1 (core paper-explainer kit) — all rendered on the Attention paper:
       centre-screen → BLUR+DIM the page behind — the "portion lifts out" move)
 - [x] read-along (a highlight sweeps across a paragraph at reading pace) · `split_view` block (a document
       region ∥ any content — clip/text/stat, the paper scrolls to its region)
-Waves 2-3 next:
+Wave 2 (document-as-EVIDENCE) — all rendered on the Attention paper:
+- [x] redaction (a black bar over text that LIFTS to reveal) · stamp (APPROVED/CLASSIFIED slams on)
+- [x] strike (TRACK-CHANGES strikethrough + green insertion) · term (EQUATION term-by-term: highlight+gloss)
+Wave 3 next:
 - [x] Wave 1 above; figure extraction done (B-P1/B-P2)
 - [ ] citation web → reuse `connection_board`; side-by-side → `comparison`; title hero → `hero` (blocks EXIST;
       the paper-specific MOTION/pacing needs the reference clips to pin)

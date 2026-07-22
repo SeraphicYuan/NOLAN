@@ -141,3 +141,22 @@ def test_bp3_wave1_vo_sync_and_motions(tmp_path):
     fsv, tsv = compose.BLOCKS["split_view"]("sv", sv)
     h = "".join(fsv)
     assert "sv-paper" in h and "sv-content" in h and "sv-div" in h
+
+
+def test_bp3_wave2_evidence_annotations():
+    """B-P3 Wave 2 (document-as-evidence): redaction lifts, stamp slams, strike + insertion, equation term+gloss."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import compose
+    sc = {"id": "ev", "type": "document", "start": 0, "dur": 10, "data": {"source": "x.png", "page_size": [600, 800],
+          "annotations": [
+              {"type": "redaction", "rect": [0.2, 0.3, 0.5, 0.1], "cue": 5},
+              {"type": "stamp", "at": [0.7, 0.2], "text": "CLASSIFIED", "cue": 2},
+              {"type": "strike", "rect": [0.1, 0.5, 0.4, 0.03], "text": "(struck)", "cue": 3},
+              {"type": "term", "rect": [0.1, 0.1, 0.15, 0.03], "gloss": "the model", "cue": 1.5}]}}
+    frag, tl = compose.BLOCKS["document"]("ev", sc)
+    h, j = "".join(frag), "\n".join(tl)
+    assert "ev-rd1" in h and "y:-16,opacity:0" in j        # redaction bar lifts
+    assert "ev-st2" in h and "CLASSIFIED" in h and "scale:1.55" in j   # stamp slam
+    assert "ev-sk3" in h and "ev-ins3" in h                # strike + insertion
+    assert "ev-tm4" in h and "ev-gl4" in h and "the model" in h        # term + gloss
