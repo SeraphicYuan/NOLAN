@@ -324,6 +324,46 @@ voiceovers"), with filters + players. Provenance + measure summary per item.
   voice AND take an instruct (yields no audio), so when cloning the clone wins and delivery is
   dropped — delivery only takes effect in voice-design (no-clone) mode.
 
+## P5 — VO quality validation + the polish loop (NEW 2026-07-22)
+
+The A2 gate is MECHANICAL (broken-audio detection); it can't hear a mispronounced name,
+a garbled number, a dropped word, or the clone drifting. P5 adds the PERCEPTUAL sensor and
+the loop the retake actuator (B2) + take-preservation (B3) were built for.
+
+- **P5.1 — WER scorer (`voice_quality.py`): FIRST.** ASR round-trip: transcribe each
+  `sec_NNNN.wav` with the Whisper we already run for captions (CPU/int8 — no GPU), token-
+  normalize both the transcript and the *spoken* (normalized) script text, compute word-error-
+  rate per beat. High WER ⇒ the TTS said the wrong thing. Pure, unit-tested `word_error_rate`;
+  scorer scores wavs ALREADY on disk (verifiable against the De Beers VO today).
+- **P5.2 — companion signals:** pace-outlier (a beat's WPM far from its neighbors) and
+  voice-consistency (speaker-embedding similarity of each beat to the reference clip → drift).
+- **P5.3 — gate + surfacing:** high-WER beats become a `warn` in the voice gate + a `wer` field
+  on `/api/voiceover-beats` (shown in the beat pill tooltip on the Narrate tab).
+- **P5.4 — the polish loop (`nolan voiceover polish <slug>`):** score → **best-of-N retake**
+  only the flagged beats, keeping the take with the lowest WER → re-score → converge (bounded
+  rounds). This is the practical "finetune toward quality": OmniVoice is a black-box subprocess
+  (no weight training, no seed), but non-determinism means each retake is a fresh attempt, so
+  best-of-N selection genuinely improves a weak beat. Mirrors the script-review loop; Narrate
+  gets a "Polish weak beats" button.
+
+## P6 (EXPERIMENTAL) — tone / emotion arc
+
+Highly experimental; gated behind a hard engine constraint. Two halves:
+- **Can OmniVoice act on emotion?** Its only per-utterance emotion lever is the voice-design
+  `instruct` (A6) — but that CANNOT combine with a cloned voice (verified: yields no audio). So
+  with a consistent narrator clone (the normal essay case) the only working knobs are pace
+  (`speed`/atempo) and the emotion baked into the *reference clip*. Emotion-per-beat therefore
+  needs one of: (a) voice-design mode (give up the clone), or (b) EXPERIMENT: a small set of
+  same-narrator reference clips in different registers (calm / intense / wry) and switch the ref
+  per beat — emotion while staying "the same voice-ish". Both need listening tests (subjective).
+- **How to ASSIGN the arc (the judgment):** an LLM/agent reads the script and labels the
+  emotional register of each beat, but crucially identifies the FEW pivot beats that carry the
+  arc (hook, reveal, turn, close) — over-emoting every beat sounds fake. This is the A6 authoring
+  half, routed to an agent (taste). Output = `[delivery: …]` on the pivots only. Deferred/experimental
+  because it depends on (a) the engine constraint above and (b) subjective validation we don't
+  yet automate. First experiment before any build: confirm OmniVoice's `instruct` audibly changes
+  emotion at all, and whether multi-reference-register clips preserve voice identity.
+
 ## Sequencing notes
 - P1 is backend-only and de-risks everything (loud failures, honest durations)
   before we build UI on top.
