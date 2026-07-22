@@ -261,7 +261,8 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                 from nolan.vector_search import VectorSearch
                 _vindex = VideoIndex(_db)
                 _vsearch = VectorSearch(db_path=_db.parent / "vectors", index=_vindex)
-                _vstats = _vsearch.get_stats()
+                _footage_ids = _vindex.footage_video_ids()   # has_footage=1 rows only; transcript-only rows
+                _vstats = _vsearch.get_stats()               # (has_footage=0) are a DISCOVERY tier, never footage
                 _nseg = int(_vstats.get("segments", 0) or 0)
                 print(f"[acquire] clips_library: {_nseg} segments / {_vstats.get('clusters', 0)} clusters "
                       f"@ {_db} (≤{clip_lib_max}/need, sim≥{clip_lib_min_sim})", flush=True)
@@ -295,6 +296,9 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                         for r in hits:
                             if float(getattr(r, "score", 0) or 0) < clip_lib_min_sim:
                                 continue
+                            _vid = getattr(r, "video_id", None)
+                            if _vid is not None and _vid not in _footage_ids:
+                                continue                     # transcript tier: searchable, but NOT acquirable footage
                             if not _resolve_src(getattr(r, "video_path", "")):
                                 continue
                             key = (r.video_path, round(float(r.timestamp_start), 1))
