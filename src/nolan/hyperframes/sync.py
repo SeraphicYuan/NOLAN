@@ -41,15 +41,60 @@ def _voice_wavs(comp_dir: Path) -> List[Path]:
     return sorted((comp_dir / "assets" / "voice").glob("[0-9]*.wav"))
 
 
+def _parse_script_sections(text: str) -> List[str]:
+    """Narration bodies of a script / SOURCE.md, one per `## ` section, in order — TTS-cleaned to match
+    what was actually spoken (timecodes and the `# Title` / `**Total Duration**` preamble are dropped)."""
+    import re
+    from nolan.script import clean_tts_text
+    bodies, cur = [], None
+    for ln in text.splitlines():
+        if re.match(r"^##\s+", ln):
+            if cur is not None:
+                bodies.append(cur)
+            cur = ""
+        elif cur is not None and not ln.startswith("#"):
+            cur += ln + "\n"
+    if cur is not None:
+        bodies.append(cur)
+    return [clean_tts_text(b.strip()) for b in bodies if b.strip()]
+
+
+def _known_narration(comp_dir: Path, voices: List[Dict]) -> Dict[int, str]:
+    """The KNOWN narration per frame — the exact text fed to TTS — so alignment can RECONCILE Whisper's
+    free ASR against the truth (forced-alignment behaviour) instead of trusting a possibly-mis-heard
+    transcript. Priority: (1) an explicit ``voices[].text``; (2) the script ``SOURCE.md``, its ``## ``
+    sections mapped to the voices in order. Returns {} (→ raw-ASR fallback) if neither is available or the
+    section count doesn't match the voice count (never risk a mis-mapping)."""
+    frames = [v.get("frame") for v in voices if v.get("frame") is not None]
+    explicit = {v.get("frame"): (v.get("text") or "").strip()
+                for v in voices if v.get("frame") is not None and (v.get("text") or "").strip()}
+    if len(explicit) == len(frames) and frames:
+        return explicit
+    src = Path(comp_dir) / "SOURCE.md"
+    if not src.exists():
+        return explicit
+    sections = _parse_script_sections(src.read_text(encoding="utf-8"))
+    if not sections or len(sections) != len(frames):
+        return explicit                                  # count mismatch → don't risk a mis-map
+    return {f: sections[k] for k, f in enumerate(sorted(frames))}
+
+
 def align_voices(comp_dir, force: bool = False) -> Dict:
-    """Force-align each section wav → audio_meta.voices[].words (section-relative). Idempotent:
-    skips a voice whose words are already present (unless force). Returns a per-voice summary."""
+    """Force-align each section wav → audio_meta.voices[].words (section-relative), RECONCILED against the
+    KNOWN narration (``voices[].text`` / ``SOURCE.md``) via ``captions.align_words``: the stored stream then
+    carries the true SCRIPT words at Whisper's timing, so a mis-heard 'GRU'→'GU' or a spoken 'eight' Whisper
+    writes as '8' still matches the author's anchor (this is the forced-alignment upgrade — free ASR only
+    fed placement bad tokens). Falls back to raw ASR when the known text is unavailable. Idempotent: skips
+    a voice whose words are present (unless force). Returns a per-voice summary."""
     from nolan.flows import source
+    from nolan import captions as _cap
+    from nolan.whisper import WordTimestamp
     comp_dir = Path(comp_dir)
     meta_path = comp_dir / "audio_meta.json"
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     voices = meta.get("voices", [])
     by_frame = {v.get("frame"): v for v in voices}
+    known = _known_narration(comp_dir, voices)
     wavs = _voice_wavs(comp_dir)
     todo = []
     for i, wav in enumerate(wavs, start=1):
@@ -57,15 +102,22 @@ def align_voices(comp_dir, force: bool = False) -> Dict:
         if v is not None and not force and (v.get("words")):
             continue
         todo.append((i, wav))
-    summary = {"aligned": [], "skipped": len(wavs) - len(todo)}
+    summary = {"aligned": [], "skipped": len(wavs) - len(todo), "reconciled": 0}
     if todo:
-        words_by_stem = source.word_timestamps([w for _, w in todo])   # {stem: [{word,start,end}]}
+        words_by_stem = source.word_timestamps([w for _, w in todo])   # {stem: [{word,start,end}]} (raw ASR)
         for i, wav in todo:
             words = words_by_stem.get(wav.stem, [])
+            kt = known.get(i, "")
+            if kt and words:                             # KNOWN words @ Whisper timing (difflib reconcile)
+                wt = [WordTimestamp(word=w["word"], start=float(w["start"]), end=float(w["end"]))
+                      for w in words]
+                words = _cap.align_words(kt.split(), wt)
+                summary["reconciled"] += 1
             v = by_frame.get(i)
             if v is not None:
                 v["words"] = words
-                summary["aligned"].append({"frame": i, "words": len(words)})
+                summary["aligned"].append({"frame": i, "words": len(words),
+                                           "reconciled": bool(kt and words_by_stem.get(wav.stem))})
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return summary
 
@@ -629,7 +681,12 @@ def _resolve_scene_starts(scenes, words, frame_dur, aligner_raw):
     for j in range(1, n):
         q = _scene_query(scenes[j])
         anc_t = _phrase_time(q, words, after=lo) if (q and words) else None
-        con_t = _content_time(scenes[j], stream, freq, lo) if stream else None
+        # CORROBORATED content (min_words=2) — a SINGLE distinctive label word can echo a common phrase early
+        # (a document/stat kicker like "attention"/"heads" recurs) and drag the scene to a spurious opening,
+        # breaking scene order so a correct exact anchor gets isolated + interpolated away (04-move equation
+        # placed 9s early). Require 2 clustering words, matching `_topic_open_time`/the lag lint so placement
+        # and lint never disagree. The IDF-weighted `win_t` below remains the tolerant single-signal corrector.
+        con_t = _content_time(scenes[j], stream, freq, lo, min_words=2) if stream else None
         # ROBUST candidate: the fuzzy content-window topic-opening — beats an exact-but-LATE anchor when the
         # topic opens earlier than the anchored (often closing) clause (the 7:31 santa-cruz-of-text bug). A
         # spuriously-early window that breaks scene order is caught by the LIS outlier isolation below.

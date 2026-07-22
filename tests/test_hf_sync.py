@@ -289,3 +289,60 @@ def test_visual_lag_soft_when_author_anchored_the_scene_there():
     lag = [f for f in flags if f["kind"] == "lag"]
     assert lag, "the lag should still be REPORTED (advisory)"
     assert lag[0]["hard"] is False, "author-anchored-here lag must be soft, not a hard block"
+
+
+# --- forced-alignment upgrade (reconcile free ASR against the KNOWN narration) ---------------------
+
+def test_forced_alignment_recovers_known_words_from_garbled_asr(tmp_path, monkeypatch):
+    """align_voices reconciles Whisper's free ASR against the KNOWN narration (SOURCE.md) so the stored
+    word stream carries the true SCRIPT words at Whisper's timing — a mis-heard 'GRU'->'GU' still lets the
+    author's anchor match. Without it, scene placement keys off a corrupt transcript (the weak-anchor class)."""
+    (tmp_path / "assets" / "voice").mkdir(parents=True)
+    (tmp_path / "assets" / "voice" / "01.wav").write_bytes(b"RIFF0000")          # presence only; ASR is mocked
+    (tmp_path / "SOURCE.md").write_text(
+        "# Script\n\n## Recurrence\n\nAn RNN, an LSTM, a GRU. And recurrence works one word at a time.\n",
+        encoding="utf-8")
+    (tmp_path / "audio_meta.json").write_text(json.dumps(
+        {"voices": [{"frame": 1, "path": "assets/voice/01.wav", "duration_s": 6.0, "words": []}]}),
+        encoding="utf-8")
+    garbled = [{"word": w, "start": i * 0.4, "end": i * 0.4 + 0.35} for i, w in enumerate(
+        "An RNN an LSTM a GU and recurrent such works one word at a time".split())]   # 'GU'/'recurrent such'
+    from nolan.flows import source
+    monkeypatch.setattr(source, "word_timestamps", lambda wavs, *a, **k: {"01": garbled})
+    summ = sync.align_voices(tmp_path, force=True)
+    assert summ["reconciled"] == 1
+    meta = json.loads((tmp_path / "audio_meta.json").read_text(encoding="utf-8"))
+    stream = " ".join(w["word"].lower() for w in meta["voices"][0]["words"])
+    assert "gru" in stream and "recurrence works" in stream        # KNOWN words recovered @ Whisper timing
+    assert all(w["start"] is not None for w in meta["voices"][0]["words"])
+
+
+def test_known_narration_maps_source_sections_to_frames_in_order(tmp_path):
+    """_known_narration sources the true narration from voices[].text first, else SOURCE.md's `## ` sections
+    mapped to voices in frame order; a section/voice count mismatch returns {} (never risk a mis-map)."""
+    (tmp_path / "SOURCE.md").write_text(
+        "# Title\n\n**Total Duration:** 1:00\n\n## One [0:00]\n\nAlpha bravo charlie.\n\n"
+        "## Two [0:30]\n\nDelta echo foxtrot.\n", encoding="utf-8")
+    known = sync._known_narration(tmp_path, [{"frame": 2}, {"frame": 1}])          # order-independent
+    assert "alpha bravo charlie" in known[1].lower() and "delta echo foxtrot" in known[2].lower()
+    assert sync._known_narration(tmp_path, [{"frame": 1}]) == {}                   # 2 sections vs 1 voice
+    explicit = sync._known_narration(tmp_path, [{"frame": 1, "text": "explicit words"},
+                                                {"frame": 2, "text": "more"}])
+    assert explicit[1] == "explicit words"                                         # voices[].text wins
+
+
+def test_content_time_requires_corroboration_at_min_words_2():
+    """A SINGLE distinctive label word must not anchor placement — it can echo a common phrase early and
+    drag a correctly-anchored scene off its spoken word (the 04-move equation, placed 9s early). min_words=2
+    (matching the lag lint) requires 2 clustering words, so a lone echo can't outweigh the real anchor."""
+    from nolan.aligner import flatten_words
+    from nolan.whisper import WordTimestamp
+    wt = [WordTimestamp(w, float(i), i + 0.5) for i, w in enumerate(
+        "gradient flows early then unrelated talk goes on for a while".split())]
+    stream = sync._collapse_nums([(t, s) for (t, s, _e) in flatten_words(wt)])
+    freq = {}
+    for tok, _s in stream:
+        freq[tok] = freq.get(tok, 0) + 1
+    sc = {"data": {"kicker": "Gradient"}}                                          # ONE distinctive word
+    assert sync._content_time(sc, stream, freq, 0.0, min_words=1) is not None      # lone word fires @1
+    assert sync._content_time(sc, stream, freq, 0.0, min_words=2) is None          # but NOT when corroborated
