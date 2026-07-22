@@ -109,6 +109,14 @@ class AssetCatalog:
             self._conn.execute("UPDATE assets SET status=? WHERE id=?", (status, asset_id))
             self._conn.commit()
 
+    def delete(self, asset_id: int) -> None:
+        """Hard-remove a row — frees its content-hash so re-adding the SAME bytes creates a fresh asset.
+        A re-ingest/refresh needs this: set_status('deleted') keeps the row, and get_by_hash still finds it,
+        so identical re-captured bytes would silently dedup back to the stale (deleted) asset."""
+        with self._lock:
+            self._conn.execute("DELETE FROM assets WHERE id=?", (asset_id,))
+            self._conn.commit()
+
     def set_description(self, asset_id: int, description: str) -> None:
         with self._lock:
             self._conn.execute("UPDATE assets SET description=? WHERE id=?",

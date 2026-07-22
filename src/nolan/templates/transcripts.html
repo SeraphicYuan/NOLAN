@@ -62,6 +62,26 @@
     .win .ts { font-size: 11px; color: var(--text-secondary); font-family: ui-monospace, monospace; margin-bottom: 3px; }
     .win .tr { font-size: 13px; }
     .win .capn { font-size: 12px; color: var(--text-secondary); margin-top: 4px; font-style: italic; }
+    /* content-kind badge (b-roll / talking-head / graphics) */
+    .ck { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; vertical-align: middle; }
+    .ck-broll { background: rgba(52,199,89,.16); color: #34c759; }
+    .ck-talking_head { background: rgba(255,159,10,.18); color: #ff9f0a; }
+    .ck-graphics { background: rgba(90,140,255,.18); color: #6c94ff; }
+    .ck-mixed { background: rgba(175,130,255,.18); color: #b088ff; }
+    /* structured gemma column (mirrors the video library's context tags) */
+    .ctx { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .tag { font-size: 11px; padding: 1px 7px; border-radius: 10px; }
+    .tag.people { background: rgba(79,124,255,.15); color: #6c94ff; }
+    .tag.loc { background: rgba(52,199,89,.15); color: #34c759; }
+    .tag.obj { background: rgba(255,159,10,.15); color: #ff9f0a; }
+    .tag.k { color: var(--text-secondary); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; align-self: center; }
+    .win3 { display: grid; grid-template-columns: 150px 1fr 200px; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .win3:last-child { border-bottom: none; }
+    .win3 .colhd { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin-bottom: 3px; }
+    /* storyboard filmstrip */
+    .strip { display: flex; gap: 4px; overflow-x: auto; padding: 8px 0 10px; }
+    .strip img { height: 46px; width: auto; border-radius: 3px; cursor: pointer; opacity: .85; flex: 0 0 auto; }
+    .strip img:hover { opacity: 1; outline: 1px solid var(--accent, #4f7cff); }
   </style>
 </head>
 <body>
@@ -83,6 +103,7 @@
             <button data-m="text" class="on" onclick="setMode('text')">📝 Text</button>
             <button data-m="visual" onclick="setMode('visual')">🖼 Visual</button>
           </div>
+          <label class="dim" id="broll-wrap" style="display:none" title="Only b-roll shots (hide talking-heads + graphics)"><input type="checkbox" id="brollOnly" onchange="doSearch()"> b-roll only</label>
           <span class="dim" id="mode-hint">semantic search over what's <b>said</b></span>
         </div>
         <div class="row">
@@ -159,6 +180,7 @@
       MODE=m; document.querySelectorAll("#mode button").forEach(b=>b.classList.toggle("on", b.dataset.m===m));
       $("#mode-hint").innerHTML = m==="visual" ? "search frames by <b>appearance + gemma caption</b>" : "semantic search over what's <b>said</b>";
       $("#q").placeholder = m==="visual" ? "Search frames by look — e.g. “a trading floor with red screens”" : "Search the transcript library…";
+      $("#broll-wrap").style.display = m==="visual" ? "inline" : "none";
       if($("#q").value.trim()) doSearch();
     }
     async function doSearch(){
@@ -166,7 +188,8 @@
       $("#results").innerHTML='<div class="dim">Searching…</div>';
       try{
         if(MODE==="visual"){
-          const d=await jget(`/api/transcripts/visual-search?q=${encodeURIComponent(q)}`);
+          const ck = $("#brollOnly").checked ? "&content_kind=broll" : "";
+          const d=await jget(`/api/transcripts/visual-search?q=${encodeURIComponent(q)}${ck}`);
           $("#results").innerHTML = d.results.length ? `<div class="vgrid">${d.results.map(visualHit).join("")}</div>` : '<div class="dim">No frames. Index a channel with the visual tier on.</div>';
         } else {
           const d=await jget(`/api/transcripts/search?q=${encodeURIComponent(q)}`);
@@ -179,7 +202,7 @@
       <div class="hit-meta">${esc(h.channel||"")}</div><div class="hit-snip">${esc(h.snippet)}…</div></div>`; }
     function visualHit(h){ return `<div class="vcard"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">
       <img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}"></a>
-      <div class="cap"><div class="t">${esc(h.title)||"frame"}</div><div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>
+      <div class="cap"><div class="t">${esc(h.title)||"frame"} ${ckBadge(h.content_kind)}</div><div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>
       ${h.caption?`<div class="hit-snip" style="font-size:11px;margin-top:3px">${esc((h.caption||"").slice(0,110))}…</div>`:""}</div></div>`; }
 
     /* ---------- add / sources ---------- */
@@ -240,6 +263,20 @@
         <span class="row"><button class="btn ghost mini" onclick="openDetail('${esc(v.video_id)}')">Detail →</button></span></div>`;
     }
 
+    /* ---------- content-kind badge + structured gemma column ---------- */
+    const CK_LABEL = {broll:"b-roll", talking_head:"talking head", graphics:"graphics", mixed:"mixed"};
+    function ckBadge(ck){ if(!ck||!CK_LABEL[ck]) return ""; return `<span class="ck ck-${ck}">${CK_LABEL[ck]}</span>`; }
+    function structCol(f){
+      const chips=[];
+      (f.people||[]).slice(0,4).forEach(p=>chips.push(`<span class="tag people">${esc(p)}</span>`));
+      if(f.location) chips.push(`<span class="tag loc">${esc(f.location)}</span>`);
+      (f.objects||[]).slice(0,4).forEach(o=>chips.push(`<span class="tag obj">${esc(o)}</span>`));
+      const body = chips.length ? `<div class="ctx">${chips.join("")}</div>` : "";
+      const story = f.story ? `<div class="capn" style="margin-top:5px">${esc(f.story)}</div>` : "";
+      const summ = f.summary ? `<div style="font-size:12px">${esc(f.summary)}</div>` : "";
+      return `<div class="colhd">Gemma vision</div>${summ}${body}${story}` || '<span class="dim">—</span>';
+    }
+
     /* ---------- detail drill-down ---------- */
     let DCUR = null;
     async function openDetail(id){
@@ -251,16 +288,22 @@
         $("#d-meta").textContent = `${esc(m.channel||"")} · ${d.windows.length} windows · ${d.frames.length} frames`;
         $("#d-refresh").onclick = ()=>refreshVideo(id, m.url);
         $("#d-delete").onclick = ()=>deleteVideo(id);
+        // storyboard filmstrip (free whole-video overview) — click jumps to that moment on YouTube
+        const strip = (d.storyboard||[]).length
+          ? `<div class="colhd">Storyboard overview (${d.storyboard.length})</div><div class="strip">` +
+            d.storyboard.map(s=>`<img loading="lazy" title="${fmt(s.t)}" src="/api/transcripts/frame?path=${encodeURIComponent(s.thumb)}" onclick="window.open('${esc(m.url||'')}&t=${Math.round(s.t)}s')">`).join("") + `</div>`
+          : "";
         // pair each frame to the window covering it
         const byWin = t => d.frames.find(f => f.t>=t.start && f.t<=t.end);
-        $("#d-body").innerHTML = d.windows.map(w=>{
+        const rows = d.windows.map(w=>{
           const f=byWin(w);
           const img = f ? `<img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(f.thumb)}">` : `<div class="noimg">no frame</div>`;
-          return `<div class="win"><div>${img}
-            <button class="btn ghost mini" style="margin-top:5px;width:100%" onclick="clipMoment('${esc(m.url||'')}',${w.start},${w.end})">✂ clip this moment</button></div>
-            <div><div class="ts">${fmt(w.start)} – ${fmt(w.end)}</div><div class="tr">${esc(w.text)}</div>
-            ${f&&f.caption?`<div class="capn">🖼 ${esc(f.caption)}</div>`:""}</div></div>`;
-        }).join("") || '<div class="dim">No transcript windows.</div>';
+          return `<div class="win3">
+            <div>${img}<button class="btn ghost mini" style="margin-top:5px;width:100%" onclick="clipMoment('${esc(m.url||'')}',${w.start},${w.end})">✂ clip</button></div>
+            <div><div class="ts">${fmt(w.start)} – ${fmt(w.end)} ${f?ckBadge(f.content_kind):""}</div><div class="tr">${esc(w.text)}</div></div>
+            <div>${f?structCol(f):'<span class="dim" style="font-size:11px">no snapshot</span>'}</div></div>`;
+        }).join("");
+        $("#d-body").innerHTML = strip + (rows || '<div class="dim">No transcript windows.</div>');
       }catch(e){ $("#d-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
     function closeDetail(){ $("#detail-modal").classList.remove("on"); }

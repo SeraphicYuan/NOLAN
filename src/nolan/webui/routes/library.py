@@ -130,16 +130,37 @@ def register(app, ctx):
 
         @app.get("/api/library/videos/{video_path:path}/segments")
         async def library_get_segments(video_path: str):
-            """Get segments for a video."""
+            """Get segments for a video, each annotated with the coarse `content_kind` (broll /
+            talking_head / graphics) + fine `asset_type` derived from the overlapping SHOT — so an editor
+            can tell b-roll from a talking head at a glance (the richer per-shot data makes this accurate)."""
+            from nolan.visual_facts import content_kind_of
             video_path = unquote(video_path)
             segments = index.get_segments(video_path)
             if not segments:
                 raise HTTPException(status_code=404, detail="Video not found")
-            return {
-                "video_path": video_path,
-                "segments": [_segment_to_dict(s) for s in segments],
-                "total": len(segments),
-            }
+            shots = index.get_shots(video_path)                 # fetched once; joined by time overlap
+
+            def _shot_kind(seg):
+                mid = (seg.timestamp_start + seg.timestamp_end) / 2.0
+                at = next((sh.get("asset_type") for sh in shots
+                           if (sh.get("timestamp_start") or 0) <= mid < (sh.get("timestamp_end") or 0)
+                           and sh.get("asset_type")), "")
+                if not at and shots:                            # fallback: the max-overlap shot
+                    best, best_ov = "", 0.0
+                    for sh in shots:
+                        ov = min(seg.timestamp_end, sh.get("timestamp_end") or 0) - \
+                            max(seg.timestamp_start, sh.get("timestamp_start") or 0)
+                        if ov > best_ov and sh.get("asset_type"):
+                            best, best_ov = sh.get("asset_type"), ov
+                    at = best
+                return at or "", content_kind_of(at)
+
+            out = []
+            for s in segments:
+                d = _segment_to_dict(s)
+                d["asset_type"], d["content_kind"] = _shot_kind(s)
+                out.append(d)
+            return {"video_path": video_path, "segments": out, "total": len(out)}
 
         @app.get("/api/library/videos/{video_path:path}/clusters")
         async def library_get_clusters(video_path: str):

@@ -52,6 +52,25 @@ ASSET_TYPE_TO_VISUAL = {
     "other": "b-roll",
 }
 
+# The COARSE, cross-library EDITORIAL roll-up — the one label a video-essay editor filters on ("give me
+# b-roll"). The transcript tier's gemma emits `content_kind` directly (it has no shots); the video library
+# derives it from a shot's richer `asset_type` via this map, so a "b-roll only" filter means the same thing
+# in both. talking_head is split OUT of b-roll here (unlike ASSET_TYPE_TO_VISUAL, which is a RENDER-treatment
+# map) because for asset finding a talking head is the thing you usually DON'T want.
+CONTENT_KINDS = ("broll", "talking_head", "graphics", "mixed")
+ASSET_TYPE_TO_CONTENT_KIND = {
+    "talking-head": "talking_head",
+    "live-footage": "broll", "archival-footage": "broll", "photo": "broll",
+    "painting": "broll", "illustration": "broll",           # still imagery — layable under narration
+    "map": "graphics", "chart-graphic": "graphics", "text-card": "graphics", "animation": "graphics",
+    "other": "",
+}
+
+
+def content_kind_of(asset_type: str) -> str:
+    """Coarse editorial content_kind for a shot's asset_type (see ASSET_TYPE_TO_CONTENT_KIND)."""
+    return ASSET_TYPE_TO_CONTENT_KIND.get((asset_type or "").strip().lower(), "")
+
 # Cut detection (mirrors video_style.tempo / sampler adaptive settings)
 CUT_FLOOR = 0.45
 CUT_SIGMA = 3.0

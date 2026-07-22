@@ -1340,6 +1340,15 @@
             }
         }
 
+        // Coarse content-kind badge (b-roll / talking-head / graphics) — derived from the shot asset_type.
+        let brollOnly = false;
+        function ckBadgeLib(ck) {
+            const L = { broll: ['b-roll', '#34c759'], talking_head: ['talking head', '#ff9f0a'],
+                        graphics: ['graphics', '#6c94ff'], mixed: ['mixed', '#b088ff'] };
+            const e = L[ck]; if (!e) return '';
+            return `<span title="asset type" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:4px;background:${e[1]}22;color:${e[1]}">${e[0]}</span>`;
+        }
+
         // Render segments
         function renderSegments() {
             const panel = document.getElementById('contentPanel');
@@ -1354,11 +1363,19 @@
                 return;
             }
 
-            panel.innerHTML = currentSegments.map((s, i) => `
+            const shown = brollOnly ? currentSegments.filter(s => s.content_kind === 'broll').length : currentSegments.length;
+            const bar = `<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+                <label style="font-size:12px;color:var(--text-secondary,#888);cursor:pointer" title="Only b-roll shots (hide talking-heads + graphics)">
+                    <input type="checkbox" ${brollOnly ? 'checked' : ''} onchange="brollOnly=this.checked; renderSegments()"> b-roll only</label>
+                <span style="font-size:12px;color:var(--text-secondary,#888)">${shown} / ${currentSegments.length} segments</span></div>`;
+            panel.innerHTML = bar + currentSegments.map((s, i) => {
+                if (brollOnly && s.content_kind !== 'broll') return '';
+                return `
                 <div class="segment-card" onclick="playSegment(${i})">
                     <div class="segment-header">
                         <span class="segment-time">${s.timestamp_formatted}</span>
                         <span class="segment-duration">${s.duration.toFixed(1)}s</span>
+                        ${ckBadgeLib(s.content_kind)}
                         ${s.sample_reason ? `<span class="segment-reason">${escapeHtml(s.sample_reason)}</span>` : ''}
                         <button style="margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid var(--border,#333);border-radius:5px;background:transparent;color:inherit;cursor:pointer"
                                 title="Promote this segment into a HyperFrames project's pool (skips acquisition ranking)"
@@ -1367,8 +1384,8 @@
                     <div class="segment-description">${escapeHtml(s.combined_summary || s.frame_description)}</div>
                     ${s.transcript ? `<div class="segment-transcript">"${escapeHtml(s.transcript)}"</div>` : ''}
                     ${renderContextTags(s.inferred_context)}
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         // Promote a segment's [start,end] range into a HyperFrames project's pool (manual pick).

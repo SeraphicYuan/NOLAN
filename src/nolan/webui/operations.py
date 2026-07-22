@@ -342,8 +342,10 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     if visual == "storyboard":                                    # FREE, coarse, no video download (CLIP-only)
         tiles = await asyncio.to_thread(tfr.storyboard_tiles, url, tmpd, 12.0, 60)
         return await asyncio.to_thread(tfr.embed_frames, tiles, yid, url, "storyboard", title)
-    # keyframe: scene-anchored adaptive density
-    changes, dur = await asyncio.to_thread(tfr.storyboard_change_points, url)
+    # keyframe: scene-anchored adaptive density — one storyboard fetch both finds cuts AND saves the
+    # viewable whole-video filmstrip (on disk, not in the search index) shown in the detail overview.
+    sdir = tfr.storyboard_dir(yid)
+    changes, dur, sprites = await asyncio.to_thread(tfr.storyboard_change_points, url, 2.0, sdir)
     if not dur and windows:
         dur = float(windows[-1]["end"])
     times = tfr.plan_snapshot_times(changes, dur)
@@ -352,7 +354,8 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     if max_frames and len(times) > int(max_frames):               # optional safety cap
         times = [times[int(k * len(times) / int(max_frames))] for k in range(int(max_frames))]
     if job:
-        job.log(f"    · {len(changes)} scene changes → {len(times)} snapshots (adaptive 30–50s)")
+        job.log(f"    · {len(changes)} scene changes → {len(times)} snapshots (adaptive 30–50s), "
+                f"{len(sprites)} storyboard sprites")
     kfs = await asyncio.to_thread(tfr.ranged_keyframes, url, times, tmpd)
 
     def _wtext(ts):                                               # the transcript window covering this frame
@@ -360,8 +363,14 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
             if w["start"] <= ts <= w["end"]:
                 return w["text"]
         return ""
-    caps = await tfr.caption_frames_async([(fp, _wtext(ts), ts) for ts, fp in kfs])
-    return await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe", title, None, None, caps)
+    analyses = await tfr.caption_frames_async([(fp, _wtext(ts), ts) for ts, fp in kfs])
+    caps = [a.get("caption", "") for a in analyses]               # rich searchable text (entities fused)
+    kinds = [a.get("content_kind", "") for a in analyses]         # broll / talking_head / graphics
+    if job and kinds:
+        from collections import Counter
+        tally = ", ".join(f"{k or '?'}:{c}" for k, c in Counter(kinds).most_common())
+        job.log(f"    · shot kinds — {tally}")
+    return await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe", title, None, None, caps, kinds)
 
 
 async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,

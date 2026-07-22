@@ -346,6 +346,13 @@ class ImageLibrary:
                 except Exception:
                     pass
 
+    def hard_delete(self, asset_id: int) -> None:
+        """Fully remove an asset: drop its CLIP + description vectors AND its catalog row (frees the content
+        hash). Use for a true REPLACE (e.g. re-capturing a video's frames) where set_status('deleted') would
+        keep the row and block re-adding identical bytes."""
+        self.set_status(asset_id, "deleted")
+        self.catalog.delete(asset_id)
+
     def abs_path(self, asset: Asset) -> Path:
         """Absolute path to an asset's file in this library."""
         return (self.base / asset.path).resolve()

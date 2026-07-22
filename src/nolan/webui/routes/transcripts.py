@@ -72,11 +72,13 @@ def register(app, ctx):
         return {"results": results, "count": len(results)}
 
     @app.get("/api/transcripts/visual-search")
-    async def transcripts_visual_search(q: str = Query(...), n: int = Query(default=24)):
-        """CLIP text→image over the transcript-frame visual tier — retrieve by APPEARANCE, timestamped."""
+    async def transcripts_visual_search(q: str = Query(...), n: int = Query(default=24),
+                                        content_kind: str = Query(default="")):
+        """CLIP text→image over the transcript-frame visual tier — retrieve by APPEARANCE, timestamped.
+        `content_kind` (e.g. broll) filters to that shot class — the "b-roll only" toggle."""
         import asyncio
         from nolan import transcript_frames as tf
-        results = await asyncio.to_thread(tf.visual_search, q, int(n))
+        results = await asyncio.to_thread(tf.visual_search, q, int(n), None, None, content_kind)
         return {"results": results, "count": len(results)}
 
     @app.get("/api/transcripts/frame")

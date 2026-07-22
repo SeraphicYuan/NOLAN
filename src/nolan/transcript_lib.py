@@ -128,8 +128,10 @@ def delete_transcript(index, video_id: str, catalog_dir: Optional[Path] = None) 
 
 
 def video_detail(index, video_id: str, catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
-    """A transcript video's drill-down: {meta, windows:[{start,end,text}], frames:[{t,thumb,caption,kind}]}
-    — the transcript timeline joined to its ffmpeg snapshots + gemma captions (the visual tier)."""
+    """A transcript video's drill-down: {meta, windows, frames, storyboard} — the transcript timeline joined
+    to its ffmpeg snapshots + gemma captions (visual tier), each frame carrying its split-out structured
+    fields (people/location/objects/story) + content_kind for the detail column + b-roll badge, plus the
+    whole-video storyboard filmstrip (the free overview)."""
     import sqlite3
 
     from nolan import transcript_frames as tfr
@@ -141,7 +143,11 @@ def video_detail(index, video_id: str, catalog_dir: Optional[Path] = None) -> Di
             for r in c.execute("SELECT timestamp_start, timestamp_end, transcript FROM segments "
                                "WHERE video_id=? ORDER BY timestamp_start", (vid,)):
                 windows.append({"start": r[0], "end": r[1], "text": r[2] or ""})
-    return {"meta": meta, "windows": windows, "frames": tfr.frames_for_video(video_id)}
+    frames = tfr.frames_for_video(video_id)
+    for f in frames:
+        f.update(tfr.split_caption(f.get("caption", "")))         # summary/people/location/objects/story
+    return {"meta": meta, "windows": windows, "frames": frames,
+            "storyboard": tfr.list_storyboard(video_id)}
 
 
 def search_transcripts(query: str, index, vs, n: int = 20,

@@ -20,6 +20,10 @@ class FrameAnalysisResult:
     story_context: Optional[str] = None
     objects: List[str] = field(default_factory=list)
     confidence: str = "low"
+    # Shot classification for asset finding (video-essay editors mostly want b-roll):
+    #   content_kind ∈ {broll, talking_head, graphics, mixed, ""}  ·  broll_kind = a b-roll subtype (only when broll)
+    content_kind: str = ""
+    broll_kind: str = ""
 
     def to_inferred_context(self):
         """Convert to InferredContext object."""
@@ -87,10 +91,19 @@ Respond with a JSON object containing:
    - "objects": Notable objects relevant to the content.
    - "confidence": "high" (explicit mention/clear visual), "medium" (strong implication), or "low" (educated guess).
 
+4. "content_kind": Classify the SHOT into exactly one of these (this decides how an editor can reuse it):
+   - "broll": footage or imagery OF THE WORLD (scenery, action, objects, archival, stills) with NO person addressing the camera — the kind of shot you lay UNDER narration.
+   - "talking_head": a person speaking to camera — interview, presenter, anchor, or speech. Their own words are the point.
+   - "graphics": on-screen text, charts, maps, tables, a UI or screen recording, or a title card.
+   - "mixed": a talking head with a significant b-roll or graphic insert (e.g. picture-in-picture, over-the-shoulder graphic).
+
+5. "broll_kind": ONLY when content_kind is "broll", the subject type — one of "archival", "scenic", "urban", "nature", "action", "detail", "crowd", "other". Omit otherwise.
+
 IMPORTANT:
 - For "people", try to identify who they are from visual appearance (face recognition) or name mentions in transcript.
 - Only include inferred_context fields you have actual evidence for.
 - The combined_summary should fuse visual and audio information.
+- Always include "content_kind".
 
 Respond ONLY with valid JSON, no other text."""
 
@@ -108,7 +121,11 @@ Respond with a JSON object containing:
    - "objects": Notable objects in the frame.
    - "confidence": "high", "medium", or "low" based on visual clarity.
 
-IMPORTANT: Only include fields you have actual evidence for from the image.
+3. "content_kind": exactly one of "broll" (footage/imagery of the world, no one addressing camera — layable under narration), "talking_head" (a person speaking to camera / interview / presenter), "graphics" (on-screen text, charts, maps, UI, title cards), or "mixed" (talking head with a b-roll/graphic insert). Always include this.
+
+4. "broll_kind": ONLY when content_kind is "broll", one of "archival", "scenic", "urban", "nature", "action", "detail", "crowd", "other".
+
+IMPORTANT: Only include inferred_context fields you have actual evidence for from the image.
 
 Respond ONLY with valid JSON, no other text."""
 
@@ -151,6 +168,8 @@ def parse_frame_analysis_response(
                 story_context=context.get("story_context"),
                 objects=context.get("objects", []),
                 confidence=context.get("confidence", "low"),
+                content_kind=(data.get("content_kind") or "").strip().lower(),
+                broll_kind=(data.get("broll_kind") or "").strip().lower(),
             )
     except (json.JSONDecodeError, KeyError, TypeError):
         pass

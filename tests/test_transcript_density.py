@@ -74,3 +74,42 @@ def test_caption_plain_text_fallback():
     """Non-JSON reply degrades to the raw text, not a crash."""
     assert tf._extract_caption("just a plain sentence") == "just a plain sentence"
     assert tf._extract_caption("") == ""
+
+
+def test_analysis_extracts_content_kind():
+    """The shot classification (content_kind / broll_kind) is parsed out of the reply."""
+    import json
+    a = tf._extract_analysis(json.dumps({
+        "frame_description": "a harbour at dawn", "content_kind": "BROLL", "broll_kind": "Scenic",
+        "inferred_context": {"location": "harbour"}}))
+    assert a["content_kind"] == "broll" and a["broll_kind"] == "scenic"     # normalized lower
+    assert a["location"] == "harbour"
+    # a talking head
+    b = tf._extract_analysis(json.dumps({"frame_description": "man at desk", "content_kind": "talking_head"}))
+    assert b["content_kind"] == "talking_head"
+
+
+def test_split_caption_roundtrips_fusion():
+    """split_caption reverses the fused ' | Label: value' format for the structured detail column."""
+    fused = ("The founder announces a rocket. | People: Elon Musk, Gwynne Shotwell | "
+             "Location: Starbase | Objects: Starship, podium | Context: unveiling")
+    s = tf.split_caption(fused)
+    assert s["summary"] == "The founder announces a rocket."
+    assert s["people"] == ["Elon Musk", "Gwynne Shotwell"]
+    assert s["location"] == "Starbase"
+    assert s["objects"] == ["Starship", "podium"]
+    assert s["story"] == "unveiling"
+    # summary-only caption
+    assert tf.split_caption("just a scene")["summary"] == "just a scene"
+
+
+def test_asset_type_to_content_kind_rollup():
+    """The video library's fine asset_type rolls up to the shared coarse content_kind."""
+    from nolan.visual_facts import content_kind_of
+    assert content_kind_of("talking-head") == "talking_head"
+    assert content_kind_of("live-footage") == "broll"
+    assert content_kind_of("archival-footage") == "broll"
+    assert content_kind_of("chart-graphic") == "graphics"
+    assert content_kind_of("text-card") == "graphics"
+    assert content_kind_of("other") == ""
+    assert content_kind_of("") == ""
