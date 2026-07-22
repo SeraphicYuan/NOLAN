@@ -14,6 +14,17 @@ from fastapi.responses import HTMLResponse
 def register(app, ctx):
     templates_dir = ctx.templates_dir
 
+    @app.on_event("startup")
+    async def _reap_orphan_run_agents():
+        """On boot, kill any ephemeral `nolan-run-*` agents orphaned by a prior hub crash."""
+        try:
+            from nolan import fleet
+            killed = await asyncio.to_thread(fleet.reap_run_agents)
+            if killed:
+                print(f"[sessions] reaped orphaned run-agents: {killed}")
+        except Exception:
+            pass
+
     @app.get("/sessions", response_class=HTMLResponse)
     async def sessions_page():
         p = templates_dir / "sessions.html"

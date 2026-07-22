@@ -870,11 +870,11 @@ async function loadSessions(selId) {
         const sessions = data.sessions || [];
         const sel = document.getElementById(selId);
         if (!sel) return;
-        const fleet = sessions.filter(s => s.startsWith('nolan'));   // only our fleet, not sparta/hermes/…
-        sel.innerHTML = '<option value="auto">Auto — idle agent</option>'
-            + (fleet.length ? fleet : ['nolan2'])
-                .map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-        sel.value = 'auto';   // default: let the hub pick an idle agent (never queue on a busy one)
+        // only persistent fleet agents (not sparta/hermes/… and not our own ephemeral nolan-run-*)
+        const fleet = sessions.filter(s => s.startsWith('nolan') && !s.startsWith('nolan-run-'));
+        sel.innerHTML = '<option value="auto">Auto — dedicated agent (spawned &amp; cleaned up)</option>'
+            + fleet.map(s => `<option value="${esc(s)}">${esc(s)} (persistent)</option>`).join('');
+        sel.value = 'auto';   // default: spawn a fresh ephemeral agent per phase, killed on completion
     } catch(e){}
 }
 function pickedSession() { return ($('agentSelect') || {}).value || 'nolan2'; }

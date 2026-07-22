@@ -338,6 +338,21 @@ def kill(name: str) -> bool:
     return ok
 
 
+# Ephemeral per-run agents the hub spawns for 'auto' script runs: `nolan-run-<jobid>-<phase>`.
+# Each is killed the moment its phase finishes; this reaper is the crash-safety net.
+RUN_AGENT_PREFIX = "nolan-run-"
+
+
+def reap_run_agents() -> List[str]:
+    """Kill any lingering ephemeral run-agents (``nolan-run-*``) — e.g. orphaned by a hub crash.
+    Never touches the persistent ``nolan<N>`` fleet. Returns the names killed."""
+    killed = []
+    for name in _live_sessions():
+        if name.startswith(RUN_AGENT_PREFIX) and kill(name):
+            killed.append(name)
+    return killed
+
+
 def fleet_detailed(prefix: str = AGENT_PREFIX) -> List[dict]:
     """:func:`fleet` joined with a live pane-derived status + the hub-spawned flag."""
     out = fleet(prefix)

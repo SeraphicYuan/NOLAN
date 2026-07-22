@@ -4,6 +4,21 @@
 **Status:** Complete
 **Last Updated:** 2026-07-21
 
+## Script review loop — ephemeral 'auto' agents + attached-safe pickers (2026-07-21)
+
+`auto` agent selection now SPAWNS a dedicated ephemeral agent PER PHASE (`nolan-run-<jobid>-<phase>`,
+unique via the run's uuid; `fleet.spawn` refuses a dup), runs the phase on it, and KILLS it the moment
+the completion sentinel lands — so full-auto needs NO pre-existing nolan7-9 fleet, never touches a
+session a human is attached to, and leaves nothing lingering. Fresh-eyes review is automatic (each
+phase is a new agent). `operations._run_on_agent` / `_spawn_and_boot` (spawn→wait-idle→dispatch→kill);
+explicit `nolanN` still targets a persistent agent. Cleanup is 3-layer: per-phase finally + run_full_auto
+outer finally + a hub-startup reaper (`fleet.reap_run_agents` kills orphaned `nolan-run-*`). Also fixed
+BOTH agent pickers (`_pick_run_session`, `_pick_reviewer_session`) to read tmux's `(attached)` flag and
+never pick nolan1-5 — a live cold-start run had dispatched a draft AND a review into the user's attached
+nolan1. Validated live end-to-end on a cold-start De Beers project (all-auto, spawned agents): fetched
+4 sources cold, auto-picked angle + spine(single), near-official draft in ONE round; round-2 review
+15→10 findings, 1→0 high (loop converges). Route session defaults → 'auto'.
+
 ## Script review loop — Batch 2: completion detection, full-auto, iterate, create-presets (2026-07-21)
 
 The dispatched-agent script pipeline is no longer fire-and-forget. Every brief writes a

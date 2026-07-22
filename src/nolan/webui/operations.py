@@ -2081,6 +2081,7 @@ async def write_script(job, *, store_root, slug: str, session: str = "nolan2"):
     store = ScriptProjectStore(_Path(store_root))
     if not store.exists(slug):
         raise RuntimeError(f"script project not found: {slug}")
+    session = _pick_run_session(session)   # legacy baseline: resolve 'auto' to an existing worker
 
     job.set_progress(0.2, "Writing task brief…")
     task_path = store.scriptgen_dir(slug) / "write_task.md"
@@ -2105,33 +2106,58 @@ async def write_script(job, *, store_root, slug: str, session: str = "nolan2"):
             "dispatch_error": dispatch_error}
 
 
+def _nolan_agents_attached() -> list:
+    """[(name, attached_bool)] for live nolan* tmux sessions, parsed from `tmux ls`
+    (which prints '(attached)' for sessions a human is viewing)."""
+    import shutil
+    import subprocess
+    base = ["tmux"] if shutil.which("tmux") else ["wsl.exe", "tmux"]
+    try:
+        out = subprocess.run(base + ["ls"], capture_output=True, text=True, timeout=10)
+        rows = []
+        for line in out.stdout.splitlines():
+            line = line.strip()
+            if ":" in line:
+                name = line.split(":", 1)[0].strip()
+                if name.startswith("nolan"):
+                    rows.append((name, "(attached)" in line))
+        return rows
+    except Exception:
+        return []
+
+
 def _pick_run_session(requested: str, exclude: str = "") -> str:
-    """Resolve a dispatch session. An explicit ``nolan*`` name is used as-is; ``'auto'``/'' picks
-    an IDLE fleet agent (so a full-auto run never queues behind a busy agent), preferring idle,
-    then any live agent, then ``nolan2``. ``exclude`` skips a session (e.g. the drafter)."""
+    """Resolve a dispatch session. An explicit ``nolan*`` name is used as-is; ``'auto'``/'' picks a
+    worker agent — preferring an **unattached** idle one (never a session a human is attached to),
+    then unattached, then any idle, then any live, then ``nolan2``. ``exclude`` skips a session."""
     req = (requested or "").strip()
     if req and req.lower() != "auto":
         return req
     try:
         from nolan import fleet
-        live = [s for s in list_tmux_sessions() if s.startswith("nolan") and s != (exclude or "")]
-        idle = [s for s in live if fleet.detect_status(s) == "idle"]
-        return (idle or live or ["nolan2"])[0]
+        agents = [(n, a) for n, a in _nolan_agents_attached() if n != (exclude or "")]
+        if not agents:
+            return "nolan2"
+        unattached = [n for n, a in agents if not a]
+        names = [n for n, _ in agents]
+        idle_un = [n for n in unattached if fleet.detect_status(n) == "idle"]
+        idle_any = [n for n in names if fleet.detect_status(n) == "idle"]
+        return (idle_un or unattached or idle_any or names or ["nolan2"])[0]
     except Exception:
         return "nolan2"
 
 
 def _pick_reviewer_session(requested: str, store, slug: str) -> str:
-    """Fresh-eyes critique: never review with the drafting agent. If the requested session is
-    the one that drafted, swap to another live fleet session; degrade (keep) if none exists."""
+    """Fresh-eyes critique: never review with the drafting agent — and never with a session a
+    human is attached to. If the requested session is the drafter, swap to an unattached idle
+    worker via the attached-aware picker (degrade to the request only if nothing else exists)."""
     try:
         drafted = (store.get(slug).get("draft_session") or "").strip()
     except Exception:
         drafted = ""
-    if not drafted or requested != drafted:
-        return requested
-    live = [s for s in list_tmux_sessions() if s.startswith("nolan") and s != drafted]
-    return live[0] if live else requested
+    if drafted and requested == drafted:
+        return _pick_run_session("auto", exclude=drafted)   # attached-aware, excludes the drafter
+    return requested
 
 
 _PHASE_FILE = {"prep": "prep_task.md", "draft": "draft_task.md", "v3": "v3_task.md",
@@ -2206,6 +2232,51 @@ async def _await_completion(job, store, slug: str, phase: str, baseline: dict,
     return {"done": False, "via": "timeout"}
 
 
+def _is_auto_session(requested: str) -> bool:
+    return (requested or "auto").strip().lower() in ("", "auto", "spawn", "ephemeral")
+
+
+async def _spawn_and_boot(job, name: str, *, timeout: int = 90) -> str:
+    """Spawn a fresh ephemeral agent and wait until its Claude TUI is booted (idle). Raises on
+    failure (killing the half-spawned session)."""
+    from nolan import fleet
+    import time as _t
+    res = await asyncio.to_thread(fleet.spawn, name)
+    if not res.get("ok"):
+        raise RuntimeError(f"could not spawn agent {name}: {res.get('error')}")
+    start = _t.monotonic()
+    while _t.monotonic() - start < timeout:
+        st = await asyncio.to_thread(fleet.detect_status, name)
+        if st == "idle":
+            return name
+        job.set_progress(job.progress, f"booting {name}… ({st})")
+        await asyncio.sleep(4)
+    await asyncio.to_thread(fleet.kill, name)
+    raise RuntimeError(f"agent {name} did not boot within {timeout}s")
+
+
+async def _run_on_agent(job, store, slug: str, phase: str, requested: str, *,
+                        lo: float, hi: float, do_gate: bool, jobid: str) -> dict:
+    """Run one phase on an agent. ``auto``/'' → spawn a DEDICATED ephemeral agent
+    (``nolan-run-<jobid>-<phase>``), run, and kill it the instant the phase completes (fresh-eyes
+    is automatic since every phase is a new agent). An explicit ``nolanN`` uses that persistent
+    session, routing review to a different one for fresh eyes."""
+    from nolan import fleet
+    if _is_auto_session(requested):
+        name = f"nolan-run-{(jobid or 'x')[:12]}-{phase}"
+        job.set_progress(lo, f"Spawning dedicated agent {name}…")
+        sess = await _spawn_and_boot(job, name)
+        try:
+            return await _dispatch_and_wait(job, store, slug, phase, sess,
+                                            lo=lo, hi=hi, do_gate=do_gate)
+        finally:
+            await asyncio.to_thread(fleet.kill, sess)   # clean up the moment the phase is done
+    sess = requested
+    if phase == "review":
+        sess = _pick_reviewer_session(sess, store, slug)
+    return await _dispatch_and_wait(job, store, slug, phase, sess, lo=lo, hi=hi, do_gate=do_gate)
+
+
 async def _dispatch_and_wait(job, store, slug: str, phase: str, session: str,
                              *, lo: float, hi: float, timeout: int = 1800,
                              do_gate: bool = False) -> dict:
@@ -2252,13 +2323,13 @@ async def _dispatch_and_wait(job, store, slug: str, phase: str, session: str,
             "gate": gate, "task_file": task_posix}
 
 
-async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2",
+async def run_script_phase(job, *, store_root, slug: str, session: str = "auto",
                            phase: str = "v3"):
     """Dispatch ONE script-pipeline phase and WAIT for it to complete (then auto-gate).
 
-    phase ∈ {prep, draft, v3, review, revise}. Unlike the old fire-and-forget dispatch, this
-    now blocks (async) until the agent writes its completion sentinel (or the output artifact
-    stabilizes), so the job status + gate result reflect the real work.
+    phase ∈ {prep, draft, v3, review, revise}. ``session='auto'`` spawns a DEDICATED ephemeral
+    agent and kills it when the phase finishes; an explicit ``nolanN`` uses that persistent one.
+    Blocks (async) until the agent writes its completion sentinel, so status + gate reflect real work.
     """
     from nolan.scriptwriter import ScriptProjectStore
     from pathlib import Path as _Path
@@ -2268,13 +2339,8 @@ async def run_script_phase(job, *, store_root, slug: str, session: str = "nolan2
         raise RuntimeError(f"script project not found: {slug}")
     if phase not in _PHASE_FILE:
         raise RuntimeError(f"unknown phase: {phase}")
-    drafter = (store.get(slug).get("draft_session") or "") if phase == "review" else ""
-    session = _pick_run_session(session, exclude=drafter)   # 'auto'/'' → an idle agent
-    if phase == "review":
-        session = _pick_reviewer_session(session, store, slug)
-
-    res = await _dispatch_and_wait(job, store, slug, phase, session,
-                                   lo=0.15, hi=0.92, do_gate=(phase != "prep"))
+    res = await _run_on_agent(job, store, slug, phase, session,
+                              lo=0.15, hi=0.92, do_gate=(phase != "prep"), jobid=job.id)
     tail = " ✓" if res["completed"] else " (timeout — check artifacts)"
     job.set_progress(1.0, f"{phase} complete{tail}")
     return {"slug": slug, **res}
@@ -2290,48 +2356,59 @@ def _auto_approve_all(store, slug: str, review_n: int) -> list:
     return findings
 
 
-async def run_full_auto(job, *, store_root, slug: str, session: str = "nolan2"):
-    """End-to-end unattended run: draft (v3, respecting a preset angle/spine) → gate → fresh-eyes
-    review → auto-approve ALL findings → revise → gate → verify. One review round; the producer
-    can launch further rounds from the UI."""
+async def run_full_auto(job, *, store_root, slug: str, session: str = "auto"):
+    """End-to-end unattended run: draft (v3) → gate → fresh-eyes review → auto-approve → revise →
+    gate → verify. With ``session='auto'`` each phase runs on its own DEDICATED ephemeral agent,
+    killed when the phase completes (fresh-eyes automatic; no lingering sessions). One review round."""
     from nolan.scriptwriter import ScriptProjectStore, ledger
     from nolan.scriptwriter.gate import verify_revision
+    from nolan import fleet
     from pathlib import Path as _Path
 
     store = ScriptProjectStore(_Path(store_root))
     if not store.exists(slug):
         raise RuntimeError(f"script project not found: {slug}")
-    session = _pick_run_session(session)                   # 'auto'/'' → an idle agent
+    jobid = job.id
     summary: dict = {"slug": slug, "session": session, "phases": []}
-
-    job.set_progress(0.03, "Full auto ▸ drafting…")
-    r1 = await _dispatch_and_wait(job, store, slug, "v3", session, lo=0.05, hi=0.40, do_gate=True)
-    summary["phases"].append(r1)
-    if not r1["completed"]:
-        return {**summary, "stopped_at": "draft"}
-
-    rsession = _pick_reviewer_session(session, store, slug)
-    job.set_progress(0.42, "Full auto ▸ reviewing…")
-    r2 = await _dispatch_and_wait(job, store, slug, "review", rsession, lo=0.42, hi=0.58)
-    summary["phases"].append(r2)
-    if not r2["completed"]:
-        return {**summary, "stopped_at": "review"}
-
-    n, _ = store.current_draft(slug)                       # the draft that was reviewed
-    approved = _auto_approve_all(store, slug, n)
-    ledger.record_review_decision(slug, store, n, [f.get("id") for f in approved])
-    summary["approved"] = len(approved)
-    job.set_progress(0.60, f"Full auto ▸ approved {len(approved)} findings, revising…")
-
-    r3 = await _dispatch_and_wait(job, store, slug, "revise", session, lo=0.62, hi=0.94, do_gate=True)
-    summary["phases"].append(r3)
+    run_prefix = f"nolan-run-{jobid[:12]}-"
     try:
-        summary["verify"] = verify_revision(store, slug, n)
-    except Exception as e:
-        summary["verify"] = {"error": str(e)}
-    ok = r3["completed"]
-    job.set_progress(1.0, "Full auto complete ✓" if ok else "Full auto: revise timed out")
-    return summary
+        job.set_progress(0.03, "Full auto ▸ drafting…")
+        r1 = await _run_on_agent(job, store, slug, "v3", session, lo=0.05, hi=0.40,
+                                 do_gate=True, jobid=jobid)
+        summary["phases"].append(r1)
+        if not r1["completed"]:
+            return {**summary, "stopped_at": "draft"}
+
+        job.set_progress(0.42, "Full auto ▸ reviewing…")
+        r2 = await _run_on_agent(job, store, slug, "review", session, lo=0.42, hi=0.58,
+                                 do_gate=False, jobid=jobid)
+        summary["phases"].append(r2)
+        if not r2["completed"]:
+            return {**summary, "stopped_at": "review"}
+
+        n, _ = store.current_draft(slug)                   # the draft that was reviewed
+        approved = _auto_approve_all(store, slug, n)
+        ledger.record_review_decision(slug, store, n, [f.get("id") for f in approved])
+        summary["approved"] = len(approved)
+        job.set_progress(0.60, f"Full auto ▸ approved {len(approved)} findings, revising…")
+
+        r3 = await _run_on_agent(job, store, slug, "revise", session, lo=0.62, hi=0.94,
+                                 do_gate=True, jobid=jobid)
+        summary["phases"].append(r3)
+        try:
+            summary["verify"] = verify_revision(store, slug, n)
+        except Exception as e:
+            summary["verify"] = {"error": str(e)}
+        job.set_progress(1.0, "Full auto complete ✓" if r3["completed"] else "Full auto: revise timed out")
+        return summary
+    finally:
+        # crash/cancel safety net: reap any ephemeral agent from THIS run that survived
+        try:
+            for s in list_tmux_sessions():
+                if s.startswith(run_prefix):
+                    await asyncio.to_thread(fleet.kill, s)
+        except Exception:
+            pass
 
 
 # ==================== Video-style analysis (visual style guides) ====================

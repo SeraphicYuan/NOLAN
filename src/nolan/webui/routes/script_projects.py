@@ -333,7 +333,7 @@ def register(app, ctx):
         if phase not in ("prep", "draft", "v3", "review", "revise"):
             raise HTTPException(status_code=400,
                                 detail="phase must be prep/draft/v3/review/revise")
-        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        session = (body.get("session") or "auto").strip() or "auto"
         job = job_manager.start(
             "script-phase", operations.run_script_phase,
             meta={"slug": slug, "phase": phase, "session": session},
@@ -348,7 +348,7 @@ def register(app, ctx):
         from nolan.webui import operations
         if not script_project_store.exists(slug):
             raise HTTPException(status_code=404, detail="project not found")
-        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        session = (body.get("session") or "auto").strip() or "auto"
         job = job_manager.start(
             "script-auto", operations.run_full_auto,
             meta={"slug": slug, "session": session},
@@ -454,7 +454,7 @@ def register(app, ctx):
         from nolan.webui import operations
         if not script_project_store.exists(slug):
             raise HTTPException(status_code=404, detail="project not found")
-        session = (body.get("session") or "nolan2").strip() or "nolan2"
+        session = (body.get("session") or "auto").strip() or "auto"
         job = job_manager.start(
             "write-script", operations.write_script,
             meta={"slug": slug, "session": session},
