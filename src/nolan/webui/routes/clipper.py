@@ -21,9 +21,29 @@ from nolan import clipper
 from nolan.hyperframes import edit as hfedit
 
 
+def queue_clip_ingest(job_manager, db_path, config, clip_path):
+    """Enqueue a LIGHT background ingest of a freshly-clipped range so it becomes searchable in the
+    library (operations.ingest indexes the short clip + auto-embeds, per step-1). Non-blocking — the
+    clip is already saved; this just makes it reusable in FUTURE projects, not only the current pool.
+    Returns the ingest job id, or None on failure (never raises — a failed enqueue must not fail the
+    clip). Jobs run as independent tasks on the shared loop, so multiple clips ingest in parallel."""
+    try:
+        from nolan.webui import operations
+        job = job_manager.start(
+            "ingest", operations.ingest,
+            meta={"target": Path(clip_path).name, "source": "clipper"},
+            config=config, db_path=db_path, source_type="file",
+            target=str(clip_path), provider="openrouter",
+        )
+        return job.id
+    except Exception:
+        return None
+
+
 def register(app, ctx):
     templates_dir = ctx.templates_dir
     repo_root = ctx.repo_root
+    job_manager = ctx.job_manager
     page = templates_dir / "clipper.html"
     default_folder = repo_root / "projects" / "_library" / "source" / "clips"
 
@@ -91,7 +111,18 @@ def register(app, ctx):
                 pooled = True
             except Exception:
                 pooled = False
-        return {"ok": True, "path": str(saved), "name": saved.name, "pooled": pooled, "comp": comp}
+
+        # Optionally (default on) ALSO index the clip into the searchable library, as a background job so
+        # heavy/rapid clipping in the page isn't blocked. This is the seam that connects clip-from-url to
+        # the semantic library — a clipped range becomes reusable across FUTURE projects, not just this pool.
+        ingest_job_id = None
+        if payload.get("ingest", True):
+            from nolan.config import load_config
+            cfg = load_config()
+            idb = ctx.db_path or Path(cfg.indexing.database).expanduser()
+            ingest_job_id = queue_clip_ingest(job_manager, idb, cfg, saved)
+        return {"ok": True, "path": str(saved), "name": saved.name, "pooled": pooled,
+                "comp": comp, "ingest_job_id": ingest_job_id}
 
     @app.get("/api/clipper/file")
     async def clipper_file(path: str = Query(...)):

@@ -71,6 +71,9 @@
         <div class="mk"><label>add to project pool</label>
           <select id="comp"><option value="">— no, just a folder —</option></select></div>
         <div class="mk" id="folderWrap"><label>folder</label><input type="text" id="folder" style="width:320px"></div>
+        <div class="mk"><label>&nbsp;</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text-secondary);cursor:pointer" title="Also index this range into the searchable library (background job) so it's reusable in future projects — doesn't block clipping.">
+            <input type="checkbox" id="ingest" checked> add to searchable library</label></div>
         <button class="btn" id="clipBtn" onclick="doClip()">Clip ✂</button>
       </div>
       <div class="result" id="result"></div>
@@ -173,9 +176,12 @@
         const d = await jpost('/api/clipper/clip', {
           url: SRC.src, kind: SRC.kind, start: a, end: b,
           name: $('#name').value, comp: $('#comp').value || null, folder: $('#folder').value || null,
+          ingest: $('#ingest').checked,
         });
         $('#result').className = 'result ok';
-        $('#result').innerHTML = `✓ saved <b>${d.name}</b> → <code>${d.path}</code>` + (d.pooled ? ` · added to <b>${d.comp}</b> pool` : '');
+        $('#result').innerHTML = `✓ saved <b>${d.name}</b> → <code>${d.path}</code>`
+          + (d.pooled ? ` · added to <b>${d.comp}</b> pool` : '')
+          + (d.ingest_job_id ? ` · <a href="/jobs" target="_blank">indexing…</a>` : '');
       } catch (e) { $('#result').className = 'result err'; $('#result').textContent = 'clip failed: ' + e.message; }
       $('#clipBtn').disabled = false; $('#clipBtn').textContent = 'Clip ✂';
     }
