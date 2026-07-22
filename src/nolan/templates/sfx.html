@@ -47,6 +47,18 @@
            background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 8px; max-height: 160px; overflow: auto; display: none; }
     .dim { color: var(--text-secondary); font-size: 12px; }
     .warn { color: #e0a83a; font-size: 12px; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .tile { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+            cursor: pointer; transition: border-color .12s, transform .06s; }
+    .tile:hover { border-color: var(--accent, #4f7cff); }
+    .tile:active { transform: scale(.99); }
+    .tile h3 { font-size: 15px; font-weight: 650; margin: 0 0 4px; }
+    .tile .ops { font-size: 11.5px; color: var(--text-secondary); margin-top: 8px; }
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 500; }
+    .modal-bg.on { display: flex; align-items: flex-start; justify-content: center; }
+    .modal { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 12px; margin: 40px 16px;
+             width: 640px; max-width: calc(100% - 32px); max-height: calc(100vh - 80px); overflow: auto; padding: 18px; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -78,14 +90,17 @@
 
     <!-- ============ CONTROL ============ -->
     <div id="tab-control" style="display:none">
-      <div class="card">
-        <div class="row">
-          <label class="dim" for="src">Source</label>
-          <select id="src" onchange="renderControls()"></select>
-          <span id="src-status" class="dim"></span>
-        </div>
-      </div>
-      <div id="controls"></div>
+      <div class="sub" style="margin-bottom:14px">Each source has its own pipes — click a tile to open its controls. New sources land as their own tiles.</div>
+      <div id="source-tiles" class="tiles"></div>
+    </div>
+  </div>
+
+  <!-- per-source control panel (a source's whole bespoke flow lives here) -->
+  <div id="source-modal" class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-head"><span id="modal-title" class="op-title"></span>
+        <button class="btn ghost mini" onclick="closeModal()">✕ Close</button></div>
+      <div id="modal-body"></div>
     </div>
   </div>
 
@@ -144,18 +159,30 @@
     }
     function play(fileEnc){ const p = $("#player"); p.src = `/api/sfx/file?file=${fileEnc}`; p.play(); }
 
-    // ---- Control tab: render whatever adapters register ----
+    // ---- Control tab: one TILE per source (each has its own pipes); a tile opens that source's panel ----
     async function loadSources(){
       const d = await jget("/api/sfx/sources"); SOURCES = d.sources;
-      $("#src").innerHTML = SOURCES.map(s=>`<option value="${s.id}">${esc(s.label)}</option>`).join("");
-      renderControls();
+      renderTiles();
     }
-    function renderControls(){
-      const s = SOURCES.find(x=>x.id === $("#src").value) || SOURCES[0];
-      if (!s){ $("#controls").innerHTML = '<div class="dim">No sources registered.</div>'; return; }
-      $("#src-status").innerHTML = s.available ? "" : '<span class="warn">⚠ not configured (missing API key)</span>';
-      $("#controls").innerHTML = s.controls.map(c=>controlCard(s, c)).join("");
+    function renderTiles(){
+      if (!SOURCES.length){ $("#source-tiles").innerHTML = '<div class="dim">No sources registered.</div>'; return; }
+      $("#source-tiles").innerHTML = SOURCES.map(s=>{
+        const status = s.available ? "" : ' <span class="warn">⚠ needs API key</span>';
+        const ops = s.controls.map(c=>c.label).join(" · ");
+        return `<div class="tile" onclick="openSource('${s.id}')">
+          <h3>${esc(s.label)}${status}</h3>
+          <div class="dim">${esc(s.description||"")}</div>
+          <div class="ops">${esc(ops)}</div>
+        </div>`;
+      }).join("");
     }
+    function openSource(id){
+      const s = SOURCES.find(x=>x.id===id); if(!s) return;
+      $("#modal-title").innerHTML = esc(s.label) + (s.available ? "" : ' <span class="warn">⚠ not configured</span>');
+      $("#modal-body").innerHTML = s.controls.map(c=>controlCard(s, c)).join("");
+      $("#source-modal").classList.add("on");
+    }
+    function closeModal(){ $("#source-modal").classList.remove("on"); }
     function controlCard(s, c){
       const fields = c.fields.map(f=>fieldHtml(s.id, c.op, f)).join("");
       const fid = `${s.id}-${c.op}`;

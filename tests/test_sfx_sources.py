@@ -18,6 +18,7 @@ def test_freesound_source_registered_and_described():
     assert "freesound" in [s.id for s in list_sources()]
     d = fs.describe()
     assert d["id"] == "freesound" and d["label"] == "Freesound"
+    assert d["description"], "a tile needs a one-line description"   # drives the Control-tab tile
     ops = {c["op"] for c in d["controls"]}
     assert ops == {"crawl", "add", "remove"}, ops
     # the Add form's cue-kind choices MUST equal the live registry (no hardcoded fork)

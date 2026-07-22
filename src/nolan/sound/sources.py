@@ -39,6 +39,7 @@ class FreesoundSource:
     """The Freesound adapter — wraps the CC0 crawl + the shared curation core (add/remove)."""
     id = "freesound"
     label = "Freesound"
+    description = "Crawl the top CC0 sounds into a searchable candidate pool, then curate hand-picked ones by id."
 
     def available(self) -> bool:
         try:
@@ -112,6 +113,7 @@ class FreesoundSource:
     def describe(self) -> Dict[str, Any]:
         """The registry-derived payload the control tab renders (single source of truth for the UI)."""
         return {"id": self.id, "label": self.label, "available": self.available(),
+                "description": getattr(self, "description", ""),
                 "controls": [{"op": c.op, "label": c.label, "help": c.help,
                               "fields": [vars(f) for f in c.fields]} for c in self.controls()]}
 
