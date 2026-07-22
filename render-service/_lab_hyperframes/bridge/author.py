@@ -49,7 +49,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
             "timeline": ["events"], "raw": ["html", "tl"], "newshead": ["headline"], "collage": ["subjects"],
             "diagram": ["root"], "comparison": ["left", "right"], "juxtaposition": ["left", "right"],
             "gallery": ["images"],
-            "carousel": ["images"], "document": ["source"], "lower_third": ["name"],
+            "carousel": ["images"], "document": [], "lower_third": ["name"],
             "annotate": ["src", "callouts"], "quadrant": ["x", "y"], "venn": ["sets"],
             "sankey": ["source", "targets"], "scale": ["items"], "pie": ["segments"], "funnel": ["stages"],
             "data_table": ["rows"], "trajectory": ["points"], "stream": ["series"], "bar_race": ["series"],
@@ -135,6 +135,11 @@ def validate_spec(spec):
                 errs.append(f"{fid}/{sid} (geo): kind must be 'us' or 'world'")
             if t == "geo" and not d.get("highlight") and not d.get("routes"):
                 errs.append(f"{fid}/{sid} (geo): needs `highlight` (regions) or `routes` (arcs) — an empty map shows nothing")
+            # document: a page image (`source`) OR an INGESTED doc id (`document`, B-P2 — resolve_doc_annotations
+            # fills source/page_size/rects from the layout map). Either satisfies the gate; neither is an empty page.
+            if t == "document" and not d.get("source") and not d.get("document"):
+                errs.append(f"{fid}/{sid} (document): needs data.source (a page image/scan) or data.document "
+                            f"(an ingested document id — nolan.document; the resolver fills source + region rects)")
             if t == "statement" and d.get("operative") and not any(d["operative"] in ln for ln in d.get("lines", [])):
                 errs.append(f"{fid}/{sid} (statement): operative {d['operative']!r} not found in any line")
             if t == "comparison":                               # comparison is a VISUAL contrast — sides are image|video
