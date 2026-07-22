@@ -5,7 +5,7 @@ tts:
   # docs/OMNIVOICE_SETUP.md. ~2 GB VRAM; serialized with ComfyUI via the shared
   # GPU lock, so free_comfyui_vram can stay off (keeps ComfyUI warm).
   enabled: true
-  provider: omnivoice
+  provider: cosyvoice3   # CosyVoice 3.0 (clone + emotion, Apache-2.0); omnivoice = fallback
   omnivoice:
     env_python: D:\env\omnivoice\python.exe
     model: k2-fsa/OmniVoice
