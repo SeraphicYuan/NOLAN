@@ -72,6 +72,40 @@ def list_documents(comp) -> List[Dict]:
         return []
 
 
+def delete_document(comp, doc_id: str) -> bool:
+    """Remove an ingested document (its `<id>/` dir + its index entry)."""
+    import shutil
+    ddir = _documents_dir(comp)
+    d = ddir / doc_id
+    existed = d.exists()
+    if existed:
+        shutil.rmtree(d, ignore_errors=True)
+    idx_path = ddir / "index.json"
+    if idx_path.exists():
+        try:
+            idx = json.loads(idx_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            idx = {"documents": []}
+        idx["documents"] = [x for x in idx.get("documents", []) if x.get("id") != doc_id]
+        idx_path.write_text(json.dumps(idx, ensure_ascii=False, indent=1), encoding="utf-8")
+    return existed
+
+
+def document_summary(comp, doc_id: str) -> Optional[Dict]:
+    """Metadata + region count + first-page image + sample region ids — for a UI panel / authoring
+    discovery (an author binding a `document` scene needs to see which region ids it can target)."""
+    doc = load_document(comp, doc_id)
+    if doc is None:
+        return None
+    pages = doc.pages
+    first = pages[0] if pages else {}
+    return {"id": doc.id, "source": doc.meta.get("source"), "provenance": doc.provenance,
+            "page_count": doc.meta.get("page_count", len(pages)),
+            "regions": sum(len(p.get("regions", [])) for p in pages),
+            "first_image": (f"{doc_id}/{first.get('image')}" if first.get("image") else None),
+            "region_ids": [r.get("id") for p in pages for r in p.get("regions", [])][:40]}
+
+
 def region_bbox(doc: Document, page: int, region_id: str) -> Optional[List[float]]:
     """The NORMALIZED bbox of a region OR word id on a page — the hook region targeting (B-P2) resolves for
     pan/zoom/highlight. None if the id isn't on that page."""

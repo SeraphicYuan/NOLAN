@@ -37,6 +37,7 @@
     { title: "Produce", items: [
       { id: "scenes", label: "Scenes", href: "/scenes" },
       { id: "hyperframes", label: "HyperFrames Edit", href: "/hyperframes" },
+      { id: "data", label: "Project Data", href: "/data" },
       { id: "pool", label: "Asset Pool", href: "/pool" },
       { id: "lottie", label: "Lottie", href: "/lottie" },
       { id: "comfyui", label: "ComfyUI", href: "/comfyui" },

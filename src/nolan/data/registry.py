@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -105,3 +106,105 @@ def load_dataset(comp, dataset_id: str) -> Optional[Dataset]:
     if not path.exists():
         raise FileNotFoundError(f"dataset {dataset_id!r} file not found: {path}")
     return Dataset(id=dataset_id, rows=_load_table(path, meta.get("columns", [])), meta=meta)
+
+
+# --- authoring/UI writers (the missing create + discover surface for the provenance-gated registry) ---
+
+def _slug(s: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "_", (s or "").lower()).strip("_")
+    return s or "dataset"
+
+
+def _guess_dtype(values) -> str:
+    """Best-effort column dtype from sampled cell values (int < float < str). Coercion in _load_table is
+    try/except, so a wrong guess degrades to the raw string rather than crashing."""
+    seen = set()
+    for v in values:
+        if v in (None, ""):
+            continue
+        sv = str(v).strip()
+        try:
+            int(sv); seen.add("int"); continue
+        except ValueError:
+            pass
+        try:
+            float(sv); seen.add("float"); continue
+        except ValueError:
+            seen.add("str")
+    if not seen or "str" in seen:
+        return "str"
+    return "float" if "float" in seen else "int"
+
+
+def _infer_columns(rows: List[Dict]) -> List[Dict]:
+    if not rows:
+        return []
+    return [{"name": k, "dtype": _guess_dtype([r.get(k) for r in rows[:200]])}
+            for k in rows[0].keys()]
+
+
+def register_dataset(comp, *, filename: str, title: str, provenance: str,
+                     table_bytes: Optional[bytes] = None, table_path=None,
+                     dataset_id: Optional[str] = None, columns: Optional[List[Dict]] = None,
+                     when_to_use: Optional[str] = None, grain: Optional[str] = None) -> Dict:
+    """Write a table file into ``<comp>/datasets/`` and register it in ``index.json``. PROVENANCE-GATED —
+    an un-sourced table cannot register (mirrors :func:`load_dataset`). Columns are inferred from the
+    table if not given. Validates the table parses + loads through the gate before returning its metadata.
+    """
+    if not str(provenance or "").strip():
+        raise ValueError("a dataset needs `provenance` (a citation/source) — an un-sourced table cannot "
+                         "register (the fabrication the number gate exists to stop)")
+    if table_bytes is None:
+        if not table_path:
+            raise ValueError("register_dataset needs table_bytes or table_path")
+        table_bytes = Path(table_path).read_bytes()
+    fn = Path(filename).name
+    if Path(fn).suffix.lower() not in (".csv", ".json"):
+        raise ValueError(f"unsupported table {fn!r} — use a .csv or .json file")
+    ddir = _datasets_dir(comp)
+    ddir.mkdir(parents=True, exist_ok=True)
+    did = _slug(dataset_id or Path(fn).stem or title)
+    (ddir / fn).write_bytes(table_bytes)
+    try:
+        if not columns:
+            rows = _load_table(ddir / fn, [])
+            if not rows:
+                raise ValueError(f"table {fn!r} has no rows")
+            columns = _infer_columns(rows)
+    except Exception:
+        (ddir / fn).unlink(missing_ok=True)                 # don't leave an orphan table on a bad parse
+        raise
+    meta = {"title": title or did, "file": fn, "columns": columns, "provenance": provenance.strip()}
+    if when_to_use:
+        meta["when_to_use"] = when_to_use
+    if grain:
+        meta["grain"] = grain
+    idx = _index(comp)
+    idx[did] = meta
+    (ddir / "index.json").write_text(json.dumps(idx, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    load_dataset(comp, did)                                  # final gate: it must load through the provenance gate
+    return {"id": did, **meta}
+
+
+def delete_dataset(comp, dataset_id: str) -> bool:
+    """Remove a dataset from the registry (and its table file if no other entry references it)."""
+    idx = _index(comp)
+    meta = idx.pop(dataset_id, None)
+    if meta is None:
+        return False
+    ddir = _datasets_dir(comp)
+    f = meta.get("file")
+    if f and (ddir / f).exists() and not any(m.get("file") == f for m in idx.values()):
+        (ddir / f).unlink()
+    (ddir / "index.json").write_text(json.dumps(idx, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
+def dataset_preview(comp, dataset_id: str, n: int = 8) -> Optional[Dict]:
+    """A dataset's metadata + first ``n`` rows as a table (for a UI panel / authoring discovery)."""
+    ds = load_dataset(comp, dataset_id)
+    if ds is None:
+        return None
+    cols = [c["name"] for c in (ds.meta.get("columns") or [])] or (list(ds.rows[0].keys()) if ds.rows else [])
+    return {"id": ds.id, "meta": ds.meta, "columns": cols, "n_rows": len(ds.rows),
+            "rows": [[r.get(c, "") for c in cols] for r in ds.rows[:n]]}

@@ -102,6 +102,12 @@ def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
     except Exception:
         theme_brief_txt = ""
     theme_section = ("\n\n---\n" + theme_brief_txt) if theme_brief_txt else ""
+    try:                                                # the project's SOURCED data (datasets + documents) to bind
+        from nolan.hyperframes.data_brief import data_brief
+        data_brief_txt = data_brief(slug)
+    except Exception:
+        data_brief_txt = ""
+    data_section = ("\n\n---\n" + data_brief_txt) if data_brief_txt else ""
     try:                                                # the style contract: craft targets + the full block palette
         from nolan.style_contract import StyleContract, authoring_brief
         dials = {"asset_density": asset_density}
@@ -172,7 +178,7 @@ run its steps in order and pass each gate.
   deterministically through the `author.py` gate; hand-author a bespoke `raw` / native-HF scene ONLY where no
   template fits.{style_line}{theme_line}{finish_line}
 
-When the frames are composed, tell the user the composition id is **`{slug}`** — they'll refine it per-scene on `/hyperframes`.{theme_section}{contract_section}
+When the frames are composed, tell the user the composition id is **`{slug}`** — they'll refine it per-scene on `/hyperframes`.{data_section}{theme_section}{contract_section}
 """
 
 

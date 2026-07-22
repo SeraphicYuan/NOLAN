@@ -141,6 +141,41 @@ def ingest_pdf(pdf_path, out_root, doc_id: Optional[str] = None, dpi: int = 150)
     return layout
 
 
+_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".bmp")
+
+
+def ingest_document(comp, filename: str, data: bytes, doc_id: Optional[str] = None, dpi: int = 150) -> Dict:
+    """Comp-scoped ingest for the UI/CLI: an uploaded PDF **or image** → ``<comp>/documents/<id>/`` (pages +
+    layout + provenance). PyMuPDF ingests PDFs, so an image scan is wrapped to a 1-page PDF first (it will
+    have a page image but no text layer — target it with an explicit rect or `find`/OCR, not a region id).
+    Returns the layout dict. Thin wrapper over :func:`ingest_pdf`; keeps the original filename in provenance.
+    """
+    import io
+    import shutil
+    import tempfile
+    from nolan.document.registry import _documents_dir
+    ext = Path(filename).suffix.lower()
+    if ext in _IMAGE_EXTS:
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.open(io.BytesIO(data)).convert("RGB").save(buf, format="PDF")
+        data = buf.getvalue()
+        src_name = Path(filename).stem + ".pdf"
+    elif ext == ".pdf":
+        src_name = Path(filename).name
+    else:
+        raise ValueError(f"unsupported document {filename!r} — use a .pdf or an image ({', '.join(_IMAGE_EXTS)})")
+    docs_dir = _documents_dir(comp)
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    tmpd = Path(tempfile.mkdtemp())
+    try:
+        tmp = tmpd / src_name
+        tmp.write_bytes(data)
+        return ingest_pdf(tmp, docs_dir, doc_id=doc_id, dpi=dpi)
+    finally:
+        shutil.rmtree(tmpd, ignore_errors=True)
+
+
 def _register(out_root: Path, layout: Dict) -> None:
     """Add/replace this document's entry in the source index (mirrors datasets/index.json)."""
     idx_path = out_root / "index.json"

@@ -10,5 +10,6 @@ tables are tiny); the interface is backend-agnostic, so pandas can back it later
   resolve.resolve_scene(scene, dataset) -> materialized block data (+ value_source provenance)
 """
 from .verbs import apply_query                              # noqa: F401
-from .registry import Dataset, load_dataset, list_datasets  # noqa: F401
+from .registry import (Dataset, load_dataset, list_datasets,  # noqa: F401
+                       register_dataset, delete_dataset, dataset_preview)
 from .resolve import resolve_scene, resolve_datasets_in_spec  # noqa: F401

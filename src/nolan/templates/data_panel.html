@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Data · NOLAN</title>
+  <link rel="stylesheet" href="/static/nolan.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+    .wrap { max-width: 1080px; margin: 24px auto; padding: 0 20px 60px; }
+    h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-bottom: 2px; }
+    h2 { font-size: 16px; font-weight: 640; margin: 0 0 12px; display:flex; align-items:center; gap:8px; }
+    .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+    .card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    label.fld { font-size: 11px; text-transform: uppercase; letter-spacing:.04em; color: var(--text-secondary); display:block; margin: 8px 0 3px; }
+    .req::after { content:" *"; color:#e5484d; }
+    input[type=text], input[type=file], select, textarea {
+      background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 13px; width:100%; box-sizing:border-box; }
+    textarea { min-height: 38px; resize: vertical; }
+    .btn { background: var(--accent, #4f7cff); color:#fff; border:none; border-radius:6px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn.ghost { background: var(--bg-primary); color: var(--text); border:1px solid var(--border); }
+    .btn.sm { padding:4px 9px; font-size:11px; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .item { border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:10px; }
+    .item .top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+    .id { font-family: ui-monospace, monospace; font-size:12px; color: var(--accent,#4f7cff); }
+    .prov { font-size:12px; color: var(--text-secondary); margin-top:3px; }
+    .cols { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .col { font-size:10px; font-family: ui-monospace, monospace; background: var(--bg-primary); border:1px solid var(--border); border-radius:4px; padding:2px 6px; }
+    .col .dt { color: var(--text-secondary); }
+    table.pv { border-collapse: collapse; margin-top:8px; font-size:12px; width:100%; }
+    table.pv th, table.pv td { border:1px solid var(--border); padding:3px 8px; text-align:left; font-variant-numeric: tabular-nums; }
+    table.pv th { background: var(--bg-primary); color: var(--text-secondary); font-weight:600; }
+    .thumb { width:64px; height:84px; object-fit:cover; border:1px solid var(--border); border-radius:4px; background:#fff; }
+    .regids { font-size:10px; font-family: ui-monospace, monospace; color: var(--text-secondary); margin-top:6px; word-break:break-all; }
+    .result { font-size:12px; margin-top:8px; } .result.ok { color:#30a46c; } .result.err { color:#e5484d; }
+    .empty { color: var(--text-secondary); font-size:13px; padding: 12px 0; }
+    .hint { font-size:11px; color: var(--text-secondary); margin-top:4px; }
+    .selrow { display:flex; gap:10px; align-items:center; margin-bottom:16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Project Data</h1>
+    <div class="sub">Give a composition its <b>source data</b> — a provenance-stamped table a data-viz block can bind (chart, pie, stat, sankey&hellip;), or an ingested paper/scan a <code>document</code> scene can zoom &amp; highlight. Both are provenance-gated: no source, no register.</div>
+
+    <div class="selrow">
+      <label class="fld" style="margin:0">Composition</label>
+      <select id="comp" style="max-width:340px"><option value="">Loading&hellip;</option></select>
+    </div>
+
+    <div class="card">
+      <h2>📊 Datasets <span class="hint" style="text-transform:none;letter-spacing:0">— CSV / JSON tables, bound by <code>dataset</code>+<code>query</code>+<code>encode</code></span></h2>
+      <form id="ds-form" class="grid2">
+        <div>
+          <label class="fld req">Table file (.csv / .json)</label>
+          <input type="file" id="ds-file" accept=".csv,.json" required>
+          <label class="fld req">Title</label>
+          <input type="text" id="ds-title" placeholder="US data-center share of electricity" required>
+        </div>
+        <div>
+          <label class="fld req">Provenance (citation / source)</label>
+          <input type="text" id="ds-prov" placeholder="IEA Electricity 2024, table 3" required>
+          <label class="fld">When to use (optional)</label>
+          <input type="text" id="ds-when" placeholder="the electricity-cost beat">
+        </div>
+        <div style="grid-column:1/3; display:flex; gap:10px; align-items:center;">
+          <button class="btn" type="submit">Upload dataset</button>
+          <span class="hint">Columns &amp; dtypes are inferred from the header.</span>
+          <span id="ds-msg" class="result"></span>
+        </div>
+      </form>
+      <div id="ds-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>📄 Documents <span class="hint" style="text-transform:none;letter-spacing:0">— PDF / image, bound by a <code>document</code> scene (region zoom, highlight)</span></h2>
+      <form id="doc-form" class="row">
+        <div style="flex:1; min-width:260px;">
+          <label class="fld req">Document file (.pdf or image)</label>
+          <input type="file" id="doc-file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" required>
+        </div>
+        <button class="btn" type="submit" style="align-self:flex-end">Ingest document</button>
+        <span id="doc-msg" class="result"></span>
+      </form>
+      <div class="hint">A PDF keeps its text layer (region ids to target); an image scan becomes a page you target by <code>find</code> phrase or explicit rect.</div>
+      <div id="doc-list"></div>
+    </div>
+  </div>
+
+  <script src="/static/nav.js" data-active="data"></script>
+  <script>
+    const $ = s => document.querySelector(s);
+    const compSel = $("#comp");
+    let comp = "";
+
+    async function j(url, opts) { const r = await fetch(url, opts); if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.statusText); return r.json(); }
+
+    async function loadComps() {
+      const d = await j("/api/data/compositions");
+      const comps = d.compositions || [];
+      compSel.innerHTML = comps.length
+        ? comps.map(c => `<option value="${c.id||c}">${c.id||c}</option>`).join("")
+        : `<option value="">(no compositions)</option>`;
+      comp = compSel.value;
+      if (comp) refresh();
+    }
+    compSel.addEventListener("change", () => { comp = compSel.value; refresh(); });
+
+    function esc(s){ return String(s??"").replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+    async function refresh() { await Promise.all([loadDatasets(), loadDocuments()]); }
+
+    async function loadDatasets() {
+      const box = $("#ds-list"); box.innerHTML = "";
+      let d; try { d = await j(`/api/data/datasets?comp=${encodeURIComponent(comp)}`); } catch(e){ box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+      const ds = d.datasets || [];
+      if (!ds.length) { box.innerHTML = `<div class="empty">No datasets yet. Upload a CSV above.</div>`; return; }
+      box.innerHTML = ds.map(x => {
+        const m = x.meta || {};
+        const cols = (m.columns||[]).map(c => `<span class="col">${esc(c.name)}<span class="dt"> ${esc(c.dtype||"")}</span></span>`).join("");
+        const head = (x.columns||[]).map(c=>`<th>${esc(c)}</th>`).join("");
+        const rows = (x.rows||[]).map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join("")}</tr>`).join("");
+        return `<div class="item"><div class="top"><div>
+            <b>${esc(m.title||x.id)}</b> <span class="id">${esc(x.id)}</span>
+            <div class="prov">${esc(m.provenance||"")}${m.when_to_use?` · <i>${esc(m.when_to_use)}</i>`:""} · ${x.n_rows} rows</div>
+            <div class="cols">${cols}</div>
+          </div><button class="btn ghost sm" onclick="delDataset('${esc(x.id)}')">Delete</button></div>
+          ${head?`<table class="pv"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`:""}
+          <div class="hint">Bind it: <code>"data":{"dataset":"${esc(x.id)}","encode":{"x":"${esc((x.columns||[])[0]||"col")}","y":"${esc((x.columns||[])[1]||"col")}"}}</code></div>
+        </div>`;
+      }).join("");
+    }
+
+    async function loadDocuments() {
+      const box = $("#doc-list"); box.innerHTML = "";
+      let d; try { d = await j(`/api/data/documents?comp=${encodeURIComponent(comp)}`); } catch(e){ box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+      const docs = d.documents || [];
+      if (!docs.length) { box.innerHTML = `<div class="empty">No documents yet. Ingest a PDF or image above.</div>`; return; }
+      box.innerHTML = docs.map(x => {
+        const img = x.first_image ? `<img class="thumb" src="/api/data/document/image?comp=${encodeURIComponent(comp)}&path=${encodeURIComponent(x.first_image)}">` : "";
+        const rids = (x.region_ids||[]).slice(0,18).join("  ");
+        return `<div class="item"><div class="top"><div style="display:flex;gap:12px">
+            ${img}<div>
+              <b>${esc(x.source||x.id)}</b> <span class="id">${esc(x.id)}</span>
+              <div class="prov">${x.page_count} page(s) · ${x.regions||0} regions · ${esc(x.provenance||"")}</div>
+              ${rids?`<div class="regids">targets: ${esc(rids)}${x.region_ids&&x.region_ids.length>18?" …":""}</div>`:`<div class="hint">no text layer — target by <code>find</code> or explicit rect</div>`}
+              <div class="hint">Bind it: <code>"data":{"document":"${esc(x.id)}","page":1,"annotations":[{"type":"highlight","region":"${esc((x.region_ids||["p1-b0"])[0])}"}]}</code></div>
+            </div></div>
+            <button class="btn ghost sm" onclick="delDocument('${esc(x.id)}')">Delete</button></div>
+        </div>`;
+      }).join("");
+    }
+
+    $("#ds-form").addEventListener("submit", async e => {
+      e.preventDefault(); const msg = $("#ds-msg"); msg.textContent = "Uploading…"; msg.className = "result";
+      const fd = new FormData();
+      fd.append("comp", comp); fd.append("title", $("#ds-title").value); fd.append("provenance", $("#ds-prov").value);
+      fd.append("when_to_use", $("#ds-when").value); fd.append("file", $("#ds-file").files[0]);
+      try { const r = await j("/api/data/dataset/upload", {method:"POST", body:fd}); msg.className="result ok"; msg.textContent = `Registered "${r.id}".`; e.target.reset(); loadDatasets(); }
+      catch(err){ msg.className="result err"; msg.textContent = err.message; }
+    });
+
+    $("#doc-form").addEventListener("submit", async e => {
+      e.preventDefault(); const msg = $("#doc-msg"); msg.textContent = "Ingesting… (rendering pages)"; msg.className = "result";
+      const fd = new FormData(); fd.append("comp", comp); fd.append("file", $("#doc-file").files[0]);
+      try { const r = await j("/api/data/document/upload", {method:"POST", body:fd}); msg.className="result ok"; msg.textContent = `Ingested "${r.id}" (${r.page_count} pages).`; e.target.reset(); loadDocuments(); }
+      catch(err){ msg.className="result err"; msg.textContent = err.message; }
+    });
+
+    window.delDataset = async id => { if (!confirm(`Delete dataset "${id}"?`)) return; await j("/api/data/dataset/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({comp,id})}); loadDatasets(); };
+    window.delDocument = async id => { if (!confirm(`Delete document "${id}"?`)) return; await j("/api/data/document/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({comp,id})}); loadDocuments(); };
+
+    loadComps();
+  </script>
+</body>
+</html>
