@@ -48,7 +48,7 @@ A **skill** = any `.md` with an `id:` in frontmatter. Two roots, one catalog:
 <!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->
 ## Skill registry — auto-generated, do not edit by hand
 
-_34 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
+_36 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
 
 ### Primary pipeline (start here)
 
@@ -63,6 +63,8 @@ _34 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill f
 | `organ.acquire` | grammar | Orient any acquisition task — the fan-out → gate → floor → dedup → generate pipeline, the two FLOORs (CLIP relevance, VLM usability), pro… |
 | `organ.asset-engine` | grammar | Orient any source-resolution task — the scene-type→source mapping, the escalation ladder, the resolved_source provenance record, and Engi… |
 | `organ.audio-mix` | grammar | Orient any soundtrack/mix task — the mix_soundtrack integration point, the real sidechain duck spec, music-library selection by energy ar… |
+| `organ.layout-blocks` | grammar | Orient any layout-block task — the Remotion-first-then-Python fallback, the adapter contract ((block_name, props) | None), and graceful d… |
+| `organ.render` | grammar | Orient any render-routing task — the per-scene routing order + kinds, the resilient title-card fallback, the premium (Chapter-per-section… |
 | `organ.sync` | grammar | Orient any narration↔scene timing task — the align→place pipeline, anchor semantics, the monotonic clamp + per-frame fallback, and the sc… |
 | `organ.voice` | grammar | Orient any voiceover / narration task — the per-section anchor contract, cloning, the GPU lock, the speak-ready gate, take versioning, an… |
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 34,
+  "count": 36,
   "skills": [
     {
       "id": "art.flow",
@@ -691,6 +691,48 @@
       },
       "evals": [],
       "path": "skills/organ/audio-mix.md"
+    },
+    {
+      "id": "organ.layout-blocks",
+      "name": "Layout-block adapters (Remotion-first rendering)",
+      "kind": "grammar",
+      "purpose": "Orient any layout-block task \u2014 the Remotion-first-then-Python fallback, the adapter contract ((block_name, props) | None), and graceful degradation without narration timing.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "organ",
+      "description": "How a layout scene's template params become Remotion flow-block props. `render_layout` tries the curated Remotion blocks library FIRST (the same blocks FLOW's Chapter composition uses), falling back to the legacy Python renderers on any failure or unmapped template (`NOLAN_LEGACY_RENDER=1` forces Python). Per-block ADAPTERS map params \u2192 props and return `(block_name, props)` or None (\"no faithful mapping \u2014 use the Python renderer\", e.g. a non-numeric statistic). Read before touching a layout-block adapter, adding a template\u2192block mapping, or the Remotion/Python render fallback \u2014 or when a layout scene rendered with the wrong/legacy block.\n",
+      "handoffs": [],
+      "uses": [
+        "common.composition-craft"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/layout_blocks.py"
+      },
+      "evals": [],
+      "path": "skills/organ/layout-blocks.md"
+    },
+    {
+      "id": "organ.render",
+      "name": "Render dispatch + render modes",
+      "kind": "grammar",
+      "purpose": "Orient any render-routing task \u2014 the per-scene routing order + kinds, the resilient title-card fallback, the premium (Chapter-per-section) mode, and the pointer to the HF render path.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "organ",
+      "description": "How ONE scene becomes pixels \u2014 the per-scene render router shared by the segment and orchestrator paths. It picks the renderer by what the scene carries, in a fixed order: motion_spec \u2192 matched_clip (b-roll) \u2192 layout_spec \u2192 comfyui (generated) \u2192 card, and NEVER leaves a black hole \u2014 any failure renders a clean title card. Also the render MODES (premium = one Remotion Chapter per section with baked VO). Read before touching per-scene render routing, the never-black fallback, or premium mode \u2014 or when a scene rendered as the wrong kind / black. (The DOMINANT HF path renders the whole composition via the finish DAG instead \u2014 see below.)\n",
+      "handoffs": [],
+      "uses": [
+        "organ.asset-engine"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/render_dispatch.py"
+      },
+      "evals": [],
+      "path": "skills/organ/render.md"
     },
     {
       "id": "organ.sync",
