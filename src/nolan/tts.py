@@ -139,7 +139,9 @@ class CosyVoiceTTS(TtsProvider):
 
     def synthesize_batch(self, items: List[dict], out_dir: Path,
                          num_step: Optional[int] = None) -> Dict[str, Path]:
-        out_dir = Path(out_dir)
+        # The runner chdir's into the CosyVoice repo, so every path we hand it (out_dir,
+        # ref_audio) must be ABSOLUTE — a relative one would resolve against the repo, not us.
+        out_dir = Path(out_dir).resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         if not items:
             return {}
@@ -149,7 +151,7 @@ class CosyVoiceTTS(TtsProvider):
                 line = {"id": it["id"], "text": it["text"]}
                 for k in ("ref_audio", "ref_text", "instruct", "speed"):
                     if it.get(k) is not None:
-                        line[k] = it[k]
+                        line[k] = str(Path(it[k]).resolve()) if k == "ref_audio" else it[k]
                 f.write(json.dumps(line, ensure_ascii=False) + "\n")
 
         env_python = self.cfg.env_python or "python"
@@ -158,7 +160,11 @@ class CosyVoiceTTS(TtsProvider):
                "--model_dir", self.cfg.model_dir, "--repo", self.cfg.repo_dir]
         if self.cfg.neutral_instruct:
             cmd += ["--neutral_instruct", self.cfg.neutral_instruct]
-        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=self.cfg.repo_dir or None)
+        # Decode the child's output tolerantly: CosyVoice logs the script text (em-dashes etc.) to
+        # stdout in the console codepage — a stray non-utf-8 byte must not crash our decode (we only
+        # need rc + the wavs). Do NOT force the child to -X utf8: it breaks CosyVoice's own file reads.
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", cwd=self.cfg.repo_dir or None)
         if proc.returncode != 0:
             err = (proc.stderr or proc.stdout or "").strip()
             raise RuntimeError(f"cosyvoice runner failed: {err[:800] or 'unknown error'}")

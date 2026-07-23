@@ -38,7 +38,9 @@ def test_batch_builds_jsonl_and_collects(tmp_path, monkeypatch):
         out = __import__("pathlib").Path(cmd[cmd.index("--res_dir") + 1])
         jl = __import__("pathlib").Path(cmd[cmd.index("--test_list") + 1])
         lines = [json.loads(x) for x in jl.read_text(encoding="utf-8").splitlines()]
-        assert lines[0]["instruct"] == "calm" and lines[0]["ref_audio"] == "r.wav"
+        assert lines[0]["instruct"] == "calm"
+        # ref_audio is resolved to an ABSOLUTE path (the runner chdir's away)
+        assert __import__("os").path.isabs(lines[0]["ref_audio"]) and lines[0]["ref_audio"].endswith("r.wav")
         assert "instruct" not in lines[1]                # only where provided
         (out / "sec_0000.wav").write_bytes(b"a")
         (out / "sec_0001.wav").write_bytes(b"b")
