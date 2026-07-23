@@ -78,14 +78,21 @@ The linter: unique ids · valid kind · `uses`/`overrides` resolve to real skill
 
 ## Status
 
-13 skills cataloged across `common/` (shared craft: chapter-craft, script-style, outline-format,
-theme-craft), `flow/` (edit-contract, authoring), `explainer/` (script, scene-grammar,
-block-catalog, spec-authoring, flow), `art/` (flow), plus `scene-edit` in `.claude/skills/`.
+34 skills across four tiers — browse them on the `/map` **Skills** tab (hierarchy, click-to-view,
+last-amended + binding + coverage stats):
 
-The `web-video-presentation` skill was split: its shared craft was extracted into `common/`, its
-web-page scaffold (Vite/`narrations.ts`/RECORDING/AUDIO) was retired, and its theme tokens stay at
-`themes/` (the render engine hardcodes that path) with the theme docs/tooling.
+- **primary** — `pipeline.hyperframes`, the DOMINANT compose-first spine (bound to the `hf-finish`
+  DAG; strong honesty test: must document every DAG step, in `tests/test_organ_skills.py`).
+- **organ** — per-subsystem overviews `organ.{voice, acquire, asset-engine, sync, audio-mix}`; each
+  declares `documents: {module: …}`. Add one and the generic honesty test covers it automatically.
+- **craft** — the shared umbrella judgment (`common/*`); motion/sound/pairing/composition/editing/
+  theme also declare `documents:` and are registry-synced by `tests/test_umbrella_skills.py`.
+- **legacy** — retired Director/`explainer`/`art`/`flow` docs. The orphaned explainer/art/flow
+  cluster is `status: deprecated` (superseded by `pipeline.hyperframes`, which `overrides` them);
+  `orchestrator/*` + `flow.edit-contract` + `scene-edit` + `publish/*` stay active (still wired).
 
-Still loaded raw by code — the `orchestrator/` + `publish/` prompts — migrate together with the
-**Phase 2** `handoff()` seam (so they route through the registry loader, which strips frontmatter
-instead of leaking it into the prompt). The feedback ledger is **Phase 3**.
+Organ/pipeline skills are authored once under `skills/<domain>/` and symlinked into
+`.claude/skills/nolan-<name>/SKILL.md` so BOTH the harness auto-routes to them AND code can
+`handoff()` them (`load_skills` dedups by real path). The `nolan` router table is auto-generated
+(`python -m nolan.skills --emit-router`) and freshness-tested; the feedback ledger
+(`record_feedback` / `skill_health`) is live.
