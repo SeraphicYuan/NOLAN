@@ -26,7 +26,7 @@ CAPTION_MODEL = "google/gemma-4-26b-a4b-it"                    # cheap, fast, co
 # concurrent jobs can exceed the real API/CDN ceilings (rate limits are GLOBAL; per-job concurrency would
 # multiply them). All jobs run in the hub's single event loop, so a lazily-created module semaphore is
 # shared across every one.
-GEMMA_CONCURRENCY = 12          # OpenRouter/gemma: ~12 concurrent is safe, 16 trips 429s
+GEMMA_CONCURRENCY = 18          # global gemma caption workers (429s handled by caption_frame retry/backoff)
 DOWNLOAD_CONCURRENCY = 2        # googlevideo CDN: only a few concurrent stream downloads before it throttles
 _GEMMA_SEM = None
 _DOWNLOAD_SEM = None
