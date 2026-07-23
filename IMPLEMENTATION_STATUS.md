@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-22
 
+## image_search — per-provider concurrency backoff for institutional sources (2026-07-23)
+
+Under the key-assets 10-way concurrent collect, institutional/heritage providers (wikimedia, museums, loc, smithsonian, nasa…) 429'd in a BURST and contributed nothing (they have no per-key limit, so the reactive cooldown couldn't help). `ImageSearchClient._provider_search` now acquires a per-provider `threading.Semaphore` (cap 2 concurrent each, `_PROVIDER_MAX_CONCURRENCY`) before searching a throttled provider; if it can't get a slot within `_PROVIDER_ACQUIRE_TIMEOUT` (4s) it SKIPS that provider (returns []) rather than piling onto the 429 burst. Fast keyless providers (ddgs/pexels/pixabay) are unthrottled → full speed. So institutional sources succeed + contribute instead of erroring, with negligible collect slowdown. 33 image_search tests green (throttle-skip test added).
+
 ## Key-Assets — collect concurrency (10-way) + trimmed verify budget (2026-07-23)
 
 The collect was sequential + VLM-gated (every kept asset = 1-3 vision calls, all serial) → many minutes. `collect.collect` now resolves entities in a **10-way ThreadPoolExecutor** (I/O-bound: network + vision waits parallelize near-linearly; each worker thread runs its own asyncio.run for the vision call — safe). Cutouts guarded by a Lock (birefnet ONNX session isn't thread-safe); per-entity log lines grouped + emitted on completion. `client` (ImageSearchClient) shared — its rate-limiter is already locked; out paths are unique per entity+type so no download collision. VERIFY BUDGET TRIMMED: candidate attempts per need 5→3 (`_MAX_VERIFY_ATTEMPTS`), footage frames 3→2 (early-exits on first confirm), `_verify_match` retries 2→1. 23 tests green.

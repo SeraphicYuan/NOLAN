@@ -340,3 +340,20 @@ class TestImageSearchResultEquality:
         r2 = ImageSearchResult(url="test2.jpg")
 
         assert r1 != r2
+
+
+def test_provider_concurrency_throttle_skips_when_saturated(monkeypatch):
+    """A burst-prone institutional provider is SKIPPED (returns []) when all its concurrency slots are
+    taken, instead of piling onto a 429 burst — the key-assets concurrent-collect backoff."""
+    import nolan.image_search as m
+    monkeypatch.setattr(m, "_PROVIDER_ACQUIRE_TIMEOUT", 0.05)   # don't wait the real 4s in the test
+    client = m.ImageSearchClient()
+    sem = m._PROVIDER_SEMAPHORES["wikimedia"]
+    drained = 0
+    while sem.acquire(blocking=False):                          # take every slot
+        drained += 1
+    try:
+        assert client._provider_search("wikimedia", "anything", 5, fanout=True) == []
+    finally:
+        for _ in range(drained):
+            sem.release()

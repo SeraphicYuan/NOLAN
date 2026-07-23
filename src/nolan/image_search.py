@@ -90,6 +90,18 @@ class _RateLimiter:
 # Module-level singleton — shared across all ImageSearchClient instances.
 _RATE_LIMITER = _RateLimiter()
 
+# Institutional/heritage providers 429 under a concurrency BURST (they have no per-key limit, so the
+# reactive cooldown can't help). Cap how many requests hit each AT ONCE so they succeed and actually
+# contribute — matters under the key-assets 10-way concurrent collect. A caller that can't get a slot
+# within the timeout SKIPS that provider (returns []) rather than piling onto the 429 burst; fast
+# providers (ddgs/pexels/pixabay) are unthrottled here and stay at full speed.
+_PROVIDER_MAX_CONCURRENCY = {
+    "wikimedia": 2, "artvee": 2, "met": 2, "artic": 2, "rijksmuseum": 2, "harvard": 2,
+    "cleveland": 2, "loc": 2, "smithsonian": 2, "europeana": 2, "dpla": 2, "nasa": 2,
+}
+_PROVIDER_SEMAPHORES = {name: threading.Semaphore(n) for name, n in _PROVIDER_MAX_CONCURRENCY.items()}
+_PROVIDER_ACQUIRE_TIMEOUT = 4.0
+
 
 @dataclass
 class ImageSearchResult:
@@ -1461,6 +1473,9 @@ class ImageSearchClient:
         provider = self.providers.get(name)
         if not provider or not provider.is_available():
             return []
+        sem = _PROVIDER_SEMAPHORES.get(name)                 # throttle burst-prone institutional providers
+        if sem is not None and not sem.acquire(timeout=_PROVIDER_ACQUIRE_TIMEOUT):
+            return []                                        # saturated → skip this call, don't add to the 429 burst
         try:
             return provider.search(query, max_results)
         except httpx.HTTPStatusError as e:
@@ -1477,6 +1492,9 @@ class ImageSearchClient:
                 print(f"Warning: {name} search failed: {e}")
                 return []
             raise
+        finally:
+            if sem is not None:
+                sem.release()
 
     @staticmethod
     def _tier_sources(sources: List[str]) -> List[List[str]]:
