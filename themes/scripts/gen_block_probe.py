@@ -195,11 +195,9 @@ BLOCKS = {
  "process": {"kicker": "CONSERVATION", "title": "From find to display", "titleHi": "display",
              "steps": [{"label": "Recover", "sub": "from the site"}, {"label": "Clean", "sub": "stabilise"},
                        {"label": "Catalogue", "sub": "provenance"}, {"label": "Display", "sub": "the gallery"}]},
- "layout": {"kicker": "THE FINDINGS", "title": "Two ways to read it", "titleHi": "Two ways", "arrange": "hero-rail", "ratio": 0.6,
-            "slots": [{"kind": "media", "src": IMG(0), "label": "The recovered folio"},
-                      {"kind": "stat", "kicker": "Since 1990", "value": "7x", "label": "more items catalogued"},
-                      {"kind": "chart", "kicker": "By decade", "series": [{"label": "'90", "value": 12}, {"label": "'00", "value": 28}, {"label": "'10", "value": 51}, {"label": "'20", "value": 86}]},
-                      {"kind": "text", "lines": ["Kept, at last,", "for good"], "operative": "for good"}]},
+ "layout": {"kicker": "THE HOLDINGS", "title": "The archive, in one look", "titleHi": "one look", "arrange": "split", "ratio": 0.6,
+            "slots": [{"kind": "chart", "kicker": "Items catalogued", "series": [{"label": "'90", "value": 12}, {"label": "'00", "value": 28}, {"label": "'10", "value": 51}, {"label": "'20", "value": 86}]},
+                      {"kind": "stat", "kicker": "Since 1990", "value": "7x", "label": "more items catalogued"}]},
 }
 # route-map demo on geo (adds arcs to the world map)
 BLOCKS["geo"] = {**BLOCKS["geo"], "routes": [
