@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-22
 
+## Key-Assets — keep top-N verified per need (images 4 / clips 2), not just the first (2026-07-23)
+
+`resolve_image`/`resolve_video` now RETURN A LIST of up to `keep` VERIFIED, distinct-source assets per need (was: first hit only), named out / out_2 / out_3… — so the author has options to pick from. Defaults: images keep=4, clips keep=2 (video is ~4x the cost: download+trim+multi-frame verify). EXACT needs keep only positively-verified (missing beats wrong); `related` keep downloaded; dedup by source_url so the same image isn't kept twice; total downloads/need bounded (keep + _MAX_VERIFY_ATTEMPTS). Tier-C reformulation fires only on a TOTAL miss (0 kept). `collect` iterates the list, records each, and cuts out only the PRIMARY (idx 0) collage still — alternates stay as raw options. 23 tests green.
+
 ## image_search — per-provider concurrency backoff for institutional sources (2026-07-23)
 
 Under the key-assets 10-way concurrent collect, institutional/heritage providers (wikimedia, museums, loc, smithsonian, nasa…) 429'd in a BURST and contributed nothing (they have no per-key limit, so the reactive cooldown couldn't help). `ImageSearchClient._provider_search` now acquires a per-provider `threading.Semaphore` (cap 2 concurrent each, `_PROVIDER_MAX_CONCURRENCY`) before searching a throttled provider; if it can't get a slot within `_PROVIDER_ACQUIRE_TIMEOUT` (4s) it SKIPS that provider (returns []) rather than piling onto the 429 burst. Fast keyless providers (ddgs/pexels/pixabay) are unthrottled → full speed. So institutional sources succeed + contribute instead of erroring, with negligible collect slowdown. 33 image_search tests green (throttle-skip test added).

@@ -217,60 +217,72 @@ def _reformulate_queries(cfg, entity: KeyEntity, desired: DesiredAsset, failed: 
 
 
 def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
-                  *, verify: bool = True, domain: str = "", reformulate: bool = True) -> Optional[dict]:
-    """Search → download → validate → VLM relevance-verify the first usable image into `out`. On total
-    failure, Tier-C reformulates the queries once and retries. Returns a provenance dict (with `verified`)
-    or None — an EXACT asset that never confirms is dropped (missing beats wrong); `related` kept unverified."""
+                  *, verify: bool = True, domain: str = "", reformulate: bool = True,
+                  keep: int = 4) -> List[dict]:
+    """Search → download → validate → VLM relevance-verify, keeping up to `keep` VERIFIED, distinct-source
+    images (named out, out_2, out_3…) so the author has options. Returns a LIST of provenance dicts (empty
+    if none). EXACT needs keep only positively-verified (missing beats wrong); `related` keep downloaded.
+    On TOTAL failure (0 kept), Tier-C reformulates once. Total downloads/need are bounded."""
     need_verify = verify and desired.type in _VERIFY_IMAGE_TYPES
     evocative = desired.relevance == "related"
     subject = _verify_subject(entity, desired, domain)
+    kept: List[dict] = []
+    seen_urls: set = set()
+    state = {"downloaded": False}
+    max_dl = keep + _MAX_VERIFY_ATTEMPTS                      # cap total downloads (verified + rejected)/need
+
+    def _dest() -> Path:
+        return out if not kept else out.with_name(f"{out.stem}_{len(kept) + 1}{out.suffix}")
 
     def _run(queries):
-        downloaded = False
-        tries = 0
+        dls = 0
         for q in queries:
+            if len(kept) >= keep:
+                return
             try:
                 results = client.search_assets(q, media_type="image", max_results=8) or []
             except Exception:
                 continue
             for res in _boost(results, desired.type):
+                if len(kept) >= keep or dls >= max_dl:
+                    return
+                url = getattr(res, "source_url", "") or getattr(res, "url", "") or ""
+                if url and url in seen_urls:                  # don't keep the same image twice
+                    continue
+                dest = _dest()
                 try:
                     res2 = client.resolve_asset(res)
-                    if client.download_image(res2, out) is None or not _valid_image(out):
-                        out.unlink(missing_ok=True)
+                    if client.download_image(res2, dest) is None or not _valid_image(dest):
+                        dest.unlink(missing_ok=True)
                         continue
                 except Exception:
-                    out.unlink(missing_ok=True)
+                    dest.unlink(missing_ok=True)
                     continue
-                downloaded = True
+                dls += 1
+                state["downloaded"] = True
                 confirmed = None
                 if need_verify:
-                    confirmed = _verify_match(cfg, out, subject, evocative=evocative)
+                    confirmed = _verify_match(cfg, dest, subject, evocative=evocative)
                     if not evocative and confirmed is not True:   # EXACT: require a POSITIVE match
-                        tries += 1
-                        out.unlink(missing_ok=True)
-                        if tries >= _MAX_VERIFY_ATTEMPTS:
-                            return None, downloaded
+                        dest.unlink(missing_ok=True)
                         continue
+                if url:
+                    seen_urls.add(url)
                 prov = _provenance(res, q)
-                prov["file"] = out
+                prov["file"] = dest
                 prov["verified"] = confirmed is True
-                return prov, downloaded
-        return None, downloaded
+                kept.append(prov)
 
     queries = queries_for(entity, desired, domain)
-    prov, downloaded = _run(queries)
-    if prov:
-        return prov
-    if reformulate and not evocative:                        # Tier C — one fresh-angle retry
+    _run(queries)
+    if not kept and reformulate and not evocative:           # Tier C — one fresh-angle retry only on TOTAL miss
         seen = {q.lower() for q in queries}
         new = [q for q in _reformulate_queries(cfg, entity, desired, queries,
-                                               "wrong" if downloaded else "nothing") if q.lower() not in seen]
+                                               "wrong" if state["downloaded"] else "nothing")
+               if q.lower() not in seen]
         if new:
-            prov, _ = _run(new)
-            if prov:
-                return prov
-    return None
+            _run(new)
+    return kept
 
 
 def _verify_video(cfg, video_path: Path, subject: str) -> Optional[bool]:
@@ -306,56 +318,67 @@ def _verify_video(cfg, video_path: Path, subject: str) -> Optional[bool]:
 
 def resolve_video(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
                   clip_seconds: int = 20, *, verify: bool = True, domain: str = "",
-                  reformulate: bool = True) -> Optional[dict]:
-    """Search video providers → fetch a short on-disk segment into `out` → (for EXACT footage) VLM
-    relevance-verify by MULTIPLE sampled frames; Tier-C reformulates once on total failure. Best-effort
-    (archival video is fragile); returns provenance or None."""
+                  reformulate: bool = True, keep: int = 2) -> List[dict]:
+    """Search video providers → fetch short on-disk segments → (for EXACT footage) multi-frame VLM verify,
+    keeping up to `keep` distinct clips (out, out_2…). `keep` defaults LOWER than images — video is ~4x the
+    cost (download + trim + multi-frame verify). Returns a LIST of provenance dicts (empty if none); Tier-C
+    reformulates once on total failure."""
     from nolan.acquire.context import _fetch_video_segment
     evocative = desired.relevance == "related"
     subject = _verify_subject(entity, desired, domain)
+    kept: List[dict] = []
+    seen_urls: set = set()
+    state = {"downloaded": False}
+    max_dl = keep + _MAX_VERIFY_ATTEMPTS
+
+    def _dest() -> Path:
+        return out if not kept else out.with_name(f"{out.stem}_{len(kept) + 1}{out.suffix}")
 
     def _run(queries):
-        downloaded = False
-        tries = 0
+        dls = 0
         for q in queries:
+            if len(kept) >= keep:
+                return
             try:
                 results = client.search_assets(q, media_type="video", max_results=6) or []
             except Exception:
                 continue
             for res in _boost(results, "footage"):
+                if len(kept) >= keep or dls >= max_dl:
+                    return
+                skey = getattr(res, "source_url", "") or getattr(res, "url", "") or ""
+                if skey and skey in seen_urls:
+                    continue
+                dest = _dest()
                 try:
                     res2 = client.resolve_video(res) or res
-                    url = getattr(res2, "url", None)
-                    if not url or not _fetch_video_segment(url, out, clip_seconds, getattr(res2, "duration", None)):
+                    vurl = getattr(res2, "url", None)
+                    if not vurl or not _fetch_video_segment(vurl, dest, clip_seconds, getattr(res2, "duration", None)):
                         continue
                 except Exception:
                     continue
-                downloaded = True
+                dls += 1
+                state["downloaded"] = True
                 confirmed = None
                 if verify and not evocative:                 # verify EXACT footage; related stays loose
-                    confirmed = _verify_video(cfg, out, subject)
+                    confirmed = _verify_video(cfg, dest, subject)
                     if confirmed is False:                   # every sampled frame rejected → wrong clip
-                        tries += 1
-                        out.unlink(missing_ok=True)
-                        if tries >= _MAX_VERIFY_ATTEMPTS:
-                            return None, downloaded
+                        dest.unlink(missing_ok=True)
                         continue
+                if skey:
+                    seen_urls.add(skey)
                 prov = _provenance(res, q)
-                prov["file"] = out
+                prov["file"] = dest
                 prov["verified"] = confirmed is True
-                return prov, downloaded
-        return None, downloaded
+                kept.append(prov)
 
     queries = queries_for(entity, desired, domain)
-    prov, downloaded = _run(queries)
-    if prov:
-        return prov
-    if reformulate and not evocative:
+    _run(queries)
+    if not kept and reformulate and not evocative:
         seen = {q.lower() for q in queries}
         new = [q for q in _reformulate_queries(cfg, entity, desired, queries,
-                                               "wrong" if downloaded else "nothing") if q.lower() not in seen]
+                                               "wrong" if state["downloaded"] else "nothing")
+               if q.lower() not in seen]
         if new:
-            prov, _ = _run(new)
-            if prov:
-                return prov
-    return None
+            _run(new)
+    return kept

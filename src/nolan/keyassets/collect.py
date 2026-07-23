@@ -83,32 +83,35 @@ def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optio
             out = ka_dir / (stem + (".mp4" if is_video else ".jpg"))
             tag = "~" if d.relevance == "related" else ""
             if is_video:
-                r = resolve_video(cfg, client, e, d, out, verify=verify, domain=domain)
+                results = resolve_video(cfg, client, e, d, out, verify=verify, domain=domain)   # keep up to 2
             else:
-                r = resolve_image(cfg, client, e, d, out, verify=verify, domain=domain)
-            if not r:
+                results = resolve_image(cfg, client, e, d, out, verify=verify, domain=domain)    # keep up to 4
+            if not results:
                 miss = "no confirmed match" if (verify and d.relevance == "exact") else "none found"
                 logs.append(f"    ✗ {d.type}{tag}: {miss}")
                 continue
-            vmark = " ✓verified" if r.get("verified") else ""
-            recs.append({"file": _rel(out, project_dir), "type": d.type, "variant": "original",
-                         "collage_ready": d.collage_ready, "relevance": d.relevance,
-                         "verified": bool(r.get("verified")),
-                         "source": r.get("source", ""), "source_url": r.get("source_url", ""),
-                         "license": r.get("license", ""), "query": r.get("query", "")})
-            logs.append(f"    + {out.name}  ({r.get('source', '?')}){vmark}")
-            if do_cutout and d.collage_ready and d.type in CUTOUT_TYPES and not is_video:   # meaningful cutouts only
-                try:
-                    cut = ka_dir / f"{stem}_cutout.png"
-                    with cutout_lock:
-                        cutout_file(out, dst=cut, trim=True)
-                    if cut.exists():
-                        recs.append({"file": _rel(cut, project_dir), "type": d.type, "variant": "cutout",
-                                     "collage_ready": True, "relevance": d.relevance,
-                                     "processing": ["bg_removed", "trim"], "source": r.get("source", "")})
-                        logs.append(f"    ✂ {cut.name}  (cutout)")
-                except Exception as ex:
-                    logs.append(f"    cutout failed: {type(ex).__name__}: {ex}")
+            for idx, r in enumerate(results):                  # up to N kept per need — options for the author
+                fpath = r["file"]
+                vmark = " ✓verified" if r.get("verified") else ""
+                recs.append({"file": _rel(fpath, project_dir), "type": d.type, "variant": "original",
+                             "collage_ready": d.collage_ready, "relevance": d.relevance,
+                             "verified": bool(r.get("verified")),
+                             "source": r.get("source", ""), "source_url": r.get("source_url", ""),
+                             "license": r.get("license", ""), "query": r.get("query", "")})
+                logs.append(f"    + {fpath.name}  ({r.get('source', '?')}){vmark}")
+                # cutout only the PRIMARY (idx 0) collage still — alternates stay as raw options
+                if idx == 0 and do_cutout and d.collage_ready and d.type in CUTOUT_TYPES and not is_video:
+                    try:
+                        cut = fpath.with_name(f"{fpath.stem}_cutout.png")
+                        with cutout_lock:
+                            cutout_file(fpath, dst=cut, trim=True)
+                        if cut.exists():
+                            recs.append({"file": _rel(cut, project_dir), "type": d.type, "variant": "cutout",
+                                         "collage_ready": True, "relevance": d.relevance,
+                                         "processing": ["bg_removed", "trim"], "source": r.get("source", "")})
+                            logs.append(f"    ✂ {cut.name}  (cutout)")
+                    except Exception as ex:
+                        logs.append(f"    cutout failed: {type(ex).__name__}: {ex}")
         return e.id, recs, logs
 
     workers = min(10, max(1, len(ents)))                       # 10-way concurrent (I/O-bound: net + VLM waits)
