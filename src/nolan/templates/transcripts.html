@@ -139,6 +139,13 @@
 
       <div class="card">
         <div class="row" style="justify-content:space-between"><b style="font-size:13px">Indexed videos</b><span id="lib-stat" class="dim"></span></div>
+        <div class="row" style="gap:8px;margin-top:6px;font-size:12px">
+          <label class="dim"><input type="checkbox" id="selAll" onchange="toggleAll(this.checked)"> select all</label>
+          <button class="btn ghost mini" onclick="batchCaption('sel')">🖼 Caption selected (<span id="selN">0</span>)</button>
+          <button class="btn ghost mini" onclick="batchCaption('text')" title="Caption every transcript-only video">Caption all text-only</button>
+          <label class="dim" title="Re-caption even if already captioned"><input type="checkbox" id="forceCap"> force</label>
+          <span id="cap-status" class="dim"></span>
+        </div>
         <div id="videos" style="margin-top:8px"></div>
       </div>
     </div>
@@ -288,17 +295,34 @@
     }
 
     /* ---------- videos list ---------- */
+    function updSel(){ const el=$("#selN"); if(el) el.textContent=document.querySelectorAll(".vsel:checked").length; }
+    function toggleAll(on){ document.querySelectorAll(".vsel").forEach(c=>c.checked=on); updSel(); }
+    async function batchCaption(scope){
+      let ids;
+      if(scope==="text"){ ids=[...document.querySelectorAll(".vsel")].filter(c=>+c.dataset.frames===0).map(c=>c.value); }
+      else { ids=[...document.querySelectorAll(".vsel:checked")].map(c=>c.value); }
+      if(!ids.length){ alert(scope==="text"?"No transcript-only videos to caption.":"Select at least one video."); return; }
+      if(!confirm(`Caption ${ids.length} video(s)? Skips already-captioned unless 'force'.`)) return;
+      const st=$("#cap-status"); st.textContent=`starting ${ids.length}…`;
+      try{
+        const d=await jpost("/api/transcripts/batch-caption",{video_ids:ids, force:$("#forceCap").checked});
+        st.innerHTML=`✓ captioning ${ids.length} (skip-done) — watch Background Jobs`;
+        pollJob(d.job_id, st, null, ()=>loadVideos());
+      }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
+    }
     async function loadVideos(){
       try{
         const d=await jget("/api/transcripts/videos");
         $("#lib-stat").textContent=`${d.count} videos`;
         $("#videos").innerHTML = d.videos.length ? d.videos.map(vidRow).join("") : '<div class="dim">Nothing indexed yet.</div>';
+        if($("#selAll")) $("#selAll").checked=false; updSel();
       }catch(e){ $("#videos").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
     function vidRow(v){
       const badge = v.frames ? `<span class="chip frames">🖼 ${v.frames}</span>` : `<span class="chip txt">transcript-only</span>`;
-      return `<div class="vid-row"><span class="name" onclick="openDetail('${esc(v.video_id)}')">${esc(v.title||v.video_id)} ${badge}
-        <span class="dim">· ${esc(v.channel||"")} · ${v.windows} windows</span></span>
+      return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:6px">
+        <input type="checkbox" class="vsel" value="${esc(v.video_id)}" data-frames="${v.frames||0}" onclick="event.stopPropagation()" onchange="updSel()">
+        <span onclick="openDetail('${esc(v.video_id)}')">${esc(v.title||v.video_id)} ${badge} <span class="dim">· ${esc(v.channel||"")} · ${v.windows} windows</span></span></span>
         <span class="row"><button class="btn ghost mini" onclick="openDetail('${esc(v.video_id)}')">Detail →</button></span></div>`;
     }
 

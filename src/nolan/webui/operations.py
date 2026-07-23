@@ -353,7 +353,8 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
         return await tfr.caption_frames_async([(fp, _wtext(t), t) for t, fp in frames], concurrency=12)
 
     # keyframe (the one visual tier): DOWNLOAD ONCE -> detect + grab LOCALLY (no per-frame CDN throttle / stalled-stream hangs)
-    dld, dur = await asyncio.to_thread(tfr.download_video, url, tmpd)
+    async with tfr.download_sem():                                # GLOBAL download cap (CDN-safe across jobs)
+        dld, dur = await asyncio.to_thread(tfr.download_video, url, tmpd)
     local = dld is not None
     src = str(dld) if local else url
     if job and not local:
@@ -496,6 +497,60 @@ async def refresh_transcript_video(job, *, config, db_path: Path, url: str, chan
     tl.record_transcript(yid, {**meta, "url": url}, len(windows), channel, frames=nframes, added=now)
     job.set_progress(1.0, f"Re-indexed {len(windows)} windows, {nframes} frames")
     return {"video_id": yid, "windows": len(windows), "frames": nframes}
+
+
+async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, force: bool = False,
+                               densify: bool = False):
+    """Caption the visual tier for a BATCH of already-text-indexed transcript videos, SKIPPING ones already
+    captioned (unless force). A few videos run in flight; the GLOBAL gemma/download governors keep total
+    concurrency under the API/CDN ceilings regardless of how many are in flight. Resumable -- re-run to
+    continue (skip-if-has-frames)."""
+    import asyncio
+    import sqlite3
+
+    from nolan import transcript_frames as tfr
+    from nolan import transcript_lib as tl
+    from nolan.indexer import VideoIndex
+    index = VideoIndex(db_path)
+    cat = tl.load_catalog()
+    ids = [str(v) for v in (video_ids or [])]
+    total = len(ids)
+    done = skipped = failed = 0
+    sem = asyncio.Semaphore(4)                                # up to 4 videos IN FLIGHT (governors cap the rest)
+    counter = {"i": 0}
+
+    async def _one(yid):
+        nonlocal done, skipped, failed
+        async with sem:
+            counter["i"] += 1
+            i = counter["i"]
+            meta = cat.get(yid, {})
+            url = meta.get("url") or f"https://www.youtube.com/watch?v={yid}"
+            title = (meta.get("title") or yid)[:60]
+            job.set_progress(0.03 + 0.94 * (i / max(1, total)), f"[{i}/{total}] {title}")
+            if not force and any(f.get("kind") == "keyframe" for f in tfr.frames_for_video(yid)):
+                job.log(f"  = {title}: already captioned -- skipped"); skipped += 1; return
+            vid = index.get_video_id(f"yt:{yid}")
+            windows = []
+            if vid is not None:
+                with sqlite3.connect(index.db_path) as c:
+                    for r in c.execute("SELECT timestamp_start, timestamp_end, transcript FROM segments "
+                                       "WHERE video_id=? ORDER BY timestamp_start", (vid,)):
+                        windows.append({"start": r[0], "end": r[1], "text": r[2] or ""})
+            try:
+                if force:
+                    await asyncio.to_thread(tfr.delete_frames_for_video, yid)
+                n = await _capture_visual_tier(url, windows, yid, title, visual="keyframe",
+                                               densify=densify, job=job)
+                tl.record_transcript(yid, {**meta, "url": url, "video_id": yid}, len(windows),
+                                     meta.get("channel"), frames=n, added=meta.get("added", ""))
+                job.log(f"  ✓ {title}: {n} frames"); done += 1
+            except Exception as e:
+                job.log(f"  ✗ {title}: {type(e).__name__}: {e}"); failed += 1
+
+    await asyncio.gather(*(_one(y) for y in ids))
+    job.set_progress(1.0, f"captioned {done}, skipped {skipped} (already done), {failed} failed of {total}")
+    return {"total": total, "captioned": done, "skipped": skipped, "failed": failed}
 
 
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",

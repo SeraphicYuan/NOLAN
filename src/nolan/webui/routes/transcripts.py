@@ -89,6 +89,24 @@ def register(app, ctx):
             refresh=bool(body.get("refresh", False)))
         return {"job_id": job.id, "type": "transcript-crawl-all"}
 
+    @app.post("/api/transcripts/batch-caption")
+    async def transcripts_batch_caption(body: dict = Body(...)):
+        """Caption the visual tier for a BATCH of already-text-indexed videos (skip already-captioned unless
+        force). ONE governed job — the global gemma/download semaphores keep it rate-safe no matter what
+        else is running."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        ids = body.get("video_ids") or []
+        if not ids:
+            raise HTTPException(status_code=400, detail="video_ids required")
+        cfg = load_config()
+        idb = ctx.db_path or Path(cfg.indexing.database).expanduser()
+        job = job_manager.start(
+            "transcript-batch-caption", operations.batch_caption_videos, meta={"count": len(ids)},
+            config=cfg, db_path=idb, video_ids=[str(v) for v in ids],
+            force=bool(body.get("force", False)), densify=bool(body.get("densify", False)))
+        return {"job_id": job.id, "type": "transcript-batch-caption"}
+
     @app.get("/api/transcripts/videos")
     async def transcripts_videos():
         """Browse the indexed transcript videos (newest first), grouped by channel, from the sidecar."""

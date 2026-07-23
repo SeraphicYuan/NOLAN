@@ -22,6 +22,33 @@ REPO = Path(__file__).resolve().parents[2]                    # src/nolan/transc
 FRAMES_DIR = REPO / "projects" / "_library" / "transcript-frames"
 CAPTION_MODEL = "google/gemma-4-26b-a4b-it"                    # cheap, fast, conservative VLM (benchmarked winner)
 
+# GLOBAL rate governors -- process-wide semaphores every caption/download draws from, so NO combination of
+# concurrent jobs can exceed the real API/CDN ceilings (rate limits are GLOBAL; per-job concurrency would
+# multiply them). All jobs run in the hub's single event loop, so a lazily-created module semaphore is
+# shared across every one.
+GEMMA_CONCURRENCY = 12          # OpenRouter/gemma: ~12 concurrent is safe, 16 trips 429s
+DOWNLOAD_CONCURRENCY = 2        # googlevideo CDN: only a few concurrent stream downloads before it throttles
+_GEMMA_SEM = None
+_DOWNLOAD_SEM = None
+
+
+def gemma_sem():
+    """The GLOBAL gemma-caption semaphore (shared across ALL videos + jobs)."""
+    global _GEMMA_SEM
+    if _GEMMA_SEM is None:
+        import asyncio
+        _GEMMA_SEM = asyncio.Semaphore(GEMMA_CONCURRENCY)
+    return _GEMMA_SEM
+
+
+def download_sem():
+    """The GLOBAL video-download semaphore (bounds concurrent googlevideo transfers across jobs)."""
+    global _DOWNLOAD_SEM
+    if _DOWNLOAD_SEM is None:
+        import asyncio
+        _DOWNLOAD_SEM = asyncio.Semaphore(DOWNLOAD_CONCURRENCY)
+    return _DOWNLOAD_SEM
+
 
 def frame_lib(embedder=None, base_dir=None):
     """The dedicated transcript-frame ImageLibrary (CLIP image store), isolated from _library/images.
@@ -190,7 +217,7 @@ async def caption_frames_async(items: List[Tuple[Path, Optional[str], Optional[f
     ~one call of wall-clock instead of N serial ones. Returns the `caption_frame` analysis dicts parallel
     to `items`."""
     import asyncio
-    sem = asyncio.Semaphore(max(1, int(concurrency)))
+    sem = gemma_sem()                                         # GLOBAL cap -- all videos/jobs share it (concurrency arg is now a no-op)
 
     async def _one(fp, tr, ts):
         async with sem:
