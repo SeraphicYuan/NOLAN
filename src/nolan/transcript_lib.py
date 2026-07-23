@@ -244,6 +244,77 @@ def list_channel(channel: str, limit: Optional[int] = None) -> List[Dict[str, An
     return YouTubeClient().list_channel_videos(channel, limit=limit)
 
 
+def survey_channel(channel: str, limit: Optional[int] = None,
+                   catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """CHEAP survey: all of a channel's videos (titles only, NO download/transcript) with a flag for those
+    already in the library — so you see the whole menu before spending the expensive caption step."""
+    cat = load_catalog(catalog_dir)
+    have = set(cat.keys())
+    out = []
+    for v in list_channel(channel, limit):
+        yid = v.get("video_id")
+        out.append({"video_id": yid, "url": v.get("url"), "title": v.get("title") or yid,
+                    "in_library": yid in have})
+    return out
+
+
+async def recommend_from_channel(channel: str, config, limit: int = 250,
+                                 catalog_dir: Optional[Path] = None,
+                                 model: str = "deepseek/deepseek-chat") -> Dict[str, Any]:
+    """Recommend a DIVERSE, non-redundant subset of a channel to add. Goal = BROAD documentary coverage
+    (quality assumed from documentary channels), so it leans INCLUSIVE: it tags each candidate by topic,
+    flags redundancy (vs the existing library + within the channel), and notes coverage gaps. Titles-only
+    (documentary titles state their topic plainly). LLM = deepseek (the OpenRouter text default)."""
+    import json
+    import re
+
+    from nolan.llm import create_text_llm
+    survey = survey_channel(channel, limit, catalog_dir)
+    cand = [s for s in survey if not s["in_library"]][:limit]
+    if not cand:
+        return {"coverage": "Everything surveyed from this channel is already in the library.",
+                "items": [], "candidates": 0}
+    lib_titles = [e.get("title") or "" for e in load_catalog(catalog_dir).values() if e.get("title")]
+    sys_p = ("You curate a BROAD documentary library spanning ALL topics (history, business, arts, sports, "
+             "science, nature, culture, biography, war, politics, tech, society, crime, religion...). Quality "
+             "is already assured (these are documentary channels). Your ONLY job: maximize TOPIC COVERAGE and "
+             "avoid REDUNDANCY.")
+    _nl = chr(10)
+    parts = [
+        "EXISTING LIBRARY (" + str(len(lib_titles)) + " videos) titles:",
+        _nl.join("- " + t for t in lib_titles[:400]),
+        "",
+        "CANDIDATE videos from the channel (id | title):",
+        _nl.join(s["video_id"] + " | " + (s["title"] or "") for s in cand),
+        "",
+        ("For EACH candidate output JSON. Default verdict = 'add' (documentaries broaden coverage). Use "
+         "'skip' ONLY when clearly redundant with the existing library OR a near-duplicate of another candidate "
+         "(name which in the reason; same subject + DIFFERENT era/angle is NOT redundant). Give a short `topic` "
+         "and a one-line `reason`. Also a 1-2 sentence `coverage` note: which topics the library is THIN on that "
+         "this channel helps fill."),
+        ('Respond ONLY with JSON: {"coverage":"...","items":[{"video_id":"...","topic":"...",'
+         '"verdict":"add|skip","reason":"..."}]}'),
+    ]
+    prompt = _nl.join(parts)
+    llm = create_text_llm(config, model=model)
+    raw = await llm.generate(prompt, system_prompt=sys_p)
+    try:
+        m = re.search(r"{.*}", raw, re.DOTALL)
+        data = json.loads(m.group(0)) if m else {}
+    except Exception:
+        data = {}
+    by_id = {s["video_id"]: s for s in cand}
+    items = []
+    for it in (data.get("items") or []):
+        s = by_id.get(it.get("video_id"))
+        if s:
+            items.append({**s, "topic": (it.get("topic") or "").strip(),
+                          "verdict": (it.get("verdict") or "add").strip().lower(),
+                          "reason": (it.get("reason") or "").strip()})
+    add = sum(1 for i in items if i["verdict"] == "add")
+    return {"coverage": (data.get("coverage") or "").strip(), "items": items,
+            "candidates": len(cand), "add": add, "capped": len(cand) >= limit}
+
 def fetch_transcript_with_cues(url: str, out_dir: Optional[Path] = None) -> Tuple[Dict[str, Any], Any]:
     """Download ONLY a video's captions (no video) → (metadata, Transcript-with-cues).
 
