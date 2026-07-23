@@ -3,7 +3,7 @@ id: explainer.spec-authoring
 name: Explainer spec authoring
 kind: craft
 purpose: The per-beat agent contract — choose a library block or author a bespoke one, and write the spec.json.
-status: active
+status: deprecated
 version: 1
 handoffs:
   - { process: explainer, stage: author-spec, gate: A }

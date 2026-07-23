@@ -72,6 +72,8 @@
     .sk-badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--border);
                 color: var(--text-secondary); white-space: nowrap; }
     .sk-badge.unbound { color: var(--danger); border-color: var(--danger); }
+    .sk-row.dep { opacity: .5; }
+    .sk-badge.dep { text-transform: uppercase; font-size: 9px; letter-spacing: .04em; }
     .sk-when { font-size: 10px; color: var(--text-secondary); white-space: nowrap; }
     .sk-detail { position: sticky; top: 16px; border: 1px solid var(--border); border-radius: 12px;
                  background: var(--bg-secondary); padding: 0; max-height: calc(100vh - 40px); overflow: auto; }
@@ -385,10 +387,12 @@
         tier.domains.forEach(dom=>{
           html += `<div class="sk-dom">${esc(dom.domain)}</div>`;
           dom.skills.forEach(s=>{
-            html += `<div class="sk-row" data-id="${esc(s.id)}">`+
+            const dep = s.status==='deprecated';
+            html += `<div class="sk-row${dep?' dep':''}" data-id="${esc(s.id)}">`+
               `<span class="id" title="${esc(s.id)}">${esc(s.id)}</span>`+
               `<span class="sk-badge">${esc(s.kind)}</span>`+
-              (s.bound?'':`<span class="sk-badge unbound" title="no code binding (loaded_by / documents)">unbound</span>`)+
+              (dep?`<span class="sk-badge dep" title="deprecated — superseded (kept for reference)">deprecated</span>`:'')+
+              (s.bound||dep?'':`<span class="sk-badge unbound" title="no code binding (loaded_by / documents)">unbound</span>`)+
               `<span class="sk-when" title="last edited ${esc(s.last_amended||'')}">${ago(s.last_amended)}</span></div>`;
           });
         });

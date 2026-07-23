@@ -3,7 +3,7 @@ id: flow.authoring
 name: Flow authoring & craft
 kind: craft
 purpose: The plan-checkpoint craft layer — outline rhythm, dual-source, motion selection/invention — before planning or editing a flow video.
-status: active
+status: deprecated
 version: 1
 handoffs:
   - { process: flow, stage: plan, gate: A }

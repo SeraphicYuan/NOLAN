@@ -3,7 +3,7 @@ id: art.flow
 name: Art flow descriptor
 kind: methodology
 purpose: When-to-use + grammar + palette for the image-first artwork explainer flow.
-status: active
+status: deprecated
 version: 1
 handoffs:
   - { process: art, stage: plan, gate: A }

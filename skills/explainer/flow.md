@@ -3,7 +3,7 @@ id: explainer.flow
 name: Explainer flow descriptor
 kind: methodology
 purpose: When-to-use + grammar + palette for the paper/article explainer flow.
-status: active
+status: deprecated
 version: 1
 handoffs:
   - { process: explainer, stage: plan, gate: A }

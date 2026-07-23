@@ -3,7 +3,7 @@ id: explainer.script
 name: Explainer script authoring
 kind: craft
 purpose: Author the narration from a source paper — 7 stages (extract → arc → draft → tighten → verify → gate → score).
-status: active
+status: deprecated
 version: 1
 handoffs:
   - { process: explainer, stage: author-script, gate: A }

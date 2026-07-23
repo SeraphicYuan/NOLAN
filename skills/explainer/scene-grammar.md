@@ -3,7 +3,7 @@ id: explainer.scene-grammar
 name: Explainer scene grammar
 kind: grammar
 purpose: Section scene taxonomy (Hook→Problem→Method→Results→Takeaway) + the comprehension eval.
-status: active
+status: deprecated
 version: 1
 handoffs:
   - { process: explainer, stage: author-spec, gate: A }

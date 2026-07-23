@@ -3,7 +3,7 @@ id: explainer.block-catalog
 name: Explainer block catalog
 kind: grammar
 purpose: The authoring contract for explainer blocks — every block, its props, and anchor spec.
-status: active
+status: deprecated
 version: 1
 handoffs:
   - { process: explainer, stage: author-spec, gate: A }
