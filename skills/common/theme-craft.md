@@ -5,6 +5,8 @@ kind: craft
 purpose: Create/enrich themes — token philosophy, banding, font-loader constraints, the enrich/validate workflow.
 status: active
 version: 1
+documents:
+  module: themes/selector.json
 handoffs:
   - { process: flow, stage: plan, gate: A }
 uses: []

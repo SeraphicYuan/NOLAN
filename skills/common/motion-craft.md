@@ -5,6 +5,8 @@ kind: craft
 purpose: The motion umbrella — every registered effect with when-to-use guidance; how specs are authored, validated and promoted.
 status: active
 version: 1
+documents:
+  module: src/nolan/motion/registry.py
 handoffs: []
 uses: []
 evals: []

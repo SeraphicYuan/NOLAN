@@ -5,6 +5,8 @@ kind: craft
 purpose: The editing umbrella — cutting-rhythm techniques (j-cut, shot-list, transition-in), when to use each, how to author them on the plan.
 status: active
 version: 1
+documents:
+  module: src/nolan/editing.py
 handoffs: []
 uses: []
 evals: []

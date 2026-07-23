@@ -5,6 +5,8 @@ kind: craft
 purpose: The composition umbrella — the named layout archetypes (centered-hero, split-screen, swiss-grid…), when to use each, and how a theme + beat resolve one. The A/B/C/D-proven lever that moves an LLM off its left-column default.
 status: active
 version: 1
+documents:
+  module: src/nolan/composition.py
 handoffs: []
 uses: []
 evals: []

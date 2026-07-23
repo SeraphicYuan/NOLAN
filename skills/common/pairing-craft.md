@@ -5,6 +5,8 @@ kind: craft
 purpose: The narrative->asset pairing umbrella — every operator (literal, knowledge, tonal, conceptual, ironic, trait, relational, scale) with when-to-use guidance.
 status: active
 version: 1
+documents:
+  module: src/nolan/evoke_broll.py
 handoffs: []
 uses: []
 evals: []

@@ -61,7 +61,9 @@
       "uses": [],
       "overrides": [],
       "loaded_by": [],
-      "documents": null,
+      "documents": {
+        "module": "src/nolan/composition.py"
+      },
       "evals": [],
       "path": "skills/common/composition-craft.md"
     },
@@ -78,7 +80,9 @@
       "uses": [],
       "overrides": [],
       "loaded_by": [],
-      "documents": null,
+      "documents": {
+        "module": "src/nolan/editing.py"
+      },
       "evals": [],
       "path": "skills/common/editing-craft.md"
     },
@@ -95,7 +99,9 @@
       "uses": [],
       "overrides": [],
       "loaded_by": [],
-      "documents": null,
+      "documents": {
+        "module": "src/nolan/motion/registry.py"
+      },
       "evals": [],
       "path": "skills/common/motion-craft.md"
     },
@@ -137,7 +143,9 @@
       "uses": [],
       "overrides": [],
       "loaded_by": [],
-      "documents": null,
+      "documents": {
+        "module": "src/nolan/evoke_broll.py"
+      },
       "evals": [],
       "path": "skills/common/pairing-craft.md"
     },
@@ -177,7 +185,9 @@
       "uses": [],
       "overrides": [],
       "loaded_by": [],
-      "documents": null,
+      "documents": {
+        "module": "src/nolan/sound/registry.py"
+      },
       "evals": [],
       "path": "skills/common/sound-craft.md"
     },
@@ -200,7 +210,9 @@
       "uses": [],
       "overrides": [],
       "loaded_by": [],
-      "documents": null,
+      "documents": {
+        "module": "themes/selector.json"
+      },
       "evals": [],
       "path": "skills/common/theme-craft.md"
     },

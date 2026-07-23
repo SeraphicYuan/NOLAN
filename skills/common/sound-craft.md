@@ -5,6 +5,8 @@ kind: craft
 purpose: The sound umbrella — SFX cue-kinds (whoosh, impact, paper, data-punch, ambience beds …), when to fire each, how to author them as data on a scene.
 status: active
 version: 1
+documents:
+  module: src/nolan/sound/registry.py
 handoffs: []
 uses: []
 evals: []
