@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 36,
+  "count": 37,
   "skills": [
     {
       "id": "art.flow",
@@ -85,6 +85,25 @@
       },
       "evals": [],
       "path": "skills/common/editing-craft.md"
+    },
+    {
+      "id": "common.effects-craft",
+      "name": "Effects craft",
+      "kind": "craft",
+      "purpose": "The effects umbrella \u2014 visual TREATMENTS (grades, grain, film damage, physical-element overlays) with when-to-use guidance; authored as a stackable ground.treatments list, validated + executed from the ONE registry.",
+      "status": "active",
+      "version": 1,
+      "tier": "",
+      "description": "",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/effects/registry.py"
+      },
+      "evals": [],
+      "path": "skills/common/effects-craft.md"
     },
     {
       "id": "common.motion-craft",

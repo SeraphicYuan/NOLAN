@@ -48,7 +48,7 @@ A **skill** = any `.md` with an `id:` in frontmatter. Two roots, one catalog:
 <!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->
 ## Skill registry — auto-generated, do not edit by hand
 
-_36 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
+_37 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
 
 ### Primary pipeline (start here)
 
@@ -75,6 +75,7 @@ _36 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill f
 | `common.chapter-craft` | craft | Per-beat visual craft — the 10 principles, the content→motion decision tree, the anti-AI-look list, completion checklist. |
 | `common.composition-craft` | craft | The composition umbrella — the named layout archetypes (centered-hero, split-screen, swiss-grid…), when to use each, and how a theme + be… |
 | `common.editing-craft` | craft | The editing umbrella — cutting-rhythm techniques (j-cut, shot-list, transition-in), when to use each, how to author them on the plan. |
+| `common.effects-craft` | craft | The effects umbrella — visual TREATMENTS (grades, grain, film damage, physical-element overlays) with when-to-use guidance; authored as a… |
 | `common.motion-craft` | craft | The motion umbrella — every registered effect with when-to-use guidance; how specs are authored, validated and promoted. |
 | `common.outline-format` | craft | Outline format — rhythm, step counts, info-pool extraction, the dual-source principle. |
 | `common.pairing-craft` | craft | The narrative->asset pairing umbrella — every operator (literal, knowledge, tonal, conceptual, ironic, trait, relational, scale) with whe… |

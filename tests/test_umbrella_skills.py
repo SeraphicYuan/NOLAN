@@ -34,6 +34,22 @@ def test_every_builtin_effect_has_when_to_use():
     assert missing == [], f"effects without craft guidance: {missing}"
 
 
+# --- effects (visual treatments umbrella) --------------------------------------
+
+def test_effects_skill_covers_every_treatment():
+    from nolan.effects.registry import REGISTRY
+    ids = {e.id for e in REGISTRY if not getattr(e, "provenance", None)}
+    headings = _doc_headings(REPO / "skills" / "common" / "effects-craft.md")
+    assert ids - headings == set(), f"effects skill missing treatments: {ids - headings}"
+    assert headings - ids == set(), f"effects skill lists unregistered treatments: {headings - ids}"
+
+
+def test_every_treatment_has_when_to_use():
+    from nolan.effects.registry import REGISTRY
+    missing = [e.id for e in REGISTRY if not getattr(e, "provenance", None) and not e.when_to_use]
+    assert missing == [], f"treatments without craft guidance: {missing}"
+
+
 # --- pairing --------------------------------------------------------------------
 
 def test_pairing_catalog_mirrors_prompt_table():
