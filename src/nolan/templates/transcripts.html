@@ -126,6 +126,7 @@
           <label class="dim" title="Re-process videos already indexed"><input type="checkbox" id="refresh"> force</label>
           <label class="dim" title="Extra frames inside long b-roll shots (slower)"><input type="checkbox" id="densify"> densify b-roll</label>
           <button class="btn" id="addBtn" onclick="addChannel()">Index channel</button>
+          <button class="btn ghost" id="crawlBtn" onclick="crawlAll()" title="Crawl the WHOLE channel — ALL videos, TEXT-ONLY, rate-limit paced (add keyframes per-video later)">Crawl all (text)</button>
         </div>
         <span id="add-status" class="dim"></span>
         <div class="log" id="add-log"></div>
@@ -229,6 +230,14 @@
       ${chips.length?`<div class="ctx" style="margin-top:4px">${chips.join("")}</div>`:""}</div></div>`; }
 
     /* ---------- add / sources ---------- */
+    async function crawlAll(){
+      const channel=$("#channel").value.trim(); if(!channel) return;
+      const st=$("#add-status"), log=$("#add-log"); st.textContent="crawling WHOLE channel (text-only)…"; log.style.display="block"; log.textContent=""; $("#crawlBtn").disabled=true;
+      try{
+        const d=await jpost("/api/transcripts/crawl-all",{channel, visual:"off", refresh:$("#refresh").checked});
+        pollJob(d.job_id, st, log, ()=>{ $("#crawlBtn").disabled=false; loadSources(); loadVideos(); });
+      }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; $("#crawlBtn").disabled=false; }
+    }
     async function addChannel(){
       const channel=$("#channel").value.trim(); if(!channel) return;
       const st=$("#add-status"), log=$("#add-log"); st.textContent="starting…"; log.style.display="block"; log.textContent=""; $("#addBtn").disabled=true;

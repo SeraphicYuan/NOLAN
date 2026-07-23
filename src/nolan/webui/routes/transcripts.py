@@ -68,6 +68,27 @@ def register(app, ctx):
             started.append(job.id)
         return {"started": len(started), "channels": list(srcs.keys())}
 
+    @app.post("/api/transcripts/crawl-all")
+    async def transcripts_crawl_all(body: dict = Body(...)):
+        """Crawl a WHOLE channel's transcripts (ALL videos) — TEXT-ONLY by default (fast, cheap, no video
+        download), rate-limit-paced between videos. Add the visual tier per-video later (Refresh). Dedup
+        makes it resumable — re-run to continue."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        channel = (body.get("channel") or "").strip()
+        if not channel:
+            raise HTTPException(status_code=400, detail="channel (URL, @handle, or id) required")
+        cfg = load_config()
+        idb = ctx.db_path or Path(cfg.indexing.database).expanduser()
+        job = job_manager.start(
+            "transcript-crawl-all", operations.ingest_channel_transcripts, meta={"channel": channel},
+            config=cfg, db_path=idb, channel=channel,
+            limit=0,                                          # 0 -> list_channel enumerates ALL videos
+            visual=(body.get("visual") or "off"),             # TEXT-ONLY default; keyframes are a separate pass
+            delay=float(body.get("delay", 1.5) or 1.5),       # seconds between videos (rate-limit aware)
+            refresh=bool(body.get("refresh", False)))
+        return {"job_id": job.id, "type": "transcript-crawl-all"}
+
     @app.get("/api/transcripts/videos")
     async def transcripts_videos():
         """Browse the indexed transcript videos (newest first), grouped by channel, from the sidecar."""

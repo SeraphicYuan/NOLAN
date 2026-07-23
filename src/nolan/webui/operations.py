@@ -401,7 +401,7 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
 async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,
                                      window_s: float = 45.0, overlap_s: float = 10.0,
                                      visual: str = "keyframe", max_frames: int = 0, densify: bool = False,
-                                     refresh: bool = False):
+                                     delay: float = 0.0, refresh: bool = False):
     """Build/refresh a TRANSCRIPT library from a YouTube channel: list its videos, fetch each transcript
     (captions only — NO video download), chunk into overlapping timestamped windows, ingest as a
     transcript-tier VideoIndex row (has_footage=0) + embed into the unified semantic store. Per-video
@@ -421,6 +421,8 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
     now = _dt.datetime.now().isoformat(timespec="seconds")
     got = skipped = already = windows_total = frames_total = 0
     for i, v in enumerate(vids):
+        if delay and i:
+            await asyncio.sleep(delay)                            # rate-limit pacing for whole-channel crawls
         title = (v.get("title") or v.get("video_id") or "?")[:60]
         job.set_progress(0.05 + 0.9 * (i / len(vids)), f"[{i + 1}/{len(vids)}] {title}")
         yid0 = v.get("video_id") or ""
