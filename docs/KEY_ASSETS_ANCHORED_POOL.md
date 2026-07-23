@@ -121,10 +121,18 @@ Ordering: `new_essay` → **key-assets** → `acquire_pool` → author (pool-con
   HERO assets at named beats first** (via `sync.py` `at`/`anchor`), then fill from the acquisition
   pool. **Cutouts** flow into the `spotlight`/collage blocks (`data.src` resolved against the comp
   dir).
-- **Acquisition suppression:** entities satisfied by a hero are marked resolved so
-  `derive_asset_needs`/the engine complement instead of re-searching.
-- **Coverage seeding:** resolved heroes feed `coverage.py` → "named but unillustrated" closes by
-  construction.
+- **Acquisition suppression:** ~~entities satisfied by a hero are marked resolved so
+  `derive_asset_needs`/the engine complement instead of re-searching.~~ **SUPERSEDED (2026-07-23):**
+  the design settled on *two pools, one spine* with heroes as an **offer** — the agent picks from BOTH
+  the hero pool and the b-roll pool. Re-searching a hero's entity in b-roll gives the author MORE
+  options (the golden run placed De Beers as both a hero logo AND b-roll footage); suppressing it would
+  shrink the palette. The only cost of not suppressing is a little redundant search budget — accepted.
+- **Coverage seeding:** ~~resolved heroes feed `coverage.py` → "named but unillustrated" closes by
+  construction.~~ **SUPERSEDED (2026-07-23):** `coverage.py` is an acquire-path organ and is NOT in the
+  HF launch/finish path, so there is nothing to seed here. The **W5 soft `hero_coverage` report**
+  (`keyassets/inventory.py` → /keyassets: which SELECTED heroes the author actually placed vs skipped)
+  serves the reliability intent for the dominant HF flow — a signal, not a mechanical gate, matching the
+  heroes-as-offer model. The golden run depicted all 20 heroes without coverage.py.
 
 ## Honesty test (per WIRING_CHECKLIST — docs claim, tests enforce)
 
@@ -169,8 +177,13 @@ Hero pull-list the stage must recover (acceptance criteria):
 - **P1 — Decompose + consolidate + `--review`** (the part we iterate on): pull-list without assets,
   tuned on draft-03.
 - **P2 — Research harvest → resolve → condition → gate:** canonical assets, cutouts, `key_assets.json`.
-- **P3 — Authoring + acquisition wiring:** HERO section, heroes-first authoring, suppression,
-  coverage seeding, honesty test.
+- **P3 — Authoring + acquisition wiring ✅ DONE (2026-07-23), validated E2E:** HERO section
+  (`inventory.write_hero_section`), heroes-first authoring (the `hf-author` brief), honesty test
+  (`test_hero_inventory_stages_lists_and_is_honest`), and the launch wiring W1–W5 (default `key_assets`
+  mode in `new_essay`; the ordered `_assets_job` heroes→pool→stage; `/keyassets` Collect button; new-essay
+  form selector; the W5 soft `hero_coverage` report). Proven by a cold fleet run on draft-03: all 20 hero
+  entities placed once, both hard gates green, full 13.6-min render. **Suppression + coverage seeding were
+  SUPERSEDED** (see *Integration & wiring* above) — the heroes-as-offer / two-pools design moved past both.
 - **P4 (later) — Reusability** into `imagelib`/KB (research an entity once, reuse).
 
 ## Open items to tune together (P1)
