@@ -1,5 +1,9 @@
 """Video flows — a flow is a DESCRIPTOR over one shared engine, not a second pipeline.
 
+LEGACY (as of 2026-07): these art/explainer flows render via `remotion-lib` (Remotion) and are
+SUPERSEDED by the dominant compose-first HyperFrames pipeline (GSAP) — see the `pipeline.hyperframes`
+skill. The `explainer.*` / `art.*` / `flow.*` skill docs are deprecated. Kept for legacy projects.
+
 art, explainer, … all share the job-JSON contract, the QA gate structure, the
 `remotion-lib` render engine, and the 39-block library. A `Flow` carries only the parts
 that genuinely differ: the ingest adapter (code), and the profile/palette/defaults (config

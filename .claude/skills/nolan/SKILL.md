@@ -23,17 +23,20 @@ Don't conflate the two renderers: **HF = HyperFrames/GSAP**, **Director = Remoti
 live in memory (`MEMORY.md`). Pipeline judgment prose lives in `skills/<domain>/*.md`. This is
 the index that ties them together — read the pointed-to file for detail.
 
-## The two flows
+## The dominant pipeline
 
-Both pick one **theme** and run a source through gates: **Gate A** = plan-time HITL (authoring),
-**Gate B** = render-time HITL (per-beat edits).
+**Compose-first HyperFrames** (GSAP) is THE way to make an essay now. Author → the `hf-finish`
+DAG → render → edit-loop. Start at the **`pipeline.hyperframes`** skill; the per-subsystem
+**`organ.*`** skills go deeper. Both HITL gates still apply: **Gate A** = plan-time (authoring),
+**Gate B** = render-time (per-beat edits).
 
-- **explainer** — idea-dense text → narrated explainer; visuals stand in for abstract ideas.
-  Skill: `skills/explainer/flow.md` (+ `script.md`, `scene-grammar.md`, `block-catalog.md`).
-- **art** — image-first; the artwork IS the subject; narration interprets it (Ken Burns /
-  spotlight / callouts). Skill: `skills/art/flow.md`.
-- Engine: `src/nolan/flows/` (`explainer.py`, `art.py`, `authoring.py`, `edit.py`, `ingest.py`,
-  `gate/`). CLI: `nolan render-flow <project>`.
+## The two flows (LEGACY — Director/Remotion)
+
+> Superseded by the HF pipeline above. Kept for legacy projects; `explainer.*`/`art.*`/`flow.*`
+> skills are **deprecated**. `src/nolan/flows/` renders via `remotion-lib`. CLI: `nolan render-flow`.
+
+- **explainer** — idea-dense text → narrated explainer (`skills/explainer/flow.md`).
+- **art** — image-first; the artwork IS the subject (`skills/art/flow.md`).
 
 ## The skill system (how to find the right prose)
 
@@ -129,8 +132,8 @@ _39 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill f
 | Area | Path | What / entry |
 |---|---|---|
 | Core pipeline | `src/nolan/{parser,script,scenes,llm}.py` | essay → script → scene plan. `nolan process` |
-| Orchestrator | `src/nolan/orchestrator/director.py` | linear pipeline; uses `orchestrator.*` skills |
-| Flows engine | `src/nolan/flows/` | art/explainer flow + gates. `nolan render-flow` |
+| Orchestrator **(LEGACY)** | `src/nolan/orchestrator/director.py` | the Director linear pipeline (Remotion); `orchestrator.*` skills. Superseded by HF — see `pipeline.hyperframes` |
+| Flows engine **(LEGACY)** | `src/nolan/flows/` | art/explainer flow + gates (Remotion). `nolan render-flow`. Superseded by HF |
 | Scene iteration | `src/nolan/iterate/` | review/edit N scenes, re-render only those. `nolan revise-scene` / `rerender`; `/scenes` |
 | Build from segment | `src/nolan/segment/` | span/script/VO → design→render→assemble. `nolan build-from-segment` |
 | Picture library | `src/nolan/imagelib/` | persistent CLIP-searchable image store. `nolan images`; `/images` |

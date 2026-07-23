@@ -1,5 +1,10 @@
 """Director — Layer 2 orchestrator.
 
+LEGACY (as of 2026-07): the DOMINANT video-essay pipeline is now compose-first HyperFrames
+(GSAP), not this Director/Remotion path. Prefer `nolan hf-finish` and the `pipeline.hyperframes`
+skill for new work; this orchestrator + the `orchestrator.*` prompt skills remain for legacy
+projects only. Do not build new features here without a reason to stay on the Director path.
+
 v1 scope: first-pass template matching → adapt or invent → write style_guide.md
 → checkpoint → exit. No specialists, no refine flow yet.
 
