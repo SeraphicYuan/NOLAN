@@ -147,6 +147,7 @@ def register(app, ctx):
             # targets it via the /api/hf/asset/* routes as a comp-relative `assets/<file>` path.
             item = {"file": f, "kind": kind, "source": src, "provider": prov,
                     "relevance": it.get("relevance"), "usable": it.get("usable"),
+                    "selected": bool(it.get("selected", True)),   # refine-scope: in the author's menu?
                     "flags": it.get("flags") or "", "caption": it.get("caption") or "",
                     "license": it.get("license") or "", "source_url": it.get("source_url") or "",
                     "photographer": it.get("photographer") or "",
@@ -190,6 +191,20 @@ def register(app, ctx):
                 return FileResponse(str(fp), media_type=_MEDIA_TYPES.get(
                     fp.suffix.lower(), "application/octet-stream"))
         raise HTTPException(status_code=404, detail="not found")
+
+    @app.post("/api/pool/hf/select")
+    async def hf_select(body: dict = Body(...)):
+        """Refine-scope for the HF pool: toggle an asset in/out of the FINAL pool. Persists to pool.json
+        AND re-writes asset-descriptions.md filtered to selected — so a deselected asset leaves the HF
+        author's menu (closing the 'human curation never reaches the HF author' gap)."""
+        comp = (body.get("comp") or "").strip()
+        file = (body.get("file") or "").strip()
+        if not (comp and file):
+            raise HTTPException(status_code=400, detail="comp and file are required")
+        from nolan.hyperframes.pool_select import set_pool_selected
+        if not set_pool_selected(_hf_dir(comp), file, bool(body.get("selected"))):
+            raise HTTPException(status_code=404, detail="asset not found in pool.json")
+        return {"comp": comp, "file": file, "selected": bool(body.get("selected"))}
 
     @app.post("/api/pool/shortlist")
     async def pool_shortlist(body: dict = Body(...)):

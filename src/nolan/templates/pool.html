@@ -89,6 +89,11 @@
     .usable.u-bad { background: #dc2626; } .usable.u-na { background: #52525b; }
     .card .th video { width: 100%; height: 100%; object-fit: cover; display: block; }
     .card a.th { display: block; text-decoration: none; }
+    .hf-pick { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 50%; z-index: 3;
+               border: 1.5px solid rgba(255,255,255,.6); background: rgba(0,0,0,.55); color: #fff; font-size: 13px;
+               line-height: 17px; text-align: center; cursor: pointer; }
+    .hf-pick.on { background: var(--accent); border-color: var(--accent); }
+    .card.unsel .th { opacity: .32; filter: grayscale(.5); }
     .flagline { font-size: 11px; color: #f87171; line-height: 1.35; }
     .rel { font-variant-numeric: tabular-nums; }
   </style>
@@ -385,9 +390,12 @@
       const provCls = it.provider === 'generated' ? 'generated' : (it.provider === 'library' ? 'library' : '');
       const rel = it.relevance != null ? `<span class="rel">rel ${esc(it.relevance)}</span>` : '';
       const lic = [it.provider, it.license].filter(Boolean).join(' · ');
-      return `<div class="card">
+      const sel = it.selected !== false;   // default: in the final pool
+      const pick = `<span class="hf-pick${sel ? ' on' : ''}" title="in final pool → author menu" onclick="hfSelect(event,this,'${esc(it.file)}')">${sel ? '✓' : ''}</span>`;
+      return `<div class="card${sel ? '' : ' unsel'}">
         <a class="th" href="${it.url}" target="_blank" rel="noopener">
           ${media}
+          ${pick}
           <span class="badge prov ${provCls}">${esc(it.provider)}</span>
           <span class="usable ${usableCls(it.usable)}" title="editor usability (VLM 0-10)">${it.usable == null ? '—' : esc(it.usable)}</span>
         </a>
@@ -398,6 +406,19 @@
           ${it.editable ? `<div class="hf-actions">${AssetEdit.actions(it.path, it.kind)}</div>` : ''}
         </div>
       </div>`;
+    }
+
+    function hfSelect(ev, el, file) {
+      ev.preventDefault(); ev.stopPropagation();          // don't follow the thumbnail link
+      const card = el.closest('.card');
+      const makeSel = card.classList.contains('unsel');   // currently out → put in (and vice-versa)
+      fetch('/api/pool/hf/select', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comp: hfPool.comp, file: file, selected: makeSel }) })
+        .then(r => r.json()).then(() => {
+          card.classList.toggle('unsel', !makeSel);
+          el.classList.toggle('on', makeSel);
+          el.textContent = makeSel ? '✓' : '';
+        }).catch(() => {});
     }
 
     // HF pool grouped by the SCENE each asset actually lands in (from the computed reverse index), instead

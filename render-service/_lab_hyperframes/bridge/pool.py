@@ -460,17 +460,10 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
 
 
 def write_inventory(pool, project: Path):
+    from nolan.hyperframes.pool_select import render_inventory_lines   # ONE inventory format (shared)
     ex = project / "capture" / "extracted"
     ex.mkdir(parents=True, exist_ok=True)
-    lines = ["# Asset descriptions (NOLAN pool → HyperFrames inventory)\n",
-             "Candidate assets collected by the NOLAN acquisition fan-out. The storyboard step",
-             "SELECTS from these into per-frame `asset_candidates` — HyperFrames keeps selection.\n"]
-    for it in pool:
-        path = f"assets/{it['file']}"
-        tag = " [video]" if it["media_type"] == "video" else ""
-        cred = f"{it.get('source') or '?'}" + (f" / {it['photographer']}" if it.get("photographer") else "")
-        lines.append(f"- `{path}`{tag} — {it['caption']}  _(need: {it['id']}; {cred}; {it.get('license') or 'license?'})_")
-    (ex / "asset-descriptions.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (ex / "asset-descriptions.md").write_text("\n".join(render_inventory_lines(pool)) + "\n", encoding="utf-8")
     (project / "pool.json").write_text(json.dumps(pool, indent=2), encoding="utf-8")
     print(f"  inventory: {len(pool)} assets → capture/extracted/asset-descriptions.md + pool.json")
 

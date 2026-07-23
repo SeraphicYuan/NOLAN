@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-22
 
+## Acquisition consolidation #3 — HF-pool refine-scope wired to the author (2026-07-23)
+
+Closed the gap the audit found: the scored HF pool had NO selection channel and the shortlist never reached the HF author (who reads only capture/extracted/asset-descriptions.md). Ported the key-assets refine-scope pattern: `hyperframes/pool_select.py` — `selected` flag per pool.json item (default True = in scope until pruned), `set_pool_selected` toggles it AND re-writes asset-descriptions.md filtered to selected (so a deselected asset LEAVES the author's menu). `render_inventory_lines` is now the SINGLE inventory format, used by BOTH the bridge's acquisition-time write_inventory (delegates) and the post-curation re-write (no format drift). /pool route: `selected` on each HF item + `POST /api/pool/hf/select`; pool.html HF cards get a ✓ toggle (dim = excluded). tests/test_pool_select.py (3) + bridge-delegation + route-registration verified.
+
 ## Acquisition consolidation #2 — shared plumbing organ (de-dup) (2026-07-23)
 
 `src/nolan/acquire/shared.py`: ONE home for the genuinely-identical, correctness-critical helpers both pools reimplemented — `valid_image` (was copied 4×), `build_search_client` (the ImageSearchClient construction, copied 3×), `downscale_for_vision` (the #1 fix, was inline in the bridge + keyassets), `parse_vision_json`. Migrated `keyassets/resolve.py` (build_client + _verify_match), the HF bridge `pool.py` (_client/_valid_image/_downscale), and `acquire/context.py` (_stock_client/_valid_image) to delegate. Deliberately NARROW: the provider-tier tables stay per-path (engine ranks local+providers, bridge providers-only — they differ on purpose) and the VLM DECISION stays per-path (recall FLOOR vs precision GATE). tests/test_acquire_shared.py added; 52 green across acquire/keyassets/bridge; live _verify_match sanity (De Beers→True, sports-car→False) unchanged.
