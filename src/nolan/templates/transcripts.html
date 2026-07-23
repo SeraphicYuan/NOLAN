@@ -94,6 +94,7 @@
     <div class="tabs">
       <div class="tab on" data-tab="search" onclick="showTab('search')">Search</div>
       <div class="tab" data-tab="curate" onclick="showTab('curate')">Curate</div>
+      <div class="tab" data-tab="coverage" onclick="showTab('coverage')">Coverage</div>
       <div class="tab" data-tab="sources" onclick="showTab('sources')">Sources</div>
     </div>
 
@@ -122,7 +123,8 @@
       <div class="card">
         <div class="row">
           <input type="text" id="cu-channel" placeholder="channel URL / @handle / id — e.g. https://www.youtube.com/@AmericanExperiencePBS">
-          <button class="btn" onclick="cuSurvey()">Grab all titles</button>
+          <button class="btn" onclick="cuSurvey(false)">Grab all titles</button>
+          <button class="btn ghost mini" onclick="cuSurvey(true)" title="Re-crawl the channel, ignore the stored title list">↻</button>
           <span id="cu-stat" class="dim"></span>
         </div>
         <div class="row" style="margin-top:10px">
@@ -130,6 +132,7 @@
             <button data-v="flat" class="on" onclick="cuSetView('flat')">≣ All titles</button>
             <button data-v="topic" onclick="cuSetView('topic')">🗂 By topic</button>
           </div>
+          <span id="cu-kwrap" class="dim" style="display:none">topics <input type="number" id="cu-k" min="2" max="120" placeholder="auto" style="width:58px"> <button class="btn ghost mini" onclick="cuTopics(false,true)">apply</button></span>
           <span style="flex:1"></span>
           <label class="dim">return <input type="number" id="cu-n" value="20" min="1" max="200" style="width:56px"></label>
           <button class="btn ghost mini" onclick="cuRecommend('ai')" title="DeepSeek: topic tags + coverage-gap note + semantic dedup across the DISTINCT titles">✨ AI recommend</button>
@@ -155,6 +158,34 @@
           </span>
         </div>
         <div id="cu-body" style="margin-top:10px"><div class="dim">Enter a channel and “Grab all titles” to see every video, browse by topic, and pick a diverse set.</div></div>
+      </div>
+    </div>
+
+    <!-- ===== COVERAGE ===== -->
+    <div id="tab-coverage" style="display:none">
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <b style="font-size:14px">Library coverage across all channels</b>
+            <div class="dim">Every indexed channel's available titles + your library, clustered into topics. 🔵 = a gap (nothing in the library yet), ✅ = already covered. Biggest gaps first.</div>
+          </div>
+          <span class="row" style="gap:8px">
+            <label class="dim">topics <input type="number" id="cv-k" min="4" max="120" placeholder="auto" style="width:58px"></label>
+            <button class="btn" onclick="loadCoverage(false)">Build map</button>
+            <button class="btn ghost mini" onclick="loadCoverage(true)" title="Re-crawl every channel, ignore stored title lists">↻ refresh</button>
+          </span>
+        </div>
+        <div id="cv-stat" class="dim" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <span class="dim">tick available titles to ingest (they fill a gap)</span>
+          <span class="row" style="gap:8px">
+            <select id="cv-visual" title="Visual tier on ingest"><option value="off">text-only</option><option value="keyframe">+ keyframes</option></select>
+            <button class="btn mini" onclick="cvAdd()">＋ Add selected (<span id="cv-n">0</span>)</button>
+          </span>
+        </div>
+        <div id="cv-body" style="margin-top:10px"><div class="dim">Click “Build map” — uses stored titles, so it's instant after the first crawl of each channel.</div></div>
       </div>
     </div>
 
@@ -230,20 +261,22 @@
     function cuToggle(id, on){ if(on) CU_SEL.add(id); else CU_SEL.delete(id); cuSelN(); }
     function openCurate(){ const ch=$("#channel").value.trim(); showTab('curate'); if(ch && ch!==cuChannel()){ $("#cu-channel").value=ch; cuSurvey(); } }
 
-    async function cuSurvey(){
+    async function cuSurvey(refresh){
       const ch=cuChannel(); if(!ch){ alert("Enter a channel URL."); return; }
-      $("#cu-stat").textContent="fetching all titles (no download)…"; $("#cu-body").innerHTML='<div class="dim">Surveying the whole channel…</div>';
+      $("#cu-stat").textContent=refresh?"re-crawling the channel…":"loading titles…"; $("#cu-body").innerHTML='<div class="dim">'+(refresh?"Re-crawling":"Surveying")+' the whole channel…</div>';
       CU.groups=null; $("#cu-cov").textContent=""; CU_SEL.clear(); cuSelN(); $("#cu-recadd").checked=false;
       try{
-        const d=await jget(`/api/transcripts/survey?channel=${encodeURIComponent(ch)}`);
+        const d=await jget(`/api/transcripts/survey?channel=${encodeURIComponent(ch)}${refresh?'&refresh=true':''}`);
         CU.items=d.items; CU.byId={}; CU.items.forEach(i=>CU.byId[i.video_id]=i);
-        $("#cu-stat").textContent=`${d.count} videos · ${d.new} not in library`;
+        const cached = d.cached ? `<span class="chip txt" title="served from stored title list">cached ${esc(d.cached.slice(0,10))}</span>` : `<span class="chip frames">fresh</span>`;
+        $("#cu-stat").innerHTML=`${d.count} videos · ${d.new} not in library ${cached}`;
         $("#cu-filter").style.display="block";
         cuSetView("flat");
       }catch(e){ $("#cu-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; $("#cu-stat").textContent=""; }
     }
     function cuSetView(v){
       CU_VIEW=v; document.querySelectorAll("#cu-view button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+      $("#cu-kwrap").style.display = v==="topic" ? "inline" : "none";
       if(v==="topic" && !CU.groups){ cuTopics(); } else { cuRender(); }
     }
 
@@ -274,7 +307,9 @@
       if(!CU.items.length){ $("#cu-body").innerHTML='<div class="dim">Enter a channel and “Grab all titles”.</div>'; return; }
       if(CU_VIEW==="topic"){ cuRenderTopics(); return; }
       const vis=cuVisible().slice().sort((a,b)=>cuRank(a)-cuRank(b));
-      $("#cu-body").innerHTML = `<div class="dim" style="margin-bottom:6px">${vis.length} shown</div>` + (vis.map(cuRow).join("")||'<div class="dim">Nothing matches the filter.</div>');
+      const CAP=1500, shown=vis.slice(0,CAP);
+      const note = vis.length>CAP ? `${vis.length} match — showing first ${CAP}, filter to narrow` : `${vis.length} shown`;
+      $("#cu-body").innerHTML = `<div class="dim" style="margin-bottom:6px">${note}</div>` + (shown.map(cuRow).join("")||'<div class="dim">Nothing matches the filter.</div>');
     }
     function cuSelAll(on){
       cuVisible().forEach(v=>{ if(v.in_library) return; if(on) CU_SEL.add(v.video_id); else CU_SEL.delete(v.video_id); });
@@ -282,13 +317,14 @@
     }
 
     /* ---- topic view (no-LLM clustering) ---- */
-    async function cuTopics(){
+    async function cuTopics(refresh, apply){
       const ch=cuChannel(); if(!ch){ alert("Grab titles first."); return; }
+      const k = apply ? (parseInt($("#cu-k").value,10)||0) : 0;
       $("#cu-body").innerHTML='<div class="dim">Clustering titles into topics (BGE, no LLM)…</div>';
       try{
-        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}`);
-        CU.groups=d.groups;
-        $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`;
+        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}${k?`&k=${k}`:''}${refresh?'&refresh=true':''}`);
+        CU.groups=d.groups; if(!apply && !$("#cu-k").value) $("#cu-k").placeholder=`auto (${d.k})`;
+        $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`${d.capped?` <span class="warn">· newest ${d.candidates} of ${d.candidates+d.capped} clustered (giant channel)</span>`:""};
         cuRenderTopics();
       }catch(e){ $("#cu-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
@@ -343,7 +379,7 @@
           const d=await jpost("/api/transcripts/diverse-sample",{channel:ch, n});
           CU.items.forEach(v=>{ v.verdict=undefined; v.topic=undefined; v.reason=undefined; });
           (d.picks||[]).forEach(p=>{ const row=CU.byId[p.video_id]; if(row){ row.verdict="add"; row.topic=p.topic; } CU_SEL.add(p.video_id); });
-          cov.innerHTML=`<b>${d.groups} topics → ${d.picks.length} picks</b> <span class="dim">· one representative per topic · ${d.distinct} distinct (${d.dropped_redundant} near-dups dropped) · zero API cost</span>`;
+          cov.innerHTML=`<b>${d.groups} topics → ${d.picks.length} picks</b> <span class="dim">· one representative per topic · ${d.distinct} distinct (${d.dropped_redundant} near-dups dropped) · zero API cost</span>`${d.capped?` <span class="warn">· from newest ${d.candidates} of ${d.candidates+d.capped}</span>`:""};
         }
         cuSelN();
         if(CU_VIEW==="flat"){ $("#cu-recadd").checked=true; }
@@ -366,12 +402,68 @@
       }catch(e){ alert(e.message); }
     }
 
+    /* ---------- Coverage: cross-channel topic map (library vs available) ---------- */
+    let CV = { topics: [], byId: {}, built: false };
+    let CV_SEL = new Set();
+    function cvSelN(){ $("#cv-n").textContent = CV_SEL.size; }
+    function cvToggle(id, on){ if(on) CV_SEL.add(id); else CV_SEL.delete(id); cvSelN(); }
+    async function loadCoverage(refresh){
+      const k=parseInt($("#cv-k").value,10)||0;
+      $("#cv-stat").textContent = refresh ? "re-crawling every channel + clustering…" : "clustering library + available titles…";
+      $("#cv-body").innerHTML='<div class="dim">Building coverage map…</div>';
+      try{
+        const d=await jget(`/api/transcripts/coverage?k=${k}${refresh?'&refresh=true':''}`);
+        CV.topics=d.topics||[]; CV.byId={}; CV.built=true;
+        CV.topics.forEach(t=>(t.samples||[]).forEach(s=>{ if(s.video_id) CV.byId[s.video_id]=s; }));
+        if(!$("#cv-k").value) $("#cv-k").placeholder=`auto (${d.k})`;
+        const chans=(d.channels||[]).map(c=>`${esc(c.label)} <span class="dim">(${c.available}/${c.total}${c.capped?`, newest ${c.available} clustered`:""})</span>`).join(" · ");
+        $("#cv-stat").innerHTML=`<b>${d.k} topics</b> · library ${d.lib_total} · ${d.available_total} available · <b style="color:var(--accent,#4f7cff)">${d.gaps} gap topics</b><div class="dim" style="margin-top:3px">channels: ${chans||"— add channels in Sources"}</div>`;
+        cvRender();
+      }catch(e){ $("#cv-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; $("#cv-stat").textContent=""; }
+    }
+    function cvBar(t){
+      const tot=(t.lib_count+t.available)||1, pct=Math.round(100*t.lib_count/tot);
+      return `<div title="${t.lib_count} of ${tot} in library" style="height:6px;border-radius:3px;background:var(--border);overflow:hidden;width:110px"><div style="height:100%;width:${pct}%;background:#34c759"></div></div>`;
+    }
+    function cvRender(){
+      if(!CV.topics.length){ $("#cv-body").innerHTML='<div class="dim">No topics — index some channels first (Sources).</div>'; return; }
+      $("#cv-body").innerHTML = CV.topics.map(t=>{
+        const gap = t.lib_count===0 && t.available>0;
+        const chchips=(t.channels||[]).map(c=>`<span class="tag obj">${esc(c.label)} ${c.count}</span>`).join(" ");
+        const samples=(t.samples||[]).map(s=>{
+          const chk = s.video_id?`<input type="checkbox" ${CV_SEL.has(s.video_id)?'checked':''} onchange="cvToggle('${esc(s.video_id)}',this.checked)">`:'<span style="width:13px;display:inline-block"></span>';
+          return `<div class="vid-row" style="padding:4px 2px;border-bottom:none"><span class="name" style="display:flex;align-items:center;gap:6px">${chk}<a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title)}</a> <span class="dim" style="font-size:10px">${esc(s.channel||"")}</span></span></div>`;
+        }).join("");
+        return `<div class="card" style="padding:10px 12px;margin-bottom:8px;${gap?'border-left:3px solid var(--accent,#4f7cff)':''}">
+          <div class="row" style="justify-content:space-between">
+            <b style="font-size:13px">${gap?'🔵':'✅'} ${esc(t.label)}</b>
+            <span class="row" style="gap:8px">${cvBar(t)} <span class="dim">${t.lib_count} in library · ${t.available} available</span></span>
+          </div>
+          ${chchips?`<div class="ctx" style="margin-top:5px">${chchips}</div>`:''}
+          ${samples?`<div style="margin-top:6px">${samples}</div>`:''}</div>`;
+      }).join("");
+    }
+    async function cvAdd(){
+      const sel=[...CV_SEL].map(id=>CV.byId[id]).filter(Boolean).map(v=>({video_id:v.video_id,url:v.url,title:v.title}));
+      if(!sel.length){ alert("Tick at least one available title."); return; }
+      const vis=$("#cv-visual").value;
+      if(!confirm(`Ingest ${sel.length} video(s)${vis==="off"?" as TRANSCRIPT-ONLY":" WITH keyframes"} to fill these gaps?`)) return;
+      try{
+        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:vis});
+        alert(`Ingesting ${sel.length} in the background — track it in Background Jobs.`);
+        CV_SEL.clear(); cvSelN();
+        setTimeout(()=>loadCoverage(false), 2500);
+      }catch(e){ alert(e.message); }
+    }
+
     function showTab(t){
       document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on", x.dataset.tab===t));
       $("#tab-search").style.display = t==="search"?"block":"none";
       $("#tab-curate").style.display = t==="curate"?"block":"none";
+      $("#tab-coverage").style.display = t==="coverage"?"block":"none";
       $("#tab-sources").style.display = t==="sources"?"block":"none";
       if(t==="sources"){ loadSources(); loadVideos(); }
+      if(t==="coverage" && !CV.built){ loadCoverage(false); }
     }
 
     /* ---------- search ---------- */

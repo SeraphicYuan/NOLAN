@@ -108,12 +108,15 @@ def register(app, ctx):
         return {"job_id": job.id, "type": "transcript-batch-caption"}
 
     @app.get("/api/transcripts/survey")
-    async def transcripts_survey(channel: str = Query(...), limit: int = Query(default=0)):
-        """CHEAP survey: all of a channel's titles (no download) + in_library flags."""
+    async def transcripts_survey(channel: str = Query(...), limit: int = Query(default=0),
+                                 refresh: bool = Query(default=False)):
+        """CHEAP survey: all of a channel's titles (no download) + in_library flags. PERSISTED — served from
+        surveys.json unless refresh=true (then re-crawled and re-cached)."""
         import asyncio
         from nolan import transcript_lib as tl
-        items = await asyncio.to_thread(tl.survey_channel, channel, (limit or None))
-        return {"items": items, "count": len(items), "new": sum(1 for i in items if not i["in_library"])}
+        items = await asyncio.to_thread(tl.survey_channel, channel, (limit or None), None, bool(refresh))
+        return {"items": items, "count": len(items), "new": sum(1 for i in items if not i["in_library"]),
+                "cached": (items[0].get("_cached", "") if items else "")}
 
     @app.post("/api/transcripts/recommend")
     async def transcripts_recommend(body: dict = Body(...)):
@@ -126,14 +129,15 @@ def register(app, ctx):
         return await tl.recommend_from_channel(channel, load_config(), limit=int(body.get("limit", 200) or 200))
 
     @app.get("/api/transcripts/topics")
-    async def transcripts_topics(channel: str = Query(...), k: int = Query(default=0)):
+    async def transcripts_topics(channel: str = Query(...), k: int = Query(default=0),
+                                 refresh: bool = Query(default=False)):
         """Topic-model a channel's DISTINCT titles into ~k clusters (no LLM) for browse-by-topic + hand-pick."""
         import asyncio
         from nolan import transcript_lib as tl
         channel = channel.strip()
         if not channel:
             raise HTTPException(status_code=400, detail="channel required")
-        return await asyncio.to_thread(tl.topic_view, channel, int(k or 0))
+        return await asyncio.to_thread(tl.topic_view, channel, int(k or 0), None, bool(refresh))
 
     @app.post("/api/transcripts/diverse-sample")
     async def transcripts_diverse_sample(body: dict = Body(...)):
@@ -143,7 +147,15 @@ def register(app, ctx):
         channel = (body.get("channel") or "").strip()
         if not channel:
             raise HTTPException(status_code=400, detail="channel required")
-        return await asyncio.to_thread(tl.diverse_sample, channel, int(body.get("n", 20) or 20))
+        return await asyncio.to_thread(tl.diverse_sample, channel, int(body.get("n", 20) or 20),
+                                       None, bool(body.get("refresh", False)))
+
+    @app.get("/api/transcripts/coverage")
+    async def transcripts_coverage(k: int = Query(default=0), refresh: bool = Query(default=False)):
+        """Cross-channel COVERAGE map: topics the library covers vs what's still available (all channels)."""
+        import asyncio
+        from nolan import transcript_lib as tl
+        return await asyncio.to_thread(tl.coverage_map, None, int(k or 0), None, bool(refresh))
 
     @app.post("/api/transcripts/ingest-videos")
     async def transcripts_ingest_videos(body: dict = Body(...)):

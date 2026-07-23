@@ -71,13 +71,81 @@ def test_diverse_sample_one_per_topic(tmp_path, monkeypatch):
     survey = [{"video_id": f"v{i}", "url": "", "title": t, "in_library": False}
               for i, t in enumerate(["FDR presidency", "FDR White House years", "Kissinger Cambodia war",
                                       "Kissinger and Nixon", "Apollo 11 moon landing", "Dust Bowl migration"])]
-    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None: survey)
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False: survey)
     monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})                 # empty library → nothing dropped
     out = tl.diverse_sample("ch", n=3)
     assert len(out["picks"]) == 3                                              # exactly n picks
     assert len({p["video_id"] for p in out["picks"]}) == 3                     # distinct videos
     assert all(p["verdict"] == "add" and p["topic"] for p in out["picks"])     # each carries a topic label
     assert out["distinct"] == 6 and out["groups"] == 3
+
+
+def test_survey_persists_and_reuses(tmp_path, monkeypatch):
+    """A full survey caches to surveys.json and is reused without re-crawling; in_library stays live; refresh
+    re-crawls."""
+    from nolan import transcript_lib as tl
+    calls = {"n": 0}
+    vids = [{"video_id": "a1", "url": "u1", "title": "Doc One"}, {"video_id": "a2", "url": "u2", "title": "Doc Two"}]
+
+    def fake_list(ch, limit=None):
+        calls["n"] += 1
+        return vids
+    monkeypatch.setattr(tl, "list_channel", fake_list)
+
+    r1 = tl.survey_channel("ch", None, tmp_path)                               # first: crawls + caches
+    assert calls["n"] == 1 and len(r1) == 2 and all(not x["in_library"] for x in r1)
+    assert (tmp_path / "surveys.json").exists()
+    r2 = tl.survey_channel("ch", None, tmp_path)                               # second: served from cache
+    assert calls["n"] == 1 and [x["video_id"] for x in r2] == ["a1", "a2"]
+    assert r2[0]["_cached"]                                                    # carries the fetch timestamp
+
+    tl.record_transcript("a1", {"title": "Doc One", "url": "u1"}, 3, "Ch", catalog_dir=tmp_path)
+    r3 = tl.survey_channel("ch", None, tmp_path)                               # in_library recomputed live off catalog
+    assert calls["n"] == 1 and next(x for x in r3 if x["video_id"] == "a1")["in_library"] is True
+
+    tl.survey_channel("ch", None, tmp_path, refresh=True)                      # refresh forces a re-crawl
+    assert calls["n"] == 2
+
+
+def test_distinct_candidates_caps_giant_channel(tmp_path, monkeypatch):
+    """A ~50k-title channel must not embed every title: _distinct_candidates keeps the newest `cap` and
+    reports the rest as dropped (no silent cap)."""
+    from nolan import transcript_lib as tl
+    survey = [{"video_id": f"v{i}", "url": "", "title": f"News clip number {i}", "in_library": False}
+              for i in range(6000)]
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False: survey)
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    # stub the (expensive) embedding+clustering — this test is about the CAP, not the clustering
+    monkeypatch.setattr(tl, "cluster_dedup_candidates",
+                        lambda cand, lib, **kw: {"distinct": cand, "dropped_lib": 0,
+                                                 "clusters": len(cand), "candidates": len(cand)})
+    distinct, stats, _ = tl._distinct_candidates("big", cap=2500)
+    assert stats["capped"] == 3500                                            # 6000 - 2500 dropped, reported
+    assert stats["candidates"] == 2500 and len(distinct) <= 2500
+    assert tl._distinct_candidates("big", cap=0)[1]["capped"] == 0            # cap=0 disables the bound
+
+
+def test_coverage_map_gaps_and_strength(tmp_path, monkeypatch):
+    """coverage_map clusters library + all-channel candidates into topics; a topic with library rows reads as
+    covered, one with only available rows reads as a gap."""
+    from nolan import transcript_lib as tl
+    # library strongly covers space history; channel offers space + a totally new subject (economics)
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None:
+                        {"L1": {"title": "Apollo 11 moon landing"}, "L2": {"title": "The Apollo space program"}})
+    chan = [{"video_id": "n1", "url": "", "title": "Apollo astronauts training", "in_library": False},
+            {"video_id": "n2", "url": "", "title": "The Great Depression economy", "in_library": False},
+            {"video_id": "n3", "url": "", "title": "Wall Street crash and banking", "in_library": False}]
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False: chan)
+    monkeypatch.setattr(tl, "load_sources", lambda cd=None: {"chX": {"label": "TestChan"}})
+
+    cov = tl.coverage_map(k=2, catalog_dir=tmp_path)
+    assert cov["lib_total"] == 2 and cov["available_total"] == 3
+    assert len(cov["topics"]) == 2
+    gaps = [t for t in cov["topics"] if t["lib_count"] == 0 and t["available"] > 0]
+    covered = [t for t in cov["topics"] if t["lib_count"] > 0]
+    assert gaps and covered                                                   # both a gap and a covered topic exist
+    assert cov["gaps"] == len(gaps)
+    assert all(any(c["label"] == "TestChan" for c in t["channels"]) for t in gaps)  # gap attributes its channel
 
 
 def test_frames_for_video_and_delete(tmp_path):
