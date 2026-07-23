@@ -158,6 +158,26 @@ def test_archive_kind_dispatch_and_copyright_filter(tmp_path, monkeypatch):
     assert stats["dropped_copyright"] == 1 and {d["video_id"] for d in distinct} == {"a", "c"}
 
 
+def test_archive_pick_derivative_two_tier():
+    """Two-tier resolution policy: clip -> highest-quality MP4 (HiRes _edit); caption -> the low-res _512kb.
+    Keyed on size+format, NEVER the height field (which lies — a 172MB HiRes reports height=240)."""
+    from nolan import archive_source as ar
+    files = [
+        {"name": "X.avi", "format": "Cinepack", "size": 31_000_000, "height": 320},        # skipped (avi)
+        {"name": "X_512kb.mp4", "format": "512Kb MPEG4", "size": 39_000_000, "height": 240},
+        {"name": "X.ia.mp4", "format": "h.264 IA", "size": 53_000_000, "height": 480},
+        {"name": "X.mp4", "format": "MPEG4", "size": 57_000_000, "height": 480},
+        {"name": "X_edit.mp4", "format": "HiRes MPEG4", "size": 172_000_000, "height": 240},  # HiRes; height lies
+        {"name": "X.mpeg", "format": "MPEG2", "size": 256_000_000, "height": 368},
+    ]
+    assert ar.pick_derivative(files, "clip") == "X_edit.mp4"       # largest seekable MP4 (not the raw .mpeg)
+    assert ar.pick_derivative(files, "caption") == "X_512kb.mp4"   # the intended low derivative
+    assert ar.pick_derivative([], "clip") is None
+    assert ar.pick_derivative([{"name": "Y.mpeg", "format": "MPEG2", "size": 9, "height": 0}],
+                              "clip") == "Y.mpeg"                  # no MP4 -> fall back to largest overall
+    assert "download/X/X_edit.mp4" in ar.download_url("X", "X_edit.mp4")
+
+
 def test_length_filter_drops_short_and_keeps_unknown(tmp_path, monkeypatch):
     """min_sec/max_sec gate on duration; runs BEFORE the newest-cap; unknown duration (None) is kept."""
     from nolan import transcript_lib as tl

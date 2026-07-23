@@ -140,6 +140,51 @@ def _srt_name(files: List[Dict[str, Any]]) -> Optional[str]:
     return next((f.get("name") for f in files if str(f.get("name", "")).lower().endswith(".srt")), None)
 
 
+def _video_files(files: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Just the MP4/MPEG derivatives (skip cinepak/ogg/avi — playback-hostile), with a usable size. NOTE the
+    archive `height` field is UNRELIABLE (a 172MB HiRes `_edit.mp4` reports height=240), so selection keys on
+    FORMAT + SIZE, never height."""
+    out = []
+    for f in files:
+        n = str(f.get("name", ""))
+        if not n.lower().endswith((".mp4", ".m4v", ".mpeg", ".mpg")):
+            continue
+        try:
+            size = int(f.get("size", 0) or 0)
+        except (TypeError, ValueError):
+            size = 0
+        out.append({"name": n, "format": (f.get("format") or "").lower(), "size": size})
+    return out
+
+
+def pick_derivative(files: List[Dict[str, Any]], purpose: str = "clip") -> Optional[str]:
+    """Choose a video derivative by PURPOSE — the two-tier resolution policy:
+
+    * ``purpose='caption'`` → the LOW-enough encode for gemma keyframing: the ``_512kb.mp4`` (320x240) if
+      present, else the smallest MP4. Small = cheap to range-seek per frame; still legible for a scene caption.
+    * ``purpose='clip'`` → the HIGH-def encode for actual footage: the largest MP4 (a seekable moov container
+      — HiRes ``_edit.mp4`` usually wins), falling back to the largest file overall (e.g. the ``.mpeg``
+      original) only if no MP4 exists.
+
+    Returns the file NAME (pair with ``download_url``). None if the item has no usable video derivative.
+    Keys on size+format, NOT the unreliable height field."""
+    vids = _video_files(files)
+    if not vids:
+        return None
+    mp4s = [v for v in vids if v["name"].lower().endswith((".mp4", ".m4v"))]
+    if purpose == "caption":
+        low = [v for v in mp4s if "512kb" in v["format"] or "_512kb" in v["name"].lower()]
+        pool = low or (sorted(mp4s, key=lambda v: v["size"]) if mp4s else sorted(vids, key=lambda v: v["size"]))
+        return pool[0]["name"]
+    return max(mp4s or vids, key=lambda v: v["size"])["name"]     # clip: highest-quality (largest) MP4/original
+
+
+def download_url(identifier: str, filename: str) -> str:
+    """The direct download URL for a file in an item (302-redirects to a storage node that serves HTTP 206
+    Range — so ffmpeg `-ss/-t` fetches only the bytes for a time window; see the download-the-range probe)."""
+    return f"{DOWNLOAD}/{collection_ref(identifier) if '/' in identifier else identifier}/{filename}"
+
+
 def fetch_transcript(identifier: str, collection: str = "", out_dir: Optional[Path] = None,
                      timeout: float = 45.0) -> Tuple[Dict[str, Any], Any]:
     """``(meta, transcript_cues)`` from archive.org's Whisper ASR ``.asr.srt``. ``(meta, None)`` when the item
