@@ -276,7 +276,9 @@ def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optiona
     surveys = load_surveys(catalog_dir)
     fetched = datetime.datetime.now().isoformat(timespec="seconds")
     rows = [{"video_id": t.get("video_id"), "url": t.get("url"),
-             "title": t.get("title") or t.get("video_id")} for t in titles if t.get("video_id")]
+             "title": t.get("title") or t.get("video_id"),
+             "duration": t.get("duration")}                        # seconds — free from the flat crawl
+            for t in titles if t.get("video_id")]
     surveys[_channel_key(channel)] = {"channel": channel, "label": channel, "fetched": fetched,
                                       "count": len(rows), "titles": rows}
     p = _surveys_file(catalog_dir)
@@ -298,9 +300,12 @@ def survey_channel(channel: str, limit: Optional[int] = None, catalog_dir: Optio
         cached = load_surveys(catalog_dir).get(_channel_key(channel))
         if cached and cached.get("titles"):
             return [{"video_id": r["video_id"], "url": r.get("url"), "title": r.get("title"),
+                     "duration": r.get("duration"),                # None on rows cached before duration existed
+                     "thumb": f"https://i.ytimg.com/vi/{r['video_id']}/mqdefault.jpg",
                      "in_library": r["video_id"] in have, "_cached": cached.get("fetched", "")}
                     for r in cached["titles"]]
-    rows = [{"video_id": v.get("video_id"), "url": v.get("url"), "title": v.get("title") or v.get("video_id")}
+    rows = [{"video_id": v.get("video_id"), "url": v.get("url"), "title": v.get("title") or v.get("video_id"),
+             "duration": v.get("duration"), "thumb": v.get("thumb")}
             for v in list_channel(channel, limit) if v.get("video_id")]
     if full:
         save_survey(channel, rows, catalog_dir)                   # persist the full crawl for next time
@@ -369,21 +374,17 @@ def cluster_dedup_candidates(cand, lib_titles, thr_lib=0.87, thr_dup=0.90):
     return {"distinct": distinct, "dropped_lib": dropped, "clusters": len(groups), "candidates": len(cand)}
 
 
-async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, model=""):
-    """Recommend a DIVERSE add-list in TWO layers: (1) cluster_dedup_candidates -- deterministic BGE
-    clustering drops library-covered titles + collapses near-dups at ANY scale; (2) the config text LLM
-    (deepseek) tags the DISTINCT survivors by topic, writes the coverage/gap note, and does the final
+async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, model="",
+                                 min_sec=0, max_sec=0):
+    """Recommend a DIVERSE add-list in TWO layers: (1) `_distinct_candidates` -- survey → drop library-covered
+    → optional LENGTH filter → newest-cap → BGE cluster_dedup collapses near-dups at ANY scale; (2) the config
+    text LLM (deepseek) tags the DISTINCT survivors by topic, writes the coverage/gap note, and does the final
     semantic add/skip. Titles-first."""
     import json
 
     from nolan.llm import create_text_llm
-    survey = survey_channel(channel, None, catalog_dir)
-    cand = [s for s in survey if not s["in_library"]]
-    lib_titles = [e.get("title") or "" for e in load_catalog(catalog_dir).values() if e.get("title")]
-    dd = cluster_dedup_candidates(cand, lib_titles)
-    distinct = dd["distinct"][:limit]
-    stats = {"total": len(survey), "candidates": dd["candidates"], "dropped_redundant": dd["dropped_lib"],
-             "clusters": dd["clusters"], "distinct": len(dd["distinct"])}
+    distinct, stats, lib_titles = _distinct_candidates(channel, catalog_dir, limit=limit,
+                                                       min_sec=min_sec, max_sec=max_sec)
     if not distinct:
         return {"coverage": "Nothing new -- every distinct topic on this channel is already covered.",
                 "items": [], "add": 0, **stats}
@@ -526,13 +527,32 @@ def topic_cluster(distinct: List[Dict[str, Any]], k: int) -> List[Dict[str, Any]
 MAX_CANDIDATES = 2500
 
 
+def _dur_ok(d: Optional[int], min_sec: int, max_sec: int) -> bool:
+    """Length gate. Unknown duration (None — e.g. rows cached before the field existed) is KEPT so a real doc
+    is never silently dropped over missing metadata."""
+    if d is None:
+        return True
+    if min_sec and d < min_sec:
+        return False
+    if max_sec and d > max_sec:
+        return False
+    return True
+
+
 def _distinct_candidates(channel: str, catalog_dir: Optional[Path] = None, limit: int = 0,
-                         refresh: bool = False,
-                         cap: int = MAX_CANDIDATES) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
-    """Survey → drop already-in-library → cluster_dedup (collapse near-identical titles) → the DISTINCT
-    add-candidates that both the LLM recommender and the topic view operate on. Shared spine."""
+                         refresh: bool = False, cap: int = MAX_CANDIDATES,
+                         min_sec: int = 0, max_sec: int = 0) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
+    """Survey → drop already-in-library → (optional LENGTH filter) → cluster_dedup (collapse near-identical
+    titles) → the DISTINCT add-candidates that both the LLM recommender and the topic view operate on. Shared
+    spine. The length filter runs BEFORE the newest-`cap` bound, so on a giant channel you keep the newest
+    real documentaries, not the newest news clips."""
     survey = survey_channel(channel, None, catalog_dir, refresh=refresh)
     cand = [s for s in survey if not s["in_library"]]
+    dropped_len = 0
+    if min_sec or max_sec:
+        kept = [s for s in cand if _dur_ok(s.get("duration"), min_sec, max_sec)]
+        dropped_len = len(cand) - len(kept)
+        cand = kept
     capped = 0
     if cap and len(cand) > cap:
         capped = len(cand) - cap
@@ -542,15 +562,16 @@ def _distinct_candidates(channel: str, catalog_dir: Optional[Path] = None, limit
     distinct = dd["distinct"][:limit] if limit else dd["distinct"]
     cached = survey[0].get("_cached", "") if survey else ""
     stats = {"total": len(survey), "candidates": dd["candidates"], "dropped_redundant": dd["dropped_lib"],
-             "dup_clusters": dd["clusters"], "distinct": len(dd["distinct"]), "cached": cached, "capped": capped}
+             "dup_clusters": dd["clusters"], "distinct": len(dd["distinct"]), "cached": cached,
+             "capped": capped, "dropped_length": dropped_len}
     return distinct, stats, lib_titles
 
 
 def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None,
-               refresh: bool = False) -> Dict[str, Any]:
+               refresh: bool = False, min_sec: int = 0, max_sec: int = 0) -> Dict[str, Any]:
     """Browse a channel BY TOPIC: distinct candidates grouped into ~k topic clusters (auto ≈ n/8 when
     k=0), each labelled by its distinctive keywords, medoid pre-flagged. For hand-selection. No LLM."""
-    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh)
+    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec)
     if not distinct:
         return {"groups": [], "k": 0, **stats}
     if not k:
@@ -560,10 +581,10 @@ def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None,
 
 
 def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None,
-                   refresh: bool = False) -> Dict[str, Any]:
+                   refresh: bool = False, min_sec: int = 0, max_sec: int = 0) -> Dict[str, Any]:
     """NO-LLM recommender: cluster the distinct candidates into exactly `n` topics and return the medoid
     of each — n picks spread maximally across the channel's subject space, for zero API cost."""
-    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh)
+    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec)
     if not distinct:
         return {"picks": [], "groups": 0, **stats}
     n = max(1, min(int(n), len(distinct)))
@@ -576,7 +597,8 @@ def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None
 
 
 def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: Optional[Path] = None,
-                 refresh: bool = False, per_channel_limit: int = 0) -> Dict[str, Any]:
+                 refresh: bool = False, per_channel_limit: int = 0,
+                 min_sec: int = 0, max_sec: int = 0) -> Dict[str, Any]:
     """Cross-channel COVERAGE map. Clusters the UNION of (library titles + every channel's available-but-not-
     yet-ingested titles) into topics, then for each topic reports how much the LIBRARY already covers vs how
     much is still AVAILABLE (and from which channels). Topics with 0 library + many available = the biggest
@@ -600,14 +622,14 @@ def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: 
     rows: List[Dict[str, Any]] = [{"title": t, "in_lib": True, "channel": ""} for t in lib_titles]
     per_channel = []
     for ch in chans:
-        distinct, st, _ = _distinct_candidates(ch, catalog_dir, refresh=refresh)
+        distinct, st, _ = _distinct_candidates(ch, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec)
         label = (load_sources(catalog_dir).get(ch, {}) or {}).get("label") or ch
         per_channel.append({"channel": ch, "label": label, "available": len(distinct),
                             "total": st.get("total", 0), "cached": st.get("cached", ""),
                             "capped": st.get("capped", 0)})
         for d in distinct:
             rows.append({"title": d.get("title") or "", "in_lib": False, "channel": label,
-                         "video_id": d.get("video_id"), "url": d.get("url")})
+                         "video_id": d.get("video_id"), "url": d.get("url"), "duration": d.get("duration")})
     if len(rows) < 3:
         return {"topics": [], "channels": per_channel, "k": 0,
                 "lib_total": len(lib_titles), "available_total": sum(c["available"] for c in per_channel)}
@@ -643,7 +665,7 @@ def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: 
             "size": len(members), "lib_count": lib_n, "available": len(new_m),
             "channels": [{"label": c, "count": n} for c, n in ch_counts.most_common()],
             "samples": [{"video_id": s.get("video_id"), "url": s.get("url"), "title": s["title"],
-                         "channel": s["channel"]} for s in samples],
+                         "channel": s["channel"], "duration": s.get("duration")} for s in samples],
         })
     # biggest opportunities first: uncovered topics with the most available, then thinly-covered
     topics.sort(key=lambda t: (t["lib_count"] > 0, -(t["available"]), t["lib_count"]))

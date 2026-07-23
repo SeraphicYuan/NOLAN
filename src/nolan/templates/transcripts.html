@@ -142,6 +142,10 @@
         <div class="row" style="margin-top:8px;font-size:12px">
           <label class="dim"><input type="checkbox" id="cu-hidelib" checked onchange="cuRender()"> hide in-library</label>
           <label class="dim"><input type="checkbox" id="cu-recadd" onchange="cuRender()"> recommended only</label>
+          <span class="dim" style="border-left:1px solid var(--border);padding-left:10px">length <input type="number" id="cu-min" min="0" placeholder="min" style="width:50px" onchange="cuLen()" oninput="cuLen()">–<input type="number" id="cu-max" min="0" placeholder="max" style="width:50px" onchange="cuLen()" oninput="cuLen()"> min</span>
+          <button class="btn ghost mini" onclick="cuPreset(20)" title="Full documentaries only — 20 min and up (drops promos/clips)">📽 20m+</button>
+          <button class="btn ghost mini" onclick="cuPreset(0)" title="Clear the length filter">any</button>
+          <label class="dim">sort <select id="cu-sort" onchange="cuRender()" style="padding:2px 4px"><option value="newest">newest</option><option value="longest">longest</option></select></label>
         </div>
         <div id="cu-cov" class="dim" style="margin-top:10px"></div>
       </div>
@@ -170,6 +174,8 @@
             <div class="dim">Every indexed channel's available titles + your library, clustered into topics. 🔵 = a gap (nothing in the library yet), ✅ = already covered. Biggest gaps first.</div>
           </div>
           <span class="row" style="gap:8px">
+            <label class="dim">length <input type="number" id="cv-min" min="0" placeholder="min" style="width:48px">–<input type="number" id="cv-max" min="0" placeholder="max" style="width:48px"> min</label>
+            <button class="btn ghost mini" onclick="$('#cv-min').value=20;$('#cv-max').value='';loadCoverage(false)" title="Full documentaries only (20 min+)">📽 20m+</button>
             <label class="dim">topics <input type="number" id="cv-k" min="4" max="120" placeholder="auto" style="width:58px"></label>
             <button class="btn" onclick="loadCoverage(false)">Build map</button>
             <button class="btn ghost mini" onclick="loadCoverage(true)" title="Re-crawl every channel, ignore stored title lists">↻ refresh</button>
@@ -246,6 +252,8 @@
     const $ = s => document.querySelector(s);
     function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
     function fmt(s){ s=Math.round(s||0); const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0'); return `${m}:${ss}`; }
+    function fmtDur(sec){ if(!sec) return ""; sec=Math.round(sec); if(sec<60) return sec+"s"; const m=Math.round(sec/60); return m<60 ? m+"m" : Math.floor(m/60)+"h"+String(m%60).padStart(2,'0'); }
+    function thumb(id){ return `https://i.ytimg.com/vi/${id}/mqdefault.jpg`; }
     async function jget(u){ const r=await fetch(u); if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail||r.status); return r.json(); }
     async function jpost(u,b){ const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||r.status); return d; }
     async function jdel(u){ const r=await fetch(u,{method:"DELETE"}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||r.status); return d; }
@@ -259,6 +267,13 @@
     function cuChannel(){ return $("#cu-channel").value.trim(); }
     function cuSelN(){ $("#cu-n-sel").textContent = CU_SEL.size; }
     function cuToggle(id, on){ if(on) CU_SEL.add(id); else CU_SEL.delete(id); cuSelN(); }
+    /* length (duration) filter — shared by flat, topic display, and the server calls */
+    function cuMinSec(){ return (parseInt($("#cu-min").value,10)||0)*60; }
+    function cuMaxSec(){ return (parseInt($("#cu-max").value,10)||0)*60; }
+    function cuLenParam(){ const a=cuMinSec(), b=cuMaxSec(); return (a?`&min_sec=${a}`:"")+(b?`&max_sec=${b}`:""); }
+    function cuLenOk(v){ const d=v.duration; if(d==null) return true; const a=cuMinSec(), b=cuMaxSec(); if(a&&d<a) return false; if(b&&d>b) return false; return true; }
+    function cuLen(){ (CU_VIEW==="topic")?cuRenderTopics():cuRender(); }        // live client-side; server calls read it on next cluster/sample
+    function cuPreset(min){ $("#cu-min").value = min||""; $("#cu-max").value=""; cuLen(); }
     function openCurate(){ const ch=$("#channel").value.trim(); showTab('curate'); if(ch && ch!==cuChannel()){ $("#cu-channel").value=ch; cuSurvey(); } }
 
     async function cuSurvey(refresh){
@@ -287,11 +302,13 @@
       return CU.items.filter(v=>{
         if(hideLib && v.in_library) return false;
         if(recOnly && v.verdict!=="add") return false;
+        if(!cuLenOk(v)) return false;
         if(f && !(v.title||"").toLowerCase().includes(f)) return false;
         return true;
       });
     }
     function cuRank(v){ return v.in_library?3 : v.verdict==="skip"?2 : v.verdict==="add"?0 : 1; }
+    function cuThumb(v){ return `<img loading="lazy" src="${thumb(v.video_id)}" style="width:56px;height:32px;object-fit:cover;border-radius:3px;flex:0 0 auto;background:#000">`; }
     function cuRow(v){
       const chk = v.in_library ? '<span style="width:13px;display:inline-block"></span>'
         : `<input type="checkbox" class="cusel" ${CU_SEL.has(v.video_id)?'checked':''} onchange="cuToggle('${esc(v.video_id)}',this.checked)">`;
@@ -299,14 +316,17 @@
         : (v.verdict==="skip"?'<span class="chip txt">skip</span>':(v.verdict==="add"?'<span class="chip frames">add</span>':''));
       const topic = v.topic?`<span class="chip">${esc(v.topic)}</span>`:'';
       const dup = v.cluster_size>1?`<span class="dim" style="font-size:10px">+${v.cluster_size-1} dup</span>`:'';
-      return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:6px;max-width:64%">
-        ${chk}<a href="${esc(v.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(v.title||v.video_id)}</a> ${flag} ${topic} ${dup}</span>
-        ${v.reason?`<span class="dim" style="font-size:11px;max-width:33%;text-align:right">${esc(v.reason)}</span>`:''}</div>`;
+      const dur = v.duration?`<span class="dim" style="font-size:10px;white-space:nowrap">${fmtDur(v.duration)}</span>`:'';
+      return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:8px;max-width:70%">
+        ${chk}${cuThumb(v)}<a href="${esc(v.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(v.title||v.video_id)}</a> ${flag} ${topic} ${dup}</span>
+        <span class="row" style="gap:8px;flex:0 0 auto">${dur}${v.reason?`<span class="dim" style="font-size:11px;max-width:280px;text-align:right">${esc(v.reason)}</span>`:''}</span></div>`;
     }
     function cuRender(){
       if(!CU.items.length){ $("#cu-body").innerHTML='<div class="dim">Enter a channel and “Grab all titles”.</div>'; return; }
       if(CU_VIEW==="topic"){ cuRenderTopics(); return; }
-      const vis=cuVisible().slice().sort((a,b)=>cuRank(a)-cuRank(b));
+      const sort=$("#cu-sort").value, vis=cuVisible().slice();
+      if(sort==="longest") vis.sort((a,b)=>(b.duration||0)-(a.duration||0));
+      else vis.sort((a,b)=>cuRank(a)-cuRank(b));
       const CAP=1500, shown=vis.slice(0,CAP);
       const note = vis.length>CAP ? `${vis.length} match — showing first ${CAP}, filter to narrow` : `${vis.length} shown`;
       $("#cu-body").innerHTML = `<div class="dim" style="margin-bottom:6px">${note}</div>` + (shown.map(cuRow).join("")||'<div class="dim">Nothing matches the filter.</div>');
@@ -322,23 +342,24 @@
       const k = apply ? (parseInt($("#cu-k").value,10)||0) : 0;
       $("#cu-body").innerHTML='<div class="dim">Clustering titles into topics (BGE, no LLM)…</div>';
       try{
-        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}${k?`&k=${k}`:''}${refresh?'&refresh=true':''}`);
+        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}${k?`&k=${k}`:''}${refresh?'&refresh=true':''}${cuLenParam()}`);
         CU.groups=d.groups; if(!apply && !$("#cu-k").value) $("#cu-k").placeholder=`auto (${d.k})`;
-        $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`${d.capped?` <span class="warn">· newest ${d.candidates} of ${d.candidates+d.capped} clustered (giant channel)</span>`:""};
+        $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`+(d.dropped_length?` <span class="dim">· ${d.dropped_length} off-length</span>`:"")+(d.capped?` <span class="warn">· newest ${d.candidates} of ${d.candidates+d.capped} clustered (giant channel)</span>`:"");
         cuRenderTopics();
       }catch(e){ $("#cu-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
     function cuGrpRow(v, medoid){
       const chk=`<input type="checkbox" class="cusel" ${CU_SEL.has(v.video_id)?'checked':''} onchange="cuToggle('${esc(v.video_id)}',this.checked)">`;
       const m = medoid===v.video_id?'<span class="chip">rep</span>':'';
-      return `<div class="vid-row" style="padding:5px 2px;border-bottom:none"><span class="name" style="display:flex;align-items:center;gap:6px">
-        ${chk}<a href="${esc(v.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(v.title||v.video_id)}</a> ${m}</span></div>`;
+      const dur = v.duration?`<span class="dim" style="font-size:10px;margin-left:auto;white-space:nowrap">${fmtDur(v.duration)}</span>`:'';
+      return `<div class="vid-row" style="padding:5px 2px;border-bottom:none"><span class="name" style="display:flex;align-items:center;gap:8px;width:100%">
+        ${chk}${cuThumb(v)}<a href="${esc(v.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(v.title||v.video_id)}</a> ${m}${dur}</span></div>`;
     }
     function cuRenderTopics(){
       if(!CU.groups){ cuTopics(); return; }
       const f=$("#cu-filter").value.trim().toLowerCase();
       const html = CU.groups.map((g,gi)=>{
-        const items=g.items.filter(v=>!f || (v.title||"").toLowerCase().includes(f));
+        const items=g.items.filter(v=>(!f || (v.title||"").toLowerCase().includes(f)) && cuLenOk(v));
         if(!items.length) return "";
         const nsel=g.items.filter(v=>CU_SEL.has(v.video_id)).length;
         return `<div class="card" style="padding:10px 12px;margin-bottom:8px">
@@ -368,18 +389,20 @@
       const ch=cuChannel(); if(!ch){ alert("Grab titles first."); return; }
       if(!CU.items.length){ await cuSurvey(); if(!CU.items.length) return; }
       const n=parseInt($("#cu-n").value,10)||20;
+      const ln={min_sec:cuMinSec(), max_sec:cuMaxSec()};
+      const lenNote = d => d.dropped_length ? ` <span class="dim">· ${d.dropped_length} off-length</span>` : "";
       const cov=$("#cu-cov"); cov.textContent = kind==="ai" ? "asking DeepSeek to diversify (topics · redundancy · coverage gaps)…" : `clustering into ${n} topics and picking one each (no LLM)…`;
       try{
         if(kind==="ai"){
-          const d=await jpost("/api/transcripts/recommend",{channel:ch, limit: Math.max(n, 300)});
+          const d=await jpost("/api/transcripts/recommend",{channel:ch, limit: Math.max(n, 300), ...ln});
           CU.items.forEach(v=>{ v.verdict=undefined; v.topic=undefined; v.reason=undefined; });
           (d.items||[]).forEach(it=>{ const row=CU.byId[it.video_id]; if(row){ row.verdict=it.verdict; row.topic=it.topic; row.reason=it.reason; if(it.verdict==="add") CU_SEL.add(it.video_id); }});
-          cov.innerHTML=`<b>Coverage gaps:</b> ${esc(d.coverage||"—")} <span class="dim">· ${d.add} recommended of ${d.distinct} distinct (${d.dropped_redundant} near-dups dropped)</span>`;
+          cov.innerHTML=`<b>Coverage gaps:</b> ${esc(d.coverage||"—")} <span class="dim">· ${d.add} recommended of ${d.distinct} distinct (${d.dropped_redundant} near-dups dropped)</span>`+lenNote(d);
         } else {
-          const d=await jpost("/api/transcripts/diverse-sample",{channel:ch, n});
+          const d=await jpost("/api/transcripts/diverse-sample",{channel:ch, n, ...ln});
           CU.items.forEach(v=>{ v.verdict=undefined; v.topic=undefined; v.reason=undefined; });
           (d.picks||[]).forEach(p=>{ const row=CU.byId[p.video_id]; if(row){ row.verdict="add"; row.topic=p.topic; } CU_SEL.add(p.video_id); });
-          cov.innerHTML=`<b>${d.groups} topics → ${d.picks.length} picks</b> <span class="dim">· one representative per topic · ${d.distinct} distinct (${d.dropped_redundant} near-dups dropped) · zero API cost</span>`${d.capped?` <span class="warn">· from newest ${d.candidates} of ${d.candidates+d.capped}</span>`:""};
+          cov.innerHTML=`<b>${d.groups} topics → ${d.picks.length} picks</b> <span class="dim">· one representative per topic · ${d.distinct} distinct (${d.dropped_redundant} near-dups dropped) · zero API cost</span>`+lenNote(d)+(d.capped?` <span class="warn">· from newest ${d.candidates} of ${d.candidates+d.capped}</span>`:"");
         }
         cuSelN();
         if(CU_VIEW==="flat"){ $("#cu-recadd").checked=true; }
@@ -409,10 +432,12 @@
     function cvToggle(id, on){ if(on) CV_SEL.add(id); else CV_SEL.delete(id); cvSelN(); }
     async function loadCoverage(refresh){
       const k=parseInt($("#cv-k").value,10)||0;
+      const mn=(parseInt($("#cv-min").value,10)||0)*60, mx=(parseInt($("#cv-max").value,10)||0)*60;
+      const lp=(mn?`&min_sec=${mn}`:"")+(mx?`&max_sec=${mx}`:"");
       $("#cv-stat").textContent = refresh ? "re-crawling every channel + clustering…" : "clustering library + available titles…";
       $("#cv-body").innerHTML='<div class="dim">Building coverage map…</div>';
       try{
-        const d=await jget(`/api/transcripts/coverage?k=${k}${refresh?'&refresh=true':''}`);
+        const d=await jget(`/api/transcripts/coverage?k=${k}${refresh?'&refresh=true':''}${lp}`);
         CV.topics=d.topics||[]; CV.byId={}; CV.built=true;
         CV.topics.forEach(t=>(t.samples||[]).forEach(s=>{ if(s.video_id) CV.byId[s.video_id]=s; }));
         if(!$("#cv-k").value) $("#cv-k").placeholder=`auto (${d.k})`;
@@ -432,7 +457,9 @@
         const chchips=(t.channels||[]).map(c=>`<span class="tag obj">${esc(c.label)} ${c.count}</span>`).join(" ");
         const samples=(t.samples||[]).map(s=>{
           const chk = s.video_id?`<input type="checkbox" ${CV_SEL.has(s.video_id)?'checked':''} onchange="cvToggle('${esc(s.video_id)}',this.checked)">`:'<span style="width:13px;display:inline-block"></span>';
-          return `<div class="vid-row" style="padding:4px 2px;border-bottom:none"><span class="name" style="display:flex;align-items:center;gap:6px">${chk}<a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title)}</a> <span class="dim" style="font-size:10px">${esc(s.channel||"")}</span></span></div>`;
+          const im = s.video_id?`<img loading="lazy" src="${thumb(s.video_id)}" style="width:48px;height:27px;object-fit:cover;border-radius:3px;flex:0 0 auto;background:#000">`:'';
+          const dur = s.duration?`<span class="dim" style="font-size:10px;margin-left:auto;white-space:nowrap">${fmtDur(s.duration)}</span>`:'';
+          return `<div class="vid-row" style="padding:4px 2px;border-bottom:none"><span class="name" style="display:flex;align-items:center;gap:8px;width:100%">${chk}${im}<a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title)}</a> <span class="dim" style="font-size:10px">${esc(s.channel||"")}</span>${dur}</span></div>`;
         }).join("");
         return `<div class="card" style="padding:10px 12px;margin-bottom:8px;${gap?'border-left:3px solid var(--accent,#4f7cff)':''}">
           <div class="row" style="justify-content:space-between">

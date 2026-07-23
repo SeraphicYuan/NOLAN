@@ -625,10 +625,12 @@ class YouTubeClient:
         """Enumerate a channel's videos (newest first), without downloading.
 
         Uses flat extraction (fast). Note: flat entries often lack ``upload_date``
-        — callers that need dates should probe per-video via ``get_info``.
+        AND ``view_count`` (both None in flat mode) — callers that need those must
+        probe per-video via ``get_info``. ``duration`` (seconds) IS present in flat
+        mode, so it comes back for free.
 
         Returns:
-            List of dicts: {video_id, url, title, upload_date}.
+            List of dicts: {video_id, url, title, upload_date, duration, thumb}.
         """
         url = self.channel_videos_url(channel)
         opts = self._get_base_opts()
@@ -643,11 +645,15 @@ class YouTubeClient:
             vid = e.get('id')
             if not vid:
                 continue
+            dur = e.get('duration')
             out.append({
                 "video_id": vid,
                 "url": e.get('url') or f"https://www.youtube.com/watch?v={vid}",
                 "title": e.get('title'),
                 "upload_date": e.get('upload_date'),  # often None in flat mode
+                "duration": int(dur) if dur else None,  # seconds — present in flat mode
+                # stable unsigned thumbnail derived from the id (flat 'thumbnails' URLs are signed/expiring)
+                "thumb": f"https://i.ytimg.com/vi/{vid}/mqdefault.jpg",
             })
         return out
 

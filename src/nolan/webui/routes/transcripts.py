@@ -126,18 +126,22 @@ def register(app, ctx):
         channel = (body.get("channel") or "").strip()
         if not channel:
             raise HTTPException(status_code=400, detail="channel required")
-        return await tl.recommend_from_channel(channel, load_config(), limit=int(body.get("limit", 200) or 200))
+        return await tl.recommend_from_channel(channel, load_config(), limit=int(body.get("limit", 200) or 200),
+                                               min_sec=int(body.get("min_sec", 0) or 0),
+                                               max_sec=int(body.get("max_sec", 0) or 0))
 
     @app.get("/api/transcripts/topics")
     async def transcripts_topics(channel: str = Query(...), k: int = Query(default=0),
-                                 refresh: bool = Query(default=False)):
+                                 refresh: bool = Query(default=False),
+                                 min_sec: int = Query(default=0), max_sec: int = Query(default=0)):
         """Topic-model a channel's DISTINCT titles into ~k clusters (no LLM) for browse-by-topic + hand-pick."""
         import asyncio
         from nolan import transcript_lib as tl
         channel = channel.strip()
         if not channel:
             raise HTTPException(status_code=400, detail="channel required")
-        return await asyncio.to_thread(tl.topic_view, channel, int(k or 0), None, bool(refresh))
+        return await asyncio.to_thread(tl.topic_view, channel, int(k or 0), None, bool(refresh),
+                                       int(min_sec or 0), int(max_sec or 0))
 
     @app.post("/api/transcripts/diverse-sample")
     async def transcripts_diverse_sample(body: dict = Body(...)):
@@ -148,14 +152,17 @@ def register(app, ctx):
         if not channel:
             raise HTTPException(status_code=400, detail="channel required")
         return await asyncio.to_thread(tl.diverse_sample, channel, int(body.get("n", 20) or 20),
-                                       None, bool(body.get("refresh", False)))
+                                       None, bool(body.get("refresh", False)),
+                                       int(body.get("min_sec", 0) or 0), int(body.get("max_sec", 0) or 0))
 
     @app.get("/api/transcripts/coverage")
-    async def transcripts_coverage(k: int = Query(default=0), refresh: bool = Query(default=False)):
+    async def transcripts_coverage(k: int = Query(default=0), refresh: bool = Query(default=False),
+                                   min_sec: int = Query(default=0), max_sec: int = Query(default=0)):
         """Cross-channel COVERAGE map: topics the library covers vs what's still available (all channels)."""
         import asyncio
         from nolan import transcript_lib as tl
-        return await asyncio.to_thread(tl.coverage_map, None, int(k or 0), None, bool(refresh))
+        return await asyncio.to_thread(tl.coverage_map, None, int(k or 0), None, bool(refresh), 0,
+                                       int(min_sec or 0), int(max_sec or 0))
 
     @app.post("/api/transcripts/ingest-videos")
     async def transcripts_ingest_videos(body: dict = Body(...)):

@@ -125,6 +125,25 @@ def test_distinct_candidates_caps_giant_channel(tmp_path, monkeypatch):
     assert tl._distinct_candidates("big", cap=0)[1]["capped"] == 0            # cap=0 disables the bound
 
 
+def test_length_filter_drops_short_and_keeps_unknown(tmp_path, monkeypatch):
+    """min_sec/max_sec gate on duration; runs BEFORE the newest-cap; unknown duration (None) is kept."""
+    from nolan import transcript_lib as tl
+    survey = [{"video_id": "d1", "url": "", "title": "Long documentary", "duration": 3600, "in_library": False},
+              {"video_id": "d2", "url": "", "title": "Short promo clip", "duration": 90, "in_library": False},
+              {"video_id": "d3", "url": "", "title": "Mid feature", "duration": 1500, "in_library": False},
+              {"video_id": "d4", "url": "", "title": "Unknown length", "duration": None, "in_library": False}]
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False: survey)
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    monkeypatch.setattr(tl, "cluster_dedup_candidates",                        # isolate the length gate
+                        lambda cand, lib, **kw: {"distinct": cand, "dropped_lib": 0,
+                                                 "clusters": len(cand), "candidates": len(cand)})
+    distinct, stats, _ = tl._distinct_candidates("ch", min_sec=1200)          # 20 min floor
+    ids = {d["video_id"] for d in distinct}
+    assert ids == {"d1", "d3", "d4"}                                          # d2 (90s) dropped; d4 (None) kept
+    assert stats["dropped_length"] == 1
+    assert tl._distinct_candidates("ch")[1]["dropped_length"] == 0            # no filter → nothing dropped
+
+
 def test_coverage_map_gaps_and_strength(tmp_path, monkeypatch):
     """coverage_map clusters library + all-channel candidates into topics; a topic with library rows reads as
     covered, one with only available rows reads as a gap."""
