@@ -337,6 +337,7 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     storyboard tiles still power the whole-video filmstrip overview in the detail.)"""
     import tempfile
     import shutil as _sh
+    import time as _time
     from collections import Counter
 
     from nolan import transcript_frames as tfr
@@ -353,13 +354,18 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
         return await tfr.caption_frames_async([(fp, _wtext(t), t) for t, fp in frames], concurrency=12)
 
     # keyframe (the one visual tier): DOWNLOAD ONCE -> detect + grab LOCALLY (no per-frame CDN throttle / stalled-stream hangs)
+    _t = {"dl": 0.0, "det": 0.0, "grab": 0.0, "cap": 0.0, "emb": 0.0}
+    _c = _time.time()
     async with tfr.download_sem():                                # GLOBAL download cap (CDN-safe across jobs)
         dld, dur = await asyncio.to_thread(tfr.download_video, url, tmpd)
+    _t["dl"] = _time.time() - _c
     local = dld is not None
     src = str(dld) if local else url
     if job and not local:
         job.log("    - download failed; streaming fallback (may throttle)")
+    _c = _time.time()
     cuts, ddur = await asyncio.to_thread(tfr.detect_cuts, src, 0.4, 1.5, 120.0, 8, not local, dur)
+    _t["det"] = _time.time() - _c
     dur = dur or ddur or (float(windows[-1]["end"]) if windows else 0.0)
     sprites = await asyncio.to_thread(tfr.storyboard_tiles, url, sdir, 12.0, 80)   # filmstrip overview (free)
     base = tfr.plan_shots(cuts, dur) if (cuts and dur) else [
@@ -375,16 +381,16 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     async def _grab(times):
         return await asyncio.to_thread(tfr.ranged_keyframes, src, list(times), tmpd, not local, 8)
 
-    base_kfs = await _grab([t for t, _s, _e in base])
-    base_an = await _caption(base_kfs)
+    _c = _time.time(); base_kfs = await _grab([t for t, _s, _e in base]); _t["grab"] += _time.time() - _c
+    _c = _time.time(); base_an = await _caption(base_kfs); _t["cap"] += _time.time() - _c
     tmap = {round(t, 1): (s, e) for t, s, e in base}
     capframes = [(t, tmap.get(round(t, 1), (t, t))[0], tmap.get(round(t, 1), (t, t))[1],
                   a.get("content_kind", "")) for (t, fp), a in zip(base_kfs, base_an)]
     extra_kfs, extra_an = [], []
     extra_times = tfr.densify_broll(capframes) if densify else []
     if extra_times:
-        extra_kfs = await _grab(extra_times)
-        extra_an = await _caption(extra_kfs)
+        _c = _time.time(); extra_kfs = await _grab(extra_times); _t["grab"] += _time.time() - _c
+        _c = _time.time(); extra_an = await _caption(extra_kfs); _t["cap"] += _time.time() - _c
         if job:
             job.log(f"    - +{len(extra_kfs)} b-roll densify frames")
     kfs = base_kfs + extra_kfs
@@ -394,7 +400,12 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     if job and ats:
         tally = ", ".join(f"{k or '?'}:{c}" for k, c in Counter(ats).most_common())
         job.log(f"    - asset types: {tally}")
+    _c = _time.time()
     n = await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe", title, None, None, caps, ats)
+    _t["emb"] = _time.time() - _c
+    if job:
+        job.log(f"    ~ timing[{title[:28]}] {len(kfs)}f: dl {_t['dl']:.0f}s detect {_t['det']:.0f}s "
+                f"grab {_t['grab']:.0f}s caption {_t['cap']:.0f}s embed {_t['emb']:.0f}s")
     _sh.rmtree(tmpd, ignore_errors=True)                          # delete the temp download + grab jpgs
     return n
 
