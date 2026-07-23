@@ -426,7 +426,7 @@ _SKILLS_ROOT = REPO / ".agents" / "skills"
 _HF_DOMAIN = ["hyperframes-core", "hyperframes-animation", "hyperframes-keyframes",
               "hyperframes-creative", "hyperframes-cli", "hyperframes-registry",
               "media-use", "figma"]
-_HF_WORKFLOWS = ["faceless-explainer", "product-launch-video", "website-to-video",
+_HF_WORKFLOWS = ["hf-author", "product-launch-video", "website-to-video",
                  "embedded-captions", "talking-head-recut", "pr-to-video",
                  "motion-graphics", "music-to-video", "slideshow", "general-video",
                  "remotion-to-hyperframes"]
@@ -522,11 +522,11 @@ BRIDGES = [
      "hf": "the frame is emitted only if the spec validates",
      "wire": ("render-service/_lab_hyperframes/bridge/author.py", "validate_spec")},
     {"id": "compose-first-step5", "label": "Compose-first frame worker", "stage": "live",
-     "purpose": "faceless Step-5: map each storyboard Scene → a template, author bespoke "
+     "purpose": "hf-author Step-5: map each storyboard Scene → a template, author bespoke "
                 "only where none fits",
      "nolan": "agent proposes; catalog + gate decide",
      "hf": "the same frame artifact as the stock frame-worker",
-     "wire": (".agents/skills/faceless-explainer/sub-agents/compose-first-frame-worker.md",
+     "wire": (".agents/skills/hf-author/sub-agents/compose-first-frame-worker.md",
               "compose-first")},
     {"id": "ia-images", "label": "Internet Archive images", "stage": "lab",
      "purpose": "NOLAN asset acquisition extended with archive.org stills → the pool → "

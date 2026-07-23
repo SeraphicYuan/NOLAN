@@ -1,13 +1,13 @@
 ---
-name: faceless-explainer
-description: "Turn arbitrary text — an article, notes, a topic, a brief — into a faceless explainer video: there is no site or footage to capture, so the visuals are invented per scene (typography, abstract graphics, diagrams, data-viz). Use for topic explainers, concept breakdowns, how-tos, listicles. Not a product promo (/product-launch-video) or a site tour (/website-to-video). Unclear → /hyperframes."
+name: hf-author
+description: "Author a compose-first HyperFrames video essay from text — an article, notes, a topic, a brief, a paper. When an acquired asset pool is present (capture/extracted/asset-descriptions.md — a HERO pull-list of named logos/people/works plus a b-roll pool), consume it: place each hero at the beat it earns, prefer real footage/stills over invention. Invent visuals per scene (typography, abstract graphics, diagrams, data-viz) only where no asset fits. Use for topic explainers, concept breakdowns, essays, paper walkthroughs, how-tos. Not a product promo (/product-launch-video) or a site tour (/website-to-video). Unclear → /hyperframes."
 ---
 
 > **media-use**: Before sourcing audio/images/logos, call `/media-use` to resolve BGM/SFX/images from the HeyGen catalog and brand logos from their official sources. Run `--adopt` first to register existing assets. See `/media-use` skill.
 
-# Faceless Explainer to HyperFrames
+# HF Author — compose-first HyperFrames essays
 
-Use this skill to turn a body of text into an explainer video: pick a design system, plan a teaching story, and build it frame by frame in HyperFrames. **Faceless** means every visual is invented downstream — there is no capture step and no real asset inventory.
+Use this skill to turn a body of text into a video essay: pick a design system, plan a teaching story, and build it frame by frame in HyperFrames. **Asset-backed by default:** when `capture/extracted/asset-descriptions.md` exists, it is your asset menu — a HERO pull-list at the top (the specific named logos/people/works the piece is about, offered with "place at" anchors) plus a b-roll pool below. Place a hero at the beat it earns (usually once — an offer, not a mandate; a hero that earns no frame stays unused), prefer real footage/stills over generic b-roll, and **invent visuals only where no asset fits**. With no asset menu (legacy invent-only mode), every visual is invented downstream.
 
 > **Confirm the route before Step 0.** You are the orchestrator. Run each step, verify its gate, and only then continue. This skill is for **explaining a topic from text, with no product and no website to capture**. Route other intents elsewhere: a product launch/promo → `/product-launch-video`; a tour of a real site → `/website-to-video`; a GitHub PR → `/pr-to-video`; captions on existing footage → `/embedded-captions`; a short unnarrated motion graphic → `/motion-graphics`. If the user says only "make a video" or the route is uncertain, read `/hyperframes` first.
 

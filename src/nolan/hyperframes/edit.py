@@ -167,7 +167,7 @@ def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
                        f"BGM/SFX/images/logos via `/media-use`; land them in `{rel}/assets/`.")
     return f"""# New HyperFrames essay — kickoff (`{slug}`)
 
-Author an **asset-backed video essay** from the source text, using the `/faceless-explainer` authoring skill in
+Author an **asset-backed video essay** from the source text, using the `/hf-author` authoring skill in
 **NOLAN compose-first mode — the hybrid pipeline (the required default here)**. You are the orchestrator;
 run its steps in order and pass each gate.
 
@@ -256,7 +256,7 @@ def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool:
         encoding="utf-8")
     prompt = (f"New HyperFrames essay: read render-service/_lab_hyperframes/videos/{slug}/.hf_kickoff.md and execute "
               f"it — author an asset-backed video essay from that project's SOURCE.md into its compositions/frames/ "
-              f"using the /faceless-explainer authoring skill in NOLAN compose-first (hybrid) mode. Report the "
+              f"using the /hf-author authoring skill in NOLAN compose-first (hybrid) mode. Report the "
               f"composition id '{slug}' when done.")
     res = {"comp": slug, "dir": str(pdir), "prompt": prompt,
            "acquire_pool": bool(acquire_pool), "key_assets": key_assets}

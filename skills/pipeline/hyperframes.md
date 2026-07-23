@@ -117,7 +117,7 @@ un-marked steps abort the run.
 
 ## How to use this skill (routing)
 
-- **Starting a NEW essay from text** → the **`faceless-explainer`** skill orchestrates authoring
+- **Starting a NEW essay from text** → the **`hf-author`** skill (formerly `faceless-explainer`) orchestrates authoring
   (`hyperframes init` → pick a frame preset → write `STORYBOARD.md`/`SCRIPT.md` → `audio.mjs` for
   the VO); the scaffold entry is `hfedit.new_essay(name, script, theme=…)` in
   `src/nolan/hyperframes/edit.py`. There is NO `nolan new-essay` CLI. Then `nolan hf-finish`.

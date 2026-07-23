@@ -117,7 +117,7 @@ Ordering: `new_essay` → **key-assets** → `acquire_pool` → author (pool-con
 
 - `manifest` prepends a **HERO section** to `asset-descriptions.md` (elevated, with narrative role +
   `collage_ready`/`cutout` flags), files under `capture/keyassets/`.
-- Authoring (the `faceless-explainer` skill + `.hf_kickoff.md` in `new_essay`) changes to **place
+- Authoring (the `hf-author` skill + `.hf_kickoff.md` in `new_essay`) changes to **place
   HERO assets at named beats first** (via `sync.py` `at`/`anchor`), then fill from the acquisition
   pool. **Cutouts** flow into the `spotlight`/collage blocks (`data.src` resolved against the comp
   dir).

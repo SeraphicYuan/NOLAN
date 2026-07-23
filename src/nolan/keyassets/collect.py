@@ -4,7 +4,7 @@ canonical `key_assets.json`.
 For each entity (hero-first), resolve its top desired assets via the provider search, background-remove
 the collage-ready stills, and write everything under `capture/keyassets/` named `{entity_id}_{type}[_cutout]`
 so the /keyassets gallery attaches each file to its entity automatically. Best-effort + loud: a miss is
-logged, never fatal. VLM identity-verify + the /faceless-explainer HERO wiring are P3.
+logged, never fatal. VLM identity-verify + the /hf-author HERO wiring are P3.
 
     python -X utf8 -m nolan.keyassets.collect --project projects/the-diamond-illusion [--limit 4] [--per 2]
 """

@@ -728,7 +728,7 @@ def register(app, ctx):
         job = get_job_manager().start("remove-bg", _worker, meta={"comp": comp, "path": path})
         return {"job_id": job.id}
 
-    # ---- new essay (scaffold script/assets -> dispatch the faceless-explainer agent)
+    # ---- new essay (scaffold script/assets -> dispatch the hf-author agent)
 
     @app.get("/api/hf/agents")
     async def hf_agents():

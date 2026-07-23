@@ -23,7 +23,18 @@ from typing import List
 
 from .edit import BRIDGE, REPO, _project_dir, ensure_storyboard, list_frames, recompose_frame
 
-SKILL_SCRIPTS = REPO / ".agents" / "skills" / "faceless-explainer" / "scripts"
+def _resolve_skill() -> "tuple[str, Path]":
+    """Locate the HF authoring skill by NAME (not a brittle hardcode) so a rename/relocation doesn't
+    silently break the render steps. Prefers the current `hf-author`, falls back to the legacy
+    `faceless-explainer` name for back-compat with older installs (kept as an alias symlink)."""
+    for name in ("hf-author", "faceless-explainer"):
+        d = REPO / ".agents" / "skills" / name
+        if (d / "scripts").is_dir():
+            return name, d / "scripts"
+    return "hf-author", REPO / ".agents" / "skills" / "hf-author" / "scripts"   # canonical (miss surfaced at _run)
+
+
+SKILL_NAME, SKILL_SCRIPTS = _resolve_skill()
 
 
 def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, soft: bool = False, env=None) -> bool:
@@ -71,7 +82,7 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     # fail LOUD up front if a skill script path is wrong (a silent bad node path left a stale index + cost a render)
     for _s in ("audio.mjs", "captions.mjs", "assemble-index.mjs"):
         if not (SKILL_SCRIPTS / _s).exists():
-            raise RuntimeError(f"hf-finish: skill script missing — {SKILL_SCRIPTS / _s}. Is the faceless-explainer skill installed?")
+            raise RuntimeError(f"hf-finish: skill script missing — {SKILL_SCRIPTS / _s}. Is the {SKILL_NAME} skill installed?")
     print(f"hf-finish: {comp}  (render={render}/{render_mode}, sound={sound}{', DRY-RUN' if dry_run else ''})")
 
     # 0 · guarantee STORYBOARD.md (audio/captions/assemble-index HARD-require it; new_essay doesn't scaffold it)
@@ -283,7 +294,7 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
         if total > 300:                                   # 5+ min → chunk it
             render_env = {**os.environ, "PRODUCER_ENABLE_CHUNKED_ENCODE": "1"}
             print(f"  (chunked encode — {total:.0f}s render)")
-        _run("render", ["npx", "hyperframes", "render", "--skill=faceless-explainer", "--quality", "high",
+        _run("render", ["npx", "hyperframes", "render", f"--skill={SKILL_NAME}", "--quality", "high",
                         "--output", "renders/video.mp4"], cwd=pdir, dry=dry_run, env=render_env)
     # 8b · DUCKED SFX post-mix: the render above is VO(+bgm)-only, so now mix the scene SFX ON TOP
     #      with that audio sidechain-ducked under each cue (natural registry gains, no re-alignment —

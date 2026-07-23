@@ -314,9 +314,9 @@ def test_finish_dag_includes_scene_sfx_step():
 
 def test_assemble_index_mounts_sfx():
     """The render side consumes audio_meta.sfx (else the field is a phantom)."""
-    p = REPO / ".agents/skills/faceless-explainer/scripts/assemble-index.mjs"
+    p = REPO / ".agents/skills/hf-author/scripts/assemble-index.mjs"
     if not p.exists():
         import pytest
-        pytest.skip("faceless-explainer skill not installed")
+        pytest.skip("hf-author skill not installed")
     text = p.read_text(encoding="utf-8", errors="replace")
     assert "audio.sfx" in text, "assemble-index no longer mounts audio_meta.sfx"
