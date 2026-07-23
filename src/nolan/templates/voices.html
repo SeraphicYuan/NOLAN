@@ -72,6 +72,7 @@
   .pill.ok{background:var(--vgd);color:var(--vg)} .pill.warn{background:var(--vwd);color:var(--vw)}
   .pill.error{background:rgba(229,72,77,.15);color:var(--ve)} .pill.none{background:var(--vp2);color:var(--vf)}
   .pill.run{background:var(--vad);color:var(--va)}
+  .dtag{display:inline-block;font-size:10.5px;font-weight:600;color:#c084fc;background:rgba(192,132,252,.16);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
   .acts{display:flex;gap:6px;justify-self:end}
   .ico{width:32px;height:32px;border-radius:8px;border:1px solid var(--vbd);background:transparent;
     color:var(--vd);cursor:pointer;display:grid;place-items:center;font-size:14px;padding:0}
@@ -267,9 +268,10 @@ function renderWorkspace(j){
       ? `<button class="ico" title="Play" onclick="playBeat('${b.play_url}')">▷</button>
          <button class="ico rt" title="Retake this beat" onclick="retake(${b.index})">⟳</button>`
       : `<button class="ico rt" title="Generate this beat" onclick="retake(${b.index})">⟳</button>`;
+    const dtag = b.delivery ? ` <span class="dtag" title="${esc(b.delivery)} delivery (spoken with this tone)">🎭 ${esc(b.delivery)}</span>` : '';
     return `<div class="beat${cls}" id="beat-${b.index}" ${tip}>
       <div class="idx">${b.index+1}</div>
-      <div style="min-width:0"><div class="ttl">${esc(b.title||'')}</div><div class="prev">${esc(b.preview||'')}</div></div>
+      <div style="min-width:0"><div class="ttl">${esc(b.title||'')}${dtag}</div><div class="prev">${esc(b.preview||'')}</div></div>
       <div class="words">${b.words} w</div>
       <div class="dur">${mmss(b.duration_s)}</div>
       ${pill(b)}<div class="acts">${acts}</div></div>`;
@@ -277,7 +279,7 @@ function renderWorkspace(j){
   ws.innerHTML=`
     <div class="sh">
       <div><span class="big">${mmss(s.total_s)}</span> <span class="tgt">${s.target_s?('/ '+mmss(s.target_s)+' target'):''}</span></div>
-      <div class="meta">${s.sections} beats · gate ${gate}</div>
+      <div class="meta">${s.sections} beats · gate ${gate}${s.engine?` · <span style="color:var(--va)" title="active TTS engine">${esc(s.engine)}</span>`:''}</div>
       <div style="flex:1"></div>
       <div class="takes"><button class="chip" onclick="toggleTakes()">◷ takes ▾</button>
         <div class="takemenu" id="takemenu"></div></div>
@@ -285,6 +287,7 @@ function renderWorkspace(j){
     ${provline?`<div class="prov">${provline}</div>`:''}
     <div class="beats">${rows}</div>
     <div class="foot">
+      <button class="btn" onclick="authorArc()" title="LLM marks the pivot beats with a delivery tone (emotion arc)">🎭 Author emotion arc</button>
       ${s.captions?'':'<button class="btn warn" onclick="rebuildCaptions()">⚠ No captions — Build</button>'}
       ${s.has_mp3?`<a class="btn" href="${j.mp3_url}" download>⬇ Download mp3</a>`:''}
       <div style="flex:1"></div>
@@ -330,6 +333,19 @@ async function restoreTake(id){
   await fetch('/api/voiceover-takes/'+encodeURIComponent(curSlug)+'/restore',
     {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({take_id:id})});
   $('#takemenu').classList.remove('open'); loadBeats();
+}
+async function authorArc(){
+  // P6: the LLM marks the pivot beats with a delivery tone → [delivery:] in script.md → instruct.
+  const slug=curSlug, st=$('#nstatus');
+  if(!slug){st.textContent='pick a project';return;}
+  st.textContent='Authoring emotion arc (LLM)…';
+  const r=await fetch('/api/script-projects/'+encodeURIComponent(slug)+'/emotion-arc',{method:'POST'});
+  if(!r.ok){const e=await r.json().catch(()=>({}));st.textContent='arc failed: '+(e.detail||r.statusText);return;}
+  const j=await r.json();
+  st.textContent = j.count
+    ? `✓ marked ${j.count} pivot beats — ${j.marked.map(m=>(m.index+1)+'→'+m.delivery).join(', ')}. Regenerate to hear it.`
+    : 'no pivot beats marked (arc left neutral)';
+  loadBeats();
 }
 async function rebuildCaptions(){
   const st=$('#nstatus'); st.textContent='Building captions…';

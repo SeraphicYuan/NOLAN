@@ -377,6 +377,29 @@ def register(app, ctx):
             raise HTTPException(status_code=404, detail="project not found")
         return {"candidates": script_project_store.angle_candidates(slug)}
 
+    @app.post("/api/script-projects/{slug}/emotion-arc")
+    async def script_projects_emotion_arc(slug: str):
+        """P6: LLM assigns an emotion arc — marks the pivot beats with delivery notes and writes
+        `[delivery: <tone>]` into script.md (A6 → per-beat CosyVoice instruct)."""
+        from pathlib import Path as _P
+        from nolan.config import load_config
+        from nolan.llm import create_text_llm
+        from nolan.script import parse_script_sections
+        from nolan.emotion_arc import assign_arc, apply_arc_to_script, TONE_REGISTRY
+        if not script_project_store.exists(slug):
+            raise HTTPException(status_code=404, detail="project not found")
+        md_path = _P("projects") / slug / "script.md"
+        if not md_path.exists() or not script_project_store.vo_readiness(slug)["written"]:
+            raise HTTPException(status_code=409, detail="script not written — promote a draft first")
+        md = md_path.read_text(encoding="utf-8")
+        sections = parse_script_sections(md)
+        deliveries = await assign_arc(sections, generate=create_text_llm(load_config()).generate)
+        md_path.write_text(apply_arc_to_script(md, deliveries), encoding="utf-8")
+        marked = [{"index": i, "title": sections[i].get("title"), "delivery": d,
+                   "desc": TONE_REGISTRY.get(d, "").split("—")[0].strip()}
+                  for i, d in enumerate(deliveries) if d]
+        return {"marked": marked, "count": len(marked)}
+
     @app.get("/api/script-projects/{slug}/vo-readiness")
     async def script_projects_vo_readiness(slug: str):
         """Is script.md ready to voice (a promoted script, not the scaffold)? Drives the

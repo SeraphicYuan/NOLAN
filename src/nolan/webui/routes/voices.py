@@ -299,10 +299,19 @@ def register(app, ctx):
         except Exception:
             pass
 
+        engine = "OmniVoice"
+        try:
+            from nolan.config import load_config
+            engine = {"cosyvoice3": "CosyVoice 3.0", "omnivoice": "OmniVoice"}.get(
+                load_config().tts.provider, load_config().tts.provider)
+        except Exception:
+            pass
+
         return {
             "slug": slug, "beats": beats, "readiness": ready, "provenance": prov,
             "summary": {"total_s": measure.get("total_s"), "target_s": target_s,
                         "gate_ok": measure.get("ok"), "sections": len(beats),
+                        "engine": engine,
                         "has_mp3": (vo / "voiceover.mp3").exists(),
                         "captions": (vo / "voiceover.srt").exists()},
             "mp3_url": (f"/api/voiceover/{quote(slug)}/voiceover.mp3"
