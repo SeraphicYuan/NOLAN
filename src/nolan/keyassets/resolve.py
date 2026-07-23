@@ -26,7 +26,7 @@ _QUALIFIER = {"logo": "logo", "portrait": "portrait", "product": "product photo"
 # worse than a missing one — the human hand-adds it); `related` (evocative) assets are kept but flagged
 # (their match is loose by design). Capped so a stubborn beat doesn't burn many vision calls.
 _VERIFY_IMAGE_TYPES = {"logo", "portrait", "product", "artwork", "document", "photo", "map"}
-_MAX_VERIFY_ATTEMPTS = 5
+_MAX_VERIFY_ATTEMPTS = 3          # candidates tried per need before giving up (was 5 — trimmed for speed)
 
 # Sources to BOOST for a named-entity asset (precision) — institutional/encyclopedic first. Names must
 # match ImageSearchClient provider names. Unlisted → the client's own ranking.
@@ -131,7 +131,7 @@ def _provenance(res, query: str) -> dict:
 
 
 def _verify_match(cfg, path: Path, subject: str, *, evocative: bool = False,
-                  retries: int = 2) -> Optional[bool]:
+                  retries: int = 1) -> Optional[bool]:
     """Ask the VLM 'does this image match <subject>?'. Returns True (confirmed), False (clearly wrong),
     or None (couldn't reach a verdict after retries). CRITICAL: an error/timeout NEVER returns True — a
     rate-limited call must not become a false confirmation (that shipped a Call-of-Duty cover as the
@@ -283,7 +283,7 @@ def _verify_video(cfg, video_path: Path, subject: str) -> Optional[bool]:
     from nolan.acquire.context import _ffmpeg
     ff = _ffmpeg()
     verdicts = []
-    for ss in (1.0, 2.5, 4.0):
+    for ss in (1.0, 3.0):                                    # 2 frames (was 3) — early-exits on first confirm
         fd, tmp = tempfile.mkstemp(suffix=".jpg")
         os.close(fd)
         tmp = Path(tmp)

@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-22
 
+## Key-Assets — collect concurrency (10-way) + trimmed verify budget (2026-07-23)
+
+The collect was sequential + VLM-gated (every kept asset = 1-3 vision calls, all serial) → many minutes. `collect.collect` now resolves entities in a **10-way ThreadPoolExecutor** (I/O-bound: network + vision waits parallelize near-linearly; each worker thread runs its own asyncio.run for the vision call — safe). Cutouts guarded by a Lock (birefnet ONNX session isn't thread-safe); per-entity log lines grouped + emitted on completion. `client` (ImageSearchClient) shared — its rate-limiter is already locked; out paths are unique per entity+type so no download collision. VERIFY BUDGET TRIMMED: candidate attempts per need 5→3 (`_MAX_VERIFY_ATTEMPTS`), footage frames 3→2 (early-exits on first confirm), `_verify_match` retries 2→1. 23 tests green.
+
 ## Key-Assets — surface + EDIT queries/identifiers on the /keyassets page (2026-07-23)
 
 Review/edit the Tier-B query-gen before a collect. `view.build_view` now exposes each entity's `identifiers` + `queries_locked` (per-asset `queries` already rode in via DesiredAsset.to_dict). keyassets.html renders the identifiers line + per-asset query list (monospace) and a per-entity '✎ queries' toggle → an inline editor (identifiers input + one textarea of queries per asset + Save). New `POST /api/keyassets/edit` (+ `_patch_entity`) writes the edit into BOTH key_assets.proposal.json and canonical key_assets.json (raw-JSON patch, resolved data untouched) and sets `queries_locked=True` so build_proposal's querygen won't overwrite a human edit. 23 tests green; screenshot-verified live. Minor follow-up: cutout PNGs render dark-on-dark as gallery thumbs (add a checker/white tile).

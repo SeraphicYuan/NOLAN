@@ -59,14 +59,21 @@ def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optio
     domain = derive_domain(cfg, project_dir)
     if domain:
         log(f"  domain: {domain!r} — woven into ambiguous-name queries + verify")
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from threading import Lock
+
+    from .registry import CUTOUT_TYPES
     ents = sorted(proposal.entities, key=lambda e: e.priority != "hero")   # hero-first
     if limit:
         ents = ents[:limit]
     resolved: Dict[str, List[dict]] = {}
-    got = 0
+    cutout_lock = Lock()          # birefnet's ONNX session isn't thread-safe → serialize cutouts
 
-    for e in ents:
-        recs = resolved.setdefault(e.id, [])
+    def _resolve_entity(e):
+        """Resolve one entity's assets (thread-safe: unique out paths, no shared mutation). Returns
+        (entity_id, records, log_lines) — logs grouped so a completed entity prints together."""
+        recs: List[dict] = []
+        logs = [f"  [{e.name}]"]
         type_n: Dict[str, int] = {}
         for d in e.desired_assets[:per_entity]:
             is_video = d.type == "footage"
@@ -75,36 +82,45 @@ def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optio
             stem = f"{e.id}_{d.type}" + (f"_{n}" if n else "")
             out = ka_dir / (stem + (".mp4" if is_video else ".jpg"))
             tag = "~" if d.relevance == "related" else ""
-            log(f"  [{e.name}] {d.type}{tag} …")
             if is_video:
                 r = resolve_video(cfg, client, e, d, out, verify=verify, domain=domain)
             else:
                 r = resolve_image(cfg, client, e, d, out, verify=verify, domain=domain)
             if not r:
                 miss = "no confirmed match" if (verify and d.relevance == "exact") else "none found"
-                log(f"    ✗ {miss}")
+                logs.append(f"    ✗ {d.type}{tag}: {miss}")
                 continue
-            got += 1
-            vmark = "" if not r.get("verified") else " ✓verified"
+            vmark = " ✓verified" if r.get("verified") else ""
             recs.append({"file": _rel(out, project_dir), "type": d.type, "variant": "original",
                          "collage_ready": d.collage_ready, "relevance": d.relevance,
                          "verified": bool(r.get("verified")),
                          "source": r.get("source", ""), "source_url": r.get("source_url", ""),
                          "license": r.get("license", ""), "query": r.get("query", "")})
-            log(f"    + {out.name}  ({r.get('source', '?')}){vmark}")
-            from .registry import CUTOUT_TYPES
+            logs.append(f"    + {out.name}  ({r.get('source', '?')}){vmark}")
             if do_cutout and d.collage_ready and d.type in CUTOUT_TYPES and not is_video:   # meaningful cutouts only
                 try:
                     cut = ka_dir / f"{stem}_cutout.png"
-                    cutout_file(out, dst=cut, trim=True)
+                    with cutout_lock:
+                        cutout_file(out, dst=cut, trim=True)
                     if cut.exists():
                         recs.append({"file": _rel(cut, project_dir), "type": d.type, "variant": "cutout",
                                      "collage_ready": True, "relevance": d.relevance,
                                      "processing": ["bg_removed", "trim"], "source": r.get("source", "")})
-                        got += 1
-                        log(f"    ✂ {cut.name}  (cutout)")
+                        logs.append(f"    ✂ {cut.name}  (cutout)")
                 except Exception as ex:
-                    log(f"    cutout failed: {type(ex).__name__}: {ex}")
+                    logs.append(f"    cutout failed: {type(ex).__name__}: {ex}")
+        return e.id, recs, logs
+
+    workers = min(10, max(1, len(ents)))                       # 10-way concurrent (I/O-bound: net + VLM waits)
+    log(f"  resolving {len(ents)} entities · {workers}-way concurrent")
+    got = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for fut in as_completed([pool.submit(_resolve_entity, e) for e in ents]):
+            eid, recs, logs = fut.result()
+            resolved[eid] = recs
+            got += len(recs)
+            for line in logs:
+                log(line)
 
     _write_manifest(project_dir, proposal, resolved)
     log(f"COLLECTED {got} file(s) → {ka_dir}  ·  key_assets.json written")
