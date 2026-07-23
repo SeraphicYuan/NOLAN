@@ -335,25 +335,32 @@ def cluster_dedup_candidates(cand, lib_titles, thr_lib=0.87, thr_dup=0.90):
     Returns {distinct, dropped_lib, clusters, candidates}."""
     if not cand:
         return {"distinct": [], "dropped_lib": 0, "clusters": 0, "candidates": 0}
-    cv = _embed_titles([c.get("title") or "" for c in cand])
-    lv = _embed_titles(lib_titles) if lib_titles else []
-
-    def cos(a, b):
-        return sum(x * y for x, y in zip(a, b))
-
-    survivors, dropped = [], 0
-    for c, v in zip(cand, cv):
-        if lv and max(cos(v, l) for l in lv) >= thr_lib:
-            dropped += 1
-            continue
-        survivors.append((c, v))
-    groups, gvecs = [], []
-    for c, v in survivors:
-        j = next((i for i, gv in enumerate(gvecs) if cos(v, gv) >= thr_dup), None)
-        if j is None:
-            groups.append([c]); gvecs.append(v)
-        else:
-            groups[j].append(c)
+    import numpy as np
+    cv = np.asarray(_embed_titles([c.get("title") or "" for c in cand]), dtype=np.float32)  # (n, d) unit vecs
+    # (1) drop candidates near an existing library title -- one vectorized (n x m) cosine matrix, max per row
+    if lib_titles:
+        lv = np.asarray(_embed_titles(lib_titles), dtype=np.float32)
+        keep = (cv @ lv.T).max(axis=1) < thr_lib
+    else:
+        keep = np.ones(len(cv), dtype=bool)
+    dropped = int((~keep).sum())
+    surv_idx = [i for i in range(len(cand)) if keep[i]]
+    # (2) leader-cluster survivors at thr_dup. The inner "max cosine to any leader" is a BLAS matvec against a
+    # preallocated leader matrix -- O(n * leaders * d) but vectorized, so ~1000x the old pure-Python cos loop
+    # (which made a 2500-title channel take minutes). Deterministic: survivors kept in original order.
+    groups: List[List[Dict[str, Any]]] = []
+    leaders = np.empty((len(surv_idx), cv.shape[1]), dtype=np.float32) if surv_idx else np.empty((0, cv.shape[1]), dtype=np.float32)
+    ng = 0
+    for i in surv_idx:
+        v = cv[i]
+        if ng:
+            sims = leaders[:ng] @ v
+            j = int(sims.argmax())
+            if sims[j] >= thr_dup:
+                groups[j].append(cand[i])
+                continue
+        leaders[ng] = v; ng += 1
+        groups.append([cand[i]])
     distinct = []
     for grp in groups:
         rep = min(grp, key=lambda c: len(c.get("title") or ""))
