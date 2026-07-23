@@ -329,13 +329,12 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
 async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
                                visual: str = "keyframe", max_frames: int = 0, densify: bool = False,
                                job=None) -> int:
-    """Capture + embed the visual tier for ONE transcript video. `keyframe` (default): DOWNLOAD the video
-    ONCE to a temp file, then run FULL-RES scene-cut detection + one frame per shot (b-roll optionally
-    densified) ALL LOCALLY -- one sustained transfer instead of ~N throttled googlevideo range requests
-    (batch-scale bottleneck + no stalled-stream hangs); caption-only (BGE over the gemma caption incl. its
-    `shot` field), CLIP skipped; temp file deleted after. `storyboard`: the CHEAP tier -- caption the FREE
-    spritesheet tiles (NO video download, no CDN load), lower-res but searchable. `max_frames` > 0 = an
-    optional safety cap. Returns the frame count."""
+    """Capture + embed the visual tier for ONE transcript video: DOWNLOAD the video ONCE to a temp file,
+    then run FULL-RES scene-cut detection + one frame per shot (b-roll optionally densified) ALL LOCALLY --
+    one sustained transfer instead of ~N throttled googlevideo range requests (batch-scale bottleneck + no
+    stalled-stream hangs); caption-only (BGE over the gemma caption incl. its `shot` field), CLIP skipped;
+    temp file deleted after. `max_frames` > 0 = an optional safety cap. Returns the frame count. (The free
+    storyboard tiles still power the whole-video filmstrip overview in the detail.)"""
     import tempfile
     import shutil as _sh
     from collections import Counter
@@ -353,19 +352,7 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     async def _caption(frames):
         return await tfr.caption_frames_async([(fp, _wtext(t), t) for t, fp in frames], concurrency=12)
 
-    if visual == "storyboard":                                    # CHEAP tier: caption the FREE tiles, NO download
-        tiles = await asyncio.to_thread(tfr.storyboard_tiles, url, sdir, 12.0, 150)   # sdir = also the filmstrip
-        if not tiles:
-            _sh.rmtree(tmpd, ignore_errors=True); return 0
-        an = await _caption(tiles)
-        if job:
-            job.log(f"    - storyboard tier: {len(tiles)} free tiles captioned (no download)")
-        n = await asyncio.to_thread(tfr.embed_frames, tiles, yid, url, "storyboard", title, None, None,
-                                    [a.get("caption", "") for a in an], [a.get("asset_type", "") for a in an])
-        _sh.rmtree(tmpd, ignore_errors=True)
-        return n
-
-    # keyframe: DOWNLOAD ONCE -> detect + grab LOCALLY (no per-frame CDN throttle / stalled-stream hangs)
+    # keyframe (the one visual tier): DOWNLOAD ONCE -> detect + grab LOCALLY (no per-frame CDN throttle / stalled-stream hangs)
     dld, dur = await asyncio.to_thread(tfr.download_video, url, tmpd)
     local = dld is not None
     src = str(dld) if local else url

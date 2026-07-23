@@ -121,7 +121,7 @@
         <div class="row">
           <input type="text" id="channel" placeholder="channel URL / @handle / id (e.g. https://www.youtube.com/bloomberg)">
           <label class="dim">videos <input type="number" id="limit" value="10" min="1" max="200" style="width:60px"></label>
-          <select id="vmode" title="Visual tier"><option value="keyframe">keyframe + caption</option><option value="storyboard">storyboard (free)</option><option value="off">no visual</option></select>
+          <select id="vmode" title="Visual tier"><option value="keyframe">keyframe + caption</option><option value="off">no visual</option></select>
           <label class="dim" title="Re-process videos already indexed"><input type="checkbox" id="refresh"> force</label>
           <label class="dim" title="Extra frames inside long b-roll shots (slower)"><input type="checkbox" id="densify"> densify b-roll</label>
           <button class="btn" id="addBtn" onclick="addChannel()">Index channel</button>
