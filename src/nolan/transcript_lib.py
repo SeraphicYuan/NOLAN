@@ -371,6 +371,140 @@ async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, m
     add = sum(1 for i in items if i["verdict"] == "add")
     return {"coverage": (data.get("coverage") or "").strip(), "items": items, "add": add, **stats}
 
+
+# ---------------------------------------------------------------------------
+# Topic modelling (no-LLM): cluster a channel's DISTINCT titles into topics so an
+# editor can browse by subject, hand-pick, or draw a maximally-diverse sample
+# (one per topic) WITHOUT paying the LLM. Reuses the same BGE title embeddings.
+# ---------------------------------------------------------------------------
+import re as _re
+
+# generic documentary/channel boilerplate that must NOT become a topic label
+_TOPIC_STOP = set((
+    "the a an of to in on for and or with from at by as is are was were be been being this that these those "
+    "how why what when who whom which where you your we our it its his her their they them he she i my me "
+    "full documentary official trailer part chapter episode video hd 4k series story history the1 vs feat ft "
+    "american experience pbs bloomberg frontline nova bbc history channel documentaries doc films film movie "
+    "complete extended edition remastered english subtitles subtitle new watch free online all about into "
+    "one two three four five making behind scenes special report episode1 season live stream"
+).split())
+
+
+def _tok(title: str) -> List[str]:
+    return [w for w in _re.findall(r"[a-z0-9']{3,}", (title or "").lower())
+            if w not in _TOPIC_STOP and not w.isdigit()]
+
+
+_FRAGMENT = _re.compile(r"\b(promo|preview|trailer|teaser|title sequence|coming (to|soon)|clip \d|"
+                        r"sneak peek|sneak peek|behind the scenes|extended audio description|\basl\b)\b", _re.I)
+
+
+def _is_fragment(title: str) -> bool:
+    """Promo / trailer / clip / ASL-variant — a poor 'representative' pick even if it's a cluster medoid."""
+    return bool(_FRAGMENT.search(title or ""))
+
+
+def _topic_label(titles: List[str], gdf: Dict[str, int], n_docs: int) -> str:
+    """Cheap TF-IDF-ish label for a cluster: the words most distinctive to it."""
+    import math
+    from collections import Counter
+    c: Counter = Counter()
+    for t in titles:
+        for w in set(_tok(t)):
+            c[w] += 1
+    if not c:
+        return "misc"
+    scored = sorted(c.items(), key=lambda kv: kv[1] * math.log((n_docs + 1) / (gdf.get(kv[0], 1))),
+                    reverse=True)
+    top = [w for w, _ in scored[:3]]
+    return " · ".join(top) if top else "misc"
+
+
+def topic_cluster(distinct: List[Dict[str, Any]], k: int) -> List[Dict[str, Any]]:
+    """Cluster the DISTINCT candidate titles into `k` topic groups (agglomerative, cosine on the
+    normalized BGE title vectors). Each group carries a keyword `label`, its `size`, and a `medoid`
+    (the title closest to the cluster centroid — the single most representative pick). No LLM."""
+    if not distinct:
+        return []
+    import numpy as np
+    from collections import Counter
+    vecs = _embed_titles([d.get("title") or "" for d in distinct])
+    X = np.asarray(vecs, dtype=float)
+    k = max(1, min(int(k), len(distinct)))
+    if k <= 1 or len(distinct) <= 2:
+        labels = [0] * len(distinct)
+    else:
+        # Spherical KMeans (vectors are L2-normalized → euclidean KMeans == cosine). KMeans gives
+        # BALANCED partitions — essential for "one representative per topic": agglomerative average-linkage
+        # chains 900 titles into one 500-item blob + tiny satellites, which collapses the diversity spread.
+        from sklearn.cluster import KMeans
+        labels = KMeans(n_clusters=k, random_state=0, n_init=4).fit_predict(X).tolist()
+    gdf: Counter = Counter()
+    for d in distinct:
+        for w in set(_tok(d.get("title") or "")):
+            gdf[w] += 1
+    buckets: Dict[int, List[int]] = {}
+    for i, lab in enumerate(labels):
+        buckets.setdefault(int(lab), []).append(i)
+    out = []
+    for lab, idxs in buckets.items():
+        sub = X[idxs]
+        centroid = sub.mean(axis=0)
+        sims = sub @ centroid                                  # unit vectors → dot == cosine to centroid
+        # Representative = most central title, but skip promos/trailers/clips when a full doc is available.
+        order = sorted(range(len(idxs)), key=lambda j: -sims[j])
+        full = [j for j in order if not _is_fragment(distinct[idxs[j]].get("title") or "")]
+        medoid_local = (full or order)[0]
+        medoid_id = distinct[idxs[medoid_local]].get("video_id")
+        items = [distinct[i] for i in idxs]
+        out.append({"cluster_id": int(lab),
+                    "label": _topic_label([distinct[i].get("title") or "" for i in idxs], gdf, len(distinct)),
+                    "size": len(idxs), "medoid_id": medoid_id, "items": items})
+    out.sort(key=lambda g: -g["size"])
+    return out
+
+
+def _distinct_candidates(channel: str, catalog_dir: Optional[Path] = None,
+                         limit: int = 0) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
+    """Survey → drop already-in-library → cluster_dedup (collapse near-identical titles) → the DISTINCT
+    add-candidates that both the LLM recommender and the topic view operate on. Shared spine."""
+    survey = survey_channel(channel, None, catalog_dir)
+    cand = [s for s in survey if not s["in_library"]]
+    lib_titles = [e.get("title") or "" for e in load_catalog(catalog_dir).values() if e.get("title")]
+    dd = cluster_dedup_candidates(cand, lib_titles)
+    distinct = dd["distinct"][:limit] if limit else dd["distinct"]
+    stats = {"total": len(survey), "candidates": dd["candidates"], "dropped_redundant": dd["dropped_lib"],
+             "dup_clusters": dd["clusters"], "distinct": len(dd["distinct"])}
+    return distinct, stats, lib_titles
+
+
+def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Browse a channel BY TOPIC: distinct candidates grouped into ~k topic clusters (auto ≈ n/8 when
+    k=0), each labelled by its distinctive keywords, medoid pre-flagged. For hand-selection. No LLM."""
+    distinct, stats, _ = _distinct_candidates(channel, catalog_dir)
+    if not distinct:
+        return {"groups": [], "k": 0, **stats}
+    if not k:
+        k = max(4, min(40, round(len(distinct) / 8) or 1))
+    groups = topic_cluster(distinct, k)
+    return {"groups": groups, "k": len(groups), **stats}
+
+
+def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """NO-LLM recommender: cluster the distinct candidates into exactly `n` topics and return the medoid
+    of each — n picks spread maximally across the channel's subject space, for zero API cost."""
+    distinct, stats, _ = _distinct_candidates(channel, catalog_dir)
+    if not distinct:
+        return {"picks": [], "groups": 0, **stats}
+    n = max(1, min(int(n), len(distinct)))
+    groups = topic_cluster(distinct, n)
+    picks = []
+    for g in groups:
+        med = next((it for it in g["items"] if it.get("video_id") == g["medoid_id"]), g["items"][0])
+        picks.append({**med, "topic": g["label"], "verdict": "add", "cluster_size": g["size"]})
+    return {"picks": picks, "groups": len(groups), **stats}
+
+
 def fetch_transcript_with_cues(url: str, out_dir: Optional[Path] = None) -> Tuple[Dict[str, Any], Any]:
     """Download ONLY a video's captions (no video) → (metadata, Transcript-with-cues).
 

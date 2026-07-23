@@ -93,6 +93,7 @@
 
     <div class="tabs">
       <div class="tab on" data-tab="search" onclick="showTab('search')">Search</div>
+      <div class="tab" data-tab="curate" onclick="showTab('curate')">Curate</div>
       <div class="tab" data-tab="sources" onclick="showTab('sources')">Sources</div>
     </div>
 
@@ -116,6 +117,47 @@
       </div>
     </div>
 
+    <!-- ===== CURATE ===== -->
+    <div id="tab-curate" style="display:none">
+      <div class="card">
+        <div class="row">
+          <input type="text" id="cu-channel" placeholder="channel URL / @handle / id — e.g. https://www.youtube.com/@AmericanExperiencePBS">
+          <button class="btn" onclick="cuSurvey()">Grab all titles</button>
+          <span id="cu-stat" class="dim"></span>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="seg" id="cu-view">
+            <button data-v="flat" class="on" onclick="cuSetView('flat')">≣ All titles</button>
+            <button data-v="topic" onclick="cuSetView('topic')">🗂 By topic</button>
+          </div>
+          <span style="flex:1"></span>
+          <label class="dim">return <input type="number" id="cu-n" value="20" min="1" max="200" style="width:56px"></label>
+          <button class="btn ghost mini" onclick="cuRecommend('ai')" title="DeepSeek: topic tags + coverage-gap note + semantic dedup across the DISTINCT titles">✨ AI recommend</button>
+          <button class="btn ghost mini" onclick="cuRecommend('sample')" title="No LLM — cluster into N topics, pick one representative per topic (max spread, zero API cost)">🎲 Diverse sample</button>
+        </div>
+        <input type="text" id="cu-filter" placeholder="filter titles…" oninput="cuRender()" style="width:100%;margin-top:10px;display:none">
+        <div class="row" style="margin-top:8px;font-size:12px">
+          <label class="dim"><input type="checkbox" id="cu-hidelib" checked onchange="cuRender()"> hide in-library</label>
+          <label class="dim"><input type="checkbox" id="cu-recadd" onchange="cuRender()"> recommended only</label>
+        </div>
+        <div id="cu-cov" class="dim" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <span class="row" style="gap:6px">
+            <button class="btn ghost mini" onclick="cuSelAll(true)">select all shown</button>
+            <button class="btn ghost mini" onclick="cuSelAll(false)">clear</button>
+          </span>
+          <span class="row" style="gap:8px">
+            <select id="cu-visual" title="Visual tier on ingest"><option value="off">text-only</option><option value="keyframe">+ keyframes</option></select>
+            <button class="btn mini" onclick="cuAdd()">＋ Add selected (<span id="cu-n-sel">0</span>)</button>
+          </span>
+        </div>
+        <div id="cu-body" style="margin-top:10px"><div class="dim">Enter a channel and “Grab all titles” to see every video, browse by topic, and pick a diverse set.</div></div>
+      </div>
+    </div>
+
     <!-- ===== SOURCES ===== -->
     <div id="tab-sources" style="display:none">
       <div class="card">
@@ -127,7 +169,7 @@
           <label class="dim" title="Extra frames inside long b-roll shots (slower)"><input type="checkbox" id="densify"> densify b-roll</label>
           <button class="btn" id="addBtn" onclick="addChannel()">Index channel</button>
           <button class="btn ghost" id="crawlBtn" onclick="crawlAll()" title="Crawl the WHOLE channel — ALL videos, TEXT-ONLY, rate-limit paced (add keyframes per-video later)">Crawl all (text)</button>
-          <button class="btn ghost" onclick="surveyChannel()" title="Preview every video title + an AI diversity recommendation before committing">🔍 Survey</button>
+          <button class="btn ghost" onclick="openCurate()" title="Browse every title, cluster by topic, and pick a diverse set (Curate tab)">🎯 Curate this channel</button>
         </div>
         <span id="add-status" class="dim"></span>
         <div class="log" id="add-log"></div>
@@ -168,21 +210,6 @@
     </div>
   </div>
 
-  <div id="survey-modal" class="modal-bg" onclick="if(event.target===this)closeSurvey()">
-    <div class="modal">
-      <div class="modal-head">
-        <span id="sv-title" style="font-weight:650"></span>
-        <span class="row">
-          <button class="btn ghost mini" id="sv-rec" onclick="recommendSurvey()">✨ Recommend (AI)</button>
-          <button class="btn mini" onclick="addSelectedSurvey()">＋ Add selected, text (<span id="sv-n">0</span>)</button>
-          <button class="btn ghost mini" onclick="closeSurvey()">✕</button>
-        </span>
-      </div>
-      <div id="sv-cov" class="dim" style="margin:4px 0 8px"></div>
-      <div id="sv-body"></div>
-    </div>
-  </div>
-
   <script src="/static/nav.js" data-active="transcripts"></script>
   <script>
     const $ = s => document.querySelector(s);
@@ -194,56 +221,155 @@
     let COMPS = null;
     async function comps(){ if(COMPS===null){ try{ COMPS=(await jget("/api/clipper/targets")).comps||[]; }catch(e){ COMPS=[]; } } return COMPS; }
 
-    /* ---------- survey + AI recommendation ---------- */
-    let SURVEY = [];
-    function closeSurvey(){ $("#survey-modal").classList.remove("on"); }
-    function svN(){ $("#sv-n").textContent = document.querySelectorAll(".svsel:checked").length; }
-    function svRank(v){ return v.in_library?3 : v.verdict==="skip"?2 : v.verdict==="add"?0 : 1; }
-    function svRow(v){
+    /* ---------- Curate: survey · topic-model · recommend (AI + no-LLM) ---------- */
+    let CU = { items: [], groups: null, byId: {} };
+    let CU_SEL = new Set();
+    let CU_VIEW = "flat";
+    function cuChannel(){ return $("#cu-channel").value.trim(); }
+    function cuSelN(){ $("#cu-n-sel").textContent = CU_SEL.size; }
+    function cuToggle(id, on){ if(on) CU_SEL.add(id); else CU_SEL.delete(id); cuSelN(); }
+    function openCurate(){ const ch=$("#channel").value.trim(); showTab('curate'); if(ch && ch!==cuChannel()){ $("#cu-channel").value=ch; cuSurvey(); } }
+
+    async function cuSurvey(){
+      const ch=cuChannel(); if(!ch){ alert("Enter a channel URL."); return; }
+      $("#cu-stat").textContent="fetching all titles (no download)…"; $("#cu-body").innerHTML='<div class="dim">Surveying the whole channel…</div>';
+      CU.groups=null; $("#cu-cov").textContent=""; CU_SEL.clear(); cuSelN(); $("#cu-recadd").checked=false;
+      try{
+        const d=await jget(`/api/transcripts/survey?channel=${encodeURIComponent(ch)}`);
+        CU.items=d.items; CU.byId={}; CU.items.forEach(i=>CU.byId[i.video_id]=i);
+        $("#cu-stat").textContent=`${d.count} videos · ${d.new} not in library`;
+        $("#cu-filter").style.display="block";
+        cuSetView("flat");
+      }catch(e){ $("#cu-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; $("#cu-stat").textContent=""; }
+    }
+    function cuSetView(v){
+      CU_VIEW=v; document.querySelectorAll("#cu-view button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+      if(v==="topic" && !CU.groups){ cuTopics(); } else { cuRender(); }
+    }
+
+    /* ---- flat list ---- */
+    function cuVisible(){
+      const f=$("#cu-filter").value.trim().toLowerCase();
+      const hideLib=$("#cu-hidelib").checked, recOnly=$("#cu-recadd").checked;
+      return CU.items.filter(v=>{
+        if(hideLib && v.in_library) return false;
+        if(recOnly && v.verdict!=="add") return false;
+        if(f && !(v.title||"").toLowerCase().includes(f)) return false;
+        return true;
+      });
+    }
+    function cuRank(v){ return v.in_library?3 : v.verdict==="skip"?2 : v.verdict==="add"?0 : 1; }
+    function cuRow(v){
+      const chk = v.in_library ? '<span style="width:13px;display:inline-block"></span>'
+        : `<input type="checkbox" class="cusel" ${CU_SEL.has(v.video_id)?'checked':''} onchange="cuToggle('${esc(v.video_id)}',this.checked)">`;
       const flag = v.in_library ? '<span class="chip txt">in library</span>'
-        : (v.verdict==="skip" ? '<span class="chip txt">skip</span>' : (v.verdict==="add" ? '<span class="chip frames">add</span>' : ''));
-      const topic = v.topic ? `<span class="chip">${esc(v.topic)}</span>` : '';
-      return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:6px;max-width:62%">
-        <input type="checkbox" class="svsel" value="${esc(v.video_id)}" data-url="${esc(v.url||'')}" data-title="${esc(v.title||'')}" ${v.in_library?'disabled':(v.verdict==="add"?'checked':'')} onchange="svN()">
-        <span>${esc(v.title||v.video_id)} ${flag} ${topic}</span></span>
-        ${v.reason?`<span class="dim" style="font-size:11px;max-width:34%;text-align:right">${esc(v.reason)}</span>`:''}</div>`;
+        : (v.verdict==="skip"?'<span class="chip txt">skip</span>':(v.verdict==="add"?'<span class="chip frames">add</span>':''));
+      const topic = v.topic?`<span class="chip">${esc(v.topic)}</span>`:'';
+      const dup = v.cluster_size>1?`<span class="dim" style="font-size:10px">+${v.cluster_size-1} dup</span>`:'';
+      return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:6px;max-width:64%">
+        ${chk}<a href="${esc(v.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(v.title||v.video_id)}</a> ${flag} ${topic} ${dup}</span>
+        ${v.reason?`<span class="dim" style="font-size:11px;max-width:33%;text-align:right">${esc(v.reason)}</span>`:''}</div>`;
     }
-    function renderSurvey(items){ $("#sv-body").innerHTML = items.map(svRow).join("") || '<div class="dim">No videos.</div>'; svN(); }
-    async function surveyChannel(){
-      const channel=$("#channel").value.trim(); if(!channel){ alert("Enter a channel URL in the field first."); return; }
-      $("#sv-title").textContent="Surveying…"; $("#sv-cov").textContent=""; $("#sv-body").innerHTML='<div class="dim">Fetching all titles (no download)…</div>'; $("#survey-modal").classList.add("on");
-      try{
-        const d=await jget(`/api/transcripts/survey?channel=${encodeURIComponent(channel)}`);
-        SURVEY=d.items;
-        $("#sv-title").textContent=`${d.count} videos · ${d.new} not in library`;
-        renderSurvey(SURVEY);
-      }catch(e){ $("#sv-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    function cuRender(){
+      if(!CU.items.length){ $("#cu-body").innerHTML='<div class="dim">Enter a channel and “Grab all titles”.</div>'; return; }
+      if(CU_VIEW==="topic"){ cuRenderTopics(); return; }
+      const vis=cuVisible().slice().sort((a,b)=>cuRank(a)-cuRank(b));
+      $("#cu-body").innerHTML = `<div class="dim" style="margin-bottom:6px">${vis.length} shown</div>` + (vis.map(cuRow).join("")||'<div class="dim">Nothing matches the filter.</div>');
     }
-    async function recommendSurvey(){
-      const channel=$("#channel").value.trim(); const st=$("#sv-cov"); st.textContent="asking DeepSeek to diversify (topics + redundancy + gaps)…"; $("#sv-rec").disabled=true;
-      try{
-        const d=await jpost("/api/transcripts/recommend",{channel});
-        st.innerHTML=`<b>Coverage gaps:</b> ${esc(d.coverage||"—")} <span class="dim">· ${d.add} recommended of ${d.candidates}</span>`;
-        const by={}; (d.items||[]).forEach(i=>by[i.video_id]=i);
-        SURVEY = SURVEY.map(v=> by[v.video_id] ? {...v, ...by[v.video_id]} : v).sort((a,b)=>svRank(a)-svRank(b));
-        renderSurvey(SURVEY);
-      }catch(e){ st.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
-      finally{ $("#sv-rec").disabled=false; }
+    function cuSelAll(on){
+      cuVisible().forEach(v=>{ if(v.in_library) return; if(on) CU_SEL.add(v.video_id); else CU_SEL.delete(v.video_id); });
+      cuSelN(); (CU_VIEW==="topic")?cuRenderTopics():cuRender();
     }
-    async function addSelectedSurvey(){
-      const sel=[...document.querySelectorAll(".svsel:checked")].map(c=>({video_id:c.value, url:c.dataset.url, title:c.dataset.title}));
-      if(!sel.length){ alert("Select at least one video."); return; }
-      if(!confirm(`Add ${sel.length} video(s) as TRANSCRIPT-ONLY? (add keyframes later via 'Caption')`)) return;
+
+    /* ---- topic view (no-LLM clustering) ---- */
+    async function cuTopics(){
+      const ch=cuChannel(); if(!ch){ alert("Grab titles first."); return; }
+      $("#cu-body").innerHTML='<div class="dim">Clustering titles into topics (BGE, no LLM)…</div>';
       try{
-        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:"off"});
-        alert(`Ingesting ${sel.length} transcripts in the background. Then caption them from the video list.`);
-        closeSurvey(); setTimeout(()=>{ loadSources(); loadVideos(); }, 2500);
+        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}`);
+        CU.groups=d.groups;
+        $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`;
+        cuRenderTopics();
+      }catch(e){ $("#cu-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    function cuGrpRow(v, medoid){
+      const chk=`<input type="checkbox" class="cusel" ${CU_SEL.has(v.video_id)?'checked':''} onchange="cuToggle('${esc(v.video_id)}',this.checked)">`;
+      const m = medoid===v.video_id?'<span class="chip">rep</span>':'';
+      return `<div class="vid-row" style="padding:5px 2px;border-bottom:none"><span class="name" style="display:flex;align-items:center;gap:6px">
+        ${chk}<a href="${esc(v.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(v.title||v.video_id)}</a> ${m}</span></div>`;
+    }
+    function cuRenderTopics(){
+      if(!CU.groups){ cuTopics(); return; }
+      const f=$("#cu-filter").value.trim().toLowerCase();
+      const html = CU.groups.map((g,gi)=>{
+        const items=g.items.filter(v=>!f || (v.title||"").toLowerCase().includes(f));
+        if(!items.length) return "";
+        const nsel=g.items.filter(v=>CU_SEL.has(v.video_id)).length;
+        return `<div class="card" style="padding:10px 12px;margin-bottom:8px">
+          <div class="row" style="justify-content:space-between">
+            <b style="font-size:13px">🗂 ${esc(g.label)} <span class="dim">· ${g.size}${nsel?` · ${nsel} picked`:''}</span></b>
+            <span class="row" style="gap:4px">
+              <button class="btn ghost mini" onclick="cuGrpSel(${gi},'rep')" title="pick the single representative">rep</button>
+              <button class="btn ghost mini" onclick="cuGrpSel(${gi},'all')">all</button>
+              <button class="btn ghost mini" onclick="cuGrpSel(${gi},'none')">none</button>
+            </span></div>
+          <div style="margin-top:4px">${items.map(v=>cuGrpRow(v,g.medoid_id)).join("")}</div></div>`;
+      }).join("");
+      $("#cu-body").innerHTML = html || '<div class="dim">No distinct candidates to cluster.</div>';
+    }
+    function cuGrpSel(gi, mode){
+      const g=CU.groups[gi]; if(!g) return;
+      g.items.forEach(v=>{
+        if(mode==="all") CU_SEL.add(v.video_id);
+        else if(mode==="none") CU_SEL.delete(v.video_id);
+        else if(mode==="rep"){ (v.video_id===g.medoid_id)?CU_SEL.add(v.video_id):CU_SEL.delete(v.video_id); }
+      });
+      cuSelN(); cuRenderTopics();
+    }
+
+    /* ---- recommend: AI (DeepSeek) or Diverse sample (no LLM) ---- */
+    async function cuRecommend(kind){
+      const ch=cuChannel(); if(!ch){ alert("Grab titles first."); return; }
+      if(!CU.items.length){ await cuSurvey(); if(!CU.items.length) return; }
+      const n=parseInt($("#cu-n").value,10)||20;
+      const cov=$("#cu-cov"); cov.textContent = kind==="ai" ? "asking DeepSeek to diversify (topics · redundancy · coverage gaps)…" : `clustering into ${n} topics and picking one each (no LLM)…`;
+      try{
+        if(kind==="ai"){
+          const d=await jpost("/api/transcripts/recommend",{channel:ch, limit: Math.max(n, 300)});
+          CU.items.forEach(v=>{ v.verdict=undefined; v.topic=undefined; v.reason=undefined; });
+          (d.items||[]).forEach(it=>{ const row=CU.byId[it.video_id]; if(row){ row.verdict=it.verdict; row.topic=it.topic; row.reason=it.reason; if(it.verdict==="add") CU_SEL.add(it.video_id); }});
+          cov.innerHTML=`<b>Coverage gaps:</b> ${esc(d.coverage||"—")} <span class="dim">· ${d.add} recommended of ${d.distinct} distinct (${d.dropped_redundant} near-dups dropped)</span>`;
+        } else {
+          const d=await jpost("/api/transcripts/diverse-sample",{channel:ch, n});
+          CU.items.forEach(v=>{ v.verdict=undefined; v.topic=undefined; v.reason=undefined; });
+          (d.picks||[]).forEach(p=>{ const row=CU.byId[p.video_id]; if(row){ row.verdict="add"; row.topic=p.topic; } CU_SEL.add(p.video_id); });
+          cov.innerHTML=`<b>${d.groups} topics → ${d.picks.length} picks</b> <span class="dim">· one representative per topic · ${d.distinct} distinct (${d.dropped_redundant} near-dups dropped) · zero API cost</span>`;
+        }
+        cuSelN();
+        if(CU_VIEW==="flat"){ $("#cu-recadd").checked=true; }
+        (CU_VIEW==="topic")?cuRenderTopics():cuRender();
+      }catch(e){ cov.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+
+    async function cuAdd(){
+      const sel=[...CU_SEL].map(id=>CU.byId[id]).filter(Boolean).map(v=>({video_id:v.video_id,url:v.url,title:v.title}));
+      if(!sel.length){ alert("Select at least one title."); return; }
+      const vis=$("#cu-visual").value;
+      if(!confirm(`Ingest ${sel.length} video(s)${vis==="off"?" as TRANSCRIPT-ONLY (add keyframes later)":" WITH keyframes"}?`)) return;
+      try{
+        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:vis});
+        alert(`Ingesting ${sel.length} in the background — track it in Background Jobs. Then Sources → Caption for keyframes.`);
+        sel.forEach(v=>{ const row=CU.byId[v.video_id]; if(row) row.in_library=true; });
+        CU_SEL.clear(); cuSelN();
+        (CU_VIEW==="topic")?cuRenderTopics():cuRender();
+        setTimeout(()=>{ loadSources(); loadVideos(); }, 2500);
       }catch(e){ alert(e.message); }
     }
 
     function showTab(t){
       document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on", x.dataset.tab===t));
       $("#tab-search").style.display = t==="search"?"block":"none";
+      $("#tab-curate").style.display = t==="curate"?"block":"none";
       $("#tab-sources").style.display = t==="sources"?"block":"none";
       if(t==="sources"){ loadSources(); loadVideos(); }
     }

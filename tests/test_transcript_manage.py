@@ -47,6 +47,39 @@ def test_delete_and_detail_on_real_index(tmp_path):
     assert "vidXYZ" not in tl.load_catalog(tmp_path)
 
 
+def test_topic_cluster_labels_and_medoid():
+    """topic_cluster groups near-subject titles, labels each by distinctive keywords, flags a medoid."""
+    from nolan import transcript_lib as tl
+    titles = ["FDR presidency documentary", "FDR path to the White House",
+              "Kissinger secret war on Cambodia", "How WWII shaped Kissinger",
+              "The My Lai Massacre and the Vietnam War"]
+    items = [{"video_id": f"v{i}", "url": "", "title": t} for i, t in enumerate(titles)]
+    groups = tl.topic_cluster(items, 3)
+    assert len(groups) == 3
+    assert sum(g["size"] for g in groups) == len(items)                        # partition, nothing dropped
+    for g in groups:
+        assert g["label"] and g["label"] != "misc"                            # every cluster gets a keyword label
+        assert any(it["video_id"] == g["medoid_id"] for it in g["items"])     # medoid is a member
+    # the two FDR titles should land together (tight subject)
+    fdr = next(g for g in groups if any("FDR" in (it["title"] or "") for it in g["items"]))
+    assert sum(1 for it in fdr["items"] if "FDR" in it["title"]) == 2
+
+
+def test_diverse_sample_one_per_topic(tmp_path, monkeypatch):
+    """diverse_sample = NO-LLM recommender: exactly n topic clusters → one medoid each (max spread)."""
+    from nolan import transcript_lib as tl
+    survey = [{"video_id": f"v{i}", "url": "", "title": t, "in_library": False}
+              for i, t in enumerate(["FDR presidency", "FDR White House years", "Kissinger Cambodia war",
+                                      "Kissinger and Nixon", "Apollo 11 moon landing", "Dust Bowl migration"])]
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None: survey)
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})                 # empty library → nothing dropped
+    out = tl.diverse_sample("ch", n=3)
+    assert len(out["picks"]) == 3                                              # exactly n picks
+    assert len({p["video_id"] for p in out["picks"]}) == 3                     # distinct videos
+    assert all(p["verdict"] == "add" and p["topic"] for p in out["picks"])     # each carries a topic label
+    assert out["distinct"] == 6 and out["groups"] == 3
+
+
 def test_frames_for_video_and_delete(tmp_path):
     from PIL import Image
 

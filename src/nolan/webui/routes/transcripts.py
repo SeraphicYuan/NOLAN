@@ -125,6 +125,26 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail="channel required")
         return await tl.recommend_from_channel(channel, load_config(), limit=int(body.get("limit", 200) or 200))
 
+    @app.get("/api/transcripts/topics")
+    async def transcripts_topics(channel: str = Query(...), k: int = Query(default=0)):
+        """Topic-model a channel's DISTINCT titles into ~k clusters (no LLM) for browse-by-topic + hand-pick."""
+        import asyncio
+        from nolan import transcript_lib as tl
+        channel = channel.strip()
+        if not channel:
+            raise HTTPException(status_code=400, detail="channel required")
+        return await asyncio.to_thread(tl.topic_view, channel, int(k or 0))
+
+    @app.post("/api/transcripts/diverse-sample")
+    async def transcripts_diverse_sample(body: dict = Body(...)):
+        """NO-LLM recommender: cluster into exactly N topics, return one medoid each — max spread, zero cost."""
+        import asyncio
+        from nolan import transcript_lib as tl
+        channel = (body.get("channel") or "").strip()
+        if not channel:
+            raise HTTPException(status_code=400, detail="channel required")
+        return await asyncio.to_thread(tl.diverse_sample, channel, int(body.get("n", 20) or 20))
+
     @app.post("/api/transcripts/ingest-videos")
     async def transcripts_ingest_videos(body: dict = Body(...)):
         """Ingest a SELECTED list of videos (transcript-only by default); the 'add selected' action."""
