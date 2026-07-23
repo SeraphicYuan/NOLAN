@@ -37,8 +37,8 @@ FEEDBACK_LOG = ROOT / ".nolan" / "skills" / "feedback.jsonl"        # human gate
 SCHEMA_VERSION = 1
 
 KINDS = {"contract", "craft", "grammar", "prompt", "methodology"}
-# tier orders the router: primary = the dominant pipeline, then organ, then legacy.
-TIERS = {"primary", "organ", "craft", "legacy"}
+# tier orders the router: primary = the dominant pipeline, then organ, lab, craft, legacy.
+TIERS = {"primary", "organ", "lab", "craft", "legacy"}
 _ROUTER_BEGIN = "<!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->"
 _ROUTER_END = "<!-- END AUTOGEN:skill-router -->"
 _ROUTER_FILE = ROOT / ".claude" / "skills" / "nolan" / "SKILL.md"
@@ -281,6 +281,8 @@ def _tier_of(tier: str, skill_id: str) -> str:
         return "craft"
     if dom == "pipeline":
         return "primary"
+    if dom in ("organ", "lab"):
+        return dom
     return ""
 
 
@@ -305,9 +307,9 @@ def ui_tree() -> dict:
         r["last_amended"] = _last_amended(r["path"])
         # "bound" = has a real code binding (injected by code OR documents a registry/module)
         r["bound"] = bool(r.get("loaded_by")) or bool(r.get("documents"))
-    tier_labels = {"primary": "Primary pipeline", "organ": "Organs", "craft": "Craft (umbrellas)",
-                   "legacy": "Legacy flows", "": "Other"}
-    order = ["primary", "organ", "craft", "legacy", ""]
+    tier_labels = {"primary": "Primary pipeline", "organ": "Organs", "lab": "Labs",
+                   "craft": "Craft (umbrellas)", "legacy": "Legacy flows", "": "Other"}
+    order = ["primary", "organ", "lab", "craft", "legacy", ""]
     tiers = []
     for tkey in order:
         trows = [r for r in rows if r["tier"] == tkey]
@@ -319,7 +321,7 @@ def ui_tree() -> dict:
         tiers.append({"tier": tkey, "label": tier_labels.get(tkey, tkey), "count": len(trows),
                       "domains": [{"domain": d, "skills": s} for d, s in sorted(domains.items())]})
     per_tier = {t["tier"]: t["count"] for t in tiers}
-    unbound = [r["id"] for r in rows if not r["bound"] and r["tier"] in ("primary", "organ")]
+    unbound = [r["id"] for r in rows if not r["bound"] and r["tier"] in ("primary", "organ", "lab")]
     return {"count": len(rows), "tiers": tiers,
             "stats": {"total": len(rows), "per_tier": per_tier, "unbound": unbound}}
 
@@ -461,9 +463,10 @@ def lint_skills() -> list[tuple]:
 # hand-maintained — a hand-kept table is a rot vector (the whole point of this system).
 # `--emit-router` rewrites the marked region; a freshness test (test_organ_skills.py)
 # fails CI if the checked-in region drifts from what the catalog would emit.
-_TIER_ORDER = ["primary", "organ", "craft", "legacy", ""]
+_TIER_ORDER = ["primary", "organ", "lab", "craft", "legacy", ""]
 _TIER_LABEL = {"primary": "Primary pipeline (start here)", "organ": "Organs",
-               "craft": "Craft (umbrella judgment)", "legacy": "Legacy flows", "": "Other"}
+               "lab": "Labs (exploration tools)", "craft": "Craft (umbrella judgment)",
+               "legacy": "Legacy flows", "": "Other"}
 
 
 def _skill_tier(s: Skill) -> str:

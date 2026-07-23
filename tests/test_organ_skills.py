@@ -21,8 +21,8 @@ REPO = Path(__file__).resolve().parents[1]
 INDEX = json.loads((REPO / "skills" / "index.json").read_text(encoding="utf-8"))
 SKILLS = {s["id"]: s for s in INDEX["skills"]}
 
-# the skill domains that describe a code organ / pipeline (as opposed to pure craft/prompt)
-ORGAN_DOMAINS = ("pipeline", "organ")
+# the skill domains that describe a code organ / pipeline / lab (as opposed to pure craft/prompt)
+ORGAN_DOMAINS = ("pipeline", "organ", "lab")
 
 
 def _organ_skills():

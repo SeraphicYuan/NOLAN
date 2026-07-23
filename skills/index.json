@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 37,
+  "count": 39,
   "skills": [
     {
       "id": "art.flow",
@@ -421,6 +421,47 @@
       "documents": null,
       "evals": [],
       "path": "skills/flow/edit-contract.md"
+    },
+    {
+      "id": "lab.deconstruct",
+      "name": "Video deconstruction (inverse Director)",
+      "kind": "methodology",
+      "purpose": "Orient any deconstruction task \u2014 what it recovers (beats/pairing/tempo/motion), the shared vocabularies it recovers INTO, and the recovered_plan.json handoff into the forward pipeline.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "lab",
+      "description": "The inverse Director \u2014 given an ingested library video, RECOVER its editorial plan: beats, the script\u2194asset pairing rationale (in the evocative-b-roll operator vocabulary), the tempo curve (tempo_plan energy/transition/motion_speed terms), and the motion applied to assets (motion registry treatment vocabulary), assembled into a draft `recovered_plan.json` in the SAME scene_plan schema the forward pipeline consumes. A LAB (feeds artifacts via handoff, never writes pipeline artifacts directly). Read before touching deconstruction, the /deconstruct page, or recovering a plan/visual-facts from a reference video.\n",
+      "handoffs": [],
+      "uses": [
+        "common.pairing-craft",
+        "common.motion-craft"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/deconstruct/__init__.py"
+      },
+      "evals": [],
+      "path": "skills/lab/deconstruct.md"
+    },
+    {
+      "id": "lab.kb",
+      "name": "Knowledge base (video-craft KB)",
+      "kind": "methodology",
+      "purpose": "Orient any KB task \u2014 the markdown-is-canonical / indices-are-derived rule, the ingest\u2192distill\u2192index\u2192link pipeline, and hybrid retrieval (BGE + keyword).\n",
+      "status": "active",
+      "version": 1,
+      "tier": "lab",
+      "description": "NOLAN's video-craft knowledge base, backed by an Obsidian vault. Markdown-first: the vault .md files (E:\\Nolan_KB) are CANONICAL; SQLite + Chroma are DERIVED indices rebuilt from the files, so a human (in Obsidian) and the agent (via the retrieval API) read the same notes. Pipeline: ingest (url/youtube/file/text \u2192 raw/*.md) \u2192 distill (LLM \u2192 parsed insight notes) \u2192 index (BGE + keyword) \u2192 link (related notes + MOCs). Read before touching KB ingest/distill/index/retrieval, or wiring craft knowledge into authoring.\n",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/kb/__init__.py"
+      },
+      "evals": [],
+      "path": "skills/lab/kb.md"
     },
     {
       "id": "orchestrator.adapt-style",

@@ -51,7 +51,7 @@ A **skill** = any `.md` with an `id:` in frontmatter. Two roots, one catalog:
 <!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->
 ## Skill registry — auto-generated, do not edit by hand
 
-_37 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
+_39 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
 
 ### Primary pipeline (start here)
 
@@ -70,6 +70,13 @@ _37 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill f
 | `organ.render` | grammar | Orient any render-routing task — the per-scene routing order + kinds, the resilient title-card fallback, the premium (Chapter-per-section… |
 | `organ.sync` | grammar | Orient any narration↔scene timing task — the align→place pipeline, anchor semantics, the monotonic clamp + per-frame fallback, and the sc… |
 | `organ.voice` | grammar | Orient any voiceover / narration task — the per-section anchor contract, cloning, the GPU lock, the speak-ready gate, take versioning, an… |
+
+### Labs (exploration tools)
+
+| skill | kind | what it's for |
+|---|---|---|
+| `lab.deconstruct` | methodology | Orient any deconstruction task — what it recovers (beats/pairing/tempo/motion), the shared vocabularies it recovers INTO, and the recover… |
+| `lab.kb` | methodology | Orient any KB task — the markdown-is-canonical / indices-are-derived rule, the ingest→distill→index→link pipeline, and hybrid retrieval (… |
 
 ### Craft (umbrella judgment)
 
