@@ -25,6 +25,28 @@ def _rel(p: Path, root: Path) -> str:
         return p.name
 
 
+def derive_domain(cfg, project_dir: Path) -> str:
+    """The essay's core subject (e.g. 'diamond') from SOURCE.md — woven into ambiguous-name queries +
+    verify so 'The Four Cs' searches 'four Cs diamond', not a four-stroke engine. Graceful → '' on failure."""
+    text = ""
+    for cand in ("SOURCE.md", "SCRIPT.md"):
+        f = Path(project_dir) / cand
+        if f.exists():
+            text = f.read_text(encoding="utf-8")[:1500]
+            break
+    if not text.strip():
+        return ""
+    try:
+        import asyncio
+        from nolan.llm import create_text_llm
+        raw = asyncio.run(create_text_llm(cfg).generate(
+            text, system_prompt="In ONE or TWO words, name the core subject/domain of this essay "
+                                "(e.g. 'diamonds', 'space travel', 'coffee'). Reply ONLY those words."))
+        return " ".join((raw or "").strip().strip('".').split()[:2]).lower()
+    except Exception:
+        return ""
+
+
 def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optional[int] = None,
             per_entity: int = 2, do_cutout: bool = True, verify: bool = True, log: Callable = print) -> dict:
     """Resolve + condition the proposal's assets into capture/keyassets/, write key_assets.json."""
@@ -34,6 +56,9 @@ def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optio
     client = build_client(cfg)
     from nolan.cutout import cutout_file
 
+    domain = derive_domain(cfg, project_dir)
+    if domain:
+        log(f"  domain: {domain!r} — woven into ambiguous-name queries + verify")
     ents = sorted(proposal.entities, key=lambda e: e.priority != "hero")   # hero-first
     if limit:
         ents = ents[:limit]
@@ -42,16 +67,19 @@ def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optio
 
     for e in ents:
         recs = resolved.setdefault(e.id, [])
+        type_n: Dict[str, int] = {}
         for d in e.desired_assets[:per_entity]:
             is_video = d.type == "footage"
-            stem = f"{e.id}_{d.type}"
+            n = type_n.get(d.type, 0)                          # index same-type assets so they don't overwrite
+            type_n[d.type] = n + 1
+            stem = f"{e.id}_{d.type}" + (f"_{n}" if n else "")
             out = ka_dir / (stem + (".mp4" if is_video else ".jpg"))
             tag = "~" if d.relevance == "related" else ""
             log(f"  [{e.name}] {d.type}{tag} …")
             if is_video:
-                r = resolve_video(cfg, client, e, d, out, verify=verify)
+                r = resolve_video(cfg, client, e, d, out, verify=verify, domain=domain)
             else:
-                r = resolve_image(cfg, client, e, d, out, verify=verify)
+                r = resolve_image(cfg, client, e, d, out, verify=verify, domain=domain)
             if not r:
                 miss = "no confirmed match" if (verify and d.relevance == "exact") else "none found"
                 log(f"    ✗ {miss}")

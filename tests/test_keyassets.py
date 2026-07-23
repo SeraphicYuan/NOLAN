@@ -167,19 +167,35 @@ def test_parse_directions_dedupes_entity_across_directions():
 
 
 # --- resolve / collect (pure parts) --------------------------------------------------------------
-def test_queries_for_builds_deduped_variants():
+def test_queries_for_note_first_and_domain_weave():
     from types import SimpleNamespace
     from nolan.keyassets.resolve import queries_for
-    e = SimpleNamespace(name="De Beers")
+    org = SimpleNamespace(name="De Beers", kind="organization")
     d = SimpleNamespace(type="logo", note="official monochrome logo", relevance="exact")
-    qs = queries_for(e, d)
-    assert qs[0] == "De Beers logo"                            # name + qualifier
-    assert "De Beers official monochrome logo" in qs          # name + note
-    assert "De Beers" in qs and len(qs) <= 3
-    # bare-name entity (a related clip concept) still yields a query, deduped
-    e2 = SimpleNamespace(name="1950s wedding b-roll")
+    qs = queries_for(org, d, domain="diamond")
+    assert qs[0] == "De Beers official monochrome logo"       # note-query is most specific → first
+    assert "De Beers logo" in qs                              # name + qualifier
+    assert not any("diamond" in q for q in qs)               # a specific ORG name isn't domain-woven
+    # a CONCEPT with a terse name DOES get the domain woven in (the 'four Cs' → not 'four-stroke' fix)
+    concept = SimpleNamespace(name="The Four Cs", kind="concept")
+    dc = SimpleNamespace(type="document", note="", relevance="exact")
+    assert any("diamond" in q for q in queries_for(concept, dc, domain="diamond"))
+    # bare-name related clip still yields a single deduped query
+    e2 = SimpleNamespace(name="1950s wedding b-roll", kind="concept")
     d2 = SimpleNamespace(type="footage", note="", relevance="related")
     assert queries_for(e2, d2) == ["1950s wedding b-roll"]
+
+
+def test_verify_subject_weaves_domain_for_ambiguous_kinds():
+    from types import SimpleNamespace
+    from nolan.keyassets.resolve import _verify_subject
+    concept = SimpleNamespace(name="The Four Cs", kind="concept")
+    d = SimpleNamespace(type="document", note="GIA diamond grading chart", relevance="exact")
+    s = _verify_subject(concept, d, domain="diamond")
+    assert "The Four Cs" in s and "diamond" in s and "GIA diamond grading chart" in s
+    person = SimpleNamespace(name="Ernest Oppenheimer", kind="person")
+    dp = SimpleNamespace(type="portrait", note="", relevance="exact")
+    assert _verify_subject(person, dp, domain="diamond") == "Ernest Oppenheimer"   # specific name, no weave
 
 
 def test_boost_prefers_institutional_sources():

@@ -61,14 +61,27 @@ def build_client(cfg):
                              keys=s.provider_keys())
 
 
-def queries_for(entity: KeyEntity, desired: DesiredAsset) -> List[str]:
-    """Search phrasings for one desired asset: name+qualifier, name+note, bare name — deduped, capped.
-    For a `related` clip the entity name IS the evocative concept, so the bare name leads."""
+# Kinds whose NAME is generic/ambiguous without the essay's subject ("The Four Cs" → four-stroke engine;
+# "Star of South Africa" → a Call-of-Duty cover). These get the domain woven into their queries + verify;
+# specific named people/orgs/places don't (their names already disambiguate).
+_DOMAIN_KINDS = {"concept", "work", "event"}
+
+
+def queries_for(entity: KeyEntity, desired: DesiredAsset, domain: str = "") -> List[str]:
+    """Search phrasings for one desired asset, most-specific first: name+note (carries context), then a
+    domain-anchored name (for ambiguous kinds), then name+qualifier, then bare name. Deduped, capped.
+    `domain` = the essay's subject (e.g. 'diamond') — the fix for terse names pulling wrong-domain hits."""
     name = (entity.name or "").strip()
     qual = _QUALIFIER.get(desired.type, "")
-    cands = [f"{name} {qual}".strip()]
-    if desired.note:
-        cands.append(f"{name} {desired.note}".strip()[:90])
+    note = (desired.note or "").strip()
+    dom = domain.strip()
+    use_dom = bool(dom) and entity.kind in _DOMAIN_KINDS and dom.lower() not in name.lower()
+    cands = []
+    if note:
+        cands.append(f"{name} {note}"[:90].strip())          # most specific — the note has real context
+    if use_dom:
+        cands.append(f"{name} {dom} {qual}".strip())          # disambiguate a generic name by domain
+    cands.append(f"{name} {qual}".strip())
     cands.append(name)
     seen, out = set(), []
     for q in cands:
@@ -76,7 +89,19 @@ def queries_for(entity: KeyEntity, desired: DesiredAsset) -> List[str]:
         if q and k not in seen:
             seen.add(k)
             out.append(q)
-    return out[:3]
+    return out[:4]
+
+
+def _verify_subject(entity: KeyEntity, desired: DesiredAsset, domain: str = "") -> str:
+    """The subject string the VLM judges against — name + (domain, for ambiguous kinds) + note, so a
+    correct 'four Cs diamond grading chart' isn't rejected because 'The Four Cs' alone is too vague."""
+    parts = [(entity.name or "").strip()]
+    dom = domain.strip()
+    if dom and entity.kind in _DOMAIN_KINDS and dom.lower() not in (entity.name or "").lower():
+        parts.append(dom)
+    if desired.note:
+        parts.append(desired.note.strip())
+    return " — ".join(dict.fromkeys(p for p in parts if p))[:160]
 
 
 def _boost(results, asset_type: str):
@@ -151,14 +176,15 @@ def _verify_match(cfg, path: Path, subject: str, *, evocative: bool = False,
 
 
 def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
-                  *, verify: bool = True) -> Optional[dict]:
+                  *, verify: bool = True, domain: str = "") -> Optional[dict]:
     """Search → download → validate → VLM relevance-verify the first usable image into `out`. Returns a
     provenance dict (with `verified`) or None. An EXACT asset that never confirms within the cap is
     dropped (None) — a wrong hero is worse than a missing one; a `related` asset is kept but unverified."""
     need_verify = verify and desired.type in _VERIFY_IMAGE_TYPES
     evocative = desired.relevance == "related"
+    subject = _verify_subject(entity, desired, domain)
     tries = 0
-    for q in queries_for(entity, desired):
+    for q in queries_for(entity, desired, domain):
         try:
             results = client.search_assets(q, media_type="image", max_results=8) or []
         except Exception:
@@ -174,7 +200,7 @@ def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Pa
                 continue
             confirmed = None
             if need_verify:
-                confirmed = _verify_match(cfg, out, entity.name, evocative=evocative)
+                confirmed = _verify_match(cfg, out, subject, evocative=evocative)
                 if not evocative and confirmed is not True:  # EXACT: require a POSITIVE match to keep
                     tries += 1                               # (False OR unconfirmed → try the next candidate)
                     out.unlink(missing_ok=True)
@@ -188,15 +214,47 @@ def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Pa
     return None
 
 
+def _verify_video(cfg, video_path: Path, subject: str) -> Optional[bool]:
+    """Multi-frame footage verify: sample up to 3 frames (a subject can be absent from any single one).
+    True if ANY frame confirms, False only if ALL explicitly reject, else None (kept-but-unverified) —
+    a single mid-frame was too strict and dropped recoverable clips."""
+    import os
+    import subprocess
+    import tempfile
+    from nolan.acquire.context import _ffmpeg
+    ff = _ffmpeg()
+    verdicts = []
+    for ss in (1.0, 2.5, 4.0):
+        fd, tmp = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        tmp = Path(tmp)
+        try:
+            subprocess.run([ff, "-y", "-ss", str(ss), "-i", str(video_path), "-frames:v", "1",
+                            "-vf", "scale=768:-1", "-q:v", "4", str(tmp)], capture_output=True, timeout=30)
+            if tmp.exists() and tmp.stat().st_size > 800:
+                v = _verify_match(cfg, tmp, subject, evocative=False, retries=1)
+                verdicts.append(v)
+                if v is True:
+                    return True                              # early accept on the first confirming frame
+        except Exception:
+            pass
+        finally:
+            tmp.unlink(missing_ok=True)
+    if verdicts and all(v is False for v in verdicts):
+        return False                                         # every frame rejected → genuinely wrong
+    return None
+
+
 def resolve_video(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
-                  clip_seconds: int = 20, *, verify: bool = True) -> Optional[dict]:
+                  clip_seconds: int = 20, *, verify: bool = True, domain: str = "") -> Optional[dict]:
     """Search video providers → fetch a short on-disk segment into `out` → (for EXACT footage) VLM
-    relevance-verify a mid-frame. Best-effort (archival video is fragile); returns provenance or None.
-    Reuses the acquisition engine's range-seek segment fetch + mid-frame extract."""
-    from nolan.acquire.context import _extract_midframe, _fetch_video_segment
+    relevance-verify by MULTIPLE sampled frames. Best-effort (archival video is fragile); returns
+    provenance or None. Reuses the acquisition engine's range-seek segment fetch."""
+    from nolan.acquire.context import _fetch_video_segment
     evocative = desired.relevance == "related"
+    subject = _verify_subject(entity, desired, domain)
     tries = 0
-    for q in queries_for(entity, desired):
+    for q in queries_for(entity, desired, domain):
         try:
             results = client.search_assets(q, media_type="video", max_results=6) or []
         except Exception:
@@ -210,17 +268,14 @@ def resolve_video(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Pa
             except Exception:
                 continue
             confirmed = None
-            if verify and not evocative:                     # verify EXACT footage by a mid-frame; related stays loose
-                fr = _extract_midframe(out)
-                if fr:
-                    confirmed = _verify_match(cfg, fr, entity.name, evocative=False)
-                    fr.unlink(missing_ok=True)
-                    if confirmed is False:
-                        tries += 1
-                        out.unlink(missing_ok=True)
-                        if tries >= _MAX_VERIFY_ATTEMPTS:
-                            return None
-                        continue
+            if verify and not evocative:                     # verify EXACT footage; related stays loose
+                confirmed = _verify_video(cfg, out, subject)
+                if confirmed is False:                       # every sampled frame rejected → wrong clip
+                    tries += 1
+                    out.unlink(missing_ok=True)
+                    if tries >= _MAX_VERIFY_ATTEMPTS:
+                        return None
+                    continue
             prov = _provenance(res, q)
             prov["file"] = out
             prov["verified"] = confirmed is True
