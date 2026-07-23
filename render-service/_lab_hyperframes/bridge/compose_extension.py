@@ -1143,8 +1143,167 @@ def process(sid, sc):
     return frag, tl
 
 
+_LAYOUT_CELL_KINDS = ("media", "text", "stat", "chart")
+_LAYOUT_ARRANGES = ("split", "triptych", "hero-rail", "grid", "stack")
+
+
+def _layout_boxes(arrange, n, direction, ratio):
+    """The bounding box (x,y,w,h px) per slot for a curated arrangement — the runtime of the composition
+    archetypes. Content area sits below the title band. Boxes are the ONLY geometry a cell sees (cells are
+    container-relative), so the same cell drops into any slot."""
+    X0, Y0, X1, Y1, PAD = 160, 250, 1760, 942, 40
+    AW, AH = X1 - X0, Y1 - Y0
+    b = []
+    if arrange == "stack" or (arrange == "split" and direction == "vertical"):
+        m = max(1, n)
+        ch = (AH - (m - 1) * PAD) / m
+        b = [(X0, Y0 + i * (ch + PAD), AW, ch) for i in range(m)]
+    elif arrange == "split":
+        m = max(1, n)
+        if m == 2 and ratio and ratio != 0.5:                 # honour a left/right ratio on a 2-up split
+            lw = AW * float(ratio) - PAD / 2
+            b = [(X0, Y0, lw, AH), (X0 + lw + PAD, Y0, AW - lw - PAD, AH)]
+        else:
+            cw = (AW - (m - 1) * PAD) / m
+            b = [(X0 + i * (cw + PAD), Y0, cw, AH) for i in range(m)]
+    elif arrange == "triptych":
+        cw = (AW - 2 * PAD) / 3
+        b = [(X0 + i * (cw + PAD), Y0, cw, AH) for i in range(3)]
+    elif arrange == "hero-rail":
+        hw = AW * float(ratio or 0.62) - PAD / 2
+        b = [(X0, Y0, hw, AH)]
+        rn = max(1, n - 1)
+        rx, rw = X0 + hw + PAD, AW - hw - PAD
+        rhh = (AH - (rn - 1) * PAD) / rn
+        b += [(rx, Y0 + i * (rhh + PAD), rw, rhh) for i in range(rn)]
+    elif arrange == "grid":
+        cols = 2
+        rows = max(1, (n + 1) // 2)
+        cw = (AW - (cols - 1) * PAD) / cols
+        ch = (AH - (rows - 1) * PAD) / rows
+        b = [(X0 + (i % cols) * (cw + PAD), Y0 + (i // cols) * (ch + PAD), cw, ch) for i in range(n)]
+    else:
+        cw = (AW - (max(1, n) - 1) * PAD) / max(1, n)
+        b = [(X0 + i * (cw + PAD), Y0, cw, AH) for i in range(max(1, n))]
+    return b[:n] if len(b) >= n else b + [b[-1]] * (n - len(b))
+
+
+def _layout_cell(sid, i, cell, box, t0):
+    """Render ONE curated cell (media|text|stat|chart) into its box (container-relative). Returns (frag, tl).
+    This small fixed vocabulary is the deliberate boundary — NOT arbitrary block nesting."""
+    esc, num = compose.esc, compose._num
+    x, y, w, h = box
+    kind = cell.get("kind", "text")
+    cid = f"{sid}-c{i}"
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    frag, tl = [], []
+    kick = (f'<div style="font-family:var(--font-mono,monospace);font-size:{max(13,h*0.045):.0f}px;'
+            f'letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">{esc(cell["kicker"])}</div>'
+            if cell.get("kicker") else "")
+    if kind == "media":
+        src = str(cell.get("src", ""))
+        frag.append(f'<div id="{cid}" style="position:absolute;left:{x:.0f}px;top:{y:.0f}px;width:{w:.0f}px;'
+                    f'height:{h:.0f}px;overflow:hidden;border-radius:12px;background:#000;opacity:0">')
+        if src.lower().endswith((".mp4", ".webm", ".mov")):
+            frag.append(f'<video src="{esc(src)}" muted playsinline preload="auto" '
+                        f'style="width:100%;height:100%;object-fit:cover"></video>')
+        else:
+            frag.append(f'<img id="{cid}-img" src="{esc(src)}" style="width:100%;height:100%;object-fit:cover">')
+            tl.append(f'tl.fromTo("#{cid}-img",{{scale:1}},{{scale:1.08,duration:6,ease:"none"}},{t0:.2f});')
+        if cell.get("label") or cell.get("caption"):
+            frag.append(f'<div style="position:absolute;left:0;bottom:0;width:100%;box-sizing:border-box;'
+                        f'padding:{max(12,h*0.05):.0f}px {max(14,w*0.04):.0f}px;color:#fff;'
+                        f'background:linear-gradient(transparent,rgba(0,0,0,.78));font-size:{max(16,h*0.05):.0f}px;'
+                        f'font-weight:700">{esc(cell.get("label") or cell.get("caption"))}</div>')
+        frag.append('</div>')
+        tl.append(f'tl.fromTo("#{cid}",{{opacity:0,scale:0.96}},{{opacity:1,scale:1,duration:0.6,ease:"power3.out"}},{t0:.2f});')
+    elif kind == "stat":
+        v = cell.get("value", "")
+        val = f'{esc(cell.get("prefix",""))}{num(v) if isinstance(v,(int,float)) else esc(str(v))}{esc(cell.get("suffix",""))}'
+        fs = min(h * 0.42, w * 0.46, 168)
+        frag.append(f'<div id="{cid}" style="position:absolute;left:{x:.0f}px;top:{y:.0f}px;width:{w:.0f}px;'
+                    f'height:{h:.0f}px;display:flex;flex-direction:column;align-items:center;justify-content:center;'
+                    f'gap:8px;text-align:center;opacity:0">{kick}'
+                    f'<div style="font-family:var(--font-display);font-weight:800;font-size:{fs:.0f}px;line-height:0.86;'
+                    f'color:var(--accent)">{val}</div>'
+                    f'<div style="font-size:{max(18,h*0.062):.0f}px;font-weight:600;color:{ink};opacity:.82;'
+                    f'max-width:86%">{esc(cell.get("label",""))}</div></div>')
+        tl.append(f'tl.fromTo("#{cid}",{{opacity:0,y:16}},{{opacity:1,y:0,duration:0.55,ease:"back.out(1.5)"}},{t0:.2f});')
+    elif kind == "text":
+        lines = cell.get("lines") or ([cell["text"]] if cell.get("text") else [])
+        op = cell.get("operative", "")
+        fs = min(h * 0.15, w * 0.085, 62)
+        body = [kick]
+        for ln in lines:
+            html_ln = (f'{esc(ln.split(op,1)[0])}<span style="color:var(--accent)">{esc(op)}</span>{esc(ln.split(op,1)[1])}'
+                       if op and op in ln else esc(ln))
+            body.append(f'<div style="font-family:var(--font-display);font-weight:800;font-size:{fs:.0f}px;'
+                        f'line-height:1.06;color:{ink}">{html_ln}</div>')
+        frag.append(f'<div id="{cid}" style="position:absolute;left:{x:.0f}px;top:{y:.0f}px;width:{w:.0f}px;'
+                    f'height:{h:.0f}px;display:flex;flex-direction:column;justify-content:center;gap:4px;'
+                    f'opacity:0">{"".join(body)}</div>')
+        tl.append(f'tl.fromTo("#{cid}",{{opacity:0,y:14}},{{opacity:1,y:0,duration:0.5,ease:"power3.out"}},{t0:.2f});')
+    elif kind == "chart":
+        series = cell.get("series") or []
+        m = max(1, len(series))
+        vals = [float(s.get("value", 0)) for s in series] or [0.0]
+        ymax = max(vals) * 1.15 or 1.0
+        top, base = h * 0.14, h - max(30, h * 0.13)
+        ph = base - top
+        cw = w / m
+        bw = cw * 0.58
+        inner = [kick] if kick else []
+        for bi, s in enumerate(series):
+            v = float(s.get("value", 0))
+            bh = max(2.0, v / ymax * ph)
+            bx = bi * cw + (cw - bw) / 2
+            inner.append(f'<div id="{cid}-b{bi}" style="position:absolute;left:{bx:.0f}px;top:{base-bh:.0f}px;'
+                         f'width:{bw:.0f}px;height:{bh:.0f}px;background:var(--accent);transform-origin:bottom center;'
+                         f'transform:scaleY(0)"></div>')
+            inner.append(f'<div style="position:absolute;left:{bi*cw:.0f}px;top:{base+6:.0f}px;width:{cw:.0f}px;'
+                         f'text-align:center;font-size:{max(13,h*0.045):.0f}px;color:{ink};opacity:.6">{esc(str(s.get("label","")))}</div>')
+        inner.append(f'<div style="position:absolute;left:0;top:{base:.0f}px;width:{w:.0f}px;height:2px;'
+                     f'background:{ink};opacity:.2"></div>')
+        frag.append(f'<div id="{cid}" style="position:absolute;left:{x:.0f}px;top:{y:.0f}px;width:{w:.0f}px;'
+                    f'height:{h:.0f}px;opacity:0">{"".join(inner)}</div>')
+        tl.append(f'tl.to("#{cid}",{{opacity:1,duration:0.3}},{t0:.2f});')
+        for bi in range(m):
+            tl.append(f'tl.fromTo("#{cid}-b{bi}",{{scaleY:0}},{{scaleY:1,duration:0.4,ease:"power2.out"}},{t0+0.1+bi*0.05:.2f});')
+    return frag, tl
+
+
+def layout(sid, sc):
+    """A LAYOUT container — a CURATED arrangement (split | triptych | hero-rail | grid | stack) of a fixed
+    cell vocabulary (media | text | stat | chart). The runtime of the composition archetypes: pick an
+    arrangement, fill named slots. One beat, staggered slot reveal. NOT arbitrary block nesting — the bounded
+    set is the point (easy to choose, can't rot into a dashboard). Generalises comparison/juxtaposition/
+    split_view. data: {arrange, slots:[{kind, ...cell fields}], direction?(for split), ratio?(0..1 for
+    split/hero-rail), kicker?, title?, titleHi?, ground?}."""
+    d, start, dur = sc["data"], sc["start"], sc["dur"]
+    esc = compose.esc
+    slots = d.get("slots") or []
+    n = len(slots)
+    dark = getattr(compose, "_POLARITY", "light") == "dark"
+    ink = "#f3efe6" if dark else "#1c1c19"
+    arrange = d.get("arrange", "split")
+    boxes = _layout_boxes(arrange, n, d.get("direction", "horizontal"), d.get("ratio"))
+    frag = [f'<div id="{sid}-wrap" class="clip blk-layout" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
+    hf, ht = _dataviz_head(sid, sc, ink)
+    frag += hf
+    tl = list(ht)
+    times = compose._reveal_times(n, start, dur, [None] * n) if n else []
+    for i, cell in enumerate(slots):
+        cf, ct = _layout_cell(sid, i, cell, boxes[i], times[i])
+        frag += cf
+        tl += ct
+    frag.append('</div>')
+    return frag, tl
+
+
 EXT_BLOCKS = {"spotlight": spotlight, "data_table": data_table,
               "trajectory": trajectory, "stream": stream, "bar_race": bar_race,
               "split_view": split_view, "slope": slope, "isotype": isotype, "dumbbell": dumbbell,
               "small_multiples": small_multiples, "histogram": histogram,
-              "gauge": gauge, "process": process}
+              "gauge": gauge, "process": process, "layout": layout}

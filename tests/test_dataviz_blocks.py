@@ -146,3 +146,37 @@ def test_process_resolves_steps_and_composes_nodes():
     html = "".join(f)
     assert "p-n0" in html and "p-n2" in html and "p-a0" in html   # step nodes + a connector
     assert _classified("process") == ("dataviz", True)
+
+
+# --- layout (curated container: arrangement × a fixed cell vocabulary) ---
+
+def test_layout_composes_a_split_of_chart_and_stat():
+    import compose
+    f, t = compose.BLOCKS["layout"]("l", {"id": "l", "type": "layout", "start": 0, "dur": 8, "data": {
+        "arrange": "split", "slots": [
+            {"kind": "chart", "series": [{"label": "A", "value": 1}, {"label": "B", "value": 2}]},
+            {"kind": "stat", "value": "3.5", "label": "days"}]}})
+    html = "".join(f)
+    assert "l-c0-b0" in html and "l-c1" in html                  # chart bars in slot 0, stat in slot 1
+    assert any("scaleY" in x for x in t)                         # the chart cell's bars grow (seek-safe)
+
+
+def test_layout_gate_rejects_bad_arrange_and_cells():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import author
+
+    def errs(data):
+        spec = {"frames": [{"id": "f", "dur": 8, "scenes": [{"id": "s", "type": "layout", "start": 0, "dur": 8, "data": data}]}]}
+        return [e for e in author.validate_spec(spec) if "layout" in e]
+    assert not errs({"arrange": "split", "slots": [{"kind": "stat", "value": 1, "label": "x"}]})   # valid
+    assert errs({"arrange": "spiral", "slots": [{"kind": "stat", "value": 1}]})                     # bad arrange
+    assert errs({"arrange": "split", "slots": [{"kind": "widget"}]})                                # bad cell kind
+    assert errs({"arrange": "split", "slots": [{"kind": "media"}]})                                 # media needs src
+    assert errs({"arrange": "split", "slots": [{"kind": "text"}]})                                  # text needs lines
+    assert errs({"arrange": "split", "slots": []})                                                  # empty
+
+
+def test_layout_is_classified():
+    assert _classified("layout") == ("media", True)

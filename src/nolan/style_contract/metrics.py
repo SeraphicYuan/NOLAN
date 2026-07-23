@@ -28,7 +28,7 @@ BLOCK_FAMILY: Dict[str, str] = {
     "gauge": "dataviz", "process": "dataviz",
     "collage": "media", "gallery": "media", "carousel": "media", "linedraw": "media",
     "comparison": "media", "newshead": "media", "social_card": "media", "spotlight": "media",
-    "detail_zoom": "media", "hero": "media", "annotate": "media",
+    "detail_zoom": "media", "hero": "media", "annotate": "media", "layout": "media",
     "raw": "structural",
 }
 # blocks that CAN host a real photo/clip (used to suggest upgrades for text-only beats)
@@ -45,7 +45,7 @@ MIN_READABLE: Dict[str, float] = {
     "spotlight": 2.5,
     "connection_board": 5.0, "quadrant": 5.0, "comparison_table": 5.0, "spans": 5.0, "sankey": 4.5,
     "slope": 4.5, "isotype": 4.5, "dumbbell": 4.5, "small_multiples": 5.0, "histogram": 4.0,
-    "gauge": 3.5, "process": 4.5,
+    "gauge": 3.5, "process": 4.5, "layout": 4.5,
     "cycle": 4.5, "ledger": 4.5, "funnel": 4.0, "venn": 4.0, "spectrum": 4.0, "pie": 4.0,
     "bullet_list": 4.0, "scale": 3.5, "pull_quote": 3.5, "chat_thread": 4.0, "juxtaposition": 4.0,
     "detail_zoom": 4.5, "hero": 3.0, "annotate": 4.5,

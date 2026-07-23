@@ -59,7 +59,7 @@ REQUIRED = {"stat": ["items"], "statement": ["lines"], "geo": ["kind"],
             "chart": ["series"], "code": ["code"], "social_card": ["platform"],
             "slope": ["series"], "isotype": ["items"], "dumbbell": ["items"],
             "small_multiples": ["panels"], "histogram": ["bins"],
-            "gauge": ["items"], "process": ["steps"]}
+            "gauge": ["items"], "process": ["steps"], "layout": ["slots"]}
 
 
 # A4: fields the dataset resolver (nolan.data) fills from a bound `data.dataset` at finish/accept time. When a
@@ -135,6 +135,38 @@ def _document_annotation_errors(fid, sid, d):
     return errs
 
 
+# layout (curated container) validation — arrange in the menu + each slot a known cell kind with its
+# required field. A bounded recursive check (the cell vocabulary is small + fixed), NOT arbitrary nesting.
+_LAYOUT_ARRANGES = {"split", "triptych", "hero-rail", "grid", "stack"}
+_LAYOUT_CELL_REQ = {"media": ("src",), "stat": ("value",), "chart": ("series",), "text": ()}
+
+
+def _layout_errors(fid, sid, d):
+    errs = []
+    arr = d.get("arrange", "split")
+    if arr not in _LAYOUT_ARRANGES:
+        errs.append(f"{fid}/{sid} (layout): arrange {arr!r} unknown \u2014 one of {sorted(_LAYOUT_ARRANGES)}")
+    slots = d.get("slots")
+    if not isinstance(slots, list) or not slots:
+        errs.append(f"{fid}/{sid} (layout): needs a non-empty `slots` array")
+        return errs
+    for i, cell in enumerate(slots):
+        if not isinstance(cell, dict):
+            errs.append(f"{fid}/{sid} (layout): slot[{i}] must be an object")
+            continue
+        k = cell.get("kind")
+        if k not in _LAYOUT_CELL_REQ:
+            errs.append(f"{fid}/{sid} (layout): slot[{i}] kind {k!r} unknown \u2014 one of {sorted(_LAYOUT_CELL_REQ)}")
+            continue
+        if k == "text" and not (cell.get("lines") or cell.get("text")):
+            errs.append(f"{fid}/{sid} (layout): text slot[{i}] needs `lines` or `text`")
+        for req in _LAYOUT_CELL_REQ[k]:
+            v = cell.get(req)
+            if v is None or (isinstance(v, (list, str)) and len(v) == 0):
+                errs.append(f"{fid}/{sid} (layout): {k} slot[{i}] needs `{req}`")
+    return errs
+
+
 def validate_spec(spec):
     errs = []
     templ = CATALOG["scene_templates"]
@@ -194,6 +226,8 @@ def validate_spec(spec):
                     errs.append(f"{fid}/{sid} (document): needs data.source (a page image/scan) or data.document "
                                 f"(an ingested document id — nolan.document; the resolver fills source + region rects)")
                 errs.extend(_document_annotation_errors(fid, sid, d))
+            if t == "layout":
+                errs.extend(_layout_errors(fid, sid, d))
             if t == "statement" and d.get("operative") and not any(d["operative"] in ln for ln in d.get("lines", [])):
                 errs.append(f"{fid}/{sid} (statement): operative {d['operative']!r} not found in any line")
             if t == "comparison":                               # comparison is a VISUAL contrast — sides are image|video

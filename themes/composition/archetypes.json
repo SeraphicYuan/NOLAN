@@ -111,7 +111,8 @@
         "sankey",
         "connection_board",
         "small_multiples",
-        "process"
+        "process",
+        "layout"
       ],
       "exemplar": null,
       "zone": {
