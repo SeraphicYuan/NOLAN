@@ -719,8 +719,13 @@ def _gate_and_build(comp: str, spec_file: Path) -> Tuple[bool, str]:
     """
     raw = spec_file.read_bytes()
     spec = json.loads(raw.decode("utf-8"))
-    if any((sc.get("data") or {}).get("dataset")
-           for fr in spec.get("frames", []) for sc in fr.get("scenes", [])):
+
+    def _binds_dataset(sc):
+        d = sc.get("data") or {}
+        if d.get("dataset"):
+            return True
+        return sc.get("type") == "layout" and any((s or {}).get("dataset") for s in d.get("slots", []) or [])
+    if any(_binds_dataset(sc) for fr in spec.get("frames", []) for sc in fr.get("scenes", [])):
         try:
             from nolan.data import resolve_datasets_in_spec
             if resolve_datasets_in_spec(spec, str(_project_dir(comp))):

@@ -161,6 +161,8 @@ def _layout_errors(fid, sid, d):
         if k == "text" and not (cell.get("lines") or cell.get("text")):
             errs.append(f"{fid}/{sid} (layout): text slot[{i}] needs `lines` or `text`")
         for req in _LAYOUT_CELL_REQ[k]:
+            if cell.get("dataset") and k in ("chart", "stat"):
+                continue                                        # the resolver fills series/value from the dataset
             v = cell.get(req)
             if v is None or (isinstance(v, (list, str)) and len(v) == 0):
                 errs.append(f"{fid}/{sid} (layout): {k} slot[{i}] needs `{req}`")

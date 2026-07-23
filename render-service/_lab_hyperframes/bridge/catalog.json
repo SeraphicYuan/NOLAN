@@ -261,7 +261,7 @@
     "comparison": {
       "fn": "comparison",
       "purpose": "A split A-vs-B / before-after VISUAL CONTRAST: two panels (side-by-side or stacked), a divider that draws + an optional center VS badge, each panel sliding in. Each side is a VISUAL — an image (Ken-Burns + effects) or a framework video; a title/kicker and a stat number ride only as OVERLAYS.",
-      "when_to_use": "A beat that CONTRASTS two things VISUALLY: this photo vs that photo, before vs after footage, the map then vs now — where each side is an image or video.",
+      "when_to_use": "A beat that CONTRASTS two things VISUALLY: this photo vs that photo, before vs after footage, the map then vs now — where each side is an image or video. GENERAL PATH: `layout` (arrange:split, two media cells, vs) does this and any other cell mix.",
       "not_for": "A text-vs-text / stat-vs-stat / stat-vs-text contrast (use `juxtaposition`). A single subject (use statement/stat/media_ground). More than two things (use a diagram or gallery).",
       "data_schema": {
         "left": "object — the first side's VISUAL spec (image|video; see side spec)",
@@ -286,7 +286,7 @@
     "juxtaposition": {
       "fn": "juxtaposition",
       "purpose": "A NON-VISUAL A-vs-B: two claims or two numbers set against each other on a typographic axis — two zones slide in on the theme surface, a rule draws between them, an optional centre VS/pivot lands. Editorial display type, accent operative. This is the rhetorical/numeric contrast comparison is NOT for.",
-      "when_to_use": "A beat that CONTRASTS two things in WORDS or NUMBERS: what they promised vs what it cost, 12% vs 88%, the claim vs the rebuttal, then vs now as figures — where neither side is an image.",
+      "when_to_use": "A beat that CONTRASTS two things in WORDS or NUMBERS: what they promised vs what it cost, 12% vs 88%, the claim vs the rebuttal, then vs now as figures — where neither side is an image. GENERAL PATH: `layout` (arrange:split, two text/stat cells, vs).",
       "not_for": "A VISUAL contrast — two photos/videos (use `comparison`). A single claim (use `statement`). A single number (use `stat`). More than two things (use a diagram/ledger/bullet_list).",
       "data_schema": {
         "left": "object — the first side: {type:text|stat, …} (see below)",
@@ -910,7 +910,7 @@
     "split_view": {
       "fn": "split_view",
       "purpose": "SPLIT SCREEN — one side a document page (cropped to a region so it tracks the narrative), the other any content (a video clip, a still, a text block, or a stat).",
-      "when_to_use": "A beat that plays the PAPER against something else: the source region beside your explanation / a clip / a headline number. 'Here's what it says ∥ here's what it means.'",
+      "when_to_use": "A beat that plays the PAPER against something else: the source region beside your explanation / a clip / a headline number. 'Here's what it says ∥ here's what it means.' GENERAL PATH: `layout` (arrange:split with a media + a text/stat/chart cell).",
       "not_for": "A full-frame page (use document). A visual A-vs-B of two images (use comparison).",
       "data_schema": {
         "paper": "object {document, page?, focus?} — the paper side; the resolver fills source/page_size/focus_rect from the ingested document (B-P1). focus = a region id to crop to.",
@@ -1102,19 +1102,25 @@
       "not_for": "A single mark (use that block directly). A page you read down (document). Freeform pixel-art (raw). A whole-frame photo (hero/media_ground).",
       "data_schema": {
         "arrange": "enum(split|triptych|hero-rail|grid|stack) — the macro arrangement. split=N columns (2-up default; direction:vertical stacks rows); triptych=3 equal; hero-rail=one big + a rail; grid=2-wide; stack=rows.",
-        "slots": "array of CELLS, one per region. Each cell = {kind, ...}: media {kind:'media', src, label?} (image/video, cover + Ken-Burns); text {kind:'text', lines:[...], operative?, kicker?} (a mini statement); stat {kind:'stat', value, label, prefix?, suffix?, kicker?} (one big number); chart {kind:'chart', series:[{label,value}], type?, kicker?} (a mini bar chart). ONLY these four kinds — the bounded set is deliberate.",
+        "slots": "array of CELLS, one per region. Each cell = {kind, ...}: media {kind:'media', src, label?} (image/video, cover + Ken-Burns); text {kind:'text', lines:[...], operative?, kicker?} (a mini statement); stat {kind:'stat', value, label, prefix?, suffix?, kicker?} (one big number); chart {kind:'chart', series:[{label,value}], type?, kicker?} (a mini bar chart). ONLY these four kinds — the bounded set is deliberate. A `chart` or `stat` cell may BIND a dataset instead of literal data: add {dataset, query?, encode} to the cell (chart→encode {x,y}; stat→encode {value,label}, first queried row) and the resolver fills it + stamps value_source.",
         "direction": "enum(horizontal|vertical)? — for split: columns (default) or stacked rows",
         "ratio": "number? — 0..1, the first slot's fraction (split 2-up left width; hero-rail hero width, default 0.62)",
         "kicker": "string?",
         "title": "string?",
         "titleHi": "string?",
-        "ground": "object?"
+        "ground": "object?",
+        "vs": "string|bool? — for a 2-up split: a centre PIVOT badge between the slots (the comparison/juxtaposition 'VS'/'OR'/'→' framing). true = 'VS'."
       },
       "constraints": [
         "duration_preserving",
         "seek_safe",
         "transform_opacity_only"
-      ]
+      ],
+      "presets": {
+        "comparison": "arrange:split, two media cells (+ label overlays), vs:'VS' — image/video vs image/video",
+        "juxtaposition": "arrange:split, two text (or stat) cells, vs:'OR' — a text/stat dialectic",
+        "split_view": "arrange:split (ratio), a media cell + a text/stat/chart cell — a source alongside a reading"
+      }
     }
   },
   "components": {

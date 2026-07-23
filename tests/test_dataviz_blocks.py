@@ -180,3 +180,41 @@ def test_layout_gate_rejects_bad_arrange_and_cells():
 
 def test_layout_is_classified():
     assert _classified("layout") == ("media", True)
+
+
+# --- layout: dataset-bound cells (#1) + the vs pivot (#2) ---
+
+def test_layout_cell_resolves_a_bound_chart_and_stat():
+    from nolan.data.resolve import resolve_cell
+    ds = _DS([{"s": "A", "v": 10}, {"s": "B", "v": 30}], ["s", "v"])
+    chart = {"kind": "chart", "dataset": "d", "encode": {"x": "s", "y": "v"}}
+    resolve_cell(chart, ds)
+    assert chart["series"] == [{"label": "A", "value": 10}, {"label": "B", "value": 30}]
+    assert chart["value_source"] == "test"
+    stat = {"kind": "stat", "dataset": "d", "query": {"sort": {"by": "v", "desc": True}},
+            "encode": {"value": "v", "label": "s"}}
+    resolve_cell(stat, ds)
+    assert stat["value"] == 30 and stat["label"] == "B"                # top-sorted row
+
+
+def test_layout_gate_defers_a_dataset_bound_cell_field():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import author
+
+    def errs(data):
+        spec = {"frames": [{"id": "f", "dur": 8, "scenes": [{"id": "s", "type": "layout", "start": 0, "dur": 8, "data": data}]}]}
+        return [e for e in author.validate_spec(spec) if "layout" in e]
+    # a chart cell with NO series but a dataset binding passes (resolver fills it before recompose)
+    assert not errs({"arrange": "split", "slots": [
+        {"kind": "chart", "dataset": "d", "encode": {"x": "a", "y": "b"}}, {"kind": "stat", "value": 1, "label": "x"}]})
+    assert errs({"arrange": "split", "slots": [{"kind": "chart"}]})    # neither series nor dataset → rejected
+
+
+def test_layout_vs_pivot_composes():
+    import compose
+    f, t = compose.BLOCKS["layout"]("l", {"id": "l", "type": "layout", "start": 0, "dur": 8, "data": {
+        "arrange": "split", "vs": "OR", "slots": [{"kind": "text", "lines": ["A"]}, {"kind": "text", "lines": ["B"]}]}})
+    html = "".join(f)
+    assert "l-vs" in html and ">OR<" in html                          # the pivot badge

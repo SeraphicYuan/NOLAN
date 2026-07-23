@@ -245,19 +245,51 @@ def resolve_scene(scene: Dict, dataset) -> Dict:
     return scene
 
 
+def resolve_cell(cell: Dict, dataset) -> Dict:
+    """Fill a LAYOUT cell (chart|stat) from a bound dataset — the cell analogue of resolve_scene, so a
+    `layout` slot can pull real numbers instead of the author typing them. A chart cell reuses the chart
+    materializer (→ series); a stat cell takes the first queried row's value/label (query to pick the row)."""
+    enc = cell.get("encode", {})
+    kind = cell.get("kind", "text")
+    _validate_binding(f"{kind}-cell", enc, cell.get("query", {}), dataset)
+    rows = apply_query(dataset.rows, cell.get("query", {}))
+    if kind == "chart":
+        cell.update(_materialize("chart", rows, enc))
+    elif kind == "stat":
+        r0 = rows[0] if rows else {}
+        vc = enc.get("value") or enc.get("y")
+        lc = enc.get("label") or enc.get("x")
+        if vc:
+            cell["value"] = _num(_rowval(r0, vc, 0))
+        if lc and not cell.get("label"):
+            cell["label"] = str(_rowval(r0, lc))
+    cell["value_source"] = dataset.meta.get("provenance") or f"dataset:{dataset.id}"
+    cell["_dataset"] = {"id": dataset.id, "query": cell.get("query", {}), "encode": enc}
+    return cell
+
+
 def resolve_datasets_in_spec(spec: Dict, comp) -> int:
-    """Walk a spec; for every scene that BINDS a dataset (`data.dataset`), load it (provenance-gated) and
-    materialize the block's data from real cells. Returns how many scenes were resolved. A missing/unresolved
-    dataset is left as-is (the number gate will then flag its bare numbers, if any)."""
+    """Walk a spec; for every scene that BINDS a dataset (`data.dataset`) — or a LAYOUT cell that binds one
+    (`slot.dataset`) — load it (provenance-gated) and materialize the real cells. Returns how many were
+    resolved. A missing/unresolved dataset is left as-is (the number gate then flags its bare numbers)."""
     from .registry import load_dataset
     n = 0
     for fr in spec.get("frames", []):
         for sc in fr.get("scenes", []):
-            did = (sc.get("data", {}) or {}).get("dataset")
-            if not did:
-                continue
-            ds = load_dataset(comp, did)
-            if ds is not None:
-                resolve_scene(sc, ds)
-                n += 1
+            d = sc.get("data", {}) or {}
+            did = d.get("dataset")
+            if did:
+                ds = load_dataset(comp, did)
+                if ds is not None:
+                    resolve_scene(sc, ds)
+                    n += 1
+            if sc.get("type") == "layout":                  # recurse into the container's cells
+                for slot in d.get("slots", []) or []:
+                    sdid = (slot or {}).get("dataset")
+                    if not sdid:
+                        continue
+                    sds = load_dataset(comp, sdid)
+                    if sds is not None:
+                        resolve_cell(slot, sds)
+                        n += 1
     return n

@@ -1294,10 +1294,31 @@ def layout(sid, sc):
     frag += hf
     tl = list(ht)
     times = compose._reveal_times(n, start, dur, [None] * n) if n else []
+    # VS PIVOT (the tuned detail from comparison/juxtaposition): open a wider centre gap, drop a badge in it,
+    # so `layout` reproduces the "A vs B" framing those blocks were built for — without the badge colliding
+    # with cell content. Applied to a 2-up horizontal split.
+    vs = d.get("vs")
+    vs_split = bool(vs) and arrange == "split" and n == 2 and str(d.get("direction", "horizontal")) != "vertical"
+    if vs_split:
+        clr = 64
+        x0, y0, w0, h0 = boxes[0]
+        x1, y1, w1, h1 = boxes[1]
+        boxes[0] = (x0, y0, max(200, w0 - clr), h0)
+        boxes[1] = (x1 + clr, y1, max(200, w1 - clr), h1)
     for i, cell in enumerate(slots):
         cf, ct = _layout_cell(sid, i, cell, boxes[i], times[i])
         frag += cf
         tl += ct
+    if vs_split:
+        gx = (boxes[0][0] + boxes[0][2] + boxes[1][0]) / 2
+        cy = 250 + (942 - 250) / 2
+        rule = "rgba(243,239,230,0.14)" if dark else "rgba(28,28,25,0.12)"
+        frag.append(f'<div style="position:absolute;left:{gx-1.5:.0f}px;top:290px;width:3px;height:612px;background:{rule}"></div>')
+        frag.append(f'<div id="{sid}-vs" style="position:absolute;left:{gx-48:.0f}px;top:{cy-48:.0f}px;width:96px;'
+                    f'height:96px;border-radius:50%;background:var(--accent);color:var(--surface,#fff);'
+                    f'display:flex;align-items:center;justify-content:center;font-family:var(--font-display);'
+                    f'font-weight:800;font-size:34px;opacity:0;z-index:5">{esc(vs if isinstance(vs, str) else "VS")}</div>')
+        tl.append(f'tl.fromTo("#{sid}-vs",{{scale:0}},{{scale:1,opacity:1,duration:0.4,ease:"back.out(2.2)"}},{start+0.55:.2f});')
     frag.append('</div>')
     return frag, tl
 
