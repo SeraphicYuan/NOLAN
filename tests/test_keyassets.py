@@ -304,6 +304,35 @@ def test_hero_inventory_stages_lists_and_is_honest(tmp_path):
     assert inv2.count(HERO_START) == 1
 
 
+# --- /keyassets page: expose + edit queries/identifiers ------------------------------------------
+def test_build_view_exposes_identifiers_and_queries(tmp_path):
+    from nolan.keyassets.view import build_view
+    data = {"comp": "x", "entities": [{"id": "ka_x", "name": "X", "kind": "person", "narrative_role": "r",
+            "identifiers": ["a", "b"], "queries_locked": False,
+            "desired_assets": [{"type": "portrait", "queries": ["q1", "q2"]}]}],
+            "directions": [{"id": "d", "title": "D", "entity_ids": ["ka_x"]}]}
+    (tmp_path / "key_assets.json").write_text(json.dumps(data), encoding="utf-8")
+    e = build_view(tmp_path)["directions"][0]["entities"][0]
+    assert e["identifiers"] == ["a", "b"]
+    assert e["assets"][0]["queries"] == ["q1", "q2"]
+
+
+def test_patch_entity_updates_both_files_and_locks(tmp_path):
+    from nolan.webui.routes.keyassets import _patch_entity
+    data = {"entities": [{"id": "ka_x", "name": "X", "identifiers": ["old"], "queries_locked": False,
+                          "desired_assets": [{"type": "portrait", "queries": ["old"]}]}]}
+    for f in ("key_assets.proposal.json", "key_assets.json"):
+        (tmp_path / f).write_text(json.dumps(data), encoding="utf-8")
+    changed = _patch_entity(tmp_path, "ka_x", "queries", 0, ["new1", "new2"])
+    assert set(changed) == {"key_assets.proposal.json", "key_assets.json"}
+    d = json.loads((tmp_path / "key_assets.proposal.json").read_text(encoding="utf-8"))
+    assert d["entities"][0]["desired_assets"][0]["queries"] == ["new1", "new2"]
+    assert d["entities"][0]["queries_locked"] is True         # edit locks against auto-regen
+    _patch_entity(tmp_path, "ka_x", "identifiers", None, ["i1", "i2"])
+    d2 = json.loads((tmp_path / "key_assets.json").read_text(encoding="utf-8"))
+    assert d2["entities"][0]["identifiers"] == ["i1", "i2"]
+
+
 # --- schema round-trip ---------------------------------------------------------------------------
 def test_proposal_round_trip(tmp_path):
     ents = _ents(("De Beers", "organization"), ("Cecil Rhodes", "person"))

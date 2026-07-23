@@ -54,7 +54,8 @@ def build_view(project_dir: Path) -> dict:
             "entities": [{
                 "id": e.id, "name": e.name, "kind": e.kind, "priority": e.priority,
                 "narrative_role": e.narrative_role, "mentions": e.mentions,
-                "assets": [a.to_dict() for a in e.desired_assets],
+                "identifiers": e.identifiers, "queries_locked": e.queries_locked,
+                "assets": [a.to_dict() for a in e.desired_assets],   # a.to_dict() carries `queries`
                 "collected": collected.get(e.id, []),
             } for e in ents],
         })

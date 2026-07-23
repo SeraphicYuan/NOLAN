@@ -6,10 +6,40 @@ GET  /keyassets                       the page (static shell; data fetched clien
 GET  /api/keyassets?project=<slug>    the pull-list view (nolan.keyassets.view.build_view)
 GET  /api/keyassets/file?project=&path=   serve a collected asset file (guarded to the project dir)
 """
+import json
 from pathlib import Path
 
-from fastapi import HTTPException, Query
+from fastapi import Body, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
+
+
+def _patch_entity(project_dir: Path, entity_id: str, field: str, asset_index, values: list) -> list:
+    """Patch an entity's `queries` (needs asset_index) or `identifiers` in BOTH the proposal and the
+    canonical key_assets.json (whichever exist), and lock the entity so a re-run won't overwrite the
+    human edit. Raw-JSON patch so canonical's resolved data is untouched. Returns the files changed."""
+    changed = []
+    for name in ("key_assets.proposal.json", "key_assets.json"):
+        p = project_dir / name
+        if not p.exists():
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        for e in data.get("entities", []):
+            if e.get("id") != entity_id:
+                continue
+            if field == "identifiers":
+                e["identifiers"] = values
+            elif field == "queries" and asset_index is not None:
+                das = e.get("desired_assets", [])
+                if 0 <= asset_index < len(das):
+                    das[asset_index]["queries"] = values
+            e["queries_locked"] = True
+            p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            changed.append(name)
+            break
+    return changed
 
 
 def register(app, ctx):
@@ -45,6 +75,22 @@ def register(app, ctx):
     async def keyassets_get(project: str = Query(...)):
         from nolan.keyassets.view import build_view
         return build_view(_project_dir(project))
+
+    @app.post("/api/keyassets/edit")
+    async def keyassets_edit(payload: dict = Body(...)):
+        """Save human-edited queries/identifiers (locks the entity so a re-run won't overwrite them)."""
+        base = _project_dir(str(payload.get("project") or ""))
+        entity_id = str(payload.get("entity_id") or "")
+        field = str(payload.get("field") or "")
+        if field not in ("queries", "identifiers"):
+            raise HTTPException(status_code=400, detail="field must be 'queries' or 'identifiers'")
+        values = [str(v).strip() for v in (payload.get("values") or []) if str(v).strip()]
+        ai = payload.get("asset_index")
+        ai = int(ai) if ai is not None else None
+        changed = _patch_entity(base, entity_id, field, ai, values)
+        if not changed:
+            raise HTTPException(status_code=404, detail="entity not found")
+        return {"ok": True, "updated": changed, "values": values}
 
     @app.get("/api/keyassets/file")
     async def keyassets_file(project: str = Query(...), path: str = Query(...)):

@@ -56,6 +56,25 @@
              border:1px solid var(--border); color: var(--text-secondary); }
     .badge.plan { border-color:#7a6a3a; color:#e0c878; }
     .badge.done { border-color:#3a7a4a; color:#7fd89a; }
+    .ident { font-size:11.5px; color: var(--text-secondary); margin:2px 0 6px; }
+    .ident b { color: var(--text-primary); font-weight:600; }
+    .queries-view { margin:6px 0 2px; }
+    .qrow { font-size:11px; color: var(--text-secondary); font-family: ui-monospace, monospace; margin:1px 0; }
+    .qrow b { color: var(--accent); font-family: inherit; }
+    .edit-toggle { font-size:11px; color: var(--accent); cursor:pointer; margin-left:6px; user-select:none; }
+    .edit-toggle:hover { text-decoration:underline; }
+    .lock { font-size:10.5px; color: var(--text-secondary); margin-left:6px; }
+    .editpanel { margin:8px 0 4px; padding:10px 12px; border:1px solid var(--border); border-radius:8px;
+                 background: var(--bg-primary); }
+    .ed-row { margin-bottom:8px; }
+    .ed-row label { display:block; font-size:11px; color: var(--text-secondary); margin-bottom:3px; }
+    .ed-row input, .ed-row textarea { width:100%; box-sizing:border-box; background: var(--bg-secondary);
+        color: var(--text-primary); border:1px solid var(--border); border-radius:6px; padding:6px 8px;
+        font-size:12px; font-family: ui-monospace, monospace; }
+    .ed-row textarea { min-height:56px; resize:vertical; }
+    .ed-save { background: var(--accent); color:#fff; border:none; border-radius:6px; padding:6px 14px;
+               font-size:12px; cursor:pointer; }
+    .ed-status { font-size:11px; color: var(--text-secondary); margin-left:10px; }
   </style>
 </head>
 <body>
@@ -119,6 +138,26 @@
       if (e.key === "Escape") { var lb = document.getElementById("lightbox"); lb.style.display = "none"; lb.innerHTML = ""; }
     });
 
+    function qlist(assets) {
+      var rows = (assets || []).filter(function (a) { return a.queries && a.queries.length; })
+        .map(function (a) {
+          return '<div class="qrow"><b>' + esc(a.type) + ':</b> ' + a.queries.map(esc).join(" · ") + "</div>";
+        }).join("");
+      return rows ? '<div class="queries-view">' + rows + "</div>" : "";
+    }
+
+    function editPanel(e) {
+      var qas = (e.assets || []).map(function (a, i) {
+        return '<div class="ed-row"><label>' + esc(a.type) + " queries (one per line)</label>" +
+          '<textarea class="ed-q" data-ai="' + i + '">' + esc((a.queries || []).join("\n")) + "</textarea></div>";
+      }).join("");
+      return '<div class="editpanel" style="display:none">' +
+        '<div class="ed-row"><label>identifiers (comma-separated — role, affiliation, era, aliases)</label>' +
+        '<input class="ed-ident" value="' + esc((e.identifiers || []).join(", ")) + '"></div>' + qas +
+        '<button class="ed-save" onclick="saveEntity(this,\'' + esc(e.id) + '\')">Save</button>' +
+        '<span class="ed-status"></span></div>';
+    }
+
     function entHtml(e) {
       var star = e.priority === "hero" ? '<span class="hero">★</span> ' : "";
       var chips = (e.assets || []).map(chip).join("");
@@ -126,11 +165,40 @@
         ? '<div class="anchors">“' + e.mentions.map(esc).join("” · “") + "”</div>" : "";
       var gal = (e.collected && e.collected.length)
         ? '<div class="gallery">' + e.collected.map(thumb).join("") + "</div>" : "";
-      return '<div class="ent"><div class="top">' + star +
+      var ident = (e.identifiers && e.identifiers.length)
+        ? '<div class="ident"><b>id:</b> ' + e.identifiers.map(esc).join(" · ") + "</div>" : "";
+      var lock = e.queries_locked ? '<span class="lock">🔒 edited</span>' : "";
+      return '<div class="ent" data-eid="' + esc(e.id) + '"><div class="top">' + star +
         '<span class="name">' + esc(e.name) + '</span>' +
-        '<span class="kind">' + esc(e.kind) + "</span></div>" +
-        '<div class="role">' + esc(e.narrative_role) + "</div>" +
-        '<div class="chips">' + chips + "</div>" + anchors + gal + "</div>";
+        '<span class="kind">' + esc(e.kind) + "</span>" +
+        '<span class="edit-toggle" onclick="toggleEdit(this)">✎ queries</span>' + lock + "</div>" +
+        '<div class="role">' + esc(e.narrative_role) + "</div>" + ident +
+        '<div class="chips">' + chips + "</div>" + qlist(e.assets) + anchors + gal + editPanel(e) + "</div>";
+    }
+
+    function toggleEdit(el) {
+      var p = el.closest(".ent").querySelector(".editpanel");
+      p.style.display = p.style.display === "none" ? "block" : "none";
+    }
+
+    function saveEntity(btn, eid) {
+      var ent = btn.closest(".ent");
+      var status = ent.querySelector(".ed-status");
+      status.textContent = "saving…";
+      function post(body) {
+        return fetch("/api/keyassets/edit", { method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(Object.assign({ project: curProject, entity_id: eid }, body)) });
+      }
+      var idents = ent.querySelector(".ed-ident").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+      var posts = [post({ field: "identifiers", values: idents })];
+      ent.querySelectorAll(".ed-q").forEach(function (t) {
+        var vals = t.value.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+        posts.push(post({ field: "queries", asset_index: parseInt(t.dataset.ai, 10), values: vals }));
+      });
+      Promise.all(posts)
+        .then(function () { status.textContent = "saved ✓ — re-run collect to use"; load(curProject); })
+        .catch(function () { status.textContent = "save failed"; });
     }
 
     function render(d) {
