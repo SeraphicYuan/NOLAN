@@ -135,17 +135,25 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
     for i, c in enumerate(cands):
         c.rank = i
 
-    # download whatever isn't already local, gate + keep decodable
-    live: List[Candidate] = []
-    for c in cands:
+    # download whatever isn't already local, gate + keep decodable. CONCURRENT: downloads are network-bound
+    # and independent (each writes a unique cand_dir path), so a bounded thread pool cuts the wall-clock of
+    # the per-need fetch (the dominant cost) without touching the CLIP-scoring/dedup that follows. ex.map
+    # preserves order, so `live` keeps the search-rank order.
+    def _download(c: Candidate) -> Optional[Candidate]:
         if c.path is None and ctx.download:
             try:
                 if not ctx.download(c, cand_dir):
-                    continue
+                    return None
             except Exception:
-                continue
-        if c.path and Path(c.path).exists():
-            live.append(c)
+                return None
+        return c if (c.path and Path(c.path).exists()) else None
+
+    if cands:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(8, len(cands))) as _ex:
+            live: List[Candidate] = [c for c in _ex.map(_download, cands) if c is not None]
+    else:
+        live = []
 
     # score each candidate. CONCRETE needs → literal CLIP relevance (a real photo of the thing wins).
     # EVOCATIVE needs → a TIER-dominant blend: curated sources (library/artvee/museums) lead, but
@@ -236,11 +244,12 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
             and (len(usable) < cfg.min_usable or best_rel < cfg.relevance_floor)):
         for k in range(cfg.generate_n):
             out = cand_dir / f"{need['id']}_gen{k}.png"
+            gp = need.get("gen_prompt") or text                # the art-directed (enhanced) prompt we generate from
             try:
-                if ctx.generate(need.get("gen_prompt") or text, out,
-                                negative=need.get("gen_negative")) and out.exists():
-                    kept.append(Candidate(ref=str(out), source="generate", modality="image",
-                                          path=out, meta={"license": "generated", "source": "krea2 (generated)"}))
+                if ctx.generate(gp, out, negative=need.get("gen_negative")) and out.exists():
+                    kept.append(Candidate(ref=str(out), source="generate", modality="image", path=out,
+                                          meta={"license": "generated", "source": "krea2 (generated)",
+                                                "gen_prompt": gp, "gen_negative": need.get("gen_negative") or ""}))
             except Exception:
                 pass
     return kept

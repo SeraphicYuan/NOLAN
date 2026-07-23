@@ -136,3 +136,27 @@ def test_acquire_pool_dedups_across_needs(tmp_path):
     got = acquire_pool([{"id": "n1", "query": "a", "queries": ["a"]},
                         {"id": "n2", "query": "b", "queries": ["b"]}], ctx, cfg, tmp_path, log=lambda *_: None)
     assert len(got) == 1                                          # the near-dup was not kept twice
+
+
+def test_acquire_need_parallel_download_preserves_order_and_drops_failures(tmp_path):
+    """The concurrent (thread-pool) download must keep search-rank order and drop failed downloads —
+    ex.map preserves order, so the rank/score ordering downstream is unaffected."""
+    def _search(need, n):
+        return [Candidate(ref=f"r{i}", source="stock:ddgs", modality="image") for i in range(5)]
+
+    def _dl(c, dest):
+        if c.ref in ("r1", "r3"):
+            return False                                   # 2nd + 4th fail
+        p = Path(dest) / f"{c.ref}.jpg"
+        i = int(c.ref[1])
+        arr = np.zeros((32, 32), "uint8")
+        arr[: (i + 1) * 5, :] = 255                        # distinct white-row count → distinct avg-hash (no dedup)
+        Image.fromarray(arr).save(p)
+        c.path = p
+        return True
+
+    ctx = Context(search_stock=_search, download=_dl)      # no relevance/library/clips organs
+    cfg = AcquireConfig(per_need=8, over_fetch=1, vlm_cull=False)
+    cfg.sources = ("stock",)
+    got = acquire_need({"id": "a1", "query": "x", "queries": ["x"]}, ctx, cfg, tmp_path, [])
+    assert [c.ref for c in got] == ["r0", "r2", "r4"]      # order preserved, r1/r3 dropped
