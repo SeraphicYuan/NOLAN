@@ -258,62 +258,116 @@ def survey_channel(channel: str, limit: Optional[int] = None,
     return out
 
 
-async def recommend_from_channel(channel: str, config, limit: int = 250,
-                                 catalog_dir: Optional[Path] = None,
-                                 model: str = "") -> Dict[str, Any]:
-    """Recommend a DIVERSE, non-redundant subset of a channel to add. Goal = BROAD documentary coverage
-    (quality assumed from documentary channels), so it leans INCLUSIVE: it tags each candidate by topic,
-    flags redundancy (vs the existing library + within the channel), and notes coverage gaps. Titles-only
-    (documentary titles state their topic plainly). LLM = deepseek (the OpenRouter text default)."""
+_BGE = None
+
+
+def _bge_model():
+    global _BGE
+    if _BGE is None:
+        from sentence_transformers import SentenceTransformer
+        from nolan.imagelib.embeddings import DESC_MODEL
+        _BGE = SentenceTransformer(DESC_MODEL)
+    return _BGE
+
+
+def _embed_titles(titles):
+    """BGE-embed + L2-normalize titles -> vectors (cosine == dot product)."""
+    if not titles:
+        return []
+    vecs = _bge_model().encode(list(titles), normalize_embeddings=True, show_progress_bar=False)
+    return [list(map(float, v)) for v in vecs]
+
+
+def cluster_dedup_candidates(cand, lib_titles, thr_lib=0.87, thr_dup=0.90):
+    """Deterministic, SCALABLE title dedup (BGE, no LLM -- handles 1000s of titles the LLM can't):
+    (1) DROP candidates whose nearest LIBRARY title is >= thr_lib (already covered); (2) leader-CLUSTER the
+    survivors at the TIGHT thr_dup so only near-DUPLICATE titles group (series parts / trailers / re-uploads /
+    near-identical wording -- NOT same-subject-different-angle), keeping ONE rep (shortest title) per cluster.
+    Returns {distinct, dropped_lib, clusters, candidates}."""
+    if not cand:
+        return {"distinct": [], "dropped_lib": 0, "clusters": 0, "candidates": 0}
+    cv = _embed_titles([c.get("title") or "" for c in cand])
+    lv = _embed_titles(lib_titles) if lib_titles else []
+
+    def cos(a, b):
+        return sum(x * y for x, y in zip(a, b))
+
+    survivors, dropped = [], 0
+    for c, v in zip(cand, cv):
+        if lv and max(cos(v, l) for l in lv) >= thr_lib:
+            dropped += 1
+            continue
+        survivors.append((c, v))
+    groups, gvecs = [], []
+    for c, v in survivors:
+        j = next((i for i, gv in enumerate(gvecs) if cos(v, gv) >= thr_dup), None)
+        if j is None:
+            groups.append([c]); gvecs.append(v)
+        else:
+            groups[j].append(c)
+    distinct = []
+    for grp in groups:
+        rep = min(grp, key=lambda c: len(c.get("title") or ""))
+        distinct.append({**rep, "cluster_size": len(grp),
+                         "cluster_titles": [g["title"] for g in grp if g is not rep][:4]})
+    return {"distinct": distinct, "dropped_lib": dropped, "clusters": len(groups), "candidates": len(cand)}
+
+
+async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, model=""):
+    """Recommend a DIVERSE add-list in TWO layers: (1) cluster_dedup_candidates -- deterministic BGE
+    clustering drops library-covered titles + collapses near-dups at ANY scale; (2) the config text LLM
+    (deepseek) tags the DISTINCT survivors by topic, writes the coverage/gap note, and does the final
+    semantic add/skip. Titles-first."""
     import json
-    import re
 
     from nolan.llm import create_text_llm
-    survey = survey_channel(channel, limit, catalog_dir)
-    cand = [s for s in survey if not s["in_library"]][:limit]
-    if not cand:
-        return {"coverage": "Everything surveyed from this channel is already in the library.",
-                "items": [], "candidates": 0}
+    survey = survey_channel(channel, None, catalog_dir)
+    cand = [s for s in survey if not s["in_library"]]
     lib_titles = [e.get("title") or "" for e in load_catalog(catalog_dir).values() if e.get("title")]
+    dd = cluster_dedup_candidates(cand, lib_titles)
+    distinct = dd["distinct"][:limit]
+    stats = {"total": len(survey), "candidates": dd["candidates"], "dropped_redundant": dd["dropped_lib"],
+             "clusters": dd["clusters"], "distinct": len(dd["distinct"])}
+    if not distinct:
+        return {"coverage": "Nothing new -- every distinct topic on this channel is already covered.",
+                "items": [], "add": 0, **stats}
     sys_p = ("You curate a BROAD documentary library spanning ALL topics (history, business, arts, sports, "
              "science, nature, culture, biography, war, politics, tech, society, crime, religion...). Quality "
-             "is already assured (these are documentary channels). Your ONLY job: maximize TOPIC COVERAGE and "
-             "avoid REDUNDANCY.")
+             "is assured (documentary channels). Exact near-duplicate titles were pre-removed, but you MUST "
+             "still deduplicate SEMANTICALLY (same subject covered several ways). Maximize TOPIC BREADTH.")
     _nl = chr(10)
     parts = [
         "EXISTING LIBRARY (" + str(len(lib_titles)) + " videos) titles:",
         _nl.join("- " + t for t in lib_titles[:400]),
         "",
-        "CANDIDATE videos from the channel (id | title):",
-        _nl.join(s["video_id"] + " | " + (s["title"] or "") for s in cand),
+        "DISTINCT CANDIDATES (id | title) -- already de-duplicated:",
+        _nl.join(s["video_id"] + " | " + (s["title"] or "") for s in distinct),
         "",
-        ("For EACH candidate output JSON. Default verdict = 'add' (documentaries broaden coverage). Use "
-         "'skip' ONLY when clearly redundant with the existing library OR a near-duplicate of another candidate "
-         "(name which in the reason; same subject + DIFFERENT era/angle is NOT redundant). Give a short `topic` "
-         "and a one-line `reason`. Also a 1-2 sentence `coverage` note: which topics the library is THIN on that "
-         "this channel helps fill."),
+        ("For EACH candidate output JSON. Verdict 'add' by default, BUT 'skip' when (a) the existing library "
+         "already covers it, OR (b) several candidates cover the SAME subject/person/event -- keep only the 1-2 "
+         "most DISTINCT angles and skip the rest (same subject + genuinely different era/angle is NOT redundant). "
+         "Short `topic` + one-line `reason` (name what it duplicates when skipping). Also a 1-2 sentence "
+         "`coverage` note: which topics the library is THIN on that this channel fills."),
         ('Respond ONLY with JSON: {"coverage":"...","items":[{"video_id":"...","topic":"...",'
          '"verdict":"add|skip","reason":"..."}]}'),
     ]
-    prompt = _nl.join(parts)
-    llm = create_text_llm(config, model=(model or None))   # None -> config default (deepseek-v4-flash)
-    raw = await llm.generate(prompt, system_prompt=sys_p)
+    llm = create_text_llm(config, model=(model or None))
+    out = await llm.generate(_nl.join(parts), system_prompt=sys_p)
+    st, en = out.find("{"), out.rfind("}")
     try:
-        m = re.search(r"{.*}", raw, re.DOTALL)
-        data = json.loads(m.group(0)) if m else {}
+        data = json.loads(out[st:en + 1]) if st >= 0 and en > st else {}
     except Exception:
         data = {}
-    by_id = {s["video_id"]: s for s in cand}
+    by_id = {s["video_id"]: s for s in distinct}
     items = []
     for it in (data.get("items") or []):
-        s = by_id.get(it.get("video_id"))
-        if s:
-            items.append({**s, "topic": (it.get("topic") or "").strip(),
+        srow = by_id.get(it.get("video_id"))
+        if srow:
+            items.append({**srow, "topic": (it.get("topic") or "").strip(),
                           "verdict": (it.get("verdict") or "add").strip().lower(),
                           "reason": (it.get("reason") or "").strip()})
     add = sum(1 for i in items if i["verdict"] == "add")
-    return {"coverage": (data.get("coverage") or "").strip(), "items": items,
-            "candidates": len(cand), "add": add, "capped": len(cand) >= limit}
+    return {"coverage": (data.get("coverage") or "").strip(), "items": items, "add": add, **stats}
 
 def fetch_transcript_with_cues(url: str, out_dir: Optional[Path] = None) -> Tuple[Dict[str, Any], Any]:
     """Download ONLY a video's captions (no video) → (metadata, Transcript-with-cues).
