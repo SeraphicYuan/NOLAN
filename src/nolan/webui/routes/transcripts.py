@@ -107,16 +107,31 @@ def register(app, ctx):
             force=bool(body.get("force", False)), densify=bool(body.get("densify", False)))
         return {"job_id": job.id, "type": "transcript-batch-caption"}
 
+    def _collection_free(channel: str, kind: str) -> bool:
+        """For an archive source, whether the whole collection is curator-asserted copyright-free (stored on
+        the source when it was added). Matched by collection identifier so URL/name variants resolve."""
+        if kind != "archive":
+            return False
+        from nolan import transcript_lib as tl
+        from nolan import archive_source as ar
+        want = ar.collection_ref(channel)
+        for ref, s in tl.load_sources().items():
+            if (s.get("kind") == "archive") and ar.collection_ref(ref) == want:
+                return bool(s.get("copyright_free"))
+        return False
+
     @app.get("/api/transcripts/survey")
     async def transcripts_survey(channel: str = Query(...), limit: int = Query(default=0),
-                                 refresh: bool = Query(default=False)):
-        """CHEAP survey: all of a channel's titles (no download) + in_library flags. PERSISTED — served from
-        surveys.json unless refresh=true (then re-crawled and re-cached)."""
+                                 refresh: bool = Query(default=False), kind: str = Query(default="youtube")):
+        """CHEAP survey: all of a source's titles (no download) + in_library flags. PERSISTED — served from
+        surveys.json unless refresh=true. `kind='archive'` surveys an archive.org collection."""
         import asyncio
         from nolan import transcript_lib as tl
-        items = await asyncio.to_thread(tl.survey_channel, channel, (limit or None), None, bool(refresh))
+        cfree = _collection_free(channel, kind)
+        items = await asyncio.to_thread(tl.survey_channel, channel, (limit or None), None, bool(refresh),
+                                        kind, cfree)
         return {"items": items, "count": len(items), "new": sum(1 for i in items if not i["in_library"]),
-                "cached": (items[0].get("_cached", "") if items else "")}
+                "cached": (items[0].get("_cached", "") if items else ""), "kind": kind}
 
     @app.post("/api/transcripts/recommend")
     async def transcripts_recommend(body: dict = Body(...)):
@@ -126,22 +141,28 @@ def register(app, ctx):
         channel = (body.get("channel") or "").strip()
         if not channel:
             raise HTTPException(status_code=400, detail="channel required")
+        kind = body.get("kind") or "youtube"
         return await tl.recommend_from_channel(channel, load_config(), limit=int(body.get("limit", 200) or 200),
                                                min_sec=int(body.get("min_sec", 0) or 0),
-                                               max_sec=int(body.get("max_sec", 0) or 0))
+                                               max_sec=int(body.get("max_sec", 0) or 0), kind=kind,
+                                               copyright_free_only=bool(body.get("copyright_free", False)),
+                                               collection_free=_collection_free(channel, kind))
 
     @app.get("/api/transcripts/topics")
     async def transcripts_topics(channel: str = Query(...), k: int = Query(default=0),
                                  refresh: bool = Query(default=False),
-                                 min_sec: int = Query(default=0), max_sec: int = Query(default=0)):
-        """Topic-model a channel's DISTINCT titles into ~k clusters (no LLM) for browse-by-topic + hand-pick."""
+                                 min_sec: int = Query(default=0), max_sec: int = Query(default=0),
+                                 kind: str = Query(default="youtube"),
+                                 copyright_free: bool = Query(default=False)):
+        """Topic-model a source's DISTINCT titles into ~k clusters (no LLM) for browse-by-topic + hand-pick."""
         import asyncio
         from nolan import transcript_lib as tl
         channel = channel.strip()
         if not channel:
             raise HTTPException(status_code=400, detail="channel required")
         return await asyncio.to_thread(tl.topic_view, channel, int(k or 0), None, bool(refresh),
-                                       int(min_sec or 0), int(max_sec or 0))
+                                       int(min_sec or 0), int(max_sec or 0), kind, bool(copyright_free),
+                                       _collection_free(channel, kind))
 
     @app.post("/api/transcripts/diverse-sample")
     async def transcripts_diverse_sample(body: dict = Body(...)):
@@ -151,18 +172,36 @@ def register(app, ctx):
         channel = (body.get("channel") or "").strip()
         if not channel:
             raise HTTPException(status_code=400, detail="channel required")
+        kind = body.get("kind") or "youtube"
         return await asyncio.to_thread(tl.diverse_sample, channel, int(body.get("n", 20) or 20),
                                        None, bool(body.get("refresh", False)),
-                                       int(body.get("min_sec", 0) or 0), int(body.get("max_sec", 0) or 0))
+                                       int(body.get("min_sec", 0) or 0), int(body.get("max_sec", 0) or 0),
+                                       kind, bool(body.get("copyright_free", False)),
+                                       _collection_free(channel, kind))
 
     @app.get("/api/transcripts/coverage")
     async def transcripts_coverage(k: int = Query(default=0), refresh: bool = Query(default=False),
-                                   min_sec: int = Query(default=0), max_sec: int = Query(default=0)):
-        """Cross-channel COVERAGE map: topics the library covers vs what's still available (all channels)."""
+                                   min_sec: int = Query(default=0), max_sec: int = Query(default=0),
+                                   kind: str = Query(default="youtube"),
+                                   copyright_free: bool = Query(default=False)):
+        """COVERAGE map for ONE source kind (youtube channels or archive collections — kept separate)."""
         import asyncio
         from nolan import transcript_lib as tl
         return await asyncio.to_thread(tl.coverage_map, None, int(k or 0), None, bool(refresh), 0,
-                                       int(min_sec or 0), int(max_sec or 0))
+                                       int(min_sec or 0), int(max_sec or 0), kind, bool(copyright_free))
+
+    @app.post("/api/transcripts/add-collection")
+    async def transcripts_add_collection(body: dict = Body(...)):
+        """Register an archive.org COLLECTION as a source (kind='archive'); optional copyright-free assertion."""
+        from nolan import transcript_lib as tl
+        from nolan import archive_source as ar
+        ref = (body.get("collection") or "").strip()
+        if not ref:
+            raise HTTPException(status_code=400, detail="collection required")
+        coll = ar.collection_ref(ref)
+        tl.upsert_source(coll, label=(body.get("label") or coll), kind="archive",
+                         copyright_free=bool(body.get("copyright_free", False)))
+        return {"collection": coll, "kind": "archive", "copyright_free": bool(body.get("copyright_free", False))}
 
     @app.post("/api/transcripts/ingest-videos")
     async def transcripts_ingest_videos(body: dict = Body(...)):
@@ -174,10 +213,13 @@ def register(app, ctx):
             raise HTTPException(status_code=400, detail="videos required")
         cfg = load_config()
         idb = ctx.db_path or Path(cfg.indexing.database).expanduser()
+        kind = body.get("kind") or "youtube"
+        from nolan import archive_source as ar
+        collection = ar.collection_ref(body.get("collection") or "") if kind == "archive" else ""
         job = job_manager.start(
-            "transcript-ingest-videos", operations.ingest_videos, meta={"count": len(vids)},
+            "transcript-ingest-videos", operations.ingest_videos, meta={"count": len(vids), "kind": kind},
             config=cfg, db_path=idb, videos=vids, visual=(body.get("visual") or "off"),
-            delay=float(body.get("delay", 1.0) or 1.0))
+            delay=float(body.get("delay", 1.0) or 1.0), kind=kind, collection=collection)
         return {"job_id": job.id, "type": "transcript-ingest-videos"}
 
     @app.get("/api/transcripts/videos")

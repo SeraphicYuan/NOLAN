@@ -122,9 +122,10 @@
     <div id="tab-curate" style="display:none">
       <div class="card">
         <div class="row">
+          <span id="cu-kindbadge" class="chip txt">📺 YouTube</span>
           <input type="text" id="cu-channel" placeholder="channel URL / @handle / id — e.g. https://www.youtube.com/@AmericanExperiencePBS">
           <button class="btn" onclick="cuSurvey(false)">Grab all titles</button>
-          <button class="btn ghost mini" onclick="cuSurvey(true)" title="Re-crawl the channel, ignore the stored title list">↻</button>
+          <button class="btn ghost mini" onclick="cuSurvey(true)" title="Re-crawl the source, ignore the stored title list">↻</button>
           <span id="cu-stat" class="dim"></span>
         </div>
         <div class="row" style="margin-top:10px">
@@ -142,6 +143,7 @@
         <div class="row" style="margin-top:8px;font-size:12px">
           <label class="dim"><input type="checkbox" id="cu-hidelib" checked onchange="cuRender()"> hide in-library</label>
           <label class="dim"><input type="checkbox" id="cu-recadd" onchange="cuRender()"> recommended only</label>
+          <span id="cu-cfwrap" style="display:none"><label class="dim" title="Keep only items with a confirmed public-domain / CC license (or a copyright-free collection)"><input type="checkbox" id="cu-cf" checked onchange="cuLen()"> copyright-free only</label></span>
           <span class="dim" style="border-left:1px solid var(--border);padding-left:10px">length <input type="number" id="cu-min" min="0" placeholder="min" style="width:50px" onchange="cuLen()" oninput="cuLen()">–<input type="number" id="cu-max" min="0" placeholder="max" style="width:50px" onchange="cuLen()" oninput="cuLen()"> min</span>
           <button class="btn ghost mini" onclick="cuPreset(20)" title="Full documentaries only — 20 min and up (drops promos/clips)">📽 20m+</button>
           <button class="btn ghost mini" onclick="cuPreset(0)" title="Clear the length filter">any</button>
@@ -174,11 +176,16 @@
             <div class="dim">Every indexed channel's available titles + your library, clustered into topics. 🔵 = a gap (nothing in the library yet), ✅ = already covered. Biggest gaps first.</div>
           </div>
           <span class="row" style="gap:8px">
+            <div class="seg" id="cv-kind">
+              <button data-k="youtube" class="on" onclick="cvSetKind('youtube')">📺 YouTube</button>
+              <button data-k="archive" onclick="cvSetKind('archive')">🏛 Archive.org</button>
+            </div>
+            <span id="cv-cfwrap" class="dim" style="display:none"><label title="Count only copyright-free items"><input type="checkbox" id="cv-cf" checked> copyright-free</label></span>
             <label class="dim">length <input type="number" id="cv-min" min="0" placeholder="min" style="width:48px">–<input type="number" id="cv-max" min="0" placeholder="max" style="width:48px"> min</label>
             <button class="btn ghost mini" onclick="$('#cv-min').value=20;$('#cv-max').value='';loadCoverage(false)" title="Full documentaries only (20 min+)">📽 20m+</button>
             <label class="dim">topics <input type="number" id="cv-k" min="4" max="120" placeholder="auto" style="width:58px"></label>
             <button class="btn" onclick="loadCoverage(false)">Build map</button>
-            <button class="btn ghost mini" onclick="loadCoverage(true)" title="Re-crawl every channel, ignore stored title lists">↻ refresh</button>
+            <button class="btn ghost mini" onclick="loadCoverage(true)" title="Re-crawl every source, ignore stored title lists">↻ refresh</button>
           </span>
         </div>
         <div id="cv-stat" class="dim" style="margin-top:10px"></div>
@@ -210,6 +217,18 @@
         </div>
         <span id="add-status" class="dim"></span>
         <div class="log" id="add-log"></div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <span class="dim" style="font-weight:600">🏛 archive.org collection</span>
+          <input type="text" id="arch-coll" placeholder="collection id / URL — e.g. prelinger or https://archive.org/details/prelinger" style="flex:1;min-width:220px">
+          <label class="dim" title="Assert the WHOLE collection is public-domain / Creative Commons (only ~18% carry a per-item license, but e.g. Prelinger is all PD)"><input type="checkbox" id="arch-cf" checked> copyright-free</label>
+          <button class="btn" onclick="addCollection()">Add collection</button>
+          <button class="btn ghost" onclick="openCurateFor($('#arch-coll').value.trim(),'archive')" title="Browse the collection's titles, cluster by topic (rich archive metadata), pick a diverse set">🎯 Curate collection</button>
+        </div>
+        <div class="dim" style="margin-top:6px">Archive.org collections carry Whisper ASR transcripts + rich metadata (subject tags, runtime, license). Clustered SEPARATELY from YouTube. Add then Curate → ingest transcripts.</div>
+        <span id="arch-status" class="dim"></span>
       </div>
 
       <div class="card">
@@ -261,9 +280,30 @@
     async function comps(){ if(COMPS===null){ try{ COMPS=(await jget("/api/clipper/targets")).comps||[]; }catch(e){ COMPS=[]; } } return COMPS; }
 
     /* ---------- Curate: survey · topic-model · recommend (AI + no-LLM) ---------- */
-    let CU = { items: [], groups: null, byId: {} };
+    let CU = { items: [], groups: null, byId: {}, kind: "youtube" };
     let CU_SEL = new Set();
     let CU_VIEW = "flat";
+    function cuCfParam(){ return (CU.kind==="archive" && $("#cu-cf") && $("#cu-cf").checked) ? "&copyright_free=true" : ""; }
+    function cuKindUI(){
+      const arch = CU.kind==="archive";
+      $("#cu-cfwrap").style.display = arch ? "inline" : "none";
+      $("#cu-kindbadge").textContent = arch ? "🏛 archive.org" : "📺 YouTube";
+      $("#cu-channel").placeholder = arch ? "collection id / URL — e.g. prelinger" : "channel URL / @handle / id";
+    }
+    function openCurateFor(ref, kind){
+      if(!ref){ alert("Enter a "+(kind==="archive"?"collection":"channel")+" first."); return; }
+      CU.kind = kind||"youtube"; showTab('curate'); cuKindUI();
+      if(ref!==cuChannel() || !CU.items.length){ $("#cu-channel").value=ref; cuSurvey(false); }
+    }
+    async function addCollection(){
+      const ref=$("#arch-coll").value.trim(); if(!ref){ alert("Enter an archive.org collection id or URL."); return; }
+      const st=$("#arch-status"); st.textContent="registering…";
+      try{
+        const d=await jpost("/api/transcripts/add-collection",{collection:ref, copyright_free:$("#arch-cf").checked});
+        st.innerHTML=`✓ added <b>${esc(d.collection)}</b>${d.copyright_free?' <span class="chip frames">copyright-free</span>':''} — now Curate it`;
+        loadSources();
+      }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
+    }
     function cuChannel(){ return $("#cu-channel").value.trim(); }
     function cuSelN(){ $("#cu-n-sel").textContent = CU_SEL.size; }
     function cuToggle(id, on){ if(on) CU_SEL.add(id); else CU_SEL.delete(id); cuSelN(); }
@@ -274,14 +314,14 @@
     function cuLenOk(v){ const d=v.duration; if(d==null) return true; const a=cuMinSec(), b=cuMaxSec(); if(a&&d<a) return false; if(b&&d>b) return false; return true; }
     function cuLen(){ (CU_VIEW==="topic")?cuRenderTopics():cuRender(); }        // live client-side; server calls read it on next cluster/sample
     function cuPreset(min){ $("#cu-min").value = min||""; $("#cu-max").value=""; cuLen(); }
-    function openCurate(){ const ch=$("#channel").value.trim(); showTab('curate'); if(ch && ch!==cuChannel()){ $("#cu-channel").value=ch; cuSurvey(); } }
+    function openCurate(){ openCurateFor($("#channel").value.trim(), "youtube"); }
 
     async function cuSurvey(refresh){
       const ch=cuChannel(); if(!ch){ alert("Enter a channel URL."); return; }
       $("#cu-stat").textContent=refresh?"re-crawling the channel…":"loading titles…"; $("#cu-body").innerHTML='<div class="dim">'+(refresh?"Re-crawling":"Surveying")+' the whole channel…</div>';
       CU.groups=null; $("#cu-cov").textContent=""; CU_SEL.clear(); cuSelN(); $("#cu-recadd").checked=false;
       try{
-        const d=await jget(`/api/transcripts/survey?channel=${encodeURIComponent(ch)}${refresh?'&refresh=true':''}`);
+        const d=await jget(`/api/transcripts/survey?channel=${encodeURIComponent(ch)}&kind=${CU.kind}${refresh?'&refresh=true':''}`);
         CU.items=d.items; CU.byId={}; CU.items.forEach(i=>CU.byId[i.video_id]=i);
         const cached = d.cached ? `<span class="chip txt" title="served from stored title list">cached ${esc(d.cached.slice(0,10))}</span>` : `<span class="chip frames">fresh</span>`;
         $("#cu-stat").innerHTML=`${d.count} videos · ${d.new} not in library ${cached}`;
@@ -299,9 +339,11 @@
     function cuVisible(){
       const f=$("#cu-filter").value.trim().toLowerCase();
       const hideLib=$("#cu-hidelib").checked, recOnly=$("#cu-recadd").checked;
+      const cfOnly = CU.kind==="archive" && $("#cu-cf") && $("#cu-cf").checked;
       return CU.items.filter(v=>{
         if(hideLib && v.in_library) return false;
         if(recOnly && v.verdict!=="add") return false;
+        if(cfOnly && !v.copyright_free) return false;
         if(!cuLenOk(v)) return false;
         if(f && !(v.title||"").toLowerCase().includes(f)) return false;
         return true;
@@ -342,7 +384,7 @@
       const k = apply ? (parseInt($("#cu-k").value,10)||0) : 0;
       $("#cu-body").innerHTML='<div class="dim">Clustering titles into topics (BGE, no LLM)…</div>';
       try{
-        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}${k?`&k=${k}`:''}${refresh?'&refresh=true':''}${cuLenParam()}`);
+        const d=await jget(`/api/transcripts/topics?channel=${encodeURIComponent(ch)}&kind=${CU.kind}${k?`&k=${k}`:''}${refresh?'&refresh=true':''}${cuLenParam()}${cuCfParam()}`);
         CU.groups=d.groups; if(!apply && !$("#cu-k").value) $("#cu-k").placeholder=`auto (${d.k})`;
         $("#cu-cov").innerHTML=`<b>${d.k} topics</b> · ${d.distinct} distinct of ${d.candidates} new <span class="dim">(${d.dropped_redundant} already covered · ${d.total-d.candidates} in library)</span>`+(d.dropped_length?` <span class="dim">· ${d.dropped_length} off-length</span>`:"")+(d.capped?` <span class="warn">· newest ${d.candidates} of ${d.candidates+d.capped} clustered (giant channel)</span>`:"");
         cuRenderTopics();
@@ -389,7 +431,7 @@
       const ch=cuChannel(); if(!ch){ alert("Grab titles first."); return; }
       if(!CU.items.length){ await cuSurvey(); if(!CU.items.length) return; }
       const n=parseInt($("#cu-n").value,10)||20;
-      const ln={min_sec:cuMinSec(), max_sec:cuMaxSec()};
+      const ln={min_sec:cuMinSec(), max_sec:cuMaxSec(), kind:CU.kind, copyright_free:(CU.kind==="archive" && $("#cu-cf") && $("#cu-cf").checked)};
       const lenNote = d => d.dropped_length ? ` <span class="dim">· ${d.dropped_length} off-length</span>` : "";
       const cov=$("#cu-cov"); cov.textContent = kind==="ai" ? "asking DeepSeek to diversify (topics · redundancy · coverage gaps)…" : `clustering into ${n} topics and picking one each (no LLM)…`;
       try{
@@ -416,7 +458,7 @@
       const vis=$("#cu-visual").value;
       if(!confirm(`Ingest ${sel.length} video(s)${vis==="off"?" as TRANSCRIPT-ONLY (add keyframes later)":" WITH keyframes"}?`)) return;
       try{
-        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:vis});
+        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:(CU.kind==="archive"?"off":vis), kind:CU.kind, collection:(CU.kind==="archive"?cuChannel():"")});
         alert(`Ingesting ${sel.length} in the background — track it in Background Jobs. Then Sources → Caption for keyframes.`);
         sel.forEach(v=>{ const row=CU.byId[v.video_id]; if(row) row.in_library=true; });
         CU_SEL.clear(); cuSelN();
@@ -430,14 +472,17 @@
     let CV_SEL = new Set();
     function cvSelN(){ $("#cv-n").textContent = CV_SEL.size; }
     function cvToggle(id, on){ if(on) CV_SEL.add(id); else CV_SEL.delete(id); cvSelN(); }
+    let CV_KIND = "youtube";
+    function cvSetKind(k){ CV_KIND=k; document.querySelectorAll("#cv-kind button").forEach(b=>b.classList.toggle("on",b.dataset.k===k)); $("#cv-cfwrap").style.display = k==="archive"?"inline":"none"; CV.built=false; loadCoverage(false); }
     async function loadCoverage(refresh){
       const k=parseInt($("#cv-k").value,10)||0;
       const mn=(parseInt($("#cv-min").value,10)||0)*60, mx=(parseInt($("#cv-max").value,10)||0)*60;
       const lp=(mn?`&min_sec=${mn}`:"")+(mx?`&max_sec=${mx}`:"");
-      $("#cv-stat").textContent = refresh ? "re-crawling every channel + clustering…" : "clustering library + available titles…";
+      const cf=(CV_KIND==="archive" && $("#cv-cf") && $("#cv-cf").checked)?"&copyright_free=true":"";
+      $("#cv-stat").textContent = refresh ? "re-crawling every source + clustering…" : "clustering library + available titles…";
       $("#cv-body").innerHTML='<div class="dim">Building coverage map…</div>';
       try{
-        const d=await jget(`/api/transcripts/coverage?k=${k}${refresh?'&refresh=true':''}${lp}`);
+        const d=await jget(`/api/transcripts/coverage?k=${k}&kind=${CV_KIND}${refresh?'&refresh=true':''}${lp}${cf}`);
         CV.topics=d.topics||[]; CV.byId={}; CV.built=true;
         CV.topics.forEach(t=>(t.samples||[]).forEach(s=>{ if(s.video_id) CV.byId[s.video_id]=s; }));
         if(!$("#cv-k").value) $("#cv-k").placeholder=`auto (${d.k})`;
@@ -578,11 +623,17 @@
       }catch(e){ $("#sources").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
     function srcTile(s){
+      const archive = s.kind==="archive";
       const last = s.last_crawled ? `· last crawled ${esc(s.last_crawled.slice(0,10))}` : "· not yet synced";
-      const tag = s.managed===false ? ` <span class="chip txt">auto</span>` : "";
+      const tag = (s.managed===false ? ` <span class="chip txt">auto</span>` : "")
+        + (archive ? ` <span class="chip">🏛 archive</span>` : "")
+        + (s.copyright_free ? ` <span class="chip frames">copyright-free</span>` : "");
       const rm = s.managed===false ? "" : `<button class="btn ghost mini danger" onclick="removeSource('${esc(s.channel)}')">Remove</button>`;
+      const kind = archive ? "archive" : "youtube";
+      const curate = `<button class="btn ghost mini" onclick="openCurateFor('${esc(s.channel)}','${kind}')" title="Browse + curate this source">🎯 Curate</button>`;
+      const sync = archive ? "" : `<button class="btn ghost mini" onclick="syncSource('${esc(s.channel)}')" title="Fetch only NEW uploads (dedup skips indexed)">↻ Sync</button>`;
       return `<div class="src-tile"><div><b>${esc(s.label||s.channel)}</b>${tag} <span class="dim">${s.video_count||0} videos ${last}</span><div class="dim" style="font-size:11px">${esc(s.channel)}</div></div>
-        <span class="row"><button class="btn ghost mini" onclick="syncSource('${esc(s.channel)}')" title="Fetch only NEW uploads (dedup skips indexed)">↻ Sync</button>${rm}</span></div>`;
+        <span class="row">${curate}${sync}${rm}</span></div>`;
     }
     async function syncAll(){
       const st=$("#add-status"), log=$("#add-log"); st.textContent="syncing all channels…"; log.style.display="block"; log.textContent="";

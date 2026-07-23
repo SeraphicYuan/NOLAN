@@ -566,9 +566,11 @@ async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, f
 
 async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str = "off",
                         window_s: float = 45.0, overlap_s: float = 10.0, delay: float = 1.0,
-                        refresh: bool = False):
+                        refresh: bool = False, kind: str = "youtube", collection: str = ""):
     """Ingest a SPECIFIC list of videos (each {url, video_id?, title?, channel?}) -- transcript (+ optional
-    visual), dedup-skip, rate-paced. Powers 'add selected' from the survey/recommendation."""
+    visual), dedup-skip, rate-paced. Powers 'add selected' from the survey/recommendation. `kind='archive'`
+    fetches archive.org's Whisper ASR .asr.srt via the archive adapter (transcript-only in Phase 1); items
+    with no transcript are a reported soft-skip."""
     import asyncio
     import datetime as _dt
 
@@ -580,42 +582,51 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
     vs = VectorSearch(db_path.parent / "vectors", index=index)
     now = _dt.datetime.now().isoformat(timespec="seconds")
     items = [({"url": v} if isinstance(v, str) else v) for v in (videos or [])]
-    total = len(items); got = already = skipped = 0
+    total = len(items); got = already = skipped = no_tr = 0
     for i, v in enumerate(items):
         url = (v.get("url") or "").strip()
         title = (v.get("title") or url)[:60]
         if not url:
             skipped += 1; continue
         job.set_progress(0.03 + 0.9 * (i / max(1, total)), f"[{i + 1}/{total}] {title}")
-        yid0 = v.get("video_id") or extract_video_id(url) or ""
+        if kind == "archive":
+            from nolan import archive_source as ar
+            yid0 = v.get("video_id") or ar.collection_ref(url)
+        else:
+            yid0 = v.get("video_id") or extract_video_id(url) or ""
         if not refresh and yid0 and index.get_video_id(f"yt:{yid0}"):
             job.log(f"  = {title}: already indexed -- skipped"); already += 1; continue
         if delay and i:
             await asyncio.sleep(delay)
         try:
-            meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, url)
+            if kind == "archive":
+                from nolan import archive_source as ar
+                meta, tr = await asyncio.to_thread(ar.fetch_transcript, yid0, collection)
+            else:
+                meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, url)
         except Exception as e:
             job.log(f"  x {title}: {type(e).__name__}: {e}"); skipped += 1; continue
         if not tr or not getattr(tr, "chunks", None):
-            job.log(f"  . {title}: no captions -- skipped"); skipped += 1; continue
+            job.log(f"  . {title}: no transcript -- skipped"); no_tr += 1; continue
         windows = tl.chunk_transcript(tr, window_s=float(window_s), overlap_s=float(overlap_s))
-        vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": url}, windows, v.get("channel"))
+        vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": url}, windows, v.get("channel") or collection)
         if not vid:
             skipped += 1; continue
         await asyncio.to_thread(vs.sync_video, vid)
         got += 1
         nframes = 0
-        if visual and visual != "off":
+        if visual and visual != "off" and kind != "archive":                  # archive visual tier = Phase 2
             try:
                 nframes = await _capture_visual_tier(url, windows, meta.get("video_id") or yid0, title,
                                                      visual=visual, job=job)
             except Exception as e:
                 job.log(f"    (visual skipped: {type(e).__name__}: {e})")
         tl.record_transcript(meta.get("video_id") or yid0, {**meta, "url": url}, len(windows),
-                             v.get("channel"), frames=nframes, added=now)
+                             v.get("channel") or collection, frames=nframes, added=now)
         job.log(f"  + {title} ({len(windows)} windows" + (f", +{nframes} frames" if nframes else "") + ")")
-    job.set_progress(1.0, f"{got} added, {already} already indexed, {skipped} skipped of {total}")
-    return {"total": total, "added": got, "already": already, "skipped": skipped}
+    tail = f", {no_tr} no-transcript" if no_tr else ""
+    job.set_progress(1.0, f"{got} added, {already} already indexed, {skipped} skipped{tail} of {total}")
+    return {"total": total, "added": got, "already": already, "skipped": skipped, "no_transcript": no_tr}
 
 
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",

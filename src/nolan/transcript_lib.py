@@ -74,7 +74,8 @@ def load_sources(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def upsert_source(channel: str, *, label: Optional[str] = None, last_crawled: Optional[str] = None,
-                  video_count: Optional[int] = None, added: str = "", catalog_dir: Optional[Path] = None) -> None:
+                  video_count: Optional[int] = None, added: str = "", catalog_dir: Optional[Path] = None,
+                  kind: Optional[str] = None, copyright_free: Optional[bool] = None) -> None:
     srcs = load_sources(catalog_dir)
     s = srcs.get(channel) or {"channel": channel, "added": added or last_crawled or ""}
     if label is not None:
@@ -83,7 +84,12 @@ def upsert_source(channel: str, *, label: Optional[str] = None, last_crawled: Op
         s["last_crawled"] = last_crawled
     if video_count is not None:
         s["video_count"] = int(video_count)
+    if kind is not None:
+        s["kind"] = kind                                          # 'youtube' | 'archive'
+    if copyright_free is not None:
+        s["copyright_free"] = bool(copyright_free)                # collection-level PD/CC assertion (archive)
     s.setdefault("label", channel)
+    s.setdefault("kind", "youtube")
     s.setdefault("added", s.get("last_crawled", ""))
     srcs[channel] = s
     p = _sources_file(catalog_dir)
@@ -269,18 +275,40 @@ def load_surveys(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
     return {}
 
 
-def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optional[Path] = None) -> str:
-    """Store a channel's full title list to the surveys sidecar (so we never re-crawl to browse). Returns
-    the ISO fetch time."""
+def _survey_key(ref: str, kind: str) -> str:
+    """Cache/coverage key, namespaced by source kind so YouTube channels and archive.org collections never
+    collide (and coverage can scope by kind via the `kind:` prefix)."""
+    if kind == "archive":
+        from nolan import archive_source as ar
+        return f"archive:{ar.collection_ref(ref)}"
+    return f"youtube:{_channel_key(ref)}"
+
+
+def _thumb_for(video_id: str, kind: str) -> str:
+    return (f"https://archive.org/services/img/{video_id}" if kind == "archive"
+            else f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg")
+
+
+def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optional[Path] = None,
+                kind: str = "youtube", total: int = 0) -> str:
+    """Store a source's full title list to the surveys sidecar (so we never re-crawl to browse). Archive rows
+    also persist the rich free metadata (subject/license/copyright_free/description). Returns the fetch time."""
     import datetime
     surveys = load_surveys(catalog_dir)
     fetched = datetime.datetime.now().isoformat(timespec="seconds")
-    rows = [{"video_id": t.get("video_id"), "url": t.get("url"),
-             "title": t.get("title") or t.get("video_id"),
-             "duration": t.get("duration")}                        # seconds — free from the flat crawl
-            for t in titles if t.get("video_id")]
-    surveys[_channel_key(channel)] = {"channel": channel, "label": channel, "fetched": fetched,
-                                      "count": len(rows), "titles": rows}
+    rows = []
+    for t in titles:
+        if not t.get("video_id"):
+            continue
+        row = {"video_id": t["video_id"], "url": t.get("url"), "title": t.get("title") or t["video_id"],
+               "duration": t.get("duration")}
+        if kind == "archive":
+            row.update(subject=t.get("subject") or [], license=t.get("license") or "",
+                       copyright_free=bool(t.get("copyright_free")), description=t.get("description") or "")
+        rows.append(row)
+    surveys[_survey_key(channel, kind)] = {"channel": channel, "kind": kind, "label": channel,
+                                           "fetched": fetched, "count": len(rows),
+                                           "total": total or len(rows), "titles": rows}
     p = _surveys_file(catalog_dir)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(surveys, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -288,28 +316,38 @@ def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optiona
 
 
 def survey_channel(channel: str, limit: Optional[int] = None, catalog_dir: Optional[Path] = None,
-                   refresh: bool = False) -> List[Dict[str, Any]]:
-    """CHEAP survey: all of a channel's videos (titles only, NO download/transcript) with a flag for those
-    already in the library. PERSISTED — a full survey (no limit) is cached to surveys.json and reused until
-    `refresh=True`, so browsing/topic-modelling/coverage never re-crawls. `in_library` is recomputed live
-    from the catalog on every read (never stored — it changes as you ingest)."""
+                   refresh: bool = False, kind: str = "youtube",
+                   collection_free: bool = False) -> List[Dict[str, Any]]:
+    """CHEAP survey: all of a source's videos (titles only, NO download/transcript) with an `in_library` flag.
+    Dispatches on `kind`: a YouTube channel (yt-dlp flat crawl) or an archive.org collection (advancedsearch;
+    rich free metadata — subject/license/copyright_free — via `archive_source`). PERSISTED — a full survey is
+    cached to surveys.json (kind-namespaced key) and reused until `refresh=True`. `in_library` is recomputed
+    live from the catalog on every read (never stored — it changes as you ingest)."""
     cat = load_catalog(catalog_dir)
     have = set(cat.keys())
     full = not limit
     if full and not refresh:
-        cached = load_surveys(catalog_dir).get(_channel_key(channel))
+        cached = load_surveys(catalog_dir).get(_survey_key(channel, kind))
         if cached and cached.get("titles"):
-            return [{"video_id": r["video_id"], "url": r.get("url"), "title": r.get("title"),
-                     "duration": r.get("duration"),                # None on rows cached before duration existed
-                     "thumb": f"https://i.ytimg.com/vi/{r['video_id']}/mqdefault.jpg",
+            return [{**r, "thumb": _thumb_for(r["video_id"], kind),
                      "in_library": r["video_id"] in have, "_cached": cached.get("fetched", "")}
                     for r in cached["titles"]]
-    rows = [{"video_id": v.get("video_id"), "url": v.get("url"), "title": v.get("title") or v.get("video_id"),
-             "duration": v.get("duration"), "thumb": v.get("thumb")}
-            for v in list_channel(channel, limit) if v.get("video_id")]
+    total = 0
+    if kind == "archive":
+        from nolan import archive_source as ar
+        items, total = ar.survey_collection(channel, limit, collection_free=collection_free)
+        rows = [{"video_id": v["video_id"], "url": v["url"], "title": v["title"], "duration": v.get("duration"),
+                 "subject": v.get("subject") or [], "license": v.get("license") or "",
+                 "copyright_free": bool(v.get("copyright_free")), "description": v.get("description") or ""}
+                for v in items]
+    else:
+        rows = [{"video_id": v.get("video_id"), "url": v.get("url"),
+                 "title": v.get("title") or v.get("video_id"), "duration": v.get("duration")}
+                for v in list_channel(channel, limit) if v.get("video_id")]
     if full:
-        save_survey(channel, rows, catalog_dir)                   # persist the full crawl for next time
-    return [{**r, "in_library": r["video_id"] in have} for r in rows]
+        save_survey(channel, rows, catalog_dir, kind=kind, total=total)   # persist the full crawl for next time
+    return [{**r, "thumb": _thumb_for(r["video_id"], kind),
+             "in_library": r["video_id"] in have} for r in rows]
 
 
 _BGE = None
@@ -375,16 +413,19 @@ def cluster_dedup_candidates(cand, lib_titles, thr_lib=0.87, thr_dup=0.90):
 
 
 async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, model="",
-                                 min_sec=0, max_sec=0):
+                                 min_sec=0, max_sec=0, kind="youtube", copyright_free_only=False,
+                                 collection_free=False):
     """Recommend a DIVERSE add-list in TWO layers: (1) `_distinct_candidates` -- survey → drop library-covered
-    → optional LENGTH filter → newest-cap → BGE cluster_dedup collapses near-dups at ANY scale; (2) the config
-    text LLM (deepseek) tags the DISTINCT survivors by topic, writes the coverage/gap note, and does the final
-    semantic add/skip. Titles-first."""
+    → optional COPYRIGHT-FREE + LENGTH filters → newest-cap → BGE cluster_dedup collapses near-dups at ANY
+    scale; (2) the config text LLM (deepseek) tags the DISTINCT survivors by topic, writes the coverage/gap
+    note, and does the final semantic add/skip. Titles-first."""
     import json
 
     from nolan.llm import create_text_llm
-    distinct, stats, lib_titles = _distinct_candidates(channel, catalog_dir, limit=limit,
-                                                       min_sec=min_sec, max_sec=max_sec)
+    distinct, stats, lib_titles = _distinct_candidates(channel, catalog_dir, limit=limit, min_sec=min_sec,
+                                                       max_sec=max_sec, kind=kind,
+                                                       copyright_free_only=copyright_free_only,
+                                                       collection_free=collection_free)
     if not distinct:
         return {"coverage": "Nothing new -- every distinct topic on this channel is already covered.",
                 "items": [], "add": 0, **stats}
@@ -527,6 +568,15 @@ def topic_cluster(distinct: List[Dict[str, Any]], k: int) -> List[Dict[str, Any]
 MAX_CANDIDATES = 2500
 
 
+def _real_title(title: Optional[str], ident: Optional[str]) -> bool:
+    """True if a title is a real catalogued title, not an uncatalogued scan id. archive.org collections have
+    many raw-scan items whose 'title' IS the identifier (e.g. '001350 001', '000766') — junk for curation."""
+    t = (title or "").strip()
+    if not t or t == (ident or "").strip():
+        return False
+    return bool(_re.search(r"[A-Za-z]{3,}", t))               # at least one real (3+ letter) word
+
+
 def _dur_ok(d: Optional[int], min_sec: int, max_sec: int) -> bool:
     """Length gate. Unknown duration (None — e.g. rows cached before the field existed) is KEPT so a real doc
     is never silently dropped over missing metadata."""
@@ -541,13 +591,25 @@ def _dur_ok(d: Optional[int], min_sec: int, max_sec: int) -> bool:
 
 def _distinct_candidates(channel: str, catalog_dir: Optional[Path] = None, limit: int = 0,
                          refresh: bool = False, cap: int = MAX_CANDIDATES,
-                         min_sec: int = 0, max_sec: int = 0) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
-    """Survey → drop already-in-library → (optional LENGTH filter) → cluster_dedup (collapse near-identical
-    titles) → the DISTINCT add-candidates that both the LLM recommender and the topic view operate on. Shared
-    spine. The length filter runs BEFORE the newest-`cap` bound, so on a giant channel you keep the newest
-    real documentaries, not the newest news clips."""
-    survey = survey_channel(channel, None, catalog_dir, refresh=refresh)
+                         min_sec: int = 0, max_sec: int = 0, kind: str = "youtube",
+                         copyright_free_only: bool = False,
+                         collection_free: bool = False) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[str]]:
+    """Survey → drop already-in-library → (optional COPYRIGHT-FREE + LENGTH filters) → cluster_dedup (collapse
+    near-identical titles) → the DISTINCT add-candidates that both the LLM recommender and the topic view
+    operate on. Shared spine across source kinds (youtube channel / archive collection). The filters run BEFORE
+    the newest-`cap` bound, so on a giant source you keep the newest real docs, not clips."""
+    survey = survey_channel(channel, None, catalog_dir, refresh=refresh, kind=kind, collection_free=collection_free)
     cand = [s for s in survey if not s["in_library"]]
+    dropped_junk = 0
+    if kind == "archive":                                          # drop uncatalogued raw-scan items (title == id)
+        kept = [s for s in cand if _real_title(s.get("title"), s.get("video_id"))]
+        dropped_junk = len(cand) - len(kept)
+        cand = kept
+    dropped_copyright = 0
+    if copyright_free_only:
+        kept = [s for s in cand if s.get("copyright_free")]
+        dropped_copyright = len(cand) - len(kept)
+        cand = kept
     dropped_len = 0
     if min_sec or max_sec:
         kept = [s for s in cand if _dur_ok(s.get("duration"), min_sec, max_sec)]
@@ -563,15 +625,19 @@ def _distinct_candidates(channel: str, catalog_dir: Optional[Path] = None, limit
     cached = survey[0].get("_cached", "") if survey else ""
     stats = {"total": len(survey), "candidates": dd["candidates"], "dropped_redundant": dd["dropped_lib"],
              "dup_clusters": dd["clusters"], "distinct": len(dd["distinct"]), "cached": cached,
-             "capped": capped, "dropped_length": dropped_len}
+             "capped": capped, "dropped_length": dropped_len, "dropped_copyright": dropped_copyright,
+             "dropped_junk": dropped_junk}
     return distinct, stats, lib_titles
 
 
 def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None,
-               refresh: bool = False, min_sec: int = 0, max_sec: int = 0) -> Dict[str, Any]:
-    """Browse a channel BY TOPIC: distinct candidates grouped into ~k topic clusters (auto ≈ n/8 when
+               refresh: bool = False, min_sec: int = 0, max_sec: int = 0, kind: str = "youtube",
+               copyright_free_only: bool = False, collection_free: bool = False) -> Dict[str, Any]:
+    """Browse a source BY TOPIC: distinct candidates grouped into ~k topic clusters (auto ≈ n/8 when
     k=0), each labelled by its distinctive keywords, medoid pre-flagged. For hand-selection. No LLM."""
-    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec)
+    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec,
+                                              max_sec=max_sec, kind=kind, copyright_free_only=copyright_free_only,
+                                              collection_free=collection_free)
     if not distinct:
         return {"groups": [], "k": 0, **stats}
     if not k:
@@ -581,10 +647,13 @@ def topic_view(channel: str, k: int = 0, catalog_dir: Optional[Path] = None,
 
 
 def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None,
-                   refresh: bool = False, min_sec: int = 0, max_sec: int = 0) -> Dict[str, Any]:
+                   refresh: bool = False, min_sec: int = 0, max_sec: int = 0, kind: str = "youtube",
+                   copyright_free_only: bool = False, collection_free: bool = False) -> Dict[str, Any]:
     """NO-LLM recommender: cluster the distinct candidates into exactly `n` topics and return the medoid
-    of each — n picks spread maximally across the channel's subject space, for zero API cost."""
-    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec)
+    of each — n picks spread maximally across the source's subject space, for zero API cost."""
+    distinct, stats, _ = _distinct_candidates(channel, catalog_dir, refresh=refresh, min_sec=min_sec,
+                                              max_sec=max_sec, kind=kind, copyright_free_only=copyright_free_only,
+                                              collection_free=collection_free)
     if not distinct:
         return {"picks": [], "groups": 0, **stats}
     n = max(1, min(int(n), len(distinct)))
@@ -597,33 +666,40 @@ def diverse_sample(channel: str, n: int = 20, catalog_dir: Optional[Path] = None
 
 
 def coverage_map(channels: Optional[List[str]] = None, k: int = 0, catalog_dir: Optional[Path] = None,
-                 refresh: bool = False, per_channel_limit: int = 0,
-                 min_sec: int = 0, max_sec: int = 0) -> Dict[str, Any]:
-    """Cross-channel COVERAGE map. Clusters the UNION of (library titles + every channel's available-but-not-
-    yet-ingested titles) into topics, then for each topic reports how much the LIBRARY already covers vs how
-    much is still AVAILABLE (and from which channels). Topics with 0 library + many available = the biggest
-    gaps. Titles come from the persisted surveys (a channel with no cache is surveyed once, then cached).
-    No LLM. `channels=None` → all registered sources ∪ all cached surveys."""
+                 refresh: bool = False, per_channel_limit: int = 0, min_sec: int = 0, max_sec: int = 0,
+                 kind: str = "youtube", copyright_free_only: bool = False) -> Dict[str, Any]:
+    """COVERAGE map for ONE source kind (youtube channels OR archive collections — kept SEPARATE because their
+    metadata differs). Clusters the UNION of (library titles + every source's available-but-not-yet-ingested
+    titles) into topics, reporting per topic how much the LIBRARY covers vs what's still AVAILABLE and from
+    which source. Titles come from the persisted surveys. No LLM. `channels=None` → registered sources of this
+    kind ∪ cached surveys of this kind."""
     import numpy as np
     from collections import Counter
 
+    srcs = load_sources(catalog_dir)
     if channels is None:
-        chans = list(load_sources(catalog_dir).keys())
-        for key, row in load_surveys(catalog_dir).items():
-            c = row.get("channel") or key
-            if c not in chans:
-                chans.append(c)
+        chans = [(ref, s) for ref, s in srcs.items() if (s.get("kind") or "youtube") == kind]
+        seen = {ref for ref, _ in chans}
+        for skey, row in load_surveys(catalog_dir).items():
+            if (row.get("kind") or "youtube") != kind:
+                continue
+            c = row.get("channel") or skey
+            if c not in seen:
+                chans.append((c, {})); seen.add(c)
     else:
-        chans = list(channels)
+        chans = [(c, srcs.get(c, {})) for c in channels]
 
     cat = load_catalog(catalog_dir)
     lib_titles = [e.get("title") or "" for e in cat.values() if e.get("title")]
-    # library rows first (in_library=True), then each channel's distinct new candidates
+    # library rows first (in_library=True), then each source's distinct new candidates
     rows: List[Dict[str, Any]] = [{"title": t, "in_lib": True, "channel": ""} for t in lib_titles]
     per_channel = []
-    for ch in chans:
-        distinct, st, _ = _distinct_candidates(ch, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec)
-        label = (load_sources(catalog_dir).get(ch, {}) or {}).get("label") or ch
+    for ch, src in chans:
+        cfree = bool(src.get("copyright_free")) if kind == "archive" else False
+        distinct, st, _ = _distinct_candidates(ch, catalog_dir, refresh=refresh, min_sec=min_sec, max_sec=max_sec,
+                                               kind=kind, copyright_free_only=copyright_free_only,
+                                               collection_free=cfree)
+        label = (src or {}).get("label") or ch
         per_channel.append({"channel": ch, "label": label, "available": len(distinct),
                             "total": st.get("total", 0), "cached": st.get("cached", ""),
                             "capped": st.get("capped", 0)})

@@ -71,7 +71,7 @@ def test_diverse_sample_one_per_topic(tmp_path, monkeypatch):
     survey = [{"video_id": f"v{i}", "url": "", "title": t, "in_library": False}
               for i, t in enumerate(["FDR presidency", "FDR White House years", "Kissinger Cambodia war",
                                       "Kissinger and Nixon", "Apollo 11 moon landing", "Dust Bowl migration"])]
-    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False: survey)
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False, kind="youtube", collection_free=False: survey)
     monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})                 # empty library → nothing dropped
     out = tl.diverse_sample("ch", n=3)
     assert len(out["picks"]) == 3                                              # exactly n picks
@@ -113,7 +113,7 @@ def test_distinct_candidates_caps_giant_channel(tmp_path, monkeypatch):
     from nolan import transcript_lib as tl
     survey = [{"video_id": f"v{i}", "url": "", "title": f"News clip number {i}", "in_library": False}
               for i in range(6000)]
-    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False: survey)
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False, kind="youtube", collection_free=False: survey)
     monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
     # stub the (expensive) embedding+clustering — this test is about the CAP, not the clustering
     monkeypatch.setattr(tl, "cluster_dedup_candidates",
@@ -125,6 +125,39 @@ def test_distinct_candidates_caps_giant_channel(tmp_path, monkeypatch):
     assert tl._distinct_candidates("big", cap=0)[1]["capped"] == 0            # cap=0 disables the bound
 
 
+def test_archive_kind_dispatch_and_copyright_filter(tmp_path, monkeypatch):
+    """Archive.org collections dispatch through the shared spine: survey_channel(kind='archive') pulls via the
+    adapter, persists kind + rich fields (subject/copyright_free) under a kind-namespaced key, and the
+    copyright-free filter drops non-free items."""
+    from nolan import transcript_lib as tl
+    from nolan import archive_source as ar
+    items = [
+        {"video_id": "a", "url": "ua", "title": "Atomic Power", "duration": 600, "subject": ["Atomic"],
+         "license": "", "copyright_free": True, "description": ""},
+        {"video_id": "b", "url": "ub", "title": "Beef Rings", "duration": None, "subject": [],
+         "license": "", "copyright_free": False, "description": ""},
+        {"video_id": "c", "url": "uc", "title": "Cars Advertising", "duration": 300, "subject": ["Cars"],
+         "license": "cc", "copyright_free": True, "description": ""},
+    ]
+    monkeypatch.setattr(ar, "survey_collection",
+                        lambda ref, limit=None, timeout=45.0, collection_free=False: (items, 3))
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+
+    rows = tl.survey_channel("prelinger", None, tmp_path, kind="archive")
+    assert len(rows) == 3 and rows[0]["copyright_free"] is True
+    assert "archive.org/services/img" in rows[0]["thumb"]                      # archive thumbnail, not youtube
+    surveys = tl.load_surveys(tmp_path)
+    assert "archive:prelinger" in surveys and surveys["archive:prelinger"]["kind"] == "archive"
+    rows2 = tl.survey_channel("prelinger", None, tmp_path, kind="archive")     # cached read keeps rich fields
+    assert rows2[0]["_cached"] and rows2[0]["subject"] == ["Atomic"]
+
+    monkeypatch.setattr(tl, "cluster_dedup_candidates",
+                        lambda cand, lib, **kw: {"distinct": cand, "dropped_lib": 0,
+                                                 "clusters": len(cand), "candidates": len(cand)})
+    distinct, stats, _ = tl._distinct_candidates("prelinger", tmp_path, kind="archive", copyright_free_only=True)
+    assert stats["dropped_copyright"] == 1 and {d["video_id"] for d in distinct} == {"a", "c"}
+
+
 def test_length_filter_drops_short_and_keeps_unknown(tmp_path, monkeypatch):
     """min_sec/max_sec gate on duration; runs BEFORE the newest-cap; unknown duration (None) is kept."""
     from nolan import transcript_lib as tl
@@ -132,7 +165,7 @@ def test_length_filter_drops_short_and_keeps_unknown(tmp_path, monkeypatch):
               {"video_id": "d2", "url": "", "title": "Short promo clip", "duration": 90, "in_library": False},
               {"video_id": "d3", "url": "", "title": "Mid feature", "duration": 1500, "in_library": False},
               {"video_id": "d4", "url": "", "title": "Unknown length", "duration": None, "in_library": False}]
-    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False: survey)
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False, kind="youtube", collection_free=False: survey)
     monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
     monkeypatch.setattr(tl, "cluster_dedup_candidates",                        # isolate the length gate
                         lambda cand, lib, **kw: {"distinct": cand, "dropped_lib": 0,
@@ -154,7 +187,7 @@ def test_coverage_map_gaps_and_strength(tmp_path, monkeypatch):
     chan = [{"video_id": "n1", "url": "", "title": "Apollo astronauts training", "in_library": False},
             {"video_id": "n2", "url": "", "title": "The Great Depression economy", "in_library": False},
             {"video_id": "n3", "url": "", "title": "Wall Street crash and banking", "in_library": False}]
-    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False: chan)
+    monkeypatch.setattr(tl, "survey_channel", lambda ch, lim=None, cd=None, refresh=False, kind="youtube", collection_free=False: chan)
     monkeypatch.setattr(tl, "load_sources", lambda cd=None: {"chX": {"label": "TestChan"}})
 
     cov = tl.coverage_map(k=2, catalog_dir=tmp_path)
