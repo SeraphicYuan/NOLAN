@@ -272,13 +272,13 @@
     function renderCoverage(c) {
       var el = $("#coverage");
       if (!c || !c.composed || !c.total) { el.innerHTML = ""; return; }   // nothing composed yet → no report
-      var unused = (c.heroes || []).filter(function (h) { return !h.used; });
-      var msg = "<b>" + c.used + " / " + c.total + "</b> selected heroes placed by the author";
+      var unused = (c.entities || []).filter(function (e) { return !e.placed; });
+      var msg = "<b>" + c.used + " / " + c.total + "</b> hero entities depicted by the author";
       var note;
-      if (!unused.length) { note = '<span style="color:var(--ok,#3a7)">— all placed</span>'; }
+      if (!unused.length) { note = '<span style="color:var(--ok,#3a7)">— all depicted</span>'; }
       else {
         note = '<span style="color:var(--text-secondary)">— not placed (the agent judged these didn\'t earn a frame): '
-          + unused.map(function (h) { return esc(h.entity) + " (" + esc(h.type) + ")"; }).join(", ") + "</span>";
+          + unused.map(function (e) { return esc(e.entity) + " (" + esc(e.kind) + ")"; }).join(", ") + "</span>";
       }
       el.innerHTML = '<div class="rat" style="margin:6px 0 2px">Author coverage: ' + msg + " " + note + "</div>";
     }

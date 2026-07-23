@@ -377,12 +377,14 @@ def test_stage_heroes_only_stages_selected(tmp_path):
 
 
 def test_hero_coverage_reports_placed_and_unplaced(tmp_path):
-    """Soft reliability: coverage counts a selected hero as USED only when its basename appears in a
-    composed frame; unselected heroes are ignored; before authoring `composed` is False."""
+    """Soft reliability, per-ENTITY: an entity is PLACED if ANY of its selected assets appears in a composed
+    frame (a placed logo marks the entity depicted even if its cutout/footage variants go unused). Unselected
+    assets are ignored; an entity with no selected asset drops out; before authoring `composed` is False."""
     from nolan.keyassets.inventory import hero_coverage
     data = {"entities": [
-        {"id": "e1", "name": "De Beers", "kind": "organization",
-         "resolved": [{"file": "capture/keyassets/e1_logo.png", "type": "logo", "selected": True}]},
+        {"id": "e1", "name": "De Beers", "kind": "organization", "resolved": [
+            {"file": "capture/keyassets/e1_logo.png", "type": "logo", "selected": True},
+            {"file": "capture/keyassets/e1_logo_cutout.png", "type": "logo", "selected": True}]},  # variant
         {"id": "e2", "name": "Cecil Rhodes", "kind": "person",
          "resolved": [{"file": "capture/keyassets/e2_portrait.jpg", "type": "portrait", "selected": True}]},
         {"id": "e3", "name": "Skip", "kind": "organization",
@@ -390,16 +392,18 @@ def test_hero_coverage_reports_placed_and_unplaced(tmp_path):
     (tmp_path / "key_assets.json").write_text(json.dumps(data), encoding="utf-8")
 
     pre = hero_coverage(tmp_path)
-    assert pre["composed"] is False and pre["total"] == 2 and pre["used"] == 0   # nothing composed yet
+    assert pre["composed"] is False and pre["total"] == 2 and pre["used"] == 0   # e3 dropped (no selected)
 
     frames = tmp_path / "compositions" / "frames"
     frames.mkdir(parents=True)
-    (frames / "01-intro.html").write_text('<img src="assets/e1_logo.png">', encoding="utf-8")
+    (frames / "01-intro.html").write_text('<img src="assets/e1_logo.png">', encoding="utf-8")  # only the logo
     post = hero_coverage(tmp_path)
-    assert post["composed"] and post["total"] == 2                # unselected e3 excluded from the count
-    assert post["used"] == 1 and post["unused"] == 1             # De Beers placed, Cecil Rhodes not
-    used = {h["entity"]: h["used"] for h in post["heroes"]}
-    assert used == {"De Beers": True, "Cecil Rhodes": False}
+    assert post["composed"] and post["total"] == 2               # 2 entities with selected assets
+    assert post["used"] == 1 and post["unused"] == 1             # De Beers depicted (via logo), Cecil Rhodes not
+    placed = {e["entity"]: e["placed"] for e in post["entities"]}
+    assert placed == {"De Beers": True, "Cecil Rhodes": False}   # the unused cutout variant doesn't demote it
+    de_beers = next(e for e in post["entities"] if e["entity"] == "De Beers")
+    assert [a["used"] for a in de_beers["assets"]] == [True, False]   # per-file detail still rides along
 
 
 # --- schema round-trip ---------------------------------------------------------------------------

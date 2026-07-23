@@ -99,26 +99,17 @@ def write_hero_section(project_dir: Path, log=print) -> int:
 
 
 def hero_coverage(project_dir: Path) -> dict:
-    """Soft reliability check: which SELECTED heroes did the author actually place in the composition?
+    """Soft reliability check: which named HERO ENTITIES did the author actually depict in the composition?
 
     Heroes are an OFFER, not a mandate — the agent may legitimately skip one that doesn't earn a frame
-    (a hero named once in passing shouldn't force a logo). This reports used vs unused (a hero counts as
-    used when its basename appears in ANY composed frame's HTML), so a human can spot a hero the author
-    silently dropped WITHOUT the pipeline mechanically placing it. `composed` is False before authoring
-    runs (nothing to measure yet). Returns {composed, total, used, unused, heroes:[{entity,base,used}]}."""
+    (a hero named once in passing shouldn't force a logo). The headline is per-ENTITY: an entity counts as
+    PLACED if ANY of its selected assets' basenames appears in a composed frame — so placing De Beers' logo
+    marks De Beers depicted even if its cutout/footage alternates go unused (they're variants, not misses).
+    Per-FILE detail rides along in each entity's `assets`. `composed` is False before authoring runs
+    (nothing to measure yet). Returns {composed, total, used, unused, entities:[{entity,kind,placed,assets}]}."""
     project_dir = Path(project_dir)
     data = _load_canonical(project_dir)
-    heroes: List[dict] = []
-    if data:
-        for e in data.get("entities", []):
-            for a in e.get("resolved", []) or []:
-                if not a.get("selected", True):
-                    continue
-                f = a.get("file") or ""
-                if not f:
-                    continue
-                heroes.append({"entity": e.get("name", "?"), "kind": e.get("kind", "?"),
-                               "type": a.get("type", "?"), "base": Path(f).name})
+
     blobs: List[str] = []
     fdir = project_dir / "compositions" / "frames"
     if fdir.is_dir():
@@ -135,11 +126,26 @@ def hero_coverage(project_dir: Path) -> dict:
             pass
     haystack = "\n".join(blobs)
     composed = bool(blobs)
-    for h in heroes:
-        h["used"] = bool(composed and h["base"] in haystack)
-    used = sum(1 for h in heroes if h["used"])
-    return {"composed": composed, "total": len(heroes), "used": used,
-            "unused": len(heroes) - used, "heroes": heroes}
+
+    entities: List[dict] = []
+    for e in (data.get("entities", []) if data else []):
+        assets = []
+        for a in e.get("resolved", []) or []:
+            if not a.get("selected", True):
+                continue
+            f = a.get("file") or ""
+            if not f:
+                continue
+            base = Path(f).name
+            assets.append({"base": base, "type": a.get("type", "?"),
+                           "used": bool(composed and base in haystack)})
+        if not assets:                                   # entity with no selected asset → nothing to place
+            continue
+        entities.append({"entity": e.get("name", "?"), "kind": e.get("kind", "?"),
+                         "placed": any(a["used"] for a in assets), "assets": assets})
+    used = sum(1 for e in entities if e["placed"])
+    return {"composed": composed, "total": len(entities), "used": used,
+            "unused": len(entities) - used, "entities": entities}
 
 
 def main() -> None:
