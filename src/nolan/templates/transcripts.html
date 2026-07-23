@@ -127,6 +127,7 @@
           <label class="dim" title="Extra frames inside long b-roll shots (slower)"><input type="checkbox" id="densify"> densify b-roll</label>
           <button class="btn" id="addBtn" onclick="addChannel()">Index channel</button>
           <button class="btn ghost" id="crawlBtn" onclick="crawlAll()" title="Crawl the WHOLE channel — ALL videos, TEXT-ONLY, rate-limit paced (add keyframes per-video later)">Crawl all (text)</button>
+          <button class="btn ghost" onclick="surveyChannel()" title="Preview every video title + an AI diversity recommendation before committing">🔍 Survey</button>
         </div>
         <span id="add-status" class="dim"></span>
         <div class="log" id="add-log"></div>
@@ -167,6 +168,21 @@
     </div>
   </div>
 
+  <div id="survey-modal" class="modal-bg" onclick="if(event.target===this)closeSurvey()">
+    <div class="modal">
+      <div class="modal-head">
+        <span id="sv-title" style="font-weight:650"></span>
+        <span class="row">
+          <button class="btn ghost mini" id="sv-rec" onclick="recommendSurvey()">✨ Recommend (AI)</button>
+          <button class="btn mini" onclick="addSelectedSurvey()">＋ Add selected, text (<span id="sv-n">0</span>)</button>
+          <button class="btn ghost mini" onclick="closeSurvey()">✕</button>
+        </span>
+      </div>
+      <div id="sv-cov" class="dim" style="margin:4px 0 8px"></div>
+      <div id="sv-body"></div>
+    </div>
+  </div>
+
   <script src="/static/nav.js" data-active="transcripts"></script>
   <script>
     const $ = s => document.querySelector(s);
@@ -177,6 +193,53 @@
     async function jdel(u){ const r=await fetch(u,{method:"DELETE"}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||r.status); return d; }
     let COMPS = null;
     async function comps(){ if(COMPS===null){ try{ COMPS=(await jget("/api/clipper/targets")).comps||[]; }catch(e){ COMPS=[]; } } return COMPS; }
+
+    /* ---------- survey + AI recommendation ---------- */
+    let SURVEY = [];
+    function closeSurvey(){ $("#survey-modal").classList.remove("on"); }
+    function svN(){ $("#sv-n").textContent = document.querySelectorAll(".svsel:checked").length; }
+    function svRank(v){ return v.in_library?3 : v.verdict==="skip"?2 : v.verdict==="add"?0 : 1; }
+    function svRow(v){
+      const flag = v.in_library ? '<span class="chip txt">in library</span>'
+        : (v.verdict==="skip" ? '<span class="chip txt">skip</span>' : (v.verdict==="add" ? '<span class="chip frames">add</span>' : ''));
+      const topic = v.topic ? `<span class="chip">${esc(v.topic)}</span>` : '';
+      return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:6px;max-width:62%">
+        <input type="checkbox" class="svsel" value="${esc(v.video_id)}" data-url="${esc(v.url||'')}" data-title="${esc(v.title||'')}" ${v.in_library?'disabled':(v.verdict==="add"?'checked':'')} onchange="svN()">
+        <span>${esc(v.title||v.video_id)} ${flag} ${topic}</span></span>
+        ${v.reason?`<span class="dim" style="font-size:11px;max-width:34%;text-align:right">${esc(v.reason)}</span>`:''}</div>`;
+    }
+    function renderSurvey(items){ $("#sv-body").innerHTML = items.map(svRow).join("") || '<div class="dim">No videos.</div>'; svN(); }
+    async function surveyChannel(){
+      const channel=$("#channel").value.trim(); if(!channel){ alert("Enter a channel URL in the field first."); return; }
+      $("#sv-title").textContent="Surveying…"; $("#sv-cov").textContent=""; $("#sv-body").innerHTML='<div class="dim">Fetching all titles (no download)…</div>'; $("#survey-modal").classList.add("on");
+      try{
+        const d=await jget(`/api/transcripts/survey?channel=${encodeURIComponent(channel)}`);
+        SURVEY=d.items;
+        $("#sv-title").textContent=`${d.count} videos · ${d.new} not in library`;
+        renderSurvey(SURVEY);
+      }catch(e){ $("#sv-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    async function recommendSurvey(){
+      const channel=$("#channel").value.trim(); const st=$("#sv-cov"); st.textContent="asking DeepSeek to diversify (topics + redundancy + gaps)…"; $("#sv-rec").disabled=true;
+      try{
+        const d=await jpost("/api/transcripts/recommend",{channel});
+        st.innerHTML=`<b>Coverage gaps:</b> ${esc(d.coverage||"—")} <span class="dim">· ${d.add} recommended of ${d.candidates}</span>`;
+        const by={}; (d.items||[]).forEach(i=>by[i.video_id]=i);
+        SURVEY = SURVEY.map(v=> by[v.video_id] ? {...v, ...by[v.video_id]} : v).sort((a,b)=>svRank(a)-svRank(b));
+        renderSurvey(SURVEY);
+      }catch(e){ st.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+      finally{ $("#sv-rec").disabled=false; }
+    }
+    async function addSelectedSurvey(){
+      const sel=[...document.querySelectorAll(".svsel:checked")].map(c=>({video_id:c.value, url:c.dataset.url, title:c.dataset.title}));
+      if(!sel.length){ alert("Select at least one video."); return; }
+      if(!confirm(`Add ${sel.length} video(s) as TRANSCRIPT-ONLY? (add keyframes later via 'Caption')`)) return;
+      try{
+        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:"off"});
+        alert(`Ingesting ${sel.length} transcripts in the background. Then caption them from the video list.`);
+        closeSurvey(); setTimeout(()=>{ loadSources(); loadVideos(); }, 2500);
+      }catch(e){ alert(e.message); }
+    }
 
     function showTab(t){
       document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on", x.dataset.tab===t));

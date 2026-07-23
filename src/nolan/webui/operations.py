@@ -564,6 +564,60 @@ async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, f
     return {"total": total, "captioned": done, "skipped": skipped, "failed": failed}
 
 
+async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str = "off",
+                        window_s: float = 45.0, overlap_s: float = 10.0, delay: float = 1.0,
+                        refresh: bool = False):
+    """Ingest a SPECIFIC list of videos (each {url, video_id?, title?, channel?}) -- transcript (+ optional
+    visual), dedup-skip, rate-paced. Powers 'add selected' from the survey/recommendation."""
+    import asyncio
+    import datetime as _dt
+
+    from nolan import transcript_lib as tl
+    from nolan.indexer import VideoIndex
+    from nolan.vector_search import VectorSearch
+    from nolan.youtube import extract_video_id
+    index = VideoIndex(db_path)
+    vs = VectorSearch(db_path.parent / "vectors", index=index)
+    now = _dt.datetime.now().isoformat(timespec="seconds")
+    items = [({"url": v} if isinstance(v, str) else v) for v in (videos or [])]
+    total = len(items); got = already = skipped = 0
+    for i, v in enumerate(items):
+        url = (v.get("url") or "").strip()
+        title = (v.get("title") or url)[:60]
+        if not url:
+            skipped += 1; continue
+        job.set_progress(0.03 + 0.9 * (i / max(1, total)), f"[{i + 1}/{total}] {title}")
+        yid0 = v.get("video_id") or extract_video_id(url) or ""
+        if not refresh and yid0 and index.get_video_id(f"yt:{yid0}"):
+            job.log(f"  = {title}: already indexed -- skipped"); already += 1; continue
+        if delay and i:
+            await asyncio.sleep(delay)
+        try:
+            meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, url)
+        except Exception as e:
+            job.log(f"  x {title}: {type(e).__name__}: {e}"); skipped += 1; continue
+        if not tr or not getattr(tr, "chunks", None):
+            job.log(f"  . {title}: no captions -- skipped"); skipped += 1; continue
+        windows = tl.chunk_transcript(tr, window_s=float(window_s), overlap_s=float(overlap_s))
+        vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": url}, windows, v.get("channel"))
+        if not vid:
+            skipped += 1; continue
+        await asyncio.to_thread(vs.sync_video, vid)
+        got += 1
+        nframes = 0
+        if visual and visual != "off":
+            try:
+                nframes = await _capture_visual_tier(url, windows, meta.get("video_id") or yid0, title,
+                                                     visual=visual, job=job)
+            except Exception as e:
+                job.log(f"    (visual skipped: {type(e).__name__}: {e})")
+        tl.record_transcript(meta.get("video_id") or yid0, {**meta, "url": url}, len(windows),
+                             v.get("channel"), frames=nframes, added=now)
+        job.log(f"  + {title} ({len(windows)} windows" + (f", +{nframes} frames" if nframes else "") + ")")
+    job.set_progress(1.0, f"{got} added, {already} already indexed, {skipped} skipped of {total}")
+    return {"total": total, "added": got, "already": already, "skipped": skipped}
+
+
 async def evoke_broll(job, *, config, line: str, operator: str = "tonal", mode: str = "stock",
                       period: str = "", locale: str = "", literalness: float = 0.25,
                       mood: Optional[str] = None, sources: Optional[list] = None,

@@ -107,6 +107,40 @@ def register(app, ctx):
             force=bool(body.get("force", False)), densify=bool(body.get("densify", False)))
         return {"job_id": job.id, "type": "transcript-batch-caption"}
 
+    @app.get("/api/transcripts/survey")
+    async def transcripts_survey(channel: str = Query(...), limit: int = Query(default=0)):
+        """CHEAP survey: all of a channel's titles (no download) + in_library flags."""
+        import asyncio
+        from nolan import transcript_lib as tl
+        items = await asyncio.to_thread(tl.survey_channel, channel, (limit or None))
+        return {"items": items, "count": len(items), "new": sum(1 for i in items if not i["in_library"])}
+
+    @app.post("/api/transcripts/recommend")
+    async def transcripts_recommend(body: dict = Body(...)):
+        """DeepSeek recommends a diverse, non-redundant add-list (topic/verdict/reason + coverage note)."""
+        from nolan.config import load_config
+        from nolan import transcript_lib as tl
+        channel = (body.get("channel") or "").strip()
+        if not channel:
+            raise HTTPException(status_code=400, detail="channel required")
+        return await tl.recommend_from_channel(channel, load_config(), limit=int(body.get("limit", 200) or 200))
+
+    @app.post("/api/transcripts/ingest-videos")
+    async def transcripts_ingest_videos(body: dict = Body(...)):
+        """Ingest a SELECTED list of videos (transcript-only by default); the 'add selected' action."""
+        from nolan.config import load_config
+        from nolan.webui import operations
+        vids = body.get("videos") or []
+        if not vids:
+            raise HTTPException(status_code=400, detail="videos required")
+        cfg = load_config()
+        idb = ctx.db_path or Path(cfg.indexing.database).expanduser()
+        job = job_manager.start(
+            "transcript-ingest-videos", operations.ingest_videos, meta={"count": len(vids)},
+            config=cfg, db_path=idb, videos=vids, visual=(body.get("visual") or "off"),
+            delay=float(body.get("delay", 1.0) or 1.0))
+        return {"job_id": job.id, "type": "transcript-ingest-videos"}
+
     @app.get("/api/transcripts/videos")
     async def transcripts_videos():
         """Browse the indexed transcript videos (newest first), grouped by channel, from the sidecar."""
