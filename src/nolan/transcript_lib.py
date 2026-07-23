@@ -188,6 +188,56 @@ def search_transcripts(query: str, index, vs, n: int = 20,
     return out
 
 
+def _rrf_fuse(text_hits: List[Dict[str, Any]], visual_hits: List[Dict[str, Any]], n: int,
+              bucket: float = 25.0, k: int = 60) -> List[Dict[str, Any]]:
+    """Reciprocal-Rank Fusion of transcript-text hits (what's SAID) and visual-frame hits (what's SHOWN) at
+    the MOMENT level (video + ~bucket-second window). Fuses by RANK, not score — the two BGE collections
+    have different score scales so cosines aren't comparable; RRF (sum of 1/(k+rank)) is scale-agnostic. A
+    moment that is BOTH discussed and shown gets both contributions and floats to the top."""
+    from nolan.youtube import extract_video_id
+    scores: Dict[tuple, Dict[str, Any]] = {}
+
+    def _key(vid, start):
+        return (vid, int(float(start or 0) // bucket))
+
+    for rank, h in enumerate(text_hits):
+        e = scores.setdefault(_key(extract_video_id(h.get("url", "")) or "", h.get("start")),
+                              {"rrf": 0.0, "matched": set()})
+        e["rrf"] += 1.0 / (k + rank + 1); e["matched"].add("said"); e.setdefault("text", h)
+    for rank, h in enumerate(visual_hits):
+        e = scores.setdefault(_key(h.get("video_id", ""), h.get("start")), {"rrf": 0.0, "matched": set()})
+        e["rrf"] += 1.0 / (k + rank + 1); e["matched"].add("shown"); e.setdefault("visual", h)
+
+    out: List[Dict[str, Any]] = []
+    for (vid, _b), e in scores.items():
+        v, t = e.get("visual"), e.get("text")
+        out.append({
+            "video_id": vid,
+            "start": (v["start"] if v else t["start"]),
+            "title": (v.get("title") if v else None) or (t.get("title") if t else "") or vid,
+            "watch_url": (v.get("watch_url") if v else None) or (t.get("watch_url") if t else ""),
+            "snippet": (t.get("snippet", "") if t else ""),
+            "caption": (v.get("caption", "") if v else ""),
+            "thumb": (v.get("thumb") if v else None),
+            "content_kind": (v.get("content_kind", "") if v else ""),
+            "asset_type": (v.get("asset_type", "") if v else ""),
+            "matched": sorted(e["matched"]),
+            "score": round(e["rrf"], 4),
+        })
+    out.sort(key=lambda x: -x["score"])
+    return out[:n]
+
+
+def search_both(query: str, index, vs, n: int = 25, content_kind: str = "",
+                catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """"Both" search — RRF blend of what's SAID (transcript) + what's SHOWN (frames) into one ranked list of
+    MOMENTS. The killer result: moments both discussed AND shown rank top."""
+    from nolan import transcript_frames as tfr
+    text_hits = search_transcripts(query, index, vs, n=max(n, 20), catalog_dir=catalog_dir)
+    visual_hits = tfr.visual_search(query, n=max(n, 20), content_kind=content_kind)
+    return _rrf_fuse(text_hits, visual_hits, n)
+
+
 def list_channel(channel: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Enumerate a channel's videos (newest first) without downloading — [{video_id, url, title, ...}]."""
     from nolan.youtube import YouTubeClient

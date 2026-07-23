@@ -103,6 +103,7 @@
           <div class="seg" id="mode">
             <button data-m="text" class="on" onclick="setMode('text')">📝 Text</button>
             <button data-m="visual" onclick="setMode('visual')">🖼 Visual</button>
+            <button data-m="both" onclick="setMode('both')">🔀 Both</button>
           </div>
           <span class="dim" id="broll-wrap" style="display:none">show <label><input type="checkbox" class="ckf" value="broll" onchange="doSearch()"> b-roll</label> <label><input type="checkbox" class="ckf" value="stills" onchange="doSearch()"> stills</label> <label><input type="checkbox" class="ckf" value="talking_head" onchange="doSearch()"> talking-head</label> <label><input type="checkbox" class="ckf" value="graphics" onchange="doSearch()"> graphics</label></span>
           <span class="dim" id="mode-hint">semantic search over what's <b>said</b></span>
@@ -180,19 +181,23 @@
     let MODE="text";
     function setMode(m){
       MODE=m; document.querySelectorAll("#mode button").forEach(b=>b.classList.toggle("on", b.dataset.m===m));
-      $("#mode-hint").innerHTML = m==="visual" ? "search frames by <b>appearance + gemma caption</b>" : "semantic search over what's <b>said</b>";
+      const hints={visual:"search frames by <b>appearance + gemma caption</b>", both:"<b>blended</b> — top moments where it's <b>said + shown</b>", text:"semantic search over what's <b>said</b>"};
+      $("#mode-hint").innerHTML = hints[m] || hints.text;
       $("#q").placeholder = m==="visual" ? "Search frames by look — e.g. “a trading floor with red screens”" : "Search the transcript library…";
-      $("#broll-wrap").style.display = m==="visual" ? "inline" : "none";
+      $("#broll-wrap").style.display = (m==="visual" || m==="both") ? "inline" : "none";
       if($("#q").value.trim()) doSearch();
     }
     async function doSearch(){
       const q=$("#q").value.trim(); if(!q) return;
       $("#results").innerHTML='<div class="dim">Searching…</div>';
       try{
+        const sel = [...document.querySelectorAll(".ckf:checked")].map(c=>c.value); const ck = sel.length ? "&content_kind=" + sel.join(",") : "";
         if(MODE==="visual"){
-          const sel = [...document.querySelectorAll(".ckf:checked")].map(c=>c.value); const ck = sel.length ? "&content_kind=" + sel.join(",") : "";
           const d=await jget(`/api/transcripts/visual-search?q=${encodeURIComponent(q)}${ck}`);
           $("#results").innerHTML = d.results.length ? `<div class="vgrid">${d.results.map(visualHit).join("")}</div>` : '<div class="dim">No frames. Index a channel with the visual tier on.</div>';
+        } else if(MODE==="both"){
+          const d=await jget(`/api/transcripts/search-both?q=${encodeURIComponent(q)}${ck}`);
+          $("#results").innerHTML = d.results.length ? d.results.map(bothHit).join("") : '<div class="dim">No moments. Index a channel first.</div>';
         } else {
           const d=await jget(`/api/transcripts/search?q=${encodeURIComponent(q)}`);
           $("#results").innerHTML = d.results.length ? d.results.map(hit).join("") : '<div class="dim">No hits. Index a channel first.</div>';
@@ -202,6 +207,15 @@
     function hit(h){ return `<div class="hit"><div class="hit-title"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">${esc(h.title)}</a>
       <span class="chip">@ ${fmt(h.start)}</span> <span class="score">${h.score}</span></div>
       <div class="hit-meta">${esc(h.channel||"")}</div><div class="hit-snip">${esc(h.snippet)}…</div></div>`; }
+    function bothHit(h){
+      const both = (h.matched||[]).length===2;
+      const mb = both ? '<span class="chip frames">said + shown</span>' : ((h.matched||[])[0]==="shown" ? '<span class="chip">shown</span>' : '<span class="chip txt">said</span>');
+      const img = h.thumb ? `<img loading="lazy" style="width:130px;aspect-ratio:16/9;object-fit:cover;border-radius:5px;float:left;margin:0 10px 4px 0" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}">` : '';
+      return `<div class="hit">${img}<div class="hit-title"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">${esc(h.title)}</a>
+        <span class="chip">@ ${fmt(h.start)}</span> ${mb} ${ckBadge(h.content_kind,h.asset_type)} <span class="score">${h.score}</span></div>
+        ${h.snippet?`<div class="hit-snip">🗣 ${esc(h.snippet.slice(0,170))}…</div>`:''}
+        ${h.caption?`<div class="hit-snip" style="color:var(--text-secondary);font-size:12px">🖼 ${esc(h.caption.slice(0,150))}</div>`:''}
+        <div style="clear:both"></div></div>`; }
     function visualHit(h){ return `<div class="vcard"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">
       <img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}"></a>
       <div class="cap"><div class="t">${esc(h.title)||"frame"} ${ckBadge(h.content_kind, h.asset_type)}</div><div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>

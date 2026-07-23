@@ -82,6 +82,22 @@ def register(app, ctx):
         results = await asyncio.to_thread(tf.visual_search, q, int(n), None, None, content_kind)
         return {"results": results, "count": len(results)}
 
+    @app.get("/api/transcripts/search-both")
+    async def transcripts_search_both(q: str = Query(...), n: int = Query(default=25),
+                                      content_kind: str = Query(default="")):
+        """BOTH search: RRF blend of transcript (said) + visual (shown) into ranked moments."""
+        import asyncio
+        from nolan import transcript_lib as tl
+        from nolan.indexer import VideoIndex
+        from nolan.vector_search import VectorSearch
+        idb = _db()
+        if not Path(idb).exists():
+            return {"results": [], "count": 0}
+        index = VideoIndex(idb)
+        vs = VectorSearch(Path(idb).parent / "vectors", index=index)
+        results = await asyncio.to_thread(tl.search_both, q, index, vs, int(n), content_kind)
+        return {"results": results, "count": len(results)}
+
     @app.get("/api/transcripts/frame")
     async def transcripts_frame(path: str = Query(...)):
         """Serve a stored frame thumbnail (contained to the transcript-frame store — no traversal)."""
