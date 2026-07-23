@@ -1144,7 +1144,7 @@ def process(sid, sc):
 
 
 _LAYOUT_CELL_KINDS = ("media", "text", "stat", "chart")
-_LAYOUT_ARRANGES = ("split", "triptych", "hero-rail", "grid", "stack", "overlay")
+_LAYOUT_ARRANGES = ("split", "triptych", "hero-rail", "grid", "stack", "overlay", "spotlight", "filmstrip")
 
 
 def _layout_boxes(arrange, n, direction, ratio):
@@ -1169,6 +1169,21 @@ def _layout_boxes(arrange, n, direction, ratio):
     elif arrange == "triptych":
         cw = (AW - 2 * PAD) / 3
         b = [(X0 + i * (cw + PAD), Y0, cw, AH) for i in range(3)]
+    elif arrange == "spotlight":                              # center-weighted 3-up: a dominant middle + flanks
+        cw = AW * float(ratio or 0.46)
+        fw = (AW - cw - 2 * PAD) / 2
+        fh = AH * 0.72
+        fy = Y0 + (AH - fh) / 2                               # flanks smaller + vertically centered
+        b = [(X0, fy, fw, fh),                                # left flank
+             (X0 + fw + PAD, Y0, cw, AH),                     # center (dominant, full height)
+             (X0 + fw + PAD + cw + PAD, fy, fw, fh)]          # right flank
+    elif arrange == "filmstrip":                              # a big FEATURE (slot 0) + a thumbnail strip below
+        fh = AH * float(ratio or 0.64)
+        b = [(X0, Y0, AW, fh)]
+        m = max(1, n - 1)
+        sy, shh, gap = Y0 + fh + PAD, AH - fh - PAD, 20
+        sw = (AW - (m - 1) * gap) / m
+        b += [(X0 + i * (sw + gap), sy, sw, shh) for i in range(m)]
     elif arrange == "hero-rail":
         hw = AW * float(ratio or 0.62) - PAD / 2
         b = [(X0, Y0, hw, AH)]

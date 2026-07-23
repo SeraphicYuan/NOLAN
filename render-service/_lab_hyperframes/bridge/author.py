@@ -137,7 +137,7 @@ def _document_annotation_errors(fid, sid, d):
 
 # layout (curated container) validation — arrange in the menu + each slot a known cell kind with its
 # required field. A bounded recursive check (the cell vocabulary is small + fixed), NOT arbitrary nesting.
-_LAYOUT_ARRANGES = {"split", "triptych", "hero-rail", "grid", "stack", "overlay"}
+_LAYOUT_ARRANGES = {"split", "triptych", "hero-rail", "grid", "stack", "overlay", "spotlight", "filmstrip"}
 _LAYOUT_CELL_REQ = {"media": ("src",), "stat": ("value",), "chart": ("series",), "text": ()}
 
 

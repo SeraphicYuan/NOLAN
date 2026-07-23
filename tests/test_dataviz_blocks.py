@@ -240,3 +240,22 @@ def test_layout_gate_accepts_overlay_arrange():
     spec = {"frames": [{"id": "f", "dur": 8, "scenes": [{"id": "s", "type": "layout", "start": 0, "dur": 8,
         "data": {"arrange": "overlay", "slots": [{"kind": "media", "src": "x.png"}, {"kind": "stat", "value": 1, "label": "y"}]}}]}]}
     assert not [e for e in author.validate_spec(spec) if "layout" in e]
+
+
+def test_layout_spotlight_boxes_are_center_weighted():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import compose_extension as ce
+    boxes = ce._layout_boxes("spotlight", 3, "horizontal", None)
+    assert boxes[1][2] > boxes[0][2] and boxes[1][3] > boxes[0][3]     # centre wider AND taller than a flank
+
+
+def test_layout_filmstrip_boxes_feature_then_strip():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import compose_extension as ce
+    boxes = ce._layout_boxes("filmstrip", 4, "horizontal", None)
+    assert boxes[0][3] > boxes[1][3]                                    # feature taller than a strip cell
+    assert boxes[1][1] == boxes[2][1] == boxes[3][1]                    # strip cells share one row (same top y)
