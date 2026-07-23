@@ -376,6 +376,32 @@ def test_stage_heroes_only_stages_selected(tmp_path):
     assert len(staged) == 1 and staged[0][0].endswith("ka_x_logo.jpg")   # only the selected one
 
 
+def test_hero_coverage_reports_placed_and_unplaced(tmp_path):
+    """Soft reliability: coverage counts a selected hero as USED only when its basename appears in a
+    composed frame; unselected heroes are ignored; before authoring `composed` is False."""
+    from nolan.keyassets.inventory import hero_coverage
+    data = {"entities": [
+        {"id": "e1", "name": "De Beers", "kind": "organization",
+         "resolved": [{"file": "capture/keyassets/e1_logo.png", "type": "logo", "selected": True}]},
+        {"id": "e2", "name": "Cecil Rhodes", "kind": "person",
+         "resolved": [{"file": "capture/keyassets/e2_portrait.jpg", "type": "portrait", "selected": True}]},
+        {"id": "e3", "name": "Skip", "kind": "organization",
+         "resolved": [{"file": "capture/keyassets/e3.png", "type": "logo", "selected": False}]}]}
+    (tmp_path / "key_assets.json").write_text(json.dumps(data), encoding="utf-8")
+
+    pre = hero_coverage(tmp_path)
+    assert pre["composed"] is False and pre["total"] == 2 and pre["used"] == 0   # nothing composed yet
+
+    frames = tmp_path / "compositions" / "frames"
+    frames.mkdir(parents=True)
+    (frames / "01-intro.html").write_text('<img src="assets/e1_logo.png">', encoding="utf-8")
+    post = hero_coverage(tmp_path)
+    assert post["composed"] and post["total"] == 2                # unselected e3 excluded from the count
+    assert post["used"] == 1 and post["unused"] == 1             # De Beers placed, Cecil Rhodes not
+    used = {h["entity"]: h["used"] for h in post["heroes"]}
+    assert used == {"De Beers": True, "Cecil Rhodes": False}
+
+
 # --- schema round-trip ---------------------------------------------------------------------------
 def test_proposal_round_trip(tmp_path):
     ents = _ents(("De Beers", "organization"), ("Cecil Rhodes", "person"))
