@@ -2,7 +2,11 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-22
+**Last Updated:** 2026-07-23
+
+## Skill system — per-organ skills, HF-hybrid-first taxonomy, /map Skills tab (2026-07-23)
+
+Grew the skill registry from craft-only into per-ORGAN skills so agents load the right one instead of reading modules cold, WITHOUT rot. Anti-rot = a TEST, not a CLAUDE.md plea: `tests/test_organ_skills.py` binds each `pipeline.*`/`organ.*` skill to real code (`documents:` target must exist; `pipeline.hyperframes` must mention every `_run()` step in finish.py; router freshness). Two skills so far: `pipeline.hyperframes` (the DOMINANT compose-first spine, bound to the hf-finish DAG) and `organ.voice` (module-bound overview). Reach = BOTH via symlink into `.claude/skills/` (harness auto-routes AND code can handoff()). skills package: `tier`/`description` fields, `--emit-router` auto-generates the `nolan` router region (primary→organ→craft→legacy), `load_skills` dedups by real path, lint exempts vendored harness skills + errors on dangling `documents`. /map got a Skills tab (tier→domain→skill tree, click-to-view SKILL.md, stats: last-amended/binding/coverage) via `/api/skills/tree`+`ui_tree()`. CLAUDE.md: SPINE now names HF-hybrid the dominant spine (was the 10 Director steps) + the organ-skill anti-rot rule. Also declared `documents:` on the 6 registry-backed craft skills (motion/sound/pairing/composition/editing/theme) to clear the tab's "unbound" flags. Commits e7842f2, 65b8345, c485df5. 92 green (organ+umbrella+editing+sound+field-parity).
 
 ## Acquisition consolidation #3 — HF-pool refine-scope wired to the author (2026-07-23)
 
