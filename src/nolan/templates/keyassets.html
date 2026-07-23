@@ -42,7 +42,14 @@
     .anchors { margin-top:6px; font-size:11.5px; color: var(--text-secondary); font-style:italic; opacity:.85; }
     .gallery { display:flex; gap:8px; flex-wrap:wrap; margin-top:9px; }
     .gallery img, .gallery video { height:74px; border-radius:7px; border:1px solid var(--border);
-                                   object-fit:cover; background:#000; }
+                                   object-fit:cover; background:#000; cursor:zoom-in; transition:transform .1s; }
+    .gallery img:hover, .gallery video:hover { transform:scale(1.04); border-color: var(--accent); }
+    #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:1000;
+                align-items:center; justify-content:center; cursor:zoom-out; }
+    #lightbox img, #lightbox video { max-width:92vw; max-height:92vh; border-radius:8px;
+                                     box-shadow:0 10px 50px rgba(0,0,0,.7); cursor:default; }
+    .lb-open { position:fixed; top:16px; right:20px; color:#fff; font-size:13px; text-decoration:none;
+               background:rgba(255,255,255,.14); padding:6px 12px; border-radius:8px; }
     .empty { color: var(--text-secondary); font-size:13.5px; padding:40px 0; }
     .legend { color: var(--text-secondary); font-size:11.5px; margin-top:20px; opacity:.8; }
     .badge { display:inline-block; font-size:10.5px; padding:2px 8px; border-radius:20px; margin-left:8px;
@@ -67,6 +74,8 @@
       (not exact) · italic = spoken anchors to sync to</div>
   </div>
 
+  <div id="lightbox" onclick="closeLb(event)"></div>
+
   <script src="/static/nav.js" data-active="keyassets"></script>
   <script>
     var $ = function (s) { return document.querySelector(s); };
@@ -87,9 +96,28 @@
 
     function thumb(path) {
       var v = /\.(mp4|mov|webm)$/i.test(path);
-      var u = fileUrl(path);
-      return v ? '<video src="' + u + '" muted></video>' : '<img loading="lazy" src="' + u + '">';
+      var oc = " onclick=\"openLb('" + path + "'," + v + ")\"";
+      return v ? '<video src="' + fileUrl(path) + '" muted' + oc + '></video>'
+               : '<img loading="lazy" src="' + fileUrl(path) + '"' + oc + '>';
     }
+
+    function openLb(path, isVideo) {
+      var u = fileUrl(path);
+      var media = isVideo ? '<video src="' + u + '" controls autoplay loop></video>'
+                          : '<img src="' + u + '">';
+      var lb = document.getElementById("lightbox");
+      lb.innerHTML = media + '<a class="lb-open" href="' + u + '" target="_blank" onclick="event.stopPropagation()">open original ↗</a>';
+      lb.style.display = "flex";
+    }
+    function closeLb(ev) {
+      if (ev.target.id === "lightbox") {           // click the backdrop (not the media) to close
+        var lb = document.getElementById("lightbox");
+        lb.style.display = "none"; lb.innerHTML = "";
+      }
+    }
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { var lb = document.getElementById("lightbox"); lb.style.display = "none"; lb.innerHTML = ""; }
+    });
 
     function entHtml(e) {
       var star = e.priority === "hero" ? '<span class="hero">★</span> ' : "";

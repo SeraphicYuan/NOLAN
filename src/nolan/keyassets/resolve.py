@@ -20,11 +20,12 @@ from .schema import DesiredAsset, KeyEntity
 _QUALIFIER = {"logo": "logo", "portrait": "portrait", "product": "product photo",
               "artwork": "", "document": "", "photo": "", "map": "map", "footage": ""}
 
-# Asset types where a wrong subject is a credibility hit → confirm the identity with a VLM before keeping
-# (the wrong-entity risk: ddgs returns a plausible face that may not be the right person). Capped so a
-# stubborn beat doesn't burn many vision calls; a portrait that never confirms is dropped LOUDLY (a
-# wrong hero portrait is worse than a missing one — the human hand-adds it).
-_VERIFY_TYPES = {"portrait", "artwork"}
+# EVERY downloaded image/clip is relevance-checked by a VLM — not just faces. A wrong photo/document/clip
+# is the same failure as a wrong portrait ("Star of South Africa" that's a Call of Duty screenshot, a
+# "four Cs" chart that's unrelated). EXACT assets that never confirm are dropped LOUDLY (a wrong hero is
+# worse than a missing one — the human hand-adds it); `related` (evocative) assets are kept but flagged
+# (their match is loose by design). Capped so a stubborn beat doesn't burn many vision calls.
+_VERIFY_IMAGE_TYPES = {"logo", "portrait", "product", "artwork", "document", "photo", "map"}
 _MAX_VERIFY_ATTEMPTS = 5
 
 # Sources to BOOST for a named-entity asset (precision) — institutional/encyclopedic first. Names must
@@ -91,25 +92,71 @@ def _provenance(res, query: str) -> dict:
             "query": query}
 
 
-def _verify_identity(cfg, path: Path, subject: str) -> Optional[bool]:
-    """Ask the VLM 'does this depict <subject>?'. True/False when it can judge, None when vision is
-    unavailable (→ caller accepts, unconfirmed). Reuses acquire.art_direction.verify_generation."""
+def _verify_match(cfg, path: Path, subject: str, *, evocative: bool = False,
+                  retries: int = 2) -> Optional[bool]:
+    """Ask the VLM 'does this image match <subject>?'. Returns True (confirmed), False (clearly wrong),
+    or None (couldn't reach a verdict after retries). CRITICAL: an error/timeout NEVER returns True — a
+    rate-limited call must not become a false confirmation (that shipped a Call-of-Duty cover as the
+    'Star of South Africa'). Calls the vision provider directly (not verify_generation, which defaults
+    to matches=True on error). Retries transient failures so a momentary rate-limit isn't a hard miss."""
+    import asyncio
+    import json
+    import os
+    import re
+    import tempfile
+    import time
     try:
-        import asyncio
-        from nolan.acquire.art_direction import verify_generation
-        v = asyncio.run(verify_generation(cfg, path, {"query": subject, "evocative": False}))
-        m = v.get("matches", True)
-        return None if v.get("reason", "").lower().find("unavailable") >= 0 else bool(m)
+        from nolan.evoke_broll import _vision_config
+        from nolan.vision import create_vision_provider
+        prov = create_vision_provider(_vision_config(cfg))
     except Exception:
         return None
+    # Downscale first: a multi-MB / >4k-px image errors the vision API (that's why a Call-of-Duty cover
+    # returned None instead of a clean False) — and under strict-keep an errored verdict would drop even
+    # a CORRECT large image. A 1024px copy verifies reliably.
+    small, tmp = str(path), None
+    try:
+        from PIL import Image
+        im = Image.open(path).convert("RGB")
+        im.thumbnail((1024, 1024))
+        fd, tmp = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        im.save(tmp, "JPEG", quality=85)
+        small = tmp
+    except Exception:
+        tmp = None
+    metaphor = (" (this is an EVOCATIVE metaphor — judge whether it plausibly evokes the idea, not "
+                "whether it literally depicts it)") if evocative else ""
+    prompt = (f'Does this image clearly match / depict: "{subject}"?{metaphor} Judge the SUBJECT/entity, '
+              "ignore art style. If it is obviously something else — a different product, a video-game or "
+              'movie cover, a screenshot, an unrelated photo — answer false. Reply ONLY JSON: '
+              '{"matches": true or false, "reason": "<short>"}.')
+    try:
+        for attempt in range(retries + 1):
+            try:
+                raw = asyncio.run(prov.describe_image(small, prompt))
+                m = re.search(r"\{.*\}", raw or "", re.DOTALL)
+                if m:
+                    d = json.loads(m.group(0))
+                    if "matches" in d:
+                        return bool(d["matches"])            # the only path that can return True
+            except Exception:
+                pass
+            if attempt < retries:
+                time.sleep(1.2)
+        return None                                          # never a false confirm
+    finally:
+        if tmp:
+            Path(tmp).unlink(missing_ok=True)
 
 
 def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
                   *, verify: bool = True) -> Optional[dict]:
-    """Search → download → validate → (for portraits/artwork) VLM identity-verify the first usable image
-    into `out`. Returns a provenance dict (with `verified`) or None. A verify-required asset that never
-    confirms within the cap is dropped (None) — a wrong hero is worse than a missing one."""
-    need_verify = verify and desired.type in _VERIFY_TYPES
+    """Search → download → validate → VLM relevance-verify the first usable image into `out`. Returns a
+    provenance dict (with `verified`) or None. An EXACT asset that never confirms within the cap is
+    dropped (None) — a wrong hero is worse than a missing one; a `related` asset is kept but unverified."""
+    need_verify = verify and desired.type in _VERIFY_IMAGE_TYPES
+    evocative = desired.relevance == "related"
     tries = 0
     for q in queries_for(entity, desired):
         try:
@@ -127,12 +174,12 @@ def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Pa
                 continue
             confirmed = None
             if need_verify:
-                confirmed = _verify_identity(cfg, out, entity.name)
-                if confirmed is False:                       # wrong subject → try the next candidate
-                    tries += 1
+                confirmed = _verify_match(cfg, out, entity.name, evocative=evocative)
+                if not evocative and confirmed is not True:  # EXACT: require a POSITIVE match to keep
+                    tries += 1                               # (False OR unconfirmed → try the next candidate)
                     out.unlink(missing_ok=True)
                     if tries >= _MAX_VERIFY_ATTEMPTS:
-                        return None                          # give up loudly rather than keep a wrong face
+                        return None                          # missing beats wrong for a hero
                     continue
             prov = _provenance(res, q)
             prov["file"] = out
@@ -142,10 +189,13 @@ def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Pa
 
 
 def resolve_video(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
-                  clip_seconds: int = 20) -> Optional[dict]:
-    """Search video providers → fetch a short on-disk segment into `out`. Best-effort (archival video
-    is fragile); returns provenance or None. Reuses the acquisition engine's range-seek segment fetch."""
-    from nolan.acquire.context import _fetch_video_segment
+                  clip_seconds: int = 20, *, verify: bool = True) -> Optional[dict]:
+    """Search video providers → fetch a short on-disk segment into `out` → (for EXACT footage) VLM
+    relevance-verify a mid-frame. Best-effort (archival video is fragile); returns provenance or None.
+    Reuses the acquisition engine's range-seek segment fetch + mid-frame extract."""
+    from nolan.acquire.context import _extract_midframe, _fetch_video_segment
+    evocative = desired.relevance == "related"
+    tries = 0
     for q in queries_for(entity, desired):
         try:
             results = client.search_assets(q, media_type="video", max_results=6) or []
@@ -155,12 +205,24 @@ def resolve_video(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Pa
             try:
                 res2 = client.resolve_video(res) or res
                 url = getattr(res2, "url", None)
-                if not url:
+                if not url or not _fetch_video_segment(url, out, clip_seconds, getattr(res2, "duration", None)):
                     continue
-                if _fetch_video_segment(url, out, clip_seconds, getattr(res2, "duration", None)):
-                    prov = _provenance(res, q)
-                    prov["file"] = out
-                    return prov
             except Exception:
                 continue
+            confirmed = None
+            if verify and not evocative:                     # verify EXACT footage by a mid-frame; related stays loose
+                fr = _extract_midframe(out)
+                if fr:
+                    confirmed = _verify_match(cfg, fr, entity.name, evocative=False)
+                    fr.unlink(missing_ok=True)
+                    if confirmed is False:
+                        tries += 1
+                        out.unlink(missing_ok=True)
+                        if tries >= _MAX_VERIFY_ATTEMPTS:
+                            return None
+                        continue
+            prov = _provenance(res, q)
+            prov["file"] = out
+            prov["verified"] = confirmed is True
+            return prov
     return None

@@ -49,11 +49,11 @@ def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optio
             tag = "~" if d.relevance == "related" else ""
             log(f"  [{e.name}] {d.type}{tag} …")
             if is_video:
-                r = resolve_video(cfg, client, e, d, out)
+                r = resolve_video(cfg, client, e, d, out, verify=verify)
             else:
                 r = resolve_image(cfg, client, e, d, out, verify=verify)
             if not r:
-                miss = "no confirmed match" if (verify and d.type in {"portrait", "artwork"}) else "none found"
+                miss = "no confirmed match" if (verify and d.relevance == "exact") else "none found"
                 log(f"    ✗ {miss}")
                 continue
             got += 1
