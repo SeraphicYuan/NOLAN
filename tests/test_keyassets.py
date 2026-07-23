@@ -51,6 +51,21 @@ def test_parse_entities_normalizes_dedups_and_ids():
     assert rhodes.priority == "supporting"                  # default
 
 
+def test_collage_flag_only_on_cutout_types():
+    raw = json.dumps([
+        {"name": "A Diamond Is Forever", "kind": "work",
+         "desired_assets": [{"type": "artwork", "collage_ready": True}]},   # artwork → cutout meaningless
+        {"name": "De Beers", "kind": "organization",
+         "desired_assets": [{"type": "logo", "collage_ready": True}]},       # logo → keep
+        {"name": "Cecil Rhodes", "kind": "person",
+         "desired_assets": [{"type": "portrait", "collage_ready": True}]},   # portrait → keep
+    ])
+    ents = parse_entities(raw)
+    assert ents[0].desired_assets[0].collage_ready is False    # artwork stripped
+    assert ents[1].desired_assets[0].collage_ready is True
+    assert ents[2].desired_assets[0].collage_ready is True
+
+
 def test_parse_entities_relevance_exact_and_related():
     raw = json.dumps([
         {"name": "1947 campaign film", "kind": "work",
@@ -149,6 +164,45 @@ def test_parse_directions_dedupes_entity_across_directions():
     directions, _ = parse_directions(raw, ents)
     assert directions[0].entity_ids == ["ka_de_beers"]
     assert all("ka_de_beers" not in d.entity_ids for d in directions[1:])
+
+
+# --- resolve / collect (pure parts) --------------------------------------------------------------
+def test_queries_for_builds_deduped_variants():
+    from types import SimpleNamespace
+    from nolan.keyassets.resolve import queries_for
+    e = SimpleNamespace(name="De Beers")
+    d = SimpleNamespace(type="logo", note="official monochrome logo", relevance="exact")
+    qs = queries_for(e, d)
+    assert qs[0] == "De Beers logo"                            # name + qualifier
+    assert "De Beers official monochrome logo" in qs          # name + note
+    assert "De Beers" in qs and len(qs) <= 3
+    # bare-name entity (a related clip concept) still yields a query, deduped
+    e2 = SimpleNamespace(name="1950s wedding b-roll")
+    d2 = SimpleNamespace(type="footage", note="", relevance="related")
+    assert queries_for(e2, d2) == ["1950s wedding b-roll"]
+
+
+def test_boost_prefers_institutional_sources():
+    from types import SimpleNamespace
+    from nolan.keyassets.resolve import _boost
+    res = [SimpleNamespace(source="ddgs"), SimpleNamespace(source="wikimedia"), SimpleNamespace(source="pexels")]
+    ordered = [r.source for r in _boost(res, "logo")]          # logo prefers wikimedia
+    assert ordered[0] == "wikimedia"
+
+
+def test_write_manifest_attaches_resolved(tmp_path):
+    from nolan.keyassets.collect import _write_manifest
+    ents = _ents(("De Beers", "organization"))
+    directions, ents = parse_directions(
+        json.dumps([{"id": "d", "title": "D", "entity_ids": ["ka_de_beers"]}]), ents)
+    prop = KeyAssetsProposal(comp="x", entities=ents, directions=directions)
+    resolved = {"ka_de_beers": [{"file": "capture/keyassets/ka_de_beers_logo.jpg", "type": "logo",
+                                 "variant": "original", "source": "wikimedia"}]}
+    p = _write_manifest(tmp_path, prop, resolved)
+    data = json.loads(p.read_text(encoding="utf-8"))
+    assert data["collected"] == 1
+    ent = data["entities"][0]
+    assert ent["resolved"][0]["file"].endswith("ka_de_beers_logo.jpg")
 
 
 # --- schema round-trip ---------------------------------------------------------------------------

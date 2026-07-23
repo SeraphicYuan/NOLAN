@@ -45,6 +45,9 @@ DEFAULT_ASSET_BY_KIND: Dict[str, str] = {
 
 PRIORITIES = ("hero", "supporting")
 RELEVANCES = ("exact", "related")
+# Asset types where a background-removed cutout is MEANINGFUL (a subject worth isolating for collage).
+# NOT artwork/document (cutting out a whole ad/page is meaningless) or photo/map/footage.
+CUTOUT_TYPES = ("logo", "product", "portrait")
 
 
 def normalize_relevance(r: str) -> str:

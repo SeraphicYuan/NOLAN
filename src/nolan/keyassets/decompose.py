@@ -11,7 +11,7 @@ import json
 import re
 from typing import List
 
-from .registry import (DEFAULT_ASSET_BY_KIND, collage_default, normalize_asset_type,
+from .registry import (CUTOUT_TYPES, DEFAULT_ASSET_BY_KIND, collage_default, normalize_asset_type,
                        normalize_kind, normalize_priority, normalize_relevance)
 from .schema import DesiredAsset, KeyEntity
 
@@ -89,7 +89,8 @@ def parse_entities(raw: str, k: int = 30) -> List[KeyEntity]:
             if not isinstance(a, dict):
                 continue
             at = normalize_asset_type(str(a.get("type", "")))
-            cr = bool(a.get("collage_ready")) or collage_default(at)
+            # only flag a cutout where one is meaningful (logo/product/portrait), whatever the LLM said
+            cr = (bool(a.get("collage_ready")) or collage_default(at)) and at in CUTOUT_TYPES
             rel = normalize_relevance(str(a.get("relevance", "exact")))
             assets.append(DesiredAsset(type=at, note=str(a.get("note", "")).strip(),
                                        collage_ready=cr, relevance=rel))

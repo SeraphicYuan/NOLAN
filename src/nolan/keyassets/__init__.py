@@ -11,9 +11,11 @@ from __future__ import annotations
 from typing import List
 
 from . import registry
+from .collect import collect
 from .consolidate import consolidate, consolidate_prompt, parse_directions
 from .decompose import decompose, decompose_prompt, parse_entities
 from .enrich import enrich, enrich_prompt, merge_entities
+from .resolve import build_client, queries_for, resolve_image, resolve_video
 from .schema import DesiredAsset, KeyAssetsProposal, KeyEntity, ResearchDirection
 
 __all__ = [
@@ -21,6 +23,7 @@ __all__ = [
     "decompose", "decompose_prompt", "parse_entities",
     "enrich", "enrich_prompt", "merge_entities",
     "consolidate", "consolidate_prompt", "parse_directions", "build_proposal",
+    "collect", "build_client", "queries_for", "resolve_image", "resolve_video",
 ]
 
 
