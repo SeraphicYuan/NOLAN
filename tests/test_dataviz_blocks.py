@@ -218,3 +218,25 @@ def test_layout_vs_pivot_composes():
         "arrange": "split", "vs": "OR", "slots": [{"kind": "text", "lines": ["A"]}, {"kind": "text", "lines": ["B"]}]}})
     html = "".join(f)
     assert "l-vs" in html and ">OR<" in html                          # the pivot badge
+
+
+def test_layout_overlay_composes_background_and_foreground():
+    import compose
+    f, t = compose.BLOCKS["layout"]("l", {"id": "l", "type": "layout", "start": 0, "dur": 8, "data": {
+        "arrange": "overlay", "title": "T", "slots": [
+            {"kind": "media", "src": "assets/x.png"},
+            {"kind": "stat", "value": "3x", "label": "more", "place": "br"},
+            {"kind": "text", "lines": ["a caption"], "place": "band"}]}})
+    html = "".join(f)
+    assert "l-bg" in html                                    # full-bleed background image
+    assert "l-card1" in html and "l-card2" in html           # foreground stat + text on backing cards
+
+
+def test_layout_gate_accepts_overlay_arrange():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"))
+    import author
+    spec = {"frames": [{"id": "f", "dur": 8, "scenes": [{"id": "s", "type": "layout", "start": 0, "dur": 8,
+        "data": {"arrange": "overlay", "slots": [{"kind": "media", "src": "x.png"}, {"kind": "stat", "value": 1, "label": "y"}]}}]}]}
+    assert not [e for e in author.validate_spec(spec) if "layout" in e]

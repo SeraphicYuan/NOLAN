@@ -1144,7 +1144,7 @@ def process(sid, sc):
 
 
 _LAYOUT_CELL_KINDS = ("media", "text", "stat", "chart")
-_LAYOUT_ARRANGES = ("split", "triptych", "hero-rail", "grid", "stack")
+_LAYOUT_ARRANGES = ("split", "triptych", "hero-rail", "grid", "stack", "overlay")
 
 
 def _layout_boxes(arrange, n, direction, ratio):
@@ -1273,6 +1273,99 @@ def _layout_cell(sid, i, cell, box, t0):
     return frag, tl
 
 
+def _overlay_place(place):
+    """Foreground-cell box for the `overlay` arrangement, by placement keyword. Corners + a full-width
+    band + centre — the bounded set of overlay positions essays actually use."""
+    W, H, M = 1920, 1080, 96
+    cw, ch = 620, 320
+    p = str(place or "br").lower()
+    if p in ("band", "band-bottom", "bottom", "lower-third"):
+        return (M, H - 300, W - 2 * M, 224)
+    if p in ("band-top", "top"):
+        return (M, 84, W - 2 * M, 200)
+    if p == "center":
+        return ((W - 1000) / 2, (H - 440) / 2, 1000, 440)
+    if p == "tl":
+        return (M, M + 60, cw, ch)
+    if p == "tr":
+        return (W - M - cw, M + 60, cw, ch)
+    if p == "bl":
+        return (M, H - M - ch, cw, ch)
+    return (W - M - cw, H - M - ch, cw, ch)                  # br (default)
+
+
+def _layout_overlay(sid, sc, d, slots, n, start, dur, dark, ink, esc):
+    """The `overlay` arrangement — the LAYERED (z-axis) composition the tiling arrangements can't do: a
+    full-bleed BACKGROUND cell (slot 0: media, or a chart) + FOREGROUND cells (slots 1..) each placed by
+    `place` on a surface backing card so they stay legible over any footage in any theme. Reuses the
+    _data_ground legibility-veil approach (theme-surface color-mix) rather than reinventing the scrim.
+    Generalises hero / lower_third / annotate."""
+    times = compose._reveal_times(n, start, dur, [None] * n) if n else []
+    frag = [f'<div id="{sid}-wrap" class="clip blk-layout" data-start="{start}" data-duration="{dur}" '
+            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};'
+            f'background:{esc(compose._page_bg())};overflow:hidden">']
+    tl = []
+    # 1 · BACKGROUND (slot 0) — full-bleed media (+ Ken-Burns + veil) or a full-frame cell
+    bg = slots[0] if slots else {}
+    src = str(bg.get("src", "")) if bg.get("kind") == "media" else ""
+    dim = float(bg.get("dim", 0.5))
+    if src and src.lower().endswith((".mp4", ".webm", ".mov")):
+        frag.append(f'<div style="position:absolute;inset:0;background:#000"><video src="{esc(src)}" muted '
+                    f'playsinline preload="auto" style="width:100%;height:100%;object-fit:cover"></video></div>')
+    elif src:
+        frag.append(f'<div id="{sid}-bg" style="position:absolute;inset:0;background-image:url(\'{esc(src)}\');'
+                    f'background-size:cover;background-position:center"></div>')
+        tl.append(f'tl.fromTo("#{sid}-bg",{{scale:1.03}},{{scale:1.1,duration:{dur},ease:"none"}},{start});')
+    else:
+        cf, ct = _layout_cell(sid, 0, bg, (0, 0, 1920, 1080), start)   # non-media bg (e.g. a chart) full-frame
+        frag += cf
+        tl += ct
+    if src:                                                  # polarity-correct legibility veil (theme surface)
+        veil = (f"radial-gradient(150% 135% at 50% 66%,"
+                f"color-mix(in srgb, var(--surface) {dim*100:.0f}%, transparent),"
+                f"color-mix(in srgb, var(--surface) {dim*55:.0f}%, transparent))")
+        frag.append(f'<div style="position:absolute;inset:0;background:{veil};pointer-events:none"></div>')
+    # 2 · HEAD (title/kicker) over the media — shadowed for legibility
+    sh = "text-shadow:0 2px 20px rgba(0,0,0,.5);" if src else ""
+    if d.get("kicker"):
+        frag.append(f'<div id="{sid}-k" style="position:absolute;left:100px;top:88px;'
+                    f'font-family:var(--font-mono,monospace);font-size:20px;letter-spacing:.14em;'
+                    f'text-transform:uppercase;color:var(--accent);{sh}opacity:0">{esc(d["kicker"])}</div>')
+        tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.1:.2f});')
+    if d.get("title"):
+        t, op = d["title"], d.get("titleHi", "")
+        html_t = (f'{esc(t.split(op,1)[0])}<span style="color:var(--accent)">{esc(op)}</span>{esc(t.split(op,1)[1])}'
+                  if op and op in t else esc(t))
+        frag.append(f'<div id="{sid}-t" style="position:absolute;left:100px;top:120px;'
+                    f'font-family:var(--font-display);font-weight:800;font-size:46px;color:{ink};{sh}opacity:0">{html_t}</div>')
+        tl.append(f'tl.fromTo("#{sid}-t",{{opacity:0,y:12}},{{opacity:1,y:0,duration:0.6,ease:"power3.out"}},{start+0.2:.2f});')
+    # 3 · FOREGROUND cells — each on a surface backing card at its placed box (legible over any footage)
+    band_bottom = any(str((slots[k] or {}).get("place", "")).lower() in ("band", "band-bottom", "bottom", "lower-third")
+                      for k in range(1, n))
+    for j in range(1, n):
+        cell = slots[j]
+        place = str(cell.get("place", "br")).lower()
+        x, y, w, h = _overlay_place(place)
+        if band_bottom and place in ("br", "bl"):           # lift bottom corners clear of a bottom band
+            y = min(y, (1080 - 300) - h - 28)
+        if cell.get("kind") == "media":                     # a PIP media fills its card (rounded), no backing
+            cf, ct = _layout_cell(sid, j, cell, (x, y, w, h), times[j])
+            frag += cf
+            tl += ct
+            continue
+        frag.append(f'<div id="{sid}-card{j}" style="position:absolute;left:{x:.0f}px;top:{y:.0f}px;'
+                    f'width:{w:.0f}px;height:{h:.0f}px;background:var(--surface);border-radius:16px;'
+                    f'box-shadow:0 18px 54px rgba(0,0,0,.42);opacity:0"></div>')
+        pad = 30
+        cf, ct = _layout_cell(sid, j, cell, (x + pad, y + pad, w - 2 * pad, h - 2 * pad), times[j])
+        frag += cf
+        tl += ct
+        tl.append(f'tl.fromTo("#{sid}-card{j}",{{opacity:0,scale:0.96,y:14}},{{opacity:1,scale:1,y:0,'
+                  f'duration:0.5,ease:"power3.out"}},{times[j]:.2f});')
+    frag.append('</div>')
+    return frag, tl
+
+
 def layout(sid, sc):
     """A LAYOUT container — a CURATED arrangement (split | triptych | hero-rail | grid | stack) of a fixed
     cell vocabulary (media | text | stat | chart). The runtime of the composition archetypes: pick an
@@ -1287,6 +1380,8 @@ def layout(sid, sc):
     dark = getattr(compose, "_POLARITY", "light") == "dark"
     ink = "#f3efe6" if dark else "#1c1c19"
     arrange = d.get("arrange", "split")
+    if arrange == "overlay":                                # the LAYERED path (background + foreground-on-top)
+        return _layout_overlay(sid, sc, d, slots, n, start, dur, dark, ink, esc)
     boxes = _layout_boxes(arrange, n, d.get("direction", "horizontal"), d.get("ratio"))
     frag = [f'<div id="{sid}-wrap" class="clip blk-layout" data-start="{start}" data-duration="{dur}" '
             f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(compose._page_bg())}">']
