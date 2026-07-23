@@ -402,15 +402,19 @@ def plan_snapshot_times(changes: List[float], duration: float,
     return out
 
 
-def download_video(url: str, out_dir: Path, max_height: int = 480) -> Tuple[Optional[Path], float]:
-    """Download a video ONCE to a temp file (<=max_height) so detection + ALL frame grabs run LOCALLY — one
-    sustained transfer instead of ~N throttled googlevideo range requests (the batch-scale bottleneck AND the
-    source of the stalled-stream hang). Returns (local_path, duration); (None, 0.0) on failure so the caller
-    can fall back to streaming."""
+def download_video(url: str, out_dir: Path, max_height: int = 360) -> Tuple[Optional[Path], float]:
+    """Download a video ONCE to a temp file so detection + ALL frame grabs run LOCALLY — one sustained
+    transfer instead of ~N throttled googlevideo range requests (batch-scale bottleneck + stalled-stream
+    hang). We only need frames for cut detection + gemma captioning, so we grab the SMALLEST adequate
+    stream: VIDEO-ONLY (audio is never used) at <=max_height (360p is ample for gemma OCR/entities + the UI
+    thumbnails). Returns (local_path, duration); (None, 0.0) on failure so the caller can fall back to
+    streaming."""
     import yt_dlp
     out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
     opts = {"quiet": True, "no_warnings": True, "noplaylist": True,
-            "format": f"18/best[ext=mp4][height<={max_height}]/best[height<={max_height}]/best",
+            # video-only (no audio track) at <=max_height, most efficient codec; fall back to combined 18 (360p)
+            "format": (f"bestvideo[height<={max_height}][ext=mp4]/bestvideo[height<={max_height}]/"
+                       f"18/best[ext=mp4][height<={max_height}]/best[height<={max_height}]/best"),
             "outtmpl": str(out_dir / "src.%(ext)s")}
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
