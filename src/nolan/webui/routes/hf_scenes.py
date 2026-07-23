@@ -760,6 +760,24 @@ def register(app, ctx):
         job.message = f"Asset pool: {res.get('count', 0)} asset(s) -> {comp}/capture/"
         return res
 
+    async def _assets_job(job, comp, script, key_assets, acquire_pool, per, gen, cull):
+        """Launch-time acquisition in order: key-assets HEROES (global/precision) → b-roll POOL (recall) →
+        prepend the hero block onto the author's menu. Heroes-first; the agent decides where/whether to use
+        them. 'curated' only builds the pull-list (human collects on /keyassets); 'auto' collects now."""
+        ka = {}
+        if key_assets and key_assets != "off":
+            job.message = f"Key-assets ({key_assets}): building the hero pull-list…"
+            ka = await asyncio.to_thread(hfedit.run_key_assets, comp, script, key_assets, False)  # stage after pool
+        pool = {}
+        if acquire_pool:
+            pool = await _pool_job(job, comp, None, script, per, gen, cull)   # rewrites base asset-descriptions.md
+        if key_assets == "auto" and ka.get("collected"):
+            job.message = "Staging heroes into the author's menu…"
+            from nolan.keyassets.inventory import write_hero_section
+            await asyncio.to_thread(write_hero_section, hfedit._project_dir(comp))
+        job.message = f"Assets ready — heroes: {ka.get('collected', 0)}, b-roll: {pool.get('count', 0)}"
+        return {"ok": True, "key_assets": ka, "pool": pool}
+
     @app.post("/api/hf/pool")
     async def hf_pool(payload: dict = Body(...)):
         """Build an asset pool for a comp (existing or just-scaffolded) via the NOLAN bridge — background job."""
@@ -799,16 +817,19 @@ def register(app, ctx):
         session = (payload.get("session") or "").strip()
         if not (script and name):
             raise HTTPException(status_code=400, detail="name and script are required")
+        key_assets = (payload.get("key_assets") or "curated").strip()   # curated | auto | off
         res = _guard(hfedit.new_essay, name, script, payload.get("style"),
                      bool(payload.get("acquire_pool", True)), payload.get("voiceover") or None,
                      payload.get("asset_density") or "balanced", payload.get("theme") or None,
-                     payload.get("motion") or None, gen_style=payload.get("gen_style") or None)
-        if res.get("acquire_pool"):        # acquire the asset pool first (from the script), before authoring
-            pjob = job_manager.start("hf_pool", _pool_job, meta={"comp": res["comp"]},
-                                     comp=res["comp"], needs=None, script=script,
+                     payload.get("motion") or None, gen_style=payload.get("gen_style") or None,
+                     key_assets=key_assets)
+        if res.get("acquire_pool") or key_assets != "off":   # heroes (global) then b-roll pool, before authoring
+            ajob = job_manager.start("hf_assets", _assets_job, meta={"comp": res["comp"]},
+                                     comp=res["comp"], script=script, key_assets=key_assets,
+                                     acquire_pool=bool(res.get("acquire_pool")),
                                      per=int(payload.get("per", 8)), gen=bool(payload.get("gen", True)),
                                      cull=bool(payload.get("cull", True)))
-            res["pool_job"] = pjob.id
+            res["assets_job"] = ajob.id
         if session:                        # dispatch to a live agent; else caller runs the prompt manually
             from nolan.webui import operations
             try:

@@ -85,8 +85,9 @@ def discover_compositions() -> List[Dict[str, Any]]:
 
 def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
                    voiceover: bool = False, asset_density: str = "balanced",
-                   theme: Optional[str] = None, motion: Optional[str] = None) -> str:
-    """The task brief the faceless-explainer agent reads to author a new essay (written to .hf_kickoff.md)."""
+                   theme: Optional[str] = None, motion: Optional[str] = None,
+                   key_assets: bool = False) -> str:
+    """The task brief the HF authoring agent reads to author a new essay (written to .hf_kickoff.md)."""
     rel = f"videos/{slug}"
     comp_rel = f"render-service/_lab_hyperframes/{rel}"
     bridge_rel = "render-service/_lab_hyperframes/bridge"
@@ -147,17 +148,26 @@ def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
         f"duration), then `assemble-index` + `hyperframes render`; the narration mounts automatically as the "
         f"root voice track (data-track-index 10). Time within-frame reveals to the narration by ear."
         if voiceover else "")
-    assets_line = (
-        f"- **Assets — ASSET-BACKED (not faceless):** a NOLAN asset POOL is being acquired into `{rel}/capture/` "
-        f"(stock images/video + qwen-VL captions, via the `pool.py` bridge). SELECT `asset_candidates` from "
-        f"`{rel}/capture/extracted/asset-descriptions.md` for image beats (collage / gallery / newshead / timeline / "
-        f"comparison); still invent typography / diagram / data-viz where no real asset fits. Resolve BGM/SFX/logos via `/media-use`."
-        if pool else
-        f"- **Assets:** faceless — invent per scene. Resolve BGM/SFX/images/logos via `/media-use`; land them in `{rel}/assets/`."
-    )
+    hero_line = (
+        f"\n  The TOP of `asset-descriptions.md` is a **KEY-ASSETS HERO POOL** — the specific, NAMED things the essay "
+        f"is ABOUT (real logos, portraits, the actual works/charts; some as bg-removed cutouts), each with its "
+        f"narrative role + the spoken phrases where it fits. **Prefer a hero at the beat it belongs to — but YOU "
+        f"decide where and whether:** use each hero where it best serves the story (usually ONCE, at its reveal or "
+        f"first substantive mention), NOT mechanically at every occurrence of its name; a hero that doesn't earn a "
+        f"frame stays unused. General b-roll follows below the heroes."
+        if key_assets else "")
+    if pool or key_assets:
+        assets_line = (
+            f"- **Assets — ASSET-BACKED:** real assets are being acquired into `{rel}/capture/` and listed in "
+            f"`{rel}/capture/extracted/asset-descriptions.md` (the ONLY asset menu). SELECT `asset_candidates` from it "
+            f"for image beats (collage / gallery / newshead / timeline / comparison); invent typography / diagram / "
+            f"data-viz where no real asset fits. Resolve BGM/SFX via `/media-use`.{hero_line}")
+    else:
+        assets_line = (f"- **Assets:** no sourced pool (legacy invent-only mode) — invent per scene. Resolve "
+                       f"BGM/SFX/images/logos via `/media-use`; land them in `{rel}/assets/`.")
     return f"""# New HyperFrames essay — kickoff (`{slug}`)
 
-Author a **faceless explainer video** from the source text, using the `/faceless-explainer` skill in
+Author an **asset-backed video essay** from the source text, using the `/faceless-explainer` authoring skill in
 **NOLAN compose-first mode — the hybrid pipeline (the required default here)**. You are the orchestrator;
 run its steps in order and pass each gate.
 
@@ -209,10 +219,15 @@ def attach_voiceover(comp: str, vo_source: str) -> Dict[str, Any]:
 def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = True,
               voiceover: Optional[str] = None, asset_density: str = "balanced",
               theme: Optional[str] = None, motion: Optional[str] = None,
-              gen_style: Optional[str] = None) -> Dict[str, Any]:
+              gen_style: Optional[str] = None, key_assets: str = "curated") -> Dict[str, Any]:
     """Scaffold a new HyperFrames essay project under the lab videos root + write a kickoff brief for the
-    faceless-explainer agent. Returns {comp, dir, prompt, acquire_pool}; the caller dispatches `prompt` to a
-    tmux agent (and, if acquire_pool, first runs the asset pool). Shows up in /hyperframes once frames exist.
+    HF authoring agent. Returns {comp, dir, prompt, acquire_pool, key_assets}; the caller runs the asset
+    stages (key-assets heroes, then the b-roll pool) and dispatches `prompt` to a tmux agent. Shows up in
+    /hyperframes once frames exist.
+
+    key_assets: "curated" (default) builds the hero PULL-LIST at launch, human collects on /keyassets;
+    "auto" collects immediately; "off" no heroes (pool-only). Heroes are OFFERED to the author (heroes-first
+    in the menu, agent decides where/whether to use them), never mechanically placed.
 
     voiceover: None -> faceless self-generated voice (default). A NOLAN project name / path with
     assets/voiceover/ -> its cloned VO is bridged in NOW (audio_meta.json written; frame durations come from
@@ -236,12 +251,15 @@ def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool:
         (pdir / "hyperframes.json").write_text(json.dumps(hf), encoding="utf-8")
     (pdir / ".hf_kickoff.md").write_text(
         _kickoff_brief(slug, style, acquire_pool, voiceover=bool(voiceover), asset_density=asset_density,
-                       theme=(theme if theme and theme_exists(theme) else None), motion=motion),
+                       theme=(theme if theme and theme_exists(theme) else None), motion=motion,
+                       key_assets=(key_assets != "off")),
         encoding="utf-8")
     prompt = (f"New HyperFrames essay: read render-service/_lab_hyperframes/videos/{slug}/.hf_kickoff.md and execute "
-              f"it — author a faceless explainer from that project's SOURCE.md into its compositions/frames/ using the "
-              f"/faceless-explainer skill in NOLAN compose-first (hybrid) mode. Report the composition id '{slug}' when done.")
-    res = {"comp": slug, "dir": str(pdir), "prompt": prompt, "acquire_pool": bool(acquire_pool)}
+              f"it — author an asset-backed video essay from that project's SOURCE.md into its compositions/frames/ "
+              f"using the /faceless-explainer authoring skill in NOLAN compose-first (hybrid) mode. Report the "
+              f"composition id '{slug}' when done.")
+    res = {"comp": slug, "dir": str(pdir), "prompt": prompt,
+           "acquire_pool": bool(acquire_pool), "key_assets": key_assets}
     if voiceover and voiceover != "auto":          # bridge an existing NOLAN VO in now
         try:
             res["voiceover"] = attach_voiceover(slug, voiceover)
@@ -411,6 +429,44 @@ def run_pool(comp: str, needs: List[Dict[str, Any]], per: int = 8,
     return {"ok": r.returncode == 0, "count": len(pool), "needs": needs,
             "inventory": str(pdir / "capture" / "extracted" / "asset-descriptions.md"),
             "output": (r.stdout + r.stderr)[-1200:]}
+
+
+def run_key_assets(comp: str, script: Optional[str] = None, mode: str = "curated",
+                   stage: bool = True) -> Dict[str, Any]:
+    """Run the key-assets HERO stage for an essay (mirrors run_pool; a PRE-acquisition, global pass).
+    `mode`: 'curated' builds the reviewable pull-list only (human collects on /keyassets); 'auto' also
+    collects the heroes; 'off' is a no-op. `stage` writes the HERO block into asset-descriptions.md — the
+    launch flow passes stage=False so the b-roll pool (which rewrites that file) runs BETWEEN collect and
+    stage, and stages last. Blocking (LLM + optional ~minutes collect) — call from a background thread.
+    Heroes are OFFERED to the author (heroes-first in the menu, agent decides where/whether), never placed."""
+    if mode == "off":
+        return {"ok": True, "mode": "off", "skipped": True}
+    import asyncio
+    from datetime import date
+
+    from nolan.config import load_config
+    from nolan.keyassets import build_proposal, collect
+    from nolan.keyassets.inventory import write_hero_section
+    from nolan.keyassets.schema import KeyAssetsProposal
+    from nolan.llm import create_text_llm
+    pdir = _project_dir(comp)
+    script = script or _project_script(pdir)
+    if not (script or "").strip():
+        return {"ok": False, "error": "no script for key-assets"}
+    cfg = load_config()
+    prop_path = pdir / "key_assets.proposal.json"
+    prop = KeyAssetsProposal.load(prop_path)              # reuse a human-reviewed proposal if present (idempotent)
+    if prop is None:                                      # decompose → enrich → consolidate → querygen
+        prop = asyncio.run(build_proposal(script, create_text_llm(cfg), comp=comp))
+        prop.generated = date.today().isoformat()
+        prop.save(prop_path)
+    collected = 0
+    if mode == "auto":
+        collected = collect(cfg, pdir, prop).get("collected", 0)
+        if stage:
+            write_hero_section(pdir)                      # prepend heroes onto the author's menu (idempotent)
+    return {"ok": True, "mode": mode, "entities": len(prop.entities), "collected": collected,
+            "proposal": str(prop_path)}
 
 
 def _comp_dir(comp: str) -> Path:

@@ -98,6 +98,50 @@ def write_hero_section(project_dir: Path, log=print) -> int:
     return len(lines)
 
 
+def hero_coverage(project_dir: Path) -> dict:
+    """Soft reliability check: which SELECTED heroes did the author actually place in the composition?
+
+    Heroes are an OFFER, not a mandate — the agent may legitimately skip one that doesn't earn a frame
+    (a hero named once in passing shouldn't force a logo). This reports used vs unused (a hero counts as
+    used when its basename appears in ANY composed frame's HTML), so a human can spot a hero the author
+    silently dropped WITHOUT the pipeline mechanically placing it. `composed` is False before authoring
+    runs (nothing to measure yet). Returns {composed, total, used, unused, heroes:[{entity,base,used}]}."""
+    project_dir = Path(project_dir)
+    data = _load_canonical(project_dir)
+    heroes: List[dict] = []
+    if data:
+        for e in data.get("entities", []):
+            for a in e.get("resolved", []) or []:
+                if not a.get("selected", True):
+                    continue
+                f = a.get("file") or ""
+                if not f:
+                    continue
+                heroes.append({"entity": e.get("name", "?"), "kind": e.get("kind", "?"),
+                               "type": a.get("type", "?"), "base": Path(f).name})
+    blobs: List[str] = []
+    fdir = project_dir / "compositions" / "frames"
+    if fdir.is_dir():
+        for html in sorted(fdir.glob("*.html")):
+            try:
+                blobs.append(html.read_text(encoding="utf-8", errors="ignore"))
+            except OSError:
+                pass
+    idx = project_dir / "index.html"
+    if idx.exists():
+        try:
+            blobs.append(idx.read_text(encoding="utf-8", errors="ignore"))
+        except OSError:
+            pass
+    haystack = "\n".join(blobs)
+    composed = bool(blobs)
+    for h in heroes:
+        h["used"] = bool(composed and h["base"] in haystack)
+    used = sum(1 for h in heroes if h["used"])
+    return {"composed": composed, "total": len(heroes), "used": used,
+            "unused": len(heroes) - used, "heroes": heroes}
+
+
 def main() -> None:
     import argparse
     ap = argparse.ArgumentParser(prog="nolan.keyassets.inventory",

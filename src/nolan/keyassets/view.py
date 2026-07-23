@@ -66,6 +66,8 @@ def build_view(project_dir: Path) -> dict:
             } for e in ents],
         })
     all_recs = [r for v in resolved.values() for r in v]
+    from .inventory import hero_coverage
+    coverage = hero_coverage(project_dir)              # soft: which selected heroes the author actually placed
     stats = {
         "entities": len(prop.entities),
         "hero": sum(1 for e in prop.entities if e.priority == "hero"),
@@ -76,4 +78,4 @@ def build_view(project_dir: Path) -> dict:
         "selected": sum(1 for r in all_recs if r["selected"]),
     }
     return {"has_proposal": True, "project": project_dir.name, "canonical": canonical.exists(),
-            "generated": prop.generated, "stats": stats, "directions": directions}
+            "generated": prop.generated, "stats": stats, "directions": directions, "coverage": coverage}

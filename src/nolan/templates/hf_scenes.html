@@ -365,7 +365,7 @@
   <div id="newModal" class="modal">
     <div class="modal-box">
       <div class="modal-head"><b>New HyperFrames essay</b>
-        <span class="meta" style="color:var(--text-secondary);font-size:12px;">script → assets → dispatch the faceless-explainer agent</span>
+        <span class="meta" style="color:var(--text-secondary);font-size:12px;">script → key assets + b-roll pool → dispatch the authoring agent</span>
         <span class="spacer"></span><button class="btn ghost mini" onclick="closeNew()">Close</button></div>
       <div class="field"><label>name</label><input id="new-name" placeholder="e.g. compound-interest-explained"></div>
       <div class="field"><label>script / topic
@@ -385,6 +385,13 @@
             <option value="dense">dense — asset-forward</option>
           </select></div>
       </div>
+      <div class="field" style="margin-top:2px"><label>key assets
+          <span style="color:var(--text-secondary);font-weight:400;font-size:11px;margin-left:4px">hero pull-list — the logos, people &amp; works the script names (offered to the author, placed at its discretion)</span></label>
+        <select id="new-keyassets">
+          <option value="curated" selected>Curated — build a reviewable pull-list now; collect on /keyassets</option>
+          <option value="auto">Auto — research + collect the heroes now, stage them for the author</option>
+          <option value="off">Off — no key-assets pass</option>
+        </select></div>
       <div class="row2">
         <div class="field"><label>voiceover</label>
           <select id="new-vo" onchange="document.querySelector('#new-vo-src').style.display=this.value==='__attach'?'':'none'">
@@ -417,7 +424,7 @@
             <option value="Dark Moody Atmosphere">Dark Moody Atmosphere</option>
           </select></div>
         <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:7px;cursor:pointer"><input type="checkbox" id="new-cull" checked style="width:auto"> VLM usability cull — drop junk (watermark / off-topic / stock-graphic)</label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:7px;cursor:pointer"><input type="checkbox" id="new-faceless" style="width:auto"> Faceless — skip the asset pool, invent every visual</label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;margin-top:7px;cursor:pointer"><input type="checkbox" id="new-faceless" style="width:auto"> Legacy invent-only — skip the b-roll pool, agent invents every visual (key-assets still applies unless Off)</label>
         <div class="field" style="margin-top:8px"><label>style notes (optional — extra guidance for the agent, not the theme)</label>
           <input id="new-style" placeholder="e.g. punchy, big numbers, restrained motion"></div>
       </details>
@@ -815,11 +822,12 @@ async function submitNew() {
     gen_style: $("#new-gen-style").value,
     per: parseInt($("#new-per").value) || 8, gen: $("#new-gen").checked, cull: $("#new-cull").checked,
     acquire_pool: !$("#new-faceless").checked, voiceover: vo === "__attach" ? voSrc : vo,
+    key_assets: $("#new-keyassets").value,
   };
   try {
     const r = await jpost("/api/hf/new", payload);
     closeNew();
-    if (r.pool_job) toast(`Acquiring asset pool for '${r.comp}' (job ${r.pool_job})…`, "ok");
+    if (r.assets_job) toast(`Acquiring assets for '${r.comp}' (heroes + pool, job ${r.assets_job})…`, "ok");
     if (r.dispatched) toast(`Essay '${r.comp}' dispatched to ${r.dispatched} — composing… (auto-refreshing)`, "ok");
     else { try { await navigator.clipboard.writeText(r.prompt); } catch {}
       toast(`Scaffolded '${r.comp}'.${r.dispatch_error ? ' Dispatch failed: ' + r.dispatch_error + '.' : ''} Prompt copied — paste it to an agent.`, r.dispatch_error ? "err" : "ok"); }

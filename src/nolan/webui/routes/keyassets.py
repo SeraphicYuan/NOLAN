@@ -124,6 +124,36 @@ def register(app, ctx):
             raise HTTPException(status_code=404, detail="asset not found")
         return {"ok": True, "file": file, "selected": bool(payload.get("selected"))}
 
+    @app.post("/api/keyassets/collect")
+    async def keyassets_collect(payload: dict = Body(...)):
+        """Collect (resolve → download → condition → verify) the heroes for a CURATED pull-list, then stage
+        them into the author's menu. Slow (VLM-gated, ~minutes) → runs as a background job the UI polls.
+        `stage` (default True) prepends the HERO block onto asset-descriptions.md after collect."""
+        import asyncio
+
+        project = str(payload.get("project") or "")
+        base = _project_dir(project)
+        stage = bool(payload.get("stage", True))
+
+        async def _worker(job, base=base, stage=stage):
+            from nolan.config import load_config
+            from nolan.keyassets import collect
+            from nolan.keyassets.inventory import write_hero_section
+            from nolan.keyassets.schema import KeyAssetsProposal
+            prop = KeyAssetsProposal.load(base / "key_assets.proposal.json")
+            if prop is None:
+                return {"ok": False, "error": "no key_assets.proposal.json — build the pull-list first"}
+            job.set_progress(0.1, f"collecting {len(prop.entities)} heroes (research → download → verify)…")
+            res = await asyncio.to_thread(collect, load_config(), base, prop)
+            if stage:
+                job.message = "staging heroes into the author's menu…"
+                await asyncio.to_thread(write_hero_section, base)
+            job.message = f"collected {res.get('collected', 0)} hero asset(s)"
+            return {"ok": True, "collected": res.get("collected", 0), "staged": stage}
+
+        job = ctx.job_manager.start("keyassets_collect", _worker, meta={"project": project})
+        return {"ok": True, "job": job.id}
+
     @app.get("/api/keyassets/file")
     async def keyassets_file(project: str = Query(...), path: str = Query(...)):
         base = _project_dir(project).resolve()

@@ -95,8 +95,12 @@
     <div class="bar">
       <label>Project <select id="projectSel"></select></label>
       <span id="gen" class="stat"></span>
+      <span class="spacer" style="flex:1"></span>
+      <button id="collectBtn" class="ed-save" style="display:none" onclick="collectHeroes()">Collect heroes →</button>
+      <span id="collectStatus" class="ed-status"></span>
     </div>
     <div id="stats" class="stats"></div>
+    <div id="coverage"></div>
     <div id="body"></div>
     <div class="legend">★ = hero · ✂ = collage cutout (bg-removed) · dashed = directionally related
       (not exact) · italic = spoken anchors · <b>click a thumbnail's ✓ (top-left) to include/exclude it from
@@ -238,17 +242,23 @@
       $("#mode").className = "badge " + (d.canonical ? "done" : "plan");
       $("#mode").textContent = d.canonical ? "collected" : "plan";
       $("#gen").textContent = d.generated ? "generated " + d.generated : "";
+      var cb = $("#collectBtn");
       if (!d.has_proposal) {
+        cb.style.display = "none";
         $("#stats").innerHTML = "";
         $("#body").innerHTML = '<div class="empty">No key-assets plan for this project yet. '
           + 'Run <code>python -X utf8 -m nolan.keyassets --comp &lt;slug&gt;</code> (or --script) to build one.</div>';
         return;
       }
+      cb.style.display = "";
+      cb.textContent = (d.stats && d.stats.collected) ? "Re-collect heroes →" : "Collect heroes →";
+      cb.disabled = false;
       var s = d.stats;
       $("#stats").innerHTML =
         stat(s.entities, "entities") + stat(s.hero, "hero") + stat(s.directions, "directions") +
         stat(s.footage, "footage / clips") + stat(s.related, "related (~)") + stat(s.collected, "collected") +
         '<span class="stat"><b id="selcount">' + (s.selected || 0) + "</b> in final pool</span>";
+      renderCoverage(d.coverage);
       $("#body").innerHTML = (d.directions || []).map(function (dir) {
         var q = (dir.queries || []).map(function (x) { return '<span class="q">' + esc(x) + "</span>"; }).join("");
         return '<div class="dir"><h2>▸ ' + esc(dir.title) + "</h2>" +
@@ -259,11 +269,53 @@
     }
     function stat(n, label) { return '<span class="stat"><b>' + n + "</b> " + label + "</span>"; }
 
+    function renderCoverage(c) {
+      var el = $("#coverage");
+      if (!c || !c.composed || !c.total) { el.innerHTML = ""; return; }   // nothing composed yet → no report
+      var unused = (c.heroes || []).filter(function (h) { return !h.used; });
+      var msg = "<b>" + c.used + " / " + c.total + "</b> selected heroes placed by the author";
+      var note;
+      if (!unused.length) { note = '<span style="color:var(--ok,#3a7)">— all placed</span>'; }
+      else {
+        note = '<span style="color:var(--text-secondary)">— not placed (the agent judged these didn\'t earn a frame): '
+          + unused.map(function (h) { return esc(h.entity) + " (" + esc(h.type) + ")"; }).join(", ") + "</span>";
+      }
+      el.innerHTML = '<div class="rat" style="margin:6px 0 2px">Author coverage: ' + msg + " " + note + "</div>";
+    }
+
     function load(project) {
       curProject = project;
       fetch("/api/keyassets?project=" + encodeURIComponent(project))
         .then(function (r) { return r.json(); }).then(render)
         .catch(function () { $("#body").innerHTML = '<div class="empty">Failed to load.</div>'; });
+    }
+
+    function collectHeroes() {
+      if (!curProject) return;
+      var btn = $("#collectBtn"), st = $("#collectStatus");
+      btn.disabled = true;
+      st.textContent = "starting collect…";
+      fetch("/api/keyassets/collect", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: curProject, stage: true }) })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (!res.ok || !res.job) { st.textContent = res.error || "failed to start"; btn.disabled = false; return; }
+          pollCollect(res.job);
+        })
+        .catch(function () { st.textContent = "request failed"; btn.disabled = false; });
+    }
+
+    function pollCollect(jobId) {
+      var st = $("#collectStatus");
+      fetch("/api/jobs/" + encodeURIComponent(jobId)).then(function (r) { return r.json(); }).then(function (j) {
+        st.textContent = j.message || j.status || "collecting…";
+        if (j.status === "done" || j.status === "error" || j.status === "cancelled") {
+          if (j.status !== "done") { st.textContent = "error: " + (j.error || j.message || j.status); $("#collectBtn").disabled = false; }
+          else { st.textContent = (j.result && j.result.collected != null) ? ("collected " + j.result.collected + " — staged for the author") : "done"; load(curProject); }
+          return;
+        }
+        setTimeout(function () { pollCollect(jobId); }, 2000);
+      }).catch(function () { st.textContent = "poll failed"; $("#collectBtn").disabled = false; });
     }
 
     function pickName(p) { return typeof p === "string" ? p : (p.slug || p.name || p.id || ""); }
