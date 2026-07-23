@@ -37,8 +37,14 @@ FEEDBACK_LOG = ROOT / ".nolan" / "skills" / "feedback.jsonl"        # human gate
 SCHEMA_VERSION = 1
 
 KINDS = {"contract", "craft", "grammar", "prompt", "methodology"}
+# tier orders the router: primary = the dominant pipeline, then organ, then legacy.
+TIERS = {"primary", "organ", "craft", "legacy"}
+_ROUTER_BEGIN = "<!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->"
+_ROUTER_END = "<!-- END AUTOGEN:skill-router -->"
+_ROUTER_FILE = ROOT / ".claude" / "skills" / "nolan" / "SKILL.md"
 # manifest fields carried onto Skill (besides id); value = default
 _FIELDS = {"name": "", "kind": "", "purpose": "", "status": "active", "version": 1,
+           "tier": "", "description": "",
            "handoffs": list, "uses": list, "overrides": list, "loaded_by": list,
            "documents": None, "evals": list}
 
@@ -53,6 +59,8 @@ class Skill:
     purpose: str = ""
     status: str = "active"
     version: object = 1
+    tier: str = ""                                  # router bucket: primary|organ|craft|legacy
+    description: str = ""                            # harness routing text (Claude Code SKILL.md)
     handoffs: list = field(default_factory=list)   # [{process, stage, gate?}]
     uses: list = field(default_factory=list)       # skill ids this composes with
     overrides: list = field(default_factory=list)  # skill ids this supersedes
@@ -83,13 +91,24 @@ def _parse(text: str):
 def load_skills(roots=None) -> list[Skill]:
     """Every `.md` under the skill roots whose frontmatter has an `id`."""
     out: list[Skill] = []
+    seen_real: set[str] = set()   # dedup: one file symlinked into >1 root counts once (home wins)
     for root in (roots or SKILL_ROOTS):
         if not root.exists():
             continue
         for p in sorted(root.rglob("*.md")):
-            fm, body = _parse(p.read_text(encoding="utf-8"))
+            try:
+                real = str(p.resolve())
+            except OSError:
+                continue                # broken symlink — skip, don't crash the catalog
+            if real in seen_real:
+                continue                # already cataloged at its home root
+            try:
+                fm, body = _parse(p.read_text(encoding="utf-8"))
+            except OSError:
+                continue
             if not fm or "id" not in fm:
                 continue
+            seen_real.add(real)
             kw = {k: fm.get(k, (d() if callable(d) else d)) for k, d in _FIELDS.items()}
             out.append(Skill(id=str(fm["id"]), body=body,
                              path=str(p.relative_to(ROOT)).replace("\\", "/"), **kw))
@@ -227,7 +246,7 @@ def ui_detail(skill_id: str) -> dict | None:
     used_by = [x.id for x in skills if skill_id in x.uses]
     overridden_by = [x.id for x in skills if skill_id in x.overrides]
     fb = sorted(skill_feedback(skill_id), key=lambda r: r.get("at", 0), reverse=True)[:25]
-    return {**s.meta(), "body": s.body,
+    return {**s.meta(), "body": s.body, "last_amended": _last_amended(s.path),
             "lineage": {"uses": s.uses, "used_by": used_by, "overrides": s.overrides,
                         "overridden_by": overridden_by, "loaded_by": s.loaded_by,
                         "handoffs": s.handoffs},
@@ -249,6 +268,60 @@ def ui_graph() -> dict:
             if o in ids:
                 edges.append({"from": s.id, "to": o, "type": "overrides"})
     return {"nodes": nodes, "edges": edges}
+
+
+def _tier_of(tier: str, skill_id: str) -> str:
+    """Resolve a skill's router tier: explicit `tier:` wins, else infer from domain."""
+    if tier in TIERS:
+        return tier
+    dom = skill_id.split(".")[0]
+    if dom in ("explainer", "art", "flow", "orchestrator"):
+        return "legacy"
+    if dom == "common":
+        return "craft"
+    if dom == "pipeline":
+        return "primary"
+    return ""
+
+
+def _last_amended(rel_path: str):
+    """ISO timestamp a skill was last edited. Filesystem mtime (follows the symlink to the
+    real home file) — instant, and reflects UNCOMMITTED edits (git log is ~1s/file on drvfs)."""
+    import datetime
+    try:
+        ts = (ROOT / rel_path).stat().st_mtime   # stat follows symlinks -> real file
+        return datetime.datetime.fromtimestamp(ts).astimezone().isoformat(timespec="seconds")
+    except OSError:
+        return None
+
+
+def ui_tree() -> dict:
+    """Hierarchy + per-skill stats for the /map Skills tab: tier → domain → skills, each with
+    kind/version/last-amended/binding status, plus coverage stats. Bodies load on click via
+    ui_detail(). One place, honesty-fed by the same catalog the linter reads."""
+    rows = ui_index()
+    for r in rows:
+        r["tier"] = _tier_of(r.get("tier") or "", r["id"])
+        r["last_amended"] = _last_amended(r["path"])
+        # "bound" = has a real code binding (injected by code OR documents a registry/module)
+        r["bound"] = bool(r.get("loaded_by")) or bool(r.get("documents"))
+    tier_labels = {"primary": "Primary pipeline", "organ": "Organs", "craft": "Craft (umbrellas)",
+                   "legacy": "Legacy flows", "": "Other"}
+    order = ["primary", "organ", "craft", "legacy", ""]
+    tiers = []
+    for tkey in order:
+        trows = [r for r in rows if r["tier"] == tkey]
+        if not trows:
+            continue
+        domains = {}
+        for r in sorted(trows, key=lambda r: r["id"]):
+            domains.setdefault(r["domain"], []).append(r)
+        tiers.append({"tier": tkey, "label": tier_labels.get(tkey, tkey), "count": len(trows),
+                      "domains": [{"domain": d, "skills": s} for d, s in sorted(domains.items())]})
+    per_tier = {t["tier"]: t["count"] for t in tiers}
+    unbound = [r["id"] for r in rows if not r["bound"] and r["tier"] in ("primary", "organ")]
+    return {"count": len(rows), "tiers": tiers,
+            "stats": {"total": len(rows), "per_tier": per_tier, "unbound": unbound}}
 
 
 def build_index(write: bool = True) -> dict:
@@ -294,6 +367,12 @@ def _lint_documents(s: Skill) -> list[tuple]:
     docs = s.documents or {}
     if not isinstance(docs, dict):
         return issues
+    # generic code binding: `dag`/`module` name the source file the skill documents.
+    # A dangling target is a broken binding — an error, not a vibe. (Heading/step
+    # COVERAGE for these is enforced per-skill in tests/test_organ_skills.py.)
+    for key in ("dag", "module"):
+        if key in docs and not (ROOT / docs[key]).exists():
+            issues.append(("error", "documents-missing", s.id, f"documents.{key} -> {docs[key]} (no such file)"))
     library = _block_names_in_library()
     mentioned = set(re.findall(r"\b[A-Z][A-Za-z0-9]+\b", s.body))
     if "palette" in docs:
@@ -317,14 +396,29 @@ def _lint_malformed(roots=None) -> list[tuple]:
     issues = []
     home = ROOT / "skills"
     for p in sorted(home.rglob("*.md")):
+        # Vendored harness skills (Claude Code SKILL.md / HF FRAME presets) are symlinked INTO
+        # skills/ but live under .agents/skills or .claude/skills — they are cataloged in place
+        # and legitimately carry no `id:`. Exempt anything that resolves outside skills/.
+        try:
+            real = p.resolve()
+            if not str(real).replace("\\", "/").startswith(str(home.resolve()).replace("\\", "/")):
+                continue
+        except OSError:
+            continue
         head = p.read_text(encoding="utf-8")[:3]
         if head != "---":
             continue
         fm, _ = _parse(p.read_text(encoding="utf-8"))
-        if not fm or "id" not in fm:
-            rel = str(p.relative_to(ROOT)).replace("\\", "/")
-            issues.append(("error", "malformed-manifest", rel,
-                           "has a --- frontmatter fence but no valid id (YAML parse failed?)"))
+        if fm and "id" in fm:
+            continue
+        # A Claude-Code SKILL.md (has `name:`+`description:`) is a valid harness skill, not a
+        # NOLAN registry manifest — exempt (same rule as `.claude/skills`). Only a fenced doc
+        # that is NEITHER a registry skill NOR a harness skill is a botched manifest.
+        if fm and fm.get("name") and fm.get("description"):
+            continue
+        rel = str(p.relative_to(ROOT)).replace("\\", "/")
+        issues.append(("error", "malformed-manifest", rel,
+                       "has a --- frontmatter fence but no valid id (YAML parse failed?)"))
     return issues
 
 
@@ -362,7 +456,79 @@ def lint_skills() -> list[tuple]:
     return issues
 
 
+# ─────────────────────────── router (auto-generated) ───────────────────────────
+# The `nolan` orientation skill's registry table is GENERATED from the catalog, not
+# hand-maintained — a hand-kept table is a rot vector (the whole point of this system).
+# `--emit-router` rewrites the marked region; a freshness test (test_organ_skills.py)
+# fails CI if the checked-in region drifts from what the catalog would emit.
+_TIER_ORDER = ["primary", "organ", "craft", "legacy", ""]
+_TIER_LABEL = {"primary": "Primary pipeline (start here)", "organ": "Organs",
+               "craft": "Craft (umbrella judgment)", "legacy": "Legacy flows", "": "Other"}
+
+
+def _skill_tier(s: Skill) -> str:
+    return _tier_of(s.tier, s.id)
+
+
+def render_router() -> str:
+    """The auto-generated skill-registry region for the `nolan` router skill."""
+    skills = load_skills()
+    by_tier: dict[str, list[Skill]] = {}
+    for s in skills:
+        by_tier.setdefault(_skill_tier(s), []).append(s)
+    lines = [_ROUTER_BEGIN,
+             "## Skill registry — auto-generated, do not edit by hand",
+             "",
+             f"_{len(skills)} skills. Regenerate: `python -m nolan.skills --emit-router`. "
+             "Load the skill for the subsystem you are ABOUT to touch — not preemptively._",
+             ""]
+    for tier in _TIER_ORDER:
+        group = sorted(by_tier.get(tier, []), key=lambda s: s.id)
+        if not group:
+            continue
+        lines.append(f"### {_TIER_LABEL.get(tier, tier)}")
+        lines.append("")
+        lines.append("| skill | kind | what it's for |")
+        lines.append("|---|---|---|")
+        for s in group:
+            purpose = " ".join((s.purpose or s.description or "").split())
+            if len(purpose) > 140:
+                purpose = purpose[:137] + "…"
+            lines.append(f"| `{s.id}` | {s.kind} | {purpose} |")
+        lines.append("")
+    lines.append(_ROUTER_END)
+    return "\n".join(lines)
+
+
+def emit_router(write: bool = True) -> str:
+    """Replace the marked region in the `nolan` SKILL.md with a freshly rendered router.
+    Returns the full new file text. Idempotent."""
+    region = render_router()
+    text = _ROUTER_FILE.read_text(encoding="utf-8")
+    if _ROUTER_BEGIN in text and _ROUTER_END in text:
+        pre = text.split(_ROUTER_BEGIN)[0]
+        post = text.split(_ROUTER_END, 1)[1]
+        new = pre + region + post
+    else:
+        # first run: append the region at the end (author moves it where it belongs once).
+        new = text.rstrip() + "\n\n" + region + "\n"
+    if write and new != text:
+        _ROUTER_FILE.write_text(new, encoding="utf-8")
+    return new
+
+
+def router_is_fresh() -> bool:
+    """True iff the checked-in router region matches what the catalog would emit."""
+    if not _ROUTER_FILE.exists():
+        return True
+    return emit_router(write=False) == _ROUTER_FILE.read_text(encoding="utf-8")
+
+
 def _cli() -> int:
+    import sys
+    if "--emit-router" in sys.argv:
+        emit_router(write=True)
+        print(f"router: regenerated {_ROUTER_FILE.relative_to(ROOT)}")
     idx = build_index(write=True)
     issues = lint_skills()
     errs = [i for i in issues if i[0] == "error"]

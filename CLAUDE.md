@@ -19,8 +19,11 @@ essays across topics and styles.
 
 ## The taxonomy (place new code deliberately)
 
-- **SPINE** — the 10 Director steps (`orchestrator/director.py`
-  PIPELINE_STEPS). Ordered, checkpointed, artifact-producing, resumable.
+- **SPINE** — the ordered, checkpointed, resumable, artifact-producing
+  pipeline. The DOMINANT spine is now the **compose-first HyperFrames path**:
+  author → the `nolan hf-finish` DAG (`src/nolan/hyperframes/finish.py`) →
+  render → edit-loop. Skill: `pipeline.hyperframes`. The legacy 10 Director
+  steps (`orchestrator/director.py` PIPELINE_STEPS) remain for legacy projects.
 - **ORGANS** — engines steps call (asset_engine, voice_pipeline, audio_mix,
   layout_blocks, premium_render, motion/, render_dispatch, …). Standalone
   modules, no UI, injectable tiers, honest failures.
@@ -63,6 +66,15 @@ classes (each incident-derived) and the definition of "wired". Meta-rule:
 docs claim, tests enforce — a rule without its honesty test doesn't exist
 (PLAN_FIELD_CONSUMERS, UMBRELLA_WIRING, step classification, catalog
 coverage all have one; your new thing does too, or it isn't done).
+
+**Organ-skills stay bound (anti-rot).** Each subsystem has a skill in
+`skills/<domain>/` (author once; symlinked into `.claude/skills/` so BOTH the
+harness routes to it AND code can `handoff()` it). Before modifying a
+subsystem, LOAD its skill; when you change the subsystem, UPDATE its skill —
+`tests/test_organ_skills.py` enforces the binding (a `documents:` target that
+drifts, or an undocumented DAG step, fails CI). Find the right skill via the
+`nolan` router (auto-generated — `python -m nolan.skills --emit-router`) or
+`/skills`. Load the skill for what you're ABOUT to touch, not preemptively.
 
 ## Non-negotiable invariants
 

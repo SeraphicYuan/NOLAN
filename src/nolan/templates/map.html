@@ -55,6 +55,35 @@
              padding: 2px 8px; font-weight: 700; }
     .stage.live { color: var(--success); border: 1px solid var(--success); }
     .stage.lab { color: var(--text-secondary); border: 1px solid var(--border); }
+    /* Skills tab */
+    .sk-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .sk-layout { grid-template-columns: 1fr; } }
+    .sk-tier { margin-bottom: 18px; }
+    .sk-tier > h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+                    color: var(--text-secondary); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+    .sk-tier.primary > h3 { color: var(--accent); }
+    .sk-dom { font-size: 11px; color: var(--text-secondary); margin: 8px 0 3px; font-family: ui-monospace, monospace; }
+    .sk-row { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border: 1px solid var(--border);
+              border-radius: 8px; background: var(--bg-secondary); margin-bottom: 4px; cursor: pointer; font-size: 12px; }
+    .sk-row:hover { border-color: var(--accent); }
+    .sk-row.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary)); }
+    .sk-row .id { font-family: ui-monospace, monospace; font-weight: 600; flex: 1; min-width: 0;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sk-badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--border);
+                color: var(--text-secondary); white-space: nowrap; }
+    .sk-badge.unbound { color: var(--danger); border-color: var(--danger); }
+    .sk-when { font-size: 10px; color: var(--text-secondary); white-space: nowrap; }
+    .sk-detail { position: sticky; top: 16px; border: 1px solid var(--border); border-radius: 12px;
+                 background: var(--bg-secondary); padding: 0; max-height: calc(100vh - 40px); overflow: auto; }
+    .sk-detail .empty { padding: 40px 20px; text-align: center; color: var(--text-secondary); font-size: 13px; }
+    .sk-detail .dh { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+    .sk-detail .dh .did { font-family: ui-monospace, monospace; font-size: 13px; font-weight: 700; }
+    .sk-detail .dh .dmeta { font-size: 11px; color: var(--text-secondary); margin-top: 5px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .sk-detail .dbind { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; line-height: 1.7; }
+    .sk-detail .dbind b { color: var(--text-primary); font-weight: 600; }
+    .sk-body { padding: 12px 16px; font-family: ui-monospace, monospace; font-size: 11.5px; line-height: 1.55;
+               white-space: pre-wrap; word-break: break-word; }
+    .sk-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -67,6 +96,7 @@
       <button class="tab active" data-tab="nolan">NOLAN</button>
       <button class="tab" data-tab="hyperframes">HyperFrames</button>
       <button class="tab" data-tab="bridge">Bridge</button>
+      <button class="tab" data-tab="skills">Skills</button>
     </div>
 
     <div id="tab-nolan" class="tabpanel">
@@ -155,6 +185,18 @@
       <div style="margin:30px 0 12px;font-weight:600;font-size:15px;">Knowledge base
         <span class="muted" style="font-weight:400;font-size:13px;">— integration notes (each doc verified on disk)</span></div>
       <div id="bridge-kb"></div>
+    </div>
+
+    <div id="tab-skills" class="tabpanel" hidden>
+      <div class="desc" style="margin-bottom:14px;">The agent-facing skill system, by tier.
+        Each subsystem's skill is <b>honesty-bound</b> to its code (<code>tests/test_organ_skills.py</code>).
+        Router auto-generated: <code>python -m nolan.skills --emit-router</code>. Full registry/lineage/health on <a href="/skills">Skills</a>.
+        <span class="muted">Load the skill for what you're about to touch — not preemptively.</span></div>
+      <div class="sk-stats" id="sk-stats"></div>
+      <div class="sk-layout">
+        <div id="sk-tree"></div>
+        <div class="sk-detail" id="sk-detail"><div class="empty">Select a skill to view it.</div></div>
+      </div>
     </div>
   </div>
 
@@ -297,6 +339,63 @@
           `<div class="muted" style="font-size:13px;margin:5px 0 8px;">${esc(k.purpose)}</div>` +
           `<div class="muted mono" style="font-size:11px;">${esc(k.doc)}</div></div>`);
       });
+    });
+
+    // ── Skills tab: tier → domain → skill tree + click-to-view ──
+    function ago(iso){ if(!iso) return '—'; const d=(Date.now()-new Date(iso).getTime())/1000;
+      if(d<3600) return Math.max(1,Math.round(d/60))+'m'; if(d<86400) return Math.round(d/3600)+'h';
+      return Math.round(d/86400)+'d'; }
+
+    function showSkill(id, rowEl){
+      document.querySelectorAll('.sk-row').forEach(r=>r.classList.remove('active'));
+      if(rowEl) rowEl.classList.add('active');
+      const D=document.getElementById('sk-detail');
+      D.innerHTML='<div class="empty">Loading…</div>';
+      fetch('/api/skills/'+encodeURIComponent(id)).then(r=>r.json()).then(s=>{
+        const L=s.lineage||{}, H=s.health||{};
+        const docs = s.documents ? Object.entries(s.documents).map(([k,v])=>`${esc(k)}: <code>${esc(v)}</code>`).join(', ') : '<span class="muted">none</span>';
+        const lb = (L.loaded_by||[]).length ? L.loaded_by.map(x=>`<code>${esc(x)}</code>`).join(', ') : '<span class="muted">none</span>';
+        const ho = (L.handoffs||[]).map(x=>`${esc(x.process)}/${esc(x.stage)}${x.gate?(':'+esc(x.gate)):''}`).join(', ') || '<span class="muted">none</span>';
+        const lin = ['uses','used_by','overrides','overridden_by'].map(k=>{
+          const v=L[k]||[]; return v.length? `<b>${esc(k)}:</b> ${v.map(x=>`<code>${esc(x)}</code>`).join(', ')}`:null;
+        }).filter(Boolean).join('<br>') || '<span class="muted">no lineage edges</span>';
+        D.innerHTML =
+          `<div class="dh"><div class="did">${esc(s.id)}</div>`+
+          `<div class="dmeta"><span class="sk-badge">${esc(s.kind)}</span>`+
+          `<span>v${esc(s.version)}</span><span>${esc(s.status)}</span>`+
+          `<span>tier: ${esc(s.tier||'—')}</span>`+
+          `<span>edited ${ago(s.last_amended)} ago</span></div>`+
+          `<div class="muted" style="font-size:11px;margin-top:6px;">${esc(s.purpose||s.description||'')}</div></div>`+
+          `<div class="dbind"><b>documents:</b> ${docs}<br><b>loaded_by:</b> ${lb}<br><b>handoffs:</b> ${ho}<br>${lin}<br>`+
+          `<span class="muted">invocations ${H.invocations||0} · feedback ${H.feedback_total||0} (${H.feedback_open||0} open)</span></div>`+
+          `<div class="sk-body">${esc(s.body||'')}</div>`;
+        D.scrollTop=0;
+      }).catch(()=>{ D.innerHTML='<div class="empty">failed to load skill</div>'; });
+    }
+
+    fetch('/api/skills/tree').then(r=>r.json()).then(t=>{
+      const pt=t.stats.per_tier||{};
+      document.getElementById('sk-stats').innerHTML =
+        `<span class="hpill"><b>${t.count}</b> skills</span>` +
+        Object.entries(pt).map(([k,v])=>`<span class="hpill"><b>${v}</b> ${esc(k||'other')}</span>`).join('') +
+        (t.stats.unbound.length?`<span class="hpill" style="border-color:var(--danger);color:var(--danger)"><b>${t.stats.unbound.length}</b> unbound organs</span>`:'');
+      const T=document.getElementById('sk-tree');
+      t.tiers.forEach(tier=>{
+        let html=`<div class="sk-tier ${esc(tier.tier)}"><h3>${esc(tier.label)} <span class="muted">(${tier.count})</span></h3>`;
+        tier.domains.forEach(dom=>{
+          html += `<div class="sk-dom">${esc(dom.domain)}</div>`;
+          dom.skills.forEach(s=>{
+            html += `<div class="sk-row" data-id="${esc(s.id)}">`+
+              `<span class="id" title="${esc(s.id)}">${esc(s.id)}</span>`+
+              `<span class="sk-badge">${esc(s.kind)}</span>`+
+              (s.bound?'':`<span class="sk-badge unbound" title="no code binding (loaded_by / documents)">unbound</span>`)+
+              `<span class="sk-when" title="last edited ${esc(s.last_amended||'')}">${ago(s.last_amended)}</span></div>`;
+          });
+        });
+        html+='</div>';
+        T.insertAdjacentHTML('beforeend', html);
+      });
+      T.querySelectorAll('.sk-row').forEach(r=>r.addEventListener('click',()=>showSkill(r.dataset.id, r)));
     });
   </script>
 </body>

@@ -123,6 +123,11 @@ def register(app, ctx):
         from nolan import skills as sk
         return sk.ui_graph()
 
+    @app.get("/api/skills/tree")   # MUST precede /{skill_id} or it's swallowed as skill_id="tree"
+    async def skills_tree():
+        from nolan import skills as sk
+        return sk.ui_tree()
+
     @app.get("/api/skills/{skill_id}")
     async def skill_detail(skill_id: str):
         from nolan import skills as sk

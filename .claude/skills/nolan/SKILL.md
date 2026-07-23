@@ -45,6 +45,62 @@ A **skill** = any `.md` with an `id:` in frontmatter. Two roots, one catalog:
 
 → To change *how the pipeline reasons* at a stage, edit the skill in `skills/<domain>/`, not code.
 
+<!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->
+## Skill registry — auto-generated, do not edit by hand
+
+_29 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
+
+### Primary pipeline (start here)
+
+| skill | kind | what it's for |
+|---|---|---|
+| `pipeline.hyperframes` | methodology | Orient + route any compose-first HyperFrames pipeline task — the stage map, the finish DAG (each step + its gate), the load-bearing invar… |
+
+### Craft (umbrella judgment)
+
+| skill | kind | what it's for |
+|---|---|---|
+| `common.chapter-craft` | craft | Per-beat visual craft — the 10 principles, the content→motion decision tree, the anti-AI-look list, completion checklist. |
+| `common.composition-craft` | craft | The composition umbrella — the named layout archetypes (centered-hero, split-screen, swiss-grid…), when to use each, and how a theme + be… |
+| `common.editing-craft` | craft | The editing umbrella — cutting-rhythm techniques (j-cut, shot-list, transition-in), when to use each, how to author them on the plan. |
+| `common.motion-craft` | craft | The motion umbrella — every registered effect with when-to-use guidance; how specs are authored, validated and promoted. |
+| `common.outline-format` | craft | Outline format — rhythm, step counts, info-pool extraction, the dual-source principle. |
+| `common.pairing-craft` | craft | The narrative->asset pairing umbrella — every operator (literal, knowledge, tonal, conceptual, ironic, trait, relational, scale) with whe… |
+| `common.script-style` | craft | Article-to-narration craft — >=60% info retention, de-AI voice, keep the source language. |
+| `common.sound-craft` | craft | The sound umbrella — SFX cue-kinds (whoosh, impact, paper, data-punch, ambience beds …), when to fire each, how to author them as data on… |
+| `common.theme-craft` | craft | Create/enrich themes — token philosophy, banding, font-loader constraints, the enrich/validate workflow. |
+
+### Legacy flows
+
+| skill | kind | what it's for |
+|---|---|---|
+| `art.flow` | methodology | When-to-use + grammar + palette for the image-first artwork explainer flow. |
+| `explainer.block-catalog` | grammar | The authoring contract for explainer blocks — every block, its props, and anchor spec. |
+| `explainer.flow` | methodology | When-to-use + grammar + palette for the paper/article explainer flow. |
+| `explainer.scene-grammar` | grammar | Section scene taxonomy (Hook→Problem→Method→Results→Takeaway) + the comprehension eval. |
+| `explainer.script` | craft | Author the narration from a source paper — 7 stages (extract → arc → draft → tighten → verify → gate → score). |
+| `explainer.spec-authoring` | craft | The per-beat agent contract — choose a library block or author a bespoke one, and write the spec.json. |
+| `flow.authoring` | craft | The plan-checkpoint craft layer — outline rhythm, dual-source, motion selection/invention — before planning or editing a flow video. |
+| `flow.edit-contract` | contract | Hard rules for an agent reworking one beat of a flow video (edit the spec, reuse blocks, re-render only that beat). |
+| `orchestrator.adapt-style` | prompt | Adapt a matched style template to the project's script. |
+| `orchestrator.invent-style` | prompt | Invent a style guide from scratch when no template matches. |
+| `orchestrator.motion-designer` | prompt | Author motion_spec on scenes where a motion effect beats the default treatment — the pass that spends the motion library. |
+| `orchestrator.refine-clips` | prompt | Re-search clips after user feedback. |
+| `orchestrator.refine-slides` | prompt | Adjust layout specs after QA feedback. |
+| `orchestrator.refine-style` | prompt | Refine the style guide after QA feedback. |
+| `orchestrator.script-to-scenes` | prompt | Turn the narration script into scene_plan.json (excerpt + visual type per scene). |
+| `orchestrator.select-clips` | prompt | (deprecated) LLM clip-selection pass — superseded by the in-code semantic vector matcher. |
+| `orchestrator.slide-designer` | prompt | Attach a layout_spec to text-overlay/graphic scenes. |
+
+### Other
+
+| skill | kind | what it's for |
+|---|---|---|
+| `publish.author-article` | prompt | Author the article component hierarchy from the source. |
+| `scene-edit` | contract | Route a single-scene edit to the right NOLAN capability, apply, validate, re-render only that scene. |
+
+<!-- END AUTOGEN:skill-router -->
+
 ## Subsystem map (where things live)
 
 | Area | Path | What / entry |

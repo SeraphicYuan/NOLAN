@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 28,
+  "count": 29,
   "skills": [
     {
       "id": "art.flow",
@@ -9,6 +9,8 @@
       "purpose": "When-to-use + grammar + palette for the image-first artwork explainer flow.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "art",
@@ -27,9 +29,11 @@
       "id": "common.chapter-craft",
       "name": "Visual craft (chapter craft)",
       "kind": "craft",
-      "purpose": "Per-beat visual craft — the 10 principles, the content→motion decision tree, the anti-AI-look list, completion checklist.",
+      "purpose": "Per-beat visual craft \u2014 the 10 principles, the content\u2192motion decision tree, the anti-AI-look list, completion checklist.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "flow",
@@ -45,12 +49,65 @@
       "path": "skills/common/chapter-craft.md"
     },
     {
+      "id": "common.composition-craft",
+      "name": "Composition craft",
+      "kind": "craft",
+      "purpose": "The composition umbrella \u2014 the named layout archetypes (centered-hero, split-screen, swiss-grid\u2026), when to use each, and how a theme + beat resolve one. The A/B/C/D-proven lever that moves an LLM off its left-column default.",
+      "status": "active",
+      "version": 1,
+      "tier": "",
+      "description": "",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/composition-craft.md"
+    },
+    {
+      "id": "common.editing-craft",
+      "name": "Editing craft",
+      "kind": "craft",
+      "purpose": "The editing umbrella \u2014 cutting-rhythm techniques (j-cut, shot-list, transition-in), when to use each, how to author them on the plan.",
+      "status": "active",
+      "version": 1,
+      "tier": "",
+      "description": "",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/editing-craft.md"
+    },
+    {
+      "id": "common.motion-craft",
+      "name": "Motion craft",
+      "kind": "craft",
+      "purpose": "The motion umbrella \u2014 every registered effect with when-to-use guidance; how specs are authored, validated and promoted.",
+      "status": "active",
+      "version": 1,
+      "tier": "",
+      "description": "",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/motion-craft.md"
+    },
+    {
       "id": "common.outline-format",
       "name": "Outline / plan format",
       "kind": "craft",
-      "purpose": "Outline format — rhythm, step counts, info-pool extraction, the dual-source principle.",
+      "purpose": "Outline format \u2014 rhythm, step counts, info-pool extraction, the dual-source principle.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "flow",
@@ -68,12 +125,31 @@
       "path": "skills/common/outline-format.md"
     },
     {
+      "id": "common.pairing-craft",
+      "name": "Pairing craft",
+      "kind": "craft",
+      "purpose": "The narrative->asset pairing umbrella \u2014 every operator (literal, knowledge, tonal, conceptual, ironic, trait, relational, scale) with when-to-use guidance.",
+      "status": "active",
+      "version": 1,
+      "tier": "",
+      "description": "",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/pairing-craft.md"
+    },
+    {
       "id": "common.script-style",
       "name": "Script style",
       "kind": "craft",
-      "purpose": "Article-to-narration craft — >=60% info retention, de-AI voice, keep the source language.",
+      "purpose": "Article-to-narration craft \u2014 >=60% info retention, de-AI voice, keep the source language.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "flow",
@@ -89,12 +165,31 @@
       "path": "skills/common/script-style.md"
     },
     {
+      "id": "common.sound-craft",
+      "name": "Sound craft",
+      "kind": "craft",
+      "purpose": "The sound umbrella \u2014 SFX cue-kinds (whoosh, impact, paper, data-punch, ambience beds \u2026), when to fire each, how to author them as data on a scene.",
+      "status": "active",
+      "version": 1,
+      "tier": "",
+      "description": "",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": null,
+      "evals": [],
+      "path": "skills/common/sound-craft.md"
+    },
+    {
       "id": "common.theme-craft",
       "name": "Theme craft",
       "kind": "craft",
-      "purpose": "Create/enrich themes — token philosophy, banding, font-loader constraints, the enrich/validate workflow.",
+      "purpose": "Create/enrich themes \u2014 token philosophy, banding, font-loader constraints, the enrich/validate workflow.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "flow",
@@ -110,72 +205,14 @@
       "path": "skills/common/theme-craft.md"
     },
     {
-      "id": "common.editing-craft",
-      "name": "Editing craft",
-      "kind": "craft",
-      "purpose": "The editing umbrella — cutting-rhythm techniques (j-cut, shot-list, transition-in), when to use each, how to author them on the plan.",
-      "status": "active",
-      "version": 1,
-      "path": "skills/common/editing-craft.md",
-      "handoffs": [],
-      "uses": [],
-      "evals": [],
-      "overrides": [],
-      "loaded_by": [],
-      "documents": null
-    },
-    {
-      "id": "common.sound-craft",
-      "name": "Sound craft",
-      "kind": "craft",
-      "purpose": "The sound umbrella — SFX cue-kinds (whoosh, impact, paper, data-punch, ambience beds), when to fire each, how to author them as data on a scene.",
-      "status": "active",
-      "version": 1,
-      "path": "skills/common/sound-craft.md",
-      "handoffs": [],
-      "uses": [],
-      "evals": [],
-      "overrides": [],
-      "loaded_by": [],
-      "documents": null
-    },
-    {
-      "id": "common.motion-craft",
-      "name": "Motion craft",
-      "kind": "craft",
-      "purpose": "The motion umbrella — every registered effect with when-to-use guidance; how specs are authored, validated and promoted.",
-      "status": "active",
-      "version": 1,
-      "path": "skills/common/motion-craft.md",
-      "handoffs": [],
-      "uses": [],
-      "evals": [],
-      "overrides": [],
-      "loaded_by": [],
-      "documents": null
-    },
-    {
-      "id": "common.pairing-craft",
-      "name": "Pairing craft",
-      "kind": "craft",
-      "purpose": "The narrative->asset pairing umbrella — every operator with when-to-use guidance.",
-      "status": "active",
-      "version": 1,
-      "path": "skills/common/pairing-craft.md",
-      "handoffs": [],
-      "uses": [],
-      "evals": [],
-      "overrides": [],
-      "loaded_by": [],
-      "documents": null
-    },
-    {
       "id": "explainer.block-catalog",
       "name": "Explainer block catalog",
       "kind": "grammar",
-      "purpose": "The authoring contract for explainer blocks — every block, its props, and anchor spec.",
+      "purpose": "The authoring contract for explainer blocks \u2014 every block, its props, and anchor spec.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -199,6 +236,8 @@
       "purpose": "When-to-use + grammar + palette for the paper/article explainer flow.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -221,9 +260,11 @@
       "id": "explainer.scene-grammar",
       "name": "Explainer scene grammar",
       "kind": "grammar",
-      "purpose": "Section scene taxonomy (Hook→Problem→Method→Results→Takeaway) + the comprehension eval.",
+      "purpose": "Section scene taxonomy (Hook\u2192Problem\u2192Method\u2192Results\u2192Takeaway) + the comprehension eval.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -246,9 +287,11 @@
       "id": "explainer.script",
       "name": "Explainer script authoring",
       "kind": "craft",
-      "purpose": "Author the narration from a source paper — 7 stages (extract → arc → draft → tighten → verify → gate → score).",
+      "purpose": "Author the narration from a source paper \u2014 7 stages (extract \u2192 arc \u2192 draft \u2192 tighten \u2192 verify \u2192 gate \u2192 score).",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -272,9 +315,11 @@
       "id": "explainer.spec-authoring",
       "name": "Explainer spec authoring",
       "kind": "craft",
-      "purpose": "The per-beat agent contract — choose a library block or author a bespoke one, and write the spec.json.",
+      "purpose": "The per-beat agent contract \u2014 choose a library block or author a bespoke one, and write the spec.json.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "explainer",
@@ -295,9 +340,11 @@
       "id": "flow.authoring",
       "name": "Flow authoring & craft",
       "kind": "craft",
-      "purpose": "The plan-checkpoint craft layer — outline rhythm, dual-source, motion selection/invention — before planning or editing a flow video.",
+      "purpose": "The plan-checkpoint craft layer \u2014 outline rhythm, dual-source, motion selection/invention \u2014 before planning or editing a flow video.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "flow",
@@ -324,6 +371,8 @@
       "purpose": "Hard rules for an agent reworking one beat of a flow video (edit the spec, reuse blocks, re-render only that beat).",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "flow",
@@ -349,6 +398,8 @@
       "purpose": "Adapt a matched style template to the project's script.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -371,6 +422,8 @@
       "purpose": "Invent a style guide from scratch when no template matches.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -387,12 +440,38 @@
       "path": "skills/orchestrator/invent-style.md"
     },
     {
+      "id": "orchestrator.motion-designer",
+      "name": "Motion designer",
+      "kind": "prompt",
+      "purpose": "Author motion_spec on scenes where a motion effect beats the default treatment \u2014 the pass that spends the motion library.",
+      "status": "active",
+      "version": 1,
+      "tier": "",
+      "description": "",
+      "handoffs": [
+        {
+          "process": "orchestrator",
+          "stage": "motion-design"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [
+        "src/nolan/orchestrator/director.py"
+      ],
+      "documents": null,
+      "evals": [],
+      "path": "skills/orchestrator/motion-designer.md"
+    },
+    {
       "id": "orchestrator.refine-clips",
       "name": "Refine clips",
       "kind": "prompt",
       "purpose": "Re-search clips after user feedback.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -415,6 +494,8 @@
       "purpose": "Adjust layout specs after QA feedback.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -437,6 +518,8 @@
       "purpose": "Refine the style guide after QA feedback.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -459,6 +542,8 @@
       "purpose": "Turn the narration script into scene_plan.json (excerpt + visual type per scene).",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -478,9 +563,11 @@
       "id": "orchestrator.select-clips",
       "name": "Select clips",
       "kind": "prompt",
-      "purpose": "(deprecated) LLM clip-selection pass — superseded by the in-code semantic vector matcher.",
+      "purpose": "(deprecated) LLM clip-selection pass \u2014 superseded by the in-code semantic vector matcher.",
       "status": "deprecated",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -501,6 +588,8 @@
       "purpose": "Attach a layout_spec to text-overlay/graphic scenes.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "orchestrator",
@@ -517,26 +606,37 @@
       "path": "skills/orchestrator/slide-designer.md"
     },
     {
-      "id": "orchestrator.motion-designer",
-      "name": "Motion designer",
-      "kind": "prompt",
-      "purpose": "Author motion_spec on scenes where a motion effect beats the default treatment — the pass that spends the motion library.",
+      "id": "pipeline.hyperframes",
+      "name": "NOLAN HyperFrames pipeline (compose-first)",
+      "kind": "methodology",
+      "purpose": "Orient + route any compose-first HyperFrames pipeline task \u2014 the stage map, the finish DAG (each step + its gate), the load-bearing invariants, and the gotchas that repeatedly cost renders.\n",
       "status": "active",
       "version": 1,
-      "path": "skills/orchestrator/motion-designer.md",
+      "tier": "primary",
+      "description": "The DOMINANT NOLAN video-essay pipeline: compose-first HyperFrames authoring \u2192 the `nolan hf-finish` DAG (VO-owns-duration timing, word-sync, dataset/document binding, timing + number-provenance gates, sound, assemble, render, QA gates) \u2192 incremental `hf-render` and the /hyperframes edit loop. Read this before touching ANY compose-first HF work (author.py, compose, blocks, sfx, finish, sync, edit) or running/\u200bdebugging `nolan hf-finish` / `nolan hf-render`. This SUPERSEDES the legacy Director/explainer/art flow for making essays. Points into the code + the umbrella craft skills; it does not duplicate them.\n",
       "handoffs": [
         {
-          "process": "orchestrator",
-          "stage": "motion-design"
+          "process": "hyperframes",
+          "stage": "finish",
+          "gate": "B"
         }
       ],
-      "uses": [],
-      "evals": [],
-      "overrides": [],
-      "loaded_by": [
-        "src/nolan/orchestrator/director.py"
+      "uses": [
+        "common.motion-craft",
+        "common.composition-craft",
+        "common.sound-craft",
+        "common.pairing-craft"
       ],
-      "documents": null
+      "overrides": [
+        "explainer.flow",
+        "art.flow"
+      ],
+      "loaded_by": [],
+      "documents": {
+        "dag": "src/nolan/hyperframes/finish.py"
+      },
+      "evals": [],
+      "path": "skills/pipeline/hyperframes.md"
     },
     {
       "id": "publish.author-article",
@@ -545,6 +645,8 @@
       "purpose": "Author the article component hierarchy from the source.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "",
       "handoffs": [
         {
           "process": "publish",
@@ -567,6 +669,8 @@
       "purpose": "Route a single-scene edit to the right NOLAN capability, apply, validate, re-render only that scene.",
       "status": "active",
       "version": 1,
+      "tier": "",
+      "description": "Rework ONE scene in a NOLAN scene_plan.json from a human note \u2014 route it to the right NOLAN capability (motion python/remotion, ComfyUI gen, library b-roll search, or layout_spec), apply the change, validate, and re-render only that scene. Use when asked to edit / rework / redo / regenerate / \"use Remotion for\" / \"recreate this effect on\" a specific scene. This is the agent (Claude Code) path for the /scenes iteration UI \u2014 for edits a plain LLM can't route correctly.",
       "handoffs": [
         {
           "process": "scene-edit",
@@ -582,21 +686,6 @@
       "documents": null,
       "evals": [],
       "path": ".claude/skills/nolan-scene-edit/SKILL.md"
-    },
-    {
-      "id": "common.composition-craft",
-      "name": "Composition craft",
-      "kind": "craft",
-      "purpose": "The composition umbrella — named layout archetypes, when to use each, content-first resolution.",
-      "status": "active",
-      "version": 1,
-      "path": "skills/common/composition-craft.md",
-      "handoffs": [],
-      "uses": [],
-      "evals": [],
-      "overrides": [],
-      "loaded_by": [],
-      "documents": null
     }
   ]
 }
