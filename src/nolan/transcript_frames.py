@@ -375,16 +375,36 @@ def plan_snapshot_times(changes: List[float], duration: float,
     return out
 
 
+def download_video(url: str, out_dir: Path, max_height: int = 480) -> Tuple[Optional[Path], float]:
+    """Download a video ONCE to a temp file (<=max_height) so detection + ALL frame grabs run LOCALLY — one
+    sustained transfer instead of ~N throttled googlevideo range requests (the batch-scale bottleneck AND the
+    source of the stalled-stream hang). Returns (local_path, duration); (None, 0.0) on failure so the caller
+    can fall back to streaming."""
+    import yt_dlp
+    out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+    opts = {"quiet": True, "no_warnings": True, "noplaylist": True,
+            "format": f"18/best[ext=mp4][height<={max_height}]/best[height<={max_height}]/best",
+            "outtmpl": str(out_dir / "src.%(ext)s")}
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+    except Exception:
+        return None, 0.0
+    dur = float((info or {}).get("duration") or 0.0)
+    path = next((f for f in sorted(out_dir.glob("src.*")) if f.suffix.lower() != ".part"), None)
+    return (path if path and path.exists() and path.stat().st_size > 0 else None), dur
+
+
 def detect_cuts(url: str, thr: float = 0.4, dedup: float = 1.5, window: float = 120.0,
-                concurrency: int = 8, is_youtube: bool = True) -> Tuple[List[float], float]:
+                concurrency: int = 8, is_youtube: bool = True, duration: float = 0.0) -> Tuple[List[float], float]:
     """FULL-RES scene-cut detection over the WHOLE video (chunked, PARALLEL ffmpeg) — accurate + cheap
     (~0.4s per 120s window). Replaces the low-res storyboard detector, which missed most cuts. Returns
     (cut_times, duration). Scene scores separate cleanly (cuts >0.3, motion ~0.02); +dedup merges detections
     closer than `dedup`s (a transition can flag several adjacent frames)."""
     import re as _re
     from concurrent.futures import ThreadPoolExecutor
-    dur = 0.0
-    if is_youtube:
+    dur = float(duration or 0.0)
+    if is_youtube and not dur:
         import yt_dlp
         with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True, "noplaylist": True}) as ydl:
             info = ydl.extract_info(url, download=False)
