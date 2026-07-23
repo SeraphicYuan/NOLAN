@@ -38,10 +38,9 @@ def _ensure_assets():
     (OUT / "vendor").mkdir(exist_ok=True)
     for f in (BRIDGE / "vendor").glob("*.js"):
         shutil.copyfile(f, OUT / "vendor" / f.name)
-    for cand in (REPO / ".agents/skills/talking-head-recut/assets/vendor/gsap.min.js",
-                 REPO / "agent/skills/talking-head-recut/assets/vendor/gsap.min.js"):
-        if cand.exists():
-            shutil.copyfile(cand, OUT / "gsap.min.js"); break
+    gsap = REPO / ".agents/skills/talking-head-recut/assets/vendor/gsap.min.js"
+    if gsap.exists():
+        shutil.copyfile(gsap, OUT / "gsap.min.js")
 
 
 def bg(theme):

@@ -369,11 +369,9 @@ def main():
     # vendor gsap next to the mounted pages (empty-tl static seeds don't animate, but the compose output
     # registers a timeline; a present gsap makes the screenshotter fast — no per-cell timeout wait).
     import shutil
-    for cand in (REPO / ".agents/skills/talking-head-recut/assets/vendor/gsap.min.js",
-                 REPO / "agent/skills/talking-head-recut/assets/vendor/gsap.min.js"):
-        if cand.exists():
-            shutil.copyfile(cand, OUT / "gsap.min.js")
-            break
+    gsap = REPO / ".agents/skills/talking-head-recut/assets/vendor/gsap.min.js"
+    if gsap.exists():
+        shutil.copyfile(gsap, OUT / "gsap.min.js")
     _ensure_probe_assets()                               # b-roll for the visual (comparison) variant samples
     manifest = []
     for label, seed in SEEDS.items():
