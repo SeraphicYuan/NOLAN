@@ -12,22 +12,13 @@ from .engine import Candidate, Context
 
 
 def _stock_client(cfg):
-    from nolan.image_search import ImageSearchClient
-    s = cfg.image_sources
-    return ImageSearchClient(pexels_api_key=s.pexels_api_key or None,
-                             pixabay_api_key=s.pixabay_api_key or None,
-                             smithsonian_api_key=getattr(s, "smithsonian_api_key", "") or None,
-                             keys=s.provider_keys())
+    from .shared import build_search_client
+    return build_search_client(cfg)
 
 
 def _valid_image(path: Path) -> bool:
-    try:
-        from PIL import Image
-        with Image.open(path) as im:
-            im.load()
-        return True
-    except Exception:
-        return False
+    from .shared import valid_image
+    return valid_image(path)
 
 
 def _ffmpeg():

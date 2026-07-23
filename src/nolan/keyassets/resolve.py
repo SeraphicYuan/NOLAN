@@ -14,6 +14,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Optional
 
+from ..acquire.shared import build_search_client, downscale_for_vision, parse_vision_json
+from ..acquire.shared import valid_image as _valid_image
 from .schema import DesiredAsset, KeyEntity
 
 # A short qualifier appended to the entity name per asset type (recall aid for provider search).
@@ -41,24 +43,9 @@ _SOURCE_PREF = {
 }
 
 
-def _valid_image(path: Path) -> bool:
-    try:
-        from PIL import Image
-        with Image.open(path) as im:
-            im.load()
-        return True
-    except Exception:
-        return False
-
-
 def build_client(cfg):
-    """The canonical ImageSearchClient (same construction as the acquisition bridge)."""
-    from nolan.image_search import ImageSearchClient
-    s = cfg.image_sources
-    return ImageSearchClient(pexels_api_key=s.pexels_api_key or None,
-                             pixabay_api_key=s.pixabay_api_key or None,
-                             smithsonian_api_key=getattr(s, "smithsonian_api_key", "") or None,
-                             keys=s.provider_keys())
+    """The canonical ImageSearchClient — delegates to the shared organ (was a 3rd copy)."""
+    return build_search_client(cfg)
 
 
 # Kinds whose NAME is generic/ambiguous without the essay's subject ("The Four Cs" → four-stroke engine;
@@ -138,10 +125,6 @@ def _verify_match(cfg, path: Path, subject: str, *, evocative: bool = False,
     'Star of South Africa'). Calls the vision provider directly (not verify_generation, which defaults
     to matches=True on error). Retries transient failures so a momentary rate-limit isn't a hard miss."""
     import asyncio
-    import json
-    import os
-    import re
-    import tempfile
     import time
     try:
         from nolan.evoke_broll import _vision_config
@@ -149,20 +132,7 @@ def _verify_match(cfg, path: Path, subject: str, *, evocative: bool = False,
         prov = create_vision_provider(_vision_config(cfg))
     except Exception:
         return None
-    # Downscale first: a multi-MB / >4k-px image errors the vision API (that's why a Call-of-Duty cover
-    # returned None instead of a clean False) — and under strict-keep an errored verdict would drop even
-    # a CORRECT large image. A 1024px copy verifies reliably.
-    small, tmp = str(path), None
-    try:
-        from PIL import Image
-        im = Image.open(path).convert("RGB")
-        im.thumbnail((1024, 1024))
-        fd, tmp = tempfile.mkstemp(suffix=".jpg")
-        os.close(fd)
-        im.save(tmp, "JPEG", quality=85)
-        small = tmp
-    except Exception:
-        tmp = None
+    send, tmp = downscale_for_vision(path)                    # shared: big images error the API → 1024px copy
     metaphor = (" (this is an EVOCATIVE metaphor — judge whether it plausibly evokes the idea, not "
                 "whether it literally depicts it)") if evocative else ""
     prompt = (f'Does this image clearly match / depict: "{subject}"?{metaphor} Judge the SUBJECT/entity, '
@@ -172,12 +142,9 @@ def _verify_match(cfg, path: Path, subject: str, *, evocative: bool = False,
     try:
         for attempt in range(retries + 1):
             try:
-                raw = asyncio.run(prov.describe_image(small, prompt))
-                m = re.search(r"\{.*\}", raw or "", re.DOTALL)
-                if m:
-                    d = json.loads(m.group(0))
-                    if "matches" in d:
-                        return bool(d["matches"])            # the only path that can return True
+                d = parse_vision_json(asyncio.run(prov.describe_image(str(send), prompt)))
+                if d and "matches" in d:
+                    return bool(d["matches"])                 # the only path that can return True
             except Exception:
                 pass
             if attempt < retries:
@@ -185,7 +152,7 @@ def _verify_match(cfg, path: Path, subject: str, *, evocative: bool = False,
         return None                                          # never a false confirm
     finally:
         if tmp:
-            Path(tmp).unlink(missing_ok=True)
+            tmp.unlink(missing_ok=True)
 
 
 def _reformulate_queries(cfg, entity: KeyEntity, desired: DesiredAsset, failed: List[str],

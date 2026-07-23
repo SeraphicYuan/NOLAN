@@ -24,33 +24,16 @@ from pathlib import Path
 
 
 def _client(cfg):
-    """Build the search client the CANONICAL way — the same construction evoke_broll and the main
-    pipeline use — so pool.py inherits the WHOLE provider registry (all 25: ddgs, stock, museums,
-    artvee, archive.org stills+movies, nasa, coverr…) and never goes stale. Keyed providers come
-    from `provider_keys()` (single source of truth: add a key there + register it in
-    ImageSearchClient and the pool picks it up with zero edits here); keyless providers are always
-    registered by the client itself."""
-    from nolan.image_search import ImageSearchClient
-    s = cfg.image_sources
-    return ImageSearchClient(
-        pexels_api_key=s.pexels_api_key or None,
-        pixabay_api_key=s.pixabay_api_key or None,
-        smithsonian_api_key=getattr(s, "smithsonian_api_key", "") or None,
-        keys=s.provider_keys(),          # canonical — no hand-maintained subset to rot
-    )
+    """Canonical ImageSearchClient (whole provider registry, no hand-maintained subset) — delegates to
+    the shared organ so the construction lives in ONE place (was copied 3×)."""
+    from nolan.acquire.shared import build_search_client
+    return build_search_client(cfg)
 
 
 def _valid_image(path: Path) -> bool:
-    """Reject non-decodable downloads (HTML error pages saved as .jpg, truncated files).
-    Chrome renders AVIF/WebP-in-.jpg fine, and Pillow decodes them, so this only culls
-    genuinely broken files — the pool-hygiene gap the first run surfaced."""
-    try:
-        from PIL import Image
-        with Image.open(path) as im:
-            im.load()
-        return True
-    except Exception:
-        return False
+    """Reject non-decodable downloads (HTML error pages, truncated files) — shared organ."""
+    from nolan.acquire.shared import valid_image
+    return valid_image(path)
 
 
 def _download_video(result, out_path: Path) -> bool:
@@ -382,23 +365,10 @@ def _video_still(clip: Path):
 
 
 def _downscale_for_vision(path: Path, max_dim: int = 1024):
-    """Downscale a still to <=max_dim BEFORE the vision call. A multi-MB / >4k-px image ERRORS the vision
-    API, and with the graceful error->KEEP floor that junk then survives the cull (it shipped a
-    Call-of-Duty cover as a hero in the key-assets path). Returns (path_to_send, temp_to_clean_or_None)."""
-    import os
-    import tempfile
-    try:
-        from PIL import Image
-        im = Image.open(path).convert("RGB")
-        if max(im.size) <= max_dim:
-            return path, None                                # already small enough — send as-is
-        im.thumbnail((max_dim, max_dim))
-        fd, tmp = tempfile.mkstemp(suffix=".jpg")
-        os.close(fd)
-        im.save(tmp, "JPEG", quality=85)
-        return Path(tmp), Path(tmp)
-    except Exception:
-        return path, None                                    # can't downscale → send original (unchanged behavior)
+    """Downscale a still to <=max_dim before the VLM cull (big images error the API → junk survives the
+    floor) — delegates to the shared organ."""
+    from nolan.acquire.shared import downscale_for_vision
+    return downscale_for_vision(path, max_dim)
 
 
 async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):

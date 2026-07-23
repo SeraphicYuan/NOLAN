@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-22
 
+## Acquisition consolidation #2 — shared plumbing organ (de-dup) (2026-07-23)
+
+`src/nolan/acquire/shared.py`: ONE home for the genuinely-identical, correctness-critical helpers both pools reimplemented — `valid_image` (was copied 4×), `build_search_client` (the ImageSearchClient construction, copied 3×), `downscale_for_vision` (the #1 fix, was inline in the bridge + keyassets), `parse_vision_json`. Migrated `keyassets/resolve.py` (build_client + _verify_match), the HF bridge `pool.py` (_client/_valid_image/_downscale), and `acquire/context.py` (_stock_client/_valid_image) to delegate. Deliberately NARROW: the provider-tier tables stay per-path (engine ranks local+providers, bridge providers-only — they differ on purpose) and the VLM DECISION stays per-path (recall FLOOR vs precision GATE). tests/test_acquire_shared.py added; 52 green across acquire/keyassets/bridge; live _verify_match sanity (De Beers→True, sports-car→False) unchanged.
+
 ## Acquisition consolidation #1 — VLM-cull downscale fix (bug) (2026-07-23)
 
 First of docs/ACQUISITION_CONSOLIDATION.md (back-port the key-assets lessons + de-dup the 3 pools). The HF acquisition VLM cull (`bridge/pool.py:score_and_caption`) sent FULL-SIZE stills to the vision model — a multi-MB/>4k-px image ERRORS the API, and with the graceful error->KEEP floor that junk then survives the cull (the same failure that shipped a Call-of-Duty cover as a hero in key-assets). Added `_downscale_for_vision` (1024px JPEG copy, cleaned up after; small stills sent as-is; video already uses a 480px filmstrip) before every describe_image. Error->keep stays correct FOR A FLOOR (don't empty on outage). test_hf_pool_expand: downscale test added (13 green).
