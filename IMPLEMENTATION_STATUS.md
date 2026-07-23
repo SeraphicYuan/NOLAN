@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-22
 
+## Acquisition consolidation #1 — VLM-cull downscale fix (bug) (2026-07-23)
+
+First of docs/ACQUISITION_CONSOLIDATION.md (back-port the key-assets lessons + de-dup the 3 pools). The HF acquisition VLM cull (`bridge/pool.py:score_and_caption`) sent FULL-SIZE stills to the vision model — a multi-MB/>4k-px image ERRORS the API, and with the graceful error->KEEP floor that junk then survives the cull (the same failure that shipped a Call-of-Duty cover as a hero in key-assets). Added `_downscale_for_vision` (1024px JPEG copy, cleaned up after; small stills sent as-is; video already uses a 480px filmstrip) before every describe_image. Error->keep stays correct FOR A FLOOR (don't empty on outage). test_hf_pool_expand: downscale test added (13 green).
+
 ## Key-Assets — refine-scope: select collected assets into the FINAL pool on /keyassets (2026-07-23)
 
 Human curation over the keep-4 options → the scope authoring uses. Each collected asset carries a `selected` flag (collect defaults the PRIMARY of each need + its cutout True, alternates False; older data without the flag defaults True). `view.build_view` now sources `collected` from the canonical's resolved records as OBJECTS (file/variant/verified/selected/source) + a `selected` stat. Gallery thumbnails get a ✓ toggle (top-left) that flips in/out of the pool — dimmed = excluded; clicking the image still opens the lightbox. `POST /api/keyassets/select` (+ `_set_selected`) persists to key_assets.json immediately. **Wired to a consumer**: `inventory.stage_heroes` now stages ONLY selected assets, so refine-scope directly shapes the HERO section authoring reads. 26 tests green; select toggle end-to-end verified live (pool 63→62→63).

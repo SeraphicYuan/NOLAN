@@ -207,3 +207,22 @@ def test_diversify_orders_buckets_by_category():
     # for a GENERAL need, ddgs outranks both -> it leads
     out_g = pool._diversify_by_source(cands, "general")
     assert out_g[0].source == "ddgs"
+
+
+def test_downscale_for_vision_shrinks_big_sends_small_asis(tmp_path):
+    """VLM-cull correctness fix: a big still is copied down to <=1024px before the vision call (a
+    multi-MB/>4k-px image errors the API and — with error->keep — junk then survives the floor); a
+    small still is sent as-is with no temp file."""
+    from PIL import Image
+    pool = _load_pool()
+    big = tmp_path / "big.jpg"
+    Image.new("RGB", (4000, 3000), "white").save(big)
+    send, tmp = pool._downscale_for_vision(big)
+    assert tmp is not None and send == tmp
+    with Image.open(send) as im:
+        assert max(im.size) <= 1024
+    tmp.unlink()
+    small = tmp_path / "small.jpg"
+    Image.new("RGB", (500, 400), "white").save(small)
+    send2, tmp2 = pool._downscale_for_vision(small)
+    assert tmp2 is None and send2 == small          # sent as-is, no temp

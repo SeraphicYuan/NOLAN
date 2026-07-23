@@ -381,6 +381,26 @@ def _video_still(clip: Path):
     return out if (out.exists() and out.stat().st_size > 1000) else None
 
 
+def _downscale_for_vision(path: Path, max_dim: int = 1024):
+    """Downscale a still to <=max_dim BEFORE the vision call. A multi-MB / >4k-px image ERRORS the vision
+    API, and with the graceful error->KEEP floor that junk then survives the cull (it shipped a
+    Call-of-Duty cover as a hero in the key-assets path). Returns (path_to_send, temp_to_clean_or_None)."""
+    import os
+    import tempfile
+    try:
+        from PIL import Image
+        im = Image.open(path).convert("RGB")
+        if max(im.size) <= max_dim:
+            return path, None                                # already small enough — send as-is
+        im.thumbnail((max_dim, max_dim))
+        fd, tmp = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        im.save(tmp, "JPEG", quality=85)
+        return Path(tmp), Path(tmp)
+    except Exception:
+        return path, None                                    # can't downscale → send original (unchanged behavior)
+
+
 async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
     """Fused VLM SCORE + CAPTION pass. One vision call per kept asset returns a usability + RELEVANCE
     verdict (usable / flags / caption); junk is dropped — the semantic FLOOR that CLIP can't do (a sports
@@ -406,18 +426,24 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
         need = need_by_id.get(item["id"], {"query": item.get("query", "")})
         img = assets_dir / item["file"]
         is_video = item["media_type"] == "video"
+        tmp = None
         if is_video:
-            img = _video_still(img)                          # judge the CLIP by a sampled mid-frame
+            img = _video_still(img)                          # judge the CLIP by a sampled 480px filmstrip
             if img is None:
                 item["caption"] = f"[video] {item['query']} (stock clip, {item.get('duration') or '?'}s)"
                 return
+            send = img
+        else:
+            send, tmp = _downscale_for_vision(img)           # stills: 1024px copy so big images don't error
         async with sem:
             try:
-                raw = await prov.describe_image(img, judge_prompt(need, video=is_video))
+                raw = await prov.describe_image(send, judge_prompt(need, video=is_video))
                 v = parse_verdict(extract_json(raw))
             except Exception as e:
                 v = parse_verdict(None)
                 print(f"    judge failed {item['file']}: {type(e).__name__}")
+        if tmp:
+            tmp.unlink(missing_ok=True)
         if is_video:
             img.unlink(missing_ok=True)
             item["caption"] = ("[video] " + (v["caption"] or item.get("query", ""))).strip()
