@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 30,
+  "count": 32,
   "skills": [
     {
       "id": "art.flow",
@@ -616,6 +616,60 @@
       "documents": null,
       "evals": [],
       "path": "skills/orchestrator/slide-designer.md"
+    },
+    {
+      "id": "organ.acquire",
+      "name": "Asset acquisition engine",
+      "kind": "grammar",
+      "purpose": "Orient any acquisition task \u2014 the fan-out \u2192 gate \u2192 floor \u2192 dedup \u2192 generate pipeline, the two FLOORs (CLIP relevance, VLM usability), provider tiers + curated exemption, and config.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "organ",
+      "description": "The multi-source asset acquisition organ \u2014 beat-driven, over-provisioned, relevance-ranked, fitness-gated. For every authored NEED it fans out to EVERY source (saved library + stock / archival / museum providers), over-fetches, CLIP-scores for relevance, culls junk with a ONE-vision-call VLM usability FLOOR (judge.py), de-dups semantically, keeps the best, and GENERATES originals where stock is thin or off-topic. Read before touching acquisition, source fan-out, the relevance/usability gates, provider tiers, or `AcquireConfig` tuning \u2014 or when the HF pool has junk / is thin / missed a beat. NOTE: `acquire/` is actively being consolidated \u2014 check git before editing the code.\n",
+      "handoffs": [
+        {
+          "process": "hyperframes",
+          "stage": "acquire",
+          "gate": "A"
+        }
+      ],
+      "uses": [
+        "common.pairing-craft"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/acquire/engine.py"
+      },
+      "evals": [],
+      "path": "skills/organ/acquire.md"
+    },
+    {
+      "id": "organ.audio-mix",
+      "name": "Audio mix / soundtrack organ",
+      "kind": "grammar",
+      "purpose": "Orient any soundtrack/mix task \u2014 the mix_soundtrack integration point, the real sidechain duck spec, music-library selection by energy arc, and the transition-SFX authoring.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "organ",
+      "description": "The sound-design stage \u2014 a music bed whose energy arc matches the video, DUCKED under the narration with a real sidechain compressor (not a constant gain), plus transition SFX (whoosh / riser / data-punch hit). ONE integration point, `mix_soundtrack(final_video, plan)`, run AFTER assembly, shared by the Director pipeline, premium mode, and the segment builder. Read before touching music selection, VO ducking, the loudnorm/duck spec, the music library, or transition SFX. (The HF compose-first path ducks via `hyperframes/sfx_mix` + the sound umbrella instead \u2014 see below.)\n",
+      "handoffs": [
+        {
+          "process": "director",
+          "stage": "sound",
+          "gate": "B"
+        }
+      ],
+      "uses": [
+        "common.sound-craft"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/audio_mix.py"
+      },
+      "evals": [],
+      "path": "skills/organ/audio-mix.md"
     },
     {
       "id": "organ.voice",

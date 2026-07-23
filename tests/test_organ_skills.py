@@ -68,6 +68,23 @@ def test_hyperframes_pipeline_documents_every_dag_step():
     assert not missing, f"pipeline.hyperframes skill doc missing finish-DAG steps: {sorted(missing)}"
 
 
+def test_acquire_skill_documents_every_unusable_flag():
+    """Strong binding for organ.acquire (like the DAG-step test): the VLM usability FLOOR
+    vocabulary is a contract — every UNUSABLE_FLAGS entry must appear in the skill. Parsed
+    from source (not imported — acquire pulls heavy deps and is under active refactor)."""
+    s = SKILLS.get("organ.acquire")
+    if not s:
+        return
+    src = (REPO / "src" / "nolan" / "acquire" / "judge.py").read_text(encoding="utf-8")
+    m = re.search(r"UNUSABLE_FLAGS\s*=\s*\(([^)]*)\)", src)
+    assert m, "could not find UNUSABLE_FLAGS in judge.py (regex drift?)"
+    flags = re.findall(r'"([^"]+)"', m.group(1))
+    assert flags, "UNUSABLE_FLAGS parsed empty"
+    body = (REPO / s["path"]).read_text(encoding="utf-8")
+    missing = [f for f in flags if f not in body]
+    assert not missing, f"organ.acquire skill missing usability flags: {missing}"
+
+
 def test_router_region_is_fresh():
     """The auto-generated skill-router in the `nolan` skill must match the catalog.
     Add/rename a skill and forget `python -m nolan.skills --emit-router` → this fails."""

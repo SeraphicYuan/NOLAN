@@ -48,7 +48,7 @@ A **skill** = any `.md` with an `id:` in frontmatter. Two roots, one catalog:
 <!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->
 ## Skill registry — auto-generated, do not edit by hand
 
-_30 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
+_32 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
 
 ### Primary pipeline (start here)
 
@@ -60,6 +60,8 @@ _30 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill f
 
 | skill | kind | what it's for |
 |---|---|---|
+| `organ.acquire` | grammar | Orient any acquisition task — the fan-out → gate → floor → dedup → generate pipeline, the two FLOORs (CLIP relevance, VLM usability), pro… |
+| `organ.audio-mix` | grammar | Orient any soundtrack/mix task — the mix_soundtrack integration point, the real sidechain duck spec, music-library selection by energy ar… |
 | `organ.voice` | grammar | Orient any voiceover / narration task — the per-section anchor contract, cloning, the GPU lock, the speak-ready gate, take versioning, an… |
 
 ### Craft (umbrella judgment)
