@@ -104,7 +104,7 @@
             <button data-m="text" class="on" onclick="setMode('text')">📝 Text</button>
             <button data-m="visual" onclick="setMode('visual')">🖼 Visual</button>
           </div>
-          <label class="dim" id="broll-wrap" style="display:none" >show <select id="ckFilter" onchange="doSearch()"><option value="">all kinds</option><option value="broll">b-roll</option><option value="stills">stills</option><option value="talking_head">talking-head</option><option value="graphics">graphics</option></select></label>
+          <span class="dim" id="broll-wrap" style="display:none">show <label><input type="checkbox" class="ckf" value="broll" onchange="doSearch()"> b-roll</label> <label><input type="checkbox" class="ckf" value="stills" onchange="doSearch()"> stills</label> <label><input type="checkbox" class="ckf" value="talking_head" onchange="doSearch()"> talking-head</label> <label><input type="checkbox" class="ckf" value="graphics" onchange="doSearch()"> graphics</label></span>
           <span class="dim" id="mode-hint">semantic search over what's <b>said</b></span>
         </div>
         <div class="row">
@@ -190,7 +190,7 @@
       $("#results").innerHTML='<div class="dim">Searching…</div>';
       try{
         if(MODE==="visual"){
-          const ck = $("#ckFilter").value ? "&content_kind=" + $("#ckFilter").value : "";
+          const sel = [...document.querySelectorAll(".ckf:checked")].map(c=>c.value); const ck = sel.length ? "&content_kind=" + sel.join(",") : "";
           const d=await jget(`/api/transcripts/visual-search?q=${encodeURIComponent(q)}${ck}`);
           $("#results").innerHTML = d.results.length ? `<div class="vgrid">${d.results.map(visualHit).join("")}</div>` : '<div class="dim">No frames. Index a channel with the visual tier on.</div>';
         } else {

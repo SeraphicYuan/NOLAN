@@ -577,7 +577,7 @@ def visual_search(query: str, n: int = 24, embedder=None, base_dir=None,
     `content_kind` (e.g. "broll") filters to that shot class — the "b-roll only" toggle; over-fetches so the
     filter still returns a full page."""
     lib = frame_lib(embedder=embedder, base_dir=base_dir)
-    want = (content_kind or "").strip().lower()
+    want = {c.strip().lower() for c in (content_kind or "").split(",") if c.strip()}   # multi-select
     k = int(n) * 4 if want else int(n)
     try:
         hits = lib.search_by_description(query, k=k)   # caption-only (BGE over the gemma caption + shot field)
@@ -587,7 +587,7 @@ def visual_search(query: str, n: int = 24, embedder=None, base_dir=None,
     for h in hits:
         a = h.asset
         tg = _parse_tags(getattr(a, "tags", "") or "")
-        if want and tg.get("ck", "") != want:
+        if want and tg.get("ck", "") not in want:
             continue
         ts = float(tg.get("t", 0) or 0)
         url = getattr(a, "source_url", "") or ""
