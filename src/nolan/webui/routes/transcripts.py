@@ -49,6 +49,25 @@ def register(app, ctx):
         )
         return {"job_id": job.id, "type": "transcript-channel"}
 
+    @app.post("/api/transcripts/sync-all")
+    async def transcripts_sync_all(body: dict = Body(default={})):
+        """Crawl EVERY registered source channel for NEW uploads (incremental — dedup skips already-indexed).
+        One background crawl job per channel; run it periodically to keep the library current."""
+        from nolan.config import load_config
+        from nolan import transcript_lib as tl
+        from nolan.webui import operations
+        cfg = load_config()
+        idb = ctx.db_path or Path(cfg.indexing.database).expanduser()
+        srcs = tl.load_sources()
+        started = []
+        for ch in srcs:
+            job = job_manager.start(
+                "transcript-channel", operations.ingest_channel_transcripts, meta={"channel": ch},
+                config=cfg, db_path=idb, channel=ch, limit=int(body.get("limit", 50) or 50),
+                visual=(body.get("visual") or "keyframe"), refresh=False)
+            started.append(job.id)
+        return {"started": len(started), "channels": list(srcs.keys())}
+
     @app.get("/api/transcripts/videos")
     async def transcripts_videos():
         """Browse the indexed transcript videos (newest first), grouped by channel, from the sidecar."""

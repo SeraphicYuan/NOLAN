@@ -132,7 +132,7 @@
       </div>
 
       <div class="card">
-        <div class="row" style="justify-content:space-between"><b style="font-size:13px">Sources</b><span id="src-stat" class="dim"></span></div>
+        <div class="row" style="justify-content:space-between"><b style="font-size:13px">Sources</b><span class="row"><button class="btn ghost mini" onclick="syncAll()" title="Re-crawl ALL channels for new uploads (incremental)">↻ Sync all</button><span id="src-stat" class="dim"></span></span></div>
         <div id="sources" style="margin-top:8px"></div>
       </div>
 
@@ -216,10 +216,17 @@
         ${h.snippet?`<div class="hit-snip">🗣 ${esc(h.snippet.slice(0,170))}…</div>`:''}
         ${h.caption?`<div class="hit-snip" style="color:var(--text-secondary);font-size:12px">🖼 ${esc(h.caption.slice(0,150))}</div>`:''}
         <div style="clear:both"></div></div>`; }
-    function visualHit(h){ return `<div class="vcard"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">
+    function facet(el){ $("#q").value = el.textContent.trim(); doSearch(); }   // click a person/place/object -> search it
+    function visualHit(h){
+      const chips=[];
+      (h.people||[]).slice(0,3).forEach(p=>chips.push(`<span class="tag people" style="cursor:pointer" title="find more" onclick="event.preventDefault();facet(this)">${esc(p)}</span>`));
+      if(h.location) chips.push(`<span class="tag loc" style="cursor:pointer" title="find more" onclick="event.preventDefault();facet(this)">${esc(h.location)}</span>`);
+      (h.objects||[]).slice(0,3).forEach(o=>chips.push(`<span class="tag obj" style="cursor:pointer" title="find more" onclick="event.preventDefault();facet(this)">${esc(o)}</span>`));
+      return `<div class="vcard"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">
       <img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}"></a>
       <div class="cap"><div class="t">${esc(h.title)||"frame"} ${ckBadge(h.content_kind, h.asset_type)}</div><div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>
-      ${h.caption?`<div class="hit-snip" style="font-size:11px;margin-top:3px">${esc((h.caption||"").slice(0,110))}…</div>`:""}</div></div>`; }
+      ${h.summary?`<div class="hit-snip" style="font-size:11px;margin-top:3px">${esc((h.summary||"").slice(0,100))}</div>`:""}
+      ${chips.length?`<div class="ctx" style="margin-top:4px">${chips.join("")}</div>`:""}</div></div>`; }
 
     /* ---------- add / sources ---------- */
     async function addChannel(){
@@ -252,6 +259,13 @@
       const rm = s.managed===false ? "" : `<button class="btn ghost mini danger" onclick="removeSource('${esc(s.channel)}')">Remove</button>`;
       return `<div class="src-tile"><div><b>${esc(s.label||s.channel)}</b>${tag} <span class="dim">${s.video_count||0} videos ${last}</span><div class="dim" style="font-size:11px">${esc(s.channel)}</div></div>
         <span class="row"><button class="btn ghost mini" onclick="syncSource('${esc(s.channel)}')" title="Fetch only NEW uploads (dedup skips indexed)">↻ Sync</button>${rm}</span></div>`;
+    }
+    async function syncAll(){
+      const st=$("#add-status"), log=$("#add-log"); st.textContent="syncing all channels…"; log.style.display="block"; log.textContent="";
+      try{ const d=await jpost("/api/transcripts/sync-all",{visual:$("#vmode").value});
+        st.innerHTML=`✓ started ${d.started} channel crawl(s) — watch Background Jobs`;
+        setTimeout(()=>{ loadSources(); loadVideos(); }, 3000);
+      }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
     }
     async function syncSource(channel){
       const st=$("#add-status"), log=$("#add-log"); st.textContent="syncing…"; log.style.display="block"; log.textContent="";

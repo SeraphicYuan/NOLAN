@@ -591,12 +591,14 @@ def visual_search(query: str, n: int = 24, embedder=None, base_dir=None,
             continue
         ts = float(tg.get("t", 0) or 0)
         url = getattr(a, "source_url", "") or ""
+        sc = split_caption(getattr(a, "description", "") or "")           # split-out facets for the UI chips
         out.append({
             "video_id": tg.get("video_id", ""), "start": round(ts, 1),
             "watch_url": (f"{url}&t={int(ts)}s" if "watch?v=" in url else url),
             "kind": tg.get("kind", ""), "content_kind": tg.get("ck", ""), "asset_type": tg.get("at", ""),
             "title": getattr(a, "title", "") or "",
-            "caption": getattr(a, "description", "") or "",
+            "caption": getattr(a, "description", "") or "", "summary": sc["summary"],
+            "people": sc["people"], "location": sc["location"], "objects": sc["objects"],
             "score": round(float(h.score), 3), "thumb": str(lib.abs_path(a)),
         })
         if len(out) >= int(n):
