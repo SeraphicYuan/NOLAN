@@ -329,12 +329,12 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
 async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
                                visual: str = "keyframe", max_frames: int = 0, job=None) -> int:
     """Capture + embed the visual tier for ONE transcript video — shared by the channel crawl and the
-    single-video refresh so both get the SAME behaviour. `keyframe` = HYBRID ADAPTIVE DENSITY: a free
-    storyboard scene-diff finds visual changes, `plan_snapshot_times` anchors a snapshot just after each
-    change and fills any >max_gap gap (min 30s / max 50s), then full-res frames are grabbed in PARALLEL and
-    captioned in PARALLEL (gemma, structured entities fused into the searchable text). `storyboard` = the
-    free CLIP-only coarse tier. `max_frames` > 0 is an optional safety CAP (0 = uncapped; the density rule
-    governs, so long videos are no longer under-sampled by a flat 16). Returns the frame count."""
+    single-video refresh so both get the SAME behaviour. `keyframe` = FULL-RES scene-cut detection
+    (accurate, parallel ffmpeg — replaces the coarse storyboard detector that missed most cuts): ONE frame
+    per detected shot, b-roll shots densified (5s x up to 5); frames grabbed + captioned in PARALLEL;
+    caption-only (BGE over the gemma caption incl. its `shot` framing/mood field), CLIP image embedding
+    SKIPPED. `storyboard` = the free coarse tier. `max_frames` > 0 is an optional safety CAP (0 = uncapped).
+    Returns the frame count."""
     import tempfile
 
     from nolan import transcript_frames as tfr
@@ -342,34 +342,52 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     if visual == "storyboard":                                    # FREE, coarse, no video download (CLIP-only)
         tiles = await asyncio.to_thread(tfr.storyboard_tiles, url, tmpd, 12.0, 60)
         return await asyncio.to_thread(tfr.embed_frames, tiles, yid, url, "storyboard", title)
-    # keyframe: scene-anchored adaptive density — one storyboard fetch both finds cuts AND saves the
-    # viewable whole-video filmstrip (on disk, not in the search index) shown in the detail overview.
-    sdir = tfr.storyboard_dir(yid)
-    changes, dur, sprites = await asyncio.to_thread(tfr.storyboard_change_points, url, 2.0, sdir)
+    # keyframe: FULL-RES scene-cut detection (accurate, parallel) -> one frame per shot, b-roll densified
+    import shutil as _sh
+    from collections import Counter
+    cuts, dur = await asyncio.to_thread(tfr.detect_cuts, url)
     if not dur and windows:
         dur = float(windows[-1]["end"])
-    times = tfr.plan_snapshot_times(changes, dur)
-    if not times and windows:                                     # storyboards absent → window-midpoint fallback
-        times = [round((w["start"] + w["end"]) / 2, 1) for w in windows]
-    if max_frames and len(times) > int(max_frames):               # optional safety cap
-        times = [times[int(k * len(times) / int(max_frames))] for k in range(int(max_frames))]
+    sdir = tfr.storyboard_dir(yid); _sh.rmtree(sdir, ignore_errors=True)   # free filmstrip overview (on disk)
+    sprites = await asyncio.to_thread(tfr.storyboard_tiles, url, sdir, 12.0, 80)
+    base = tfr.plan_shots(cuts, dur) if (cuts and dur) else [
+        (round((w["start"] + w["end"]) / 2, 1), float(w["start"]), float(w["end"])) for w in windows]
+    if max_frames and len(base) > int(max_frames):                # optional safety cap (0 = uncapped) -- LOUD
+        stp = len(base) / int(max_frames)
+        base = [base[int(k * stp)] for k in range(int(max_frames))]
+        if job:
+            job.log(f"    - capped to {max_frames} base shots (set max_frames=0 for full coverage)")
     if job:
-        job.log(f"    · {len(changes)} scene changes → {len(times)} snapshots (adaptive 30–50s), "
-                f"{len(sprites)} storyboard sprites")
-    kfs = await asyncio.to_thread(tfr.ranged_keyframes, url, times, tmpd)
+        job.log(f"    - {len(cuts)} cuts -> {len(base)} shots (full-res), {len(sprites)} sprites")
 
     def _wtext(ts):                                               # the transcript window covering this frame
         for w in windows:
             if w["start"] <= ts <= w["end"]:
                 return w["text"]
         return ""
-    analyses = await tfr.caption_frames_async([(fp, _wtext(ts), ts) for ts, fp in kfs])
-    caps = [a.get("caption", "") for a in analyses]               # rich searchable text (entities fused)
-    ats = [a.get("asset_type", "") for a in analyses]             # gemma's 11-value shot type
+
+    async def _grab_cap(times):                                   # grab (parallel) + caption (parallel)
+        kf = await asyncio.to_thread(tfr.ranged_keyframes, url, list(times), tmpd)
+        an = await tfr.caption_frames_async([(fp, _wtext(t), t) for t, fp in kf])
+        return kf, an
+
+    base_kfs, base_an = await _grab_cap([t for t, _s, _e in base])
+    tmap = {round(t, 1): (s, e) for t, s, e in base}
+    capframes = [(t, tmap.get(round(t, 1), (t, t))[0], tmap.get(round(t, 1), (t, t))[1],
+                  a.get("content_kind", "")) for (t, fp), a in zip(base_kfs, base_an)]
+    extra_times = tfr.densify_broll(capframes)                    # extra frames INSIDE broll shots
+    extra_kfs, extra_an = [], []
+    if extra_times:
+        extra_kfs, extra_an = await _grab_cap(extra_times)
+        if job:
+            job.log(f"    - +{len(extra_kfs)} b-roll densify frames")
+    kfs = base_kfs + extra_kfs
+    ans = base_an + extra_an
+    caps = [a.get("caption", "") for a in ans]
+    ats = [a.get("asset_type", "") for a in ans]
     if job and ats:
-        from collections import Counter
         tally = ", ".join(f"{k or '?'}:{c}" for k, c in Counter(ats).most_common())
-        job.log(f"    · asset types — {tally}")
+        job.log(f"    - asset types: {tally}")
     return await asyncio.to_thread(tfr.embed_frames, kfs, yid, url, "keyframe", title, None, None, caps, ats)
 
 

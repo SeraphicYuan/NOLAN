@@ -68,6 +68,7 @@
     .ck-talking_head { background: rgba(255,159,10,.18); color: #ff9f0a; }
     .ck-graphics { background: rgba(90,140,255,.18); color: #6c94ff; }
     .ck-mixed { background: rgba(175,130,255,.18); color: #b088ff; }
+    .ck-stills { background: rgba(46,196,182,.18); color: #2ec4b6; }
     /* structured gemma column (mirrors the video library's context tags) */
     .ctx { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
     .tag { font-size: 11px; padding: 1px 7px; border-radius: 10px; }
@@ -103,7 +104,7 @@
             <button data-m="text" class="on" onclick="setMode('text')">📝 Text</button>
             <button data-m="visual" onclick="setMode('visual')">🖼 Visual</button>
           </div>
-          <label class="dim" id="broll-wrap" style="display:none" title="Only b-roll shots (hide talking-heads + graphics)"><input type="checkbox" id="brollOnly" onchange="doSearch()"> b-roll only</label>
+          <label class="dim" id="broll-wrap" style="display:none" >show <select id="ckFilter" onchange="doSearch()"><option value="">all kinds</option><option value="broll">b-roll</option><option value="stills">stills</option><option value="talking_head">talking-head</option><option value="graphics">graphics</option></select></label>
           <span class="dim" id="mode-hint">semantic search over what's <b>said</b></span>
         </div>
         <div class="row">
@@ -188,7 +189,7 @@
       $("#results").innerHTML='<div class="dim">Searching…</div>';
       try{
         if(MODE==="visual"){
-          const ck = $("#brollOnly").checked ? "&content_kind=broll" : "";
+          const ck = $("#ckFilter").value ? "&content_kind=" + $("#ckFilter").value : "";
           const d=await jget(`/api/transcripts/visual-search?q=${encodeURIComponent(q)}${ck}`);
           $("#results").innerHTML = d.results.length ? `<div class="vgrid">${d.results.map(visualHit).join("")}</div>` : '<div class="dim">No frames. Index a channel with the visual tier on.</div>';
         } else {
@@ -264,7 +265,7 @@
     }
 
     /* ---------- content-kind badge + structured gemma column ---------- */
-    const CK_LABEL = {broll:"b-roll", talking_head:"talking head", graphics:"graphics", mixed:"mixed"};
+    const CK_LABEL = {broll:"b-roll", stills:"stills", talking_head:"talking head", graphics:"graphics"};
     // badge shows the RICH 11-value asset_type, colored by its coarse content_kind roll-up
     function ckBadge(ck, at){
       const label = at || CK_LABEL[ck] || ""; if(!label) return "";

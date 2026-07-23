@@ -1341,10 +1341,10 @@
         }
 
         // Coarse content-kind badge (b-roll / talking-head / graphics) — derived from the shot asset_type.
-        let brollOnly = false;
+        let ckFilter = '';
         function ckBadgeLib(ck, at) {
             const L = { broll: ['b-roll', '#34c759'], talking_head: ['talking head', '#ff9f0a'],
-                        graphics: ['graphics', '#6c94ff'], mixed: ['mixed', '#b088ff'] };
+                        graphics: ['graphics', '#6c94ff'], stills: ['stills', '#2ec4b6'] };
             const e = L[ck] || ['', '#8a8f98'];
             const label = at || e[0]; if (!label) return '';    // show the rich asset_type, colored by content_kind
             return `<span title="asset type: ${label}" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:4px;background:${e[1]}22;color:${e[1]}">${label}</span>`;
@@ -1364,13 +1364,13 @@
                 return;
             }
 
-            const shown = brollOnly ? currentSegments.filter(s => s.content_kind === 'broll').length : currentSegments.length;
+            const shown = ckFilter ? currentSegments.filter(s => s.content_kind === ckFilter).length : currentSegments.length;
             const bar = `<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-                <label style="font-size:12px;color:var(--text-secondary,#888);cursor:pointer" title="Only b-roll shots (hide talking-heads + graphics)">
-                    <input type="checkbox" ${brollOnly ? 'checked' : ''} onchange="brollOnly=this.checked; renderSegments()"> b-roll only</label>
+                <label style="font-size:12px;color:var(--text-secondary,#888)">show <select onchange="ckFilter=this.value; renderSegments()">
+                    <option value="">all kinds</option><option value="broll" ${ckFilter==='broll'?'selected':''}>b-roll</option><option value="stills" ${ckFilter==='stills'?'selected':''}>stills</option><option value="talking_head" ${ckFilter==='talking_head'?'selected':''}>talking-head</option><option value="graphics" ${ckFilter==='graphics'?'selected':''}>graphics</option></select></label>
                 <span style="font-size:12px;color:var(--text-secondary,#888)">${shown} / ${currentSegments.length} segments</span></div>`;
             panel.innerHTML = bar + currentSegments.map((s, i) => {
-                if (brollOnly && s.content_kind !== 'broll') return '';
+                if (ckFilter && s.content_kind !== ckFilter) return '';
                 return `
                 <div class="segment-card" onclick="playSegment(${i})">
                     <div class="segment-header">

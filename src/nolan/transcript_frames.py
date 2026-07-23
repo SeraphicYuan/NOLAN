@@ -84,9 +84,12 @@ def _extract_analysis(content: str) -> Dict[str, Any]:
     objects = [str(o).strip() for o in (ctx.get("objects") or []) if str(o).strip()]
     location = str(ctx.get("location") or "").strip()
     story = str(ctx.get("story_context") or "").strip()
+    shot = str(d.get("shot") or "").strip()
     parts: List[str] = []
     if summary:
         parts.append(summary)
+    if shot:
+        parts.append("Shot: " + shot)          # framing/angle/mood — recovers appearance search via text
     if people:
         parts.append("People: " + ", ".join(people))
     if location:
@@ -97,7 +100,7 @@ def _extract_analysis(content: str) -> Dict[str, Any]:
         parts.append("Context: " + story)
     caption = " | ".join(parts) if parts else (content or "").strip()[:400]
     at = (d.get("asset_type") or "").strip().lower()
-    return {"caption": caption,
+    return {"caption": caption, "shot": shot,
             "asset_type": at, "content_kind": content_kind_of(at),
             "people": people, "location": location, "objects": objects, "story": story}
 
@@ -362,6 +365,82 @@ def plan_snapshot_times(changes: List[float], duration: float,
     return out
 
 
+def detect_cuts(url: str, thr: float = 0.4, dedup: float = 1.5, window: float = 120.0,
+                concurrency: int = 8, is_youtube: bool = True) -> Tuple[List[float], float]:
+    """FULL-RES scene-cut detection over the WHOLE video (chunked, PARALLEL ffmpeg) — accurate + cheap
+    (~0.4s per 120s window). Replaces the low-res storyboard detector, which missed most cuts. Returns
+    (cut_times, duration). Scene scores separate cleanly (cuts >0.3, motion ~0.02); +dedup merges detections
+    closer than `dedup`s (a transition can flag several adjacent frames)."""
+    import re as _re
+    from concurrent.futures import ThreadPoolExecutor
+    dur = 0.0
+    if is_youtube:
+        import yt_dlp
+        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True, "noplaylist": True}) as ydl:
+            info = ydl.extract_info(url, download=False)
+        dur = float(info.get("duration") or 0)
+    src = _resolve_stream(url) if is_youtube else url
+    if not src:
+        return [], dur
+    ff = _ffmpeg()
+
+    def _win(win):
+        s, d = win
+        r = subprocess.run([ff, "-ss", f"{s:.2f}", "-i", src, "-t", f"{d:.1f}",
+                            "-vf", f"select='gt(scene,{thr})',showinfo", "-an", "-f", "null", "-"],
+                           capture_output=True, text=True)
+        return [s + float(m) for m in _re.findall(r"pts_time:([\d.]+)", r.stderr)]
+
+    wins = [(float(s), min(window, dur - s)) for s in range(0, int(dur), int(window))] if dur else [(0.0, 1e9)]
+    with ThreadPoolExecutor(max_workers=max(1, int(concurrency))) as ex:
+        raw = sorted(c for lst in ex.map(_win, wins) for c in lst)
+    cuts: List[float] = []
+    for c in raw:
+        if not cuts or c - cuts[-1] >= dedup:
+            cuts.append(round(c, 1))
+    return cuts, dur
+
+
+def plan_shots(cuts: List[float], duration: float, lag: float = 0.8,
+               gap: float = 50.0) -> List[Tuple[float, float, float]]:
+    """Cuts -> the BASE snapshot plan: ONE frame per shot (lag secs into the shot, capped at its midpoint)
+    plus a gap-fill frame for any shot longer than `gap`. Returns [(time, shot_start, shot_end)]."""
+    duration = float(duration or 0.0)
+    marks = {0.0, *(float(c) for c in cuts)}
+    if duration:
+        marks.add(duration)
+    bounds = sorted(marks)
+    out: List[Tuple[float, float, float]] = []
+    for i in range(len(bounds) - 1):
+        s, e = bounds[i], bounds[i + 1]
+        if e - s < 0.5:
+            continue
+        out.append((round(min(s + lag, (s + e) / 2), 1), round(s, 1), round(e, 1)))
+        if e - s > gap:
+            k = s + gap
+            while k < e - 5:
+                out.append((round(k, 1), round(s, 1), round(e, 1)))
+                k += gap
+    return out
+
+
+def densify_broll(frames: List[Tuple[float, float, float, str]], step: float = 5.0,
+                  span: float = 25.0) -> List[float]:
+    """The b-roll densification rule: for each BROLL base frame `(t, shot_start, shot_end, content_kind)`,
+    add extra snapshot times every `step`s up to `span`s (or the shot's end, whichever comes first). So a
+    long establishing/pan b-roll shot gets ~5 frames; a short b-roll shot (already dense via cuts) gets
+    none. Non-broll shots are untouched. Returns sorted unique extra times."""
+    extra = set()
+    for t, s, e, ck in frames:
+        if ck != "broll":
+            continue
+        k = t + step
+        while k < min(t + span, e - 0.5):
+            extra.add(round(k, 1))
+            k += step
+    return sorted(extra)
+
+
 def embed_frames(frames: List[Tuple[float, Path]], video_id: str, watch_url: str,
                  kind: str = "keyframe", title: str = "", embedder=None, base_dir=None,
                  captions: Optional[List[str]] = None, asset_types: Optional[List[str]] = None) -> int:
@@ -384,7 +463,8 @@ def embed_frames(frames: List[Tuple[float, Path]], video_id: str, watch_url: str
             tags += f";ck={ck}"
         try:
             lib.add_file(str(fp), source=f"youtube-{kind}", source_url=watch_url,
-                         title=title or video_id, description=cap, tags=tags, query=f"{float(ts):.1f}")
+                         title=title or video_id, description=cap, tags=tags, query=f"{float(ts):.1f}",
+                         embed=False)   # caption-only: BGE the caption (incl. shot field), SKIP CLIP image embedding
             n += 1
         except Exception:
             continue
@@ -467,9 +547,9 @@ def visual_search(query: str, n: int = 24, embedder=None, base_dir=None,
     want = (content_kind or "").strip().lower()
     k = int(n) * 4 if want else int(n)
     try:
-        hits = lib.search_hybrid(query, k=k)
+        hits = lib.search_by_description(query, k=k)   # caption-only (BGE over the gemma caption + shot field)
     except Exception:
-        hits = lib.search(query, k=k)
+        hits = lib.search_hybrid(query, k=k)
     out: List[Dict[str, Any]] = []
     for h in hits:
         a = h.asset

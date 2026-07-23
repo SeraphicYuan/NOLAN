@@ -57,11 +57,11 @@ ASSET_TYPE_TO_VISUAL = {
 # derives it from a shot's richer `asset_type` via this map, so a "b-roll only" filter means the same thing
 # in both. talking_head is split OUT of b-roll here (unlike ASSET_TYPE_TO_VISUAL, which is a RENDER-treatment
 # map) because for asset finding a talking head is the thing you usually DON'T want.
-CONTENT_KINDS = ("broll", "talking_head", "graphics", "mixed")
+CONTENT_KINDS = ("broll", "stills", "talking_head", "graphics")
 ASSET_TYPE_TO_CONTENT_KIND = {
+    "live-footage": "broll", "archival-footage": "broll",   # MOVING footage — the b-roll workhorse
+    "photo": "stills", "painting": "stills", "illustration": "stills",   # still imagery, its own category
     "talking-head": "talking_head",
-    "live-footage": "broll", "archival-footage": "broll", "photo": "broll",
-    "painting": "broll", "illustration": "broll",           # still imagery — layable under narration
     "map": "graphics", "chart-graphic": "graphics", "text-card": "graphics", "animation": "graphics",
     "other": "",
 }

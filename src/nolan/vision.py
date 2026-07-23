@@ -105,11 +105,13 @@ Respond with a JSON object containing:
    - "animation": animated or motion-graphic content.
    - "other": none of the above.
 
+5. "shot": a SHORT phrase for HOW it's shot (for finding footage by look) — framing (extreme-close-up / close-up / medium / wide / aerial), camera angle if notable (top-down / low-angle / high-angle / eye-level), and lighting or mood (e.g. golden-hour, night, silhouette, backlit, high-contrast, moody, bright). E.g. "top-down aerial, daylight" · "extreme close-up, warm tones" · "wide silhouette, golden hour".
+
 IMPORTANT:
 - For "people", try to identify who they are from visual appearance (face recognition) or name mentions in transcript.
 - Only include inferred_context fields you have actual evidence for.
 - The combined_summary should fuse visual and audio information.
-- Always include "asset_type".
+- Always include "asset_type" and "shot".
 
 Respond ONLY with valid JSON, no other text."""
 
@@ -128,6 +130,8 @@ Respond with a JSON object containing:
    - "confidence": "high", "medium", or "low" based on visual clarity.
 
 3. "asset_type": EXACTLY one of "live-footage" (modern real-world video — the b-roll workhorse), "archival-footage" (old/historical film), "photo" (still photograph), "painting", "illustration" (drawing/diagram/vector art), "map", "chart-graphic" (chart/graph/data-viz/infographic), "text-card" (full-screen title/quote/text), "talking-head" (a person speaking to camera), "animation" (animated/motion-graphic), or "other". Always include this.
+
+4. "shot": a SHORT phrase for HOW it's shot (for finding footage by look) — framing (extreme-close-up / close-up / medium / wide / aerial), camera angle if notable (top-down / low-angle / high-angle / eye-level), and lighting or mood (e.g. golden-hour, night, silhouette, backlit, high-contrast, moody, bright). E.g. "top-down aerial, daylight" · "extreme close-up, warm tones" · "wide silhouette, golden hour". Always include this.
 
 IMPORTANT: Only include inferred_context fields you have actual evidence for from the image.
 
