@@ -368,8 +368,8 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
         return ""
 
     async def _grab_cap(times):                                   # grab (parallel) + caption (parallel, wide)
-        kf = await asyncio.to_thread(tfr.ranged_keyframes, url, list(times), tmpd, True, 10)
-        an = await tfr.caption_frames_async([(fp, _wtext(t), t) for t, fp in kf], concurrency=16)
+        kf = await asyncio.to_thread(tfr.ranged_keyframes, url, list(times), tmpd, True, 8)
+        an = await tfr.caption_frames_async([(fp, _wtext(t), t) for t, fp in kf], concurrency=12)
         return kf, an
 
     base_kfs, base_an = await _grab_cap([t for t, _s, _e in base])

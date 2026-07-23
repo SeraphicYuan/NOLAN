@@ -136,14 +136,21 @@ def caption_frame(image_path, transcript: Optional[str] = None, timestamp: Optio
             "messages": [{"role": "user", "content": [
                 {"type": "text", "text": prompt},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}]}
-    try:
-        r = httpx.post("https://openrouter.ai/api/v1/chat/completions",
-                       headers={"Authorization": f"Bearer {key}"}, json=body, timeout=90)
-        if r.status_code != 200:
+    import time as _t
+    for attempt in range(3):                                   # retry transient 429/5xx/timeout w/ backoff
+        try:
+            r = httpx.post("https://openrouter.ai/api/v1/chat/completions",
+                           headers={"Authorization": f"Bearer {key}"}, json=body, timeout=45)
+            if r.status_code == 200:
+                return _extract_analysis(r.json()["choices"][0]["message"]["content"])
+            if r.status_code in (429, 500, 502, 503, 529) and attempt < 2:
+                _t.sleep(1.5 * (attempt + 1)); continue
             return dict(_EMPTY_ANALYSIS)
-        return _extract_analysis(r.json()["choices"][0]["message"]["content"])
-    except Exception:
-        return dict(_EMPTY_ANALYSIS)
+        except Exception:
+            if attempt < 2:
+                _t.sleep(1.0 * (attempt + 1)); continue
+            return dict(_EMPTY_ANALYSIS)
+    return dict(_EMPTY_ANALYSIS)
 
 
 def ranged_keyframes(url: str, timestamps: List[float], out_dir: Path,
@@ -163,8 +170,11 @@ def ranged_keyframes(url: str, timestamps: List[float], out_dir: Path,
 
     def _grab(t: float) -> Optional[Tuple[float, Path]]:
         fp = out_dir / f"kf_{int(float(t))}.jpg"
-        subprocess.run([ff, "-y", "-ss", f"{float(t):.3f}", "-i", src, "-frames:v", "1",
-                        "-q:v", "3", "-vf", "scale=640:-2", str(fp)], capture_output=True)
+        try:
+            subprocess.run([ff, "-y", "-ss", f"{float(t):.3f}", "-i", src, "-frames:v", "1",
+                            "-q:v", "3", "-vf", "scale=640:-2", str(fp)], capture_output=True, timeout=30)
+        except subprocess.TimeoutExpired:                     # a stalled stream must never hang the whole run
+            return None
         return (float(t), fp) if fp.exists() and fp.stat().st_size > 0 else None
 
     with ThreadPoolExecutor(max_workers=max(1, int(concurrency))) as ex:
@@ -386,9 +396,12 @@ def detect_cuts(url: str, thr: float = 0.4, dedup: float = 1.5, window: float = 
 
     def _win(win):
         s, d = win
-        r = subprocess.run([ff, "-ss", f"{s:.2f}", "-i", src, "-t", f"{d:.1f}",
-                            "-vf", f"select='gt(scene,{thr})',showinfo", "-an", "-f", "null", "-"],
-                           capture_output=True, text=True)
+        try:
+            r = subprocess.run([ff, "-ss", f"{s:.2f}", "-i", src, "-t", f"{d:.1f}",
+                                "-vf", f"select='gt(scene,{thr})',showinfo", "-an", "-f", "null", "-"],
+                               capture_output=True, text=True, timeout=180)
+        except subprocess.TimeoutExpired:
+            return []
         return [s + float(m) for m in _re.findall(r"pts_time:([\d.]+)", r.stderr)]
 
     wins = [(float(s), min(window, dur - s)) for s in range(0, int(dur), int(window))] if dur else [(0.0, 1e9)]
