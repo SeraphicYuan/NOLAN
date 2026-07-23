@@ -65,6 +65,13 @@ def main() -> int:
         sid, text = it["id"], it["text"]
         ref, rt = it.get("ref_audio"), (it.get("ref_text") or "")
         instruct = it.get("instruct") or args.neutral_instruct or None
+        # Per-utterance pace: CosyVoice interpolates the mel length by 1/speed before the
+        # vocoder (pitch-preserving time-stretch), so speed>1 is faster, <1 slower. This is
+        # the knob for sub-beat / sentence-level pacing.
+        try:
+            spd = float(it.get("speed") or 1.0)
+        except (TypeError, ValueError):
+            spd = 1.0
         try:
             if not ref:
                 print(f"SKIP {sid}: no ref_audio (CosyVoice needs a reference)", flush=True)
@@ -72,10 +79,10 @@ def main() -> int:
             r16 = ref16(ref)
             if instruct:
                 prompt = f"You are a helpful assistant. Please speak in a {instruct} tone.<|endofprompt|>"
-                gen = cv.inference_instruct2(text, prompt, r16, stream=False)
+                gen = cv.inference_instruct2(text, prompt, r16, stream=False, speed=spd)
             else:
                 gen = cv.inference_zero_shot(text, "You are a helpful assistant.<|endofprompt|>" + rt,
-                                             r16, stream=False)
+                                             r16, stream=False, speed=spd)
             chunks = [j["tts_speech"] for j in gen]
             if not chunks:
                 print(f"EMPTY {sid}", flush=True)
@@ -83,7 +90,7 @@ def main() -> int:
             audio = torch.cat(chunks, dim=1) if len(chunks) > 1 else chunks[0]
             torchaudio.save(os.path.join(args.res_dir, sid + ".wav"), audio, sr,
                             encoding="PCM_S", bits_per_sample=16)
-            print(f"OK {sid} {audio.shape[1] / sr:.2f}s", flush=True)
+            print(f"OK {sid} {audio.shape[1] / sr:.2f}s (speed={spd})", flush=True)
         except Exception as e:  # noqa: BLE001 - report per item, keep going
             print(f"FAIL {sid} {type(e).__name__}: {str(e)[:200]}", flush=True)
     return 0

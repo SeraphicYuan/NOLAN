@@ -91,7 +91,12 @@ class CosyVoiceConfig:
     env_python: str = ""    # D:\env\cosyvoice\python.exe
     repo_dir: str = ""      # D:\env\CosyVoice-src (holds the code + third_party/Matcha-TTS)
     model_dir: str = "pretrained_models/Fun-CosyVoice3-0.5B"   # relative to repo_dir
-    neutral_instruct: str = "calm, measured"   # baseline tone for un-instructed beats ("" = none)
+    # Baseline tone for un-instructed beats ("" = none). Brisk by default: measured against a
+    # real narrator, the old "calm, measured" read ~19 wpm slow (139 vs 158) — the model's own
+    # intra-beat rubato (stdev ~29) already matches human, so the only real gap was tempo. This
+    # instruct lifts the read to ~164 wpm and *widens* the natural variation. Per-beat
+    # [delivery:] tags (grave/calm/…) still override where a section wants a different register.
+    neutral_instruct: str = "an energetic, engaging storyteller keeping the pace brisk and lively"
 
 
 @dataclass

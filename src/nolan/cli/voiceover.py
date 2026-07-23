@@ -35,7 +35,9 @@ def voiceover() -> None:
 @click.argument("slug")
 @click.option("--voice", default=None, help="voice_id to clone (else project.yaml / default)")
 @click.option("--mode", type=click.Choice(["full", "segments"]), default="full")
-def vo_generate(slug: str, voice: str | None, mode: str) -> None:
+@click.option("--register", default=None,
+              help="narration register (story-type pace); else project.yaml / default")
+def vo_generate(slug: str, voice: str | None, mode: str, register: str | None) -> None:
     """Synthesize the whole voiceover for a Script Project (archives the prior take)."""
     from nolan.config import load_config
     from nolan.voice_pipeline import synthesize_voiceover
@@ -43,7 +45,7 @@ def vo_generate(slug: str, voice: str | None, mode: str) -> None:
     ref_audio, ref_text, vid = _resolve_voice(Path("projects") / slug, cfg, voice)
     res = asyncio.run(synthesize_voiceover(
         config=cfg, script_project=slug, mode=mode, voice_id=vid,
-        ref_audio=ref_audio, ref_text=ref_text,
+        ref_audio=ref_audio, ref_text=ref_text, register=register,
         log=click.echo, progress=lambda p, m: click.echo(f"[{p:.0%}] {m}")))
     g = res.get("gate", {})
     click.echo(f"gate ok={g.get('ok')} errors={g.get('errors')} warnings={g.get('warnings')} "

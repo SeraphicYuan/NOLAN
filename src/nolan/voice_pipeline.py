@@ -490,7 +490,7 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
                                ref_audio: str = None, ref_text: str = None,
                                instruct: str = None, num_step: int = None,
                                speed: float = None, language_id: str = None,
-                               tempo: float = 1.0,
+                               tempo: float = 1.0, register: str = None,
                                log: Optional[Callable[[str], None]] = None,
                                progress: Optional[Callable[[float, str], None]] = None):
     """Generate a project's voiceover with local TTS.
@@ -558,7 +558,19 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
         log("No voice reference/instruct — OmniVoice will auto-pick a voice "
             "PER SECTION, so sections may not match. Pick/clone a voice for consistency.")
 
-    # A5 sub-chunking threshold + A6 per-section delivery (falls back to the global instruct).
+    # Narration register: resolve from arg or project.yaml (default = narrative-investigative).
+    # It sets the un-tagged-beat instruct (narrator character) + a global speed = target/base_wpm
+    # so the average pace lands on the register's target_wpm. Explicit instruct/speed args win.
+    from nolan.voice_registers import resolve_register, read_project_register
+    reg = resolve_register(register or read_project_register(base))
+    if instruct is None:
+        instruct = reg.instruct
+    if speed is None:
+        speed = reg.speed
+    log(f"narration register: {reg.name} (target {reg.target_wpm} wpm, "
+        f"base {reg.base_wpm}, speed {reg.speed})")
+
+    # A5 sub-chunking threshold + A6 per-section delivery (falls back to the register instruct).
     sub_words = int(getattr(config.tts.omnivoice, "sub_chunk_words", 60) or 0)
     deliveries = [(s.get("delivery") or instruct) for s in sections]
 
@@ -576,7 +588,7 @@ async def synthesize_voiceover(*, config, project: str = None, script_project: s
         if config.tts.omnivoice.free_comfyui_vram:
             progress(0.15, "Freeing ComfyUI VRAM…")
             await _free_comfyui_vram(config)
-        progress(0.25, f"Running OmniVoice on {len(sections)} sections…")
+        progress(0.25, f"Synthesizing {len(sections)} sections…")
         produced = await loop.run_in_executor(
             None, lambda: synthesize_sections(
                 provider, [s["body"] for s in sections], work,
