@@ -1,0 +1,11 @@
+name: The Diamond Illusion
+slug: the-diamond-illusion
+voice_id: beat-the-noise-narrator
+narration_register: narrative-investigative
+description: How De Beers turned a common stone into a priceless symbol — the diamond
+  engagement ring, the 1947 "A Diamond Is Forever" campaign, De Beers's supply monopoly,
+  and the myth of intrinsic value (diamonds barely resell).
+source_videos:
+- source/
+output_dir: output/
+assets_dir: assets/
