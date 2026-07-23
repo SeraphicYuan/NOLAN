@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 29,
+  "count": 30,
   "skills": [
     {
       "id": "art.flow",
@@ -604,6 +604,31 @@
       "documents": null,
       "evals": [],
       "path": "skills/orchestrator/slide-designer.md"
+    },
+    {
+      "id": "organ.voice",
+      "name": "Voice / voiceover organ",
+      "kind": "grammar",
+      "purpose": "Orient any voiceover / narration task \u2014 the per-section anchor contract, cloning, the GPU lock, the speak-ready gate, take versioning, and where VO plugs into the HF finish DAG.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "organ",
+      "description": "The shared voiceover core \u2014 one TTS pipeline for the webUI and the pipeline. Per-section synthesis writes the beat-anchor wavs (`assets/voiceover/_work/sec_NNNN.wav`) that the whole render times itself to (narration owns duration), plus voice cloning from the voice library, the GPU lock it shares with ComfyUI, the speak-ready quality gate, and take versioning. Read this before touching voiceover synthesis, the `sec_*.wav` anchor contract, voice cloning, the quality gate, or the `nolan voiceover` CLI \u2014 or when a render's timing/narration looks wrong.\n",
+      "handoffs": [
+        {
+          "process": "hyperframes",
+          "stage": "voice",
+          "gate": "B"
+        }
+      ],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/voice_pipeline.py"
+      },
+      "evals": [],
+      "path": "skills/organ/voice.md"
     },
     {
       "id": "pipeline.hyperframes",
