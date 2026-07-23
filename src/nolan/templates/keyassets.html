@@ -44,6 +44,15 @@
     .gallery img, .gallery video { height:74px; border-radius:7px; border:1px solid var(--border);
                                    object-fit:cover; background:#000; cursor:zoom-in; transition:transform .1s; }
     .gallery img:hover, .gallery video:hover { transform:scale(1.04); border-color: var(--accent); }
+    .thumb { position:relative; display:inline-flex; }
+    .thumb.unsel img, .thumb.unsel video { opacity:.32; filter:grayscale(.5); }
+    .pick { position:absolute; top:4px; left:4px; width:18px; height:18px; border-radius:50%; z-index:2;
+            border:1.5px solid rgba(255,255,255,.6); background:rgba(0,0,0,.55); color:#fff; font-size:12px;
+            line-height:15px; text-align:center; cursor:pointer; user-select:none; }
+    .pick.on { background: var(--accent); border-color: var(--accent); }
+    .tb { position:absolute; bottom:3px; font-size:10px; background:rgba(0,0,0,.65); color:#fff;
+          padding:0 3px; border-radius:3px; pointer-events:none; }
+    .tb.cut { right:3px; } .tb.ok { right:20px; color:#7fd89a; }
     #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:1000;
                 align-items:center; justify-content:center; cursor:zoom-out; }
     #lightbox img, #lightbox video { max-width:92vw; max-height:92vh; border-radius:8px;
@@ -90,7 +99,9 @@
     <div id="stats" class="stats"></div>
     <div id="body"></div>
     <div class="legend">★ = hero · ✂ = collage cutout (bg-removed) · dashed = directionally related
-      (not exact) · italic = spoken anchors to sync to</div>
+      (not exact) · italic = spoken anchors · <b>click a thumbnail's ✓ (top-left) to include/exclude it from
+      the FINAL pool</b> (dimmed = excluded; the primary of each need starts selected) — only selected assets
+      are used by authoring. Click the image itself to view full-size.</div>
   </div>
 
   <div id="lightbox" onclick="closeLb(event)"></div>
@@ -113,11 +124,33 @@
       return '<span class="' + cls + '"><span class="t">' + label + "</span>" + note + "</span>";
     }
 
-    function thumb(path) {
-      var v = /\.(mp4|mov|webm)$/i.test(path);
-      var oc = " onclick=\"openLb('" + path + "'," + v + ")\"";
-      return v ? '<video src="' + fileUrl(path) + '" muted' + oc + '></video>'
-               : '<img loading="lazy" src="' + fileUrl(path) + '"' + oc + '>';
+    // c = {file, variant, verified, selected, type}. Thumbnail with a select toggle (final-pool) + badges.
+    function thumb(c) {
+      var v = /\.(mp4|mov|webm)$/i.test(c.file);
+      var oc = " onclick=\"openLb('" + c.file + "'," + v + ")\"";
+      var media = v ? '<video src="' + fileUrl(c.file) + '" muted' + oc + "></video>"
+                    : '<img loading="lazy" src="' + fileUrl(c.file) + '"' + oc + ">";
+      var pick = '<span class="pick' + (c.selected ? " on" : "") + '" title="in final pool" ' +
+        'onclick="togglePick(this,\'' + esc(c.file) + '\')">' + (c.selected ? "✓" : "") + "</span>";
+      var badge = (c.variant === "cutout" ? '<span class="tb cut">✂</span>' : "") +
+        (c.verified ? '<span class="tb ok">✓</span>' : "");
+      return '<div class="thumb' + (c.selected ? "" : " unsel") + '">' + media + pick + badge + "</div>";
+    }
+
+    function togglePick(el, file) {
+      var thumb = el.closest(".thumb");
+      var makeSel = thumb.classList.contains("unsel");   // currently unselected → select (and vice-versa)
+      fetch("/api/keyassets/select", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: curProject, file: file, selected: makeSel }) })
+        .then(function (r) { return r.json(); })
+        .then(function () {
+          thumb.classList.toggle("unsel", !makeSel);
+          el.classList.toggle("on", makeSel);
+          el.textContent = makeSel ? "✓" : "";
+          var el2 = document.getElementById("selcount");
+          if (el2) el2.textContent = String((parseInt(el2.textContent, 10) || 0) + (makeSel ? 1 : -1));
+        })
+        .catch(function () {});
     }
 
     function openLb(path, isVideo) {
@@ -214,7 +247,8 @@
       var s = d.stats;
       $("#stats").innerHTML =
         stat(s.entities, "entities") + stat(s.hero, "hero") + stat(s.directions, "directions") +
-        stat(s.footage, "footage / clips") + stat(s.related, "related (~)") + stat(s.collected, "collected");
+        stat(s.footage, "footage / clips") + stat(s.related, "related (~)") + stat(s.collected, "collected") +
+        '<span class="stat"><b id="selcount">' + (s.selected || 0) + "</b> in final pool</span>";
       $("#body").innerHTML = (d.directions || []).map(function (dir) {
         var q = (dir.queries || []).map(function (x) { return '<span class="q">' + esc(x) + "</span>"; }).join("");
         return '<div class="dir"><h2>▸ ' + esc(dir.title) + "</h2>" +

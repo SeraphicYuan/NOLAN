@@ -58,6 +58,8 @@ def stage_heroes(project_dir: Path) -> List[Tuple[str, dict, dict]]:
     out: List[Tuple[str, dict, dict]] = []
     for e in data.get("entities", []):
         for a in e.get("resolved", []) or []:
+            if not a.get("selected", True):              # refine-scope: only the human's FINAL pool
+                continue
             src = project_dir / a.get("file", "")
             if not a.get("file") or not src.exists():
                 continue

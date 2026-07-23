@@ -42,6 +42,27 @@ def _patch_entity(project_dir: Path, entity_id: str, field: str, asset_index, va
     return changed
 
 
+def _set_selected(project_dir: Path, file: str, selected: bool) -> bool:
+    """Toggle a collected asset's `selected` flag in canonical key_assets.json (matched by file path).
+    `selected` = in the FINAL key-assets pool → what P3 authoring stages. Returns True if the file matched."""
+    p = project_dir / "key_assets.json"
+    if not p.exists():
+        return False
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    hit = False
+    for e in data.get("entities", []):
+        for a in e.get("resolved", []) or []:
+            if a.get("file") == file:
+                a["selected"] = bool(selected)
+                hit = True
+    if hit:
+        p.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    return hit
+
+
 def register(app, ctx):
     templates_dir = Path(ctx.templates_dir)
 
@@ -91,6 +112,17 @@ def register(app, ctx):
         if not changed:
             raise HTTPException(status_code=404, detail="entity not found")
         return {"ok": True, "updated": changed, "values": values}
+
+    @app.post("/api/keyassets/select")
+    async def keyassets_select(payload: dict = Body(...)):
+        """Refine-scope: toggle a collected asset in/out of the FINAL pool (persists to key_assets.json)."""
+        base = _project_dir(str(payload.get("project") or ""))
+        file = str(payload.get("file") or "")
+        if not file:
+            raise HTTPException(status_code=400, detail="file required")
+        if not _set_selected(base, file, bool(payload.get("selected"))):
+            raise HTTPException(status_code=404, detail="asset not found")
+        return {"ok": True, "file": file, "selected": bool(payload.get("selected"))}
 
     @app.get("/api/keyassets/file")
     async def keyassets_file(project: str = Query(...), path: str = Query(...)):

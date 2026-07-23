@@ -92,22 +92,23 @@ def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optio
                 continue
             for idx, r in enumerate(results):                  # up to N kept per need — options for the author
                 fpath = r["file"]
+                primary = idx == 0
                 vmark = " ✓verified" if r.get("verified") else ""
                 recs.append({"file": _rel(fpath, project_dir), "type": d.type, "variant": "original",
                              "collage_ready": d.collage_ready, "relevance": d.relevance,
-                             "verified": bool(r.get("verified")),
+                             "verified": bool(r.get("verified")), "selected": primary,   # primary in the pool by default
                              "source": r.get("source", ""), "source_url": r.get("source_url", ""),
                              "license": r.get("license", ""), "query": r.get("query", "")})
                 logs.append(f"    + {fpath.name}  ({r.get('source', '?')}){vmark}")
                 # cutout only the PRIMARY (idx 0) collage still — alternates stay as raw options
-                if idx == 0 and do_cutout and d.collage_ready and d.type in CUTOUT_TYPES and not is_video:
+                if primary and do_cutout and d.collage_ready and d.type in CUTOUT_TYPES and not is_video:
                     try:
                         cut = fpath.with_name(f"{fpath.stem}_cutout.png")
                         with cutout_lock:
                             cutout_file(fpath, dst=cut, trim=True)
                         if cut.exists():
                             recs.append({"file": _rel(cut, project_dir), "type": d.type, "variant": "cutout",
-                                         "collage_ready": True, "relevance": d.relevance,
+                                         "collage_ready": True, "relevance": d.relevance, "selected": True,
                                          "processing": ["bg_removed", "trim"], "source": r.get("source", "")})
                             logs.append(f"    ✂ {cut.name}  (cutout)")
                     except Exception as ex:

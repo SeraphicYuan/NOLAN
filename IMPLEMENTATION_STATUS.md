@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-22
 
+## Key-Assets — refine-scope: select collected assets into the FINAL pool on /keyassets (2026-07-23)
+
+Human curation over the keep-4 options → the scope authoring uses. Each collected asset carries a `selected` flag (collect defaults the PRIMARY of each need + its cutout True, alternates False; older data without the flag defaults True). `view.build_view` now sources `collected` from the canonical's resolved records as OBJECTS (file/variant/verified/selected/source) + a `selected` stat. Gallery thumbnails get a ✓ toggle (top-left) that flips in/out of the pool — dimmed = excluded; clicking the image still opens the lightbox. `POST /api/keyassets/select` (+ `_set_selected`) persists to key_assets.json immediately. **Wired to a consumer**: `inventory.stage_heroes` now stages ONLY selected assets, so refine-scope directly shapes the HERO section authoring reads. 26 tests green; select toggle end-to-end verified live (pool 63→62→63).
+
 ## Key-Assets — keep top-N verified per need (images 4 / clips 2), not just the first (2026-07-23)
 
 `resolve_image`/`resolve_video` now RETURN A LIST of up to `keep` VERIFIED, distinct-source assets per need (was: first hit only), named out / out_2 / out_3… — so the author has options to pick from. Defaults: images keep=4, clips keep=2 (video is ~4x the cost: download+trim+multi-frame verify). EXACT needs keep only positively-verified (missing beats wrong); `related` keep downloaded; dedup by source_url so the same image isn't kept twice; total downloads/need bounded (keep + _MAX_VERIFY_ATTEMPTS). Tier-C reformulation fires only on a TOTAL miss (0 kept). `collect` iterates the list, records each, and cuts out only the PRIMARY (idx 0) collage still — alternates stay as raw options. 23 tests green.

@@ -7,30 +7,36 @@ filename). Pure read — the route serves it as JSON, the page renders it client
 asset_pool.build_pool feeding /pool)."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Dict, List
 
 from .schema import KeyAssetsProposal
 
-_MEDIA_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".mov", ".webm")
 
-
-def _collected(project_dir: Path, entities) -> Dict[str, List[str]]:
-    """entity_id -> [project-relative media paths] found under capture/keyassets/ (P2 fills this)."""
-    ka_dir = project_dir / "capture" / "keyassets"
-    out: Dict[str, List[str]] = {}
-    if not ka_dir.exists():
-        return out
-    ids = sorted(((e.id or "").lower(), e.id) for e in entities if e.id)
-    for p in sorted(ka_dir.rglob("*")):
-        if not (p.is_file() and p.suffix.lower() in _MEDIA_EXT):
-            continue
-        rel = p.relative_to(project_dir).as_posix()
-        stem = p.stem.lower()
-        for low, real in ids:                        # longest id first so a prefix match is the tightest
-            if low and stem.startswith(low):
-                out.setdefault(real, []).append(rel)
-                break
+def _resolved_records(project_dir: Path) -> Dict[str, List[dict]]:
+    """entity_id -> collected-asset records from canonical key_assets.json (file/variant/verified/
+    `selected`/source/type), only for files that still exist. `selected` = in the FINAL pool (default
+    True for older data without the flag)."""
+    p = project_dir / "key_assets.json"
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    out: Dict[str, List[dict]] = {}
+    for e in data.get("entities", []):
+        recs = []
+        for a in e.get("resolved", []) or []:
+            f = a.get("file")
+            if not f or not (project_dir / f).exists():
+                continue
+            recs.append({"file": f, "variant": a.get("variant", "original"), "type": a.get("type", ""),
+                         "verified": bool(a.get("verified")), "selected": bool(a.get("selected", True)),
+                         "source": a.get("source", "")})
+        if recs and e.get("id"):
+            out[e["id"]] = recs
     return out
 
 
@@ -43,7 +49,7 @@ def build_view(project_dir: Path) -> dict:
     if prop is None:
         return {"has_proposal": False, "project": project_dir.name}
 
-    collected = _collected(project_dir, prop.entities)
+    resolved = _resolved_records(project_dir)
     by_id = {e.id: e for e in prop.entities}
     directions = []
     for d in prop.directions:
@@ -56,16 +62,18 @@ def build_view(project_dir: Path) -> dict:
                 "narrative_role": e.narrative_role, "mentions": e.mentions,
                 "identifiers": e.identifiers, "queries_locked": e.queries_locked,
                 "assets": [a.to_dict() for a in e.desired_assets],   # a.to_dict() carries `queries`
-                "collected": collected.get(e.id, []),
+                "collected": resolved.get(e.id, []),                 # objects: file/variant/verified/selected
             } for e in ents],
         })
+    all_recs = [r for v in resolved.values() for r in v]
     stats = {
         "entities": len(prop.entities),
         "hero": sum(1 for e in prop.entities if e.priority == "hero"),
         "directions": len(prop.directions),
         "footage": sum(1 for e in prop.entities for a in e.desired_assets if a.type == "footage"),
         "related": sum(1 for e in prop.entities for a in e.desired_assets if a.relevance == "related"),
-        "collected": sum(len(v) for v in collected.values()),
+        "collected": len(all_recs),
+        "selected": sum(1 for r in all_recs if r["selected"]),
     }
     return {"has_proposal": True, "project": project_dir.name, "canonical": canonical.exists(),
             "generated": prop.generated, "stats": stats, "directions": directions}

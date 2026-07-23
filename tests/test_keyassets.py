@@ -333,6 +333,49 @@ def test_patch_entity_updates_both_files_and_locks(tmp_path):
     assert d2["entities"][0]["identifiers"] == ["i1", "i2"]
 
 
+# --- refine-scope: select assets into the final pool ---------------------------------------------
+def test_build_view_collected_carries_selected(tmp_path):
+    from nolan.keyassets.view import build_view
+    ka = tmp_path / "capture" / "keyassets"
+    ka.mkdir(parents=True)
+    (ka / "ka_x_portrait.jpg").write_bytes(b"i")
+    (ka / "ka_x_portrait_2.jpg").write_bytes(b"i")
+    data = {"entities": [{"id": "ka_x", "name": "X", "kind": "person", "narrative_role": "r", "resolved": [
+        {"file": "capture/keyassets/ka_x_portrait.jpg", "variant": "original", "verified": True, "selected": True},
+        {"file": "capture/keyassets/ka_x_portrait_2.jpg", "variant": "original", "verified": True, "selected": False},
+    ]}], "directions": [{"id": "d", "title": "D", "entity_ids": ["ka_x"]}]}
+    (tmp_path / "key_assets.json").write_text(json.dumps(data), encoding="utf-8")
+    v = build_view(tmp_path)
+    coll = v["directions"][0]["entities"][0]["collected"]
+    assert len(coll) == 2 and coll[0]["selected"] is True and coll[1]["selected"] is False
+    assert v["stats"]["collected"] == 2 and v["stats"]["selected"] == 1
+
+
+def test_set_selected_toggles_and_reports_miss(tmp_path):
+    from nolan.webui.routes.keyassets import _set_selected
+    data = {"entities": [{"id": "ka_x", "resolved": [
+        {"file": "capture/keyassets/ka_x_portrait.jpg", "selected": True}]}]}
+    (tmp_path / "key_assets.json").write_text(json.dumps(data), encoding="utf-8")
+    assert _set_selected(tmp_path, "capture/keyassets/ka_x_portrait.jpg", False) is True
+    d = json.loads((tmp_path / "key_assets.json").read_text(encoding="utf-8"))
+    assert d["entities"][0]["resolved"][0]["selected"] is False
+    assert _set_selected(tmp_path, "nope.jpg", True) is False
+
+
+def test_stage_heroes_only_stages_selected(tmp_path):
+    from nolan.keyassets.inventory import stage_heroes
+    ka = tmp_path / "capture" / "keyassets"
+    ka.mkdir(parents=True)
+    (ka / "ka_x_logo.jpg").write_bytes(b"i")
+    (ka / "ka_x_logo_2.jpg").write_bytes(b"i")
+    data = {"entities": [{"id": "ka_x", "name": "X", "kind": "organization", "resolved": [
+        {"file": "capture/keyassets/ka_x_logo.jpg", "type": "logo", "variant": "original", "selected": True},
+        {"file": "capture/keyassets/ka_x_logo_2.jpg", "type": "logo", "variant": "original", "selected": False}]}]}
+    (tmp_path / "key_assets.json").write_text(json.dumps(data), encoding="utf-8")
+    staged = stage_heroes(tmp_path)
+    assert len(staged) == 1 and staged[0][0].endswith("ka_x_logo.jpg")   # only the selected one
+
+
 # --- schema round-trip ---------------------------------------------------------------------------
 def test_proposal_round_trip(tmp_path):
     ents = _ents(("De Beers", "organization"), ("Cecil Rhodes", "person"))
