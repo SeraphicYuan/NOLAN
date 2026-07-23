@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 32,
+  "count": 34,
   "skills": [
     {
       "id": "art.flow",
@@ -645,6 +645,27 @@
       "path": "skills/organ/acquire.md"
     },
     {
+      "id": "organ.asset-engine",
+      "name": "Asset engine (source-resolution ladder)",
+      "kind": "grammar",
+      "purpose": "Orient any source-resolution task \u2014 the scene-type\u2192source mapping, the escalation ladder, the resolved_source provenance record, and EngineConfig thresholds.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "organ",
+      "description": "The ONE per-scene source-resolution ladder shared by all pipelines. For each scene it picks the source that fits the scene TYPE, then escalates until something clears the bar: motion (Python/ Remotion) for text/data/chart, an exact-title museum pass for named archival art (titles beat CLIP for named works), library video for footage, else stills \u2192 external providers \u2192 ComfyUI generation \u2192 none. Every choice is recorded on `scene.resolved_source` (no silent caps). Read before touching per-scene source selection, the escalation ladder, or `EngineConfig` thresholds \u2014 or when a scene resolved to the wrong source tier.\n",
+      "handoffs": [],
+      "uses": [
+        "organ.acquire"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/asset_engine.py"
+      },
+      "evals": [],
+      "path": "skills/organ/asset-engine.md"
+    },
+    {
       "id": "organ.audio-mix",
       "name": "Audio mix / soundtrack organ",
       "kind": "grammar",
@@ -670,6 +691,33 @@
       },
       "evals": [],
       "path": "skills/organ/audio-mix.md"
+    },
+    {
+      "id": "organ.sync",
+      "name": "Word-level narration \u2192 scene sync",
+      "kind": "grammar",
+      "purpose": "Orient any narration\u2194scene timing task \u2014 the align\u2192place pipeline, anchor semantics, the monotonic clamp + per-frame fallback, and the scene-timing HARD gate.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "organ",
+      "description": "How each scene lands on the spoken word. `sync-durations` pins only the 7 FRAME boundaries; inside a frame the cuts were author-typed open-loop, so visuals drift ahead of narration (5\u201325s measured). This organ closes that seam: align_voices (whisper aligner \u2192 per-word times in audio_meta.voices[].words, cached by wav mtime) + place_scenes (each scene's start/dur set to the moment its ANCHOR phrase is spoken, monotonic-clamped, per-frame proportional fallback) + the scene-timing GATE (a visual that trails narration \u22656s or is mis-ordered HARD-blocks the render). Read before touching word-sync, anchors, the aligner, or the timing gate \u2014 or when a scene is late.\n",
+      "handoffs": [
+        {
+          "process": "hyperframes",
+          "stage": "word-sync",
+          "gate": "B"
+        }
+      ],
+      "uses": [
+        "organ.voice"
+      ],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/hyperframes/sync.py"
+      },
+      "evals": [],
+      "path": "skills/organ/sync.md"
     },
     {
       "id": "organ.voice",
