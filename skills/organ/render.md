@@ -27,6 +27,11 @@ evals: []
 
 # Render dispatch + render modes
 
+> **This is the LEGACY Director/segment render path — it renders scenes with Remotion.** The
+> DOMINANT HF compose-first path renders the whole composition with **HyperFrames + GSAP** (see
+> "The DOMINANT path renders differently" below and `[[pipeline.hyperframes]]`). Use this organ
+> only for Director/segment/premium work.
+
 ## Per-scene routing (`src/nolan/render_dispatch.py`)
 
 ONE place decides which renderer handles a scene and runs it — shared by the segment path (a Scene

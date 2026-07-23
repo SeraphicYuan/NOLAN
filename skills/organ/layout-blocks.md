@@ -27,6 +27,10 @@ evals: []
 
 # Layout-block adapters (`src/nolan/layout_blocks.py`)
 
+> **This is the LEGACY Remotion render path.** It maps params to **Remotion** flow-blocks (the
+> Director/FLOW renderer). The DOMINANT HF compose-first path does NOT use this — it authors blocks
+> directly in the HyperFrames composition and renders with GSAP (`[[pipeline.hyperframes]]`).
+
 Remotion-first layout rendering: `render_layout(params)` tries the **curated Remotion blocks
 library first** (the same blocks FLOW's Chapter composition uses) via a one-step Chapter job
 (`remotion_source.render`), and falls back to the **legacy Python renderers** on any failure or

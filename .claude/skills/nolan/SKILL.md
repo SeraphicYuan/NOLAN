@@ -13,8 +13,11 @@ description: >
 
 # NOLAN — the map
 
-NOLAN turns a source (markdown essay, paper, or artwork) into a narrated video: script →
-scene plan → assets (library / stock / ComfyUI-gen / cutouts) → render (Remotion) → assemble.
+NOLAN turns a source into a narrated video. The **DOMINANT** path is compose-first
+**HyperFrames** — HTML rendered in a headless browser, animation via **GSAP** (the default
+adapter): author → the `hf-finish` DAG → render → edit-loop. The **LEGACY** Director path
+(script → scene plan → assets → **Remotion** render → assemble) remains for legacy projects.
+Don't conflate the two renderers: **HF = HyperFrames/GSAP**, **Director = Remotion**.
 
 **This file orients; it doesn't contain the rules.** Rules live in `CLAUDE.md`. Durable facts
 live in memory (`MEMORY.md`). Pipeline judgment prose lives in `skills/<domain>/*.md`. This is
@@ -131,7 +134,8 @@ _37 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill f
 | Motion specs | `src/nolan/motion/` | NL scene design → validated spec → render |
 | TTS / voices | `src/nolan/{tts,voice_library,voiceover}.py` | OmniVoice (separate CUDA env). `/voices`, `/tts` |
 | Themes | `themes/` (25+ dirs) | video themes + `selector.json` + `scripts/select_theme.py`. See `themes/THEME-PLAYBOOK.md` |
-| Renderer | `render-service/remotion-lib/` | Remotion render (`render.mjs`/`still.mjs`/`stage.mjs`) |
+| Renderer (HF, dominant) | HyperFrames — `npx hyperframes render` (via `cmd.exe`) | HTML → headless-browser frame render; animation via **GSAP** (default adapter, +Lottie/Three/Anime/…). Incremental: `nolan hf-render` |
+| Renderer (legacy) | `render-service/remotion-lib/` | **Remotion** render (`render.mjs`/`still.mjs`/`stage.mjs`) — the Director/FLOW path only |
 | Hub webUI | `src/nolan/hub.py` (FastAPI) + `templates/` + `static/` | design system in `static/nolan.css`, shell in `nav.js`. Port **8011** |
 | Fleet / agents | `src/nolan/fleet.py` | dispatches to tmux Claude agents; `/agents` |
 | Publish | `src/nolan/publish/` | final render/assemble + article path. `/publish` |

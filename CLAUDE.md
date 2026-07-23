@@ -100,6 +100,11 @@ drifts, or an undocumented DAG step, fails CI). Find the right skill via the
   ComfyUI 8080 (Windows-only reachable). Hub restart: find the python.exe
   PID on 127.0.0.1:8011 via netstat, taskkill it (NEVER the tailscaled PID
   also on 8011), relaunch `D:\tmp\start_hub.cmd` detached.
+- **Two renderers, don't conflate them**: the DOMINANT HF path renders a composition's
+  HTML in a headless browser with animation via **GSAP** (`npx hyperframes render` via
+  cmd.exe; incremental `nolan hf-render`). **Remotion** is the LEGACY Director/FLOW
+  renderer only (render-service). Skills: `pipeline.hyperframes` (GSAP) vs `organ.render` /
+  `organ.layout-blocks` (Remotion).
 - Node (render-service) runs Windows-side; render.mjs/still.mjs bundle per
   invocation — TSX edits take effect on the next render, no build step.
   stage.mjs needs ABSOLUTE media paths (node CWD = render-service/).

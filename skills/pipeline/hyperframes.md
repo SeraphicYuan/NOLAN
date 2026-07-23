@@ -45,6 +45,13 @@ renders to video): `author → compose/blocks → assets & pairing → sfx → v
 hf-finish → render → edit-loop`. The composition is the artifact the human edits;
 every stage reads and rewrites it in place.
 
+**Renderer: HyperFrames, NOT Remotion.** HF renders the composition's HTML in a headless
+browser (single paused, seek-safe timeline) with animation via **GSAP** (the default adapter;
+also Lottie / Three.js / Anime / CSS / WAAPI). The finish DAG's `render` step is `npx
+hyperframes render` (run via `cmd.exe`), and `nolan hf-render` does incremental re-renders.
+Remotion is the LEGACY Director/FLOW renderer only (`[[organ.render]]`, `[[organ.layout-blocks]]`) —
+do not reach for it on the HF path.
+
 **This file orients; the rules live elsewhere.** Environment + invariants: `CLAUDE.md`.
 Motion/composition/sound/pairing *craft*: the umbrella skills in `uses:` above.
 Per-run lessons: memory (`MEMORY.md`, the `HF cold-author` + `HF *` trail).

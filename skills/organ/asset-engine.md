@@ -33,7 +33,9 @@ It encodes the "source mix adapts to scene type" learning, then escalates.
 
 ## The ladder (per scene, by type, escalating)
 
-1. **motion** (Python / Remotion) for **text / data / chart** scenes — authored on demand, not fetched.
+1. **motion** for **text / data / chart** scenes — authored on demand, not fetched. (In the Director
+   path this is Python/**Remotion**; on the dominant HF path the same scene types are authored as
+   **GSAP** compose blocks — see `[[pipeline.hyperframes]]`.)
 2. **archival-art** scenes → an **exact-title museum pass FIRST** (titles beat CLIP for named works),
    then the escalation ladder.
 3. **footage** scenes → **library video** search IF a match clears the threshold.
