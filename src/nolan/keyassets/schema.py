@@ -23,16 +23,18 @@ class DesiredAsset:
     note: str = ""                              # what specifically (e.g. "official company logo, mono")
     collage_ready: bool = False
     relevance: str = "exact"                    # exact | related
+    queries: List[str] = field(default_factory=list)  # LLM-generated image-search queries (querygen); editable
 
     def to_dict(self) -> Dict[str, Any]:
         return {"type": self.type, "note": self.note, "collage_ready": self.collage_ready,
-                "relevance": self.relevance}
+                "relevance": self.relevance, "queries": list(self.queries)}
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "DesiredAsset":
         return cls(type=str(d.get("type", "")), note=str(d.get("note", "")),
                    collage_ready=bool(d.get("collage_ready", False)),
-                   relevance=str(d.get("relevance", "exact")))
+                   relevance=str(d.get("relevance", "exact")),
+                   queries=[str(q) for q in (d.get("queries") or [])])
 
 
 @dataclass
@@ -46,6 +48,9 @@ class KeyEntity:
     mentions: List[str] = field(default_factory=list)     # short spoken phrases → sync anchors later
     desired_assets: List[DesiredAsset] = field(default_factory=list)
     direction: str = ""                         # research-direction id (filled by consolidate)
+    identifiers: List[str] = field(default_factory=list)  # disambiguating terms (role/affiliation/era) — querygen;
+    #                                             reused for the verify subject + Tier-C reformulation
+    queries_locked: bool = False                # a human edited the queries → never auto-regenerate
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -59,7 +64,9 @@ class KeyEntity:
                    priority=str(d.get("priority", "supporting")),
                    mentions=[str(m) for m in (d.get("mentions") or [])],
                    desired_assets=[DesiredAsset.from_dict(a) for a in (d.get("desired_assets") or [])],
-                   direction=str(d.get("direction", "")))
+                   direction=str(d.get("direction", "")),
+                   identifiers=[str(x) for x in (d.get("identifiers") or [])],
+                   queries_locked=bool(d.get("queries_locked", False)))
 
 
 @dataclass

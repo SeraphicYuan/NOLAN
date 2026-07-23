@@ -221,6 +221,44 @@ def test_write_manifest_attaches_resolved(tmp_path):
     assert ent["resolved"][0]["file"].endswith("ka_de_beers_logo.jpg")
 
 
+# --- Tier B querygen (hybrid identifiers + per-need queries) -------------------------------------
+def test_querygen_apply_queries_dedups_and_caps():
+    from nolan.keyassets.querygen import apply_queries
+    from nolan.keyassets.schema import DesiredAsset, KeyEntity
+    e = KeyEntity(id="ka_cecil_rhodes", name="Cecil Rhodes", kind="person",
+                  desired_assets=[DesiredAsset(type="portrait"), DesiredAsset(type="photo")])
+    parsed = {"identifiers": ["De Beers founder", "diamond magnate", "Cape Colony", "1888", "f", "g", "h"],
+              "queries": {"0": ["Cecil Rhodes portrait", "Cecil Rhodes De Beers founder", "cecil rhodes portrait"],
+                          "1": ["Cecil Rhodes photograph 1890s"]}}
+    apply_queries(e, parsed, per_need=3)
+    assert e.identifiers == ["De Beers founder", "diamond magnate", "Cape Colony", "1888", "f", "g"]  # cap 6
+    assert e.desired_assets[0].queries == ["Cecil Rhodes portrait", "Cecil Rhodes De Beers founder"]  # deduped
+    assert e.desired_assets[1].queries == ["Cecil Rhodes photograph 1890s"]
+
+
+def test_queries_for_prefers_llm_queries_else_falls_back():
+    from nolan.keyassets.resolve import queries_for
+    from nolan.keyassets.schema import DesiredAsset, KeyEntity
+    d = DesiredAsset(type="portrait", queries=["Cecil Rhodes De Beers founder", "Cecil John Rhodes portrait"])
+    e = KeyEntity(id="x", name="Cecil Rhodes", kind="person", desired_assets=[d])
+    qs = queries_for(e, d, domain="diamond")
+    assert qs[0] == "Cecil Rhodes De Beers founder"           # LLM queries used verbatim, in order
+    assert "Cecil Rhodes" in qs                               # bare-name safety net appended
+    d2 = DesiredAsset(type="logo", note="mono logo")          # no queries → mechanical fallback
+    e2 = KeyEntity(id="y", name="De Beers", kind="organization", desired_assets=[d2])
+    assert any("De Beers" in q for q in queries_for(e2, d2))
+
+
+def test_verify_subject_uses_identifiers_over_domain():
+    from nolan.keyassets.resolve import _verify_subject
+    from nolan.keyassets.schema import DesiredAsset, KeyEntity
+    e = KeyEntity(id="x", name="Cecil Rhodes", kind="person",
+                  identifiers=["De Beers founder", "diamond magnate", "Cape Colony", "extra"])
+    s = _verify_subject(e, DesiredAsset(type="portrait", note="formal"), domain="diamond")
+    assert "Cecil Rhodes" in s and "De Beers founder" in s and "formal" in s
+    assert "extra" not in s                                   # only the first 3 identifiers
+
+
 # --- P3 hero inventory (staging + honesty) -------------------------------------------------------
 def test_hero_inventory_stages_lists_and_is_honest(tmp_path):
     import re

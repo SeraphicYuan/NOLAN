@@ -67,10 +67,24 @@ def build_client(cfg):
 _DOMAIN_KINDS = {"concept", "work", "event"}
 
 
+def _dedup(cands: List[str], cap: int) -> List[str]:
+    seen, out = set(), []
+    for q in cands:
+        q = (q or "").strip()
+        k = q.lower()
+        if q and k not in seen:
+            seen.add(k)
+            out.append(q)
+    return out[:cap]
+
+
 def queries_for(entity: KeyEntity, desired: DesiredAsset, domain: str = "") -> List[str]:
-    """Search phrasings for one desired asset, most-specific first: name+note (carries context), then a
-    domain-anchored name (for ambiguous kinds), then name+qualifier, then bare name. Deduped, capped.
-    `domain` = the essay's subject (e.g. 'diamond') — the fix for terse names pulling wrong-domain hits."""
+    """Image-search phrasings for one desired asset. PREFER the LLM-generated `desired.queries`
+    (querygen — context-rich, ordered canonical→descriptive) + a bare-name safety net. Falls back to
+    mechanical templating (name+note / domain-anchored / name+qualifier / bare) when querygen didn't run."""
+    llm_qs = getattr(desired, "queries", None) or []
+    if llm_qs:
+        return _dedup(list(llm_qs) + [(entity.name or "").strip()], cap=5)
     name = (entity.name or "").strip()
     qual = _QUALIFIER.get(desired.type, "")
     note = (desired.note or "").strip()
@@ -83,25 +97,24 @@ def queries_for(entity: KeyEntity, desired: DesiredAsset, domain: str = "") -> L
         cands.append(f"{name} {dom} {qual}".strip())          # disambiguate a generic name by domain
     cands.append(f"{name} {qual}".strip())
     cands.append(name)
-    seen, out = set(), []
-    for q in cands:
-        k = q.lower()
-        if q and k not in seen:
-            seen.add(k)
-            out.append(q)
-    return out[:4]
+    return _dedup(cands, cap=4)
 
 
 def _verify_subject(entity: KeyEntity, desired: DesiredAsset, domain: str = "") -> str:
-    """The subject string the VLM judges against — name + (domain, for ambiguous kinds) + note, so a
-    correct 'four Cs diamond grading chart' isn't rejected because 'The Four Cs' alone is too vague."""
-    parts = [(entity.name or "").strip()]
-    dom = domain.strip()
-    if dom and entity.kind in _DOMAIN_KINDS and dom.lower() not in (entity.name or "").lower():
-        parts.append(dom)
+    """The subject string the VLM judges against — name + the entity's IDENTIFIERS (querygen: role/
+    affiliation/era) + note, so a correct 'four Cs diamond grading chart' isn't rejected because
+    'The Four Cs' alone is too vague, AND so the verify aligns with the enriched queries (no drift).
+    Falls back to the domain hint for ambiguous kinds when identifiers are absent."""
+    name = (entity.name or "").strip()
+    parts = [name]
+    ids = getattr(entity, "identifiers", None) or []
+    if ids:
+        parts.append(", ".join(str(x) for x in ids[:3]))
+    elif domain.strip() and entity.kind in _DOMAIN_KINDS and domain.strip().lower() not in name.lower():
+        parts.append(domain.strip())
     if desired.note:
         parts.append(desired.note.strip())
-    return " — ".join(dict.fromkeys(p for p in parts if p))[:160]
+    return " — ".join(dict.fromkeys(p for p in parts if p))[:180]
 
 
 def _boost(results, asset_type: str):
@@ -175,42 +188,88 @@ def _verify_match(cfg, path: Path, subject: str, *, evocative: bool = False,
             Path(tmp).unlink(missing_ok=True)
 
 
+def _reformulate_queries(cfg, entity: KeyEntity, desired: DesiredAsset, failed: List[str],
+                         reason: str) -> List[str]:
+    """Tier C: ONE extra try. Given the failed queries + WHY (`nothing` found vs `wrong` subject), ask
+    the LLM for 3 new queries from a different angle. Empty on any failure (contained)."""
+    try:
+        import asyncio
+        import json as _json
+        import re as _re
+        from nolan.llm import create_text_llm
+        sys = "You are a photo researcher. Your earlier image-search queries failed. Reply with STRICT JSON only."
+        fail = "returned images of the WRONG subject" if reason == "wrong" else "returned nothing"
+        ids = "; ".join(str(x) for x in (getattr(entity, "identifiers", None) or []))
+        user = (f'SUBJECT: "{entity.name}" ({entity.kind}) — {entity.narrative_role}\n'
+                f'IDENTIFIERS: {ids}\nASSET NEED: type={desired.type}, note="{(desired.note or "").strip()}"\n'
+                f'These queries FAILED: {failed}\nFAILURE: {fail}\n\n'
+                "Write 3 NEW queries from a DIFFERENT angle, each 3-7 words:\n"
+                "- if nothing was found: BROADEN, or use alternative names / simpler terms.\n"
+                "- if the wrong subject returned: ADD stronger disambiguators (exact proper name, role, "
+                "affiliation, era, place).\n"
+                'Return ONLY JSON: {"queries": ["...","...","..."]}')
+        raw = asyncio.run(create_text_llm(cfg).generate(user, system_prompt=sys))
+        m = _re.search(r"\{.*\}", raw or "", _re.DOTALL)
+        d = _json.loads(m.group(0)) if m else {}
+        return _dedup([str(q) for q in (d.get("queries") or [])], cap=3)
+    except Exception:
+        return []
+
+
 def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
-                  *, verify: bool = True, domain: str = "") -> Optional[dict]:
-    """Search → download → validate → VLM relevance-verify the first usable image into `out`. Returns a
-    provenance dict (with `verified`) or None. An EXACT asset that never confirms within the cap is
-    dropped (None) — a wrong hero is worse than a missing one; a `related` asset is kept but unverified."""
+                  *, verify: bool = True, domain: str = "", reformulate: bool = True) -> Optional[dict]:
+    """Search → download → validate → VLM relevance-verify the first usable image into `out`. On total
+    failure, Tier-C reformulates the queries once and retries. Returns a provenance dict (with `verified`)
+    or None — an EXACT asset that never confirms is dropped (missing beats wrong); `related` kept unverified."""
     need_verify = verify and desired.type in _VERIFY_IMAGE_TYPES
     evocative = desired.relevance == "related"
     subject = _verify_subject(entity, desired, domain)
-    tries = 0
-    for q in queries_for(entity, desired, domain):
-        try:
-            results = client.search_assets(q, media_type="image", max_results=8) or []
-        except Exception:
-            continue
-        for res in _boost(results, desired.type):
+
+    def _run(queries):
+        downloaded = False
+        tries = 0
+        for q in queries:
             try:
-                res2 = client.resolve_asset(res)
-                if client.download_image(res2, out) is None or not _valid_image(out):
-                    out.unlink(missing_ok=True)
-                    continue
+                results = client.search_assets(q, media_type="image", max_results=8) or []
             except Exception:
-                out.unlink(missing_ok=True)
                 continue
-            confirmed = None
-            if need_verify:
-                confirmed = _verify_match(cfg, out, subject, evocative=evocative)
-                if not evocative and confirmed is not True:  # EXACT: require a POSITIVE match to keep
-                    tries += 1                               # (False OR unconfirmed → try the next candidate)
+            for res in _boost(results, desired.type):
+                try:
+                    res2 = client.resolve_asset(res)
+                    if client.download_image(res2, out) is None or not _valid_image(out):
+                        out.unlink(missing_ok=True)
+                        continue
+                except Exception:
                     out.unlink(missing_ok=True)
-                    if tries >= _MAX_VERIFY_ATTEMPTS:
-                        return None                          # missing beats wrong for a hero
                     continue
-            prov = _provenance(res, q)
-            prov["file"] = out
-            prov["verified"] = confirmed is True
-            return prov
+                downloaded = True
+                confirmed = None
+                if need_verify:
+                    confirmed = _verify_match(cfg, out, subject, evocative=evocative)
+                    if not evocative and confirmed is not True:   # EXACT: require a POSITIVE match
+                        tries += 1
+                        out.unlink(missing_ok=True)
+                        if tries >= _MAX_VERIFY_ATTEMPTS:
+                            return None, downloaded
+                        continue
+                prov = _provenance(res, q)
+                prov["file"] = out
+                prov["verified"] = confirmed is True
+                return prov, downloaded
+        return None, downloaded
+
+    queries = queries_for(entity, desired, domain)
+    prov, downloaded = _run(queries)
+    if prov:
+        return prov
+    if reformulate and not evocative:                        # Tier C — one fresh-angle retry
+        seen = {q.lower() for q in queries}
+        new = [q for q in _reformulate_queries(cfg, entity, desired, queries,
+                                               "wrong" if downloaded else "nothing") if q.lower() not in seen]
+        if new:
+            prov, _ = _run(new)
+            if prov:
+                return prov
     return None
 
 
@@ -246,38 +305,57 @@ def _verify_video(cfg, video_path: Path, subject: str) -> Optional[bool]:
 
 
 def resolve_video(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
-                  clip_seconds: int = 20, *, verify: bool = True, domain: str = "") -> Optional[dict]:
+                  clip_seconds: int = 20, *, verify: bool = True, domain: str = "",
+                  reformulate: bool = True) -> Optional[dict]:
     """Search video providers → fetch a short on-disk segment into `out` → (for EXACT footage) VLM
-    relevance-verify by MULTIPLE sampled frames. Best-effort (archival video is fragile); returns
-    provenance or None. Reuses the acquisition engine's range-seek segment fetch."""
+    relevance-verify by MULTIPLE sampled frames; Tier-C reformulates once on total failure. Best-effort
+    (archival video is fragile); returns provenance or None."""
     from nolan.acquire.context import _fetch_video_segment
     evocative = desired.relevance == "related"
     subject = _verify_subject(entity, desired, domain)
-    tries = 0
-    for q in queries_for(entity, desired, domain):
-        try:
-            results = client.search_assets(q, media_type="video", max_results=6) or []
-        except Exception:
-            continue
-        for res in _boost(results, "footage"):
+
+    def _run(queries):
+        downloaded = False
+        tries = 0
+        for q in queries:
             try:
-                res2 = client.resolve_video(res) or res
-                url = getattr(res2, "url", None)
-                if not url or not _fetch_video_segment(url, out, clip_seconds, getattr(res2, "duration", None)):
-                    continue
+                results = client.search_assets(q, media_type="video", max_results=6) or []
             except Exception:
                 continue
-            confirmed = None
-            if verify and not evocative:                     # verify EXACT footage; related stays loose
-                confirmed = _verify_video(cfg, out, subject)
-                if confirmed is False:                       # every sampled frame rejected → wrong clip
-                    tries += 1
-                    out.unlink(missing_ok=True)
-                    if tries >= _MAX_VERIFY_ATTEMPTS:
-                        return None
+            for res in _boost(results, "footage"):
+                try:
+                    res2 = client.resolve_video(res) or res
+                    url = getattr(res2, "url", None)
+                    if not url or not _fetch_video_segment(url, out, clip_seconds, getattr(res2, "duration", None)):
+                        continue
+                except Exception:
                     continue
-            prov = _provenance(res, q)
-            prov["file"] = out
-            prov["verified"] = confirmed is True
-            return prov
+                downloaded = True
+                confirmed = None
+                if verify and not evocative:                 # verify EXACT footage; related stays loose
+                    confirmed = _verify_video(cfg, out, subject)
+                    if confirmed is False:                   # every sampled frame rejected → wrong clip
+                        tries += 1
+                        out.unlink(missing_ok=True)
+                        if tries >= _MAX_VERIFY_ATTEMPTS:
+                            return None, downloaded
+                        continue
+                prov = _provenance(res, q)
+                prov["file"] = out
+                prov["verified"] = confirmed is True
+                return prov, downloaded
+        return None, downloaded
+
+    queries = queries_for(entity, desired, domain)
+    prov, downloaded = _run(queries)
+    if prov:
+        return prov
+    if reformulate and not evocative:
+        seen = {q.lower() for q in queries}
+        new = [q for q in _reformulate_queries(cfg, entity, desired, queries,
+                                               "wrong" if downloaded else "nothing") if q.lower() not in seen]
+        if new:
+            prov, _ = _run(new)
+            if prov:
+                return prov
     return None
