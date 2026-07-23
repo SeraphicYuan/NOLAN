@@ -123,6 +123,7 @@
           <label class="dim">videos <input type="number" id="limit" value="10" min="1" max="200" style="width:60px"></label>
           <select id="vmode" title="Visual tier"><option value="keyframe">keyframe + caption</option><option value="storyboard">storyboard (free)</option><option value="off">no visual</option></select>
           <label class="dim" title="Re-process videos already indexed"><input type="checkbox" id="refresh"> force</label>
+          <label class="dim" title="Extra frames inside long b-roll shots (slower)"><input type="checkbox" id="densify"> densify b-roll</label>
           <button class="btn" id="addBtn" onclick="addChannel()">Index channel</button>
         </div>
         <span id="add-status" class="dim"></span>
@@ -211,7 +212,7 @@
       const channel=$("#channel").value.trim(); if(!channel) return;
       const st=$("#add-status"), log=$("#add-log"); st.textContent="starting…"; log.style.display="block"; log.textContent=""; $("#addBtn").disabled=true;
       try{
-        const d=await jpost("/api/transcripts/add-channel",{channel, limit:parseInt($("#limit").value,10)||10, visual:$("#vmode").value, refresh:$("#refresh").checked});
+        const d=await jpost("/api/transcripts/add-channel",{channel, limit:parseInt($("#limit").value,10)||10, visual:$("#vmode").value, refresh:$("#refresh").checked, densify:$("#densify").checked});
         pollJob(d.job_id, st, log, ()=>{ $("#addBtn").disabled=false; loadSources(); loadVideos(); });
       }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; $("#addBtn").disabled=false; }
     }
@@ -299,17 +300,16 @@
           ? `<div class="colhd">Storyboard overview (${d.storyboard.length})</div><div class="strip">` +
             d.storyboard.map(s=>`<img loading="lazy" title="${fmt(s.t)}" src="/api/transcripts/frame?path=${encodeURIComponent(s.thumb)}" onclick="window.open('${esc(m.url||'')}&t=${Math.round(s.t)}s')">`).join("") + `</div>`
           : "";
-        // pair each frame to the window covering it
-        const byWin = t => d.frames.find(f => f.t>=t.start && f.t<=t.end);
-        const rows = d.windows.map(w=>{
-          const f=byWin(w);
-          const img = f ? `<img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(f.thumb)}">` : `<div class="noimg">no frame</div>`;
+        // show ALL frames (shots), each with the transcript at its moment -- like the video library segments
+        const winAt = t => (d.windows.find(w => t>=w.start && t<=w.end) || {}).text || "";
+        const rows = (d.frames||[]).map(f=>{
+          const tr = winAt(f.t);
           return `<div class="win3">
-            <div>${img}<button class="btn ghost mini" style="margin-top:5px;width:100%" onclick="clipMoment('${esc(m.url||'')}',${w.start},${w.end})">✂ clip</button></div>
-            <div><div class="ts">${fmt(w.start)} – ${fmt(w.end)} ${f?ckBadge(f.content_kind, f.asset_type):""}</div><div class="tr">${esc(w.text)}</div></div>
-            <div>${f?structCol(f):'<span class="dim" style="font-size:11px">no snapshot</span>'}</div></div>`;
+            <div><img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(f.thumb)}"><button class="btn ghost mini" style="margin-top:5px;width:100%" onclick="clipMoment('${esc(m.url||'')}',${Math.max(0,f.t-1).toFixed(1)},${(f.t+5).toFixed(1)})">✂ clip</button></div>
+            <div><div class="ts">@ ${fmt(f.t)} ${ckBadge(f.content_kind, f.asset_type)}</div>${tr?`<div class="tr" style="font-size:12px;color:var(--text-secondary)">"${esc(tr.slice(0,150))}"</div>`:""}</div>
+            <div>${structCol(f)}</div></div>`;
         }).join("");
-        $("#d-body").innerHTML = strip + (rows || '<div class="dim">No transcript windows.</div>');
+        $("#d-body").innerHTML = strip + (rows || '<div class="dim">No frames captured for this video.</div>');
       }catch(e){ $("#d-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
     function closeDetail(){ $("#detail-modal").classList.remove("on"); }

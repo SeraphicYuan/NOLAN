@@ -327,7 +327,8 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
 
 
 async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
-                               visual: str = "keyframe", max_frames: int = 0, job=None) -> int:
+                               visual: str = "keyframe", max_frames: int = 0, densify: bool = False,
+                               job=None) -> int:
     """Capture + embed the visual tier for ONE transcript video — shared by the channel crawl and the
     single-video refresh so both get the SAME behaviour. `keyframe` = FULL-RES scene-cut detection
     (accurate, parallel ffmpeg — replaces the coarse storyboard detector that missed most cuts): ONE frame
@@ -366,16 +367,16 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
                 return w["text"]
         return ""
 
-    async def _grab_cap(times):                                   # grab (parallel) + caption (parallel)
-        kf = await asyncio.to_thread(tfr.ranged_keyframes, url, list(times), tmpd)
-        an = await tfr.caption_frames_async([(fp, _wtext(t), t) for t, fp in kf])
+    async def _grab_cap(times):                                   # grab (parallel) + caption (parallel, wide)
+        kf = await asyncio.to_thread(tfr.ranged_keyframes, url, list(times), tmpd, True, 10)
+        an = await tfr.caption_frames_async([(fp, _wtext(t), t) for t, fp in kf], concurrency=16)
         return kf, an
 
     base_kfs, base_an = await _grab_cap([t for t, _s, _e in base])
     tmap = {round(t, 1): (s, e) for t, s, e in base}
     capframes = [(t, tmap.get(round(t, 1), (t, t))[0], tmap.get(round(t, 1), (t, t))[1],
                   a.get("content_kind", "")) for (t, fp), a in zip(base_kfs, base_an)]
-    extra_times = tfr.densify_broll(capframes)                    # extra frames INSIDE broll shots
+    extra_times = tfr.densify_broll(capframes) if densify else []  # OPT-IN: extra frames inside broll shots
     extra_kfs, extra_an = [], []
     if extra_times:
         extra_kfs, extra_an = await _grab_cap(extra_times)
@@ -393,7 +394,8 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
 
 async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str, limit: int = 10,
                                      window_s: float = 45.0, overlap_s: float = 10.0,
-                                     visual: str = "keyframe", max_frames: int = 0, refresh: bool = False):
+                                     visual: str = "keyframe", max_frames: int = 0, densify: bool = False,
+                                     refresh: bool = False):
     """Build/refresh a TRANSCRIPT library from a YouTube channel: list its videos, fetch each transcript
     (captions only — NO video download), chunk into overlapping timestamped windows, ingest as a
     transcript-tier VideoIndex row (has_footage=0) + embed into the unified semantic store. Per-video
@@ -436,7 +438,7 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
             try:
                 yid = meta.get("video_id") or v["video_id"]
                 nframes = await _capture_visual_tier(v["url"], windows, yid, title,
-                                                     visual=visual, max_frames=max_frames, job=job)
+                                                     visual=visual, max_frames=max_frames, densify=densify, job=job)
                 frames_total += nframes
             except Exception as e:
                 job.log(f"    (visual '{visual}' skipped: {type(e).__name__}: {e})")
@@ -453,7 +455,7 @@ async def ingest_channel_transcripts(job, *, config, db_path: Path, channel: str
 
 async def refresh_transcript_video(job, *, config, db_path: Path, url: str, channel: str = "",
                                    window_s: float = 45.0, overlap_s: float = 10.0,
-                                   visual: str = "keyframe", max_frames: int = 0):
+                                   visual: str = "keyframe", max_frames: int = 0, densify: bool = False):
     """Re-index ONE transcript video (force): re-fetch captions, re-chunk, replace its segments + frames,
     re-embed + re-caption. Powers the per-video Refresh action."""
     import datetime as _dt
@@ -480,7 +482,7 @@ async def refresh_transcript_video(job, *, config, db_path: Path, url: str, chan
         try:
             job.set_progress(0.6, "Re-capturing frames…")
             nframes = await _capture_visual_tier(url, windows, yid, meta.get("title", ""),
-                                                 visual=visual, max_frames=max_frames, job=job)
+                                                 visual=visual, max_frames=max_frames, densify=densify, job=job)
         except Exception as e:
             job.log(f"  (visual refresh skipped: {type(e).__name__}: {e})")
     tl.record_transcript(yid, {**meta, "url": url}, len(windows), channel, frames=nframes, added=now)
