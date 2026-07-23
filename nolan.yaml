@@ -23,7 +23,7 @@ llm:
   # inference). qwen/qwen3.7-plus via OpenRouter — cheaper than Gemini.
   # Set provider: gemini to switch back. Needs OPENROUTER_API_KEY (or GEMINI_API_KEY).
   provider: openrouter
-  model: qwen/qwen3.7-plus
+  model: deepseek/deepseek-v4-flash
   reasoning_enabled: false
 vision:
   provider: openrouter

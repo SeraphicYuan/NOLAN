@@ -20,11 +20,11 @@ class GeminiConfig:
 class LLMConfig:
     """Default text-LLM for authoring tasks (script, scene design, clustering, etc.).
 
-    Defaults to qwen/qwen3.7-plus via OpenRouter (cheaper than Gemini, strong quality).
+    Defaults to deepseek/deepseek-v4-flash via OpenRouter (fast + cheap).
     Override globally in nolan.yaml (`llm:` block) or per-run via CLI/webUI.
     """
     provider: str = "openrouter"   # openrouter (default) | gemini
-    model: str = "qwen/qwen3.7-plus"
+    model: str = "deepseek/deepseek-v4-flash"
     reasoning_enabled: bool = False
 
 

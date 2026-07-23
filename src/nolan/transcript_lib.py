@@ -260,7 +260,7 @@ def survey_channel(channel: str, limit: Optional[int] = None,
 
 async def recommend_from_channel(channel: str, config, limit: int = 250,
                                  catalog_dir: Optional[Path] = None,
-                                 model: str = "deepseek/deepseek-chat") -> Dict[str, Any]:
+                                 model: str = "") -> Dict[str, Any]:
     """Recommend a DIVERSE, non-redundant subset of a channel to add. Goal = BROAD documentary coverage
     (quality assumed from documentary channels), so it leans INCLUSIVE: it tags each candidate by topic,
     flags redundancy (vs the existing library + within the channel), and notes coverage gaps. Titles-only
@@ -296,7 +296,7 @@ async def recommend_from_channel(channel: str, config, limit: int = 250,
          '"verdict":"add|skip","reason":"..."}]}'),
     ]
     prompt = _nl.join(parts)
-    llm = create_text_llm(config, model=model)
+    llm = create_text_llm(config, model=(model or None))   # None -> config default (deepseek-v4-flash)
     raw = await llm.generate(prompt, system_prompt=sys_p)
     try:
         m = re.search(r"{.*}", raw, re.DOTALL)
