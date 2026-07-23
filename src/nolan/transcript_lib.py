@@ -333,8 +333,8 @@ async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, m
                 "items": [], "add": 0, **stats}
     sys_p = ("You curate a BROAD documentary library spanning ALL topics (history, business, arts, sports, "
              "science, nature, culture, biography, war, politics, tech, society, crime, religion...). Quality "
-             "is assured (documentary channels). Exact near-duplicate titles were pre-removed, but you MUST "
-             "still deduplicate SEMANTICALLY (same subject covered several ways). Maximize TOPIC BREADTH.")
+             "is assured (documentary channels). Exact near-duplicate titles were pre-removed. Maximize TOPIC "
+             "BREADTH -- ADD is the strong default; different people/events/eras/subjects are ALL distinct.")
     _nl = chr(10)
     parts = [
         "EXISTING LIBRARY (" + str(len(lib_titles)) + " videos) titles:",
@@ -343,11 +343,13 @@ async def recommend_from_channel(channel, config, limit=250, catalog_dir=None, m
         "DISTINCT CANDIDATES (id | title) -- already de-duplicated:",
         _nl.join(s["video_id"] + " | " + (s["title"] or "") for s in distinct),
         "",
-        ("For EACH candidate output JSON. Verdict 'add' by default, BUT 'skip' when (a) the existing library "
-         "already covers it, OR (b) several candidates cover the SAME subject/person/event -- keep only the 1-2 "
-         "most DISTINCT angles and skip the rest (same subject + genuinely different era/angle is NOT redundant). "
-         "Short `topic` + one-line `reason` (name what it duplicates when skipping). Also a 1-2 sentence "
-         "`coverage` note: which topics the library is THIN on that this channel fills."),
+        ("For EACH candidate output JSON. Verdict 'add' by DEFAULT. Only 'skip' when: (a) it is a trailer / "
+         "fragment / not a full documentary; (b) the existing library already covers that SPECIFIC subject; or "
+         "(c) several candidates cover the SAME SPECIFIC person/event (e.g. 4 Kissinger docs) -- keep the 1-2 "
+         "most distinct, skip the rest. CRUCIAL: different people/events/eras are DISTINCT and must be ADDED "
+         "(FDR is NOT redundant with JFK; a different war/company/scandal is NOT redundant -- do not dedup by "
+         "broad category). Short `topic` + one-line `reason`. Also a 1-2 sentence `coverage` note: topics the "
+         "library is THIN on that this channel fills."),
         ('Respond ONLY with JSON: {"coverage":"...","items":[{"video_id":"...","topic":"...",'
          '"verdict":"add|skip","reason":"..."}]}'),
     ]
