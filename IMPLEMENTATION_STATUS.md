@@ -4,6 +4,10 @@
 **Status:** Complete
 **Last Updated:** 2026-07-23
 
+## Acquisition consolidation #5 — identifier-injected queries for concrete needs (2026-07-23)
+
+`derive_asset_needs` produced phrasing-variants only (synonyms/mood) — for a CONCRETE NAMED subject that gave the same terse-query weakness key-assets fixed. Folded the world-knowledge/identifier injection into its one-call query-gen: for a concrete named subject the phrasings now inject its real-world IDENTIFIERS (role/affiliation/era/place + name variants) so the search disambiguates; abstract subjects keep evocative phrasings (they route through evoke_broll metaphors). Right-sized for the RECALL path (prompt-level, no extra stage/LLM calls — vs key-assets' per-entity querygen for the precision path). Live-verified: 'Cecil Rhodes' -> 'Cecil Rhodes De Beers founder portrait'/'Cecil John Rhodes 1880s'; 'Ernest Oppenheimer' -> 'De Beers chairman'/'Anglo American founder'; abstract 'diamond cartel' stayed metaphor. Parse test unchanged (13 green). **Program docs/ACQUISITION_CONSOLIDATION.md steps 1-5 COMPLETE.**
+
 ## Acquisition consolidation #4 — concurrent download in the acquire engine (2026-07-23)
 
 `acquire/engine.py:acquire_need` was fully sequential; the per-need candidate downloads (the network-bound dominant cost) now run in a bounded ThreadPoolExecutor (≤8). Safe by construction: each download is independent and writes a UNIQUE cand_dir path, and `ex.map` preserves order so `live` keeps the search-rank order that the CLIP-scoring/dedup downstream depends on. Left sequential on purpose: CLIP embedding + the cross-need avg-hash dedup (thread-safety / incremental-dedup semantics) — a bigger refactor for later. test_acquire: order-preserved-drops-failures test added (10 green). (The per-provider backoff from the earlier image_search change already benefits this path.)
