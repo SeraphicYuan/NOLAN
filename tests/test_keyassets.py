@@ -221,6 +221,51 @@ def test_write_manifest_attaches_resolved(tmp_path):
     assert ent["resolved"][0]["file"].endswith("ka_de_beers_logo.jpg")
 
 
+# --- P3 hero inventory (staging + honesty) -------------------------------------------------------
+def test_hero_inventory_stages_lists_and_is_honest(tmp_path):
+    import re
+    from nolan.keyassets.inventory import HERO_END, HERO_START, write_hero_section
+    ka = tmp_path / "capture" / "keyassets"
+    (ka / "videos").mkdir(parents=True)
+    (ka / "ka_de_beers_logo.jpg").write_bytes(b"img")
+    (ka / "videos" / "ka_kimberley_footage.mp4").write_bytes(b"vid")
+    data = {"entities": [
+        {"id": "ka_de_beers", "name": "De Beers", "kind": "organization", "narrative_role": "the cartel",
+         "mentions": ["De Beers"],
+         "resolved": [{"file": "capture/keyassets/ka_de_beers_logo.jpg", "type": "logo",
+                       "variant": "original", "verified": True, "source": "ddgs", "relevance": "exact"}]},
+        {"id": "ka_kimberley", "name": "Kimberley Mine", "kind": "place", "narrative_role": "the big hole",
+         "resolved": [{"file": "capture/keyassets/videos/ka_kimberley_footage.mp4", "type": "footage",
+                       "variant": "original", "relevance": "related", "source": "archive"}]},
+        {"id": "ka_ghost", "name": "Ghost", "kind": "work",
+         "resolved": [{"file": "capture/keyassets/missing.jpg", "type": "photo"}]},   # no file → not listed
+    ]}
+    (tmp_path / "key_assets.json").write_text(json.dumps(data), encoding="utf-8")
+    # a prior (acquisition) inventory that must be preserved below the HERO block
+    ex = tmp_path / "capture" / "extracted"
+    ex.mkdir(parents=True)
+    (ex / "asset-descriptions.md").write_text("# Asset descriptions\n- `assets/pool_00.jpg` — a pool item\n",
+                                              encoding="utf-8")
+
+    n = write_hero_section(tmp_path, log=lambda *a: None)
+    assert n == 2                                              # ghost (no file) excluded
+    inv = (ex / "asset-descriptions.md").read_text(encoding="utf-8")
+    assert HERO_START in inv and HERO_END in inv
+    assert "a pool item" in inv                               # prior acquisition inventory preserved
+    # heroes staged where assets.mjs looks
+    assert (tmp_path / "capture/assets/ka_de_beers_logo.jpg").exists()
+    assert (tmp_path / "capture/assets/videos/ka_kimberley_footage.mp4").exists()
+    # HONESTY: every referenced hero basename exists on disk (no phantom)
+    for ref in re.findall(r"`(assets/[^`]+)`", inv):
+        if ref == "assets/pool_00.jpg":
+            continue
+        assert (tmp_path / "capture" / ref).exists(), ref
+    # idempotent: a second pass doesn't duplicate the block
+    write_hero_section(tmp_path, log=lambda *a: None)
+    inv2 = (ex / "asset-descriptions.md").read_text(encoding="utf-8")
+    assert inv2.count(HERO_START) == 1
+
+
 # --- schema round-trip ---------------------------------------------------------------------------
 def test_proposal_round_trip(tmp_path):
     ents = _ents(("De Beers", "organization"), ("Cecil Rhodes", "person"))

@@ -15,6 +15,7 @@ from .collect import collect
 from .consolidate import consolidate, consolidate_prompt, parse_directions
 from .decompose import decompose, decompose_prompt, parse_entities
 from .enrich import enrich, enrich_prompt, merge_entities
+from .inventory import stage_heroes, write_hero_section
 from .resolve import build_client, queries_for, resolve_image, resolve_video
 from .schema import DesiredAsset, KeyAssetsProposal, KeyEntity, ResearchDirection
 
@@ -24,6 +25,7 @@ __all__ = [
     "enrich", "enrich_prompt", "merge_entities",
     "consolidate", "consolidate_prompt", "parse_directions", "build_proposal",
     "collect", "build_client", "queries_for", "resolve_image", "resolve_video",
+    "stage_heroes", "write_hero_section",
 ]
 
 
