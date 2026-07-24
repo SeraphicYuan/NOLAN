@@ -41,11 +41,14 @@ def judge_prompt(need: Dict, video: bool = False) -> str:
     return (f'BEAT: "{q}"\n{aim}\n{subject} Reply STRICT JSON: {{'
             '"usable": <0-10, how well a professional editor could actually cut this image under the beat; '
             "an off-topic subject scores low>, "
-            '"usable": <0-10, how well a professional editor could actually cut this image under the beat; '
-            "an off-topic subject scores low>, "
             '"flags": "<any of: watermark / overlaid text / stock-photo graphic / logo; '
             "OR a short off-topic note e.g. 'a sports car, not a permit'; empty if clean>\", "
-            '"caption": "<=24 words: concrete subject, setting, mood, dominant palette, and photoreal-or-illustration>", '
+            # rich caption: the descriptive value lives IN the caption (the authoring pool-pickers read this
+            # text), so name the concrete subject + any notable objects/people, not just a vague mood.
+            '"caption": "<=26 words: concrete SUBJECT + any notable objects or people, the setting, the mood, '
+            'the dominant palette, and whether it is photoreal or an illustration>", '
+            # placement signal (a rule free-text can\'t do): what KIND of asset this is for the editor.
+            '"content_kind": "<exactly one of: broll | stills | talking_head | graphics>", '
             '"why": "<=12 words>"}')
 
 
@@ -75,9 +78,13 @@ def parse_verdict(j: Optional[Dict]) -> Dict:
         usable = None if j.get("usable") is None else max(0.0, min(10.0, float(j.get("usable"))))
     except (TypeError, ValueError):
         usable = None
+    ck = str(j.get("content_kind") or "").strip().lower().replace("-", "_").replace(" ", "_")
+    ck = {"broll": "broll", "b_roll": "broll", "stills": "stills", "still": "stills", "image": "stills",
+          "talking_head": "talking_head", "graphics": "graphics", "graphic": "graphics"}.get(ck, ck)
     return {"usable": usable,
             "flags": str(j.get("flags") or "").strip(),
             "caption": str(j.get("caption") or "").strip().replace("\n", " "),
+            "content_kind": ck if ck in ("broll", "stills", "talking_head", "graphics") else "",
             "why": str(j.get("why") or "").strip()}
 
 

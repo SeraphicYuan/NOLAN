@@ -48,10 +48,11 @@ def _extract_json(txt: str):
 
 
 def _vision_config(config) -> VisionConfig:
-    """Same OpenRouter vision model ingest uses (qwen/qwen3.7-plus), reasoning off for speed."""
+    """The default OpenRouter vision model (config.vision.model — gemma-4-26b, our benchmarked VLM),
+    reasoning off for speed."""
     model = config.vision.model
     if "/" not in model:
-        model = "qwen/qwen3.7-plus"
+        model = "google/gemma-4-26b-a4b-it"
     return VisionConfig(
         provider="openrouter", model=model, host=config.vision.host, port=config.vision.port,
         timeout=config.vision.timeout, api_key=config.vision.openrouter_api_key,

@@ -27,7 +27,7 @@ llm:
   reasoning_enabled: false
 vision:
   provider: openrouter
-  model: qwen/qwen3.7-plus
+  model: google/gemma-4-26b-a4b-it
   reasoning_enabled: false
   reasoning_max_tokens: null
 indexing:

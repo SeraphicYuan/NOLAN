@@ -390,6 +390,7 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
         # already passed the engine's cheap CLIP frame-relevance gate — skip the expensive VLM filmstrip.
         if "clips_library" in str(item.get("source", "")):
             item.setdefault("usable", True)
+            item.setdefault("content_kind", "broll")             # library video = b-roll (skips the VLM)
             if not item.get("caption"):
                 item["caption"] = f"[video] {item.get('query', '')}".strip()
             return
@@ -419,6 +420,8 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
             item["caption"] = ("[video] " + (v["caption"] or item.get("query", ""))).strip()
         else:
             item["caption"] = v["caption"] or f"({item['query']})"
+        if v.get("content_kind"):
+            item["content_kind"] = v["content_kind"]                 # placement signal, from the same VLM call
         item["usable"], item["flags"] = v["usable"], v["flags"]      # → /pool curation badges
         item["_verdict"] = v
     await asyncio.gather(*(judge(it) for it in pool))
