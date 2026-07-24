@@ -1,23 +1,24 @@
-"""#3 — auto-select ambient GROUNDS for long, ungrounded data-viz scenes from the project POOL.
+"""S3 — auto-select ambient GROUNDS for long, ungrounded holds from the project POOL (image OR video).
 
-A long data hold reads dead on a flat field; a thematically-apt image behind it (with Ken-Burns) — a
-data-centre aerial behind a spend chart, redacted court dockets behind a shell-company web, cracked
-earth behind a "running dry" stat — lifts it (Layer 3 of the reveal-sync program). Hand-picking those is
-taste, so this is the PAIRING step: for each ungrounded data scene held long enough to go stale, match
-the scene's text to the pool images and set `data.ground`.
+A scene held longer than `_LONG_HOLD_S` (5s) on a flat field reads DEAD — whether it's a text statement
+("You go to look it up" on bare paper) or a stat on a flat field. A thematically-apt image/clip behind it
+(dimmed, with a slow push) lifts it: a data-centre aerial behind a spend chart, a Big-Hole mine behind
+"the ground kept giving", a padlock behind "under US antitrust law".
 
-RESTRAINT BY DEFAULT — a ground is EARNED, not mandatory. Not every data/stat frame wants a photo: a
-stark number on a clean field often hits harder than one buried under one, and over-grounding reads muddy
-and samey. So this only CANDIDATES the long holds (the stale-risk ones — a short or dense beat is fine
-bare), and when nothing genuinely fits it LEAVES THE FRAME CLEAN — it never papers or forces a mismatched
-image (both are worse than clean). The `--apply` result is a PROPOSAL to curate, not a mandate.
+RESTRAINT BY DEFAULT — a ground is EARNED, not mandatory. This only CANDIDATES the long holds (a short or
+dense beat is fine bare, and blocks that carry their OWN dominant visual — document / comparison / gallery —
+are never papered over). When NOTHING in the pool genuinely fits a scene it LEAVES THE FRAME CLEAN: a bare
+field beats a forced, mismatched photo (both are worse than clean type). Never forces.
 
 Routing: the match is semantic (a spend chart wants *data-centre* imagery — no shared keyword), so the
-primary picker is an LLM judgment over the pool captions (cheap, one batched call) that returns "none"
-when nothing fits; a keyword scorer is the offline fallback. The chosen ground renders through
-compose._data_ground's shaped legibility veil (#4).
+primary picker is an LLM judgment over the pool captions (cheap, one batched call) that returns "none" when
+nothing fits; a keyword scorer is the offline fallback. The chosen ground renders through the composer's
+media_ground (image → `kb` Ken-Burns; video → looped clip, freeze-healed by assemble-media).
 
-CLI:  python -X utf8 -m nolan.hyperframes.autoground <comp> [--apply] [--no-llm] [--min-dur 8]
+Wiring: the finish DAG calls `ground_data_scenes(comp, apply=True, min_dur=5, recompose=False)` AFTER
+word-sync (durations known) and BEFORE its recompose step (which rebuilds the HTML from the specs we write).
+
+CLI:  python -X utf8 -m nolan.hyperframes.autoground <comp> [--apply] [--no-llm] [--min-dur 5]
 """
 from __future__ import annotations
 
@@ -27,11 +28,15 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 try:
-    from nolan.hyperframes.sync import _DATAVIZ
+    from nolan.hyperframes.sync import _LONG_HOLD_S
 except Exception:                                            # keep the operator importable standalone
-    _DATAVIZ = {"chart", "stat", "sankey", "pie", "funnel", "quadrant", "cycle", "spectrum", "scale",
-                "spans", "venn", "connection_board"}
+    _LONG_HOLD_S = 5.0
 
+# Blocks that carry their OWN dominant visual — never paper an ambient ground behind them.
+_NEVER_GROUND = {"document", "comparison", "split_view", "gallery", "collage", "newshead", "quadrant"}
+_IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
+_VID_EXT = (".mp4", ".mov", ".webm")
+_KB = [1.0, 1.08]                                            # subtle Ken-Burns push so a still ground isn't dead
 _STOP = {"the", "a", "an", "of", "and", "or", "to", "in", "is", "it", "that", "this", "for", "with",
          "vs", "on", "at", "by", "as", "all", "per", "its", "our", "your", "not", "no"}
 
@@ -40,56 +45,75 @@ def _comp_dir(comp) -> Path:
     p = Path(comp)
     if p.exists() and (p / "compositions").exists():
         return p
-    from nolan.hyperframes.edit import _project_dir       # resolve a bare comp id → its dir
+    from nolan.hyperframes.edit import _project_dir          # resolve a bare comp id → its dir
     return Path(_project_dir(comp))
 
 
-def _pool_images(comp_dir: Path) -> List[Dict]:
-    """Usable still images in the project pool that physically exist in assets/ — {file, caption}."""
+def _pool_assets(comp_dir: Path) -> Dict[str, Dict]:
+    """Usable pool assets (image + video) that physically resolve on disk → {file: {caption, media_type, src}}.
+    Resolves under capture/assets{,/videos} (where the pool lives at finish time) OR assets/ (post-stage);
+    `src` is the `assets/…` path we author into the ground — assemble-media stages it from capture."""
     pj = comp_dir / "pool.json"
     if not pj.exists():
-        return []
-    pool = json.loads(pj.read_text(encoding="utf-8"))
+        return {}
+    try:
+        pool = json.loads(pj.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
     items = pool if isinstance(pool, list) else (pool.get("items") or pool.get("assets") or [])
-    out = []
+    out: Dict[str, Dict] = {}
     for it in items:
-        if not isinstance(it, dict):
+        if not isinstance(it, dict) or it.get("usable") is False:
             continue
         f = str(it.get("file") or "")
-        if not f.lower().endswith((".jpg", ".jpeg", ".png")) or it.get("usable") is False:
+        ext = Path(f).suffix.lower()
+        mt = "image" if ext in _IMG_EXT else ("video" if ext in _VID_EXT else None)
+        if not mt:
             continue
-        if not (comp_dir / "assets" / f).exists():
+        roots = [comp_dir / "capture" / "assets", comp_dir / "capture" / "assets" / "videos",
+                 comp_dir / "assets", comp_dir / "assets" / "videos"]
+        if not any((r / f).exists() for r in roots):
             continue
-        cap = it.get("caption") or it.get("desc") or it.get("description") or it.get("query") or ""
-        out.append({"file": f, "caption": cap.strip()})
+        cap = (it.get("caption") or it.get("desc") or it.get("description") or it.get("query") or "").strip()
+        src = f"assets/videos/{f}" if mt == "video" else f"assets/{f}"
+        out[f] = {"caption": cap, "media_type": mt, "src": src}
     return out
 
 
 def _scene_text(sc: Dict) -> str:
     d = sc.get("data", {}) or {}
-    return " ".join(str(d.get(k, "")) for k in ("kicker", "title", "titleHi", "center", "headline")).strip()
+    parts = [str(d.get(k, "")) for k in ("kicker", "title", "titleHi", "center", "headline", "anchor")]
+    if isinstance(d.get("lines"), list):
+        parts += [x for x in d["lines"] if isinstance(x, str)]
+    for it in (d.get("items") or []):
+        if isinstance(it, dict):
+            parts += [str(it.get("label") or ""), str(it.get("text") or "")]
+    return " ".join(p for p in parts if p).strip()
 
 
 def _toks(s: str) -> set:
     return {t for t in re.sub(r"[^a-z0-9 ]", " ", (s or "").lower()).split() if len(t) >= 4 and t not in _STOP}
 
 
-def _keyword_pick(sc: Dict, pool: List[Dict]) -> Optional[str]:
-    """Offline fallback: the pool image sharing the most distinctive content words with the scene text.
-    Returns a file only on a real overlap (≥1 shared content token), else None (→ paper)."""
+def _keyword_pick(sc: Dict, pool: List[Dict], taken: set) -> Optional[str]:
+    """Offline fallback: the unused pool asset sharing the most distinctive content words with the scene text.
+    Returns a file only on a real overlap (≥1 shared content token), else None (→ leave clean)."""
     q = _toks(_scene_text(sc))
     if not q:
         return None
     best, bf = 0, None
-    for img in pool:
-        sc_shared = len(q & _toks(img["caption"]))
-        if sc_shared > best:
-            best, bf = sc_shared, img["file"]
+    for a in pool:
+        if a["file"] in taken:
+            continue
+        shared = len(q & _toks(a["caption"]))
+        if shared > best:
+            best, bf = shared, a["file"]
     return bf if best >= 1 else None
 
 
 def _needs_ground(sc: Dict, min_dur: float) -> bool:
-    if sc.get("type") not in _DATAVIZ:
+    """A long ungrounded hold that isn't a self-visual block — the auto-ground candidate set (text AND data)."""
+    if sc.get("type") in _NEVER_GROUND:
         return False
     g = (sc.get("data", {}) or {}).get("ground")
     grounded = isinstance(g, dict) and g.get("kind") not in (None, "color", "flat")
@@ -98,9 +122,9 @@ def _needs_ground(sc: Dict, min_dur: float) -> bool:
 
 def _llm_pick(needing: List, pool: List[Dict]) -> Dict[str, str]:
     """One batched LLM call → {uid: pool_file} for the scenes it can place. `needing` is a list of
-    (uid, scene) — uid is frame-qualified ('01-hook/s2') because scene ids REPEAT across frames (every
-    frame has an s2), so a bare id collides. Picks the image whose SUBJECT evokes the scene's topic
-    (thematic, not literal); omits / 'none' when nothing fits. {} on any failure."""
+    (uid, scene) — uid is frame-qualified ('01-hook/s2') because scene ids REPEAT across frames. Picks the
+    asset whose SUBJECT evokes the scene's topic (thematic, not literal); omits / 'none' when nothing fits.
+    {} on any failure (→ keyword fallback)."""
     try:
         import asyncio
         from nolan.config import load_config
@@ -108,79 +132,86 @@ def _llm_pick(needing: List, pool: List[Dict]) -> Dict[str, str]:
         llm = create_text_llm(load_config())
     except Exception:
         return {}
-    catalog = "\n".join(f"- {img['file']}: {img['caption']}" for img in pool)
+    catalog = "\n".join(f"- {a['file']} [{a['media_type']}]: {a['caption']}" for a in pool)
     scenes = "\n".join(f'- {uid}: "{_scene_text(sc)}" (a {sc.get("type")} block)' for uid, sc in needing)
     prompt = (
-        "You are art-directing a video essay. Each SCENE below is a data chart/diagram that will hold on "
-        "screen for several seconds; pick an ambient background IMAGE from the POOL to sit behind it (dimmed, "
-        "with a slow Ken-Burns), so the hold isn't a dead flat field.\n"
-        "Choose the image whose SUBJECT evokes the scene's topic — thematic, not literal (a spending chart "
-        "wants a data-centre / money image; a shell-company web wants legal documents; a 'running dry' stat "
-        "wants parched earth). Only pick an image that GENUINELY fits — if nothing in the pool suits a scene, "
-        "return \"none\" for it (a bare field beats a mismatched photo). Do NOT reuse one image for many "
-        "scenes just to fill them.\n\n"
+        "You are art-directing a video essay. Each SCENE below holds on screen for several seconds; pick a "
+        "background IMAGE or VIDEO from the POOL to sit behind it (dimmed, slow push), so the hold isn't a "
+        "dead flat field.\n"
+        "Choose the asset whose SUBJECT evokes the scene's topic — thematic, not literal (a spending chart "
+        "wants a data-centre / money image; 'under antitrust law' wants a lock/court; 'the ground kept giving' "
+        "wants a mine). Only pick an asset that GENUINELY fits — if nothing in the pool suits a scene, return "
+        "\"none\" for it (a bare field beats a mismatched photo). Do NOT reuse one asset for many scenes.\n\n"
         f"POOL:\n{catalog}\n\nSCENES (the key before the colon is the exact id to return):\n{scenes}\n\n"
         'Return ONLY JSON mapping each scene key to a file or "none": {"01-hook/s2": "a2_00.jpg", ...}')
-    sys_p = "You return only strict JSON. No prose."
     try:
-        raw = asyncio.run(llm.generate(prompt, sys_p))
+        raw = asyncio.run(llm.generate(prompt, "You return only strict JSON. No prose."))
         m = re.search(r"\{.*\}", raw, re.S)
         obj = json.loads(m.group(0)) if m else {}
-        valid = {img["file"] for img in pool}
+        valid = {a["file"] for a in pool}
         return {k: v for k, v in obj.items() if isinstance(v, str) and v in valid}
     except Exception:
         return {}
 
 
-def ground_data_scenes(comp, apply: bool = False, min_dur: float = 8.0, use_llm: bool = True,
-                       dim: float = 0.62) -> Dict:
-    """Assign ambient grounds to long ungrounded data scenes. `apply` writes the specs (+ recompose);
-    otherwise a dry-run report. Returns {grounded: [...], paper: [...], scanned, applied}."""
+def ground_data_scenes(comp, apply: bool = False, min_dur: float = None, use_llm: bool = True,
+                       recompose: bool = True) -> Dict:
+    """Assign ambient grounds to long ungrounded holds (text AND data) from the pool; leave the rest clean.
+    `apply` writes the specs; `recompose` (when applying) rebuilds their HTML — the finish DAG passes
+    recompose=False because its own recompose step runs next. Returns {grounded, left_clean, scanned, …}."""
     comp_dir = _comp_dir(comp)
-    pool = _pool_images(comp_dir)
+    min_dur = _LONG_HOLD_S if min_dur is None else min_dur
+    assets = _pool_assets(comp_dir)                          # {file: {caption, media_type, src}}
+    pool_list = [{"file": f, **v} for f, v in assets.items()]
     spec_files = sorted((comp_dir / "compositions" / "frames").glob("*.spec.json"))
-    picks_by_uid: Dict[str, str] = {}
-    needing_all: List = []                                   # (uid, scene) — uid is frame-qualified
-    specs = []
+
+    specs, needing_all = [], []                              # (uid, scene); uid frame-qualified
     for sf in spec_files:
-        spec = json.loads(sf.read_text(encoding="utf-8"))
+        try:
+            spec = json.loads(sf.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
         specs.append((sf, spec))
         for fr in spec.get("frames", []):
             for sc in fr.get("scenes", []):
                 if _needs_ground(sc, min_dur):
                     needing_all.append((f"{fr.get('id')}/{sc.get('id')}", sc))
-    if use_llm and pool and needing_all:
-        picks_by_uid = _llm_pick(needing_all, pool)
 
-    grounded, clean = [], []
+    picks_by_uid = _llm_pick(needing_all, pool_list) if (use_llm and pool_list and needing_all) else {}
+
+    grounded, clean, taken = [], [], set()
     for sf, spec in specs:
         changed = False
         for fr in spec.get("frames", []):
             for sc in fr.get("scenes", []):
                 if not _needs_ground(sc, min_dur):
                     continue
-                sid = sc.get("id")
-                uid = f"{fr.get('id')}/{sid}"
-                f = picks_by_uid.get(uid) or (_keyword_pick(sc, pool) if pool else None)
-                if f:
-                    sc.setdefault("data", {})["ground"] = {
-                        "kind": "image", "src": f"assets/{f}", "kenburns": [1.0, 1.11], "dim": dim}
+                sid, uid = sc.get("id"), f"{fr.get('id')}/{sc.get('id')}"
+                dur = round(float(sc.get("dur", 0) or 0), 1)
+                f = picks_by_uid.get(uid)
+                if f in taken:                              # never reuse an asset (LLM asked not to; enforce it)
+                    f = None
+                if not f and pool_list:
+                    f = _keyword_pick(sc, pool_list, taken)
+                if f and f in assets:
+                    a = assets[f]
+                    sc.setdefault("data", {})["ground"] = (
+                        {"kind": "video", "src": a["src"]} if a["media_type"] == "video"
+                        else {"kind": "image", "src": a["src"], "kb": list(_KB)})   # 'kb' — the key compose reads
+                    taken.add(f)
                     grounded.append({"frame": fr.get("id"), "scene": sid, "block": sc.get("type"),
-                                     "dur": round(float(sc.get("dur", 0) or 0), 1), "src": f})
+                                     "dur": dur, "src": a["src"], "kind": a["media_type"]})
                     changed = True
                 else:
-                    # nothing fits → LEAVE IT CLEAN (a bare field beats paper/a mismatched photo)
-                    clean.append({"frame": fr.get("id"), "scene": sid, "block": sc.get("type"),
-                                  "dur": round(float(sc.get("dur", 0) or 0), 1)})
+                    clean.append({"frame": fr.get("id"), "scene": sid, "block": sc.get("type"), "dur": dur})
         if apply and changed:
             raw = sf.read_bytes()
-            crlf = b"\r\n" in raw
             out = (json.dumps(spec, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
-            if crlf:
+            if b"\r\n" in raw:                              # preserve CRLF if the spec had it
                 out = out.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
             sf.write_bytes(out)
 
-    if apply and grounded:
+    if apply and recompose and grounded:
         try:
             from nolan.hyperframes.edit import recompose_frame
             for fid in {g["frame"] for g in grounded}:
@@ -188,7 +219,7 @@ def ground_data_scenes(comp, apply: bool = False, min_dur: float = 8.0, use_llm:
         except Exception:
             pass
     return {"scanned": len(needing_all), "grounded": grounded, "left_clean": clean,
-            "pool": len(pool), "llm_picks": len(picks_by_uid), "applied": bool(apply)}
+            "pool": len(assets), "llm_picks": len(picks_by_uid), "applied": bool(apply)}
 
 
 def main():
@@ -197,15 +228,15 @@ def main():
     ap.add_argument("comp")
     ap.add_argument("--apply", action="store_true", help="write specs + recompose (else dry-run)")
     ap.add_argument("--no-llm", action="store_true", help="deterministic keyword pick only (no LLM call)")
-    ap.add_argument("--min-dur", type=float, default=8.0, help="only ground data scenes at least this long")
+    ap.add_argument("--min-dur", type=float, default=_LONG_HOLD_S, help="only ground holds at least this long")
     a = ap.parse_args()
     rep = ground_data_scenes(a.comp, apply=a.apply, min_dur=a.min_dur, use_llm=not a.no_llm)
-    print(f"auto-ground: {rep['scanned']} long ungrounded data scene(s); pool {rep['pool']} image(s); "
+    print(f"auto-ground: {rep['scanned']} long ungrounded hold(s); pool {rep['pool']} asset(s); "
           f"LLM matched {rep['llm_picks']}. {'APPLIED' if rep['applied'] else 'DRY-RUN'}")
     for g in rep["grounded"]:
-        print(f"  ✓ {g['frame']}/{g['scene']} ({g['block']}, {g['dur']}s) → {g['src']}")
+        print(f"  ✓ {g['frame']}/{g['scene']} ({g['block']}, {g['dur']}s) → {g['src']} [{g['kind']}]")
     for c in rep["left_clean"]:
-        print(f"  · {c['frame']}/{c['scene']} ({c['block']}, {c['dur']}s) → left CLEAN (nothing fit — a bare field beats a forced ground)")
+        print(f"  · {c['frame']}/{c['scene']} ({c['block']}, {c['dur']}s) → left CLEAN (nothing fit — bare beats forced)")
 
 
 if __name__ == "__main__":

@@ -849,6 +849,7 @@ def _visual_lag_flags(scenes, words, min_lag=6.0, min_lead=4.0):
 # hard-blocks it (escape: HF_ALLOW_LAG=1). Placement (window matcher + LIS) fixes what it can first, so this
 # only fires on a lag placement COULDN'T resolve (an interpolated outlier still late) or a genuine mis-order.
 _HARD_LAG_S = 6.0
+_LONG_HOLD_S = 5.0    # an ungrounded, non-motion scene held longer than this reads as dead paper → auto-ground target (S3)
 # how near an explicit anchor must resolve to a scene's placement to count as "the author put it here on
 # purpose" (→ soft advisory, not a hard block). Wider than a couple of words so a late-clause anchor still reads
 # as intentional; a scene stranded WELL past its anchor is a genuine placement failure and stays hard.
@@ -1017,7 +1018,7 @@ def place_scenes(comp_dir, write: bool = True) -> Dict:
                 resolved = sid not in unresolved
                 if dur + 1e-6 < minr:
                     v = f"SHORT {dur:.1f}s < {minr:.0f}s (unreadable)"
-                elif dur > 8 and not grounded and block not in _MOTION_BLOCKS:
+                elif dur > _LONG_HOLD_S and not grounded and block not in _MOTION_BLOCKS:
                     v = f"LONG-HOLD {dur:.1f}s ungrounded"
                 elif not resolved:
                     v = "UNRESOLVED (anchor not found — placed by fallback)"

@@ -220,6 +220,19 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                 f"FABRICATED (the block demanded data the script never gave). Fix one of: use the real spoken "
                 f"numbers, add `value_source` to each element, bind a dataset (A-P2), or use a non-quantitative "
                 f"block. Knowing exception: set HF_ALLOW_UNSOURCED=1.")
+    # 2.9 · S3 AUTO-GROUND long ungrounded holds from the pool (relevance-gated; never forces). Runs AFTER
+    #        word-sync (durations known) and BEFORE recompose (which rebuilds the HTML from the specs it writes).
+    if not dry_run:
+        try:
+            from .autoground import ground_data_scenes
+            ag = ground_data_scenes(comp, apply=True, use_llm=True, recompose=False)   # DAG recompose runs next
+            if ag.get("grounded") or ag.get("left_clean"):
+                print(f"▶ auto-ground: filled {len(ag['grounded'])} long hold(s) from the pool, "
+                      f"left {len(ag['left_clean'])} as clean type (nothing fit)")
+                for g in ag["grounded"][:12]:
+                    print(f"    ✓ {g['frame']}/{g['scene']} ({g['dur']}s) → {g['src']} [{g['kind']}]")
+        except Exception as e:
+            print(f"  (auto-ground skipped: {type(e).__name__}: {e})")
     # 3 · recompose every frame's HTML from its (now retimed) spec, in the comp's theme
     if dry_run:
         print("  [recompose] hfedit.recompose_frame() for each frame (rebuild HTML in-theme)")

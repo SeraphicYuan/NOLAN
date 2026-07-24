@@ -99,6 +99,7 @@ here fails CI.
 | *(documents)* | resolve document/split_view scenes to page source + region rects before recompose | raises on failure |
 | *(scene-timing gate)* | HARD-BLOCK a ≥6s visual lag or a mis-ordered scene (`HF_ALLOW_LAG=1` escapes) | HARD |
 | *(number-provenance gate)* | HARD-BLOCK a data block whose numbers trace to nothing (`HF_ALLOW_UNSOURCED=1` escapes) | HARD |
+| *(auto-ground)* | fill long ungrounded holds (>5s, `autoground.py`) with a relevant pool asset (image/video); leaves clean when nothing fits — never forces | soft |
 | `bgm` | fetch background music from the storyboard | soft |
 | `sfx` | design + fetch SFX cues (subtractive, sectional bed) | soft |
 | `captions` | build the caption track from the storyboard | — |
