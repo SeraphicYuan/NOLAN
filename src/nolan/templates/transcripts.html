@@ -279,6 +279,36 @@
     </div>
   </div>
 
+  <!-- feedback-2: clip-range REVIEW (propose → eyeball confirm frames → adjust → download to pool) -->
+  <div id="clip-modal" class="modal-bg" onclick="if(event.target===this)closeClip()">
+    <div class="modal" style="width:640px">
+      <div class="modal-head">
+        <span style="font-weight:650">✂ Clip a range → pool</span>
+        <button class="btn ghost mini" onclick="closeClip()">✕</button>
+      </div>
+      <div id="cr-title" class="dim" style="margin-bottom:8px"></div>
+      <div class="row" style="gap:10px">
+        <label class="dim">in <input type="number" id="cr-in" step="0.5" min="0" style="width:72px" oninput="crLen()"></label>
+        <label class="dim">out <input type="number" id="cr-out" step="0.5" min="0" style="width:72px" oninput="crLen()"></label>
+        <span class="dim" id="cr-len"></span>
+        <span class="row" style="gap:4px"><button class="btn ghost mini" onclick="crNudge(-1)">−1s in/out</button><button class="btn ghost mini" onclick="crNudge(1)">+1s</button></span>
+        <button class="btn ghost mini" onclick="crPreview()">↻ preview frames</button>
+      </div>
+      <div id="cr-frames" style="display:flex;gap:6px;overflow-x:auto;margin:10px 0;min-height:60px"></div>
+      <div class="row" style="justify-content:space-between">
+        <span class="row" style="gap:6px">
+          <button class="btn ghost mini" onclick="crAICheck()" title="Ask the vision model if these frames match your search">🔍 AI check</button>
+          <span id="cr-ai" class="dim"></span>
+        </span>
+        <span class="row" style="gap:8px">
+          <select id="cr-pool" title="Destination HyperFrames pool"></select>
+          <button class="btn mini" onclick="crCommit()">⬇ Download &amp; add to pool</button>
+        </span>
+      </div>
+      <div id="cr-status" class="dim" style="margin-top:8px"></div>
+    </div>
+  </div>
+
   <script src="/static/nav.js" data-active="transcripts"></script>
   <script>
     const $ = s => document.querySelector(s);
@@ -594,15 +624,16 @@
         }
       }catch(e){ $("#results").innerHTML=`<span class="warn">search failed: ${esc(e.message)}</span>`; }
     }
+    function clipBtn(h){ return `<button class="btn ghost mini" onclick="openClipReview('${esc(h.watch_url)}',${(+h.start||0)},'')" title="Review + clip this range into a pool">✂ clip</button>`; }
     function hit(h){ return `<div class="hit"><div class="hit-title"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">${esc(h.title)}</a>
-      <span class="chip">@ ${fmt(h.start)}</span> <span class="score">${h.score}</span></div>
+      <span class="chip">@ ${fmt(h.start)}</span> <span class="score">${h.score}</span> ${clipBtn(h)}</div>
       <div class="hit-meta">${esc(h.channel||"")}</div><div class="hit-snip">${esc(h.snippet)}…</div></div>`; }
     function bothHit(h){
       const both = (h.matched||[]).length===2;
       const mb = both ? '<span class="chip frames">said + shown</span>' : ((h.matched||[])[0]==="shown" ? '<span class="chip">shown</span>' : '<span class="chip txt">said</span>');
       const img = h.thumb ? `<img loading="lazy" style="width:130px;aspect-ratio:16/9;object-fit:cover;border-radius:5px;float:left;margin:0 10px 4px 0" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}">` : '';
       return `<div class="hit">${img}<div class="hit-title"><a href="${esc(h.watch_url)}" target="_blank" rel="noopener">${esc(h.title)}</a>
-        <span class="chip">@ ${fmt(h.start)}</span> ${mb} ${ckBadge(h.content_kind,h.asset_type)} <span class="score">${h.score}</span></div>
+        <span class="chip">@ ${fmt(h.start)}</span> ${mb} ${ckBadge(h.content_kind,h.asset_type)} <span class="score">${h.score}</span> ${clipBtn(h)}</div>
         ${h.snippet?`<div class="hit-snip">🗣 ${esc(h.snippet.slice(0,170))}…</div>`:''}
         ${h.caption?`<div class="hit-snip" style="color:var(--text-secondary);font-size:12px">🖼 ${esc(h.caption.slice(0,150))}</div>`:''}
         <div style="clear:both"></div></div>`; }
@@ -616,7 +647,8 @@
       <img loading="lazy" src="/api/transcripts/frame?path=${encodeURIComponent(h.thumb)}"></a>
       <div class="cap"><div class="t">${esc(h.title)||"frame"} ${ckBadge(h.content_kind, h.asset_type)}</div><div class="m"><span>@ ${fmt(h.start)}</span><span class="score">${h.score}</span></div>
       ${h.summary?`<div class="hit-snip" style="font-size:11px;margin-top:3px">${esc((h.summary||"").slice(0,100))}</div>`:""}
-      ${chips.length?`<div class="ctx" style="margin-top:4px">${chips.join("")}</div>`:""}</div></div>`; }
+      ${chips.length?`<div class="ctx" style="margin-top:4px">${chips.join("")}</div>`:""}
+      <button class="btn ghost mini" style="width:100%;margin-top:5px" onclick="openClipReview('${esc(h.watch_url)}',${(+h.start||0)},'')">✂ clip this</button></div></div>`; }
 
     /* ---------- add / sources ---------- */
     async function crawlAll(){
@@ -776,20 +808,58 @@
       catch(e){ el.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
 
-    /* ---------- clip this moment → project pool (feedback-2 bridge) ---------- */
-    async function clipMoment(url, start, end){
-      if(!url){ alert("no source URL for this video"); return; }
-      const cs=await comps();
-      if(!cs.length){ alert("No HyperFrames projects to clip into."); return; }
-      const pick=prompt(`Clip ${fmt(start)}–${fmt(end)} into which project?\n\n`+cs.map((c,i)=>`${i+1}. ${c}`).join("\n")+"\n\nEnter a number:");
-      const idx=parseInt(pick,10)-1; if(isNaN(idx)||!cs[idx]) return;
-      const el=$("#d-meta"), prev=el.textContent; el.textContent=`clipping ${fmt(start)}–${fmt(end)} → ${cs[idx]}…`;
-      try{
-        const r=await jpost("/api/clipper/clip",{url, kind:"youtube", start, end, name:`clip_${Math.round(start)}_${Math.round(end)}`, comp:cs[idx], ingest:false});
-        el.textContent=prev;
-        alert(r.pooled ? `✓ Clipped ${fmt(start)}–${fmt(end)} → ${cs[idx]} pool` : `Clipped to ${esc(r.path||"disk")} (not pooled)`);
-      }catch(e){ el.textContent=prev; alert("clip failed: "+e.message); }
+    /* ---------- feedback-2: clip-range REVIEW (propose → confirm frames → adjust → pool) ---------- */
+    let CR = { url:"", kind:"youtube", query:"", commit_url:"", commit_kind:"youtube", frames:[] };
+    function crKindOf(url){ return /archive\.org/.test(url) ? "archive" : (/youtu\.?be|youtube\.com/.test(url) ? "youtube" : "direct"); }
+    function closeClip(){ $("#clip-modal").classList.remove("on"); }
+    function crLen(){ const a=+$("#cr-in").value||0, b=+$("#cr-out").value||0; $("#cr-len").textContent = b>a?`(${(b-a).toFixed(1)}s)`:""; }
+    function crNudge(d){ $("#cr-in").value=Math.max(0,(+$("#cr-in").value||0)+d).toFixed(1); $("#cr-out").value=Math.max(0,(+$("#cr-out").value||0)+d).toFixed(1); crLen(); crPreview(); }
+    async function openClipReview(url, start, query, end){
+      if(!url){ alert("no source URL for this moment"); return; }
+      CR = { url, kind:crKindOf(url), query:query||$("#q").value.trim(), commit_url:url, commit_kind:crKindOf(url), frames:[] };
+      const s = Math.max(0, (+start||0) - 1.5), o = (end && end>start) ? +end : (+start||0) + 6.5;
+      $("#cr-in").value=s.toFixed(1); $("#cr-out").value=o.toFixed(1); crLen();
+      $("#cr-title").innerHTML = `<b>${CR.kind==="archive"?"🏛":"📺"} ${esc((query||"this moment").slice(0,70))}</b> · <span class="dim">${esc(url.slice(0,60))}</span>`;
+      $("#cr-ai").textContent=""; $("#cr-status").textContent="";
+      // pool picker
+      const cs=await comps(); $("#cr-pool").innerHTML = cs.length? cs.map(c=>`<option>${esc(c)}</option>`).join("") : '<option value="">— no HF pools —</option>';
+      $("#clip-modal").classList.add("on");
+      crPreview();
     }
+    async function crPreview(){
+      crLen();
+      const start=+$("#cr-in").value, end=+$("#cr-out").value;
+      if(!(end>start)){ $("#cr-frames").innerHTML='<span class="warn">out must be after in</span>'; return; }
+      $("#cr-frames").innerHTML='<div class="dim">grabbing confirm frames (no full download)…</div>'; $("#cr-ai").textContent="";
+      try{
+        const d=await jpost("/api/clip-range/preview",{url:CR.url, kind:CR.kind, start, end, n_frames:4});
+        CR.commit_url=d.commit_url; CR.commit_kind=d.commit_kind; CR.frames=d.frames||[];
+        $("#cr-frames").innerHTML = CR.frames.length ? CR.frames.map((u,i)=>`<img src="${esc(u)}" title="${fmt(d.times[i])}" style="height:88px;border-radius:4px;background:#000;flex:0 0 auto">`).join("") : '<span class="warn">no frames — try a different range</span>';
+      }catch(e){ $("#cr-frames").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    async function crAICheck(){
+      if(!CR.frames.length){ alert("preview frames first"); return; }
+      const q=CR.query||prompt("What should this footage show?"); if(!q) return;
+      $("#cr-ai").textContent="asking the vision model…";
+      try{
+        const d=await jpost("/api/clip-range/vlm",{frames:CR.frames, query:q});
+        const tag = d.match===true?'<span class="chip frames">✓ match</span>':(d.match===false?'<span class="chip txt">✗ no match</span>':'');
+        $("#cr-ai").innerHTML=`${tag} ${esc(d.note||"")}`;
+      }catch(e){ $("#cr-ai").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    async function crCommit(){
+      const start=+$("#cr-in").value, end=+$("#cr-out").value, comp=$("#cr-pool").value;
+      if(!(end>start)){ alert("out must be after in"); return; }
+      if(!comp){ alert("No HyperFrames pool to add to."); return; }
+      const st=$("#cr-status"); st.textContent=`downloading ${fmt(start)}–${fmt(end)} → ${comp}…`;
+      try{
+        const r=await jpost("/api/clipper/clip",{url:CR.commit_url, kind:CR.commit_kind, start, end,
+          name:`clip_${Math.round(start)}_${Math.round(end)}`, comp, ingest:true});
+        st.innerHTML = r.pooled ? `✓ added <b>${esc(r.name)}</b> → ${esc(comp)} pool${r.ingest_job_id?" · indexing for reuse":""}` : `saved to ${esc(r.path||"disk")} (not pooled)`;
+      }catch(e){ st.innerHTML=`<span class="warn">clip failed: ${esc(e.message)}</span>`; }
+    }
+    // back-compat: the detail-modal frame button → the review modal
+    function clipMoment(url, start, end){ openClipReview(url, start, "", end); }
 
     // init: land on the Search tab; Sources + videos load lazily when that tab opens
 </script>

@@ -88,6 +88,61 @@ def probe(src: str) -> Dict:
     return out
 
 
+def resolve_media_url(src: str, kind: Optional[str] = None, max_height: int = 360,
+                      purpose: str = "caption") -> str:
+    """A seekable media URL for frame-grab / direct-ffmpeg WITHOUT a full download. YouTube/extractor →
+    yt_dlp resolves a progressive stream URL (googlevideo, Range-capable). archive.org → the two-tier
+    derivative (`purpose='caption'` low-res for preview frames, `'clip'` high-def for the actual pull).
+    direct/hls/local → the src itself."""
+    kind = kind or kind_of(src)
+    if kind == "archive" or "archive.org/details/" in src:
+        import httpx
+
+        from nolan import archive_source as ar
+        ident = ar.collection_ref(src)
+        m = httpx.get(f"{ar.META}/{ident}", headers=ar._UA, timeout=30.0, follow_redirects=True).json()
+        name = ar.pick_derivative(m.get("files", []), "clip" if purpose == "clip" else "caption")
+        if not name:
+            raise RuntimeError("no archive.org video derivative for this item")
+        return ar.download_url(ident, name)
+    if kind in ("youtube", "extractor"):
+        import yt_dlp
+        fmt = f"18/best[ext=mp4][height<={max_height}]/best[height<={max_height}]/worst[ext=mp4]/worst"
+        with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True, "format": fmt}) as ydl:
+            info = ydl.extract_info(src, download=False)
+        url = info.get("url")
+        if not url:
+            reqs = info.get("requested_formats") or []
+            url = reqs[0].get("url") if reqs else None
+        if not url:
+            raise RuntimeError("could not resolve a stream URL for this source")
+        return url
+    return src                                                    # direct / hls / local
+
+
+def preview_frames(src: str, times, out_dir: Path, kind: Optional[str] = None,
+                   max_height: int = 360) -> list:
+    """Grab ONE jpg per timestamp from a range WITHOUT downloading the whole source (ffmpeg `-ss` input-seek
+    over a resolved LOW-RES stream URL — Range requests fetch only each frame's bytes). For the confirm-preview
+    of a proposed clip range. Returns the saved paths (a frame that fails to decode is simply skipped)."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    media = resolve_media_url(src, kind=kind, max_height=max_height, purpose="caption")
+    saved = []
+    for i, t in enumerate(times):
+        t = max(0.0, float(t))
+        outp = out_dir / f"f_{i:02d}_{int(t * 1000)}.jpg"
+        try:
+            subprocess.run([_ffmpeg(), "-y", "-ss", f"{t:.3f}", "-i", media, "-frames:v", "1",
+                            "-q:v", "4", "-vf", f"scale=-2:{max_height}", str(outp)],
+                           capture_output=True, text=True, errors="replace", timeout=60)
+        except subprocess.TimeoutExpired:
+            continue
+        if outp.exists() and outp.stat().st_size > 500:
+            saved.append(outp)
+    return saved
+
+
 def _newest_matching(stem_path: Path) -> Optional[Path]:
     """The file yt_dlp actually produced for outtmpl `<stem>.%(ext)s` (ext varies by chosen format)."""
     parent, stem = stem_path.parent, stem_path.stem

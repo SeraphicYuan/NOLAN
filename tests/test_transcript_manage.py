@@ -172,11 +172,12 @@ def test_archive_pick_derivative_two_tier():
         {"name": "X_edit.mp4", "format": "HiRes MPEG4", "size": 172_000_000, "height": 240},  # HiRes; height lies
         {"name": "X.mpeg", "format": "MPEG2", "size": 256_000_000, "height": 368},
     ]
-    assert ar.pick_derivative(files, "clip") == "X_edit.mp4"       # largest seekable MP4 (not the raw .mpeg)
-    assert ar.pick_derivative(files, "caption") == "X_512kb.mp4"   # the intended low derivative
+    assert ar.pick_derivative(files, "clip") == "X.ia.mp4"        # faststart h.264 (range-friendly), not HiRes/MPEG2
+    assert ar.pick_derivative(files, "caption") == "X_512kb.mp4"  # the intended low derivative
     assert ar.pick_derivative([], "clip") is None
-    assert ar.pick_derivative([{"name": "Y.mpeg", "format": "MPEG2", "size": 9, "height": 0}],
-                              "clip") == "Y.mpeg"                  # no MP4 -> fall back to largest overall
+    no_h264 = [{"name": "X_edit.mp4", "format": "HiRes MPEG4", "size": 172_000_000, "height": 240},
+               {"name": "Y.mpeg", "format": "MPEG2", "size": 256_000_000, "height": 0}]
+    assert ar.pick_derivative(no_h264, "clip") == "X_edit.mp4"    # no h.264 -> largest MP4 (not the raw .mpeg)
     assert "download/X/X_edit.mp4" in ar.download_url("X", "X_edit.mp4")
 
 

@@ -162,9 +162,10 @@ def pick_derivative(files: List[Dict[str, Any]], purpose: str = "clip") -> Optio
 
     * ``purpose='caption'`` → the LOW-enough encode for gemma keyframing: the ``_512kb.mp4`` (320x240) if
       present, else the smallest MP4. Small = cheap to range-seek per frame; still legible for a scene caption.
-    * ``purpose='clip'`` → the HIGH-def encode for actual footage: the largest MP4 (a seekable moov container
-      — HiRes ``_edit.mp4`` usually wins), falling back to the largest file overall (e.g. the ``.mpeg``
-      original) only if no MP4 exists.
+    * ``purpose='clip'`` → the HIGH-def encode for actual footage, but RANGE-FRIENDLY: archive's faststart
+      **h.264** mp4 (``.ia.mp4`` / h.264 ``.mp4``) — it seeks cleanly over HTTP so ffmpeg fetches only the
+      window. The raw HiRes ``_edit.mp4`` (non-faststart MPEG4) is larger but slow to range-seek, and for a
+      standard-def source h.264-480p is visually equivalent. Falls back to the largest MP4, then largest file.
 
     Returns the file NAME (pair with ``download_url``). None if the item has no usable video derivative.
     Keys on size+format, NOT the unreliable height field."""
@@ -176,7 +177,10 @@ def pick_derivative(files: List[Dict[str, Any]], purpose: str = "clip") -> Optio
         low = [v for v in mp4s if "512kb" in v["format"] or "_512kb" in v["name"].lower()]
         pool = low or (sorted(mp4s, key=lambda v: v["size"]) if mp4s else sorted(vids, key=lambda v: v["size"]))
         return pool[0]["name"]
-    return max(mp4s or vids, key=lambda v: v["size"])["name"]     # clip: highest-quality (largest) MP4/original
+    h264 = [v for v in mp4s if "h.264" in v["format"] or "avc" in v["format"]]  # faststart, clean range-seek
+    if h264:
+        return max(h264, key=lambda v: v["size"])["name"]
+    return max(mp4s or vids, key=lambda v: v["size"])["name"]     # else largest MP4 / original
 
 
 def download_url(identifier: str, filename: str) -> str:

@@ -40,6 +40,39 @@ def queue_clip_ingest(job_manager, db_path, config, clip_path):
         return None
 
 
+def clipper_vlm_check(paths, query: str) -> dict:
+    """Ask the cheap VLM whether the confirm frames actually show `query` — advisory assist for the human
+    review. Returns {match: bool|None, note: str}. Same OpenRouter call as the transcript visual tier."""
+    import base64
+    import json as _json
+
+    import httpx
+
+    from nolan.config import load_config
+    from nolan.transcript_frames import CAPTION_MODEL
+    key = load_config().vision.openrouter_api_key
+    if not key:
+        return {"match": None, "note": "no vision API key configured"}
+    content = [{"type": "text", "text": (
+        f'These frames are sampled evenly from a short video clip. Does this footage show: "{query}"? '
+        'Reply ONLY as JSON: {"match": true|false, "note": "<one short sentence of what is actually shown>"}.')}]
+    for p in list(paths)[:4]:
+        b64 = base64.b64encode(Path(p).read_bytes()).decode()
+        content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
+    body = {"model": CAPTION_MODEL, "reasoning": {"enabled": False},
+            "messages": [{"role": "user", "content": content}]}
+    r = httpx.post("https://openrouter.ai/api/v1/chat/completions",
+                   headers={"Authorization": f"Bearer {key}"}, json=body, timeout=60)
+    r.raise_for_status()
+    txt = r.json()["choices"][0]["message"]["content"]
+    st, en = txt.find("{"), txt.rfind("}")
+    try:
+        d = _json.loads(txt[st:en + 1]) if st >= 0 and en > st else {}
+    except Exception:
+        d = {}
+    return {"match": d.get("match"), "note": (d.get("note") or txt[:160]).strip()}
+
+
 def register(app, ctx):
     templates_dir = ctx.templates_dir
     repo_root = ctx.repo_root
@@ -123,6 +156,62 @@ def register(app, ctx):
             ingest_job_id = queue_clip_ingest(job_manager, idb, cfg, saved)
         return {"ok": True, "path": str(saved), "name": saved.name, "pooled": pooled,
                 "comp": comp, "ingest_job_id": ingest_job_id}
+
+    @app.post("/api/clip-range/preview")
+    async def clip_range_preview(payload: dict = Body(...)):
+        """feedback-2 REVIEW step: given a search hit's range, grab N confirm frames (low-res, no full
+        download) so a human can eyeball + adjust the in/out BEFORE committing. Also resolves the URL the
+        commit should pull from — for archive that's the HIGH-DEF derivative (two-tier policy)."""
+        import tempfile
+        from urllib.parse import quote
+        url = (payload.get("url") or "").strip()
+        kind = payload.get("kind") or None
+        try:
+            start, end = float(payload.get("start")), float(payload.get("end"))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="start and end (seconds) required")
+        if not url or end <= start:
+            raise HTTPException(status_code=400, detail="url + out-after-in required")
+        n = max(1, min(int(payload.get("n_frames", 4) or 4), 8))
+        times = [round(start + (i + 0.5) * (end - start) / n, 2) for i in range(n)]
+        out_dir = Path(tempfile.mkdtemp(prefix="cliprange_"))
+        try:
+            frames = await asyncio.to_thread(clipper.preview_frames, url, times, out_dir, kind)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"could not read that source: {type(e).__name__}: {e}")
+        # what the COMMIT should pull: archive -> high-def derivative (kind=direct); else the source itself
+        commit_url, commit_kind = url, (kind or clipper.kind_of(url))
+        if commit_kind == "archive" or "archive.org/details/" in url:
+            try:
+                commit_url = await asyncio.to_thread(clipper.resolve_media_url, url, "archive", 720, "clip")
+                commit_kind = "direct"
+            except Exception:
+                commit_url, commit_kind = url, "extractor"        # fall back to yt_dlp's archive.org extractor
+        return {"in": start, "out": end, "times": times,
+                "frames": [f"/api/clipper/file?path={quote(str(f))}" for f in frames],
+                "commit_url": commit_url, "commit_kind": commit_kind}
+
+    @app.post("/api/clip-range/vlm")
+    async def clip_range_vlm(payload: dict = Body(...)):
+        """Optional AI assist for the review: ask the vision model whether the confirm frames actually show
+        what the hit was about. Advisory only — the human still decides."""
+        from urllib.parse import unquote, urlparse as _up
+        frame_urls = payload.get("frames") or []
+        query = (payload.get("query") or "").strip()
+        paths = []
+        for u in frame_urls[:4]:
+            q = _up(u).query
+            p = dict(kv.split("=", 1) for kv in q.split("&") if "=" in kv).get("path", "")
+            if p:
+                paths.append(Path(unquote(p)))
+        paths = [p for p in paths if p.is_file()]
+        if not paths or not query:
+            raise HTTPException(status_code=400, detail="frames + query required")
+        try:
+            verdict = await asyncio.to_thread(clipper_vlm_check, paths, query)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"AI check failed: {type(e).__name__}: {e}")
+        return verdict
 
     @app.get("/api/clipper/file")
     async def clipper_file(path: str = Query(...)):
