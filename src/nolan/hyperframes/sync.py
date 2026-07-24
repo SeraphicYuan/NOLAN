@@ -779,16 +779,20 @@ def _relieve_short_windows(scenes, frame_dur, max_passes=6):
     return {"fixed": fixed, "residual": residual}
 
 
-def _visual_lag_flags(scenes, words, min_lag=6.0):
-    """Report where a scene's VISUAL lags the VO — the drift the eye catches (the 3:13-says-43%-but-shows-
-    at-3:33 bug; the 7:31 text-block-appears-late bug). Two kinds, keyed on each scene's ROBUST topic-open
-    time (`_topic_open_time` = earliest of the fuzzy content-window and the distinctive-word time — the SAME
-    signal placement uses, so the lint can't flag a lag placement already fixed, nor miss one placement can't):
+def _visual_lag_flags(scenes, words, min_lag=6.0, min_lead=4.0):
+    """Report where a scene's VISUAL drifts from the VO — the drift the eye catches (the 3:13-says-43%-but-
+    shows-at-3:33 bug; the 7:31 text-block-appears-late bug). Keyed on each scene's ROBUST topic-open time
+    (`_topic_open_time` = earliest of the fuzzy content-window and the distinctive-word time — the SAME signal
+    placement uses, so the lint can't flag a drift placement already fixed, nor miss one placement can't):
       - LAG: the scene is placed well AFTER its topic first surfaces (a late/closing anchor left the PREVIOUS
         scene overrunning; or the topic opens on paraphrased/common words the old distinctive-word check missed).
+      - LEAD: the scene appears well BEFORE its topic is spoken — you read the punchline before you hear it.
+        Just as jarring as a lag, so the gate is SYMMETRIC; but a small lead is natural for a title, and leads
+        are a taste call, so lead flags stay ADVISORY (never `hard` — they surface, they don't block). Author-
+        pinned scenes (`authored_here`) are exempt: the author placed it early on purpose.
       - MIS-ORDER: the scene's topic is narrated ENTIRELY before its predecessor's — the scenes are in the
         wrong order for the narration; placement can't fix this without reordering the spec.
-    Each lag flag carries `hard` = the lag is bad enough to BLOCK the render (see `_hard_lag_flags`)."""
+    Each lag/misorder flag carries `hard` = bad enough to BLOCK the render; lead flags are always soft."""
     if not words:
         return []
     from nolan.aligner import flatten_words
@@ -813,6 +817,10 @@ def _visual_lag_flags(scenes, words, min_lag=6.0):
                 flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "lag",
                               "start": round(start, 1), "content_at": round(ct, 1), "lag": round(start - ct, 1),
                               "hard": (start - ct) >= _HARD_LAG_S and not authored_here})
+            elif ct - start > min_lead and not authored_here:      # SYMMETRIC: visual LEADS the VO (text before voice)
+                flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "lead",
+                              "start": round(start, 1), "content_at": round(ct, 1), "lead": round(ct - start, 1),
+                              "hard": False})                       # advisory — a small lead is natural, leads are a taste call
             if prev_ct is not None and ct < prev_ct - 3.0:
                 flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "misorder",
                               "content_at": round(ct, 1), "prev_content_at": round(prev_ct, 1),
@@ -1158,13 +1166,17 @@ def main():
             for sdv in sels:
                 print(f"    {sdv['frame']}/{sdv['scene']} ({sdv['block']}): {sdv['advice']}")
         lags = rep.get("visual_lag") or []
-        if lags:                                          # visual lags the VO (late anchor / mis-ordered scene)
-            print("\n⚠ visual-lag — the VISUAL trails the narration (the eye catches this drift):")
+        if lags:                                          # visual drift: lag (late anchor) / lead (early) / mis-order
+            print("\n⚠ visual timing — the VISUAL drifts from the narration (the eye catches this):")
             for lf in lags:
                 if lf["kind"] == "lag":
                     print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) placed @{lf['start']}s but its "
                           f"content is spoken @{lf['content_at']}s — LAG {lf['lag']}s (a late anchor; the "
                           f"previous scene overruns). Anchor it to an EARLIER phrase.")
+                elif lf["kind"] == "lead":
+                    print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) placed @{lf['start']}s but its "
+                          f"content is spoken @{lf['content_at']}s — LEAD {lf['lead']}s (text before voice, "
+                          f"advisory). Anchor the scene LATER, or word-anchor the item that carries the fact.")
                 else:
                     print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}) topic narrated @{lf['content_at']}s, "
                           f"BEFORE the previous scene's @{lf['prev_content_at']}s — scenes are OUT OF ORDER "

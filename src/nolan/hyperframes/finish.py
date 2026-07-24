@@ -143,12 +143,14 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
             from .sync import sync_gate_report
             gate = sync_gate_report(str(pdir))
             lags, lates, fab = gate["visual_lag"], gate["late_anchors"], gate.get("fabricated_numbers", [])
-            mis = [lf for lf in lags if lf.get("kind") == "misorder"]
-            hard_lags = [lf for lf in lags if lf.get("hard")]
-            if lags:
-                print(f"\n⚠ SCENE-TIMING GATE — {len(lags)} scene(s) where the VISUAL trails the narration "
+            leads = [lf for lf in lags if lf.get("kind") == "lead"]           # visual BEFORE the word (advisory)
+            trails = [lf for lf in lags if lf.get("kind") != "lead"]          # lag + misorder (can be HARD)
+            mis = [lf for lf in trails if lf.get("kind") == "misorder"]
+            hard_lags = [lf for lf in trails if lf.get("hard")]
+            if trails:
+                print(f"\n⚠ SCENE-TIMING GATE — {len(trails)} scene(s) where the VISUAL trails the narration "
                       f"({len(mis)} MIS-ORDERED, {len(hard_lags)} HARD). The eye catches this drift:")
-                for lf in lags:
+                for lf in trails:
                     tag = " [HARD]" if lf.get("hard") else ""
                     if lf.get("kind") == "misorder":
                         print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}){tag} — topic narrated @{lf['content_at']}s, "
@@ -156,6 +158,10 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                     else:
                         print(f"    {lf['frame']}/{lf['scene']} ({lf['block']}){tag} — placed @{lf['start']}s but its content "
                               f"is spoken @{lf['content_at']}s (lag {lf['lag']}s) → anchor it to an EARLIER phrase")
+            if leads:                                                         # SYMMETRIC advisory: text before voice
+                print(f"  ◆ {len(leads)} scene(s) where the VISUAL LEADS the narration (text before voice — advisory): "
+                      + ", ".join(f"{lf['frame']}/{lf['scene']} (lead {lf['lead']}s)" for lf in leads[:8]))
+                print("    → anchor the scene later, or word-anchor the item that carries the fact")
             if lates:
                 print(f"  ◆ {len(lates)} scene(s) anchored to a LATE/closing phrase (placement auto-corrects, "
                       f"but re-anchor to the OPENING for robustness): "

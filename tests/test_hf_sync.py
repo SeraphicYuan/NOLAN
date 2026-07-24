@@ -346,3 +346,28 @@ def test_content_time_requires_corroboration_at_min_words_2():
     sc = {"data": {"kicker": "Gradient"}}                                          # ONE distinctive word
     assert sync._content_time(sc, stream, freq, 0.0, min_words=1) is not None      # lone word fires @1
     assert sync._content_time(sc, stream, freq, 0.0, min_words=2) is None          # but NOT when corroborated
+
+
+def test_visual_lag_flags_symmetric_lead_detection():
+    """S1 (post-mortem): the scene-timing gate is SYMMETRIC — a scene whose VISUAL leads the narration
+    (text before voice) is flagged, advisory (never `hard`, so it doesn't block); a well-placed scene is
+    not; an author-pinned early scene (anchor resolves near its start) is exempt."""
+    from nolan.whisper import WordTimestamp
+    from nolan.hyperframes.sync import _visual_lag_flags
+    toks = "we open on a quiet ordinary still calm plain grey solar eclipse arrives now here".split()
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(toks)]
+
+    # "solar eclipse" is spoken ~t=10; a scene placed at t=0 LEADS its content by ~10s
+    early = {"id": "lead1", "type": "statement", "start": 0.0, "data": {"kicker": "SOLAR ECLIPSE"}}
+    lead = [f for f in _visual_lag_flags([early], words) if f["kind"] == "lead"]
+    assert lead and lead[0]["scene"] == "lead1", lead
+    assert lead[0]["hard"] is False and lead[0]["lead"] >= 4.0      # symmetric but ADVISORY, never blocks
+
+    # well-placed: start ≈ content time → no lead
+    placed = {"id": "ok1", "type": "statement", "start": 10.0, "data": {"kicker": "SOLAR ECLIPSE"}}
+    assert not [f for f in _visual_lag_flags([placed], words) if f["kind"] == "lead"]
+
+    # author pinned it early on purpose (anchor 'quiet ordinary' resolves near start) → exempt
+    pinned = {"id": "pin1", "type": "statement", "start": 2.0,
+              "data": {"kicker": "SOLAR ECLIPSE", "anchor": "quiet ordinary"}}
+    assert not [f for f in _visual_lag_flags([pinned], words) if f["kind"] == "lead"]
