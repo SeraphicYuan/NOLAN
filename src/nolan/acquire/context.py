@@ -110,7 +110,8 @@ def gen_style_for(theme: str) -> str:
 
 
 def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True,
-                  want_clips_library=True, clip_lib_max=4, clip_lib_min_sim=0.55, gen_style="Cinematic") -> Context:
+                  want_clips_library=True, want_transcript_lib=True, clip_lib_max=4, clip_lib_min_sim=0.55,
+                  gen_style="Cinematic") -> Context:
     ctx = Context()
     # default the video-segment length from the config (was hardcoded 20, ignoring cfg.clip_seconds)
     if clip_seconds is None:
@@ -347,6 +348,119 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                 ctx.download = _download
             except Exception as e:
                 print(f"⚠ [acquire] clips_library source unavailable — skipped ({type(e).__name__}: {e})", flush=True)
+
+    # --- transcript_lib: the transcript library as a DOWNLOADABLE b-roll source (ALL families) ----------
+    # Same VideoIndex as clips_library, but its DISCOVERY tier (has_footage=0): documentary YouTube, the
+    # copyright-free youtube_cc stock family, and archive.org public-domain collections. A semantic hit is
+    # materialised by DOWNLOADING JUST ITS RANGE from the source URL (the feedback-2 mechanism) and MARKED
+    # with its copyright status (copyright-free stock/PD vs a copyrighted documentary reference) so the pool
+    # records provenance. Chains onto search_clips/download (dispatch by c.source), no engine slot needed.
+    if want_transcript_lib:
+        _tdb = _resolve_clips_db(cfg)
+        if _tdb and _tdb.exists():
+            try:
+                from nolan import transcript_lib as _tl
+                from nolan.indexer import VideoIndex
+                from nolan.vector_search import VectorSearch
+                _tvindex = VideoIndex(_tdb)
+                _tvsearch = VectorSearch(db_path=_tdb.parent / "vectors", index=_tvindex)
+                _tfootage = set(_tvindex.footage_video_ids())     # exclude real footage (clips_library's job)
+                _tcat = _tl.load_catalog()                        # SOURCE-id -> {url, copyright_free, kind, channel}
+                _tfree = _tl.copyright_free_ids()                 # SOURCE ids in a copyright-free source (× surveys)
+                from nolan import archive_source as _ar
+                from nolan.youtube import extract_video_id as _yid
+
+                def _src_id(url):                                 # the youtube / archive id embedded in the URL
+                    return _ar.collection_ref(url) if "archive.org" in (url or "") else (_yid(url or "") or "")
+
+                def _copyright_of(url):                           # DB video_id is an int; copyright keys off the URL id
+                    sid = _src_id(url)
+                    e = _tcat.get(sid) or {}
+                    ch, kind = (e.get("channel") or ""), (e.get("kind") or "youtube")
+                    is_arch = "archive.org" in (url or "").lower()
+                    if sid in _tfree or e.get("copyright_free") or is_arch:
+                        k = kind if kind != "youtube" else ("archive" if is_arch else "youtube_cc")
+                        return True, k, ch
+                    return False, "youtube", ch
+
+                def _search_transcript_lib(need, n):
+                    queries = [q for q in (need.get("queries") or [need.get("query", "")]) if q][:6]
+                    if not queries:
+                        return []
+                    best = {}
+                    for q in queries:
+                        try:
+                            hits = _tvsearch.search(query=q, limit=max(6, n), search_level="segments",
+                                                    project_id=None) or []
+                        except Exception:
+                            continue
+                        for r in hits:
+                            if float(getattr(r, "score", 0) or 0) < clip_lib_min_sim:
+                                continue
+                            vid = getattr(r, "video_id", None)
+                            if vid is None or vid in _tfootage:   # keep ONLY the discovery/transcript tier
+                                continue
+                            url = getattr(r, "video_path", "")
+                            if not str(url).startswith(("http://", "https://")):
+                                continue
+                            key = (url, round(float(r.timestamp_start), 1))
+                            if key not in best or r.score > best[key].score:
+                                best[key] = r
+                    ranked = sorted(best.values(), key=lambda r: float(r.score), reverse=True)[:clip_lib_max]
+                    out = []
+                    for r in ranked:
+                        url = r.video_path
+                        start, dur = _clip_window(r.timestamp_start, r.timestamp_end, clip_seconds)
+                        cfree, kind, channel = _copyright_of(url)
+                        lic = ("public-domain / CC — copyright-free" if cfree
+                               else f"copyrighted — YouTube ({channel})" if channel else "copyrighted — YouTube")
+                        out.append(Candidate(
+                            ref=f"{url}#{start:.1f}", source="transcript_lib", modality="video", path=None,
+                            relevance=float(r.score),
+                            meta={"source": f"transcript_lib ({kind})", "license": lic,
+                                  "copyright_free": cfree, "kind": kind, "channel": channel,
+                                  "description": r.description, "transcript": r.transcript,
+                                  "source_url": str(url), "clip_start": start, "clip_dur": dur,
+                                  "similarity": round(float(r.score), 3)}))
+                    return out
+
+                _ts_prev = ctx.search_clips
+                ctx.search_clips = (lambda need, n, _p=_ts_prev:
+                                    (_p(need, n) if _p else []) + _search_transcript_lib(need, n))
+
+                # materialise: download JUST the range from the source URL (archive → high-def h.264 derivative
+                # + ffmpeg range; youtube → yt_dlp range). The feedback-2 download-the-range, headless.
+                _td_prev = ctx.download
+
+                def _download_transcript(c: Candidate, dest: Path):
+                    if c.source != "transcript_lib":
+                        return _td_prev(c, dest) if _td_prev else False
+                    from nolan import clipper
+                    url = c.meta.get("source_url")
+                    start = float(c.meta.get("clip_start", 0))
+                    dur = float(c.meta.get("clip_dur", clip_seconds))
+                    if not url:
+                        return False
+                    (dest / "videos").mkdir(parents=True, exist_ok=True)
+                    out = dest / "videos" / (hashlib.md5(c.ref.encode()).hexdigest()[:12] + ".mp4")
+                    src_url = url
+                    dl_kind = "youtube" if ("youtube" in url or "youtu.be" in url) else "direct"
+                    try:
+                        if "archive.org" in url:
+                            src_url = clipper.resolve_media_url(url, "archive", 720, "clip")
+                            dl_kind = "direct"
+                        saved = clipper.clip(src_url, start, start + dur, out, kind=dl_kind)
+                    except Exception:
+                        return False
+                    if saved and out.exists() and out.stat().st_size > 20000:
+                        c.path = out
+                        return True
+                    return False
+                ctx.download = _download_transcript
+                print("[acquire] transcript_lib: downloadable b-roll from the transcript library "
+                      "(youtube · youtube_cc · archive), copyright-marked", flush=True)
+            except Exception as e:
+                print(f"⚠ [acquire] transcript_lib source unavailable — skipped ({type(e).__name__}: {e})", flush=True)
 
     # --- relevance: CLIP cosine (need text ↔ candidate image) ------------------------------------
     if want_clip:

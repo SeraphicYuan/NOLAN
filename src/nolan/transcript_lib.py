@@ -41,16 +41,18 @@ def load_catalog(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
 
 def record_transcript(video_id: str, meta: Dict[str, Any], windows_n: int, channel: Optional[str],
                       *, frames: int = 0, added: str = "", catalog_dir: Optional[Path] = None,
-                      broll: bool = False) -> None:
+                      broll: bool = False, kind: str = "youtube", copyright_free: bool = False) -> None:
     """Upsert one transcript video's display metadata into the sidecar (keyed by the YouTube video id).
     `frames` = how many visual keyframes were captioned (drives the visual-coverage badge). `broll` = a ready
-    b-roll short clip (title-indexed, no transcript/captions needed — the whole clip is the asset)."""
+    b-roll short clip. `kind`/`copyright_free` = the source family + license status (so the acquire engine can
+    mark the pooled asset: copyright-free stock/PD vs a copyrighted documentary reference)."""
     cat = load_catalog(catalog_dir)
     cat[str(video_id)] = {
         "video_id": str(video_id), "title": meta.get("title"),
         "channel": channel or meta.get("channel"), "url": meta.get("url"),
         "upload_date": meta.get("upload_date"), "language": meta.get("language"),
         "windows": int(windows_n), "frames": int(frames), "added": added, "broll": bool(broll),
+        "kind": kind, "copyright_free": bool(copyright_free),
     }
     p = _catalog_file(catalog_dir)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -317,6 +319,29 @@ def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optiona
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(surveys, indent=2, ensure_ascii=False), encoding="utf-8")
     return fetched
+
+
+def copyright_free_ids(catalog_dir: Optional[Path] = None) -> set:
+    """Set of transcript-library video_ids that belong to a COPYRIGHT-FREE source — the youtube_cc stock
+    family, or an archive.org collection added copyright-free — derived from sources.json × the persisted
+    surveys. Lets the acquire engine mark provenance correctly even for rows ingested before per-video
+    copyright flags existed (no re-ingest needed)."""
+    srcs = load_sources(catalog_dir)
+    free_yt = {_channel_key(ref) for ref, s in srcs.items()
+               if s.get("kind") == "youtube_cc" and s.get("copyright_free")}
+    from nolan import archive_source as ar
+    free_coll = {ar.collection_ref(ref) for ref, s in srcs.items()
+                 if s.get("kind") == "archive" and s.get("copyright_free")}
+    ids: set = set()
+    for _key, sv in load_surveys(catalog_dir).items():
+        kd, ch = sv.get("kind"), (sv.get("channel") or "")
+        free = ((kd == "youtube_cc" and _channel_key(ch) in free_yt)
+                or (kd == "archive" and ar.collection_ref(ch) in free_coll))
+        if free:
+            for t in sv.get("titles", []):
+                if t.get("video_id"):
+                    ids.add(t["video_id"])
+    return ids
 
 
 def survey_channel(channel: str, limit: Optional[int] = None, catalog_dir: Optional[Path] = None,

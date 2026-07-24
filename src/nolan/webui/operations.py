@@ -567,7 +567,7 @@ async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, f
 async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str = "off",
                         window_s: float = 45.0, overlap_s: float = 10.0, delay: float = 1.0,
                         refresh: bool = False, kind: str = "youtube", collection: str = "",
-                        broll_max_sec: float = 0.0):
+                        broll_max_sec: float = 0.0, copyright_free: bool = False):
     """Ingest a SPECIFIC list of videos (each {url, video_id?, title?, duration?, channel?}) -- transcript
     (+ optional visual), dedup-skip, rate-paced. Powers 'add selected'. `kind='archive'` fetches archive.org's
     Whisper ASR; items with no transcript are a reported soft-skip (youtube_cc title-indexes instead).
@@ -651,7 +651,8 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
             except Exception as e:
                 job.log(f"    (visual skipped: {type(e).__name__}: {e})")
         tl.record_transcript(meta.get("video_id") or yid0, {**meta, "url": url}, len(windows),
-                             v.get("channel") or collection, frames=nframes, added=now, broll=is_broll)
+                             v.get("channel") or collection, frames=nframes, added=now, broll=is_broll,
+                             kind=kind, copyright_free=copyright_free)
         if not is_broll:
             job.log(f"  + {title} ({len(windows)} windows" + (f", +{nframes} frames" if nframes else "") + ")")
     tail = (f", {broll} ready-broll" if broll else "") + (f", {no_tr} no-transcript" if no_tr else "")

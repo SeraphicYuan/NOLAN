@@ -228,11 +228,12 @@ def register(app, ctx):
         kind = body.get("kind") or "youtube"
         from nolan import archive_source as ar
         collection = ar.collection_ref(body.get("collection") or "") if kind == "archive" else ""
+        cfree = kind == "youtube_cc" or (kind == "archive" and _collection_free(collection or (body.get("collection") or ""), "archive"))
         job = job_manager.start(
             "transcript-ingest-videos", operations.ingest_videos, meta={"count": len(vids), "kind": kind},
             config=cfg, db_path=idb, videos=vids, visual=(body.get("visual") or "off"),
             delay=float(body.get("delay", 1.0) or 1.0), kind=kind, collection=collection,
-            broll_max_sec=float(body.get("broll_max_sec", 0) or 0))
+            broll_max_sec=float(body.get("broll_max_sec", 0) or 0), copyright_free=bool(cfree))
         return {"job_id": job.id, "type": "transcript-ingest-videos"}
 
     @app.get("/api/transcripts/videos")

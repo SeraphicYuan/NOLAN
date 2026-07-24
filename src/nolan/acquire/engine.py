@@ -84,11 +84,11 @@ def fitness_score(fit: Dict) -> float:
 # remote stock, so real library footage leads a beat when it genuinely matches (the min-similarity floor
 # in the source keeps weak clips out of the running entirely).
 TIERS = {
-    "art": ["library", "clips_library", "artvee", "wikimedia", "met", "artic", "rijksmuseum", "harvard",
+    "art": ["library", "clips_library", "transcript_lib", "artvee", "wikimedia", "met", "artic", "rijksmuseum", "harvard",
             "cleveland", "wellcome", "europeana", "dpla", "smithsonian", "loc", "openverse", "ddgs"],
-    "archival": ["library", "clips_library", "archive", "archive_image", "loc", "smithsonian", "europeana",
+    "archival": ["library", "clips_library", "transcript_lib", "archive", "archive_image", "loc", "smithsonian", "europeana",
                  "dpla", "nasa", "nasa_video", "wikimedia", "flickr", "pexels_video", "pixabay_video", "coverr_video", "ddgs"],
-    "general": ["library", "clips_library", "pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
+    "general": ["library", "clips_library", "transcript_lib", "pexels", "pixabay", "unsplash", "ddgs", "openverse", "pexels_video",
                 "pixabay_video", "coverr_video", "flickr", "wikimedia", "nasa"],
 }
 
@@ -128,8 +128,8 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
     if "library" in cfg.sources and ctx.search_library:
         for q in _need_queries(need):
             cands += ctx.search_library(q, n_fetch) or []
-    if "clips_library" in cfg.sources and ctx.search_clips:
-        cands += ctx.search_clips(need, n_fetch) or []      # local video, materialised in download
+    if ("clips_library" in cfg.sources or "transcript_lib" in cfg.sources) and ctx.search_clips:
+        cands += ctx.search_clips(need, n_fetch) or []      # local video + transcript-lib downloadables (chained)
     if "stock" in cfg.sources and ctx.search_stock:
         cands += ctx.search_stock(need, n_fetch) or []
     for i, c in enumerate(cands):
@@ -182,7 +182,7 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
             tcover = float(c.meta.get("title_cover", 0) or 0)
             if c.source == "library" and tcover > 0:
                 c.relevance = max(c.relevance, tcover)
-        elif c.modality == "video" and c.source == "clips_library" and ctx.video_relevance:
+        elif c.modality == "video" and c.source in ("clips_library", "transcript_lib") and ctx.video_relevance:
             # CULL CASCADE: cheap CLIP frame-relevance so off-topic library clips are dropped in _keep
             # (before the expensive VLM), and this real relevance also feeds the video score below.
             try:
@@ -210,7 +210,7 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
     if ctx.relevance:
         def _keep(c: Candidate) -> bool:
             if c.modality != "image":
-                if c.source == "clips_library" and ctx.video_relevance:
+                if c.source in ("clips_library", "transcript_lib") and ctx.video_relevance:
                     return c.relevance >= cfg.clip_lib_relevance_floor  # cheap CLIP gate BEFORE the VLM
                 return True                                   # other video is unscored — keep
             prov = _provider_of(c.source)

@@ -181,6 +181,27 @@ def test_archive_pick_derivative_two_tier():
     assert "download/X/X_edit.mp4" in ar.download_url("X", "X_edit.mp4")
 
 
+def test_copyright_free_ids_from_sources_and_surveys(monkeypatch):
+    """copyright_free_ids = the video ids belonging to a copyright-free source (youtube_cc, or an archive
+    collection ADDED copyright-free) — derived from sources × surveys, so the acquire engine marks provenance
+    correctly even for rows ingested before per-video flags. Documentary youtube + non-free archive excluded."""
+    from nolan import transcript_lib as tl
+    monkeypatch.setattr(tl, "load_sources", lambda cd=None: {
+        "https://youtube.com/@FreeStock": {"kind": "youtube_cc", "copyright_free": True},
+        "https://youtube.com/@Docs": {"kind": "youtube", "copyright_free": False},        # documentary
+        "prelinger": {"kind": "archive", "copyright_free": True},
+        "somecoll": {"kind": "archive", "copyright_free": False},                          # archive, not asserted free
+    })
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {
+        "youtube_cc:@freestock": {"kind": "youtube_cc", "channel": "https://youtube.com/@FreeStock",
+                                  "titles": [{"video_id": "f1"}, {"video_id": "f2"}]},
+        "youtube:@docs": {"kind": "youtube", "channel": "https://youtube.com/@Docs", "titles": [{"video_id": "d1"}]},
+        "archive:prelinger": {"kind": "archive", "channel": "prelinger", "titles": [{"video_id": "p1"}]},
+        "archive:somecoll": {"kind": "archive", "channel": "somecoll", "titles": [{"video_id": "s1"}]},
+    })
+    assert tl.copyright_free_ids() == {"f1", "f2", "p1"}   # cc stock + free-archive only; not docs, not non-free coll
+
+
 def test_youtube_cc_family_separate_and_copyright_free(tmp_path, monkeypatch):
     """Copyright-free YouTube channels: youtube MECHANICS but a SEPARATE family (kind-namespaced cache key,
     distinct from documentary youtube of the same channel) with all videos copyright-free."""
