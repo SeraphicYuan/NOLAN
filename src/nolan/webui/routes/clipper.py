@@ -11,6 +11,7 @@ pool). Deliberately does NOT go through the ingestion library and never download
 """
 import asyncio
 import re
+import subprocess
 import urllib.request
 from pathlib import Path
 
@@ -137,6 +138,34 @@ def register(app, ctx):
         if not saved:
             raise HTTPException(status_code=422, detail="clip produced no file (source may be unavailable)")
 
+        # optional CLEANUP: same-aspect crop out a burned-in logo/watermark + caption (and trim strays), then
+        # scale back to the source W×H — the reusable pool asset is clean. Vision-confirmed. Replaces in place.
+        cleanup_info = None
+        if payload.get("cleanup"):
+            try:
+                from nolan.config import load_config
+                from nolan.hyperframes import cleanup as cu
+                cfg = load_config()
+                prov = await asyncio.to_thread(cu.default_vision_provider, cfg)
+                confirm = cu.make_vision_confirm(saved, cfg, prov)
+                plan = await asyncio.to_thread(cu.analyze, saved, confirm)
+                if plan.get("changed"):
+                    cleaned = saved.with_name(saved.stem + "__clean.mp4")
+                    cmd = cu.build_cmd(clipper._ffmpeg(), saved, cleaned, plan)
+                    await asyncio.to_thread(subprocess.run, cmd, capture_output=True)
+                    if cleaned.exists() and cleaned.stat().st_size > 1000:
+                        saved.unlink(missing_ok=True)
+                        cleaned.rename(saved)                    # keep the same name/path (pool points here)
+                        cleanup_info = {"logo": bool(plan.get("logos")), "caption": bool(plan.get("caption")),
+                                        "trimmed": plan.get("trim_in", 0) > 0 or plan.get("trim_out", 0) < plan.get("dur", 0) - 1e-3,
+                                        "zoom": plan.get("zoom")}
+                    else:
+                        cleanup_info = {"error": "cleanup produced no file"}
+                else:
+                    cleanup_info = {"changed": False}           # nothing to remove — asset kept as-is
+            except Exception as e:
+                cleanup_info = {"error": f"{type(e).__name__}: {e}"}   # never fail the clip over cleanup
+
         pooled = False
         if comp:
             try:
@@ -155,7 +184,7 @@ def register(app, ctx):
             idb = ctx.db_path or Path(cfg.indexing.database).expanduser()
             ingest_job_id = queue_clip_ingest(job_manager, idb, cfg, saved)
         return {"ok": True, "path": str(saved), "name": saved.name, "pooled": pooled,
-                "comp": comp, "ingest_job_id": ingest_job_id}
+                "comp": comp, "ingest_job_id": ingest_job_id, "cleanup": cleanup_info}
 
     @app.post("/api/clip-range/preview")
     async def clip_range_preview(payload: dict = Body(...)):

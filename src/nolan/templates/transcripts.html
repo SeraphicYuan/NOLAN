@@ -301,6 +301,7 @@
           <span id="cr-ai" class="dim"></span>
         </span>
         <span class="row" style="gap:8px">
+          <label class="dim" title="Same-ratio crop to remove a burned-in logo/watermark + caption before pooling (vision-confirmed)"><input type="checkbox" id="cr-clean" checked> 🧹 clean</label>
           <select id="cr-pool" title="Destination HyperFrames pool"></select>
           <button class="btn mini" onclick="crCommit()">⬇ Download &amp; add to pool</button>
         </span>
@@ -852,10 +853,15 @@
       if(!(end>start)){ alert("out must be after in"); return; }
       if(!comp){ alert("No HyperFrames pool to add to."); return; }
       const st=$("#cr-status"); st.textContent=`downloading ${fmt(start)}–${fmt(end)} → ${comp}…`;
+      st.textContent += $("#cr-clean").checked ? " (+ cleanup)…" : "…";
       try{
         const r=await jpost("/api/clipper/clip",{url:CR.commit_url, kind:CR.commit_kind, start, end,
-          name:`clip_${Math.round(start)}_${Math.round(end)}`, comp, ingest:true});
-        st.innerHTML = r.pooled ? `✓ added <b>${esc(r.name)}</b> → ${esc(comp)} pool${r.ingest_job_id?" · indexing for reuse":""}` : `saved to ${esc(r.path||"disk")} (not pooled)`;
+          name:`clip_${Math.round(start)}_${Math.round(end)}`, comp, ingest:true, cleanup:$("#cr-clean").checked});
+        const ci=r.cleanup;
+        const cm = !ci ? "" : (ci.error ? ` · <span class="warn">cleanup: ${esc(ci.error)}</span>`
+          : (ci.changed===false ? ' · <span class="dim">nothing to clean</span>'
+          : ` · <span class="chip frames">🧹 removed${ci.logo?" logo":""}${ci.caption?" caption":""}${ci.trimmed?" stray":""}</span>`));
+        st.innerHTML = (r.pooled ? `✓ added <b>${esc(r.name)}</b> → ${esc(comp)} pool` : `saved to ${esc(r.path||"disk")}`) + cm + (r.ingest_job_id?' <span class="dim">· indexing</span>':"");
       }catch(e){ st.innerHTML=`<span class="warn">clip failed: ${esc(e.message)}</span>`; }
     }
     // back-compat: the detail-modal frame button → the review modal
