@@ -63,6 +63,22 @@ def _ffmpeg() -> str:
     return ff()
 
 
+def _probe_duration(path: str) -> float:
+    """Duration (s) of a LOCAL media file via `ffmpeg -i` stderr (bundled ffmpeg has no ffprobe). 0.0 if
+    unknown. Used when the source carries no duration (archive.org runtime metadata is sparse) so scene
+    planning still spans the whole file instead of collapsing to a single fallback shot."""
+    import re as _re
+    try:
+        r = subprocess.run([_ffmpeg(), "-i", path], capture_output=True, text=True, timeout=30)
+    except Exception:
+        return 0.0
+    m = _re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", r.stderr or "")
+    if not m:
+        return 0.0
+    h, mm, ss = m.groups()
+    return int(h) * 3600 + int(mm) * 60 + float(ss)
+
+
 def _resolve_stream(watch_url: str) -> Optional[str]:
     """A direct, ffmpeg-readable media URL for a YouTube watch URL (a progressive mp4). Watch pages are
     not ffmpeg-readable — resolve a signed stream first (time-limited; grab frames right after)."""
@@ -440,6 +456,8 @@ def detect_cuts(url: str, thr: float = 0.4, dedup: float = 1.5, window: float = 
         with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True, "noplaylist": True}) as ydl:
             info = ydl.extract_info(url, download=False)
         dur = float(info.get("duration") or 0)
+    if not is_youtube and not dur:                            # LOCAL file with no known duration (sparse archive
+        dur = _probe_duration(url)                            # runtime) → probe it so plan_shots spans the file
     src = _resolve_stream(url) if is_youtube else url
     if not src:
         return [], dur

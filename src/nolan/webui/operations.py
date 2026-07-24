@@ -369,6 +369,14 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
         job.log("    - download failed; streaming fallback (may throttle)")
     _c = _time.time()
     cuts, ddur = await asyncio.to_thread(tfr.detect_cuts, src, 0.4, 1.5, 120.0, 8, not local, dur)
+    if kind == "archive" and local and not cuts:                        # 0 cuts on a real film -> the caption
+        from nolan import archive_source as _ar                           # derivative is broken -> retry the largest encode
+        dld2, dur2 = await asyncio.to_thread(_ar.download_video, yid, tmpd, "largest")
+        if dld2 and str(dld2) != src:
+            if job:
+                job.log("    - caption derivative unreadable; retried the largest encode")
+            dld, dur, src, local = dld2, dur2, str(dld2), True
+            cuts, ddur = await asyncio.to_thread(tfr.detect_cuts, src, 0.4, 1.5, 120.0, 8, False, dur)
     _t["det"] = _time.time() - _c
     dur = dur or ddur or (float(windows[-1]["end"]) if windows else 0.0)
     sprites = [] if kind == "archive" else await asyncio.to_thread(tfr.storyboard_tiles, url, sdir, 12.0, 80)   # filmstrip overview (free; yt-dlp storyboard is YouTube-only)

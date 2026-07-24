@@ -172,11 +172,18 @@ def pick_derivative(files: List[Dict[str, Any]], purpose: str = "clip") -> Optio
     vids = _video_files(files)
     if not vids:
         return None
+    if purpose == "largest":                                  # the most-likely-complete encode (broken-derivative retry)
+        pool = [v for v in vids if v["name"].lower().endswith((".mp4", ".m4v"))] or vids
+        return max(pool, key=lambda v: v["size"])["name"]
     mp4s = [v for v in vids if v["name"].lower().endswith((".mp4", ".m4v"))]
     if purpose == "caption":
         low = [v for v in mp4s if "512kb" in v["format"] or "_512kb" in v["name"].lower()]
-        pool = low or (sorted(mp4s, key=lambda v: v["size"]) if mp4s else sorted(vids, key=lambda v: v["size"]))
-        return pool[0]["name"]
+        if low:
+            return sorted(low, key=lambda v: v["size"])[0]["name"]
+        # no _512kb → prefer the SMALLEST faststart h.264 (keyframe-extracts cleanly), then smallest mp4/vid
+        h264 = [v for v in mp4s if "h.264" in v["format"] or "avc" in v["format"]]
+        pool = h264 or mp4s or vids
+        return sorted(pool, key=lambda v: v["size"])[0]["name"]
     h264 = [v for v in mp4s if "h.264" in v["format"] or "avc" in v["format"]]  # faststart, clean range-seek
     if h264:
         return max(h264, key=lambda v: v["size"])["name"]
