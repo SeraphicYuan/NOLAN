@@ -301,6 +301,7 @@ def _phrase_time(phrase: str, words, after: float = 0.0) -> Optional[float]:
 
 
 _ELEMENT_ANCHOR_KEYS = ("at", "anchor")     # per-element spoken-phrase anchor ("show it AS you say it")
+_ELEMENT_LABEL_KEYS = ("label", "text", "term", "title", "name", "heading")   # element's own display text (S2 auto-anchor)
 
 
 def _retime_reveals(sc: Dict, d: Dict, words) -> int:
@@ -309,8 +310,10 @@ def _retime_reveals(sc: Dict, d: Dict, words) -> int:
     The composer's shared reveal scheduler (compose._reveal_times) already SPREADS every data block's
     reveals across its window (Layer 1) and reads each element's `_cue` first — so this no longer spreads
     (that would double-schedule); it ONLY pulls anchored elements onto their spoken phrase. An element
-    that carries `at` (or `anchor`) with a resolvable phrase gets `_cue` = the absolute time it's said;
-    unanchored elements are left None so the composer spreads them. Field-name-agnostic: it finds ANY
+    that carries `at` (or `anchor`) with a resolvable phrase gets `_cue` = the absolute time it's said. An
+    element with NO explicit anchor is AUTO-anchored by its own LABEL when that yields a confident (≥2 content-
+    word) match (S2 — so a back-loaded multi-fact block fires each item on its word, not even-spread); only if
+    that also fails is it left None for the composer to spread. Field-name-agnostic: it finds ANY
     authored list-of-dicts whose elements carry an anchor, so it covers every data block (chart series,
     stat items, sankey targets, pie/funnel/cycle/…) and any future one without a per-block table.
 
@@ -328,9 +331,22 @@ def _retime_reveals(sc: Dict, d: Dict, words) -> int:
                 continue
             el.pop("_cue", None)                                # clear a prior sync's placement (un-pin removed anchors)
             phrase = next((el.get(k) for k in _ELEMENT_ANCHOR_KEYS if el.get(k)), None)
-            if not phrase:
-                continue
-            t = _phrase_time(str(phrase), words, after=start)
+            t = None
+            if phrase:
+                t = _phrase_time(str(phrase), words, after=start)
+            else:
+                # S2 — no explicit `at`: auto-anchor by the element's OWN LABEL so a back-loaded multi-fact
+                # block (bullets / stat items) fires each item ON its spoken word instead of even-spread
+                # (which GUARANTEES a lead when the narration delivers the facts non-uniformly). Verbatim label
+                # first (mirrors _retime_lines), then its distinctive content words; require ≥2 content words so
+                # a lone common word can't false-match. Else stays unpinned → the composer spreads it as before.
+                label = next((el.get(k) for k in _ELEMENT_LABEL_KEYS
+                              if isinstance(el.get(k), str) and el.get(k).strip()), None)
+                content = [w for w in _norm(label) if w not in _STOP and len(w) > 2] if label else []
+                if len(content) >= 2:
+                    t = _phrase_time(label, words, after=start)
+                    if t is None:
+                        t = _phrase_time(" ".join(content), words, after=start)
             if t is not None and start <= t < start + dur:
                 el["_cue"] = round(t, 3)                         # ABSOLUTE; composer clamps monotonically
                 done += 1

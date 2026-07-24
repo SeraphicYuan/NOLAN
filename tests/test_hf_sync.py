@@ -371,3 +371,22 @@ def test_visual_lag_flags_symmetric_lead_detection():
     pinned = {"id": "pin1", "type": "statement", "start": 2.0,
               "data": {"kicker": "SOLAR ECLIPSE", "anchor": "quiet ordinary"}}
     assert not [f for f in _visual_lag_flags([pinned], words) if f["kind"] == "lead"]
+
+
+def test_retime_reveals_auto_anchors_unanchored_items_by_label():
+    """S2 (post-mortem): a multi-fact item with NO explicit `at` is auto-anchored by its own label when that
+    yields a confident (≥2 content-word) match — so a back-loaded block fires each item ON its word instead
+    of even-spread (which leads). Verbatim label first, then content words; a 1-word label stays spread."""
+    from nolan.whisper import WordTimestamp
+    toks = "we open quietly then later the syndicate controlled supply and dumped surplus onto the market".split()
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(toks)]
+    sc = {"type": "stat", "start": 0.0, "dur": 20.0, "data": {"items": [
+        {"value": "90%", "label": "controlled supply"},                     # spoken ~t=7
+        {"value": "-40%", "label": "dumped surplus onto the market"},       # spoken ~t=10 (needs verbatim, "the" kept)
+        {"value": "x", "label": "GE"}]}}                                     # 1 content word → stays spread
+    n = sync._retime_reveals(sc, sc["data"], words)
+    its = sc["data"]["items"]
+    assert n == 2, its
+    assert abs(its[0]["_cue"] - 7.0) < 0.01
+    assert abs(its[1]["_cue"] - 10.0) < 0.01                                # verbatim match kept the stop-word
+    assert its[2].get("_cue") is None                                       # lone common word → unpinned (spread)
