@@ -41,6 +41,11 @@ the test in the same change.
   placement never disagree.
 - **Files:** `src/nolan/hyperframes/sync.py` (`_visual_lag_flags`, the report,
   the gate wiring in `finish.py` scene-timing gate).
+- **Systematic pairing:** S1 is the **symmetric detector / safety-net**; **S2 is
+  the actual cure** (most leads come from multi-fact even-spread). Ship them
+  together — a gate that only flags without S2 just moves the fix back onto the
+  author by hand. Robustness = fix placement (S2) + catch residual drift both
+  directions (S1).
 - **Effort:** low. **Test:** extend the sync suite — a scene starting well before
   its content-time is flagged `lead`; a title with a small lead is not.
 
@@ -48,29 +53,45 @@ the test in the same change.
 - **Symptom:** `bgm: retrieve requires a HeyGen credential — skipped`; a 13.6-min
   essay ships with no music bed. Marked "soft" so it sails through.
 - **Root cause (verified):** `finish.py:212` bgm step runs `audio.mjs fetch-bgm`
-  only; on no-credential it warns and continues — no fallback, despite the repo's
-  local sound path (`nolan.audio_mix` / the sound umbrella / `/media-use` "resolve
-  BGM"). Classic under-wired authored field.
-- **Fix:** when HeyGen is unavailable, `hf-finish` bgm falls back to the local
-  music library and mixes it via the existing ducked `sfx_mix` path (VO stays on
-  top). Wire through the sound organ, not a new one.
-- **Files:** `finish.py` (bgm step), `nolan/audio_mix` / `sound.py` / `sfx_mix.py`,
-  the `/media-use` binding.
-- **Effort:** medium. **Test:** with HeyGen absent, the finished `audio_meta`
-  carries a bgm track from the local bank (not empty); narration preserved.
+  only; on no-credential it warns and continues — no fallback, despite a *complete
+  existing* local-music organ (`audio_mix.load_music_library()` /
+  `resolve_music_config()`, `MUSIC_LIBRARY = projects/_library/music/` with a
+  `music.json` manifest).
+- **Fix (systematic, not a band-aid):** make bgm a **tiered resolver**, mirroring
+  the `ImageProvider`/`WebSearchProvider` pattern already in the repo:
+  HeyGen (`fetch-bgm`) → **`audio_mix` local library** (`resolve_music_config`) →
+  none. Do NOT hand-roll a `if no_credential: local` branch in `finish.py`; add a
+  `resolve_bgm()` in the sound organ that owns the tier order, and have `finish.py`
+  call it. Local hits mix via the existing ducked `sfx_mix` path (VO on top). This
+  also fixes the "media-use advertises BGM resolution but it's unwired" smell —
+  one resolver, honestly bound.
+- **Files:** `src/nolan/audio_mix.py` (new `resolve_bgm` tier owner), `finish.py`
+  (bgm step calls it), `sfx_mix.py` (duck), the `/media-use` binding.
+- **Effort:** medium. **Test:** with HeyGen absent, `resolve_bgm` returns a local
+  track and the finished `audio_meta` carries it (not empty); narration preserved;
+  a unit test asserts the tier ORDER (HeyGen preferred, local fallback).
 
 ### L1 · Layout lint false-FAILs full-bleed scenes and shouts "FAIL" on a soft step
 - **Symptom:** grounded full-bleed footage scenes get "0% of content mass in the
   editorial-column zone"; the run prints `FAIL — layout errors` then continues,
   training the author to ignore it.
-- **Root cause (verified):** `layout_lint.py:685` prints `"FAIL — layout errors
-  above"` on a soft step; the archetype-zone-mass check doesn't understand that a
-  `data.ground` full-bleed scene legitimately has mass outside the text column.
-- **Fix:** exempt `data.ground` full-bleed scenes from the archetype-zone-mass
-  check; downgrade the soft-step wording from `FAIL` to `WARN`/`advisory`.
-- **Files:** `src/nolan/hyperframes/layout_lint.py`.
-- **Effort:** low. **Test:** a full-bleed `data.ground` scene does not raise a
-  zone-mass error; a genuinely crowded-left text scene still does.
+- **Root cause (verified):** the zone-mass check is *already* archetype-driven
+  (`layout_lint.py:6` "against the archetype registry's machine-readable safe-areas
+  + anchor zone"; `_ANCHOR_DRIFT_FRAC = 0.60`). The real defect is that it treats a
+  `data.ground` full-bleed scene's legitimate media mass (outside the text column)
+  as drift — the check isn't **ground-aware**, and/or the full-bleed archetype's
+  registered zone in `archetypes.json` doesn't declare full-canvas.
+- **Fix (systematic, not an exemption list):** don't special-case "full-bleed" —
+  make the mass check **ground-aware**: a scene carrying a `data.ground` counts the
+  ground as content mass satisfying its zone (or, better, the full-bleed/media
+  archetype declares a full-canvas zone in `themes/composition/archetypes.json` and
+  the check simply reads it — one dialect, no exemptions). Separately, downgrade the
+  soft-step wording from `FAIL` → `WARN`/`advisory` at `layout_lint.py:685`.
+- **Files:** `src/nolan/hyperframes/layout_lint.py`,
+  `themes/composition/archetypes.json` (zone declaration).
+- **Effort:** low. **Test:** a full-bleed `data.ground` scene passes zone-mass via
+  its archetype's declared zone (not a hardcoded skip); a genuinely crowded-left
+  text scene still fails; assert the check reads the archetype zone, not a type list.
 
 ---
 
@@ -143,8 +164,12 @@ the test in the same change.
 - **Verified:** the gate at `finish.py:185` (`HF_ALLOW_UNSOURCED` escape) fires on
   a fabrication set; nolan6 reports it only triggers on ≥3 numeric values and
   exempts ≤2-point charts, so a fabricated string number or a bogus 2-bar chart
-  passes. **Fix:** lower/parameterize the threshold; cover small charts. **Test:**
-  a 2-bar chart with an unsourced value is flagged.
+  passes. **Fix (systematic, not a threshold tweak):** the count threshold is the
+  band-aid — gate by **claim TYPE**, not token count: any value living in a
+  structured data block / chart series must carry a `value_source`, regardless of
+  how many there are (incidental numbers in prose stay exempt by being prose, not
+  by a count). **Test:** a 2-point chart with an unsourced value is flagged; an
+  incidental number in a statement is not.
 
 ### D1 · `sync --report` messaging sets a wrong expectation
 - Sold as a "~2 s preview" but the first call pays full Whisper alignment
