@@ -2,8 +2,13 @@
 
 **Source:** nolan6's review after a cold fleet run of `the-diamond-illusion-hf`
 (2026-07-23) — the first full author → hf-finish → render done by a fresh agent.
-**Status:** planning only (no code changed). Each item verified against the code
-below; severity corrected where the field report overstated it.
+**Status (2026-07-23):** Tier 1 + Tier 2 IMPLEMENTED, tested, committed —
+✅ **S1** (symmetric lead gate, `12a9e68`), ✅ **L1** (ground-aware drift,
+`2996c93`), ✅ **S2** (auto-anchor multi-fact items, `390f632`), ✅ **A1**
+(assemble-media auto-stage, this batch), ✅ **R1** (renders/.done sentinel; reap
+left to the CLI, this batch). B1 deferred (own strategy). Remaining: Tier 3 +
+Tier 4. Each item was verified against the code below; severity corrected where
+the field report overstated it.
 
 ## Verification + severity notes
 
