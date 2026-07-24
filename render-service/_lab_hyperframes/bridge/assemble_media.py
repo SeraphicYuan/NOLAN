@@ -13,9 +13,63 @@ Both injectors are idempotent, so re-running is safe.
   python -X utf8 assemble_media.py <project_dir>
 """
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+
+def _iter_media_srcs(obj):
+    """Yield every string value authored under a `src` key, anywhere in a spec (ground.src of any kind,
+    data.src, items[].src, overlay srcs, …) — the full set of media the composition references."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == "src" and isinstance(v, str):
+                yield v
+            else:
+                yield from _iter_media_srcs(v)
+    elif isinstance(obj, list):
+        for x in obj:
+            yield from _iter_media_srcs(x)
+
+
+def stage_referenced_media(comp_dir: Path) -> dict:
+    """A1 — make the documented "copy clips into assets/ first" step DETERMINISTIC. Any media the specs
+    reference as `assets/<x>` that isn't physically under the comp's assets/ is resolved from
+    capture/{assets,keyassets}{,/videos,/overlays} by basename and copied in — otherwise it renders as a
+    silent black hole. Loud: reports what it staged and what stayed unresolved (a genuinely-missing ref
+    surfaces here instead of at the render). Idempotent (skips refs already present)."""
+    fdir = comp_dir / "compositions" / "frames"
+    refs = set()
+    for sf in sorted(fdir.glob("*.spec.json")) if fdir.is_dir() else []:
+        try:
+            spec = json.loads(sf.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        for src in _iter_media_srcs(spec):
+            if src.startswith("assets/"):
+                refs.add(src)
+    search_roots = [comp_dir / "capture" / d for d in
+                    ("assets", "assets/videos", "assets/overlays", "keyassets", "keyassets/videos")]
+    staged, missing = [], []
+    for ref in sorted(refs):
+        dest = comp_dir / ref
+        if dest.exists():
+            continue
+        base = Path(ref).name
+        found = next((r / base for r in search_roots if (r / base).exists()), None)
+        if found:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(found, dest)
+            staged.append(ref)
+        else:
+            missing.append(ref)
+    if staged:
+        print(f"stage-media: staged {len(staged)} referenced asset(s) capture/ → assets/")
+    if missing:
+        print(f"⚠ stage-media: {len(missing)} referenced asset(s) NOT in assets/ or capture/ "
+              f"(these render as a HOLE — source them): {', '.join(missing[:8])}")
+    return {"staged": staged, "missing": missing}
 
 
 def _frame_durations(comp_dir: Path, spec_files):
@@ -201,6 +255,7 @@ def main():
     if not index.exists():
         sys.exit(f"no index.html at {index} — run assemble-index first")
 
+    stage_referenced_media(comp)                                       # A1: bridge capture/ → assets/ deterministically
     clips = heal_video_freezes(comp, collect_video_grounds(comp))
     if clips:
         print(f"root video grounds: {len(clips)} → inject_root_video")
