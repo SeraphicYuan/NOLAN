@@ -67,6 +67,29 @@ def _run(label: str, cmd: List[str], cwd: Path = None, *, dry: bool = False, sof
     return True
 
 
+# R1 (post-mortem) — a DETACHED `hf-finish` was an observability black hole: its stdout buffered to an
+# empty log, and "wait for the render's chrome to exit" hung on orphaned headless procs, so completion was
+# unknowable. A file sentinel fixes the completion signal cleanly (a watcher keys on renders/.done, not on
+# process/chrome death). We do NOT auto-kill the render's browser here — that is the external `hyperframes`
+# CLI's lifecycle, and a scoped-wrong `taskkill` has nuked a user's real browser before; leave it to the CLI.
+def _render_done_path(pdir: Path) -> Path:
+    return pdir / "renders" / ".done"
+
+
+def _clear_render_done(pdir: Path) -> None:
+    """Clear a stale completion sentinel before a fresh render so a detached watch can't false-fire on it."""
+    (pdir / "renders").mkdir(parents=True, exist_ok=True)
+    _render_done_path(pdir).unlink(missing_ok=True)
+
+
+def _mark_render_done(pdir: Path, comp: str) -> Path:
+    """Write renders/.done on a successful finish — the clean completion signal a detached hf-finish keys on."""
+    p = _render_done_path(pdir)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"comp": comp, "rendered": True}), encoding="utf-8")
+    return p
+
+
 def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool = False,
            render_mode: str = "whole", burn_captions: bool = False, duck: bool = False) -> dict:
     """Run the compose-first finish DAG for a comp. Returns a summary dict.
@@ -277,6 +300,8 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     # 8 · RENDER — MODE SWITCH (steps 1–7 above + step-9 QA below are SHARED). `whole`: one npx render of
     #     the assembled index.html. `incremental`: window that SAME index per-frame + concat (cached — a
     #     one-frame edit re-renders one frame, not the monolith). Both write renders/video.mp4.
+    if not dry_run:
+        _clear_render_done(pdir)                          # R1: stale-guard the detached-watch sentinel
     if render_mode == "incremental":
         if dry_run:
             print("  [render] incremental — window index.html per-frame + concat → renders/video.mp4")
@@ -325,6 +350,8 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)], dry=dry_run, soft=True)  # spec dimensions
     _run("temporal", py + ["-m", "nolan.hyperframes.temporal_gate", str(pdir)], dry=dry_run, soft=True)  # motion: frozen/static/dead-air
     _run("perceptual", py + ["-m", "nolan.hyperframes.render_gate", str(pdir)], dry=dry_run, soft=True)  # VLM: legibility + relevance
+    if not dry_run:
+        _mark_render_done(pdir, comp)                     # R1: detached watchers key on renders/.done, not chrome-exit
     print("hf-finish: done → renders/video.mp4")
     return {"comp": comp, "rendered": True}
 
