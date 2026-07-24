@@ -2,7 +2,11 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-23
+**Last Updated:** 2026-07-24
+
+## Caption-by-topic tier 2 — balanced, deduped, honest prefilter (2026-07-24)
+
+On-demand topic search (`transcript_lib._topic_suggestions`, the /transcripts Topic tab) was quietly starving its best source. Tier 2 keyword-prefiltered the surveyed-but-not-ingested titles and then took a blind `[:1500]` head-slice of the match list in survey-iteration order — so Bloomberg (48,764 surveyed titles, iterated first) ate the whole embed budget: measured on the live library, "1950s suburban consumerism" scored 1,471 Bloomberg rows and **ZERO** of Prelinger's 3,197 matching PD films (6,888 matches dropped, silently). Three fixes: (1) archive rows now KEYWORD-match on title + subject tags + description (recall) while EMBEDDING only title + subject tags (the description prose dilutes the vector below the 0.42 floor); (2) `_balanced_prefilter()` spends the budget ROUND-ROBIN across sources, best keyword match first (most distinct topic keywords hit) within each — no single channel can starve the archival collections; (3) surveyed videos are counted ONCE across surveys.json's legacy un-namespaced keys and their kind-namespaced twins (kind-namespaced sorted first, dedupe by video_id keeps the row whose `kind` is known) — the duplicates were double-spending the budget and emitting duplicate suggestions. The cap is no longer silent: the response carries `prefilter_matches` / `prefilter_dropped` / `prefilter_sources` and the Topic tab prints “scanned N keyword matches → ranked M (K not scored — embed budget)” plus the per-source split. Live result (copyright-free only): "1950s suburban consumerism" 0 → 28 hits (Urban Sprawl, Social Class in America, Family Life, American Fashion and Department Stores); "civil defense duck and cover" now leads with the archive PD films it should and the duplicate "Atomic Bombs" rows collapsed. Honesty test `test_suggest_topic_prefilter_is_balanced_and_honest` (even split under a starving budget, dedupe across legacy keys, dropped-count reported). 16 test_transcript_manage + test_transcript_lib green; template JS syntax-checked.
 
 ## HF post-mortem fixes — Tier 1 + Tier 2 shipped (2026-07-23)
 

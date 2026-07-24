@@ -641,13 +641,23 @@
         <a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title||s.video_id)}</a> ${kb} ${act}${s.copyright_free?' <span class="chip frames">cf</span>':''}</span>
         <span class="row" style="gap:8px;flex:0 0 auto"><span class="dim" style="font-size:11px;max-width:300px;text-align:right">${esc((s.why||"").slice(0,90))}</span><span class="score">${s.score}</span></span></div>`;
     }
+    /* honest coverage line: what the keyword prefilter found vs what the embed budget could actually score */
+    function tgScanNote(d){
+      if(!d || !d.prefilter_matches) return "";
+      const src=Object.entries(d.prefilter_sources||{}).map(([k,v])=>`${esc(k)} ${v}`).join(" · ");
+      const drop=d.prefilter_dropped||0;
+      return `<div class="dim" style="margin:12px 0 0;font-size:11px">scanned ${d.prefilter_matches} keyword matches → ranked ${d.prefiltered}`
+        + (drop?` <span class="warn">(${drop} not scored — embed budget)</span>`:``)
+        + (src?`<br>balanced across sources: ${src}`:``) + `</div>`;
+    }
     function tgRender(d){
       const sug=d.suggestions||[];
-      if(!sug.length){ $("#tg-body").innerHTML=`<div class="dim">No matches. ${d.ingested+d.surveyed===0?"Index or survey some sources first.":""}</div>`; return; }
+      if(!sug.length){ $("#tg-body").innerHTML=`<div class="dim">No matches. ${d.ingested+d.surveyed===0?"Index or survey some sources first.":""}</div>`+tgScanNote(d); return; }
       const ing=sug.filter(s=>s.tier==="ingested"), sur=sug.filter(s=>s.tier==="surveyed");
       let html="";
       if(ing.length) html += `<div class="dim" style="margin:2px 0 4px"><b>Already indexed, not captioned</b> — run the visual tier (${ing.length})</div>` + ing.map(tgRow).join("");
       if(sur.length) html += `<div class="dim" style="margin:12px 0 4px"><b>Surveyed, not added</b> — ingest + caption (${sur.length})</div>` + sur.map(tgRow).join("");
+      html += tgScanNote(d);
       $("#tg-body").innerHTML = html;
     }
     function tgSelAll(on){ (Object.values(TG.byId)).forEach(s=>{ if(on)TG_SEL.add(s.video_id); else TG_SEL.delete(s.video_id); }); tgSelN(); tgRender({suggestions:Object.values(TG.byId), ingested:0, surveyed:0}); }

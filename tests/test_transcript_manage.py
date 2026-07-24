@@ -209,6 +209,40 @@ def test_suggest_topic_surveyed_tier(monkeypatch):
     assert not any(s["video_id"] in ("s2", "x1") for s in sur)   # off-topic dropped + already-ingested skipped
 
 
+def test_suggest_topic_prefilter_is_balanced_and_honest(monkeypatch):
+    """The tier-2 embed budget is spent ROUND-ROBIN across sources (best keyword match first within each),
+    surveyed videos are counted ONCE across the legacy + kind-namespaced survey keys, and whatever the budget
+    could not score is REPORTED (no silent cap). A blind head-slice let one 48k-title channel starve the
+    archival collections: "1950s suburban consumerism" scored 1471 Bloomberg rows and 0 Prelinger PD films."""
+    from nolan import transcript_lib as tl
+    big = [{"video_id": f"b{i}", "title": "atomic bomb news", "url": f"ub{i}"} for i in range(100)]
+    arch = [{"video_id": f"a{i}", "title": "Duck and Cover", "url": f"ua{i}",
+             "subject": ["Civil defense", "Atomic"], "description": "civil defense film"} for i in range(20)]
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: {f"a{i}" for i in range(20)})
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {
+        "bloomberg": {"titles": big},                              # LEGACY key (kind=None) — same videos…
+        "youtube:bloomberg": {"kind": "youtube", "titles": big},   # …as this kind-namespaced one
+        "archive:prelinger": {"kind": "archive", "titles": arch},
+    })
+    monkeypatch.setattr(tl, "_PREFILT_BUDGET", 20)
+    monkeypatch.setattr(tl, "_embed_titles", lambda titles: [[1.0, 0.0]] * len(titles))
+
+    class FakeIndex:
+        def transcript_video_ids(self):
+            return set()
+
+    class FakeVS:
+        def search(self, **k):
+            return []
+    d = tl._topic_suggestions(["atomic bomb civil defense"], "civil defense", FakeIndex(), FakeVS(), 6, None)
+    assert d["prefilter_matches"] == 120 and d["prefiltered"] == 20     # 100 big + 20 archive, counted ONCE each
+    assert d["prefilter_dropped"] == 100                                # reported, not silently swallowed
+    assert d["prefilter_sources"] == {"archive:prelinger": 10, "youtube:bloomberg": 10}   # even split, no starving
+    assert "bloomberg" not in d["prefilter_sources"]                    # legacy key deduped away by video_id
+    assert {s["kind"] for s in d["suggestions"]} == {"archive", "youtube"}   # kind survives the dedupe
+
+
 def test_copyright_free_ids_from_sources_and_surveys(monkeypatch):
     """copyright_free_ids = the video ids belonging to a copyright-free source (youtube_cc, or an archive
     collection ADDED copyright-free) — derived from sources × surveys, so the acquire engine marks provenance

@@ -407,26 +407,42 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
     for s in [topic] + list(queries):
         kw |= set(_tok(s))
     have = set(cat.keys())
-    prefilt = []                                              # (video_id, title, url, kind, copyright_free)
-    for sv in load_surveys(catalog_dir).values():
+    # kind-namespaced survey keys FIRST: surveys.json also carries LEGACY un-namespaced keys for the same
+    # channel (kind=None), so the by-video_id dedupe below keeps the row whose `kind` is known — and counts
+    # each surveyed video ONCE (the duplicate keys used to double-spend the embed budget and emit dup rows).
+    svs = sorted(load_surveys(catalog_dir).items(), key=lambda kv: (":" not in kv[0], kv[0]))
+    by_src: Dict[str, List[Tuple]] = {}                       # survey key → (hits, video_id, title, embed_text, …)
+    seen_vid = set()
+    for key, sv in svs:
         kd = sv.get("kind") or "youtube"
         for t in sv.get("titles", []):
             vid = t.get("video_id")
-            if not vid or vid in have:
+            if not vid or vid in have or vid in seen_vid:
                 continue
             title = t.get("title") or vid
-            if kw and any(k in title.lower() for k in kw):
-                prefilt.append((vid, title, t.get("url") or "", kd, vid in free_ids))
-    prefilt = prefilt[:1500]                                  # bound the embed (keyword match is already tight)
+            # archive rows also cache subject tags + description. KEYWORD-match on all of it (recall — a
+            # "Precious Stones" industrial surfaces via its subjects), but EMBED only title + subject tags:
+            # they're short + topical, whereas the description PROSE dilutes the vector below the floor.
+            subj = " ".join(t.get("subject") or []) if kd == "archive" else ""
+            kw_text = (title + " " + subj + " " + (t.get("description") or "")).lower() if kd == "archive" \
+                else title.lower()
+            hits = sum(1 for k in kw if k in kw_text) if kw else 0
+            if not hits:
+                continue
+            seen_vid.add(vid)
+            embed_text = (title + " " + subj).strip() if subj else title
+            by_src.setdefault(key, []).append((hits, vid, title, embed_text[:200], t.get("url") or "",
+                                               kd, vid in free_ids))
+    prefilt, kw_matches, kept_by_src = _balanced_prefilter(by_src, _PREFILT_BUDGET)
     surveyed = []
     if prefilt:
         qv = np.asarray(_embed_titles(list(queries)), dtype=np.float32)
-        tv = np.asarray(_embed_titles([c[1] for c in prefilt]), dtype=np.float32)
+        tv = np.asarray(_embed_titles([c[2] for c in prefilt]), dtype=np.float32)   # title + subject tags
         sims = (tv @ qv.T).max(axis=1)
         for i in np.argsort(-sims)[:n * 3]:
             if float(sims[i]) < 0.42:                         # floor: keep only real semantic matches
                 continue
-            vid, title, url, kd, cf = prefilt[i]
+            vid, title, _et, url, kd, cf = prefilt[i]
             if copyright_free_only and not cf:
                 continue
             surveyed.append({"video_id": vid, "title": title, "url": url, "channel": "", "kind": kd,
@@ -435,7 +451,39 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
 
     return {"topic": topic, "queries": list(queries),
             "suggestions": ingested[:n] + surveyed[:n],
-            "ingested": len(ingested), "surveyed": len(surveyed), "prefiltered": len(prefilt)}
+            "ingested": len(ingested), "surveyed": len(surveyed), "prefiltered": len(prefilt),
+            # what the embed budget could NOT score — never a silent cap
+            "prefilter_matches": kw_matches, "prefilter_dropped": max(0, kw_matches - len(prefilt)),
+            "prefilter_sources": kept_by_src}
+
+
+_PREFILT_BUDGET = 1500                                        # tier-2 titles we're willing to BGE-embed per topic
+
+
+def _balanced_prefilter(by_src, budget=_PREFILT_BUDGET):
+    """Round-robin the per-source keyword matches into the embed budget — best match (most DISTINCT topic
+    keywords hit) first within each source. A blind head-slice let one huge channel (Bloomberg: 48k surveyed
+    titles, iterated first) eat the whole budget and starve the archival collections of it: "1950s suburban
+    consumerism" kept 1471 Bloomberg rows and ZERO of Prelinger's 3197 matching PD films.
+    Returns (rows, total_matches, kept_per_source) — rows drop the leading hit count."""
+    pools = [(k, sorted(rows, key=lambda r: -r[0])) for k, rows in sorted(by_src.items())]
+    total = sum(len(p) for _k, p in pools)
+    rows, kept = [], {}
+    depth = 0
+    while len(rows) < budget:
+        added = False
+        for k, p in pools:
+            if depth >= len(p):
+                continue
+            rows.append(p[depth][1:])
+            kept[k] = kept.get(k, 0) + 1
+            added = True
+            if len(rows) >= budget:
+                break
+        if not added:
+            break
+        depth += 1
+    return rows, total, kept
 
 
 def copyright_free_ids(catalog_dir: Optional[Path] = None) -> set:
