@@ -328,7 +328,7 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
 
 async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
                                visual: str = "keyframe", max_frames: int = 0, densify: bool = False,
-                               job=None) -> int:
+                               kind: str = "youtube", job=None) -> int:
     """Capture + embed the visual tier for ONE transcript video: DOWNLOAD the video ONCE to a temp file,
     then run FULL-RES scene-cut detection + one frame per shot (b-roll optionally densified) ALL LOCALLY --
     one sustained transfer instead of ~N throttled googlevideo range requests (batch-scale bottleneck + no
@@ -357,7 +357,11 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     _t = {"dl": 0.0, "det": 0.0, "grab": 0.0, "cap": 0.0, "emb": 0.0}
     _c = _time.time()
     async with tfr.download_sem():                                # GLOBAL download cap (CDN-safe across jobs)
-        dld, dur = await asyncio.to_thread(tfr.download_video, url, tmpd)
+        if kind == "archive":                                    # archive: download the cheap caption derivative directly
+            from nolan import archive_source as _ar
+            dld, dur = await asyncio.to_thread(_ar.download_video, yid, tmpd, "caption")
+        else:
+            dld, dur = await asyncio.to_thread(tfr.download_video, url, tmpd)
     _t["dl"] = _time.time() - _c
     local = dld is not None
     src = str(dld) if local else url
@@ -367,7 +371,7 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
     cuts, ddur = await asyncio.to_thread(tfr.detect_cuts, src, 0.4, 1.5, 120.0, 8, not local, dur)
     _t["det"] = _time.time() - _c
     dur = dur or ddur or (float(windows[-1]["end"]) if windows else 0.0)
-    sprites = await asyncio.to_thread(tfr.storyboard_tiles, url, sdir, 12.0, 80)   # filmstrip overview (free)
+    sprites = [] if kind == "archive" else await asyncio.to_thread(tfr.storyboard_tiles, url, sdir, 12.0, 80)   # filmstrip overview (free; yt-dlp storyboard is YouTube-only)
     base = tfr.plan_shots(cuts, dur) if (cuts and dur) else [
         (round((w["start"] + w["end"]) / 2, 1), float(w["start"]), float(w["end"])) for w in windows]
     if max_frames and len(base) > int(max_frames):                # optional safety cap (0 = uncapped)
@@ -552,7 +556,7 @@ async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, f
                 if force:
                     await asyncio.to_thread(tfr.delete_frames_for_video, yid)
                 n = await _capture_visual_tier(url, windows, yid, title, visual="keyframe",
-                                               densify=densify, job=job)
+                                               densify=densify, kind=meta.get("kind", "youtube"), job=job)
                 tl.record_transcript(yid, {**meta, "url": url, "video_id": yid}, len(windows),
                                      meta.get("channel"), frames=n, added=meta.get("added", ""))
                 job.log(f"  ✓ {title}: {n} frames"); done += 1
@@ -626,14 +630,19 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
             has_tr = tr and getattr(tr, "chunks", None)
             if has_tr:
                 windows = tl.chunk_transcript(tr, window_s=float(window_s), overlap_s=float(overlap_s))
-            elif kind == "youtube_cc":
-                # copyright-free stock channels have NO speech: index the descriptive TITLE as one window
-                ttl = (v.get("title") or title) or yid0
-                dur = dur_item or 60.0
-                windows = [{"start": 0.0, "end": dur, "text": ttl}]
+            elif kind in ("youtube_cc", "archive"):
+                # no transcript -> index the descriptive metadata as one window so the item STILL enters the
+                # library (and can be VISUALLY captioned). archive: title + subject tags; stock: the title.
+                ttl = (meta or {}).get("title") or (v.get("title") or title) or yid0
+                text = ttl
+                subj = (meta or {}).get("subject") or []
+                if kind == "archive" and subj:
+                    text = ttl + " -- " + ", ".join(str(s) for s in subj[:10])
+                dur = dur_item or float((meta or {}).get("duration") or 0) or 60.0
+                windows = [{"start": 0.0, "end": float(dur), "text": text}]
                 meta = {**(meta or {}), "video_id": (meta or {}).get("video_id") or yid0,
-                        "title": (meta or {}).get("title") or ttl, "url": url}
-                job.log(f"  ~ {ttl[:60]}: no captions -> title-indexed (stock footage)")
+                        "title": ttl, "url": url}
+                job.log(f"  ~ {ttl[:60]}: no transcript -> {'title+subject' if kind=='archive' else 'title'}-indexed")
             else:
                 job.log(f"  . {title}: no transcript -- skipped"); no_tr += 1; continue
         vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": url}, windows, v.get("channel") or collection)
@@ -644,10 +653,10 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
         if is_broll:
             broll += 1
         nframes = 0
-        if visual and visual != "off" and kind != "archive" and not is_broll:  # archive/b-roll visual tier deferred
+        if visual and visual != "off" and not is_broll:        # b-roll skips (the whole clip IS the asset)
             try:
                 nframes = await _capture_visual_tier(url, windows, meta.get("video_id") or yid0, title,
-                                                     visual=visual, job=job)
+                                                     visual=visual, kind=kind, job=job)
             except Exception as e:
                 job.log(f"    (visual skipped: {type(e).__name__}: {e})")
         tl.record_transcript(meta.get("video_id") or yid0, {**meta, "url": url}, len(windows),

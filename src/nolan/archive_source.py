@@ -189,6 +189,32 @@ def download_url(identifier: str, filename: str) -> str:
     return f"{DOWNLOAD}/{collection_ref(identifier) if '/' in identifier else identifier}/{filename}"
 
 
+def download_video(identifier: str, out_dir, purpose: str = "caption",
+                   timeout: float = 180.0) -> Tuple[Optional[Path], float]:
+    """Download an item's video DERIVATIVE to a local file for the VISUAL TIER — the archive analogue of
+    `transcript_frames.download_video`. `purpose='caption'` pulls the cheap `_512kb.mp4` (one sustained
+    transfer; ffmpeg then reads it locally, no per-frame CDN range throttle). Returns (path, duration_s), or
+    (None, duration_s) if the item has no usable video derivative. Signature matches the youtube downloader
+    so `_capture_visual_tier` can branch on kind and treat the result identically."""
+    ident = collection_ref(identifier) if "/" in (identifier or "") else identifier
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    with httpx.Client(headers=_UA, timeout=timeout, follow_redirects=True) as c:
+        m = c.get(f"{META}/{ident}").json()
+        files = m.get("files", []) or []
+        dur = parse_runtime((m.get("metadata") or {}).get("runtime")) or 0.0
+        fn = pick_derivative(files, purpose)
+        if not fn:
+            return None, dur
+        dest = out / f"{ident}_{purpose}.mp4"
+        with c.stream("GET", download_url(ident, fn)) as r:
+            r.raise_for_status()
+            with open(dest, "wb") as f:
+                for chunk in r.iter_bytes(1 << 16):
+                    f.write(chunk)
+    return dest, dur
+
+
 def fetch_transcript(identifier: str, collection: str = "", out_dir: Optional[Path] = None,
                      timeout: float = 45.0) -> Tuple[Dict[str, Any], Any]:
     """``(meta, transcript_cues)`` from archive.org's Whisper ASR ``.asr.srt``. ``(meta, None)`` when the item
