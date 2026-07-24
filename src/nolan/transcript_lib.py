@@ -321,6 +321,113 @@ def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optiona
     return fetched
 
 
+def _src_id_from_url(url: str) -> str:
+    """The catalog key (youtube id or archive identifier) from a transcript row's stored URL."""
+    from nolan.youtube import extract_video_id
+    if "archive.org" in (url or ""):
+        from nolan import archive_source as ar
+        return ar.collection_ref(url)
+    return extract_video_id(url or "") or ""
+
+
+async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
+                           catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """ON-DEMAND caption targeting: a rough topic ("diamond, De Beers, diamond history") → a ranked shortlist
+    of videos worth running the gemma VISUAL tier on. Two tiers, both reusing existing machinery:
+      (1) INGESTED-but-not-captioned — the topic's BGE vector search over transcripts, grouped by video, kept
+          where the catalog shows frames==0 (transcript indexed, no keyframes yet) → action 'caption';
+      (2) SURVEYED-but-not-ingested — a keyword prefilter over the persisted survey titles then BGE similarity
+          → action 'ingest+caption'.
+    A deepseek pass expands the rough topic into specific queries for recall. No web search (Phase 2)."""
+    import asyncio
+    import json
+
+    from nolan.llm import create_text_llm
+    queries = [q.strip() for q in (topic or "").replace(",", "\n").splitlines() if q.strip()]
+    try:
+        llm = create_text_llm(config)
+        out = await llm.generate(
+            f'Expand this rough topic into 5-7 SPECIFIC, diverse search queries (key people, events, '
+            f'sub-topics, eras) for retrieving documentary/video footage. Topic: "{topic}". '
+            'Respond ONLY JSON: {"queries":["...", "..."]}.',
+            system_prompt="You expand a rough topic into specific search queries for video retrieval.")
+        st, en = out.find("{"), out.rfind("}")
+        qs = [str(q).strip() for q in (json.loads(out[st:en + 1]).get("queries") or []) if str(q).strip()] \
+            if st >= 0 and en > st else []
+        if qs:
+            queries = qs
+    except Exception:
+        pass
+    queries = (queries or [topic])[:8]
+    return await asyncio.to_thread(_topic_suggestions, queries, topic, index, vs, int(n), catalog_dir)
+
+
+def _topic_suggestions(queries, topic, index, vs, n, catalog_dir):
+    import numpy as np
+    cat = load_catalog(catalog_dir)
+    t_ids = set(index.transcript_video_ids())
+    free_ids = copyright_free_ids(catalog_dir)
+
+    # --- Tier 1: INGESTED but NOT captioned (frames==0) — vector search over the transcripts ---
+    best: Dict[str, Any] = {}
+    for q in queries:
+        try:
+            hits = vs.search(query=q, limit=200, search_level="segments") or []
+        except Exception:
+            continue
+        for h in hits:
+            if getattr(h, "video_id", None) not in t_ids:
+                continue
+            url = getattr(h, "video_path", "") or ""
+            sid = _src_id_from_url(url)
+            e = cat.get(sid)
+            if not e or int(e.get("frames", 0) or 0) > 0:     # not in catalog, or already captioned → skip
+                continue
+            score = float(getattr(h, "score", 0) or 0)
+            if sid not in best or score > best[sid]["score"]:
+                best[sid] = {"score": score, "e": e, "url": url,
+                             "snip": (getattr(h, "description", "") or getattr(h, "transcript", "") or "")[:150]}
+    ingested = sorted(
+        ({"video_id": sid, "title": b["e"].get("title") or sid, "url": b["e"].get("url") or b["url"],
+          "channel": b["e"].get("channel"), "kind": b["e"].get("kind", "youtube"),
+          "copyright_free": bool(b["e"].get("copyright_free")), "tier": "ingested", "action": "caption",
+          "score": round(b["score"], 3), "why": b["snip"]} for sid, b in best.items()),
+        key=lambda x: -x["score"])
+
+    # --- Tier 2: SURVEYED but NOT ingested — keyword prefilter (cheap) then BGE similarity (precise) ---
+    kw = set()
+    for s in [topic] + list(queries):
+        kw |= set(_tok(s))
+    have = set(cat.keys())
+    prefilt = []                                              # (video_id, title, url, kind, copyright_free)
+    for sv in load_surveys(catalog_dir).values():
+        kd = sv.get("kind") or "youtube"
+        for t in sv.get("titles", []):
+            vid = t.get("video_id")
+            if not vid or vid in have:
+                continue
+            title = t.get("title") or vid
+            if kw and any(k in title.lower() for k in kw):
+                prefilt.append((vid, title, t.get("url") or "", kd, vid in free_ids))
+    prefilt = prefilt[:1500]                                  # bound the embed (keyword match is already tight)
+    surveyed = []
+    if prefilt:
+        qv = np.asarray(_embed_titles(list(queries)), dtype=np.float32)
+        tv = np.asarray(_embed_titles([c[1] for c in prefilt]), dtype=np.float32)
+        sims = (tv @ qv.T).max(axis=1)
+        for i in np.argsort(-sims)[:n * 3]:
+            if float(sims[i]) < 0.42:                         # floor: keep only real semantic matches
+                continue
+            vid, title, url, kd, cf = prefilt[i]
+            surveyed.append({"video_id": vid, "title": title, "url": url, "channel": "", "kind": kd,
+                             "copyright_free": bool(cf), "tier": "surveyed", "action": "ingest+caption",
+                             "score": round(float(sims[i]), 3), "why": ""})
+
+    return {"topic": topic, "queries": list(queries),
+            "suggestions": ingested[:n] + surveyed[:n],
+            "ingested": len(ingested), "surveyed": len(surveyed), "prefiltered": len(prefilt)}
+
+
 def copyright_free_ids(catalog_dir: Optional[Path] = None) -> set:
     """Set of transcript-library video_ids that belong to a COPYRIGHT-FREE source — the youtube_cc stock
     family, or an archive.org collection added copyright-free — derived from sources.json × the persisted

@@ -259,6 +259,24 @@ def register(app, ctx):
         results = await asyncio.to_thread(tl.search_transcripts, q, index, vs, int(n))
         return {"results": results, "count": len(results)}
 
+    @app.post("/api/transcripts/suggest-topic")
+    async def transcripts_suggest_topic(body: dict = Body(...)):
+        """ON-DEMAND: a rough topic → videos worth captioning. Tier 1 = ingested-but-not-captioned (vector
+        search); tier 2 = surveyed-but-not-ingested (title match). deepseek expands the topic. (web = Phase 2)"""
+        from nolan.config import load_config
+        from nolan import transcript_lib as tl
+        from nolan.indexer import VideoIndex
+        from nolan.vector_search import VectorSearch
+        topic = (body.get("topic") or "").strip()
+        if not topic:
+            raise HTTPException(status_code=400, detail="topic required")
+        idb = _db()
+        if not Path(idb).exists():
+            return {"topic": topic, "suggestions": [], "queries": [], "ingested": 0, "surveyed": 0}
+        index = VideoIndex(idb)
+        vs = VectorSearch(Path(idb).parent / "vectors", index=index)
+        return await tl.suggest_by_topic(topic, index, vs, load_config(), int(body.get("n", 12) or 12))
+
     @app.get("/api/transcripts/visual-search")
     async def transcripts_visual_search(q: str = Query(...), n: int = Query(default=24),
                                         content_kind: str = Query(default="")):

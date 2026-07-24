@@ -181,6 +181,34 @@ def test_archive_pick_derivative_two_tier():
     assert "download/X/X_edit.mp4" in ar.download_url("X", "X_edit.mp4")
 
 
+def test_suggest_topic_surveyed_tier(monkeypatch):
+    """_topic_suggestions tier-2: keyword-prefilter surveyed-but-not-ingested titles, BGE-rank, drop off-topic
+    (below the floor) + already-ingested, and label action='ingest+caption'."""
+    import numpy as np
+    from nolan import transcript_lib as tl
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {"x1": {"frames": 0, "title": "already"}})
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: set())
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {"youtube:c": {"kind": "youtube", "titles": [
+        {"video_id": "s1", "title": "Diamond mining industry", "url": "u1"},
+        {"video_id": "s2", "title": "Cooking pasta at home", "url": "u2"},          # off-topic
+        {"video_id": "x1", "title": "already ingested", "url": "u3"},               # in catalog → skip
+    ]}})
+    monkeypatch.setattr(tl, "_embed_titles",
+                        lambda titles: [[1.0, 0.0] if "diamond" in t.lower() else [0.0, 1.0] for t in titles])
+
+    class FakeIndex:
+        def transcript_video_ids(self):
+            return set()
+
+    class FakeVS:
+        def search(self, **k):
+            return []
+    d = tl._topic_suggestions(["diamond mining"], "diamond", FakeIndex(), FakeVS(), 6, None)
+    sur = [s for s in d["suggestions"] if s["tier"] == "surveyed"]
+    assert any(s["video_id"] == "s1" and s["action"] == "ingest+caption" for s in sur)  # matched
+    assert not any(s["video_id"] in ("s2", "x1") for s in sur)   # off-topic dropped + already-ingested skipped
+
+
 def test_copyright_free_ids_from_sources_and_surveys(monkeypatch):
     """copyright_free_ids = the video ids belonging to a copyright-free source (youtube_cc, or an archive
     collection ADDED copyright-free) — derived from sources × surveys, so the acquire engine marks provenance

@@ -94,6 +94,7 @@
     <div class="tabs">
       <div class="tab on" data-tab="search" onclick="showTab('search')">Search</div>
       <div class="tab" data-tab="curate" onclick="showTab('curate')">Curate</div>
+      <div class="tab" data-tab="topic" onclick="showTab('topic')">🎯 Topic</div>
       <div class="tab" data-tab="coverage" onclick="showTab('coverage')">Coverage</div>
       <div class="tab" data-tab="sources" onclick="showTab('sources')">Sources</div>
     </div>
@@ -165,6 +166,31 @@
           </span>
         </div>
         <div id="cu-body" style="margin-top:10px"><div class="dim">Enter a channel and “Grab all titles” to see every video, browse by topic, and pick a diverse set.</div></div>
+      </div>
+    </div>
+
+    <!-- ===== TOPIC (on-demand: rough topic → videos worth captioning) ===== -->
+    <div id="tab-topic" style="display:none">
+      <div class="card">
+        <b style="font-size:14px">Caption by topic</b>
+        <div class="dim" style="margin:3px 0 8px">Give a rough topic — it expands into queries, then suggests videos worth running the visual tier on: <b>already-indexed but not captioned</b> (→ caption) and <b>surveyed but not yet added</b> (→ ingest + caption). No web search yet.</div>
+        <div class="row">
+          <input type="text" id="tg-topic" placeholder="e.g. diamond, diamond industry, diamond history, De Beers" style="flex:1;min-width:260px" onkeydown="if(event.key==='Enter')tgSuggest()">
+          <label class="dim">count <input type="number" id="tg-n" value="12" min="3" max="40" style="width:56px"></label>
+          <button class="btn" onclick="tgSuggest()">🎯 Suggest</button>
+        </div>
+        <div id="tg-queries" class="dim" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <span class="row" style="gap:6px">
+            <button class="btn ghost mini" onclick="tgSelAll(true)">select all</button>
+            <button class="btn ghost mini" onclick="tgSelAll(false)">clear</button>
+          </span>
+          <button class="btn mini" onclick="tgCaption()">✨ Caption / ingest selected (<span id="tg-n-sel">0</span>)</button>
+        </div>
+        <div id="tg-body" style="margin-top:10px"><div class="dim">Enter a topic and “Suggest”.</div></div>
+        <div id="tg-status" class="dim" style="margin-top:8px"></div>
       </div>
     </div>
 
@@ -588,10 +614,63 @@
       }catch(e){ alert(e.message); }
     }
 
+    /* ---------- Topic: rough topic → videos worth captioning (on-demand) ---------- */
+    let TG = { byId: {} };
+    let TG_SEL = new Set();
+    function tgSelN(){ $("#tg-n-sel").textContent = TG_SEL.size; }
+    function tgToggle(id, on){ if(on) TG_SEL.add(id); else TG_SEL.delete(id); tgSelN(); }
+    async function tgSuggest(){
+      const topic=$("#tg-topic").value.trim(); if(!topic){ alert("Enter a topic."); return; }
+      const n=parseInt($("#tg-n").value,10)||12;
+      $("#tg-queries").textContent=""; $("#tg-status").textContent="";
+      $("#tg-body").innerHTML='<div class="dim">expanding the topic + searching indexed transcripts and surveyed titles…</div>';
+      TG_SEL.clear(); tgSelN();
+      try{
+        const d=await jpost("/api/transcripts/suggest-topic",{topic, n});
+        TG.byId={}; (d.suggestions||[]).forEach(s=>TG.byId[s.video_id]=s);
+        $("#tg-queries").innerHTML = (d.queries||[]).length ? `<b>queries:</b> ${d.queries.map(q=>`<span class="chip">${esc(q)}</span>`).join(" ")}` : "";
+        tgRender(d);
+      }catch(e){ $("#tg-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+    function tgRow(s){
+      const kb = s.kind==="archive"?'<span class="chip">🏛 archive</span>':(s.kind==="youtube_cc"?'<span class="chip">🆓 free</span>':'<span class="chip txt">📺 youtube</span>');
+      const act = s.action==="caption" ? '<span class="chip frames">caption</span>' : '<span class="chip">ingest + caption</span>';
+      return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:8px;max-width:72%">
+        <input type="checkbox" class="tgsel" value="${esc(s.video_id)}" ${TG_SEL.has(s.video_id)?'checked':''} onchange="tgToggle('${esc(s.video_id)}',this.checked)">
+        <a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title||s.video_id)}</a> ${kb} ${act}${s.copyright_free?' <span class="chip frames">cf</span>':''}</span>
+        <span class="row" style="gap:8px;flex:0 0 auto"><span class="dim" style="font-size:11px;max-width:300px;text-align:right">${esc((s.why||"").slice(0,90))}</span><span class="score">${s.score}</span></span></div>`;
+    }
+    function tgRender(d){
+      const sug=d.suggestions||[];
+      if(!sug.length){ $("#tg-body").innerHTML=`<div class="dim">No matches. ${d.ingested+d.surveyed===0?"Index or survey some sources first.":""}</div>`; return; }
+      const ing=sug.filter(s=>s.tier==="ingested"), sur=sug.filter(s=>s.tier==="surveyed");
+      let html="";
+      if(ing.length) html += `<div class="dim" style="margin:2px 0 4px"><b>Already indexed, not captioned</b> — run the visual tier (${ing.length})</div>` + ing.map(tgRow).join("");
+      if(sur.length) html += `<div class="dim" style="margin:12px 0 4px"><b>Surveyed, not added</b> — ingest + caption (${sur.length})</div>` + sur.map(tgRow).join("");
+      $("#tg-body").innerHTML = html;
+    }
+    function tgSelAll(on){ (Object.values(TG.byId)).forEach(s=>{ if(on)TG_SEL.add(s.video_id); else TG_SEL.delete(s.video_id); }); tgSelN(); tgRender({suggestions:Object.values(TG.byId), ingested:0, surveyed:0}); }
+    async function tgCaption(){
+      const sel=[...TG_SEL].map(id=>TG.byId[id]).filter(Boolean);
+      if(!sel.length){ alert("Select at least one."); return; }
+      const capIds=sel.filter(s=>s.action==="caption").map(s=>s.video_id);
+      const byKind={};
+      sel.filter(s=>s.action==="ingest+caption").forEach(s=>{ (byKind[s.kind]=byKind[s.kind]||[]).push({video_id:s.video_id,url:s.url,title:s.title}); });
+      const st=$("#tg-status"); st.textContent="dispatching…";
+      try{
+        const jobs=[];
+        if(capIds.length){ await jpost("/api/transcripts/batch-caption",{video_ids:capIds}); jobs.push(`caption ${capIds.length}`); }
+        for(const kind of Object.keys(byKind)){ await jpost("/api/transcripts/ingest-videos",{videos:byKind[kind], kind, visual:"keyframe"}); jobs.push(`ingest+caption ${byKind[kind].length} (${kind})`); }
+        st.innerHTML=`✓ started: ${esc(jobs.join(", "))} — watch Background Jobs`;
+        TG_SEL.clear(); tgSelN();
+      }catch(e){ st.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
+
     function showTab(t){
       document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on", x.dataset.tab===t));
       $("#tab-search").style.display = t==="search"?"block":"none";
       $("#tab-curate").style.display = t==="curate"?"block":"none";
+      $("#tab-topic").style.display = t==="topic"?"block":"none";
       $("#tab-coverage").style.display = t==="coverage"?"block":"none";
       $("#tab-sources").style.display = t==="sources"?"block":"none";
       if(t==="sources"){ loadSources(); loadVideos(); }
