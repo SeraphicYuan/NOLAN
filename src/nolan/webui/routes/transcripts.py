@@ -231,7 +231,8 @@ def register(app, ctx):
         job = job_manager.start(
             "transcript-ingest-videos", operations.ingest_videos, meta={"count": len(vids), "kind": kind},
             config=cfg, db_path=idb, videos=vids, visual=(body.get("visual") or "off"),
-            delay=float(body.get("delay", 1.0) or 1.0), kind=kind, collection=collection)
+            delay=float(body.get("delay", 1.0) or 1.0), kind=kind, collection=collection,
+            broll_max_sec=float(body.get("broll_max_sec", 0) or 0))
         return {"job_id": job.id, "type": "transcript-ingest-videos"}
 
     @app.get("/api/transcripts/videos")

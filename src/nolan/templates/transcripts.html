@@ -159,6 +159,7 @@
             <button class="btn ghost mini" onclick="cuSelAll(false)">clear</button>
           </span>
           <span class="row" style="gap:8px">
+            <label id="cu-brollwrap" class="dim" style="display:none" title="A copyright-free clip at/under this length is treated as a READY B-ROLL — title-indexed, NO transcript/caption fetch (the title is its content)">b-roll ≤ <input type="number" id="cu-broll" min="0" placeholder="off" style="width:52px">s</label>
             <select id="cu-visual" title="Visual tier on ingest"><option value="off">text-only</option><option value="keyframe">+ keyframes</option></select>
             <button class="btn mini" onclick="cuAdd()">＋ Add selected (<span id="cu-n-sel">0</span>)</button>
           </span>
@@ -302,6 +303,11 @@
       const labels={youtube:"📺 YouTube", youtube_cc:"🆓 YouTube (copyright-free)", archive:"🏛 archive.org"};
       $("#cu-kindbadge").textContent = labels[CU.kind] || labels.youtube;
       $("#cu-channel").placeholder = CU.kind==="archive" ? "collection id / URL — e.g. prelinger" : "channel URL / @handle / id";
+      // ready-b-roll (short = title-only) is only for the copyright-free stock family
+      const cc = CU.kind==="youtube_cc";
+      $("#cu-brollwrap").style.display = cc ? "inline" : "none";
+      if(cc && !$("#cu-broll").value) $("#cu-broll").value = 35;
+
     }
     async function addCcChannel(){
       const ref=$("#cc-chan").value.trim(); if(!ref){ alert("Enter a YouTube channel URL / @handle."); return; }
@@ -479,8 +485,9 @@
       if(!sel.length){ alert("Select at least one title."); return; }
       const vis=$("#cu-visual").value;
       if(!confirm(`Ingest ${sel.length} video(s)${vis==="off"?" as TRANSCRIPT-ONLY (add keyframes later)":" WITH keyframes"}?`)) return;
+      const brollMax = CU.kind==="youtube_cc" ? (parseInt($("#cu-broll").value,10)||0) : 0;
       try{
-        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:(CU.kind==="archive"?"off":vis), kind:CU.kind, collection:(CU.kind==="archive"?cuChannel():"")});
+        await jpost("/api/transcripts/ingest-videos",{videos:sel, visual:(CU.kind==="archive"?"off":vis), kind:CU.kind, collection:(CU.kind==="archive"?cuChannel():""), broll_max_sec:brollMax});
         alert(`Ingesting ${sel.length} in the background — track it in Background Jobs. Then Sources → Caption for keyframes.`);
         sel.forEach(v=>{ const row=CU.byId[v.video_id]; if(row) row.in_library=true; });
         CU_SEL.clear(); cuSelN();
@@ -701,7 +708,8 @@
       }catch(e){ $("#videos").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
     function vidRow(v){
-      const badge = v.frames ? `<span class="chip frames">🖼 ${v.frames}</span>` : `<span class="chip txt">transcript-only</span>`;
+      const badge = v.broll ? `<span class="chip frames">▸ ready b-roll</span>`
+        : (v.frames ? `<span class="chip frames">🖼 ${v.frames}</span>` : `<span class="chip txt">transcript-only</span>`);
       return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:6px">
         <input type="checkbox" class="vsel" value="${esc(v.video_id)}" data-frames="${v.frames||0}" onclick="event.stopPropagation()" onchange="updSel()">
         <span onclick="openDetail('${esc(v.video_id)}')">${esc(v.title||v.video_id)} ${badge} <span class="dim">· ${esc(v.channel||"")} · ${v.windows} windows</span></span></span>

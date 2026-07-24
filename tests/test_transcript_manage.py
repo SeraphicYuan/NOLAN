@@ -21,7 +21,9 @@ def test_record_transcript_stores_frame_count(tmp_path):
     from nolan import transcript_lib as tl
     tl.record_transcript("abc", {"title": "T", "url": "https://youtu.be/abc"}, 10, "Ch", frames=7, catalog_dir=tmp_path)
     e = tl.load_catalog(tmp_path)["abc"]
-    assert e["windows"] == 10 and e["frames"] == 7
+    assert e["windows"] == 10 and e["frames"] == 7 and e["broll"] is False
+    tl.record_transcript("br", {"title": "Ocean Waves 4K"}, 1, "Stock", broll=True, catalog_dir=tmp_path)
+    assert tl.load_catalog(tmp_path)["br"]["broll"] is True     # ready-b-roll short clip flag persists
 
 
 def test_delete_and_detail_on_real_index(tmp_path):

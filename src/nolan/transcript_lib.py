@@ -40,15 +40,17 @@ def load_catalog(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def record_transcript(video_id: str, meta: Dict[str, Any], windows_n: int, channel: Optional[str],
-                      *, frames: int = 0, added: str = "", catalog_dir: Optional[Path] = None) -> None:
+                      *, frames: int = 0, added: str = "", catalog_dir: Optional[Path] = None,
+                      broll: bool = False) -> None:
     """Upsert one transcript video's display metadata into the sidecar (keyed by the YouTube video id).
-    `frames` = how many visual keyframes were captioned (drives the visual-coverage badge)."""
+    `frames` = how many visual keyframes were captioned (drives the visual-coverage badge). `broll` = a ready
+    b-roll short clip (title-indexed, no transcript/captions needed — the whole clip is the asset)."""
     cat = load_catalog(catalog_dir)
     cat[str(video_id)] = {
         "video_id": str(video_id), "title": meta.get("title"),
         "channel": channel or meta.get("channel"), "url": meta.get("url"),
         "upload_date": meta.get("upload_date"), "language": meta.get("language"),
-        "windows": int(windows_n), "frames": int(frames), "added": added,
+        "windows": int(windows_n), "frames": int(frames), "added": added, "broll": bool(broll),
     }
     p = _catalog_file(catalog_dir)
     p.parent.mkdir(parents=True, exist_ok=True)
