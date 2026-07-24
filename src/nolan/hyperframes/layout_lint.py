@@ -38,6 +38,7 @@ _EPS = 0.006                 # slack on every edge test (declared values are ~in
 _OVERLAP_MIN = 0.34          # intersection / min(area) above this = an OVERLAP error
 _ANCHOR_COINCIDE = 0.045     # two anchors within this (both axes) = a possible-stack hint
 _FULLSPAN = 0.90             # an element covering ≥ this fraction of an axis is a WRAPPER (skip bounds)
+_FBG_AREA = 0.75             # a GROUND covering ≥ this fraction of the canvas = a full-bleed scene (drift-exempt)
 _ANCHOR_DRIFT_FRAC = 0.60    # < this fraction of a scene's content mass inside the archetype zone = drift
 
 
@@ -400,7 +401,7 @@ def _eff_style(el: El, class_rules: Dict[str, Dict[str, str]]) -> Dict[str, str]
     return st
 
 
-def _measure(root: El, class_rules: Optional[Dict[str, Dict[str, str]]] = None) -> List[Item]:
+def _measure(root: El, class_rules: Optional[Dict[str, Dict[str, str]]] = None) -> "Tuple[List[Item], set]":
     """Every positioned, non-ground CONTENT element with a resolvable box, in canvas fractions.
     `class_rules` ({class -> position props}) lets the composer's CSS-class positioning resolve, not
     just inline styles."""
@@ -409,6 +410,7 @@ def _measure(root: El, class_rules: Optional[Dict[str, Dict[str, str]]] = None) 
     canvas = Box(0.0, 0.0, 1.0, 1.0)
     boxes: Dict[int, Box] = {id(root): canvas}
     items: List[Item] = []
+    fbg_windows: set = set()                   # clip-windows that carry a full-bleed ground (drift-exempt)
     for el in _walk(root):
         if el is root:
             continue
@@ -424,6 +426,8 @@ def _measure(root: El, class_rules: Optional[Dict[str, Dict[str, str]]] = None) 
         if b is not None:
             boxes[id(el)] = b
         if b is None or _is_ground(el):
+            if b is not None and _is_ground(el) and b.area >= _FBG_AREA:   # a canvas-filling ground → full-bleed scene
+                fbg_windows.add(_clip_window(el) or (0.0, 1e9))
             continue
         if b.covers_axis(_FULLSPAN):          # a full-span wrapper — its children carry the content
             continue
@@ -450,7 +454,7 @@ def _measure(root: El, class_rules: Optional[Dict[str, Dict[str, str]]] = None) 
                           sel=el.attrs.get("id") or (el.tag + "." + ".".join(el.classes[:2])),
                           allow_overflow=_allow_overflow(el), furniture=_is_furniture(el),
                           archetype=_dom_archetype(el)))
-    return items
+    return items, fbg_windows
 
 
 # ── violations ────────────────────────────────────────────────────────────────
@@ -480,7 +484,7 @@ def _iou_min(a: Box, b: Box) -> float:
 
 
 def _check_items(items: List[Item], scene: str, archetype: Optional[str],
-                 captions_on: bool, overlap_hard: bool) -> List[Violation]:
+                 captions_on: bool, overlap_hard: bool, has_full_bleed_ground: bool = False) -> List[Violation]:
     grid = _comp.grid()
     sa = grid.get("safe_areas", {})
     cap_y = float(sa.get("caption_keep_out_y", 0.85))
@@ -538,9 +542,12 @@ def _check_items(items: List[Item], scene: str, archetype: Optional[str],
     # anchor drift — advisory: does the scene's content MASS sit where the archetype expects it?
     # Weight by box area (a small floor so anchor-only text still counts a little) so a dominant hero
     # decides, and a legit upper-third eyebrow / corner label can't outvote it.
+    # A full-bleed media-ground scene legitimately carries its mass across the whole canvas (the ground IS
+    # the composition; text is a deliberate overlay that can sit anywhere) — the editorial-column zone check
+    # doesn't apply, so skip it rather than false-flag "0% of content mass in zone" (post-mortem L1).
     spec = _comp.get(archetype) if archetype else None
     zone = (spec or {}).get("zone")
-    if zone and items:
+    if zone and items and not has_full_bleed_ground:
         zx, zy = zone.get("x", [0, 1]), zone.get("y", [0, 1])
         floor = 0.004
         tot = ins = 0.0
@@ -565,8 +572,9 @@ def lint_raw_scene(html_list: List[str], archetype: Optional[str] = None, *,
     are a hint, not a hard error."""
     joined = "".join(html_list)
     root = _parse("<div>" + joined + "</div>")
-    items = _measure(root, _class_pos_rules(_extract_css(joined)))
-    return _check_items(items, scene, archetype, captions_on, overlap_hard=False)
+    items, fbg_windows = _measure(root, _class_pos_rules(_extract_css(joined)))
+    return _check_items(items, scene, archetype, captions_on, overlap_hard=False,
+                        has_full_bleed_ground=bool(fbg_windows))
 
 
 def lint_frame_html(html: str, *, scene_archetypes: Optional[Dict[str, str]] = None,
@@ -574,7 +582,7 @@ def lint_frame_html(html: str, *, scene_archetypes: Optional[Dict[str, str]] = N
     """Lint a composed frame's HTML. Clips carry explicit data-start windows, so overlap is a HARD
     error. `scene_archetypes` maps a scene/clip id → archetype for the anchor-drift advisory."""
     root = _parse(html)
-    items = _measure(root, _class_pos_rules(_extract_css(html)))
+    items, fbg_windows = _measure(root, _class_pos_rules(_extract_css(html)))
     # group by clip window so overlap + drift are scoped to simultaneously-visible content
     groups: Dict[Tuple[float, float], List[Item]] = {}
     for it in items:
@@ -593,7 +601,8 @@ def lint_frame_html(html: str, *, scene_archetypes: Optional[Dict[str, str]] = N
                 if arche:
                     break
         label = f"{frame}@{win[0]:.1f}s"
-        out.extend(_check_items(its, label, arche, captions_on, overlap_hard=True))
+        out.extend(_check_items(its, label, arche, captions_on, overlap_hard=True,
+                                has_full_bleed_ground=(win in fbg_windows)))
     return out
 
 

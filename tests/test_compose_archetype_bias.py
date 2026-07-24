@@ -74,6 +74,6 @@ def test_linter_reads_the_stamped_archetype_from_the_composed_dom():
     # the REAL consumer: the layout linter picks the archetype straight from data-archetype (no sidecar)
     from nolan.hyperframes import layout_lint as L
     html = _frame()
-    items = L._measure(L._parse(html), L._class_pos_rules(L._extract_css(html)))
+    items, _fbg = L._measure(L._parse(html), L._class_pos_rules(L._extract_css(html)))
     seen = {i.archetype for i in items if i.archetype}
     assert "editorial-column" in seen or "centered-hero" in seen, "linter did not read data-archetype"

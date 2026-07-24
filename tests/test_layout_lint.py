@@ -161,3 +161,17 @@ def test_real_shipped_comps_have_no_layout_errors():
         checked += 1
     if not checked:
         pytest.skip("known-good comps absent")
+
+
+def test_full_bleed_ground_scene_is_exempt_from_anchor_drift():
+    """L1 (post-mortem): a full-bleed media-ground scene legitimately carries its content across the whole
+    canvas — the editorial-column zone-mass check must NOT false-flag it. Ground-aware, not a type-exemption:
+    the same off-zone text WITHOUT a canvas-filling ground still drifts."""
+    from nolan.hyperframes import layout_lint as L
+    txt = ('<div style="position:absolute;left:86cqw;top:90cqh;width:12cqw;height:7cqh">'
+           'a tiny caption label</div>')                                     # parked bottom-right, off the column
+    gnd = '<div class="gnd" style="position:absolute;left:0;top:0;width:100cqw;height:100cqh"></div>'
+    plain = [v for v in L.lint_raw_scene([txt], "editorial-column") if v.kind == "anchor_drift"]
+    withg = [v for v in L.lint_raw_scene([gnd, txt], "editorial-column") if v.kind == "anchor_drift"]
+    assert plain, "off-column text with no ground should still drift (the check must stay live)"
+    assert not withg, "a full-bleed ground scene must be exempt from the editorial-column zone-mass check"
