@@ -486,12 +486,15 @@ def _candidates_to_pool(kept, assets_dir: Path):
             continue
         # library clips arrive pre-captioned from their stored vision description (cull cascade Lever A —
         # skips a redundant VLM re-caption; they already passed the engine's cheap CLIP gate)
-        cap = f"[video] {c.meta.get('description', '')}".strip() if c.source == "clips_library" else ""
+        cap = (f"[video] {c.meta.get('description', '')}".strip()
+               if c.source in ("clips_library", "transcript_lib") else "")
         pool.append({"id": need, "file": rel, "media_type": c.modality, "query": c.meta.get("query", ""),
                      "source": c.meta.get("source", c.source), "source_url": c.meta.get("source_url", ""),
                      "photographer": c.meta.get("photographer", ""), "license": c.meta.get("license", ""),
                      "width": c.meta.get("width", 0), "height": c.meta.get("height", 0),
                      "duration": c.meta.get("duration"), "relevance": round(c.relevance, 3), "caption": cap,
+                     # explicit copyright-free flag so the pool is queryable, not just a license string
+                     **({"copyright_free": bool(c.meta["copyright_free"])} if "copyright_free" in c.meta else {}),
                      **({"gen_prompt": c.meta["gen_prompt"]} if c.meta.get("gen_prompt") else {}),
                      **({"gen_negative": c.meta["gen_negative"]} if c.meta.get("gen_negative") else {})})
     return pool
