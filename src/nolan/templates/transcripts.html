@@ -178,6 +178,7 @@
           <span class="row" style="gap:8px">
             <div class="seg" id="cv-kind">
               <button data-k="youtube" class="on" onclick="cvSetKind('youtube')">📺 YouTube</button>
+              <button data-k="youtube_cc" onclick="cvSetKind('youtube_cc')">🆓 Free YT</button>
               <button data-k="archive" onclick="cvSetKind('archive')">🏛 Archive.org</button>
             </div>
             <span id="cv-cfwrap" class="dim" style="display:none"><label title="Count only copyright-free items"><input type="checkbox" id="cv-cf" checked> copyright-free</label></span>
@@ -229,6 +230,17 @@
         </div>
         <div class="dim" style="margin-top:6px">Archive.org collections carry Whisper ASR transcripts + rich metadata (subject tags, runtime, license). Clustered SEPARATELY from YouTube. Add then Curate → ingest transcripts.</div>
         <span id="arch-status" class="dim"></span>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <span class="dim" style="font-weight:600">🆓 copyright-free YouTube channel</span>
+          <input type="text" id="cc-chan" placeholder="channel URL / @handle — e.g. https://www.youtube.com/@FreeHDvideosnocopyright" style="flex:1;min-width:220px">
+          <button class="btn" onclick="addCcChannel()">Add channel</button>
+          <button class="btn ghost" onclick="openCurateFor($('#cc-chan').value.trim(),'youtube_cc')" title="Browse the channel's titles, cluster by topic, pick a diverse set of copyright-free clips">🎯 Curate channel</button>
+        </div>
+        <div class="dim" style="margin-top:6px">Copyright-free stock / b-roll channels — a SEPARATE family from documentary channels, all videos copyright-free. Often no captions (title-indexed); the visual tier + downloadable clips are the value.</div>
+        <span id="cc-status" class="dim"></span>
       </div>
 
       <div class="card">
@@ -285,10 +297,20 @@
     let CU_VIEW = "flat";
     function cuCfParam(){ return (CU.kind==="archive" && $("#cu-cf") && $("#cu-cf").checked) ? "&copyright_free=true" : ""; }
     function cuKindUI(){
-      const arch = CU.kind==="archive";
-      $("#cu-cfwrap").style.display = arch ? "inline" : "none";
-      $("#cu-kindbadge").textContent = arch ? "🏛 archive.org" : "📺 YouTube";
-      $("#cu-channel").placeholder = arch ? "collection id / URL — e.g. prelinger" : "channel URL / @handle / id";
+      // per-item copyright-free filter only matters for archive (mixed licenses); youtube_cc is all-free
+      $("#cu-cfwrap").style.display = CU.kind==="archive" ? "inline" : "none";
+      const labels={youtube:"📺 YouTube", youtube_cc:"🆓 YouTube (copyright-free)", archive:"🏛 archive.org"};
+      $("#cu-kindbadge").textContent = labels[CU.kind] || labels.youtube;
+      $("#cu-channel").placeholder = CU.kind==="archive" ? "collection id / URL — e.g. prelinger" : "channel URL / @handle / id";
+    }
+    async function addCcChannel(){
+      const ref=$("#cc-chan").value.trim(); if(!ref){ alert("Enter a YouTube channel URL / @handle."); return; }
+      const st=$("#cc-status"); st.textContent="registering…";
+      try{
+        const d=await jpost("/api/transcripts/add-cc-channel",{channel:ref});
+        st.innerHTML=`✓ added <b>${esc(d.channel)}</b> <span class="chip frames">copyright-free</span> — now Curate it`;
+        loadSources();
+      }catch(e){ st.innerHTML=`<span class="warn">✗ ${esc(e.message)}</span>`; }
     }
     function openCurateFor(ref, kind){
       if(!ref){ alert("Enter a "+(kind==="archive"?"collection":"channel")+" first."); return; }
@@ -453,7 +475,7 @@
     }
 
     async function cuAdd(){
-      const sel=[...CU_SEL].map(id=>CU.byId[id]).filter(Boolean).map(v=>({video_id:v.video_id,url:v.url,title:v.title}));
+      const sel=[...CU_SEL].map(id=>CU.byId[id]).filter(Boolean).map(v=>({video_id:v.video_id,url:v.url,title:v.title,duration:v.duration}));
       if(!sel.length){ alert("Select at least one title."); return; }
       const vis=$("#cu-visual").value;
       if(!confirm(`Ingest ${sel.length} video(s)${vis==="off"?" as TRANSCRIPT-ONLY (add keyframes later)":" WITH keyframes"}?`)) return;
@@ -623,15 +645,16 @@
       }catch(e){ $("#sources").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
     function srcTile(s){
-      const archive = s.kind==="archive";
+      const kind = s.kind || "youtube";
+      const archive = kind==="archive", cc = kind==="youtube_cc";
       const last = s.last_crawled ? `· last crawled ${esc(s.last_crawled.slice(0,10))}` : "· not yet synced";
       const tag = (s.managed===false ? ` <span class="chip txt">auto</span>` : "")
         + (archive ? ` <span class="chip">🏛 archive</span>` : "")
-        + (s.copyright_free ? ` <span class="chip frames">copyright-free</span>` : "");
+        + (cc ? ` <span class="chip">🆓 copyright-free</span>` : "")
+        + (s.copyright_free && !cc ? ` <span class="chip frames">copyright-free</span>` : "");
       const rm = s.managed===false ? "" : `<button class="btn ghost mini danger" onclick="removeSource('${esc(s.channel)}')">Remove</button>`;
-      const kind = archive ? "archive" : "youtube";
       const curate = `<button class="btn ghost mini" onclick="openCurateFor('${esc(s.channel)}','${kind}')" title="Browse + curate this source">🎯 Curate</button>`;
-      const sync = archive ? "" : `<button class="btn ghost mini" onclick="syncSource('${esc(s.channel)}')" title="Fetch only NEW uploads (dedup skips indexed)">↻ Sync</button>`;
+      const sync = (archive||cc) ? "" : `<button class="btn ghost mini" onclick="syncSource('${esc(s.channel)}')" title="Fetch only NEW uploads (dedup skips indexed)">↻ Sync</button>`;
       return `<div class="src-tile"><div><b>${esc(s.label||s.channel)}</b>${tag} <span class="dim">${s.video_count||0} videos ${last}</span><div class="dim" style="font-size:11px">${esc(s.channel)}</div></div>
         <span class="row">${curate}${sync}${rm}</span></div>`;
     }

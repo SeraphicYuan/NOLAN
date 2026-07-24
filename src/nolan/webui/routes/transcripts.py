@@ -108,17 +108,18 @@ def register(app, ctx):
         return {"job_id": job.id, "type": "transcript-batch-caption"}
 
     def _collection_free(channel: str, kind: str) -> bool:
-        """For an archive source, whether the whole collection is curator-asserted copyright-free (stored on
-        the source when it was added). Matched by collection identifier so URL/name variants resolve."""
-        if kind != "archive":
+        """Whether a source's WHOLE set is curator-asserted copyright-free (stored on the source when added).
+        Applies to archive collections and copyright-free YouTube channels; documentary `youtube` is never free."""
+        if kind not in ("archive", "youtube_cc"):
             return False
         from nolan import transcript_lib as tl
         from nolan import archive_source as ar
-        want = ar.collection_ref(channel)
+        norm = (lambda r: ar.collection_ref(r)) if kind == "archive" else (lambda r: tl._channel_key(r))
+        want = norm(channel)
         for ref, s in tl.load_sources().items():
-            if (s.get("kind") == "archive") and ar.collection_ref(ref) == want:
+            if s.get("kind") == kind and norm(ref) == want:
                 return bool(s.get("copyright_free"))
-        return False
+        return kind == "youtube_cc"                              # a cc channel defaults free (e.g. curate-before-add)
 
     @app.get("/api/transcripts/survey")
     async def transcripts_survey(channel: str = Query(...), limit: int = Query(default=0),
@@ -202,6 +203,17 @@ def register(app, ctx):
         tl.upsert_source(coll, label=(body.get("label") or coll), kind="archive",
                          copyright_free=bool(body.get("copyright_free", False)))
         return {"collection": coll, "kind": "archive", "copyright_free": bool(body.get("copyright_free", False))}
+
+    @app.post("/api/transcripts/add-cc-channel")
+    async def transcripts_add_cc_channel(body: dict = Body(...)):
+        """Register a copyright-free YouTube CHANNEL as a source (kind='youtube_cc') — a separate family from
+        documentary channels, all videos treated as copyright-free (stock / b-roll)."""
+        from nolan import transcript_lib as tl
+        ref = (body.get("channel") or "").strip()
+        if not ref:
+            raise HTTPException(status_code=400, detail="channel required")
+        tl.upsert_source(ref, label=(body.get("label") or ref), kind="youtube_cc", copyright_free=True)
+        return {"channel": ref, "kind": "youtube_cc", "copyright_free": True}
 
     @app.post("/api/transcripts/ingest-videos")
     async def transcripts_ingest_videos(body: dict = Body(...)):

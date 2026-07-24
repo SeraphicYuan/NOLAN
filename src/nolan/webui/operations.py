@@ -606,9 +606,21 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
                 meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, url)
         except Exception as e:
             job.log(f"  x {title}: {type(e).__name__}: {e}"); skipped += 1; continue
-        if not tr or not getattr(tr, "chunks", None):
+        has_tr = tr and getattr(tr, "chunks", None)
+        if has_tr:
+            windows = tl.chunk_transcript(tr, window_s=float(window_s), overlap_s=float(overlap_s))
+        elif kind == "youtube_cc":
+            # Copyright-free stock/b-roll channels have NO speech: index the descriptive TITLE as one window
+            # (the title IS the content — "Nature | Waterfalls | Drone") so the clip is title-searchable;
+            # the visual tier (what's shown) is the richer index, Phase 2.
+            ttl = (v.get("title") or title) or yid0
+            dur = float(v.get("duration") or 0) or 60.0
+            windows = [{"start": 0.0, "end": dur, "text": ttl}]
+            meta = {**(meta or {}), "video_id": (meta or {}).get("video_id") or yid0,
+                    "title": (meta or {}).get("title") or ttl, "url": url}
+            job.log(f"  ~ {ttl[:60]}: no captions -> title-indexed (stock footage)")
+        else:
             job.log(f"  . {title}: no transcript -- skipped"); no_tr += 1; continue
-        windows = tl.chunk_transcript(tr, window_s=float(window_s), overlap_s=float(overlap_s))
         vid = await asyncio.to_thread(tl.ingest_transcript, index, {**meta, "url": url}, windows, v.get("channel") or collection)
         if not vid:
             skipped += 1; continue

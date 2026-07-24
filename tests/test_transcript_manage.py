@@ -178,6 +178,26 @@ def test_archive_pick_derivative_two_tier():
     assert "download/X/X_edit.mp4" in ar.download_url("X", "X_edit.mp4")
 
 
+def test_youtube_cc_family_separate_and_copyright_free(tmp_path, monkeypatch):
+    """Copyright-free YouTube channels: youtube MECHANICS but a SEPARATE family (kind-namespaced cache key,
+    distinct from documentary youtube of the same channel) with all videos copyright-free."""
+    from nolan import transcript_lib as tl
+    vids = [{"video_id": "s1", "url": "u1", "title": "Waterfalls Drone Nature", "duration": 300},
+            {"video_id": "s2", "url": "u2", "title": "Beaches Sea View", "duration": 420}]
+    monkeypatch.setattr(tl, "list_channel", lambda ch, limit=None: vids)
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+
+    rows = tl.survey_channel("@FreeHD", None, tmp_path, kind="youtube_cc", collection_free=True)
+    assert len(rows) == 2 and all(r.get("copyright_free") for r in rows)
+    assert "i.ytimg.com" in rows[0]["thumb"]                     # youtube thumbnail (youtube mechanics)
+    surveys = tl.load_surveys(tmp_path)
+    assert "youtube_cc:@freehd" in surveys and "youtube:@freehd" not in surveys   # separate family key
+
+    rows2 = tl.survey_channel("@FreeHD", None, tmp_path, kind="youtube")   # documentary youtube = different row
+    assert not rows2[0].get("copyright_free")
+    assert "youtube:@freehd" in tl.load_surveys(tmp_path)
+
+
 def test_length_filter_drops_short_and_keeps_unknown(tmp_path, monkeypatch):
     """min_sec/max_sec gate on duration; runs BEFORE the newest-cap; unknown duration (None) is kept."""
     from nolan import transcript_lib as tl

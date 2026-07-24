@@ -276,12 +276,12 @@ def load_surveys(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def _survey_key(ref: str, kind: str) -> str:
-    """Cache/coverage key, namespaced by source kind so YouTube channels and archive.org collections never
-    collide (and coverage can scope by kind via the `kind:` prefix)."""
+    """Cache/coverage key, namespaced by source kind so families (documentary `youtube`, copyright-free
+    `youtube_cc`, `archive` collections) never collide (and coverage scopes by kind via the `kind:` prefix)."""
     if kind == "archive":
         from nolan import archive_source as ar
         return f"archive:{ar.collection_ref(ref)}"
-    return f"youtube:{_channel_key(ref)}"
+    return f"{kind}:{_channel_key(ref)}"
 
 
 def _thumb_for(video_id: str, kind: str) -> str:
@@ -302,9 +302,11 @@ def save_survey(channel: str, titles: List[Dict[str, Any]], catalog_dir: Optiona
             continue
         row = {"video_id": t["video_id"], "url": t.get("url"), "title": t.get("title") or t["video_id"],
                "duration": t.get("duration")}
+        if t.get("copyright_free"):
+            row["copyright_free"] = True                          # copyright-free families (archive / youtube_cc)
         if kind == "archive":
             row.update(subject=t.get("subject") or [], license=t.get("license") or "",
-                       copyright_free=bool(t.get("copyright_free")), description=t.get("description") or "")
+                       description=t.get("description") or "")
         rows.append(row)
     surveys[_survey_key(channel, kind)] = {"channel": channel, "kind": kind, "label": channel,
                                            "fetched": fetched, "count": len(rows),
@@ -340,9 +342,10 @@ def survey_channel(channel: str, limit: Optional[int] = None, catalog_dir: Optio
                  "subject": v.get("subject") or [], "license": v.get("license") or "",
                  "copyright_free": bool(v.get("copyright_free")), "description": v.get("description") or ""}
                 for v in items]
-    else:
+    else:                                                        # youtube channels (documentary or youtube_cc)
         rows = [{"video_id": v.get("video_id"), "url": v.get("url"),
-                 "title": v.get("title") or v.get("video_id"), "duration": v.get("duration")}
+                 "title": v.get("title") or v.get("video_id"), "duration": v.get("duration"),
+                 **({"copyright_free": True} if collection_free else {})}
                 for v in list_channel(channel, limit) if v.get("video_id")]
     if full:
         save_survey(channel, rows, catalog_dir, kind=kind, total=total)   # persist the full crawl for next time
