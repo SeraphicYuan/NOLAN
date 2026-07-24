@@ -275,7 +275,8 @@ def register(app, ctx):
             return {"topic": topic, "suggestions": [], "queries": [], "ingested": 0, "surveyed": 0}
         index = VideoIndex(idb)
         vs = VectorSearch(Path(idb).parent / "vectors", index=index)
-        return await tl.suggest_by_topic(topic, index, vs, load_config(), int(body.get("n", 12) or 12))
+        return await tl.suggest_by_topic(topic, index, vs, load_config(), int(body.get("n", 12) or 12),
+                                         copyright_free_only=bool(body.get("copyright_free", False)))
 
     @app.get("/api/transcripts/visual-search")
     async def transcripts_visual_search(q: str = Query(...), n: int = Query(default=24),

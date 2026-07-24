@@ -176,6 +176,7 @@
         <div class="dim" style="margin:3px 0 8px">Give a rough topic — it expands into queries, then suggests videos worth running the visual tier on: <b>already-indexed but not captioned</b> (→ caption) and <b>surveyed but not yet added</b> (→ ingest + caption). No web search yet.</div>
         <div class="row">
           <input type="text" id="tg-topic" placeholder="e.g. diamond, diamond industry, diamond history, De Beers" style="flex:1;min-width:260px" onkeydown="if(event.key==='Enter')tgSuggest()">
+          <label class="dim" title="Only copyright-free footage (archive.org PD + copyright-free YouTube) — usable b-roll, not copyrighted documentary references"><input type="checkbox" id="tg-cf"> copyright-free only</label>
           <label class="dim">count <input type="number" id="tg-n" value="12" min="3" max="40" style="width:56px"></label>
           <button class="btn" onclick="tgSuggest()">🎯 Suggest</button>
         </div>
@@ -626,7 +627,7 @@
       $("#tg-body").innerHTML='<div class="dim">expanding the topic + searching indexed transcripts and surveyed titles…</div>';
       TG_SEL.clear(); tgSelN();
       try{
-        const d=await jpost("/api/transcripts/suggest-topic",{topic, n});
+        const d=await jpost("/api/transcripts/suggest-topic",{topic, n, copyright_free:$("#tg-cf").checked});
         TG.byId={}; (d.suggestions||[]).forEach(s=>TG.byId[s.video_id]=s);
         $("#tg-queries").innerHTML = (d.queries||[]).length ? `<b>queries:</b> ${d.queries.map(q=>`<span class="chip">${esc(q)}</span>`).join(" ")}` : "";
         tgRender(d);

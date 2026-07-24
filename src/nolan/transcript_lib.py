@@ -331,7 +331,8 @@ def _src_id_from_url(url: str) -> str:
 
 
 async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
-                           catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+                           catalog_dir: Optional[Path] = None,
+                           copyright_free_only: bool = False) -> Dict[str, Any]:
     """ON-DEMAND caption targeting: a rough topic ("diamond, De Beers, diamond history") → a ranked shortlist
     of videos worth running the gemma VISUAL tier on. Two tiers, both reusing existing machinery:
       (1) INGESTED-but-not-captioned — the topic's BGE vector search over transcripts, grouped by video, kept
@@ -359,10 +360,11 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
     except Exception:
         pass
     queries = (queries or [topic])[:8]
-    return await asyncio.to_thread(_topic_suggestions, queries, topic, index, vs, int(n), catalog_dir)
+    return await asyncio.to_thread(_topic_suggestions, queries, topic, index, vs, int(n), catalog_dir,
+                                   bool(copyright_free_only))
 
 
-def _topic_suggestions(queries, topic, index, vs, n, catalog_dir):
+def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False):
     import numpy as np
     cat = load_catalog(catalog_dir)
     t_ids = set(index.transcript_video_ids())
@@ -387,12 +389,18 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir):
             if sid not in best or score > best[sid]["score"]:
                 best[sid] = {"score": score, "e": e, "url": url,
                              "snip": (getattr(h, "description", "") or getattr(h, "transcript", "") or "")[:150]}
-    ingested = sorted(
-        ({"video_id": sid, "title": b["e"].get("title") or sid, "url": b["e"].get("url") or b["url"],
-          "channel": b["e"].get("channel"), "kind": b["e"].get("kind", "youtube"),
-          "copyright_free": bool(b["e"].get("copyright_free")), "tier": "ingested", "action": "caption",
-          "score": round(b["score"], 3), "why": b["snip"]} for sid, b in best.items()),
-        key=lambda x: -x["score"])
+    ing = []
+    for sid, b in best.items():
+        e, url = b["e"], (b["e"].get("url") or b["url"])
+        arch = "archive.org" in (url or "").lower()
+        cf = (sid in free_ids) or bool(e.get("copyright_free")) or arch   # robust (sources×surveys), not just catalog
+        kind = e.get("kind") or ("archive" if arch else ("youtube_cc" if cf else "youtube"))
+        if copyright_free_only and not cf:
+            continue
+        ing.append({"video_id": sid, "title": e.get("title") or sid, "url": url, "channel": e.get("channel"),
+                    "kind": kind, "copyright_free": cf, "tier": "ingested", "action": "caption",
+                    "score": round(b["score"], 3), "why": b["snip"]})
+    ingested = sorted(ing, key=lambda x: -x["score"])
 
     # --- Tier 2: SURVEYED but NOT ingested — keyword prefilter (cheap) then BGE similarity (precise) ---
     kw = set()
@@ -419,6 +427,8 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir):
             if float(sims[i]) < 0.42:                         # floor: keep only real semantic matches
                 continue
             vid, title, url, kd, cf = prefilt[i]
+            if copyright_free_only and not cf:
+                continue
             surveyed.append({"video_id": vid, "title": title, "url": url, "channel": "", "kind": kd,
                              "copyright_free": bool(cf), "tier": "surveyed", "action": "ingest+caption",
                              "score": round(float(sims[i]), 3), "why": ""})
