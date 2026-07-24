@@ -49,28 +49,6 @@ the test in the same change.
 - **Effort:** low. **Test:** extend the sync suite — a scene starting well before
   its content-time is flagged `lead`; a title with a small lead is not.
 
-### B1 · BGM ships silent offline instead of falling back to the local bank
-- **Symptom:** `bgm: retrieve requires a HeyGen credential — skipped`; a 13.6-min
-  essay ships with no music bed. Marked "soft" so it sails through.
-- **Root cause (verified):** `finish.py:212` bgm step runs `audio.mjs fetch-bgm`
-  only; on no-credential it warns and continues — no fallback, despite a *complete
-  existing* local-music organ (`audio_mix.load_music_library()` /
-  `resolve_music_config()`, `MUSIC_LIBRARY = projects/_library/music/` with a
-  `music.json` manifest).
-- **Fix (systematic, not a band-aid):** make bgm a **tiered resolver**, mirroring
-  the `ImageProvider`/`WebSearchProvider` pattern already in the repo:
-  HeyGen (`fetch-bgm`) → **`audio_mix` local library** (`resolve_music_config`) →
-  none. Do NOT hand-roll a `if no_credential: local` branch in `finish.py`; add a
-  `resolve_bgm()` in the sound organ that owns the tier order, and have `finish.py`
-  call it. Local hits mix via the existing ducked `sfx_mix` path (VO on top). This
-  also fixes the "media-use advertises BGM resolution but it's unwired" smell —
-  one resolver, honestly bound.
-- **Files:** `src/nolan/audio_mix.py` (new `resolve_bgm` tier owner), `finish.py`
-  (bgm step calls it), `sfx_mix.py` (duck), the `/media-use` binding.
-- **Effort:** medium. **Test:** with HeyGen absent, `resolve_bgm` returns a local
-  track and the finished `audio_meta` carries it (not empty); narration preserved;
-  a unit test asserts the tier ORDER (HeyGen preferred, local fallback).
-
 ### L1 · Layout lint false-FAILs full-bleed scenes and shouts "FAIL" on a soft step
 - **Symptom:** grounded full-bleed footage scenes get "0% of content mass in the
   editorial-column zone"; the run prints `FAIL — layout errors` then continues,
@@ -192,15 +170,27 @@ the test in the same change.
 
 ---
 
+## Deferred — needs its own strategy (not in this program)
+
+### B1 · BGM offline strategy
+BGM shipping silent offline (`bgm: retrieve requires a HeyGen credential —
+skipped`, `finish.py:212`) is real, and a local-music organ exists
+(`audio_mix.load_music_library` / `resolve_music_config`,
+`projects/_library/music/`). **But the right answer is a broader BGM strategy
+decision** (source/licensing, selection quality, HeyGen vs local vs generated,
+per-essay mood matching) — deferred to a dedicated pass. Do NOT bolt on a quick
+`if no-credential: local` fallback in the meantime.
+
 ## Recommended sequence
 
-1. **Tier 1** (S1 sync-lead, B1 bgm-fallback, L1 layout-lint) — highest
-   value-to-effort, each independently testable, no architectural risk.
+1. **Tier 1** (S1 sync-lead, L1 layout-lint) — highest value-to-effort, each
+   independently testable, no architectural risk.
 2. **Tier 2** (S2 per-item anchoring, A1 assemble-media auto-stage, R1
    render observability+reap) — remove failure classes.
 3. **Tier 3** as opportunistic cleanups.
 4. **Tier 4** (block_plan default) only if the fleet path is going to be used at
    scale — otherwise it's premature.
+- **Deferred:** B1 BGM offline strategy — separate topic, its own pass.
 
-S1 + S2 together close the "text arrives before voice" feel; B1 closes the silent
-essay; A1 + R1 close the two operational black holes. That's the 80/20.
+S1 + S2 together close the "text arrives before voice" feel; A1 + R1 close the two
+operational black holes. That's the 80/20.
