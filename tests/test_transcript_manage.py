@@ -324,6 +324,31 @@ def test_archive_copyright_free_uses_pd_collections_not_just_licence():
     assert clause.startswith("(licenseurl:[* TO *] OR collection:(") and "prelinger" in clause
 
 
+def test_multivalued_archive_metadata_is_coerced_to_text(monkeypatch):
+    """archive.org metadata is MULTI-VALUED: an item with two <description> entries returns a LIST. Every
+    consumer downstream (keyword match, embed text, the re-rank prompt) assumes text — an uncoerced list
+    crashed 7 of 20 topic searches in the sweep (`'list' object has no attribute 'replace'`)."""
+    import asyncio
+    from nolan import archive_source as ar
+    from nolan import llm as nllm
+    from nolan import transcript_lib as tl
+    row = ar._row({"identifier": "x", "title": ["Main title", "alt title"],
+                   "description": ["first para", "second para"], "subject": ["Mining"]})
+    assert row["title"] == "Main title alt title" and row["description"] == "first para second para"
+
+    class FakeLLM:
+        model = "m"
+
+        async def generate(self, prompt, system_prompt=None):
+            assert "first para" in prompt                      # the list reached the prompt as text
+            return '{"items":[{"i":0,"fit":"high","why":"ok"}]}'
+    monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: FakeLLM())
+    rows = [{"video_id": "x", "title": "t", "score": 0.6, "rrf": 0.01,
+             "_desc": ["first para", "second para"], "_subject": ["Mining"]}]
+    kept, meta = asyncio.run(tl._rerank_suggestions(rows, "mining", ["mining"], None))
+    assert meta["reranked"] and kept[0]["fit"] == "high"
+
+
 def test_tiers_are_fused_by_rank_not_raw_score():
     """Tier scores live on different scales (segment cosine vs title cosine), so they're fused by RANK.
     A tier's top hit must reach the head of the list even when its raw score is numerically lower."""

@@ -419,7 +419,8 @@ async def _rerank_suggestions(rows, topic, queries, config):
     lines = []
     for i, r in enumerate(cand):
         subj = ", ".join(str(s) for s in (r.get("_subject") or [])[:6])
-        desc = (r.get("_desc") or r.get("why") or "").replace("\n", " ")[:200]
+        raw = r.get("_desc") or r.get("why") or ""       # archive metadata is multi-valued — never assume str
+        desc = (" ".join(str(x) for x in raw) if isinstance(raw, list) else str(raw)).replace("\n", " ")[:200]
         lines.append(f'{i}. "{r.get("title", "")}"' + (f" [subjects: {subj}]" if subj else "")
                      + (f" — {desc}" if desc else ""))
     prompt = (

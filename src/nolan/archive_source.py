@@ -96,6 +96,15 @@ def _as_list(v: Any) -> List[str]:
     return [str(v)] if v else []
 
 
+def _as_text(v: Any) -> str:
+    """archive.org metadata fields are MULTI-VALUED: an item with two <description> entries returns a LIST,
+    not a string. Every downstream consumer (keyword match, embed text, the re-rank prompt) assumes text, so
+    coerce here — a list description crashed 7 of 20 topic searches before this."""
+    if isinstance(v, list):
+        return " ".join(str(x) for x in v if x)
+    return str(v) if v else ""
+
+
 def _row(doc: Dict[str, Any], collection_free: bool = False) -> Optional[Dict[str, Any]]:
     """One advancedsearch doc → the shared transcript-library row shape. ONE builder for both the
     collection survey and the global search, so they can never drift apart."""
@@ -106,10 +115,10 @@ def _row(doc: Dict[str, Any], collection_free: bool = False) -> Optional[Dict[st
     return {
         "video_id": ident,
         "url": f"https://archive.org/details/{ident}",
-        "title": doc.get("title") or ident,
+        "title": _as_text(doc.get("title")) or ident,
         "duration": parse_runtime(doc.get("runtime")),
         "subject": _as_list(doc.get("subject")),
-        "description": doc.get("description") or "",
+        "description": _as_text(doc.get("description")),
         "license": lic or "",
         "copyright_free": is_copyright_free(lic, collection_free or _in_pd_collection(doc)),
     }
@@ -304,10 +313,10 @@ def fetch_transcript(identifier: str, collection: str = "", out_dir: Optional[Pa
         channel = collection or (coll_meta[0] if isinstance(coll_meta, list) and coll_meta else (coll_meta or ""))
         meta: Dict[str, Any] = {
             "video_id": ident,
-            "title": md.get("title") or ident,
+            "title": _as_text(md.get("title")) or ident,
             "channel": channel,
             "url": f"https://archive.org/details/{ident}",
-            "description": md.get("description") or "",
+            "description": _as_text(md.get("description")),
             "subject": _as_list(md.get("subject")),
             "license": lic,
             "copyright_free": is_copyright_free(lic),

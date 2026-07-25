@@ -63,12 +63,13 @@ def rows(catalog_dir: Optional[Path] = None, exclude: Optional[set] = None) -> D
             vid = t.get("video_id")
             if not vid or vid in skip or vid in out:
                 continue
-            title = t.get("title") or vid
+            from nolan.archive_source import _as_text
+            title = _as_text(t.get("title")) or vid       # archive metadata is multi-valued (list) at times
             subject = (t.get("subject") or []) if kd == "archive" else []
             txt = embed_text(title, subject)
             out[vid] = {"video_id": vid, "title": title, "url": t.get("url") or "", "kind": kd,
                         "channel": chan, "subject": subject,
-                        "description": (t.get("description") or "") if kd == "archive" else "",
+                        "description": _as_text(t.get("description")) if kd == "archive" else "",
                         "copyright_free": (vid in free_ids) or bool(t.get("copyright_free")),
                         "text": txt, "sig": _sig(txt)}
     return out
