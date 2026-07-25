@@ -41,18 +41,27 @@ def load_catalog(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
 
 def record_transcript(video_id: str, meta: Dict[str, Any], windows_n: int, channel: Optional[str],
                       *, frames: int = 0, added: str = "", catalog_dir: Optional[Path] = None,
-                      broll: bool = False, kind: str = "youtube", copyright_free: bool = False) -> None:
+                      broll: Optional[bool] = None, kind: Optional[str] = None,
+                      copyright_free: Optional[bool] = None) -> None:
     """Upsert one transcript video's display metadata into the sidecar (keyed by the YouTube video id).
     `frames` = how many visual keyframes were captioned (drives the visual-coverage badge). `broll` = a ready
     b-roll short clip. `kind`/`copyright_free` = the source family + license status (so the acquire engine can
-    mark the pooled asset: copyright-free stock/PD vs a copyrighted documentary reference)."""
+    mark the pooled asset: copyright-free stock/PD vs a copyrighted documentary reference).
+
+    PROVENANCE IS STICKY: those three are Optional and only OVERWRITTEN when the caller asserts them. They
+    used to default to (False, 'youtube', False), so a re-caption / refresh — which knows nothing about the
+    source family — silently re-labelled a Prelinger PD film as copyrighted YouTube (observed live: an
+    archive.org 500 forced a re-caption, and the row came back kind=youtube, copyright_free=False)."""
     cat = load_catalog(catalog_dir)
+    prev = cat.get(str(video_id)) or {}
     cat[str(video_id)] = {
         "video_id": str(video_id), "title": meta.get("title"),
         "channel": channel or meta.get("channel"), "url": meta.get("url"),
         "upload_date": meta.get("upload_date"), "language": meta.get("language"),
-        "windows": int(windows_n), "frames": int(frames), "added": added, "broll": bool(broll),
-        "kind": kind, "copyright_free": bool(copyright_free),
+        "windows": int(windows_n), "frames": int(frames), "added": added,
+        "broll": bool(prev.get("broll", False) if broll is None else broll),
+        "kind": (prev.get("kind") or "youtube") if kind is None else kind,
+        "copyright_free": bool(prev.get("copyright_free", False) if copyright_free is None else copyright_free),
     }
     p = _catalog_file(catalog_dir)
     p.parent.mkdir(parents=True, exist_ok=True)

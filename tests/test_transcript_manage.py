@@ -247,6 +247,25 @@ def test_suggest_topic_prefilter_is_balanced_and_honest(monkeypatch):
     assert all(s["copyright_free"] for s in d["suggestions"] if s["kind"] == "archive")
 
 
+def test_record_transcript_provenance_is_sticky(tmp_path):
+    """kind / copyright_free / broll are only overwritten when the caller ASSERTS them. They used to default
+    to ('youtube', False, False), so a re-caption (which knows nothing about the source family) re-labelled a
+    Prelinger PD film as copyrighted YouTube — poisoning the acquire engine's provenance marking."""
+    from nolan import transcript_lib as tl
+    meta = {"title": "Duck and Cover", "url": "https://archive.org/details/duckandcover"}
+    tl.record_transcript("dc1", meta, 12, "prelinger", frames=0, added="t0", catalog_dir=tmp_path,
+                         kind="archive", copyright_free=True)
+    tl.record_transcript("dc1", meta, 12, "prelinger", frames=44, added="t0", catalog_dir=tmp_path)  # re-caption
+    row = tl.load_catalog(tmp_path)["dc1"]
+    assert row["kind"] == "archive" and row["copyright_free"] is True and row["frames"] == 44
+    tl.record_transcript("dc1", meta, 12, "prelinger", frames=44, added="t0", catalog_dir=tmp_path,
+                         copyright_free=False)                       # an explicit assertion still wins
+    assert tl.load_catalog(tmp_path)["dc1"]["copyright_free"] is False
+    tl.record_transcript("new1", meta, 3, "c", catalog_dir=tmp_path)  # a NEW row keeps the old defaults
+    new = tl.load_catalog(tmp_path)["new1"]
+    assert new["kind"] == "youtube" and new["copyright_free"] is False and new["broll"] is False
+
+
 def test_keyword_prefilter_matches_at_word_start_only():
     """The prefilter matches WHOLE WORDS (plus common inflections), not any substring: plain `in` made "ring"
     hit "manufacturing", "car" hit "scarcity"/"carbon", "ore" hit "score" — junk that ate the embed budget
