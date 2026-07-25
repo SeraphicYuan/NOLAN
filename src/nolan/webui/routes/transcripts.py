@@ -229,6 +229,8 @@ def register(app, ctx):
         from nolan import archive_source as ar
         collection = ar.collection_ref(body.get("collection") or "") if kind == "archive" else ""
         cfree = kind == "youtube_cc" or (kind == "archive" and _collection_free(collection or (body.get("collection") or ""), "archive"))
+        if body.get("copyright_free") is not None:            # explicit caller assertion (the Topic tab knows
+            cfree = bool(body["copyright_free"])              # each row's cf from the survey/licence) wins
         job = job_manager.start(
             "transcript-ingest-videos", operations.ingest_videos, meta={"count": len(vids), "kind": kind},
             config=cfg, db_path=idb, videos=vids, visual=(body.get("visual") or "off"),
@@ -276,7 +278,8 @@ def register(app, ctx):
         index = VideoIndex(idb)
         vs = VectorSearch(Path(idb).parent / "vectors", index=index)
         return await tl.suggest_by_topic(topic, index, vs, load_config(), int(body.get("n", 12) or 12),
-                                         copyright_free_only=bool(body.get("copyright_free", False)))
+                                         copyright_free_only=bool(body.get("copyright_free", False)),
+                                         queries=(body.get("queries") or None))
 
     @app.get("/api/transcripts/visual-search")
     async def transcripts_visual_search(q: str = Query(...), n: int = Query(default=24),

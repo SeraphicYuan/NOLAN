@@ -181,6 +181,14 @@
           <button class="btn" onclick="tgSuggest()">🎯 Suggest</button>
         </div>
         <div id="tg-queries" class="dim" style="margin-top:8px"></div>
+        <div id="tg-qedit" style="display:none;margin-top:6px">
+          <div class="dim" style="font-size:11px;margin-bottom:3px">These are the queries the search actually ran — edit them (one per line) and re-run to steer recall. The library is 1950s industrial/PD film + documentary TV, so <b>visual</b> phrasings ("jewelry store window display") often beat encyclopedic ones ("Kimberley Big Hole 1888").</div>
+          <textarea id="tg-q" rows="4" style="width:100%;font-size:11px" spellcheck="false"></textarea>
+          <div class="row" style="margin-top:4px;gap:6px">
+            <button class="btn mini" onclick="tgSuggest(true)">↻ Re-run with these queries</button>
+            <button class="btn ghost mini" onclick="tgSuggest(false)">✨ Re-expand from the topic</button>
+          </div>
+        </div>
       </div>
       <div class="card">
         <div class="row" style="justify-content:space-between">
@@ -620,16 +628,29 @@
     let TG_SEL = new Set();
     function tgSelN(){ $("#tg-n-sel").textContent = TG_SEL.size; }
     function tgToggle(id, on){ if(on) TG_SEL.add(id); else TG_SEL.delete(id); tgSelN(); }
-    async function tgSuggest(){
+    /* useEdited=true → run the textarea queries verbatim (no LLM expansion); false → expand from the topic */
+    async function tgSuggest(useEdited){
       const topic=$("#tg-topic").value.trim(); if(!topic){ alert("Enter a topic."); return; }
       const n=parseInt($("#tg-n").value,10)||12;
+      const edited = useEdited ? $("#tg-q").value.split("\n").map(s=>s.trim()).filter(Boolean) : null;
+      if(useEdited && !(edited||[]).length){ alert("No queries to run — edit the box or re-expand."); return; }
       $("#tg-queries").textContent=""; $("#tg-status").textContent="";
-      $("#tg-body").innerHTML='<div class="dim">expanding the topic + searching indexed transcripts and surveyed titles…</div>';
+      $("#tg-body").innerHTML=`<div class="dim">${useEdited?"searching with your queries":"expanding the topic + searching"} indexed transcripts and surveyed titles…</div>`;
       TG_SEL.clear(); tgSelN();
       try{
-        const d=await jpost("/api/transcripts/suggest-topic",{topic, n, copyright_free:$("#tg-cf").checked});
+        const body={topic, n, copyright_free:$("#tg-cf").checked};
+        if(edited) body.queries=edited;
+        const d=await jpost("/api/transcripts/suggest-topic",body);
         TG.byId={}; (d.suggestions||[]).forEach(s=>TG.byId[s.video_id]=s);
-        $("#tg-queries").innerHTML = (d.queries||[]).length ? `<b>queries:</b> ${d.queries.map(q=>`<span class="chip">${esc(q)}</span>`).join(" ")}` : "";
+        const prov = d.query_source==="edited" ? "your edited queries"
+                   : d.query_source==="llm" ? `expanded by ${esc(d.expander||"the LLM")}`
+                   : "the topic as typed (no expansion)";
+        $("#tg-queries").innerHTML = (d.queries||[]).length
+          ? `<b>queries ran</b> <span style="font-size:11px">(${prov})</span>: ${d.queries.map(q=>`<span class="chip">${esc(q)}</span>`).join(" ")}`
+            + (d.expand_error?`<div class="warn" style="font-size:11px;margin-top:3px">expansion failed — ${esc(d.expand_error)} (searched the raw topic instead)</div>`:"")
+          : "";
+        $("#tg-qedit").style.display="block";
+        $("#tg-q").value=(d.queries||[]).join("\n");
         tgRender(d);
       }catch(e){ $("#tg-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
@@ -638,7 +659,7 @@
       const act = s.action==="caption" ? '<span class="chip frames">caption</span>' : '<span class="chip">ingest + caption</span>';
       return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:8px;max-width:72%">
         <input type="checkbox" class="tgsel" value="${esc(s.video_id)}" ${TG_SEL.has(s.video_id)?'checked':''} onchange="tgToggle('${esc(s.video_id)}',this.checked)">
-        <a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title||s.video_id)}</a> ${kb} ${act}${s.copyright_free?' <span class="chip frames">cf</span>':''}</span>
+        <a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title||s.video_id)}</a> ${kb} ${act}${s.copyright_free?' <span class="chip frames">cf</span>':''}${s.channel?` <span class="chip txt" title="source">${esc(String(s.channel).replace(/^https?:\/\/(www\.)?youtube\.com\//,""))}</span>`:''}</span>
         <span class="row" style="gap:8px;flex:0 0 auto"><span class="dim" style="font-size:11px;max-width:300px;text-align:right">${esc((s.why||"").slice(0,90))}</span><span class="score">${s.score}</span></span></div>`;
     }
     /* honest coverage line: what the keyword prefilter found vs what the embed budget could actually score */
@@ -665,13 +686,23 @@
       const sel=[...TG_SEL].map(id=>TG.byId[id]).filter(Boolean);
       if(!sel.length){ alert("Select at least one."); return; }
       const capIds=sel.filter(s=>s.action==="caption").map(s=>s.video_id);
-      const byKind={};
-      sel.filter(s=>s.action==="ingest+caption").forEach(s=>{ (byKind[s.kind]=byKind[s.kind]||[]).push({video_id:s.video_id,url:s.url,title:s.title}); });
+      /* group by kind + SOURCE + copyright status: ingest records channel/collection provenance and the
+         copyright_free flag per batch, and a suggestion knows all three — send them, don't let them default */
+      const groups={};
+      sel.filter(s=>s.action==="ingest+caption").forEach(s=>{
+        const k=`${s.kind}|${s.channel||""}|${s.copyright_free?1:0}`;
+        (groups[k]=groups[k]||{kind:s.kind, channel:s.channel||"", cf:!!s.copyright_free, videos:[]}).videos
+          .push({video_id:s.video_id, url:s.url, title:s.title, channel:s.channel||""});
+      });
       const st=$("#tg-status"); st.textContent="dispatching…";
       try{
         const jobs=[];
         if(capIds.length){ await jpost("/api/transcripts/batch-caption",{video_ids:capIds}); jobs.push(`caption ${capIds.length}`); }
-        for(const kind of Object.keys(byKind)){ await jpost("/api/transcripts/ingest-videos",{videos:byKind[kind], kind, visual:"keyframe"}); jobs.push(`ingest+caption ${byKind[kind].length} (${kind})`); }
+        for(const g of Object.values(groups)){
+          await jpost("/api/transcripts/ingest-videos",{videos:g.videos, kind:g.kind, visual:"keyframe",
+                                                       collection:g.channel, copyright_free:g.cf});
+          jobs.push(`ingest+caption ${g.videos.length} (${g.kind}${g.channel?" / "+g.channel:""}${g.cf?", cf":""})`);
+        }
         st.innerHTML=`✓ started: ${esc(jobs.join(", "))} — watch Background Jobs`;
         TG_SEL.clear(); tgSelN();
       }catch(e){ st.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }

@@ -332,36 +332,48 @@ def _src_id_from_url(url: str) -> str:
 
 async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
                            catalog_dir: Optional[Path] = None,
-                           copyright_free_only: bool = False) -> Dict[str, Any]:
+                           copyright_free_only: bool = False,
+                           queries: Optional[List[str]] = None) -> Dict[str, Any]:
     """ON-DEMAND caption targeting: a rough topic ("diamond, De Beers, diamond history") → a ranked shortlist
     of videos worth running the gemma VISUAL tier on. Two tiers, both reusing existing machinery:
       (1) INGESTED-but-not-captioned — the topic's BGE vector search over transcripts, grouped by video, kept
           where the catalog shows frames==0 (transcript indexed, no keyframes yet) → action 'caption';
       (2) SURVEYED-but-not-ingested — a keyword prefilter over the persisted survey titles then BGE similarity
           → action 'ingest+caption'.
-    A deepseek pass expands the rough topic into specific queries for recall. No web search (Phase 2)."""
+    An LLM pass expands the rough topic into specific queries for recall — UNLESS `queries` is given (the
+    human EDITED them in the Topic tab), which runs the search verbatim. The result reports `expanded` +
+    `expander` so the UI can show WHOSE queries ran. No web search (Phase 2)."""
     import asyncio
     import json
 
     from nolan.llm import create_text_llm
-    queries = [q.strip() for q in (topic or "").replace(",", "\n").splitlines() if q.strip()]
-    try:
-        llm = create_text_llm(config)
-        out = await llm.generate(
-            f'Expand this rough topic into 5-7 SPECIFIC, diverse search queries (key people, events, '
-            f'sub-topics, eras) for retrieving documentary/video footage. Topic: "{topic}". '
-            'Respond ONLY JSON: {"queries":["...", "..."]}.',
-            system_prompt="You expand a rough topic into specific search queries for video retrieval.")
-        st, en = out.find("{"), out.rfind("}")
-        qs = [str(q).strip() for q in (json.loads(out[st:en + 1]).get("queries") or []) if str(q).strip()] \
-            if st >= 0 and en > st else []
-        if qs:
-            queries = qs
-    except Exception:
-        pass
-    queries = (queries or [topic])[:8]
-    return await asyncio.to_thread(_topic_suggestions, queries, topic, index, vs, int(n), catalog_dir,
-                                   bool(copyright_free_only))
+    given = [q.strip() for q in (queries or []) if str(q).strip()]
+    qs, expander, err = [], "", ""
+    if not given:
+        try:
+            llm = create_text_llm(config)
+            expander = getattr(llm, "model", "") or type(llm).__name__
+            out = await llm.generate(
+                f'Expand this rough topic into 5-7 SPECIFIC, diverse search queries (key people, events, '
+                f'sub-topics, eras) for retrieving documentary/video footage. Topic: "{topic}". '
+                'Respond ONLY JSON: {"queries":["...", "..."]}.',
+                system_prompt="You expand a rough topic into specific search queries for video retrieval.")
+            st, en = out.find("{"), out.rfind("}")
+            qs = [str(q).strip() for q in (json.loads(out[st:en + 1]).get("queries") or []) if str(q).strip()] \
+                if st >= 0 and en > st else []
+        except Exception as e:                                # loud in the payload, not a silent fallback
+            err = f"{type(e).__name__}: {e}"[:160]
+    # precedence: human-edited queries > LLM expansion > the raw topic split on commas/newlines
+    used = given or qs or [q.strip() for q in (topic or "").replace(",", "\n").splitlines() if q.strip()]
+    used = (used or [topic])[:8]
+    out = await asyncio.to_thread(_topic_suggestions, used, topic, index, vs, int(n), catalog_dir,
+                                  bool(copyright_free_only))
+    out["expanded"] = bool(qs and not given)
+    out["query_source"] = "edited" if given else ("llm" if qs else "topic")
+    out["expander"] = expander if (qs and not given) else ""
+    if err:
+        out["expand_error"] = err                             # expansion failed → say so, don't fake recall
+    return out
 
 
 def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False):
@@ -415,6 +427,7 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
     seen_vid = set()
     for key, sv in svs:
         kd = sv.get("kind") or "youtube"
+        chan = sv.get("channel") or ""                         # the SOURCE (yt channel / archive collection)
         for t in sv.get("titles", []):
             vid = t.get("video_id")
             if not vid or vid in have or vid in seen_vid:
@@ -431,8 +444,11 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
                 continue
             seen_vid.add(vid)
             embed_text = (title + " " + subj).strip() if subj else title
+            # a row's cf status: the source-derived set OR the item's own asserted license (archive rows
+            # cache `copyright_free` from the licenseurl) — the ingest dispatch carries this flag through.
+            cf_row = (vid in free_ids) or bool(t.get("copyright_free"))
             by_src.setdefault(key, []).append((hits, vid, title, embed_text[:200], t.get("url") or "",
-                                               kd, vid in free_ids))
+                                               kd, cf_row, chan))
     prefilt, kw_matches, kept_by_src = _balanced_prefilter(by_src, _PREFILT_BUDGET)
     surveyed = []
     if prefilt:
@@ -442,10 +458,10 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
         for i in np.argsort(-sims)[:n * 3]:
             if float(sims[i]) < 0.42:                         # floor: keep only real semantic matches
                 continue
-            vid, title, _et, url, kd, cf = prefilt[i]
+            vid, title, _et, url, kd, cf, chan = prefilt[i]
             if copyright_free_only and not cf:
                 continue
-            surveyed.append({"video_id": vid, "title": title, "url": url, "channel": "", "kind": kd,
+            surveyed.append({"video_id": vid, "title": title, "url": url, "channel": chan, "kind": kd,
                              "copyright_free": bool(cf), "tier": "surveyed", "action": "ingest+caption",
                              "score": round(float(sims[i]), 3), "why": ""})
 

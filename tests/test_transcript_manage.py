@@ -222,8 +222,9 @@ def test_suggest_topic_prefilter_is_balanced_and_honest(monkeypatch):
     monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: {f"a{i}" for i in range(20)})
     monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {
         "bloomberg": {"titles": big},                              # LEGACY key (kind=None) — same videos…
-        "youtube:bloomberg": {"kind": "youtube", "titles": big},   # …as this kind-namespaced one
-        "archive:prelinger": {"kind": "archive", "titles": arch},
+        "youtube:bloomberg": {"kind": "youtube", "channel": "https://www.youtube.com/bloomberg",
+                              "titles": big},                      # …as this kind-namespaced one
+        "archive:prelinger": {"kind": "archive", "channel": "prelinger", "titles": arch},
     })
     monkeypatch.setattr(tl, "_PREFILT_BUDGET", 20)
     monkeypatch.setattr(tl, "_embed_titles", lambda titles: [[1.0, 0.0]] * len(titles))
@@ -241,6 +242,42 @@ def test_suggest_topic_prefilter_is_balanced_and_honest(monkeypatch):
     assert d["prefilter_sources"] == {"archive:prelinger": 10, "youtube:bloomberg": 10}   # even split, no starving
     assert "bloomberg" not in d["prefilter_sources"]                    # legacy key deduped away by video_id
     assert {s["kind"] for s in d["suggestions"]} == {"archive", "youtube"}   # kind survives the dedupe
+    # each row carries its SOURCE — the ingest dispatch needs channel/collection + cf, not defaults
+    assert {s["channel"] for s in d["suggestions"]} == {"prelinger", "https://www.youtube.com/bloomberg"}
+    assert all(s["copyright_free"] for s in d["suggestions"] if s["kind"] == "archive")
+
+
+def test_suggest_by_topic_query_provenance(monkeypatch):
+    """WHOSE queries ran is reported, and human-edited queries SKIP the LLM entirely: edited > expansion >
+    the raw topic. A failed expansion says so (`expand_error`) instead of silently searching the bare topic."""
+    import asyncio
+    from nolan import llm as nllm
+    from nolan import transcript_lib as tl
+    calls = []
+
+    class FakeLLM:
+        model = "qwen-test"
+
+        async def generate(self, prompt, system_prompt=None):
+            calls.append(prompt)
+            return '{"queries":["expanded one","expanded two"]}'
+
+    monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: FakeLLM())
+    monkeypatch.setattr(tl, "_topic_suggestions",
+                        lambda q, t, i, v, n, cd, cf: {"suggestions": [], "queries": list(q)})
+
+    d = asyncio.run(tl.suggest_by_topic("diamonds, De Beers", None, None, None))
+    assert d["queries"] == ["expanded one", "expanded two"] and len(calls) == 1
+    assert d["query_source"] == "llm" and d["expanded"] and d["expander"] == "qwen-test"
+
+    d = asyncio.run(tl.suggest_by_topic("diamonds", None, None, None, queries=["jewelry store window", " "]))
+    assert d["queries"] == ["jewelry store window"] and len(calls) == 1      # LLM NOT called again
+    assert d["query_source"] == "edited" and not d["expanded"] and d["expander"] == ""
+
+    monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: (_ for _ in ()).throw(RuntimeError("no key")))
+    d = asyncio.run(tl.suggest_by_topic("diamonds, De Beers", None, None, None))
+    assert d["queries"] == ["diamonds", "De Beers"]                          # fell back to the typed topic
+    assert d["query_source"] == "topic" and "no key" in d["expand_error"]    # loud, not silent
 
 
 def test_copyright_free_ids_from_sources_and_surveys(monkeypatch):
