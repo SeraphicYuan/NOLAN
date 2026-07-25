@@ -247,6 +247,51 @@ def test_suggest_topic_prefilter_is_balanced_and_honest(monkeypatch):
     assert all(s["copyright_free"] for s in d["suggestions"] if s["kind"] == "archive")
 
 
+def test_keyword_prefilter_matches_at_word_start_only():
+    """The prefilter matches WHOLE WORDS (plus common inflections), not any substring: plain `in` made "ring"
+    hit "manufacturing", "car" hit "scarcity"/"carbon", "ore" hit "score" — junk that ate the embed budget
+    (live: 7,107 keyword "matches" for a diamond topic → 3,527 real ones). Plurals/tenses still match."""
+    from nolan import transcript_lib as tl
+    m = tl._kw_matcher({"ring", "car", "ore", "mine", "diamond"})
+    hit = lambda s: set(m.findall(s.lower()))                              # noqa: E731
+    assert not hit("carbon rod manufacturing") and not hit("scarcity of labor") and not hit("score board")
+    assert hit("rings of saturn") == {"ring"}                              # plural
+    assert hit("mined the diamonds") == {"mine", "diamond"}                # tense + plural
+    assert hit("a miner at the car park") == {"mine", "car"}
+    assert tl._kw_matcher(set()) is None
+
+
+def test_topic_cf_filter_runs_before_the_rank_cut(monkeypatch):
+    """`copyright-free only` must not be starved by a fixed top-N slice: the cf rows sit BELOW a wall of
+    copyrighted ones, so filtering after the cut returned a handful where dozens qualified (live: 231 ranked
+    → 8 kept). The walk now stops at the floor or at enough KEPT rows, whichever comes first."""
+    import numpy as np
+    from nolan import transcript_lib as tl
+    paid = [{"video_id": f"p{i}", "title": f"diamond news {i}", "url": ""} for i in range(50)]
+    free = [{"video_id": f"f{i}", "title": f"diamond film {i}", "url": ""} for i in range(30)]
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: {f"f{i}" for i in range(30)})
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {
+        "youtube:paid": {"kind": "youtube", "channel": "c1", "titles": paid},
+        "archive:free": {"kind": "archive", "channel": "c2", "titles": free}})
+    # every paid row scores ABOVE every free row, and all clear the 0.42 floor
+    order = {f"diamond news {i}": 0.90 for i in range(50)}
+    order.update({f"diamond film {i}": 0.50 for i in range(30)})
+    monkeypatch.setattr(tl, "_embed_titles",
+                        lambda ts: [[1.0, 0.0] if "diamond mining" in t else [order.get(t, 0.0), 0.0] for t in ts])
+
+    class FakeIndex:
+        def transcript_video_ids(self):
+            return set()
+
+    class FakeVS:
+        def search(self, **k):
+            return []
+    d = tl._topic_suggestions(["diamond mining"], "diamond", FakeIndex(), FakeVS(), 6, None, True)
+    assert d["surveyed"] == 18 and all(s["copyright_free"] for s in d["suggestions"])   # n*3, all free
+    assert {s["video_id"] for s in d["suggestions"]} <= {f"f{i}" for i in range(30)}
+
+
 def test_suggest_by_topic_query_provenance(monkeypatch):
     """WHOSE queries ran is reported, and human-edited queries SKIP the LLM entirely: edited > expansion >
     the raw topic. A failed expansion says so (`expand_error`) instead of silently searching the bare topic."""

@@ -268,12 +268,24 @@ def _channel_key(channel: str) -> str:
     return c or (channel or "").strip().lower()
 
 
+_SURVEY_CACHE: Dict[str, Tuple[float, int, Dict[str, Any]]] = {}      # path → (mtime, size, parsed)
+
+
 def load_surveys(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
-    """Persisted channel title lists: {key: {channel, label, fetched, count, titles:[{video_id,url,title}]}}."""
+    """Persisted channel title lists: {key: {channel, label, fetched, count, titles:[{video_id,url,title}]}}.
+    Parsed copies are cached per (mtime, size) — the file is ~29 MB / 110k titles and a single topic search
+    reads it twice (search + copyright_free_ids); a survey WRITE changes the mtime and invalidates it."""
     p = _surveys_file(catalog_dir)
     if p.exists():
         try:
-            return json.loads(p.read_text(encoding="utf-8"))
+            st = p.stat()
+            key = str(p)
+            hit = _SURVEY_CACHE.get(key)
+            if hit and hit[0] == st.st_mtime and hit[1] == st.st_size:
+                return hit[2]
+            data = json.loads(p.read_text(encoding="utf-8"))
+            _SURVEY_CACHE[key] = (st.st_mtime, st.st_size, data)
+            return data
         except (json.JSONDecodeError, OSError):
             pass
     return {}
@@ -418,6 +430,7 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
     kw = set()
     for s in [topic] + list(queries):
         kw |= set(_tok(s))
+    kw_re = _kw_matcher(kw)
     have = set(cat.keys())
     # kind-namespaced survey keys FIRST: surveys.json also carries LEGACY un-namespaced keys for the same
     # channel (kind=None), so the by-video_id dedupe below keeps the row whose `kind` is known — and counts
@@ -439,7 +452,7 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
             subj = " ".join(t.get("subject") or []) if kd == "archive" else ""
             kw_text = (title + " " + subj + " " + (t.get("description") or "")).lower() if kd == "archive" \
                 else title.lower()
-            hits = sum(1 for k in kw if k in kw_text) if kw else 0
+            hits = len(set(kw_re.findall(kw_text))) if kw_re else 0
             if not hits:
                 continue
             seen_vid.add(vid)
@@ -455,9 +468,14 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
         qv = np.asarray(_embed_titles(list(queries)), dtype=np.float32)
         tv = np.asarray(_embed_titles([c[2] for c in prefilt]), dtype=np.float32)   # title + subject tags
         sims = (tv @ qv.T).max(axis=1)
-        for i in np.argsort(-sims)[:n * 3]:
+        # Walk the WHOLE ranked list and stop at the floor (sims are sorted descending) or once we have
+        # enough KEPT rows — filtering after a fixed top-(n*3) slice starved `copyright-free only`, whose
+        # matches sit below a wall of copyrighted ones (live: 231 ranked → 8 kept where dozens qualified).
+        for i in np.argsort(-sims):
             if float(sims[i]) < 0.42:                         # floor: keep only real semantic matches
-                continue
+                break
+            if len(surveyed) >= n * 3:
+                break
             vid, title, _et, url, kd, cf, chan = prefilt[i]
             if copyright_free_only and not cf:
                 continue
@@ -474,6 +492,17 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
 
 
 _PREFILT_BUDGET = 1500                                        # tier-2 titles we're willing to BGE-embed per topic
+
+
+def _kw_matcher(kw):
+    """One WHOLE-WORD (+ common inflection) regex for the topic's keywords. Plain `k in text` matched
+    mid-word: "ring" hit "manufactu*ring*" / "Bo*ring* Company", "car" hit "s*car*city", "ore" hit "sc*ore*" —
+    junk that ate the embed budget. The optional suffix keeps the plural/tense tolerance that made the
+    substring test useful at all ("diamond"→diamonds, "mine"→mines/mined/miner)."""
+    ks = sorted({str(k).lower() for k in (kw or []) if str(k).strip()}, key=len, reverse=True)
+    if not ks:
+        return None
+    return _re.compile(r"\b(" + "|".join(_re.escape(k) for k in ks) + r")(?:s|es|ed|d|ing|er|ers|r|rs)?\b", _re.I)
 
 
 def _balanced_prefilter(by_src, budget=_PREFILT_BUDGET):
