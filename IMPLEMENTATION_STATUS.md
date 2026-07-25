@@ -2,7 +2,15 @@
 
 **Version:** 0.1.0
 **Status:** Complete
-**Last Updated:** 2026-07-24
+**Last Updated:** 2026-07-25
+
+## 20-topic sweep — the topic search's real test (and the bug it found) (2026-07-25)
+
+Test design: instead of one topic × 20 videos, **20 unrelated topics × the single best archive pick each** — every topic a cold start (own LLM expansion, own 60k-title vector pass, own global archive.org round-trip), and taking only the TOP pick means a bad ranking has nowhere to hide behind a long shortlist. Topics spanned the atomic age, the space race, civil rights, the assembly line, consumer advertising, suburbia, women at work, the interstate, Ellis Island, labour unions, public health, television, early computing, the oil crisis, Vietnam, railroads, Wall Street, industrial agriculture and public education.
+
+**Result: 20/20 picks, every one judged `high` fit by the re-ranker, 20/20 ingested + captioned, 1,874 gemma keyframes, 0 zero-frame, 0 missing.** 10 came from the surveyed Prelinger corpus (tier 2) and 10 from the global archive.org search (tier 3) — the tier that did not exist yesterday supplied HALF the picks, including the MLK 'I Have A Dream' recording, the Saturn V launch reel, Kent State: May 1970, the Nixon-Khrushchev Kitchen Debate and Gordon Moore on early semiconductors. Library: 122 → 162 rows, 96 captioned. Per-topic latency 15-51 s including both LLM calls and the archive round-trip.
+
+**The bug it found**: 7 of the first 20 searches returned HTTP 500 — `'list' object has no attribute 'replace'`. archive.org metadata is MULTI-VALUED: an item with two `<description>` entries returns a LIST. Only tier-3 rows carry raw item metadata, so this could not surface until that tier went live, and the re-rank prompt builder was simply the first consumer to touch it. Fixed at the source with `_as_text()` (title + description, in both `_row` and `fetch_transcript`), plus defensive coercion in `transcript_vectors.rows` and the prompt builder; all 7 topics then returned a high-fit pick. Test: `test_multivalued_archive_metadata_is_coerced_to_text`. This is exactly what the sweep was for — a one-topic test would have passed.
 
 ## Topic search rearchitected — persisted title vectors, 3 tiers, RRF fusion, LLM re-rank (2026-07-24)
 
