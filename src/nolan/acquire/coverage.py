@@ -125,14 +125,41 @@ async def extract_entities(script: str, client) -> List[Dict]:
 
 # --- CLI ------------------------------------------------------------------------------------------
 def _load_pool(comp_dir: Path) -> Optional[List[Dict]]:
+    """The comp's depictable assets: the b-roll pool AND the key-assets HERO pool.
+
+    It used to read pool.json only, so every subject grounded by a HERO counted as a gap: the diamond-v2
+    check reported 24 "NOT depictable" subjects — De Beers, Cecil Rhodes, Frances Gerety, Hopetown, the
+    Star of South Africa — each of which HAS a collected hero and appears in the finished video. A
+    plan-time check that is ~80% false positives gets skipped, and the one genuine gap goes with it.
+    """
+    assets: List[Dict] = []
+    found = False
     pj = comp_dir / "pool.json"
     if pj.exists():
         try:
             data = json.loads(pj.read_text(encoding="utf-8"))
-            return data if isinstance(data, list) else data.get("assets") or []
+            assets += data if isinstance(data, list) else (data.get("assets") or [])
+            found = True
         except (json.JSONDecodeError, OSError):
-            return None
-    return None
+            pass
+    kj = comp_dir / "key_assets.json"
+    if kj.exists():
+        try:
+            ka = json.loads(kj.read_text(encoding="utf-8"))
+            for e in ka.get("entities", []):
+                # the entity's NAME + identifiers are what a subject match looks for; each collected
+                # file is a real depiction of it, so surface one pool-shaped row per resolved asset
+                names = " ".join([str(e.get("name") or "")] + [str(x) for x in (e.get("identifiers") or [])])
+                for a in (e.get("resolved") or []):
+                    if a.get("selected", True) and a.get("file"):
+                        assets.append({"file": a["file"], "source": f"key_asset:{e.get('id', '')}",
+                                       "caption": f"{names} — {e.get('narrative_role', '')}".strip(" —"),
+                                       "media_type": "video" if str(a["file"]).lower().endswith(
+                                           (".mp4", ".mov", ".webm")) else "image"})
+            found = True
+        except (json.JSONDecodeError, OSError):
+            pass
+    return assets if found else None
 
 
 def main():

@@ -61,3 +61,49 @@ def test_both_consumers_actually_import_it():
     for rel in ("hyperframes/autoground.py", "style_contract/metrics.py"):
         text = (SRC / rel).read_text(encoding="utf-8")
         assert "block_registry import GROUND_BLOCKS" in text, f"{rel} must read the shared registry"
+
+
+# --- phantom reveal cues (postmortem item 4) --------------------------------------------------
+
+def _composer_cue_blocks() -> set:
+    """Re-derive: registered templates whose composer reads the author-supplied `at`."""
+    import re
+    src, registry = {}, {}
+    for name in ("compose.py", "compose_extension.py"):
+        src[name] = (BRIDGE / name).read_text(encoding="utf-8")
+        reg = re.search(r"^(?:BLOCKS|EXT_BLOCKS) = \{(.*?)\n?\}", src[name], re.S | re.M)
+        registry.update(dict(re.findall(r'"(\w+)":\s*(\w+)', reg.group(1))))
+
+    def body(fn):
+        for s in src.values():
+            i = s.find(f"def {fn}(")
+            if i < 0:
+                continue
+            j = s.find("\ndef ", i + 1)
+            return s[i:j if j > 0 else len(s)]
+        return ""
+
+    reads = re.compile(r"""get\(\s*["']at["']|\[["']at["']\]|_reveal_cues\(|_reveal_times\(""")
+    return {t for t, fn in registry.items() if reads.search(body(fn))}
+
+
+def test_cue_registry_matches_the_composer():
+    from nolan.block_registry import CUE_BLOCKS
+    assert set(CUE_BLOCKS) == _composer_cue_blocks()
+
+
+def test_find_cue_fields_walks_nested_elements():
+    """A top-level check misses every real cue — they are written on events/items/steps."""
+    from nolan.block_registry import find_cue_fields
+    assert find_cue_fields({"events": [{"year": "1888", "at": 3.0}, {"year": "1902", "at": 7.0}]}) == [
+        "data.events[0].at", "data.events[1].at"]
+    assert find_cue_fields({"steps": [{"label": "one"}], "title": "no cues"}) == []
+    assert find_cue_fields({"at": True}) == []          # a bool is not a cue time
+
+
+def test_the_gate_refuses_a_cue_on_a_block_that_ignores_it():
+    """REGRESSION: a timeline with events[].at validated rc=0 "OK" and the cue did nothing — the
+    phantom-field class. timeline does not even DECLARE `at` in its schema."""
+    src = (BRIDGE / "author.py").read_text(encoding="utf-8")
+    assert "consumes_cues" in src and "find_cue_fields" in src
+    assert "INERT" in src, "the error must say WHY, not just that it is invalid"

@@ -217,6 +217,21 @@ def validate_spec(spec):
                     errs.extend(f"{fid}/{sid}: {e}" for e in validate_treatments(g["treatments"]))
                 except ImportError:                             # bare compose context — executor is lenient (skips unknown)
                     pass
+            # PHANTOM-CUE GATE: an `at` on a block whose composer never reads it is INERT — it
+            # validates, ships, and does nothing, so the author believes they timed the reveal and
+            # nothing on screen disagrees. A `timeline` with events[].at validated rc=0 "OK" and the
+            # cue was dropped on the floor; `timeline` does not even DECLARE `at` in its schema, so
+            # this is the gate accepting what the schema never offered. Refusing beats silence: the
+            # author immediately learns to use a block that schedules, or to split the beat.
+            try:
+                from nolan.block_registry import consumes_cues, find_cue_fields
+                if not consumes_cues(t):
+                    for where in find_cue_fields(d):
+                        errs.append(f"{fid}/{sid} ({t}): `{where}` sets a reveal cue, but the {t} block "
+                                    f"does not read `at` — it schedules its own elements, so this cue is "
+                                    f"INERT. Remove it, or use a block that consumes cues.")
+            except ImportError:
+                pass
             if t == "geo" and d.get("kind") not in ("us", "world"):
                 errs.append(f"{fid}/{sid} (geo): kind must be 'us' or 'world'")
             if t == "geo" and not d.get("highlight") and not d.get("routes"):

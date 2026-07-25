@@ -95,3 +95,45 @@ def visible_text(data, _depth: int = 0) -> str:
         if _is_prose(data):
             out.append(data.strip())
     return " ".join(p for p in out if p).strip()
+
+
+# --- per-element reveal CUES ------------------------------------------------------------------------
+# Blocks whose composer reads the author-supplied `at` (a per-element reveal time). The other 24 ignore
+# it, and `author.py` accepted it anyway: a `timeline` authored with `events[].at` validates rc=0 "OK"
+# and the cue does nothing. That is the phantom-field class from docs/WIRING_CHECKLIST.md — a
+# gate-passing, INERT field, strictly worse than either supporting it or refusing it, because the author
+# believes they timed the reveal and nothing on screen disagrees.
+#
+# Note `timeline`'s schema never declares `at` at all — so this is not "the schema promises what the
+# block ignores", it is "the gate accepts what the schema never offered".
+CUE_BLOCKS: FrozenSet[str] = frozenset({
+    "annotate", "bullet_list", "chart", "collage", "connection_board", "cycle", "data_table", "document",
+    "dumbbell", "funnel", "geo", "histogram", "layout", "ledger", "pie", "process", "quadrant", "sankey",
+    "scale", "slope", "small_multiples", "spans", "spectrum", "stat", "trajectory", "venn",
+})
+
+CUE_KEY = "at"
+
+
+def consumes_cues(block: str) -> bool:
+    """True iff the block schedules its elements from an author-supplied `at`."""
+    return block in CUE_BLOCKS
+
+
+def find_cue_fields(data, _path: str = "data") -> list:
+    """Every place an `at` cue is authored in a scene's data -> ["data.events[0].at", ...].
+
+    Walks nested element lists (events/items/steps/rows/slices/...) because that is where a cue is
+    actually written; a top-level check would miss all of them.
+    """
+    out = []
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if k == CUE_KEY and isinstance(v, (int, float)) and not isinstance(v, bool):
+                out.append(f"{_path}.{k}")
+            else:
+                out.extend(find_cue_fields(v, f"{_path}.{k}"))
+    elif isinstance(data, (list, tuple)):
+        for i, v in enumerate(data):
+            out.extend(find_cue_fields(v, f"{_path}[{i}]"))
+    return out
