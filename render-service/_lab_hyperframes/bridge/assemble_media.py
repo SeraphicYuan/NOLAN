@@ -13,21 +13,31 @@ Both injectors are idempotent, so re-running is safe.
   python -X utf8 assemble_media.py <project_dir>
 """
 import json
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 
+_MEDIA_RE = re.compile(r"^assets/[\w./ -]+\.(?:jpe?g|png|webp|avif|gif|svg|mp4|mov|webm|m4v)$", re.I)
+
+
 def _iter_media_srcs(obj):
-    """Yield every string value authored under a `src` key, anywhere in a spec (ground.src of any kind,
-    data.src, items[].src, overlay srcs, …) — the full set of media the composition references."""
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if k == "src" and isinstance(v, str):
-                yield v
-            else:
-                yield from _iter_media_srcs(v)
+    """Yield every asset PATH the composition references, anywhere in a spec.
+
+    Keyed on the VALUE's shape, not the key's NAME: the old `k == "src"` walk silently missed every
+    other media field the catalog ships — `newshead.image`, `timeline` events[].image, `document.source`
+    (str OR list), `gallery`/`carousel` `images` as BARE strings, `spotlight.subject`, `social_card.avatar`
+    — so those staged as nothing and rendered as HTTP-404 holes (the whole render then times out).
+    Matching `assets/<name>.<media-ext>` catches all of them, is key-agnostic (a new block's field works
+    for free), and can't be fooled by a prose field like newshead's `source: "The Cape Argus"`."""
+    if isinstance(obj, str):
+        if _MEDIA_RE.match(obj):
+            yield obj
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            yield from _iter_media_srcs(v)
     elif isinstance(obj, list):
         for x in obj:
             yield from _iter_media_srcs(x)

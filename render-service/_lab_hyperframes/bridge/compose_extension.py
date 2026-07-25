@@ -302,8 +302,15 @@ def spotlight(sid, sc):
                   f'ease:"power2.out"}},{start+0.15:.2f});')
 
     # ---- labels (position-responsive) ----
-    def emit_label(html):
-        frag.append(html.format(start=start, dur=dur, txt_track=txt_track))
+    # A CENTER spotlight emits BOTH halves of the label over the SAME window, so they must sit on
+    # DISTINCT track lanes — two clips overlapping in time on one track is a render conflict that
+    # assemble-index.mjs rejects outright ("clips on track 2 overlap"). The right half drops one lane:
+    # behind=True  -> left 2 / right 1 (both still under the subject on 4; kicker keeps 3)
+    # behind=False -> left 6 / right 5 (both still over the subject on 4; kicker keeps 7)
+    # The two halves are spatially disjoint (left/right of centre), so the z-order split is invisible.
+    def emit_label(html, track=None):
+        frag.append(html.format(start=start, dur=dur,
+                                txt_track=txt_track if track is None else track))
 
     if position == "center":
         if label_layout == "clear" and not clear_geo:
@@ -321,7 +328,7 @@ def spotlight(sid, sc):
             if right_txt:
                 rx0, rx1 = clear_geo["right"]
                 emit_label(_clear_label(sid, "r", right_txt, rx0, rx1, clear_geo["y"], clear_geo["band_h"],
-                                        "left", "left center"))
+                                        "left", "left center"), track=txt_track - 1)
                 tl.append(f'tl.fromTo("#{sid}-txtr",{{opacity:0,x:90}},{{opacity:1,x:0,duration:0.8,'
                           f'ease:"power3.out"}},{start+0.3:.2f});')
         else:                                          # overlap (default reel look): centered, 47% each side
@@ -330,7 +337,8 @@ def spotlight(sid, sc):
                 tl.append(f'tl.fromTo("#{sid}-txtl",{{opacity:0,x:-90}},{{opacity:1,x:0,duration:0.8,'
                           f'ease:"power3.out"}},{start+0.3:.2f});')
             if right_txt:
-                emit_label(_label(sid, "r", right_txt, 47.0, "left", "left center", side="right"))
+                emit_label(_label(sid, "r", right_txt, 47.0, "left", "left center", side="right"),
+                           track=txt_track - 1)
                 tl.append(f'tl.fromTo("#{sid}-txtr",{{opacity:0,x:90}},{{opacity:1,x:0,duration:0.8,'
                           f'ease:"power3.out"}},{start+0.3:.2f});')
         justify = "center"
