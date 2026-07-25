@@ -4,6 +4,21 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## Topic MEMORY — remember the LLM's decisions, record what the human accepted (2026-07-25)
+
+Measured first: **77% of a topic search's 33s is two LLM calls** (expansion 17.8s, re-rank 7.5s) wrapping a ranking that costs **0.024s**. So `transcript_memory` persists the LLM's OUTPUT — which is about a topic and a video, and stays true as the library grows — and deliberately NOT the ranking, which goes stale the moment a survey or an ingest lands and would then silently hide new material (the same failure class as the silent prefilter cap).
+
+- **`topic_queries.json`** — topic → expansion (+model, date), reported as `query_source:"cache"`; the tab's “re-expand” bypasses it.
+- **`topic_judgements.json`** — (topic, video) → fit + why (+model, date). The re-rank sends ONLY rows this subject has never judged, so a video stops flip-flopping between `high` and `low` run to run. If the LLM fails while memory holds part of the shortlist, the remembered half still stands and `rerank_error` says what broke.
+- **`picks_accepted.json`** — what the human actually ingested off a shortlist: the only ground truth in this loop, and what every threshold here (the 0.42 floor, the fit bar, the re-rank prompt) should eventually be tuned against. Recorded before dispatch, never allowed to fail an ingest.
+- **`topic_vectors.npz`** — one vector per known topic so a real paraphrase can reuse a judgement (>= 0.95). Reuse is scoped to the same subject AND the same model on purpose: a film is high-fit FOR a subject, and a ranking must never silently mix two judges.
+
+Slug normalization earned its own test: BGE scores “lighthouses and coastal navigation” vs “Lighthouses & coastal navigation!” at **0.919** — the same subject, below any sane paraphrase bar. Case, punctuation and function words are normalized out of the KEY; the vectors are left to handle actual paraphrase.
+
+**Live, through the hub**: cold 24.4s → repeat 6.2s (75% faster, identical rows, 16 rows marked “remembered”); in-process on another topic 29.4s → 3.9s (87%), and a re-worded topic 4.1s. A fresh subject still costs 16-30s, as it should. Acceptance ledger verified end to end (2 picks → accept-rate reported). UI: a memory line (judgements / cached expansions / accepted + accept-rate), a “remembered” mark per row, acceptance posted on dispatch. Routes: POST `/api/transcripts/accepted`, GET `/api/transcripts/memory`. 59 transcript tests green — including four older ones that were quietly writing memory into the REAL library dir, now isolated.
+
+**The 50-topic run finished**: 50/50 ingested + captioned, **5,984 keyframes today**; library 122 → 211 rows, 144 captioned.
+
 ## Library BROADENING organ + optional length gate — 50 more topics captioned (2026-07-25)
 
 **The sweep, as an organ.** `transcript_broaden` turns “give me X more captioned videos, on subjects I don't have” into one call: an LLM proposes topics the library does NOT cover (it is shown a sample of what's there plus every topic previously searched) → the 3-tier search per topic with the caller's filters → X picks, **BREADTH FIRST** (one per subject; depth only once the subjects are exhausted, and marked as such). Both LLM steps are proposals behind deterministic gates: a proposed topic that repeats a searched one is dropped by cosine BEFORE it can spend a search, and the picks are returned for REVIEW — ingest stays the user's click. Searched topics persist to `topics_used.json` with what each yielded, so the next run broadens instead of circling. Surfaced as “🌱 Broaden the library” in the Topic tab (theme, count, min fit, archive-only); results land in the existing review list with a per-row topic chip, so the existing ingest button dispatches them (`dispatch_groups` keeps kind+source+cf provenance). Routes: POST `/api/transcripts/broaden` (job), GET `/api/transcripts/topics-used`.
