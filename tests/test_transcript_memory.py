@@ -100,6 +100,49 @@ def test_judgement_from_another_model_is_not_reused(tmp_path):
     assert mem.get_judgements("the space race", ["s1"], tmp_path)["s1"]["model"] == "model-a"
 
 
+def test_unusable_items_stop_being_offered(monkeypatch, tmp_path):
+    """An item the pipeline PROVED it can't use (401/403 restricted derivative, 404) must leave the search.
+    The ranking only knows it isn't in the catalog, so it keeps scoring well and getting picked again — one
+    42-pick run hit 6 such items (CSPAN / Al Jazeera mirrors). Transient failures are NOT marked."""
+    from nolan import transcript_lib as tl
+    from nolan import transcript_memory as mem
+    from nolan.webui.operations import _permanently_unusable
+    import httpx
+
+    class Resp:
+        status_code = 401
+    assert _permanently_unusable(RuntimeError("Client error '401 Unauthorized' for url ..."))
+    assert _permanently_unusable(RuntimeError("Unable to download webpage: HTTP Error 404"))
+    assert not _permanently_unusable(RuntimeError("ConnectTimeout: [WinError 10060] ..."))
+    assert not _permanently_unusable(RuntimeError("Server error '503 Service Unavailable'"))
+
+    mem.mark_unusable("restricted1", "401 Unauthorized", "A CSPAN mirror", tmp_path)
+    mem.mark_unusable("restricted1", "401 Unauthorized", "A CSPAN mirror", tmp_path)   # idempotent-ish
+    assert mem.unusable_ids(tmp_path) == {"restricted1"}
+    rows = mem._load("unusable.json", tmp_path)
+    assert rows["restricted1"]["hits"] == 2 and rows["restricted1"]["title"] == "A CSPAN mirror"
+
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: set())
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {"archive:c": {"kind": "archive", "channel": "c",
+        "titles": [{"video_id": "restricted1", "title": "diamond film", "url": ""},
+                   {"video_id": "fine", "title": "diamond film two", "url": ""}]}})
+    monkeypatch.setattr(tl, "_embed_titles", lambda ts: [[1.0, 0.0]] * len(ts))
+    monkeypatch.setattr(tl, "_collapse_near_duplicates", lambda rows, vecs=None, thr=0.9: (rows, 0))
+    d = tl._topic_suggestions(["diamond"], "diamond", _Idx(), _VS(), 6, tmp_path, web=False)
+    assert [s["video_id"] for s in d["suggestions"]] == ["fine"]        # the restricted row is gone
+
+
+class _Idx:
+    def transcript_video_ids(self):
+        return set()
+
+
+class _VS:
+    def search(self, **k):
+        return []
+
+
 def test_accept_rate_measures_what_the_human_could_take(tmp_path):
     """`off` rows are dropped BEFORE anyone sees them, so counting acceptances against every judgement reads
     as a damningly low rate for a re-ranker doing its job. The rate is measured against the rows that were

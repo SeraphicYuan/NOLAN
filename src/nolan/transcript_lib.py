@@ -560,8 +560,9 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
 
     # --- Tier 2: SURVEYED but NOT ingested — BGE over the PERSISTED title-vector index (whole corpus) ---
     have = set(cat.keys())
+    from nolan import transcript_memory as _mem
     from nolan import transcript_vectors as tvec
-    corpus = tvec.rows(catalog_dir, exclude=have)
+    corpus = tvec.rows(catalog_dir, exclude=have | _mem.unusable_ids(catalog_dir))
     ids, mat, pending = tvec.ensure(corpus, catalog_dir)
     surveyed: List[Dict[str, Any]] = []
     svecs: List[Any] = []
@@ -683,7 +684,12 @@ _FLOOR = 0.42                                                 # cosine below thi
 _SHORTLIST = 36                                               # rows carried into dedupe / fusion / re-rank
 _DUP_THR = 0.90                                               # title cosine at which two rows are the same film
 _ARCHIVE_ROWS = 40                                            # global archive.org hits fetched per query
-_DURATION_LOOKUPS = 25                                        # per-item metadata calls a length filter may spend
+# Per-item metadata calls a length filter may spend, per tier. Kept SMALL on purpose: archive.org throttles
+# per client, and once throttled a call that costs 0.15s cold costs ~11s and CONCURRENCY BUYS NOTHING
+# (measured: 8 identical lookups took 88.8s sequentially and 80.9s 8-way — 1.1x). Against a server-side
+# throttle the only real lever is making fewer calls, which is what the cache and the light metadata
+# endpoint do; this ceiling bounds the worst case for a topic whose candidates are all uncached.
+_DURATION_LOOKUPS = 10
 
 
 def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False, web=True,
@@ -761,18 +767,32 @@ def _archive_tier(queries, catalog_dir=None, copyright_free_only=False, min_sec=
         for t in sv.get("titles", []):
             if t.get("video_id"):
                 known.add(t["video_id"])
+    from nolan import transcript_memory as _mem
+    known |= _mem.unusable_ids(catalog_dir)      # access-restricted / dead items, proved by a failed ingest
     seen: Dict[str, Dict[str, Any]] = {}
     errors, found_total, dropped_len = [], 0, 0
+    # the queries are independent GETs — run them together (measured 5.1s sequential vs ~2.1s, the slowest
+    # single query). Results are consumed in the ORIGINAL query order so the fan-out stays deterministic.
+    from concurrent.futures import ThreadPoolExecutor
+    aqs = []
     for q in list(queries)[:5]:                               # bounded fan-out: 5 queries x _ARCHIVE_ROWS
         aq = " ".join(_tok(q)[:3])                            # advancedsearch ANDs its terms — 3 keeps recall
         if not aq:
             continue
         if copyright_free_only:
             aq += " AND " + ar.pd_collection_clause()         # asserted licence OR a PD-by-nature collection
+        aqs.append(aq)
+
+    def _search(aq):
         try:
-            rows, total = ar.search_items(aq, rows=_ARCHIVE_ROWS, sort="downloads desc")
+            return aq, ar.search_items(aq, rows=_ARCHIVE_ROWS, sort="downloads desc"), None
         except Exception as e:
-            errors.append(f"{aq}: {type(e).__name__}")
+            return aq, ([], 0), f"{aq}: {type(e).__name__}"
+    with ThreadPoolExecutor(max_workers=min(5, len(aqs) or 1)) as ex:
+        hits = list(ex.map(_search, aqs)) if aqs else []
+    for _aq, (rows, total), err in hits:
+        if err:
+            errors.append(err)
             continue
         found_total += total
         for r in rows:
@@ -886,21 +906,32 @@ def _durations_file(catalog_dir: Optional[Path] = None) -> Path:
     return (Path(catalog_dir) if catalog_dir else TRANSCRIPT_DIR) / "durations.json"
 
 
+def _dur_cache(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """The ONE shared duration cache for this catalog dir, initialized under the lock.
+
+    Loading it per-caller raced: each thread of the prefetch pool saw an empty cache, parsed its OWN copy
+    from disk, and the last writer won — a cold 8-way prefetch of 16 ids kept only 10, and the rest were
+    silently re-fetched on the next search (a "fully cached" repeat still cost 4.2s)."""
+    key = str(catalog_dir or "")
+    with _DUR_LOCK:
+        cache = _DUR_CACHE.get(key)
+        if cache is None:
+            p = _durations_file(catalog_dir)
+            try:
+                cache = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+            except (json.JSONDecodeError, OSError):
+                cache = {}
+            _DUR_CACHE[key] = cache
+        return cache
+
+
 def resolved_duration(video_id: str, catalog_dir: Optional[Path] = None) -> Optional[int]:
     """An archive item's runtime, resolved from the metadata API ONCE and remembered.
 
     The length filter has to resolve durations the crawl never cached, and each is an HTTP round-trip: a
     filtered search was spending up to 50 of them (25 per tier) and ran ~2.5 min instead of ~25s. A runtime
     never changes, so it is cached to `durations.json` — the cost is paid once per item, ever."""
-    key = str(catalog_dir or "")
-    cache = _DUR_CACHE.get(key)
-    if cache is None:
-        p = _durations_file(catalog_dir)
-        try:
-            cache = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-        except (json.JSONDecodeError, OSError):
-            cache = {}
-        _DUR_CACHE[key] = cache
+    cache = _dur_cache(catalog_dir)
     if video_id in cache:
         v = cache[video_id]
         return int(v) if v else None

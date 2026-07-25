@@ -223,6 +223,29 @@ def load_accepted(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
                   key=lambda r: r.get("date") or "", reverse=True)
 
 
+def mark_unusable(video_id: str, reason: str, title: str = "",
+                  catalog_dir: Optional[Path] = None) -> None:
+    """Remember an item the pipeline CANNOT use — an access-restricted archive derivative (401/403), a
+    missing file (404), a dead download.
+
+    Without this the search keeps recommending it: the ranking only knows the item is not in the catalog,
+    so a permanently unusable row scores well and gets picked again on every future topic that touches it.
+    Live, one 42-pick run surfaced 6 such items (CSPAN / Al Jazeera recordings mirrored on archive.org)."""
+    if not video_id:
+        return
+    data = _load("unusable.json", catalog_dir)
+    row = data.get(video_id) or {"video_id": video_id, "first_seen": _now(), "hits": 0}
+    row.update({"reason": str(reason)[:160], "title": title or row.get("title", ""),
+                "last_seen": _now(), "hits": int(row.get("hits", 0)) + 1})
+    data[video_id] = row
+    _save("unusable.json", data, catalog_dir)
+
+
+def unusable_ids(catalog_dir: Optional[Path] = None) -> set:
+    """Ids the search must not offer again (see `mark_unusable`)."""
+    return set(_load("unusable.json", catalog_dir).keys())
+
+
 def coverage(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
     """Per-SUBJECT coverage: what each searched topic yielded, and how much high-fit material it found that
     nobody has taken yet.

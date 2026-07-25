@@ -576,6 +576,15 @@ async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, f
     return {"total": total, "captioned": done, "skipped": skipped, "failed": failed}
 
 
+def _permanently_unusable(err: Exception) -> bool:
+    """Is this failure a property of the ITEM rather than the moment? 401/403 (an access-restricted archive
+    derivative), 404 (gone) and a hard yt-dlp refusal will fail the same way forever, so the search must
+    stop offering it. Timeouts and 5xx are NOT — those get retried."""
+    t = f"{type(err).__name__}: {err}".lower()
+    return any(k in t for k in ("401", "403", "unauthorized", "forbidden", "404", "not found",
+                                "unable to download webpage"))
+
+
 async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str = "off",
                         window_s: float = 45.0, overlap_s: float = 10.0, delay: float = 1.0,
                         refresh: bool = False, kind: str = "youtube", collection: str = "",
@@ -627,14 +636,32 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
         else:
             if delay and i:
                 await asyncio.sleep(delay)
-            try:
-                if kind == "archive":
-                    from nolan import archive_source as ar
-                    meta, tr = await asyncio.to_thread(ar.fetch_transcript, yid0, collection)
-                else:
-                    meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, url)
-            except Exception as e:
-                job.log(f"  x {title}: {type(e).__name__}: {e}"); skipped += 1; continue
+            meta, tr, err = None, None, None
+            for attempt in range(3):                          # archive.org connect-timeouts are TRANSIENT:
+                try:                                          # one 42-pick run lost 6 videos to WinError 10060
+                    if kind == "archive":
+                        from nolan import archive_source as ar
+                        meta, tr = await asyncio.to_thread(ar.fetch_transcript, yid0, collection)
+                    else:
+                        meta, tr = await asyncio.to_thread(tl.fetch_transcript_with_cues, url)
+                    err = None
+                    break
+                except Exception as e:
+                    err = e
+                    transient = any(k in f"{type(e).__name__}{e}".lower()
+                                    for k in ("timeout", "temporarily", "connection", "10060",
+                                              "502", "503", "504"))
+                    if not transient or attempt == 2:
+                        break
+                    job.log(f"    (retry {attempt + 1}/2 after {type(e).__name__})")
+                    await asyncio.sleep(3 * (attempt + 1))
+            if err is not None:
+                job.log(f"  x {title}: {type(err).__name__}: {err}")
+                if _permanently_unusable(err):                # 401/403/404 → never offer it again
+                    from nolan import transcript_memory as _mem
+                    _mem.mark_unusable(yid0, f"{type(err).__name__}: {err}"[:160], title)
+                skipped += 1
+                continue
             has_tr = tr and getattr(tr, "chunks", None)
             if has_tr:
                 windows = tl.chunk_transcript(tr, window_s=float(window_s), overlap_s=float(overlap_s))
@@ -667,6 +694,10 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
                                                      visual=visual, kind=kind, job=job)
             except Exception as e:
                 job.log(f"    (visual skipped: {type(e).__name__}: {e})")
+                if _permanently_unusable(e):                   # restricted derivative — stop offering it
+                    from nolan import transcript_memory as _mem
+                    _mem.mark_unusable((meta or {}).get("video_id") or yid0,
+                                       f"visual: {type(e).__name__}: {e}"[:160], title)
         # keep the runtime we already know: once ingested, tier 1 has no survey behind it to ask
         dur_known = dur_item or float((meta or {}).get("duration") or 0) or None
         tl.record_transcript(meta.get("video_id") or yid0, {**meta, "url": url}, len(windows),
