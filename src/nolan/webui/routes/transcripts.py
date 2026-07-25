@@ -333,6 +333,19 @@ def register(app, ctx):
         from nolan import transcript_memory as mem
         return {**mem.stats(), "recent_accepted": mem.load_accepted()[:max(1, int(limit))]}
 
+    @app.get("/api/transcripts/quality")
+    async def transcripts_quality(limit: int = Query(default=0)):
+        """What the caption runs actually bought, per video — `frames > 0` is not the same as useful."""
+        import asyncio
+        from nolan import transcript_lib as tl
+        return await asyncio.to_thread(tl.library_quality, None, int(limit or 0))
+
+    @app.get("/api/transcripts/coverage-topics")
+    async def transcripts_coverage_topics():
+        """Per-subject coverage + where high-fit material is still on the table (no new search needed)."""
+        from nolan import transcript_memory as mem
+        return mem.coverage()
+
     @app.get("/api/transcripts/topics-used")
     async def transcripts_topics_used():
         """Topics already searched by a broaden run — what the library has DELIBERATELY covered so far."""

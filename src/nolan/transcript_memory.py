@@ -223,6 +223,40 @@ def load_accepted(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
                   key=lambda r: r.get("date") or "", reverse=True)
 
 
+def coverage(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Per-SUBJECT coverage: what each searched topic yielded, and how much high-fit material it found that
+    nobody has taken yet.
+
+    Growing a library by topic has a blind spot — you see the shortlist you're looking at, never the ones
+    you left on the table. `remaining_high` is that: rows this subject's re-ranker called `high` or `medium`
+    which are still not in the catalog, i.e. exactly where a SECOND pick would pay without a new search."""
+    from nolan.transcript_lib import load_catalog
+    have = set(load_catalog(catalog_dir).keys())
+    j = _load("topic_judgements.json", catalog_dir)
+    acc = _load("picks_accepted.json", catalog_dir)
+    by: Dict[str, Dict[str, Any]] = {}
+    for r in j.values():
+        t = r.get("topic") or ""
+        e = by.setdefault(slug(t), {"topic": t, "judged": 0, "high": 0, "medium": 0, "off": 0,
+                                    "accepted": 0, "in_library": 0, "remaining_high": 0})
+        e["judged"] += 1
+        fit = str(r.get("fit") or "")
+        if fit in ("high", "medium", "off"):
+            e[fit] += 1
+        if r.get("video_id") in have:
+            e["in_library"] += 1
+        elif fit in ("high", "medium"):
+            e["remaining_high"] += 1
+    for r in acc.values():
+        e = by.get(slug(r.get("topic") or ""))
+        if e:
+            e["accepted"] += 1
+    rows = sorted(by.values(), key=lambda e: -e["remaining_high"])
+    return {"topics": rows, "count": len(rows),
+            "with_material_left": sum(1 for e in rows if e["remaining_high"]),
+            "total_remaining_high": sum(e["remaining_high"] for e in rows)}
+
+
 def stats(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
     """What the memory holds — surfaced in the Topic tab so the cache is never a black box.
 

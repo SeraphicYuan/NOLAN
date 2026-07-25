@@ -851,6 +851,52 @@ def _balanced_prefilter(by_src, budget=_PREFILT_BUDGET):
     return rows, total, kept
 
 
+THIN_FRAMES = 5                                               # fewer keyframes than this bought ~nothing
+THIN_RATIO = 0.6                                              # distinct captions / captions below this = static
+
+
+def library_quality(catalog_dir: Optional[Path] = None, limit: int = 0) -> Dict[str, Any]:
+    """What the caption runs actually BOUGHT, per video — because `frames > 0` is not the same as useful.
+
+    A long lecture with no shot changes yields ONE keyframe; a leader-heavy reel yields title cards. Both
+    count as "captioned" in the catalog and silently add nothing to the visual tier. This reports the
+    signals that distinguish them (frame count, DISTINCT-caption ratio, content mix) and flags the thin
+    ones, which is exactly the set worth re-running with `densify`."""
+    from collections import Counter
+
+    from nolan import transcript_frames as tfr
+    cat = load_catalog(catalog_dir)
+    rows: List[Dict[str, Any]] = []
+    mix: Counter = Counter()
+    for vid, v in cat.items():
+        n = int(v.get("frames") or 0)
+        if not n:
+            continue
+        frames = tfr.frames_for_video(vid)
+        caps = [(f.get("caption") or "").strip() for f in frames if f.get("caption")]
+        kinds = Counter((f.get("content_kind") or "?") for f in frames)
+        mix.update(kinds)
+        distinct = len({c[:120] for c in caps})
+        ratio = round(distinct / max(1, len(caps)), 2)
+        graphics = kinds.get("graphics", 0)
+        reasons = []
+        if n < THIN_FRAMES:
+            reasons.append(f"only {n} keyframe(s)")
+        if caps and ratio < THIN_RATIO:
+            reasons.append(f"{distinct} distinct captions of {len(caps)}")
+        if caps and graphics / max(1, len(caps)) > 0.5:
+            reasons.append("mostly title cards / graphics")
+        rows.append({"video_id": vid, "title": v.get("title") or vid, "kind": v.get("kind"),
+                     "copyright_free": bool(v.get("copyright_free")), "duration": v.get("duration"),
+                     "frames": n, "captions": len(caps), "distinct": distinct, "ratio": ratio,
+                     "content": dict(kinds), "thin": bool(reasons), "why": "; ".join(reasons)})
+    rows.sort(key=lambda r: (not r["thin"], r["frames"]))
+    thin = [r for r in rows if r["thin"]]
+    return {"videos": rows[:limit] if limit else rows, "captioned": len(rows), "thin": len(thin),
+            "thin_ids": [r["video_id"] for r in thin],
+            "frames": sum(r["frames"] for r in rows), "content_mix": dict(mix)}
+
+
 def copyright_free_ids(catalog_dir: Optional[Path] = None) -> set:
     """Set of transcript-library video_ids that belong to a COPYRIGHT-FREE source — the youtube_cc stock
     family, or an archive.org collection added copyright-free — derived from sources.json × the persisted
