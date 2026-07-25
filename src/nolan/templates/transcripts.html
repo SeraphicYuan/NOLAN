@@ -180,6 +180,11 @@
           <label class="dim">count <input type="number" id="tg-n" value="12" min="3" max="40" style="width:56px"></label>
           <button class="btn" onclick="tgSuggest()">🎯 Suggest</button>
         </div>
+        <div class="row" style="margin-top:6px;gap:14px">
+          <label class="dim" title="Tier 3: search ALL of archive.org, not just the collections you've added — for topics your sources don't cover"><input type="checkbox" id="tg-web" checked> 🌐 search archive.org</label>
+          <label class="dim" title="One LLM pass over the shortlist: drops false matches (a banker named Diamond) and writes the 'why' column"><input type="checkbox" id="tg-rr" checked> 🧠 LLM re-rank</label>
+          <span id="tg-idx" class="dim" style="font-size:11px;margin-left:auto"></span>
+        </div>
         <div id="tg-queries" class="dim" style="margin-top:8px"></div>
         <div id="tg-qedit" style="display:none;margin-top:6px">
           <div class="dim" style="font-size:11px;margin-bottom:3px">These are the queries the search actually ran — edit them (one per line) and re-run to steer recall. The library is 1950s industrial/PD film + documentary TV, so <b>visual</b> phrasings ("jewelry store window display") often beat encyclopedic ones ("Kimberley Big Hole 1888").</div>
@@ -418,7 +423,8 @@
         const d=await jget(`/api/transcripts/survey?channel=${encodeURIComponent(ch)}&kind=${CU.kind}${refresh?'&refresh=true':''}`);
         CU.items=d.items; CU.byId={}; CU.items.forEach(i=>CU.byId[i.video_id]=i);
         const cached = d.cached ? `<span class="chip txt" title="served from stored title list">cached ${esc(d.cached.slice(0,10))}</span>` : `<span class="chip frames">fresh</span>`;
-        $("#cu-stat").innerHTML=`${d.count} videos · ${d.new} not in library ${cached}`;
+        const trunc = d.truncated ? ` <span class="warn" title="archive.org's deep-paging window stops at ~10k items — the rest of the collection was never crawled">(${d.truncated.toLocaleString()} of ${d.source_total.toLocaleString()} NOT crawled)</span>` : "";
+        $("#cu-stat").innerHTML=`${d.count} videos · ${d.new} not in library ${cached}${trunc}`;
         $("#cu-filter").style.display="block";
         cuSetView("flat");
       }catch(e){ $("#cu-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; $("#cu-stat").textContent=""; }
@@ -638,7 +644,8 @@
       $("#tg-body").innerHTML=`<div class="dim">${useEdited?"searching with your queries":"expanding the topic + searching"} indexed transcripts and surveyed titles…</div>`;
       TG_SEL.clear(); tgSelN();
       try{
-        const body={topic, n, copyright_free:$("#tg-cf").checked};
+        const body={topic, n, copyright_free:$("#tg-cf").checked,
+                    web:$("#tg-web").checked, rerank:$("#tg-rr").checked};
         if(edited) body.queries=edited;
         const d=await jpost("/api/transcripts/suggest-topic",body);
         TG.byId={}; (d.suggestions||[]).forEach(s=>TG.byId[s.video_id]=s);
@@ -654,31 +661,59 @@
         tgRender(d);
       }catch(e){ $("#tg-body").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
+    const TG_FIT={high:'<span class="chip frames" title="LLM: strong fit">★ fit</span>',
+                  medium:'<span class="chip" title="LLM: usable">fit</span>', low:'', unjudged:''};
     function tgRow(s){
       const kb = s.kind==="archive"?'<span class="chip">🏛 archive</span>':(s.kind==="youtube_cc"?'<span class="chip">🆓 free</span>':'<span class="chip txt">📺 youtube</span>');
       const act = s.action==="caption" ? '<span class="chip frames">caption</span>' : '<span class="chip">ingest + caption</span>';
+      const tier = s.tier==="archive" ? '<span class="chip" title="found by the global archive.org search — not in your sources yet">🌐 archive.org</span>' : "";
+      const fit = TG_FIT[s.fit]||"";
       return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:8px;max-width:72%">
         <input type="checkbox" class="tgsel" value="${esc(s.video_id)}" ${TG_SEL.has(s.video_id)?'checked':''} onchange="tgToggle('${esc(s.video_id)}',this.checked)">
-        <a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title||s.video_id)}</a> ${kb} ${act}${s.copyright_free?' <span class="chip frames">cf</span>':''}${s.channel?` <span class="chip txt" title="source">${esc(String(s.channel).replace(/^https?:\/\/(www\.)?youtube\.com\//,""))}</span>`:''}</span>
-        <span class="row" style="gap:8px;flex:0 0 auto"><span class="dim" style="font-size:11px;max-width:300px;text-align:right">${esc((s.why||"").slice(0,90))}</span><span class="score">${s.score}</span></span></div>`;
+        <a href="${esc(s.url||'#')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(s.title||s.video_id)}</a> ${kb} ${act}${tier}${fit}${s.copyright_free?' <span class="chip frames">cf</span>':''}${s.channel?` <span class="chip txt" title="source">${esc(String(s.channel).replace(/^https?:\/\/(www\.)?youtube\.com\//,""))}</span>`:''}</span>
+        <span class="row" style="gap:8px;flex:0 0 auto"><span class="dim" style="font-size:11px;max-width:340px;text-align:right">${esc((s.why||"").slice(0,110))}</span><span class="score">${s.score}</span></span></div>`;
     }
-    /* honest coverage line: what the keyword prefilter found vs what the embed budget could actually score */
+    /* honest coverage line: what each tier actually searched, what it collapsed, what it could NOT reach */
     function tgScanNote(d){
-      if(!d || !d.prefilter_matches) return "";
-      const src=Object.entries(d.prefilter_sources||{}).map(([k,v])=>`${esc(k)} ${v}`).join(" · ");
-      const drop=d.prefilter_dropped||0;
-      return `<div class="dim" style="margin:12px 0 0;font-size:11px">scanned ${d.prefilter_matches} keyword matches → ranked ${d.prefiltered}`
-        + (drop?` <span class="warn">(${drop} not scored — embed budget)</span>`:``)
-        + (src?`<br>balanced across sources: ${src}`:``) + `</div>`;
+      if(!d || !d.tier2_mode) return "";
+      const bits=[];
+      if(d.tier2_mode==="vectors"){
+        bits.push(`ranked <b>${d.tier2_scored||0}</b> surveyed titles (whole corpus, vector index)`);
+        if(d.tier2_pending) bits.push(`<span class="warn">${d.tier2_pending} not indexed yet</span>`);
+      }else{
+        bits.push(`<span class="warn">${esc(d.tier2_mode)}</span> — scanned ${d.prefilter_matches||0} keyword matches, ranked ${d.prefiltered||0}`
+          + ((d.prefilter_dropped||0)?` (${d.prefilter_dropped} not scored — embed budget)`:``));
+      }
+      if(d.archived!==undefined) bits.push(`archive.org: <b>${d.archived}</b> kept of ${d.archive_fetched||0} fetched (${(d.archive_matched||0).toLocaleString()} matched the query)`);
+      const dups=(d.tier2_duplicates||0)+(d.archive_duplicates||0);
+      if(dups) bits.push(`${dups} near-duplicate reel${dups>1?"s":""} collapsed`);
+      if(d.reranked) bits.push(`re-ranked by ${esc(d.reranker||"llm")} — ${d.rerank_dropped||0} false match${(d.rerank_dropped||0)===1?"":"es"} dropped`);
+      if(d.rerank_error) bits.push(`<span class="warn">re-rank failed: ${esc(d.rerank_error)} (cosine order stands)</span>`);
+      if((d.archive_errors||[]).length) bits.push(`<span class="warn">archive.org: ${esc(d.archive_errors.join("; "))}</span>`);
+      return `<div class="dim" style="margin:12px 0 0;font-size:11px">${bits.join(" · ")}</div>`;
+    }
+    async function tgIndexStatus(){
+      try{
+        const s=await (await fetch("/api/transcripts/topic-index")).json();
+        const el=$("#tg-idx"); if(!el) return;
+        el.innerHTML = s.pending
+          ? `title index: ${s.indexed.toLocaleString()}/${s.surveyed.toLocaleString()} <span class="warn">(${s.pending.toLocaleString()} pending)</span> <button class="btn ghost mini" onclick="tgBuildIndex()">build</button>`
+          : `title index: ${s.indexed.toLocaleString()} titles ✓ <button class="btn ghost mini" onclick="tgBuildIndex()">rebuild</button>`;
+      }catch(e){}
+    }
+    async function tgBuildIndex(){
+      $("#tg-idx").textContent="building title index… (watch Background Jobs)";
+      try{ await jpost("/api/transcripts/topic-index/build",{}); setTimeout(tgIndexStatus, 15000); }
+      catch(e){ $("#tg-idx").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
     function tgRender(d){
       const sug=d.suggestions||[];
       if(!sug.length){ $("#tg-body").innerHTML=`<div class="dim">No matches. ${d.ingested+d.surveyed===0?"Index or survey some sources first.":""}</div>`+tgScanNote(d); return; }
-      const ing=sug.filter(s=>s.tier==="ingested"), sur=sug.filter(s=>s.tier==="surveyed");
-      let html="";
-      if(ing.length) html += `<div class="dim" style="margin:2px 0 4px"><b>Already indexed, not captioned</b> — run the visual tier (${ing.length})</div>` + ing.map(tgRow).join("");
-      if(sur.length) html += `<div class="dim" style="margin:12px 0 4px"><b>Surveyed, not added</b> — ingest + caption (${sur.length})</div>` + sur.map(tgRow).join("");
-      html += tgScanNote(d);
+      /* ONE rank-fused list (the tiers' scores are on different scales, so RRF orders them) — the tier and
+         action chips say what each row is; grouping by tier would re-impose the ordering we just removed */
+      const by=t=>sug.filter(s=>s.tier===t).length;
+      let html=`<div class="dim" style="margin:2px 0 6px">ranked across <b>${by("ingested")}</b> already-indexed (→ caption) · <b>${by("surveyed")}</b> surveyed · <b>${by("archive")}</b> archive.org (→ ingest + caption)</div>`;
+      html += sug.map(tgRow).join("") + tgScanNote(d);
       $("#tg-body").innerHTML = html;
     }
     function tgSelAll(on){ (Object.values(TG.byId)).forEach(s=>{ if(on)TG_SEL.add(s.video_id); else TG_SEL.delete(s.video_id); }); tgSelN(); tgRender({suggestions:Object.values(TG.byId), ingested:0, surveyed:0}); }
@@ -713,6 +748,7 @@
       $("#tab-search").style.display = t==="search"?"block":"none";
       $("#tab-curate").style.display = t==="curate"?"block":"none";
       $("#tab-topic").style.display = t==="topic"?"block":"none";
+      if(t==="topic"){ tgIndexStatus(); }
       $("#tab-coverage").style.display = t==="coverage"?"block":"none";
       $("#tab-sources").style.display = t==="sources"?"block":"none";
       if(t==="sources"){ loadSources(); loadVideos(); }

@@ -181,39 +181,72 @@ def test_archive_pick_derivative_two_tier():
     assert "download/X/X_edit.mp4" in ar.download_url("X", "X_edit.mp4")
 
 
-def test_suggest_topic_surveyed_tier(monkeypatch):
-    """_topic_suggestions tier-2: keyword-prefilter surveyed-but-not-ingested titles, BGE-rank, drop off-topic
-    (below the floor) + already-ingested, and label action='ingest+caption'."""
-    import numpy as np
+class _FakeIndex:
+    def transcript_video_ids(self):
+        return set()
+
+
+class _FakeVS:
+    def search(self, **k):
+        return []
+
+
+def test_suggest_topic_surveyed_tier(monkeypatch, tmp_path):
+    """Tier-2 over the PERSISTED title-vector index: rank the surveyed-but-not-ingested corpus, drop
+    off-topic (below the floor) + already-ingested, carry the source channel, label 'ingest+caption'."""
     from nolan import transcript_lib as tl
     monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {"x1": {"frames": 0, "title": "already"}})
     monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: set())
-    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {"youtube:c": {"kind": "youtube", "titles": [
-        {"video_id": "s1", "title": "Diamond mining industry", "url": "u1"},
-        {"video_id": "s2", "title": "Cooking pasta at home", "url": "u2"},          # off-topic
-        {"video_id": "x1", "title": "already ingested", "url": "u3"},               # in catalog → skip
-    ]}})
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {"youtube:c": {
+        "kind": "youtube", "channel": "https://www.youtube.com/c", "titles": [
+            {"video_id": "s1", "title": "Diamond mining industry", "url": "u1"},
+            {"video_id": "s2", "title": "Cooking pasta at home", "url": "u2"},      # off-topic
+            {"video_id": "x1", "title": "already ingested", "url": "u3"},           # in catalog → skip
+        ]}})
     monkeypatch.setattr(tl, "_embed_titles",
                         lambda titles: [[1.0, 0.0] if "diamond" in t.lower() else [0.0, 1.0] for t in titles])
-
-    class FakeIndex:
-        def transcript_video_ids(self):
-            return set()
-
-    class FakeVS:
-        def search(self, **k):
-            return []
-    d = tl._topic_suggestions(["diamond mining"], "diamond", FakeIndex(), FakeVS(), 6, None)
+    d = tl._topic_suggestions(["diamond mining"], "diamond", _FakeIndex(), _FakeVS(), 6, tmp_path, web=False)
     sur = [s for s in d["suggestions"] if s["tier"] == "surveyed"]
-    assert any(s["video_id"] == "s1" and s["action"] == "ingest+caption" for s in sur)  # matched
+    assert d["tier2_mode"] == "vectors" and d["tier2_corpus"] == 2      # x1 excluded (already ingested)
+    assert any(s["video_id"] == "s1" and s["action"] == "ingest+caption"
+               and s["channel"] == "https://www.youtube.com/c" for s in sur)
     assert not any(s["video_id"] in ("s2", "x1") for s in sur)   # off-topic dropped + already-ingested skipped
 
 
-def test_suggest_topic_prefilter_is_balanced_and_honest(monkeypatch):
-    """The tier-2 embed budget is spent ROUND-ROBIN across sources (best keyword match first within each),
-    surveyed videos are counted ONCE across the legacy + kind-namespaced survey keys, and whatever the budget
-    could not score is REPORTED (no silent cap). A blind head-slice let one 48k-title channel starve the
-    archival collections: "1950s suburban consumerism" scored 1471 Bloomberg rows and 0 Prelinger PD films."""
+def test_topic_vector_index_is_persisted_and_incremental(monkeypatch, tmp_path):
+    """The surveyed corpus is embedded ONCE and reused: a second search re-embeds nothing, and a NEW survey
+    row tops the index up incrementally. This is what replaced the keyword prefilter + 1500-title budget —
+    a search now ranks against the WHOLE corpus instead of the slice the budget could reach."""
+    from nolan import transcript_lib as tl
+    from nolan import transcript_vectors as tv
+    titles = [{"video_id": f"s{i}", "title": f"Diamond film {i}", "url": ""} for i in range(5)]
+    surveys = {"archive:c": {"kind": "archive", "channel": "prelinger", "titles": titles}}
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: set())
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: surveys)
+    embedded = []
+
+    def fake_embed(ts):
+        embedded.extend(ts)
+        return [[1.0, 0.0]] * len(ts)
+    monkeypatch.setattr(tl, "_embed_titles", fake_embed)
+
+    assert tv.build(tmp_path)["indexed"] == 5 and len(embedded) == 5
+    embedded.clear()
+    tl._topic_suggestions(["diamond"], "diamond", _FakeIndex(), _FakeVS(), 3, tmp_path, web=False)
+    assert embedded == ["diamond"]                                   # only the QUERY — no title re-embedded
+    titles.append({"video_id": "s9", "title": "Diamond film 9", "url": ""})
+    embedded.clear()
+    d = tl._topic_suggestions(["diamond"], "diamond", _FakeIndex(), _FakeVS(), 3, tmp_path, web=False)
+    assert "Diamond film 9" in embedded and len([t for t in embedded if t.startswith("Diamond")]) == 1
+    assert d["tier2_corpus"] == 6 and d["tier2_pending"] == 0
+    assert tv.status(tmp_path)["indexed"] == 6
+
+
+def test_cold_index_falls_back_to_the_prefilter_and_says_so(monkeypatch, tmp_path):
+    """With no vector index and more titles than can be embedded inside a request, tier 2 degrades to the
+    keyword-prefilter path and REPORTS the degraded mode + what it dropped — never a silent substitution.
+    The prefilter's budget is still spent ROUND-ROBIN, so one 48k-title channel can't starve the archives."""
     from nolan import transcript_lib as tl
     big = [{"video_id": f"b{i}", "title": "atomic bomb news", "url": f"ub{i}"} for i in range(100)]
     arch = [{"video_id": f"a{i}", "title": "Duck and Cover", "url": f"ua{i}",
@@ -228,23 +261,121 @@ def test_suggest_topic_prefilter_is_balanced_and_honest(monkeypatch):
     })
     monkeypatch.setattr(tl, "_PREFILT_BUDGET", 20)
     monkeypatch.setattr(tl, "_embed_titles", lambda titles: [[1.0, 0.0]] * len(titles))
+    from nolan import transcript_vectors as tv
+    monkeypatch.setattr(tv, "ensure", lambda corpus, cd=None, **k: ([], None, len(corpus)))   # cold index
 
-    class FakeIndex:
-        def transcript_video_ids(self):
-            return set()
-
-    class FakeVS:
-        def search(self, **k):
-            return []
-    d = tl._topic_suggestions(["atomic bomb civil defense"], "civil defense", FakeIndex(), FakeVS(), 6, None)
+    d = tl._topic_suggestions(["atomic bomb civil defense"], "civil defense", _FakeIndex(), _FakeVS(),
+                              6, tmp_path, web=False)
+    assert d["tier2_mode"].startswith("prefilter") and d["tier2_pending"] == 120
     assert d["prefilter_matches"] == 120 and d["prefiltered"] == 20     # 100 big + 20 archive, counted ONCE each
     assert d["prefilter_dropped"] == 100                                # reported, not silently swallowed
-    assert d["prefilter_sources"] == {"archive:prelinger": 10, "youtube:bloomberg": 10}   # even split, no starving
+    assert d["prefilter_sources"] == {"archive:prelinger": 10, "youtube:bloomberg": 10}   # even split
     assert "bloomberg" not in d["prefilter_sources"]                    # legacy key deduped away by video_id
-    assert {s["kind"] for s in d["suggestions"]} == {"archive", "youtube"}   # kind survives the dedupe
-    # each row carries its SOURCE — the ingest dispatch needs channel/collection + cf, not defaults
-    assert {s["channel"] for s in d["suggestions"]} == {"prelinger", "https://www.youtube.com/bloomberg"}
-    assert all(s["copyright_free"] for s in d["suggestions"] if s["kind"] == "archive")
+
+
+def test_archive_tier_searches_globally_and_skips_what_we_have(monkeypatch, tmp_path):
+    """Tier 3 = GLOBAL archive.org: the reach the local collection surveys can't have. Hits already in the
+    catalog or in a survey are dropped (they're tiers 1/2), the query is compacted to 3 content words
+    (advancedsearch ANDs its terms), cf-only asks for an asserted licence, and results are ranked on the
+    SAME title+subject scale as tier 2 and held to the same floor."""
+    from nolan import archive_source as ar
+    from nolan import transcript_lib as tl
+    asked = []
+
+    def fake_search(q, rows=40, sort="", **k):
+        asked.append(q)
+        return ([{"video_id": "known1", "url": "u", "title": "diamond doc", "duration": 60,
+                  "subject": [], "description": "", "license": "", "copyright_free": True},
+                 {"video_id": "surv1", "url": "u", "title": "diamond doc 2", "duration": 60,
+                  "subject": [], "description": "", "license": "", "copyright_free": True},
+                 {"video_id": "new1", "url": "https://archive.org/details/new1", "title": "diamond mine film",
+                  "duration": 900, "subject": ["Mining"], "description": "a film about diamond mining",
+                  "license": "publicdomain", "copyright_free": True},
+                 {"video_id": "off1", "url": "u", "title": "unrelated cooking show", "duration": 60,
+                  "subject": [], "description": "", "license": "", "copyright_free": True}], 4321)
+    monkeypatch.setattr(ar, "search_items", fake_search)
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {"known1": {}})
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {"archive:c": {"kind": "archive",
+                                                                          "titles": [{"video_id": "surv1"}]}})
+    monkeypatch.setattr(tl, "_embed_titles",
+                        lambda ts: [[1.0, 0.0] if "diamond" in t.lower() else [0.0, 1.0] for t in ts])
+    rows, meta = tl._archive_tier(["De Beers diamond mining history in South Africa"], tmp_path, False)
+    assert asked == ["beers diamond mining"]                     # 3 content words, stopwords dropped
+    assert [r["video_id"] for r in rows] == ["new1"]              # known/surveyed skipped, off-topic floored out
+    assert rows[0]["tier"] == "archive" and rows[0]["action"] == "ingest+caption" and rows[0]["kind"] == "archive"
+    assert meta["archive_matched"] == 4321 and meta["archive_fetched"] == 2
+
+    asked.clear()
+    tl._archive_tier(["diamond mining"], tmp_path, True)          # copyright-free only
+    assert asked[0].startswith("diamond mining AND (licenseurl:[* TO *] OR collection:(")
+
+
+def test_archive_copyright_free_uses_pd_collections_not_just_licence():
+    """Only ~18% of even a wholly-PD archive collection carries a per-item `licenseurl`, so filtering the
+    global search on that field alone found almost nothing (2 hits for a diamond topic). A PD-BY-NATURE
+    collection (US federal works, Prelinger, CC series) is the same curator assertion the library already
+    makes when a source is added copyright-free."""
+    from nolan import archive_source as ar
+    assert ar._row({"identifier": "x", "title": "t", "collection": ["prelinger", "movies"]})["copyright_free"]
+    assert ar._row({"identifier": "x", "title": "t", "collection": ["opensource_movies"]})["copyright_free"] is False
+    assert ar._row({"identifier": "x", "title": "t", "collection": ["opensource_movies"],
+                    "licenseurl": "https://creativecommons.org/licenses/by/4.0/"})["copyright_free"]
+    clause = ar.pd_collection_clause()
+    assert clause.startswith("(licenseurl:[* TO *] OR collection:(") and "prelinger" in clause
+
+
+def test_tiers_are_fused_by_rank_not_raw_score():
+    """Tier scores live on different scales (segment cosine vs title cosine), so they're fused by RANK.
+    A tier's top hit must reach the head of the list even when its raw score is numerically lower."""
+    from nolan import transcript_lib as tl
+    ingested = [{"video_id": "i1", "title": "a", "score": 0.51, "tier": "ingested"}]      # segment cosine
+    surveyed = [{"video_id": "s1", "title": "b", "score": 0.72, "tier": "surveyed"},      # title cosine
+                {"video_id": "s2", "title": "c", "score": 0.70, "tier": "surveyed"}]
+    fused = tl._fuse_by_rank({"ingested": ingested, "surveyed": surveyed}, 5)
+    assert [r["video_id"] for r in fused[:2]] == ["i1", "s1"]     # both rank-1s before the rank-2
+    assert fused[0]["rrf"] == fused[1]["rrf"] and fused[2]["rrf"] < fused[0]["rrf"]
+    assert fused[0]["score"] == 0.51                             # raw score preserved for display
+
+
+def test_near_duplicate_reels_collapse():
+    """The same film's parts/re-uploads collapse to ONE row (live: 6 of the top 10 cf hits were parts of one
+    commercial reel). The best-scoring member survives, and supplied vectors are reused (no re-embedding)."""
+    from nolan import transcript_lib as tl
+    rows = [{"video_id": "a", "title": "Classic TV Commercials (Part II)", "score": 0.71},
+            {"video_id": "b", "title": "Classic TV Commercials (Part III)", "score": 0.73},
+            {"video_id": "c", "title": "Duck and Cover", "score": 0.60}]
+    vecs = [[1.0, 0.0], [0.999, 0.045], [0.0, 1.0]]
+    kept, collapsed = tl._collapse_near_duplicates(rows, vecs)
+    assert collapsed == 1 and [r["video_id"] for r in kept] == ["b", "c"]     # best-scoring twin kept
+
+
+def test_rerank_drops_false_matches_and_fails_open(monkeypatch):
+    """The LLM re-rank is a GATE around a proposal: only rows judged `off` are dropped (and counted), the
+    rest keep their fused order annotated with fit + why. Cosine alone ranked "Bob Diamond" (a banker) at
+    0.609 for a diamonds topic. Any LLM failure is fail-open — the cosine ranking stands and says why."""
+    import asyncio
+    from nolan import llm as nllm
+    from nolan import transcript_lib as tl
+    rows = [{"video_id": "a", "title": "Bob Diamond: Rewards in Africa", "score": 0.61, "rrf": 0.02},
+            {"video_id": "b", "title": "How De Beers cuts diamonds", "score": 0.60, "rrf": 0.016}]
+
+    class FakeLLM:
+        model = "qwen-test"
+
+        async def generate(self, prompt, system_prompt=None):
+            assert "Bob Diamond" in prompt and "De Beers" in prompt
+            return '{"items":[{"i":0,"fit":"off","why":"a banker, not the gem"},' \
+                   '{"i":1,"fit":"high","why":"cutting and polishing footage"}]}'
+    monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: FakeLLM())
+    kept, meta = asyncio.run(tl._rerank_suggestions(rows, "diamonds", ["diamond cartel"], None))
+    assert [r["video_id"] for r in kept] == ["b"] and meta["rerank_dropped"] == 1
+    assert kept[0]["fit"] == "high" and kept[0]["why"] == "cutting and polishing footage"
+    assert meta["reranked"] and meta["reranker"] == "qwen-test"
+
+    monkeypatch.setattr(nllm, "create_text_llm",
+                        lambda cfg, **k: (_ for _ in ()).throw(RuntimeError("no key")))
+    kept2, meta2 = asyncio.run(tl._rerank_suggestions(rows, "diamonds", ["diamond cartel"], None))
+    assert kept2 == rows and not meta2["reranked"] and "no key" in meta2["rerank_error"]
 
 
 def test_record_transcript_provenance_is_sticky(tmp_path):
@@ -280,7 +411,7 @@ def test_keyword_prefilter_matches_at_word_start_only():
     assert tl._kw_matcher(set()) is None
 
 
-def test_topic_cf_filter_runs_before_the_rank_cut(monkeypatch):
+def test_topic_cf_filter_runs_before_the_rank_cut(monkeypatch, tmp_path):
     """`copyright-free only` must not be starved by a fixed top-N slice: the cf rows sit BELOW a wall of
     copyrighted ones, so filtering after the cut returned a handful where dozens qualified (live: 231 ranked
     → 8 kept). The walk now stops at the floor or at enough KEPT rows, whichever comes first."""
@@ -306,9 +437,10 @@ def test_topic_cf_filter_runs_before_the_rank_cut(monkeypatch):
     class FakeVS:
         def search(self, **k):
             return []
-    d = tl._topic_suggestions(["diamond mining"], "diamond", FakeIndex(), FakeVS(), 6, None, True)
-    assert d["surveyed"] == 18 and all(s["copyright_free"] for s in d["suggestions"])   # n*3, all free
-    assert {s["video_id"] for s in d["suggestions"]} <= {f"f{i}" for i in range(30)}
+    d = tl._topic_suggestions(["diamond mining"], "diamond", FakeIndex(), FakeVS(), 6, tmp_path, True,
+                              web=False)
+    assert d["surveyed"] == 30 and all(s["copyright_free"] for s in d["suggestions"])   # every free row
+    assert {s["video_id"] for s in d["suggestions"]} <= {f"f{i}" for i in range(30)}    # no paid row leaked
 
 
 def test_suggest_by_topic_query_provenance(monkeypatch):
@@ -328,7 +460,7 @@ def test_suggest_by_topic_query_provenance(monkeypatch):
 
     monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: FakeLLM())
     monkeypatch.setattr(tl, "_topic_suggestions",
-                        lambda q, t, i, v, n, cd, cf: {"suggestions": [], "queries": list(q)})
+                        lambda q, t, i, v, n, cd, cf, web=True: {"suggestions": [], "queries": list(q)})
 
     d = asyncio.run(tl.suggest_by_topic("diamonds, De Beers", None, None, None))
     assert d["queries"] == ["expanded one", "expanded two"] and len(calls) == 1

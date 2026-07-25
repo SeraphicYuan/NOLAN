@@ -354,16 +354,18 @@ def _src_id_from_url(url: str) -> str:
 async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
                            catalog_dir: Optional[Path] = None,
                            copyright_free_only: bool = False,
-                           queries: Optional[List[str]] = None) -> Dict[str, Any]:
+                           queries: Optional[List[str]] = None,
+                           web: bool = True, rerank: bool = True) -> Dict[str, Any]:
     """ON-DEMAND caption targeting: a rough topic ("diamond, De Beers, diamond history") → a ranked shortlist
-    of videos worth running the gemma VISUAL tier on. Two tiers, both reusing existing machinery:
+    of videos worth running the gemma VISUAL tier on. THREE tiers, rank-fused:
       (1) INGESTED-but-not-captioned — the topic's BGE vector search over transcripts, grouped by video, kept
           where the catalog shows frames==0 (transcript indexed, no keyframes yet) → action 'caption';
-      (2) SURVEYED-but-not-ingested — a keyword prefilter over the persisted survey titles then BGE similarity
-          → action 'ingest+caption'.
+      (2) SURVEYED-but-not-ingested — BGE over the persisted survey title-vector index → 'ingest+caption';
+      (3) GLOBAL archive.org — `archive_source.search_items` over the whole archive, for what the added
+          collections simply don't cover → 'ingest+caption' (`web=False` to skip the network).
     An LLM pass expands the rough topic into specific queries for recall — UNLESS `queries` is given (the
-    human EDITED them in the Topic tab), which runs the search verbatim. The result reports `expanded` +
-    `expander` so the UI can show WHOSE queries ran. No web search (Phase 2)."""
+    human EDITED them in the Topic tab), which runs the search verbatim. A second LLM pass (`rerank`) judges
+    the fused shortlist for topical fit and writes the `why` column. Both LLM passes FAIL OPEN and report."""
     import asyncio
     import json
 
@@ -388,16 +390,82 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
     used = given or qs or [q.strip() for q in (topic or "").replace(",", "\n").splitlines() if q.strip()]
     used = (used or [topic])[:8]
     out = await asyncio.to_thread(_topic_suggestions, used, topic, index, vs, int(n), catalog_dir,
-                                  bool(copyright_free_only))
+                                  bool(copyright_free_only), bool(web))
     out["expanded"] = bool(qs and not given)
     out["query_source"] = "edited" if given else ("llm" if qs else "topic")
     out["expander"] = expander if (qs and not given) else ""
     if err:
         out["expand_error"] = err                             # expansion failed → say so, don't fake recall
+    if rerank and out.get("suggestions"):
+        out["suggestions"], rmeta = await _rerank_suggestions(out["suggestions"], topic, used, config)
+        out.update(rmeta)
+    out["suggestions"] = [{k: v for k, v in s.items() if not k.startswith("_")}
+                          for s in out["suggestions"][:int(n) * 2]]
     return out
 
 
-def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False):
+async def _rerank_suggestions(rows, topic, queries, config):
+    """ONE cheap LLM judgement over the fused shortlist: does this title/subject/description actually serve
+    the topic? Cosine over titles alone cannot — it ranked "Bob Diamond: Potential Rewards in Africa" (a
+    banker) at 0.609 for a diamonds topic, and "Hog Sense" at 0.606. It also fills the `why` column, which
+    tiers 2/3 otherwise leave EMPTY.
+
+    Deterministic gate around the model: only rows the LLM marks `off` are dropped (and counted), everything
+    else keeps its fused order, annotated with `fit` + `why`. Any failure (no key, bad JSON, timeout) is
+    FAIL-OPEN — the cosine ranking stands and `rerank_error` says why."""
+    import json
+    from nolan.llm import create_text_llm
+    cand = rows[:_SHORTLIST]
+    lines = []
+    for i, r in enumerate(cand):
+        subj = ", ".join(str(s) for s in (r.get("_subject") or [])[:6])
+        desc = (r.get("_desc") or r.get("why") or "").replace("\n", " ")[:200]
+        lines.append(f'{i}. "{r.get("title", "")}"' + (f" [subjects: {subj}]" if subj else "")
+                     + (f" — {desc}" if desc else ""))
+    prompt = (
+        f'Topic: "{topic}"\nSearch queries: {"; ".join(queries)}\n\n'
+        "Below are candidate ARCHIVE / DOCUMENTARY videos found for that topic. For each, judge whether its "
+        "FOOTAGE would serve a video essay on the topic — either directly (it is about the subject) or as "
+        "usable period/visual material (the era, the industry, the ritual, the advertising style). Mark "
+        "`off` ONLY when it is a false match (a different meaning of a word, an unrelated subject).\n\n"
+        + "\n".join(lines)
+        + '\n\nRespond ONLY JSON: {"items":[{"i":0,"fit":"high|medium|low|off","why":"<8 words, concrete>"}]}')
+    model = ""
+    try:
+        llm = create_text_llm(config)
+        model = getattr(llm, "model", "") or type(llm).__name__
+        out = await llm.generate(prompt, system_prompt=(
+            "You judge whether archival footage serves a video essay's topic. Be strict about false matches, "
+            "generous about period/visual usefulness."))
+        st, en = out.find("{"), out.rfind("}")
+        items = json.loads(out[st:en + 1]).get("items") or [] if st >= 0 and en > st else []
+    except Exception as e:
+        return rows, {"reranked": False, "rerank_error": f"{type(e).__name__}: {e}"[:160]}
+    fit_of, why_of = {}, {}
+    for it in items:
+        try:
+            i = int(it.get("i"))
+        except (TypeError, ValueError):
+            continue
+        if 0 <= i < len(cand):
+            fit_of[i] = str(it.get("fit") or "").strip().lower()
+            why_of[i] = str(it.get("why") or "").strip()[:120]
+    kept, dropped = [], 0
+    for i, r in enumerate(cand):
+        fit = fit_of.get(i, "")
+        if fit == "off":
+            dropped += 1
+            continue
+        kept.append({**r, "fit": fit or "unjudged", "why": why_of.get(i) or r.get("why") or ""})
+    rank = {"high": 0, "medium": 1, "low": 2, "unjudged": 1}
+    kept.sort(key=lambda r: (rank.get(r.get("fit"), 1), -float(r.get("rrf") or 0)))
+    return kept + rows[_SHORTLIST:], {"reranked": True, "rerank_dropped": dropped,
+                                      "rerank_judged": len(fit_of), "reranker": model}
+
+
+def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False):
+    """The two LOCAL tiers — what the library already holds: (1) ingested-but-uncaptioned, (2) surveyed.
+    Returns ``(ingested, surveyed, meta)``; the global archive tier and the fusion live in the caller."""
     import numpy as np
     cat = load_catalog(catalog_dir)
     t_ids = set(index.transcript_video_ids())
@@ -435,7 +503,49 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
                     "score": round(b["score"], 3), "why": b["snip"]})
     ingested = sorted(ing, key=lambda x: -x["score"])
 
-    # --- Tier 2: SURVEYED but NOT ingested — keyword prefilter (cheap) then BGE similarity (precise) ---
+    # --- Tier 2: SURVEYED but NOT ingested — BGE over the PERSISTED title-vector index (whole corpus) ---
+    have = set(cat.keys())
+    from nolan import transcript_vectors as tvec
+    corpus = tvec.rows(catalog_dir, exclude=have)
+    ids, mat, pending = tvec.ensure(corpus, catalog_dir)
+    surveyed: List[Dict[str, Any]] = []
+    svecs: List[Any] = []
+    meta2: Dict[str, Any] = {"tier2_mode": "vectors", "tier2_corpus": len(corpus), "tier2_pending": pending}
+    if mat is not None and len(ids):
+        qv = np.asarray(_embed_titles(list(queries)), dtype=np.float32)
+        sims = (mat @ qv.T).max(axis=1)
+        for i in np.argsort(-sims)[:_SHORTLIST * 4]:
+            s = float(sims[i])
+            if s < _FLOOR:
+                break
+            if len(surveyed) >= _SHORTLIST:
+                break
+            r = corpus[ids[i]]
+            if copyright_free_only and not r["copyright_free"]:
+                continue
+            surveyed.append({"video_id": r["video_id"], "title": r["title"], "url": r["url"],
+                             "channel": r["channel"], "kind": r["kind"],
+                             "copyright_free": bool(r["copyright_free"]), "tier": "surveyed",
+                             "action": "ingest+caption", "score": round(s, 3), "why": "",
+                             "_desc": (r.get("description") or "")[:300],
+                             "_subject": r.get("subject") or []})
+            svecs.append(mat[i])
+        meta2["tier2_scored"] = len(ids)
+    else:                                                      # cold index → the legacy keyword path, SAID SO
+        meta2["tier2_mode"] = "prefilter (title-vector index not built)"
+        surveyed, pre_meta = _prefilter_surveyed(queries, topic, cat, free_ids, n, copyright_free_only,
+                                                 catalog_dir)
+        meta2.update(pre_meta)
+        svecs = []
+    surveyed, meta2["tier2_duplicates"] = _collapse_near_duplicates(surveyed, svecs or None)
+    return ingested, surveyed, meta2
+
+
+def _prefilter_surveyed(queries, topic, cat, free_ids, n, copyright_free_only, catalog_dir):
+    """COLD-INDEX FALLBACK for tier 2: the original keyword-prefilter + bounded-embed path, used only until
+    `transcript_vectors` covers the surveyed corpus. Kept because a first-ever search must still return
+    something — but it is REPORTED as the degraded mode, never silently substituted."""
+    import numpy as np
     kw = set()
     for s in [topic] + list(queries):
         kw |= set(_tok(s))
@@ -481,26 +591,144 @@ def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free
         # enough KEPT rows — filtering after a fixed top-(n*3) slice starved `copyright-free only`, whose
         # matches sit below a wall of copyrighted ones (live: 231 ranked → 8 kept where dozens qualified).
         for i in np.argsort(-sims):
-            if float(sims[i]) < 0.42:                         # floor: keep only real semantic matches
+            if float(sims[i]) < _FLOOR:                        # floor: keep only real semantic matches
                 break
-            if len(surveyed) >= n * 3:
+            if len(surveyed) >= _SHORTLIST:
                 break
             vid, title, _et, url, kd, cf, chan = prefilt[i]
             if copyright_free_only and not cf:
                 continue
             surveyed.append({"video_id": vid, "title": title, "url": url, "channel": chan, "kind": kd,
                              "copyright_free": bool(cf), "tier": "surveyed", "action": "ingest+caption",
-                             "score": round(float(sims[i]), 3), "why": ""})
-
-    return {"topic": topic, "queries": list(queries),
-            "suggestions": ingested[:n] + surveyed[:n],
-            "ingested": len(ingested), "surveyed": len(surveyed), "prefiltered": len(prefilt),
-            # what the embed budget could NOT score — never a silent cap
-            "prefilter_matches": kw_matches, "prefilter_dropped": max(0, kw_matches - len(prefilt)),
-            "prefilter_sources": kept_by_src}
+                             "score": round(float(sims[i]), 3), "why": "", "_desc": "", "_subject": []})
+    return surveyed, {"prefiltered": len(prefilt), "prefilter_matches": kw_matches,
+                      "prefilter_dropped": max(0, kw_matches - len(prefilt)),
+                      "prefilter_sources": kept_by_src}
 
 
 _PREFILT_BUDGET = 1500                                        # tier-2 titles we're willing to BGE-embed per topic
+_FLOOR = 0.42                                                 # cosine below this is not a real topical match
+_SHORTLIST = 36                                               # rows carried into dedupe / fusion / re-rank
+_DUP_THR = 0.90                                               # title cosine at which two rows are the same film
+_ARCHIVE_ROWS = 40                                            # global archive.org hits fetched per query
+
+
+def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False, web=True):
+    """The three tiers, fused: (1) INGESTED-but-uncaptioned → caption, (2) SURVEYED-but-not-ingested →
+    ingest+caption, (3) the GLOBAL archive.org search → ingest+caption. Near-duplicates are collapsed per
+    tier, then the tiers are fused by RANK (RRF), because their scores are on different scales — tier 1 is a
+    transcript-SEGMENT cosine, tiers 2/3 are TITLE cosines, and concatenating them ranked a 0.55 title above
+    a 0.50 segment as if that meant something (`_rrf_fuse` exists in this module for exactly this reason)."""
+    ingested, surveyed, meta = _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only)
+    archived: List[Dict[str, Any]] = []
+    if web:
+        archived, wmeta = _archive_tier(queries, catalog_dir, copyright_free_only)
+        meta.update(wmeta)
+    fused = _fuse_by_rank({"ingested": ingested, "surveyed": surveyed, "archive": archived}, _SHORTLIST)
+    return {"topic": topic, "queries": list(queries), "suggestions": fused,
+            "ingested": len(ingested), "surveyed": len(surveyed), "archived": len(archived),
+            "n": int(n), **meta}
+
+
+def _collapse_near_duplicates(rows, vecs=None, thr: float = _DUP_THR):
+    """Collapse rows whose TITLES are near-identical — the same film's reels/parts/re-uploads (live: 6 of the
+    top 10 copyright-free hits were "Classic Television Commercials" Parts II-VIII, and the shortlist is what
+    a human then picks 20 from). Keeps the best-scoring member. `vecs` (row-aligned) reuses vectors the
+    caller already has, so the collapse costs nothing; without it the titles are embedded. Returns
+    ``(rows, collapsed)``."""
+    if len(rows) < 2:
+        return rows, 0
+    import numpy as np
+    order = sorted(range(len(rows)), key=lambda i: -float(rows[i].get("score") or 0))
+    if vecs is None:
+        by_pos = np.asarray(_embed_titles([rows[i].get("title") or "" for i in order]), dtype=np.float32)
+    else:
+        src = np.asarray(vecs, dtype=np.float32)
+        by_pos = src[np.array(order, dtype=np.int64)]
+    keep, leaders = [], []
+    for pos, i in enumerate(order):
+        v = by_pos[pos]
+        if leaders and float(np.max(np.asarray(leaders, dtype=np.float32) @ v)) >= thr:
+            continue
+        leaders.append(v)
+        keep.append(rows[i])
+    return keep, len(rows) - len(keep)
+
+
+def _fuse_by_rank(tiers: Dict[str, List[Dict[str, Any]]], n: int, k: int = 60):
+    """Reciprocal-rank fusion across the tiers — scale-agnostic, so a segment cosine and a title cosine can
+    share one ranked list. Each row keeps its own `score` (for display) and gains `rrf`."""
+    scored = []
+    for _tier, rows in tiers.items():
+        for rank, r in enumerate(sorted(rows, key=lambda x: -float(x.get("score") or 0))):
+            scored.append((1.0 / (k + rank + 1), r))
+    scored.sort(key=lambda kv: -kv[0])
+    out = []
+    for rrf, r in scored[:n]:
+        out.append({**r, "rrf": round(rrf, 5)})
+    return out
+
+
+def _archive_tier(queries, catalog_dir=None, copyright_free_only=False):
+    """Tier 3 — the GLOBAL archive.org search (`archive_source.search_items`), the reach the local surveys
+    cannot have: a topic the added collections don't cover is still somewhere in archive.org's movie items
+    (a diamond topic against a Prelinger-only library could otherwise only reach mining/advertising
+    ANALOGUES; globally it finds a 1970s De Beers jewellery film). Hits already in the catalog or in a
+    survey are dropped (they are tiers 1/2), the rest are BGE-ranked on the SAME title+subject scale as
+    tier 2 and held to the same floor."""
+    import numpy as np
+
+    from nolan import archive_source as ar
+    from nolan import transcript_vectors as tvec
+    known = set(load_catalog(catalog_dir).keys())
+    for sv in load_surveys(catalog_dir).values():
+        for t in sv.get("titles", []):
+            if t.get("video_id"):
+                known.add(t["video_id"])
+    seen: Dict[str, Dict[str, Any]] = {}
+    errors, found_total = [], 0
+    for q in list(queries)[:5]:                               # bounded fan-out: 5 queries x _ARCHIVE_ROWS
+        aq = " ".join(_tok(q)[:3])                            # advancedsearch ANDs its terms — 3 keeps recall
+        if not aq:
+            continue
+        if copyright_free_only:
+            aq += " AND " + ar.pd_collection_clause()         # asserted licence OR a PD-by-nature collection
+        try:
+            rows, total = ar.search_items(aq, rows=_ARCHIVE_ROWS, sort="downloads desc")
+        except Exception as e:
+            errors.append(f"{aq}: {type(e).__name__}")
+            continue
+        found_total += total
+        for r in rows:
+            if r["video_id"] in known or r["video_id"] in seen:
+                continue
+            if copyright_free_only and not r["copyright_free"]:
+                continue
+            seen[r["video_id"]] = r
+    meta = {"archive_fetched": len(seen), "archive_matched": found_total}
+    if errors:
+        meta["archive_errors"] = errors[:3]
+    if not seen:
+        return [], meta
+    cand = list(seen.values())
+    qv = np.asarray(_embed_titles(list(queries)), dtype=np.float32)
+    tv = np.asarray(_embed_titles([tvec.embed_text(r["title"], r["subject"]) for r in cand]),
+                    dtype=np.float32)
+    sims = (tv @ qv.T).max(axis=1)
+    out, ovecs = [], []
+    for i in np.argsort(-sims):
+        s = float(sims[i])
+        if s < _FLOOR or len(out) >= _SHORTLIST:
+            break
+        r = cand[i]
+        out.append({"video_id": r["video_id"], "title": r["title"], "url": r["url"], "channel": "",
+                    "kind": "archive", "copyright_free": bool(r["copyright_free"]), "tier": "archive",
+                    "action": "ingest+caption", "score": round(s, 3), "why": "",
+                    "duration": r.get("duration"), "_desc": (r.get("description") or "")[:300],
+                    "_subject": r.get("subject") or []})
+        ovecs.append(tv[i])
+    out, meta["archive_duplicates"] = _collapse_near_duplicates(out, ovecs or None)
+    return out, meta
 
 
 def _kw_matcher(kw):

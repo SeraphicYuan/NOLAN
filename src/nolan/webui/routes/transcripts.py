@@ -131,8 +131,13 @@ def register(app, ctx):
         cfree = _collection_free(channel, kind)
         items = await asyncio.to_thread(tl.survey_channel, channel, (limit or None), None, bool(refresh),
                                         kind, cfree)
+        # archive.org's deep-paging window (~10k) truncates a bigger collection — report the shortfall so a
+        # partial crawl can't read as complete coverage (Prelinger: 10,000 fetched of 10,376)
+        sv = tl.load_surveys().get(tl._survey_key(channel, kind)) or {}
+        total = int(sv.get("total") or 0)
         return {"items": items, "count": len(items), "new": sum(1 for i in items if not i["in_library"]),
-                "cached": (items[0].get("_cached", "") if items else ""), "kind": kind}
+                "cached": (items[0].get("_cached", "") if items else ""), "kind": kind,
+                "source_total": total, "truncated": max(0, total - len(items))}
 
     @app.post("/api/transcripts/recommend")
     async def transcripts_recommend(body: dict = Body(...)):
@@ -279,7 +284,31 @@ def register(app, ctx):
         vs = VectorSearch(Path(idb).parent / "vectors", index=index)
         return await tl.suggest_by_topic(topic, index, vs, load_config(), int(body.get("n", 12) or 12),
                                          copyright_free_only=bool(body.get("copyright_free", False)),
-                                         queries=(body.get("queries") or None))
+                                         queries=(body.get("queries") or None),
+                                         web=bool(body.get("web", True)),
+                                         rerank=bool(body.get("rerank", True)))
+
+    @app.get("/api/transcripts/topic-index")
+    async def transcripts_topic_index():
+        """Coverage of the surveyed-title vector index the topic search ranks against."""
+        import asyncio
+        from nolan import transcript_vectors as tvec
+        return await asyncio.to_thread(tvec.status)
+
+    @app.post("/api/transcripts/topic-index/build")
+    async def transcripts_topic_index_build():
+        """(Re)build the surveyed-title vector index — one job, resumable (it only embeds what's missing)."""
+        from nolan import transcript_vectors as tvec
+
+        async def _build(job):
+            def prog(done, total):
+                job.set_progress(min(0.99, done / max(1, total)), f"embedding titles {done}/{total}")
+            import asyncio as _a
+            out = await _a.to_thread(tvec.build, None, prog)
+            job.set_progress(1.0, f"{out['indexed']} titles indexed")
+            return out
+        job = job_manager.start("transcript-topic-index", _build)
+        return {"job_id": job.id, "type": "transcript-topic-index"}
 
     @app.get("/api/transcripts/visual-search")
     async def transcripts_visual_search(q: str = Query(...), n: int = Query(default=24),
