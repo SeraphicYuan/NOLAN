@@ -517,6 +517,7 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
     ids, mat, pending = tvec.ensure(corpus, catalog_dir)
     surveyed: List[Dict[str, Any]] = []
     svecs: List[Any] = []
+    lookups = 0
     meta2: Dict[str, Any] = {"tier2_mode": "vectors", "tier2_corpus": len(corpus), "tier2_pending": pending}
     if mat is not None and len(ids):
         qv = np.asarray(_embed_titles(list(queries)), dtype=np.float32)
@@ -530,6 +531,13 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
             r = corpus[ids[i]]
             if copyright_free_only and not r["copyright_free"]:
                 continue
+            # same lazy resolve as tier 3: a surveyed archive row whose crawl cached no `runtime` would
+            # otherwise sail through the length gate on the unknown-is-kept rule (live: a 4-minute reel did)
+            if (min_sec or max_sec) and r.get("duration") is None and r.get("kind") == "archive" \
+                    and lookups < _DURATION_LOOKUPS:
+                lookups += 1
+                from nolan import archive_source as _ar
+                r["duration"] = _ar.resolve_duration(r["video_id"])
             if not _dur_ok(r.get("duration"), min_sec, max_sec):
                 dropped_len += 1
                 continue

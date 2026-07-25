@@ -355,6 +355,36 @@ def test_optional_length_filter(monkeypatch, tmp_path):
     assert {s["video_id"] for s in d["suggestions"]} == {"long", "unknown"} and d["length_dropped"] == 2
 
 
+def test_length_filter_resolves_unknown_archive_durations(monkeypatch, tmp_path):
+    """An archive row whose crawl cached no `runtime` would sail through the gate on the unknown-is-kept
+    rule — live, a 4-minute reel did exactly that. With a filter active, the duration is resolved from the
+    metadata API for the few rows that reach the shortlist (bounded), so the gate actually bites."""
+    from nolan import archive_source as ar
+    from nolan import transcript_lib as tl
+    asked = []
+
+    def fake_resolve(ident, timeout=20.0):
+        asked.append(ident)
+        return 240 if ident == "reel" else 1200
+    monkeypatch.setattr(ar, "resolve_duration", fake_resolve)
+    titles = [{"video_id": "reel", "title": "diamond reel", "url": ""},        # no duration cached: really 4m
+              {"video_id": "film", "title": "diamond film", "url": ""}]        # no duration cached: really 20m
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: set())
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {"archive:c": {"kind": "archive",
+                                                                          "channel": "c", "titles": titles}})
+    monkeypatch.setattr(tl, "_embed_titles", lambda ts: [[1.0, 0.0]] * len(ts))
+    monkeypatch.setattr(tl, "_collapse_near_duplicates", lambda rows, vecs=None, thr=0.9: (rows, 0))
+
+    d = tl._topic_suggestions(["diamond"], "diamond", _FakeIndex(), _FakeVS(), 9, tmp_path, web=False)
+    assert not asked and len(d["suggestions"]) == 2          # NO filter → no metadata calls at all
+
+    d = tl._topic_suggestions(["diamond"], "diamond", _FakeIndex(), _FakeVS(), 9, tmp_path, web=False,
+                              min_sec=300)
+    assert sorted(asked) == ["film", "reel"] and d["length_dropped"] == 1
+    assert [s["video_id"] for s in d["suggestions"]] == ["film"] and d["suggestions"][0]["duration"] == 1200
+
+
 def test_multivalued_archive_metadata_is_coerced_to_text(monkeypatch):
     """archive.org metadata is MULTI-VALUED: an item with two <description> entries returns a LIST. Every
     consumer downstream (keyword match, embed text, the re-rank prompt) assumes text — an uncoerced list
