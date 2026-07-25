@@ -33,9 +33,27 @@ _UA = {"User-Agent": "NOLAN/1.0 (transcript library)"}
 
 # advancedsearch (NOT the scrape API — scrape silently drops runtime/licenseurl) returns the rich fields.
 # It has a ~10k deep-paging window; a collection larger than this is truncated (reported by the caller).
-_FL = ["identifier", "title", "year", "runtime", "subject", "description", "licenseurl", "mediatype"]
+_FL = ["identifier", "title", "year", "runtime", "subject", "description", "licenseurl", "mediatype",
+       "collection"]
 _PAGE_ROWS = 1000
 _ADV_CAP = 10000
+
+# Collections whose contents are public domain by their NATURE (US federal works, the Prelinger ephemeral-film
+# archive, CC-licensed series) — the same curator assertion the transcript library already makes when a source
+# is added `copyright_free`. Needed because only ~18% of even a wholly-PD collection carries a per-item
+# `licenseurl`: filtering the global search on that field alone finds almost nothing.
+PD_COLLECTIONS = ("prelinger", "usnationalarchives", "FedFlix", "nasa", "computerchronicles",
+                  "academic_films", "AV_GeeksCollection", "nationalfilmboard")
+
+
+def _in_pd_collection(doc: Dict[str, Any]) -> bool:
+    colls = {str(c).lower() for c in _as_list(doc.get("collection"))}
+    return any(c.lower() in colls for c in PD_COLLECTIONS)
+
+
+def pd_collection_clause() -> str:
+    """The advancedsearch clause for 'copyright-free': an asserted PD/CC licence OR a PD-by-nature collection."""
+    return "(licenseurl:[* TO *] OR collection:(" + " OR ".join(PD_COLLECTIONS) + "))"
 
 
 def collection_ref(ref: str) -> str:
@@ -78,14 +96,38 @@ def _as_list(v: Any) -> List[str]:
     return [str(v)] if v else []
 
 
+def _row(doc: Dict[str, Any], collection_free: bool = False) -> Optional[Dict[str, Any]]:
+    """One advancedsearch doc → the shared transcript-library row shape. ONE builder for both the
+    collection survey and the global search, so they can never drift apart."""
+    ident = doc.get("identifier")
+    if not ident:
+        return None
+    lic = doc.get("licenseurl")
+    return {
+        "video_id": ident,
+        "url": f"https://archive.org/details/{ident}",
+        "title": doc.get("title") or ident,
+        "duration": parse_runtime(doc.get("runtime")),
+        "subject": _as_list(doc.get("subject")),
+        "description": doc.get("description") or "",
+        "license": lic or "",
+        "copyright_free": is_copyright_free(lic, collection_free or _in_pd_collection(doc)),
+    }
+
+
 def survey_collection(ref: str, limit: Optional[int] = None, timeout: float = 45.0,
                       collection_free: bool = False) -> Tuple[List[Dict[str, Any]], int]:
-    """Enumerate a collection's items via advancedsearch (paged, stable `identifier asc` sort). Returns
-    ``(rows, total)`` where rows are shaped like the YouTube survey plus archive-only fields
-    ``{video_id, url, title, duration, subject, description, license, copyright_free}`` and ``total`` is the
-    collection's true size. ``collection_free`` (the curator's PD assertion for the whole collection) makes
-    every row copyright-free. Bounded by advancedsearch's ~10k deep-paging window — if ``total`` exceeds what
-    we fetched, the caller reports the truncation (no silent cap)."""
+    """Enumerate a collection's items via advancedsearch. Returns ``(rows, total)`` where rows are shaped
+    like the YouTube survey plus archive-only fields ``{video_id, url, title, duration, subject, description,
+    license, copyright_free}`` and ``total`` is the collection's true size. ``collection_free`` (the curator's
+    PD assertion for the whole collection) makes every row copyright-free.
+
+    Paged NEWEST-FIRST (``publicdate desc``, ``identifier asc`` as the stable tiebreak for deep paging).
+    That ordering matters: every consumer that bounds the survey (``_distinct_candidates``' newest-`cap`,
+    the topic search) assumed newest-first while this actually sorted by identifier — so on a collection
+    bigger than the window you kept the alphabetically-first items, not the recent frontier. Bounded by
+    advancedsearch's ~10k deep-paging window — when ``total`` exceeds what we fetched the caller reports the
+    truncation (no silent cap)."""
     coll = collection_ref(ref)
     out: List[Dict[str, Any]] = []
     total = 0
@@ -94,7 +136,7 @@ def survey_collection(ref: str, limit: Optional[int] = None, timeout: float = 45
         while len(out) < _ADV_CAP:
             params: List[Tuple[str, Any]] = [
                 ("q", f"collection:{coll}"), ("rows", _PAGE_ROWS), ("page", page),
-                ("output", "json"), ("sort[]", "identifier asc")]
+                ("output", "json"), ("sort[]", "publicdate desc"), ("sort[]", "identifier asc")]
             params += [("fl[]", f) for f in _FL]
             r = c.get(ADVSEARCH, params=params)
             r.raise_for_status()
@@ -104,26 +146,47 @@ def survey_collection(ref: str, limit: Optional[int] = None, timeout: float = 45
             if not docs:
                 break
             for it in docs:
-                ident = it.get("identifier")
-                if not ident:
+                row = _row(it, collection_free)
+                if not row:
                     continue
-                lic = it.get("licenseurl")
-                out.append({
-                    "video_id": ident,
-                    "url": f"https://archive.org/details/{ident}",
-                    "title": it.get("title") or ident,
-                    "duration": parse_runtime(it.get("runtime")),
-                    "subject": _as_list(it.get("subject")),
-                    "description": it.get("description") or "",
-                    "license": lic or "",
-                    "copyright_free": is_copyright_free(lic, collection_free),
-                })
+                out.append(row)
                 if limit and len(out) >= limit:
                     return out, total
             if len(out) >= total:
                 break
             page += 1
     return out, total
+
+
+def search_items(query: str, rows: int = 40, timeout: float = 45.0,
+                 mediatype: str = "movies", sort: str = "",
+                 exclude_collections: Optional[List[str]] = None) -> Tuple[List[Dict[str, Any]], int]:
+    """GLOBAL archive.org search — the whole archive, not one curated collection. Same row shape as
+    ``survey_collection`` (shared ``_row``), so a hit drops straight into the transcript-library machinery
+    (ingest → ASR transcript → visual tier).
+
+    This is the reach the collection surveys can't have: a topic the added collections simply don't cover
+    (a diamond essay against a Prelinger-only library can only reach mining/advertising ANALOGUES) is
+    almost always somewhere in archive.org's ~1M movie items. Default sort is archive's relevance ranking
+    (no ``sort[]`` param); pass e.g. ``"downloads desc"`` for popularity. Returns ``(rows, total_found)``
+    — ``total_found`` is what the query matched, so the caller can report how much it did NOT fetch."""
+    q = (query or "").strip()
+    if not q:
+        return [], 0
+    full = f"({q}) AND mediatype:({mediatype})"
+    for coll in (exclude_collections or []):
+        full += f" AND -collection:{collection_ref(coll)}"
+    params: List[Tuple[str, Any]] = [("q", full), ("rows", max(1, int(rows))), ("page", 1),
+                                     ("output", "json")]
+    if sort:
+        params.append(("sort[]", sort))
+    params += [("fl[]", f) for f in _FL]
+    with httpx.Client(headers=_UA, timeout=timeout) as c:
+        r = c.get(ADVSEARCH, params=params)
+        r.raise_for_status()
+        resp = r.json().get("response", {}) or {}
+    out = [row for row in (_row(d) for d in (resp.get("docs") or [])) if row]
+    return out, int(resp.get("numFound", 0) or 0)
 
 
 def _normalize_srt(text: str) -> str:
