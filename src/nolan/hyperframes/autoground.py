@@ -5,9 +5,10 @@ A scene held longer than `_LONG_HOLD_S` (5s) on a flat field reads DEAD — whet
 (dimmed, with a slow push) lifts it: a data-centre aerial behind a spend chart, a Big-Hole mine behind
 "the ground kept giving", a padlock behind "under US antitrust law".
 
-RESTRAINT BY DEFAULT — a ground is EARNED, not mandatory. This only CANDIDATES the long holds (a short or
-dense beat is fine bare, and blocks that carry their OWN dominant visual — document / comparison / gallery —
-are never papered over). When NOTHING in the pool genuinely fits a scene it LEAVES THE FRAME CLEAN: a bare
+RESTRAINT BY DEFAULT — a ground is EARNED, not mandatory. This only CANDIDATES the long holds on the six
+blocks that actually RENDER a ground (`_GROUND_BLOCKS` — the composer fns that call media_ground); a short
+or dense beat is fine bare, and the other 44 templates carry their own visual and would silently DROP the
+field. When NOTHING in the pool genuinely fits a scene it LEAVES THE FRAME CLEAN: a bare
 field beats a forced, mismatched photo (both are worse than clean type). Never forces.
 
 Routing: the match is semantic (a spend chart wants *data-centre* imagery — no shared keyword), so the
@@ -32,8 +33,13 @@ try:
 except Exception:                                            # keep the operator importable standalone
     _LONG_HOLD_S = 5.0
 
-# Blocks that carry their OWN dominant visual — never paper an ambient ground behind them.
-_NEVER_GROUND = {"document", "comparison", "split_view", "gallery", "collage", "newshead", "quadrant"}
+# The blocks that actually CONSUME `data.ground` — i.e. whose composer fn calls compose.media_ground().
+# This is an ALLOW-list, not a blacklist: only 6 of the composer's 50 templates read the field, so a
+# blacklist of "blocks with their own visual" silently wrote a no-op ground onto everything else (hero /
+# chart / cycle / diagram / …) AND consumed a pool asset for it, starving a scene that would have rendered
+# one. Derived from compose.py (tests/test_autoground.py asserts this set still matches the composer, so
+# it can't rot as blocks are added).
+_GROUND_BLOCKS = {"statement", "stat", "bullet_list", "pull_quote", "comparison_table", "ledger"}
 _IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
 _VID_EXT = (".mp4", ".mov", ".webm")
 _KB = [1.0, 1.08]                                            # subtle Ken-Burns push so a still ground isn't dead
@@ -70,12 +76,20 @@ def _pool_assets(comp_dir: Path) -> Dict[str, Dict]:
         mt = "image" if ext in _IMG_EXT else ("video" if ext in _VID_EXT else None)
         if not mt:
             continue
-        roots = [comp_dir / "capture" / "assets", comp_dir / "capture" / "assets" / "videos",
-                 comp_dir / "assets", comp_dir / "assets" / "videos"]
-        if not any((r / f).exists() for r in roots):
+        # DERIVE `src` from where the file ACTUALLY resolves — never guess the subdir from media_type.
+        # `file` is sometimes a bare basename and sometimes already carries its subdir ("videos/a21_03.mp4",
+        # "generated/a3_gen.png"), and a manually-clipped video lands in assets/ rather than assets/videos/.
+        # Guessing produced dead links both ways ("assets/videos/videos/…" for a pool clip, "assets/videos/x"
+        # for a manual one) — and a dead ground is SILENT: freeze-heal skips it and the root mount finds
+        # nothing. The authored path is the resolving root minus the `capture/` staging prefix.
+        src = None
+        for root in ("capture/assets", "capture/assets/videos", "assets", "assets/videos"):
+            if (comp_dir / root / f).exists():
+                src = f"{root[len('capture/'):] if root.startswith('capture/') else root}/{f}"
+                break
+        if not src:
             continue
         cap = (it.get("caption") or it.get("desc") or it.get("description") or it.get("query") or "").strip()
-        src = f"assets/videos/{f}" if mt == "video" else f"assets/{f}"
         out[f] = {"caption": cap, "media_type": mt, "src": src}
     return out
 
@@ -112,8 +126,8 @@ def _keyword_pick(sc: Dict, pool: List[Dict], taken: set) -> Optional[str]:
 
 
 def _needs_ground(sc: Dict, min_dur: float) -> bool:
-    """A long ungrounded hold that isn't a self-visual block — the auto-ground candidate set (text AND data)."""
-    if sc.get("type") in _NEVER_GROUND:
+    """A long ungrounded hold on a block that RENDERS a ground — the auto-ground candidate set."""
+    if sc.get("type") not in _GROUND_BLOCKS:
         return False
     g = (sc.get("data", {}) or {}).get("ground")
     grounded = isinstance(g, dict) and g.get("kind") not in (None, "color", "flat")

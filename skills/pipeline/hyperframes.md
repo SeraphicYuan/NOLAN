@@ -67,8 +67,15 @@ Per-run lessons: memory (`MEMORY.md`, the `HF cold-author` + `HF *` trail).
   first broken step (non-zero exit, error surfaced) and is safe to re-run. No silent caps.
 - **Gates block, they don't warn-and-ship.** The scene-timing gate (≥6s visual lag or a
   mis-ordered scene) and the number-provenance gate (a data block whose numbers trace to
-  nothing) HARD-BLOCK the render. Escapes are explicit env vars (`HF_ALLOW_LAG=1`,
-  `HF_ALLOW_UNSOURCED=1`) for a knowing exception only.
+  nothing) HARD-BLOCK the render. So does the STYLE gate, which runs pre-render on the
+  specs (~1s) so a contract miss costs a second, not a 20-minute render — the `revise` half
+  of draft -> lint -> revise only happens if something refuses to ship. Escapes are explicit
+  env vars (`HF_ALLOW_LAG=1`, `HF_ALLOW_UNSOURCED=1`, `HF_ALLOW_STYLE=1`) for a knowing
+  exception only.
+- **A gate must be feedable.** The dials that brief the author (`asset_density`, `video_share`,
+  `block_variety`) persist to `hyperframes.json` and drive BOTH the gate and the asset-need
+  derivation — a `heavy` essay derives video needs so the pool can supply the footage the gate
+  demands. A gate the pipeline cannot feed is worse than no gate.
 
 ## Where the code lives
 
@@ -106,9 +113,10 @@ here fails CI.
 | `assemble-index` | assemble the composition index.html from the storyboard | — |
 | `assemble-media` | resolve + stage the composition's media | — |
 | `layout` | layout-lint pass (caption keep-out, overlap, bounds) | soft |
+| *(style gate)* | HARD-BLOCK the render while any style-contract GATE fails — scored against the essay's own `style_dials` from `hyperframes.json` (`HF_ALLOW_STYLE=1` escapes) | HARD |
 | `render` | render the composition to video (`npx hyperframes render`) | — |
 | `hf-qa` | freeze + audio QA (ffmpeg): frozen/silent detection | soft |
-| `style-lint` | spec-dimension style contract check | soft |
+| `style-lint` | spec-dimension style contract report, same dials as the pre-render gate | soft |
 | `temporal` | motion gate: frozen / static / dead-air | soft |
 | `perceptual` | VLM render gate: legibility + relevance | soft |
 

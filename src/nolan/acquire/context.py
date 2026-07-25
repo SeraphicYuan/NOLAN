@@ -21,6 +21,11 @@ def _valid_image(path: Path) -> bool:
     return valid_image(path)
 
 
+def clean_media_inplace(path, cfg=None):
+    from .shared import clean_media_inplace as _clean
+    return _clean(path, cfg)
+
+
 def _ffmpeg():
     try:
         import imageio_ffmpeg
@@ -111,7 +116,7 @@ def gen_style_for(theme: str) -> str:
 
 def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True,
                   want_clips_library=True, want_transcript_lib=True, clip_lib_max=4, clip_lib_min_sim=0.55,
-                  gen_style="Cinematic") -> Context:
+                  gen_style="Cinematic", clean_transcript_clips=True, project_dir=None) -> Context:
     ctx = Context()
     # default the video-segment length from the config (was hardcoded 20, ignoring cfg.clip_seconds)
     if clip_seconds is None:
@@ -383,10 +388,22 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                         return True, k, ch
                     return False, "youtube", ch
 
+                # DEDUP vs the HERO pool: keyassets runs FIRST and claims the ranges it pulled, so the
+                # b-roll fan-out must not re-download the same shot under a second name (both land in
+                # capture/assets and both reach the author's menu).
+                #
+                # Read LAZILY, per search — never snapshot at context-build time. A snapshot silently
+                # couples correctness to call order: `build_context` runs before the caller releases the
+                # previous build's claims, so a rebuild saw all of them as taken and skipped nearly every
+                # clip (measured: transcript_lib fell from 9 pooled items to 1). Re-reading a small JSON
+                # per need costs nothing and also honours claims written during this run.
+                from .shared import load_claims, range_is_claimed, record_claim
+
                 def _search_transcript_lib(need, n):
                     queries = [q for q in (need.get("queries") or [need.get("query", "")]) if q][:6]
                     if not queries:
                         return []
+                    claims = load_claims(project_dir) if project_dir else []
                     best = {}
                     for q in queries:
                         try:
@@ -411,6 +428,11 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                     for r in ranked:
                         url = r.video_path
                         start, dur = _clip_window(r.timestamp_start, r.timestamp_end, clip_seconds)
+                        dup = range_is_claimed(claims, url, start, dur)
+                        if dup:                       # the hero pool already pulled this shot — don't twin it
+                            print(f"  [acquire] skip {url.rsplit('/', 1)[-1]}@{start:.0f}s — already claimed "
+                                  f"by {dup.get('owner')} ({dup.get('file')})", flush=True)
+                            continue
                         cfree, kind, channel = _copyright_of(url)
                         lic = ("public-domain / CC — copyright-free" if cfree
                                else f"copyrighted — YouTube ({channel})" if channel else "copyrighted — YouTube")
@@ -447,18 +469,36 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                     dl_kind = "youtube" if ("youtube" in url or "youtu.be" in url) else "direct"
                     try:
                         if "archive.org" in url:
-                            src_url = clipper.resolve_media_url(url, "archive", 720, "clip")
+                            src_url = clipper.resolve_media_url(url, "archive", purpose="clip")
                             dl_kind = "direct"
                         saved = clipper.clip(src_url, start, start + dur, out, kind=dl_kind)
                     except Exception:
                         return False
                     if saved and out.exists() and out.stat().st_size > 20000:
+                        # CLEANUP: these are BROADCAST sources — a Bloomberg/PBS clip carries a burned-in
+                        # watermark + a caption band, and pooling that raw puts another channel's brand in
+                        # the essay. Crop them out (same aspect, replaced in place) before the asset is
+                        # scored/captioned. Soft: a cleanup failure never loses the clip.
+                        if clean_transcript_clips:
+                            rep = clean_media_inplace(out, cfg) or {}
+                            c.meta["cleanup"] = rep
+                            if rep.get("changed"):
+                                bits = [k for k in ("logo", "caption", "trimmed") if rep.get(k)]
+                                print(f"  [acquire] cleaned {out.name}: removed {', '.join(bits) or 'strays'}",
+                                      flush=True)
+                            elif rep.get("error"):
+                                print(f"  ⚠ [acquire] cleanup failed on {out.name} ({rep['error']}) — "
+                                      f"clip kept as-is", flush=True)
+                        if project_dir:               # claim it so a later pass doesn't pull the same shot
+                            record_claim(project_dir, url=url, start=start, dur=dur,
+                                         owner="pool", file=out.name)
                         c.path = out
                         return True
                     return False
                 ctx.download = _download_transcript
                 print("[acquire] transcript_lib: downloadable b-roll from the transcript library "
-                      "(youtube · youtube_cc · archive), copyright-marked", flush=True)
+                      "(youtube · youtube_cc · archive), copyright-marked"
+                      + (", watermark/caption-cleaned" if clean_transcript_clips else ""), flush=True)
             except Exception as e:
                 print(f"⚠ [acquire] transcript_lib source unavailable — skipped ({type(e).__name__}: {e})", flush=True)
 

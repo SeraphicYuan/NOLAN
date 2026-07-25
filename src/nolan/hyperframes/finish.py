@@ -90,6 +90,44 @@ def _mark_render_done(pdir: Path, comp: str) -> Path:
     return p
 
 
+def style_dials(pdir: Path) -> dict:
+    """The dials the essay was AUTHORED to (`style_dials` in hyperframes.json, written by new_essay).
+    Without this the lint scored every essay against the default `balanced`/`light` targets while the
+    author had been briefed to `dense`/`heavy` — brief and gate disagreeing is worse than no gate."""
+    try:
+        hf = json.loads((pdir / "hyperframes.json").read_text(encoding="utf-8"))
+        d = hf.get("style_dials")
+        return {k: v for k, v in d.items() if v} if isinstance(d, dict) else {}
+    except (json.JSONDecodeError, OSError, AttributeError):
+        return {}
+
+
+def _style_gate(pdir: Path) -> None:
+    """HARD pre-render style-contract gate. Raises on any failing GATE dimension unless HF_ALLOW_STYLE=1."""
+    try:
+        from nolan.style_contract import StyleContract, format_report, lint, scenes_from_hf
+        dials = style_dials(pdir)
+        scenes = scenes_from_hf(pdir)
+        if not scenes:
+            return
+        rep = lint(scenes, StyleContract.resolve("essay", **dials))
+    except Exception as e:                                # never block a render on a broken linter
+        print(f"  (style-gate skipped: {type(e).__name__}: {e})")
+        return
+    print("▶ style-gate")
+    print("  " + format_report(rep).replace("\n", "\n  "))
+    if rep["overall_pass"]:
+        return
+    detail = "; ".join(f"{f['label']} = {f['value']} ({f['note']})" for f in rep["failures"])
+    if os.environ.get("HF_ALLOW_STYLE"):
+        print(f"  ⚠ {rep['n_fail']} style gate(s) failing — shipping anyway (HF_ALLOW_STYLE=1): {detail}")
+        return
+    raise RuntimeError(
+        f"hf-finish: STYLE-CONTRACT GATE — {rep['n_fail']} failing gate(s) before the render spend: "
+        f"{detail}. Revise the specs (that is the 'revise' half of draft → lint → revise) and re-run; "
+        f"the dials in play are {style_dials(pdir) or 'preset defaults'}. Knowing exception: HF_ALLOW_STYLE=1.")
+
+
 def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool = False,
            render_mode: str = "whole", burn_captions: bool = False, duck: bool = False) -> dict:
     """Run the compose-first finish DAG for a comp. Returns a summary dict.
@@ -307,6 +345,16 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     _cap_on = _cg.exists() and _cg.stat().st_size > 4
     _layout_cmd = py + ["-m", "nolan.hyperframes.layout_lint", str(pdir)] + ([] if _cap_on else ["--no-captions"])
     _run("layout", _layout_cmd, dry=dry_run, soft=True)
+    # 7.6 · STYLE-CONTRACT GATE — pre-render, and HARD. The lint used to run only at step 9, soft, AFTER
+    #       a ~20-minute render, so a draft that missed evidence coverage / motion footage / block variety
+    #       shipped anyway and the "revise" half of draft→lint→revise never happened (the diamond v1 run
+    #       shipped 3 gate fails: 7% video, statement at 52% of scenes, 9 of 50 blocks). It reads the specs
+    #       only (~1s), so the honest place for it is BEFORE the render spend. HF_ALLOW_STYLE=1 to ship a
+    #       knowing exception.
+    if dry_run:
+        print("  [style-gate] style_contract.lint(specs) — HARD fail before the render spend")
+    else:
+        _style_gate(pdir)
     if not render:
         print("hf-finish: stopped before render (--no-render). Preview then re-run to render.")
         return {"comp": comp, "rendered": False}
@@ -360,7 +408,8 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
                 print(f"  ⚠ ducked sfx-mix skipped ({type(e).__name__}: {e}) — render left VO-only")
     # 9 · QA (soft: report — don't crash the driver on a gate fail)
     _run("hf-qa", py + ["-m", "nolan.hf_qa", str(pdir)], dry=dry_run, soft=True)          # freeze + audio (ffmpeg)
-    _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)], dry=dry_run, soft=True)  # spec dimensions
+    _run("style-lint", py + ["-m", "nolan.style_contract", str(pdir)]                          # spec dimensions
+         + [f"--dial={k}={v}" for k, v in style_dials(pdir).items()], dry=dry_run, soft=True)
     _run("temporal", py + ["-m", "nolan.hyperframes.temporal_gate", str(pdir)], dry=dry_run, soft=True)  # motion: frozen/static/dead-air
     _run("perceptual", py + ["-m", "nolan.hyperframes.render_gate", str(pdir)], dry=dry_run, soft=True)  # VLM: legibility + relevance
     if not dry_run:

@@ -26,9 +26,13 @@ BLOCK_FAMILY: Dict[str, str] = {
     "connection_board": "dataviz", "comparison_table": "dataviz", "slope": "dataviz",
     "isotype": "dataviz", "dumbbell": "dataviz", "small_multiples": "dataviz", "histogram": "dataviz",
     "gauge": "dataviz", "process": "dataviz",
+    # tier-2 extension blocks — were absent, so every scene using one silently counted as "text" and
+    # dropped out of dataviz_share (test_block_family_covers_the_catalog has been red since they shipped)
+    "stream": "dataviz", "bar_race": "dataviz", "data_table": "dataviz", "trajectory": "dataviz",
     "collage": "media", "gallery": "media", "carousel": "media", "linedraw": "media",
     "comparison": "media", "newshead": "media", "social_card": "media", "spotlight": "media",
     "detail_zoom": "media", "hero": "media", "annotate": "media", "layout": "media",
+    "split_view": "media",
     "raw": "structural",
 }
 # blocks that CAN host a real photo/clip (used to suggest upgrades for text-only beats)
@@ -49,6 +53,7 @@ MIN_READABLE: Dict[str, float] = {
     "cycle": 4.5, "ledger": 4.5, "funnel": 4.0, "venn": 4.0, "spectrum": 4.0, "pie": 4.0,
     "bullet_list": 4.0, "scale": 3.5, "pull_quote": 3.5, "chat_thread": 4.0, "juxtaposition": 4.0,
     "detail_zoom": 4.5, "hero": 3.0, "annotate": 4.5,
+    "stream": 4.5, "bar_race": 5.0, "data_table": 5.0, "trajectory": 4.5, "split_view": 5.0,
 }
 DEFAULT_MIN_READABLE = 3.0
 

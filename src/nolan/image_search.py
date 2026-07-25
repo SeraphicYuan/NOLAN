@@ -11,6 +11,8 @@ from typing import List, Optional, Dict, Any
 
 import httpx
 
+from nolan.media_quality import pick_by_height
+
 logger = logging.getLogger(__name__)
 
 
@@ -308,12 +310,13 @@ class PexelsVideoProvider(ImageProvider):
         results = []
         for vid in data.get("videos", []):
             files = vid.get("video_files", []) or []
-            # Prefer an HD-ish mp4 that isn't the huge 4K master.
+            # Shared pool-download policy: min(available, 1080). This used to sort ASCENDING and take the
+            # first >=720, i.e. exactly 720p even when the clip was published in 1080p — quality thrown
+            # away on every pexels pull.
             mp4s = [f for f in files if f.get("file_type") == "video/mp4" and f.get("link")]
-            mp4s.sort(key=lambda f: (f.get("height") or 0))
-            if not mp4s:
+            chosen = pick_by_height(mp4s, lambda f: f.get("height"))
+            if not chosen:
                 continue
-            chosen = next((f for f in mp4s if (f.get("height") or 0) >= 720), mp4s[-1])
             results.append(ImageSearchResult(
                 url=chosen["link"],
                 thumbnail_url=vid.get("image"),
@@ -353,8 +356,11 @@ class PixabayVideoProvider(ImageProvider):
             data = resp.json()
         results = []
         for hit in data.get("hits", []):
-            streams = hit.get("videos", {}) or {}
-            stream = streams.get("medium") or streams.get("large") or streams.get("small") or {}
+            # Shared pool-download policy: min(available, 1080). This used to try `medium` (1280x720)
+            # BEFORE `large` (1920x1080), so pixabay pulls were 720p by construction.
+            streams = [s for s in (hit.get("videos", {}) or {}).values()
+                       if isinstance(s, dict) and s.get("url")]
+            stream = pick_by_height(streams, lambda s: s.get("height")) or {}
             if not stream.get("url"):
                 continue
             results.append(ImageSearchResult(
@@ -695,14 +701,13 @@ class InternetArchiveProvider(ImageProvider):
         mp4s = [f for f in files if str(f.get("name", "")).lower().endswith(".mp4")]
         if not mp4s:
             return None
-        # Prefer a reasonably-sized h.264 derivative (not the largest master).
-        def size(f):
-            try:
-                return int(f.get("size", 0))
-            except (TypeError, ValueError):
-                return 0
-        mp4s.sort(key=size)
-        chosen = mp4s[len(mp4s) // 2] if len(mp4s) > 2 else mp4s[0]
+        # Reuse the archive derivative policy instead of a second, worse heuristic: this used to take the
+        # MEDIAN file by byte size, which is arbitrary and routinely picked a low derivative over the
+        # faststart h.264. `pick_derivative(purpose='clip')` is the one place that decision belongs
+        # (archive's `height` field is unreliable, so it keys on size+format).
+        from nolan.archive_source import pick_derivative
+        name = pick_derivative(files, "clip")
+        chosen = next((f for f in mp4s if f.get("name") == name), None) or mp4s[0]
         dur = None
         try:
             dur = float(chosen.get("length")) if chosen.get("length") else None
@@ -946,9 +951,14 @@ class NASAVideoProvider(ImageProvider):
                 assets = c.get(result.ref, timeout=20.0).json()
         except Exception:
             return None
-        mp4 = next((a for a in assets if str(a).lower().endswith(".mp4")), None)
-        if not mp4:
+        # NASA manifests list ~orig / ~large / ~medium / ~small variants with no dimensions, so rank by
+        # the known suffix ladder rather than taking whichever .mp4 happens to come first (which was
+        # often ~small). `large` before `orig`: orig can be a 4K/ProRes master we'd only downscale.
+        mp4s = [str(a) for a in assets if str(a).lower().endswith(".mp4")]
+        if not mp4s:
             return None
+        rank = {"large": 0, "orig": 1, "medium": 2, "small": 3}
+        mp4 = min(mp4s, key=lambda u: next((r for k, r in rank.items() if f"~{k}." in u.lower()), 4))
         result.url = mp4
         return result
 

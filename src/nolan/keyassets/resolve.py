@@ -240,8 +240,59 @@ def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Pa
                 prov["verified"] = confirmed is True
                 kept.append(prov)
 
+    def _run_transcript_lib(queries):
+        """ESCALATION tier: the transcript library (documentary YouTube + PD archive). Pulls just the
+        matched RANGE, cleans burned-in watermarks/captions off it, CLAIMS the range so the b-roll pool
+        can't twin it, and puts it through the same VLM verify as a provider clip."""
+        from nolan import clipper
+        from nolan.acquire.shared import clean_media_inplace, load_claims, range_is_claimed, record_claim
+        claims = load_claims(project_dir) if project_dir else []
+        for h in _transcript_lib_hits(cfg, queries)[:keep + 2]:
+            if len(kept) >= keep:
+                return
+            url, start = h["url"], h["start"]
+            dur = max(6.0, min(float(clip_seconds), float(h["end"]) - start or clip_seconds))
+            if url in seen_urls or range_is_claimed(claims, url, start, dur):
+                continue
+            dest = _dest()
+            try:
+                src_url, dl = url, ("youtube" if ("youtube" in url or "youtu.be" in url) else "direct")
+                if "archive.org" in url:
+                    src_url, dl = clipper.resolve_media_url(url, "archive", purpose="clip"), "direct"
+                if not clipper.clip(src_url, start, start + dur, dest, kind=dl):
+                    continue
+            except Exception:
+                continue
+            if not (dest.exists() and dest.stat().st_size > 20000):
+                dest.unlink(missing_ok=True)
+                continue
+            clean_media_inplace(dest, cfg)                    # broadcast source → crop chyron/watermark
+            state["downloaded"] = True
+            confirmed = _verify_video(cfg, dest, subject) if (verify and not evocative) else None
+            # STRICTER THAN THE PROVIDER TIER — here "not rejected" is not good enough. The segment
+            # text-embedding compresses cosine into a narrow band (~0.65-0.75 for ANYTHING), so a high
+            # retrieval score is NOT evidence of topic: measured live, "Lightbox Jewelry" retrieved free
+            # LIGHTNING stock at 0.680 and "2004 court proceedings" retrieved WATERGATE footage at 0.660.
+            # For an EXACT hero the VLM is therefore the only real gate — demand a positive confirmation
+            # (a wrong hero is worse than a missing one; the human hand-adds the miss on /keyassets).
+            strict = verify and not evocative                 # EXACT hero → must CONFIRM, not merely survive
+            if (confirmed is not True) if strict else (confirmed is False):
+                dest.unlink(missing_ok=True)
+                continue
+            seen_urls.add(url)
+            src_label, lic = _transcript_license(url)
+            if project_dir:
+                record_claim(project_dir, url=url, start=start, dur=dur, owner="hero", file=dest.name)
+            kept.append({"source": src_label, "source_url": url, "license": lic, "photographer": "",
+                         "query": h["query"], "file": dest, "verified": confirmed is True})
+
     queries = queries_for(entity, desired, domain)
     _run(queries)
+    if len(kept) < keep:                     # Tier B — the providers came up short; the transcript library
+        try:                                 # is often the ONLY source for named documentary footage
+            _run_transcript_lib(queries)
+        except Exception:
+            pass                             # an escalation tier must never break the base resolution
     if not kept and reformulate and not evocative:           # Tier C — one fresh-angle retry only on TOTAL miss
         seen = {q.lower() for q in queries}
         new = [q for q in _reformulate_queries(cfg, entity, desired, queries,
@@ -283,9 +334,70 @@ def _verify_video(cfg, video_path: Path, subject: str) -> Optional[bool]:
     return None
 
 
+def _transcript_lib_hits(cfg, queries: List[str], limit: int = 6, min_sim: float = 0.55) -> List[dict]:
+    """Ranked DISCOVERY-tier hits (documentary YouTube / PD archive) for a hero's footage queries.
+
+    The transcript library is often the ONLY place named documentary footage exists — the stock/museum
+    providers returned nothing for Kimberley Mine, GE's diamond synthesis or the antitrust proceedings,
+    while the library holds whole documentaries on exactly those. Returns [] on any failure (this is an
+    ESCALATION tier — a miss just means the hero stays unfilled, same as before)."""
+    if not queries:
+        return []
+    try:
+        from nolan.acquire.context import _resolve_clips_db
+        from nolan.indexer import VideoIndex
+        from nolan.vector_search import VectorSearch
+        db = _resolve_clips_db(cfg)
+        if not (db and db.exists()):
+            return []
+        vi = VideoIndex(db)
+        vs = VectorSearch(db_path=db.parent / "vectors", index=vi)
+        footage = set(vi.footage_video_ids())                # exclude real footage — clips_library's job
+    except Exception:
+        return []
+    best: dict = {}
+    for q in queries[:4]:
+        try:
+            hits = vs.search(query=q, limit=limit, search_level="segments", project_id=None) or []
+        except Exception:
+            continue
+        for r in hits:
+            score = float(getattr(r, "score", 0) or 0)
+            url = str(getattr(r, "video_path", "") or "")
+            if score < min_sim or getattr(r, "video_id", None) in footage:
+                continue
+            if not url.startswith(("http://", "https://")):
+                continue
+            key = (url, round(float(r.timestamp_start), 1))
+            if key not in best or score > best[key]["score"]:
+                best[key] = {"url": url, "start": float(r.timestamp_start), "end": float(r.timestamp_end),
+                             "score": score, "query": q,
+                             "description": getattr(r, "description", "") or getattr(r, "transcript", "")}
+    return sorted(best.values(), key=lambda h: h["score"], reverse=True)
+
+
+def _transcript_license(url: str) -> tuple:
+    """(source_label, license_string) for a transcript-library URL — copyright-MARKED, never filtered."""
+    try:
+        from nolan import archive_source as _ar
+        from nolan import transcript_lib as _tl
+        from nolan.youtube import extract_video_id as _yid
+        is_arch = "archive.org" in (url or "").lower()
+        sid = _ar.collection_ref(url) if is_arch else (_yid(url or "") or "")
+        e = (_tl.load_catalog() or {}).get(sid) or {}
+        ch = e.get("channel") or ""
+        free = is_arch or sid in _tl.copyright_free_ids() or bool(e.get("copyright_free"))
+        kind = "archive" if is_arch else ("youtube_cc" if free else "youtube")
+        return (f"transcript_lib ({kind})",
+                "public-domain / CC — copyright-free" if free
+                else (f"copyrighted — YouTube ({ch})" if ch else "copyrighted — YouTube"))
+    except Exception:
+        return "transcript_lib", "license?"
+
+
 def resolve_video(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Path,
                   clip_seconds: int = 20, *, verify: bool = True, domain: str = "",
-                  reformulate: bool = True, keep: int = 2) -> List[dict]:
+                  reformulate: bool = True, keep: int = 2, project_dir=None) -> List[dict]:
     """Search video providers → fetch short on-disk segments → (for EXACT footage) multi-frame VLM verify,
     keeping up to `keep` distinct clips (out, out_2…). `keep` defaults LOWER than images — video is ~4x the
     cost (download + trim + multi-frame verify). Returns a LIST of provenance dicts (empty if none); Tier-C

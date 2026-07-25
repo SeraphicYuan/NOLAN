@@ -327,6 +327,28 @@ async def gen_fill(cfg, empties, assets_dir: Path, pool, gen_style: str = "Cinem
             print(f"    + {base}  (krea2 generated)")
 
 
+def _probe_dims(path: Path):
+    """(width, height) of a pooled clip. The clip sources (local library, transcript_lib) carry no
+    dimensions, so the pool recorded 0x0 and the author's menu couldn't tell a 1080p pull from a 360p
+    one — a silent quality cap.
+
+    Reads it off `ffmpeg -i` stderr, the same way `hf_qa.probe` reads duration. NOT ffprobe: the bundled
+    imageio_ffmpeg ships ONLY `ffmpeg-win-*.exe`, so deriving a probe binary by name-swap raises
+    FileNotFoundError every time — which this function would have swallowed, leaving every clip at 0x0
+    and the LOW-RES tag silently never firing. Returns (0, 0) only when the stream line is truly absent.
+    """
+    import re as _re
+    import subprocess
+    try:
+        from nolan.hf_qa import _ffmpeg
+        r = subprocess.run([_ffmpeg(), "-i", str(path)], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=60)
+        m = _re.search(r"Stream #\S+: Video:.*?, (\d{2,5})x(\d{2,5})", r.stderr or "")
+        return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+    except Exception:
+        return 0, 0
+
+
 def _video_still(clip: Path):
     """A 3-frame FILMSTRIP (start / mid / end, hstacked) of a video clip → one temp jpg, so the VLM
     judges the clip's whole ARC in a single call — a clip that opens black, ends on a logo, or changes
@@ -491,13 +513,20 @@ def _candidates_to_pool(kept, assets_dir: Path):
         # skips a redundant VLM re-caption; they already passed the engine's cheap CLIP gate)
         cap = (f"[video] {c.meta.get('description', '')}".strip()
                if c.source in ("clips_library", "transcript_lib") else "")
+        w, h = c.meta.get("width", 0), c.meta.get("height", 0)
+        if c.modality == "video" and not h:
+            w, h = _probe_dims(dest)                  # clip sources report no dims — probe, don't record 0×0
         pool.append({"id": need, "file": rel, "media_type": c.modality, "query": c.meta.get("query", ""),
                      "source": c.meta.get("source", c.source), "source_url": c.meta.get("source_url", ""),
                      "photographer": c.meta.get("photographer", ""), "license": c.meta.get("license", ""),
-                     "width": c.meta.get("width", 0), "height": c.meta.get("height", 0),
+                     "width": w, "height": h,
                      "duration": c.meta.get("duration"), "relevance": round(c.relevance, 3), "caption": cap,
                      # explicit copyright-free flag so the pool is queryable, not just a license string
                      **({"copyright_free": bool(c.meta["copyright_free"])} if "copyright_free" in c.meta else {}),
+                     # PROVENANCE for a modification WE made: which burned-in elements were cropped out
+                     # (logo/caption) and the resulting zoom. Without it the asset silently differs from
+                     # its source and nobody can tell whether a tight crop was ours or the footage's.
+                     **({"cleanup": c.meta["cleanup"]} if c.meta.get("cleanup", {}).get("changed") else {}),
                      **({"gen_prompt": c.meta["gen_prompt"]} if c.meta.get("gen_prompt") else {}),
                      **({"gen_negative": c.meta["gen_negative"]} if c.meta.get("gen_negative") else {})})
     return pool
@@ -558,8 +587,14 @@ def main():
                     print(f"  gen skipped: {type(e).__name__}: {e}")
     else:
         from nolan.acquire import build_context, acquire_pool
+        # Release THIS pool's previous clip claims BEFORE anything reads the ledger (hero claims stay).
+        from nolan.acquire.shared import clear_claims
+        _rel = clear_claims(project, "pool")
+        if _rel:
+            print(f"  released {_rel} clip claim(s) from the previous pool build")
         ctx = build_context(cfg, clip_seconds=acfg.clip_seconds, gen_style=gen_style,
-                            clip_lib_max=acfg.clip_lib_max, clip_lib_min_sim=acfg.clip_lib_min_sim)
+                            clip_lib_max=acfg.clip_lib_max, clip_lib_min_sim=acfg.clip_lib_min_sim,
+                            project_dir=project)      # → the clip-CLAIM ledger (dedup vs the hero pool)
         print(f"ACQUIRE — stock={bool(ctx.search_stock)} library={bool(ctx.search_library)} "
               f"clips_library={bool(ctx.search_clips)} "
               f"clip-relevance={bool(ctx.relevance)} "

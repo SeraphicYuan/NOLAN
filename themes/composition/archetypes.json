@@ -142,7 +142,8 @@
       "density": "normal",
       "blocks": [
         "comparison",
-        "juxtaposition"
+        "juxtaposition",
+        "split_view"
       ],
       "exemplar": null,
       "zone": {
@@ -273,7 +274,11 @@
         "document",
         "slope",
         "dumbbell",
-        "histogram"
+        "histogram",
+        "bar_race",
+        "stream",
+        "trajectory",
+        "data_table"
       ],
       "exemplar": null,
       "zone": {

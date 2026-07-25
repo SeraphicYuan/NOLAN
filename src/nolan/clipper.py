@@ -88,13 +88,25 @@ def probe(src: str) -> Dict:
     return out
 
 
-def resolve_media_url(src: str, kind: Optional[str] = None, max_height: int = 360,
+def resolve_media_url(src: str, kind: Optional[str] = None, max_height: Optional[int] = None,
                       purpose: str = "caption") -> str:
-    """A seekable media URL for frame-grab / direct-ffmpeg WITHOUT a full download. YouTube/extractor →
-    yt_dlp resolves a progressive stream URL (googlevideo, Range-capable). archive.org → the two-tier
-    derivative (`purpose='caption'` low-res for preview frames, `'clip'` high-def for the actual pull).
-    direct/hls/local → the src itself."""
+    """A seekable media URL for frame-grab / direct-ffmpeg WITHOUT a full download.
+
+    `purpose` selects the RESOLUTION POLICY and both branches now honour it (the YouTube branch used to
+    ignore it and hardcode format 18 — a 360p progressive — so a `purpose='clip'` caller silently got
+    preview-grade video for a pooled asset):
+
+    * ``'caption'`` — cheapest legible encode (preview frames / VLM keyframing). archive → the `_512kb`
+      derivative; youtube → format 18 / anything under `max_height` (default 360).
+    * ``'clip'`` — the encode we actually pool and render: `min(available, 1080)` (`media_quality`).
+      archive → the faststart h.264 derivative; youtube → best split/progressive at or below the target.
+
+    direct/hls/local → the src itself.
+    """
+    from nolan.media_quality import TARGET_HEIGHT
     kind = kind or kind_of(src)
+    if max_height is None:
+        max_height = TARGET_HEIGHT if purpose == "clip" else 360
     if kind == "archive" or "archive.org/details/" in src:
         import httpx
 
@@ -107,7 +119,13 @@ def resolve_media_url(src: str, kind: Optional[str] = None, max_height: int = 36
         return ar.download_url(ident, name)
     if kind in ("youtube", "extractor"):
         import yt_dlp
-        fmt = f"18/best[ext=mp4][height<={max_height}]/best[height<={max_height}]/worst[ext=mp4]/worst"
+        if purpose == "clip":
+            # a real pull — best at or below the target; NOT format 18, which is always 360p
+            fmt = (f"b[ext=mp4][height<={max_height}]/b[height<={max_height}]/"
+                   f"bv*[height<={max_height}]+ba/b")
+        else:
+            # preview/keyframing — cheapest legible progressive stream (Range-friendly, single-file)
+            fmt = f"18/best[ext=mp4][height<={max_height}]/best[height<={max_height}]/worst[ext=mp4]/worst"
         with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True, "format": fmt}) as ydl:
             info = ydl.extract_info(src, download=False)
         url = info.get("url")
@@ -165,10 +183,16 @@ def clip(src: str, start: float, end: float, out_path: Path, *, kind: Optional[s
     if kind in ("youtube", "extractor"):
         import yt_dlp
         from yt_dlp.utils import download_range_func
+        from nolan.media_quality import ytdlp_format
         tmpl = str(out_path.with_suffix("")) + ".%(ext)s"
+        # POOL-ASSET quality: min(available, 1080) — see media_quality. `ffmpeg_location` is REQUIRED,
+        # not optional: the split-stream branch needs a merge, and without a locatable ffmpeg yt-dlp
+        # silently falls through to the best PROGRESSIVE stream, which on YouTube is format 18 (360p).
+        # That failure is invisible — you get a file, just a bad one — so pin the bundled binary.
         opts = {"quiet": True, "noplaylist": True, "outtmpl": tmpl,
                 "download_ranges": download_range_func(None, [(start, end)]),
-                "force_keyframes_at_cuts": True, "format": "bv*+ba/b"}
+                "force_keyframes_at_cuts": True, "format": ytdlp_format(),
+                "ffmpeg_location": _ffmpeg()}
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([src])

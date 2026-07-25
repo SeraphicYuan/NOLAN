@@ -38,6 +38,13 @@ DIMENSIONS = [
               "max share of any single block — no one template should dominate", True),
     Dimension("layout_max_run", "Adjacent repeats", "layout_max_run", "gate", (None, 3),
               "longest run of the same block back-to-back — break up monotony"),
+    Dimension("distinct_blocks", "Palette coverage", "distinct_blocks", "gate", (8, None),
+              "how many DISTINCT blocks the essay uses out of the ~50 the composer ships — promoted from "
+              "advisory because concentration alone didn't catch it: an essay can pass max-share at 50% "
+              "and still be three templates in a trench coat. It is a COUNT, so it does not scale with "
+              "length on its own — the default floor guards the genuinely narrow piece, and a long essay "
+              "should be dialled to `rich` (a 68-scene essay on 9 blocks is thin; a 12-scene one is not). "
+              "Reach past statement/stat/comparison into the tail (isotype, sankey, spans, quadrant…)"),
     # ---- ADVISORY (measured + reported, never fails; promote to a gate when it earns one) ----
     Dimension("pacing_cv", "Pacing variance", "pacing_cv", "advisory",
               rubric="scene-length variation — a DESCRIPTOR of the narration's own rhythm once durations come "
@@ -54,8 +61,6 @@ DIMENSIONS = [
               rubric="stat scenes carrying >3 numbers should escalate to a chart"),
     Dimension("long_holds", "Long ungrounded holds", "long_holds", "advisory",
               rubric="ungrounded scenes held >8s read like a static slide — split the beat or give it a moving ground"),
-    Dimension("distinct_blocks", "Palette coverage", "distinct_blocks", "advisory",
-              rubric="how many DISTINCT blocks used — reach past statement/stat/comparison into the tail"),
     Dimension("media_diversity", "Media diversity", "media_diversity", "advisory", pct=True,
               rubric="distinct assets ÷ grounded scenes — low means the same image is reused across beats"),
     Dimension("max_asset_reuse", "Max asset reuse", "max_asset_reuse", "advisory",
@@ -68,12 +73,14 @@ BY_KEY: Dict[str, Dimension] = {d.key: d for d in DIMENSIONS}
 
 # human-friendly dial names → dimension key
 DIAL_ALIASES = {"asset_density": "coverage", "evidence_coverage": "coverage",
-                "video": "video_share", "motion": "video_share"}
+                "video": "video_share", "motion": "video_share",
+                "block_variety": "distinct_blocks", "palette": "distinct_blocks"}
 
 # named levels for the dial-able gates (density is a RANGE, never "maximize")
 LEVELS: Dict[str, Dict[str, Tuple[float, float]]] = {
     "coverage": {"sparse": (0.2, 0.55), "balanced": (0.45, 0.8), "dense": (0.6, 0.95)},
     "video_share": {"none": (0.0, 1.0), "light": (0.05, 0.35), "heavy": (0.3, 0.85)},
+    "distinct_blocks": {"narrow": (6, None), "balanced": (10, None), "rich": (14, None)},
 }
 
 # presets = named target-override maps over the gate defaults. One for now; add when earned.

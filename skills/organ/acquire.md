@@ -40,6 +40,11 @@ generate originals to fill gaps. Entry: `acquire_pool(needs, ctx, cfg)` → per-
    `TIERS[category]` (category ∈ **art / archival / general**) — the saved **library** and
    **clips_library** always rank first.
 2. **Download + decode-gate** (concurrent; network-bound fetch parallelized, CLIP/dedup after).
+   A **transcript_lib** hit is materialised by pulling JUST its matched RANGE from the source URL,
+   then **cleaned** (`shared.clean_media_inplace` — a same-aspect crop that removes the burned-in
+   watermark/chyron + caption band). These are BROADCAST sources; pooling them raw puts another
+   channel's brand in the essay. The same helper serves the human clip-review route, so the two
+   paths can't drift.
 3. **CLIP relevance FLOOR** — a cheap cosine gate BEFORE the VLM (`clip_lib_relevance_floor`).
    Two source classes lie about relevance and are gated. **Curated** institutional/art providers
    (`_CURATED`: artvee, met, wellcome, wikimedia, loc, smithsonian…) are EXEMPT — for evocative
@@ -47,7 +52,11 @@ generate originals to fill gaps. Entry: `acquire_pool(needs, ctx, cfg)` → per-
 4. **VLM usability FLOOR** (`judge.py`) — the semantic cull CLIP can't do, FUSED with the caption
    pass (~one extra prompt, not a call). Per kept image → `{usable, flags, caption}`. It is a
    FLOOR that removes junk, NOT a re-ranker. Video + generated stills are exempt.
-5. **Semantic de-dup** (avg-hash + hamming) — drop near-duplicates.
+5. **Semantic de-dup** (avg-hash + hamming) — drop near-duplicates. Clips de-dup by RANGE instead:
+   the **claim ledger** (`capture/_claims.json`, `shared.record_claim` / `range_is_claimed`) is the
+   one dedup channel between the PRECISION pool (keyassets heroes, which runs first and claims what
+   it pulled) and this RECALL pool. Ranges are exact and known at search time — better than hashing,
+   which two crops of one shot defeat.
 6. **Keep the best** `per_need`; **generate originals** (evocative, floor-gated) where a beat is
    thin or off-topic.
 
@@ -65,6 +74,35 @@ so the downscale-before-vision step matters (a >4k image errors the API and junk
 - **Over-provision then cull.** Fan-out + over-fetch is deliberate — the pool is the ceiling.
 - **Generate to fill, never to diversify.** Originals fill thin/off-topic beats; model policy is
   krea2-default, vary via Fooocus styles/prompts (see `[[feedback_generation_model_policy]]`).
+- **A retrieval score is not a topic gate.** The segment text-embedding compresses cosine into a
+  narrow band (~0.65-0.75 for ANYTHING), so `clip_lib_min_sim` is a tail-trim only — measured live,
+  "Lightbox Jewelry" retrieved free LIGHTNING stock at 0.680 and "2004 court proceedings" retrieved
+  WATERGATE footage at 0.660. Discrimination is the downstream CLIP frame gate + VLM's job. Where
+  this tier feeds the HERO pool (`keyassets/resolve.py`) the VLM is the ONLY real gate, so there it
+  demands a POSITIVE confirmation rather than merely surviving — a wrong hero beats no hero never.
+- **The pool must be able to feed the gate.** The essay's `video_share` dial reaches
+  `derive_asset_needs`, which sets a floor on how many needs are video; without it a `heavy` essay
+  derived 24/24 image needs and the style contract's motion gate became unsatisfiable.
+- **ONE resolution policy, and it is not the preview policy.** Pool-asset downloads take
+  `min(available, 1080)` via `nolan/media_quality.py`; preview/captioning deliberately stays low-res
+  (`pick_derivative(purpose='caption')`, `clipper.preview_frames`). Conflating them is how every video
+  provider ended up with its own conservative heuristic — pexels took the first `>=720`, pixabay
+  preferred `medium` over `large`, archive took the median file by byte size, and library INGEST
+  capped at `height<=720` with no `ffmpeg_location`, so failed merges fell through to 360p. The
+  library's source quality is the ceiling on every clip trimmed from it, so that one cap put 46 of 48
+  library clips in the diamond pool at 360p. Any yt-dlp call that may merge MUST pass
+  `ffmpeg_location` — without it the degrade is silent (you still get a file).
+- **No silent caps on quality.** Clips carry probed `width`/`height` into `pool.json` (read off
+  `ffmpeg -i`, since imageio_ffmpeg ships no ffprobe), and the author's menu marks sub-720p pulls as
+  ground-only and copyrighted pulls as excerpt-only. YouTube is externally 360p-capped here —
+  a STALE yt-dlp, not YouTube: pinned at 2026.01.31 vs 2026.07.04 current, the old extractor
+  couldn't reach the adaptive formats and fell back to format 18 (360p) while emitting a SABR
+  warning that read like an external block. Upgrading yt-dlp (+ yt-dlp-ejs) restored up to 4K;
+  the snippet path now returns 1920x1080. `deno` is a red herring (identical with/without).
+  KEEP YT-DLP CURRENT — a stale extractor degrades silently and blames upstream.
+- **A pool rebuild releases its own claims.** `clear_claims(project, 'pool')` at the head of each
+  acquisition — the ledger is append-only, so otherwise a re-acquire skips every range the last build
+  took and looks like the source went dry. Hero claims survive by design.
 
 ## Where it lives + plugs in
 

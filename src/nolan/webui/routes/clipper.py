@@ -11,7 +11,6 @@ pool). Deliberately does NOT go through the ingestion library and never download
 """
 import asyncio
 import re
-import subprocess
 import urllib.request
 from pathlib import Path
 
@@ -142,29 +141,10 @@ def register(app, ctx):
         # scale back to the source W×H — the reusable pool asset is clean. Vision-confirmed. Replaces in place.
         cleanup_info = None
         if payload.get("cleanup"):
-            try:
-                from nolan.config import load_config
-                from nolan.hyperframes import cleanup as cu
-                cfg = load_config()
-                prov = await asyncio.to_thread(cu.default_vision_provider, cfg)
-                confirm = cu.make_vision_confirm(saved, cfg, prov)
-                plan = await asyncio.to_thread(cu.analyze, saved, confirm)
-                if plan.get("changed"):
-                    cleaned = saved.with_name(saved.stem + "__clean.mp4")
-                    cmd = cu.build_cmd(clipper._ffmpeg(), saved, cleaned, plan)
-                    await asyncio.to_thread(subprocess.run, cmd, capture_output=True)
-                    if cleaned.exists() and cleaned.stat().st_size > 1000:
-                        saved.unlink(missing_ok=True)
-                        cleaned.rename(saved)                    # keep the same name/path (pool points here)
-                        cleanup_info = {"logo": bool(plan.get("logos")), "caption": bool(plan.get("caption")),
-                                        "trimmed": plan.get("trim_in", 0) > 0 or plan.get("trim_out", 0) < plan.get("dur", 0) - 1e-3,
-                                        "zoom": plan.get("zoom")}
-                    else:
-                        cleanup_info = {"error": "cleanup produced no file"}
-                else:
-                    cleanup_info = {"changed": False}           # nothing to remove — asset kept as-is
-            except Exception as e:
-                cleanup_info = {"error": f"{type(e).__name__}: {e}"}   # never fail the clip over cleanup
+            # ONE implementation, shared with the HEADLESS transcript_lib acquisition (acquire/shared.py) —
+            # it never raises and never loses the clip, so no try/except needed here.
+            from nolan.acquire.shared import clean_media_inplace
+            cleanup_info = await asyncio.to_thread(clean_media_inplace, saved)
 
         pooled = False
         if comp:
@@ -212,7 +192,7 @@ def register(app, ctx):
         commit_url, commit_kind = url, (kind or clipper.kind_of(url))
         if commit_kind == "archive" or "archive.org/details/" in url:
             try:
-                commit_url = await asyncio.to_thread(clipper.resolve_media_url, url, "archive", 720, "clip")
+                commit_url = await asyncio.to_thread(clipper.resolve_media_url, url, "archive", None, "clip")
                 commit_kind = "direct"
             except Exception:
                 commit_url, commit_kind = url, "extractor"        # fall back to yt_dlp's archive.org extractor

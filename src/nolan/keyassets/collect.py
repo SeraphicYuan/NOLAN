@@ -83,7 +83,8 @@ def collect(cfg, project_dir: Path, proposal: KeyAssetsProposal, *, limit: Optio
             out = ka_dir / (stem + (".mp4" if is_video else ".jpg"))
             tag = "~" if d.relevance == "related" else ""
             if is_video:
-                results = resolve_video(cfg, client, e, d, out, verify=verify, domain=domain)   # keep up to 2
+                results = resolve_video(cfg, client, e, d, out, verify=verify, domain=domain,
+                                        project_dir=project_dir)                                # keep up to 2
             else:
                 results = resolve_image(cfg, client, e, d, out, verify=verify, domain=domain)    # keep up to 4
             if not results:

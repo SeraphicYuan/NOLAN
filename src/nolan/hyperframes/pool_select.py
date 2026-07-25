@@ -29,6 +29,14 @@ def render_inventory_lines(pool: list) -> List[str]:
         if not f:
             continue
         tag = " [video]" if it.get("media_type") == "video" else ""
+        # NO SILENT CAPS: a 360p archival/YouTube pull upscaled full-bleed into a 1080p frame reads soft.
+        # Mark it so the author spends it as a dimmed GROUND (scrimmed, behind type) rather than as hero
+        # footage — the menu is the only place the author can learn this.
+        h = int(it.get("height") or 0)
+        if it.get("media_type") == "video" and 0 < h < 720:
+            tag += f" [{h}p — LOW-RES: use as a dimmed ground, not full-bleed hero]"
+        if it.get("copyright_free") is False:
+            tag += " [copyrighted — short referenced excerpt only]"
         cred = f"{it.get('source') or '?'}" + (f" / {it['photographer']}" if it.get("photographer") else "")
         lines.append(f"- `assets/{f}`{tag} — {it.get('caption', '')}  "
                      f"_(need: {it.get('id', '?')}; {cred}; {it.get('license') or 'license?'})_")

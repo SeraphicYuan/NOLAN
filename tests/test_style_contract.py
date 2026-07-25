@@ -36,9 +36,9 @@ def _v1_like():
 
 
 def test_registry_is_lean():
-    assert len(GATES) == 5                                        # + short_holds (unreadable windows) is a gate
+    assert len(GATES) == 6                     # + short_holds (unreadable) + distinct_blocks (palette)
     assert {g.key for g in GATES} == {"short_holds", "coverage", "video_share",
-                                      "layout_max_share", "layout_max_run"}
+                                      "layout_max_share", "layout_max_run", "distinct_blocks"}
     assert "layout_entropy" not in {d.metric for d in DIMENSIONS}  # the misleading metric was cut
     assert all(d.mode == "advisory" for d in ADVISORY)
 
@@ -107,7 +107,7 @@ def test_linter_flags_the_v1_problems():
     rep = lint(_v1_like(), StyleContract.resolve("essay", asset_density="dense"))
     fails = {f["key"] for f in rep["failures"]}
     assert not rep["overall_pass"]
-    assert fails == {"coverage", "video_share", "layout_max_share", "layout_max_run"}
+    assert fails == {"coverage", "video_share", "layout_max_share", "layout_max_run", "distinct_blocks"}
     # advisory dimensions are reported but never counted as failures
     assert all(d["mode"] == "advisory" and d["ok"] for d in rep["dimensions"] if d["mode"] == "advisory")
 

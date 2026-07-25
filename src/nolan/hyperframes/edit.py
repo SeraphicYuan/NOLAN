@@ -86,7 +86,7 @@ def discover_compositions() -> List[Dict[str, Any]]:
 def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
                    voiceover: bool = False, asset_density: str = "balanced",
                    theme: Optional[str] = None, motion: Optional[str] = None,
-                   key_assets: bool = False) -> str:
+                   key_assets: bool = False, block_variety: Optional[str] = None) -> str:
     """The task brief the HF authoring agent reads to author a new essay (written to .hf_kickoff.md)."""
     rel = f"videos/{slug}"
     comp_rel = f"render-service/_lab_hyperframes/{rel}"
@@ -114,6 +114,8 @@ def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
         dials = {"asset_density": asset_density}
         if motion:
             dials["video_share"] = motion
+        if block_variety:
+            dials["block_variety"] = block_variety
         contract_txt = authoring_brief(StyleContract.resolve("essay", **dials))
     except Exception:
         contract_txt = ""
@@ -133,12 +135,17 @@ def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
         f"(or `nolan hf-finish {slug}`) runs the whole DAG in the correct order and fails LOUD on the first broken "
         f"step: sync-durations → word-sync (force-align the VO + place each scene, firing its highlight on the SPOKEN "
         f"word) → recompose every frame in the theme → sound (bgm + sfx bed) → captions → assemble-index → "
-        f"assemble_media (injects `ground:{{\"kind\":\"video\"}}` clips + a PRE-RENDER freeze-heal) → render → hf_qa + "
-        f"style-lint. Re-run it after ANY spec edit (idempotent). Use `--no-render` to assemble + preview first; "
-        f"copy video-ground / comparison-video clips into `{rel}/assets/` before running it."
+        f"assemble_media (injects `ground:{{\"kind\":\"video\"}}` clips + a PRE-RENDER freeze-heal) → **STYLE GATE** → "
+        f"render → hf_qa + style-lint. Re-run it after ANY spec edit (idempotent). Use `--no-render` to assemble + "
+        f"preview first; copy video-ground / comparison-video clips into `{rel}/assets/` before running it."
+        f"\n- **The STYLE GATE is HARD and runs BEFORE the render.** finish reads your specs (~1s) and REFUSES to "
+        f"render while any contract GATE fails — so lint yourself first (command below) and revise until it passes, "
+        f"rather than discovering it after a 20-minute render. Do NOT set `HF_ALLOW_STYLE=1` to get past it; that "
+        f"escape hatch is the human's, not yours."
         f"\n- **QA + lint (draft → verify → revise):** `python -X utf8 -m nolan.hf_qa {comp_rel}` (freeze/audio) AND "
         f"`python -X utf8 -m nolan.style_contract {comp_rel} --dial asset_density={asset_density}"
-        + (f" video_share={motion}" if motion else "") + "` — fix every failing "
+        + (f" --dial video_share={motion}" if motion else "")
+        + (f" --dial block_variety={block_variety}" if block_variety else "") + "` — fix every failing "
         f"GATE and QA fail, then re-render.")
     vo_line = (
         f"\n- **Voice — NOLAN-PROVIDED (do NOT synthesize a new voice):** the cloned voiceover is already "
@@ -161,7 +168,13 @@ def _kickoff_brief(slug: str, style: Optional[str] = None, pool: bool = True,
             f"- **Assets — ASSET-BACKED:** real assets are being acquired into `{rel}/capture/` and listed in "
             f"`{rel}/capture/extracted/asset-descriptions.md` (the ONLY asset menu). SELECT `asset_candidates` from it "
             f"for image beats (collage / gallery / newshead / timeline / comparison); invent typography / diagram / "
-            f"data-viz where no real asset fits. Resolve BGM/SFX via `/media-use`.{hero_line}")
+            f"data-viz where no real asset fits. Resolve BGM/SFX via `/media-use`.{hero_line}"
+            f"\n  **Read the menu's TAGS — they are constraints, not decoration.** `[NNNp — LOW-RES]` on a clip means "
+            f"it was pulled from an archival/documentary source at well under 1080p: spend it as a DIMMED GROUND "
+            f"behind type (scrimmed, slow push), never full-bleed as hero footage, where the softness reads. "
+            f"`[copyrighted — short referenced excerpt only]` means the clip is a documentary/news reference: use it "
+            f"BRIEFLY and in service of the point being made, prefer a copyright-free asset where either would work, "
+            f"and never build a whole beat out of another channel's footage.")
     else:
         assets_line = (f"- **Assets:** no sourced pool (legacy invent-only mode) — invent per scene. Resolve "
                        f"BGM/SFX/images/logos via `/media-use`; land them in `{rel}/assets/`.")
@@ -219,7 +232,8 @@ def attach_voiceover(comp: str, vo_source: str) -> Dict[str, Any]:
 def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool: bool = True,
               voiceover: Optional[str] = None, asset_density: str = "balanced",
               theme: Optional[str] = None, motion: Optional[str] = None,
-              gen_style: Optional[str] = None, key_assets: str = "curated") -> Dict[str, Any]:
+              gen_style: Optional[str] = None, key_assets: str = "curated",
+              block_variety: Optional[str] = None) -> Dict[str, Any]:
     """Scaffold a new HyperFrames essay project under the lab videos root + write a kickoff brief for the
     HF authoring agent. Returns {comp, dir, prompt, acquire_pool, key_assets}; the caller runs the asset
     stages (key-assets heroes, then the b-roll pool) and dispatches `prompt` to a tmux agent. Shows up in
@@ -247,12 +261,17 @@ def new_essay(name: str, script: str, style: Optional[str] = None, acquire_pool:
         hf["theme"] = theme
     if gen_style:                                       # explicit ComfyUI gen style; else pool.py derives from theme
         hf["gen_style"] = gen_style
+    # persist the dials the author is BRIEFED to, so hf-finish's style gate scores the essay against the
+    # same targets (it used to lint every essay at the preset defaults while the brief said `dense`)
+    dials = {"asset_density": asset_density, **({"video_share": motion} if motion else {}),
+             **({"block_variety": block_variety} if block_variety else {})}
+    hf["style_dials"] = dials
     if len(hf) > 1:
         (pdir / "hyperframes.json").write_text(json.dumps(hf), encoding="utf-8")
     (pdir / ".hf_kickoff.md").write_text(
         _kickoff_brief(slug, style, acquire_pool, voiceover=bool(voiceover), asset_density=asset_density,
                        theme=(theme if theme and theme_exists(theme) else None), motion=motion,
-                       key_assets=(key_assets != "off")),
+                       key_assets=(key_assets != "off"), block_variety=block_variety),
         encoding="utf-8")
     prompt = (f"New HyperFrames essay: read render-service/_lab_hyperframes/videos/{slug}/.hf_kickoff.md and execute "
               f"it — author an asset-backed video essay from that project's SOURCE.md into its compositions/frames/ "
@@ -347,13 +366,76 @@ def ensure_storyboard(comp: str) -> Path:
     return sb
 
 
-async def derive_asset_needs(script: str, client, k: int = 24) -> List[Dict[str, Any]]:
+# How much of the derived NEED list should be video, per video_share dial. The need list used to be
+# dial-BLIND: asked for a `heavy` essay it still derived 24/24 image needs (measured), so the pool came
+# back all stills and the author could not reach the video_share gate however well they authored — a gate
+# the pipeline cannot satisfy is worse than no gate. The dial now reaches the acquisition that feeds it.
+_VIDEO_NEED_SHARE = {"none": 0.0, "light": 0.2, "balanced": 0.3, "heavy": 0.45}
+
+
+def _parse_need_items(raw: str, strict: bool = False) -> Optional[List[Dict[str, Any]]]:
+    """The need array out of an LLM reply. `strict=True` returns None instead of salvaging, so the
+    caller can retry the generation — salvage is the LAST resort, not the first.
+
+    A whole 24-need plan used to be lost to one bad character — observed live: an unescaped quote at
+    char 10590 raised JSONDecodeError and took the entire acquisition down with it. The array is a list
+    of independent objects, so a malformed one should cost that ONE need, not the plan. Strict parse
+    first (the normal path); on failure, scan brace-balanced top-level objects and keep each that parses.
+    """
+    i, j = raw.find("["), raw.rfind("]")
+    if not (0 <= i < j):
+        return [] if not strict else None
+    body = raw[i:j + 1]
+    try:
+        items = json.loads(body)
+        return [x for x in items if isinstance(x, dict)]
+    except json.JSONDecodeError:
+        if strict:
+            return None                                    # caller decides: retry the generation
+    out, depth, start, in_str, esc = [], 0, None, False, False
+    for pos, ch in enumerate(body):
+        if in_str:
+            in_str, esc = (in_str and not (ch == '"' and not esc)), (ch == "\\" and not esc)
+            continue
+        if ch == '"':
+            in_str, esc = True, False
+        elif ch == "{":
+            if depth == 0:
+                start = pos
+            depth += 1
+        elif ch == "}" and depth:
+            depth -= 1
+            if depth == 0 and start is not None:
+                try:
+                    o = json.loads(body[start:pos + 1])
+                    if isinstance(o, dict):
+                        out.append(o)
+                except json.JSONDecodeError:
+                    pass                                  # this ONE need is malformed — drop it, keep going
+                start = None
+    print(f"  ⚠ asset-need JSON was malformed — salvaged {len(out)} need(s) object-by-object", flush=True)
+    return out
+
+
+async def derive_asset_needs(script: str, client, k: int = 24,
+                             video_share: Optional[str] = None) -> List[Dict[str, Any]]:
     """LLM: an essay script -> a `needs` list for the pool bridge, with QUERY-VARIANT EXPANSION.
 
     Each need carries several distinct stock-search phrasings (`queries`) so the bridge casts a wide
     net (multi-query retrieval — recall is the bottleneck in stock search), an `evocative` flag that
     routes abstract subjects through the evoke_broll metaphor super-search, and a `gen_prompt` used
-    for krea2 gap-fill when stock finds nothing. `query` (the plain phrasing) stays for back-compat."""
+    for krea2 gap-fill when stock finds nothing. `query` (the plain phrasing) stays for back-compat.
+
+    `video_share` is the essay's motion dial — it sets a FLOOR on how many needs must be video, so the
+    pool can actually supply the footage the style contract will demand."""
+    vshare = _VIDEO_NEED_SHARE.get((video_share or "").lower(), 0.0)
+    want_video = int(round(k * vshare))
+    video_rule = ((f"MOTION QUOTA — this essay is dialled `{video_share}`: AT LEAST {want_video} of the "
+                   f"{k} needs MUST have \"media_type\":\"video\". Pick them where footage genuinely beats a "
+                   "still — a process in motion, a place you move through, archival newsreel/documentary of "
+                   "an event, machinery or crowds working, anything whose MOVEMENT is the point. Do not pad "
+                   "the quota with subjects that read better as a photograph. ")
+                  if want_video else "")
     system = ("You plan VISUAL ASSET needs for a video essay. From the script, list the visual subjects worth "
               "gathering — people, places, objects, events, archival footage, and abstract themes. Aim for ONE need "
               "per BEAT/claim so EVERY beat can be visually grounded — a multi-minute essay wants many needs "
@@ -374,13 +456,25 @@ async def derive_asset_needs(script: str, client, k: int = 24) -> List[Dict[str,
               "(art = painting/fine-art/illustration; archival = historical photos or footage; "
               "general = modern photos/video — people, places, nature, objects), "
               "\"gen_prompt\":\"one cinematic image-generation prompt for this subject\"}. "
-              "Prefer image; choose video for motion-critical subjects AND archival/historical FOOTAGE "
+              + video_rule +
+              "Otherwise prefer image; choose video for motion-critical subjects AND archival/historical FOOTAGE "
               "(newsreel, documentary, period film) so archival-video sources are used. No prose, no code fences.")
-    raw = (await client.generate((script or "")[:6000], system_prompt=system)).strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
-    i, j = raw.find("["), raw.rfind("]")
-    items = json.loads(raw[i:j + 1]) if 0 <= i < j else []
+    # RETRY-then-salvage. Malformed JSON is recurrent here (a long array of prose-heavy objects), and
+    # salvage costs whole needs: one live run lost 11 of 24 because a desync mid-array made everything
+    # after it unrecoverable. A fresh generation is far cheaper than a 46%-thinner asset plan, so ask
+    # again before falling back to picking the wreckage apart.
+    items = None
+    for attempt in range(2):
+        raw = (await client.generate((script or "")[:6000], system_prompt=system)).strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0]
+        items = _parse_need_items(raw, strict=True)
+        if items:
+            break
+        if attempt == 0:
+            print("  ⚠ asset-need JSON was malformed — regenerating once before salvaging", flush=True)
+    if not items:
+        items = _parse_need_items(raw) or []
     out = []
     for n, it in enumerate(items[:k]):
         q = str(it.get("query", "")).strip()
@@ -403,6 +497,12 @@ async def derive_asset_needs(script: str, client, k: int = 24) -> List[Dict[str,
                     "n": int(it.get("n", 3) or 3),
                     "evocative": bool(it.get("evocative")), "category": cat,
                     "gen_prompt": (str(it.get("gen_prompt") or q).strip())})
+    if want_video:                       # the quota is a PROMPT instruction, so say so when it's missed
+        got = sum(1 for n_ in out if n_["media_type"] == "video")
+        if got < want_video:
+            print(f"  ⚠ motion quota: asked for >={want_video} video need(s) of {k} (video_share="
+                  f"{video_share}), the planner returned {got} — the pool will lean on clip-search over "
+                  f"the image needs to reach the motion gate", flush=True)
     return out
 
 

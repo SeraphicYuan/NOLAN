@@ -47,6 +47,9 @@ def _note(key, side, val, m, scenes) -> str:
         return f"'{top[0]}' is {round(val*100)}% of scenes — one block dominates; dist={m['block_dist']}"
     if key == "layout_max_run":
         return f"{val}× the same block back-to-back — monotone stretch"
+    if key == "distinct_blocks":
+        return (f"only {val} distinct block(s) used ({', '.join(m['block_dist'])}) — the composer ships ~50; "
+                f"re-route the beats that defaulted to statement/stat into the templates that fit them")
     return f"{side}: {val}"
 
 

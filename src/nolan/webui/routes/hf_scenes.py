@@ -751,7 +751,11 @@ def register(app, ctx):
             job.message = "Planning asset needs from the script…"
             from nolan.config import load_config
             from nolan.llm import create_text_llm
-            nds = await hfedit.derive_asset_needs(src, create_text_llm(load_config()))
+            # the motion dial must reach the NEED list, else a `heavy` essay gets an all-stills pool
+            # and the video_share gate becomes unsatisfiable however well the author authors
+            from nolan.hyperframes.finish import style_dials
+            _vs = style_dials(hfedit._project_dir(comp)).get("video_share")
+            nds = await hfedit.derive_asset_needs(src, create_text_llm(load_config()), video_share=_vs)
         if not nds:
             job.message = "No asset needs derived."
             return {"ok": False, "detail": "no asset needs"}
@@ -822,7 +826,7 @@ def register(app, ctx):
                      bool(payload.get("acquire_pool", True)), payload.get("voiceover") or None,
                      payload.get("asset_density") or "balanced", payload.get("theme") or None,
                      payload.get("motion") or None, gen_style=payload.get("gen_style") or None,
-                     key_assets=key_assets)
+                     key_assets=key_assets, block_variety=payload.get("block_variety") or None)
         if res.get("acquire_pool") or key_assets != "off":   # heroes (global) then b-roll pool, before authoring
             ajob = job_manager.start("hf_assets", _assets_job, meta={"comp": res["comp"]},
                                      comp=res["comp"], script=script, key_assets=key_assets,

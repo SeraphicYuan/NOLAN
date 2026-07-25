@@ -9,6 +9,16 @@ from typing import List, Optional, Callable
 import yt_dlp
 
 
+def _bundled_ffmpeg() -> Optional[str]:
+    """The ffmpeg yt-dlp should merge with. There is no system ffmpeg on this host, so without pointing
+    yt-dlp at the bundled imageio binary every split-stream format silently degrades to progressive."""
+    try:
+        from nolan.hf_qa import _ffmpeg
+        return _ffmpeg()
+    except Exception:
+        return None
+
+
 @dataclass
 class VideoInfo:
     """Information about a YouTube video."""
@@ -71,12 +81,16 @@ class DownloadResult:
 class YouTubeClient:
     """Client for YouTube operations using yt-dlp."""
 
-    # Prefer H.264 (avc1) over AV1 - H.264 is 5x faster to decode for scene detection
-    # Falls back to any codec if H.264 not available at desired resolution
-    DEFAULT_FORMAT = (
-        "bestvideo[height<=720][vcodec^=avc1]+bestaudio/best[height<=720]"
-        "/bestvideo[height<=720]+bestaudio/best[height<=720]"
-    )
+    # Prefer H.264 (avc1) over AV1 — H.264 is ~5x faster to decode for scene detection — but bound the
+    # RESOLUTION by the shared pool policy, min(available, 1080), not a private 720 cap.
+    #
+    # This is the library's SOURCE quality and therefore the ceiling on every b-roll clip ever trimmed
+    # out of it: an essay can't be sharper than the footage it was cut from. The old `height<=720` meant
+    # library b-roll could never exceed 720p — and because no `ffmpeg_location` was passed, the
+    # split-stream branches couldn't merge at all, so ingest fell through to `best[height<=720]`
+    # progressive = format 18 = 360p. Measured on the diamond pool: 46 of 48 library clips were 360p.
+    from nolan.media_quality import ytdlp_format as _fmt
+    DEFAULT_FORMAT = _fmt(prefer_h264=True)
 
     def __init__(
         self,
@@ -135,6 +149,12 @@ class YouTubeClient:
                 'preferedformat': 'mp4',
             }],
         })
+        # REQUIRED for the split-stream branches: merging (and the mp4 convertor) needs a locatable
+        # ffmpeg. Without it yt-dlp silently falls through to the best PROGRESSIVE stream — 360p on
+        # YouTube — so ingest looked successful while quietly halving the library's resolution.
+        ff = _bundled_ffmpeg()
+        if ff:
+            opts['ffmpeg_location'] = ff
 
         subtitles = self.download_subtitles if with_subtitles is None else with_subtitles
         if subtitles:
