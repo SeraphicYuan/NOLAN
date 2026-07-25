@@ -315,6 +315,7 @@ def register(app, ctx):
                 copyright_free_only=bool(body.get("copyright_free", False)),
                 kinds=(body.get("kinds") or None), web=bool(body.get("web", True)),
                 rerank=bool(body.get("rerank", True)), min_fit=(body.get("min_fit") or "medium"),
+                concurrency=int(body.get("concurrency", 4) or 4),
                 progress=lambda f, m: job.set_progress(min(0.99, f), m))
         job = job_manager.start("transcript-broaden", _run, meta={"count": int(body.get("count", 20) or 20)})
         return {"job_id": job.id, "type": "transcript-broaden"}

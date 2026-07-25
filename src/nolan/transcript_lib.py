@@ -14,6 +14,7 @@ transcript joins the unified semantic search.
 from __future__ import annotations
 
 import json
+import os as _os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -569,7 +570,13 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
     if mat is not None and len(ids):
         qv = np.asarray(_embed_titles(list(queries)), dtype=np.float32)
         sims = (mat @ qv.T).max(axis=1)
-        for i in np.argsort(-sims)[:_SHORTLIST * 4]:
+        order = np.argsort(-sims)[:_SHORTLIST * 4]
+        if min_sec or max_sec:                                 # one concurrent batch, not one GET per row
+            prefetch_durations([corpus[ids[i]]["video_id"] for i in order
+                                if corpus[ids[i]].get("duration") is None
+                                and corpus[ids[i]].get("kind") == "archive" and float(sims[i]) >= _FLOOR],
+                               catalog_dir, _DURATION_LOOKUPS)
+        for i in order:
             s = float(sims[i])
             if s < _FLOOR:
                 break
@@ -789,7 +796,12 @@ def _archive_tier(queries, catalog_dir=None, copyright_free_only=False, min_sec=
     sims = (tv @ qv.T).max(axis=1)
     out, ovecs = [], []
     lookups = 0
-    for i in np.argsort(-sims):
+    order = np.argsort(-sims)
+    if min_sec or max_sec:
+        prefetch_durations([cand[i]["video_id"] for i in order[:_SHORTLIST * 2]
+                            if cand[i].get("duration") is None and float(sims[i]) >= _FLOOR],
+                           catalog_dir, _DURATION_LOOKUPS)
+    for i in order:
         s = float(sims[i])
         if s < _FLOOR or len(out) >= _SHORTLIST:
             break
@@ -851,6 +863,23 @@ def _balanced_prefilter(by_src, budget=_PREFILT_BUDGET):
 
 
 _DUR_CACHE: Dict[str, Dict[str, Any]] = {}
+_DUR_LOCK = __import__("threading").Lock()
+
+
+def prefetch_durations(video_ids, catalog_dir: Optional[Path] = None, limit: int = 25,
+                       workers: int = 8) -> int:
+    """Resolve a batch of unknown runtimes CONCURRENTLY, before the ranking walk needs them.
+
+    Resolving one at a time inside the walk made a filtered search wall-clock-bound on sequential HTTP:
+    ~90s per fresh subject, of which the lookups were the largest slice. They are independent GETs, so
+    they run in a small pool; everything downstream then reads the cache. Returns how many were fetched."""
+    from concurrent.futures import ThreadPoolExecutor
+    todo = [v for v in dict.fromkeys(video_ids) if v][:max(0, int(limit))]
+    if not todo:
+        return 0
+    with ThreadPoolExecutor(max_workers=min(workers, len(todo))) as ex:
+        list(ex.map(lambda v: resolved_duration(v, catalog_dir), todo))
+    return len(todo)
 
 
 def _durations_file(catalog_dir: Optional[Path] = None) -> Path:
@@ -877,10 +906,13 @@ def resolved_duration(video_id: str, catalog_dir: Optional[Path] = None) -> Opti
         return int(v) if v else None
     from nolan import archive_source as ar
     dur = ar.resolve_duration(video_id)
-    cache[video_id] = int(dur) if dur else 0                   # 0 = "asked, genuinely unknown"
-    p = _durations_file(catalog_dir)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(cache, indent=0, ensure_ascii=False), encoding="utf-8")
+    with _DUR_LOCK:                                            # the prefetch pool calls this concurrently
+        cache[video_id] = int(dur) if dur else 0               # 0 = "asked, genuinely unknown"
+        p = _durations_file(catalog_dir)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(cache, indent=0, ensure_ascii=False), encoding="utf-8")
+        _os.replace(tmp, p)
     return dur
 
 

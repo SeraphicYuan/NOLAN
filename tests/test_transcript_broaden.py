@@ -46,6 +46,36 @@ def test_breadth_before_depth(monkeypatch, tmp_path):
     assert [p.get("depth") for p in out["picks"][3:]] == [True, True]
 
 
+def test_concurrency_changes_wall_clock_not_the_outcome(monkeypatch, tmp_path):
+    """The per-topic searches run concurrently (each is two LLM calls + an archive round-trip; sequentially
+    that was ~90s per fresh subject). Selection must stay deterministic: results are re-ordered back into
+    the PLANNED topic order before any pick is taken, so a topic that finishes last still gets its breadth
+    slot in order."""
+    import asyncio as _a
+    from nolan import transcript_broaden as tb
+    from nolan import transcript_lib as tl
+    rows = {"t1": [_row("a1"), _row("a2")], "t2": [_row("b1")], "t3": [_row("c1")]}
+    order_finished = []
+
+    async def slow_suggest(topic, index, vs, config, n=12, catalog_dir=None, copyright_free_only=False,
+                           queries=None, web=True, rerank=True, min_sec=0, max_sec=0):
+        await _a.sleep({"t1": 0.06, "t2": 0.03, "t3": 0.0}[topic])   # finishes in REVERSE plan order
+        order_finished.append(topic)
+        return {"suggestions": rows[topic]}
+    monkeypatch.setattr(tl, "suggest_by_topic", slow_suggest)
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+
+    out = _a.run(tb.broaden_library(None, _Idx(), _VS(), count=4, topics=["t1", "t2", "t3"],
+                                    catalog_dir=tmp_path, concurrency=3))
+    assert order_finished == ["t3", "t2", "t1"]                      # they really did overlap and invert
+    assert [p["video_id"] for p in out["picks"]] == ["a1", "b1", "c1", "a2"]   # plan order, breadth first
+    assert out["topics"] == ["t1", "t2", "t3"]
+
+    seq = _a.run(tb.broaden_library(None, _Idx(), _VS(), count=4, topics=["t1", "t2", "t3"],
+                                    catalog_dir=tmp_path, concurrency=1))
+    assert [p["video_id"] for p in seq["picks"]] == [p["video_id"] for p in out["picks"]]
+
+
 def test_filters_and_already_in_library(monkeypatch, tmp_path):
     """`kinds` and `min_fit` gate what may be picked, and anything already in the catalog is never
     re-proposed. A topic where nothing clears the filters is REPORTED, not silently skipped."""

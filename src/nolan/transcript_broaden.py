@@ -21,6 +21,7 @@ Used topics persist to ``topics_used.json`` so a second run broadens instead of 
 """
 from __future__ import annotations
 
+import asyncio
 import datetime as _dt
 import json
 from pathlib import Path
@@ -121,14 +122,22 @@ async def propose_topics(config, n: int = 20, theme: str = "", catalog_dir: Opti
           "(4-10 words) naming a subject, era or industry, not a question. Favour subjects with real "
           "archival footage.\n"
           'Respond ONLY JSON: {"topics":["...","..."]}')
-    llm = create_text_llm(config)
-    out = await llm.generate(prompt, system_prompt=(
-        "You plan the coverage of an archival footage library. You propose subjects it lacks."))
-    st, en = out.find("{"), out.rfind("}")
-    raw = [str(t).strip() for t in (json.loads(out[st:en + 1]).get("topics") or [])
-           if str(t).strip()] if st >= 0 and en > st else []
+    model, err = "", ""
+    raw: List[str] = []
+    try:
+        llm = create_text_llm(config)
+        model = getattr(llm, "model", "") or type(llm).__name__
+        out = await llm.generate(prompt, system_prompt=(
+            "You plan the coverage of an archival footage library. You propose subjects it lacks."))
+        st, en = out.find("{"), out.rfind("}")
+        if st >= 0 and en > st:
+            raw = [str(t).strip() for t in (json.loads(out[st:en + 1]).get("topics") or []) if str(t).strip()]
+        if not raw:
+            err = "the model returned no parseable topics"      # observed live: one transient empty reply
+    except Exception as e:                                      # loud, like the expansion path — an empty
+        err = f"{type(e).__name__}: {e}"[:160]                   # proposal used to read as "0 topics"
     if not raw:
-        return {"topics": [], "dropped": [], "seen": len(used), "model": getattr(llm, "model", "")}
+        return {"topics": [], "dropped": [], "seen": len(used), "model": model, "error": err}
     keep, dropped = [], []
     if used:                                          # gate: drop anything that repeats a searched topic
         uv = np.asarray(_embed_titles(used), dtype=np.float32)
@@ -138,8 +147,7 @@ async def propose_topics(config, n: int = 20, theme: str = "", catalog_dir: Opti
             (dropped if float(s) >= _TOPIC_DUP else keep).append(t)
     else:
         keep = raw
-    return {"topics": keep[:n], "dropped": dropped, "seen": len(used),
-            "model": getattr(llm, "model", "") or type(llm).__name__}
+    return {"topics": keep[:n], "dropped": dropped, "seen": len(used), "model": model, "error": ""}
 
 
 async def broaden_library(config, index, vs, *, count: int = 20, theme: str = "",
@@ -147,6 +155,7 @@ async def broaden_library(config, index, vs, *, count: int = 20, theme: str = ""
                           min_sec: int = 0, max_sec: int = 0, copyright_free_only: bool = False,
                           kinds: Optional[List[str]] = None, web: bool = True, rerank: bool = True,
                           min_fit: str = "medium", catalog_dir: Optional[Path] = None,
+                          concurrency: int = 4,
                           progress: Optional[Callable[[float, str], None]] = None) -> Dict[str, Any]:
     """X picks across as many NEW subjects as possible, ready to ingest+caption.
 
@@ -168,8 +177,8 @@ async def broaden_library(config, index, vs, *, count: int = 20, theme: str = ""
         proposed = await propose_topics(config, max(count, 8) + 6, theme, catalog_dir)
         plan = proposed.get("topics") or []
     if not plan:
-        return {"picks": [], "topics": [], "misses": [["*", "no topics proposed"]],
-                "stats": {"proposed": proposed}}
+        why = (proposed or {}).get("error") or "no topics proposed"
+        return {"picks": [], "topics": [], "misses": [["*", why]], "stats": {"proposed": proposed}}
 
     from nolan.transcript_lib import load_catalog
     taken = set(load_catalog(catalog_dir).keys())
@@ -178,16 +187,30 @@ async def broaden_library(config, index, vs, *, count: int = 20, theme: str = ""
     misses: List[List[str]] = []
     searched: List[str] = []
     per_topic_count: Dict[str, int] = {}
-    for i, t in enumerate(plan):
-        if len(picks) >= count:
-            break
-        say(0.05 + 0.8 * (i / max(1, len(plan))), f"[{i + 1}/{len(plan)}] {t[:48]}")
-        try:
-            d = await suggest_by_topic(t, index, vs, config, n=12, catalog_dir=catalog_dir,
-                                       copyright_free_only=copyright_free_only, web=web, rerank=rerank,
-                                       min_sec=min_sec, max_sec=max_sec)
-        except Exception as e:
-            misses.append([t, f"{type(e).__name__}: {e}"[:120]])
+
+    # The per-topic searches are INDEPENDENT and IO-bound (two LLM calls + an archive round-trip each), so
+    # they run with bounded concurrency — sequentially they cost ~90s per fresh subject, i.e. 45 minutes for
+    # a 30-topic run. SELECTION stays deterministic: results are re-ordered back into the planned topic
+    # order before any pick is taken, so concurrency changes the wall-clock, never the outcome.
+    sem = asyncio.Semaphore(max(1, int(concurrency)))
+    done = {"n": 0}
+
+    async def _one(idx, topic):
+        async with sem:
+            try:
+                d = await suggest_by_topic(topic, index, vs, config, n=12, catalog_dir=catalog_dir,
+                                           copyright_free_only=copyright_free_only, web=web, rerank=rerank,
+                                           min_sec=min_sec, max_sec=max_sec)
+            except Exception as e:
+                d = {"_error": f"{type(e).__name__}: {e}"[:120]}
+            done["n"] += 1
+            say(0.05 + 0.8 * (done["n"] / max(1, len(plan))), f"[{done['n']}/{len(plan)}] {topic[:48]}")
+            return idx, topic, d
+
+    results = await asyncio.gather(*[_one(i, t) for i, t in enumerate(plan)])
+    for _idx, t, d in sorted(results, key=lambda r: r[0]):
+        if d.get("_error"):
+            misses.append([t, d["_error"]])
             continue
         searched.append(t)
         cand = [s for s in (d.get("suggestions") or [])
@@ -197,12 +220,13 @@ async def broaden_library(config, index, vs, *, count: int = 20, theme: str = ""
         if not cand:
             misses.append([t, "no candidate cleared the filters"])
             continue
-        for p in cand[:max(1, per_topic)]:
-            if len(picks) >= count:
-                break
-            taken.add(p["video_id"])
-            picks.append({**p, "topic": t})
-            per_topic_count[t] = per_topic_count.get(t, 0) + 1
+        if len(picks) < count:
+            for p in cand[:max(1, per_topic)]:
+                if len(picks) >= count:
+                    break
+                taken.add(p["video_id"])
+                picks.append({**p, "topic": t})
+                per_topic_count[t] = per_topic_count.get(t, 0) + 1
         pools.append((t, [c for c in cand if c["video_id"] not in taken]))
 
     depth = 0
