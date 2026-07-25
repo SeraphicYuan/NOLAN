@@ -24,6 +24,8 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from nolan.block_registry import visible_text
+
 _ANCHOR_TEXT_KEYS = ("anchor", "operative")            # prefer the spoken anchor; then the operative word
 _VISIBLE_TEXT_KEYS = ("lines", "title", "titleHi", "kicker", "sub", "label", "quote", "headline")
 
@@ -532,13 +534,11 @@ def _content_time(sc, stream, freq, after, min_words=1):
     (an editorial kicker like 'SO WHERE I LAND' has one polysemous word that would false-flag). None if
     nothing (sufficiently corroborated) resolves. len ≥ 5 drops 4-letter homonyms ('land')."""
     d = sc.get("data", {}) or {}
-    parts = []
-    for k in ("kicker", "title", "titleHi", "center", "headline"):
-        if isinstance(d.get(k), str):
-            parts.append(d[k])
-    for it in (d.get("items") or [])[:5]:                    # element labels carry the topic too
-        if isinstance(it, dict) and isinstance(it.get("label"), str):
-            parts.append(it["label"])
+    # What the scene PAINTS, from the shared registry — not a hand-maintained key tuple. The tuple used
+    # to be ("kicker","title","titleHi","center","headline") + items[].label, so a pull_quote's QUOTE was
+    # invisible and it corroborated against its KICKER instead: the kicker echoed the narrator's lead-in
+    # at 0s, hiding a 14s text-before-voice lead (quote on screen 12:23, spoken 12:34).
+    parts = [visible_text(d)]
     toks = {tt for tt in _collapse_nums(_norm(" ".join(parts)))
             if len(tt) >= 5 and tt not in _STOP and freq.get(tt, 0) == 1}
     hits = sorted((s, tok) for (tok, s) in stream if tok in toks and s >= after)
@@ -559,7 +559,10 @@ def _content_time(sc, stream, freq, after, min_words=1):
 # stopword ("hand bill" ≠ spoken "hand the bill") breaks. The 7:31 text-lag hit all three at once. The
 # window matcher below is tolerant of all of them: it finds the narration WINDOW that best covers the
 # scene's VISIBLE-text bag and returns where that coverage OPENS.
-_BAG_TEXT_KEYS = ("kicker", "title", "titleHi", "headline", "center", "sub", "quote", "eyebrow", "label")
+# `kicker`/`eyebrow` deliberately ABSENT: catalog.json declares them "design intent, not narration",
+# and letting them corroborate both false-flagged real scenes and masked real leads. See
+# nolan/block_registry.NON_NARRATION_KEYS for the single list.
+_BAG_TEXT_KEYS = ("title", "titleHi", "headline", "center", "sub", "quote", "label")
 
 # len≥4 keeps short CONTENT words ('hand', 'bill', 'vote') but also lets common FUNCTION words through
 # ('what', 'your', 'really') — and a function word said once in a frame gets full inverse-freq weight, so a
@@ -833,7 +836,12 @@ def _visual_lag_flags(scenes, words, min_lag=6.0, min_lead=4.0):
                 flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "lag",
                               "start": round(start, 1), "content_at": round(ct, 1), "lag": round(start - ct, 1),
                               "hard": (start - ct) >= _HARD_LAG_S and not authored_here})
-            elif ct - start > min_lead and not authored_here:      # SYMMETRIC: visual LEADS the VO (text before voice)
+            # An anchor that resolves AT the placement proves intent only if the scene's own VISIBLE
+            # content is spoken near there too. Anchor a pull_quote to the narrator's LEAD-IN ("It's a
+            # very artificial market") and the anchor lands at 0s while the QUOTE on screen is spoken
+            # 14s later — `authored_here` then exempted exactly the case where the lead is real and
+            # invisible. Observed live: quote readable at 12:23, spoken at 12:34.
+            elif ct - start > min_lead and not (authored_here and (anc_t is None or ct - anc_t <= min_lead)):
                 flags.append({"scene": sc.get("id"), "block": sc.get("type"), "kind": "lead",
                               "start": round(start, 1), "content_at": round(ct, 1), "lead": round(ct - start, 1),
                               "hard": False})                       # advisory — a small lead is natural, leads are a taste call

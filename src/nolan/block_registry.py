@@ -34,3 +34,64 @@ GROUND_BLOCKS: FrozenSet[str] = frozenset({
 def consumes_ground(block: str) -> bool:
     """True iff `data.ground` renders for this block."""
     return block in GROUND_BLOCKS
+
+
+# --- what a block DISPLAYS, for narration matching -------------------------------------------------
+# The sync matcher located scenes with hand-maintained key tuples that did not match what the composer
+# actually paints. Live defect: `_content_time` read ("kicker","title","titleHi","center","headline"),
+# so a `pull_quote`'s QUOTE — the only text on screen — was invisible to it. It corroborated against the
+# KICKER instead, which echoed the narrator's lead-in at 0s, so a 14-second text-before-voice lead went
+# undetected and shipped (the quote appeared at 12:23, was spoken at 12:34).
+#
+# Two different questions, kept separate on purpose:
+#   * WHERE does this scene go?      -> the author's `anchor` (an instruction)
+#   * Is what's on screen said NOW?  -> `visible_text` (what the viewer reads)
+# Corroborating an anchor against itself is what made the gate blind whenever an anchor existed.
+
+# Keys that are DESIGN or PLUMBING — never spoken, so never evidence of when a scene's topic surfaces.
+# `kicker` is here because bridge/catalog.json declares it verbatim: "small eyebrow label (design intent,
+# not narration)". It was ALSO driving placement, which forced authors to rewrite design copy to appease
+# a timing matcher (FRANCES GERETY -> THE DETAIL THAT LANDS HARDEST).
+NON_NARRATION_KEYS = frozenset({
+    "kicker", "eyebrow", "variant", "register", "reveal", "reveal_char", "cue", "_line_cues", "at",
+    "value_source", "grade", "treatments", "fit", "side", "position", "motion", "arrange", "layout",
+    "ground", "src", "image", "images", "subject", "avatar", "source", "kb", "type", "kind", "id",
+    "color", "palette", "icon", "track", "align", "anchor", "operative", "hi", "cite", "credit",
+})
+
+_NON_TEXT_PREFIXES = ("assets/", "capture/", "http://", "https://", "data:", "#")
+
+
+def _is_prose(v: str) -> bool:
+    """A displayed STRING, not a path / colour / enum token. Enum-ish single lowercase words are dropped
+    (they are block config, e.g. 'left', 'cover'); anything with a space is prose."""
+    v = v.strip()
+    if not v or v.lower().startswith(_NON_TEXT_PREFIXES):
+        return False
+    if " " in v:
+        return True
+    return len(v) >= 5 and not v.islower()          # 'GERETY' / 'Kimberley' yes; 'cover' / 'left' no
+
+
+def visible_text(data, _depth: int = 0) -> str:
+    """Every piece of PROSE a scene paints, walking nested items/steps/events/rows/sides.
+
+    Key-agnostic by design: a flat top-level tuple silently missed `steps[]` (cycle/process),
+    `events[]` (timeline), `items[]` (stat/bullet_list/ledger), `left`/`right` (comparison/
+    juxtaposition) and `quote` — so those blocks could not corroborate their own placement.
+    """
+    if _depth > 6:
+        return ""
+    out = []
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if k in NON_NARRATION_KEYS or str(k).startswith("_"):
+                continue
+            out.append(visible_text(v, _depth + 1))
+    elif isinstance(data, (list, tuple)):
+        for v in data:
+            out.append(visible_text(v, _depth + 1))
+    elif isinstance(data, str):
+        if _is_prose(data):
+            out.append(data.strip())
+    return " ".join(p for p in out if p).strip()

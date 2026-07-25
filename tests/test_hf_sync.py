@@ -153,7 +153,7 @@ def test_placement_prefers_early_content_over_late_anchor():
     # "... power grid ... then the arizona campus drinks gallons ... santa cruz"  — arizona@~4, santa cruz@~9
     words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(
         "the power grid then the arizona campus drinks gallons a city santa cruz".split())]
-    scenes = [{"id": "s1", "type": "statement", "data": {"kicker": "POWER GRID"}},
+    scenes = [{"id": "s1", "type": "statement", "data": {"title": "POWER GRID"}},
               {"id": "s2", "type": "scale", "anchor": "santa cruz",                  # anchor = late closing phrase
                "data": {"kicker": "ONE ARIZONA CAMPUS", "title": "drinks gallons"}}]  # content: arizona/campus/gallons
     starts, resolved = sync._resolve_scene_starts(scenes, words, frame_dur=14.0, aligner_raw=[None, None])
@@ -168,8 +168,8 @@ def test_visual_lag_flags_misordered_scenes():
     words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(
         "intro water stress areas then arizona desert campus gallons later".split())]
     # spec order: arizona scene FIRST, water scene SECOND — but VO says water (1-3) before arizona (5-8)
-    scenes = [{"id": "s1", "type": "scale", "start": 5.0, "data": {"kicker": "ARIZONA DESERT CAMPUS"}},
-              {"id": "s2", "type": "stat", "start": 8.0, "data": {"kicker": "WATER STRESS AREAS"}}]
+    scenes = [{"id": "s1", "type": "scale", "start": 5.0, "data": {"title": "ARIZONA DESERT CAMPUS"}},
+              {"id": "s2", "type": "stat", "start": 8.0, "data": {"title": "WATER STRESS AREAS"}}]
     flags = sync._visual_lag_flags(scenes, words)
     assert any(f["kind"] == "misorder" and f["scene"] == "s2" for f in flags)
 
@@ -199,10 +199,10 @@ def test_placement_isolates_a_bad_anchor_outlier_no_cascade():
     from nolan.whisper import WordTimestamp
     words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(
         "intro alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima decoy".split())]
-    scenes = [{"id": "s1", "data": {"kicker": "ALPHA"}},                         # alpha @1
-              {"id": "s2", "anchor": "decoy", "data": {"kicker": "ZEBRA XYLOPHONE"}},  # only signal = decoy @13
-              {"id": "s3", "data": {"kicker": "CHARLIE"}},                       # charlie @3
-              {"id": "s4", "data": {"kicker": "HOTEL"}}]                         # hotel @8
+    scenes = [{"id": "s1", "data": {"title": "ALPHA"}},                         # alpha @1
+              {"id": "s2", "anchor": "decoy", "data": {"title": "ZEBRA XYLOPHONE"}},  # only signal = decoy @13
+              {"id": "s3", "data": {"title": "CHARLIE"}},                       # charlie @3
+              {"id": "s4", "data": {"title": "HOTEL"}}]                         # hotel @8
     starts, resolved = sync._resolve_scene_starts(scenes, words, frame_dur=18.0, aligner_raw=[None] * 4)
     assert "s2" not in resolved and "s3" in resolved and "s4" in resolved       # s2 is the isolated outlier
     assert starts[2] < 6 and starts[3] < 11                                     # s3/s4 stay on their content — no cascade
@@ -284,7 +284,10 @@ def test_visual_lag_soft_when_author_anchored_the_scene_there():
     words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(
         "intro the confidence trick runs three marks then filler filler filler filler it sells belief later".split())]
     sc = {"id": "s1", "type": "diagram", "start": 12.0, "anchor": "sells belief",
-          "data": {"kicker": "One trick", "title": "three marks"}}   # bag {trick, three, marks} opens @3-6
+          # the corroborating words live in `sub`/`title`, NOT the kicker: kicker is design copy and no
+          # longer feeds narration matching (it masked a real 14s lead), so a fixture that leans on it
+          # is testing a path that no longer exists.
+          "data": {"kicker": "One trick", "title": "three marks", "sub": "the confidence trick"}}
     flags = sync._visual_lag_flags([sc], words)
     lag = [f for f in flags if f["kind"] == "lag"]
     assert lag, "the lag should still be REPORTED (advisory)"
@@ -343,7 +346,7 @@ def test_content_time_requires_corroboration_at_min_words_2():
     freq = {}
     for tok, _s in stream:
         freq[tok] = freq.get(tok, 0) + 1
-    sc = {"data": {"kicker": "Gradient"}}                                          # ONE distinctive word
+    sc = {"data": {"title": "Gradient"}}                                          # ONE distinctive word
     assert sync._content_time(sc, stream, freq, 0.0, min_words=1) is not None      # lone word fires @1
     assert sync._content_time(sc, stream, freq, 0.0, min_words=2) is None          # but NOT when corroborated
 
@@ -358,13 +361,13 @@ def test_visual_lag_flags_symmetric_lead_detection():
     words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(toks)]
 
     # "solar eclipse" is spoken ~t=10; a scene placed at t=0 LEADS its content by ~10s
-    early = {"id": "lead1", "type": "statement", "start": 0.0, "data": {"kicker": "SOLAR ECLIPSE"}}
+    early = {"id": "lead1", "type": "statement", "start": 0.0, "data": {"title": "SOLAR ECLIPSE"}}
     lead = [f for f in _visual_lag_flags([early], words) if f["kind"] == "lead"]
     assert lead and lead[0]["scene"] == "lead1", lead
     assert lead[0]["hard"] is False and lead[0]["lead"] >= 4.0      # symmetric but ADVISORY, never blocks
 
     # well-placed: start ≈ content time → no lead
-    placed = {"id": "ok1", "type": "statement", "start": 10.0, "data": {"kicker": "SOLAR ECLIPSE"}}
+    placed = {"id": "ok1", "type": "statement", "start": 10.0, "data": {"title": "SOLAR ECLIPSE"}}
     assert not [f for f in _visual_lag_flags([placed], words) if f["kind"] == "lead"]
 
     # author pinned it early on purpose (anchor 'quiet ordinary' resolves near start) → exempt
@@ -390,3 +393,40 @@ def test_retime_reveals_auto_anchors_unanchored_items_by_label():
     assert abs(its[0]["_cue"] - 7.0) < 0.01
     assert abs(its[1]["_cue"] - 10.0) < 0.01                                # verbatim match kept the stop-word
     assert its[2].get("_cue") is None                                       # lone common word → unpinned (spread)
+
+
+# --- kicker is DESIGN COPY, not narration (postmortem item 3 + the 12:23 lead) -----------------
+
+def test_kicker_alone_does_not_drive_placement_or_corroboration():
+    """`bridge/catalog.json` declares kicker "small eyebrow label (design intent, not narration)", yet it
+    fed the matcher. Two costs, both live: a kicker naming a person mentioned much earlier dragged a
+    scene 17s and HARD-BLOCKED it (authors rewrote design copy to appease a timing matcher), and a
+    kicker echoing the narrator's lead-in corroborated at 0s, MASKING a 14s text-before-voice lead."""
+    from nolan.aligner import WordTimestamp, flatten_words
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(
+        "gerety wrote the line decades before the campaign finally reached the public".split())]
+    stream = sync._collapse_nums([(t, s) for (t, s, _e) in flatten_words(words)])
+    freq = {}
+    for tok, _s in stream:
+        freq[tok] = freq.get(tok, 0) + 1
+    kicker_only = {"data": {"kicker": "GERETY DECADES"}}
+    assert sync._content_time(kicker_only, stream, freq, 0.0) is None, "kicker must not corroborate"
+    assert not sync._scene_bag(kicker_only), "kicker must not enter the matching bag"
+
+
+def test_visible_text_reaches_a_quote_and_nested_labels():
+    """The pull_quote whose QUOTE was invisible to `_content_time` is the 12:23-vs-12:34 defect; nested
+    step/item labels were invisible for every list-shaped block."""
+    from nolan.block_registry import visible_text
+    q = visible_text({"kicker": "A VERY ARTIFICIAL MARKET", "quote": "they are valuable because people pay"})
+    assert "valuable because people pay" in q and "ARTIFICIAL" not in q
+    nested = visible_text({"title": "Biting its own tail",
+                           "steps": [{"label": "they are valuable"}, {"label": "so people pay"}]})
+    assert "they are valuable" in nested and "so people pay" in nested
+
+
+def test_visible_text_drops_paths_and_config_tokens():
+    from nolan.block_registry import visible_text
+    got = visible_text({"ground": {"src": "assets/a.mp4"}, "side": "left", "fit": "cover",
+                        "title": "The real headline"})
+    assert got == "The real headline"
