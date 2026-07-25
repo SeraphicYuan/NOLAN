@@ -10,13 +10,55 @@ Flow (NOLAN module contract: draft -> validate -> accept):
   python author.py --spec scenes_spec.json --out-dir <project>/compositions/frames  # gate + build
   python author.py --spec scenes_spec.json --validate-only                          # gate only
 """
-import argparse, json, sys
+import argparse, json, re, sys
 from pathlib import Path
 import compose
 
 HERE = Path(__file__).parent
 CATALOG = json.load(open(HERE / "catalog.json", encoding="utf-8"))
 THEMES_DIR = Path(__file__).resolve().parents[3] / "themes"       # repo_root/themes (matches compose._theme_vars)
+
+
+_CLIP_ATTRS = re.compile(
+    r'data-start="([\d.]+)"[^>]*?data-duration="([\d.]+)"[^>]*?data-track-index="(\d+)"'
+    r'|data-track-index="(\d+)"[^>]*?data-start="([\d.]+)"[^>]*?data-duration="([\d.]+)"')
+
+
+def track_overlaps(html: str, eps: float = 0.001):
+    """Same-track time overlaps in composed frame HTML → [(track, (aS,aE), (bS,bE))].
+
+    NOT WIRED AS A GATE — kept because the pure function is right and the finding is worth keeping.
+    Adjacent scenes DELIBERATELY overlap on a shared track: the composer gives each scene a ~0.6s
+    tail (0-5.60, 5.00-10.60, 10.00-14.00 for scenes at 0/5/10) and the transitions injector
+    0/1-ping-pongs the lanes afterwards. So a raw same-track overlap in composed HTML is normal at
+    this stage, and gating on it blocked legitimate multi-scene frames. The spotlight defect was a
+    narrower thing: two elements of ONE scene on one track over an IDENTICAL window. Scoping this to
+    same-scene, identical-window pairs is the real fix and needs characterising against the injector
+    before it gates anything.
+
+    SAME CHECK, EARLIER DOOR. This is the `timeline_track_too_dense` rule, and today the earliest thing
+    that enforces it is the external `hyperframes` CLI at render/validate time — minutes after authoring,
+    behind sync + recompose + sound + captions. A centred `spotlight` emitted BOTH label halves on one
+    track over identical windows, so NO centred spotlight had ever assembled, and the block shipped
+    broken because nothing said so until far downstream. A composer bug is cheapest to catch in the
+    composer's own gate.
+    """
+    lanes = {}
+    for m in _CLIP_ATTRS.finditer(html):
+        st, du, tr = (m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(5), m.group(6), m.group(4))
+        try:
+            st, du, tr = float(st), float(du), int(tr)
+        except (TypeError, ValueError):
+            continue
+        lanes.setdefault(tr, []).append((st, st + du))
+    bad = []
+    for tr, spans in lanes.items():
+        spans.sort()
+        for i in range(1, len(spans)):
+            if spans[i][0] < spans[i - 1][1] - eps:
+                bad.append((tr, spans[i - 1], spans[i]))
+    return bad
+
 
 
 def theme_exists(theme) -> bool:

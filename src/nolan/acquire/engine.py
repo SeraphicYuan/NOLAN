@@ -61,6 +61,42 @@ def hamming(a: int, b: int) -> int:
     return bin(a ^ b).count("1")
 
 
+def video_hash(path: Path) -> Optional[int]:
+    """Perceptual hash of a CLIP, via one representative keyframe — so video de-dups like stills do.
+
+    The dedup below skipped video entirely (`if c.modality == "image"`), so four pool ids could be the
+    SAME shot: a1_05 / a17_02 / a20_05 / a23_02 were one macro-diamond clip from one contributor, and
+    a17_04 / a19_06 / a1_07 were one pink-velvet ring-box clip. ~9 grounded scenes ran on ~4 distinct
+    looks while `media_diversity` reported a healthy 1.10 — because it counts FILE PATHS.
+
+    A keyframe hash reuses the machinery that already works rather than adding a pHash stack; it is the
+    same average-hash + hamming distance, just fed a frame. Sampled at ~1s to skip a black/fade opening
+    (a hash of black matches every other clip's black opening — that would collapse the whole pool).
+    Returns None on any failure, which keeps the clip (never drop an asset because ffmpeg hiccuped).
+    """
+    import os
+    import subprocess
+    import tempfile
+    p = Path(path)
+    if not p.exists():
+        return None
+    fd, tmp = tempfile.mkstemp(suffix=".jpg")
+    os.close(fd)
+    tmp = Path(tmp)
+    try:
+        from .context import _ffmpeg
+        subprocess.run([_ffmpeg(), "-y", "-ss", "1.0", "-i", str(p), "-frames:v", "1",
+                        "-vf", "scale=64:-1", "-q:v", "5", str(tmp)],
+                       capture_output=True, timeout=30)
+        # let PIL be the validity gate, not a byte-size guess: a flat/dark frame compresses to a
+        # few hundred bytes and a size floor would silently refuse to hash it
+        return avg_hash(tmp) if tmp.exists() and tmp.stat().st_size > 0 else None
+    except Exception:
+        return None
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def _near_dup(h: Optional[int], seen: List[int], threshold: int) -> bool:
     return h is not None and any(hamming(h, s) <= threshold for s in seen)
 
@@ -229,7 +265,7 @@ def acquire_need(need: Dict, ctx: Context, cfg: AcquireConfig, cand_dir: Path,
     for c in live:
         if len(kept) >= cfg.per_need:
             break
-        h = avg_hash(c.path) if c.modality == "image" else None
+        h = avg_hash(c.path) if c.modality == "image" else video_hash(c.path)
         if _near_dup(h, seen, cfg.dedup_hamming):
             continue
         if h is not None:

@@ -345,6 +345,41 @@ class Item:
     allow_overflow: bool = False   # element (or an ancestor) opted out via data-layout-allow-overflow
     furniture: bool = False        # broadcast furniture (lower-third) — exempt from the caption check
     archetype: Optional[str] = None  # data-archetype stamped by compose.py on the scene's content root
+    path: tuple = ()               # index path from the root — a child overlapping its own parent
+                                   # is layout, not a collision (see _is_nested)
+
+
+def _dom_path(el: El) -> tuple:
+    """Index path from the root to this element, e.g. (0, 3, 1).
+
+    A PATH, not id(): object identities are only meaningful while the DOM tree is alive, and CPython
+    reuses ids after collection — a stale id could silently mark two unrelated elements as nested.
+    """
+    out, node = [], el
+    while True:
+        parent = getattr(node, "parent", None)
+        if parent is None:
+            break
+        try:
+            out.append(parent.children.index(node))
+        except (AttributeError, ValueError):
+            return ()                      # unknown tree shape → claim nothing
+        node = parent
+    return tuple(reversed(out))
+
+
+def _is_nested(a: "Item", c: "Item") -> bool:
+    """True when one element is a DOM ancestor of the other, so their boxes overlap BY CONSTRUCTION.
+
+    All three "errors" in the diamond-v2 run were `process` step-number badges — 44x44 circles pinned to
+    their own card at left:-16px; top:-16px, verified correct by eye in the render. A linter whose only
+    failures are false positives gets ignored, which is exactly how a REAL overlap ships. Sibling
+    collisions are untouched: only an ancestor/descendant PAIR is exempt.
+    """
+    pa, pc = a.path, c.path
+    if not pa or not pc or pa == pc:
+        return False
+    return pa == pc[:len(pa)] or pc == pa[:len(pc)]
 
 
 def _allow_overflow(el: El) -> bool:
@@ -453,7 +488,7 @@ def _measure(root: El, class_rules: Optional[Dict[str, Dict[str, str]]] = None) 
         items.append(Item(box=b, text=txt, window=win,
                           sel=el.attrs.get("id") or (el.tag + "." + ".".join(el.classes[:2])),
                           allow_overflow=_allow_overflow(el), furniture=_is_furniture(el),
-                          archetype=_dom_archetype(el)))
+                          archetype=_dom_archetype(el), path=_dom_path(el)))
     return items, fbg_windows
 
 
@@ -532,6 +567,8 @@ def _check_items(items: List[Item], scene: str, archetype: Optional[str],
                 continue
             if ab.anchor_only or cb.anchor_only:
                 continue  # one side has no real extent — not a reliable overlap
+            if _is_nested(a, c):
+                continue  # a child overlapping its own parent is layout (a corner badge, an inset)
             frac = _iou_min(ab, cb)
             if frac > _OVERLAP_MIN:
                 out.append(Violation("overlap", "error" if overlap_hard else "advisory", scene,

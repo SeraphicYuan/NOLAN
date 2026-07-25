@@ -143,6 +143,31 @@ un-marked steps abort the run.
 - **A cheap re-render of a few scenes** → `nolan hf-render <comp> --only <frames>`
   (incremental; inherits bgm/sfx/theme from the last `hf-finish` assembly).
 
+## Verify BEFORE you render (the ~1 min loop that pays for itself)
+
+A render is ~20-25 min. Almost every defect worth catching is visible without one, so do this after
+authoring and after ANY spec edit — it is how the diamond-v2 branded-hero and inverted-comparison
+defects were found:
+
+```bash
+# 1. assemble + every pre-render gate, no render spend (~1 min)
+python -X utf8 -m nolan.hyperframes.finish <comp> --no-render
+#    runs: sync -> word-sync -> datasets/documents -> timing + number gates -> auto-ground ->
+#    recompose -> sound -> captions -> assemble-index -> assemble-media -> layout -> STYLE GATE
+
+# 2. LOOK at every clip you placed — the menu's caption is a claim, the pixels are the fact
+ffmpeg -ss 1 -i <clip> -frames:v 1 -vf scale=480:-1 /tmp/f.jpg      # then read the sheet
+```
+
+What only the eye catches: a clip that is someone else's branded upload, a comparison whose sides are
+swapped, footage that is on-topic but shows the wrong thing. The VLM provenance gate now flags chrome
+and unverified captions in `asset-descriptions.md` (`[UNVERIFIED ORIGIN]`, `[caption unverified]`) —
+treat those tags as "open this file", not as decoration.
+
+Render mode is `auto`: `whole` on a cold comp (the canonical baseline), `incremental` once a build +
+clip cache exist. Incremental also emits `compositions/frames/*.clip.mp4`, which is what `/hyperframes`
+serves per frame — so the edit loop gets its cache for free. Force either with `--render whole|incremental`.
+
 ## Gotchas (these cost renders)
 
 - Run `finish --no-sound` when iterating: the bgm step can wipe `voices[]`. (The DAG now
