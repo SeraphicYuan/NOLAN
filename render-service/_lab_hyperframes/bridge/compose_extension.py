@@ -302,9 +302,13 @@ def spotlight(sid, sc):
                   f'ease:"power2.out"}},{start+0.15:.2f});')
 
     # ---- labels (position-responsive) ----
-    # A CENTER spotlight emits BOTH halves of the label over the SAME window, so they must sit on
-    # DISTINCT track lanes — two clips overlapping in time on one track is a render conflict that
-    # assemble-index.mjs rejects outright ("clips on track 2 overlap"). The right half drops one lane:
+    # A CENTER spotlight emits BOTH halves of the label over the SAME window, and they sit on DISTINCT
+    # track lanes so their z-order is decided here rather than by document order. This is a tidiness
+    # choice, NOT a correctness one: same-track time overlap is legal inside a frame's composition and
+    # renders fine (videos/_stress_spotlight is the pre-split HTML with both halves on track 2 and a
+    # finished mp4 beside it, both halves painted). An earlier version of this comment claimed
+    # assemble-index.mjs rejects the overlap; it has no such check — see
+    # tests/test_author_track_overlap.py. The right half drops one lane:
     # behind=True  -> left 2 / right 1 (both still under the subject on 4; kicker keeps 3)
     # behind=False -> left 6 / right 5 (both still over the subject on 4; kicker keeps 7)
     # The two halves are spatially disjoint (left/right of centre), so the z-order split is invisible.

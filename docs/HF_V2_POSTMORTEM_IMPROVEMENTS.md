@@ -13,7 +13,7 @@ was actually observed in that run — no speculative cleanup.
 | 2 · missing media fails | landed | `5789f43` |
 | 3 · kicker out of placement | landed — but see the note, `_scene_query` still reads it | `b42382d` |
 | 4 · phantom `at` cues | landed — option (b), and the mechanism was not what this doc says | `1eb4e71` |
-| 5 · author-time overlap check | **REVERTED** — detector kept, gate NOT wired; premise was wrong | `66738e3` |
+| 5 · author-time overlap check | **WITHDRAWN** — the rule it asks us to enforce does not exist | `66738e3` |
 | 6 · perceptual dedup | landed — one condition, not a pHash system | `66738e3` |
 | 7 · coverage/long-hold contradiction | landed — one shared registry | `5789f43` |
 | 8 · `layout_lint` cries wolf | landed | `66738e3` |
@@ -231,23 +231,32 @@ frame worker sees it in ~1s. Same check, earlier door.
 **Honesty test.** `tests/test_author_gate.py`: a hand-built spec with two same-track overlapping
 clips exits non-zero from `author.py`.
 
-> **REVERTED `66738e3` — this item's PREMISE is wrong, not just its location.** Both of its factual
-> claims failed on inspection:
-> - The rule is **not** in `assemble-index.mjs`. The hf-author copy of that script has no track guards
->   at all — it is a different generation. The earliest thing enforcing `timeline_track_too_dense` is
->   the external `hyperframes` CLI at render/validate time. (Which makes an earlier door worth *more*
->   than this item implies — the finding survives even though the fix doesn't.)
-> - **Same-track overlap is legal in composed HTML at author time.** Adjacent scenes deliberately
->   overlap: the composer gives each scene a ~0.6s tail (scenes at 0/5/10 emit 0–5.60, 5.00–10.60,
->   10.00–14.00 on one track) and the transitions injector 0/1-ping-pongs the lanes afterwards. Wiring
->   the gate blocked legitimate multi-scene frames — caught by the full suite at 13 failures, not by the
->   targeted subset.
+> **WITHDRAWN — there is no such rule.** Not deferred, not descoped: the premise was checked and is
+> false in every part. Two implementation attempts were made before checking it, which is the lesson.
 >
-> The `spotlight` defect was strictly narrower: two elements of **one scene** on one track over an
-> **identical** window. Scoping the check to same-scene identical-window pairs is the real fix and needs
-> characterising against the injector first. The pure detector (`author.track_overlaps`) and its tests
-> are kept; `test_adjacent_scene_tails_are_why_this_is_not_a_gate` asserts the build does NOT gate on
-> raw overlap, so nobody re-wires it without doing the scoping.
+> - **No assembler has the check.** All four `assemble-index.mjs` copies in the repo contain zero
+>   track-overlap logic. The claim traces to a COMMENT in two of them — *"Track lanes (same-track
+>   time-overlap is illegal — lint timeline_track_too_dense)"* — which describes the top-level INDEX
+>   (frame sub-comps on lane 1, captions 2, voice 10, bgm 11), **not** the tracks inside a frame's own
+>   composition.
+> - **The rule it names is a different rule.** `timeline_track_too_dense` is a DENSITY warning about too
+>   many clips on one timeline; its suggested fix is chunking into sub-compositions.
+> - **The artifact that "could never assemble" is sitting in `videos/` with a rendered mp4.**
+>   `_stress_spotlight` still carries the pre-fix HTML — `s1-labl` and `s1-labr`, both
+>   `data-track-index="2"`, both 0.0–6.0 — next to a finished `renders/_stress_spotlight.mp4`. A frame
+>   pulled from it shows BOTH label halves painted either side of the subject. `the-openai-debate`
+>   likewise shipped 10 same-scene same-track collisions in its `raw` scenes and rendered.
+>
+> Attempt #1 gated on raw same-track overlap → 13 test failures, because adjacent scenes overlap by
+> design (each scene carries a ~0.6s tail; the transitions injector ping-pongs the lanes afterwards).
+> Attempt #2 proposed scoping to same-scene identical windows — which is precisely the shape the
+> evidence above shows rendering correctly. Both detectors are removed; `tests/test_author_track_
+> overlap.py` now records the disproof and asserts `author.py` does not gate, so there is no attempt #3.
+> The false comment in `compose_extension.spotlight` (where the claim originated) is corrected in place.
+>
+> What survives is the general principle — a composer bug is cheapest in the composer's own gate — and
+> it is already served by the phantom-cue gate (item 4) and the layout lint (item 8), which enforce
+> rules that demonstrably exist.
 
 ### 6. Perceptual dedup in the pool
 
@@ -371,19 +380,27 @@ so in the skill.
 
 ## Still open after this pass (found while implementing; NOT on the original list)
 
-1. **The 12:23 pull-quote is still not flagged.** `f09s01` — a `pull_quote` on screen at `start 0.0`
-   for 14.4s whose quote is spoken ~14s later. The two defects that HID it are fixed (item 3), but the
-   scene itself still cannot be located: the quote's words (*valuable, people, money, pay*) recur
-   across the frame — `f09s02`'s cycle steps repeat them almost verbatim — so `_content_time`
-   (needs `freq==1`) and `_content_window_time` (needs Σ inverse-freq ≥ 1.5) both return `None`. The
-   gate cannot flag what it cannot locate. The quote is verbatim spoken text, so phrase-level matching
-   is the lever; `_phrase_time` already exists.
-2. **Item 5 done properly** — scope the kept detector to same-scene, identical-window pairs.
-3. **`_scene_query` still reads `kicker`** (`sync.py:136`, its own copy of the pre-item-3 tuple), on the
+1. ~~**The 12:23 pull-quote is still not flagged.**~~ **FIXED** — a quotation matcher (`sync._prose_time`
+   + `block_registry.visible_strings`). Both existing matchers are frequency-based, and a quotation
+   defeats both by construction: it is built from the frame's own subject words, so they recur
+   (`_content_time` needs `freq==1`) and are shared with the sibling scene that restates them
+   (`_content_window_time` down-weights shared tokens ×0.25, dropping it under its threshold). What they
+   discard is what identifies a quotation — ORDER. `_phrase_time` already matched order but demanded an
+   exact contiguous run, and the screen read *"They're valuable"* for spoken *"They're **very**
+   valuable"*: one inserted word, no match. The matcher recovers ≥70% of a ≥8-token displayed string in
+   order within a 2× window; length is the safety property, so it needs no frequency weighting. Measured
+   across all 10 comps with aligned VO: **f09s01 now flags at lead=11.0s** (in both diamond comps),
+   three other leads got more accurate estimates, lag/mis-order/hard counts unchanged, and UNRESOLVED
+   held at **2 of 90**.
+2. **`_scene_query` still reads `kicker`** (`sync.py:136`, its own copy of the pre-item-3 tuple), on the
    path taken whenever a scene has no `anchor`. Item 3 is half-landed until that reads the registry.
-4. **43 library clips are still 360p.** Not on this list and probably the largest single quality win
+3. **43 library clips are still 360p.** Not on this list and probably the largest single quality win
    available: those sources were ingested under BOTH the old 720p cap and the stale yt-dlp, and both
    are now fixed. A re-ingest lifts the floor under every future project, not just this one.
+4. **Editorially, `f09s01` is still wrong even once flagged.** Placement cannot fix a frame's FIRST
+   scene (it is pinned to 0.0 — something must cover the frame from its start), and delaying the quote's
+   reveal inside the scene would flash it for <1s before the scene ends. The fix is authoring: frame 09
+   needs a lead-in beat carrying *"So here's where we land…"* before the quote lands.
 
 ## Known-acceptable, deliberately NOT changed (context, so nobody "fixes" them blind)
 
