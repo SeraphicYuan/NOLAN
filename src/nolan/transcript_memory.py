@@ -224,7 +224,12 @@ def load_accepted(catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
 
 
 def stats(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
-    """What the memory holds — surfaced in the Topic tab so the cache is never a black box."""
+    """What the memory holds — surfaced in the Topic tab so the cache is never a black box.
+
+    `accept_rate` is measured against the rows a human could actually have taken (`off` rows were dropped
+    before they were ever shown), and broken down per fit. Counting acceptances against EVERY judgement
+    including the drops reads as a damningly low number for a re-ranker that is doing its job — the useful
+    question is "of the rows it called high, how many did I take?"."""
     j = _load("topic_judgements.json", catalog_dir)
     q = _load("topic_queries.json", catalog_dir)
     acc = _load("picks_accepted.json", catalog_dir)
@@ -232,8 +237,16 @@ def stats(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
     for r in j.values():
         f = str(r.get("fit") or "?")
         fits[f] = fits.get(f, 0) + 1
+    shown = sum(n for f, n in fits.items() if f != "off")
+    acc_fits: Dict[str, int] = {}
+    for r in acc.values():
+        f = str(r.get("fit") or "?")
+        acc_fits[f] = acc_fits.get(f, 0) + 1
     return {"judgements": len(j), "judged_topics": len({r.get("topic") for r in j.values()}),
             "expansions": len(q), "accepted": len(acc),
             "accepted_topics": len({r.get("topic") for r in acc.values() if r.get("topic")}),
-            "fits": fits,
-            "accept_rate": (round(len(acc) / len(j), 3) if j else None)}
+            "fits": fits, "accepted_fits": acc_fits, "shown": shown,
+            "dropped_off": fits.get("off", 0),
+            "accept_rate": (round(len(acc) / shown, 3) if shown else None),
+            "accept_rate_high": (round(acc_fits.get("high", 0) / fits["high"], 3)
+                                 if fits.get("high") else None)}

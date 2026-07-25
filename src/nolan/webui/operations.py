@@ -667,9 +667,11 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
                                                      visual=visual, kind=kind, job=job)
             except Exception as e:
                 job.log(f"    (visual skipped: {type(e).__name__}: {e})")
+        # keep the runtime we already know: once ingested, tier 1 has no survey behind it to ask
+        dur_known = dur_item or float((meta or {}).get("duration") or 0) or None
         tl.record_transcript(meta.get("video_id") or yid0, {**meta, "url": url}, len(windows),
                              v.get("channel") or collection, frames=nframes, added=now, broll=is_broll,
-                             kind=kind, copyright_free=copyright_free)
+                             kind=kind, copyright_free=copyright_free, duration=dur_known)
         if not is_broll:
             job.log(f"  + {title} ({len(windows)} windows" + (f", +{nframes} frames" if nframes else "") + ")")
     tail = (f", {broll} ready-broll" if broll else "") + (f", {no_tr} no-transcript" if no_tr else "")

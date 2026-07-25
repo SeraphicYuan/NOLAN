@@ -42,23 +42,28 @@ def load_catalog(catalog_dir: Optional[Path] = None) -> Dict[str, Any]:
 def record_transcript(video_id: str, meta: Dict[str, Any], windows_n: int, channel: Optional[str],
                       *, frames: int = 0, added: str = "", catalog_dir: Optional[Path] = None,
                       broll: Optional[bool] = None, kind: Optional[str] = None,
-                      copyright_free: Optional[bool] = None) -> None:
+                      copyright_free: Optional[bool] = None,
+                      duration: Optional[float] = None) -> None:
     """Upsert one transcript video's display metadata into the sidecar (keyed by the YouTube video id).
     `frames` = how many visual keyframes were captioned (drives the visual-coverage badge). `broll` = a ready
     b-roll short clip. `kind`/`copyright_free` = the source family + license status (so the acquire engine can
     mark the pooled asset: copyright-free stock/PD vs a copyrighted documentary reference).
 
-    PROVENANCE IS STICKY: those three are Optional and only OVERWRITTEN when the caller asserts them. They
-    used to default to (False, 'youtube', False), so a re-caption / refresh — which knows nothing about the
-    source family — silently re-labelled a Prelinger PD film as copyrighted YouTube (observed live: an
-    archive.org 500 forced a re-caption, and the row came back kind=youtube, copyright_free=False)."""
+    PROVENANCE IS STICKY: `broll`/`kind`/`copyright_free`/`duration` are Optional and only OVERWRITTEN when
+    the caller asserts them. They used to default to (False, 'youtube', False), so a re-caption / refresh —
+    which knows nothing about the source family — silently re-labelled a Prelinger PD film as copyrighted
+    YouTube (observed live: an archive.org 500 forced a re-caption, and the row came back kind=youtube,
+    copyright_free=False). `duration` is kept because the topic search's length filter has no other way to
+    gate an ALREADY-INGESTED row (tier 1) — the survey that knew the runtime is behind it by then."""
     cat = load_catalog(catalog_dir)
     prev = cat.get(str(video_id)) or {}
+    dur = duration if duration is not None else (meta.get("duration") if meta.get("duration") else None)
     cat[str(video_id)] = {
         "video_id": str(video_id), "title": meta.get("title"),
         "channel": channel or meta.get("channel"), "url": meta.get("url"),
         "upload_date": meta.get("upload_date"), "language": meta.get("language"),
         "windows": int(windows_n), "frames": int(frames), "added": added,
+        "duration": (int(float(dur)) if dur else prev.get("duration")),
         "broll": bool(prev.get("broll", False) if broll is None else broll),
         "kind": (prev.get("kind") or "youtube") if kind is None else kind,
         "copyright_free": bool(prev.get("copyright_free", False) if copyright_free is None else copyright_free),

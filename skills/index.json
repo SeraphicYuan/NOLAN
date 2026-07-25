@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 39,
+  "count": 40,
   "skills": [
     {
       "id": "art.flow",
@@ -462,6 +462,25 @@
       },
       "evals": [],
       "path": "skills/lab/kb.md"
+    },
+    {
+      "id": "lab.transcript-library",
+      "name": "Transcript library (discovery tier + topic search)",
+      "kind": "methodology",
+      "purpose": "Orient any transcript-library task \u2014 what each sidecar owns, why the ranking is recomputed while the LLM's output is remembered, and the invariants (provenance is sticky, unknown duration is kept, no silent caps).\n",
+      "status": "active",
+      "version": 1,
+      "tier": "lab",
+      "description": "The library of what other people's videos SAY and SHOW \u2014 YouTube channels and archive.org collections surveyed and transcript-indexed cheaply (no download), then visually captioned per keyframe by the VLM, so a topic search can answer \"which video, and roughly when\". Covers the survey \u2192 curate \u2192 ingest \u2192 caption loop, the THREE-TIER on-demand topic search (ingested / surveyed / global archive.org) with its persisted title-vector index, the LLM re-rank and its memory, and the broadening organ that proposes subjects the library lacks. Read before touching transcript_lib / transcript_vectors / transcript_memory / transcript_broaden / archive_source, the /transcripts page, or anything that grows the footage library by topic.\n",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/transcript_lib.py"
+      },
+      "evals": [],
+      "path": "skills/lab/transcript-library.md"
     },
     {
       "id": "orchestrator.adapt-style",

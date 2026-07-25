@@ -30,6 +30,13 @@ FIT_RANK = {"high": 0, "medium": 1, "unjudged": 2, "": 2, "low": 3}
 _TOPIC_DUP = 0.90                                    # cosine at which a proposed topic repeats an old one
 
 
+def _load_json_values(name: str, catalog_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """Values of a transcript-library sidecar dict, or [] — used to fold every searched topic (not just
+    broaden's own runs) into what the proposer is told to avoid."""
+    from nolan import transcript_memory as mem
+    return list(mem._load(name, catalog_dir).values())
+
+
 def _used_file(catalog_dir: Optional[Path] = None) -> Path:
     from nolan.transcript_lib import TRANSCRIPT_DIR
     return (Path(catalog_dir) if catalog_dir else TRANSCRIPT_DIR) / "topics_used.json"
@@ -75,11 +82,34 @@ async def propose_topics(config, n: int = 20, theme: str = "", catalog_dir: Opti
     can't burn its budget re-searching the same ground. Returns {topics, dropped, seen}."""
     import numpy as np
 
+    from nolan import transcript_memory as mem
     from nolan.llm import create_text_llm
-    from nolan.transcript_lib import _embed_titles, load_catalog
+    from nolan.transcript_lib import _embed_titles, load_catalog, topic_cluster
     cat = load_catalog(catalog_dir)
-    titles = [str(v.get("title") or "") for v in cat.values() if v.get("title")][:sample]
+    rows = [v for v in cat.values() if v.get("title")]
+    # a DIVERSE sample, not the first N: the head of a catalog is whatever was ingested first, which tells
+    # the model nothing about the library's spread. Cluster the titles and show one medoid per cluster.
+    if len(rows) > sample:
+        try:
+            groups = topic_cluster([{"video_id": v.get("video_id"), "title": v.get("title")} for v in rows],
+                                   sample)
+            by_id = {v.get("video_id"): v for v in rows}
+            rows = [by_id[g["medoid_id"]] for g in groups if g.get("medoid_id") in by_id]
+        except Exception:
+            rows = rows[:sample]
+    titles = [str(v.get("title") or "") for v in rows][:sample]
+    # every topic ALREADY SEARCHED — from broaden's own history AND from any hand-run Topic-tab search
+    # (the expansion cache records those), plus the subjects whose picks were actually accepted
     used = [t.get("topic") for t in load_used_topics(catalog_dir) if t.get("topic")]
+    seen_topics = {t for t in used}
+    for row in _load_json_values("topic_queries.json", catalog_dir):
+        if row.get("topic") and row["topic"] not in seen_topics:
+            seen_topics.add(row["topic"])
+            used.append(row["topic"])
+    for row in mem.load_accepted(catalog_dir):
+        if row.get("topic") and row["topic"] not in seen_topics:
+            seen_topics.add(row["topic"])
+            used.append(row["topic"])
     prompt = (
         (f'Theme to stay within: "{theme}".\n\n' if theme else "")
         + "A transcript/footage library already holds these videos:\n"
