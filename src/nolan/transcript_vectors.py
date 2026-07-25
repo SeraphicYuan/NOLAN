@@ -68,7 +68,7 @@ def rows(catalog_dir: Optional[Path] = None, exclude: Optional[set] = None) -> D
             subject = (t.get("subject") or []) if kd == "archive" else []
             txt = embed_text(title, subject)
             out[vid] = {"video_id": vid, "title": title, "url": t.get("url") or "", "kind": kd,
-                        "channel": chan, "subject": subject,
+                        "channel": chan, "subject": subject, "duration": t.get("duration"),
                         "description": _as_text(t.get("description")) if kd == "archive" else "",
                         "copyright_free": (vid in free_ids) or bool(t.get("copyright_free")),
                         "text": txt, "sig": _sig(txt)}

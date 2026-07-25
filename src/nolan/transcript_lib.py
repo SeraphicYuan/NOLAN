@@ -355,7 +355,8 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
                            catalog_dir: Optional[Path] = None,
                            copyright_free_only: bool = False,
                            queries: Optional[List[str]] = None,
-                           web: bool = True, rerank: bool = True) -> Dict[str, Any]:
+                           web: bool = True, rerank: bool = True,
+                           min_sec: int = 0, max_sec: int = 0) -> Dict[str, Any]:
     """ON-DEMAND caption targeting: a rough topic ("diamond, De Beers, diamond history") → a ranked shortlist
     of videos worth running the gemma VISUAL tier on. THREE tiers, rank-fused:
       (1) INGESTED-but-not-captioned — the topic's BGE vector search over transcripts, grouped by video, kept
@@ -390,7 +391,7 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
     used = given or qs or [q.strip() for q in (topic or "").replace(",", "\n").splitlines() if q.strip()]
     used = (used or [topic])[:8]
     out = await asyncio.to_thread(_topic_suggestions, used, topic, index, vs, int(n), catalog_dir,
-                                  bool(copyright_free_only), bool(web))
+                                  bool(copyright_free_only), bool(web), int(min_sec or 0), int(max_sec or 0))
     out["expanded"] = bool(qs and not given)
     out["query_source"] = "edited" if given else ("llm" if qs else "topic")
     out["expander"] = expander if (qs and not given) else ""
@@ -464,7 +465,8 @@ async def _rerank_suggestions(rows, topic, queries, config):
                                       "rerank_judged": len(fit_of), "reranker": model}
 
 
-def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False):
+def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False,
+                 min_sec=0, max_sec=0):
     """The two LOCAL tiers — what the library already holds: (1) ingested-but-uncaptioned, (2) surveyed.
     Returns ``(ingested, surveyed, meta)``; the global archive tier and the fusion live in the caller."""
     import numpy as np
@@ -492,6 +494,7 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
                 best[sid] = {"score": score, "e": e, "url": url,
                              "snip": (getattr(h, "description", "") or getattr(h, "transcript", "") or "")[:150]}
     ing = []
+    dropped_len = 0
     for sid, b in best.items():
         e, url = b["e"], (b["e"].get("url") or b["url"])
         arch = "archive.org" in (url or "").lower()
@@ -499,9 +502,12 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
         kind = e.get("kind") or ("archive" if arch else ("youtube_cc" if cf else "youtube"))
         if copyright_free_only and not cf:
             continue
+        if not _dur_ok(e.get("duration"), min_sec, max_sec):
+            dropped_len += 1
+            continue
         ing.append({"video_id": sid, "title": e.get("title") or sid, "url": url, "channel": e.get("channel"),
                     "kind": kind, "copyright_free": cf, "tier": "ingested", "action": "caption",
-                    "score": round(b["score"], 3), "why": b["snip"]})
+                    "duration": e.get("duration"), "score": round(b["score"], 3), "why": b["snip"]})
     ingested = sorted(ing, key=lambda x: -x["score"])
 
     # --- Tier 2: SURVEYED but NOT ingested — BGE over the PERSISTED title-vector index (whole corpus) ---
@@ -524,8 +530,11 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
             r = corpus[ids[i]]
             if copyright_free_only and not r["copyright_free"]:
                 continue
+            if not _dur_ok(r.get("duration"), min_sec, max_sec):
+                dropped_len += 1
+                continue
             surveyed.append({"video_id": r["video_id"], "title": r["title"], "url": r["url"],
-                             "channel": r["channel"], "kind": r["kind"],
+                             "channel": r["channel"], "kind": r["kind"], "duration": r.get("duration"),
                              "copyright_free": bool(r["copyright_free"]), "tier": "surveyed",
                              "action": "ingest+caption", "score": round(s, 3), "why": "",
                              "_desc": (r.get("description") or "")[:300],
@@ -539,6 +548,7 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
         meta2.update(pre_meta)
         svecs = []
     surveyed, meta2["tier2_duplicates"] = _collapse_near_duplicates(surveyed, svecs or None)
+    meta2["length_dropped"] = dropped_len
     return ingested, surveyed, meta2
 
 
@@ -612,18 +622,22 @@ _FLOOR = 0.42                                                 # cosine below thi
 _SHORTLIST = 36                                               # rows carried into dedupe / fusion / re-rank
 _DUP_THR = 0.90                                               # title cosine at which two rows are the same film
 _ARCHIVE_ROWS = 40                                            # global archive.org hits fetched per query
+_DURATION_LOOKUPS = 25                                        # per-item metadata calls a length filter may spend
 
 
-def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False, web=True):
+def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False, web=True,
+                       min_sec=0, max_sec=0):
     """The three tiers, fused: (1) INGESTED-but-uncaptioned → caption, (2) SURVEYED-but-not-ingested →
     ingest+caption, (3) the GLOBAL archive.org search → ingest+caption. Near-duplicates are collapsed per
     tier, then the tiers are fused by RANK (RRF), because their scores are on different scales — tier 1 is a
     transcript-SEGMENT cosine, tiers 2/3 are TITLE cosines, and concatenating them ranked a 0.55 title above
     a 0.50 segment as if that meant something (`_rrf_fuse` exists in this module for exactly this reason)."""
-    ingested, surveyed, meta = _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only)
+    ingested, surveyed, meta = _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only,
+                                            min_sec, max_sec)
     archived: List[Dict[str, Any]] = []
     if web:
-        archived, wmeta = _archive_tier(queries, catalog_dir, copyright_free_only)
+        archived, wmeta = _archive_tier(queries, catalog_dir, copyright_free_only, min_sec, max_sec)
+        meta["length_dropped"] = meta.get("length_dropped", 0) + wmeta.pop("length_dropped", 0)
         meta.update(wmeta)
     fused = _fuse_by_rank({"ingested": ingested, "surveyed": surveyed, "archive": archived}, _SHORTLIST)
     return {"topic": topic, "queries": list(queries), "suggestions": fused,
@@ -670,7 +684,7 @@ def _fuse_by_rank(tiers: Dict[str, List[Dict[str, Any]]], n: int, k: int = 60):
     return out
 
 
-def _archive_tier(queries, catalog_dir=None, copyright_free_only=False):
+def _archive_tier(queries, catalog_dir=None, copyright_free_only=False, min_sec=0, max_sec=0):
     """Tier 3 — the GLOBAL archive.org search (`archive_source.search_items`), the reach the local surveys
     cannot have: a topic the added collections don't cover is still somewhere in archive.org's movie items
     (a diamond topic against a Prelinger-only library could otherwise only reach mining/advertising
@@ -687,7 +701,7 @@ def _archive_tier(queries, catalog_dir=None, copyright_free_only=False):
             if t.get("video_id"):
                 known.add(t["video_id"])
     seen: Dict[str, Dict[str, Any]] = {}
-    errors, found_total = [], 0
+    errors, found_total, dropped_len = [], 0, 0
     for q in list(queries)[:5]:                               # bounded fan-out: 5 queries x _ARCHIVE_ROWS
         aq = " ".join(_tok(q)[:3])                            # advancedsearch ANDs its terms — 3 keeps recall
         if not aq:
@@ -705,8 +719,11 @@ def _archive_tier(queries, catalog_dir=None, copyright_free_only=False):
                 continue
             if copyright_free_only and not r["copyright_free"]:
                 continue
+            if not _dur_ok(r.get("duration"), min_sec, max_sec):
+                dropped_len += 1
+                continue
             seen[r["video_id"]] = r
-    meta = {"archive_fetched": len(seen), "archive_matched": found_total}
+    meta = {"archive_fetched": len(seen), "archive_matched": found_total, "length_dropped": dropped_len}
     if errors:
         meta["archive_errors"] = errors[:3]
     if not seen:
@@ -717,11 +734,21 @@ def _archive_tier(queries, catalog_dir=None, copyright_free_only=False):
                     dtype=np.float32)
     sims = (tv @ qv.T).max(axis=1)
     out, ovecs = [], []
+    lookups = 0
     for i in np.argsort(-sims):
         s = float(sims[i])
         if s < _FLOOR or len(out) >= _SHORTLIST:
             break
         r = cand[i]
+        # advancedsearch omits `runtime` for most globally-searched items, and unknown duration is KEPT —
+        # so a length filter wouldn't bite here at all. Resolve it from the metadata API for the few rows
+        # that actually reach the shortlist (bounded), never for the whole fetch.
+        if (min_sec or max_sec) and r.get("duration") is None and lookups < _DURATION_LOOKUPS:
+            lookups += 1
+            r["duration"] = ar.resolve_duration(r["video_id"])
+        if not _dur_ok(r.get("duration"), min_sec, max_sec):
+            dropped_len += 1
+            continue
         out.append({"video_id": r["video_id"], "title": r["title"], "url": r["url"], "channel": "",
                     "kind": "archive", "copyright_free": bool(r["copyright_free"]), "tier": "archive",
                     "action": "ingest+caption", "score": round(s, 3), "why": "",

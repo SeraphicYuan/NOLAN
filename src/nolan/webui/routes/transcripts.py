@@ -286,7 +286,46 @@ def register(app, ctx):
                                          copyright_free_only=bool(body.get("copyright_free", False)),
                                          queries=(body.get("queries") or None),
                                          web=bool(body.get("web", True)),
-                                         rerank=bool(body.get("rerank", True)))
+                                         rerank=bool(body.get("rerank", True)),
+                                         min_sec=int(body.get("min_sec", 0) or 0),
+                                         max_sec=int(body.get("max_sec", 0) or 0))
+
+    @app.post("/api/transcripts/broaden")
+    async def transcripts_broaden(body: dict = Body(...)):
+        """BROADEN THE LIBRARY: LLM-proposed topics the library lacks → the 3-tier search per topic (with
+        the caller's filters) → X picks spanning as many subjects as possible. Returns a PROPOSAL for review
+        in the Topic tab; ingest is the user's next click. Runs as a job — it is minutes of LLM + network."""
+        from nolan.config import load_config
+        from nolan import transcript_broaden as tb
+        from nolan.indexer import VideoIndex
+        from nolan.vector_search import VectorSearch
+        idb = _db()
+        if not Path(idb).exists():
+            raise HTTPException(status_code=400, detail="no transcript index yet")
+        cfg = load_config()
+
+        async def _run(job):
+            index = VideoIndex(idb)
+            vs = VectorSearch(Path(idb).parent / "vectors", index=index)
+            return await tb.broaden_library(
+                cfg, index, vs,
+                count=int(body.get("count", 20) or 20), theme=(body.get("theme") or "").strip(),
+                topics=(body.get("topics") or None), per_topic=int(body.get("per_topic", 1) or 1),
+                min_sec=int(body.get("min_sec", 0) or 0), max_sec=int(body.get("max_sec", 0) or 0),
+                copyright_free_only=bool(body.get("copyright_free", False)),
+                kinds=(body.get("kinds") or None), web=bool(body.get("web", True)),
+                rerank=bool(body.get("rerank", True)), min_fit=(body.get("min_fit") or "medium"),
+                progress=lambda f, m: job.set_progress(min(0.99, f), m))
+        job = job_manager.start("transcript-broaden", _run, meta={"count": int(body.get("count", 20) or 20)})
+        return {"job_id": job.id, "type": "transcript-broaden"}
+
+    @app.get("/api/transcripts/topics-used")
+    async def transcripts_topics_used():
+        """Topics already searched by a broaden run — what the library has DELIBERATELY covered so far."""
+        from nolan import transcript_broaden as tb
+        rows = tb.load_used_topics()
+        return {"topics": sorted(rows, key=lambda r: r.get("last_used") or "", reverse=True),
+                "count": len(rows), "picked": sum(int(r.get("picked") or 0) for r in rows)}
 
     @app.get("/api/transcripts/topic-index")
     async def transcripts_topic_index():

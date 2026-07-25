@@ -212,6 +212,38 @@ def _srt_name(files: List[Dict[str, Any]]) -> Optional[str]:
     return next((f.get("name") for f in files if str(f.get("name", "")).lower().endswith(".srt")), None)
 
 
+def resolve_duration(identifier: str, timeout: float = 20.0) -> Optional[int]:
+    """Seconds for an item, via the metadata API — for when advancedsearch returns no ``runtime``.
+
+    Search results carry `runtime` only when the uploader set it, which for globally-searched items is often
+    NOT the case; the per-file `length` in the metadata manifest almost always exists. Without this a length
+    filter simply doesn't bite on the global tier (unknown duration is KEPT by design), which is how a
+    90-second clip reached a caption run and produced 4 keyframes."""
+    ident = collection_ref(identifier) if "/" in (identifier or "") else identifier
+    try:
+        with httpx.Client(headers=_UA, timeout=timeout, follow_redirects=True) as c:
+            m = c.get(f"{META}/{ident}").json()
+    except Exception:
+        return None
+    md = m.get("metadata", {}) or {}
+    if md.get("runtime"):
+        d = parse_runtime(md.get("runtime"))
+        if d:
+            return d
+    best = None
+    for f in (m.get("files") or []):
+        raw = f.get("length")
+        if not raw:
+            continue
+        try:
+            secs = float(raw)
+        except (TypeError, ValueError):
+            secs = parse_runtime(raw) or 0                 # 'MM:SS' form
+        if secs and (best is None or secs > best):
+            best = float(secs)
+    return int(best) if best else None
+
+
 def _video_files(files: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Just the MP4/MPEG derivatives (skip cinepak/ogg/avi — playback-hostile), with a usable size. NOTE the
     archive `height` field is UNRELIABLE (a 172MB HiRes `_edit.mp4` reports height=240), so selection keys on

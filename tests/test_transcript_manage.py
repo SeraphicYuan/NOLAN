@@ -324,6 +324,37 @@ def test_archive_copyright_free_uses_pd_collections_not_just_licence():
     assert clause.startswith("(licenseurl:[* TO *] OR collection:(") and "prelinger" in clause
 
 
+def test_optional_length_filter(monkeypatch, tmp_path):
+    """OPTIONAL length gate (off by default): a 90-second clip yields ~4 keyframes, often too thin to be
+    worth captioning. Items with UNKNOWN duration are kept — the library never drops a real film over
+    missing metadata — and whatever the gate removed is reported."""
+    from nolan import transcript_lib as tl
+    titles = [{"video_id": "short", "title": "diamond clip", "url": "", "duration": 90},
+              {"video_id": "long", "title": "diamond film", "url": "", "duration": 1800},
+              {"video_id": "epic", "title": "diamond series", "url": "", "duration": 9000},
+              {"video_id": "unknown", "title": "diamond reel", "url": ""}]                # no duration
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    monkeypatch.setattr(tl, "copyright_free_ids", lambda cd=None: set())
+    monkeypatch.setattr(tl, "load_surveys", lambda cd=None: {"archive:c": {"kind": "archive",
+                                                                          "channel": "c", "titles": titles}})
+    monkeypatch.setattr(tl, "_embed_titles", lambda ts: [[1.0, 0.0]] * len(ts))
+    monkeypatch.setattr(tl, "_collapse_near_duplicates", lambda rows, vecs=None, thr=0.9: (rows, 0))
+
+    d = tl._topic_suggestions(["diamond"], "diamond", _FakeIndex(), _FakeVS(), 9, tmp_path, web=False)
+    assert {s["video_id"] for s in d["suggestions"]} == {"short", "long", "epic", "unknown"}   # default: off
+    assert d["length_dropped"] == 0
+
+    d = tl._topic_suggestions(["diamond"], "diamond", _FakeIndex(), _FakeVS(), 9, tmp_path, web=False,
+                              min_sec=300)
+    assert {s["video_id"] for s in d["suggestions"]} == {"long", "epic", "unknown"}   # unknown SURVIVES
+    assert d["length_dropped"] == 1
+    assert [s.get("duration") for s in d["suggestions"] if s["video_id"] == "long"] == [1800]
+
+    d = tl._topic_suggestions(["diamond"], "diamond", _FakeIndex(), _FakeVS(), 9, tmp_path, web=False,
+                              min_sec=300, max_sec=3600)
+    assert {s["video_id"] for s in d["suggestions"]} == {"long", "unknown"} and d["length_dropped"] == 2
+
+
 def test_multivalued_archive_metadata_is_coerced_to_text(monkeypatch):
     """archive.org metadata is MULTI-VALUED: an item with two <description> entries returns a LIST. Every
     consumer downstream (keyword match, embed text, the re-rank prompt) assumes text — an uncoerced list
@@ -485,7 +516,7 @@ def test_suggest_by_topic_query_provenance(monkeypatch):
 
     monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: FakeLLM())
     monkeypatch.setattr(tl, "_topic_suggestions",
-                        lambda q, t, i, v, n, cd, cf, web=True: {"suggestions": [], "queries": list(q)})
+                        lambda q, t, i, v, n, cd, cf, web=True, *a: {"suggestions": [], "queries": list(q)})
 
     d = asyncio.run(tl.suggest_by_topic("diamonds, De Beers", None, None, None))
     assert d["queries"] == ["expanded one", "expanded two"] and len(calls) == 1
