@@ -37,6 +37,13 @@ def render_inventory_lines(pool: list) -> List[str]:
             tag += f" [{h}p — LOW-RES: use as a dimmed ground, not full-bleed hero]"
         if it.get("copyright_free") is False:
             tag += " [copyrighted — short referenced excerpt only]"
+        # PROVENANCE the author must weigh, not decoration. A scraped source's stored metadata describes
+        # the SOURCE video, not the range we trimmed, so its origin is a claim until pixels confirm it —
+        # live, a clip labelled "Internet Archive" was a branded upload with a follow/subscribe overlay.
+        if it.get("origin_verified") is False:
+            tag += " [UNVERIFIED ORIGIN — scraped upload; check the frames before placing]"
+        if it.get("caption_verified") is False:
+            tag += " [caption unverified — the VLM did not confirm this shows what the text claims]"
         cred = f"{it.get('source') or '?'}" + (f" / {it['photographer']}" if it.get("photographer") else "")
         lines.append(f"- `assets/{f}`{tag} — {it.get('caption', '')}  "
                      f"_(need: {it.get('id', '?')}; {cred}; {it.get('license') or 'license?'})_")

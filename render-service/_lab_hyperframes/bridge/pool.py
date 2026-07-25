@@ -402,20 +402,19 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
     from nolan.vision import create_vision_provider
     from nolan.evoke_broll import _vision_config
     from nolan.acquire import AcquireConfig, judge_prompt, extract_json, parse_verdict, is_junk
+    from nolan.acquire.judge import caption_verified, is_scraped
     acfg = acfg or AcquireConfig()
     prov = create_vision_provider(_vision_config(cfg))
     need_by_id = {n["id"]: n for n in needs}
     sem = asyncio.Semaphore(4)
 
     async def judge(item):
-        # CULL CASCADE Lever A: library clips are pre-captioned (stored vision description) + curated +
-        # already passed the engine's cheap CLIP frame-relevance gate — skip the expensive VLM filmstrip.
-        if "clips_library" in str(item.get("source", "")):
-            item.setdefault("usable", True)
-            item.setdefault("content_kind", "broll")             # library video = b-roll (skips the VLM)
-            if not item.get("caption"):
-                item["caption"] = f"[video] {item.get('query', '')}".strip()
-            return
+        # CULL CASCADE Lever A USED TO SKIP the VLM entirely for library clips ("pre-captioned + curated
+        # + already past the CLIP gate"). That exemption is what shipped a talking head captioned as a
+        # "stock ticker" and a clip hard-subbed with another creator's subtitles: the stored description
+        # describes the SOURCE video, not the range we trimmed, and a scraped upload's branding is
+        # invisible to every cheap gate. Scraped sources are now judged like anything else — the saving
+        # was never worth an unverified caption on someone else's footage.
         need = need_by_id.get(item["id"], {"query": item.get("query", "")})
         img = assets_dir / item["file"]
         is_video = item["media_type"] == "video"
@@ -445,6 +444,17 @@ async def score_and_caption(cfg, pool, assets_dir: Path, needs, acfg=None):
         if v.get("content_kind"):
             item["content_kind"] = v["content_kind"]                 # placement signal, from the same VLM call
         item["usable"], item["flags"] = v["usable"], v["flags"]      # → /pool curation badges
+        # PROVENANCE the author (and a human) can act on. `depicts=False` keeps the asset — it is often
+        # still good b-roll — but the caption above now comes from what the VLM SAW, so record that the
+        # original claim failed rather than silently swapping it. `origin_verified` is False for scraped
+        # sources until pixels confirm; it is what the `[unverified-origin]` menu tag reads.
+        if v.get("chrome") is not None:
+            item["chrome"] = bool(v["chrome"])
+        cv = caption_verified(v)
+        if cv is not None:
+            item["caption_verified"] = bool(cv)
+        if is_scraped(item.get("source", "")):
+            item["origin_verified"] = bool(v.get("chrome") is False)
         item["_verdict"] = v
     await asyncio.gather(*(judge(it) for it in pool))
 

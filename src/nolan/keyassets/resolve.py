@@ -303,10 +303,45 @@ def resolve_image(cfg, client, entity: KeyEntity, desired: DesiredAsset, out: Pa
     return kept
 
 
+def _has_chrome(cfg, still: Path) -> Optional[bool]:
+    """Does this frame carry SOMEONE ELSE'S branding — watermark, channel bug, follow/subscribe UI,
+    burned-in subtitles, a news lower-third? Tri-state; None when the VLM gives no answer.
+
+    Separate from the subject match on purpose: a clip can depict exactly the right thing AND still be
+    another channel's property. Live incident — a HERO clip our menu labelled "archive; Internet Archive"
+    was a scraped upload showing a FOLLOW button, SUBSCRIBED chrome, a jeweller's brand mark and
+    "@diamondtrends.net" burned in. It passed subject-match cleanly, because it did show a diamond."""
+    from .schema import DesiredAsset  # noqa: F401  (kept local; this module is import-light by design)
+    import asyncio
+    try:
+        from nolan.evoke_broll import _vision_config
+        from nolan.vision import create_vision_provider
+        prov = create_vision_provider(_vision_config(cfg))
+    except Exception:
+        return None
+    send, tmp = downscale_for_vision(still)
+    prompt = ("Does this frame carry any overlay that is NOT part of the filmed scene — a watermark, a "
+              "channel logo or bug, a follow/subscribe/like UI, burned-in subtitles, or a news "
+              'lower-third? Reply ONLY JSON: {"chrome": true or false, "what": "<short>"}.')
+    try:
+        raw = asyncio.run(prov.describe_image(str(send), prompt))
+        j = parse_vision_json(raw) or {}
+        v = j.get("chrome")
+        return bool(v) if isinstance(v, bool) else None
+    except Exception:
+        return None
+    finally:
+        if tmp:
+            tmp.unlink(missing_ok=True)
+
+
 def _verify_video(cfg, video_path: Path, subject: str) -> Optional[bool]:
     """Multi-frame footage verify: sample up to 3 frames (a subject can be absent from any single one).
     True if ANY frame confirms, False only if ALL explicitly reject, else None (kept-but-unverified) —
-    a single mid-frame was too strict and dropped recoverable clips."""
+    a single mid-frame was too strict and dropped recoverable clips.
+
+    CHROME is checked alongside and is DISQUALIFYING on its own: a hero carrying another channel's
+    branding is rejected however well it matches the subject."""
     import os
     import subprocess
     import tempfile
@@ -321,6 +356,8 @@ def _verify_video(cfg, video_path: Path, subject: str) -> Optional[bool]:
             subprocess.run([ff, "-y", "-ss", str(ss), "-i", str(video_path), "-frames:v", "1",
                             "-vf", "scale=768:-1", "-q:v", "4", str(tmp)], capture_output=True, timeout=30)
             if tmp.exists() and tmp.stat().st_size > 800:
+                if _has_chrome(cfg, tmp) is True:        # someone else's branding — never a hero
+                    return False
                 v = _verify_match(cfg, tmp, subject, evocative=False, retries=1)
                 verdicts.append(v)
                 if v is True:

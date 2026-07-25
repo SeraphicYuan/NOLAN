@@ -13,6 +13,7 @@ Both injectors are idempotent, so re-running is safe.
   python -X utf8 assemble_media.py <project_dir>
 """
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -77,8 +78,20 @@ def stage_referenced_media(comp_dir: Path) -> dict:
     if staged:
         print(f"stage-media: staged {len(staged)} referenced asset(s) capture/ → assets/")
     if missing:
-        print(f"⚠ stage-media: {len(missing)} referenced asset(s) NOT in assets/ or capture/ "
-              f"(these render as a HOLE — source them): {', '.join(missing[:8])}")
+        # HARD-FAIL. This used to only PRINT, and the render went ahead: v2's first pass had 11
+        # unresolved refs, the style gate still reported PASS, and the render died ~20 minutes later on
+        # a wall of HTTP404. A ref that resolves to nothing is a HOLE in the frame — knowable here, for
+        # free, before the spend. Matches the house escape-hatch pattern (HF_ALLOW_STYLE / _LAG /
+        # _UNSOURCED); the env var exists so a deliberate placeholder pass can still render.
+        detail = ", ".join(missing[:12]) + (f" (+{len(missing) - 12} more)" if len(missing) > 12 else "")
+        if os.environ.get("HF_ALLOW_MISSING_MEDIA"):
+            print(f"⚠ stage-media: {len(missing)} referenced asset(s) NOT in assets/ or capture/ — "
+                  f"rendering anyway (HF_ALLOW_MISSING_MEDIA=1); these WILL be holes: {detail}")
+        else:
+            raise SystemExit(
+                f"✗ stage-media: {len(missing)} referenced asset(s) resolve to NOTHING and would render "
+                f"as holes: {detail}. Source them into assets/ or capture/, or fix the ref in the spec. "
+                f"Knowing exception: HF_ALLOW_MISSING_MEDIA=1.")
     return {"staged": staged, "missing": missing}
 
 

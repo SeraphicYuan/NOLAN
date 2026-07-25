@@ -33,13 +33,11 @@ try:
 except Exception:                                            # keep the operator importable standalone
     _LONG_HOLD_S = 5.0
 
-# The blocks that actually CONSUME `data.ground` — i.e. whose composer fn calls compose.media_ground().
-# This is an ALLOW-list, not a blacklist: only 6 of the composer's 50 templates read the field, so a
-# blacklist of "blocks with their own visual" silently wrote a no-op ground onto everything else (hero /
-# chart / cycle / diagram / …) AND consumed a pool asset for it, starving a scene that would have rendered
-# one. Derived from compose.py (tests/test_autoground.py asserts this set still matches the composer, so
-# it can't rot as blocks are added).
-_GROUND_BLOCKS = {"statement", "stat", "bullet_list", "pull_quote", "comparison_table", "ledger"}
+# The blocks that actually CONSUME `data.ground` — the ONE registry both this operator and the style
+# linter read (`nolan/block_registry.py`). It used to be a private copy here AND a different private
+# copy in style_contract/metrics.py; see that module's docstring for what the divergence cost.
+from nolan.block_registry import GROUND_BLOCKS as _GROUND_BLOCKS
+
 _IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
 _VID_EXT = (".mp4", ".mov", ".webm")
 _KB = [1.0, 1.08]                                            # subtle Ken-Burns push so a still ground isn't dead

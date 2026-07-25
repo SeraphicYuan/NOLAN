@@ -99,7 +99,12 @@ def _walk_strings(node):
             yield from _walk_strings(v)
 
 
-_GROUND_BLOCKS = {"statement", "stat"}          # honor a full-bleed data.ground (image/video)
+# The blocks that PAINT `data.ground` — from the ONE registry (`nolan/block_registry.py`), not a
+# private copy. This used to read {"statement", "stat"} while auto-ground worked from the real
+# 6-block set, so a ground placed on a pull_quote/ledger/bullet_list/comparison_table rendered
+# but scored `none`: it credited nothing toward coverage AND the scene was still flagged as a
+# long ungrounded hold. The author was told to fix what the metric refused to see.
+from nolan.block_registry import GROUND_BLOCKS as _GROUND_BLOCKS
 _IMAGE_BLOCKS = {"gallery", "carousel", "collage"}   # always paint images
 
 

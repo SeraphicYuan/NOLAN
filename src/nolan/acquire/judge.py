@@ -21,6 +21,17 @@ from typing import Dict, Optional
 # screen uses to reject unusable stills).
 UNUSABLE_FLAGS = ("watermark", "overlaid text", "heavy text", "text overlay", "stock-photo graphic", "logo")
 
+# Sources whose assets are SCRAPED third-party uploads: their stored metadata describes the SOURCE video
+# (or another segment of it), never the trimmed clip we pooled, and their pixels routinely carry another
+# channel's branding. An asset from one of these is `origin unverified` until a VLM has looked at it —
+# the licence string we emit for it is a claim we cannot otherwise support.
+SCRAPED_SOURCES = ("clips_library", "transcript_lib")
+
+
+def is_scraped(source: str) -> bool:
+    """True for a source whose ORIGIN is unverified until the pixels are checked."""
+    return any(k in str(source or "") for k in SCRAPED_SOURCES)
+
 SYS = ("You are a documentary photo editor triaging one stock/library image as b-roll for a single "
        "beat of a video essay. Reply STRICT JSON only.")
 
@@ -49,6 +60,18 @@ def judge_prompt(need: Dict, video: bool = False) -> str:
             'the dominant palette, and whether it is photoreal or an illustration>", '
             # placement signal (a rule free-text can\'t do): what KIND of asset this is for the editor.
             '"content_kind": "<exactly one of: broll | stills | talking_head | graphics>", '
+            # CHROME — someone else's branding. Distinct from `flags`, which is about editorial junk:
+            # a clip can be beautiful, on-topic, high-scoring b-roll AND still carry a rival channel's
+            # watermark. Shipping that is a licensing problem, not a taste problem, so it is its own
+            # boolean and its own rejection. (Live: a hero clip labelled "Internet Archive" was a scraped
+            # upload with a FOLLOW button, SUBSCRIBED chrome and "@diamondtrends.net" burned in.)
+            '"chrome": <true if ANY frame shows a watermark, channel logo/bug, subscribe/follow UI, '
+            'burned-in subtitles, or a news lower-third that is NOT part of the filmed scene; else false>, '
+            # DEPICTS — does it show what we are about to CLAIM it shows. `usable` scores how cuttable
+            # the shot is, which is a different question: a bowl of food scored 8/10 usable under a beat
+            # asking for a prison cell, and shipped with that caption.
+            '"depicts": <true if the image genuinely shows the BEAT subject above; false if it is '
+            'something else, however well-shot>, '
             '"why": "<=12 words>"}')
 
 
@@ -81,18 +104,40 @@ def parse_verdict(j: Optional[Dict]) -> Dict:
     ck = str(j.get("content_kind") or "").strip().lower().replace("-", "_").replace(" ", "_")
     ck = {"broll": "broll", "b_roll": "broll", "stills": "stills", "still": "stills", "image": "stills",
           "talking_head": "talking_head", "graphics": "graphics", "graphic": "graphics"}.get(ck, ck)
+    def _tri(key):                       # True / False / None — None means the VLM didn't answer
+        v = j.get(key)
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str) and v.strip().lower() in ("true", "false"):
+            return v.strip().lower() == "true"
+        return None
     return {"usable": usable,
             "flags": str(j.get("flags") or "").strip(),
             "caption": str(j.get("caption") or "").strip().replace("\n", " "),
             "content_kind": ck if ck in ("broll", "stills", "talking_head", "graphics") else "",
+            "chrome": _tri("chrome"),
+            "depicts": _tri("depicts"),
             "why": str(j.get("why") or "").strip()}
 
 
 def is_junk(verdict: Dict, floor: float = 4.0) -> bool:
-    """Floor decision: flagged-as-unusable OR below the usability floor. A NEUTRAL verdict (VLM
-    unavailable, usable=None) is NOT junk — fall back to the cheap CLIP/fitness gates that already ran."""
+    """Floor decision: carries CHROME, flagged-as-unusable, or below the usability floor. A NEUTRAL
+    verdict (VLM unavailable, usable=None/chrome=None) is NOT junk — fall back to the cheap CLIP/fitness
+    gates that already ran; a dead VLM must never empty the pool."""
+    if verdict.get("chrome") is True:     # someone else's branding — never usable, at any score
+        return True
     flags = (verdict.get("flags") or "").lower()
     if any(w in flags for w in UNUSABLE_FLAGS):
         return True
     u = verdict.get("usable")
     return u is not None and u < floor
+
+
+def caption_verified(verdict: Dict) -> Optional[bool]:
+    """Did the VLM confirm the asset shows what the caption claims? None when it didn't answer.
+
+    `depicts=False` does NOT drop the asset — it is often still good b-roll — but the CAPTION must then
+    come from what the VLM saw, and the pool must record that the original claim failed. A wrong caption
+    is worse than a vague one: the authoring agent picks from captions, so it places the asset on a beat
+    it does not illustrate (a bowl of food under 'a dim prison cell')."""
+    return verdict.get("depicts")

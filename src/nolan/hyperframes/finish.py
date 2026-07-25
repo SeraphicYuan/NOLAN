@@ -90,6 +90,28 @@ def _mark_render_done(pdir: Path, comp: str) -> Path:
     return p
 
 
+def resolve_render_mode(pdir: Path, requested: str) -> str:
+    """Resolve `auto` -> `whole` (cold) | `incremental` (a build already exists). Explicit modes pass through.
+
+    Why `auto` is the default: the two modes are not rivals, they are FIRST build vs EVERY build after.
+    A cold comp has no per-frame clips to reuse, so `whole` is the honest canonical render. Once a build
+    exists, `whole` is pure waste — the diamond-v2 run re-rendered all 9 frames three times, including a
+    final pass where only 3 had changed. It also left `compositions/frames/*.clip.mp4` NEVER PRODUCED, so
+    `/hyperframes` (which serves the newest of `<id>.preview.mp4` / `<id>.clip.mp4`) had no cached per-frame
+    video and had to render each frame on demand. Incremental emits exactly those clips as a side effect,
+    which is what wires the edit loop up for free.
+    """
+    if requested != "auto":
+        return requested
+    prior_build = (pdir / "renders" / "video.mp4").exists()
+    cache = pdir / "compositions" / "_preview" / "clip_cache.json"
+    if prior_build and cache.exists():
+        print("  (render mode: incremental — a prior build + clip cache exist; only changed frames re-render)")
+        return "incremental"
+    print("  (render mode: whole — no prior build to reuse; this one is the canonical baseline)")
+    return "whole"
+
+
 def style_dials(pdir: Path) -> dict:
     """The dials the essay was AUTHORED to (`style_dials` in hyperframes.json, written by new_essay).
     Without this the lint scored every essay against the default `balanced`/`light` targets while the
@@ -129,7 +151,7 @@ def _style_gate(pdir: Path) -> None:
 
 
 def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool = False,
-           render_mode: str = "whole", burn_captions: bool = False, duck: bool = False) -> dict:
+           render_mode: str = "auto", burn_captions: bool = False, duck: bool = False) -> dict:
     """Run the compose-first finish DAG for a comp. Returns a summary dict.
 
     `burn_captions` (default OFF): incremental mode composites captions as a SEPARATE full-length
@@ -363,6 +385,7 @@ def finish(comp: str, *, render: bool = True, sound: bool = True, dry_run: bool 
     #     one-frame edit re-renders one frame, not the monolith). Both write renders/video.mp4.
     if not dry_run:
         _clear_render_done(pdir)                          # R1: stale-guard the detached-watch sentinel
+    render_mode = resolve_render_mode(pdir, render_mode)
     if render_mode == "incremental":
         if dry_run:
             print("  [render] incremental — window index.html per-frame + concat → renders/video.mp4")
@@ -428,9 +451,12 @@ def main():
                     help="ducked SFX: render VO-only, then post-mix cues with the VO sidechain-ducked "
                          "under each hit (natural gains) instead of the flat, hot render-mount")
     ap.add_argument("--dry-run", action="store_true", help="print the DAG without running it")
-    ap.add_argument("--render", dest="render_mode", default="whole", choices=["whole", "incremental"],
-                    help="whole = one npx render of index.html (master/verify); incremental = per-frame "
-                         "windows of the SAME index + concat (fast iteration, cached)")
+    ap.add_argument("--render", dest="render_mode", default="auto",
+                    choices=["auto", "whole", "incremental"],
+                    help="auto (default) = whole on a cold comp, incremental once a build exists; "
+                         "whole = one npx render of index.html (canonical baseline); incremental = "
+                         "per-frame windows of the SAME index + concat (cached; also emits the "
+                         "compositions/frames/*.clip.mp4 the /hyperframes edit loop serves)")
     ap.add_argument("--burn-captions", action="store_true",
                     help="incremental mode: composite the caption overlay INTO the mp4 (slow, opt-in — "
                          "captions already play in the composition; reserve this for muted-autoplay social)")
