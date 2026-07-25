@@ -385,7 +385,7 @@ def test_length_filter_resolves_unknown_archive_durations(monkeypatch, tmp_path)
     assert [s["video_id"] for s in d["suggestions"]] == ["film"] and d["suggestions"][0]["duration"] == 1200
 
 
-def test_multivalued_archive_metadata_is_coerced_to_text(monkeypatch):
+def test_multivalued_archive_metadata_is_coerced_to_text(monkeypatch, tmp_path):
     """archive.org metadata is MULTI-VALUED: an item with two <description> entries returns a LIST. Every
     consumer downstream (keyword match, embed text, the re-rank prompt) assumes text — an uncoerced list
     crashed 7 of 20 topic searches in the sweep (`'list' object has no attribute 'replace'`)."""
@@ -406,7 +406,7 @@ def test_multivalued_archive_metadata_is_coerced_to_text(monkeypatch):
     monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: FakeLLM())
     rows = [{"video_id": "x", "title": "t", "score": 0.6, "rrf": 0.01,
              "_desc": ["first para", "second para"], "_subject": ["Mining"]}]
-    kept, meta = asyncio.run(tl._rerank_suggestions(rows, "mining", ["mining"], None))
+    kept, meta = asyncio.run(tl._rerank_suggestions(rows, "mining", ["mining"], None, tmp_path))
     assert meta["reranked"] and kept[0]["fit"] == "high"
 
 
@@ -435,7 +435,7 @@ def test_near_duplicate_reels_collapse():
     assert collapsed == 1 and [r["video_id"] for r in kept] == ["b", "c"]     # best-scoring twin kept
 
 
-def test_rerank_drops_false_matches_and_fails_open(monkeypatch):
+def test_rerank_drops_false_matches_and_fails_open(monkeypatch, tmp_path):
     """The LLM re-rank is a GATE around a proposal: only rows judged `off` are dropped (and counted), the
     rest keep their fused order annotated with fit + why. Cosine alone ranked "Bob Diamond" (a banker) at
     0.609 for a diamonds topic. Any LLM failure is fail-open — the cosine ranking stands and says why."""
@@ -453,15 +453,22 @@ def test_rerank_drops_false_matches_and_fails_open(monkeypatch):
             return '{"items":[{"i":0,"fit":"off","why":"a banker, not the gem"},' \
                    '{"i":1,"fit":"high","why":"cutting and polishing footage"}]}'
     monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: FakeLLM())
-    kept, meta = asyncio.run(tl._rerank_suggestions(rows, "diamonds", ["diamond cartel"], None))
+    kept, meta = asyncio.run(tl._rerank_suggestions(rows, "diamonds", ["diamond cartel"], None, tmp_path))
     assert [r["video_id"] for r in kept] == ["b"] and meta["rerank_dropped"] == 1
     assert kept[0]["fit"] == "high" and kept[0]["why"] == "cutting and polishing footage"
-    assert meta["reranked"] and meta["reranker"] == "qwen-test"
+    assert meta["reranked"] and meta["reranker"] == "qwen-test" and meta["rerank_judged"] == 2
 
     monkeypatch.setattr(nllm, "create_text_llm",
                         lambda cfg, **k: (_ for _ in ()).throw(RuntimeError("no key")))
-    kept2, meta2 = asyncio.run(tl._rerank_suggestions(rows, "diamonds", ["diamond cartel"], None))
-    assert kept2 == rows and not meta2["reranked"] and "no key" in meta2["rerank_error"]
+    kept2, meta2 = asyncio.run(tl._rerank_suggestions(rows, "diamonds", ["diamond cartel"], None, tmp_path))
+    assert [r["video_id"] for r in kept2] == ["b"] and meta2["rerank_remembered"] == 2   # memory answered it
+    assert "rerank_error" not in meta2 and kept2[0]["fit_remembered"] is True            # no LLM needed
+    rows3 = rows + [{"video_id": "c", "title": "Kimberley mine", "score": 0.5, "rrf": 0.01}]
+    kept3, meta3 = asyncio.run(tl._rerank_suggestions(rows3, "diamonds", ["diamond cartel"], None, tmp_path))
+    assert "no key" in meta3["rerank_error"] and meta3["rerank_remembered"] == 2         # partial failure:
+    assert [r["video_id"] for r in kept3] == ["b", "c"]                                  # memory still stands
+    kept4, meta4 = asyncio.run(tl._rerank_suggestions(rows, "an unrelated subject", ["x"], None, tmp_path))
+    assert kept4 == rows and not meta4["reranked"] and "no key" in meta4["rerank_error"]  # nothing remembered
 
 
 def test_record_transcript_provenance_is_sticky(tmp_path):
@@ -529,7 +536,7 @@ def test_topic_cf_filter_runs_before_the_rank_cut(monkeypatch, tmp_path):
     assert {s["video_id"] for s in d["suggestions"]} <= {f"f{i}" for i in range(30)}    # no paid row leaked
 
 
-def test_suggest_by_topic_query_provenance(monkeypatch):
+def test_suggest_by_topic_query_provenance(monkeypatch, tmp_path):
     """WHOSE queries ran is reported, and human-edited queries SKIP the LLM entirely: edited > expansion >
     the raw topic. A failed expansion says so (`expand_error`) instead of silently searching the bare topic."""
     import asyncio
@@ -548,16 +555,18 @@ def test_suggest_by_topic_query_provenance(monkeypatch):
     monkeypatch.setattr(tl, "_topic_suggestions",
                         lambda q, t, i, v, n, cd, cf, web=True, *a: {"suggestions": [], "queries": list(q)})
 
-    d = asyncio.run(tl.suggest_by_topic("diamonds, De Beers", None, None, None))
+    d = asyncio.run(tl.suggest_by_topic("diamonds, De Beers", None, None, None, catalog_dir=tmp_path))
     assert d["queries"] == ["expanded one", "expanded two"] and len(calls) == 1
     assert d["query_source"] == "llm" and d["expanded"] and d["expander"] == "qwen-test"
 
-    d = asyncio.run(tl.suggest_by_topic("diamonds", None, None, None, queries=["jewelry store window", " "]))
+    d = asyncio.run(tl.suggest_by_topic("diamonds", None, None, None, catalog_dir=tmp_path,
+                                   queries=["jewelry store window", " "]))
     assert d["queries"] == ["jewelry store window"] and len(calls) == 1      # LLM NOT called again
     assert d["query_source"] == "edited" and not d["expanded"] and d["expander"] == ""
 
     monkeypatch.setattr(nllm, "create_text_llm", lambda cfg, **k: (_ for _ in ()).throw(RuntimeError("no key")))
-    d = asyncio.run(tl.suggest_by_topic("diamonds, De Beers", None, None, None))
+    d = asyncio.run(tl.suggest_by_topic("diamonds, De Beers", None, None, None, catalog_dir=tmp_path,
+                                   refresh_queries=True))
     assert d["queries"] == ["diamonds", "De Beers"]                          # fell back to the typed topic
     assert d["query_source"] == "topic" and "no key" in d["expand_error"]    # loud, not silent
 

@@ -319,6 +319,20 @@ def register(app, ctx):
         job = job_manager.start("transcript-broaden", _run, meta={"count": int(body.get("count", 20) or 20)})
         return {"job_id": job.id, "type": "transcript-broaden"}
 
+    @app.post("/api/transcripts/accepted")
+    async def transcripts_accepted(body: dict = Body(...)):
+        """Record which suggestions the human actually ingested — the only ground truth in this loop, and
+        what every threshold here (the 0.42 floor, the fit bar, the re-rank prompt) should be tuned against."""
+        from nolan import transcript_memory as mem
+        n = mem.record_accepted(body.get("picks") or [], (body.get("source") or "topic"))
+        return {"recorded": n, **mem.stats()}
+
+    @app.get("/api/transcripts/memory")
+    async def transcripts_memory(limit: int = Query(default=25)):
+        """What the topic memory holds — judgements, cached expansions, and accepted picks."""
+        from nolan import transcript_memory as mem
+        return {**mem.stats(), "recent_accepted": mem.load_accepted()[:max(1, int(limit))]}
+
     @app.get("/api/transcripts/topics-used")
     async def transcripts_topics_used():
         """Topics already searched by a broaden run — what the library has DELIBERATELY covered so far."""

@@ -186,6 +186,9 @@
           <label class="dim" title="OPTIONAL length gate (minutes). A 90-second clip yields ~4 keyframes — often too thin to be worth captioning. Blank = no filter; items with unknown duration are always KEPT.">length <input type="number" id="tg-min" min="0" max="600" placeholder="min" style="width:52px"> – <input type="number" id="tg-max" min="0" max="600" placeholder="max" style="width:52px"> min</label>
           <span id="tg-idx" class="dim" style="font-size:11px;margin-left:auto"></span>
         </div>
+        <div class="row" style="margin-top:4px">
+          <span id="tg-mem" class="dim" style="font-size:11px"></span>
+        </div>
         <div id="tg-queries" class="dim" style="margin-top:8px"></div>
         <div id="tg-qedit" style="display:none;margin-top:6px">
           <div class="dim" style="font-size:11px;margin-bottom:3px">These are the queries the search actually ran — edit them (one per line) and re-run to steer recall. The library is 1950s industrial/PD film + documentary TV, so <b>visual</b> phrasings ("jewelry store window display") often beat encyclopedic ones ("Kimberley Big Hole 1888").</div>
@@ -683,7 +686,7 @@
       const kb = s.kind==="archive"?'<span class="chip">🏛 archive</span>':(s.kind==="youtube_cc"?'<span class="chip">🆓 free</span>':'<span class="chip txt">📺 youtube</span>');
       const act = s.action==="caption" ? '<span class="chip frames">caption</span>' : '<span class="chip">ingest + caption</span>';
       const tier = s.tier==="archive" ? '<span class="chip" title="found by the global archive.org search — not in your sources yet">🌐 archive.org</span>' : "";
-      const fit = TG_FIT[s.fit]||"";
+      const fit = (TG_FIT[s.fit]||"").replace("</span>", s.fit_remembered?" · remembered</span>":"</span>");
       const dur = s.duration ? `<span class="chip txt">${Math.round(s.duration/60)}m</span>` : "";
       const tpc = s.topic ? `<span class="chip" title="the proposed subject this pick answers">${esc(s.topic)}${s.depth?" ·2nd":""}</span>` : "";
       return `<div class="vid-row"><span class="name" style="display:flex;align-items:center;gap:8px;max-width:72%">
@@ -718,6 +721,18 @@
         el.innerHTML = s.pending
           ? `title index: ${s.indexed.toLocaleString()}/${s.surveyed.toLocaleString()} <span class="warn">(${s.pending.toLocaleString()} pending)</span> <button class="btn ghost mini" onclick="tgBuildIndex()">build</button>`
           : `title index: ${s.indexed.toLocaleString()} titles ✓ <button class="btn ghost mini" onclick="tgBuildIndex()">rebuild</button>`;
+      }catch(e){}
+    }
+    async function tgMemory(){
+      try{
+        const m=await jget("/api/transcripts/memory?limit=1");
+        const el=$("#tg-mem"); if(!el) return;
+        el.innerHTML = m.judgements
+          ? `memory: <b>${m.judgements.toLocaleString()}</b> LLM judgements across ${m.judged_topics} topic(s) `
+            + `· ${m.expansions} cached expansion(s) · <b>${m.accepted}</b> accepted`
+            + (m.accept_rate!==null&&m.accept_rate!==undefined?` (${Math.round(100*m.accept_rate)}% of judged)`:"")
+            + ` <span title="a repeat or overlapping search only pays the LLM for rows it has never judged">ⓘ</span>`
+          : `memory: empty — judgements + accepted picks accumulate as you search`;
       }catch(e){}
     }
     async function tgBuildIndex(){
@@ -782,6 +797,12 @@
       });
       const st=$("#tg-status"); st.textContent="dispatching…";
       try{
+        /* ground truth: what the human actually took off the shortlist. Recorded BEFORE the jobs so a slow
+           ingest can't lose it, and never allowed to fail the dispatch — it's a memory write, not the work. */
+        try{ await jpost("/api/transcripts/accepted", {source:"topic", picks:sel.map(s=>({
+          video_id:s.video_id, title:s.title, topic:s.topic||$("#tg-topic").value.trim(), tier:s.tier,
+          kind:s.kind, fit:s.fit, score:s.score, rrf:s.rrf, copyright_free:s.copyright_free}))}); }
+        catch(e){ console.warn("acceptance not recorded:", e); }
         const jobs=[];
         if(capIds.length){ await jpost("/api/transcripts/batch-caption",{video_ids:capIds}); jobs.push(`caption ${capIds.length}`); }
         for(const g of Object.values(groups)){
@@ -790,6 +811,7 @@
           jobs.push(`ingest+caption ${g.videos.length} (${g.kind}${g.channel?" / "+g.channel:""}${g.cf?", cf":""})`);
         }
         st.innerHTML=`✓ started: ${esc(jobs.join(", "))} — watch Background Jobs`;
+        tgMemory();
         TG_SEL.clear(); tgSelN();
       }catch(e){ st.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
@@ -799,7 +821,7 @@
       $("#tab-search").style.display = t==="search"?"block":"none";
       $("#tab-curate").style.display = t==="curate"?"block":"none";
       $("#tab-topic").style.display = t==="topic"?"block":"none";
-      if(t==="topic"){ tgIndexStatus(); }
+      if(t==="topic"){ tgIndexStatus(); tgMemory(); }
       $("#tab-coverage").style.display = t==="coverage"?"block":"none";
       $("#tab-sources").style.display = t==="sources"?"block":"none";
       if(t==="sources"){ loadSources(); loadVideos(); }

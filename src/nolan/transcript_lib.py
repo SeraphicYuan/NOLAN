@@ -356,7 +356,8 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
                            copyright_free_only: bool = False,
                            queries: Optional[List[str]] = None,
                            web: bool = True, rerank: bool = True,
-                           min_sec: int = 0, max_sec: int = 0) -> Dict[str, Any]:
+                           min_sec: int = 0, max_sec: int = 0,
+                           refresh_queries: bool = False) -> Dict[str, Any]:
     """ON-DEMAND caption targeting: a rough topic ("diamond, De Beers, diamond history") → a ranked shortlist
     of videos worth running the gemma VISUAL tier on. THREE tiers, rank-fused:
       (1) INGESTED-but-not-captioned — the topic's BGE vector search over transcripts, grouped by video, kept
@@ -370,10 +371,16 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
     import asyncio
     import json
 
+    from nolan import transcript_memory as mem
     from nolan.llm import create_text_llm
     given = [q.strip() for q in (queries or []) if str(q).strip()]
-    qs, expander, err = [], "", ""
-    if not given:
+    qs, expander, err, cached = [], "", "", None
+    if not given and not refresh_queries:                      # 17.8s of LLM per hit; "re-expand" bypasses it
+        cached = mem.get_queries(topic, catalog_dir)
+        if cached and cached.get("queries"):
+            qs = list(cached["queries"])
+            expander = cached.get("model") or ""
+    if not given and not qs:
         try:
             llm = create_text_llm(config)
             expander = getattr(llm, "model", "") or type(llm).__name__
@@ -387,38 +394,55 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
                 if st >= 0 and en > st else []
         except Exception as e:                                # loud in the payload, not a silent fallback
             err = f"{type(e).__name__}: {e}"[:160]
-    # precedence: human-edited queries > LLM expansion > the raw topic split on commas/newlines
+        if qs:
+            mem.put_queries(topic, qs, expander, catalog_dir)
+    # precedence: human-edited queries > LLM expansion (fresh or remembered) > the topic split on commas
     used = given or qs or [q.strip() for q in (topic or "").replace(",", "\n").splitlines() if q.strip()]
     used = (used or [topic])[:8]
     out = await asyncio.to_thread(_topic_suggestions, used, topic, index, vs, int(n), catalog_dir,
                                   bool(copyright_free_only), bool(web), int(min_sec or 0), int(max_sec or 0))
     out["expanded"] = bool(qs and not given)
-    out["query_source"] = "edited" if given else ("llm" if qs else "topic")
+    out["query_source"] = ("edited" if given else
+                           ("cache" if cached and qs else ("llm" if qs else "topic")))
     out["expander"] = expander if (qs and not given) else ""
+    if cached and qs:
+        out["queries_cached_on"] = cached.get("date", "")
     if err:
         out["expand_error"] = err                             # expansion failed → say so, don't fake recall
     if rerank and out.get("suggestions"):
-        out["suggestions"], rmeta = await _rerank_suggestions(out["suggestions"], topic, used, config)
+        out["suggestions"], rmeta = await _rerank_suggestions(out["suggestions"], topic, used, config,
+                                                              catalog_dir)
         out.update(rmeta)
     out["suggestions"] = [{k: v for k, v in s.items() if not k.startswith("_")}
                           for s in out["suggestions"][:int(n) * 2]]
     return out
 
 
-async def _rerank_suggestions(rows, topic, queries, config):
+async def _rerank_suggestions(rows, topic, queries, config, catalog_dir=None):
     """ONE cheap LLM judgement over the fused shortlist: does this title/subject/description actually serve
     the topic? Cosine over titles alone cannot — it ranked "Bob Diamond: Potential Rewards in Africa" (a
     banker) at 0.609 for a diamonds topic, and "Hog Sense" at 0.606. It also fills the `why` column, which
     tiers 2/3 otherwise leave EMPTY.
 
-    Deterministic gate around the model: only rows the LLM marks `off` are dropped (and counted), everything
-    else keeps its fused order, annotated with `fit` + `why`. Any failure (no key, bad JSON, timeout) is
+    REMEMBERED: judgements persist per (topic, video), so only rows this subject has never judged are sent
+    to the model — a repeat or overlapping search pays for the difference, not the whole shortlist, and a
+    video stops flip-flopping between `high` and `low` run to run.
+
+    Deterministic gate around the model: only rows marked `off` are dropped (and counted), everything else
+    keeps its fused order, annotated with `fit` + `why`. Any failure (no key, bad JSON, timeout) is
     FAIL-OPEN — the cosine ranking stands and `rerank_error` says why."""
     import json
+
+    from nolan import transcript_memory as mem
     from nolan.llm import create_text_llm
     cand = rows[:_SHORTLIST]
+    known = mem.get_judgements(topic, [r.get("video_id") for r in cand], catalog_dir)
+    todo = [i for i, r in enumerate(cand) if r.get("video_id") not in known]
+    if not todo:                                          # everything already judged for this subject
+        return _apply_judgements(cand, rows, {}, {}, known, 0, "", len(known))
     lines = []
-    for i, r in enumerate(cand):
+    for i in todo:
+        r = cand[i]
         subj = ", ".join(str(s) for s in (r.get("_subject") or [])[:6])
         raw = r.get("_desc") or r.get("why") or ""       # archive metadata is multi-valued — never assume str
         desc = (" ".join(str(x) for x in raw) if isinstance(raw, list) else str(raw)).replace("\n", " ")[:200]
@@ -442,6 +466,9 @@ async def _rerank_suggestions(rows, topic, queries, config):
         st, en = out.find("{"), out.rfind("}")
         items = json.loads(out[st:en + 1]).get("items") or [] if st >= 0 and en > st else []
     except Exception as e:
+        if known:                                         # remembered judgements still stand
+            return _apply_judgements(cand, rows, {}, {}, known, 0, "", len(known),
+                                     err=f"{type(e).__name__}: {e}"[:160])
         return rows, {"reranked": False, "rerank_error": f"{type(e).__name__}: {e}"[:160]}
     fit_of, why_of = {}, {}
     for it in items:
@@ -452,17 +479,32 @@ async def _rerank_suggestions(rows, topic, queries, config):
         if 0 <= i < len(cand):
             fit_of[i] = str(it.get("fit") or "").strip().lower()
             why_of[i] = str(it.get("why") or "").strip()[:120]
+    mem.put_judgements(topic, [{"video_id": cand[i].get("video_id"), "fit": fit_of[i],
+                                "why": why_of.get(i, "")} for i in fit_of], model, catalog_dir)
+    return _apply_judgements(cand, rows, fit_of, why_of, known, len(fit_of), model, len(known))
+
+
+def _apply_judgements(cand, rows, fit_of, why_of, known, judged, model, reused, err=""):
+    """The deterministic half of the re-rank: drop only `off`, annotate the rest, order by fit then fused
+    rank. Fresh judgements and remembered ones are applied identically — a cache hit must not change what
+    the user sees, only what it cost."""
     kept, dropped = [], 0
     for i, r in enumerate(cand):
-        fit = fit_of.get(i, "")
+        prev = known.get(r.get("video_id")) or {}
+        fit = fit_of.get(i) or str(prev.get("fit") or "")
+        why = why_of.get(i) or prev.get("why") or r.get("why") or ""
         if fit == "off":
             dropped += 1
             continue
-        kept.append({**r, "fit": fit or "unjudged", "why": why_of.get(i) or r.get("why") or ""})
+        kept.append({**r, "fit": fit or "unjudged", "why": why,
+                     **({"fit_remembered": True} if (i not in fit_of and prev) else {})})
     rank = {"high": 0, "medium": 1, "low": 2, "unjudged": 1}
     kept.sort(key=lambda r: (rank.get(r.get("fit"), 1), -float(r.get("rrf") or 0)))
-    return kept + rows[_SHORTLIST:], {"reranked": True, "rerank_dropped": dropped,
-                                      "rerank_judged": len(fit_of), "reranker": model}
+    meta = {"reranked": True, "rerank_dropped": dropped, "rerank_judged": judged,
+            "rerank_remembered": reused, "reranker": model}
+    if err:
+        meta["rerank_error"] = err                       # the fresh half failed; memory carried the rest
+    return kept + rows[_SHORTLIST:], meta
 
 
 def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False,
