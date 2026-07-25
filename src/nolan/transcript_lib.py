@@ -583,8 +583,7 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
             if (min_sec or max_sec) and r.get("duration") is None and r.get("kind") == "archive" \
                     and lookups < _DURATION_LOOKUPS:
                 lookups += 1
-                from nolan import archive_source as _ar
-                r["duration"] = _ar.resolve_duration(r["video_id"])
+                r["duration"] = resolved_duration(r["video_id"], catalog_dir)
             if not _dur_ok(r.get("duration"), min_sec, max_sec):
                 dropped_len += 1
                 continue
@@ -800,7 +799,7 @@ def _archive_tier(queries, catalog_dir=None, copyright_free_only=False, min_sec=
         # that actually reach the shortlist (bounded), never for the whole fetch.
         if (min_sec or max_sec) and r.get("duration") is None and lookups < _DURATION_LOOKUPS:
             lookups += 1
-            r["duration"] = ar.resolve_duration(r["video_id"])
+            r["duration"] = resolved_duration(r["video_id"], catalog_dir)
         if not _dur_ok(r.get("duration"), min_sec, max_sec):
             dropped_len += 1
             continue
@@ -849,6 +848,40 @@ def _balanced_prefilter(by_src, budget=_PREFILT_BUDGET):
             break
         depth += 1
     return rows, total, kept
+
+
+_DUR_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+def _durations_file(catalog_dir: Optional[Path] = None) -> Path:
+    return (Path(catalog_dir) if catalog_dir else TRANSCRIPT_DIR) / "durations.json"
+
+
+def resolved_duration(video_id: str, catalog_dir: Optional[Path] = None) -> Optional[int]:
+    """An archive item's runtime, resolved from the metadata API ONCE and remembered.
+
+    The length filter has to resolve durations the crawl never cached, and each is an HTTP round-trip: a
+    filtered search was spending up to 50 of them (25 per tier) and ran ~2.5 min instead of ~25s. A runtime
+    never changes, so it is cached to `durations.json` — the cost is paid once per item, ever."""
+    key = str(catalog_dir or "")
+    cache = _DUR_CACHE.get(key)
+    if cache is None:
+        p = _durations_file(catalog_dir)
+        try:
+            cache = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        except (json.JSONDecodeError, OSError):
+            cache = {}
+        _DUR_CACHE[key] = cache
+    if video_id in cache:
+        v = cache[video_id]
+        return int(v) if v else None
+    from nolan import archive_source as ar
+    dur = ar.resolve_duration(video_id)
+    cache[video_id] = int(dur) if dur else 0                   # 0 = "asked, genuinely unknown"
+    p = _durations_file(catalog_dir)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(cache, indent=0, ensure_ascii=False), encoding="utf-8")
+    return dur
 
 
 THIN_FRAMES = 5                                               # fewer keyframes than this bought ~nothing

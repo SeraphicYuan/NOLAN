@@ -189,6 +189,9 @@
         <div class="row" style="margin-top:4px">
           <span id="tg-mem" class="dim" style="font-size:11px"></span>
         </div>
+        <div class="row" style="margin-top:2px">
+          <span id="tg-cov" class="dim" style="font-size:11px"></span>
+        </div>
         <div id="tg-queries" class="dim" style="margin-top:8px"></div>
         <div id="tg-qedit" style="display:none;margin-top:6px">
           <div class="dim" style="font-size:11px;margin-bottom:3px">These are the queries the search actually ran — edit them (one per line) and re-run to steer recall. The library is 1950s industrial/PD film + documentary TV, so <b>visual</b> phrasings ("jewelry store window display") often beat encyclopedic ones ("Kimberley Big Hole 1888").</div>
@@ -735,6 +738,31 @@
           : `memory: empty — judgements + accepted picks accumulate as you search`;
       }catch(e){}
     }
+    /* what the library ALREADY found and nobody took, + what the caption runs actually bought */
+    async function tgCoverage(){
+      const el=$("#tg-cov"); if(!el) return;
+      try{
+        const [c,q]=await Promise.all([jget("/api/transcripts/coverage-topics"),
+                                       jget("/api/transcripts/quality?limit=1")]);
+        const bits=[];
+        if(c.total_remaining_high) bits.push(
+          `<b>${c.total_remaining_high}</b> already-judged high/medium row(s) still not ingested across `
+          + `${c.with_material_left} subject(s) `
+          + `<span title="a second pick costs no new search and no new LLM call — the judgements are remembered">ⓘ</span>`
+          + (c.topics&&c.topics[0]?` — most on the table: <b>${esc(c.topics[0].topic)}</b> (${c.topics[0].remaining_high})`:""));
+        if(q.thin) bits.push(`<span class="warn">${q.thin}</span> of ${q.captioned} captioned video(s) bought little `
+          + `<button class="btn ghost mini" onclick="tgDensify()">re-caption denser</button>`);
+        el.innerHTML=bits.join(" · ");
+      }catch(e){}
+    }
+    async function tgDensify(){
+      if(!confirm("Re-run the visual tier at higher density on the thin videos?")) return;
+      try{
+        const q=await jget("/api/transcripts/quality");
+        await jpost("/api/transcripts/batch-caption",{video_ids:q.thin_ids, force:true, densify:true});
+        $("#tg-cov").innerHTML="densifying — watch Background Jobs";
+      }catch(e){ $("#tg-cov").innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
+    }
     async function tgBuildIndex(){
       $("#tg-idx").textContent="building title index… (watch Background Jobs)";
       try{ await jpost("/api/transcripts/topic-index/build",{}); setTimeout(tgIndexStatus, 15000); }
@@ -811,7 +839,7 @@
           jobs.push(`ingest+caption ${g.videos.length} (${g.kind}${g.channel?" / "+g.channel:""}${g.cf?", cf":""})`);
         }
         st.innerHTML=`✓ started: ${esc(jobs.join(", "))} — watch Background Jobs`;
-        tgMemory();
+        tgMemory(); tgCoverage();
         TG_SEL.clear(); tgSelN();
       }catch(e){ st.innerHTML=`<span class="warn">${esc(e.message)}</span>`; }
     }
@@ -821,7 +849,7 @@
       $("#tab-search").style.display = t==="search"?"block":"none";
       $("#tab-curate").style.display = t==="curate"?"block":"none";
       $("#tab-topic").style.display = t==="topic"?"block":"none";
-      if(t==="topic"){ tgIndexStatus(); tgMemory(); }
+      if(t==="topic"){ tgIndexStatus(); tgMemory(); tgCoverage(); }
       $("#tab-coverage").style.display = t==="coverage"?"block":"none";
       $("#tab-sources").style.display = t==="sources"?"block":"none";
       if(t==="sources"){ loadSources(); loadVideos(); }

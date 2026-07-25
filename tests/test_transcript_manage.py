@@ -355,6 +355,24 @@ def test_optional_length_filter(monkeypatch, tmp_path):
     assert {s["video_id"] for s in d["suggestions"]} == {"long", "unknown"} and d["length_dropped"] == 2
 
 
+def test_resolved_durations_are_paid_once(monkeypatch, tmp_path):
+    """A runtime never changes, so a resolve is cached to disk. A filtered search was spending up to 50
+    metadata round-trips (25 per tier) and ran ~2.5 min instead of ~25s; the second search must spend none.
+    A genuine unknown is remembered too, so it isn't re-asked forever."""
+    from nolan import archive_source as ar
+    from nolan import transcript_lib as tl
+    calls = []
+    monkeypatch.setattr(ar, "resolve_duration", lambda i, timeout=20.0: (calls.append(i), 900)[1]
+                        if i == "film" else (calls.append(i), None)[1])
+    tl._DUR_CACHE.clear()
+    assert tl.resolved_duration("film", tmp_path) == 900 and calls == ["film"]
+    assert tl.resolved_duration("film", tmp_path) == 900 and calls == ["film"]      # memo, no second call
+    assert tl.resolved_duration("nope", tmp_path) is None and calls == ["film", "nope"]
+    assert tl.resolved_duration("nope", tmp_path) is None and calls == ["film", "nope"]   # unknown sticks
+    tl._DUR_CACHE.clear()                                                            # cold process…
+    assert tl.resolved_duration("film", tmp_path) == 900 and calls == ["film", "nope"]  # …still no call
+
+
 def test_length_filter_resolves_unknown_archive_durations(monkeypatch, tmp_path):
     """An archive row whose crawl cached no `runtime` would sail through the gate on the unknown-is-kept
     rule — live, a 4-minute reel did exactly that. With a filter active, the duration is resolved from the
