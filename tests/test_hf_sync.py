@@ -412,6 +412,13 @@ def test_kicker_alone_does_not_drive_placement_or_corroboration():
     kicker_only = {"data": {"kicker": "GERETY DECADES"}}
     assert sync._content_time(kicker_only, stream, freq, 0.0) is None, "kicker must not corroborate"
     assert not sync._scene_bag(kicker_only), "kicker must not enter the matching bag"
+    # ...and not through `_scene_query` either — the door taken by every scene WITHOUT an anchor, which
+    # kept its own copy of the pre-registry key tuple long after `_content_time` stopped reading kicker.
+    assert sync._scene_query(kicker_only) == "", "kicker alone must not become the placement query"
+    both = {"data": {"kicker": "GERETY DECADES", "title": "The line that outlived her"}}
+    assert sync._scene_query(both) == "The line that outlived her"
+    assert sync._scene_query({"data": {"kicker": "X", "title": "T", "anchor": "wrote the line"}}) == \
+        "wrote the line", "an explicit anchor still wins"
 
 
 def test_visible_text_reaches_a_quote_and_nested_labels():
@@ -430,3 +437,109 @@ def test_visible_text_drops_paths_and_config_tokens():
     got = visible_text({"ground": {"src": "assets/a.mp4"}, "side": "left", "fit": "cover",
                         "title": "The real headline"})
     assert got == "The real headline"
+
+
+# --- the QUOTATION matcher: ORDER locates what frequency cannot (the 12:23 lead itself) -----------
+# Removing the kicker (above) uncovered the lead but still could not LOCATE it: a quotation is built from
+# the frame's own subject words, so every one of them recurs. Both frequency matchers returned None on the
+# live scene, and a gate cannot flag what it cannot locate. Order is the signal they discard.
+
+def _quote_frame():
+    """The live f09s01 shape, mechanism for mechanism.
+
+    The narrator reaches the quote 13s in; the scene paints it at 0.0s; every word of it recurs in the
+    frame, AND the next scene re-uses that exact vocabulary as its step labels — which is what pushes
+    the window matcher's inverse-frequency weight below its threshold (siblings are down-weighted ×0.25
+    so a scene can't be placed on its neighbour's entities). Both effects are needed to reproduce the
+    blindness: frequency alone still resolves, late and by luck."""
+    from nolan.aligner import WordTimestamp, flatten_words
+    spoken = ("so here is where we land the historian put it into one loop "
+              "they are very valuable because people want to pay money for them "
+              "people want to pay money for them because they are very valuable "
+              "that is the whole illusion").split()
+    words = [WordTimestamp(w, float(i), float(i) + 0.9) for i, w in enumerate(spoken)]
+    stream = sync._collapse_nums([(t, s) for (t, s, _e) in flatten_words(words)])
+    freq = {}
+    for tok, _s in stream:
+        freq[tok] = freq.get(tok, 0) + 1
+    # NOTE the trim: the screen reads "They are valuable", the narrator says "they are VERY valuable".
+    quote = ("They are valuable because people want to pay money for them. "
+             "People want to pay money for them because they are very valuable.")
+    q1 = {"id": "q1", "type": "pull_quote", "start": 0.0, "dur": 14.0,
+          "data": {"kicker": "A VERY ARTIFICIAL MARKET", "quote": quote, "cite": "the historian"}}
+    sibling = {"id": "q2", "type": "cycle", "start": 14.0, "dur": 10.0,
+               "data": {"title": "Biting its own tail", "steps": [
+                   {"label": "They are valuable"}, {"label": "So people pay money"},
+                   {"label": "So they are valuable"}]}}
+    scenes = [q1, sibling]
+    return scenes, words, stream, freq, sync._shared_bag_tokens(scenes)
+
+
+def test_both_frequency_matchers_are_blind_to_a_quotation():
+    """The premise. If this ever starts passing by another route, the quotation matcher is redundant —
+    but until then, this is why a 14s text-before-voice lead was invisible to the gate."""
+    (sc, _sib), _words, stream, freq, shared = _quote_frame()
+    assert sync._content_time(sc, stream, freq, 0.0, min_words=2) is None      # needs freq==1; all recur
+    assert sync._content_window_time(sc, stream, freq, 0.0, shared=shared) is None   # Σ 1/freq < 1.5
+
+
+def test_prose_time_locates_the_quote_the_bag_matchers_missed():
+    (sc, _sib), _words, stream, freq, shared = _quote_frame()
+    assert abs(sync._prose_time(sc, stream) - 13.0) < 0.01     # 'they are very valuable…' opens at t=13
+    assert abs(sync._topic_open_time(sc, stream, freq, 0.0, shared=shared) - 13.0) < 0.01
+
+
+def test_the_1223_lead_is_flagged_end_to_end():
+    """The user-visible defect: quote readable at 12:23, spoken at 12:34. Advisory, not hard — a lead is
+    a taste call — but it must SURFACE, and for a frame's first scene (pinned to 0.0) surfacing is the
+    only available fix: placement cannot move it, so the author must add a lead-in beat."""
+    scenes, words, _stream, _freq, _shared = _quote_frame()
+    leads = [f for f in sync._visual_lag_flags(scenes, words) if f["kind"] == "lead"]
+    assert leads and leads[0]["scene"] == "q1", leads
+    assert leads[0]["lead"] >= 10.0 and leads[0]["hard"] is False
+
+
+def test_placement_uses_the_quotation_match_so_lint_and_placement_agree():
+    """Both paths read the same signal — placement must not leave a scene where the lint flags it.
+    (The live scene is its frame's FIRST, which placement pins to 0.0 by construction; here it is not,
+    so the effect on placement is visible.)"""
+    (q1, sib), words, _stream, _freq, _shared = _quote_frame()
+    opener = {"id": "s0", "type": "statement", "start": 0.0, "data": {"lines": ["So here is where we land"]}}
+    starts, resolved = sync._resolve_scene_starts([opener, q1, sib], words, 40.0, [None, None, None])
+    assert abs(starts[1] - 13.0) < 0.05, starts       # placed WHEN it is said, not at the author's 0.0
+    assert "q1" in resolved                           # and counted as resolved, not interpolated
+
+
+def test_prose_time_requires_ORDER_not_just_the_words():
+    """What separates this from the bag matchers. The same vocabulary, shuffled, is not a quotation —
+    if this passed, the matcher would just be an unweighted bag with extra steps."""
+    (sc, _sib), _words, stream, _freq, _shared = _quote_frame()
+    toks = sc["data"]["quote"].replace(".", "").split()
+    scrambled = dict(sc, data=dict(sc["data"], quote=" ".join(sorted(toks))))
+    assert sync._prose_time(scrambled, stream) is None
+
+
+def test_prose_time_ignores_short_strings():
+    """Order carries no evidence over a label. A short 'match' against the most common words in the
+    language is noise, and it would claim authority the frequency matchers correctly refuse."""
+    (sc, _sib), _words, stream, _freq, _shared = _quote_frame()
+    short = dict(sc, data={"title": "want to pay money for them"})     # 6 tokens < the 8-token floor
+    assert sync._prose_time(short, stream) is None
+
+
+def test_prose_time_does_not_match_across_two_fields():
+    """`visible_strings` keeps displayed strings separate: a phrase that only exists by concatenating a
+    title with a caption is on screen nowhere, so it must not corroborate anything."""
+    (sc, _sib), _words, stream, _freq, _shared = _quote_frame()
+    split = dict(sc, data={"title": "they are valuable because people",
+                           "sub": "want to pay money for them"})
+    assert sync._prose_time(split, stream) is None
+    from nolan.block_registry import visible_strings
+    assert visible_strings(split["data"]) == ["they are valuable because people",
+                                              "want to pay money for them"]
+
+
+def test_prose_time_respects_after():
+    (sc, _sib), _words, stream, _freq, _shared = _quote_frame()
+    assert sync._prose_time(sc, stream, after=14.0) is not None    # the second, closing half
+    assert sync._prose_time(sc, stream, after=39.0) is None

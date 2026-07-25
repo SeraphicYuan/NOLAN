@@ -73,28 +73,37 @@ def _is_prose(v: str) -> bool:
     return len(v) >= 5 and not v.islower()          # 'GERETY' / 'Kimberley' yes; 'cover' / 'left' no
 
 
-def visible_text(data, _depth: int = 0) -> str:
-    """Every piece of PROSE a scene paints, walking nested items/steps/events/rows/sides.
+def visible_strings(data, _depth: int = 0) -> list:
+    """Every piece of PROSE a scene paints, as SEPARATE strings, in document order.
 
     Key-agnostic by design: a flat top-level tuple silently missed `steps[]` (cycle/process),
     `events[]` (timeline), `items[]` (stat/bullet_list/ledger), `left`/`right` (comparison/
     juxtaposition) and `quote` — so those blocks could not corroborate their own placement.
+
+    Kept SEPARATE (rather than pre-joined) because word ORDER is only meaningful WITHIN one displayed
+    string. A bag-of-words matcher does not care, but a phrase matcher does: concatenating a title and
+    a caption invents an adjacency that is on screen nowhere and is spoken nowhere.
     """
     if _depth > 6:
-        return ""
+        return []
     out = []
     if isinstance(data, dict):
         for k, v in data.items():
             if k in NON_NARRATION_KEYS or str(k).startswith("_"):
                 continue
-            out.append(visible_text(v, _depth + 1))
+            out.extend(visible_strings(v, _depth + 1))
     elif isinstance(data, (list, tuple)):
         for v in data:
-            out.append(visible_text(v, _depth + 1))
+            out.extend(visible_strings(v, _depth + 1))
     elif isinstance(data, str):
         if _is_prose(data):
             out.append(data.strip())
-    return " ".join(p for p in out if p).strip()
+    return out
+
+
+def visible_text(data, _depth: int = 0) -> str:
+    """Everything a scene paints, as ONE string — the bag-of-words view. See `visible_strings`."""
+    return " ".join(p for p in visible_strings(data, _depth) if p).strip()
 
 
 # --- per-element reveal CUES ------------------------------------------------------------------------

@@ -24,10 +24,10 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from nolan.block_registry import visible_text
+from nolan.block_registry import visible_strings, visible_text
 
 _ANCHOR_TEXT_KEYS = ("anchor", "operative")            # prefer the spoken anchor; then the operative word
-_VISIBLE_TEXT_KEYS = ("lines", "title", "titleHi", "kicker", "sub", "label", "quote", "headline")
+# (what a scene DISPLAYS now comes from nolan.block_registry.visible_text — this module keeps no copy)
 
 try:                                                   # per-block readable minimums (single source of truth)
     from nolan.style_contract.metrics import (MIN_READABLE as _MIN_READABLE, BLOCK_FAMILY as _BF,
@@ -126,20 +126,18 @@ def align_voices(comp_dir, force: bool = False) -> Dict:
 
 def _scene_query(sc: dict) -> str:
     """The phrase to locate in the narration — the spoken anchor if the author gave one, else the
-    scene's visible text (best-effort; typography like '61,000' won't match spoken 'sixty-one thousand')."""
+    scene's visible text (best-effort; typography like '61,000' won't match spoken 'sixty-one thousand').
+
+    The fallback reads the REGISTRY, not a local key tuple. It used to keep its own copy of the
+    pre-registry list — `kicker` included — so the eyebrow label the catalog declares "design intent,
+    not narration" still drove placement through this door for every scene without an anchor, which is
+    the majority of them. Fixing `_content_time` alone left that half of item 3 standing."""
     d = sc.get("data", {}) or {}
     for k in _ANCHOR_TEXT_KEYS:
         val = d.get(k) or sc.get(k)
         if isinstance(val, str) and val.strip():
             return val.strip()
-    parts: List[str] = []
-    for k in _VISIBLE_TEXT_KEYS:
-        val = d.get(k)
-        if isinstance(val, str):
-            parts.append(val)
-        elif isinstance(val, list):
-            parts.extend(str(x) for x in val)
-    return " ".join(parts).strip()
+    return visible_text(d)
 
 
 def _proportional(n: int, frame_dur: float) -> List[float]:
@@ -660,14 +658,83 @@ def _content_window_time(sc, stream, freq, after, window=6.0, min_weight=1.5, sh
     return None
 
 
+# --- the QUOTATION matcher (long visible prose, matched as an ORDERED phrase) -----------------------
+# Both matchers above are frequency-based, and a QUOTATION defeats both: the words a quote is built from
+# are the frame's own subject, so they recur. Live defect — f09s01, a `pull_quote` reading "They're
+# valuable because people want to pay money for them. People want to pay money for them because they're
+# very valuable.", on screen at 0.0s while the narrator reaches it 13.5s later (readable at 12:23, spoken
+# at 12:34). Its bag is {money, people, valuable}: `_content_time` needs freq==1 and every one of them
+# recurs; `_content_window_time` needs Σ inverse-frequency ≥ 1.5 and all three are SHARED with the next
+# scene, so they are down-weighted ×0.25. Both returned None, and a gate cannot flag what it cannot
+# locate — the two fixes that removed what HID this lead still left it invisible.
+#
+# What those matchers throw away is exactly what makes a quotation identifiable: ORDER. Twenty-two words
+# in sequence is not a coincidence at any frequency. `_phrase_time` already matches order but demands an
+# EXACT contiguous run, and the one on screen was trimmed ("They're valuable" for spoken "They're VERY
+# valuable") — one inserted word and it returns None.
+#
+# So: ordered matching with slack, restricted to LONG strings. Length is the safety property. A run of
+# ≥8 displayed words recovered in order inside a ~2x window cannot happen by chance, which is why this
+# needs no frequency weighting and can be trusted against the most common words in the language.
+_PROSE_MIN_TOKENS = 8      # below this, order carries no evidence — leave it to the bag matchers
+_PROSE_MIN_COVER = 0.7     # of the displayed tokens, recovered IN ORDER (trimming/paraphrase headroom)
+_PROSE_SPAN = 2.0          # the window searched, as a multiple of phrase length (insertions, asides)
+
+
+def _lcs_len(a: List[str], b: List[str]) -> int:
+    """Length of the longest common SUBSEQUENCE — how much of `a` survives, in order, inside `b`.
+
+    Subsequence, not substring: the on-screen text and the spoken text differ by insertions in BOTH
+    directions (the narrator adds "very"; the designer drops a stammer), and neither is an error."""
+    if not a or not b:
+        return 0
+    prev = [0] * (len(b) + 1)
+    for x in a:
+        cur = [0]
+        for j, y in enumerate(b):
+            cur.append(prev[j] + 1 if x == y else max(cur[j], prev[j + 1]))
+        prev = cur
+    return prev[-1]
+
+
+def _prose_time(sc, stream, after: float = 0.0) -> Optional[float]:
+    """Earliest time (at/after `after`) where a LONG displayed string is spoken — a quotation matcher.
+
+    For each visible string of ≥`_PROSE_MIN_TOKENS` tokens, scans candidate starts (a stream token equal
+    to one of the phrase's first three — tolerating a dropped opening word) and returns the time of the
+    first one where ≥`_PROSE_MIN_COVER` of the phrase is recovered IN ORDER within a `_PROSE_SPAN`x
+    window. None when the scene paints no long prose, or none of it is spoken.
+
+    Scoped deliberately: this answers "is this exact sentence being said HERE", which is the only
+    question a bag of words cannot answer. Short labels stay with the frequency matchers, where a
+    2-token 'match' would be noise."""
+    best = None
+    for text in visible_strings(sc.get("data", {}) or {}):
+        toks = [t for t in _collapse_nums(_norm(text)) if t]
+        if len(toks) < _PROSE_MIN_TOKENS:
+            continue
+        need = _PROSE_MIN_COVER * len(toks)
+        width = int(len(toks) * _PROSE_SPAN) + 4
+        heads = set(toks[:3])
+        for i, (tok, s) in enumerate(stream):
+            if s < after or tok not in heads or (best is not None and s >= best):
+                continue
+            if _lcs_len(toks, [t for (t, _s) in stream[i:i + width]]) >= need:
+                best = round(s, 3)
+                break
+    return best
+
+
 def _topic_open_time(sc, stream, freq, after=0.0, shared=None):
-    """The single most-robust estimate of when a scene's topic OPENS in the VO: the earliest of the fuzzy
-    content-window (`_content_window_time`, sibling-discriminated) and the distinctive-word time
-    (`_content_time`, corroborated). Used by BOTH placement and the lag lint so they never disagree
-    (placement can't fix a lag the lint still reports, or vice-versa). None if neither resolves."""
+    """The single most-robust estimate of when a scene's topic OPENS in the VO: the earliest of the
+    quotation match (`_prose_time`), the fuzzy content-window (`_content_window_time`, sibling-
+    discriminated) and the distinctive-word time (`_content_time`, corroborated). Used by BOTH placement
+    and the lag lint so they never disagree (placement can't fix a lag the lint still reports, or
+    vice-versa). None if none resolves."""
     cw = _content_window_time(sc, stream, freq, after, shared=shared)
     cd = _content_time(sc, stream, freq, after, min_words=2)
-    cands = [x for x in (cw, cd) if x is not None]
+    cp = _prose_time(sc, stream, after)
+    cands = [x for x in (cw, cd, cp) if x is not None]
     return min(cands) if cands else None
 
 
@@ -710,7 +777,11 @@ def _resolve_scene_starts(scenes, words, frame_dur, aligner_raw):
         # topic opens earlier than the anchored (often closing) clause (the 7:31 santa-cruz-of-text bug). A
         # spuriously-early window that breaks scene order is caught by the LIS outlier isolation below.
         win_t = _content_window_time(scenes[j], stream, freq, lo, shared=shared) if stream else None
-        cands = [x for x in (anc_t, con_t, win_t) if x is not None and lo <= x < hi]
+        # QUOTATION candidate: a long displayed string recovered IN ORDER. The only signal that survives
+        # a scene built from the frame's own recurring vocabulary (a pull_quote), where both frequency
+        # matchers return None. Same signal the lag lint uses, so placement and lint can't disagree.
+        pro_t = _prose_time(scenes[j], stream, lo) if stream else None
+        cands = [x for x in (anc_t, con_t, win_t, pro_t) if x is not None and lo <= x < hi]
         if cands:
             own[j] = round(min(cands), 3)
         else:
