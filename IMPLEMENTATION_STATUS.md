@@ -4,6 +4,60 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## diamond-v2 post-mortem — 10 items landed, 1 WITHDRAWN with its disproof (2026-07-25)
+
+Every item in `docs/HF_V2_POSTMORTEM_IMPROVEMENTS.md` (written from the cold end-to-end run of
+`the-diamond-illusion-v2`), plus the two defects implementing them uncovered. Commits `90ab2f1`,
+`5789f43`, `b42382d`, `1eb4e71`, `66738e3`, `cace90f`, `75d2636`.
+
+**The pattern worth carrying: the evidence held, the CAUSE attribution did not.** Five claims were
+verified independently before any code changed and all five were true — but four items named where
+the symptom APPEARED rather than where the cause LIVED, and implementing them literally would have
+under-fixed or, in item 5's case, broken authoring. Item 1 ("extend judge.py") was THREE holes in
+three modules: `clips_library` clips skipped the VLM entirely via a blanket exemption, `pexels_video`
+clips were judged and scored `usable: 8.0` because `usable` rates cuttability and never depiction,
+and the hero path (`keyassets._verify_video`) asked subject-match only. Item 4 is not "the schema
+promises `at` and the block ignores it" — `timeline` never DECLARES `at`; the gate accepted what the
+schema never offered. Item 11 reads as a usage note but was missing wiring.
+
+**Item 5 is WITHDRAWN, and that is the sharpest lesson.** It asked for `assemble-index.mjs`'s
+track-overlap check to run at author time. No assembler has such a check: the claim traces to a
+COMMENT describing the top-level INDEX's lanes, and `timeline_track_too_dense` is a DENSITY warning,
+a different rule. The artifact that "could never assemble" — `videos/_stress_spotlight`, whose HTML
+still has both label halves on track 2 over one window — has a finished mp4 beside it showing both
+halves painted. Two implementations were wired before anyone checked the premise (the first blocked
+13 tests, because adjacent scenes overlap BY DESIGN via their ~0.6s transition tails). Both detectors
+are removed; `tests/test_author_track_overlap.py` now records the disproof and asserts author.py does
+not gate, so there is no attempt #3.
+
+**The 12:23 pull-quote — the defect actually seen on screen — is closed.** Dropping `kicker` from
+narration matching (item 3) removed what HID the lead but could not LOCATE it: the quote is built
+from its own frame's subject words, so every one recurs, and all of them are shared with the sibling
+scene that restates the loop. `_content_time` needs `freq==1`; `_content_window_time` needs
+Σ inverse-frequency ≥ 1.5 and down-weights shared tokens ×0.25. Both returned None, and a gate cannot
+flag what it cannot locate. Both matchers are frequency-based and a quotation defeats frequency by
+construction — what they discard is ORDER. `sync._prose_time` recovers ≥70% of a displayed string IN
+ORDER within a 2x window (LCS, so an inserted "very" on either side is fine, which exact
+`_phrase_time` could not survive), restricted to strings of ≥8 tokens — that length floor is the
+safety property, not a tuning knob. Measured on all 10 comps with aligned VO: f09s01 flags at
+lead=11.0s in both diamond comps, three other leads got more accurate opens, lag/mis-order/hard
+counts unchanged, UNRESOLVED held at 2 of 90. Item 3's other half also closed: `_scene_query` kept a
+private copy of the pre-registry key tuple, `kicker` included, on the door every un-anchored scene
+takes.
+
+**Measured effects of the rest.** Coverage 0.656 → 0.767 and long ungrounded holds 11 → 2 with no
+re-authoring, once `nolan/block_registry.py` made ONE definition of which blocks paint a ground (the
+honesty test asserts no module re-declares it privately — the failure was a fork, not a wrong value).
+Acquire coverage gaps 24 → 6, all 6 genuine. `layout_lint` errors 3 → 0 (they were `process` step
+badges pinned to their own card; a linter whose only failures are false positives gets ignored).
+Video de-dup: 13 of 81 pool clips collapse, 68 distinct looks — one condition, `if c.modality ==
+"image"`, had skipped video entirely. `--render auto` now emits the per-frame `*.clip.mp4` the edit
+loop serves.
+
+Still open, deliberately: the ~10 library SOURCE videos still at 360p (they predate the
+`min(available, 1080)` policy in `nolan/media_quality.py`); a re-ingest is the largest remaining
+quality win but writes outside the repo, so it waits on a human.
+
 ## HF pipeline hardening — autoground, headless clip cleanup, hero transcript tier, a HARD style gate (2026-07-25)
 
 Prep for the diamond-illusion v2 run: four fixes the v1 render (Jul 23) predates, each verified against v1 as a control.
