@@ -1014,8 +1014,27 @@ def _data_ground(sid, d, start, dur, blk):
                 f'style="position:absolute;inset:0;background:{veil};pointer-events:none;"></div>']
         tl = [f'tl.fromTo("#{sid}-dgnd",{{scale:{f0}}},{{scale:{f1},duration:{dur},ease:"none"}},{start});']
         return frag, tl
-    # paper / parchment / transparent / video: media_ground's own single track-1 layer IS the legibility
-    # ground (an opaque surface for paper, a scrim over the root video for transparent) — no extra veil.
+    if kind in ("video", "transparent"):
+        # FOOTAGE behind data. media_ground's scrim is a directional gradient tuned for lower-left TEXT;
+        # thin lines, axis labels and centred hero numbers sit exactly where it is weakest, and moving
+        # footage swings the luminance under them shot to shot. So the data veil applies here too — same
+        # radial shape, same theme-surface colour-mix, laid over the transparent hole the assemble step
+        # fills with the root <video> (collect_video_grounds is block-agnostic, so it mounts for these
+        # blocks already). No <video> element here: one is illegal inside a frame sub-comp (guard ②).
+        dim = g.get("dim") if g.get("dim") is not None else 0.6
+        try:
+            dim = max(0.0, min(0.92, float(dim)))
+        except (TypeError, ValueError):
+            dim = 0.6
+        surf = _page_bg()
+        c0, c1 = round(dim * 100), round(max(0.30, dim * 0.60) * 100)
+        veil = (f"radial-gradient(150% 135% at 50% 68%,"
+                f"color-mix(in srgb, {surf} {c0}%, transparent) 42%,"
+                f"color-mix(in srgb, {surf} {c1}%, transparent) 100%)")
+        return ([f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+                 f'style="position:absolute;inset:0;background:{veil};pointer-events:none;"></div>'], [])
+    # paper / parchment: media_ground's own single track-1 layer IS the legibility ground (an opaque
+    # surface) — no extra veil.
     return media_ground(sid, g, start, dur)
 
 
@@ -4536,7 +4555,11 @@ def data_table(sid, sc):
     hr = hl.get("row")
     hc = hl.get("col", 0) if hl else None
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     faint = "rgba(243,239,230,0.16)" if dark else "rgba(28,28,25,0.12)"
     n = len(rows)
     times = _reveal_times(n, start, dur, _reveal_cues(rows, start)) if n else []
@@ -4571,12 +4594,13 @@ def data_table(sid, sc):
             t = t.replace(esc(d["titleHi"]), f'<span style="color:var(--accent)">{esc(d["titleHi"])}</span>')
         title = (f'<div data-fit data-fit-w="52cqw" style="font-family:var(--font-display);font-weight:800;'
                  f'font-size:3cqw;letter-spacing:-0.01em;line-height:1.05;color:{ink};margin-bottom:1.6cqw">{t}</div>')
-    frag = [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+    gfrag, gtl = _data_ground(sid, d, start, dur, "data_table")   # LAYER 3: an authored media/paper ground + its veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
             f'style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;'
             f'align-items:center;container-type:size;padding:0 8cqw;color:{ink}">'
             f'{kick}{title}<table style="border-collapse:collapse;color:{ink}">'
             f'<thead><tr>{head}</tr></thead><tbody>{"".join(body_rows)}</tbody></table></div>']
-    tl = []
+    tl = list(gtl)
     for i in range(n):
         tl.append(f'tl.fromTo("#{sid}-r{i}",{{opacity:0,y:8}},{{opacity:1,y:0,duration:0.4,ease:"power2.out"}},{times[i]:.2f});')
     if hr is not None and 0 <= hr < n:                              # spotlight pulse at the highlighted row's cue
@@ -4599,7 +4623,11 @@ def trajectory(sid, sc):
     d, start, dur = sc["data"], sc["start"], sc["dur"]
     pts = d.get("points") or []
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     PX0, PX1, PY0, PY1 = _plot_box()
     xs = [float(p.get("x", 0)) for p in pts] or [0.0]
     ys = [float(p.get("y", 0)) for p in pts] or [0.0]
@@ -4610,7 +4638,8 @@ def trajectory(sid, sc):
     XY = [(sx(float(p.get("x", 0))), sy(float(p.get("y", 0)))) for p in pts]
     n = len(XY)
     times = _reveal_times(n, start, dur, _reveal_cues(pts, start)) if n else []
-    frag = [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+    gfrag, gtl = _data_ground(sid, d, start, dur, "trajectory")   # LAYER 3: an authored media/paper ground + its veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
             f'style="position:absolute;inset:0;color:{ink}">']
     if d.get("title"):
         frag.append(f'<div style="position:absolute;left:300px;top:110px;font-family:var(--font-display);'
@@ -4634,7 +4663,7 @@ def trajectory(sid, sc):
                         f'font-size:22px;font-weight:700;opacity:0;color:{ink}">{lab}</div>')
     frag.append('</div>')
     ldur = round(max(1.2, (times[-1] - times[0] + 0.5) if n else dur), 2)
-    tl = [f'(function(){{var p=document.getElementById("{sid}-path"),L=p.getTotalLength();'
+    tl = gtl + [f'(function(){{var p=document.getElementById("{sid}-path"),L=p.getTotalLength();'
           f'p.style.strokeDasharray=L;p.style.strokeDashoffset=L;'
           f'tl.fromTo(p,{{strokeDashoffset:L}},{{strokeDashoffset:0,duration:{ldur},ease:"power1.inOut"}},{times[0] if n else start:.2f});}})();']
     for i in range(n):
@@ -4651,7 +4680,11 @@ def stream(sid, sc):
     series = d.get("series") or []
     xlabs = d.get("x") or []
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     PX0, PX1, PY0, PY1 = _plot_box()
     nx = max((len(s.get("values", [])) for s in series), default=0)
     totals = [sum(float(s.get("values", [0] * nx)[i]) for s in series) for i in range(nx)]
@@ -4659,7 +4692,8 @@ def stream(sid, sc):
     step = (PX1 - PX0) / max(1, nx - 1)
     xat = lambda i: PX0 + i * step
     yat = lambda v: PY1 - (PY1 - PY0) * (v / ymax)
-    frag = [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+    gfrag, gtl = _data_ground(sid, d, start, dur, "stream")   # LAYER 3: an authored media/paper ground + its veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
             f'style="position:absolute;inset:0;color:{ink}">']
     if d.get("title"):
         frag.append(f'<div style="position:absolute;left:300px;top:110px;font-family:var(--font-display);'
@@ -4686,7 +4720,7 @@ def stream(sid, sc):
             frag.append(f'<div style="position:absolute;left:{PX1+20}px;top:{PY0+bi*34}px;font-size:22px;'
                         f'font-weight:700;opacity:{op[bi%len(op)]}">■ {esc(str(lab))}</div>')
     frag.append('</div>')
-    tl = [f'tl.fromTo("#{sid}-wipe",{{attr:{{width:0}}}},{{attr:{{width:{PX1-PX0+4:.0f}}},duration:{round(max(1.4,dur*0.7),2)},ease:"power1.inOut"}},{start+0.2:.2f});']
+    tl = gtl + [f'tl.fromTo("#{sid}-wipe",{{attr:{{width:0}}}},{{attr:{{width:{PX1-PX0+4:.0f}}},duration:{round(max(1.4,dur*0.7),2)},ease:"power1.inOut"}},{start+0.2:.2f});']
     return frag, tl
 
 
@@ -4698,7 +4732,11 @@ def bar_race(sid, sc):
     series = d.get("series") or []
     steps = d.get("steps") or []
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     ns = max((len(s.get("values", [])) for s in series), default=0)
     if not steps:
         steps = [str(i + 1) for i in range(ns)]
@@ -4707,7 +4745,8 @@ def bar_race(sid, sc):
     X0, W, TOP, RH = 360, 1160, 300, 78
     gmax = max((float(v) for s in series for v in s.get("values", [0])[:ns]), default=1.0) or 1.0
     st = round((dur - 0.6) / max(1, ns), 2)                            # seconds per step
-    frag = [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="1" '
+    gfrag, gtl = _data_ground(sid, d, start, dur, "bar_race")   # LAYER 3: an authored media/paper ground + its veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip" data-start="{start}" data-duration="{dur}" data-track-index="2" '
             f'style="position:absolute;inset:0;color:{ink}">']
     if d.get("title"):
         frag.append(f'<div style="position:absolute;left:{X0}px;top:150px;font-family:var(--font-display);'
@@ -4723,7 +4762,7 @@ def bar_race(sid, sc):
                     f'<span id="{sid}-v{si}" style="position:absolute;right:-70px;top:50%;transform:translateY(-50%);'
                     f'font-weight:800;font-size:24px;color:{ink}">0</span></div>')
     frag.append('</div>')
-    tl = []
+    tl = list(gtl)
     for k in range(ns):
         t = round(start + 0.3 + k * st, 2)
         ranked = sorted(range(len(series)), key=lambda i: -float(series[i].get("values", [0])[k] if k < len(series[i].get("values", [])) else 0))
@@ -4753,7 +4792,11 @@ def split_view(sid, sc):
     pw = int(W * ps)
     px, cx, cw = (0, pw, W - pw) if paper_left else (W - pw, 0, W - pw)
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
 
     # FIT the paper (or its focus region) into a box that PRESERVES ITS ASPECT RATIO — never stretch it to
     # fill the panel. Centre the box in the panel with a margin (a sheet on a ground), so it keeps its shape.
@@ -4839,7 +4882,11 @@ def slope(sid, sc):
     series = d.get("series") or []
     n = len(series)
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     muted = "rgba(243,239,230,0.40)" if dark else "rgba(28,28,25,0.34)"
     pre, suf = d.get("prefix", ""), d.get("suffix", "")
     cols = (d.get("cols") or ["", ""])[:2] + [""] * (2 - len(d.get("cols") or []))
@@ -4852,8 +4899,9 @@ def slope(sid, sc):
     span = (vhi - vlo) or 1.0
     LX, RX, TY, BY = 640, 1280, 250, 900                 # left axis x, right axis x, top y, bottom y
     yof = lambda v: BY - (v - vlo) / span * (BY - TY)
-    frag = [f'<div id="{sid}-wrap" class="clip blk-slope" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
+    gfrag, gtl = _data_ground(sid, d, start, dur, "slope")   # LAYER 3: an authored media/paper ground + its legibility veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip blk-slope" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="2" style="position:absolute;inset:0;color:{ink};">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
     # column headers + the two vertical axes
@@ -4893,7 +4941,7 @@ def slope(sid, sc):
                     f'text-align:left;font-size:26px;font-weight:{800 if on else 600};color:{lc};opacity:0">'
                     f'<span style="opacity:.62">{esc(pre)}{num(ends[i])}{esc(suf)}</span> {lab}</div>')
     frag.append('</div>')
-    tl = list(ht)
+    tl = gtl + list(ht)
     for i in range(n):
         t = times[i]
         tl.append(f'(function(){{var p=document.getElementById("{sid}-ln{i}"),L=p.getTotalLength();'
@@ -4916,15 +4964,20 @@ def isotype(sid, sc):
     num = _num
     items = d.get("items") or []
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     pre, suf, unit = d.get("prefix", ""), d.get("suffix", ""), d.get("unit", "")
     vals = [float(it.get("value", 0)) for it in items] or [0.0]
     vmax = max(vals) or 1.0
     per = float(d.get("per") or max(1.0, round(vmax / 44.0)))
     br = {"square": "5px", "circle": "50%", "dot": "50%"}.get(d.get("icon", "square"), "5px")
     ISZ, GAP, PERROW, X0 = 26, 8, 40, 300
-    frag = [f'<div id="{sid}-wrap" class="clip blk-isotype" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
+    gfrag, gtl = _data_ground(sid, d, start, dur, "isotype")   # LAYER 3: an authored media/paper ground + its legibility veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip blk-isotype" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="2" style="position:absolute;inset:0;color:{ink};">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
     if unit or per != 1:
@@ -4949,7 +5002,7 @@ def isotype(sid, sc):
         y = gy + nlines * (ISZ + GAP) + 34
         plan.append((i, nic))
     frag.append('</div>')
-    tl = list(ht)
+    tl = gtl + list(ht)
     # The anchorable unit is the ITEM (a category), not the icon: each item starts filling at its own
     # scheduler time — so it lands ON its spoken label when the author anchors one — and its icons
     # stream across the window before the next item. The previous version distributed every icon
@@ -4997,7 +5050,11 @@ def dumbbell(sid, sc):
         items.sort(key=lambda it: abs(float(it.get("end", 0)) - float(it.get("start", 0))), reverse=True)
     n = len(items)
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     muted = "rgba(243,239,230,0.5)" if dark else "rgba(28,28,25,0.42)"
     pre, suf = d.get("prefix", ""), d.get("suffix", "")
     cols = (d.get("cols") or ["", ""])[:2] + [""] * (2 - len(d.get("cols") or []))
@@ -5009,8 +5066,9 @@ def dumbbell(sid, sc):
     X0, X1, TY, ROWH = 620, 1620, 300, 0
     xof = lambda v: X0 + (v - vlo) / span * (X1 - X0)
     rowh = min(120, max(56, int((900 - TY) / max(1, n))))
-    frag = [f'<div id="{sid}-wrap" class="clip blk-dumbbell" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
+    gfrag, gtl = _data_ground(sid, d, start, dur, "dumbbell")   # LAYER 3: an authored media/paper ground + its legibility veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip blk-dumbbell" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="2" style="position:absolute;inset:0;color:{ink};">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
     if cols[0] or cols[1]:                                   # a color LEGEND (dots are placed by value, so a
@@ -5041,7 +5099,7 @@ def dumbbell(sid, sc):
         frag.append(f'<div id="{sid}-ev{i}" style="position:absolute;left:{xe-70:.0f}px;top:{y+16:.0f}px;width:140px;'
                     f'text-align:center;font-size:23px;font-weight:800;color:var(--accent);opacity:0">{esc(pre)}{num(ends[i])}{esc(suf)}</div>')
     frag.append('</div>')
-    tl = list(ht)
+    tl = gtl + list(ht)
     for i in range(n):
         t = times[i]
         tl.append(f'tl.fromTo("#{sid}-s{i}",{{scale:0}},{{scale:1,opacity:1,duration:0.3,ease:"back.out(2)"}},{t:.2f});')
@@ -5063,7 +5121,11 @@ def small_multiples(sid, sc):
     panels = d.get("panels") or []
     n = len(panels)
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     rule = "rgba(243,239,230,0.22)" if dark else "rgba(28,28,25,0.16)"
     pre, suf = d.get("prefix", ""), d.get("suffix", "")
     allvals = [float(pt.get("value", 0)) for p in panels for pt in (p.get("series") or [])] or [0.0]
@@ -5072,12 +5134,13 @@ def small_multiples(sid, sc):
     rowsn = (n + cols - 1) // cols
     AX0, AY0, AW, AH = 300, 268, 1320, 620
     cw, ch = AW / cols, AH / max(1, rowsn)
-    frag = [f'<div id="{sid}-wrap" class="clip blk-small_multiples" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
+    gfrag, gtl = _data_ground(sid, d, start, dur, "small_multiples")   # LAYER 3: an authored media/paper ground + its legibility veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip blk-small_multiples" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="2" style="position:absolute;inset:0;color:{ink};">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
     times = _reveal_times(n, start, dur, _reveal_cues(panels, start)) if n else []
-    tl = list(ht)
+    tl = gtl + list(ht)
     for pi, p in enumerate(panels):
         cx = AX0 + (pi % cols) * cw
         cy = AY0 + (pi // cols) * ch
@@ -5125,7 +5188,11 @@ def histogram(sid, sc):
     bins = d.get("bins") or []
     n = len(bins)
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     rule = "rgba(243,239,230,0.30)" if dark else "rgba(28,28,25,0.22)"
     pre, suf, unit = d.get("prefix", ""), d.get("suffix", ""), d.get("unit", "")
     counts = [float(b.get("count", 0)) for b in bins] or [0.0]
@@ -5136,8 +5203,9 @@ def histogram(sid, sc):
     dom = (x1v - x0v) or 1
     PX0, PX1, PY0, PY1 = 320, 1600, 300, 860
     pw = PX1 - PX0
-    frag = [f'<div id="{sid}-wrap" class="clip blk-histogram" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
+    gfrag, gtl = _data_ground(sid, d, start, dur, "histogram")   # LAYER 3: an authored media/paper ground + its legibility veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip blk-histogram" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="2" style="position:absolute;inset:0;color:{ink};">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
     frag.append(f'<div style="position:absolute;left:{PX0}px;top:{PY1}px;width:{pw}px;height:2px;background:{rule}"></div>')
@@ -5157,7 +5225,7 @@ def histogram(sid, sc):
     if unit:
         frag.append(f'<div style="position:absolute;left:{PX1-260:.0f}px;top:{PY1+48:.0f}px;font-size:20px;'
                     f'opacity:.5">{esc(unit)} →</div>')
-    tl = list(ht)
+    tl = gtl + list(ht)
     times = _reveal_times(n, start, dur, _reveal_cues(bins, start)) if n else []
     for i in range(n):
         tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:{_reveal_dur(times,i,start,dur,base=0.4,maxd=0.8,d=d)},ease:"{_reveal_ease(d)}"}},{times[i]:.2f});')
@@ -5192,19 +5260,24 @@ def gauge(sid, sc):
     tgt = d.get("target")
     pre, suf = d.get("prefix", ""), d.get("suffix", "")
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     track = "rgba(243,239,230,0.16)" if dark else "rgba(28,28,25,0.12)"
     R = 168 if n == 1 else (132 if n == 2 else 106)
     SW = 26 if n == 1 else (20 if n == 2 else 16)
     C = 2 * math.pi * R
     cy = 580
     xs = [960] if n == 1 else [960 - 620 + i * (1240 / (n - 1)) for i in range(n)]
-    frag = [f'<div id="{sid}-wrap" class="clip blk-gauge" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
+    gfrag, gtl = _data_ground(sid, d, start, dur, "gauge")   # LAYER 3: an authored media/paper ground + its legibility veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip blk-gauge" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="2" style="position:absolute;inset:0;color:{ink};">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
     svg = ['<svg viewBox="0 0 1920 1080" style="position:absolute;inset:0;width:100%;height:100%">']
-    tl = list(ht)
+    tl = gtl + list(ht)
     # The arc SWEEP is a data reveal: it lands on the spoken value when the author anchors one, and
     # otherwise spreads across the hold. It used to fire at `start + 0.4 + i*0.25` with a fixed 1.1s
     # draw — on a 14s beat the ring finished at 1.5s and the frame then sat frozen for 12.5.
@@ -5220,7 +5293,9 @@ def gauge(sid, sc):
         if tgt is not None:
             ang = -math.pi / 2 + (float(tgt) / mx) * 2 * math.pi
             tx, ty = cx + R * math.cos(ang), cy + R * math.sin(ang)
-            svg.append(f'<circle cx="{tx:.0f}" cy="{ty:.0f}" r="{SW*0.42:.0f}" fill="{ink}"/>')
+            # a presentation ATTRIBUTE — var() is not resolved in one, so the target tick keeps a hex
+            svg.append(f'<circle cx="{tx:.0f}" cy="{ty:.0f}" r="{SW*0.42:.0f}" '
+                       f'fill="{"#f3efe6" if dark else "#1c1c19"}"/>')
         frag.append(f'<div id="{sid}-v{i}" style="position:absolute;left:{cx-180:.0f}px;top:{cy-46:.0f}px;width:360px;'
                     f'text-align:center;font-family:var(--font-display);font-weight:800;font-size:{72 if n<=2 else 52}px;'
                     f'color:{ink};opacity:0">{esc(pre)}{num(v)}{esc(suf)}</div>')
@@ -5248,14 +5323,19 @@ def process(sid, sc):
     n = len(steps)
     horizontal = str(d.get("direction", "horizontal")) != "vertical"
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     card = "rgba(243,239,230,0.07)" if dark else "rgba(28,28,25,0.05)"
-    frag = [f'<div id="{sid}-wrap" class="clip blk-process" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
+    gfrag, gtl = _data_ground(sid, d, start, dur, "process")   # LAYER 3: an authored media/paper ground + its legibility veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip blk-process" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="2" style="position:absolute;inset:0;color:{ink};">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
     times = _reveal_times(n, start, dur, _reveal_cues(steps, start)) if n else []
-    tl = list(ht)
+    tl = gtl + list(ht)
     if horizontal:
         AX0, AX1, cy = 200, 1720, 560
         gap = (AX1 - AX0) / max(1, n)
@@ -5383,7 +5463,11 @@ def _layout_cell(sid, i, cell, box, t0, end=None):
     kind = cell.get("kind", "text")
     cid = f"{sid}-c{i}"
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     frag, tl = [], []
     kick = (f'<div style="font-family:var(--font-mono,monospace);font-size:{max(13,h*0.045):.0f}px;'
             f'letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">{esc(cell["kicker"])}</div>'
@@ -5568,16 +5652,21 @@ def layout(sid, sc):
     slots = d.get("slots") or []
     n = len(slots)
     dark = _POLARITY == "dark"
-    ink = "#f3efe6" if dark else "#1c1c19"
+    # THEME TOKEN first, the literal only as a fallback: these blocks hardcoded near-white /
+    # near-black, so any theme whose --text is neither (ink-blue, sepia, high-contrast) lost it
+    # on exactly these 14 blocks — the "lone odd-one-out" class test_block_token_fidelity guards
+    # for compose.py's own blocks, which never read this file.
+    ink = "var(--text,#f3efe6)" if dark else "var(--text,#1c1c19)"
     arrange = d.get("arrange", "split")
     if arrange == "overlay":                                # the LAYERED path (background + foreground-on-top)
         return _layout_overlay(sid, sc, d, slots, n, start, dur, dark, ink, esc)
     boxes = _layout_boxes(arrange, n, d.get("direction", "horizontal"), d.get("ratio"))
-    frag = [f'<div id="{sid}-wrap" class="clip blk-layout" data-start="{start}" data-duration="{dur}" '
-            f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
+    gfrag, gtl = _data_ground(sid, d, start, dur, "layout")   # LAYER 3: an authored media/paper ground + its legibility veil
+    frag = gfrag + [f'<div id="{sid}-wrap" class="clip blk-layout" data-start="{start}" data-duration="{dur}" '
+                    f'data-track-index="2" style="position:absolute;inset:0;color:{ink};">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
-    tl = list(ht)
+    tl = gtl + list(ht)
     times = _reveal_times(n, start, dur, _reveal_cues(slots, start)) if n else []
     # VS PIVOT (the tuned detail from comparison/juxtaposition): open a wider centre gap, drop a badge in it,
     # so `layout` reproduces the "A vs B" framing those blocks were built for — without the badge colliding

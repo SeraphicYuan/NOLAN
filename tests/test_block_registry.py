@@ -37,11 +37,32 @@ def test_registry_matches_the_composer():
     assert set(GROUND_BLOCKS) == _composer_ground_blocks()
 
 
+def _composer_data_ground_blocks() -> set:
+    """The OTHER ground mechanism: templates whose fn calls `_data_ground()` (LAYER-3 ambient ground
+    + legibility veil). Same authored field, same real pixels — a different helper."""
+    src = (BRIDGE / "compose.py").read_text(encoding="utf-8")
+    reg = re.search(r"^BLOCKS = \{(.*?)\n?\}", src, re.S | re.M)
+    registry = dict(re.findall(r'"(\w+)":\s*(\w+)', reg.group(1)))
+    bounds = [(m.start(), m.group(1)) for m in re.finditer(r"^def (\w+)\(", src, re.M)] + [(len(src), "")]
+    consuming = set()
+    for i in range(len(bounds) - 1):
+        fn = bounds[i][1]
+        if fn != "_data_ground" and "_data_ground(" in src[bounds[i][0]:bounds[i + 1][0]]:
+            consuming.add(fn)
+    return {t for t, fn in registry.items() if fn in consuming}
+
+
+def test_data_ground_registry_matches_the_composer():
+    from nolan.block_registry import DATA_GROUND_BLOCKS
+    assert set(DATA_GROUND_BLOCKS) == _composer_data_ground_blocks()
+
+
 def test_consumes_ground_helper_agrees():
-    from nolan.block_registry import GROUND_BLOCKS, consumes_ground
+    from nolan.block_registry import ANY_GROUND_BLOCKS, consumes_ground
     assert consumes_ground("statement") and consumes_ground("pull_quote")
-    assert not consumes_ground("hero") and not consumes_ground("chart")
-    assert all(consumes_ground(b) for b in GROUND_BLOCKS)
+    assert consumes_ground("chart") and consumes_ground("isotype")   # via _data_ground
+    assert not consumes_ground("hero") and not consumes_ground("lower_third")
+    assert all(consumes_ground(b) for b in ANY_GROUND_BLOCKS)
 
 
 def test_no_module_keeps_a_PRIVATE_copy_of_the_ground_set():
@@ -58,9 +79,12 @@ def test_no_module_keeps_a_PRIVATE_copy_of_the_ground_set():
 
 
 def test_both_consumers_actually_import_it():
-    for rel in ("hyperframes/autoground.py", "style_contract/metrics.py"):
+    # autoground places media only on the `media_ground` six (an ambient ground behind data is an
+    # editorial choice, not a pre-pass's); metrics must CREDIT both mechanisms, so it reads the union.
+    for rel, name in (("hyperframes/autoground.py", "GROUND_BLOCKS"),
+                      ("style_contract/metrics.py", "ANY_GROUND_BLOCKS")):
         text = (SRC / rel).read_text(encoding="utf-8")
-        assert "block_registry import GROUND_BLOCKS" in text, f"{rel} must read the shared registry"
+        assert f"block_registry import {name}" in text, f"{rel} must read the shared registry ({name})"
 
 
 # --- phantom reveal cues (postmortem item 4) --------------------------------------------------

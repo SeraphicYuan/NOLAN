@@ -31,10 +31,29 @@ GROUND_BLOCKS: FrozenSet[str] = frozenset({
     "statement", "stat", "bullet_list", "pull_quote", "comparison_table", "ledger",
 })
 
+# Blocks that paint `data.ground` through `_data_ground()` instead — the LAYER-3 ambient ground behind
+# a data viz, with a legibility veil over it so thin marks still read. Same authored field, same real
+# pixels on screen, different composer helper: 11 compose.py data blocks had it and the 14 Tier-2 ones
+# gained it in the 2026-07-26 parity pass.
+#
+# It is a SEPARATE set from GROUND_BLOCKS on purpose. `coverage` must credit both (a photo behind a
+# chart is media on screen — scoring it "none" is exactly the contradiction item 7 fixed one layer up,
+# where grounding a pull_quote credited nothing while still tripping the long-hold advisory). But
+# auto-ground places media only on GROUND_BLOCKS: an ambient ground behind data is an editorial choice
+# the author makes, not one a pre-pass should make for them.
+DATA_GROUND_BLOCKS: FrozenSet[str] = frozenset({
+    "chart", "connection_board", "cycle", "funnel", "pie", "quadrant", "sankey", "scale", "spans",
+    "spectrum", "venn",
+    "bar_race", "data_table", "dumbbell", "gauge", "histogram", "isotype", "layout", "process",
+    "slope", "small_multiples", "stream", "trajectory",
+})
+
+ANY_GROUND_BLOCKS: FrozenSet[str] = GROUND_BLOCKS | DATA_GROUND_BLOCKS
+
 
 def consumes_ground(block: str) -> bool:
-    """True iff `data.ground` renders for this block."""
-    return block in GROUND_BLOCKS
+    """True iff `data.ground` renders for this block, by either mechanism."""
+    return block in ANY_GROUND_BLOCKS
 
 
 # --- what a block DISPLAYS, for narration matching -------------------------------------------------

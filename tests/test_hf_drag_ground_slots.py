@@ -27,9 +27,25 @@ def test_catalog_advertises_the_fields_the_js_keys_on():
     assert "image" in _fields("newshead")
     assert "source" in _fields("document")
     assert "right" in _fields("comparison")
+    # A data block DOES take a ground now (the LAYER-3 ambient ground, veiled for legibility) — it
+    # always rendered one, and the catalog simply never said so, which left this button disabled on a
+    # capability that existed. The composer is checked below; here we only pin that the UI can see it.
+    assert "ground" in _fields("chart")
     # blocks with NO image-background slot → groundSlot returns null, the 'use' button is disabled
-    for b in ("geo", "timeline", "diagram", "chart", "code", "raw"):
+    for b in ("geo", "timeline", "diagram", "code", "raw"):
         assert not ({"ground", "image", "source", "right", "backdrop"} & _fields(b)), f"{b} unexpectedly has a bg slot"
+
+
+def test_a_data_block_ground_is_veiled_whatever_the_kind():
+    """The button now offers a ground on charts, so BOTH kinds must stay legible: an image gets the
+    radial veil, and footage gets it too (media_ground's own scrim is tuned for lower-left text, and
+    thin marks sit where it is weakest)."""
+    for kind, extra in (("image", {"src": "assets/p.jpg"}), ("video", {"src": "assets/videos/p.mp4"})):
+        sc = {"id": "s1", "type": "chart", "start": 0.0, "dur": 8.0,
+              "data": {"series": [{"label": "a", "value": 3}], "ground": dict(kind=kind, **extra)}}
+        html = "".join(compose.chart("s1", sc)[0])
+        assert "radial-gradient" in html, f"{kind} ground has no legibility veil"
+        assert 'class="clip scrim"' in html
 
 
 def _lt(backdrop):

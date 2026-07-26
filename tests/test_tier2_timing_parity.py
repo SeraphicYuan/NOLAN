@@ -65,6 +65,17 @@ def test_a_media_cell_ken_burns_for_its_whole_cell_not_a_literal_six_seconds():
     assert float(re.search(r"duration:([\d.]+)", kb).group(1)) >= 19.0, kb
 
 
+def test_tier2_ink_reads_the_theme_token():
+    """These blocks hardcoded near-white / near-black ink. Any theme whose --text is neither (ink-blue,
+    sepia, high-contrast) lost its identity on exactly these blocks — and `test_block_token_fidelity`
+    could not see it, because that gate reads compose.py and they lived somewhere else."""
+    bad = []
+    for t in TIER2:
+        for m in re.finditer(r'ink = "(#[0-9a-fA-F]{6})"', _body(t)):
+            bad.append(f"{t}: {m.group(1)}")
+    assert not bad, f"Tier-2 ink must be var(--text, <fallback>): {bad}"
+
+
 def test_tier2_growth_tweens_scale_with_the_beat():
     """A bar that grows in a fixed 0.4s on a 15s hold is the static-slide bug in miniature."""
     for block in ("histogram", "dumbbell", "gauge", "isotype"):

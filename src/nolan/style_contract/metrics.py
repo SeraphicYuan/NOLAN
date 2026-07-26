@@ -104,7 +104,12 @@ def _walk_strings(node):
 # 6-block set, so a ground placed on a pull_quote/ledger/bullet_list/comparison_table rendered
 # but scored `none`: it credited nothing toward coverage AND the scene was still flagged as a
 # long ungrounded hold. The author was told to fix what the metric refused to see.
-from nolan.block_registry import GROUND_BLOCKS as _GROUND_BLOCKS
+#
+# The same fork reappeared one layer down and is closed here too: the 11 data blocks (and, since the
+# Tier-2 parity pass, 12 more) paint an authored ground through `_data_ground` rather than
+# `media_ground`, and this scored every one of them `none`. A photograph behind a chart is media on
+# screen. `ANY_GROUND_BLOCKS` is the union, and it is the registry's job to keep it true.
+from nolan.block_registry import ANY_GROUND_BLOCKS as _GROUND_BLOCKS
 _IMAGE_BLOCKS = {"gallery", "carousel", "collage"}   # always paint images
 
 
@@ -138,7 +143,7 @@ def scene_media(block: str, data: dict) -> str:
         return "image" if data.get("source") else "none"
     if block == "raw":                            # bespoke HTML — best-effort substring scan
         return _substring_media(data)
-    return "none"                                 # geo / diagram / chart / timeline / code / lower_third
+    return "none"                                 # geo / diagram / timeline / code / lower_third
 
 
 def scene_asset_srcs(block: str, data: dict) -> List[str]:
