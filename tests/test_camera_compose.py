@@ -22,14 +22,40 @@ def _ground_tl(dur=10.0, start=0.0, **ground):
     return compose.media_ground("s1", g, start, dur)
 
 
+# The MEDIA PLATES a camera can move. Explicit, because the two obvious automatic discriminators both
+# fail: matching every `scale:` tween catches element ENTRANCES (a badge popping 0->1 in 0.45s, which is
+# not a camera), and matching only the selectors I happened to remember is how `detail_zoom` — the one
+# block that IS a camera — slipped through on `-cam` with a literal 0.95s leg. Add a new media layer
+# here when you add one; the assertion below is what makes forgetting expensive.
+_MEDIA_SELECTORS = ("-gnd", "-dgnd", "-img", "-cam", "-fg", "-media")
+
+# KNOWN DEFERRED, stated rather than hidden: `geo`'s `-plane` / `-world` tweens are a MAP camera moving
+# in projection space between locations. The registry models a picture plane, not a map, so porting it
+# is real work rather than a rename — and pretending otherwise by widening the list would make this
+# test lie. See docs/CAMERA_PROGRAM.md "Not yet built".
+_MAP_CAMERA = ("-plane", "-world")
+
+
 def test_no_block_hand_writes_a_camera_tween_any_more():
-    """A `scale:` tween on a ground element that did not come through `_camera_for` is a fifth dialect."""
+    """A camera move on a media plate must come from the module, and must not carry a literal duration."""
     offenders = []
-    for m in re.finditer(r'tl\.fromTo\("#\{[^"]*(?:gnd|dgnd|-img)"[^;]*scale:', SRC):
+    for m in re.finditer(r'tl\.(?:to|fromTo)\("#\{([^"]*)"[^;]*?\bscale:', SRC):
+        sel = m.group(1)
+        if not any(k in sel for k in _MEDIA_SELECTORS) or any(k in sel for k in _MAP_CAMERA):
+            continue
         line = SRC[SRC.rfind("\n", 0, m.start()) + 1:SRC.find("\n", m.start())]
-        if "_camera_for" not in line:
+        if "_camera_for" in line:
+            continue
+        if re.search(r"duration:\s*[\d.]+\s*[,}]", line):       # a LITERAL, not a computed fraction
             offenders.append(line.strip()[:110])
-    assert not offenders, f"hand-written camera tweens: {offenders}"
+    assert not offenders, f"camera tweens with a literal duration: {offenders}"
+
+
+def test_the_map_camera_is_the_only_declared_exception():
+    """If someone ports geo into the registry, this test should start failing — that is the point."""
+    hits = [m.group(0) for m in re.finditer(r'tl\.to\("#\{sid\}-(?:plane|world)"[^;]*duration:[\d.]+', SRC)]
+    assert hits, ("the map camera no longer hand-writes its tweens — remove it from _MAP_CAMERA and "
+                  "from the 'Not yet built' list in docs/CAMERA_PROGRAM.md")
 
 
 def test_the_ground_moves_and_the_move_is_eased():

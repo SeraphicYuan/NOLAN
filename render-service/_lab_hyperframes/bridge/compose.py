@@ -1018,13 +1018,16 @@ def _camera_for(g, dur, sel, start, *, default_amount=None, cue=None, narration=
     plan = camera.plan(move, dur=float(dur), target=tgt, box=box, img=img,
                        amount=spec.get("amount", default_amount))
     globals()["_CAMERA_PREV_FAMILY"] = camera.registry.family_of(plan["move"])
-    if plan["move"] == "punch-in":
-        lines = camera.emit_punch(sel, plan, (cue if cue is not None else start + 0.4))
-    elif plan["move"] in ("blur-in", "blur-out", "rack-focus"):
-        lines = camera.emit_blur(sel, start, float(dur), cue=cue,
-                                 **({"from_px": 0.0, "to_px": 18.0} if plan["move"] == "blur-out" else {}))
-    else:
-        lines = camera.emit(sel, plan, start, float(dur), cue=cue)
+    lines = camera.emit_for(plan, sel, start, float(dur), cue=cue)
+
+    # The decision is RECORDED, not just acted on. Two reasons, and both bit already: a deliberate
+    # `hold` is indistinguishable from a frozen clip to the temporal gate unless the intent is written
+    # down (pitfall #7 — a gate lagging new vocabulary), and a solver that clamps or a source that is
+    # too small to push must SAY so or it is a silent cap. `_CAMERA_LOG` is drained per frame.
+    why = spec.get("_why") or ""
+    note = "; ".join([w for w in ([why] + list(plan.get("notes") or [])) if w])
+    globals().setdefault("_CAMERA_LOG", []).append(
+        {"sel": sel, "move": plan["move"], "why": note})
 
     depth = None
     if plan["move"] == "rack-focus" and path:
@@ -1076,12 +1079,18 @@ def media_ground(sid, ground, start, dur, narration=""):
         frag.append(f'<div class="clip scrim" data-start="{start}" data-duration="{dur}" data-track-index="1" '
                     f'style="background:{scr};"></div>')
         frag += _fx_overlays(_treat, sid, start, dur)   # blend_overlay treatments (grain/scanlines) over the image
-        cam, camsty, depth = _camera_for(ground, dur, f"#{sid}-gnd", start,
-                                          cue=ground.get("at"),
+        _camspec = ground.get("camera")
+        _camat = _camspec.get("at") if isinstance(_camspec, dict) else None
+        cam, camsty, depth = _camera_for(ground, dur, f"#{sid}-gnd", start, cue=_camat,
                                           narration=narration or ground.get("_narration", ""))
         tl += cam
+        _dec = (globals().get("_CAMERA_LOG") or [{}])[-1]
+        gi = next(i for i, f in enumerate(frag) if f'id="{sid}-gnd"' in f)
+        frag[gi] = frag[gi].replace(
+            'class="clip gnd"',
+            f'class="clip gnd" data-camera="{esc(str(_dec.get("move", "")))}"'
+            f' data-camera-why="{esc(str(_dec.get("why", ""))[:180])}"', 1)
         if camsty:                                       # a long-axis pan re-sizes the ground element
-            gi = next(i for i, f in enumerate(frag) if f'id="{sid}-gnd"' in f)
             frag[gi] = frag[gi].replace('style="background-image', f'style="{camsty}background-image')
         if depth:
             # PARALLAX: the subject cutout rides ABOVE the scrim on its own layer and moves further
@@ -3287,7 +3296,12 @@ def detail_zoom(sid, sc):
         if i == 0:
             tl.append(f'tl.set("#{sid}-cam",{{x:{tx:.0f},y:{ty:.0f},scale:{s},transformOrigin:"0px 0px"}},{start});')
         else:
-            tl.append(f'tl.to("#{sid}-cam",{{x:{tx:.0f},y:{ty:.0f},scale:{s},duration:0.95,ease:"power2.inOut"}},{t:.2f});')
+            # the leg between stops: a FRACTION of the stop's dwell, never a literal — a 2s stop and a
+            # 12s stop cannot both take 0.95s to travel. Same law the camera umbrella applies to a
+            # ground; this block is a camera too, and was the last one still setting its own number.
+            leg = round(max(0.6, min(seg * 0.45, 2.4)), 2)
+            tl.append(f'tl.to("#{sid}-cam",{{x:{tx:.0f},y:{ty:.0f},scale:{s},'
+                      f'duration:{leg},ease:"power2.inOut"}},{t:.2f});')
     over = [f'<div class="clip" data-start="{start}" data-duration="{dur}" data-track-index="3" style="position:absolute;inset:0;pointer-events:none;">']
     for i, st in enumerate(stops):
         if not (st.get("caption") or st.get("sub")):
@@ -6785,6 +6799,7 @@ def _resolve_variant(block, data, prev=None, allowed=None, rot=0):
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
     global _POLARITY, _SHELL_TEXTSAFE, _TYPE_PERSONALITY, _THEME_NAME, _CAMERA_PREV_FAMILY
     _CAMERA_PREV_FAMILY = None                # per-FRAME alternation state (see _camera_for)
+    globals()["_CAMERA_LOG"] = []
     _THEME_NAME = theme                       # the glass tint reads --surface/--text from THIS theme
     _POLARITY = _theme_polarity(theme)        # so blocks can pick theme-aware (not hardcoded-dark) defaults
     _SHELL_TEXTSAFE = _theme_shell_textsafe(theme)   # full-bleed grounds prefer --shell unless it's dark-on-dark

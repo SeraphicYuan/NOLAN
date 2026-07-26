@@ -244,6 +244,28 @@ renderer composes only the ones that changed. `compose_frame` resets it.
 glass panel work leaned on them; the camera's own seek-safety is verified by emitting every registered
 move and asserting no `repeat`/`yoyo`/`random` and an absolute time on every tween.
 
+### Fixed straight after the first commit (each was mine)
+
+- **A deliberate `hold` read as FROZEN to `temporal_gate`** — WIRING_CHECKLIST pitfall #7, a gate lagging
+  new vocabulary. The camera now RECORDS its decision (`data-camera` / `data-camera-why` on the ground)
+  and the gate reads it: a hold the camera CHOSE is exempt and carries its reason, a scene frozen with no
+  decision behind it still fails, and `camera="push-in"` with zero measured motion still fails — that is
+  the move failing to reach the pixels, exactly what the gate is for.
+- **The solver's `notes` went nowhere.** It reported clamps, degrades and holds into a variable nobody
+  read, which is a silent cap with extra steps. They now land on the element and in a per-frame log.
+- **`camera.at` was read but never declared** — the "gate accepts what the schema never offered" class
+  from the diamond-v2 post-mortem, committed by me two hours after writing that post-mortem up. Declared.
+- **Default targeting was rembg**, ~20s cold per asset, wanted for nearly every image ground: minutes
+  added to a compose that takes seconds. The default is now a contrast centroid on a 64px thumbnail
+  (~10ms); rembg is `precise=True` and the matte path for parallax/rack-focus, where the matte IS the
+  product.
+- **The emitter dispatch lived in the composer seam** (which emitter for which move). That is registry
+  knowledge, and a second consumer would have had to duplicate it — pitfall #4 inside the module built
+  to prevent it. Moved to `camera.emit_for`.
+- **`detail_zoom` — the one block that IS a camera — was not using the module**, and the first version of
+  the honesty test matched only `gnd|dgnd|-img`, so it slipped through on a `-cam` selector with a literal
+  0.95s leg. Its legs are now a fraction of the stop's dwell, and the test covers every media selector.
+
 ### Not yet built (named so nobody assumes otherwise)
 
 - `read-along` and `scan-column` resolve their region through the VLM box lane, but nothing yet maps a
@@ -251,6 +273,10 @@ move and asserting no `repeat`/`yoyo`/`random` and an absolute time on every twe
   Word-level *arrival* works; per-line crawl pacing does not.
 - `settle`, `roll-drift` and `pan-to-subject` are registered, executable and reachable, but the
   selector never picks them on its own — they are authored moves for now.
+- **`geo`'s map camera** (`-plane` / `-world`) still hand-writes its tweens with literal durations. It
+  moves in projection space between locations, which the registry does not model — a real port, not a
+  rename. `tests/test_camera_compose.py` declares it as the one exception and will FAIL if someone ports
+  it without updating this list.
 - The legacy Remotion path still has its own `still_motion.py` vocabulary. It was left in place
   deliberately (that path is LEGACY for essays); porting it to import this registry is the remaining
   step that would close pitfall #4 completely.

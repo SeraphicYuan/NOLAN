@@ -28,10 +28,21 @@ def _ffmpeg() -> str:
 
 
 # --- pure classification (testable without ffmpeg) ------------------------------------------------
-def classify_motion(mean_motion: float, tail_motion: float, dur: float, grounded: bool) -> Optional[str]:
-    """Verdict for one scene from its motion stats. None = fine."""
+def classify_motion(mean_motion: float, tail_motion: float, dur: float, grounded: bool,
+                    camera: str = "", camera_why: str = "") -> Optional[str]:
+    """Verdict for one scene from its motion stats. None = fine.
+
+    WHY `camera` IS HERE (WIRING_CHECKLIST pitfall #7 — a gate lagging new vocabulary): since the
+    camera umbrella shipped, `hold` is a LEGITIMATE choice — an iconic image at a climax, a beat too
+    short for a move to read, or a source too low-res to push without turning to mush. To this gate all
+    three look exactly like a frozen clip, and flagging them would train people to ignore it (pitfall
+    #11). A hold the camera CHOSE is exempt and carries its reason; a scene that is frozen with no such
+    decision behind it still fails, which is the case the gate exists for.
+    """
     if dur < _MIN_FLAG_DUR:
         return None                                        # short holds are readable, not slides
+    if str(camera) == "hold":
+        return None                                        # deliberate — the reason rides on the scene
     if mean_motion < _FROZEN_EPS:
         return f"FROZEN ({dur:.1f}s, ~0 motion) — a frozen clip or a fully static frame"
     if not grounded and mean_motion < _STATIC_EPS:
@@ -77,6 +88,35 @@ def frame_motion(paths: List[Path]) -> Dict:
             "tail": round(sum(tail) / len(tail), 4), "pairs": len(diffs)}
 
 
+_CAM_RE = None
+
+
+def _camera_decision(spec_file: Path, scene_id: str):
+    """(move, why) the composer RECORDED for this scene, from the frame HTML beside its spec.
+
+    The HTML is read rather than the spec because an auto-SELECTED move is a compose-time decision that
+    was never in the spec — and the HTML is the artifact that actually rendered, which makes it the
+    stronger source of truth for what the camera did.
+    """
+    import re as _re
+    global _CAM_RE
+    if _CAM_RE is None:
+        _CAM_RE = _re.compile(r'id="([\w-]+)-gnd"[^>]*?data-camera="([^"]*)"[^>]*?data-camera-why="([^"]*)"')
+    html = spec_file.with_suffix("").with_suffix(".html")
+    if not html.exists():
+        html = spec_file.parent / (str(spec_file.name).replace(".spec.json", ".html"))
+    if not html.exists():
+        return "", ""
+    try:
+        text = html.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return "", ""
+    for sid, move, why in _CAM_RE.findall(text):
+        if sid == scene_id:
+            return move, why
+    return "", ""
+
+
 def scene_windows(comp_dir: Path) -> List[Dict]:
     """Per-scene GLOBAL window [start,end] + grounded flag (from specs + audio_meta frame offsets)."""
     comp_dir = Path(comp_dir)
@@ -100,8 +140,10 @@ def scene_windows(comp_dir: Path) -> List[Dict]:
                 du = float(sc.get("dur", 0) or 0)
                 g = (sc.get("data", {}) or {}).get("ground") or {}
                 grounded = g.get("kind") in ("image", "video")
+                cam, cam_why = _camera_decision(sf, sc.get("id"))
                 out.append({"frame": fr.get("id"), "scene": sc.get("id"), "type": sc.get("type"),
-                            "start": round(offset + st, 3), "dur": round(du, 3), "grounded": grounded})
+                            "start": round(offset + st, 3), "dur": round(du, 3), "grounded": grounded,
+                            "camera": cam, "camera_why": cam_why})
         offset += fdur
     return out
 
@@ -139,7 +181,8 @@ def temporal_qa(comp_dir, mp4: Optional[Path] = None, k: int = 6, out_dir=None) 
             continue
         checked += 1
         m = frame_motion(paths)
-        verdict = classify_motion(m["mean"], m["tail"], dur, w["grounded"])
+        verdict = classify_motion(m["mean"], m["tail"], dur, w["grounded"],
+                                  camera=w.get("camera", ""), camera_why=w.get("camera_why", ""))
         if verdict:
             flags.append({**w, "mean_motion": m["mean"], "tail_motion": m["tail"], "verdict": verdict})
     flags.sort(key=lambda f: f["mean_motion"])

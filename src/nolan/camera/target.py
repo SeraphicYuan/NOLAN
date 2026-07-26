@@ -2,11 +2,15 @@
 
 TWO LANES, and the difference is the whole design.
 
-`subject_point()` is rembg's foreground CENTROID (the same signal `still_motion.subject_center`
-already pushes into on the legacy path). For one clear subject it is exactly right, free of any model
-API, and deterministic. For TWO people it aims at the GAP BETWEEN THEM, and for any image it cannot
-tell you which subject the SENTENCE is about — a logo in the corner, one face in a crowd, the clause
-in a contract.
+`subject_point()` is a CONTRAST centroid on a 64px thumbnail by default — no model, ~10ms — because a
+target point exists to aim a push, not to cut a matte. (`precise=True` uses rembg's foreground centroid
+instead, the signal `still_motion.subject_center` uses on the legacy path.) Either way it is a saliency
+answer: for TWO people it aims at the GAP BETWEEN THEM, and for any image it cannot tell you which
+subject the SENTENCE is about — a logo in the corner, one face in a crowd, the clause in a contract.
+
+The default matters for a reason that only showed up under measurement: rembg took ~20s on a cold call,
+and the camera wants a target for nearly every image ground, so a 35-asset comp would have added minutes
+to a compose that takes seconds — for a decision a contrast centroid answers just as well.
 
 `subject_box()` is the VLM lane, and it buys RELEVANCE, not detection. Given the beat's narration it
 returns a box for the thing being talked about. That is the only reason to spend a model call here,
@@ -81,32 +85,65 @@ def image_size(path) -> Optional[Tuple[int, int]]:
     return size
 
 
-def subject_point(path, cache: bool = True) -> Optional[Tuple[float, float]]:
+def _energy_point(path) -> Optional[Tuple[float, float]]:
+    """Attention centroid from local CONTRAST on a 64px thumbnail — no model, ~10ms.
+
+    This is the default because of what a target point is FOR: aiming a push, not cutting a matte. A
+    matte is pixel-accurate and costs a rembg pass; a point needs to land on the interesting half of
+    the frame. Measured: rembg took ~20s on a first call, and the camera wants a target for nearly
+    every image ground — that is minutes added to a compose that took seconds, on a decision that a
+    contrast centroid answers just as well. rembg stays where the matte IS the product (parallax,
+    rack-focus) and as an explicit upgrade.
+    """
+    try:
+        from PIL import Image, ImageFilter
+        with Image.open(path) as im:
+            g = im.convert("L").resize((64, 64), Image.BOX)
+        edges = g.filter(ImageFilter.FIND_EDGES)
+        px = list(edges.getdata())
+        tot = sum(px)
+        if tot <= 0:
+            return None
+        sx = sum(v * (i % 64) for i, v in enumerate(px)) / tot / 63.0
+        sy = sum(v * (i // 64) for i, v in enumerate(px)) / tot / 63.0
+        return (round(min(max(sx, 0.15), 0.85), 4), round(min(max(sy, 0.15), 0.85), 4))
+    except Exception as e:
+        logger.debug("_energy_point(%s) unavailable: %s", path, e)
+        return None
+
+
+def subject_point(path, cache: bool = True, precise: bool = False) -> Optional[Tuple[float, float]]:
     """Salient subject centroid (x, y in 0..1), or None.
 
-    Clamped away from the extreme edges: a centroid at 0.02 asks for a framing the solver would have to
-    clamp anyway, and a subject that close to the border reads as a crop, not a composition.
+    `precise=True` uses the rembg matte's centroid (slower, exact); the default is the contrast
+    centroid above. Clamped away from the extreme edges either way: a centroid at 0.02 asks for a
+    framing the solver would only have to clamp back, and a subject that close to the border reads as a
+    crop rather than a composition.
     """
     p = Path(path)
+    key = "point_precise" if precise else "point"
     d = _load(p) if cache else {}
-    if "point" in d:
-        pt = d["point"]
+    if key in d:
+        pt = d[key]
         return tuple(pt) if pt else None
     point = None
-    try:
-        import numpy as np
-        from nolan.cutout import remove_background
-        rgba = remove_background(p)
-        alpha = np.asarray(rgba.split()[-1])
-        ys, xs = np.where(alpha > 40)
-        if xs.size >= 50:
-            cx, cy = float(xs.mean()) / rgba.width, float(ys.mean()) / rgba.height
-            point = (round(min(max(cx, 0.15), 0.85), 4), round(min(max(cy, 0.15), 0.85), 4))
-    except Exception as e:                              # rembg missing, weights absent, decode error…
-        logger.debug("subject_point(%s) unavailable: %s", p, e)
+    if precise:
+        try:
+            import numpy as np
+            from nolan.cutout import remove_background
+            rgba = remove_background(p)
+            alpha = np.asarray(rgba.split()[-1])
+            ys, xs = np.where(alpha > 40)
+            if xs.size >= 50:
+                cx, cy = float(xs.mean()) / rgba.width, float(ys.mean()) / rgba.height
+                point = (round(min(max(cx, 0.15), 0.85), 4), round(min(max(cy, 0.15), 0.85), 4))
+        except Exception as e:                          # rembg missing, weights absent, decode error…
+            logger.debug("subject_point(%s, precise) unavailable: %s", p, e)
+    if point is None:
+        point = _energy_point(p)
     if cache:
         d = _load(p)
-        d["point"] = list(point) if point else None
+        d[key] = list(point) if point else None
         _save(p, d)
     return point
 

@@ -66,10 +66,26 @@ def plan(move: str, *, dur: float, target=None, box=None, img: Optional[Tuple[in
     return out
 
 
+def emit_for(plan: Dict, selector: str, start: float, dur: float, *, cue: Optional[float] = None):
+    """The ONE dispatch from a plan to GSAP — punch, filter or tween.
+
+    This lived in the composer seam for one commit, which is one commit too long: choosing the emitter
+    from the move is registry knowledge, and a second consumer (the legacy path, `detail_zoom`) would
+    have had to reimplement it. That is the two-dialect pitfall inside the module built to prevent it.
+    """
+    move = (plan or {}).get("move")
+    if move == "punch-in":
+        return _emit.emit_punch(selector, plan, cue if cue is not None else start + 0.4)
+    if move in ("blur-in", "blur-out", "rack-focus"):
+        kw = {"from_px": 0.0, "to_px": 18.0} if move == "blur-out" else {}
+        return _emit.emit_blur(selector, start, dur, cue=cue, **kw)
+    return _emit.emit(selector, plan, start, dur, cue=cue)
+
+
 emit = _emit.emit
 emit_punch = _emit.emit_punch
 emit_blur = _emit.emit_blur
 emit_style = _emit.emit_style
 
-__all__ = ["MOVES", "plan", "emit", "emit_punch", "emit_blur", "emit_style",
+__all__ = ["MOVES", "plan", "emit", "emit_for", "emit_punch", "emit_blur", "emit_style",
            "registry", "select", "solve"]
