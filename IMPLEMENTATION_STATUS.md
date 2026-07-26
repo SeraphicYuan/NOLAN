@@ -10,6 +10,16 @@ Every item in `docs/HF_V2_POSTMORTEM_IMPROVEMENTS.md` (written from the cold end
 `the-diamond-illusion-v2`), plus the two defects implementing them uncovered. Commits `90ab2f1`,
 `5789f43`, `b42382d`, `1eb4e71`, `66738e3`, `cace90f`, `75d2636`.
 
+**The handoff doc is now RETIRED**, as it instructed ("TEMPORARY FILE — delete once the items are
+landed, or fold the survivors"). What survived it is in `docs/WIRING_CHECKLIST.md`: the
+undeclared-field variant of pitfall #1, the two forks (`_GROUND_BLOCKS`, the visible-text tuples)
+under #4 which now has a test where it had only a rule, two new classes — **#10 a gate for a rule
+nobody proved exists** and **#11 a check whose failures are all false positives** — a
+*Characterised gate* checklist item, and a *Reading a post-mortem* section (trust the evidence,
+re-derive the cause). Item 9 had landed without an honesty test, which #11 cites, so
+`test_load_pool_counts_key_asset_heroes` was added with it. The full doc stays readable at
+`git show 4297f8a:docs/HF_V2_POSTMORTEM_IMPROVEMENTS.md`.
+
 **The pattern worth carrying: the evidence held, the CAUSE attribution did not.** Five claims were
 verified independently before any code changed and all five were true — but four items named where
 the symptom APPEARED rather than where the cause LIVED, and implementing them literally would have

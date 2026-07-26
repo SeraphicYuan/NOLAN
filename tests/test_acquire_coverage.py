@@ -53,3 +53,39 @@ def test_pool_covers_when_library_does_not(tmp_path):
     pool = [{"id": "p1", "caption": "an antique printing press in a workshop", "query": "printing press"}]
     rep = coverage.check_coverage(entities, library=lib, pool=pool)
     assert not rep["gaps"] and rep["covered"][0]["in_pool"]
+
+
+def test_load_pool_counts_key_asset_heroes(tmp_path):
+    """REGRESSION (diamond-v2 item 9): `_load_pool` read pool.json only, so a subject grounded by a
+    collected HERO counted as a gap — 24 warnings on that run, 18 of them false (De Beers, Cecil
+    Rhodes, Frances Gerety…, all in the finished video). A check that is ~80% false positives gets
+    skipped and takes its one genuine gap with it — WIRING_CHECKLIST pitfall #11. Both directions:
+    the hero covers its subject, an unheld subject is still a loud gap."""
+    import json
+    (tmp_path / "pool.json").write_text(json.dumps(
+        [{"id": "a1", "caption": "loose gemstones on a jeweller's cloth", "query": "gemstones"}]),
+        encoding="utf-8")
+    (tmp_path / "key_assets.json").write_text(json.dumps({"entities": [
+        {"id": "debeers", "name": "De Beers", "identifiers": ["De Beers Consolidated Mines"],
+         "narrative_role": "the cartel that made the market",
+         "resolved": [{"file": "assets/ka_de_beers_logo.jpg", "selected": True},
+                      {"file": "assets/ka_de_beers_rejected.jpg", "selected": False}]}]}),
+        encoding="utf-8")
+
+    pool = coverage._load_pool(tmp_path)
+    assert pool is not None
+    files = [a["file"] for a in pool if a.get("file")]
+    assert "assets/ka_de_beers_logo.jpg" in files            # the hero IS depictable inventory
+    assert "assets/ka_de_beers_rejected.jpg" not in files    # an unselected candidate is not
+
+    rep = coverage.check_coverage(
+        [{"name": "De Beers", "kind": "org", "mentions": 9},
+         {"name": "cubic zirconia", "kind": "object", "mentions": 2}],
+        library=ImageLibrary(base_dir=tmp_path / "lib"), pool=pool)
+    assert [c["name"] for c in rep["covered"]] == ["De Beers"]
+    assert [g["name"] for g in rep["gaps"]] == ["cubic zirconia"]   # a real gap stays loud
+
+
+def test_load_pool_is_none_when_the_comp_has_neither_pool(tmp_path):
+    """None (= "no pool to probe") is not the same as an empty pool (= "nothing is depictable")."""
+    assert coverage._load_pool(tmp_path) is None

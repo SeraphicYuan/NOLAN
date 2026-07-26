@@ -9,7 +9,7 @@ computed-into-the-void, and the consumer manifest drifted within twenty
 minutes of its creation. **Docs claim; tests enforce. A rule without its
 honesty test doesn't exist.**
 
-## The seven pitfall classes (each with its incident and its test)
+## The pitfall classes (each with its incident and its test)
 
 1. **Authored-but-unconsumed.** A decision written to an artifact that no
    render-path code reads. *Incidents:* `scene.transition` authored by
@@ -18,6 +18,18 @@ honesty test doesn't exist.**
    *Enforcement:* every authored plan field gets a `PLAN_FIELD_CONSUMERS`
    entry (src/nolan/scenes.py) and `tests/test_plan_field_audit.py`
    grep-verifies the named consumer actually references it.
+   *Variant — the GATE accepts what the schema never offered.* Not "the
+   schema promises a field and the block ignores it": `timeline`'s events
+   schema is `{year, label?, image?, side?}` and never declares `at` at all,
+   yet a hand-authored `events[].at` validated rc=0 "OK — spec validates"
+   and then did nothing. Three frame workers each lost time rediscovering
+   that. Diagnose which of the two it is before fixing — retro-fitting a
+   consumer for an undeclared field is building an unspecified feature.
+   *Enforcement:* `author.py` refuses a cue on any block outside
+   `CUE_BLOCKS` and says INERT plus the exact path; `CUE_BLOCKS` is
+   re-derived from the composer source, never hand-listed
+   (`tests/test_block_registry.py` pins both the derivation and the
+   refusal).
 
 2. **Capable-but-unauthored.** An executor with no spine step that spends
    it. *Incidents:* 19 motion effects and 26 themes unreachable from the
@@ -44,6 +56,24 @@ honesty test doesn't exist.**
    decision, everyone imports it (`nolan.still_motion.camera_tour_props`;
    `_active-theme.json` staged for theme.ts). When you find a duplicate,
    consolidating it IS the task — don't patch one copy.
+   *Incidents (diamond-v2, where the fork was invisible because both copies
+   were valid):* `_GROUND_BLOCKS` was declared twice under one name —
+   autoground's 6 (derived from compose.py) against metrics' `{statement,
+   stat}` — so grounding a `pull_quote` credited nothing toward `coverage`
+   while STILL tripping the long-ungrounded-hold advisory; the author was
+   told to fix a thing the metric refused to see. Widening one copy without
+   knowing the other existed is what created it. Separately `_content_time`
+   and `_scene_query` each kept a private visible-text key tuple, so a
+   `pull_quote`'s own `quote` was invisible to placement and the matcher
+   corroborated against the scene's `kicker` — a field the catalog declares
+   "design intent, not narration". *Enforcement:* `nolan/block_registry.py`
+   is the one home for both sets and `tests/test_block_registry.py` asserts
+   NO module re-declares them privately. Note the shape of that test: it
+   hunts the literal, because the failure mode is a fork, not a wrong value
+   — a test that merely checked the number would have passed on both copies.
+   Effect once unforked, with no re-authoring: coverage 0.656 → 0.767, long
+   ungrounded holds 11 → 2. The essay was always that well grounded; the
+   metric could only see 2 of 6 block types.
 
 5. **Catalog-blind agents.** An authoring agent whose prompt carries a
    private, hand-listed slice of the inventory. *Incidents:* no
@@ -110,6 +140,47 @@ honesty test doesn't exist.**
    (text lines, gallery entrance, code cascade, chat beats). A new data
    block that hand-rolls its stagger is unshippable.
 
+10. **A gate for a rule nobody proved exists.** Before enforcing a rule,
+    find the artifacts that violate it and confirm they are actually
+    broken. *Incident:* a post-mortem asked for `assemble-index.mjs`'s
+    "same-track time overlap is illegal" check to run at author time. No
+    assembler has that check — all four copies contain zero track-overlap
+    logic, and the claim traces to a COMMENT describing the top-level
+    INDEX's lanes (frame sub-comps 1, captions 2, voice 10, bgm 11), not
+    the tracks inside a frame's own composition; `timeline_track_too_dense`
+    is a DENSITY warning, a different rule. Two detectors were wired before
+    anyone checked the premise: the first blocked 13 tests, because
+    adjacent scenes overlap BY DESIGN via their ~0.6s transition tails; the
+    second was scoped to exactly the shape that demonstrably renders —
+    `videos/_stress_spotlight` still holds the pre-fix HTML, both label
+    halves on track 2 over one window, beside a finished mp4 that paints
+    both. *Rule:* run the proposed detector over the corpus of SHIPPED
+    artifacts BEFORE wiring it. If it fires on something that rendered
+    correctly, the rule is wrong — not the artifact. *Enforcement:*
+    `tests/test_author_track_overlap.py` carries the disproof and asserts
+    `author.py` does NOT gate, so there is no attempt #3. A withdrawn rule
+    needs its test as much as an enforced one, or it comes back.
+
+11. **A check whose failures are all false positives.** Precision is a
+    shipping requirement for a gate, not a nicety: a check people learn to
+    skip takes its one true positive with it. *Incidents:* `layout_lint`'s
+    only 3 errors on the diamond-v2 run were the `process` block's step
+    badges, deliberately pinned to their own card's corner and verified
+    correct by eye — 3 of 3 false. `nolan.acquire.coverage` reported 24
+    "NOT depictable" gaps, and 18 of them (De Beers, Cecil Rhodes, Frances
+    Gerety, Hopetown, the Star of South Africa…) had a collected hero and
+    appear in the finished video — it read `pool.json` and not
+    `key_assets.json`. *Rule:* measure a new or tightened check against
+    real artifacts and report BOTH directions before shipping it — what it
+    now passes AND what it still fails; a fix that only silences is a fix
+    that disabled the check. *Enforcement:*
+    `tests/test_layout_lint_nesting.py` (a child contained in its parent
+    lints clean; a genuine 40% sibling overlap still fails) and
+    `tests/test_acquire_coverage.py::test_load_pool_counts_key_asset_heroes`
+    (a hero covers its subject; a genuine gap is still loud). Measured: 3
+    errors → 0 with all four real advisories intact, 24 gaps → 6 all
+    genuine.
+
 ## The checklist (run it for every new capability)
 
 - [ ] **Registry entry** with `purpose` + `when_to_use` + constraints
@@ -127,10 +198,30 @@ honesty test doesn't exist.**
       `when_to_use` per entry.
 - [ ] **Catalog + skill exposure** — the umbrella skill doc covers every
       registry id (honesty-tested); dispatch briefs can reach it.
+- [ ] **Characterised gate** — a new or tightened check is run over the
+      EXISTING corpus of shipped artifacts before it is wired, and both
+      directions are reported (what it passes, what it fails). A rule that
+      fires on output that shipped and rendered correctly is a wrong rule.
 - [ ] **Honesty test** — whatever claim the docs make about this capability,
       write the test that makes the claim unable to rot.
 - [ ] **Live verification** — render a probe, extract frames and LOOK;
       mix audio and MEASURE; put the result in the checkpoint/commit.
+
+## Reading a post-mortem (an agent's, or your own)
+
+**Trust the evidence; re-derive the cause.** On the diamond-v2 cold run
+every claim that was checked held — five verified independently before any
+code changed, all five true. What needed correcting was the ATTRIBUTION:
+four of eleven items named where the symptom appeared rather than where the
+cause lived, and one item's premise was false outright. "Extend `judge.py`"
+was three holes in three modules (a whole source exempted from the VLM; a
+`usable` score that rates cuttability and never asks what the clip depicts;
+a hero path that asks subject-match only). "The block ignores `at`" was the
+gate accepting an undeclared field. "Use incremental renders" read as a
+usage note and was missing wiring. Implementing any of them literally would
+have under-fixed, and item 5 would have broken authoring. Split the
+evidence by source before believing a single cause, and characterise the
+proposed rule against real artifacts (class 10) before writing it down.
 
 ## Litmus questions at review time
 
