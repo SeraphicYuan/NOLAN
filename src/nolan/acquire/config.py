@@ -24,7 +24,11 @@ class AcquireConfig:
     # discrimination is the job of the downstream VLM video cull (it judges real frames) + the
     # compose-first author selecting per beat. Set it opt-out via `sources` for a project where the
     # library is irrelevant and you don't want the trims/cull cost.
-    sources: Tuple[str, ...] = ("clips_library", "transcript_lib", "library", "stock")
+    # `transcript_frames` is the SHOWN tier of the same corpus: gemma-captioned keyframes, retrieved by
+    # what a shot LOOKS like and filtered to content_kind=broll. Additive to `transcript_lib`, never a
+    # replacement — only the captioned rows are reachable through it (the split is reported per run), so
+    # dropping the segment tier would silently narrow reach.
+    sources: Tuple[str, ...] = ("clips_library", "transcript_lib", "transcript_frames", "library", "stock")
     # local clips-library depth (bounds the ffmpeg trims — video is expensive)
     clip_lib_max: int = 4             # keep at most this many local library clips per need
     clip_lib_min_sim: float = 0.55    # drop the weak tail below this similarity (a floor, not a topic gate)

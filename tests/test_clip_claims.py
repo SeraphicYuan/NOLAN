@@ -69,12 +69,16 @@ def test_transcript_lib_reads_claims_lazily_not_at_context_build(tmp_path, monke
 
     from nolan.acquire import context as ctx_mod
     src = inspect.getsource(ctx_mod.build_context)
-    body = src[src.index("want_transcript_lib:"):]
-    search_fn = body[body.index("def _search_transcript_lib"):]
-    assert "load_claims(project_dir)" in search_fn, "claims must be read INSIDE the per-need search"
+    body = src[src.index("if want_transcript_lib or want_transcript_frames:"):]
+    # BOTH transcript tiers claim ranges, so both must read the ledger per-need. The SHOWN tier
+    # (transcript_frames) shares the ledger with the segment tier and the hero pool — a snapshot there
+    # would reintroduce the same bug through the new door.
+    first = min(body.index("def _search_transcript_lib"), body.index("def _search_transcript_frames"))
+    for fn in ("def _search_transcript_lib", "def _search_transcript_frames"):
+        search_fn = body[body.index(fn):]
+        assert "load_claims(project_dir)" in search_fn, f"{fn}: claims must be read INSIDE the search"
     # …and never hoisted into the enclosing context build
-    before_search = body[:body.index("def _search_transcript_lib")]
-    assert "load_claims(" not in before_search, "claim ledger must not be snapshotted at context-build time"
+    assert "load_claims(" not in body[:first], "claim ledger must not be snapshotted at context-build time"
 
 
 def test_pool_releases_claims_before_building_the_context(tmp_path):

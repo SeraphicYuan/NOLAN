@@ -115,7 +115,8 @@ def gen_style_for(theme: str) -> str:
 
 
 def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True, want_clip=True, want_gen=True,
-                  want_clips_library=True, want_transcript_lib=True, clip_lib_max=4, clip_lib_min_sim=0.55,
+                  want_clips_library=True, want_transcript_lib=True, want_transcript_frames=True,
+                  clip_lib_max=4, clip_lib_min_sim=0.55,
                   gen_style="Cinematic", clean_transcript_clips=True, project_dir=None) -> Context:
     ctx = Context()
     # default the video-segment length from the config (was hardcoded 20, ignoring cfg.clip_seconds)
@@ -360,10 +361,11 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
     # materialised by DOWNLOADING JUST ITS RANGE from the source URL (the feedback-2 mechanism) and MARKED
     # with its copyright status (copyright-free stock/PD vs a copyrighted documentary reference) so the pool
     # records provenance. Chains onto search_clips/download (dispatch by c.source), no engine slot needed.
-    if want_transcript_lib:
+    if want_transcript_lib or want_transcript_frames:
         _tdb = _resolve_clips_db(cfg)
         if _tdb and _tdb.exists():
             try:
+                from nolan import transcript_frames as _tfr
                 from nolan import transcript_lib as _tl
                 from nolan.indexer import VideoIndex
                 from nolan.vector_search import VectorSearch
@@ -446,16 +448,131 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                                   "similarity": round(float(r.score), 3)}))
                     return out
 
+                def _shot_window(vid, t0, default=5.0):
+                    """The REAL shot this keyframe opens: from its own timestamp to the NEXT keyframe.
+
+                    Keyframes come from `detect_cuts` → `plan_shots`, i.e. one per detected shot, so the
+                    gap to the next frame IS the shot length. This is the thing `_clip_window`'s docstring
+                    says it cannot do from a transcript segment ("a true single-shot trim needs the `shots`
+                    table") — the captioned frame tier is that table."""
+                    try:
+                        fr = [f["t"] for f in _tfr.frames_for_video(vid) if f.get("kind") == "keyframe"]
+                    except Exception:
+                        fr = []
+                    nxt = next((t for t in sorted(fr) if t > t0 + 0.4), None)
+                    dur = (nxt - t0) if nxt else default
+                    return max(2.0, min(float(dur), 12.0))          # a shot, not a play-through
+
+                def _search_transcript_frames(need, n):
+                    """The SHOWN tier: retrieve by what a frame LOOKS like, not by what is said over it.
+
+                    Same corpus and same download path as `_search_transcript_lib` — a different index.
+                    Measured on a real diamond-v2 beat ("open pit excavation machinery"): the segment tier
+                    anchored the super-pit documentary at 0.0s, its title card, because that is where the
+                    narrator SAYS the topic; the frame tier returned 62.0s (shovel bucket), 66.2s (operator
+                    controls) and 97.4s (the Komatsu truck). Same video — the right seconds.
+
+                    `content_kind="broll"` is the filter the segment tier structurally cannot apply: gemma
+                    labelled each shot, so a talking head can be excluded before it is ever downloaded."""
+                    queries = [q for q in (need.get("queries") or [need.get("query", "")]) if q][:4]
+                    if not queries:
+                        return []
+                    claims = load_claims(project_dir) if project_dir else []
+                    best, per_video = {}, {}
+                    for q in queries:
+                        try:
+                            hits = _tfr.visual_search(q, max(6, n), content_kind="broll") or []
+                        except Exception:
+                            continue
+                        for r in hits:
+                            vid = r.get("video_id") or ""
+                            # TAIL-TRIM, same as the segment tier. The frame store is k-NEAREST: it returns
+                            # `k` captions for ANY query however weak — measured live, "Odysseus and the
+                            # ancient Greek epic" retrieved the 1936 Berlin Olympics at 0.52 and Lindbergh
+                            # at 0.53, against 0.62-0.71 for genuine hits on a diamond beat. Not a topic
+                            # gate (that is the downstream CLIP frame floor + the VLM); a junk cut that
+                            # stops us spending a DOWNLOAD on the Olympics.
+                            if float(r.get("score") or 0) < clip_lib_min_sim:
+                                continue
+                            # the catalog URL is authoritative — visual_search's watch_url carries a `&t=`
+                            # display suffix, and re-parsing that here would be a second URL dialect
+                            url = ((_tcat.get(vid) or {}).get("url") or "").strip()
+                            if not vid or not url.startswith(("http://", "https://")):
+                                continue
+                            key = (vid, round(float(r.get("start") or 0), 1))
+                            if key not in best or float(r.get("score") or 0) > float(best[key].get("score") or 0):
+                                best[key] = r
+                    ranked = sorted(best.values(), key=lambda r: -float(r.get("score") or 0))
+                    out = []
+                    for r in ranked:
+                        if len(out) >= clip_lib_max:
+                            break
+                        vid = r["video_id"]
+                        if per_video.get(vid, 0) >= 2:        # never let one film fill a beat
+                            continue
+                        url = (_tcat.get(vid) or {}).get("url") or ""
+                        start = float(r.get("start") or 0)
+                        dur = _shot_window(vid, start)
+                        dup = range_is_claimed(claims, url, start, dur)
+                        if dup:                               # same ledger as the segment tier + heroes
+                            print(f"  [acquire] skip frame {vid}@{start:.0f}s — already claimed by "
+                                  f"{dup.get('owner')} ({dup.get('file')})", flush=True)
+                            continue
+                        per_video[vid] = per_video.get(vid, 0) + 1
+                        cfree, kind, channel = _copyright_of(url)
+                        lic = ("public-domain / CC — copyright-free" if cfree
+                               else f"copyrighted — YouTube ({channel})" if channel else "copyrighted — YouTube")
+                        out.append(Candidate(
+                            ref=f"{url}#{start:.1f}", source="transcript_frames", modality="video", path=None,
+                            relevance=float(r.get("score") or 0),
+                            meta={"source": f"transcript_frames ({kind})", "license": lic,
+                                  "copyright_free": cfree, "kind": kind, "channel": channel,
+                                  "description": r.get("summary") or r.get("caption") or "",
+                                  "shot_caption": r.get("caption") or "", "asset_type": r.get("asset_type") or "",
+                                  "content_kind": r.get("content_kind") or "", "objects": r.get("objects") or [],
+                                  "source_url": str(url), "clip_start": start, "clip_dur": dur,
+                                  "similarity": round(float(r.get("score") or 0), 3)}))
+                    return out
+
                 _ts_prev = ctx.search_clips
-                ctx.search_clips = (lambda need, n, _p=_ts_prev:
-                                    (_p(need, n) if _p else []) + _search_transcript_lib(need, n))
+
+                def _search_transcript_all(need, n, _p=_ts_prev):
+                    """Segment hits and frame hits INTERLEAVED, not concatenated.
+
+                    Their scores are on different scales (measured on two diamond-v2 beats: frames
+                    0.62-0.71, segments 0.67-0.74), so a single sorted list would be meaningless — and
+                    plain concatenation is just as wrong, because `c.rank` is assigned by position and
+                    feeds the score, so whichever tier came second would be systematically demoted. Both
+                    are ranked internally already; interleaving preserves each order and gives neither
+                    tier a positional advantage. (The retrieval score itself is not load-bearing for video:
+                    the engine RECOMPUTES relevance with CLIP on the downloaded frames.)"""
+                    prev = (_p(need, n) if _p else [])
+                    frames = _search_transcript_frames(need, n) if want_transcript_frames else []
+                    if not frames:
+                        return prev
+                    segs = _search_transcript_lib(need, n) if want_transcript_lib else []
+                    woven, i = [], 0
+                    while i < max(len(segs), len(frames)):
+                        if i < len(segs):
+                            woven.append(segs[i])
+                        if i < len(frames):
+                            woven.append(frames[i])
+                        i += 1
+                    return prev + woven
+
+                ctx.search_clips = (_search_transcript_all if want_transcript_frames else
+                                    (lambda need, n, _p=_ts_prev:
+                                     (_p(need, n) if _p else []) + _search_transcript_lib(need, n)))
 
                 # materialise: download JUST the range from the source URL (archive → high-def h.264 derivative
                 # + ffmpeg range; youtube → yt_dlp range). The feedback-2 download-the-range, headless.
                 _td_prev = ctx.download
 
                 def _download_transcript(c: Candidate, dest: Path):
-                    if c.source != "transcript_lib":
+                    # ONE materialisation path for both transcript tiers — same range pull, same
+                    # broadcast-watermark cleanup, same claim. They differ in how the range was FOUND,
+                    # never in how it is fetched, so there is no second dialect to drift.
+                    if c.source not in ("transcript_lib", "transcript_frames"):
                         return _td_prev(c, dest) if _td_prev else False
                     from nolan import clipper
                     url = c.meta.get("source_url")
@@ -499,6 +616,14 @@ def build_context(cfg, *, clip_seconds=None, want_stock=True, want_library=True,
                 print("[acquire] transcript_lib: downloadable b-roll from the transcript library "
                       "(youtube · youtube_cc · archive), copyright-marked"
                       + (", watermark/caption-cleaned" if clean_transcript_clips else ""), flush=True)
+                if want_transcript_frames:
+                    # NO SILENT CAP: the SHOWN tier can only reach rows that have been captioned, so say
+                    # what fraction of the corpus that is — otherwise a thin frame tier reads as "the
+                    # library had nothing" when it means "the library hasn't been captioned yet".
+                    _cap = sum(1 for v in _tcat.values() if int(v.get("frames", 0) or 0) > 0)
+                    print(f"[acquire] transcript_frames: the SHOWN tier — {_cap}/{len(_tcat)} library rows "
+                          f"are captioned and reachable; shot-accurate ranges, content_kind=broll only",
+                          flush=True)
             except Exception as e:
                 print(f"⚠ [acquire] transcript_lib source unavailable — skipped ({type(e).__name__}: {e})", flush=True)
 

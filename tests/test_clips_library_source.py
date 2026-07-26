@@ -145,8 +145,11 @@ def test_retrieval_leverages_rich_metadata():
     from nolan.config import load_config
     from nolan.acquire import build_context
 
+    # scope to clips_library: this asserts every candidate IS a library clip, so the transcript tiers
+    # (which chain onto the same search_clips) must be off — with min_sim=0.0 they are unfiltered
     ctx = build_context(load_config(), clip_seconds=8, want_stock=False, want_library=False,
                         want_clip=False, want_gen=False, want_clips_library=True,
+                        want_transcript_lib=False, want_transcript_frames=False,
                         clip_lib_max=4, clip_lib_min_sim=0.0)
     assert ctx.search_clips is not None
     cands = ctx.search_clips({"id": "t", "query": "Odysseus and the ancient Greek epic",

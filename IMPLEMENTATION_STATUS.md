@@ -4,6 +4,49 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## Acquisition can finally retrieve by what is SHOWN (2026-07-26)
+
+The transcript library's visual tier is now an acquisition source. Before this, `visual_search` — CLIP-
+era naming, but in the keyframe path it is BGE over the gemma caption (`embed_frames` passes
+`embed=False`) — had exactly one caller, `/api/transcripts/visual-search`. Acquisition reached the
+library only through `VectorSearch(search_level="segments")` in `acquire/context.py` and
+`keyassets/resolve.py`, and `VectorSearch` has no frame level, so every captioned keyframe the library
+spends gemma producing was consumed by the UI and never by a render.
+
+**Why it matters, measured on a real diamond-v2 beat.** For "diamond mine open pit excavation
+machinery" both tiers found the SAME videos — the difference is which seconds. The segment tier anchored
+`Inside the World's Biggest Super-Pit Diamond Mine` at **0.0s**, its title card, because that is where
+the narrator SAYS the topic. The frame tier returned **62.0s** (shovel bucket), **66.2s** (operator
+controls) and **97.4s** (the Komatsu truck in the pit). Same film, right seconds.
+
+**And a true single-shot range.** A keyframe comes from `detect_cuts` → `plan_shots`, one per detected
+shot, so the gap to the next keyframe IS the shot. Live: 3.1s / 8.3s / 11.6s, against the segment tier's
+flat 5.0s `max_shot` guess. `_clip_window`'s own docstring named this as the missing piece — *"a true
+single-shot trim needs the `shots` table (follow-up: partial coverage)"*. The frame tier is that table.
+
+**Plus a filter the segment tier structurally cannot apply**: gemma labelled every shot, so
+`content_kind=broll` excludes talking heads BEFORE a download is spent.
+
+Wiring (all three are silent-failure traps, each with an honesty test in
+`tests/test_acquire_transcript_frames.py`): registered in `TIERS` for all three categories — an unknown
+source falls through `source_rank` to `len(order)+50` and loses every evocative beat without erroring;
+added to the video-relevance recompute AND the `_keep` CLIP floor — video relevance is REPLACED by CLIP
+on the downloaded frames, so a source missing there keeps `relevance = 0.0` and is culled; and admitted
+by `acquire_need`'s `cfg.sources` gate. One materialisation path serves both tiers (same range pull,
+same broadcast-watermark clean, same claim ledger) so there is no second dialect.
+
+Results are INTERLEAVED with the segment tier, not concatenated: their scores are on different scales
+(frames 0.62-0.71, segments 0.67-0.74 measured) and `c.rank` comes from list position and feeds the
+score, so concatenation would systematically demote whichever tier came second. The retrieval score
+itself is not load-bearing for video — CLIP recomputes it on real frames — so no RRF machinery was
+needed, only a fair ordering. Per-video cap of 2 so one documentary can't fill a beat.
+
+ADDITIVE, never a replacement: only captioned rows are reachable, so the captioned/total split is
+printed per run rather than letting a thin frame tier read as an empty library.
+
+NOT done: `keyassets/resolve.py`'s Tier B still uses segments only. The hero pool demands a positive VLM
+confirmation rather than mere survival, so pointing it at shot-accurate frames is a separate change.
+
 ## Transcript library — the sweep is offline, its topics come from the corpus (2026-07-25)
 
 The "caption X videos across topics" loop (`transcript_broaden`), reworked after a wiring audit. What

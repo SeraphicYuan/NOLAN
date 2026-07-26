@@ -39,8 +39,18 @@ generate originals to fill gaps. Entry: `acquire_pool(needs, ctx, cfg)` → per-
 1. **Fan out to every source**, over-fetch `per_need * over_provision`. Sources ranked by
    `TIERS[category]` (category ∈ **art / archival / general**) — the saved **library** and
    **clips_library** always rank first.
+   The transcript library is reached by TWO indexes over one corpus, interleaved (never concatenated —
+   `c.rank` comes from list position and feeds the score, so the second tier would be systematically
+   demoted): **transcript_lib** = what is SAID (transcript segments), **transcript_frames** = what is
+   SHOWN (gemma-captioned keyframes, `content_kind=broll` only). The SHOWN tier exists because a segment
+   anchors where the narrator *says* the topic — measured on diamond-v2, that put the super-pit
+   documentary at 0.0s, its title card, while the frames held the shovel (62.0s), the controls (66.2s)
+   and the Komatsu truck (97.4s). It also gives a TRUE single-shot range (keyframe → next keyframe: 3.1s
+   / 8.3s / 11.6s measured) where `_clip_window` can only take a flat ≤5s guess from a segment start —
+   the "shots table" its own docstring names as the missing piece. It reaches only CAPTIONED rows, so it
+   is ADDITIVE to the segment tier and the captioned/total split is printed per run.
 2. **Download + decode-gate** (concurrent; network-bound fetch parallelized, CLIP/dedup after).
-   A **transcript_lib** hit is materialised by pulling JUST its matched RANGE from the source URL,
+   A **transcript_lib** or **transcript_frames** hit is materialised by pulling JUST its RANGE from the source URL,
    then **cleaned** (`shared.clean_media_inplace` — a same-aspect crop that removes the burned-in
    watermark/chyron + caption band). These are BROADCAST sources; pooling them raw puts another
    channel's brand in the essay. The same helper serves the human clip-review route, so the two
