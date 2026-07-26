@@ -71,6 +71,16 @@
         <input type="text" id="q" placeholder="e.g. soldiers in a trench">
       </div>
       <div>
+        <!-- Tier, not a filter: HELD searches the images whose bytes we keep; VISUAL LIB searches
+             the catalog-scale index of images we don't (metadata + thumbnail), where a hit is a
+             pointer and "Fetch" is the one edge that pulls the real file into the held library. -->
+        <label for="tier">Tier</label>
+        <select id="tier">
+          <option value="held">Held (Picture Library)</option>
+          <option value="discovery">Visual Lib (not held)</option>
+        </select>
+      </div>
+      <div>
         <label for="scope">Scope</label>
         <select id="scope">
           <option value="global">Global</option>
@@ -146,14 +156,39 @@
       var sc = (r.score != null) ? '<span class="score">'+r.score.toFixed(3)+'</span>' : '';
       var dims = (r.width && r.height) ? r.width+"x"+r.height : "";
       var src = r.source_url ? '<a href="'+esc(r.source_url)+'" target="_blank" rel="noopener">source</a>' : '';
+      // A not-held tile shows its CATALOG identity (creator/date — the channel CLIP can't serve)
+      // and gets the ONE verb that applies to it: fetch the bytes.
+      var who = r.held === 0
+        ? [r.creator, r.date_text].filter(Boolean).map(esc).join(" · ") : "";
+      var act = r.held === 0
+        ? '<button class="btn ghost fetchbtn" data-id="'+r.id+'" style="width:auto;padding:2px 8px;">Fetch</button>'
+        : src;
       return '<div class="tile" data-id="'+r.id+'">'+
         '<div class="imgwrap">'+sc+'<a href="'+esc(r.raw)+'" target="_blank" rel="noopener">'+
           '<img loading="lazy" src="'+esc(r.raw)+'" alt=""></a></div>'+
         '<div class="body"><div class="ttl">'+esc(r.title||"(untitled)")+'</div>'+
+          (who ? '<div class="lic">'+who+'</div>' : '')+
           '<div class="lic">'+esc(r.license||"?")+'</div>'+
-          '<div class="actions"><span>'+esc(r.source||"")+' '+dims+'</span>'+src+'</div>'+
+          '<div class="actions"><span>'+esc(r.source||"")+' '+dims+'</span>'+act+'</div>'+
         '</div></div>';
     }
+
+    // Fetch = promote_to_held: downloads + gates the real image, so the row leaves this tier.
+    grid.addEventListener("click", function(ev){
+      var b = ev.target.closest && ev.target.closest(".fetchbtn");
+      if (!b) return;
+      ev.preventDefault(); ev.stopPropagation();
+      b.disabled = true; b.textContent = "Fetching…";
+      fetch("/api/images/"+b.dataset.id+"/fetch", {method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({scope: scopeEl.value, project: projEl.value.trim() || null})})
+        .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+        .then(function(res){
+          if (!res.ok){ alert("Fetch refused: "+(res.d.detail||"unknown")); b.disabled=false; b.textContent="Fetch"; return; }
+          b.textContent = res.d.promoted ? "Held ✓" : "Already held";
+          run();
+        }).catch(function(e){ alert("Fetch failed: "+e.message); b.disabled=false; b.textContent="Fetch"; });
+    });
 
     // Map id -> result so action-bar verbs can read title/thumb/scope per item.
     var _byId = {};
@@ -170,13 +205,25 @@
 
     function run(){
       var q = qEl.value.trim();
-      var url = q ? "/api/images/search?q="+encodeURIComponent(q)+"&"+params().toString()
-                  : "/api/images/list?"+params().toString();
+      var tier = (document.getElementById("tier")||{}).value || "held";
+      var url;
+      if (tier === "discovery") {
+        url = "/api/images/discover?q="+encodeURIComponent(q)+"&"+params().toString();
+      } else {
+        url = q ? "/api/images/search?q="+encodeURIComponent(q)+"&"+params().toString()
+                : "/api/images/list?"+params().toString();
+      }
       meta.textContent = "Loading...";
       fetch(url).then(function(r){return r.json();}).then(function(d){
         render(d.results||[], q ? "result(s) for '"+q+"'" : "asset(s)");
+        if (tier === "discovery" && d.stats) {
+          // Coverage, stated: a 3%-captioned collection must never look complete.
+          meta.textContent += " · " + d.stats.discovery + " indexed, " +
+            d.stats.described_pct + "% captioned, " + d.stats.held + " held";
+        }
       }).catch(function(e){ meta.textContent = "Error: "+e.message; });
     }
+    (document.getElementById("tier")||{}).onchange = run;
 
     // ---- bulk action-bar verbs (operate on the current selection) ----
     // fetch() only rejects on network errors, so we must inspect .ok per call

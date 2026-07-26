@@ -143,3 +143,86 @@ def images_stats(scope, project):
     click.echo(_open_library(scope, project).stats())
 
 
+# ------------------------------------------------------------- Visual Lib (not-held tier)
+# `harvest` fills it, `discover` searches it, `fetch` promotes one row into the held library.
+# Deliberately NOT folded into `images search`: the two tiers answer different questions, and a
+# discovery hit is a POINTER (no file on disk) that no held-tier caller could use.
+
+@images.command('harvest')
+@click.argument('source')
+@click.option('--limit', '-n', type=int, default=200, help='How many catalog records to scan.')
+@click.option('--query', default=None, help='Bias the harvest toward a theme.')
+@click.option('--dept', default=None, help='Filter to one department.')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_harvest(source, limit, query, dept, scope, project):
+    """Harvest a collection into the discovery tier (metadata + thumbnail, no bytes)."""
+    import json
+
+    from nolan.imagelib.harvest import SOURCES, harvest
+    if source not in SOURCES:
+        click.echo(f"unknown source {source!r} (known: {', '.join(sorted(SOURCES))})")
+        raise SystemExit(2)
+    kw = {k: v for k, v in (('query', query), ('dept', dept)) if v}
+    rep = harvest(source, limit=limit, scope=scope, project=project, **kw)
+    click.echo(json.dumps(rep.to_dict(), indent=2, ensure_ascii=False))
+    if rep.refused_gate or rep.errors:
+        click.echo(f"NOTE: {rep.refused_gate} refused by the asset gate, {rep.errors} errored.")
+
+
+@images.command('discover')
+@click.argument('query')
+@click.option('--top', '-k', type=int, default=12)
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_discover(query, top, scope, project):
+    """Search the NOT-HELD tier — 'this image exists, here, under these terms'."""
+    lib = _open_library(scope, project)
+    hits = lib.search_discovery(query, k=top)
+    click.echo(f"{len(hits)} discovery result(s) for '{query}':")
+    for h in hits:
+        a = h.asset
+        who = " / ".join(x for x in (a.creator, a.date_text) if x)
+        click.echo(f"  [{h.score:.3f}] #{a.id} {a.title or '(untitled)'}"
+                   + (f" — {who}" if who else ""))
+        click.echo(f"          {a.source_ref}  {a.license or 'license?'}  {a.source_url or ''}")
+    st = lib.discovery_stats()
+    click.echo(f"({st['discovery']} indexed, {st['described_pct']}% captioned — "
+               f"`images fetch <id>` to pull the bytes)")
+
+
+@images.command('fetch')
+@click.argument('asset_id', type=int)
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+@click.option('--tier', default='archival', type=click.Choice(['archival', 'stock']))
+def images_fetch(asset_id, scope, project, tier):
+    """Promote a discovery row into the held library (downloads + gates the real image)."""
+    lib = _open_library(scope, project)
+    try:
+        asset, promoted = lib.promote_to_held(asset_id, tier=tier)
+    except Exception as e:
+        click.echo(f"Failed: {e}")
+        raise SystemExit(1)
+    verb = 'Fetched' if promoted else 'Already held (deduped by content hash) as'
+    click.echo(f"{verb} #{asset.id}: {asset.title or asset.path} "
+               f"({asset.width}x{asset.height}) -> {asset.path}")
+
+
+@images.command('collections')
+@click.option('--scope', type=click.Choice(['global', 'project']), default='global')
+@click.option('--project', '-p', default=None)
+def images_collections(scope, project):
+    """List harvested collections and their caption coverage."""
+    lib = _open_library(scope, project)
+    cols = lib.catalog.list_collections()
+    if not cols:
+        click.echo("No collections harvested yet — try: nolan images harvest artic --limit 500")
+        return
+    for c in cols:
+        st = lib.discovery_stats(collection_id=c.id)
+        click.echo(f"  #{c.id} {c.slug} — {c.title}")
+        click.echo(f"      {st['discovery']} indexed, {st['described_pct']}% captioned; "
+                   f"rights: {c.rights or '?'}; last crawled {c.last_crawled or 'never'}")
+
+

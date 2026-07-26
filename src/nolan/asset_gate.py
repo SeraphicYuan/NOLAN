@@ -136,6 +136,16 @@ ASSET_GATE_DOORS = {
     "imagelib.add_url": {
         "file": "src/nolan/imagelib/store.py", "func": "def add_url",
         "calls": ["check_file"]},
+    # Visual Lib (the not-held tier) fetches bytes twice: a thumbnail at harvest and the real
+    # image at promotion. Both are doors. An un-gated discovery tier would be a laundering route
+    # into the library around the gate `add_url` applies — index the watermarked preview as
+    # "metadata only", then promote it.
+    "imagelib.add_discovery": {
+        "file": "src/nolan/imagelib/store.py", "func": "def add_discovery",
+        "calls": ["check_candidate", "banner_suspect"]},
+    "imagelib.promote_to_held": {
+        "file": "src/nolan/imagelib/store.py", "func": "def promote_to_held",
+        "calls": ["check_file", "blocked_host"]},
     "attribution.build_attribution": {
         "file": "src/nolan/attribution.py", "func": "def build_attribution",
         "calls": ["scan_files"]},

@@ -54,7 +54,7 @@ A **skill** = any `.md` with an `id:` in frontmatter. Two roots, one catalog:
 <!-- BEGIN AUTOGEN:skill-router (python -m nolan.skills --emit-router) -->
 ## Skill registry — auto-generated, do not edit by hand
 
-_40 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
+_41 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill for the subsystem you are ABOUT to touch — not preemptively._
 
 ### Primary pipeline (start here)
 
@@ -81,6 +81,7 @@ _40 skills. Regenerate: `python -m nolan.skills --emit-router`. Load the skill f
 | `lab.deconstruct` | methodology | Orient any deconstruction task — what it recovers (beats/pairing/tempo/motion), the shared vocabularies it recovers INTO, and the recover… |
 | `lab.kb` | methodology | Orient any KB task — the markdown-is-canonical / indices-are-derived rule, the ingest→distill→index→link pipeline, and hybrid retrieval (… |
 | `lab.transcript-library` | methodology | Orient any transcript-library task — what each sidecar owns, why the ranking is recomputed while the LLM's output is remembered, and the … |
+| `lab.visual-library` | methodology | Orient any Visual Lib task — which tier owns what, why retrieval is routed rather than blended, where the acquisition doors are, and whic… |
 
 ### Craft (umbrella judgment)
 

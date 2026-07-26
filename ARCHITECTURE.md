@@ -101,6 +101,26 @@ escalation   → picture-library stills (hybrid CLIP+BGE; bridged queries too)
 After matching, `record_candidates` stores the top library runner-ups in
 `scene.asset_candidates` — the /scenes drawer's review tray (one-click pin).
 
+**The picture library has two tiers, one catalog** (`imagelib`, `held`
+column) — the shape the transcript library used for video (`has_footage=0`
+rows in the SAME VideoIndex):
+
+- `held=1` — the Picture Library: bytes on disk, what the ladder above and
+  `acquire`'s `search_library` see.
+- `held=0` — **Visual Lib**: museum/archive collections harvested as catalog
+  metadata + a 512px thumbnail (`imagelib/harvest.py`, adapter registry
+  `SOURCES`). Discovery only; `ImageLibrary.promote_to_held` is the ONE edge
+  that fetches the bytes and flips the flag.
+
+Contract: **the discovery tier is opt-in on every read path**
+(`catalog.list(held=1)` by default, own chroma collections) — a not-held row
+has no file, so a held-tier caller must never receive one. Retrieval is
+ROUTED, not blended (catalog identity for named works, CLIP over thumbnails
+for look), and identity fields are catalog-derived, never model-asserted
+(`identity_source` vs `description_source`). Both fetches are acquisition
+doors. Skill: `lab.visual-library`; eval:
+`scripts/eval_visuallib_recall.py`.
+
 ## Motif layer (stateful infographics)
 
 `nolan/motion/motifs.py` — the reference-video "home base" device: ONE

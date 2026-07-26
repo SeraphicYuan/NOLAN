@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "count": 40,
+  "count": 41,
   "skills": [
     {
       "id": "art.flow",
@@ -481,6 +481,28 @@
       },
       "evals": [],
       "path": "skills/lab/transcript-library.md"
+    },
+    {
+      "id": "lab.visual-library",
+      "name": "Visual Lib (not-held picture discovery tier)",
+      "kind": "methodology",
+      "purpose": "Orient any Visual Lib task \u2014 which tier owns what, why retrieval is routed rather than blended, where the acquisition doors are, and which claims have honesty tests behind them.\n",
+      "status": "active",
+      "version": 1,
+      "tier": "lab",
+      "description": "The library of pictures we do NOT hold \u2014 museum and archive collections harvested as catalog metadata plus a 512px thumbnail, so a search over a corpus far larger than any local library can answer \"this image exists, here, under these terms\", and one promotion edge fetches the bytes when a beat earns it. Covers the collection \u2192 harvest \u2192 (on-demand) caption loop, the THREE knowledge tiers (collection-only / shallow item / captioned item), the ROUTED retrieval (catalog identity for named works, CLIP over thumbnails for look), the promotion edge into the held Picture Library, and the invariants (the tier is opt-in on every read path, identity is catalog-derived never model-asserted, collection rights are sticky, coverage is stated honestly). Read before touching imagelib/harvest.py, the `held` tier in imagelib/catalog.py + store.py, or the `nolan images harvest / discover / fetch / collections` commands.\n",
+      "handoffs": [],
+      "uses": [],
+      "overrides": [],
+      "loaded_by": [],
+      "documents": {
+        "module": "src/nolan/imagelib/harvest.py",
+        "store": "src/nolan/imagelib/store.py"
+      },
+      "evals": [
+        "scripts/eval_visuallib_recall.py"
+      ],
+      "path": "skills/lab/visual-library.md"
     },
     {
       "id": "orchestrator.adapt-style",

@@ -109,6 +109,48 @@ def register(app, ctx):
 
         return {"query": q, "results": await _asyncio.to_thread(_do)}
 
+    @app.get("/api/images/discover")
+    async def api_images_discover(q: str = "", scope: str = "global", project: str = None,
+                                  k: int = 24):
+        """Search the NOT-HELD tier (Visual Lib). A hit is a POINTER, not a file — its `raw`
+        serves the 512px thumbnail we do hold, and `fetch` is what pulls the real image."""
+        import asyncio as _asyncio
+
+        def _do():
+            lib = _open_imagelib(scope, project)
+            if q.strip():
+                rows = [(h.asset, h.score) for h in lib.search_discovery(q, k=k)]
+            else:
+                rows = [(a, None) for a in lib.catalog.list(status="active", held=0, limit=k)]
+            out = []
+            for a, score in rows:
+                d = _img_dict(a, score, scope, project)
+                d.update({"held": 0, "source_ref": a.source_ref, "creator": a.creator,
+                          "date_text": a.date_text, "institution": a.institution,
+                          "captioned": bool(a.description_source
+                                            and a.description_source != "catalog")})
+                out.append(d)
+            return {"results": out, "stats": lib.discovery_stats(),
+                    "collections": [c.to_dict() for c in lib.catalog.list_collections()]}
+
+        return await _asyncio.to_thread(_do)
+
+    @app.post("/api/images/{asset_id}/fetch")
+    async def api_images_fetch(asset_id: int, body: dict = Body(default={})):
+        """Promote one discovery row into the held library (downloads + gates the real image)."""
+        import asyncio as _asyncio
+        lib = _open_imagelib(body.get("scope", "global"), body.get("project"))
+
+        def _do():
+            return lib.promote_to_held(asset_id, tier=body.get("tier", "archival"))
+        try:
+            asset, promoted = await _asyncio.to_thread(_do)
+        except ValueError as e:                       # a gate refusal is the caller's business
+            raise HTTPException(status_code=422, detail=str(e))
+        return {"ok": True, "promoted": promoted,
+                "asset": _img_dict(asset, None, body.get("scope", "global"),
+                                   body.get("project"))}
+
     @app.get("/api/images/list")
     async def api_images_list(scope: str = "global", project: str = None,
                               source: str = None, license: str = None,

@@ -4,6 +4,79 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## Visual Lib — the picture library learns to index what it does NOT hold (2026-07-26)
+
+The transcript library indexes what other people's videos SAY without downloading them. This is the
+same move for pictures, and it lands as a TIER of the existing picture library rather than a second
+store: one `held` column in `imagelib`, exactly as the transcript tier lives as `has_footage=0` rows
+in the SAME VideoIndex. `held=1` is the Picture Library (bytes on disk); `held=0` is **Visual Lib** —
+the institution's own catalog record plus a 512px thumbnail, with `promote_to_held` as the ONE edge
+that fetches the real image when a beat earns it.
+
+Storage was never the reason. A JPEG is cheap; what is expensive is FINDING one. The Art Institute
+alone publishes 61,568 public-domain artworks, and keyword search over that is as bad as keyword
+search over a channel's back catalogue. Harvested 841 of them (`nolan images harvest artic`) as the
+first collection.
+
+**The number the tier stands on** (`scripts/eval_visuallib_recall.py` — 19 hand-written author needs,
+841-row corpus, recall@1/5/10, the provider's own keyword search as baseline):
+
+| | look queries | named queries |
+|---|---|---|
+| Visual Lib (routed) | **63.2 / 100.0 / 100.0** | 94.7 / 100 / 100 |
+| BASELINE provider keyword | 31.6 / 47.4 / 57.9 | 94.7 / 100 / 100 |
+
+Honestly read: the win is LOOK needs — "pedestrians under umbrellas on a wet cobbled boulevard" —
+where recall@5 goes 47.4 → 100 because a keyword index cannot answer a description. On NAMED needs
+the museum's own catalog search is already excellent and we merely MATCH it; what we add there is
+that the answer is local, offline and rights-annotated.
+
+**Three routing versions were measured and rejected before this one.** Blending the identity (BGE
+over title/creator/date) and CLIP-over-thumbnail channels near-equally scored WORSE than either pure
+channel on its own kind of query (look 31.6, named 84.2) — the wrong channel demotes the right
+answer. Putting exact title matches first unconditionally cost 10 points of named recall@1: "first
+by lexical cover" is not "most likely", since a short wrong title can cover perfectly. And the
+detector that decides "is this query naming something" needed its own stricter threshold
+(`_NAMED_MIN_COVER = 0.75`) — at the lexical matcher's own 0.5, "two girls on a terrace with a
+basket of yarn" covers 2 of the 3 distinctive tokens in *Two Sisters (On the Terrace)* and got
+routed to the identity channel, costing 16 points of look recall@1. The shipped shape is one
+dominant channel (~0.9), one assist (~0.1), and title cover as a bonus (~0.4).
+
+Method note worth keeping: the first weight sweep ran OUTSIDE the real search path and overstated
+look@1 by 10 points, because it forced the routing per query kind instead of letting the detector
+decide. Sweep through the shipped code or you tune a system you are not shipping.
+
+**A gate that was wrong on this corpus, characterised before it was scoped.** `banner_suspect`
+(the Alamy watermark-strip heuristic) refused ~5% of a deep crawl. 4 of 4 refusals inspected by eye
+were false positives — a Piranesi etching on its white paper margin, a bed rug and a gold-ground
+crucifix on black studio ground, a Spanish retable on white. The heuristic's signature (a
+near-uniform band, discontinuous with the body, carrying a few contrasting pixels) IS museum object
+photography. It is now skipped for the sources `asset_gate` already classifies as
+open-access-by-construction — an institution serving its own CC0 IIIF derivative cannot be serving
+an agency preview — and still runs for every other source, with a test in both directions
+(WIRING_CHECKLIST #11).
+
+Invariants, each with a test in `tests/test_visuallib.py`: the discovery tier is **opt-in on every
+read path** (`catalog.list(held=1)` by default, separate chroma collections — a not-held row has no
+file, so an acquisition caller must never receive one); **identity is catalog-derived, never
+model-asserted** (`identity_source` vs `description_source` are separate columns because only one of
+them may ever be a guess); **collection rights are sticky** (ported from the re-caption that
+relabelled a Prelinger PD film); **coverage is honest** (catalog prose does not count as captioned,
+else a 0%-captioned collection reads as complete); **both fetches are acquisition doors**
+(`imagelib.add_discovery` + `imagelib.promote_to_held` in `ASSET_GATE_DOORS`).
+
+DELIBERATELY DEFERRED, with the column shipped and nothing writing it: `regions` — the labelled
+subject/face/text/watermark boxes that would let a still be cropped and Ken-Burns-targeted at what
+the narration names. Its executor does not exist (compose's `media_ground` hardcodes
+`background-position:center` and `transform-origin:50% 50%`), and an authored field with no consumer
+is this repo's most-repeated bug. A test asserts the field stays inert AND watches `media_ground`
+for the day the executor lands. `wikidata_qid` ships the same way: nullable, populated only when a
+source hands it over free, because entity linking only pays off across several collections.
+
+Also: `nolan images harvest / discover / fetch / collections`, a Tier switch on /images with a
+per-card Fetch, skill `lab.visual-library`, and retry on transient CDN failures (measured: 44 of 899
+records lost to 502/504 before it).
+
 ## Acquisition can finally retrieve by what is SHOWN (2026-07-26)
 
 The transcript library's visual tier is now an acquisition source. Before this, `visual_search` — CLIP-

@@ -70,6 +70,51 @@ def test_hub_image_endpoints(tmp_path):
         assert client.get("/api/images/raw?scope=global&id=9999").status_code == 404
 
 
+def test_hub_discovery_tier_endpoints(tmp_path):
+    """Visual Lib over the hub: a not-held row is browsable (its thumbnail is what `raw` serves),
+    it does NOT appear in the held list, and `fetch` promotes it into the held library."""
+    root = tmp_path / "lib"
+    blob = _png(tmp_path / "src.png", (0, 0, 255)).read_bytes()
+
+    def fake_paths(scope="global", project=None):
+        return root / "global"
+
+    def fake_dl(url, out, **kw):
+        Path(out).write_bytes(blob)
+        return len(blob)
+
+    with patch.object(store_mod, "library_paths", side_effect=fake_paths), \
+         patch.object(store_mod, "ClipEmbedder", FakeEmbedder), \
+         patch("nolan.http_client.download_file_sync", side_effect=fake_dl):
+        lib = ImageLibrary("global", embedder=FakeEmbedder())
+        a, created = lib.add_discovery(
+            source_ref="artic:42", thumb_url="https://www.artic.edu/iiif/2/x/full/600,/0/d.jpg",
+            url="https://www.artic.edu/iiif/2/x/full/1686,/0/d.jpg", source="artic",
+            title="Water Lilies", creator="Claude Monet", date_text="1906",
+            license="CC0 (Art Institute of Chicago)", width=3000, height=2000)
+        assert created
+
+        client = TestClient(create_hub_app(db_path=None, projects_dir=None))
+
+        # the held list must NOT see it
+        assert client.get("/api/images/list?scope=global").json()["results"] == []
+
+        # the discovery endpoint does, with its catalog identity and honest coverage
+        d = client.get("/api/images/discover?scope=global").json()
+        assert [r["title"] for r in d["results"]] == ["Water Lilies"]
+        assert d["results"][0]["creator"] == "Claude Monet" and d["results"][0]["held"] == 0
+        assert d["stats"]["discovery"] == 1 and d["stats"]["described_pct"] == 0.0
+
+        # raw serves the stored thumbnail, so the tier is browsable
+        assert client.get(d["results"][0]["raw"]).status_code == 200
+
+        # fetch promotes it: it leaves the discovery tier and joins the held one
+        r = client.post(f"/api/images/{a.id}/fetch", json={"scope": "global", "tier": "stock"})
+        assert r.status_code == 200 and r.json()["promoted"]
+        assert client.get("/api/images/discover?scope=global").json()["results"] == []
+        assert len(client.get("/api/images/list?scope=global").json()["results"]) == 1
+
+
 def test_hub_add_by_url(tmp_path):
     root = tmp_path / "lib"
     raw = (tmp_path / "src.png")
