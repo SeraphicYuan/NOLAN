@@ -65,14 +65,14 @@ def test_ground_blocks_matches_the_composer():
     import re
     root = Path(__file__).resolve().parents[1] / "render-service" / "_lab_hyperframes" / "bridge"
     consuming, registry = set(), {}
-    for name in ("compose.py", "compose_extension.py"):
+    for name in ("compose.py",):          # ONE composer since the 2026-07-26 extension merge
         src = (root / name).read_text(encoding="utf-8")
         bounds = [(m.start(), m.group(1)) for m in re.finditer(r"^def (\w+)\(", src, re.M)] + [(len(src), "")]
         for i in range(len(bounds) - 1):
             fn = bounds[i][1]
             if fn != "media_ground" and "media_ground(" in src[bounds[i][0]:bounds[i + 1][0]]:
                 consuming.add(fn)
-        reg = re.search(r"^(?:BLOCKS|EXT_BLOCKS) = \{(.*?)\n?\}", src, re.S | re.M)
+        reg = re.search(r"^BLOCKS = \{(.*?)\n?\}", src, re.S | re.M)
         assert reg, f"{name}: block registry not found"
         registry.update(dict(re.findall(r'"(\w+)":\s*(\w+)', reg.group(1))))
     assert len(registry) >= 45, f"only parsed {len(registry)} templates — the registry regex drifted"

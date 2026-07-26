@@ -53,7 +53,7 @@ paper-deep-dive essays stop hallucinating numbers and can present real data in c
 ### A-P4 · New time-series marks — DONE (2026-07-21)
 - [x] `trajectory` (connected scatter — path through 2-D over time; dataset-bound via encode x/y/label),
       `stream` (stacked area / streamgraph — composition over time, left→right sweep), `bar_race` (ranked
-      bars that grow + REORDER across steps with a period ticker) — all in compose_extension.py
+      bars that grow + REORDER across steps with a period ticker) — all in compose.py's Tier-2 section
 - [x] each: catalog entry (+fn) + REQUIRED + _DATAVIZ provenance gate + honesty test; all rendered + looked at
 - [ ] (follow-up) dataset-pivot binding for stream/bar_race (category × step); milestones/small-multiples
 

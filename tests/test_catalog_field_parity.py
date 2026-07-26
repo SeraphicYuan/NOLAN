@@ -23,9 +23,8 @@ CATALOG = json.loads((BRIDGE / "catalog.json").read_text(encoding="utf-8"))
 
 
 def _all_source() -> str:
-    src = (BRIDGE / "compose.py").read_text(encoding="utf-8")
-    ext = BRIDGE / "compose_extension.py"
-    return src + "\n\n" + (ext.read_text(encoding="utf-8") if ext.exists() else "")
+    # ONE composer since the 2026-07-26 extension merge — the Tier-2 blocks live in compose.py.
+    return (BRIDGE / "compose.py").read_text(encoding="utf-8")
 
 
 def _bodies(allsrc: str):

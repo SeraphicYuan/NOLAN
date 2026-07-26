@@ -1,6 +1,7 @@
 """Block CAPABILITIES — what each composer template actually consumes.
 
-The truth about a block lives in `bridge/compose.py` (+ `compose_extension.py`): a block consumes a
+The truth about a block lives in `bridge/compose.py` (ONE composer since the 2026-07-26 Tier-2
+merge — the split was what let 14 blocks drift outside the gates): a block consumes a
 field iff its composer function reads it. Nothing else can know this, so anything that needs the answer
 must ask HERE, not keep a private copy.
 

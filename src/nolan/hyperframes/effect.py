@@ -5,7 +5,7 @@ REMOTION (`.tsx`). HyperFrames is GSAP, so this retargets the loop: the agent au
 (a `raw` block = `data.html` clip fragments + `data.tl` GSAP timeline lines), deduped against the HyperFrames
 catalog (blocks / reveals / transitions), and `apply_effect` lands it on ONE scene through the author.py gate —
 a malformed effect reverts, nothing ships broken. This is the standalone-effect tier; promotion into a reusable
-block (compose_extension.py) is Tier-2 and layered on top.
+block (compose.py's Tier-2 section) is Tier-2 and layered on top.
 """
 from __future__ import annotations
 

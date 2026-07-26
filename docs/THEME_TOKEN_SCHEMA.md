@@ -161,7 +161,7 @@ padding}` a theme fills: `card`, `pill`/`tag`, `bar-track`+`bar-fill`, `stat-car
 `nav-dot`, `pagenum`/`counter`, `bullet-marker` (em-dash / slash / chevron / dot — a real per-theme
 choice), `img-placeholder`, `timeline-dot`. Blocks consume them → a "brutalist" card vs a "porcelain"
 card differ without touching block code. THEME-SPECIFIC components go in an extension registry (cf.
-`compose_extension.py`): retro-windows OS-chrome kit, 8-bit pixel-stack, post-it/pin/tape, sakura
+`compose.py`'s Tier-2 section): retro-windows OS-chrome kit, 8-bit pixel-stack, post-it/pin/tape, sakura
 rosette-seal, etc.
 
 ---

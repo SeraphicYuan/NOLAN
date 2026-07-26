@@ -606,11 +606,11 @@ BRIDGES = [
      "purpose": "🎬 pick a Clips-page clip → analyze frames → a GSAP brief → an agent authors the motion, landing "
                 "either as a per-scene raw {html,tl} (apply_effect) OR as a reusable block (apply_block). Tier-2 "
                 "promotes the recurring 'subject + flanking label' shape to the `spotlight` composer block "
-                "(bg-removed subject center/left/right + position-responsive label) in compose_extension.py, merged "
-                "into compose.BLOCKS with catalog + style-contract parity.",
-     "nolan": "src/nolan/hyperframes/effect.py (apply_effect raw / apply_block reusable) + compose_extension.EXT_BLOCKS",
+                "(bg-removed subject center/left/right + position-responsive label) in compose.py's Tier-2 "
+                "section, registered in compose.BLOCKS with catalog + style-contract parity.",
+     "nolan": "src/nolan/hyperframes/effect.py (apply_effect raw / apply_block reusable) + compose.BLOCKS",
      "hf": "raw lands in the scene's timeline; spotlight is a first-class catalog block any frame can use",
-     "wire": ("render-service/_lab_hyperframes/bridge/compose_extension.py", "spotlight")},
+     "wire": ("render-service/_lab_hyperframes/bridge/compose.py", "def spotlight")},
 ]
 
 

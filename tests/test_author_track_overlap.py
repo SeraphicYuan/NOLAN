@@ -52,13 +52,12 @@ def test_the_composer_still_emits_a_centred_spotlight_on_two_lanes():
     import re
     sys.path.insert(0, str(BRIDGE))
     try:
-        import compose            # noqa: F401 — compose_extension needs it (circular import otherwise)
-        import compose_extension
+        import compose            # spotlight lives here since the 2026-07-26 extension merge
     finally:
         sys.path.pop(0)
     sc = {"id": "s1", "start": 0.0, "dur": 6.0,
           "data": {"subject": "assets/x.png", "position": "center", "words": "left right"}}
-    frag, _tl = compose_extension.spotlight("s1", sc)
+    frag, _tl = compose.spotlight("s1", sc)
     lanes = {}
     for tag in re.findall(r'<[a-z]+ id="s1-lab[lr]"[^>]*>', "".join(frag)):
         half = re.search(r'id="s1-(lab[lr])"', tag).group(1)
