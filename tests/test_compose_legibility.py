@@ -47,6 +47,14 @@ def _rules(css: str):
         yield m.group(1).strip(), m.group(2)
 
 
+# A PANEL paints its own surface, so text inside one is not over the footage at all — it is over the
+# panel. That is the ONE earned exception to "footage ink must be light", and it is earned twice over:
+# the panel is opaque (`panel:"solid"`) or it is glass, whose `--glass-tint` is SOLVED so the worst
+# patch under it clears 4.5:1 for var(--text) (tests/test_glass_panel.py). The exception is keyed on
+# the panel classes themselves, so it cannot spread to bare over-media text by accident.
+_PANEL_HOSTED = (".stmt-card", ".pq-wrap", ".ct-wrap")
+
+
 def test_over_media_text_is_light():
     offenders = []
     for sel, body in _rules(_compose_css()):
@@ -54,6 +62,8 @@ def test_over_media_text_is_light():
         if "footage" not in s:                                    # only over-media registers
             continue
         if "hlwrap" in s or "hlblock" in s:                       # text ON the accent bar is meant to be dark
+            continue
+        if any(p in s for p in _PANEL_HOSTED):                    # inside a panel — see above
             continue
         cm = re.search(r"(?:^|;)\s*color\s*:\s*([^;]+)", body)
         if cm and _is_dark(cm.group(1)):

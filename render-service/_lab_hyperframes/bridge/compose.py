@@ -44,6 +44,33 @@ CSS = """
 .stmt-card{position:absolute;inset:13cqh 11cqw;border:var(--bw,2px) solid var(--text);border-radius:var(--r-card,4px);
   box-shadow:var(--card-shadow,none);background:var(--surface);display:flex;flex-direction:column;
   justify-content:center;align-items:center;padding:0 5cqw;}
+/* GLASS: a panel over real media stops being an opaque slab. The ground reads through it, blurred —
+   the frosted plate a broadcast designer would cut. Applied automatically when the scene has an
+   image/video ground (author opts out with `panel:"solid"`); `--glass-tint` is DERIVED per scene from
+   the ground's own luminance under the panel, so contrast with --text is guaranteed rather than
+   guessed. Verified in the renderer over an image ground, a root <video>, and — the case that could
+   have failed — a panel inside a frame SUB-COMPOSITION with the video mounted at the index root.
+   saturate() keeps the blurred ground from going grey; the inset highlight gives the glass an edge,
+   without which it reads as a smudge rather than a plate. */
+.glass{background:color-mix(in srgb, var(--surface) calc(var(--glass-tint,62) * 1%), transparent);
+  backdrop-filter:blur(var(--glass-blur,26px)) saturate(1.12);
+  -webkit-backdrop-filter:blur(var(--glass-blur,26px)) saturate(1.12);
+  border-color:color-mix(in srgb, var(--rule,var(--text)) 70%, transparent);
+  box-shadow:0 18px 60px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.22);}
+/* A PANEL IS A SURFACE, so its contents take the PAPER register even when the SCENE sits on footage.
+   Shipped defect (diamond-v2 @12:49, f09s04): a framed-card over an image ground took the footage
+   register, which paints #F6F7F6 — near-white text on an opaque CREAM card. The headline survived on
+   its drop-shadow alone and the kicker was all but invisible. The register is chosen from the ground,
+   but a panel replaces the ground for everything inside it; that is true of the solid card too, so
+   this is not a glass-only fix. Glass then keeps it honest: `--glass-tint` is solved for var(--text)
+   against the real ground, so the contrast the register assumes actually holds.
+   The selectors carry `.footage` so they OUT-SPECIFY the register rules further down the sheet — at
+   equal specificity those would win on order alone, which is how the kicker stayed white on the first
+   attempt at this fix. */
+.footage .stmt-card .stmt.footage-t,.footage .pq-wrap .pq-body,
+.footage .ct-wrap .ct-rlabel,.footage .ct-wrap .ct-cell{color:var(--text);text-shadow:none;}
+.footage .stmt-card .kick,.footage .pq-wrap .pq-cite,
+.footage .pq-wrap .pq-mark{color:var(--text-2,var(--text));text-shadow:none;}
 .sv-framed-card .stmt{position:static;left:auto;bottom:auto;max-width:none;text-align:center;}
 .sv-framed-card .kick{position:static;left:auto;top:auto;text-align:center;margin-bottom:1.4cqh;}
 /* universal overflow guard: a word wider than its box WRAPS instead of breaching the margin (a heavy
@@ -1038,6 +1065,114 @@ def _data_ground(sid, d, start, dur, blk):
     return media_ground(sid, g, start, dur)
 
 
+# --- the frosted panel (glass) ---------------------------------------------------------------------
+# A panel block over real footage used to paint an opaque --surface slab: diamond-v2 at 12:49 is a
+# framed-card holding ONE sentence, sitting on the "A Diamond Is Forever" ad it then completely hides.
+# Over media the panel becomes glass. The only judgement call is the TINT, and it is not a taste knob:
+# too little and the text fails on a bright ground, too much and you are back to the slab. So measure.
+_GLASS_CACHE = {}
+
+
+def _rel_lum(rgb):
+    """WCAG relative luminance from an (r,g,b) 0-255 tuple."""
+    def _ch(c):
+        c = c / 255.0
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (_ch(x) for x in rgb[:3])
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _hex_rgb(h):
+    h = (h or "").lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) if len(h) == 6 else None
+
+
+def _theme_rgb(token, fallback):
+    """A theme token's colour as (r,g,b) — read from the SAME tokens.css the render uses."""
+    try:
+        root = Path(__file__).resolve().parents[3] / "themes"
+        theme = globals().get("_THEME_NAME") or "highlighter-editorial"
+        p = root / str(theme) / "tokens.css"
+        if not p.exists():
+            p = root / "highlighter-editorial" / "tokens.css"
+        m = re.search(rf"{re.escape(token)}\s*:\s*#([0-9a-fA-F]{{3,6}})", p.read_text(encoding="utf-8"))
+        if m:
+            return _hex_rgb(m.group(1)) or _hex_rgb(fallback)
+    except (OSError, IndexError):
+        pass
+    return _hex_rgb(fallback)
+
+
+def _ground_patches(src, box=(0.11, 0.13, 0.89, 0.87), grid=8):
+    """The ground image under the panel as a `grid`x`grid` list of average colours, or None.
+
+    A grid, not a single mean: a panel can straddle a blown-out sky and a dark jacket, and the text has
+    to survive the WORST patch — an average would call that pair comfortable. Downsampling to blocks is
+    also the right model for what the eye sees through a blur, which is exactly a local average.
+    Fail-soft: any problem returns None and the caller falls back to a safe tint (a missing or corrupt
+    file must never break a render over a cosmetic choice)."""
+    key = (str(src), box, grid)
+    if key in _GLASS_CACHE:
+        return _GLASS_CACHE[key]
+    out = None
+    try:
+        from PIL import Image
+        base = globals().get("_ASSET_BASE")
+        p = Path(src)
+        if not p.is_absolute() and base:
+            p = Path(base) / src
+        if p.exists():
+            im = Image.open(p).convert("RGB")
+            w, h = im.size
+            crop = im.crop((int(box[0] * w), int(box[1] * h), max(1, int(box[2] * w)), max(1, int(box[3] * h))))
+            out = list(crop.resize((grid, grid), Image.BOX).getdata())
+    except Exception:                                   # PIL missing, unreadable, decode error…
+        out = None
+    _GLASS_CACHE[key] = out
+    return out
+
+
+def _glass_tint(d, box=(0.11, 0.13, 0.89, 0.87), floor=0.42, ceil=0.88, target=4.5):
+    """The smallest surface opacity (0..100) that still clears `target` contrast for --text over this
+    ground, clamped so the plate always reads as glass. Composites in sRGB, then measures.
+
+    A video ground cannot be sampled at compose time (the frame is chosen by the renderer), so it takes
+    the ceiling of the comfortable range: footage swings luminance shot to shot and the panel cannot
+    chase it."""
+    g = d.get("ground") or {}
+    surf = _theme_rgb("--surface", "#F7F3EA") or (247, 243, 234)
+    text = _theme_rgb("--text", "#1c1c19") or (28, 28, 25)
+    if g.get("kind") != "image" or not g.get("src"):
+        return 74
+    patches = _ground_patches(g["src"], box)
+    if not patches:
+        return 68                                        # unmeasurable → the safe middle
+    lt = _rel_lum(text)
+
+    def _worst(a):
+        """Lowest contrast ratio across the panel at surface opacity `a`."""
+        worst = 99.0
+        for px in patches:
+            eff = tuple(a * surf[i] + (1 - a) * px[i] for i in range(3))
+            le = _rel_lum(eff)
+            worst = min(worst, (max(lt, le) + 0.05) / (min(lt, le) + 0.05))
+        return worst
+
+    a = floor
+    while a < ceil and _worst(a) < target:
+        a += 0.02
+    return int(round(min(a, ceil) * 100))
+
+
+def _glass(d, box=(0.11, 0.13, 0.89, 0.87)):
+    """('' | ' glass', '' | ' style="--glass-tint:NN"') for a panel element in scene data `d`."""
+    if not _grounded(d) or str(d.get("panel", "")).lower() == "solid":
+        return "", ""
+    return " glass", f' style="--glass-tint:{_glass_tint(d, box)}"'
+
+
 def _register(sid): return "paper" if False else ""
 
 def _grounded(d):
@@ -1310,7 +1445,8 @@ def highlight_statement(sid, sc):
     if variant == "rail-accent":                       # a vertical accent rail beside the phrase
         frag.append('<div class="stmt-rail"></div>')
     if variant == "framed-card":                       # kicker + phrase live inside a centered card
-        frag.append(f'<div class="stmt-card">{kicker_html}')
+        gc, gs = _glass(d)                             # over media the card is a frosted plate, not a slab
+        frag.append(f'<div class="stmt-card{gc}"{gs}>{kicker_html}')
     else:
         frag.append(kicker_html)
     op = d.get("operative", "")
@@ -1414,7 +1550,8 @@ def pull_quote(sid, sc):
     q, hi = d.get("quote", ""), d.get("hi", "")
     qhtml = (f'{esc(q.split(hi,1)[0])}<span class="hl">{esc(hi)}</span>{esc(q.split(hi,1)[1])}'
              if hi and hi in q else esc(q))
-    frag.append('<div class="pq-wrap">')
+    _gc, _gs = _glass(d, box=(0.12, 0.12, 0.88, 0.88))
+    frag.append(f'<div class="pq-wrap{_gc}"{_gs}>')
     frag.append(f'<div id="{sid}-qm" class="pq-mark">“</div>')
     frag.append(f'<div id="{sid}-q" class="pq-body">{qhtml}</div>')
     if d.get("cite"):
@@ -1450,7 +1587,8 @@ def comparison_table(sid, sc):
     if d.get("kicker"):
         frag.append(f'<div id="{sid}-k" class="kick">{esc(d["kicker"])}</div>')
         tl.append(f'tl.fromTo("#{sid}-k",{{opacity:0,y:10}},{{opacity:1,y:0,duration:0.5}},{start+0.15});')
-    frag.append(f'<div class="ct-wrap"><div id="{sid}-g" class="ct-grid" '
+    _gc, _gs = _glass(d, box=(0.09, 0.17, 0.91, 0.89))
+    frag.append(f'<div class="ct-wrap{_gc}"{_gs}><div id="{sid}-g" class="ct-grid" '
                 f'style="grid-template-columns:1.6fr repeat({n},1fr)">')
     frag.append('<div class="ct-corner"></div>')
     for c in cols:
@@ -6518,7 +6656,8 @@ def _resolve_variant(block, data, prev=None, allowed=None, rot=0):
 
 
 def compose_frame(frame_id, dur, scenes, theme="highlighter-editorial"):
-    global _POLARITY, _SHELL_TEXTSAFE, _TYPE_PERSONALITY
+    global _POLARITY, _SHELL_TEXTSAFE, _TYPE_PERSONALITY, _THEME_NAME
+    _THEME_NAME = theme                       # the glass tint reads --surface/--text from THIS theme
     _POLARITY = _theme_polarity(theme)        # so blocks can pick theme-aware (not hardcoded-dark) defaults
     _SHELL_TEXTSAFE = _theme_shell_textsafe(theme)   # full-bleed grounds prefer --shell unless it's dark-on-dark
     _TYPE_PERSONALITY = _theme_personality(theme)    # so a block can pick a theme-coherent default (lower_third style)

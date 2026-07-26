@@ -31,6 +31,7 @@
       "when_to_use": "A rhetorical/turn beat carried by words, not a number (a claim, a reveal, a 'but…').",
       "not_for": "A number beat (use stat). A full paragraph (visible text stays short — the karaoke caption carries the sentence).",
       "data_schema": {
+        "panel": "enum(glass|solid)? — for the PANEL variants (statement framed-card, pull_quote framed, comparison_table panel) over an image/video ground. Default: glass — the panel is semi-transparent and blurs the ground behind it, with its tint solved from that ground's own luminance so contrast holds. `solid` restores the opaque surface.",
         "kicker": "string — eyebrow label",
         "register": "enum(paper|footage)",
         "ground": "object — media_ground spec (default {kind: transparent} to reveal a root video)",
@@ -140,6 +141,7 @@
       "when_to_use": "The beat IS a quotation or a single memorable line attributed to a source (an expert, a study, a person). Distinct from statement (an un-attributed manifesto/claim).",
       "not_for": "An un-attributed thesis (use statement). A data callout (stat/chart). A list (bullet_list).",
       "data_schema": {
+        "panel": "enum(glass|solid)? — for the PANEL variants (statement framed-card, pull_quote framed, comparison_table panel) over an image/video ground. Default: glass — the panel is semi-transparent and blurs the ground behind it, with its tint solved from that ground's own luminance so contrast holds. `solid` restores the opaque surface.",
         "quote": "string - the quoted line",
         "cite": "string? - attribution (name / source), rendered mono/uppercase",
         "hi": "string? - a substring of quote to highlight with the accent",
@@ -156,6 +158,7 @@
       "when_to_use": "a structured many-way comparison: options x criteria, a spec/feature table, a yes/partial/no matrix. Distinct from `comparison` (a 2-panel split).",
       "not_for": "a two-way this-vs-that (use comparison / split-screen); a uniform item grid (swiss-grid).",
       "data_schema": {
+        "panel": "enum(glass|solid)? — for the PANEL variants (statement framed-card, pull_quote framed, comparison_table panel) over an image/video ground. Default: glass — the panel is semi-transparent and blurs the ground behind it, with its tint solved from that ground's own luminance so contrast holds. `solid` restores the opaque surface.",
         "kicker": "string?",
         "title": "string?",
         "columns": "array of {label, highlight?} - the compared options (one may be highlighted)",
