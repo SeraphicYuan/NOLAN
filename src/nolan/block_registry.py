@@ -118,8 +118,9 @@ def visible_text(data, _depth: int = 0) -> str:
 # block ignores", it is "the gate accepts what the schema never offered".
 CUE_BLOCKS: FrozenSet[str] = frozenset({
     "annotate", "bullet_list", "chart", "collage", "connection_board", "cycle", "data_table", "document",
-    "dumbbell", "funnel", "geo", "histogram", "layout", "ledger", "pie", "process", "quadrant", "sankey",
-    "scale", "slope", "small_multiples", "spans", "spectrum", "stat", "trajectory", "venn",
+    "dumbbell", "funnel", "gauge", "geo", "histogram", "isotype", "layout", "ledger", "pie", "process",
+    "quadrant", "sankey", "scale", "slope", "small_multiples", "spans", "spectrum", "stat", "trajectory",
+    "venn",
 })
 
 CUE_KEY = "at"

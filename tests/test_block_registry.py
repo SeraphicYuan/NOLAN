@@ -83,7 +83,14 @@ def _composer_cue_blocks() -> set:
             return s[i:j if j > 0 else len(s)]
         return ""
 
-    reads = re.compile(r"""get\(\s*["']at["']|\[["']at["']\]|_reveal_cues\(|_reveal_times\(""")
+    # `_reveal_cues(` is the ONLY thing that reads an author `at`; a bare `_reveal_times(` does not.
+    # It used to count, and five blocks (data_table, histogram, layout, process, small_multiples) called
+    # `_reveal_times(n, start, dur, [None] * n)` — scheduled, but deaf to every anchor. The registry
+    # therefore claimed cue support they lacked, and `author.py`, which gates on this set, ACCEPTED an
+    # `at` that could never fire: the phantom-field class, hiding behind an honesty test whose predicate
+    # was looser than the claim it was checking. They read cues now; the predicate no longer lets a
+    # future block back into the set for free.
+    reads = re.compile(r"""get\(\s*["']at["']|\[["']at["']\]|_reveal_cues\(""")
     return {t for t, fn in registry.items() if reads.search(body(fn))}
 
 

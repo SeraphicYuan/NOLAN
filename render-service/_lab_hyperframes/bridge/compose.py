@@ -844,17 +844,48 @@ def _reveal_cues(items, start=0.0):
 def _reveal_times(n, start, dur, cues=None, lead=0.6, frac=0.62, minstep=0.5, tail=0.5):
     """n absolute reveal times. cues[i] (aligner-resolved) WINS — reveal on the spoken word; else spread the
     reveal across ~`frac` of the scene (≥minstep apart) so it fills the hold instead of dumping. Monotonic,
-    clamped to [start+lead, start+dur-tail]. Never hardcode a fixed stagger — call this."""
+    clamped to [start+lead, start+dur-tail]. Never hardcode a fixed stagger — call this.
+
+    An anchored cue acts as a PIN, and the unanchored elements around it are spread across the gaps
+    between pins rather than trailing one `minstep` behind. Before, a single late anchor crushed every
+    later element into a 0.5s pile-up: diamond-v2's `f03s01` process block anchors step 1 at 6.84s
+    ("you hide most of it") and left steps 2-3 unanchored, which landed 7.34 / 7.84 — three beats of a
+    14.9s scene delivered inside one second, then 7 dead seconds. The docstring already promised the
+    reveals would "fill the hold"; only the all-unanchored path actually did it."""
     n = max(1, int(n))
     hi = start + max(lead, dur - tail)
     span = min(max(dur * frac - lead, (n - 1) * minstep), (n - 1) * 2.4) if n > 1 else 0.0
     base = [start + lead + (span * i / (n - 1) if n > 1 else 0.0) for i in range(n)]
-    out, prev = [], start - 1
-    for i in range(n):
-        c = cues[i] if (cues and i < len(cues) and cues[i] is not None) else base[i]
-        c = min(max(c, prev + minstep if out else start + lead * 0.4), hi)
-        out.append(round(c, 2)); prev = c
-    return out
+    have = [i for i in range(n) if cues and i < len(cues) and cues[i] is not None]
+    if not have:                                          # unchanged path: nothing is anchored
+        out, prev = [], start - 1
+        for i in range(n):
+            c = min(max(base[i], prev + minstep if out else start + lead * 0.4), hi)
+            out.append(round(c, 2)); prev = c
+        return out
+
+    out = [None] * n
+    prev = None                                           # pins first, monotonic, inside the window
+    for i in have:
+        c = min(max(float(cues[i]), start + lead * 0.4), hi)
+        if prev is not None and c < prev + minstep:
+            c = min(prev + minstep, hi)
+        out[i] = prev = c
+    for i in range(n):                                    # then each RUN of unanchored elements
+        if out[i] is not None:
+            continue
+        j = i
+        while j < n and out[j] is None:
+            j += 1
+        lo_t = out[i - 1] if i > 0 else start + lead * 0.4          # the pin before the run
+        k = j - i
+        if j < n:                                                   # BOUNDED by the next pin: split the
+            step = min((out[j] - lo_t) / (k + 1), 2.4)              # gap evenly and never cross it —
+        else:                                                       # order beats cadence when it is tight
+            step = min(max((hi - lo_t) / (k + 1), minstep), 2.4)    # trailing run may use the tail itself
+        for m in range(k):
+            out[i + m] = min(lo_t + step * (m + 1), hi)
+    return [round(t, 2) for t in out]
 
 
 # ── reveal CHARACTER: the small pool of entrance personalities a data reveal can take. The scheduler
@@ -4508,7 +4539,7 @@ def data_table(sid, sc):
     ink = "#f3efe6" if dark else "#1c1c19"
     faint = "rgba(243,239,230,0.16)" if dark else "rgba(28,28,25,0.12)"
     n = len(rows)
-    times = _reveal_times(n, start, dur, [None] * n) if n else []
+    times = _reveal_times(n, start, dur, _reveal_cues(rows, start)) if n else []
 
     def _cell(txt, i, j, head=False):
         tag = "th" if head else "td"
@@ -4919,13 +4950,37 @@ def isotype(sid, sc):
         plan.append((i, nic))
     frag.append('</div>')
     tl = list(ht)
-    total = sum(p[1] for p in plan) or 1
-    win0, win, done = start + 0.6, max(0.5, dur - 1.2), 0
-    for i, nic in plan:
+    # The anchorable unit is the ITEM (a category), not the icon: each item starts filling at its own
+    # scheduler time — so it lands ON its spoken label when the author anchors one — and its icons
+    # stream across the window before the next item. The previous version distributed every icon
+    # proportionally over the whole beat from a hand-rolled window: it spread correctly, but no `at`
+    # could ever reach it, and it was invisible to check_reveal_sync while it lived in a second file.
+    # Icons stream at a CONSTANT rate across the beat (the count-up: you count with the narrator), so an
+    # item's share of the window is proportional to its icon COUNT — 12 icons get three times the time of
+    # 4. An anchored item is a pin on top of that: it starts when its label is spoken and the rest follow.
+    # Equal per-item slices (what the plain scheduler gives) made the fill bursty; a `_reveal_dur` span
+    # capped it at maxd and front-loaded a single-item chart into 3s of a 12s hold.
+    win0, win = start + 0.6, max(0.5, dur - 1.2)
+    total = sum(nic for _, nic in plan) or 1
+    cues, run = _reveal_cues(items, start), 0
+    base = []
+    for _, nic in plan:
+        base.append(win0 + win * (run / total))
+        run += nic
+    starts, prev = [], None
+    for idx in range(len(plan)):
+        t = cues[idx] if (idx < len(cues) and cues[idx] is not None) else base[idx]
+        t = min(max(t, win0 if prev is None else prev + 0.25), win0 + win)
+        starts.append(t); prev = t
+    ease = _reveal_ease(d)
+    for idx, (i, nic) in enumerate(plan):
+        t0 = starts[idx]
+        end = starts[idx + 1] if idx + 1 < len(starts) else (start + dur - 0.4)
+        span = max(0.3, end - t0 - (0.15 if idx + 1 < len(starts) else 0.0))
         for k in range(nic):
-            cue = win0 + win * (done / total)
-            done += 1
-            tl.append(f'tl.to("#{sid}-i{i}-{k}",{{opacity:1,duration:0.22,ease:"power1.out"}},{cue:.2f});')
+            cue = t0 + (span * k / nic)                  # k/nic, not k/(nic-1): the LAST icon lands
+            tl.append(f'tl.to("#{sid}-i{i}-{k}",{{opacity:1,duration:0.22,'    # before the next item starts
+                      f'ease:"{ease}"}},{cue:.2f});')
     return frag, tl
 
 
@@ -4991,7 +5046,7 @@ def dumbbell(sid, sc):
         t = times[i]
         tl.append(f'tl.fromTo("#{sid}-s{i}",{{scale:0}},{{scale:1,opacity:1,duration:0.3,ease:"back.out(2)"}},{t:.2f});')
         tl.append(f'tl.to("#{sid}-sv{i}",{{opacity:1,duration:0.25}},{t+0.05:.2f});')
-        tl.append(f'tl.fromTo("#{sid}-bar{i}",{{scaleX:0}},{{scaleX:1,duration:0.5,ease:"power2.out"}},{t+0.2:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-bar{i}",{{scaleX:0}},{{scaleX:1,duration:{_reveal_dur(times,i,start,dur,base=0.5,maxd=0.9,d=d)},ease:"{_reveal_ease(d)}"}},{t+0.2:.2f});')
         tl.append(f'tl.fromTo("#{sid}-e{i}",{{scale:0}},{{scale:1,opacity:1,duration:0.35,ease:"back.out(2.4)"}},{t+0.55:.2f});')
         tl.append(f'tl.to("#{sid}-ev{i}",{{opacity:1,duration:0.25}},{t+0.6:.2f});')
     return frag, tl
@@ -5021,7 +5076,7 @@ def small_multiples(sid, sc):
             f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
-    times = _reveal_times(n, start, dur, [None] * n) if n else []
+    times = _reveal_times(n, start, dur, _reveal_cues(panels, start)) if n else []
     tl = list(ht)
     for pi, p in enumerate(panels):
         cx = AX0 + (pi % cols) * cw
@@ -5103,9 +5158,9 @@ def histogram(sid, sc):
         frag.append(f'<div style="position:absolute;left:{PX1-260:.0f}px;top:{PY1+48:.0f}px;font-size:20px;'
                     f'opacity:.5">{esc(unit)} →</div>')
     tl = list(ht)
-    times = _reveal_times(n, start, dur, [None] * n) if n else []
+    times = _reveal_times(n, start, dur, _reveal_cues(bins, start)) if n else []
     for i in range(n):
-        tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:0.4,ease:"power2.out"}},{times[i]:.2f});')
+        tl.append(f'tl.fromTo("#{sid}-b{i}",{{scaleY:0}},{{scaleY:1,duration:{_reveal_dur(times,i,start,dur,base=0.4,maxd=0.8,d=d)},ease:"{_reveal_ease(d)}"}},{times[i]:.2f});')
     # optional marker ("where you fall") — a vertical line + label that drops in after the bars
     mk = d.get("marker")
     if mk is not None:
@@ -5150,6 +5205,10 @@ def gauge(sid, sc):
     frag += hf
     svg = ['<svg viewBox="0 0 1920 1080" style="position:absolute;inset:0;width:100%;height:100%">']
     tl = list(ht)
+    # The arc SWEEP is a data reveal: it lands on the spoken value when the author anchors one, and
+    # otherwise spreads across the hold. It used to fire at `start + 0.4 + i*0.25` with a fixed 1.1s
+    # draw — on a 14s beat the ring finished at 1.5s and the frame then sat frozen for 12.5.
+    times = _reveal_times(n, start, dur, _reveal_cues(items, start))
     for i, it in enumerate(items):
         v = float(it.get("value", 0))
         fill = max(0.0, min(1.0, v / mx))
@@ -5168,9 +5227,10 @@ def gauge(sid, sc):
         frag.append(f'<div style="position:absolute;left:{cx-200:.0f}px;top:{cy+R+18:.0f}px;width:400px;'
                     f'text-align:center;font-size:26px;font-weight:700;color:{ink};opacity:.72">{esc(str(it.get("label","")))}</div>')
         off = C * (1 - fill)
-        t = start + 0.4 + i * 0.25
+        t = times[i]
+        sweep = _reveal_dur(times, i, start, dur, base=1.1, maxd=3.2, d=d)   # draws THROUGH its beat
         tl.append(f'tl.fromTo("#{sid}-arc{i}",{{strokeDashoffset:{C:.1f}}},{{strokeDashoffset:{off:.1f},'
-                  f'duration:1.1,ease:"power2.out"}},{t:.2f});')
+                  f'duration:{sweep},ease:"{_reveal_ease(d)}"}},{t:.2f});')
         tl.append(f'tl.to("#{sid}-v{i}",{{opacity:1,duration:0.4}},{t+0.2:.2f});')
     svg.append('</svg>')
     frag += svg
@@ -5194,7 +5254,7 @@ def process(sid, sc):
             f'data-track-index="1" style="position:absolute;inset:0;color:{ink};background:{esc(_page_bg())}">']
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
-    times = _reveal_times(n, start, dur, [None] * n) if n else []
+    times = _reveal_times(n, start, dur, _reveal_cues(steps, start)) if n else []
     tl = list(ht)
     if horizontal:
         AX0, AX1, cy = 200, 1720, 560
@@ -5315,7 +5375,7 @@ def _layout_boxes(arrange, n, direction, ratio):
     return b[:n] if len(b) >= n else b + [b[-1]] * (n - len(b))
 
 
-def _layout_cell(sid, i, cell, box, t0):
+def _layout_cell(sid, i, cell, box, t0, end=None):
     """Render ONE curated cell (media|text|stat|chart) into its box (container-relative). Returns (frag, tl).
     This small fixed vocabulary is the deliberate boundary — NOT arbitrary block nesting."""
     num = _num
@@ -5337,7 +5397,11 @@ def _layout_cell(sid, i, cell, box, t0):
                         f'style="width:100%;height:100%;object-fit:cover"></video>')
         else:
             frag.append(f'<img id="{cid}-img" src="{esc(src)}" style="width:100%;height:100%;object-fit:cover">')
-            tl.append(f'tl.fromTo("#{cid}-img",{{scale:1}},{{scale:1.08,duration:6,ease:"none"}},{t0:.2f});')
+            # Ken-Burns across the REST OF THE CELL, never a literal 6s: on a 14s beat the old
+            # tween finished at t0+6 and the cell then sat frozen; on a 4s beat it was cut mid-move.
+            # (Narration owns duration — see docs/CAMERA_PROGRAM.md.)
+            kb = round(max(1.5, (end - t0) if end is not None else 6.0), 2)
+            tl.append(f'tl.fromTo("#{cid}-img",{{scale:1}},{{scale:1.08,duration:{kb},ease:"none"}},{t0:.2f});')
         if cell.get("label") or cell.get("caption"):
             frag.append(f'<div style="position:absolute;left:0;bottom:0;width:100%;box-sizing:border-box;'
                         f'padding:{max(12,h*0.05):.0f}px {max(14,w*0.04):.0f}px;color:#fff;'
@@ -5427,7 +5491,7 @@ def _layout_overlay(sid, sc, d, slots, n, start, dur, dark, ink, esc):
     `place` on a surface backing card so they stay legible over any footage in any theme. Reuses the
     _data_ground legibility-veil approach (theme-surface color-mix) rather than reinventing the scrim.
     Generalises hero / lower_third / annotate."""
-    times = _reveal_times(n, start, dur, [None] * n) if n else []
+    times = _reveal_times(n, start, dur, _reveal_cues(slots, start)) if n else []
     frag = [f'<div id="{sid}-wrap" class="clip blk-layout" data-start="{start}" data-duration="{dur}" '
             f'data-track-index="1" style="position:absolute;inset:0;color:{ink};'
             f'background:{esc(_page_bg())};overflow:hidden">']
@@ -5444,7 +5508,7 @@ def _layout_overlay(sid, sc, d, slots, n, start, dur, dark, ink, esc):
                     f'background-size:cover;background-position:center"></div>')
         tl.append(f'tl.fromTo("#{sid}-bg",{{scale:1.03}},{{scale:1.1,duration:{dur},ease:"none"}},{start});')
     else:
-        cf, ct = _layout_cell(sid, 0, bg, (0, 0, 1920, 1080), start)   # non-media bg (e.g. a chart) full-frame
+        cf, ct = _layout_cell(sid, 0, bg, (0, 0, 1920, 1080), start, start + dur)   # non-media bg (e.g. a chart) full-frame
         frag += cf
         tl += ct
     if src:                                                  # polarity-correct legibility veil (theme surface)
@@ -5476,7 +5540,7 @@ def _layout_overlay(sid, sc, d, slots, n, start, dur, dark, ink, esc):
         if band_bottom and place in ("br", "bl"):           # lift bottom corners clear of a bottom band
             y = min(y, (1080 - 300) - h - 28)
         if cell.get("kind") == "media":                     # a PIP media fills its card (rounded), no backing
-            cf, ct = _layout_cell(sid, j, cell, (x, y, w, h), times[j])
+            cf, ct = _layout_cell(sid, j, cell, (x, y, w, h), times[j], start + dur)
             frag += cf
             tl += ct
             continue
@@ -5484,7 +5548,7 @@ def _layout_overlay(sid, sc, d, slots, n, start, dur, dark, ink, esc):
                     f'width:{w:.0f}px;height:{h:.0f}px;background:var(--surface);border-radius:16px;'
                     f'box-shadow:0 18px 54px rgba(0,0,0,.42);opacity:0"></div>')
         pad = 30
-        cf, ct = _layout_cell(sid, j, cell, (x + pad, y + pad, w - 2 * pad, h - 2 * pad), times[j])
+        cf, ct = _layout_cell(sid, j, cell, (x + pad, y + pad, w - 2 * pad, h - 2 * pad), times[j], start + dur)
         frag += cf
         tl += ct
         tl.append(f'tl.fromTo("#{sid}-card{j}",{{opacity:0,scale:0.96,y:14}},{{opacity:1,scale:1,y:0,'
@@ -5514,7 +5578,7 @@ def layout(sid, sc):
     hf, ht = _dataviz_head(sid, sc, ink)
     frag += hf
     tl = list(ht)
-    times = _reveal_times(n, start, dur, [None] * n) if n else []
+    times = _reveal_times(n, start, dur, _reveal_cues(slots, start)) if n else []
     # VS PIVOT (the tuned detail from comparison/juxtaposition): open a wider centre gap, drop a badge in it,
     # so `layout` reproduces the "A vs B" framing those blocks were built for — without the badge colliding
     # with cell content. Applied to a 2-up horizontal split.
@@ -5527,7 +5591,7 @@ def layout(sid, sc):
         boxes[0] = (x0, y0, max(200, w0 - clr), h0)
         boxes[1] = (x1 + clr, y1, max(200, w1 - clr), h1)
     for i, cell in enumerate(slots):
-        cf, ct = _layout_cell(sid, i, cell, boxes[i], times[i])
+        cf, ct = _layout_cell(sid, i, cell, boxes[i], times[i], start + dur)
         frag += cf
         tl += ct
     if vs_split:
