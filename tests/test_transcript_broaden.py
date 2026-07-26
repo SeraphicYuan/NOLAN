@@ -15,7 +15,8 @@ class _VS:
 def _fake_suggest(by_topic):
     """A stand-in for the 3-tier search: returns the rows registered for each topic."""
     async def _s(topic, index, vs, config, n=12, catalog_dir=None, copyright_free_only=False,
-                 queries=None, web=True, rerank=True, min_sec=0, max_sec=0):
+                 queries=None, web=True, rerank=True, min_sec=0, max_sec=0, refresh_queries=False,
+                 expand=True, length_kinds=None):
         return {"suggestions": by_topic.get(topic, []), "topic": topic}
     return _s
 
@@ -58,7 +59,8 @@ def test_concurrency_changes_wall_clock_not_the_outcome(monkeypatch, tmp_path):
     order_finished = []
 
     async def slow_suggest(topic, index, vs, config, n=12, catalog_dir=None, copyright_free_only=False,
-                           queries=None, web=True, rerank=True, min_sec=0, max_sec=0):
+                           queries=None, web=True, rerank=True, min_sec=0, max_sec=0,
+                           refresh_queries=False, expand=True, length_kinds=None):
         await _a.sleep({"t1": 0.06, "t2": 0.03, "t3": 0.0}[topic])   # finishes in REVERSE plan order
         order_finished.append(topic)
         return {"suggestions": rows[topic]}
@@ -117,7 +119,8 @@ def test_proposed_topics_drop_repeats_and_persist(monkeypatch, tmp_path):
     assert out["dropped"] == ["the atomic bomb and the nuclear age"] and out["model"] == "qwen-test"
 
     monkeypatch.setattr(tl, "suggest_by_topic", _fake_suggest({"deep sea exploration": [_row("d1")]}))
-    res = asyncio.run(tb.broaden_library(None, _Idx(), _VS(), count=1, catalog_dir=tmp_path))
+    res = asyncio.run(tb.broaden_library(None, _Idx(), _VS(), count=1, catalog_dir=tmp_path,
+                                         topic_source="llm"))   # the corpus proposer is now the default
     assert [p["video_id"] for p in res["picks"]] == ["d1"]
     used = {t["topic"]: t for t in tb.load_used_topics(tmp_path)}
     assert used["deep sea exploration"]["picked"] == 1              # recorded with what it yielded
@@ -136,3 +139,70 @@ def test_dispatch_groups_carry_provenance():
     assert pre["copyright_free"] is True and len(pre["videos"]) == 2 and pre["kind"] == "archive"
     other = next(g for g in groups if g["collection"] == "")
     assert other["copyright_free"] is False and [v["video_id"] for v in other["videos"]] == ["c"]
+
+
+def test_kinds_default_accepts_every_surveyed_family(monkeypatch, tmp_path):
+    """The source control must actually control the source. `kinds=None` used to fall back to `["archive"]`,
+    so the Topic tab's "archive only" checkbox did NOTHING when unchecked and a broaden run could not pick a
+    YouTube video at all. An unspecified `kinds` now means every family the surveys hold."""
+    from nolan import transcript_broaden as tb
+    from nolan import transcript_lib as tl
+    rows = {"t1": [_row("yt1", kind="youtube"), _row("cc1", kind="youtube_cc"), _row("ar1")]}
+    monkeypatch.setattr(tl, "suggest_by_topic", _fake_suggest(rows))
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    out = asyncio.run(tb.broaden_library(None, _Idx(), _VS(), count=3, topics=["t1"], catalog_dir=tmp_path))
+    assert {p["kind"] for p in out["picks"]} == {"youtube", "youtube_cc", "archive"}
+    # ...and an explicit restriction is still honoured
+    only = asyncio.run(tb.broaden_library(None, _Idx(), _VS(), count=3, topics=["t1"],
+                                          kinds=["archive"], catalog_dir=tmp_path))
+    assert [p["video_id"] for p in only["picks"]] == ["ar1"]
+
+
+def test_no_survey_still_accepts_rather_than_silently_rejecting(tmp_path):
+    """An empty acceptance set would reject every candidate with no error — the exact silent cap this
+    function exists to remove. With no readable survey it falls back to every known family."""
+    from nolan import transcript_broaden as tb
+    assert set(tb.surveyed_kinds(tmp_path)) == set(tb.ALL_KINDS)
+
+
+def test_length_filter_applies_per_source_family():
+    """youtube rows carry a duration 100% of the time; archive rows 14%, and asking costs a throttled
+    metadata call each. So a sweep filters the reliable families and lets the caption stage enforce the
+    rest on the REAL runtime."""
+    from nolan.transcript_lib import _len_on
+    assert _len_on("archive", None) and _len_on("youtube", None)          # None = the old behaviour, all
+    assert _len_on("youtube", ["youtube", "youtube_cc"])
+    assert not _len_on("archive", ["youtube", "youtube_cc"])
+
+
+def test_topic_worthy_rejects_catalogue_number_runs():
+    """Two distinct junk shapes, and one test cannot catch both: raw-scan clusters score a PERFECT unique
+    token ratio precisely because every id differs, while boilerplate runs pass the real-title test on the
+    word 'Home'. Both must be rejected; a genuine subject cluster must not be."""
+    from nolan import transcript_broaden as tb
+    scans = [{"video_id": v, "title": v} for v in ("001000", "001002", "001004", "001017")]
+    boiler = [{"video_id": f"h{i}", "title": f"Home Movie: 00{i}"} for i in range(12)]
+    real = [{"video_id": "a", "title": "Safety: In Danger Out of Doors"},
+            {"video_id": "b", "title": "Let Us Break Bread Together"},
+            {"video_id": "c", "title": "The Challenge of Ideas"},
+            {"video_id": "d", "title": "A Word to the Wives"}]
+    assert not tb._topic_worthy(scans)
+    assert not tb._topic_worthy(boiler)
+    assert tb._topic_worthy(real)
+
+
+def test_depth_picks_are_diversified_against_what_we_hold(monkeypatch, tmp_path):
+    """The depth pass must not stack near-identical subjects. Exact-id dedup and near-identical-title
+    collapse already existed; MMR fills the band between them — given a redundant top-ranked candidate and a
+    dissimilar lower-ranked one, the dissimilar one wins its slot."""
+    from nolan import transcript_broaden as tb
+    from nolan import transcript_lib as tl
+    # one topic: breadth takes the first, depth must then choose between a near-twin and a distant row
+    rows = {"t1": [_row("seed", rrf=0.9), _row("twin", rrf=0.5), _row("far", rrf=0.4)]}
+    monkeypatch.setattr(tl, "suggest_by_topic", _fake_suggest(rows))
+    monkeypatch.setattr(tl, "load_catalog", lambda cd=None: {})
+    monkeypatch.setattr(tl, "_embed_titles",
+                        lambda ts: [[1.0, 0.0] if t in ("seed", "twin") else [0.0, 1.0] for t in ts])
+    out = asyncio.run(tb.broaden_library(None, _Idx(), _VS(), count=2, topics=["t1"], catalog_dir=tmp_path))
+    assert out["stats"]["diversity"] is True
+    assert [p["video_id"] for p in out["picks"]] == ["seed", "far"]      # 'twin' loses to the novel row

@@ -4,6 +4,57 @@
 **Status:** Complete
 **Last Updated:** 2026-07-25
 
+## Transcript library — the sweep is offline, its topics come from the corpus (2026-07-25)
+
+The "caption X videos across topics" loop (`transcript_broaden`), reworked after a wiring audit. What
+the audit found and what changed:
+
+**Two dead controls.** The Topic tab's "archive only" checkbox sent `kinds:null` when UNCHECKED, and
+`broaden_library` opened with `set(kinds or ["archive"])` — so it fell straight back to archive and a
+broaden run could not pick a YouTube video at all. `surveyed_kinds()` now supplies the default (every
+family in the surveys, falling back to `ALL_KINDS` rather than an empty set that would reject
+everything silently). Separately, "✨ Re-expand from the topic" never sent `refresh_queries`, so it
+re-ran the cached expansion and did nothing; the flag is plumbed.
+
+**The length filter is per source family** (`_len_on`, `length_kinds`). Measured on the live surveys:
+youtube 49,791 rows / 100% carry a duration, youtube_cc 654 / 100%, archive 10,000 / **14.0%**.
+advancedsearch does request `runtime` — archive.org has none for 8,597 Prelinger items. Resolving them
+is an HTTP round-trip each against a per-client throttle (8 identical lookups: 88.8s sequential vs
+80.9s at 8-way — concurrency buys nothing). So the sweep filters the reliable families, tier 2 goes
+fully OFFLINE, and the rule is enforced at caption time (`operations.LengthSkip`) on the exact runtime
+the download already produced — fed back via `remember_duration` so no item is ever asked for twice.
+
+**Topics now come from the corpus** (`corpus_topics`, the `topic_source` default). `propose_topics`
+asks an LLM for subjects the library LACKS and then searches what it HAS — with tier 3 off those halves
+fight, and the better it broadens the more topics return zero. Instead: cluster the surveyed corpus off
+the persisted `title_vectors.npz` (`topic_cluster(..., vecs=)` — no embedding), subtract the clusters
+the captioned catalog already covers, search what's left. Clustered PER FAMILY and interleaved under a
+cap, because one Bloomberg feed is 81% of the 60,259 rows and a global clustering returned nothing but
+finance clips. `_topic_worthy` drops catalogue-number runs (two shapes, two tests: raw-scan ids score a
+PERFECT unique-token ratio, "Home Movie: NNNN" runs pass the real-title test) and reports the count.
+
+**Depth picks are diversified** — MMR against this run's picks and the captioned library
+(`_mmr_order`). `_MMR_LAMBDA = 0.5` is not taste: it is where a perfectly redundant candidate can never
+outrank a novel one at ANY pool size. At 0.7 a duplicate won in a 2-item pool and lost in a 12-item one.
+
+**`expand_topics_batch`** expands a whole plan in one call, prewarming the cache the per-topic path
+already reads — one code path, not two. Tier 3 is now OFF by default for the sweep (still a toggle).
+
+Live run, 8 picks across 14 corpus topics, tier 3 off: **119s**, zero archive metadata calls. The
+Bloomberg topics correctly reported "no candidate cleared the filters" under a 20-minute floor — that
+is the per-family length filter working, and it is reported, not silent.
+
+Tests: `test_transcript_broaden.py` (+5 — kinds default, empty-survey fallback, per-family length,
+`_topic_worthy`, MMR) and a new `test_transcript_length_gate.py` (3). Skill `skills/lab/transcript-
+library.md` updated with all of it.
+
+STILL OPEN, deliberately: the visual tier is not wired to acquisition. `transcript_frames.visual_search`
+(CLIP over the captioned keyframes) has ONE caller, `/api/transcripts/visual-search`. Acquisition reaches
+the library only through `acquire/context.py:_search_transcript_lib` and `keyassets/resolve.py:
+_transcript_lib_hits`, both `VectorSearch(search_level="segments")` — spoken word only. `VectorSearch`
+has no frame level, so the gemma captions this whole loop exists to produce are consumed by the UI and
+never by a render.
+
 ## diamond-v2 post-mortem — 10 items landed, 1 WITHDRAWN with its disproof (2026-07-25)
 
 Every item in `docs/HF_V2_POSTMORTEM_IMPROVEMENTS.md` (written from the cold end-to-end run of

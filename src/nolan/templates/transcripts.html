@@ -198,22 +198,37 @@
           <textarea id="tg-q" rows="4" style="width:100%;font-size:11px" spellcheck="false"></textarea>
           <div class="row" style="margin-top:4px;gap:6px">
             <button class="btn mini" onclick="tgSuggest(true)">↻ Re-run with these queries</button>
-            <button class="btn ghost mini" onclick="tgSuggest(false)">✨ Re-expand from the topic</button>
+            <button class="btn ghost mini" onclick="tgSuggest(false,true)">✨ Re-expand from the topic</button>
           </div>
         </div>
       </div>
       <div class="card">
-        <b style="font-size:13px">🌱 Broaden the library</b>
-        <div class="dim" style="margin:3px 0 8px">Don't have a topic in mind? An LLM proposes subjects the library <b>doesn't</b> cover yet (it's shown what you already have and every topic previously searched), runs the same 3-tier search on each with the filters below, and returns one pick per subject — depth only once the subjects run out. The picks land in the list below for review; nothing is ingested until you press the button.</div>
+        <b style="font-size:13px">🌱 Broaden the library — X videos across topics</b>
+        <div class="dim" style="margin:3px 0 8px">Don't have topics in mind? It picks them, searches each, takes <b>one per topic</b> until the topics run out, then goes deeper — preferring picks <b>unlike</b> what you already hold. The picks land below for review; nothing is ingested until you press the button.</div>
         <div class="row">
-          <input type="text" id="bd-theme" placeholder="optional theme to stay within — e.g. 20th-century industry, or blank for anything" style="flex:1;min-width:240px">
           <label class="dim">how many <input type="number" id="bd-n" value="20" min="1" max="60" style="width:56px"></label>
+          <label class="dim" title="Where the topics come from">topics from
+            <select id="bd-src">
+              <option value="corpus" selected>the surveyed corpus (cheap, always servable)</option>
+              <option value="llm">an LLM's open-ended proposal</option>
+            </select></label>
           <label class="dim" title="Hold the LLM re-ranker's verdict as the bar">min fit
             <select id="bd-fit"><option value="high">high only</option><option value="medium" selected>high + medium</option><option value="any">any</option></select></label>
-          <label class="dim" title="Source family to accept — archive.org items are the PD-leaning, directly usable ones"><input type="checkbox" id="bd-arch" checked> archive only</label>
-          <button class="btn" onclick="bdRun()">🌱 Propose + pick</button>
+          <button class="btn" onclick="bdRun()">🌱 Pick <span id="bd-nlabel">20</span></button>
         </div>
+        <div class="row" style="margin-top:6px">
+          <span class="dim">sources</span>
+          <label class="dim"><input type="checkbox" class="bd-kind" value="archive" checked> 🏛 archive</label>
+          <label class="dim"><input type="checkbox" class="bd-kind" value="youtube_cc" checked> 🆓 cc</label>
+          <label class="dim"><input type="checkbox" class="bd-kind" value="youtube" checked> 📺 youtube</label>
+          <span class="dim" style="opacity:.5">|</span>
+          <label class="dim" title="Tier 3: search ALL of archive.org. Off by default for a sweep — it is the slowest phase and the surveyed corpus is what you're mining here."><input type="checkbox" id="bd-web"> 🌐 also search archive.org</label>
+          <label class="dim" title="One LLM call expands ALL topics at once. Unnecessary for corpus topics (a cluster label already embeds well); useful for LLM-proposed prose topics."><input type="checkbox" id="bd-expand"> ✨ expand topics</label>
+        </div>
+        <input type="text" id="bd-theme" placeholder="optional theme for the LLM proposer — ignored for corpus topics" style="flex:1;min-width:240px;margin-top:6px;display:none">
+        <div class="dim" style="margin-top:6px;font-size:11px">The length filter above applies to <b>youtube</b> sources (every crawled row carries a duration). Archive rows carry one only 14% of the time, so asking would cost a throttled metadata call each — their real runtime is checked at caption time instead, after the download.</div>
         <div id="bd-status" class="dim" style="margin-top:6px;font-size:11px"></div>
+        <div id="bd-detail" class="dim" style="margin-top:4px;font-size:11px"></div>
       </div>
       <div class="card">
         <div class="row" style="justify-content:space-between">
@@ -655,7 +670,7 @@
     function tgSelN(){ $("#tg-n-sel").textContent = TG_SEL.size; }
     function tgToggle(id, on){ if(on) TG_SEL.add(id); else TG_SEL.delete(id); tgSelN(); }
     /* useEdited=true → run the textarea queries verbatim (no LLM expansion); false → expand from the topic */
-    async function tgSuggest(useEdited){
+    async function tgSuggest(useEdited, reexpand){
       const topic=$("#tg-topic").value.trim(); if(!topic){ alert("Enter a topic."); return; }
       const n=parseInt($("#tg-n").value,10)||12;
       const edited = useEdited ? $("#tg-q").value.split("\n").map(s=>s.trim()).filter(Boolean) : null;
@@ -668,6 +683,9 @@
                     web:$("#tg-web").checked, rerank:$("#tg-rr").checked,
                     min_sec:60*(parseInt($("#tg-min").value,10)||0),
                     max_sec:60*(parseInt($("#tg-max").value,10)||0)};
+        /* "Re-expand from the topic" must BYPASS the cached expansion — without this it re-ran the
+           remembered queries and the button did nothing at all. */
+        if(reexpand) body.refresh_queries=true;
         if(edited) body.queries=edited;
         const d=await jpost("/api/transcripts/suggest-topic",body);
         TG.byId={}; (d.suggestions||[]).forEach(s=>TG.byId[s.video_id]=s);
@@ -779,13 +797,33 @@
       $("#tg-body").innerHTML = html;
     }
     /* ---------- Broaden: LLM-proposed topics -> X picks, reviewed in the same list ---------- */
+    function bdKinds(){ return [...document.querySelectorAll(".bd-kind")].filter(c=>c.checked).map(c=>c.value); }
+    /* the theme box only means anything to the LLM proposer; corpus topics come from the survey clusters */
+    let BD_BOUND=false;
+    function bdBind(){
+      if(BD_BOUND) return; BD_BOUND=true;
+      const sync=()=>{
+        $("#bd-theme").style.display = $("#bd-src").value==="llm" ? "block" : "none";
+        $("#bd-expand").checked = $("#bd-src").value==="llm";
+        $("#bd-nlabel").textContent = parseInt($("#bd-n").value,10)||20;
+      };
+      $("#bd-src").addEventListener("change", sync);
+      $("#bd-n").addEventListener("input", sync);
+      sync();
+    }
     async function bdRun(){
+      const kinds=bdKinds();
+      if(!kinds.length){ alert("Pick at least one source family."); return; }
       const body={count:parseInt($("#bd-n").value,10)||20, theme:$("#bd-theme").value.trim(),
-                  min_fit:$("#bd-fit").value, kinds:($("#bd-arch").checked?["archive"]:null),
-                  copyright_free:$("#tg-cf").checked, web:$("#tg-web").checked, rerank:$("#tg-rr").checked,
+                  min_fit:$("#bd-fit").value, kinds,
+                  topic_source:$("#bd-src").value, expand:$("#bd-expand").checked,
+                  copyright_free:$("#tg-cf").checked, web:$("#bd-web").checked, rerank:$("#tg-rr").checked,
+                  /* the length filter is only trustworthy where the crawl carries a duration; archive rows
+                     are enforced after download instead (see the note in the panel) */
+                  length_kinds:["youtube","youtube_cc"],
                   min_sec:60*(parseInt($("#tg-min").value,10)||0),
                   max_sec:60*(parseInt($("#tg-max").value,10)||0)};
-      const st=$("#bd-status"); st.textContent="starting…";
+      const st=$("#bd-status"); st.textContent="starting…"; $("#bd-detail").innerHTML="";
       TG_SEL.clear(); tgSelN(); $("#tg-body").innerHTML='<div class="dim">proposing topics + searching…</div>';
       let job;
       try{ job=await jpost("/api/transcripts/broaden", body); }
@@ -796,19 +834,51 @@
         st.textContent=`${j.status} — ${Math.round(100*(j.progress||0))}% ${j.message||""}`;
         if(j.status==="running"||j.status==="pending"){ setTimeout(poll, 3000); return; }
         if(j.status!=="done"){ st.innerHTML=`<span class="warn">${esc(j.error||j.status)}</span>`; return; }
-        const r=j.result||{}, picks=r.picks||[], s=r.stats||{};
-        TG.byId={}; picks.forEach(p=>TG.byId[p.video_id]=p);
-        $("#tg-queries").innerHTML = (r.topics||[]).length
-          ? `<b>topics searched</b> <span style="font-size:11px">(proposed by ${esc((s.proposed||{}).model||"the LLM")}${(s.proposed||{}).dropped&&s.proposed.dropped.length?`, ${s.proposed.dropped.length} dropped as repeats`:""})</span>: `
-            + r.topics.map(t=>`<span class="chip">${esc(t)}</span>`).join(" ") : "";
-        $("#tg-qedit").style.display="none";
-        st.innerHTML=`<b>${picks.length}</b> picks across ${s.topics_with_picks||0} of ${s.topics_tried||0} topics`
-          + ((s.depth_picks||0)?` · ${s.depth_picks} from the depth pass (topics exhausted)`:"")
-          + ((r.misses||[]).length?` · <span class="warn">${r.misses.length} topic(s) yielded nothing</span>`:"")
-          + ` — review below, then “Caption / ingest selected”`;
-        tgRender({suggestions:picks, ingested:0, surveyed:picks.length, archived:0});
+        bdShow(j.result||{});
       };
       poll();
+    }
+    /* Render a finished broaden run. Split out so a run recovered from /api/jobs shows identically —
+       the picks are a PROPOSAL and used to be lost the moment you navigated away from the tab. */
+    function bdShow(r){
+      const picks=r.picks||[], s=r.stats||{}, p=s.proposed||{}, st=$("#bd-status");
+      TG.byId={}; picks.forEach(x=>TG.byId[x.video_id]=x);
+      const src = s.topic_source==="corpus"
+        ? `from ${p.clusters||0} clusters over ${p.corpus||0} surveyed titles`
+        : `proposed by ${esc(p.model||"the LLM")}`;
+      $("#tg-queries").innerHTML = (r.topics||[]).length
+        ? `<b>topics searched</b> <span style="font-size:11px">(${src})</span>: `
+          + r.topics.map(t=>`<span class="chip">${esc(t)}</span>`).join(" ") : "";
+      $("#tg-qedit").style.display="none";
+      st.innerHTML=`<b>${picks.length}</b> picks across ${s.topics_with_picks||0} of ${s.topics_tried||0} topics`
+        + ((s.depth_picks||0)?` · ${s.depth_picks} from the depth pass${s.diversity?" (diversified against what you already hold)":""}`:"")
+        + ` — review below, then “Caption / ingest selected”`;
+      /* every bound reports what it dropped */
+      const bits=[];
+      if((r.misses||[]).length) bits.push(`<span class="warn">${r.misses.length} topic(s) yielded nothing</span>: `
+        + r.misses.slice(0,6).map(m=>`${esc(m[0]).slice(0,40)} — ${esc(m[1])}`).join(" · "));
+      if(p.dropped_clusters) bits.push("clusters rejected as catalogue-number runs, not subjects: "
+        + Object.entries(p.dropped_clusters).map(([k,v])=>`${esc(k)} ${v}`).join(", "));
+      if((p.dropped||[]).length) bits.push(`${p.dropped.length} proposed topic(s) dropped as repeats`);
+      if(s.expansion && s.expansion.expanded!==undefined) bits.push(
+        `expansion: ${s.expansion.expanded} in one call, ${s.expansion.cached} already cached`
+        + ((s.expansion.missing||[]).length?`, <span class="warn">${s.expansion.missing.length} not returned</span>`:""));
+      if(s.filters) bits.push(`length filter applied to: ${esc(String(s.filters.length_kinds))}`
+        + (s.filters.web?" · tier 3 on":" · tier 3 off"));
+      $("#bd-detail").innerHTML = bits.join("<br>");
+      tgRender({suggestions:picks, ingested:0, surveyed:picks.length, archived:0});
+    }
+    /* Recover the most recent finished broaden proposal (job results outlive the page) */
+    async function bdRestore(){
+      try{
+        const all=await jget("/api/jobs");
+        const j=(all.jobs||all||[]).filter(x=>x.type==="transcript-broaden"&&x.status==="done")
+                 .sort((a,b)=>(b.created_at||0)-(a.created_at||0))[0];
+        if(j&&j.result&&(j.result.picks||[]).length){
+          bdShow(j.result);
+          $("#bd-status").innerHTML += ' <span class="dim">(restored from the last run)</span>';
+        }
+      }catch(e){}
     }
     function tgSelAll(on){ (Object.values(TG.byId)).forEach(s=>{ if(on)TG_SEL.add(s.video_id); else TG_SEL.delete(s.video_id); }); tgSelN(); tgRender({suggestions:Object.values(TG.byId), ingested:0, surveyed:0}); }
     async function tgCaption(){
@@ -832,10 +902,15 @@
           kind:s.kind, fit:s.fit, score:s.score, rrf:s.rrf, copyright_free:s.copyright_free}))}); }
         catch(e){ console.warn("acceptance not recorded:", e); }
         const jobs=[];
-        if(capIds.length){ await jpost("/api/transcripts/batch-caption",{video_ids:capIds}); jobs.push(`caption ${capIds.length}`); }
+        /* the length rule follows the picks to the caption stage: archive rows were NOT length-filtered
+           during the search (their duration is absent 86% of the time and costs a throttled call to ask),
+           so the real runtime is checked here, after the download, where it is exact and free */
+        const lmin=60*(parseInt($("#tg-min").value,10)||0), lmax=60*(parseInt($("#tg-max").value,10)||0);
+        if(capIds.length){ await jpost("/api/transcripts/batch-caption",{video_ids:capIds, min_sec:lmin, max_sec:lmax}); jobs.push(`caption ${capIds.length}`); }
         for(const g of Object.values(groups)){
           await jpost("/api/transcripts/ingest-videos",{videos:g.videos, kind:g.kind, visual:"keyframe",
-                                                       collection:g.channel, copyright_free:g.cf});
+                                                       collection:g.channel, copyright_free:g.cf,
+                                                       min_sec:lmin, max_sec:lmax});
           jobs.push(`ingest+caption ${g.videos.length} (${g.kind}${g.channel?" / "+g.channel:""}${g.cf?", cf":""})`);
         }
         st.innerHTML=`✓ started: ${esc(jobs.join(", "))} — watch Background Jobs`;
@@ -849,7 +924,7 @@
       $("#tab-search").style.display = t==="search"?"block":"none";
       $("#tab-curate").style.display = t==="curate"?"block":"none";
       $("#tab-topic").style.display = t==="topic"?"block":"none";
-      if(t==="topic"){ tgIndexStatus(); tgMemory(); tgCoverage(); }
+      if(t==="topic"){ tgIndexStatus(); tgMemory(); tgCoverage(); bdBind(); if(!Object.keys(TG.byId||{}).length) bdRestore(); }
       $("#tab-coverage").style.display = t==="coverage"?"block":"none";
       $("#tab-sources").style.display = t==="sources"?"block":"none";
       if(t==="sources"){ loadSources(); loadVideos(); }

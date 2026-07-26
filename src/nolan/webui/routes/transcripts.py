@@ -104,7 +104,8 @@ def register(app, ctx):
         job = job_manager.start(
             "transcript-batch-caption", operations.batch_caption_videos, meta={"count": len(ids)},
             config=cfg, db_path=idb, video_ids=[str(v) for v in ids],
-            force=bool(body.get("force", False)), densify=bool(body.get("densify", False)))
+            force=bool(body.get("force", False)), densify=bool(body.get("densify", False)),
+            min_sec=int(body.get("min_sec", 0) or 0), max_sec=int(body.get("max_sec", 0) or 0))
         return {"job_id": job.id, "type": "transcript-batch-caption"}
 
     def _collection_free(channel: str, kind: str) -> bool:
@@ -240,7 +241,8 @@ def register(app, ctx):
             "transcript-ingest-videos", operations.ingest_videos, meta={"count": len(vids), "kind": kind},
             config=cfg, db_path=idb, videos=vids, visual=(body.get("visual") or "off"),
             delay=float(body.get("delay", 1.0) or 1.0), kind=kind, collection=collection,
-            broll_max_sec=float(body.get("broll_max_sec", 0) or 0), copyright_free=bool(cfree))
+            broll_max_sec=float(body.get("broll_max_sec", 0) or 0), copyright_free=bool(cfree),
+            min_sec=int(body.get("min_sec", 0) or 0), max_sec=int(body.get("max_sec", 0) or 0))
         return {"job_id": job.id, "type": "transcript-ingest-videos"}
 
     @app.get("/api/transcripts/videos")
@@ -288,7 +290,9 @@ def register(app, ctx):
                                          web=bool(body.get("web", True)),
                                          rerank=bool(body.get("rerank", True)),
                                          min_sec=int(body.get("min_sec", 0) or 0),
-                                         max_sec=int(body.get("max_sec", 0) or 0))
+                                         max_sec=int(body.get("max_sec", 0) or 0),
+                                         refresh_queries=bool(body.get("refresh_queries", False)),
+                                         length_kinds=body.get("length_kinds"))
 
     @app.post("/api/transcripts/broaden")
     async def transcripts_broaden(body: dict = Body(...)):
@@ -313,9 +317,13 @@ def register(app, ctx):
                 topics=(body.get("topics") or None), per_topic=int(body.get("per_topic", 1) or 1),
                 min_sec=int(body.get("min_sec", 0) or 0), max_sec=int(body.get("max_sec", 0) or 0),
                 copyright_free_only=bool(body.get("copyright_free", False)),
-                kinds=(body.get("kinds") or None), web=bool(body.get("web", True)),
+                kinds=(body.get("kinds") or None), web=bool(body.get("web", False)),
                 rerank=bool(body.get("rerank", True)), min_fit=(body.get("min_fit") or "medium"),
                 concurrency=int(body.get("concurrency", 4) or 4),
+                topic_source=(body.get("topic_source") or "corpus"),
+                expand=bool(body.get("expand", False)),
+                length_kinds=(body.get("length_kinds")
+                              if body.get("length_kinds") is not None else tb.LENGTH_RELIABLE_KINDS),
                 progress=lambda f, m: job.set_progress(min(0.99, f), m))
         job = job_manager.start("transcript-broaden", _run, meta={"count": int(body.get("count", 20) or 20)})
         return {"job_id": job.id, "type": "transcript-broaden"}

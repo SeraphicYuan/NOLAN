@@ -326,9 +326,24 @@ async def promote_to_pool(job, *, comp: str, video_path: str, start: float, end:
     return {"ok": True, "path": str(saved), "name": Path(saved).name, "comp": comp}
 
 
+class LengthSkip(Exception):
+    """The downloaded video's REAL runtime failed the caller's length filter.
+
+    The topic search can only filter on a duration the crawl happened to cache — 100% of youtube rows have
+    one, but only 14.0% of archive rows do, and resolving the rest costs an HTTP round-trip each against a
+    server that throttles. So a sweep leaves archive rows unfiltered and enforces the rule HERE, where the
+    download has already produced an exact duration for free. A too-short reel costs one small download
+    (short file = cheap) instead of a metadata call per shortlisted row."""
+
+    def __init__(self, dur: float):
+        super().__init__(f"{dur:.0f}s")
+        self.dur = float(dur)
+
+
 async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
                                visual: str = "keyframe", max_frames: int = 0, densify: bool = False,
-                               kind: str = "youtube", job=None) -> int:
+                               kind: str = "youtube", job=None,
+                               min_sec: int = 0, max_sec: int = 0) -> int:
     """Capture + embed the visual tier for ONE transcript video: DOWNLOAD the video ONCE to a temp file,
     then run FULL-RES scene-cut detection + one frame per shot (b-roll optionally densified) ALL LOCALLY --
     one sustained transfer instead of ~N throttled googlevideo range requests (batch-scale bottleneck + no
@@ -379,6 +394,13 @@ async def _capture_visual_tier(url: str, windows: list, yid: str, title: str, *,
             cuts, ddur = await asyncio.to_thread(tfr.detect_cuts, src, 0.4, 1.5, 120.0, 8, False, dur)
     _t["det"] = _time.time() - _c
     dur = dur or ddur or (float(windows[-1]["end"]) if windows else 0.0)
+    if dur:
+        # learned for free, and exact — feed it back so the length filter never pays for this item again
+        from nolan import transcript_lib as _tl
+        _tl.remember_duration(yid, dur)
+        if (min_sec and dur < min_sec) or (max_sec and dur > max_sec):
+            _sh.rmtree(tmpd, ignore_errors=True)
+            raise LengthSkip(dur)
     sprites = [] if kind == "archive" else await asyncio.to_thread(tfr.storyboard_tiles, url, sdir, 12.0, 80)   # filmstrip overview (free; yt-dlp storyboard is YouTube-only)
     base = tfr.plan_shots(cuts, dur) if (cuts and dur) else [
         (round((w["start"] + w["end"]) / 2, 1), float(w["start"]), float(w["end"])) for w in windows]
@@ -523,7 +545,7 @@ async def refresh_transcript_video(job, *, config, db_path: Path, url: str, chan
 
 
 async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, force: bool = False,
-                               densify: bool = False):
+                               densify: bool = False, min_sec: int = 0, max_sec: int = 0):
     """Caption the visual tier for a BATCH of already-text-indexed transcript videos, SKIPPING ones already
     captioned (unless force). A few videos run in flight; the GLOBAL gemma/download governors keep total
     concurrency under the API/CDN ceilings regardless of how many are in flight. Resumable -- re-run to
@@ -539,11 +561,12 @@ async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, f
     ids = [str(v) for v in (video_ids or [])]
     total = len(ids)
     done = skipped = failed = 0
+    too_long = 0
     sem = asyncio.Semaphore(4)                                # up to 4 videos IN FLIGHT (governors cap the rest)
     counter = {"i": 0}
 
     async def _one(yid):
-        nonlocal done, skipped, failed
+        nonlocal done, skipped, failed, too_long
         async with sem:
             counter["i"] += 1
             i = counter["i"]
@@ -564,16 +587,24 @@ async def batch_caption_videos(job, *, config, db_path: Path, video_ids: list, f
                 if force:
                     await asyncio.to_thread(tfr.delete_frames_for_video, yid)
                 n = await _capture_visual_tier(url, windows, yid, title, visual="keyframe",
-                                               densify=densify, kind=meta.get("kind", "youtube"), job=job)
+                                               densify=densify, kind=meta.get("kind", "youtube"), job=job,
+                                               min_sec=min_sec, max_sec=max_sec)
                 tl.record_transcript(yid, {**meta, "url": url, "video_id": yid}, len(windows),
                                      meta.get("channel"), frames=n, added=meta.get("added", ""))
                 job.log(f"  ✓ {title}: {n} frames"); done += 1
+            except LengthSkip as e:                          # the length rule, enforced on the REAL runtime
+                tl.record_transcript(yid, {**meta, "url": url, "video_id": yid}, len(windows),
+                                     meta.get("channel"), added=meta.get("added", ""), duration=e.dur)
+                job.log(f"  ⏱ {title}: {e.dur:.0f}s — outside the length filter, not captioned")
+                too_long += 1
             except Exception as e:
                 job.log(f"  ✗ {title}: {type(e).__name__}: {e}"); failed += 1
 
     await asyncio.gather(*(_one(y) for y in ids))
-    job.set_progress(1.0, f"captioned {done}, skipped {skipped} (already done), {failed} failed of {total}")
-    return {"total": total, "captioned": done, "skipped": skipped, "failed": failed}
+    job.set_progress(1.0, f"captioned {done}, skipped {skipped} (already done), "
+                          f"{too_long} outside the length filter, {failed} failed of {total}")
+    return {"total": total, "captioned": done, "skipped": skipped, "failed": failed,
+            "length_skipped": too_long}
 
 
 def _permanently_unusable(err: Exception) -> bool:
@@ -588,7 +619,8 @@ def _permanently_unusable(err: Exception) -> bool:
 async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str = "off",
                         window_s: float = 45.0, overlap_s: float = 10.0, delay: float = 1.0,
                         refresh: bool = False, kind: str = "youtube", collection: str = "",
-                        broll_max_sec: float = 0.0, copyright_free: bool = False):
+                        broll_max_sec: float = 0.0, copyright_free: bool = False,
+                        min_sec: int = 0, max_sec: int = 0):
     """Ingest a SPECIFIC list of videos (each {url, video_id?, title?, duration?, channel?}) -- transcript
     (+ optional visual), dedup-skip, rate-paced. Powers 'add selected'. `kind='archive'` fetches archive.org's
     Whisper ASR; items with no transcript are a reported soft-skip (youtube_cc title-indexes instead).
@@ -691,7 +723,10 @@ async def ingest_videos(job, *, config, db_path: Path, videos: list, visual: str
         if visual and visual != "off" and not is_broll:        # b-roll skips (the whole clip IS the asset)
             try:
                 nframes = await _capture_visual_tier(url, windows, meta.get("video_id") or yid0, title,
-                                                     visual=visual, kind=kind, job=job)
+                                                     visual=visual, kind=kind, job=job,
+                                                     min_sec=min_sec, max_sec=max_sec)
+            except LengthSkip as e:            # a real runtime outside the filter — the transcript row still
+                job.log(f"    (⏱ {e.dur:.0f}s — outside the length filter, not captioned)")   # stands
             except Exception as e:
                 job.log(f"    (visual skipped: {type(e).__name__}: {e})")
                 if _permanently_unusable(e):                   # restricted derivative — stop offering it

@@ -59,9 +59,15 @@ reason on the said/shown blend.
 - **Provenance is sticky.** `record_transcript`'s `kind` / `copyright_free` / `broll` / `duration`
   are only overwritten when a caller ASSERTS them; a re-caption knows nothing about the source
   family and used to re-label a PD Prelinger film as copyrighted YouTube.
-- **Unknown duration is KEPT** by the optional length filter — but when a filter is active, an
-  archive row's missing runtime is RESOLVED from the metadata API (bounded), or the filter silently
-  does nothing (a 4-minute reel rode that rule into a caption run).
+- **Unknown duration is KEPT** by the optional length filter — so the filter needs a duration to
+  bite (a 4-minute reel rode that rule into a caption run). WHERE it gets one is per source family
+  (`_len_on`): youtube/youtube_cc rows carry a duration 100% of the time, archive rows **14.0%**
+  (measured: 1,403 of 10,000 Prelinger items — advancedsearch asks for `runtime`, archive.org just
+  hasn't got one). Resolving the rest is an HTTP round-trip each against a server that throttles per
+  client, so a caller passing `length_kinds=("youtube","youtube_cc")` gets a fully OFFLINE tier-2
+  scan and the rule is enforced at CAPTION time instead (`operations.LengthSkip`), on the exact
+  runtime the download already produced — fed back via `remember_duration` so it is never asked for
+  twice. `length_kinds=None` keeps the filter-everything behaviour for an interactive search.
 - **No silent caps.** Every bound reports what it dropped: the embed budget in the cold-index
   fallback, the archive deep-paging window (Prelinger: 10,000 of 10,376), the length gate, the
   duplicate collapse, the re-rank drops.
@@ -86,9 +92,25 @@ Rebuild the title index with `POST /api/transcripts/topic-index/build` or
 - **By topic** (you know the subject): /transcripts → Topic tab → review → *Caption / ingest
   selected*. Acceptance is recorded — that ledger is the only ground truth for tuning the 0.42
   floor, the fit bar and the re-rank prompt.
-- **By breadth** (you don't): the same tab's *🌱 Broaden the library* → `transcript_broaden` — an
-  LLM proposes subjects the library lacks (shown a DIVERSE sample of what it holds plus every topic
-  already searched), one pick per subject first, depth only when subjects run out.
+- **By breadth** (you don't): the same tab's *🌱 Broaden the library* → `transcript_broaden` — X
+  picks across as many subjects as possible: one per topic first, depth only when subjects run out.
+  Where the topics come from is the `topic_source` switch:
+  - `corpus` (DEFAULT) — `corpus_topics` clusters the SURVEYED corpus off the persisted
+    `title_vectors.npz` (`topic_cluster(..., vecs=)`, so no embedding), subtracts the clusters the
+    captioned catalog already represents, and searches what's left. Every topic is servable by
+    construction, and no expansion is needed (a cluster's medoid title already embeds against the
+    title index). Clustered PER SOURCE FAMILY and interleaved under a per-family cap — one Bloomberg
+    feed is 81% of the corpus, so a single global clustering returns nothing but finance clips.
+    Clusters that are catalogue-number runs rather than subjects are dropped by `_topic_worthy` and
+    the count is reported.
+  - `llm` — `propose_topics`, the open-ended proposer. Honest tension to know about: it asks for
+    subjects the library LACKS, then searches what the library HAS, so with tier 3 off a proposed
+    topic can legitimately return nothing.
+  Depth picks are diversified by MMR (`_mmr_order`) against this run's picks AND the captioned
+  library — `_MMR_LAMBDA = 0.5` because that is where a perfectly redundant candidate can never
+  outrank a novel one at ANY pool size; higher and the answer depends on pool depth.
+  `expand_topics_batch` expands a whole plan in ONE call, prewarming the same `topic_queries.json`
+  cache the per-topic path reads (no second code path).
 
 Both LLM steps are PROPOSALS behind deterministic gates: a proposed topic that repeats a searched
 one is dropped by cosine before it can spend a search; picks are reviewed before anything ingests.

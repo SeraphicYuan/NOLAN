@@ -363,7 +363,8 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
                            queries: Optional[List[str]] = None,
                            web: bool = True, rerank: bool = True,
                            min_sec: int = 0, max_sec: int = 0,
-                           refresh_queries: bool = False) -> Dict[str, Any]:
+                           refresh_queries: bool = False, expand: bool = True,
+                           length_kinds: Optional[List[str]] = None) -> Dict[str, Any]:
     """ON-DEMAND caption targeting: a rough topic ("diamond, De Beers, diamond history") → a ranked shortlist
     of videos worth running the gemma VISUAL tier on. THREE tiers, rank-fused:
       (1) INGESTED-but-not-captioned — the topic's BGE vector search over transcripts, grouped by video, kept
@@ -386,7 +387,7 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
         if cached and cached.get("queries"):
             qs = list(cached["queries"])
             expander = cached.get("model") or ""
-    if not given and not qs:
+    if not given and not qs and expand:
         try:
             llm = create_text_llm(config)
             expander = getattr(llm, "model", "") or type(llm).__name__
@@ -406,7 +407,8 @@ async def suggest_by_topic(topic: str, index, vs, config, n: int = 12,
     used = given or qs or [q.strip() for q in (topic or "").replace(",", "\n").splitlines() if q.strip()]
     used = (used or [topic])[:8]
     out = await asyncio.to_thread(_topic_suggestions, used, topic, index, vs, int(n), catalog_dir,
-                                  bool(copyright_free_only), bool(web), int(min_sec or 0), int(max_sec or 0))
+                                  bool(copyright_free_only), bool(web), int(min_sec or 0), int(max_sec or 0),
+                                  list(length_kinds) if length_kinds is not None else None)
     out["expanded"] = bool(qs and not given)
     out["query_source"] = ("edited" if given else
                            ("cache" if cached and qs else ("llm" if qs else "topic")))
@@ -514,9 +516,10 @@ def _apply_judgements(cand, rows, fit_of, why_of, known, judged, model, reused, 
 
 
 def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False,
-                 min_sec=0, max_sec=0):
+                 min_sec=0, max_sec=0, length_kinds=None):
     """The two LOCAL tiers — what the library already holds: (1) ingested-but-uncaptioned, (2) surveyed.
-    Returns ``(ingested, surveyed, meta)``; the global archive tier and the fusion live in the caller."""
+    Returns ``(ingested, surveyed, meta)``; the global archive tier and the fusion live in the caller.
+    ``length_kinds`` restricts which source families the length filter applies to (see ``_len_on``)."""
     import numpy as np
     cat = load_catalog(catalog_dir)
     t_ids = set(index.transcript_video_ids())
@@ -550,7 +553,7 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
         kind = e.get("kind") or ("archive" if arch else ("youtube_cc" if cf else "youtube"))
         if copyright_free_only and not cf:
             continue
-        if not _dur_ok(e.get("duration"), min_sec, max_sec):
+        if _len_on(kind, length_kinds) and not _dur_ok(e.get("duration"), min_sec, max_sec):
             dropped_len += 1
             continue
         ing.append({"video_id": sid, "title": e.get("title") or sid, "url": url, "channel": e.get("channel"),
@@ -572,7 +575,7 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
         qv = np.asarray(_embed_titles(list(queries)), dtype=np.float32)
         sims = (mat @ qv.T).max(axis=1)
         order = np.argsort(-sims)[:_SHORTLIST * 4]
-        if min_sec or max_sec:                                 # one concurrent batch, not one GET per row
+        if (min_sec or max_sec) and _len_on("archive", length_kinds):   # one batch, not one GET per row
             prefetch_durations([corpus[ids[i]]["video_id"] for i in order
                                 if corpus[ids[i]].get("duration") is None
                                 and corpus[ids[i]].get("kind") == "archive" and float(sims[i]) >= _FLOOR],
@@ -589,10 +592,11 @@ def _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only=
             # same lazy resolve as tier 3: a surveyed archive row whose crawl cached no `runtime` would
             # otherwise sail through the length gate on the unknown-is-kept rule (live: a 4-minute reel did)
             if (min_sec or max_sec) and r.get("duration") is None and r.get("kind") == "archive" \
-                    and lookups < _DURATION_LOOKUPS:
+                    and _len_on("archive", length_kinds) and lookups < _DURATION_LOOKUPS:
                 lookups += 1
                 r["duration"] = resolved_duration(r["video_id"], catalog_dir)
-            if not _dur_ok(r.get("duration"), min_sec, max_sec):
+            if _len_on(r.get("kind") or "", length_kinds) \
+                    and not _dur_ok(r.get("duration"), min_sec, max_sec):
                 dropped_len += 1
                 continue
             surveyed.append({"video_id": r["video_id"], "title": r["title"], "url": r["url"],
@@ -693,17 +697,18 @@ _DURATION_LOOKUPS = 10
 
 
 def _topic_suggestions(queries, topic, index, vs, n, catalog_dir, copyright_free_only=False, web=True,
-                       min_sec=0, max_sec=0):
+                       min_sec=0, max_sec=0, length_kinds=None):
     """The three tiers, fused: (1) INGESTED-but-uncaptioned → caption, (2) SURVEYED-but-not-ingested →
     ingest+caption, (3) the GLOBAL archive.org search → ingest+caption. Near-duplicates are collapsed per
     tier, then the tiers are fused by RANK (RRF), because their scores are on different scales — tier 1 is a
     transcript-SEGMENT cosine, tiers 2/3 are TITLE cosines, and concatenating them ranked a 0.55 title above
     a 0.50 segment as if that meant something (`_rrf_fuse` exists in this module for exactly this reason)."""
     ingested, surveyed, meta = _local_tiers(queries, topic, index, vs, n, catalog_dir, copyright_free_only,
-                                            min_sec, max_sec)
+                                            min_sec, max_sec, length_kinds)
     archived: List[Dict[str, Any]] = []
     if web:
-        archived, wmeta = _archive_tier(queries, catalog_dir, copyright_free_only, min_sec, max_sec)
+        archived, wmeta = _archive_tier(queries, catalog_dir, copyright_free_only, min_sec, max_sec,
+                                        length_kinds)
         meta["length_dropped"] = meta.get("length_dropped", 0) + wmeta.pop("length_dropped", 0)
         meta.update(wmeta)
     fused = _fuse_by_rank({"ingested": ingested, "surveyed": surveyed, "archive": archived}, _SHORTLIST)
@@ -751,7 +756,8 @@ def _fuse_by_rank(tiers: Dict[str, List[Dict[str, Any]]], n: int, k: int = 60):
     return out
 
 
-def _archive_tier(queries, catalog_dir=None, copyright_free_only=False, min_sec=0, max_sec=0):
+def _archive_tier(queries, catalog_dir=None, copyright_free_only=False, min_sec=0, max_sec=0,
+                  length_kinds=None):
     """Tier 3 — the GLOBAL archive.org search (`archive_source.search_items`), the reach the local surveys
     cannot have: a topic the added collections don't cover is still somewhere in archive.org's movie items
     (a diamond topic against a Prelinger-only library could otherwise only reach mining/advertising
@@ -817,7 +823,7 @@ def _archive_tier(queries, catalog_dir=None, copyright_free_only=False, min_sec=
     out, ovecs = [], []
     lookups = 0
     order = np.argsort(-sims)
-    if min_sec or max_sec:
+    if (min_sec or max_sec) and _len_on("archive", length_kinds):
         prefetch_durations([cand[i]["video_id"] for i in order[:_SHORTLIST * 2]
                             if cand[i].get("duration") is None and float(sims[i]) >= _FLOOR],
                            catalog_dir, _DURATION_LOOKUPS)
@@ -829,10 +835,11 @@ def _archive_tier(queries, catalog_dir=None, copyright_free_only=False, min_sec=
         # advancedsearch omits `runtime` for most globally-searched items, and unknown duration is KEPT —
         # so a length filter wouldn't bite here at all. Resolve it from the metadata API for the few rows
         # that actually reach the shortlist (bounded), never for the whole fetch.
-        if (min_sec or max_sec) and r.get("duration") is None and lookups < _DURATION_LOOKUPS:
+        if (min_sec or max_sec) and _len_on("archive", length_kinds) \
+                and r.get("duration") is None and lookups < _DURATION_LOOKUPS:
             lookups += 1
             r["duration"] = resolved_duration(r["video_id"], catalog_dir)
-        if not _dur_ok(r.get("duration"), min_sec, max_sec):
+        if _len_on("archive", length_kinds) and not _dur_ok(r.get("duration"), min_sec, max_sec):
             dropped_len += 1
             continue
         out.append({"video_id": r["video_id"], "title": r["title"], "url": r["url"], "channel": "",
@@ -945,6 +952,81 @@ def resolved_duration(video_id: str, catalog_dir: Optional[Path] = None) -> Opti
         tmp.write_text(json.dumps(cache, indent=0, ensure_ascii=False), encoding="utf-8")
         _os.replace(tmp, p)
     return dur
+
+
+def remember_duration(video_id: str, secs: Optional[float], catalog_dir: Optional[Path] = None) -> None:
+    """Record a duration we learned WITHOUT asking archive.org — the caption stage downloads the video and
+    gets an exact runtime for free, which is strictly better than the metadata API's uploader-declared one.
+    Feeding it back here means the length filter never has to pay for that item again."""
+    if not video_id or not secs or float(secs) <= 0:
+        return
+    cache = _dur_cache(catalog_dir)
+    if video_id in cache and cache[video_id]:
+        return
+    with _DUR_LOCK:
+        cache[video_id] = int(float(secs))
+        p = _durations_file(catalog_dir)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(cache, indent=0, ensure_ascii=False), encoding="utf-8")
+        _os.replace(tmp, p)
+
+
+async def expand_topics_batch(topics: List[str], config, catalog_dir: Optional[Path] = None,
+                              refresh: bool = False) -> Dict[str, Any]:
+    """Expand MANY rough topics into query sets in ONE LLM call, writing each into the same
+    `topic_queries.json` cache `suggest_by_topic` already reads.
+
+    The per-topic expansion measured 19.7s (range 7.4-36.7s — the provider's spread, not ours), so a
+    30-subject sweep spent ~10 minutes doing nothing but waiting, serially per topic. Batching makes it one
+    round-trip. This is a PREWARM, not a new path: it fills the cache, then every per-topic search hits it
+    and skips its own call, so there is exactly one code path for expansion and nothing to drift.
+
+    Returns {expanded, cached, missing, model, error} — a topic the model skipped is REPORTED, not silently
+    left to fall back (it will just pay its own call, which is the honest degradation)."""
+    import json as _json
+
+    from nolan import transcript_memory as mem
+    from nolan.llm import create_text_llm
+    todo = []
+    cached = 0
+    for t in [str(x).strip() for x in (topics or []) if str(x).strip()]:
+        if not refresh and (mem.get_queries(t, catalog_dir) or {}).get("queries"):
+            cached += 1
+            continue
+        if t not in todo:
+            todo.append(t)
+    if not todo:
+        return {"expanded": 0, "cached": cached, "missing": [], "model": "", "error": ""}
+    numbered = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(todo))
+    model, err, got = "", "", {}
+    try:
+        llm = create_text_llm(config)
+        model = getattr(llm, "model", "") or type(llm).__name__
+        out = await llm.generate(
+            "Expand EACH rough topic below into 5-7 SPECIFIC, diverse search queries (key people, events, "
+            "sub-topics, eras) for retrieving documentary/video footage.\n\n" + numbered
+            + '\n\nRespond ONLY JSON, one entry per topic, keyed by the topic text EXACTLY as given: '
+              '{"expansions": {"<topic>": ["...", "..."]}}',
+            system_prompt="You expand rough topics into specific search queries for video retrieval.")
+        st, en = out.find("{"), out.rfind("}")
+        if st >= 0 and en > st:
+            got = _json.loads(out[st:en + 1]).get("expansions") or {}
+        if not got:
+            err = "the model returned no parseable expansions"
+    except Exception as e:                                    # loud, like the single-topic path
+        err = f"{type(e).__name__}: {e}"[:160]
+    lower = {str(k).strip().lower(): v for k, v in got.items()} if isinstance(got, dict) else {}
+    n = 0
+    missing = []
+    for t in todo:
+        qs = [str(q).strip() for q in (lower.get(t.lower()) or []) if str(q).strip()]
+        if not qs:
+            missing.append(t)                                 # no silent cap: name what didn't come back
+            continue
+        mem.put_queries(t, qs, model, catalog_dir)
+        n += 1
+    return {"expanded": n, "cached": cached, "missing": missing, "model": model, "error": err}
 
 
 THIN_FRAMES = 5                                               # fewer keyframes than this bought ~nothing
@@ -1220,15 +1302,19 @@ def _topic_label(titles: List[str], gdf: Dict[str, int], n_docs: int) -> str:
     return " · ".join(top) if top else "misc"
 
 
-def topic_cluster(distinct: List[Dict[str, Any]], k: int) -> List[Dict[str, Any]]:
+def topic_cluster(distinct: List[Dict[str, Any]], k: int, vecs=None) -> List[Dict[str, Any]]:
     """Cluster the DISTINCT candidate titles into `k` topic groups (agglomerative, cosine on the
     normalized BGE title vectors). Each group carries a keyword `label`, its `size`, and a `medoid`
-    (the title closest to the cluster centroid — the single most representative pick). No LLM."""
+    (the title closest to the cluster centroid — the single most representative pick). No LLM.
+
+    ``vecs`` (row-aligned to `distinct`) reuses vectors the caller already holds — the PERSISTED
+    `title_vectors.npz` — so clustering the whole 60k surveyed corpus costs no embedding at all."""
     if not distinct:
         return []
     import numpy as np
     from collections import Counter
-    vecs = _embed_titles([d.get("title") or "" for d in distinct])
+    if vecs is None:
+        vecs = _embed_titles([d.get("title") or "" for d in distinct])
     X = np.asarray(vecs, dtype=float)
     k = max(1, min(int(k), len(distinct)))
     if k <= 1 or len(distinct) <= 2:
@@ -1289,6 +1375,23 @@ def _dur_ok(d: Optional[int], min_sec: int, max_sec: int) -> bool:
     if max_sec and d > max_sec:
         return False
     return True
+
+
+def _len_on(kind: str, length_kinds: Optional[List[str]]) -> bool:
+    """Does the length filter apply to THIS source family?
+
+    Measured on the live surveys: youtube/youtube_cc rows carry a duration 100% of the time (the crawl gets
+    it free), archive rows only 14.0% — advancedsearch asks for `runtime` and archive.org simply has none
+    for 8,597 of the 10,000 Prelinger items. So filtering an archive row means an HTTP metadata round-trip
+    PER ROW, against a server that throttles per client (8 identical lookups: 88.8s sequential vs 80.9s at
+    8-way — concurrency buys nothing, only fewer calls help).
+
+    `length_kinds=None` keeps the old behaviour (filter everything, resolve what's missing) — the right
+    default for an interactive search where a human deliberately set a length. A caller that restricts it
+    (the broaden sweep passes the youtube families) gets a fully OFFLINE tier-2 scan, and the length rule
+    is then enforced after download in `_capture_visual_tier`, where the duration is already known for
+    free and is exact."""
+    return length_kinds is None or kind in length_kinds
 
 
 def _distinct_candidates(channel: str, catalog_dir: Optional[Path] = None, limit: int = 0,
