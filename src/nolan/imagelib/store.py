@@ -516,7 +516,7 @@ class ImageLibrary:
         # ONE lexical pass, used for both jobs: deciding whether the query names something, and
         # supplying the title-cover bonus. (It is a full scan over the not-held rows — fine at
         # 10^3-10^4, and the place to add an FTS5 index beyond that.)
-        cover_hits = self.search_by_title(query, k=k * 2, held=0)
+        cover_hits = self.search_by_title(query, k=k * 2, held=0, collection_id=collection_id)
         cover = {h.asset.id: h.score for h in cover_hits}
         named = any(s >= _NAMED_MIN_COVER for s in cover.values())
         ident = {h.asset.id: h for h in self._search_discovery_identity(
@@ -600,7 +600,8 @@ class ImageLibrary:
 
     def search_by_title(self, query: str, *, k: int = 12, min_cover: float = 0.5,
                         license_contains: Optional[str] = None,
-                        held: Optional[int] = 1) -> List[LibraryHit]:
+                        held: Optional[int] = 1,
+                        collection_id: Optional[int] = None) -> List[LibraryHit]:
         """Lexical TITLE match — the retrieval CLIP can't do for NAMED works.
 
         All 46 Holbein woodcuts cluster at CLIP 0.29-0.36 for any query, so text->image similarity
@@ -615,7 +616,7 @@ class ImageLibrary:
         if not qset:
             return []
         hits: List[LibraryHit] = []
-        for a in self.catalog.list(status="active", held=held):
+        for a in self.catalog.list(status="active", held=held, collection_id=collection_id):
             if license_contains and (license_contains.lower() not in (a.license or "").lower()):
                 continue
             htok = _distinctive_tokens(a.title or "")

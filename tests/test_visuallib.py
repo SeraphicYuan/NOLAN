@@ -136,20 +136,28 @@ def test_a_model_caption_survives_a_recrawl(lib, tmp_path):
 
 def test_regions_column_exists_and_nothing_populates_it(lib, tmp_path):
     """`regions` (labelled subject/face/text/watermark boxes) ships as a nullable column ONLY
-    because adding one to a populated table is the expensive part. Its executor — a focal point
-    in compose's media_ground, which today hardcodes `background-position:center` and
-    `transform-origin:50% 50%` — does not exist, so nothing may write the field. An authored
-    field with no consumer is this repo's most-repeated bug (WIRING_CHECKLIST pitfall #1)."""
+    because adding one to a populated table is the expensive part. Nothing writes it, so it
+    cannot become an authored field with no consumer (WIRING_CHECKLIST pitfall #1).
+
+    NOTE, and this is the live state rather than the original justification: when this column
+    shipped, the HF path had no focal point at all (compose's `media_ground` hardcoded
+    `background-position:center`). The camera umbrella (`src/nolan/camera`) landed the same day
+    and its solver DOES take one — `solve_push(target=(x, y))`, framed so the target stays put.
+    So the consumer now exists and the missing half is the PRODUCER: a pass that turns a picture
+    into labelled boxes. Wiring `regions` is a real task now, not a deferred one.
+    """
     assert "regions" in _ASSET_MIGRATIONS
     a, _ = _discovery_row(lib, tmp_path, ref="artic:9")
     assert a.regions is None
     import inspect
     assert "regions" not in inspect.signature(lib.add_discovery).parameters
-    ground = (REPO / "render-service/_lab_hyperframes/bridge/compose.py").read_text(
-        encoding="utf-8", errors="replace")
-    assert "transform-origin:50% 50%" in ground, (
-        "media_ground gained a focal point — if the executor now exists, wire `regions` to it "
-        "(authored field + consumer + PLAN_FIELD_CONSUMERS entry) and rewrite this test")
+
+    # The sentinel watches the CONSUMER's contract, not a CSS string: this is what `regions` would
+    # feed. If the parameter is renamed or dropped, the wiring plan above needs rewriting.
+    from nolan.camera import solve
+    assert "target" in inspect.signature(solve.solve_push).parameters, (
+        "the camera solver's `target` went away — re-derive how a labelled region would reach "
+        "the render path before wiring `regions`")
 
 
 # --- the acquisition doors ---------------------------------------------------------------
@@ -267,6 +275,40 @@ def test_every_adapter_yields_a_namespaced_source_ref():
         assert callable(adapter["items"]) and callable(adapter["collection"])
         col = adapter["collection"]()
         assert col.slug and col.source == name and col.rights, f"{name}: collection needs rights"
+
+
+def test_met_wikidata_qid_is_parsed_when_the_source_hands_it_over():
+    """The whole justification for the nullable `wikidata_qid` column: the Met publishes the
+    entity id, so recording it costs one column and no extra call. Live-checked at 8 of 8 rows on
+    a European Paintings harvest."""
+    from nolan.imagelib.harvest import _met_qid
+    assert _met_qid("https://www.wikidata.org/wiki/Q18689458") == "Q18689458"
+    assert _met_qid("http://www.wikidata.org/wiki/Q5582 ") == "Q5582"
+    assert _met_qid("") is None and _met_qid(None) is None
+    assert _met_qid("https://www.metmuseum.org/art/collection/search/436535") is None
+
+
+def test_met_department_accepts_id_or_name():
+    from nolan.imagelib.harvest import _met_dept_id
+    assert _met_dept_id("Photographs") == 19 and _met_dept_id("photographs") == 19
+    assert _met_dept_id("19") == 19 and _met_dept_id(None) is None
+    with pytest.raises(ValueError, match="unknown Met department"):
+        _met_dept_id("Department of Vibes")
+
+
+def test_limit_means_rows_indexed_in_every_adapter():
+    """ONE meaning for `limit` across adapters (pitfall #4 — two dialects for one decision). It
+    mattered: the Met's listing is unfiltered, so `limit` as "ids fetched" silently delivered 2
+    rows for a request of 12."""
+    from nolan.imagelib import harvest as H
+    for name in H.SOURCES:
+        src = inspect_source(H.SOURCES[name]["items"])
+        assert "yielded" in src, f"{name}: limit must count rows INDEXED, not records fetched"
+
+
+def inspect_source(fn) -> str:
+    import inspect
+    return inspect.getsource(fn)
 
 
 def test_harvest_report_counts_what_it_dropped():

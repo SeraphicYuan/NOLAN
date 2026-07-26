@@ -78,11 +78,35 @@ successes would read as full coverage.
 `harvest.SOURCES` maps a source id to `{collection, items}`. Add a museum by adding one adapter —
 the gate, thumbnails, identity columns and dedup are shared. Every adapter MUST yield a namespaced
 `source_ref` (`artic:27992`): a not-held row keyed on a CDN url cannot survive that url rotating,
-and the ref is what makes a re-crawl update instead of duplicate. `tests/test_visuallib.py`
-enforces the ref + a rights assertion on every registered adapter.
+and the ref is what makes a re-crawl update instead of duplicate. `limit` means **rows indexed**,
+never records fetched — one meaning across adapters, and it mattered: as "ids fetched" a request
+for 12 Met rows silently delivered 2. `tests/test_visuallib.py` enforces the ref, a rights
+assertion, and the `limit` contract on every registered adapter.
 
-Shipped: `artic` (Art Institute of Chicago, keyless, IIIF, server-side `is_public_domain` filter —
-measured: the unfiltered listing spent 11 of every 12 records on items we must refuse on rights).
+Shipped:
+
+- **`artic`** — Art Institute of Chicago. Keyless, paginated 100/request, IIIF, server-side
+  `is_public_domain` filter (measured: the unfiltered listing spent 11 of every 12 records on
+  items we must refuse on rights). Carries real pixel dimensions, so the gate's resolution floor
+  runs at index time. Cheapest adapter per row.
+- **`met`** — The Metropolitan Museum of Art. Keyless, `--dept "Photographs"` or an id (see
+  `MET_DEPARTMENTS`), `--query` for a themed slice. **Hands over `wikidata_qid` for free** — 8 of
+  8 rows on a European Paintings probe — which is the entire justification for that column.
+  Costs ONE REQUEST PER OBJECT: the listing returns ids only, and the search endpoint cannot
+  substitute (probed live, `departmentId` + `isPublicDomain` + `hasImages` returns 0 results for
+  whole departments — dept 19 → 0 for every query form, dept 11 → 22). Two consequences worth
+  knowing before a big harvest: departments vary hugely in image coverage (European Paintings
+  ~8/8, Photographs ~2/12, so the same `limit` costs 4× the requests there), and the Met
+  publishes physical measurements rather than pixel dimensions, so the resolution floor lands at
+  promotion (`check_file` on real bytes) instead of at index time.
+
+Wanted next: **Library of Congress** — probed and deliberately NOT shipped yet. Its collection
+endpoint returns only a 150px thumbnail and no rights per row; the richer per-item JSON is a
+second request; and `/photos/?fa=partof:…` was flaky under a plain crawl. The real design
+constraint: LoC is NOT uniformly public domain, yet `asset_gate.OPEN_ACCESS_SOURCES` already
+trusts `loc` wholesale — so a LoC adapter must assert rights per CURATED COLLECTION
+(`fsa-owi-black-and-white-negatives`, 171,074 items, no known restrictions) rather than
+free-text-searching the whole institution. Write that table before writing the adapter.
 
 ## Retrieval is ROUTED, not blended
 
@@ -113,6 +137,14 @@ and rights-annotated. Every intermediate row above was a version of this router 
 and rejected; re-run the eval after any retrieval change, and beware sweeping weights outside the
 real code path (doing so overstated look@1 by 10 points until the detector threshold was found).
 
+Adding the Met (1091 rows, two institutions — the most confusable possible distractors, same period
+and genre) held: **look 68.4 / 94.7 / 94.7, named 94.7 / 100 / 100**, and 18 of the 19 look needs
+land at rank ≤3. The single miss is instructive rather than alarming: "towering altarpiece of a
+figure rising to heaven surrounded by upturned faces" now returns *other altarpieces* (Altdorfer,
+Froment, Gaddi) ahead of the El Greco — correct answers to an under-specified query, from a corpus
+that just gained 250 religious paintings. Use `--collection <id>` when you need runs to stay
+comparable; the unfiltered run is the honest one.
+
 ## Invariants (each has a test)
 
 1. **The tier is OPT-IN on every read path.** `catalog.list(held=1)` is the default; the discovery
@@ -130,17 +162,21 @@ real code path (doing so overstated look@1 by 10 points until the detector thres
    image) are in `ASSET_GATE_DOORS`. An un-gated discovery tier is a laundering route around the
    gate `add_url` applies to held assets.
 6. **`regions` is a column and nothing writes it.** The labelled subject/face/text/watermark boxes
-   are reserved, deliberately unpopulated: their executor (a focal point in compose's
-   `media_ground`, which today hardcodes `background-position:center` /
-   `transform-origin:50% 50%`) does not exist yet. The column ships only because adding one to a
-   populated table is the expensive part. Wire the executor FIRST, then the field.
+   are reserved and deliberately unpopulated — the column ships only because adding one to a
+   populated table is the expensive part. When it shipped, the HF path had no focal point at all.
+   That changed the same day: the camera umbrella (`src/nolan/camera`) landed `solve_push(target=
+   (x, y))`, framed so the target stays put. **The consumer now exists; the missing half is the
+   PRODUCER** — a pass that turns a picture into labelled boxes (VLM *names* the regions, a
+   detector/rembg *localizes* them; never raw coordinates from prose). The test's sentinel watches
+   that solver's `target` parameter, not a CSS string.
 
 ## Deliberately deferred
 
-- **The location/region pass.** See invariant 6. When it lands it is three things, not one: the
-  region schema (`{label, kind, box, conf}`, VLM *names* + detector/rembg *localizes* — never raw
-  coordinates from prose), a `ground.focus` consumer in `media_ground`, and its honesty test. The
-  first payoff is crop safety (`cover` decapitates a portrait in a 16:9 frame), not the zoom.
+- **The location/region pass** — now PRODUCER-blocked, not consumer-blocked (see invariant 6).
+  What remains is the region schema (`{label, kind, box, conf}`), the pass that fills it, and the
+  seam from a stored region to `camera.solve`'s `target`. The first payoff is crop safety
+  (`cover` decapitates a portrait in a 16:9 frame), not the zoom — and a watermark/text box is
+  immediately spendable by `hyperframes/cleanup.py`, which crops those today by vision guess.
 - **Wikidata entity linking.** `wikidata_qid` is a nullable column populated only when a source
   hands it over free. Full name→QID disambiguation + SPARQL joins only pay off across several
   collections; revisit at 3+, or when key-assets' per-candidate VLM verify becomes the complaint.

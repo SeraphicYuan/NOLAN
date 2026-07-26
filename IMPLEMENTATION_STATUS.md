@@ -77,6 +77,57 @@ Also: `nolan images harvest / discover / fetch / collections`, a Tier switch on 
 per-card Fetch, skill `lab.visual-library`, and retry on transient CDN failures (measured: 44 of 899
 records lost to 502/504 before it).
 
+### Second adapter: The Met — and the deferred identifier pays off (same day)
+
+`met` joins `artic` in `SOURCES`, which was the point of an adapter registry: the gate, thumbnails,
+identity columns, dedup and promotion are all shared, so a museum costs one function pair. It also
+settled the `wikidata_qid` question empirically — the Met publishes `objectWikidata_URL` on the
+object record, so the column filled itself on **8 of 8 rows** of the first probe at zero extra cost.
+That is precisely the case the column was reserved for: harvest identifiers, defer the graph.
+
+Its price is one request per object (the listing returns ids only) and its search endpoint cannot
+substitute — probed live, `departmentId` + `isPublicDomain` + `hasImages` returns 0 results for
+whole departments (dept 19 → 0 for every query form, dept 11 → 22). Two per-department facts worth
+knowing before a big harvest: image coverage varies wildly (European Paintings ~8/8, Photographs
+~2/12, so the same `limit` costs 4× the requests there), and the Met publishes physical
+measurements rather than pixel dimensions, so the resolution floor lands at promotion
+(`check_file` on real bytes) instead of at index time. Both are stated in the adapter, not hidden.
+
+**A dialect caught early** (pitfall #4): `limit` meant "records fetched" in `artic` and, as written,
+would have meant the same in `met` — where the listing is unfiltered, so a request for 12 rows
+silently delivered 2. `limit` now means **rows indexed** in every adapter, with a scan cap so a
+barren department cannot walk 40k ids in silence, and a test asserts the contract per registered
+adapter.
+
+The eval grew a `--collection` flag for a reason worth recording: the golden answers are pinned to
+a specific work, and a second institution holding its own *Water Lilies* or *Self-Portrait* scores
+as a miss when it is really a correct answer from the wrong museum. Comparable runs filter to one
+collection; the unfiltered run measures the real, harder library.
+
+Re-measured on 1091 rows across both museums — the most confusable distractors available, same
+period and genre — retrieval held: **look 68.4 / 94.7 / 94.7, named 94.7 / 100 / 100** (artic-only
+was 63.2 / 100 / 100 and 94.7 / 100 / 100, reproduced exactly through `--collection 1`, which is
+also the check that the filter works). 18 of the 19 look needs land at rank ≤3. The single miss is
+instructive rather than alarming: "towering altarpiece of a figure rising to heaven surrounded by
+upturned faces" now returns *other altarpieces* (Altdorfer, Froment, Gaddi) above the El Greco —
+correct answers to an under-specified query, in a corpus that just gained 250 religious paintings.
+
+**The `regions` deferral changed footing the same day.** It was deferred because the HF path had no
+focal point to spend a box on. The camera umbrella landed hours later with
+`camera.solve.solve_push(target=(x, y))` — a push framed so the target stays put — so the CONSUMER
+now exists and what is missing is the PRODUCER: a pass that turns a picture into labelled boxes.
+The honesty test was rewritten to watch that solver's `target` parameter instead of the CSS string
+it originally watched; a sentinel pointed at the old door would have passed forever while its own
+premise went false.
+
+**Library of Congress was probed and deliberately NOT shipped.** Its collection endpoint returns
+only a 150px thumbnail and no per-row rights; the richer per-item JSON is a second request; and
+`/photos/?fa=partof:…` was flaky under a plain crawl. The real blocker is a rights trap:
+`asset_gate.OPEN_ACCESS_SOURCES` already trusts `loc` wholesale, but LoC is NOT uniformly public
+domain — so its adapter must assert rights per CURATED COLLECTION
+(`fsa-owi-black-and-white-negatives`, 171,074 items, no known restrictions) rather than free-text
+searching the institution. That table comes before that adapter.
+
 ## Acquisition can finally retrieve by what is SHOWN (2026-07-26)
 
 The transcript library's visual tier is now an acquisition source. Before this, `visual_search` — CLIP-

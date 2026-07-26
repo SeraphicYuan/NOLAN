@@ -136,6 +136,12 @@ def main(argv=None) -> int:
     ap.add_argument("--k", type=int, default=5)
     ap.add_argument("--scope", default="global")
     ap.add_argument("--project", default=None)
+    ap.add_argument("--collection", type=int, default=None,
+                    help="restrict retrieval to one collection id. Use it to keep runs COMPARABLE "
+                         "as the library grows: the golden answers are pinned to a specific work, "
+                         "and a second institution holding its own 'Water Lilies' or "
+                         "'Self-Portrait' scores as a miss when it is really a correct answer "
+                         "from the wrong museum.")
     ap.add_argument("--no-baseline", action="store_true",
                     help="skip the live provider search (offline runs)")
     ap.add_argument("--json", dest="json_out", default=None)
@@ -143,7 +149,8 @@ def main(argv=None) -> int:
 
     from nolan.imagelib import ImageLibrary
     lib = ImageLibrary(scope=args.scope, project=args.project)
-    rows = lib.catalog.list(status="active", held=0, limit=100_000)
+    rows = lib.catalog.list(status="active", held=0, limit=100_000,
+                            collection_id=args.collection)
     corpus = len(rows)
     if not corpus:
         print("No discovery rows. Harvest first:  nolan images harvest artic --limit 600")
@@ -163,10 +170,11 @@ def main(argv=None) -> int:
         print("None of the golden works are in this harvest — harvest more, or widen the set.")
         return 2
 
+    cid = args.collection
     systems = {
-        "visual-lib (routed)": lambda q: lib.search_discovery(q, k=20),
-        "identity only":       lambda q: lib._search_discovery_identity(q, k=20),
-        "clip only":           lambda q: lib._search_discovery_clip(q, k=20),
+        "visual-lib (routed)": lambda q: lib.search_discovery(q, k=20, collection_id=cid),
+        "identity only":       lambda q: lib._search_discovery_identity(q, k=20, collection_id=cid),
+        "clip only":           lambda q: lib._search_discovery_clip(q, k=20, collection_id=cid),
     }
     results = {}
     for kind_i, kind in enumerate(("look", "named")):

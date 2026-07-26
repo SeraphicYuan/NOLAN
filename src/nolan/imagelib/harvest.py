@@ -26,7 +26,12 @@ not-held row keyed on a CDN url cannot survive that url rotating.
 Identity is CATALOG-DERIVED here by construction (`identity_source='catalog'`) — these fields
 come from the institution's own record, never from a model looking at the picture.
 
+`limit` means ROWS INDEXED, never records fetched — one meaning across adapters. It mattered: as
+"ids fetched" a request for 12 Met rows silently delivered 2, because the Met's listing is
+unfiltered and most ids in some departments carry no image.
+
 CLI:  python -X utf8 -m nolan.imagelib.harvest artic --limit 500 [--query "..."] [--dept "..."]
+      python -X utf8 -m nolan.imagelib.harvest met --limit 250 --dept "European Paintings"
 """
 from __future__ import annotations
 
@@ -120,15 +125,16 @@ def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional
     unfiltered listing spent 11 of every 12 records on items we must refuse on rights, so this is
     a 12x saving on a keyless API's goodwill, not a nicety. `query` additionally biases the
     ranking toward a theme. The API refuses offsets past 10,000, so a bounded harvest is the only
-    kind — `limit` is honoured exactly and the report says what was scanned.
+    kind — `limit` counts ROWS INDEXED (the shared contract, see `harvest`) and the report says
+    what was skipped.
     """
     import httpx
 
-    fetched = 0
+    yielded = 0
     page = 1
     with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
-        while fetched < limit:
-            n = min(page_size, limit - fetched)
+        while yielded < limit:
+            n = page_size
             params = {"query[term][is_public_domain]": "true", "limit": n, "page": page,
                       "fields": ARTIC_FIELDS}
             if query:
@@ -145,7 +151,8 @@ def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional
             if not data:
                 return
             for a in data:
-                fetched += 1
+                if yielded >= limit:
+                    return
                 img = a.get("image_id")
                 if not img:
                     if report:
@@ -173,12 +180,158 @@ def artic_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional
                     license="CC0 (Art Institute of Chicago)",
                     width=thumb.get("width"), height=thumb.get("height"),
                     tags=a.get("classification_title") or a.get("artwork_type_title"))
+                yielded += 1
             page += 1
             time.sleep(0.2)                                   # be a good citizen on a keyless API
 
 
+# ---------------------------------------------------------------- The Metropolitan Museum of Art
+
+MET_API = "https://collectionapi.metmuseum.org/public/collection/v1"
+# Department id → name. The Met's listing endpoint is per-department, and a department is the
+# natural harvest unit: "Photographs" and "Arms and Armor" are different visual worlds, and a
+# harvest that mixes them can't be reasoned about at collection level.
+MET_DEPARTMENTS = {
+    1: "American Decorative Arts", 3: "Ancient Near Eastern Art", 4: "Arms and Armor",
+    5: "Arts of Africa, Oceania, and the Americas", 6: "Asian Art", 7: "The Cloisters",
+    8: "The Costume Institute", 9: "Drawings and Prints", 10: "Egyptian Art",
+    11: "European Paintings", 12: "European Sculpture and Decorative Arts",
+    13: "Greek and Roman Art", 14: "Islamic Art", 15: "The Robert Lehman Collection",
+    16: "The Libraries", 17: "Medieval Art", 18: "Musical Instruments", 19: "Photographs",
+    21: "Modern Art",
+}
+
+
+def _met_dept_id(dept: Optional[str]) -> Optional[int]:
+    """Accept an id ('19') or a name ('Photographs', case-insensitive)."""
+    if dept in (None, ""):
+        return None
+    s = str(dept).strip()
+    if s.isdigit():
+        return int(s)
+    for did, name in MET_DEPARTMENTS.items():
+        if name.lower() == s.lower():
+            return did
+    raise ValueError(f"unknown Met department {dept!r} (known: {sorted(MET_DEPARTMENTS.values())})")
+
+
+def met_collection(dept: Optional[str] = None, query: Optional[str] = None) -> Collection:
+    """The T0 row for a Met harvest. As with artic, only `isPublicDomain` objects are harvested,
+    so the CC0 assertion is a property of the harvest rather than a guess about the institution —
+    the Met holds plenty of in-copyright work and the API says which is which."""
+    did = _met_dept_id(dept)
+    name = MET_DEPARTMENTS.get(did) if did else None
+    slug = "met-public-domain" + (f"-{name.lower().replace(' ', '-').replace(',', '')}" if name else "") \
+                               + (f"-{query.lower().replace(' ', '-')[:24]}" if query else "")
+    return Collection(
+        slug=slug, source="met",
+        title="The Metropolitan Museum of Art — public-domain objects"
+              + (f" ({name})" if name else ""),
+        description=("Open-access objects from the Metropolitan Museum of Art"
+                     + (f", {name} department" if name else "")
+                     + ": paintings, photographs, prints, sculpture, arms and armour, costume and "
+                       "objects across five millennia, each catalogued with title, artist, date, "
+                       "medium, culture and — where the Met has linked it — a Wikidata id."),
+        rights="CC0 (The Metropolitan Museum of Art) — public-domain objects only",
+        copyright_free=True, url="https://www.metmuseum.org/about-the-met/policies-and-documents/open-access",
+        topics=(name.lower() if name else "art, photography, print, sculpture, historical object"))
+
+
+def _met_qid(url: Optional[str]) -> Optional[str]:
+    """The Q-number out of a Wikidata URL. THE reason the column exists: the Met hands the entity
+    id over for free, so recording it costs one column and no extra call — and that is the
+    difference between switching entity-linking on later and re-harvesting the whole collection."""
+    import re
+    m = re.search(r"/(Q\d+)\s*$", (url or "").strip())
+    return m.group(1) if m else None
+
+
+def met_items(limit: int = 200, *, dept: Optional[str] = None, query: Optional[str] = None,
+              report: Optional[HarvestReport] = None, **_ignored) -> Iterator[HarvestItem]:
+    """Walk the Met catalog. Keyless. Unlike artic there is no bulk listing WITH metadata: the
+    search/objects endpoints return ids only, so this costs one request per object. That is the
+    honest price of the Met's richer record (explicit `isPublicDomain`, Wikidata ids) and the
+    reason `limit` is a hard bound rather than a suggestion.
+    """
+    import httpx
+
+    did = _met_dept_id(dept)
+    with httpx.Client(headers={"User-Agent": _UA}, timeout=45.0) as c:
+        try:
+            if query:
+                params: Dict[str, Any] = {"q": query, "hasImages": "true",
+                                          "isPublicDomain": "true"}
+                if did:
+                    params["departmentId"] = did
+                ids = c.get(f"{MET_API}/search", params=params).json().get("objectIDs") or []
+            else:
+                params = {"departmentIds": did} if did else {}
+                ids = c.get(f"{MET_API}/objects", params=params).json().get("objectIDs") or []
+        except Exception as e:
+            if report:
+                report.errors += 1
+                report.note(f"met listing: {type(e).__name__}: {e}")
+            return
+        if report and len(ids) > limit:
+            # NO SILENT CAPS: say how much of the department this bounded harvest is leaving.
+            report.note(f"listing returned {len(ids)} ids; indexing up to {limit}")
+        # `limit` counts ROWS INDEXED, not ids fetched (the shared contract — see `harvest`). The
+        # Met's listing is unfiltered and its search endpoint cannot substitute: departmentId
+        # combined with isPublicDomain/hasImages returns 0 for whole departments (probed live:
+        # dept 19 → 0 results for every query form, dept 11 → 22). So we scan until `limit` rows
+        # are indexed, with a cap so a barren department cannot walk 40k ids in silence.
+        scanned = yielded = 0
+        scan_cap = max(limit * 20, 200)
+        for oid in ids:
+            if yielded >= limit or scanned >= scan_cap:
+                break
+            scanned += 1
+            try:
+                o = c.get(f"{MET_API}/objects/{oid}", timeout=30.0).json()
+            except Exception as e:
+                if report:
+                    report.errors += 1
+                    report.note(f"met:{oid}: {type(e).__name__}: {e}")
+                continue
+            if not o.get("primaryImage"):
+                if report:
+                    report.skipped_no_image += 1
+                continue
+            if not o.get("isPublicDomain"):
+                if report:
+                    report.skipped_rights += 1
+                continue
+            bits = [o.get("medium"), o.get("culture"), o.get("country"),
+                    o.get("classification"), o.get("department")]
+            yield HarvestItem(
+                source_ref=f"met:{o.get('objectID')}",
+                # `primaryImageSmall` is the Met's own web-large derivative (~800px) — the right
+                # thing to fetch for a thumbnail; the full original can be tens of megabytes.
+                thumb_url=o.get("primaryImageSmall") or o.get("primaryImage"),
+                url=o.get("primaryImage"),
+                source_url=o.get("objectURL"),
+                title=o.get("title"), creator=o.get("artistDisplayName") or None,
+                date_text=o.get("objectDate") or None,
+                institution="The Metropolitan Museum of Art",
+                description=", ".join(b for b in bits if b),
+                license="CC0 (The Metropolitan Museum of Art)",
+                # width/height stay UNKNOWN: the Met publishes physical measurements, not pixel
+                # dimensions, and inventing them from the thumbnail would be a false claim about
+                # the source. Consequence, stated rather than hidden: the gate's resolution floor
+                # cannot run at index time for met rows (`check_candidate` skips it when dims are
+                # absent) and lands at promotion instead, where `check_file` measures real bytes.
+                wikidata_qid=_met_qid(o.get("objectWikidata_URL")),
+                tags=o.get("classification") or None)
+            yielded += 1
+            time.sleep(0.05)                                  # be a good citizen on a keyless API
+        if report and yielded < limit:
+            report.note(f"scanned {scanned} of {len(ids)} ids for {yielded} indexable rows"
+                        + (" (scan cap reached)" if scanned >= scan_cap else " (listing exhausted)"))
+
+
 SOURCES: Dict[str, Dict[str, Callable]] = {
     "artic": {"collection": artic_collection, "items": artic_items},
+    "met": {"collection": met_collection, "items": met_items},
 }
 
 
@@ -187,8 +340,13 @@ SOURCES: Dict[str, Dict[str, Callable]] = {
 def harvest(source: str, *, limit: int = 200, scope: str = "global",
             project: Optional[str] = None, library=None, progress=None,
             **source_kwargs) -> HarvestReport:
-    """Harvest `limit` items from one source into the discovery tier. Idempotent: a re-run
-    refreshes rows by `source_ref` instead of duplicating them."""
+    """Harvest into the discovery tier. Idempotent: a re-run refreshes rows by `source_ref`
+    instead of duplicating them.
+
+    `limit` counts ROWS INDEXED, not records fetched — the one contract every adapter honours, so
+    "give me 200" means 200 usable rows whether the source's listing is pre-filtered (artic) or
+    full of imageless entries (met). Whatever it walked past to get there is in the report.
+    """
     if source not in SOURCES:
         raise ValueError(f"unknown harvest source {source!r} (known: {sorted(SOURCES)})")
     from nolan.imagelib import ImageLibrary
